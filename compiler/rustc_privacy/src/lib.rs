@@ -27,8 +27,8 @@ use rustc_data_structures::intern::Interned;
 use rustc_errors::MultiSpan;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId, LocalModDefId};
-use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{AssocItemKind, ForeignItemKind, ItemId, ItemKind, PatKind};
+use rustc_hir::intravisit::{self, InferKind, Visitor};
+use rustc_hir::{AmbigArg, AssocItemKind, ForeignItemKind, ItemId, ItemKind, PatKind};
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
@@ -1179,7 +1179,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
 
-    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         self.span = hir_ty.span;
         if self
             .visit(
@@ -1195,12 +1195,17 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         intravisit::walk_ty(self, hir_ty);
     }
 
-    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
-        self.span = inf.span;
+    fn visit_infer(
+        &mut self,
+        inf_id: rustc_hir::HirId,
+        inf_span: Span,
+        _kind: InferKind<'tcx>,
+    ) -> Self::Result {
+        self.span = inf_span;
         if let Some(ty) = self
             .maybe_typeck_results
-            .unwrap_or_else(|| span_bug!(inf.span, "`hir::InferArg` outside of a body"))
-            .node_type_opt(inf.hir_id)
+            .unwrap_or_else(|| span_bug!(inf_span, "Inference variable outside of a body"))
+            .node_type_opt(inf_id)
         {
             if self.visit(ty).is_break() {
                 return;
@@ -1208,7 +1213,8 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         } else {
             // FIXME: check types of const infers here.
         }
-        intravisit::walk_inf(self, inf);
+
+        self.visit_id(inf_id)
     }
 
     // Check types of expressions

@@ -460,7 +460,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                             }
 
                             // mark self_ty live
-                            intravisit::walk_ty(self, impl_ref.self_ty);
+                            intravisit::walk_unambig_ty(self, impl_ref.self_ty);
                             if let Some(&impl_item_id) =
                                 self.tcx.impl_item_implementor_ids(impl_id).get(&trait_item_id)
                             {

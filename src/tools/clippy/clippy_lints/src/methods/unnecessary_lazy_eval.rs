@@ -49,7 +49,7 @@ pub(super) fn check<'tcx>(
                         fn_decl.output,
                         FnRetTy::DefaultReturn(_)
                             | FnRetTy::Return(hir::Ty {
-                                kind: hir::TyKind::Infer,
+                                kind: hir::TyKind::Infer(()),
                                 ..
                             })
                     ) {

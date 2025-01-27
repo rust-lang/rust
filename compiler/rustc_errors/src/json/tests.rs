@@ -47,7 +47,7 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
         let output = Arc::new(Mutex::new(Vec::new()));
         let je = JsonEmitter::new(
             Box::new(Shared { data: output.clone() }),
-            sm,
+            Some(sm),
             fallback_bundle,
             true, // pretty
             HumanReadableErrorType::Short,

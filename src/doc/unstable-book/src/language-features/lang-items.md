@@ -46,14 +46,15 @@ allocation. A freestanding program that uses the `Box` sugar for dynamic
 allocations via `malloc` and `free`:
 
 ```rust,ignore (libc-is-finicky)
-#![feature(lang_items, start, core_intrinsics, rustc_private, panic_unwind, rustc_attrs)]
+#![feature(lang_items, core_intrinsics, rustc_private, panic_unwind, rustc_attrs)]
 #![allow(internal_features)]
 #![no_std]
+#![no_main]
 
 extern crate libc;
 extern crate unwind;
 
-use core::ffi::c_void;
+use core::ffi::{c_int, c_void};
 use core::intrinsics;
 use core::panic::PanicInfo;
 use core::ptr::NonNull;
@@ -91,8 +92,8 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
     p
 }
 
-#[start]
-fn main(_argc: isize, _argv: *const *const u8) -> isize {
+#[no_mangle]
+extern "C" fn main(_argc: c_int, _argv: *const *const u8) -> c_int {
     let _x = Box::new(1);
 
     0

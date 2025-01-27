@@ -11,10 +11,10 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{Visitor, walk_ty};
+use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
 use rustc_hir::{
-    self as hir, BindingMode, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, MatchSource, Mutability, Node, Pat,
-    PatKind, Path, QPath, TyKind, UnOp,
+    self as hir, AmbigArg, BindingMode, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, MatchSource, Mutability, Node,
+    Pat, PatKind, Path, QPath, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
@@ -796,7 +796,7 @@ impl TyCoercionStability {
                     if let Some(args) = path.args
                         && args.args.iter().any(|arg| match arg {
                             hir::GenericArg::Infer(_) => true,
-                            hir::GenericArg::Type(ty) => ty_contains_infer(ty),
+                            hir::GenericArg::Type(ty) => ty_contains_infer(ty.as_unambig_ty()),
                             _ => false,
                         })
                     {
@@ -815,7 +815,7 @@ impl TyCoercionStability {
                 | TyKind::Path(_) => Self::Deref,
                 TyKind::OpaqueDef(..)
                 | TyKind::TraitAscription(..)
-                | TyKind::Infer
+                | TyKind::Infer(())
                 | TyKind::Typeof(..)
                 | TyKind::TraitObject(..)
                 | TyKind::InferDelegation(..)
@@ -889,29 +889,23 @@ impl TyCoercionStability {
 fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
     struct V(bool);
     impl Visitor<'_> for V {
-        fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
-            if self.0
-                || matches!(
-                    ty.kind,
-                    TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(_) | TyKind::Err(_)
-                )
-            {
+        fn visit_infer(&mut self, inf_id: HirId, _inf_span: Span, kind: InferKind<'_>) -> Self::Result {
+            if let InferKind::Ty(_) | InferKind::Ambig(_) = kind {
+                self.0 = true;
+            }
+            self.visit_id(inf_id);
+        }
+
+        fn visit_ty(&mut self, ty: &hir::Ty<'_, AmbigArg>) {
+            if self.0 || matches!(ty.kind, TyKind::OpaqueDef(..) | TyKind::Typeof(_) | TyKind::Err(_)) {
                 self.0 = true;
             } else {
                 walk_ty(self, ty);
             }
         }
-
-        fn visit_generic_arg(&mut self, arg: &hir::GenericArg<'_>) {
-            if self.0 || matches!(arg, hir::GenericArg::Infer(_)) {
-                self.0 = true;
-            } else if let hir::GenericArg::Type(ty) = arg {
-                self.visit_ty(ty);
-            }
-        }
     }
     let mut v = V(false);
-    v.visit_ty(ty);
+    v.visit_ty_unambig(ty);
     v.0
 }
 

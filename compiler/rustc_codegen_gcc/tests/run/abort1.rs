@@ -3,11 +3,12 @@
 // Run-time:
 //   status: signal
 
-#![feature(auto_traits, lang_items, no_core, start, intrinsics, rustc_attrs)]
+#![feature(auto_traits, lang_items, no_core, intrinsics, rustc_attrs)]
 #![allow(internal_features)]
 
 #![no_std]
 #![no_core]
+#![no_main]
 
 /*
  * Core
@@ -49,7 +50,7 @@ fn test_fail() -> ! {
     unsafe { intrinsics::abort() };
 }
 
-#[start]
-fn main(mut argc: isize, _argv: *const *const u8) -> isize {
+#[no_mangle]
+extern "C" fn main(argc: i32, _argv: *const *const u8) -> i32 {
     test_fail();
 }

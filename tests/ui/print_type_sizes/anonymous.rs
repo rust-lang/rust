@@ -1,14 +1,13 @@
-//@ compile-flags: -Z print-type-sizes
+//@ compile-flags: -Z print-type-sizes --crate-type=lib
 //@ build-pass
 
 // All of the types that occur in this function are uninteresting, in
 // that one cannot control the sizes of these types with the same sort
 // of enum-variant manipulation tricks.
 
-#![feature(start)]
+#![no_std]
 
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+pub fn main() -> isize {
     let _byte: u8 = 0;
     let _word: usize = 0;
     let _tuple: (u8, usize)= (0, 0);

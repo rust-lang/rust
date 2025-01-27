@@ -233,7 +233,7 @@ pub(super) fn write_code(
     out: &mut impl Write,
     src: &str,
     href_context: Option<HrefContext<'_, '_>>,
-    decoration_info: Option<DecorationInfo>,
+    decoration_info: Option<&DecorationInfo>,
 ) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
     let src = src.replace("\r\n", "\n");
@@ -510,12 +510,12 @@ struct Decorations {
 }
 
 impl Decorations {
-    fn new(info: DecorationInfo) -> Self {
+    fn new(info: &DecorationInfo) -> Self {
         // Extract tuples (start, end, kind) into separate sequences of (start, kind) and (end).
         let (mut starts, mut ends): (Vec<_>, Vec<_>) = info
             .0
-            .into_iter()
-            .flat_map(|(kind, ranges)| ranges.into_iter().map(move |(lo, hi)| ((lo, kind), hi)))
+            .iter()
+            .flat_map(|(&kind, ranges)| ranges.into_iter().map(move |&(lo, hi)| ((lo, kind), hi)))
             .unzip();
 
         // Sort the sequences in document order.
@@ -542,7 +542,7 @@ struct Classifier<'src> {
 impl<'src> Classifier<'src> {
     /// Takes as argument the source code to HTML-ify, the rust edition to use and the source code
     /// file span which will be used later on by the `span_correspondence_map`.
-    fn new(src: &str, file_span: Span, decoration_info: Option<DecorationInfo>) -> Classifier<'_> {
+    fn new(src: &'src str, file_span: Span, decoration_info: Option<&DecorationInfo>) -> Self {
         let tokens = PeekIter::new(TokenIter { src, cursor: Cursor::new(src) });
         let decorations = decoration_info.map(Decorations::new);
         Classifier {

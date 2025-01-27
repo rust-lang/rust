@@ -4,12 +4,12 @@ use clippy_utils::ty::expr_sig;
 use clippy_utils::{is_default_equivalent, path_def_id};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::intravisit::{Visitor, walk_ty};
-use rustc_hir::{Block, Expr, ExprKind, LetStmt, Node, QPath, Ty, TyKind};
+use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
+use rustc_hir::{AmbigArg, Block, Expr, ExprKind, HirId, LetStmt, Node, QPath, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
-use rustc_span::sym;
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -92,8 +92,13 @@ fn is_local_vec_expn(cx: &LateContext<'_>, expr: &Expr<'_>, ref_expr: &Expr<'_>)
 struct InferVisitor(bool);
 
 impl Visitor<'_> for InferVisitor {
-    fn visit_ty(&mut self, t: &Ty<'_>) {
-        self.0 |= matches!(t.kind, TyKind::Infer | TyKind::OpaqueDef(..) | TyKind::TraitObject(..));
+    fn visit_infer(&mut self, inf_id: HirId, _inf_span: Span, _kind: InferKind<'_>) -> Self::Result {
+        self.0 = true;
+        self.visit_id(inf_id);
+    }
+
+    fn visit_ty(&mut self, t: &Ty<'_, AmbigArg>) {
+        self.0 |= matches!(t.kind, TyKind::OpaqueDef(..) | TyKind::TraitObject(..));
         if !self.0 {
             walk_ty(self, t);
         }
@@ -104,7 +109,7 @@ fn given_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match cx.tcx.parent_hir_node(expr.hir_id) {
         Node::LetStmt(LetStmt { ty: Some(ty), .. }) => {
             let mut v = InferVisitor::default();
-            v.visit_ty(ty);
+            v.visit_ty_unambig(ty);
             !v.0
         },
         Node::Expr(Expr {

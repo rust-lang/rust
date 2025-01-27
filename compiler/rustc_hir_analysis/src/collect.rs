@@ -28,7 +28,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{self, Visitor, walk_generics};
+use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt, walk_generics};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
@@ -139,29 +139,12 @@ pub(crate) struct HirPlaceholderCollector {
 }
 
 impl<'v> Visitor<'v> for HirPlaceholderCollector {
-    fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
-        if let hir::TyKind::Infer = t.kind {
-            self.spans.push(t.span);
-        }
-        intravisit::walk_ty(self, t)
-    }
-    fn visit_generic_arg(&mut self, generic_arg: &'v hir::GenericArg<'v>) {
-        match generic_arg {
-            hir::GenericArg::Infer(inf) => {
-                self.spans.push(inf.span);
-                self.may_contain_const_infer = true;
-                intravisit::walk_inf(self, inf);
-            }
-            hir::GenericArg::Type(t) => self.visit_ty(t),
-            _ => {}
-        }
-    }
-    fn visit_const_arg(&mut self, const_arg: &'v hir::ConstArg<'v>) {
-        if let hir::ConstArgKind::Infer(span) = const_arg.kind {
+    fn visit_infer(&mut self, _inf_id: HirId, inf_span: Span, kind: InferKind<'v>) -> Self::Result {
+        self.spans.push(inf_span);
+
+        if let InferKind::Const(_) | InferKind::Ambig(_) = kind {
             self.may_contain_const_infer = true;
-            self.spans.push(span);
         }
-        intravisit::walk_const_arg(self, const_arg)
     }
 }
 
@@ -583,7 +566,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
             .iter()
             .enumerate()
             .map(|(i, a)| {
-                if let hir::TyKind::Infer = a.kind {
+                if let hir::TyKind::Infer(()) = a.kind {
                     if let Some(suggested_ty) =
                         self.lowerer().suggest_trait_fn_ty_for_impl_fn_infer(hir_id, Some(i))
                     {
@@ -593,21 +576,21 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                 }
 
                 // Only visit the type looking for `_` if we didn't fix the type above
-                visitor.visit_ty(a);
+                visitor.visit_ty_unambig(a);
                 self.lowerer().lower_arg_ty(a, None)
             })
             .collect();
 
         let output_ty = match decl.output {
             hir::FnRetTy::Return(output) => {
-                if let hir::TyKind::Infer = output.kind
+                if let hir::TyKind::Infer(()) = output.kind
                     && let Some(suggested_ty) =
                         self.lowerer().suggest_trait_fn_ty_for_impl_fn_infer(hir_id, None)
                 {
                     infer_replacements.push((output.span, suggested_ty.to_string()));
                     Ty::new_error_with_message(tcx, output.span, suggested_ty.to_string())
                 } else {
-                    visitor.visit_ty(output);
+                    visitor.visit_ty_unambig(output);
                     self.lower_ty(output)
                 }
             }
@@ -1453,7 +1436,7 @@ fn recover_infer_ret_ty<'tcx>(
     });
 
     let mut visitor = HirPlaceholderCollector::default();
-    visitor.visit_ty(infer_ret_ty);
+    visitor.visit_ty_unambig(infer_ret_ty);
 
     let mut diag = bad_placeholder(icx.lowerer(), visitor.spans, "return type");
     let ret_ty = fn_sig.output();

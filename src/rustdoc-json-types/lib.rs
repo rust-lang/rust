@@ -30,7 +30,7 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 /// This integer is incremented with every breaking change to the API,
 /// and is returned along with the JSON blob as [`Crate::format_version`].
 /// Consuming code should assert that this value matches the format version(s) that it supports.
-pub const FORMAT_VERSION: u32 = 38;
+pub const FORMAT_VERSION: u32 = 39;
 
 /// The root of the emitted JSON blob.
 ///
@@ -1036,16 +1036,20 @@ pub enum Type {
 /// A type that has a simple path to it. This is the kind of type of structs, unions, enums, etc.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Path {
-    /// The name of the type as declared, e.g. in
+    /// The path of the type.
+    ///
+    /// This will be the path that is *used* (not where it is defined), so
+    /// multiple `Path`s may have different values for this field even if
+    /// they all refer to the same item. e.g.
     ///
     /// ```rust
-    /// mod foo {
-    ///     struct Bar;
-    /// }
+    /// pub type Vec1 = std::vec::Vec<i32>; // path: "std::vec::Vec"
+    /// pub type Vec2 = Vec<i32>; // path: "Vec"
+    /// pub type Vec3 = std::prelude::v1::Vec<i32>; // path: "std::prelude::v1::Vec"
     /// ```
-    ///
-    /// for `foo::Bar`, this field will be `Bar`.
-    pub name: String,
+    //
+    // Example tested in ./tests/rustdoc-json/path_name.rs
+    pub path: String,
     /// The ID of the type.
     pub id: Id,
     /// Generic arguments to the type.
@@ -1099,8 +1103,7 @@ pub struct Trait {
     pub is_auto: bool,
     /// Whether the trait is marked as `unsafe`.
     pub is_unsafe: bool,
-    // FIXME(dyn_compat_renaming): Update the URL once the Reference is updated and hits stable.
-    /// Whether the trait is [dyn compatible](https://doc.rust-lang.org/reference/items/traits.html#object-safety)[^1].
+    /// Whether the trait is [dyn compatible](https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility)[^1].
     ///
     /// [^1]: Formerly known as "object safe".
     pub is_dyn_compatible: bool,

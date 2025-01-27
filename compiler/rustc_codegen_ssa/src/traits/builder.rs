@@ -217,6 +217,27 @@ pub trait BuilderMethods<'a, 'tcx>:
         dest: PlaceRef<'tcx, Self::Value>,
     );
 
+    /// Emits an `assume` that the integer value `imm` of type `ty` is contained in `range`.
+    ///
+    /// This *always* emits the assumption, so you probably want to check the
+    /// optimization level and `Scalar::is_always_valid` before calling it.
+    fn assume_integer_range(&mut self, imm: Self::Value, ty: Self::Type, range: WrappingRange) {
+        let WrappingRange { start, end } = range;
+
+        // Perhaps one day we'll be able to use assume operand bundles for this,
+        // but for now this encoding with a single icmp+assume is best per
+        // <https://github.com/llvm/llvm-project/issues/123278#issuecomment-2597440158>
+        let shifted = if start == 0 {
+            imm
+        } else {
+            let low = self.const_uint_big(ty, start);
+            self.sub(imm, low)
+        };
+        let width = self.const_uint_big(ty, u128::wrapping_sub(end, start));
+        let cmp = self.icmp(IntPredicate::IntULE, shifted, width);
+        self.assume(cmp);
+    }
+
     fn range_metadata(&mut self, load: Self::Value, range: WrappingRange);
     fn nonnull_metadata(&mut self, load: Self::Value);
 

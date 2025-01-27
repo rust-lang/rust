@@ -3,9 +3,10 @@ use std::ops::ControlFlow;
 use derive_where::derive_where;
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
+use crate::data_structures::DelayedMap;
 use crate::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable, shift_region};
 use crate::inherent::*;
-use crate::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use crate::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::{self as ty, Interner};
 
 /// A closure can be modeled as a struct that looks like:
@@ -471,6 +472,7 @@ impl<I: Interner> CoroutineClosureSignature<I> {
                         interner: cx,
                         region: env_region,
                         debruijn: ty::INNERMOST,
+                        cache: Default::default(),
                     });
                 Ty::new_tup_from_iter(
                     cx,
@@ -498,11 +500,27 @@ struct FoldEscapingRegions<I: Interner> {
     interner: I,
     debruijn: ty::DebruijnIndex,
     region: I::Region,
+
+    // Depends on `debruijn` because we may have types with regions of different
+    // debruijn depths depending on the binders we've entered.
+    cache: DelayedMap<(ty::DebruijnIndex, I::Ty), I::Ty>,
 }
 
 impl<I: Interner> TypeFolder<I> for FoldEscapingRegions<I> {
     fn cx(&self) -> I {
         self.interner
+    }
+
+    fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
+        if !t.has_vars_bound_at_or_above(self.debruijn) {
+            t
+        } else if let Some(&t) = self.cache.get(&(self.debruijn, t)) {
+            t
+        } else {
+            let res = t.super_fold_with(self);
+            assert!(self.cache.insert((self.debruijn, t), res));
+            res
+        }
     }
 
     fn fold_binder<T>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T>

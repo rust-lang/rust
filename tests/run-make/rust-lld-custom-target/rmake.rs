@@ -15,7 +15,6 @@ fn main() {
     // Compile to a custom target spec with rust-lld enabled by default. We'll check that by asking
     // the linker to display its version number with a link-arg.
     let output = rustc()
-        .env("RUSTC_LOG", "rustc_codegen_ssa::back::link=info")
         .crate_type("cdylib")
         .target("custom-target.json")
         .link_arg("-Wl,-v")
@@ -29,7 +28,6 @@ fn main() {
 
     // But it can also be disabled via linker features.
     let output = rustc()
-        .env("RUSTC_LOG", "rustc_codegen_ssa::back::link=info")
         .crate_type("cdylib")
         .target("custom-target.json")
         .arg("-Zlinker-features=-lld")
@@ -44,6 +42,7 @@ fn main() {
 }
 
 fn find_lld_version_in_logs(stderr: String) -> bool {
-    let lld_version_re = Regex::new(r"^LLD [0-9]+\.[0-9]+\.[0-9]+").unwrap();
+    let lld_version_re =
+        Regex::new(r"^warning: linker stdout: LLD [0-9]+\.[0-9]+\.[0-9]+").unwrap();
     stderr.lines().any(|line| lld_version_re.is_match(line.trim()))
 }

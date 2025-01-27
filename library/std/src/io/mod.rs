@@ -3252,18 +3252,26 @@ impl<B: BufRead> Iterator for Lines<B> {
     }
 }
 
-/// Create anonymous pipe that is close-on-exec and blocking.
+/// Create an anonymous pipe that is close-on-exec and blocking.
 ///
 /// # Behavior
 ///
-/// A pipe is a synchronous, unidirectional data channel between two or more processes, like an
-/// interprocess [`mpsc`](crate::sync::mpsc) provided by the OS. In particular:
+/// A pipe is a one-way data channel provided by the OS, which works across processes. A pipe is
+/// typically used to communicate between two or more separate processes, as there are better,
+/// faster ways to communicate within a single process.
+///
+/// In particular:
 ///
 /// * A read on a [`PipeReader`] blocks until the pipe is non-empty.
 /// * A write on a [`PipeWriter`] blocks when the pipe is full.
 /// * When all copies of a [`PipeWriter`] are closed, a read on the corresponding [`PipeReader`]
 ///   returns EOF.
-/// * [`PipeReader`] can be shared, but only one process will consume the data in the pipe.
+/// * [`PipeWriter`] can be shared, and multiple processes or threads can write to it at once, but
+///   writes (above a target-specific threshold) may have their data interleaved.
+/// * [`PipeReader`] can be shared, and multiple processes or threads can read it at once. Any
+///   given byte will only get consumed by one reader. There are no guarantees about data
+///   interleaving.
+/// * Portable applications cannot assume any atomicity of messages larger than a single byte.
 ///
 /// # Capacity
 ///
@@ -3301,8 +3309,6 @@ impl<B: BufRead> Iterator for Lines<B> {
 /// # Ok(())
 /// # }
 /// ```
-/// [pipe]: https://man7.org/linux/man-pages/man2/pipe.2.html
-/// [CreatePipe]: https://learn.microsoft.com/en-us/windows/win32/api/namedpipeapi/nf-namedpipeapi-createpipe
 /// [man page]: https://man7.org/linux/man-pages/man7/pipe.7.html
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 #[inline]
@@ -3310,12 +3316,12 @@ pub fn pipe() -> Result<(PipeReader, PipeWriter)> {
     pipe_inner().map(|(reader, writer)| (PipeReader(reader), PipeWriter(writer)))
 }
 
-/// Read end of the anonymous pipe.
+/// Read end of an anonymous pipe.
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 #[derive(Debug)]
 pub struct PipeReader(pub(crate) AnonPipe);
 
-/// Write end of the anonymous pipe.
+/// Write end of an anonymous pipe.
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 #[derive(Debug)]
 pub struct PipeWriter(pub(crate) AnonPipe);

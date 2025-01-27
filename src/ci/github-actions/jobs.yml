@@ -48,8 +48,12 @@ runners:
     <<: *base-job
 
   - &job-aarch64-linux
+    # Free some disk space to avoid running out of space during the build.
+    free_disk: true
     os: ubuntu-22.04-arm
 
+  - &job-aarch64-linux-8c
+    os: ubuntu-22.04-arm64-8core-32gb
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
     SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc -- --exact
@@ -133,7 +137,7 @@ auto:
   - name: dist-aarch64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-aarch64-linux
+    <<: *job-aarch64-linux-8c
 
   - name: dist-android
     <<: *job-linux-4c

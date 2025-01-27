@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefIdMap;
-use rustc_hir::{Item, ItemKind, PolyTraitRef, PrimTy, Ty, TyKind, UseKind};
+use rustc_hir::{AmbigArg, Item, ItemKind, PolyTraitRef, PrimTy, Ty, TyKind, UseKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
@@ -108,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedTypes {
         }
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx>) {
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx, AmbigArg>) {
         if let TyKind::Path(path) = &ty.kind {
             self.check_res_emit(cx, &cx.qpath_res(path, ty.hir_id), ty.span);
         }

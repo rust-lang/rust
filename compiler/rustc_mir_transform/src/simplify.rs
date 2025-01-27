@@ -83,6 +83,10 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyCfg {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.name(), body.source);
         simplify_cfg(body);
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 struct CfgSimplifier<'a, 'tcx> {
@@ -404,6 +408,10 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
 
             body.local_decls.shrink_to_fit();
         }
+    }
+
+    fn is_required(&self) -> bool {
+        false
     }
 }
 

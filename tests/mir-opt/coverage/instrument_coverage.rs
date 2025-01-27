@@ -6,7 +6,11 @@
 //@ compile-flags: -Cinstrument-coverage -Zno-profiler-runtime
 
 // EMIT_MIR instrument_coverage.main.InstrumentCoverage.diff
-// EMIT_MIR instrument_coverage.bar.InstrumentCoverage.diff
+// CHECK-LABEL: fn main()
+// CHECK: coverage body span:
+// CHECK: coverage Code(Counter({{[0-9]+}})) =>
+// CHECK: bb0:
+// CHECK: Coverage::CounterIncrement
 fn main() {
     loop {
         if bar() {
@@ -15,14 +19,13 @@ fn main() {
     }
 }
 
+// EMIT_MIR instrument_coverage.bar.InstrumentCoverage.diff
+// CHECK-LABEL: fn bar()
+// CHECK: coverage body span:
+// CHECK: coverage Code(Counter({{[0-9]+}})) =>
+// CHECK: bb0:
+// CHECK: Coverage::CounterIncrement
 #[inline(never)]
 fn bar() -> bool {
     true
 }
-
-// CHECK:     coverage ExpressionId({{[0-9]+}}) =>
-// CHECK-DAG: coverage Code(Counter({{[0-9]+}})) =>
-// CHECK-DAG: coverage Code(Expression({{[0-9]+}})) =>
-// CHECK:     bb0:
-// CHECK-DAG: Coverage::ExpressionUsed({{[0-9]+}})
-// CHECK-DAG: Coverage::CounterIncrement({{[0-9]+}})

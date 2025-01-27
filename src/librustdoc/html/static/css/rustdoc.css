@@ -192,15 +192,12 @@ h1, h2, h3, h4 {
 .rustdoc-breadcrumbs {
 	grid-area: main-heading-breadcrumbs;
 	line-height: 1.25;
-	display: flex;
-	flex-wrap: wrap;
-	align-items: end;
 	padding-top: 5px;
+	position: relative;
+	z-index: 1;
 }
 .rustdoc-breadcrumbs a {
-	padding: 4px 0;
-	margin: -4px 0;
-	z-index: 1;
+	padding: 5px 0 7px;
 }
 /* The only headings that get underlines are:
 	 Markdown-generated headings within the top-doc
@@ -2166,7 +2163,8 @@ details.toggle > summary:not(.hideme)::before {
 	top: 4px;
 }
 
-.impl-items > details.toggle > summary:not(.hideme)::before {
+.impl-items > details.toggle > summary:not(.hideme)::before,
+#main-content > .methods > details.toggle > summary:not(.hideme)::before {
 	position: absolute;
 	left: -24px;
 }
@@ -2176,7 +2174,9 @@ details.toggle > summary:not(.hideme)::before {
 .impl-items > *:not(.item-info),
 /* We also indent the first top doc comment the same to still keep an indent on the
 	doc block while aligning it with the impl block items. */
-.implementors-toggle > .docblock {
+.implementors-toggle > .docblock,
+/* We indent trait items as well. */
+#main-content > .methods > :not(.item-info) {
 	margin-left: var(--impl-items-indent);
 }
 
@@ -2508,7 +2508,8 @@ in src-script.js and main.js
 		margin-left: 10px;
 	}
 
-	.impl-items > details.toggle > summary:not(.hideme)::before {
+	.impl-items > details.toggle > summary:not(.hideme)::before,
+	#main-content > .methods > details.toggle > summary:not(.hideme)::before {
 		left: -20px;
 	}
 

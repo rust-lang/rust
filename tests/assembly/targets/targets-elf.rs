@@ -57,6 +57,12 @@
 //@ revisions: aarch64_unknown_nto_qnx710
 //@ [aarch64_unknown_nto_qnx710] compile-flags: --target aarch64-unknown-nto-qnx710
 //@ [aarch64_unknown_nto_qnx710] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_nto_qnx710_iosock
+//@ [aarch64_unknown_nto_qnx710_iosock] compile-flags: --target aarch64-unknown-nto-qnx710_iosock
+//@ [aarch64_unknown_nto_qnx710_iosock] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_nto_qnx800
+//@ [aarch64_unknown_nto_qnx800] compile-flags: --target aarch64-unknown-nto-qnx800
+//@ [aarch64_unknown_nto_qnx800] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_openbsd
 //@ [aarch64_unknown_openbsd] compile-flags: --target aarch64-unknown-openbsd
 //@ [aarch64_unknown_openbsd] needs-llvm-components: aarch64
@@ -66,6 +72,9 @@
 //@ revisions: aarch64_unknown_teeos
 //@ [aarch64_unknown_teeos] compile-flags: --target aarch64-unknown-teeos
 //@ [aarch64_unknown_teeos] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_nuttx
+//@ [aarch64_unknown_nuttx] compile-flags: --target aarch64-unknown-nuttx
+//@ [aarch64_unknown_nuttx] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_trusty
 //@ [aarch64_unknown_trusty] compile-flags: --target aarch64-unknown-trusty
 //@ [aarch64_unknown_trusty] needs-llvm-components: aarch64
@@ -177,6 +186,12 @@
 //@ revisions: armv7a_none_eabihf
 //@ [armv7a_none_eabihf] compile-flags: --target armv7a-none-eabihf
 //@ [armv7a_none_eabihf] needs-llvm-components: arm
+//@ revisions: armv7a_nuttx_eabi
+//@ [armv7a_nuttx_eabi] compile-flags: --target armv7a-nuttx-eabi
+//@ [armv7a_nuttx_eabi] needs-llvm-components: arm
+//@ revisions: armv7a_nuttx_eabihf
+//@ [armv7a_nuttx_eabihf] compile-flags: --target armv7a-nuttx-eabihf
+//@ [armv7a_nuttx_eabihf] needs-llvm-components: arm
 //@ revisions: armv7r_none_eabi
 //@ [armv7r_none_eabi] compile-flags: --target armv7r-none-eabi
 //@ [armv7r_none_eabi] needs-llvm-components: arm
@@ -555,6 +570,12 @@
 //@ revisions: x86_64_pc_nto_qnx710
 //@ [x86_64_pc_nto_qnx710] compile-flags: --target x86_64-pc-nto-qnx710
 //@ [x86_64_pc_nto_qnx710] needs-llvm-components: x86
+//@ revisions: x86_64_pc_nto_qnx710_iosock
+//@ [x86_64_pc_nto_qnx710_iosock] compile-flags: --target x86_64-pc-nto-qnx710_iosock
+//@ [x86_64_pc_nto_qnx710_iosock] needs-llvm-components: x86
+//@ revisions: x86_64_pc_nto_qnx800
+//@ [x86_64_pc_nto_qnx800] compile-flags: --target x86_64-pc-nto-qnx800
+//@ [x86_64_pc_nto_qnx800] needs-llvm-components: x86
 //@ revisions: x86_64_pc_solaris
 //@ [x86_64_pc_solaris] compile-flags: --target x86_64-pc-solaris
 //@ [x86_64_pc_solaris] needs-llvm-components: x86
@@ -621,6 +642,12 @@
 //@ revisions: thumbv6m_nuttx_eabi
 //@ [thumbv6m_nuttx_eabi] compile-flags: --target thumbv6m-nuttx-eabi
 //@ [thumbv6m_nuttx_eabi] needs-llvm-components: arm
+//@ revisions: thumbv7a_nuttx_eabi
+//@ [thumbv7a_nuttx_eabi] compile-flags: --target thumbv7a-nuttx-eabi
+//@ [thumbv7a_nuttx_eabi] needs-llvm-components: arm
+//@ revisions: thumbv7a_nuttx_eabihf
+//@ [thumbv7a_nuttx_eabihf] compile-flags: --target thumbv7a-nuttx-eabihf
+//@ [thumbv7a_nuttx_eabihf] needs-llvm-components: arm
 //@ revisions: thumbv7m_nuttx_eabi
 //@ [thumbv7m_nuttx_eabi] compile-flags: --target thumbv7m-nuttx-eabi
 //@ [thumbv7m_nuttx_eabi] needs-llvm-components: arm

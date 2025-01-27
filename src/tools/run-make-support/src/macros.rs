@@ -104,6 +104,17 @@ macro_rules! impl_common_helpers {
                 self
             }
 
+            /// Set an auxiliary stream passed to the process, besides the stdio streams.
+            #[cfg(unix)]
+            pub fn set_aux_fd<F: Into<std::os::fd::OwnedFd>>(
+                &mut self,
+                new_fd: std::os::fd::RawFd,
+                fd: F,
+            ) -> &mut Self {
+                self.cmd.set_aux_fd(new_fd, fd);
+                self
+            }
+
             /// Run the constructed command and assert that it is successfully run.
             #[track_caller]
             pub fn run(&mut self) -> crate::command::CompletedProcess {

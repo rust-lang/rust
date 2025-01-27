@@ -1,4 +1,4 @@
-This file offers some tips on the coding conventions for rustc.  This
+This file offers some tips on the coding conventions for rustc. This
 chapter covers [formatting](#formatting), [coding for correctness](#cc),
 [using crates from crates.io](#cio), and some tips on
 [structuring your PR for easy review](#er).
@@ -25,6 +25,7 @@ pass the <!-- date-check: nov 2022 --> `--edition=2021` argument yourself when c
 `rustfmt` directly.
 
 [fmt]: https://github.com/rust-dev-tools/fmt-rfcs
+
 [`rustfmt`]:https://github.com/rust-lang/rustfmt
 
 ## Formatting C++ code
@@ -39,6 +40,26 @@ When modifying that code, use this command to format it:
 
 This uses a pinned version of `clang-format`, to avoid relying on the local
 environment.
+
+## Formatting and linting Python code
+
+The Rust repository contains quite a lof of Python code. We try to keep
+it both linted and formatted by the [ruff][ruff] tool.
+
+When modifying Python code, use this command to format it:
+```sh
+./x test tidy --extra-checks=py:fmt --bless
+```
+
+and the following command to run lints:
+```sh
+./x test tidy --extra-checks=py:lint
+```
+
+This uses a pinned version of `ruff`, to avoid relying on the local
+environment.
+
+[ruff]: https://github.com/astral-sh/ruff
 
 <a id="copyright"></a>
 
@@ -84,7 +105,7 @@ Using `_` in a match is convenient, but it means that when new
 variants are added to the enum, they may not get handled correctly.
 Ask yourself: if a new variant were added to this enum, what's the
 chance that it would want to use the `_` code, versus having some
-other treatment?  Unless the answer is "low", then prefer an
+other treatment? Unless the answer is "low", then prefer an
 exhaustive match. (The same advice applies to `if let` and `while
 let`, which are effectively tests for a single variant.)
 
@@ -124,7 +145,7 @@ See the [crates.io dependencies][crates] section.
 # How to structure your PR
 
 How you prepare the commits in your PR can make a big difference for the
-reviewer.  Here are some tips.
+reviewer. Here are some tips.
 
 **Isolate "pure refactorings" into their own commit.** For example, if
 you rename a method, then put that rename into its own commit, along
@@ -165,4 +186,5 @@ to the compiler.
   crate-related, often the spelling is changed to `krate`.
 
 [tcx]: ./ty.md
+
 [crates]: ./crates-io.md

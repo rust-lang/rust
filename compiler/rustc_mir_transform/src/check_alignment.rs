@@ -60,6 +60,10 @@ impl<'tcx> crate::MirPass<'tcx> for CheckAlignment {
             }
         }
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
 struct PointerFinder<'a, 'tcx> {

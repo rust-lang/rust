@@ -790,7 +790,7 @@ pub(crate) struct IrrefutableLetPatternsWhileLet {
 
 #[derive(Diagnostic)]
 #[diag(mir_build_borrow_of_moved_value)]
-pub(crate) struct BorrowOfMovedValue<'tcx> {
+pub(crate) struct BorrowOfMovedValue {
     #[primary_span]
     #[label]
     #[label(mir_build_occurs_because_label)]
@@ -798,9 +798,13 @@ pub(crate) struct BorrowOfMovedValue<'tcx> {
     #[label(mir_build_value_borrowed_label)]
     pub(crate) conflicts_ref: Vec<Span>,
     pub(crate) name: Symbol,
-    pub(crate) ty: Ty<'tcx>,
+    pub(crate) ty: String,
     #[suggestion(code = "ref ", applicability = "machine-applicable")]
     pub(crate) suggest_borrowing: Option<Span>,
+    #[note(mir_build_full_type_name)]
+    #[note(mir_build_consider_verbose)]
+    pub(crate) has_path: bool,
+    pub(crate) path: String,
 }
 
 #[derive(Diagnostic)]

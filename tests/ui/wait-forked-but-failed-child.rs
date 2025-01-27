@@ -1,6 +1,5 @@
 //@ run-pass
-//@ ignore-wasm32 no processes
-//@ ignore-sgx no processes
+//@ needs-subprocess
 //@ ignore-vxworks no 'ps'
 //@ ignore-fuchsia no 'ps'
 //@ ignore-nto no 'ps'

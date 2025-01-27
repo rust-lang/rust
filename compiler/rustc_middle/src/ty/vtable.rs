@@ -2,6 +2,7 @@ use std::fmt;
 
 use rustc_ast::Mutability;
 use rustc_macros::HashStable;
+use rustc_type_ir::elaborate;
 
 use crate::mir::interpret::{AllocId, Allocation, CTFE_ALLOC_SALT, Pointer, Scalar, alloc_range};
 use crate::ty::{self, Instance, PolyTraitRef, Ty, TyCtxt};
@@ -64,7 +65,7 @@ pub(crate) fn vtable_min_entries<'tcx>(
     };
 
     // This includes self in supertraits.
-    for def_id in tcx.supertrait_def_ids(trait_ref.def_id()) {
+    for def_id in elaborate::supertrait_def_ids(tcx, trait_ref.def_id()) {
         count += tcx.own_existential_vtable_entries(def_id).len();
     }
 

@@ -111,7 +111,7 @@ Here are a few examples:
   their crate, making this a hard error would make refactoring and development
   very painful.
 - [future-incompatible lints]:
-  these are silencable lints.
+  these are silenceable lints.
   It was decided that making them fixed errors would cause too much breakage,
   so warnings are instead emitted,
   and will eventually be turned into fixed (hard) errors.

@@ -30,10 +30,10 @@ use std::ops::Range;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicI32, Ordering};
-use std::sync::{Arc, Once};
+use std::sync::Once;
 
 use miri::{
-    BacktraceStyle, BorrowTrackerMethod, MiriConfig, ProvenanceMode, RetagFields, ValidationMode,
+    BacktraceStyle, BorrowTrackerMethod, MiriConfig, MiriEntryFnType,ProvenanceMode, RetagFields, ValidationMode,
 };
 use rustc_abi::ExternAbi;
 use rustc_data_structures::sync;
@@ -51,7 +51,7 @@ use rustc_middle::query::LocalCrate;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::Providers;
-use rustc_session::config::{CrateType, EntryFnType, ErrorOutputType, OptLevel};
+use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{CtfeBacktrace, EarlyDiagCtxt};
 use rustc_span::def_id::DefId;
@@ -73,9 +73,9 @@ impl MiriCompilerCalls {
     }
 }
 
-fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, EntryFnType) {
-    if let Some(entry_def) = tcx.entry_fn(()) {
-        return entry_def;
+fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, MiriEntryFnType) {
+    if let Some((def_id, entry_type)) = tcx.entry_fn(()) {
+        return (def_id, MiriEntryFnType::Rustc(entry_type));
     }
     // Look for a symbol in the local crate named `miri_start`, and treat that as the entry point.
     let sym = tcx.exported_symbols(LOCAL_CRATE).iter().find_map(|(sym, _)| {
@@ -102,7 +102,7 @@ fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, EntryFnType) {
         .is_ok();
 
         if correct_func_sig {
-            (*id, EntryFnType::Start)
+            (*id, MiriEntryFnType::MiriStart)
         } else {
             tcx.dcx().fatal(
                 "`miri_start` must have the following signature:\n\
@@ -370,13 +370,10 @@ fn init_late_loggers(early_dcx: &EarlyDiagCtxt, tcx: TyCtxt<'_>) {
 fn run_compiler_and_exit(
     args: &[String],
     callbacks: &mut (dyn rustc_driver::Callbacks + Send),
-    using_internal_features: Arc<std::sync::atomic::AtomicBool>,
 ) -> ! {
     // Invoke compiler, and handle return code.
     let exit_code = rustc_driver::catch_with_exit_code(move || {
-        rustc_driver::RunCompiler::new(args, callbacks)
-            .set_using_internal_features(using_internal_features)
-            .run();
+        rustc_driver::run_compiler(args, callbacks);
         Ok(())
     });
     std::process::exit(exit_code)
@@ -467,8 +464,7 @@ fn main() {
     // If the environment asks us to actually be rustc, then do that.
     if let Some(crate_kind) = env::var_os("MIRI_BE_RUSTC") {
         // Earliest rustc setup.
-        let using_internal_features =
-            rustc_driver::install_ice_hook(rustc_driver::DEFAULT_BUG_REPORT_URL, |_| ());
+        rustc_driver::install_ice_hook(rustc_driver::DEFAULT_BUG_REPORT_URL, |_| ());
         rustc_driver::init_rustc_env_logger(&early_dcx);
 
         let target_crate = if crate_kind == "target" {
@@ -492,16 +488,11 @@ fn main() {
         }
 
         // We cannot use `rustc_driver::main` as we want it to use `args` as the CLI arguments.
-        run_compiler_and_exit(
-            &args,
-            &mut MiriBeRustCompilerCalls { target_crate },
-            using_internal_features,
-        )
+        run_compiler_and_exit(&args, &mut MiriBeRustCompilerCalls { target_crate })
     }
 
     // Add an ICE bug report hook.
-    let using_internal_features =
-        rustc_driver::install_ice_hook("https://github.com/rust-lang/miri/issues/new", |_| ());
+    rustc_driver::install_ice_hook("https://github.com/rust-lang/miri/issues/new", |_| ());
 
     // Init loggers the Miri way.
     init_early_loggers(&early_dcx);
@@ -735,9 +726,5 @@ fn main() {
 
     debug!("rustc arguments: {:?}", rustc_args);
     debug!("crate arguments: {:?}", miri_config.args);
-    run_compiler_and_exit(
-        &rustc_args,
-        &mut MiriCompilerCalls::new(miri_config, many_seeds),
-        using_internal_features,
-    )
+    run_compiler_and_exit(&rustc_args, &mut MiriCompilerCalls::new(miri_config, many_seeds))
 }

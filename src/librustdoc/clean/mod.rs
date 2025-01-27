@@ -1747,9 +1747,9 @@ fn maybe_expand_private_type_alias<'tcx>(
     };
     let hir::ItemKind::TyAlias(ty, generics) = alias else { return None };
 
-    let provided_params = &path.segments.last().expect("segments were empty");
+    let final_seg = &path.segments.last().expect("segments were empty");
     let mut args = DefIdMap::default();
-    let generic_args = provided_params.args();
+    let generic_args = final_seg.args();
 
     let mut indices: hir::GenericParamCount = Default::default();
     for param in generics.params.iter() {
@@ -1781,7 +1781,7 @@ fn maybe_expand_private_type_alias<'tcx>(
                 let type_ = generic_args.args.iter().find_map(|arg| match arg {
                     hir::GenericArg::Type(ty) => {
                         if indices.types == j {
-                            return Some(*ty);
+                            return Some(ty.as_unambig_ty());
                         }
                         j += 1;
                         None
@@ -1843,10 +1843,13 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             ImplTrait(ty.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect())
         }
         TyKind::Path(_) => clean_qpath(ty, cx),
-        TyKind::TraitObject(bounds, lifetime, _) => {
+        TyKind::TraitObject(bounds, lifetime) => {
             let bounds = bounds.iter().map(|bound| clean_poly_trait_ref(bound, cx)).collect();
-            let lifetime =
-                if !lifetime.is_elided() { Some(clean_lifetime(lifetime, cx)) } else { None };
+            let lifetime = if !lifetime.is_elided() {
+                Some(clean_lifetime(lifetime.pointer(), cx))
+            } else {
+                None
+            };
             DynTrait(bounds, lifetime)
         }
         TyKind::BareFn(barefn) => BareFunction(Box::new(clean_bare_fn_ty(barefn, cx))),
@@ -1854,7 +1857,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             UnsafeBinder(Box::new(clean_unsafe_binder_ty(unsafe_binder_ty, cx)))
         }
         // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
-        TyKind::Infer
+        TyKind::Infer(())
         | TyKind::Err(_)
         | TyKind::Typeof(..)
         | TyKind::InferDelegation(..)
@@ -2533,8 +2536,10 @@ fn clean_generic_args<'tcx>(
                     GenericArg::Lifetime(clean_lifetime(lt, cx))
                 }
                 hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
-                hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
-                hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(clean_const(ct, cx))),
+                hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty.as_unambig_ty(), cx)),
+                hir::GenericArg::Const(ct) => {
+                    GenericArg::Const(Box::new(clean_const(ct.as_unambig_ct(), cx)))
+                }
                 hir::GenericArg::Infer(_inf) => GenericArg::Infer,
             })
             .collect::<Vec<_>>()

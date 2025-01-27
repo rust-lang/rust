@@ -2,7 +2,7 @@ use crate::ty::needs_ordered_drop;
 use crate::{get_enclosing_block, path_to_local_id};
 use core::ops::ControlFlow;
 use rustc_ast::visit::{VisitorResult, try_visit};
-use rustc_hir as hir;
+use rustc_hir::{self as hir, AmbigArg};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::intravisit::{self, Visitor, walk_block, walk_expr};
 use rustc_hir::{
@@ -122,7 +122,7 @@ pub fn for_each_expr_without_closures<'tcx, B, C: Continue>(
         }
 
         // Avoid unnecessary `walk_*` calls.
-        fn visit_ty(&mut self, _: &'tcx hir::Ty<'tcx>) -> Self::Result {
+        fn visit_ty(&mut self, _: &'tcx hir::Ty<'tcx, AmbigArg>) -> Self::Result {
             ControlFlow::Continue(())
         }
         fn visit_pat(&mut self, _: &'tcx Pat<'tcx>) -> Self::Result {
@@ -172,7 +172,7 @@ pub fn for_each_expr<'tcx, B, C: Continue>(
             ControlFlow::Continue(())
         }
         // Avoid unnecessary `walk_*` calls.
-        fn visit_ty(&mut self, _: &'tcx hir::Ty<'tcx>) -> Self::Result {
+        fn visit_ty(&mut self, _: &'tcx hir::Ty<'tcx, AmbigArg>) -> Self::Result {
             ControlFlow::Continue(())
         }
         fn visit_pat(&mut self, _: &'tcx Pat<'tcx>) -> Self::Result {

@@ -325,4 +325,8 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
             }
         }
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }

@@ -140,6 +140,10 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
             body.basic_blocks_mut()[idx].statements.insert(0, stmt);
         }
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 struct OptimizationFinder<'a, 'tcx> {

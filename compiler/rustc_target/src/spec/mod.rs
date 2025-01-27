@@ -1853,6 +1853,8 @@ supported_targets! {
 
     ("armv7a-none-eabi", armv7a_none_eabi),
     ("armv7a-none-eabihf", armv7a_none_eabihf),
+    ("armv7a-nuttx-eabi", armv7a_nuttx_eabi),
+    ("armv7a-nuttx-eabihf", armv7a_nuttx_eabihf),
 
     ("msp430-none-elf", msp430_none_elf),
 
@@ -1896,6 +1898,7 @@ supported_targets! {
 
     ("aarch64-unknown-none", aarch64_unknown_none),
     ("aarch64-unknown-none-softfloat", aarch64_unknown_none_softfloat),
+    ("aarch64-unknown-nuttx", aarch64_unknown_nuttx),
 
     ("x86_64-fortanix-unknown-sgx", x86_64_fortanix_unknown_sgx),
 
@@ -1960,7 +1963,11 @@ supported_targets! {
 
     ("aarch64-unknown-nto-qnx700", aarch64_unknown_nto_qnx700),
     ("aarch64-unknown-nto-qnx710", aarch64_unknown_nto_qnx710),
+    ("aarch64-unknown-nto-qnx710_iosock", aarch64_unknown_nto_qnx710_iosock),
+    ("aarch64-unknown-nto-qnx800", aarch64_unknown_nto_qnx800),
     ("x86_64-pc-nto-qnx710", x86_64_pc_nto_qnx710),
+    ("x86_64-pc-nto-qnx710_iosock", x86_64_pc_nto_qnx710_iosock),
+    ("x86_64-pc-nto-qnx800", x86_64_pc_nto_qnx800),
     ("i586-pc-nto-qnx700", i586_pc_nto_qnx700),
 
     ("aarch64-unknown-linux-ohos", aarch64_unknown_linux_ohos),
@@ -1971,6 +1978,8 @@ supported_targets! {
     ("x86_64-unknown-linux-none", x86_64_unknown_linux_none),
 
     ("thumbv6m-nuttx-eabi", thumbv6m_nuttx_eabi),
+    ("thumbv7a-nuttx-eabi", thumbv7a_nuttx_eabi),
+    ("thumbv7a-nuttx-eabihf", thumbv7a_nuttx_eabihf),
     ("thumbv7m-nuttx-eabi", thumbv7m_nuttx_eabi),
     ("thumbv7em-nuttx-eabi", thumbv7em_nuttx_eabi),
     ("thumbv7em-nuttx-eabihf", thumbv7em_nuttx_eabihf),

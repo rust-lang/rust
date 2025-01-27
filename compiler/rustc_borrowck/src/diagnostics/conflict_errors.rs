@@ -39,7 +39,9 @@ use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use rustc_trait_selection::error_reporting::traits::call_kind::CallKind;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
+use rustc_trait_selection::traits::{
+    Obligation, ObligationCause, ObligationCtxt, supertrait_def_ids,
+};
 use tracing::{debug, instrument};
 
 use super::explain_borrow::{BorrowExplanation, LaterUseKind};
@@ -287,6 +289,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 None => "value".to_owned(),
             };
             if needs_note {
+                let mut path = None;
+                let ty = self.infcx.tcx.short_ty_string(ty, &mut path);
                 if let Some(local) = place.as_local() {
                     let span = self.body.local_decls[local].source_info.span;
                     err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
@@ -302,6 +306,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         place: &note_msg,
                     });
                 };
+                if let Some(path) = path {
+                    err.subdiagnostic(crate::session_diagnostics::LongTypePath {
+                        path: path.display().to_string(),
+                    });
+                }
             }
 
             if let UseSpans::FnSelfUse {
@@ -658,8 +667,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             clause.as_trait_clause().is_some_and(|tc| {
                 tc.self_ty().skip_binder().is_param(param.index)
                     && tc.polarity() == ty::PredicatePolarity::Positive
-                    && tcx
-                        .supertrait_def_ids(tc.def_id())
+                    && supertrait_def_ids(tcx, tc.def_id())
                         .flat_map(|trait_did| tcx.associated_items(trait_did).in_definition_order())
                         .any(|item| item.fn_has_self_parameter)
             })

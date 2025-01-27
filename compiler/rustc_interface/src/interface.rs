@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 use std::result;
-use std::sync::Arc;
 
 use rustc_ast::{LitKind, MetaItemKind, token};
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -309,6 +308,11 @@ pub struct Config {
     pub output_dir: Option<PathBuf>,
     pub output_file: Option<OutFileName>,
     pub ice_file: Option<PathBuf>,
+    /// Load files from sources other than the file system.
+    ///
+    /// Has no uses within this repository, but may be used in the future by
+    /// bjorn3 for "hooking rust-analyzer's VFS into rustc at some point for
+    /// running rustc without having to save". (See #102759.)
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     /// The list of fluent resources, used for lints declared with
     /// [`Diagnostic`](rustc_errors::Diagnostic) and [`LintDiagnostic`](rustc_errors::LintDiagnostic).
@@ -337,6 +341,11 @@ pub struct Config {
     pub override_queries: Option<fn(&Session, &mut Providers)>,
 
     /// This is a callback from the driver that is called to create a codegen backend.
+    ///
+    /// Has no uses within this repository, but is used by bjorn3 for "the
+    /// hotswapping branch of cg_clif" for "setting the codegen backend from a
+    /// custom driver where the custom codegen backend has arbitrary data."
+    /// (See #102759.)
     pub make_codegen_backend:
         Option<Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>>,
 
@@ -346,8 +355,7 @@ pub struct Config {
     /// The inner atomic value is set to true when a feature marked as `internal` is
     /// enabled. Makes it so that "please report a bug" is hidden, as ICEs with
     /// internal features are wontfix, and they are usually the cause of the ICEs.
-    /// None signifies that this is not tracked.
-    pub using_internal_features: Arc<std::sync::atomic::AtomicBool>,
+    pub using_internal_features: &'static std::sync::atomic::AtomicBool,
 
     /// All commandline args used to invoke the compiler, with @file args fully expanded.
     /// This will only be used within debug info, e.g. in the pdb file on windows
@@ -533,7 +541,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
 pub fn try_print_query_stack(
     dcx: DiagCtxtHandle<'_>,
-    num_frames: Option<usize>,
+    limit_frames: Option<usize>,
     file: Option<std::fs::File>,
 ) {
     eprintln!("query stack during panic:");
@@ -541,13 +549,13 @@ pub fn try_print_query_stack(
     // Be careful relying on global state here: this code is called from
     // a panic hook, which means that the global `DiagCtxt` may be in a weird
     // state if it was responsible for triggering the panic.
-    let i = ty::tls::with_context_opt(|icx| {
+    let all_frames = ty::tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
             ty::print::with_no_queries!(print_query_stack(
                 QueryCtxt::new(icx.tcx),
                 icx.query,
                 dcx,
-                num_frames,
+                limit_frames,
                 file,
             ))
         } else {
@@ -555,9 +563,14 @@ pub fn try_print_query_stack(
         }
     });
 
-    if num_frames == None || num_frames >= Some(i) {
-        eprintln!("end of query stack");
+    if let Some(limit_frames) = limit_frames
+        && all_frames > limit_frames
+    {
+        eprintln!(
+            "... and {} other queries... use `env RUST_BACKTRACE=1` to see the full query stack",
+            all_frames - limit_frames
+        );
     } else {
-        eprintln!("we're just showing a limited slice of the query stack");
+        eprintln!("end of query stack");
     }
 }
