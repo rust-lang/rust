@@ -606,7 +606,10 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         let mut name = String::with_capacity(prefix.len() + 6);
         name.push_str(prefix);
         name.push('.');
-        name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
+        // Offset the index by the base so that always at least two characters
+        // are generated. This avoids cases where the suffix is interpreted as
+        // size by the assembler (for m68k: .b, .w, .l).
+        name.push_str(&(idx as u64 + ALPHANUMERIC_ONLY as u64).to_base(ALPHANUMERIC_ONLY));
         name
     }
 }
