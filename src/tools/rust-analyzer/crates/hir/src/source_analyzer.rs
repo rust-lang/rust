@@ -1023,7 +1023,7 @@ impl SourceAnalyzer {
         let expr_id = self.expr_id(db, &literal.clone().into())?;
         let substs = infer[expr_id].as_adt()?.1;
 
-        let (variant, missing_fields, _) = match expr_id {
+        let (variant, missing_fields, _exhaustive) = match expr_id {
             ExprOrPatId::ExprId(expr_id) => {
                 record_literal_missing_fields(db, infer, expr_id, &body[expr_id])?
             }

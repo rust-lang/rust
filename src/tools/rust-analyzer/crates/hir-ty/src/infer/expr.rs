@@ -10,7 +10,7 @@ use either::Either;
 use hir_def::{
     hir::{
         ArithOp, Array, AsmOperand, AsmOptions, BinaryOp, ClosureKind, Expr, ExprId, ExprOrPatId,
-        LabelId, Literal, Pat, PatId, Spread, Statement, UnaryOp,
+        LabelId, Literal, Pat, PatId, Statement, UnaryOp,
     },
     lang_item::{LangItem, LangItemTarget},
     path::{GenericArg, GenericArgs, Path},
@@ -775,7 +775,7 @@ impl InferenceContext<'_> {
                         }
                     }
                 }
-                if let Spread::Base(expr) = spread {
+                if let Some(expr) = spread {
                     self.infer_expr(*expr, &Expectation::has_type(ty.clone()), ExprIsRead::Yes);
                 }
                 ty

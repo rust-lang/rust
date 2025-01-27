@@ -9,7 +9,7 @@ use hir_def::{
     expr_store::{Body, HygieneId},
     hir::{
         ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ExprId, LabelId, Literal,
-        LiteralOrConst, MatchArm, Pat, PatId, RecordFieldPat, RecordLitField, Spread,
+        LiteralOrConst, MatchArm, Pat, PatId, RecordFieldPat, RecordLitField,
     },
     lang_item::{LangItem, LangItemTarget},
     path::Path,
@@ -823,16 +823,16 @@ impl<'ctx> MirLowerCtx<'ctx> {
             }
             Expr::Become { .. } => not_supported!("tail-calls"),
             Expr::Yield { .. } => not_supported!("yield"),
-            Expr::RecordLit { fields, path, spread } => {
+            Expr::RecordLit { fields, path, spread, ellipsis: _ } => {
                 let spread_place = match spread {
-                    &Spread::Base(it) => {
+                    &Some(it) => {
                         let Some((p, c)) = self.lower_expr_as_place(current, it, true)? else {
                             return Ok(None);
                         };
                         current = c;
                         Some(p)
                     }
-                    _ => None,
+                    None => None,
                 };
                 let variant_id =
                     self.infer.variant_resolution_for_expr(expr_id).ok_or_else(|| match path {

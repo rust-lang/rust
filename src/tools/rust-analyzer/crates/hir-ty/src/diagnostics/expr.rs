@@ -8,7 +8,6 @@ use base_db::CrateId;
 use chalk_solve::rust_ir::AdtKind;
 use either::Either;
 use hir_def::{
-    hir::Spread,
     lang_item::LangItem,
     resolver::{HasResolver, ValueNs},
     AdtId, AssocItemId, DefWithBodyId, HasModule, ItemContainerId, Lookup,
@@ -547,11 +546,9 @@ pub fn record_literal_missing_fields(
     infer: &InferenceResult,
     id: ExprId,
     expr: &Expr,
-) -> Option<(VariantId, Vec<LocalFieldId>, /*has spread expr*/ bool)> {
-    let (fields, has_spread_expr, has_ellipsis) = match expr {
-        Expr::RecordLit { fields, spread, .. } => {
-            (fields, matches!(spread, Spread::Base(_)), matches!(spread, Spread::Yes))
-        }
+) -> Option<(VariantId, Vec<LocalFieldId>, /*exhaustive*/ bool)> {
+    let (fields, exhaustive, ellipsis) = match expr {
+        Expr::RecordLit { fields, spread, ellipsis, .. } => (fields, spread.is_none(), *ellipsis),
         _ => return None,
     };
 
@@ -567,7 +564,7 @@ pub fn record_literal_missing_fields(
         .fields()
         .iter()
         .filter_map(|(f, d)| {
-            if (has_ellipsis && d.has_default) || specified_fields.contains(&d.name) {
+            if (ellipsis && d.has_default) || specified_fields.contains(&d.name) {
                 None
             } else {
                 Some(f)
@@ -577,7 +574,7 @@ pub fn record_literal_missing_fields(
     if missed_fields.is_empty() {
         return None;
     }
-    Some((variant_def, missed_fields, has_spread_expr))
+    Some((variant_def, missed_fields, exhaustive))
 }
 
 pub fn record_pattern_missing_fields(

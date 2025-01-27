@@ -8,7 +8,7 @@ use span::Edition;
 use crate::{
     hir::{
         Array, BindingAnnotation, CaptureBy, ClosureKind, Literal, LiteralOrConst, Movability,
-        Spread, Statement,
+        Statement,
     },
     pretty::{print_generic_args, print_path, print_type_ref},
     VariantId,
@@ -398,7 +398,7 @@ impl Printer<'_> {
                     self.print_expr(*expr);
                 }
             }
-            Expr::RecordLit { path, fields, spread } => {
+            Expr::RecordLit { path, fields, spread, ellipsis: _ } => {
                 match path {
                     Some(path) => self.print_path(path),
                     None => w!(self, "�"),
@@ -412,16 +412,10 @@ impl Printer<'_> {
                         p.print_expr(field.expr);
                         wln!(p, ",");
                     }
-                    match spread {
-                        Spread::No => {}
-                        Spread::Yes => {
-                            w!(p, "..");
-                        }
-                        Spread::Base(expr) => {
-                            w!(p, "..");
-                            p.print_expr(*expr);
-                            wln!(p);
-                        }
+                    if let Some(spread) = spread {
+                        w!(p, "..");
+                        p.print_expr(*spread);
+                        wln!(p);
                     }
                 });
                 w!(self, "}}");
