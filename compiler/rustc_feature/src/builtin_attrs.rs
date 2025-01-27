@@ -323,7 +323,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     // Conditional compilation:
-    ungated!(cfg, Normal, template!(List: &["predicate"]), DuplicatesOk, EncodeCrossCrate::Yes),
+    ungated!(cfg, Normal, template!(List: &["a", "b", "c"]), DuplicatesOk, EncodeCrossCrate::Yes),
     ungated!(cfg_attr, Normal, template!(List: &["predicate", "attr1", "attr2", "..."]), DuplicatesOk, EncodeCrossCrate::Yes),
 
     // Testing:
@@ -333,7 +333,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     ungated!(
         should_panic, Normal,
-        template!(Word, List: &["expected = \"reason\""], NameValueStr: "reason"), FutureWarnFollowing,
+        template!(Word, List: &[r#"expected = "reason""#], NameValueStr: "reason"), FutureWarnFollowing,
         EncodeCrossCrate::No,
     ),
     // FIXME(Centril): This can be used on stable but shouldn't.
@@ -345,7 +345,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Macros:
     ungated!(automatically_derived, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes),
     ungated!(
-        macro_use, Normal, template!(Word, List: &["name1, name2, ..."]), WarnFollowingWordOnly,
+        macro_use, Normal, template!(Word, List: &["name1", "name2", "..."]), WarnFollowingWordOnly,
         EncodeCrossCrate::No,
     ),
     ungated!(macro_escape, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No), // Deprecated synonym for `macro_use`.
@@ -362,7 +362,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // Lints:
     ungated!(
-        warn, Normal, template!(List: &["lint1", "lint2", "...", "/*opt*/ reason = \"...\""]),
+        warn, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#),
         DuplicatesOk, EncodeCrossCrate::No,
     ),
     ungated!(
@@ -618,7 +618,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "allow_internal_unstable side-steps feature gating and stability checks",
     ),
     gated!(
-        Support-more-suggestions-in-template-for-bad-attribute-use-#61288
         rustc_allow_const_fn_unstable, Normal,
         template!(Word, List: &["feat1, feat2, ..."]), DuplicatesOk, EncodeCrossCrate::No,
         "rustc_allow_const_fn_unstable side-steps feature gating and stability checks"
@@ -919,7 +918,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_deny_explicit_impl,
         AttributeType::Normal,
-        Support-more-suggestions-in-template-for-bad-attribute-use-#61288
         template!(List: &["implement_via_object = (true|false)"]),
 
         ErrorFollowing,
