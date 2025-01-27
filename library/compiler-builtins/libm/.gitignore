@@ -4,7 +4,6 @@
 /math/src
 target
 Cargo.lock
-musl/
 **.tar.gz
 
 # Benchmark cache

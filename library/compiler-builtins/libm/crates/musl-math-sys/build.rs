@@ -79,17 +79,12 @@ impl Config {
         let target_features = env::var("CARGO_CFG_TARGET_FEATURE")
             .map(|feats| feats.split(',').map(ToOwned::to_owned).collect())
             .unwrap_or_default();
-
-        // Default to the `{workspace_root}/musl` if not specified
-        let musl_dir = env::var("MUSL_SOURCE_DIR")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| manifest_dir.parent().unwrap().parent().unwrap().join("musl"));
+        let musl_dir = manifest_dir.join("musl");
 
         let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
         let musl_arch = if target_arch == "x86" { "i386".to_owned() } else { target_arch.clone() };
 
         println!("cargo::rerun-if-changed={}/c_patches", manifest_dir.display());
-        println!("cargo::rerun-if-env-changed=MUSL_SOURCE_DIR");
         println!("cargo::rerun-if-changed={}", musl_dir.display());
 
         Self {
@@ -111,13 +106,10 @@ impl Config {
 /// Build musl math symbols to a static library
 fn build_musl_math(cfg: &Config) {
     let musl_dir = &cfg.musl_dir;
-    assert!(
-        musl_dir.exists(),
-        "musl source is missing. it can be downloaded with ./ci/download-musl.sh"
-    );
-
     let math = musl_dir.join("src/math");
     let arch_dir = musl_dir.join("arch").join(&cfg.musl_arch);
+    assert!(math.exists(), "musl source not found. Is the submodule up to date?");
+
     let source_map = find_math_source(&math, cfg);
     let out_path = cfg.out_dir.join(format!("lib{LIB_NAME}.a"));
 

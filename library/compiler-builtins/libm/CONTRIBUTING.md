@@ -62,6 +62,10 @@ Check [PR #65] for an example.
 Normal tests can be executed with:
 
 ```sh
+# Tests against musl require that the submodule is up to date.
+git submodule init
+git submodule update
+
 # `--release` ables more test cases
 cargo test --release
 ```

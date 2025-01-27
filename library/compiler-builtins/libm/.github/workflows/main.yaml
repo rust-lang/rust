@@ -79,6 +79,8 @@ jobs:
     - name: Print runner information
       run: uname -a
     - uses: actions/checkout@v4
+      with:
+        submodules: true
     - name: Install Rust (rustup)
       shell: bash
       run: |
@@ -93,10 +95,6 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         key: ${{ matrix.target }}
-
-    - name: Download musl source
-      run: ./ci/download-musl.sh
-      shell: bash
 
     - name: Verify API list
       if: matrix.os == 'ubuntu-24.04'
@@ -126,14 +124,14 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@master
+      with:
+        submodules: true
     - name: Install Rust
       run: |
         rustup update nightly --no-self-update
         rustup default nightly
         rustup component add clippy
     - uses: Swatinem/rust-cache@v2
-    - name: Download musl source
-      run: ./ci/download-musl.sh
     - run: cargo clippy --all --all-features --all-targets
 
   builtins:
@@ -153,6 +151,8 @@ jobs:
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@master
+      with:
+        submodules: true
     - uses: taiki-e/install-action@cargo-binstall
 
     - name: Set up dependencies
@@ -166,8 +166,6 @@ jobs:
         sudo apt-get install valgrind
 
     - uses: Swatinem/rust-cache@v2
-    - name: Download musl source
-      run: ./ci/download-musl.sh
 
     - name: Run icount benchmarks
       env:
@@ -259,13 +257,13 @@ jobs:
       CHANGED: ${{ matrix.changed }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Install Rust
         run: |
           rustup update nightly --no-self-update
           rustup default nightly
       - uses: Swatinem/rust-cache@v2
-      - name: Download musl source
-        run: ./ci/download-musl.sh
       - name: Run extensive tests
         run: |
           echo "Changed: '$CHANGED'"
