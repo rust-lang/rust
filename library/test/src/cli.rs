@@ -18,7 +18,7 @@ pub struct TestOpts {
     pub run_tests: bool,
     pub bench_benchmarks: bool,
     pub logfile: Option<PathBuf>,
-    pub nocapture: bool,
+    pub capture: bool,
     pub color: ColorConfig,
     pub format: OutputFormat,
     pub shuffle: bool,
@@ -36,7 +36,7 @@ pub struct TestOpts {
 impl TestOpts {
     pub fn use_color(&self) -> bool {
         match self.color {
-            ColorConfig::AutoColor => !self.nocapture && io::stdout().is_terminal(),
+            ColorConfig::AutoColor => self.capture && io::stdout().is_terminal(),
             ColorConfig::AlwaysColor => true,
             ColorConfig::NeverColor => false,
         }
@@ -274,7 +274,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
     let logfile = get_log_file(&matches)?;
     let run_ignored = get_run_ignored(&matches, include_ignored)?;
     let filters = matches.free.clone();
-    let nocapture = get_nocapture(&matches)?;
+    let capture = get_capture(&matches)?;
     let test_threads = get_test_threads(&matches)?;
     let color = get_color_config(&matches)?;
     let format = get_format(&matches, quiet, allow_unstable)?;
@@ -295,7 +295,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
         run_tests,
         bench_benchmarks,
         logfile,
-        nocapture,
+        capture,
         color,
         format,
         shuffle,
@@ -446,16 +446,16 @@ fn get_color_config(matches: &getopts::Matches) -> OptPartRes<ColorConfig> {
     Ok(color)
 }
 
-fn get_nocapture(matches: &getopts::Matches) -> OptPartRes<bool> {
-    let mut nocapture = matches.opt_present("nocapture");
-    if !nocapture {
-        nocapture = match env::var("RUST_TEST_NOCAPTURE") {
+fn get_capture(matches: &getopts::Matches) -> OptPartRes<bool> {
+    let mut capture = !matches.opt_present("nocapture");
+    if capture {
+        capture = !match env::var("RUST_TEST_NOCAPTURE") {
             Ok(val) => &val != "0",
             Err(_) => false,
         };
     }
 
-    Ok(nocapture)
+    Ok(capture)
 }
 
 fn get_run_ignored(matches: &getopts::Matches, include_ignored: bool) -> OptPartRes<RunIgnored> {

@@ -24,7 +24,7 @@ impl TestOpts {
             run_tests: false,
             bench_benchmarks: false,
             logfile: None,
-            nocapture: false,
+            capture: true,
             color: AutoColor,
             format: OutputFormat::Pretty,
             shuffle: false,
