@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{db::ExpandDatabase, CallableKind, ClosureStyle, HirDisplay, HirFileIdExt, InFile, Type};
+use hir::{db::ExpandDatabase, CallableKind, ClosureStyle, HirDisplay, HirFileIdExt, InFile};
 use ide_db::{
     famous_defs::FamousDefs,
     source_change::{SourceChange, SourceChangeBuilder},
@@ -88,7 +88,7 @@ fn add_reference(
     let range = ctx.sema.diagnostics_display_range((*expr_ptr).map(|it| it.into()));
 
     let (_, mutability) = d.expected.as_reference()?;
-    let actual_with_ref = Type::reference(&d.actual, mutability);
+    let actual_with_ref = d.actual.add_reference(mutability);
     if !actual_with_ref.could_coerce_to(ctx.sema.db, &d.expected) {
         return None;
     }
