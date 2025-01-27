@@ -48,6 +48,7 @@ pub use crate::ops::{Bound, OneSidedRange, RangeBounds, RangeFull, RangeTo, Rang
 /// assert_eq!(Range::from(3..5), Range { start: 3, end: 5 });
 /// assert_eq!(3 + 4 + 5, Range::from(3..6).into_iter().sum());
 /// ```
+#[cfg_attr(not(bootstrap), lang = "RangeCopy")]
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[unstable(feature = "new_range_api", issue = "125687")]
 pub struct Range<Idx> {
@@ -205,6 +206,7 @@ impl<T> From<legacy::Range<T>> for Range<T> {
 /// assert_eq!(RangeInclusive::from(3..=5), RangeInclusive { start: 3, end: 5 });
 /// assert_eq!(3 + 4 + 5, RangeInclusive::from(3..=5).into_iter().sum());
 /// ```
+#[cfg_attr(not(bootstrap), lang = "RangeInclusiveCopy")]
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[unstable(feature = "new_range_api", issue = "125687")]
 pub struct RangeInclusive<Idx> {
@@ -388,6 +390,7 @@ impl<T> From<legacy::RangeInclusive<T>> for RangeInclusive<T> {
 /// assert_eq!(RangeFrom::from(2..), core::range::RangeFrom { start: 2 });
 /// assert_eq!(2 + 3 + 4, RangeFrom::from(2..).into_iter().take(3).sum());
 /// ```
+#[cfg_attr(not(bootstrap), lang = "RangeFromCopy")]
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[unstable(feature = "new_range_api", issue = "125687")]
 pub struct RangeFrom<Idx> {
