@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use proc_macro2::{Punct, Spacing, TokenStream};
+use proc_macro2::{Delimiter, Group, Punct, Spacing, TokenStream};
 use quote::{format_ident, quote, ToTokens, TokenStreamExt};
 use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
@@ -417,35 +417,32 @@ impl ToTokens for LLVMLinkAttribute {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let LLVMLinkAttribute { arch, link } = self;
         let link = link.to_string();
-        let archs: Vec<&str> = arch.split(',').collect();
-        let arch_len = archs.len();
 
-        if arch_len == 1 {
-            tokens.append_all(quote! {
-                #[cfg_attr(target_arch = #arch, link_name = #link)]
-            })
-        } else {
-            tokens.append(Punct::new('#', Spacing::Alone));
-            tokens.append(Punct::new('[', Spacing::Alone));
-            tokens.append_all(quote! { cfg_attr });
-            tokens.append(Punct::new('(', Spacing::Alone));
-            tokens.append_all(quote! { any });
-            tokens.append(Punct::new('(', Spacing::Alone));
-            let mut i = 0;
-            while i < arch_len {
-                let arch = archs[i].to_string();
-                tokens.append_all(quote! { target_arch = #arch });
-                if i + 1 != arch_len {
-                    tokens.append(Punct::new(',', Spacing::Alone));
-                }
-                i += 1;
+        // For example:
+        //
+        //      #[cfg_attr(target_arch = "arm", link_name = "llvm.ctlz.v4i16")]
+        //
+        //      #[cfg_attr(
+        //          any(target_arch = "aarch64", target_arch = "arm64ec"),
+        //          link_name = "llvm.aarch64.neon.suqadd.i32"
+        //      )]
+
+        let mut cfg_attr_cond = TokenStream::new();
+        let mut single_arch = true;
+        for arch in arch.split(',') {
+            if !cfg_attr_cond.is_empty() {
+                single_arch = false;
+                cfg_attr_cond.append(Punct::new(',', Spacing::Alone));
             }
-            tokens.append(Punct::new(')', Spacing::Alone));
-            tokens.append(Punct::new(',', Spacing::Alone));
-            tokens.append_all(quote! { link_name = #link });
-            tokens.append(Punct::new(')', Spacing::Alone));
-            tokens.append(Punct::new(']', Spacing::Alone));
+            cfg_attr_cond.append_all(quote! { target_arch = #arch });
         }
+        assert!(!cfg_attr_cond.is_empty());
+        if !single_arch {
+            cfg_attr_cond = quote! { any( #cfg_attr_cond ) };
+        }
+        tokens.append_all(quote! {
+            #[cfg_attr(#cfg_attr_cond, link_name = #link)]
+        })
     }
 }
 
@@ -1560,10 +1557,10 @@ impl ToTokens for Intrinsic {
             /* Target feature will get added here */
             let attr_expressions = &mut attr.iter().peekable();
             while let Some(ex) = attr_expressions.next() {
+                let mut inner = TokenStream::new();
+                ex.to_tokens(&mut inner);
                 tokens.append(Punct::new('#', Spacing::Alone));
-                tokens.append(Punct::new('[', Spacing::Alone));
-                ex.to_tokens(tokens);
-                tokens.append(Punct::new(']', Spacing::Alone));
+                tokens.append(Group::new(Delimiter::Bracket, inner));
             }
         } else {
             tokens.append_all(quote! {
@@ -1586,30 +1583,34 @@ impl ToTokens for Intrinsic {
             tokens.append_all(quote! { unsafe });
         }
         tokens.append_all(quote! { #signature });
-        tokens.append(Punct::new('{', Spacing::Alone));
 
-        let mut body_unsafe = false;
-        let mut expressions = self.compose.iter().peekable();
-        while let Some(ex) = expressions.next() {
-            if !body_unsafe && safety.is_safe() && ex.requires_unsafe_wrapper(&fn_name) {
-                body_unsafe = true;
-                tokens.append_all(quote! { unsafe });
-                tokens.append(Punct::new('{', Spacing::Alone));
+        // If the intrinsic function is explicitly unsafe, we populate `body_default_safety` with
+        // the implementation. No explicit unsafe blocks are required.
+        //
+        // If the intrinsic is safe, we fill `body_default_safety` until we encounter an expression
+        // that requires an unsafe wrapper, then switch to `body_unsafe`. Since the unsafe
+        // operation (e.g. memory access) is typically the last step, this tends to minimises the
+        // amount of unsafe code required.
+        let mut body_default_safety = TokenStream::new();
+        let mut body_unsafe = TokenStream::new();
+        let mut body_current = &mut body_default_safety;
+        for (pos, ex) in self.compose.iter().with_position() {
+            if safety.is_safe() && ex.requires_unsafe_wrapper(&fn_name) {
+                body_current = &mut body_unsafe;
             }
-            // If it's not the last and not a LLVM link, add a trailing semicolon
-            if expressions.peek().is_some() && !matches!(ex, Expression::LLVMLink(_)) {
-                tokens.append_all(quote! { #ex; })
-            } else {
-                ex.to_tokens(tokens)
+            ex.to_tokens(body_current);
+            let is_last = matches!(pos, itertools::Position::Last | itertools::Position::Only);
+            let is_llvm_link = matches!(ex, Expression::LLVMLink(_));
+            if !is_last && !is_llvm_link {
+                body_current.append(Punct::new(';', Spacing::Alone));
             }
         }
-        if body_unsafe {
-            tokens.append(Punct::new('}', Spacing::Alone));
+        let mut body = body_default_safety;
+        if !body_unsafe.is_empty() {
+            body.append_all(quote! { unsafe { #body_unsafe } });
         }
 
-        tokens.append(Punct::new('}', Spacing::Alone));
-        tokens.append(Punct::new('\n', Spacing::Alone));
-        tokens.append(Punct::new('\n', Spacing::Alone));
+        tokens.append(Group::new(Delimiter::Brace, body));
     }
 }
 

@@ -37,7 +37,6 @@ pub unsafe fn vabal_s8(a: int16x8_t, b: int8x8_t, c: int8x8_t) -> int16x8_t {
     let e: uint8x8_t = simd_cast(d);
     simd_add(a, simd_cast(e))
 }
-
 #[doc = "Signed Absolute difference and Accumulate Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_s16)"]
 #[doc = "## Safety"]
@@ -63,7 +62,6 @@ pub unsafe fn vabal_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     let e: uint16x4_t = simd_cast(d);
     simd_add(a, simd_cast(e))
 }
-
 #[doc = "Signed Absolute difference and Accumulate Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_s32)"]
 #[doc = "## Safety"]
@@ -89,7 +87,6 @@ pub unsafe fn vabal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     let e: uint32x2_t = simd_cast(d);
     simd_add(a, simd_cast(e))
 }
-
 #[doc = "Unsigned Absolute difference and Accumulate Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_u8)"]
 #[doc = "## Safety"]
@@ -114,7 +111,6 @@ pub unsafe fn vabal_u8(a: uint16x8_t, b: uint8x8_t, c: uint8x8_t) -> uint16x8_t 
     let d: uint8x8_t = vabd_u8(b, c);
     simd_add(a, simd_cast(d))
 }
-
 #[doc = "Unsigned Absolute difference and Accumulate Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_u16)"]
 #[doc = "## Safety"]
@@ -139,7 +135,6 @@ pub unsafe fn vabal_u16(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4
     let d: uint16x4_t = vabd_u16(b, c);
     simd_add(a, simd_cast(d))
 }
-
 #[doc = "Unsigned Absolute difference and Accumulate Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_u32)"]
 #[doc = "## Safety"]
@@ -164,7 +159,6 @@ pub unsafe fn vabal_u32(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2
     let d: uint32x2_t = vabd_u32(b, c);
     simd_add(a, simd_cast(d))
 }
-
 #[doc = "Absolute difference between the arguments of Floating"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabd_f32)"]
 #[doc = "## Safety"]
@@ -196,7 +190,6 @@ pub unsafe fn vabd_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     }
     _vabd_f32(a, b)
 }
-
 #[doc = "Absolute difference between the arguments of Floating"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdq_f32)"]
 #[doc = "## Safety"]
@@ -228,7 +221,6 @@ pub unsafe fn vabdq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     }
     _vabdq_f32(a, b)
 }
-
 #[doc = "Absolute difference between the arguments"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabd_s8)"]
 #[doc = "## Safety"]
@@ -260,7 +252,6 @@ pub unsafe fn vabd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     }
     _vabd_s8(a, b)
 }
-
 #[doc = "Absolute difference between the arguments"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdq_s8)"]
 #[doc = "## Safety"]
@@ -292,7 +283,6 @@ pub unsafe fn vabdq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     }
     _vabdq_s8(a, b)
 }
-
 #[doc = "Absolute difference between the arguments"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabd_s16)"]
 #[doc = "## Safety"]
@@ -324,7 +314,6 @@ pub unsafe fn vabd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     }
     _vabd_s16(a, b)
 }
-
 #[doc = "Absolute difference between the arguments"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdq_s16)"]
 #[doc = "## Safety"]
@@ -356,7 +345,6 @@ pub unsafe fn vabdq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     }
     _vabdq_s16(a, b)
 }
-
 #[doc = "Absolute difference between the arguments"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabd_s32)"]
 #[doc = "## Safety"]
@@ -388,7 +376,6 @@ pub unsafe fn vabd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     }
     _vabd_s32(a, b)
 }
-
 #[doc = "Absolute difference between the arguments"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdq_s32)"]
 #[doc = "## Safety"]
@@ -420,7 +407,6 @@ pub unsafe fn vabdq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     }
     _vabdq_s32(a, b)
 }
-
 #[doc = "Absolute difference between the arguments"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabd_u8)"]
 #[doc = "## Safety"]
@@ -452,7 +438,6 @@ pub unsafe fn vabd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     }
     _vabd_u8(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Absolute difference between the arguments"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdq_u8)"]
 #[doc = "## Safety"]
@@ -484,7 +469,6 @@ pub unsafe fn vabdq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     }
     _vabdq_u8(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Absolute difference between the arguments"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabd_u16)"]
 #[doc = "## Safety"]
@@ -516,7 +500,6 @@ pub unsafe fn vabd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     }
     _vabd_u16(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Absolute difference between the arguments"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdq_u16)"]
 #[doc = "## Safety"]
@@ -548,7 +531,6 @@ pub unsafe fn vabdq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     }
     _vabdq_u16(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Absolute difference between the arguments"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabd_u32)"]
 #[doc = "## Safety"]
@@ -580,7 +562,6 @@ pub unsafe fn vabd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     }
     _vabd_u32(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Absolute difference between the arguments"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdq_u32)"]
 #[doc = "## Safety"]
@@ -612,7 +593,6 @@ pub unsafe fn vabdq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     }
     _vabdq_u32(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Signed Absolute difference Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdl_s8)"]
 #[doc = "## Safety"]
@@ -637,7 +617,6 @@ pub unsafe fn vabdl_s8(a: int8x8_t, b: int8x8_t) -> int16x8_t {
     let c: uint8x8_t = simd_cast(vabd_s8(a, b));
     simd_cast(c)
 }
-
 #[doc = "Signed Absolute difference Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdl_s16)"]
 #[doc = "## Safety"]
@@ -662,7 +641,6 @@ pub unsafe fn vabdl_s16(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     let c: uint16x4_t = simd_cast(vabd_s16(a, b));
     simd_cast(c)
 }
-
 #[doc = "Signed Absolute difference Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdl_s32)"]
 #[doc = "## Safety"]
@@ -687,7 +665,6 @@ pub unsafe fn vabdl_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     let c: uint32x2_t = simd_cast(vabd_s32(a, b));
     simd_cast(c)
 }
-
 #[doc = "Unsigned Absolute difference Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdl_u8)"]
 #[doc = "## Safety"]
@@ -711,7 +688,6 @@ pub unsafe fn vabdl_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
 pub unsafe fn vabdl_u8(a: uint8x8_t, b: uint8x8_t) -> uint16x8_t {
     simd_cast(vabd_u8(a, b))
 }
-
 #[doc = "Unsigned Absolute difference Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdl_u16)"]
 #[doc = "## Safety"]
@@ -735,7 +711,6 @@ pub unsafe fn vabdl_u8(a: uint8x8_t, b: uint8x8_t) -> uint16x8_t {
 pub unsafe fn vabdl_u16(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t {
     simd_cast(vabd_u16(a, b))
 }
-
 #[doc = "Unsigned Absolute difference Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdl_u32)"]
 #[doc = "## Safety"]
@@ -759,7 +734,6 @@ pub unsafe fn vabdl_u16(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t {
 pub unsafe fn vabdl_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
     simd_cast(vabd_u32(a, b))
 }
-
 #[doc = "Floating-point absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabs_f32)"]
 #[doc = "## Safety"]
@@ -783,7 +757,6 @@ pub unsafe fn vabdl_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
 pub unsafe fn vabs_f32(a: float32x2_t) -> float32x2_t {
     simd_fabs(a)
 }
-
 #[doc = "Floating-point absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabsq_f32)"]
 #[doc = "## Safety"]
@@ -807,7 +780,6 @@ pub unsafe fn vabs_f32(a: float32x2_t) -> float32x2_t {
 pub unsafe fn vabsq_f32(a: float32x4_t) -> float32x4_t {
     simd_fabs(a)
 }
-
 #[doc = "Bitwise exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vadd_p8)"]
 #[doc = "## Safety"]
@@ -831,7 +803,6 @@ pub unsafe fn vabsq_f32(a: float32x4_t) -> float32x4_t {
 pub unsafe fn vadd_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     simd_xor(a, b)
 }
-
 #[doc = "Bitwise exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddq_p8)"]
 #[doc = "## Safety"]
@@ -855,7 +826,6 @@ pub unsafe fn vadd_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 pub unsafe fn vaddq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
     simd_xor(a, b)
 }
-
 #[doc = "Bitwise exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vadd_p16)"]
 #[doc = "## Safety"]
@@ -879,7 +849,6 @@ pub unsafe fn vaddq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 pub unsafe fn vadd_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
     simd_xor(a, b)
 }
-
 #[doc = "Bitwise exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddq_p16)"]
 #[doc = "## Safety"]
@@ -903,7 +872,6 @@ pub unsafe fn vadd_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 pub unsafe fn vaddq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     simd_xor(a, b)
 }
-
 #[doc = "Bitwise exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vadd_p64)"]
 #[doc = "## Safety"]
@@ -927,7 +895,6 @@ pub unsafe fn vaddq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 pub unsafe fn vadd_p64(a: poly64x1_t, b: poly64x1_t) -> poly64x1_t {
     simd_xor(a, b)
 }
-
 #[doc = "Bitwise exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddq_p64)"]
 #[doc = "## Safety"]
@@ -951,7 +918,6 @@ pub unsafe fn vadd_p64(a: poly64x1_t, b: poly64x1_t) -> poly64x1_t {
 pub unsafe fn vaddq_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
     simd_xor(a, b)
 }
-
 #[doc = "Bitwise exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddq_p128)"]
 #[doc = "## Safety"]
@@ -975,7 +941,6 @@ pub unsafe fn vaddq_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 pub unsafe fn vaddq_p128(a: p128, b: p128) -> p128 {
     a ^ b
 }
-
 #[doc = "Vector bitwise and"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vand_s8)"]
 #[doc = "## Safety"]
@@ -999,7 +964,6 @@ pub unsafe fn vaddq_p128(a: p128, b: p128) -> p128 {
 pub unsafe fn vand_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     simd_and(a, b)
 }
-
 #[doc = "Vector bitwise and"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vandq_s8)"]
 #[doc = "## Safety"]
@@ -1023,7 +987,6 @@ pub unsafe fn vand_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 pub unsafe fn vandq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     simd_and(a, b)
 }
-
 #[doc = "Vector bitwise and"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vand_s16)"]
 #[doc = "## Safety"]
@@ -1047,7 +1010,6 @@ pub unsafe fn vandq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 pub unsafe fn vand_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     simd_and(a, b)
 }
-
 #[doc = "Vector bitwise and"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vandq_s16)"]
 #[doc = "## Safety"]
@@ -1071,7 +1033,6 @@ pub unsafe fn vand_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 pub unsafe fn vandq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     simd_and(a, b)
 }
-
 #[doc = "Vector bitwise and"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vand_s32)"]
 #[doc = "## Safety"]
@@ -1095,7 +1056,6 @@ pub unsafe fn vandq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 pub unsafe fn vand_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_and(a, b)
 }
-
 #[doc = "Vector bitwise and"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vandq_s32)"]
 #[doc = "## Safety"]
@@ -1119,7 +1079,6 @@ pub unsafe fn vand_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 pub unsafe fn vandq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_and(a, b)
 }
-
 #[doc = "Vector bitwise and"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vand_s64)"]
 #[doc = "## Safety"]
@@ -1143,7 +1102,6 @@ pub unsafe fn vandq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 pub unsafe fn vand_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     simd_and(a, b)
 }
-
 #[doc = "Vector bitwise and"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vandq_s64)"]
 #[doc = "## Safety"]
@@ -1167,7 +1125,6 @@ pub unsafe fn vand_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 pub unsafe fn vandq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     simd_and(a, b)
 }
-
 #[doc = "Vector bitwise and"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vand_u8)"]
 #[doc = "## Safety"]
@@ -1191,7 +1148,6 @@ pub unsafe fn vandq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 pub unsafe fn vand_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_and(a, b)
 }
-
 #[doc = "Vector bitwise and"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vandq_u8)"]
 #[doc = "## Safety"]
@@ -1215,7 +1171,6 @@ pub unsafe fn vand_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 pub unsafe fn vandq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_and(a, b)
 }
-
 #[doc = "Vector bitwise and"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vand_u16)"]
 #[doc = "## Safety"]
@@ -1239,7 +1194,6 @@ pub unsafe fn vandq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 pub unsafe fn vand_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_and(a, b)
 }
-
 #[doc = "Vector bitwise and"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vandq_u16)"]
 #[doc = "## Safety"]
@@ -1263,7 +1217,6 @@ pub unsafe fn vand_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 pub unsafe fn vandq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_and(a, b)
 }
-
 #[doc = "Vector bitwise and"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vand_u32)"]
 #[doc = "## Safety"]
@@ -1287,7 +1240,6 @@ pub unsafe fn vandq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 pub unsafe fn vand_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_and(a, b)
 }
-
 #[doc = "Vector bitwise and"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vandq_u32)"]
 #[doc = "## Safety"]
@@ -1311,7 +1263,6 @@ pub unsafe fn vand_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 pub unsafe fn vandq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_and(a, b)
 }
-
 #[doc = "Vector bitwise and"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vand_u64)"]
 #[doc = "## Safety"]
@@ -1335,7 +1286,6 @@ pub unsafe fn vandq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 pub unsafe fn vand_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     simd_and(a, b)
 }
-
 #[doc = "Vector bitwise and"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vandq_u64)"]
 #[doc = "## Safety"]
@@ -1359,7 +1309,6 @@ pub unsafe fn vand_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 pub unsafe fn vandq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     simd_and(a, b)
 }
-
 #[doc = "Floating-point absolute compare greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcage_f32)"]
 #[doc = "## Safety"]
@@ -1391,7 +1340,6 @@ pub unsafe fn vcage_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     }
     _vcage_f32(a, b).as_unsigned()
 }
-
 #[doc = "Floating-point absolute compare greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcageq_f32)"]
 #[doc = "## Safety"]
@@ -1423,7 +1371,6 @@ pub unsafe fn vcageq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     }
     _vcageq_f32(a, b).as_unsigned()
 }
-
 #[doc = "Floating-point absolute compare greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcagt_f32)"]
 #[doc = "## Safety"]
@@ -1455,7 +1402,6 @@ pub unsafe fn vcagt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     }
     _vcagt_f32(a, b).as_unsigned()
 }
-
 #[doc = "Floating-point absolute compare greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcagtq_f32)"]
 #[doc = "## Safety"]
@@ -1487,7 +1433,6 @@ pub unsafe fn vcagtq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     }
     _vcagtq_f32(a, b).as_unsigned()
 }
-
 #[doc = "Floating-point absolute compare less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcale_f32)"]
 #[doc = "## Safety"]
@@ -1511,7 +1456,6 @@ pub unsafe fn vcagtq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 pub unsafe fn vcale_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     vcage_f32(b, a)
 }
-
 #[doc = "Floating-point absolute compare less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcaleq_f32)"]
 #[doc = "## Safety"]
@@ -1535,7 +1479,6 @@ pub unsafe fn vcale_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 pub unsafe fn vcaleq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     vcageq_f32(b, a)
 }
-
 #[doc = "Floating-point absolute compare less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcalt_f32)"]
 #[doc = "## Safety"]
@@ -1559,7 +1502,6 @@ pub unsafe fn vcaleq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 pub unsafe fn vcalt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     vcagt_f32(b, a)
 }
-
 #[doc = "Floating-point absolute compare less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcaltq_f32)"]
 #[doc = "## Safety"]
@@ -1583,7 +1525,6 @@ pub unsafe fn vcalt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 pub unsafe fn vcaltq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     vcagtq_f32(b, a)
 }
-
 #[doc = "Floating-point compare equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceq_f32)"]
 #[doc = "## Safety"]
@@ -1607,7 +1548,6 @@ pub unsafe fn vcaltq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 pub unsafe fn vceq_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     simd_eq(a, b)
 }
-
 #[doc = "Floating-point compare equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqq_f32)"]
 #[doc = "## Safety"]
@@ -1631,7 +1571,6 @@ pub unsafe fn vceq_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 pub unsafe fn vceqq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     simd_eq(a, b)
 }
-
 #[doc = "Compare bitwise Equal (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceq_s8)"]
 #[doc = "## Safety"]
@@ -1655,7 +1594,6 @@ pub unsafe fn vceqq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 pub unsafe fn vceq_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
     simd_eq(a, b)
 }
-
 #[doc = "Compare bitwise Equal (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqq_s8)"]
 #[doc = "## Safety"]
@@ -1679,7 +1617,6 @@ pub unsafe fn vceq_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
 pub unsafe fn vceqq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
     simd_eq(a, b)
 }
-
 #[doc = "Compare bitwise Equal (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceq_s16)"]
 #[doc = "## Safety"]
@@ -1703,7 +1640,6 @@ pub unsafe fn vceqq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
 pub unsafe fn vceq_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
     simd_eq(a, b)
 }
-
 #[doc = "Compare bitwise Equal (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqq_s16)"]
 #[doc = "## Safety"]
@@ -1727,7 +1663,6 @@ pub unsafe fn vceq_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
 pub unsafe fn vceqq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
     simd_eq(a, b)
 }
-
 #[doc = "Compare bitwise Equal (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceq_s32)"]
 #[doc = "## Safety"]
@@ -1751,7 +1686,6 @@ pub unsafe fn vceqq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
 pub unsafe fn vceq_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
     simd_eq(a, b)
 }
-
 #[doc = "Compare bitwise Equal (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqq_s32)"]
 #[doc = "## Safety"]
@@ -1775,7 +1709,6 @@ pub unsafe fn vceq_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
 pub unsafe fn vceqq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
     simd_eq(a, b)
 }
-
 #[doc = "Compare bitwise Equal (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceq_u8)"]
 #[doc = "## Safety"]
@@ -1799,7 +1732,6 @@ pub unsafe fn vceqq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
 pub unsafe fn vceq_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_eq(a, b)
 }
-
 #[doc = "Compare bitwise Equal (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqq_u8)"]
 #[doc = "## Safety"]
@@ -1823,7 +1755,6 @@ pub unsafe fn vceq_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 pub unsafe fn vceqq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_eq(a, b)
 }
-
 #[doc = "Compare bitwise Equal (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceq_u16)"]
 #[doc = "## Safety"]
@@ -1847,7 +1778,6 @@ pub unsafe fn vceqq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 pub unsafe fn vceq_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_eq(a, b)
 }
-
 #[doc = "Compare bitwise Equal (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqq_u16)"]
 #[doc = "## Safety"]
@@ -1871,7 +1801,6 @@ pub unsafe fn vceq_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 pub unsafe fn vceqq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_eq(a, b)
 }
-
 #[doc = "Compare bitwise Equal (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceq_u32)"]
 #[doc = "## Safety"]
@@ -1895,7 +1824,6 @@ pub unsafe fn vceqq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 pub unsafe fn vceq_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_eq(a, b)
 }
-
 #[doc = "Compare bitwise Equal (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqq_u32)"]
 #[doc = "## Safety"]
@@ -1919,7 +1847,6 @@ pub unsafe fn vceq_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 pub unsafe fn vceqq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_eq(a, b)
 }
-
 #[doc = "Compare bitwise Equal (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceq_p8)"]
 #[doc = "## Safety"]
@@ -1943,7 +1870,6 @@ pub unsafe fn vceqq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 pub unsafe fn vceq_p8(a: poly8x8_t, b: poly8x8_t) -> uint8x8_t {
     simd_eq(a, b)
 }
-
 #[doc = "Compare bitwise Equal (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqq_p8)"]
 #[doc = "## Safety"]
@@ -1967,7 +1893,6 @@ pub unsafe fn vceq_p8(a: poly8x8_t, b: poly8x8_t) -> uint8x8_t {
 pub unsafe fn vceqq_p8(a: poly8x16_t, b: poly8x16_t) -> uint8x16_t {
     simd_eq(a, b)
 }
-
 #[doc = "Floating-point compare greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcge_f32)"]
 #[doc = "## Safety"]
@@ -1991,7 +1916,6 @@ pub unsafe fn vceqq_p8(a: poly8x16_t, b: poly8x16_t) -> uint8x16_t {
 pub unsafe fn vcge_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     simd_ge(a, b)
 }
-
 #[doc = "Floating-point compare greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgeq_f32)"]
 #[doc = "## Safety"]
@@ -2015,7 +1939,6 @@ pub unsafe fn vcge_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 pub unsafe fn vcgeq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     simd_ge(a, b)
 }
-
 #[doc = "Compare signed greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcge_s8)"]
 #[doc = "## Safety"]
@@ -2039,7 +1962,6 @@ pub unsafe fn vcgeq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 pub unsafe fn vcge_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
     simd_ge(a, b)
 }
-
 #[doc = "Compare signed greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgeq_s8)"]
 #[doc = "## Safety"]
@@ -2063,7 +1985,6 @@ pub unsafe fn vcge_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
 pub unsafe fn vcgeq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
     simd_ge(a, b)
 }
-
 #[doc = "Compare signed greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcge_s16)"]
 #[doc = "## Safety"]
@@ -2087,7 +2008,6 @@ pub unsafe fn vcgeq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
 pub unsafe fn vcge_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
     simd_ge(a, b)
 }
-
 #[doc = "Compare signed greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgeq_s16)"]
 #[doc = "## Safety"]
@@ -2111,7 +2031,6 @@ pub unsafe fn vcge_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
 pub unsafe fn vcgeq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
     simd_ge(a, b)
 }
-
 #[doc = "Compare signed greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcge_s32)"]
 #[doc = "## Safety"]
@@ -2135,7 +2054,6 @@ pub unsafe fn vcgeq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
 pub unsafe fn vcge_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
     simd_ge(a, b)
 }
-
 #[doc = "Compare signed greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgeq_s32)"]
 #[doc = "## Safety"]
@@ -2159,7 +2077,6 @@ pub unsafe fn vcge_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
 pub unsafe fn vcgeq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
     simd_ge(a, b)
 }
-
 #[doc = "Compare unsigned greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcge_u8)"]
 #[doc = "## Safety"]
@@ -2183,7 +2100,6 @@ pub unsafe fn vcgeq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
 pub unsafe fn vcge_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_ge(a, b)
 }
-
 #[doc = "Compare unsigned greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgeq_u8)"]
 #[doc = "## Safety"]
@@ -2207,7 +2123,6 @@ pub unsafe fn vcge_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 pub unsafe fn vcgeq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_ge(a, b)
 }
-
 #[doc = "Compare unsigned greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcge_u16)"]
 #[doc = "## Safety"]
@@ -2231,7 +2146,6 @@ pub unsafe fn vcgeq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 pub unsafe fn vcge_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_ge(a, b)
 }
-
 #[doc = "Compare unsigned greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgeq_u16)"]
 #[doc = "## Safety"]
@@ -2255,7 +2169,6 @@ pub unsafe fn vcge_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 pub unsafe fn vcgeq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_ge(a, b)
 }
-
 #[doc = "Compare unsigned greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcge_u32)"]
 #[doc = "## Safety"]
@@ -2279,7 +2192,6 @@ pub unsafe fn vcgeq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 pub unsafe fn vcge_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_ge(a, b)
 }
-
 #[doc = "Compare unsigned greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgeq_u32)"]
 #[doc = "## Safety"]
@@ -2303,7 +2215,6 @@ pub unsafe fn vcge_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 pub unsafe fn vcgeq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_ge(a, b)
 }
-
 #[doc = "Floating-point compare greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_f32)"]
 #[doc = "## Safety"]
@@ -2327,7 +2238,6 @@ pub unsafe fn vcgeq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 pub unsafe fn vcgt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     simd_gt(a, b)
 }
-
 #[doc = "Floating-point compare greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_f32)"]
 #[doc = "## Safety"]
@@ -2351,7 +2261,6 @@ pub unsafe fn vcgt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 pub unsafe fn vcgtq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     simd_gt(a, b)
 }
-
 #[doc = "Compare signed greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_s8)"]
 #[doc = "## Safety"]
@@ -2375,7 +2284,6 @@ pub unsafe fn vcgtq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 pub unsafe fn vcgt_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
     simd_gt(a, b)
 }
-
 #[doc = "Compare signed greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_s8)"]
 #[doc = "## Safety"]
@@ -2399,7 +2307,6 @@ pub unsafe fn vcgt_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
 pub unsafe fn vcgtq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
     simd_gt(a, b)
 }
-
 #[doc = "Compare signed greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_s16)"]
 #[doc = "## Safety"]
@@ -2423,7 +2330,6 @@ pub unsafe fn vcgtq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
 pub unsafe fn vcgt_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
     simd_gt(a, b)
 }
-
 #[doc = "Compare signed greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_s16)"]
 #[doc = "## Safety"]
@@ -2447,7 +2353,6 @@ pub unsafe fn vcgt_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
 pub unsafe fn vcgtq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
     simd_gt(a, b)
 }
-
 #[doc = "Compare signed greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_s32)"]
 #[doc = "## Safety"]
@@ -2471,7 +2376,6 @@ pub unsafe fn vcgtq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
 pub unsafe fn vcgt_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
     simd_gt(a, b)
 }
-
 #[doc = "Compare signed greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_s32)"]
 #[doc = "## Safety"]
@@ -2495,7 +2399,6 @@ pub unsafe fn vcgt_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
 pub unsafe fn vcgtq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
     simd_gt(a, b)
 }
-
 #[doc = "Compare unsigned greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_u8)"]
 #[doc = "## Safety"]
@@ -2519,7 +2422,6 @@ pub unsafe fn vcgtq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
 pub unsafe fn vcgt_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_gt(a, b)
 }
-
 #[doc = "Compare unsigned greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_u8)"]
 #[doc = "## Safety"]
@@ -2543,7 +2445,6 @@ pub unsafe fn vcgt_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 pub unsafe fn vcgtq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_gt(a, b)
 }
-
 #[doc = "Compare unsigned greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_u16)"]
 #[doc = "## Safety"]
@@ -2567,7 +2468,6 @@ pub unsafe fn vcgtq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 pub unsafe fn vcgt_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_gt(a, b)
 }
-
 #[doc = "Compare unsigned greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_u16)"]
 #[doc = "## Safety"]
@@ -2591,7 +2491,6 @@ pub unsafe fn vcgt_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 pub unsafe fn vcgtq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_gt(a, b)
 }
-
 #[doc = "Compare unsigned greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_u32)"]
 #[doc = "## Safety"]
@@ -2615,7 +2514,6 @@ pub unsafe fn vcgtq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 pub unsafe fn vcgt_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_gt(a, b)
 }
-
 #[doc = "Compare unsigned greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_u32)"]
 #[doc = "## Safety"]
@@ -2639,7 +2537,6 @@ pub unsafe fn vcgt_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 pub unsafe fn vcgtq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_gt(a, b)
 }
-
 #[doc = "Floating-point compare less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcle_f32)"]
 #[doc = "## Safety"]
@@ -2663,7 +2560,6 @@ pub unsafe fn vcgtq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 pub unsafe fn vcle_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     simd_le(a, b)
 }
-
 #[doc = "Floating-point compare less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcleq_f32)"]
 #[doc = "## Safety"]
@@ -2687,7 +2583,6 @@ pub unsafe fn vcle_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 pub unsafe fn vcleq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     simd_le(a, b)
 }
-
 #[doc = "Compare signed less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcle_s8)"]
 #[doc = "## Safety"]
@@ -2711,7 +2606,6 @@ pub unsafe fn vcleq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 pub unsafe fn vcle_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
     simd_le(a, b)
 }
-
 #[doc = "Compare signed less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcleq_s8)"]
 #[doc = "## Safety"]
@@ -2735,7 +2629,6 @@ pub unsafe fn vcle_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
 pub unsafe fn vcleq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
     simd_le(a, b)
 }
-
 #[doc = "Compare signed less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcle_s16)"]
 #[doc = "## Safety"]
@@ -2759,7 +2652,6 @@ pub unsafe fn vcleq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
 pub unsafe fn vcle_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
     simd_le(a, b)
 }
-
 #[doc = "Compare signed less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcleq_s16)"]
 #[doc = "## Safety"]
@@ -2783,7 +2675,6 @@ pub unsafe fn vcle_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
 pub unsafe fn vcleq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
     simd_le(a, b)
 }
-
 #[doc = "Compare signed less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcle_s32)"]
 #[doc = "## Safety"]
@@ -2807,7 +2698,6 @@ pub unsafe fn vcleq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
 pub unsafe fn vcle_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
     simd_le(a, b)
 }
-
 #[doc = "Compare signed less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcleq_s32)"]
 #[doc = "## Safety"]
@@ -2831,7 +2721,6 @@ pub unsafe fn vcle_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
 pub unsafe fn vcleq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
     simd_le(a, b)
 }
-
 #[doc = "Compare unsigned less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcle_u8)"]
 #[doc = "## Safety"]
@@ -2855,7 +2744,6 @@ pub unsafe fn vcleq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
 pub unsafe fn vcle_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_le(a, b)
 }
-
 #[doc = "Compare unsigned less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcleq_u8)"]
 #[doc = "## Safety"]
@@ -2879,7 +2767,6 @@ pub unsafe fn vcle_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 pub unsafe fn vcleq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_le(a, b)
 }
-
 #[doc = "Compare unsigned less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcle_u16)"]
 #[doc = "## Safety"]
@@ -2903,7 +2790,6 @@ pub unsafe fn vcleq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 pub unsafe fn vcle_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_le(a, b)
 }
-
 #[doc = "Compare unsigned less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcleq_u16)"]
 #[doc = "## Safety"]
@@ -2927,7 +2813,6 @@ pub unsafe fn vcle_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 pub unsafe fn vcleq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_le(a, b)
 }
-
 #[doc = "Compare unsigned less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcle_u32)"]
 #[doc = "## Safety"]
@@ -2951,7 +2836,6 @@ pub unsafe fn vcleq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 pub unsafe fn vcle_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_le(a, b)
 }
-
 #[doc = "Compare unsigned less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcleq_u32)"]
 #[doc = "## Safety"]
@@ -2975,7 +2859,6 @@ pub unsafe fn vcle_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 pub unsafe fn vcleq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_le(a, b)
 }
-
 #[doc = "Count leading sign bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcls_s8)"]
 #[doc = "## Safety"]
@@ -3007,7 +2890,6 @@ pub unsafe fn vcls_s8(a: int8x8_t) -> int8x8_t {
     }
     _vcls_s8(a)
 }
-
 #[doc = "Count leading sign bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclsq_s8)"]
 #[doc = "## Safety"]
@@ -3039,7 +2921,6 @@ pub unsafe fn vclsq_s8(a: int8x16_t) -> int8x16_t {
     }
     _vclsq_s8(a)
 }
-
 #[doc = "Count leading sign bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcls_s16)"]
 #[doc = "## Safety"]
@@ -3071,7 +2952,6 @@ pub unsafe fn vcls_s16(a: int16x4_t) -> int16x4_t {
     }
     _vcls_s16(a)
 }
-
 #[doc = "Count leading sign bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclsq_s16)"]
 #[doc = "## Safety"]
@@ -3103,7 +2983,6 @@ pub unsafe fn vclsq_s16(a: int16x8_t) -> int16x8_t {
     }
     _vclsq_s16(a)
 }
-
 #[doc = "Count leading sign bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcls_s32)"]
 #[doc = "## Safety"]
@@ -3135,7 +3014,6 @@ pub unsafe fn vcls_s32(a: int32x2_t) -> int32x2_t {
     }
     _vcls_s32(a)
 }
-
 #[doc = "Count leading sign bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclsq_s32)"]
 #[doc = "## Safety"]
@@ -3167,7 +3045,6 @@ pub unsafe fn vclsq_s32(a: int32x4_t) -> int32x4_t {
     }
     _vclsq_s32(a)
 }
-
 #[doc = "Count leading sign bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcls_u8)"]
 #[doc = "## Safety"]
@@ -3191,7 +3068,6 @@ pub unsafe fn vclsq_s32(a: int32x4_t) -> int32x4_t {
 pub unsafe fn vcls_u8(a: uint8x8_t) -> int8x8_t {
     vcls_s8(transmute(a))
 }
-
 #[doc = "Count leading sign bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclsq_u8)"]
 #[doc = "## Safety"]
@@ -3215,7 +3091,6 @@ pub unsafe fn vcls_u8(a: uint8x8_t) -> int8x8_t {
 pub unsafe fn vclsq_u8(a: uint8x16_t) -> int8x16_t {
     vclsq_s8(transmute(a))
 }
-
 #[doc = "Count leading sign bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcls_u16)"]
 #[doc = "## Safety"]
@@ -3239,7 +3114,6 @@ pub unsafe fn vclsq_u8(a: uint8x16_t) -> int8x16_t {
 pub unsafe fn vcls_u16(a: uint16x4_t) -> int16x4_t {
     vcls_s16(transmute(a))
 }
-
 #[doc = "Count leading sign bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclsq_u16)"]
 #[doc = "## Safety"]
@@ -3263,7 +3137,6 @@ pub unsafe fn vcls_u16(a: uint16x4_t) -> int16x4_t {
 pub unsafe fn vclsq_u16(a: uint16x8_t) -> int16x8_t {
     vclsq_s16(transmute(a))
 }
-
 #[doc = "Count leading sign bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcls_u32)"]
 #[doc = "## Safety"]
@@ -3287,7 +3160,6 @@ pub unsafe fn vclsq_u16(a: uint16x8_t) -> int16x8_t {
 pub unsafe fn vcls_u32(a: uint32x2_t) -> int32x2_t {
     vcls_s32(transmute(a))
 }
-
 #[doc = "Count leading sign bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclsq_u32)"]
 #[doc = "## Safety"]
@@ -3311,7 +3183,6 @@ pub unsafe fn vcls_u32(a: uint32x2_t) -> int32x2_t {
 pub unsafe fn vclsq_u32(a: uint32x4_t) -> int32x4_t {
     vclsq_s32(transmute(a))
 }
-
 #[doc = "Floating-point compare less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclt_f32)"]
 #[doc = "## Safety"]
@@ -3335,7 +3206,6 @@ pub unsafe fn vclsq_u32(a: uint32x4_t) -> int32x4_t {
 pub unsafe fn vclt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
     simd_lt(a, b)
 }
-
 #[doc = "Floating-point compare less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltq_f32)"]
 #[doc = "## Safety"]
@@ -3359,7 +3229,6 @@ pub unsafe fn vclt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 pub unsafe fn vcltq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     simd_lt(a, b)
 }
-
 #[doc = "Compare signed less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclt_s8)"]
 #[doc = "## Safety"]
@@ -3383,7 +3252,6 @@ pub unsafe fn vcltq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 pub unsafe fn vclt_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
     simd_lt(a, b)
 }
-
 #[doc = "Compare signed less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltq_s8)"]
 #[doc = "## Safety"]
@@ -3407,7 +3275,6 @@ pub unsafe fn vclt_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
 pub unsafe fn vcltq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
     simd_lt(a, b)
 }
-
 #[doc = "Compare signed less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclt_s16)"]
 #[doc = "## Safety"]
@@ -3431,7 +3298,6 @@ pub unsafe fn vcltq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
 pub unsafe fn vclt_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
     simd_lt(a, b)
 }
-
 #[doc = "Compare signed less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltq_s16)"]
 #[doc = "## Safety"]
@@ -3455,7 +3321,6 @@ pub unsafe fn vclt_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
 pub unsafe fn vcltq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
     simd_lt(a, b)
 }
-
 #[doc = "Compare signed less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclt_s32)"]
 #[doc = "## Safety"]
@@ -3479,7 +3344,6 @@ pub unsafe fn vcltq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
 pub unsafe fn vclt_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
     simd_lt(a, b)
 }
-
 #[doc = "Compare signed less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltq_s32)"]
 #[doc = "## Safety"]
@@ -3503,7 +3367,6 @@ pub unsafe fn vclt_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
 pub unsafe fn vcltq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
     simd_lt(a, b)
 }
-
 #[doc = "Compare unsigned less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclt_u8)"]
 #[doc = "## Safety"]
@@ -3527,7 +3390,6 @@ pub unsafe fn vcltq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
 pub unsafe fn vclt_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_lt(a, b)
 }
-
 #[doc = "Compare unsigned less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltq_u8)"]
 #[doc = "## Safety"]
@@ -3551,7 +3413,6 @@ pub unsafe fn vclt_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 pub unsafe fn vcltq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_lt(a, b)
 }
-
 #[doc = "Compare unsigned less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclt_u16)"]
 #[doc = "## Safety"]
@@ -3575,7 +3436,6 @@ pub unsafe fn vcltq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 pub unsafe fn vclt_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_lt(a, b)
 }
-
 #[doc = "Compare unsigned less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltq_u16)"]
 #[doc = "## Safety"]
@@ -3599,7 +3459,6 @@ pub unsafe fn vclt_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 pub unsafe fn vcltq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_lt(a, b)
 }
-
 #[doc = "Compare unsigned less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclt_u32)"]
 #[doc = "## Safety"]
@@ -3623,7 +3482,6 @@ pub unsafe fn vcltq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 pub unsafe fn vclt_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_lt(a, b)
 }
-
 #[doc = "Compare unsigned less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltq_u32)"]
 #[doc = "## Safety"]
@@ -3647,7 +3505,6 @@ pub unsafe fn vclt_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 pub unsafe fn vcltq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_lt(a, b)
 }
-
 #[doc = "Count leading zero bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclz_s16)"]
 #[doc = "## Safety"]
@@ -3671,7 +3528,6 @@ pub unsafe fn vcltq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 pub unsafe fn vclz_s16(a: int16x4_t) -> int16x4_t {
     vclz_s16_(a)
 }
-
 #[doc = "Count leading zero bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclzq_s16)"]
 #[doc = "## Safety"]
@@ -3695,7 +3551,6 @@ pub unsafe fn vclz_s16(a: int16x4_t) -> int16x4_t {
 pub unsafe fn vclzq_s16(a: int16x8_t) -> int16x8_t {
     vclzq_s16_(a)
 }
-
 #[doc = "Count leading zero bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclz_s32)"]
 #[doc = "## Safety"]
@@ -3719,7 +3574,6 @@ pub unsafe fn vclzq_s16(a: int16x8_t) -> int16x8_t {
 pub unsafe fn vclz_s32(a: int32x2_t) -> int32x2_t {
     vclz_s32_(a)
 }
-
 #[doc = "Count leading zero bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclzq_s32)"]
 #[doc = "## Safety"]
@@ -3743,7 +3597,6 @@ pub unsafe fn vclz_s32(a: int32x2_t) -> int32x2_t {
 pub unsafe fn vclzq_s32(a: int32x4_t) -> int32x4_t {
     vclzq_s32_(a)
 }
-
 #[doc = "Count leading zero bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclz_s8)"]
 #[doc = "## Safety"]
@@ -3767,7 +3620,6 @@ pub unsafe fn vclzq_s32(a: int32x4_t) -> int32x4_t {
 pub unsafe fn vclz_s8(a: int8x8_t) -> int8x8_t {
     vclz_s8_(a)
 }
-
 #[doc = "Count leading zero bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclzq_s8)"]
 #[doc = "## Safety"]
@@ -3791,7 +3643,6 @@ pub unsafe fn vclz_s8(a: int8x8_t) -> int8x8_t {
 pub unsafe fn vclzq_s8(a: int8x16_t) -> int8x16_t {
     vclzq_s8_(a)
 }
-
 #[doc = "Count leading zero bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclz_u16)"]
 #[doc = "## Safety"]
@@ -3815,7 +3666,6 @@ pub unsafe fn vclzq_s8(a: int8x16_t) -> int8x16_t {
 pub unsafe fn vclz_u16(a: uint16x4_t) -> uint16x4_t {
     transmute(vclz_s16_(transmute(a)))
 }
-
 #[doc = "Count leading zero bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclzq_u16)"]
 #[doc = "## Safety"]
@@ -3839,7 +3689,6 @@ pub unsafe fn vclz_u16(a: uint16x4_t) -> uint16x4_t {
 pub unsafe fn vclzq_u16(a: uint16x8_t) -> uint16x8_t {
     transmute(vclzq_s16_(transmute(a)))
 }
-
 #[doc = "Count leading zero bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclz_u32)"]
 #[doc = "## Safety"]
@@ -3863,7 +3712,6 @@ pub unsafe fn vclzq_u16(a: uint16x8_t) -> uint16x8_t {
 pub unsafe fn vclz_u32(a: uint32x2_t) -> uint32x2_t {
     transmute(vclz_s32_(transmute(a)))
 }
-
 #[doc = "Count leading zero bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclzq_u32)"]
 #[doc = "## Safety"]
@@ -3887,7 +3735,6 @@ pub unsafe fn vclz_u32(a: uint32x2_t) -> uint32x2_t {
 pub unsafe fn vclzq_u32(a: uint32x4_t) -> uint32x4_t {
     transmute(vclzq_s32_(transmute(a)))
 }
-
 #[doc = "Count leading zero bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclz_u8)"]
 #[doc = "## Safety"]
@@ -3911,7 +3758,6 @@ pub unsafe fn vclzq_u32(a: uint32x4_t) -> uint32x4_t {
 pub unsafe fn vclz_u8(a: uint8x8_t) -> uint8x8_t {
     transmute(vclz_s8_(transmute(a)))
 }
-
 #[doc = "Count leading zero bits"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclzq_u8)"]
 #[doc = "## Safety"]
@@ -3935,7 +3781,6 @@ pub unsafe fn vclz_u8(a: uint8x8_t) -> uint8x8_t {
 pub unsafe fn vclzq_u8(a: uint8x16_t) -> uint8x16_t {
     transmute(vclzq_s8_(transmute(a)))
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_f32)"]
 #[doc = "## Safety"]
@@ -3959,7 +3804,6 @@ pub unsafe fn vclzq_u8(a: uint8x16_t) -> uint8x16_t {
 pub unsafe fn vcreate_f32(a: u64) -> float32x2_t {
     transmute(a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_s8)"]
 #[doc = "## Safety"]
@@ -3983,7 +3827,6 @@ pub unsafe fn vcreate_f32(a: u64) -> float32x2_t {
 pub unsafe fn vcreate_s8(a: u64) -> int8x8_t {
     transmute(a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_s16)"]
 #[doc = "## Safety"]
@@ -4007,7 +3850,6 @@ pub unsafe fn vcreate_s8(a: u64) -> int8x8_t {
 pub unsafe fn vcreate_s16(a: u64) -> int16x4_t {
     transmute(a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_s32)"]
 #[doc = "## Safety"]
@@ -4031,7 +3873,6 @@ pub unsafe fn vcreate_s16(a: u64) -> int16x4_t {
 pub unsafe fn vcreate_s32(a: u64) -> int32x2_t {
     transmute(a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_s64)"]
 #[doc = "## Safety"]
@@ -4055,7 +3896,6 @@ pub unsafe fn vcreate_s32(a: u64) -> int32x2_t {
 pub unsafe fn vcreate_s64(a: u64) -> int64x1_t {
     transmute(a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_u8)"]
 #[doc = "## Safety"]
@@ -4079,7 +3919,6 @@ pub unsafe fn vcreate_s64(a: u64) -> int64x1_t {
 pub unsafe fn vcreate_u8(a: u64) -> uint8x8_t {
     transmute(a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_u16)"]
 #[doc = "## Safety"]
@@ -4103,7 +3942,6 @@ pub unsafe fn vcreate_u8(a: u64) -> uint8x8_t {
 pub unsafe fn vcreate_u16(a: u64) -> uint16x4_t {
     transmute(a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_u32)"]
 #[doc = "## Safety"]
@@ -4127,7 +3965,6 @@ pub unsafe fn vcreate_u16(a: u64) -> uint16x4_t {
 pub unsafe fn vcreate_u32(a: u64) -> uint32x2_t {
     transmute(a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_u64)"]
 #[doc = "## Safety"]
@@ -4151,7 +3988,6 @@ pub unsafe fn vcreate_u32(a: u64) -> uint32x2_t {
 pub unsafe fn vcreate_u64(a: u64) -> uint64x1_t {
     transmute(a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_p8)"]
 #[doc = "## Safety"]
@@ -4175,7 +4011,6 @@ pub unsafe fn vcreate_u64(a: u64) -> uint64x1_t {
 pub unsafe fn vcreate_p8(a: u64) -> poly8x8_t {
     transmute(a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_p16)"]
 #[doc = "## Safety"]
@@ -4199,7 +4034,6 @@ pub unsafe fn vcreate_p8(a: u64) -> poly8x8_t {
 pub unsafe fn vcreate_p16(a: u64) -> poly16x4_t {
     transmute(a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_p64)"]
 #[doc = "## Safety"]
@@ -4223,7 +4057,6 @@ pub unsafe fn vcreate_p16(a: u64) -> poly16x4_t {
 pub unsafe fn vcreate_p64(a: u64) -> poly64x1_t {
     transmute(a)
 }
-
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_f32_s32)"]
 #[doc = "## Safety"]
@@ -4247,7 +4080,6 @@ pub unsafe fn vcreate_p64(a: u64) -> poly64x1_t {
 pub unsafe fn vcvt_f32_s32(a: int32x2_t) -> float32x2_t {
     simd_cast(a)
 }
-
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_f32_s32)"]
 #[doc = "## Safety"]
@@ -4271,7 +4103,6 @@ pub unsafe fn vcvt_f32_s32(a: int32x2_t) -> float32x2_t {
 pub unsafe fn vcvtq_f32_s32(a: int32x4_t) -> float32x4_t {
     simd_cast(a)
 }
-
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_f32_u32)"]
 #[doc = "## Safety"]
@@ -4295,7 +4126,6 @@ pub unsafe fn vcvtq_f32_s32(a: int32x4_t) -> float32x4_t {
 pub unsafe fn vcvt_f32_u32(a: uint32x2_t) -> float32x2_t {
     simd_cast(a)
 }
-
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_f32_u32)"]
 #[doc = "## Safety"]
@@ -4319,7 +4149,6 @@ pub unsafe fn vcvt_f32_u32(a: uint32x2_t) -> float32x2_t {
 pub unsafe fn vcvtq_f32_u32(a: uint32x4_t) -> float32x4_t {
     simd_cast(a)
 }
-
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_f32_s32)"]
 #[doc = "## Safety"]
@@ -4341,7 +4170,6 @@ pub unsafe fn vcvt_n_f32_s32<const N: i32>(a: int32x2_t) -> float32x2_t {
     }
     _vcvt_n_f32_s32(a, N)
 }
-
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_f32_s32)"]
 #[doc = "## Safety"]
@@ -4363,7 +4191,6 @@ pub unsafe fn vcvtq_n_f32_s32<const N: i32>(a: int32x4_t) -> float32x4_t {
     }
     _vcvtq_n_f32_s32(a, N)
 }
-
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_f32_s32)"]
 #[doc = "## Safety"]
@@ -4385,7 +4212,6 @@ pub unsafe fn vcvt_n_f32_s32<const N: i32>(a: int32x2_t) -> float32x2_t {
     }
     _vcvt_n_f32_s32(a, N)
 }
-
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_f32_s32)"]
 #[doc = "## Safety"]
@@ -4407,7 +4233,6 @@ pub unsafe fn vcvtq_n_f32_s32<const N: i32>(a: int32x4_t) -> float32x4_t {
     }
     _vcvtq_n_f32_s32(a, N)
 }
-
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_f32_u32)"]
 #[doc = "## Safety"]
@@ -4429,7 +4254,6 @@ pub unsafe fn vcvt_n_f32_u32<const N: i32>(a: uint32x2_t) -> float32x2_t {
     }
     _vcvt_n_f32_u32(a.as_signed(), N)
 }
-
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_f32_u32)"]
 #[doc = "## Safety"]
@@ -4451,7 +4275,6 @@ pub unsafe fn vcvtq_n_f32_u32<const N: i32>(a: uint32x4_t) -> float32x4_t {
     }
     _vcvtq_n_f32_u32(a.as_signed(), N)
 }
-
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_f32_u32)"]
 #[doc = "## Safety"]
@@ -4473,7 +4296,6 @@ pub unsafe fn vcvt_n_f32_u32<const N: i32>(a: uint32x2_t) -> float32x2_t {
     }
     _vcvt_n_f32_u32(a.as_signed(), N)
 }
-
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_f32_u32)"]
 #[doc = "## Safety"]
@@ -4495,7 +4317,6 @@ pub unsafe fn vcvtq_n_f32_u32<const N: i32>(a: uint32x4_t) -> float32x4_t {
     }
     _vcvtq_n_f32_u32(a.as_signed(), N)
 }
-
 #[doc = "Floating-point convert to fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_s32_f32)"]
 #[doc = "## Safety"]
@@ -4517,7 +4338,6 @@ pub unsafe fn vcvt_n_s32_f32<const N: i32>(a: float32x2_t) -> int32x2_t {
     }
     _vcvt_n_s32_f32(a, N)
 }
-
 #[doc = "Floating-point convert to fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_s32_f32)"]
 #[doc = "## Safety"]
@@ -4539,7 +4359,6 @@ pub unsafe fn vcvtq_n_s32_f32<const N: i32>(a: float32x4_t) -> int32x4_t {
     }
     _vcvtq_n_s32_f32(a, N)
 }
-
 #[doc = "Floating-point convert to fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_s32_f32)"]
 #[doc = "## Safety"]
@@ -4561,7 +4380,6 @@ pub unsafe fn vcvt_n_s32_f32<const N: i32>(a: float32x2_t) -> int32x2_t {
     }
     _vcvt_n_s32_f32(a, N)
 }
-
 #[doc = "Floating-point convert to fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_s32_f32)"]
 #[doc = "## Safety"]
@@ -4583,7 +4401,6 @@ pub unsafe fn vcvtq_n_s32_f32<const N: i32>(a: float32x4_t) -> int32x4_t {
     }
     _vcvtq_n_s32_f32(a, N)
 }
-
 #[doc = "Floating-point convert to fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_u32_f32)"]
 #[doc = "## Safety"]
@@ -4605,7 +4422,6 @@ pub unsafe fn vcvt_n_u32_f32<const N: i32>(a: float32x2_t) -> uint32x2_t {
     }
     _vcvt_n_u32_f32(a, N).as_unsigned()
 }
-
 #[doc = "Floating-point convert to fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_u32_f32)"]
 #[doc = "## Safety"]
@@ -4627,7 +4443,6 @@ pub unsafe fn vcvtq_n_u32_f32<const N: i32>(a: float32x4_t) -> uint32x4_t {
     }
     _vcvtq_n_u32_f32(a, N).as_unsigned()
 }
-
 #[doc = "Floating-point convert to fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_u32_f32)"]
 #[doc = "## Safety"]
@@ -4649,7 +4464,6 @@ pub unsafe fn vcvt_n_u32_f32<const N: i32>(a: float32x2_t) -> uint32x2_t {
     }
     _vcvt_n_u32_f32(a, N).as_unsigned()
 }
-
 #[doc = "Floating-point convert to fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_u32_f32)"]
 #[doc = "## Safety"]
@@ -4671,7 +4485,6 @@ pub unsafe fn vcvtq_n_u32_f32<const N: i32>(a: float32x4_t) -> uint32x4_t {
     }
     _vcvtq_n_u32_f32(a, N).as_unsigned()
 }
-
 #[doc = "Floating-point convert to signed fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_s32_f32)"]
 #[doc = "## Safety"]
@@ -4703,7 +4516,6 @@ pub unsafe fn vcvt_s32_f32(a: float32x2_t) -> int32x2_t {
     }
     _vcvt_s32_f32(a)
 }
-
 #[doc = "Floating-point convert to signed fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_s32_f32)"]
 #[doc = "## Safety"]
@@ -4735,7 +4547,6 @@ pub unsafe fn vcvtq_s32_f32(a: float32x4_t) -> int32x4_t {
     }
     _vcvtq_s32_f32(a)
 }
-
 #[doc = "Floating-point convert to unsigned fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_u32_f32)"]
 #[doc = "## Safety"]
@@ -4767,7 +4578,6 @@ pub unsafe fn vcvt_u32_f32(a: float32x2_t) -> uint32x2_t {
     }
     _vcvt_u32_f32(a).as_unsigned()
 }
-
 #[doc = "Floating-point convert to unsigned fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_u32_f32)"]
 #[doc = "## Safety"]
@@ -4799,7 +4609,6 @@ pub unsafe fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
     }
     _vcvtq_u32_f32(a).as_unsigned()
 }
-
 #[doc = "Dot product arithmetic (indexed)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdot_lane_s32)"]
 #[doc = "## Safety"]
@@ -4827,7 +4636,6 @@ pub unsafe fn vdot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x
     let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
     vdot_s32(a, b, transmute(c))
 }
-
 #[doc = "Dot product arithmetic (indexed)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdotq_lane_s32)"]
 #[doc = "## Safety"]
@@ -4859,7 +4667,6 @@ pub unsafe fn vdotq_lane_s32<const LANE: i32>(
     let c: int32x4_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vdotq_s32(a, b, transmute(c))
 }
-
 #[doc = "Dot product arithmetic (indexed)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdot_lane_u32)"]
 #[doc = "## Safety"]
@@ -4891,7 +4698,6 @@ pub unsafe fn vdot_lane_u32<const LANE: i32>(
     let c: uint32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
     vdot_u32(a, b, transmute(c))
 }
-
 #[doc = "Dot product arithmetic (indexed)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdotq_lane_u32)"]
 #[doc = "## Safety"]
@@ -4923,7 +4729,6 @@ pub unsafe fn vdotq_lane_u32<const LANE: i32>(
     let c: uint32x4_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vdotq_u32(a, b, transmute(c))
 }
-
 #[doc = "Dot product arithmetic (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdot_s32)"]
 #[doc = "## Safety"]
@@ -4955,7 +4760,6 @@ pub unsafe fn vdot_s32(a: int32x2_t, b: int8x8_t, c: int8x8_t) -> int32x2_t {
     }
     _vdot_s32(a, b, c)
 }
-
 #[doc = "Dot product arithmetic (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdotq_s32)"]
 #[doc = "## Safety"]
@@ -4987,7 +4791,6 @@ pub unsafe fn vdotq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
     }
     _vdotq_s32(a, b, c)
 }
-
 #[doc = "Dot product arithmetic (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdot_u32)"]
 #[doc = "## Safety"]
@@ -5019,7 +4822,6 @@ pub unsafe fn vdot_u32(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t) -> uint32x2_t 
     }
     _vdot_u32(a.as_signed(), b.as_signed(), c.as_signed()).as_unsigned()
 }
-
 #[doc = "Dot product arithmetic (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdotq_u32)"]
 #[doc = "## Safety"]
@@ -5051,7 +4853,6 @@ pub unsafe fn vdotq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4
     }
     _vdotq_u32(a.as_signed(), b.as_signed(), c.as_signed()).as_unsigned()
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_f32)"]
 #[doc = "## Safety"]
@@ -5077,7 +4878,6 @@ pub unsafe fn vdup_lane_f32<const N: i32>(a: float32x2_t) -> float32x2_t {
     static_assert_uimm_bits!(N, 1);
     simd_shuffle!(a, a, [N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_s32)"]
 #[doc = "## Safety"]
@@ -5103,7 +4903,6 @@ pub unsafe fn vdup_lane_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(N, 1);
     simd_shuffle!(a, a, [N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_u32)"]
 #[doc = "## Safety"]
@@ -5129,7 +4928,6 @@ pub unsafe fn vdup_lane_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(N, 1);
     simd_shuffle!(a, a, [N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_f32)"]
 #[doc = "## Safety"]
@@ -5155,7 +4953,6 @@ pub unsafe fn vdupq_lane_f32<const N: i32>(a: float32x2_t) -> float32x4_t {
     static_assert_uimm_bits!(N, 1);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_s32)"]
 #[doc = "## Safety"]
@@ -5181,7 +4978,6 @@ pub unsafe fn vdupq_lane_s32<const N: i32>(a: int32x2_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 1);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_u32)"]
 #[doc = "## Safety"]
@@ -5207,7 +5003,6 @@ pub unsafe fn vdupq_lane_u32<const N: i32>(a: uint32x2_t) -> uint32x4_t {
     static_assert_uimm_bits!(N, 1);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_p16)"]
 #[doc = "## Safety"]
@@ -5233,7 +5028,6 @@ pub unsafe fn vdup_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x4_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_s16)"]
 #[doc = "## Safety"]
@@ -5259,7 +5053,6 @@ pub unsafe fn vdup_lane_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_u16)"]
 #[doc = "## Safety"]
@@ -5285,7 +5078,6 @@ pub unsafe fn vdup_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_p16)"]
 #[doc = "## Safety"]
@@ -5315,7 +5107,6 @@ pub unsafe fn vdupq_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x8_t {
         [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_s16)"]
 #[doc = "## Safety"]
@@ -5345,7 +5136,6 @@ pub unsafe fn vdupq_lane_s16<const N: i32>(a: int16x4_t) -> int16x8_t {
         [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_u16)"]
 #[doc = "## Safety"]
@@ -5375,7 +5165,6 @@ pub unsafe fn vdupq_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x8_t {
         [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_p8)"]
 #[doc = "## Safety"]
@@ -5405,7 +5194,6 @@ pub unsafe fn vdup_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x8_t {
         [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_s8)"]
 #[doc = "## Safety"]
@@ -5435,7 +5223,6 @@ pub unsafe fn vdup_lane_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
         [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_u8)"]
 #[doc = "## Safety"]
@@ -5465,7 +5252,6 @@ pub unsafe fn vdup_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
         [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_p8)"]
 #[doc = "## Safety"]
@@ -5498,7 +5284,6 @@ pub unsafe fn vdupq_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x16_t {
         ]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_s8)"]
 #[doc = "## Safety"]
@@ -5531,7 +5316,6 @@ pub unsafe fn vdupq_lane_s8<const N: i32>(a: int8x8_t) -> int8x16_t {
         ]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_u8)"]
 #[doc = "## Safety"]
@@ -5564,7 +5348,6 @@ pub unsafe fn vdupq_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x16_t {
         ]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_s64)"]
 #[doc = "## Safety"]
@@ -5590,7 +5373,6 @@ pub unsafe fn vdup_lane_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
     static_assert!(N == 0);
     a
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_u64)"]
 #[doc = "## Safety"]
@@ -5616,7 +5398,6 @@ pub unsafe fn vdup_lane_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
     static_assert!(N == 0);
     a
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_f32)"]
 #[doc = "## Safety"]
@@ -5642,7 +5423,6 @@ pub unsafe fn vdup_laneq_f32<const N: i32>(a: float32x4_t) -> float32x2_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_s32)"]
 #[doc = "## Safety"]
@@ -5668,7 +5448,6 @@ pub unsafe fn vdup_laneq_s32<const N: i32>(a: int32x4_t) -> int32x2_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_u32)"]
 #[doc = "## Safety"]
@@ -5694,7 +5473,6 @@ pub unsafe fn vdup_laneq_u32<const N: i32>(a: uint32x4_t) -> uint32x2_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_f32)"]
 #[doc = "## Safety"]
@@ -5720,7 +5498,6 @@ pub unsafe fn vdupq_laneq_f32<const N: i32>(a: float32x4_t) -> float32x4_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_s32)"]
 #[doc = "## Safety"]
@@ -5746,7 +5523,6 @@ pub unsafe fn vdupq_laneq_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_u32)"]
 #[doc = "## Safety"]
@@ -5772,7 +5548,6 @@ pub unsafe fn vdupq_laneq_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(N, 2);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_p16)"]
 #[doc = "## Safety"]
@@ -5798,7 +5573,6 @@ pub unsafe fn vdup_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x4_t {
     static_assert_uimm_bits!(N, 3);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_s16)"]
 #[doc = "## Safety"]
@@ -5824,7 +5598,6 @@ pub unsafe fn vdup_laneq_s16<const N: i32>(a: int16x8_t) -> int16x4_t {
     static_assert_uimm_bits!(N, 3);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_u16)"]
 #[doc = "## Safety"]
@@ -5850,7 +5623,6 @@ pub unsafe fn vdup_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x4_t {
     static_assert_uimm_bits!(N, 3);
     simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_p16)"]
 #[doc = "## Safety"]
@@ -5880,7 +5652,6 @@ pub unsafe fn vdupq_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x8_t {
         [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_s16)"]
 #[doc = "## Safety"]
@@ -5910,7 +5681,6 @@ pub unsafe fn vdupq_laneq_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
         [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_u16)"]
 #[doc = "## Safety"]
@@ -5940,7 +5710,6 @@ pub unsafe fn vdupq_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
         [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_p8)"]
 #[doc = "## Safety"]
@@ -5970,7 +5739,6 @@ pub unsafe fn vdup_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x8_t {
         [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_s8)"]
 #[doc = "## Safety"]
@@ -6000,7 +5768,6 @@ pub unsafe fn vdup_laneq_s8<const N: i32>(a: int8x16_t) -> int8x8_t {
         [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_u8)"]
 #[doc = "## Safety"]
@@ -6030,7 +5797,6 @@ pub unsafe fn vdup_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x8_t {
         [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_p8)"]
 #[doc = "## Safety"]
@@ -6063,7 +5829,6 @@ pub unsafe fn vdupq_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x16_t {
         ]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_s8)"]
 #[doc = "## Safety"]
@@ -6096,7 +5861,6 @@ pub unsafe fn vdupq_laneq_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
         ]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_u8)"]
 #[doc = "## Safety"]
@@ -6129,7 +5893,6 @@ pub unsafe fn vdupq_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
         ]
     )
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_s64)"]
 #[doc = "## Safety"]
@@ -6155,7 +5918,6 @@ pub unsafe fn vdup_laneq_s64<const N: i32>(a: int64x2_t) -> int64x1_t {
     static_assert_uimm_bits!(N, 1);
     transmute::<i64, _>(simd_extract!(a, N as u32))
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_u64)"]
 #[doc = "## Safety"]
@@ -6181,7 +5943,6 @@ pub unsafe fn vdup_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x1_t {
     static_assert_uimm_bits!(N, 1);
     transmute::<u64, _>(simd_extract!(a, N as u32))
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_s64)"]
 #[doc = "## Safety"]
@@ -6207,7 +5968,6 @@ pub unsafe fn vdupq_lane_s64<const N: i32>(a: int64x1_t) -> int64x2_t {
     static_assert!(N == 0);
     simd_shuffle!(a, a, [N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_u64)"]
 #[doc = "## Safety"]
@@ -6233,7 +5993,6 @@ pub unsafe fn vdupq_lane_u64<const N: i32>(a: uint64x1_t) -> uint64x2_t {
     static_assert!(N == 0);
     simd_shuffle!(a, a, [N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_s64)"]
 #[doc = "## Safety"]
@@ -6259,7 +6018,6 @@ pub unsafe fn vdupq_laneq_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
     static_assert_uimm_bits!(N, 1);
     simd_shuffle!(a, a, [N as u32, N as u32])
 }
-
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_u64)"]
 #[doc = "## Safety"]
@@ -6285,7 +6043,6 @@ pub unsafe fn vdupq_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(N, 1);
     simd_shuffle!(a, a, [N as u32, N as u32])
 }
-
 #[doc = "Vector bitwise exclusive or (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor_s8)"]
 #[doc = "## Safety"]
@@ -6309,7 +6066,6 @@ pub unsafe fn vdupq_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
 pub unsafe fn veor_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     simd_xor(a, b)
 }
-
 #[doc = "Vector bitwise exclusive or (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veorq_s8)"]
 #[doc = "## Safety"]
@@ -6333,7 +6089,6 @@ pub unsafe fn veor_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 pub unsafe fn veorq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     simd_xor(a, b)
 }
-
 #[doc = "Vector bitwise exclusive or (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor_s16)"]
 #[doc = "## Safety"]
@@ -6357,7 +6112,6 @@ pub unsafe fn veorq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 pub unsafe fn veor_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     simd_xor(a, b)
 }
-
 #[doc = "Vector bitwise exclusive or (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veorq_s16)"]
 #[doc = "## Safety"]
@@ -6381,7 +6135,6 @@ pub unsafe fn veor_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 pub unsafe fn veorq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     simd_xor(a, b)
 }
-
 #[doc = "Vector bitwise exclusive or (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor_s32)"]
 #[doc = "## Safety"]
@@ -6405,7 +6158,6 @@ pub unsafe fn veorq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 pub unsafe fn veor_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_xor(a, b)
 }
-
 #[doc = "Vector bitwise exclusive or (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veorq_s32)"]
 #[doc = "## Safety"]
@@ -6429,7 +6181,6 @@ pub unsafe fn veor_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 pub unsafe fn veorq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_xor(a, b)
 }
-
 #[doc = "Vector bitwise exclusive or (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor_s64)"]
 #[doc = "## Safety"]
@@ -6453,7 +6204,6 @@ pub unsafe fn veorq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 pub unsafe fn veor_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     simd_xor(a, b)
 }
-
 #[doc = "Vector bitwise exclusive or (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veorq_s64)"]
 #[doc = "## Safety"]
@@ -6477,7 +6227,6 @@ pub unsafe fn veor_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 pub unsafe fn veorq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     simd_xor(a, b)
 }
-
 #[doc = "Vector bitwise exclusive or (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor_u8)"]
 #[doc = "## Safety"]
@@ -6501,7 +6250,6 @@ pub unsafe fn veorq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 pub unsafe fn veor_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_xor(a, b)
 }
-
 #[doc = "Vector bitwise exclusive or (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veorq_u8)"]
 #[doc = "## Safety"]
@@ -6525,7 +6273,6 @@ pub unsafe fn veor_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 pub unsafe fn veorq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_xor(a, b)
 }
-
 #[doc = "Vector bitwise exclusive or (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor_u16)"]
 #[doc = "## Safety"]
@@ -6549,7 +6296,6 @@ pub unsafe fn veorq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 pub unsafe fn veor_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_xor(a, b)
 }
-
 #[doc = "Vector bitwise exclusive or (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veorq_u16)"]
 #[doc = "## Safety"]
@@ -6573,7 +6319,6 @@ pub unsafe fn veor_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 pub unsafe fn veorq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_xor(a, b)
 }
-
 #[doc = "Vector bitwise exclusive or (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor_u32)"]
 #[doc = "## Safety"]
@@ -6597,7 +6342,6 @@ pub unsafe fn veorq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 pub unsafe fn veor_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_xor(a, b)
 }
-
 #[doc = "Vector bitwise exclusive or (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veorq_u32)"]
 #[doc = "## Safety"]
@@ -6621,7 +6365,6 @@ pub unsafe fn veor_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 pub unsafe fn veorq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_xor(a, b)
 }
-
 #[doc = "Vector bitwise exclusive or (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor_u64)"]
 #[doc = "## Safety"]
@@ -6645,7 +6388,6 @@ pub unsafe fn veorq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 pub unsafe fn veor_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     simd_xor(a, b)
 }
-
 #[doc = "Vector bitwise exclusive or (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veorq_u64)"]
 #[doc = "## Safety"]
@@ -6669,7 +6411,6 @@ pub unsafe fn veor_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 pub unsafe fn veorq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     simd_xor(a, b)
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_f32)"]
 #[doc = "## Safety"]
@@ -6699,7 +6440,6 @@ pub unsafe fn vext_f32<const N: i32>(a: float32x2_t, b: float32x2_t) -> float32x
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_s32)"]
 #[doc = "## Safety"]
@@ -6729,7 +6469,6 @@ pub unsafe fn vext_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_u32)"]
 #[doc = "## Safety"]
@@ -6759,7 +6498,6 @@ pub unsafe fn vext_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_s8)"]
 #[doc = "## Safety"]
@@ -6795,7 +6533,6 @@ pub unsafe fn vext_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_s16)"]
 #[doc = "## Safety"]
@@ -6831,7 +6568,6 @@ pub unsafe fn vextq_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_u8)"]
 #[doc = "## Safety"]
@@ -6867,7 +6603,6 @@ pub unsafe fn vext_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_u16)"]
 #[doc = "## Safety"]
@@ -6903,7 +6638,6 @@ pub unsafe fn vextq_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_p8)"]
 #[doc = "## Safety"]
@@ -6939,7 +6673,6 @@ pub unsafe fn vext_p8<const N: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_p16)"]
 #[doc = "## Safety"]
@@ -6975,7 +6708,6 @@ pub unsafe fn vextq_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_f32)"]
 #[doc = "## Safety"]
@@ -7007,7 +6739,6 @@ pub unsafe fn vextq_f32<const N: i32>(a: float32x4_t, b: float32x4_t) -> float32
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_s16)"]
 #[doc = "## Safety"]
@@ -7039,7 +6770,6 @@ pub unsafe fn vext_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_s32)"]
 #[doc = "## Safety"]
@@ -7071,7 +6801,6 @@ pub unsafe fn vextq_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_u16)"]
 #[doc = "## Safety"]
@@ -7103,7 +6832,6 @@ pub unsafe fn vext_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_u32)"]
 #[doc = "## Safety"]
@@ -7135,7 +6863,6 @@ pub unsafe fn vextq_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_p16)"]
 #[doc = "## Safety"]
@@ -7167,7 +6894,6 @@ pub unsafe fn vext_p16<const N: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_s64)"]
 #[doc = "## Safety"]
@@ -7197,7 +6923,6 @@ pub unsafe fn vextq_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_u64)"]
 #[doc = "## Safety"]
@@ -7227,7 +6952,6 @@ pub unsafe fn vextq_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_s8)"]
 #[doc = "## Safety"]
@@ -7331,7 +7055,6 @@ pub unsafe fn vextq_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_u8)"]
 #[doc = "## Safety"]
@@ -7435,7 +7158,6 @@ pub unsafe fn vextq_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_p8)"]
 #[doc = "## Safety"]
@@ -7539,7 +7261,6 @@ pub unsafe fn vextq_p8<const N: i32>(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t
         _ => unreachable_unchecked(),
     }
 }
-
 #[doc = "Floating-point fused Multiply-Add to accumulator(vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_f32)"]
 #[doc = "## Safety"]
@@ -7568,7 +7289,6 @@ pub unsafe fn vfma_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float3
     }
     _vfma_f32(b, c, a)
 }
-
 #[doc = "Floating-point fused Multiply-Add to accumulator(vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmaq_f32)"]
 #[doc = "## Safety"]
@@ -7597,7 +7317,6 @@ pub unsafe fn vfmaq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float
     }
     _vfmaq_f32(b, c, a)
 }
-
 #[doc = "Floating-point fused Multiply-Add to accumulator(vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_n_f32)"]
 #[doc = "## Safety"]
@@ -7621,7 +7340,6 @@ pub unsafe fn vfmaq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float
 pub unsafe fn vfma_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t {
     vfma_f32(a, b, vdup_n_f32_vfp4(c))
 }
-
 #[doc = "Floating-point fused Multiply-Add to accumulator(vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmaq_n_f32)"]
 #[doc = "## Safety"]
@@ -7645,7 +7363,6 @@ pub unsafe fn vfma_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t 
 pub unsafe fn vfmaq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t {
     vfmaq_f32(a, b, vdupq_n_f32_vfp4(c))
 }
-
 #[doc = "Floating-point fused multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfms_f32)"]
 #[doc = "## Safety"]
@@ -7670,7 +7387,6 @@ pub unsafe fn vfms_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float3
     let b: float32x2_t = simd_neg(b);
     vfma_f32(a, b, c)
 }
-
 #[doc = "Floating-point fused multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsq_f32)"]
 #[doc = "## Safety"]
@@ -7695,7 +7411,6 @@ pub unsafe fn vfmsq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float
     let b: float32x4_t = simd_neg(b);
     vfmaq_f32(a, b, c)
 }
-
 #[doc = "Floating-point fused Multiply-subtract to accumulator(vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfms_n_f32)"]
 #[doc = "## Safety"]
@@ -7719,7 +7434,6 @@ pub unsafe fn vfmsq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float
 pub unsafe fn vfms_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t {
     vfms_f32(a, b, vdup_n_f32_vfp4(c))
 }
-
 #[doc = "Floating-point fused Multiply-subtract to accumulator(vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsq_n_f32)"]
 #[doc = "## Safety"]
@@ -7743,7 +7457,6 @@ pub unsafe fn vfms_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t 
 pub unsafe fn vfmsq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t {
     vfmsq_f32(a, b, vdupq_n_f32_vfp4(c))
 }
-
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhadd_s8)"]
 #[doc = "## Safety"]
@@ -7775,7 +7488,6 @@ pub unsafe fn vhadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     }
     _vhadd_s8(a, b)
 }
-
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhaddq_s8)"]
 #[doc = "## Safety"]
@@ -7807,7 +7519,6 @@ pub unsafe fn vhaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     }
     _vhaddq_s8(a, b)
 }
-
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhadd_s16)"]
 #[doc = "## Safety"]
@@ -7839,7 +7550,6 @@ pub unsafe fn vhadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     }
     _vhadd_s16(a, b)
 }
-
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhaddq_s16)"]
 #[doc = "## Safety"]
@@ -7871,7 +7581,6 @@ pub unsafe fn vhaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     }
     _vhaddq_s16(a, b)
 }
-
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhadd_s32)"]
 #[doc = "## Safety"]
@@ -7903,7 +7612,6 @@ pub unsafe fn vhadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     }
     _vhadd_s32(a, b)
 }
-
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhaddq_s32)"]
 #[doc = "## Safety"]
@@ -7935,7 +7643,6 @@ pub unsafe fn vhaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     }
     _vhaddq_s32(a, b)
 }
-
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhadd_u8)"]
 #[doc = "## Safety"]
@@ -7967,7 +7674,6 @@ pub unsafe fn vhadd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     }
     _vhadd_u8(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhaddq_u8)"]
 #[doc = "## Safety"]
@@ -7999,7 +7705,6 @@ pub unsafe fn vhaddq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     }
     _vhaddq_u8(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhadd_u16)"]
 #[doc = "## Safety"]
@@ -8031,7 +7736,6 @@ pub unsafe fn vhadd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     }
     _vhadd_u16(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhaddq_u16)"]
 #[doc = "## Safety"]
@@ -8063,7 +7767,6 @@ pub unsafe fn vhaddq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     }
     _vhaddq_u16(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhadd_u32)"]
 #[doc = "## Safety"]
@@ -8095,7 +7798,6 @@ pub unsafe fn vhadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     }
     _vhadd_u32(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhaddq_u32)"]
 #[doc = "## Safety"]
@@ -8127,7 +7829,6 @@ pub unsafe fn vhaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     }
     _vhaddq_u32(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Signed halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsub_s16)"]
 #[doc = "## Safety"]
@@ -8159,7 +7860,6 @@ pub unsafe fn vhsub_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     }
     _vhsub_s16(a, b)
 }
-
 #[doc = "Signed halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsubq_s16)"]
 #[doc = "## Safety"]
@@ -8191,7 +7891,6 @@ pub unsafe fn vhsubq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     }
     _vhsubq_s16(a, b)
 }
-
 #[doc = "Signed halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsub_s32)"]
 #[doc = "## Safety"]
@@ -8223,7 +7922,6 @@ pub unsafe fn vhsub_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     }
     _vhsub_s32(a, b)
 }
-
 #[doc = "Signed halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsubq_s32)"]
 #[doc = "## Safety"]
@@ -8255,7 +7953,6 @@ pub unsafe fn vhsubq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     }
     _vhsubq_s32(a, b)
 }
-
 #[doc = "Signed halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsub_s8)"]
 #[doc = "## Safety"]
@@ -8287,7 +7984,6 @@ pub unsafe fn vhsub_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     }
     _vhsub_s8(a, b)
 }
-
 #[doc = "Signed halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsubq_s8)"]
 #[doc = "## Safety"]
@@ -8319,7 +8015,6 @@ pub unsafe fn vhsubq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     }
     _vhsubq_s8(a, b)
 }
-
 #[doc = "Signed halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsub_u8)"]
 #[doc = "## Safety"]
@@ -8351,7 +8046,6 @@ pub unsafe fn vhsub_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     }
     _vhsub_u8(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Signed halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsubq_u8)"]
 #[doc = "## Safety"]
@@ -8383,7 +8077,6 @@ pub unsafe fn vhsubq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     }
     _vhsubq_u8(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Signed halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsub_u16)"]
 #[doc = "## Safety"]
@@ -8415,7 +8108,6 @@ pub unsafe fn vhsub_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     }
     _vhsub_u16(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Signed halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsubq_u16)"]
 #[doc = "## Safety"]
@@ -8447,7 +8139,6 @@ pub unsafe fn vhsubq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     }
     _vhsubq_u16(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Signed halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsub_u32)"]
 #[doc = "## Safety"]
@@ -8479,7 +8170,6 @@ pub unsafe fn vhsub_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     }
     _vhsub_u32(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Signed halving subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsubq_u32)"]
 #[doc = "## Safety"]
@@ -8511,7 +8201,6 @@ pub unsafe fn vhsubq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     }
     _vhsubq_u32(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f32_x2)"]
 #[doc = "## Safety"]
@@ -8543,7 +8232,6 @@ pub unsafe fn vld1_f32_x2(a: *const f32) -> float32x2x2_t {
     }
     _vld1_f32_x2(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f32_x3)"]
 #[doc = "## Safety"]
@@ -8575,7 +8263,6 @@ pub unsafe fn vld1_f32_x3(a: *const f32) -> float32x2x3_t {
     }
     _vld1_f32_x3(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f32_x4)"]
 #[doc = "## Safety"]
@@ -8607,7 +8294,6 @@ pub unsafe fn vld1_f32_x4(a: *const f32) -> float32x2x4_t {
     }
     _vld1_f32_x4(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f32_x2)"]
 #[doc = "## Safety"]
@@ -8639,7 +8325,6 @@ pub unsafe fn vld1q_f32_x2(a: *const f32) -> float32x4x2_t {
     }
     _vld1q_f32_x2(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f32_x3)"]
 #[doc = "## Safety"]
@@ -8671,7 +8356,6 @@ pub unsafe fn vld1q_f32_x3(a: *const f32) -> float32x4x3_t {
     }
     _vld1q_f32_x3(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f32_x4)"]
 #[doc = "## Safety"]
@@ -8703,7 +8387,6 @@ pub unsafe fn vld1q_f32_x4(a: *const f32) -> float32x4x4_t {
     }
     _vld1q_f32_x4(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p64_x2)"]
 #[doc = "## Safety"]
@@ -8727,7 +8410,6 @@ pub unsafe fn vld1q_f32_x4(a: *const f32) -> float32x4x4_t {
 pub unsafe fn vld1_p64_x2(a: *const p64) -> poly64x1x2_t {
     transmute(vld1_s64_x2(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p64_x3)"]
 #[doc = "## Safety"]
@@ -8751,7 +8433,6 @@ pub unsafe fn vld1_p64_x2(a: *const p64) -> poly64x1x2_t {
 pub unsafe fn vld1_p64_x3(a: *const p64) -> poly64x1x3_t {
     transmute(vld1_s64_x3(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p64_x4)"]
 #[doc = "## Safety"]
@@ -8775,7 +8456,6 @@ pub unsafe fn vld1_p64_x3(a: *const p64) -> poly64x1x3_t {
 pub unsafe fn vld1_p64_x4(a: *const p64) -> poly64x1x4_t {
     transmute(vld1_s64_x4(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p64_x2)"]
 #[doc = "## Safety"]
@@ -8799,7 +8479,6 @@ pub unsafe fn vld1_p64_x4(a: *const p64) -> poly64x1x4_t {
 pub unsafe fn vld1q_p64_x2(a: *const p64) -> poly64x2x2_t {
     transmute(vld1q_s64_x2(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p64_x3)"]
 #[doc = "## Safety"]
@@ -8823,7 +8502,6 @@ pub unsafe fn vld1q_p64_x2(a: *const p64) -> poly64x2x2_t {
 pub unsafe fn vld1q_p64_x3(a: *const p64) -> poly64x2x3_t {
     transmute(vld1q_s64_x3(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p64_x4)"]
 #[doc = "## Safety"]
@@ -8847,7 +8525,6 @@ pub unsafe fn vld1q_p64_x3(a: *const p64) -> poly64x2x3_t {
 pub unsafe fn vld1q_p64_x4(a: *const p64) -> poly64x2x4_t {
     transmute(vld1q_s64_x4(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s8_x2)"]
 #[doc = "## Safety"]
@@ -8879,7 +8556,6 @@ pub unsafe fn vld1_s8_x2(a: *const i8) -> int8x8x2_t {
     }
     _vld1_s8_x2(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s8_x3)"]
 #[doc = "## Safety"]
@@ -8911,7 +8587,6 @@ pub unsafe fn vld1_s8_x3(a: *const i8) -> int8x8x3_t {
     }
     _vld1_s8_x3(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s8_x4)"]
 #[doc = "## Safety"]
@@ -8943,7 +8618,6 @@ pub unsafe fn vld1_s8_x4(a: *const i8) -> int8x8x4_t {
     }
     _vld1_s8_x4(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s8_x2)"]
 #[doc = "## Safety"]
@@ -8975,7 +8649,6 @@ pub unsafe fn vld1q_s8_x2(a: *const i8) -> int8x16x2_t {
     }
     _vld1q_s8_x2(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s8_x3)"]
 #[doc = "## Safety"]
@@ -9007,7 +8680,6 @@ pub unsafe fn vld1q_s8_x3(a: *const i8) -> int8x16x3_t {
     }
     _vld1q_s8_x3(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s8_x4)"]
 #[doc = "## Safety"]
@@ -9039,7 +8711,6 @@ pub unsafe fn vld1q_s8_x4(a: *const i8) -> int8x16x4_t {
     }
     _vld1q_s8_x4(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s16_x2)"]
 #[doc = "## Safety"]
@@ -9071,7 +8742,6 @@ pub unsafe fn vld1_s16_x2(a: *const i16) -> int16x4x2_t {
     }
     _vld1_s16_x2(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s16_x3)"]
 #[doc = "## Safety"]
@@ -9103,7 +8773,6 @@ pub unsafe fn vld1_s16_x3(a: *const i16) -> int16x4x3_t {
     }
     _vld1_s16_x3(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s16_x4)"]
 #[doc = "## Safety"]
@@ -9135,7 +8804,6 @@ pub unsafe fn vld1_s16_x4(a: *const i16) -> int16x4x4_t {
     }
     _vld1_s16_x4(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s16_x2)"]
 #[doc = "## Safety"]
@@ -9167,7 +8835,6 @@ pub unsafe fn vld1q_s16_x2(a: *const i16) -> int16x8x2_t {
     }
     _vld1q_s16_x2(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s16_x3)"]
 #[doc = "## Safety"]
@@ -9199,7 +8866,6 @@ pub unsafe fn vld1q_s16_x3(a: *const i16) -> int16x8x3_t {
     }
     _vld1q_s16_x3(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s16_x4)"]
 #[doc = "## Safety"]
@@ -9231,7 +8897,6 @@ pub unsafe fn vld1q_s16_x4(a: *const i16) -> int16x8x4_t {
     }
     _vld1q_s16_x4(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s32_x2)"]
 #[doc = "## Safety"]
@@ -9263,7 +8928,6 @@ pub unsafe fn vld1_s32_x2(a: *const i32) -> int32x2x2_t {
     }
     _vld1_s32_x2(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s32_x3)"]
 #[doc = "## Safety"]
@@ -9295,7 +8959,6 @@ pub unsafe fn vld1_s32_x3(a: *const i32) -> int32x2x3_t {
     }
     _vld1_s32_x3(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s32_x4)"]
 #[doc = "## Safety"]
@@ -9327,7 +8990,6 @@ pub unsafe fn vld1_s32_x4(a: *const i32) -> int32x2x4_t {
     }
     _vld1_s32_x4(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s32_x2)"]
 #[doc = "## Safety"]
@@ -9359,7 +9021,6 @@ pub unsafe fn vld1q_s32_x2(a: *const i32) -> int32x4x2_t {
     }
     _vld1q_s32_x2(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s32_x3)"]
 #[doc = "## Safety"]
@@ -9391,7 +9052,6 @@ pub unsafe fn vld1q_s32_x3(a: *const i32) -> int32x4x3_t {
     }
     _vld1q_s32_x3(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s32_x4)"]
 #[doc = "## Safety"]
@@ -9423,7 +9083,6 @@ pub unsafe fn vld1q_s32_x4(a: *const i32) -> int32x4x4_t {
     }
     _vld1q_s32_x4(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s64_x2)"]
 #[doc = "## Safety"]
@@ -9455,7 +9114,6 @@ pub unsafe fn vld1_s64_x2(a: *const i64) -> int64x1x2_t {
     }
     _vld1_s64_x2(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s64_x3)"]
 #[doc = "## Safety"]
@@ -9487,7 +9145,6 @@ pub unsafe fn vld1_s64_x3(a: *const i64) -> int64x1x3_t {
     }
     _vld1_s64_x3(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s64_x4)"]
 #[doc = "## Safety"]
@@ -9519,7 +9176,6 @@ pub unsafe fn vld1_s64_x4(a: *const i64) -> int64x1x4_t {
     }
     _vld1_s64_x4(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s64_x2)"]
 #[doc = "## Safety"]
@@ -9551,7 +9207,6 @@ pub unsafe fn vld1q_s64_x2(a: *const i64) -> int64x2x2_t {
     }
     _vld1q_s64_x2(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s64_x3)"]
 #[doc = "## Safety"]
@@ -9583,7 +9238,6 @@ pub unsafe fn vld1q_s64_x3(a: *const i64) -> int64x2x3_t {
     }
     _vld1q_s64_x3(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s64_x4)"]
 #[doc = "## Safety"]
@@ -9615,7 +9269,6 @@ pub unsafe fn vld1q_s64_x4(a: *const i64) -> int64x2x4_t {
     }
     _vld1q_s64_x4(a)
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u8_x2)"]
 #[doc = "## Safety"]
@@ -9639,7 +9292,6 @@ pub unsafe fn vld1q_s64_x4(a: *const i64) -> int64x2x4_t {
 pub unsafe fn vld1_u8_x2(a: *const u8) -> uint8x8x2_t {
     transmute(vld1_s8_x2(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u8_x3)"]
 #[doc = "## Safety"]
@@ -9663,7 +9315,6 @@ pub unsafe fn vld1_u8_x2(a: *const u8) -> uint8x8x2_t {
 pub unsafe fn vld1_u8_x3(a: *const u8) -> uint8x8x3_t {
     transmute(vld1_s8_x3(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u8_x4)"]
 #[doc = "## Safety"]
@@ -9687,7 +9338,6 @@ pub unsafe fn vld1_u8_x3(a: *const u8) -> uint8x8x3_t {
 pub unsafe fn vld1_u8_x4(a: *const u8) -> uint8x8x4_t {
     transmute(vld1_s8_x4(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u8_x2)"]
 #[doc = "## Safety"]
@@ -9711,7 +9361,6 @@ pub unsafe fn vld1_u8_x4(a: *const u8) -> uint8x8x4_t {
 pub unsafe fn vld1q_u8_x2(a: *const u8) -> uint8x16x2_t {
     transmute(vld1q_s8_x2(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u8_x3)"]
 #[doc = "## Safety"]
@@ -9735,7 +9384,6 @@ pub unsafe fn vld1q_u8_x2(a: *const u8) -> uint8x16x2_t {
 pub unsafe fn vld1q_u8_x3(a: *const u8) -> uint8x16x3_t {
     transmute(vld1q_s8_x3(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u8_x4)"]
 #[doc = "## Safety"]
@@ -9759,7 +9407,6 @@ pub unsafe fn vld1q_u8_x3(a: *const u8) -> uint8x16x3_t {
 pub unsafe fn vld1q_u8_x4(a: *const u8) -> uint8x16x4_t {
     transmute(vld1q_s8_x4(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u16_x2)"]
 #[doc = "## Safety"]
@@ -9783,7 +9430,6 @@ pub unsafe fn vld1q_u8_x4(a: *const u8) -> uint8x16x4_t {
 pub unsafe fn vld1_u16_x2(a: *const u16) -> uint16x4x2_t {
     transmute(vld1_s16_x2(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u16_x3)"]
 #[doc = "## Safety"]
@@ -9807,7 +9453,6 @@ pub unsafe fn vld1_u16_x2(a: *const u16) -> uint16x4x2_t {
 pub unsafe fn vld1_u16_x3(a: *const u16) -> uint16x4x3_t {
     transmute(vld1_s16_x3(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u16_x4)"]
 #[doc = "## Safety"]
@@ -9831,7 +9476,6 @@ pub unsafe fn vld1_u16_x3(a: *const u16) -> uint16x4x3_t {
 pub unsafe fn vld1_u16_x4(a: *const u16) -> uint16x4x4_t {
     transmute(vld1_s16_x4(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u16_x2)"]
 #[doc = "## Safety"]
@@ -9855,7 +9499,6 @@ pub unsafe fn vld1_u16_x4(a: *const u16) -> uint16x4x4_t {
 pub unsafe fn vld1q_u16_x2(a: *const u16) -> uint16x8x2_t {
     transmute(vld1q_s16_x2(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u16_x3)"]
 #[doc = "## Safety"]
@@ -9879,7 +9522,6 @@ pub unsafe fn vld1q_u16_x2(a: *const u16) -> uint16x8x2_t {
 pub unsafe fn vld1q_u16_x3(a: *const u16) -> uint16x8x3_t {
     transmute(vld1q_s16_x3(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u16_x4)"]
 #[doc = "## Safety"]
@@ -9903,7 +9545,6 @@ pub unsafe fn vld1q_u16_x3(a: *const u16) -> uint16x8x3_t {
 pub unsafe fn vld1q_u16_x4(a: *const u16) -> uint16x8x4_t {
     transmute(vld1q_s16_x4(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u32_x2)"]
 #[doc = "## Safety"]
@@ -9927,7 +9568,6 @@ pub unsafe fn vld1q_u16_x4(a: *const u16) -> uint16x8x4_t {
 pub unsafe fn vld1_u32_x2(a: *const u32) -> uint32x2x2_t {
     transmute(vld1_s32_x2(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u32_x3)"]
 #[doc = "## Safety"]
@@ -9951,7 +9591,6 @@ pub unsafe fn vld1_u32_x2(a: *const u32) -> uint32x2x2_t {
 pub unsafe fn vld1_u32_x3(a: *const u32) -> uint32x2x3_t {
     transmute(vld1_s32_x3(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u32_x4)"]
 #[doc = "## Safety"]
@@ -9975,7 +9614,6 @@ pub unsafe fn vld1_u32_x3(a: *const u32) -> uint32x2x3_t {
 pub unsafe fn vld1_u32_x4(a: *const u32) -> uint32x2x4_t {
     transmute(vld1_s32_x4(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u32_x2)"]
 #[doc = "## Safety"]
@@ -9999,7 +9637,6 @@ pub unsafe fn vld1_u32_x4(a: *const u32) -> uint32x2x4_t {
 pub unsafe fn vld1q_u32_x2(a: *const u32) -> uint32x4x2_t {
     transmute(vld1q_s32_x2(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u32_x3)"]
 #[doc = "## Safety"]
@@ -10023,7 +9660,6 @@ pub unsafe fn vld1q_u32_x2(a: *const u32) -> uint32x4x2_t {
 pub unsafe fn vld1q_u32_x3(a: *const u32) -> uint32x4x3_t {
     transmute(vld1q_s32_x3(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u32_x4)"]
 #[doc = "## Safety"]
@@ -10047,7 +9683,6 @@ pub unsafe fn vld1q_u32_x3(a: *const u32) -> uint32x4x3_t {
 pub unsafe fn vld1q_u32_x4(a: *const u32) -> uint32x4x4_t {
     transmute(vld1q_s32_x4(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u64_x2)"]
 #[doc = "## Safety"]
@@ -10071,7 +9706,6 @@ pub unsafe fn vld1q_u32_x4(a: *const u32) -> uint32x4x4_t {
 pub unsafe fn vld1_u64_x2(a: *const u64) -> uint64x1x2_t {
     transmute(vld1_s64_x2(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u64_x3)"]
 #[doc = "## Safety"]
@@ -10095,7 +9729,6 @@ pub unsafe fn vld1_u64_x2(a: *const u64) -> uint64x1x2_t {
 pub unsafe fn vld1_u64_x3(a: *const u64) -> uint64x1x3_t {
     transmute(vld1_s64_x3(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u64_x4)"]
 #[doc = "## Safety"]
@@ -10119,7 +9752,6 @@ pub unsafe fn vld1_u64_x3(a: *const u64) -> uint64x1x3_t {
 pub unsafe fn vld1_u64_x4(a: *const u64) -> uint64x1x4_t {
     transmute(vld1_s64_x4(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u64_x2)"]
 #[doc = "## Safety"]
@@ -10143,7 +9775,6 @@ pub unsafe fn vld1_u64_x4(a: *const u64) -> uint64x1x4_t {
 pub unsafe fn vld1q_u64_x2(a: *const u64) -> uint64x2x2_t {
     transmute(vld1q_s64_x2(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u64_x3)"]
 #[doc = "## Safety"]
@@ -10167,7 +9798,6 @@ pub unsafe fn vld1q_u64_x2(a: *const u64) -> uint64x2x2_t {
 pub unsafe fn vld1q_u64_x3(a: *const u64) -> uint64x2x3_t {
     transmute(vld1q_s64_x3(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u64_x4)"]
 #[doc = "## Safety"]
@@ -10191,7 +9821,6 @@ pub unsafe fn vld1q_u64_x3(a: *const u64) -> uint64x2x3_t {
 pub unsafe fn vld1q_u64_x4(a: *const u64) -> uint64x2x4_t {
     transmute(vld1q_s64_x4(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p8_x2)"]
 #[doc = "## Safety"]
@@ -10215,7 +9844,6 @@ pub unsafe fn vld1q_u64_x4(a: *const u64) -> uint64x2x4_t {
 pub unsafe fn vld1_p8_x2(a: *const p8) -> poly8x8x2_t {
     transmute(vld1_s8_x2(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p8_x3)"]
 #[doc = "## Safety"]
@@ -10239,7 +9867,6 @@ pub unsafe fn vld1_p8_x2(a: *const p8) -> poly8x8x2_t {
 pub unsafe fn vld1_p8_x3(a: *const p8) -> poly8x8x3_t {
     transmute(vld1_s8_x3(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p8_x4)"]
 #[doc = "## Safety"]
@@ -10263,7 +9890,6 @@ pub unsafe fn vld1_p8_x3(a: *const p8) -> poly8x8x3_t {
 pub unsafe fn vld1_p8_x4(a: *const p8) -> poly8x8x4_t {
     transmute(vld1_s8_x4(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p8_x2)"]
 #[doc = "## Safety"]
@@ -10287,7 +9913,6 @@ pub unsafe fn vld1_p8_x4(a: *const p8) -> poly8x8x4_t {
 pub unsafe fn vld1q_p8_x2(a: *const p8) -> poly8x16x2_t {
     transmute(vld1q_s8_x2(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p8_x3)"]
 #[doc = "## Safety"]
@@ -10311,7 +9936,6 @@ pub unsafe fn vld1q_p8_x2(a: *const p8) -> poly8x16x2_t {
 pub unsafe fn vld1q_p8_x3(a: *const p8) -> poly8x16x3_t {
     transmute(vld1q_s8_x3(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p8_x4)"]
 #[doc = "## Safety"]
@@ -10335,7 +9959,6 @@ pub unsafe fn vld1q_p8_x3(a: *const p8) -> poly8x16x3_t {
 pub unsafe fn vld1q_p8_x4(a: *const p8) -> poly8x16x4_t {
     transmute(vld1q_s8_x4(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p16_x2)"]
 #[doc = "## Safety"]
@@ -10359,7 +9982,6 @@ pub unsafe fn vld1q_p8_x4(a: *const p8) -> poly8x16x4_t {
 pub unsafe fn vld1_p16_x2(a: *const p16) -> poly16x4x2_t {
     transmute(vld1_s16_x2(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p16_x3)"]
 #[doc = "## Safety"]
@@ -10383,7 +10005,6 @@ pub unsafe fn vld1_p16_x2(a: *const p16) -> poly16x4x2_t {
 pub unsafe fn vld1_p16_x3(a: *const p16) -> poly16x4x3_t {
     transmute(vld1_s16_x3(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p16_x4)"]
 #[doc = "## Safety"]
@@ -10407,7 +10028,6 @@ pub unsafe fn vld1_p16_x3(a: *const p16) -> poly16x4x3_t {
 pub unsafe fn vld1_p16_x4(a: *const p16) -> poly16x4x4_t {
     transmute(vld1_s16_x4(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p16_x2)"]
 #[doc = "## Safety"]
@@ -10431,7 +10051,6 @@ pub unsafe fn vld1_p16_x4(a: *const p16) -> poly16x4x4_t {
 pub unsafe fn vld1q_p16_x2(a: *const p16) -> poly16x8x2_t {
     transmute(vld1q_s16_x2(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p16_x3)"]
 #[doc = "## Safety"]
@@ -10455,7 +10074,6 @@ pub unsafe fn vld1q_p16_x2(a: *const p16) -> poly16x8x2_t {
 pub unsafe fn vld1q_p16_x3(a: *const p16) -> poly16x8x3_t {
     transmute(vld1q_s16_x3(transmute(a)))
 }
-
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p16_x4)"]
 #[doc = "## Safety"]
@@ -10479,7 +10097,6 @@ pub unsafe fn vld1q_p16_x3(a: *const p16) -> poly16x8x3_t {
 pub unsafe fn vld1q_p16_x4(a: *const p16) -> poly16x8x4_t {
     transmute(vld1q_s16_x4(transmute(a)))
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_f32)"]
 #[doc = "## Safety"]
@@ -10496,7 +10113,6 @@ pub unsafe fn vld2_dup_f32(a: *const f32) -> float32x2x2_t {
     }
     _vld2_dup_f32(a as *const i8, 4)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_f32)"]
 #[doc = "## Safety"]
@@ -10513,7 +10129,6 @@ pub unsafe fn vld2q_dup_f32(a: *const f32) -> float32x4x2_t {
     }
     _vld2q_dup_f32(a as *const i8, 4)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_s8)"]
 #[doc = "## Safety"]
@@ -10530,7 +10145,6 @@ pub unsafe fn vld2_dup_s8(a: *const i8) -> int8x8x2_t {
     }
     _vld2_dup_s8(a as *const i8, 1)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_s8)"]
 #[doc = "## Safety"]
@@ -10547,7 +10161,6 @@ pub unsafe fn vld2q_dup_s8(a: *const i8) -> int8x16x2_t {
     }
     _vld2q_dup_s8(a as *const i8, 1)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_s16)"]
 #[doc = "## Safety"]
@@ -10564,7 +10177,6 @@ pub unsafe fn vld2_dup_s16(a: *const i16) -> int16x4x2_t {
     }
     _vld2_dup_s16(a as *const i8, 2)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_s16)"]
 #[doc = "## Safety"]
@@ -10581,7 +10193,6 @@ pub unsafe fn vld2q_dup_s16(a: *const i16) -> int16x8x2_t {
     }
     _vld2q_dup_s16(a as *const i8, 2)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_s32)"]
 #[doc = "## Safety"]
@@ -10598,7 +10209,6 @@ pub unsafe fn vld2_dup_s32(a: *const i32) -> int32x2x2_t {
     }
     _vld2_dup_s32(a as *const i8, 4)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_s32)"]
 #[doc = "## Safety"]
@@ -10615,7 +10225,6 @@ pub unsafe fn vld2q_dup_s32(a: *const i32) -> int32x4x2_t {
     }
     _vld2q_dup_s32(a as *const i8, 4)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_f32)"]
 #[doc = "## Safety"]
@@ -10635,7 +10244,6 @@ pub unsafe fn vld2_dup_f32(a: *const f32) -> float32x2x2_t {
     }
     _vld2_dup_f32(a as _)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_f32)"]
 #[doc = "## Safety"]
@@ -10655,7 +10263,6 @@ pub unsafe fn vld2q_dup_f32(a: *const f32) -> float32x4x2_t {
     }
     _vld2q_dup_f32(a as _)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_s8)"]
 #[doc = "## Safety"]
@@ -10675,7 +10282,6 @@ pub unsafe fn vld2_dup_s8(a: *const i8) -> int8x8x2_t {
     }
     _vld2_dup_s8(a as _)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_s8)"]
 #[doc = "## Safety"]
@@ -10695,7 +10301,6 @@ pub unsafe fn vld2q_dup_s8(a: *const i8) -> int8x16x2_t {
     }
     _vld2q_dup_s8(a as _)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_s16)"]
 #[doc = "## Safety"]
@@ -10715,7 +10320,6 @@ pub unsafe fn vld2_dup_s16(a: *const i16) -> int16x4x2_t {
     }
     _vld2_dup_s16(a as _)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_s16)"]
 #[doc = "## Safety"]
@@ -10735,7 +10339,6 @@ pub unsafe fn vld2q_dup_s16(a: *const i16) -> int16x8x2_t {
     }
     _vld2q_dup_s16(a as _)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_s32)"]
 #[doc = "## Safety"]
@@ -10755,7 +10358,6 @@ pub unsafe fn vld2_dup_s32(a: *const i32) -> int32x2x2_t {
     }
     _vld2_dup_s32(a as _)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_s32)"]
 #[doc = "## Safety"]
@@ -10775,7 +10377,6 @@ pub unsafe fn vld2q_dup_s32(a: *const i32) -> int32x4x2_t {
     }
     _vld2q_dup_s32(a as _)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_p64)"]
 #[doc = "## Safety"]
@@ -10799,7 +10400,6 @@ pub unsafe fn vld2q_dup_s32(a: *const i32) -> int32x4x2_t {
 pub unsafe fn vld2_dup_p64(a: *const p64) -> poly64x1x2_t {
     transmute(vld2_dup_s64(transmute(a)))
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_s64)"]
 #[doc = "## Safety"]
@@ -10816,7 +10416,6 @@ pub unsafe fn vld2_dup_s64(a: *const i64) -> int64x1x2_t {
     }
     _vld2_dup_s64(a as *const i8, 8)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_s64)"]
 #[doc = "## Safety"]
@@ -10836,7 +10435,6 @@ pub unsafe fn vld2_dup_s64(a: *const i64) -> int64x1x2_t {
     }
     _vld2_dup_s64(a as _)
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_u64)"]
 #[doc = "## Safety"]
@@ -10860,7 +10458,6 @@ pub unsafe fn vld2_dup_s64(a: *const i64) -> int64x1x2_t {
 pub unsafe fn vld2_dup_u64(a: *const u64) -> uint64x1x2_t {
     transmute(vld2_dup_s64(transmute(a)))
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_u8)"]
 #[doc = "## Safety"]
@@ -10884,7 +10481,6 @@ pub unsafe fn vld2_dup_u64(a: *const u64) -> uint64x1x2_t {
 pub unsafe fn vld2_dup_u8(a: *const u8) -> uint8x8x2_t {
     transmute(vld2_dup_s8(transmute(a)))
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_u8)"]
 #[doc = "## Safety"]
@@ -10908,7 +10504,6 @@ pub unsafe fn vld2_dup_u8(a: *const u8) -> uint8x8x2_t {
 pub unsafe fn vld2q_dup_u8(a: *const u8) -> uint8x16x2_t {
     transmute(vld2q_dup_s8(transmute(a)))
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_u16)"]
 #[doc = "## Safety"]
@@ -10932,7 +10527,6 @@ pub unsafe fn vld2q_dup_u8(a: *const u8) -> uint8x16x2_t {
 pub unsafe fn vld2_dup_u16(a: *const u16) -> uint16x4x2_t {
     transmute(vld2_dup_s16(transmute(a)))
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_u16)"]
 #[doc = "## Safety"]
@@ -10956,7 +10550,6 @@ pub unsafe fn vld2_dup_u16(a: *const u16) -> uint16x4x2_t {
 pub unsafe fn vld2q_dup_u16(a: *const u16) -> uint16x8x2_t {
     transmute(vld2q_dup_s16(transmute(a)))
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_u32)"]
 #[doc = "## Safety"]
@@ -10980,7 +10573,6 @@ pub unsafe fn vld2q_dup_u16(a: *const u16) -> uint16x8x2_t {
 pub unsafe fn vld2_dup_u32(a: *const u32) -> uint32x2x2_t {
     transmute(vld2_dup_s32(transmute(a)))
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_u32)"]
 #[doc = "## Safety"]
@@ -11004,7 +10596,6 @@ pub unsafe fn vld2_dup_u32(a: *const u32) -> uint32x2x2_t {
 pub unsafe fn vld2q_dup_u32(a: *const u32) -> uint32x4x2_t {
     transmute(vld2q_dup_s32(transmute(a)))
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_p8)"]
 #[doc = "## Safety"]
@@ -11028,7 +10619,6 @@ pub unsafe fn vld2q_dup_u32(a: *const u32) -> uint32x4x2_t {
 pub unsafe fn vld2_dup_p8(a: *const p8) -> poly8x8x2_t {
     transmute(vld2_dup_s8(transmute(a)))
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_p8)"]
 #[doc = "## Safety"]
@@ -11052,7 +10642,6 @@ pub unsafe fn vld2_dup_p8(a: *const p8) -> poly8x8x2_t {
 pub unsafe fn vld2q_dup_p8(a: *const p8) -> poly8x16x2_t {
     transmute(vld2q_dup_s8(transmute(a)))
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_p16)"]
 #[doc = "## Safety"]
@@ -11076,7 +10665,6 @@ pub unsafe fn vld2q_dup_p8(a: *const p8) -> poly8x16x2_t {
 pub unsafe fn vld2_dup_p16(a: *const p16) -> poly16x4x2_t {
     transmute(vld2_dup_s16(transmute(a)))
 }
-
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_p16)"]
 #[doc = "## Safety"]
@@ -11100,7 +10688,6 @@ pub unsafe fn vld2_dup_p16(a: *const p16) -> poly16x4x2_t {
 pub unsafe fn vld2q_dup_p16(a: *const p16) -> poly16x8x2_t {
     transmute(vld2q_dup_s16(transmute(a)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_f32)"]
 #[doc = "## Safety"]
@@ -11117,7 +10704,6 @@ pub unsafe fn vld2_f32(a: *const f32) -> float32x2x2_t {
     }
     _vld2_f32(a as *const i8, 4)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_f32)"]
 #[doc = "## Safety"]
@@ -11134,7 +10720,6 @@ pub unsafe fn vld2q_f32(a: *const f32) -> float32x4x2_t {
     }
     _vld2q_f32(a as *const i8, 4)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_s8)"]
 #[doc = "## Safety"]
@@ -11151,7 +10736,6 @@ pub unsafe fn vld2_s8(a: *const i8) -> int8x8x2_t {
     }
     _vld2_s8(a as *const i8, 1)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_s8)"]
 #[doc = "## Safety"]
@@ -11168,7 +10752,6 @@ pub unsafe fn vld2q_s8(a: *const i8) -> int8x16x2_t {
     }
     _vld2q_s8(a as *const i8, 1)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_s16)"]
 #[doc = "## Safety"]
@@ -11185,7 +10768,6 @@ pub unsafe fn vld2_s16(a: *const i16) -> int16x4x2_t {
     }
     _vld2_s16(a as *const i8, 2)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_s16)"]
 #[doc = "## Safety"]
@@ -11202,7 +10784,6 @@ pub unsafe fn vld2q_s16(a: *const i16) -> int16x8x2_t {
     }
     _vld2q_s16(a as *const i8, 2)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_s32)"]
 #[doc = "## Safety"]
@@ -11219,7 +10800,6 @@ pub unsafe fn vld2_s32(a: *const i32) -> int32x2x2_t {
     }
     _vld2_s32(a as *const i8, 4)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_s32)"]
 #[doc = "## Safety"]
@@ -11236,7 +10816,6 @@ pub unsafe fn vld2q_s32(a: *const i32) -> int32x4x2_t {
     }
     _vld2q_s32(a as *const i8, 4)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_f32)"]
 #[doc = "## Safety"]
@@ -11256,7 +10835,6 @@ pub unsafe fn vld2_f32(a: *const f32) -> float32x2x2_t {
     }
     _vld2_f32(a as _)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_f32)"]
 #[doc = "## Safety"]
@@ -11276,7 +10854,6 @@ pub unsafe fn vld2q_f32(a: *const f32) -> float32x4x2_t {
     }
     _vld2q_f32(a as _)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_s8)"]
 #[doc = "## Safety"]
@@ -11296,7 +10873,6 @@ pub unsafe fn vld2_s8(a: *const i8) -> int8x8x2_t {
     }
     _vld2_s8(a as _)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_s8)"]
 #[doc = "## Safety"]
@@ -11316,7 +10892,6 @@ pub unsafe fn vld2q_s8(a: *const i8) -> int8x16x2_t {
     }
     _vld2q_s8(a as _)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_s16)"]
 #[doc = "## Safety"]
@@ -11336,7 +10911,6 @@ pub unsafe fn vld2_s16(a: *const i16) -> int16x4x2_t {
     }
     _vld2_s16(a as _)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_s16)"]
 #[doc = "## Safety"]
@@ -11356,7 +10930,6 @@ pub unsafe fn vld2q_s16(a: *const i16) -> int16x8x2_t {
     }
     _vld2q_s16(a as _)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_s32)"]
 #[doc = "## Safety"]
@@ -11376,7 +10949,6 @@ pub unsafe fn vld2_s32(a: *const i32) -> int32x2x2_t {
     }
     _vld2_s32(a as _)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_s32)"]
 #[doc = "## Safety"]
@@ -11396,7 +10968,6 @@ pub unsafe fn vld2q_s32(a: *const i32) -> int32x4x2_t {
     }
     _vld2q_s32(a as _)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_f32)"]
 #[doc = "## Safety"]
@@ -11418,7 +10989,6 @@ pub unsafe fn vld2_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x2_t) ->
     }
     _vld2_lane_f32(b.0, b.1, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_f32)"]
 #[doc = "## Safety"]
@@ -11441,7 +11011,6 @@ pub unsafe fn vld2q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x2_t) -
     }
     _vld2q_lane_f32(b.0, b.1, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_s8)"]
 #[doc = "## Safety"]
@@ -11463,7 +11032,6 @@ pub unsafe fn vld2_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x2_t) -> int8
     }
     _vld2_lane_s8(b.0, b.1, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_s16)"]
 #[doc = "## Safety"]
@@ -11485,7 +11053,6 @@ pub unsafe fn vld2_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x2_t) -> i
     }
     _vld2_lane_s16(b.0, b.1, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_s16)"]
 #[doc = "## Safety"]
@@ -11507,7 +11074,6 @@ pub unsafe fn vld2q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x2_t) -> 
     }
     _vld2q_lane_s16(b.0, b.1, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_s32)"]
 #[doc = "## Safety"]
@@ -11529,7 +11095,6 @@ pub unsafe fn vld2_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x2_t) -> i
     }
     _vld2_lane_s32(b.0, b.1, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_s32)"]
 #[doc = "## Safety"]
@@ -11551,7 +11116,6 @@ pub unsafe fn vld2q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x2_t) -> 
     }
     _vld2q_lane_s32(b.0, b.1, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_f32)"]
 #[doc = "## Safety"]
@@ -11576,7 +11140,6 @@ pub unsafe fn vld2_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x2_t) ->
     }
     _vld2_lane_f32(a as _, b.0, b.1, LANE, 4)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_f32)"]
 #[doc = "## Safety"]
@@ -11601,7 +11164,6 @@ pub unsafe fn vld2q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x2_t) -
     }
     _vld2q_lane_f32(a as _, b.0, b.1, LANE, 4)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_s16)"]
 #[doc = "## Safety"]
@@ -11626,7 +11188,6 @@ pub unsafe fn vld2q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x2_t) -> 
     }
     _vld2q_lane_s16(a as _, b.0, b.1, LANE, 2)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_s32)"]
 #[doc = "## Safety"]
@@ -11651,7 +11212,6 @@ pub unsafe fn vld2q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x2_t) -> 
     }
     _vld2q_lane_s32(a as _, b.0, b.1, LANE, 4)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_s8)"]
 #[doc = "## Safety"]
@@ -11671,7 +11231,6 @@ pub unsafe fn vld2_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x2_t) -> int8
     }
     _vld2_lane_s8(a as _, b.0, b.1, LANE, 1)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_s16)"]
 #[doc = "## Safety"]
@@ -11696,7 +11255,6 @@ pub unsafe fn vld2_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x2_t) -> i
     }
     _vld2_lane_s16(a as _, b.0, b.1, LANE, 2)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_s32)"]
 #[doc = "## Safety"]
@@ -11721,7 +11279,6 @@ pub unsafe fn vld2_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x2_t) -> i
     }
     _vld2_lane_s32(a as _, b.0, b.1, LANE, 4)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_u8)"]
 #[doc = "## Safety"]
@@ -11747,7 +11304,6 @@ pub unsafe fn vld2_lane_u8<const LANE: i32>(a: *const u8, b: uint8x8x2_t) -> uin
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld2_lane_s8::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_u16)"]
 #[doc = "## Safety"]
@@ -11773,7 +11329,6 @@ pub unsafe fn vld2_lane_u16<const LANE: i32>(a: *const u16, b: uint16x4x2_t) -> 
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld2_lane_s16::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_u16)"]
 #[doc = "## Safety"]
@@ -11799,7 +11354,6 @@ pub unsafe fn vld2q_lane_u16<const LANE: i32>(a: *const u16, b: uint16x8x2_t) ->
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld2q_lane_s16::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_u32)"]
 #[doc = "## Safety"]
@@ -11825,7 +11379,6 @@ pub unsafe fn vld2_lane_u32<const LANE: i32>(a: *const u32, b: uint32x2x2_t) -> 
     static_assert_uimm_bits!(LANE, 1);
     transmute(vld2_lane_s32::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_u32)"]
 #[doc = "## Safety"]
@@ -11851,7 +11404,6 @@ pub unsafe fn vld2q_lane_u32<const LANE: i32>(a: *const u32, b: uint32x4x2_t) ->
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld2q_lane_s32::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_p8)"]
 #[doc = "## Safety"]
@@ -11877,7 +11429,6 @@ pub unsafe fn vld2_lane_p8<const LANE: i32>(a: *const p8, b: poly8x8x2_t) -> pol
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld2_lane_s8::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_p16)"]
 #[doc = "## Safety"]
@@ -11903,7 +11454,6 @@ pub unsafe fn vld2_lane_p16<const LANE: i32>(a: *const p16, b: poly16x4x2_t) -> 
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld2_lane_s16::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_p16)"]
 #[doc = "## Safety"]
@@ -11929,7 +11479,6 @@ pub unsafe fn vld2q_lane_p16<const LANE: i32>(a: *const p16, b: poly16x8x2_t) ->
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld2q_lane_s16::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_p64)"]
 #[doc = "## Safety"]
@@ -11953,7 +11502,6 @@ pub unsafe fn vld2q_lane_p16<const LANE: i32>(a: *const p16, b: poly16x8x2_t) ->
 pub unsafe fn vld2_p64(a: *const p64) -> poly64x1x2_t {
     transmute(vld2_s64(transmute(a)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_s64)"]
 #[doc = "## Safety"]
@@ -11970,7 +11518,6 @@ pub unsafe fn vld2_s64(a: *const i64) -> int64x1x2_t {
     }
     _vld2_s64(a as *const i8, 8)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_s64)"]
 #[doc = "## Safety"]
@@ -11990,7 +11537,6 @@ pub unsafe fn vld2_s64(a: *const i64) -> int64x1x2_t {
     }
     _vld2_s64(a as _)
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_u64)"]
 #[doc = "## Safety"]
@@ -12014,7 +11560,6 @@ pub unsafe fn vld2_s64(a: *const i64) -> int64x1x2_t {
 pub unsafe fn vld2_u64(a: *const u64) -> uint64x1x2_t {
     transmute(vld2_s64(transmute(a)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_u8)"]
 #[doc = "## Safety"]
@@ -12038,7 +11583,6 @@ pub unsafe fn vld2_u64(a: *const u64) -> uint64x1x2_t {
 pub unsafe fn vld2_u8(a: *const u8) -> uint8x8x2_t {
     transmute(vld2_s8(transmute(a)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_u8)"]
 #[doc = "## Safety"]
@@ -12062,7 +11606,6 @@ pub unsafe fn vld2_u8(a: *const u8) -> uint8x8x2_t {
 pub unsafe fn vld2q_u8(a: *const u8) -> uint8x16x2_t {
     transmute(vld2q_s8(transmute(a)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_u16)"]
 #[doc = "## Safety"]
@@ -12086,7 +11629,6 @@ pub unsafe fn vld2q_u8(a: *const u8) -> uint8x16x2_t {
 pub unsafe fn vld2_u16(a: *const u16) -> uint16x4x2_t {
     transmute(vld2_s16(transmute(a)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_u16)"]
 #[doc = "## Safety"]
@@ -12110,7 +11652,6 @@ pub unsafe fn vld2_u16(a: *const u16) -> uint16x4x2_t {
 pub unsafe fn vld2q_u16(a: *const u16) -> uint16x8x2_t {
     transmute(vld2q_s16(transmute(a)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_u32)"]
 #[doc = "## Safety"]
@@ -12134,7 +11675,6 @@ pub unsafe fn vld2q_u16(a: *const u16) -> uint16x8x2_t {
 pub unsafe fn vld2_u32(a: *const u32) -> uint32x2x2_t {
     transmute(vld2_s32(transmute(a)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_u32)"]
 #[doc = "## Safety"]
@@ -12158,7 +11698,6 @@ pub unsafe fn vld2_u32(a: *const u32) -> uint32x2x2_t {
 pub unsafe fn vld2q_u32(a: *const u32) -> uint32x4x2_t {
     transmute(vld2q_s32(transmute(a)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_p8)"]
 #[doc = "## Safety"]
@@ -12182,7 +11721,6 @@ pub unsafe fn vld2q_u32(a: *const u32) -> uint32x4x2_t {
 pub unsafe fn vld2_p8(a: *const p8) -> poly8x8x2_t {
     transmute(vld2_s8(transmute(a)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_p8)"]
 #[doc = "## Safety"]
@@ -12206,7 +11744,6 @@ pub unsafe fn vld2_p8(a: *const p8) -> poly8x8x2_t {
 pub unsafe fn vld2q_p8(a: *const p8) -> poly8x16x2_t {
     transmute(vld2q_s8(transmute(a)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_p16)"]
 #[doc = "## Safety"]
@@ -12230,7 +11767,6 @@ pub unsafe fn vld2q_p8(a: *const p8) -> poly8x16x2_t {
 pub unsafe fn vld2_p16(a: *const p16) -> poly16x4x2_t {
     transmute(vld2_s16(transmute(a)))
 }
-
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_p16)"]
 #[doc = "## Safety"]
@@ -12254,7 +11790,6 @@ pub unsafe fn vld2_p16(a: *const p16) -> poly16x4x2_t {
 pub unsafe fn vld2q_p16(a: *const p16) -> poly16x8x2_t {
     transmute(vld2q_s16(transmute(a)))
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_f32)"]
 #[doc = "## Safety"]
@@ -12274,7 +11809,6 @@ pub unsafe fn vld3_dup_f32(a: *const f32) -> float32x2x3_t {
     }
     _vld3_dup_f32(a as _)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_f32)"]
 #[doc = "## Safety"]
@@ -12294,7 +11828,6 @@ pub unsafe fn vld3q_dup_f32(a: *const f32) -> float32x4x3_t {
     }
     _vld3q_dup_f32(a as _)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_s8)"]
 #[doc = "## Safety"]
@@ -12314,7 +11847,6 @@ pub unsafe fn vld3_dup_s8(a: *const i8) -> int8x8x3_t {
     }
     _vld3_dup_s8(a as _)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_s8)"]
 #[doc = "## Safety"]
@@ -12334,7 +11866,6 @@ pub unsafe fn vld3q_dup_s8(a: *const i8) -> int8x16x3_t {
     }
     _vld3q_dup_s8(a as _)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_s16)"]
 #[doc = "## Safety"]
@@ -12354,7 +11885,6 @@ pub unsafe fn vld3_dup_s16(a: *const i16) -> int16x4x3_t {
     }
     _vld3_dup_s16(a as _)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_s16)"]
 #[doc = "## Safety"]
@@ -12374,7 +11904,6 @@ pub unsafe fn vld3q_dup_s16(a: *const i16) -> int16x8x3_t {
     }
     _vld3q_dup_s16(a as _)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_s32)"]
 #[doc = "## Safety"]
@@ -12394,7 +11923,6 @@ pub unsafe fn vld3_dup_s32(a: *const i32) -> int32x2x3_t {
     }
     _vld3_dup_s32(a as _)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_s32)"]
 #[doc = "## Safety"]
@@ -12414,7 +11942,6 @@ pub unsafe fn vld3q_dup_s32(a: *const i32) -> int32x4x3_t {
     }
     _vld3q_dup_s32(a as _)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_s64)"]
 #[doc = "## Safety"]
@@ -12434,7 +11961,6 @@ pub unsafe fn vld3_dup_s64(a: *const i64) -> int64x1x3_t {
     }
     _vld3_dup_s64(a as _)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_f32)"]
 #[doc = "## Safety"]
@@ -12451,7 +11977,6 @@ pub unsafe fn vld3_dup_f32(a: *const f32) -> float32x2x3_t {
     }
     _vld3_dup_f32(a as *const i8, 4)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_f32)"]
 #[doc = "## Safety"]
@@ -12468,7 +11993,6 @@ pub unsafe fn vld3q_dup_f32(a: *const f32) -> float32x4x3_t {
     }
     _vld3q_dup_f32(a as *const i8, 4)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_s8)"]
 #[doc = "## Safety"]
@@ -12485,7 +12009,6 @@ pub unsafe fn vld3_dup_s8(a: *const i8) -> int8x8x3_t {
     }
     _vld3_dup_s8(a as *const i8, 1)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_s8)"]
 #[doc = "## Safety"]
@@ -12502,7 +12025,6 @@ pub unsafe fn vld3q_dup_s8(a: *const i8) -> int8x16x3_t {
     }
     _vld3q_dup_s8(a as *const i8, 1)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_s16)"]
 #[doc = "## Safety"]
@@ -12519,7 +12041,6 @@ pub unsafe fn vld3_dup_s16(a: *const i16) -> int16x4x3_t {
     }
     _vld3_dup_s16(a as *const i8, 2)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_s16)"]
 #[doc = "## Safety"]
@@ -12536,7 +12057,6 @@ pub unsafe fn vld3q_dup_s16(a: *const i16) -> int16x8x3_t {
     }
     _vld3q_dup_s16(a as *const i8, 2)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_s32)"]
 #[doc = "## Safety"]
@@ -12553,7 +12073,6 @@ pub unsafe fn vld3_dup_s32(a: *const i32) -> int32x2x3_t {
     }
     _vld3_dup_s32(a as *const i8, 4)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_s32)"]
 #[doc = "## Safety"]
@@ -12570,7 +12089,6 @@ pub unsafe fn vld3q_dup_s32(a: *const i32) -> int32x4x3_t {
     }
     _vld3q_dup_s32(a as *const i8, 4)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_p64)"]
 #[doc = "## Safety"]
@@ -12594,7 +12112,6 @@ pub unsafe fn vld3q_dup_s32(a: *const i32) -> int32x4x3_t {
 pub unsafe fn vld3_dup_p64(a: *const p64) -> poly64x1x3_t {
     transmute(vld3_dup_s64(transmute(a)))
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_s64)"]
 #[doc = "## Safety"]
@@ -12611,7 +12128,6 @@ pub unsafe fn vld3_dup_s64(a: *const i64) -> int64x1x3_t {
     }
     _vld3_dup_s64(a as *const i8, 8)
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_u64)"]
 #[doc = "## Safety"]
@@ -12635,7 +12151,6 @@ pub unsafe fn vld3_dup_s64(a: *const i64) -> int64x1x3_t {
 pub unsafe fn vld3_dup_u64(a: *const u64) -> uint64x1x3_t {
     transmute(vld3_dup_s64(transmute(a)))
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_u8)"]
 #[doc = "## Safety"]
@@ -12659,7 +12174,6 @@ pub unsafe fn vld3_dup_u64(a: *const u64) -> uint64x1x3_t {
 pub unsafe fn vld3_dup_u8(a: *const u8) -> uint8x8x3_t {
     transmute(vld3_dup_s8(transmute(a)))
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_u8)"]
 #[doc = "## Safety"]
@@ -12683,7 +12197,6 @@ pub unsafe fn vld3_dup_u8(a: *const u8) -> uint8x8x3_t {
 pub unsafe fn vld3q_dup_u8(a: *const u8) -> uint8x16x3_t {
     transmute(vld3q_dup_s8(transmute(a)))
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_u16)"]
 #[doc = "## Safety"]
@@ -12707,7 +12220,6 @@ pub unsafe fn vld3q_dup_u8(a: *const u8) -> uint8x16x3_t {
 pub unsafe fn vld3_dup_u16(a: *const u16) -> uint16x4x3_t {
     transmute(vld3_dup_s16(transmute(a)))
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_u16)"]
 #[doc = "## Safety"]
@@ -12731,7 +12243,6 @@ pub unsafe fn vld3_dup_u16(a: *const u16) -> uint16x4x3_t {
 pub unsafe fn vld3q_dup_u16(a: *const u16) -> uint16x8x3_t {
     transmute(vld3q_dup_s16(transmute(a)))
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_u32)"]
 #[doc = "## Safety"]
@@ -12755,7 +12266,6 @@ pub unsafe fn vld3q_dup_u16(a: *const u16) -> uint16x8x3_t {
 pub unsafe fn vld3_dup_u32(a: *const u32) -> uint32x2x3_t {
     transmute(vld3_dup_s32(transmute(a)))
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_u32)"]
 #[doc = "## Safety"]
@@ -12779,7 +12289,6 @@ pub unsafe fn vld3_dup_u32(a: *const u32) -> uint32x2x3_t {
 pub unsafe fn vld3q_dup_u32(a: *const u32) -> uint32x4x3_t {
     transmute(vld3q_dup_s32(transmute(a)))
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_p8)"]
 #[doc = "## Safety"]
@@ -12803,7 +12312,6 @@ pub unsafe fn vld3q_dup_u32(a: *const u32) -> uint32x4x3_t {
 pub unsafe fn vld3_dup_p8(a: *const p8) -> poly8x8x3_t {
     transmute(vld3_dup_s8(transmute(a)))
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_p8)"]
 #[doc = "## Safety"]
@@ -12827,7 +12335,6 @@ pub unsafe fn vld3_dup_p8(a: *const p8) -> poly8x8x3_t {
 pub unsafe fn vld3q_dup_p8(a: *const p8) -> poly8x16x3_t {
     transmute(vld3q_dup_s8(transmute(a)))
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_p16)"]
 #[doc = "## Safety"]
@@ -12851,7 +12358,6 @@ pub unsafe fn vld3q_dup_p8(a: *const p8) -> poly8x16x3_t {
 pub unsafe fn vld3_dup_p16(a: *const p16) -> poly16x4x3_t {
     transmute(vld3_dup_s16(transmute(a)))
 }
-
 #[doc = "Load single 3-element structure and replicate to all lanes of three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_p16)"]
 #[doc = "## Safety"]
@@ -12875,7 +12381,6 @@ pub unsafe fn vld3_dup_p16(a: *const p16) -> poly16x4x3_t {
 pub unsafe fn vld3q_dup_p16(a: *const p16) -> poly16x8x3_t {
     transmute(vld3q_dup_s16(transmute(a)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_f32)"]
 #[doc = "## Safety"]
@@ -12895,7 +12400,6 @@ pub unsafe fn vld3_f32(a: *const f32) -> float32x2x3_t {
     }
     _vld3_f32(a as _)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_f32)"]
 #[doc = "## Safety"]
@@ -12915,7 +12419,6 @@ pub unsafe fn vld3q_f32(a: *const f32) -> float32x4x3_t {
     }
     _vld3q_f32(a as _)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_s8)"]
 #[doc = "## Safety"]
@@ -12935,7 +12438,6 @@ pub unsafe fn vld3_s8(a: *const i8) -> int8x8x3_t {
     }
     _vld3_s8(a as _)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_s8)"]
 #[doc = "## Safety"]
@@ -12955,7 +12457,6 @@ pub unsafe fn vld3q_s8(a: *const i8) -> int8x16x3_t {
     }
     _vld3q_s8(a as _)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_s16)"]
 #[doc = "## Safety"]
@@ -12975,7 +12476,6 @@ pub unsafe fn vld3_s16(a: *const i16) -> int16x4x3_t {
     }
     _vld3_s16(a as _)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_s16)"]
 #[doc = "## Safety"]
@@ -12995,7 +12495,6 @@ pub unsafe fn vld3q_s16(a: *const i16) -> int16x8x3_t {
     }
     _vld3q_s16(a as _)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_s32)"]
 #[doc = "## Safety"]
@@ -13015,7 +12514,6 @@ pub unsafe fn vld3_s32(a: *const i32) -> int32x2x3_t {
     }
     _vld3_s32(a as _)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_s32)"]
 #[doc = "## Safety"]
@@ -13035,7 +12533,6 @@ pub unsafe fn vld3q_s32(a: *const i32) -> int32x4x3_t {
     }
     _vld3q_s32(a as _)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_f32)"]
 #[doc = "## Safety"]
@@ -13052,7 +12549,6 @@ pub unsafe fn vld3_f32(a: *const f32) -> float32x2x3_t {
     }
     _vld3_f32(a as *const i8, 4)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_f32)"]
 #[doc = "## Safety"]
@@ -13069,7 +12565,6 @@ pub unsafe fn vld3q_f32(a: *const f32) -> float32x4x3_t {
     }
     _vld3q_f32(a as *const i8, 4)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_s8)"]
 #[doc = "## Safety"]
@@ -13086,7 +12581,6 @@ pub unsafe fn vld3_s8(a: *const i8) -> int8x8x3_t {
     }
     _vld3_s8(a as *const i8, 1)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_s8)"]
 #[doc = "## Safety"]
@@ -13103,7 +12597,6 @@ pub unsafe fn vld3q_s8(a: *const i8) -> int8x16x3_t {
     }
     _vld3q_s8(a as *const i8, 1)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_s16)"]
 #[doc = "## Safety"]
@@ -13120,7 +12613,6 @@ pub unsafe fn vld3_s16(a: *const i16) -> int16x4x3_t {
     }
     _vld3_s16(a as *const i8, 2)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_s16)"]
 #[doc = "## Safety"]
@@ -13137,7 +12629,6 @@ pub unsafe fn vld3q_s16(a: *const i16) -> int16x8x3_t {
     }
     _vld3q_s16(a as *const i8, 2)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_s32)"]
 #[doc = "## Safety"]
@@ -13154,7 +12645,6 @@ pub unsafe fn vld3_s32(a: *const i32) -> int32x2x3_t {
     }
     _vld3_s32(a as *const i8, 4)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_s32)"]
 #[doc = "## Safety"]
@@ -13171,7 +12661,6 @@ pub unsafe fn vld3q_s32(a: *const i32) -> int32x4x3_t {
     }
     _vld3q_s32(a as *const i8, 4)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_f32)"]
 #[doc = "## Safety"]
@@ -13199,7 +12688,6 @@ pub unsafe fn vld3_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x3_t) ->
     }
     _vld3_lane_f32(b.0, b.1, b.2, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_f32)"]
 #[doc = "## Safety"]
@@ -13227,7 +12715,6 @@ pub unsafe fn vld3q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x3_t) -
     }
     _vld3q_lane_f32(b.0, b.1, b.2, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_f32)"]
 #[doc = "## Safety"]
@@ -13253,7 +12740,6 @@ pub unsafe fn vld3_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x3_t) ->
     }
     _vld3_lane_f32(a as _, b.0, b.1, b.2, LANE, 4)
 }
-
 #[doc = "Load multiple 3-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_s8)"]
 #[doc = "## Safety"]
@@ -13281,7 +12767,6 @@ pub unsafe fn vld3_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x3_t) -> int8
     }
     _vld3_lane_s8(b.0, b.1, b.2, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 3-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_s16)"]
 #[doc = "## Safety"]
@@ -13309,7 +12794,6 @@ pub unsafe fn vld3_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x3_t) -> i
     }
     _vld3_lane_s16(b.0, b.1, b.2, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 3-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_s16)"]
 #[doc = "## Safety"]
@@ -13337,7 +12821,6 @@ pub unsafe fn vld3q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x3_t) -> 
     }
     _vld3q_lane_s16(b.0, b.1, b.2, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 3-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_s32)"]
 #[doc = "## Safety"]
@@ -13365,7 +12848,6 @@ pub unsafe fn vld3_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x3_t) -> i
     }
     _vld3_lane_s32(b.0, b.1, b.2, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 3-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_s32)"]
 #[doc = "## Safety"]
@@ -13393,7 +12875,6 @@ pub unsafe fn vld3q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x3_t) -> 
     }
     _vld3q_lane_s32(b.0, b.1, b.2, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 3-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_s8)"]
 #[doc = "## Safety"]
@@ -13419,7 +12900,6 @@ pub unsafe fn vld3_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x3_t) -> int8
     }
     _vld3_lane_s8(a as _, b.0, b.1, b.2, LANE, 1)
 }
-
 #[doc = "Load multiple 3-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_s16)"]
 #[doc = "## Safety"]
@@ -13445,7 +12925,6 @@ pub unsafe fn vld3_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x3_t) -> i
     }
     _vld3_lane_s16(a as _, b.0, b.1, b.2, LANE, 2)
 }
-
 #[doc = "Load multiple 3-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_s16)"]
 #[doc = "## Safety"]
@@ -13471,7 +12950,6 @@ pub unsafe fn vld3q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x3_t) -> 
     }
     _vld3q_lane_s16(a as _, b.0, b.1, b.2, LANE, 2)
 }
-
 #[doc = "Load multiple 3-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_s32)"]
 #[doc = "## Safety"]
@@ -13497,7 +12975,6 @@ pub unsafe fn vld3_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x3_t) -> i
     }
     _vld3_lane_s32(a as _, b.0, b.1, b.2, LANE, 4)
 }
-
 #[doc = "Load multiple 3-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_s32)"]
 #[doc = "## Safety"]
@@ -13523,7 +13000,6 @@ pub unsafe fn vld3q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x3_t) -> 
     }
     _vld3q_lane_s32(a as _, b.0, b.1, b.2, LANE, 4)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_u8)"]
 #[doc = "## Safety"]
@@ -13549,7 +13025,6 @@ pub unsafe fn vld3_lane_u8<const LANE: i32>(a: *const u8, b: uint8x8x3_t) -> uin
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld3_lane_s8::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_u16)"]
 #[doc = "## Safety"]
@@ -13575,7 +13050,6 @@ pub unsafe fn vld3_lane_u16<const LANE: i32>(a: *const u16, b: uint16x4x3_t) -> 
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld3_lane_s16::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_u16)"]
 #[doc = "## Safety"]
@@ -13601,7 +13075,6 @@ pub unsafe fn vld3q_lane_u16<const LANE: i32>(a: *const u16, b: uint16x8x3_t) ->
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld3q_lane_s16::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_u32)"]
 #[doc = "## Safety"]
@@ -13627,7 +13100,6 @@ pub unsafe fn vld3_lane_u32<const LANE: i32>(a: *const u32, b: uint32x2x3_t) -> 
     static_assert_uimm_bits!(LANE, 1);
     transmute(vld3_lane_s32::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_u32)"]
 #[doc = "## Safety"]
@@ -13653,7 +13125,6 @@ pub unsafe fn vld3q_lane_u32<const LANE: i32>(a: *const u32, b: uint32x4x3_t) ->
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld3q_lane_s32::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_p8)"]
 #[doc = "## Safety"]
@@ -13679,7 +13150,6 @@ pub unsafe fn vld3_lane_p8<const LANE: i32>(a: *const p8, b: poly8x8x3_t) -> pol
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld3_lane_s8::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_p16)"]
 #[doc = "## Safety"]
@@ -13705,7 +13175,6 @@ pub unsafe fn vld3_lane_p16<const LANE: i32>(a: *const p16, b: poly16x4x3_t) -> 
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld3_lane_s16::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_p16)"]
 #[doc = "## Safety"]
@@ -13731,7 +13200,6 @@ pub unsafe fn vld3q_lane_p16<const LANE: i32>(a: *const p16, b: poly16x8x3_t) ->
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld3q_lane_s16::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_p64)"]
 #[doc = "## Safety"]
@@ -13755,7 +13223,6 @@ pub unsafe fn vld3q_lane_p16<const LANE: i32>(a: *const p16, b: poly16x8x3_t) ->
 pub unsafe fn vld3_p64(a: *const p64) -> poly64x1x3_t {
     transmute(vld3_s64(transmute(a)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_s64)"]
 #[doc = "## Safety"]
@@ -13775,7 +13242,6 @@ pub unsafe fn vld3_s64(a: *const i64) -> int64x1x3_t {
     }
     _vld3_s64(a as _)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_s64)"]
 #[doc = "## Safety"]
@@ -13792,7 +13258,6 @@ pub unsafe fn vld3_s64(a: *const i64) -> int64x1x3_t {
     }
     _vld3_s64(a as *const i8, 8)
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_u64)"]
 #[doc = "## Safety"]
@@ -13816,7 +13281,6 @@ pub unsafe fn vld3_s64(a: *const i64) -> int64x1x3_t {
 pub unsafe fn vld3_u64(a: *const u64) -> uint64x1x3_t {
     transmute(vld3_s64(transmute(a)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_u8)"]
 #[doc = "## Safety"]
@@ -13840,7 +13304,6 @@ pub unsafe fn vld3_u64(a: *const u64) -> uint64x1x3_t {
 pub unsafe fn vld3_u8(a: *const u8) -> uint8x8x3_t {
     transmute(vld3_s8(transmute(a)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_u8)"]
 #[doc = "## Safety"]
@@ -13864,7 +13327,6 @@ pub unsafe fn vld3_u8(a: *const u8) -> uint8x8x3_t {
 pub unsafe fn vld3q_u8(a: *const u8) -> uint8x16x3_t {
     transmute(vld3q_s8(transmute(a)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_u16)"]
 #[doc = "## Safety"]
@@ -13888,7 +13350,6 @@ pub unsafe fn vld3q_u8(a: *const u8) -> uint8x16x3_t {
 pub unsafe fn vld3_u16(a: *const u16) -> uint16x4x3_t {
     transmute(vld3_s16(transmute(a)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_u16)"]
 #[doc = "## Safety"]
@@ -13912,7 +13373,6 @@ pub unsafe fn vld3_u16(a: *const u16) -> uint16x4x3_t {
 pub unsafe fn vld3q_u16(a: *const u16) -> uint16x8x3_t {
     transmute(vld3q_s16(transmute(a)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_u32)"]
 #[doc = "## Safety"]
@@ -13936,7 +13396,6 @@ pub unsafe fn vld3q_u16(a: *const u16) -> uint16x8x3_t {
 pub unsafe fn vld3_u32(a: *const u32) -> uint32x2x3_t {
     transmute(vld3_s32(transmute(a)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_u32)"]
 #[doc = "## Safety"]
@@ -13960,7 +13419,6 @@ pub unsafe fn vld3_u32(a: *const u32) -> uint32x2x3_t {
 pub unsafe fn vld3q_u32(a: *const u32) -> uint32x4x3_t {
     transmute(vld3q_s32(transmute(a)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_p8)"]
 #[doc = "## Safety"]
@@ -13984,7 +13442,6 @@ pub unsafe fn vld3q_u32(a: *const u32) -> uint32x4x3_t {
 pub unsafe fn vld3_p8(a: *const p8) -> poly8x8x3_t {
     transmute(vld3_s8(transmute(a)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_p8)"]
 #[doc = "## Safety"]
@@ -14008,7 +13465,6 @@ pub unsafe fn vld3_p8(a: *const p8) -> poly8x8x3_t {
 pub unsafe fn vld3q_p8(a: *const p8) -> poly8x16x3_t {
     transmute(vld3q_s8(transmute(a)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_p16)"]
 #[doc = "## Safety"]
@@ -14032,7 +13488,6 @@ pub unsafe fn vld3q_p8(a: *const p8) -> poly8x16x3_t {
 pub unsafe fn vld3_p16(a: *const p16) -> poly16x4x3_t {
     transmute(vld3_s16(transmute(a)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_p16)"]
 #[doc = "## Safety"]
@@ -14056,7 +13511,6 @@ pub unsafe fn vld3_p16(a: *const p16) -> poly16x4x3_t {
 pub unsafe fn vld3q_p16(a: *const p16) -> poly16x8x3_t {
     transmute(vld3q_s16(transmute(a)))
 }
-
 #[doc = "Load multiple 3-element structures to three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_f32)"]
 #[doc = "## Safety"]
@@ -14082,7 +13536,6 @@ pub unsafe fn vld3q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x3_t) -
     }
     _vld3q_lane_f32(a as _, b.0, b.1, b.2, LANE, 4)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_f32)"]
 #[doc = "## Safety"]
@@ -14099,7 +13552,6 @@ pub unsafe fn vld4_dup_f32(a: *const f32) -> float32x2x4_t {
     }
     _vld4_dup_f32(a as *const i8, 4)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_f32)"]
 #[doc = "## Safety"]
@@ -14116,7 +13568,6 @@ pub unsafe fn vld4q_dup_f32(a: *const f32) -> float32x4x4_t {
     }
     _vld4q_dup_f32(a as *const i8, 4)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_s8)"]
 #[doc = "## Safety"]
@@ -14133,7 +13584,6 @@ pub unsafe fn vld4_dup_s8(a: *const i8) -> int8x8x4_t {
     }
     _vld4_dup_s8(a as *const i8, 1)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_s8)"]
 #[doc = "## Safety"]
@@ -14150,7 +13600,6 @@ pub unsafe fn vld4q_dup_s8(a: *const i8) -> int8x16x4_t {
     }
     _vld4q_dup_s8(a as *const i8, 1)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_s16)"]
 #[doc = "## Safety"]
@@ -14167,7 +13616,6 @@ pub unsafe fn vld4_dup_s16(a: *const i16) -> int16x4x4_t {
     }
     _vld4_dup_s16(a as *const i8, 2)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_s16)"]
 #[doc = "## Safety"]
@@ -14184,7 +13632,6 @@ pub unsafe fn vld4q_dup_s16(a: *const i16) -> int16x8x4_t {
     }
     _vld4q_dup_s16(a as *const i8, 2)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_s32)"]
 #[doc = "## Safety"]
@@ -14201,7 +13648,6 @@ pub unsafe fn vld4_dup_s32(a: *const i32) -> int32x2x4_t {
     }
     _vld4_dup_s32(a as *const i8, 4)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_s32)"]
 #[doc = "## Safety"]
@@ -14218,7 +13664,6 @@ pub unsafe fn vld4q_dup_s32(a: *const i32) -> int32x4x4_t {
     }
     _vld4q_dup_s32(a as *const i8, 4)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_f32)"]
 #[doc = "## Safety"]
@@ -14238,7 +13683,6 @@ pub unsafe fn vld4_dup_f32(a: *const f32) -> float32x2x4_t {
     }
     _vld4_dup_f32(a as _)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_f32)"]
 #[doc = "## Safety"]
@@ -14258,7 +13702,6 @@ pub unsafe fn vld4q_dup_f32(a: *const f32) -> float32x4x4_t {
     }
     _vld4q_dup_f32(a as _)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_s8)"]
 #[doc = "## Safety"]
@@ -14278,7 +13721,6 @@ pub unsafe fn vld4_dup_s8(a: *const i8) -> int8x8x4_t {
     }
     _vld4_dup_s8(a as _)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_s8)"]
 #[doc = "## Safety"]
@@ -14298,7 +13740,6 @@ pub unsafe fn vld4q_dup_s8(a: *const i8) -> int8x16x4_t {
     }
     _vld4q_dup_s8(a as _)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_s16)"]
 #[doc = "## Safety"]
@@ -14318,7 +13759,6 @@ pub unsafe fn vld4_dup_s16(a: *const i16) -> int16x4x4_t {
     }
     _vld4_dup_s16(a as _)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_s16)"]
 #[doc = "## Safety"]
@@ -14338,7 +13778,6 @@ pub unsafe fn vld4q_dup_s16(a: *const i16) -> int16x8x4_t {
     }
     _vld4q_dup_s16(a as _)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_s32)"]
 #[doc = "## Safety"]
@@ -14358,7 +13797,6 @@ pub unsafe fn vld4_dup_s32(a: *const i32) -> int32x2x4_t {
     }
     _vld4_dup_s32(a as _)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_s32)"]
 #[doc = "## Safety"]
@@ -14378,7 +13816,6 @@ pub unsafe fn vld4q_dup_s32(a: *const i32) -> int32x4x4_t {
     }
     _vld4q_dup_s32(a as _)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_s64)"]
 #[doc = "## Safety"]
@@ -14398,7 +13835,6 @@ pub unsafe fn vld4_dup_s64(a: *const i64) -> int64x1x4_t {
     }
     _vld4_dup_s64(a as _)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_p64)"]
 #[doc = "## Safety"]
@@ -14422,7 +13858,6 @@ pub unsafe fn vld4_dup_s64(a: *const i64) -> int64x1x4_t {
 pub unsafe fn vld4_dup_p64(a: *const p64) -> poly64x1x4_t {
     transmute(vld4_dup_s64(transmute(a)))
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_s64)"]
 #[doc = "## Safety"]
@@ -14439,7 +13874,6 @@ pub unsafe fn vld4_dup_s64(a: *const i64) -> int64x1x4_t {
     }
     _vld4_dup_s64(a as *const i8, 8)
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_u64)"]
 #[doc = "## Safety"]
@@ -14463,7 +13897,6 @@ pub unsafe fn vld4_dup_s64(a: *const i64) -> int64x1x4_t {
 pub unsafe fn vld4_dup_u64(a: *const u64) -> uint64x1x4_t {
     transmute(vld4_dup_s64(transmute(a)))
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_u8)"]
 #[doc = "## Safety"]
@@ -14487,7 +13920,6 @@ pub unsafe fn vld4_dup_u64(a: *const u64) -> uint64x1x4_t {
 pub unsafe fn vld4_dup_u8(a: *const u8) -> uint8x8x4_t {
     transmute(vld4_dup_s8(transmute(a)))
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_u8)"]
 #[doc = "## Safety"]
@@ -14511,7 +13943,6 @@ pub unsafe fn vld4_dup_u8(a: *const u8) -> uint8x8x4_t {
 pub unsafe fn vld4q_dup_u8(a: *const u8) -> uint8x16x4_t {
     transmute(vld4q_dup_s8(transmute(a)))
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_u16)"]
 #[doc = "## Safety"]
@@ -14535,7 +13966,6 @@ pub unsafe fn vld4q_dup_u8(a: *const u8) -> uint8x16x4_t {
 pub unsafe fn vld4_dup_u16(a: *const u16) -> uint16x4x4_t {
     transmute(vld4_dup_s16(transmute(a)))
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_u16)"]
 #[doc = "## Safety"]
@@ -14559,7 +13989,6 @@ pub unsafe fn vld4_dup_u16(a: *const u16) -> uint16x4x4_t {
 pub unsafe fn vld4q_dup_u16(a: *const u16) -> uint16x8x4_t {
     transmute(vld4q_dup_s16(transmute(a)))
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_u32)"]
 #[doc = "## Safety"]
@@ -14583,7 +14012,6 @@ pub unsafe fn vld4q_dup_u16(a: *const u16) -> uint16x8x4_t {
 pub unsafe fn vld4_dup_u32(a: *const u32) -> uint32x2x4_t {
     transmute(vld4_dup_s32(transmute(a)))
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_u32)"]
 #[doc = "## Safety"]
@@ -14607,7 +14035,6 @@ pub unsafe fn vld4_dup_u32(a: *const u32) -> uint32x2x4_t {
 pub unsafe fn vld4q_dup_u32(a: *const u32) -> uint32x4x4_t {
     transmute(vld4q_dup_s32(transmute(a)))
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_p8)"]
 #[doc = "## Safety"]
@@ -14631,7 +14058,6 @@ pub unsafe fn vld4q_dup_u32(a: *const u32) -> uint32x4x4_t {
 pub unsafe fn vld4_dup_p8(a: *const p8) -> poly8x8x4_t {
     transmute(vld4_dup_s8(transmute(a)))
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_p8)"]
 #[doc = "## Safety"]
@@ -14655,7 +14081,6 @@ pub unsafe fn vld4_dup_p8(a: *const p8) -> poly8x8x4_t {
 pub unsafe fn vld4q_dup_p8(a: *const p8) -> poly8x16x4_t {
     transmute(vld4q_dup_s8(transmute(a)))
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_p16)"]
 #[doc = "## Safety"]
@@ -14679,7 +14104,6 @@ pub unsafe fn vld4q_dup_p8(a: *const p8) -> poly8x16x4_t {
 pub unsafe fn vld4_dup_p16(a: *const p16) -> poly16x4x4_t {
     transmute(vld4_dup_s16(transmute(a)))
 }
-
 #[doc = "Load single 4-element structure and replicate to all lanes of four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_p16)"]
 #[doc = "## Safety"]
@@ -14703,7 +14127,6 @@ pub unsafe fn vld4_dup_p16(a: *const p16) -> poly16x4x4_t {
 pub unsafe fn vld4q_dup_p16(a: *const p16) -> poly16x8x4_t {
     transmute(vld4q_dup_s16(transmute(a)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_f32)"]
 #[doc = "## Safety"]
@@ -14723,7 +14146,6 @@ pub unsafe fn vld4_f32(a: *const f32) -> float32x2x4_t {
     }
     _vld4_f32(a as _)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_f32)"]
 #[doc = "## Safety"]
@@ -14743,7 +14165,6 @@ pub unsafe fn vld4q_f32(a: *const f32) -> float32x4x4_t {
     }
     _vld4q_f32(a as _)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_s8)"]
 #[doc = "## Safety"]
@@ -14763,7 +14184,6 @@ pub unsafe fn vld4_s8(a: *const i8) -> int8x8x4_t {
     }
     _vld4_s8(a as _)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_s8)"]
 #[doc = "## Safety"]
@@ -14783,7 +14203,6 @@ pub unsafe fn vld4q_s8(a: *const i8) -> int8x16x4_t {
     }
     _vld4q_s8(a as _)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_s16)"]
 #[doc = "## Safety"]
@@ -14803,7 +14222,6 @@ pub unsafe fn vld4_s16(a: *const i16) -> int16x4x4_t {
     }
     _vld4_s16(a as _)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_s16)"]
 #[doc = "## Safety"]
@@ -14823,7 +14241,6 @@ pub unsafe fn vld4q_s16(a: *const i16) -> int16x8x4_t {
     }
     _vld4q_s16(a as _)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_s32)"]
 #[doc = "## Safety"]
@@ -14843,7 +14260,6 @@ pub unsafe fn vld4_s32(a: *const i32) -> int32x2x4_t {
     }
     _vld4_s32(a as _)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_s32)"]
 #[doc = "## Safety"]
@@ -14863,7 +14279,6 @@ pub unsafe fn vld4q_s32(a: *const i32) -> int32x4x4_t {
     }
     _vld4q_s32(a as _)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_f32)"]
 #[doc = "## Safety"]
@@ -14880,7 +14295,6 @@ pub unsafe fn vld4_f32(a: *const f32) -> float32x2x4_t {
     }
     _vld4_f32(a as *const i8, 4)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_f32)"]
 #[doc = "## Safety"]
@@ -14897,7 +14311,6 @@ pub unsafe fn vld4q_f32(a: *const f32) -> float32x4x4_t {
     }
     _vld4q_f32(a as *const i8, 4)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_s8)"]
 #[doc = "## Safety"]
@@ -14914,7 +14327,6 @@ pub unsafe fn vld4_s8(a: *const i8) -> int8x8x4_t {
     }
     _vld4_s8(a as *const i8, 1)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_s8)"]
 #[doc = "## Safety"]
@@ -14931,7 +14343,6 @@ pub unsafe fn vld4q_s8(a: *const i8) -> int8x16x4_t {
     }
     _vld4q_s8(a as *const i8, 1)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_s16)"]
 #[doc = "## Safety"]
@@ -14948,7 +14359,6 @@ pub unsafe fn vld4_s16(a: *const i16) -> int16x4x4_t {
     }
     _vld4_s16(a as *const i8, 2)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_s16)"]
 #[doc = "## Safety"]
@@ -14965,7 +14375,6 @@ pub unsafe fn vld4q_s16(a: *const i16) -> int16x8x4_t {
     }
     _vld4q_s16(a as *const i8, 2)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_s32)"]
 #[doc = "## Safety"]
@@ -14982,7 +14391,6 @@ pub unsafe fn vld4_s32(a: *const i32) -> int32x2x4_t {
     }
     _vld4_s32(a as *const i8, 4)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_s32)"]
 #[doc = "## Safety"]
@@ -14999,7 +14407,6 @@ pub unsafe fn vld4q_s32(a: *const i32) -> int32x4x4_t {
     }
     _vld4q_s32(a as *const i8, 4)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_f32)"]
 #[doc = "## Safety"]
@@ -15028,7 +14435,6 @@ pub unsafe fn vld4_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x4_t) ->
     }
     _vld4_lane_f32(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_f32)"]
 #[doc = "## Safety"]
@@ -15057,7 +14463,6 @@ pub unsafe fn vld4q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x4_t) -
     }
     _vld4q_lane_f32(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_s8)"]
 #[doc = "## Safety"]
@@ -15086,7 +14491,6 @@ pub unsafe fn vld4_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x4_t) -> int8
     }
     _vld4_lane_s8(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_s16)"]
 #[doc = "## Safety"]
@@ -15115,7 +14519,6 @@ pub unsafe fn vld4_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x4_t) -> i
     }
     _vld4_lane_s16(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_s16)"]
 #[doc = "## Safety"]
@@ -15144,7 +14547,6 @@ pub unsafe fn vld4q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x4_t) -> 
     }
     _vld4q_lane_s16(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_s32)"]
 #[doc = "## Safety"]
@@ -15173,7 +14575,6 @@ pub unsafe fn vld4_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x4_t) -> i
     }
     _vld4_lane_s32(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_s32)"]
 #[doc = "## Safety"]
@@ -15202,7 +14603,6 @@ pub unsafe fn vld4q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x4_t) -> 
     }
     _vld4q_lane_s32(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_f32)"]
 #[doc = "## Safety"]
@@ -15229,7 +14629,6 @@ pub unsafe fn vld4_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x4_t) ->
     }
     _vld4_lane_f32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_f32)"]
 #[doc = "## Safety"]
@@ -15256,7 +14655,6 @@ pub unsafe fn vld4q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x4_t) -
     }
     _vld4q_lane_f32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_s8)"]
 #[doc = "## Safety"]
@@ -15283,7 +14681,6 @@ pub unsafe fn vld4_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x4_t) -> int8
     }
     _vld4_lane_s8(a as _, b.0, b.1, b.2, b.3, LANE, 1)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_s16)"]
 #[doc = "## Safety"]
@@ -15310,7 +14707,6 @@ pub unsafe fn vld4_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x4_t) -> i
     }
     _vld4_lane_s16(a as _, b.0, b.1, b.2, b.3, LANE, 2)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_s16)"]
 #[doc = "## Safety"]
@@ -15337,7 +14733,6 @@ pub unsafe fn vld4q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x4_t) -> 
     }
     _vld4q_lane_s16(a as _, b.0, b.1, b.2, b.3, LANE, 2)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_s32)"]
 #[doc = "## Safety"]
@@ -15364,7 +14759,6 @@ pub unsafe fn vld4_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x4_t) -> i
     }
     _vld4_lane_s32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_s32)"]
 #[doc = "## Safety"]
@@ -15391,7 +14785,6 @@ pub unsafe fn vld4q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x4_t) -> 
     }
     _vld4q_lane_s32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_u8)"]
 #[doc = "## Safety"]
@@ -15417,7 +14810,6 @@ pub unsafe fn vld4_lane_u8<const LANE: i32>(a: *const u8, b: uint8x8x4_t) -> uin
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld4_lane_s8::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_u16)"]
 #[doc = "## Safety"]
@@ -15443,7 +14835,6 @@ pub unsafe fn vld4_lane_u16<const LANE: i32>(a: *const u16, b: uint16x4x4_t) -> 
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld4_lane_s16::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_u16)"]
 #[doc = "## Safety"]
@@ -15469,7 +14860,6 @@ pub unsafe fn vld4q_lane_u16<const LANE: i32>(a: *const u16, b: uint16x8x4_t) ->
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld4q_lane_s16::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_u32)"]
 #[doc = "## Safety"]
@@ -15495,7 +14885,6 @@ pub unsafe fn vld4_lane_u32<const LANE: i32>(a: *const u32, b: uint32x2x4_t) -> 
     static_assert_uimm_bits!(LANE, 1);
     transmute(vld4_lane_s32::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_u32)"]
 #[doc = "## Safety"]
@@ -15521,7 +14910,6 @@ pub unsafe fn vld4q_lane_u32<const LANE: i32>(a: *const u32, b: uint32x4x4_t) ->
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld4q_lane_s32::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_p8)"]
 #[doc = "## Safety"]
@@ -15547,7 +14935,6 @@ pub unsafe fn vld4_lane_p8<const LANE: i32>(a: *const p8, b: poly8x8x4_t) -> pol
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld4_lane_s8::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_p16)"]
 #[doc = "## Safety"]
@@ -15573,7 +14960,6 @@ pub unsafe fn vld4_lane_p16<const LANE: i32>(a: *const p16, b: poly16x4x4_t) -> 
     static_assert_uimm_bits!(LANE, 2);
     transmute(vld4_lane_s16::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_p16)"]
 #[doc = "## Safety"]
@@ -15599,7 +14985,6 @@ pub unsafe fn vld4q_lane_p16<const LANE: i32>(a: *const p16, b: poly16x8x4_t) ->
     static_assert_uimm_bits!(LANE, 3);
     transmute(vld4q_lane_s16::<LANE>(transmute(a), transmute(b)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_p64)"]
 #[doc = "## Safety"]
@@ -15623,7 +15008,6 @@ pub unsafe fn vld4q_lane_p16<const LANE: i32>(a: *const p16, b: poly16x8x4_t) ->
 pub unsafe fn vld4_p64(a: *const p64) -> poly64x1x4_t {
     transmute(vld4_s64(transmute(a)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_s64)"]
 #[doc = "## Safety"]
@@ -15643,7 +15027,6 @@ pub unsafe fn vld4_s64(a: *const i64) -> int64x1x4_t {
     }
     _vld4_s64(a as _)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_s64)"]
 #[doc = "## Safety"]
@@ -15660,7 +15043,6 @@ pub unsafe fn vld4_s64(a: *const i64) -> int64x1x4_t {
     }
     _vld4_s64(a as *const i8, 8)
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_u64)"]
 #[doc = "## Safety"]
@@ -15684,7 +15066,6 @@ pub unsafe fn vld4_s64(a: *const i64) -> int64x1x4_t {
 pub unsafe fn vld4_u64(a: *const u64) -> uint64x1x4_t {
     transmute(vld4_s64(transmute(a)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_u8)"]
 #[doc = "## Safety"]
@@ -15708,7 +15089,6 @@ pub unsafe fn vld4_u64(a: *const u64) -> uint64x1x4_t {
 pub unsafe fn vld4_u8(a: *const u8) -> uint8x8x4_t {
     transmute(vld4_s8(transmute(a)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_u8)"]
 #[doc = "## Safety"]
@@ -15732,7 +15112,6 @@ pub unsafe fn vld4_u8(a: *const u8) -> uint8x8x4_t {
 pub unsafe fn vld4q_u8(a: *const u8) -> uint8x16x4_t {
     transmute(vld4q_s8(transmute(a)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_u16)"]
 #[doc = "## Safety"]
@@ -15756,7 +15135,6 @@ pub unsafe fn vld4q_u8(a: *const u8) -> uint8x16x4_t {
 pub unsafe fn vld4_u16(a: *const u16) -> uint16x4x4_t {
     transmute(vld4_s16(transmute(a)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_u16)"]
 #[doc = "## Safety"]
@@ -15780,7 +15158,6 @@ pub unsafe fn vld4_u16(a: *const u16) -> uint16x4x4_t {
 pub unsafe fn vld4q_u16(a: *const u16) -> uint16x8x4_t {
     transmute(vld4q_s16(transmute(a)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_u32)"]
 #[doc = "## Safety"]
@@ -15804,7 +15181,6 @@ pub unsafe fn vld4q_u16(a: *const u16) -> uint16x8x4_t {
 pub unsafe fn vld4_u32(a: *const u32) -> uint32x2x4_t {
     transmute(vld4_s32(transmute(a)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_u32)"]
 #[doc = "## Safety"]
@@ -15828,7 +15204,6 @@ pub unsafe fn vld4_u32(a: *const u32) -> uint32x2x4_t {
 pub unsafe fn vld4q_u32(a: *const u32) -> uint32x4x4_t {
     transmute(vld4q_s32(transmute(a)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_p8)"]
 #[doc = "## Safety"]
@@ -15852,7 +15227,6 @@ pub unsafe fn vld4q_u32(a: *const u32) -> uint32x4x4_t {
 pub unsafe fn vld4_p8(a: *const p8) -> poly8x8x4_t {
     transmute(vld4_s8(transmute(a)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_p8)"]
 #[doc = "## Safety"]
@@ -15876,7 +15250,6 @@ pub unsafe fn vld4_p8(a: *const p8) -> poly8x8x4_t {
 pub unsafe fn vld4q_p8(a: *const p8) -> poly8x16x4_t {
     transmute(vld4q_s8(transmute(a)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_p16)"]
 #[doc = "## Safety"]
@@ -15900,7 +15273,6 @@ pub unsafe fn vld4q_p8(a: *const p8) -> poly8x16x4_t {
 pub unsafe fn vld4_p16(a: *const p16) -> poly16x4x4_t {
     transmute(vld4_s16(transmute(a)))
 }
-
 #[doc = "Load multiple 4-element structures to four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_p16)"]
 #[doc = "## Safety"]
@@ -15924,7 +15296,6 @@ pub unsafe fn vld4_p16(a: *const p16) -> poly16x4x4_t {
 pub unsafe fn vld4q_p16(a: *const p16) -> poly16x8x4_t {
     transmute(vld4q_s16(transmute(a)))
 }
-
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_f32)"]
 #[doc = "## Safety"]
@@ -15956,7 +15327,6 @@ pub unsafe fn vmax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     }
     _vmax_f32(a, b)
 }
-
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_f32)"]
 #[doc = "## Safety"]
@@ -15988,7 +15358,6 @@ pub unsafe fn vmaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     }
     _vmaxq_f32(a, b)
 }
-
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_s8)"]
 #[doc = "## Safety"]
@@ -16020,7 +15389,6 @@ pub unsafe fn vmax_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     }
     _vmax_s8(a, b)
 }
-
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_s8)"]
 #[doc = "## Safety"]
@@ -16052,7 +15420,6 @@ pub unsafe fn vmaxq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     }
     _vmaxq_s8(a, b)
 }
-
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_s16)"]
 #[doc = "## Safety"]
@@ -16084,7 +15451,6 @@ pub unsafe fn vmax_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     }
     _vmax_s16(a, b)
 }
-
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_s16)"]
 #[doc = "## Safety"]
@@ -16116,7 +15482,6 @@ pub unsafe fn vmaxq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     }
     _vmaxq_s16(a, b)
 }
-
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_s32)"]
 #[doc = "## Safety"]
@@ -16148,7 +15513,6 @@ pub unsafe fn vmax_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     }
     _vmax_s32(a, b)
 }
-
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_s32)"]
 #[doc = "## Safety"]
@@ -16180,7 +15544,6 @@ pub unsafe fn vmaxq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     }
     _vmaxq_s32(a, b)
 }
-
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_u8)"]
 #[doc = "## Safety"]
@@ -16212,7 +15575,6 @@ pub unsafe fn vmax_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     }
     _vmax_u8(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_u8)"]
 #[doc = "## Safety"]
@@ -16244,7 +15606,6 @@ pub unsafe fn vmaxq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     }
     _vmaxq_u8(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_u16)"]
 #[doc = "## Safety"]
@@ -16276,7 +15637,6 @@ pub unsafe fn vmax_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     }
     _vmax_u16(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_u16)"]
 #[doc = "## Safety"]
@@ -16308,7 +15668,6 @@ pub unsafe fn vmaxq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     }
     _vmaxq_u16(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_u32)"]
 #[doc = "## Safety"]
@@ -16340,7 +15699,6 @@ pub unsafe fn vmax_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     }
     _vmax_u32(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_u32)"]
 #[doc = "## Safety"]
@@ -16372,7 +15730,6 @@ pub unsafe fn vmaxq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     }
     _vmaxq_u32(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Floating-point Maximum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnm_f32)"]
 #[doc = "## Safety"]
@@ -16404,7 +15761,6 @@ pub unsafe fn vmaxnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     }
     _vmaxnm_f32(a, b)
 }
-
 #[doc = "Floating-point Maximum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmq_f32)"]
 #[doc = "## Safety"]
@@ -16436,7 +15792,6 @@ pub unsafe fn vmaxnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     }
     _vmaxnmq_f32(a, b)
 }
-
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_f32)"]
 #[doc = "## Safety"]
@@ -16468,7 +15823,6 @@ pub unsafe fn vmin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     }
     _vmin_f32(a, b)
 }
-
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_f32)"]
 #[doc = "## Safety"]
@@ -16500,7 +15854,6 @@ pub unsafe fn vminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     }
     _vminq_f32(a, b)
 }
-
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_s8)"]
 #[doc = "## Safety"]
@@ -16532,7 +15885,6 @@ pub unsafe fn vmin_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     }
     _vmin_s8(a, b)
 }
-
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_s8)"]
 #[doc = "## Safety"]
@@ -16564,7 +15916,6 @@ pub unsafe fn vminq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     }
     _vminq_s8(a, b)
 }
-
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_s16)"]
 #[doc = "## Safety"]
@@ -16596,7 +15947,6 @@ pub unsafe fn vmin_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     }
     _vmin_s16(a, b)
 }
-
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_s16)"]
 #[doc = "## Safety"]
@@ -16628,7 +15978,6 @@ pub unsafe fn vminq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     }
     _vminq_s16(a, b)
 }
-
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_s32)"]
 #[doc = "## Safety"]
@@ -16660,7 +16009,6 @@ pub unsafe fn vmin_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     }
     _vmin_s32(a, b)
 }
-
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_s32)"]
 #[doc = "## Safety"]
@@ -16692,7 +16040,6 @@ pub unsafe fn vminq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     }
     _vminq_s32(a, b)
 }
-
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_u8)"]
 #[doc = "## Safety"]
@@ -16724,7 +16071,6 @@ pub unsafe fn vmin_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     }
     _vmin_u8(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_u8)"]
 #[doc = "## Safety"]
@@ -16756,7 +16102,6 @@ pub unsafe fn vminq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     }
     _vminq_u8(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_u16)"]
 #[doc = "## Safety"]
@@ -16788,7 +16133,6 @@ pub unsafe fn vmin_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     }
     _vmin_u16(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_u16)"]
 #[doc = "## Safety"]
@@ -16820,7 +16164,6 @@ pub unsafe fn vminq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     }
     _vminq_u16(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_u32)"]
 #[doc = "## Safety"]
@@ -16852,7 +16195,6 @@ pub unsafe fn vmin_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     }
     _vmin_u32(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_u32)"]
 #[doc = "## Safety"]
@@ -16884,7 +16226,6 @@ pub unsafe fn vminq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     }
     _vminq_u32(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Floating-point Minimum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnm_f32)"]
 #[doc = "## Safety"]
@@ -16916,7 +16257,6 @@ pub unsafe fn vminnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     }
     _vminnm_f32(a, b)
 }
-
 #[doc = "Floating-point Minimum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmq_f32)"]
 #[doc = "## Safety"]
@@ -16948,7 +16288,6 @@ pub unsafe fn vminnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     }
     _vminnmq_f32(a, b)
 }
-
 #[doc = "Floating-point multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_f32)"]
 #[doc = "## Safety"]
@@ -16972,7 +16311,6 @@ pub unsafe fn vminnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 pub unsafe fn vmla_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
     simd_add(a, simd_mul(b, c))
 }
-
 #[doc = "Floating-point multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_f32)"]
 #[doc = "## Safety"]
@@ -16996,7 +16334,6 @@ pub unsafe fn vmla_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float3
 pub unsafe fn vmlaq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
     simd_add(a, simd_mul(b, c))
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_lane_f32)"]
 #[doc = "## Safety"]
@@ -17026,7 +16363,6 @@ pub unsafe fn vmla_lane_f32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 1);
     vmla_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_laneq_f32)"]
 #[doc = "## Safety"]
@@ -17056,7 +16392,6 @@ pub unsafe fn vmla_laneq_f32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 2);
     vmla_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_lane_f32)"]
 #[doc = "## Safety"]
@@ -17090,7 +16425,6 @@ pub unsafe fn vmlaq_lane_f32<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_laneq_f32)"]
 #[doc = "## Safety"]
@@ -17124,7 +16458,6 @@ pub unsafe fn vmlaq_laneq_f32<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_lane_s16)"]
 #[doc = "## Safety"]
@@ -17158,7 +16491,6 @@ pub unsafe fn vmla_lane_s16<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_lane_u16)"]
 #[doc = "## Safety"]
@@ -17192,7 +16524,6 @@ pub unsafe fn vmla_lane_u16<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_laneq_s16)"]
 #[doc = "## Safety"]
@@ -17226,7 +16557,6 @@ pub unsafe fn vmla_laneq_s16<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_laneq_u16)"]
 #[doc = "## Safety"]
@@ -17260,7 +16590,6 @@ pub unsafe fn vmla_laneq_u16<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_lane_s16)"]
 #[doc = "## Safety"]
@@ -17307,7 +16636,6 @@ pub unsafe fn vmlaq_lane_s16<const LANE: i32>(
         ),
     )
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_lane_u16)"]
 #[doc = "## Safety"]
@@ -17354,7 +16682,6 @@ pub unsafe fn vmlaq_lane_u16<const LANE: i32>(
         ),
     )
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_laneq_s16)"]
 #[doc = "## Safety"]
@@ -17401,7 +16728,6 @@ pub unsafe fn vmlaq_laneq_s16<const LANE: i32>(
         ),
     )
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_laneq_u16)"]
 #[doc = "## Safety"]
@@ -17448,7 +16774,6 @@ pub unsafe fn vmlaq_laneq_u16<const LANE: i32>(
         ),
     )
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_lane_s32)"]
 #[doc = "## Safety"]
@@ -17478,7 +16803,6 @@ pub unsafe fn vmla_lane_s32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 1);
     vmla_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_lane_u32)"]
 #[doc = "## Safety"]
@@ -17508,7 +16832,6 @@ pub unsafe fn vmla_lane_u32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 1);
     vmla_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_laneq_s32)"]
 #[doc = "## Safety"]
@@ -17538,7 +16861,6 @@ pub unsafe fn vmla_laneq_s32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 2);
     vmla_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_laneq_u32)"]
 #[doc = "## Safety"]
@@ -17568,7 +16890,6 @@ pub unsafe fn vmla_laneq_u32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 2);
     vmla_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_lane_s32)"]
 #[doc = "## Safety"]
@@ -17602,7 +16923,6 @@ pub unsafe fn vmlaq_lane_s32<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_lane_u32)"]
 #[doc = "## Safety"]
@@ -17636,7 +16956,6 @@ pub unsafe fn vmlaq_lane_u32<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_laneq_s32)"]
 #[doc = "## Safety"]
@@ -17670,7 +16989,6 @@ pub unsafe fn vmlaq_laneq_s32<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_laneq_u32)"]
 #[doc = "## Safety"]
@@ -17704,7 +17022,6 @@ pub unsafe fn vmlaq_laneq_u32<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_n_f32)"]
 #[doc = "## Safety"]
@@ -17728,7 +17045,6 @@ pub unsafe fn vmlaq_laneq_u32<const LANE: i32>(
 pub unsafe fn vmla_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t {
     vmla_f32(a, b, vdup_n_f32(c))
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_n_f32)"]
 #[doc = "## Safety"]
@@ -17752,7 +17068,6 @@ pub unsafe fn vmla_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t 
 pub unsafe fn vmlaq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t {
     vmlaq_f32(a, b, vdupq_n_f32(c))
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_n_s16)"]
 #[doc = "## Safety"]
@@ -17776,7 +17091,6 @@ pub unsafe fn vmlaq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t
 pub unsafe fn vmla_n_s16(a: int16x4_t, b: int16x4_t, c: i16) -> int16x4_t {
     vmla_s16(a, b, vdup_n_s16(c))
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_n_s16)"]
 #[doc = "## Safety"]
@@ -17800,7 +17114,6 @@ pub unsafe fn vmla_n_s16(a: int16x4_t, b: int16x4_t, c: i16) -> int16x4_t {
 pub unsafe fn vmlaq_n_s16(a: int16x8_t, b: int16x8_t, c: i16) -> int16x8_t {
     vmlaq_s16(a, b, vdupq_n_s16(c))
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_n_u16)"]
 #[doc = "## Safety"]
@@ -17824,7 +17137,6 @@ pub unsafe fn vmlaq_n_s16(a: int16x8_t, b: int16x8_t, c: i16) -> int16x8_t {
 pub unsafe fn vmla_n_u16(a: uint16x4_t, b: uint16x4_t, c: u16) -> uint16x4_t {
     vmla_u16(a, b, vdup_n_u16(c))
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_n_u16)"]
 #[doc = "## Safety"]
@@ -17848,7 +17160,6 @@ pub unsafe fn vmla_n_u16(a: uint16x4_t, b: uint16x4_t, c: u16) -> uint16x4_t {
 pub unsafe fn vmlaq_n_u16(a: uint16x8_t, b: uint16x8_t, c: u16) -> uint16x8_t {
     vmlaq_u16(a, b, vdupq_n_u16(c))
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_n_s32)"]
 #[doc = "## Safety"]
@@ -17872,7 +17183,6 @@ pub unsafe fn vmlaq_n_u16(a: uint16x8_t, b: uint16x8_t, c: u16) -> uint16x8_t {
 pub unsafe fn vmla_n_s32(a: int32x2_t, b: int32x2_t, c: i32) -> int32x2_t {
     vmla_s32(a, b, vdup_n_s32(c))
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_n_s32)"]
 #[doc = "## Safety"]
@@ -17896,7 +17206,6 @@ pub unsafe fn vmla_n_s32(a: int32x2_t, b: int32x2_t, c: i32) -> int32x2_t {
 pub unsafe fn vmlaq_n_s32(a: int32x4_t, b: int32x4_t, c: i32) -> int32x4_t {
     vmlaq_s32(a, b, vdupq_n_s32(c))
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_n_u32)"]
 #[doc = "## Safety"]
@@ -17920,7 +17229,6 @@ pub unsafe fn vmlaq_n_s32(a: int32x4_t, b: int32x4_t, c: i32) -> int32x4_t {
 pub unsafe fn vmla_n_u32(a: uint32x2_t, b: uint32x2_t, c: u32) -> uint32x2_t {
     vmla_u32(a, b, vdup_n_u32(c))
 }
-
 #[doc = "Vector multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_n_u32)"]
 #[doc = "## Safety"]
@@ -17944,7 +17252,6 @@ pub unsafe fn vmla_n_u32(a: uint32x2_t, b: uint32x2_t, c: u32) -> uint32x2_t {
 pub unsafe fn vmlaq_n_u32(a: uint32x4_t, b: uint32x4_t, c: u32) -> uint32x4_t {
     vmlaq_u32(a, b, vdupq_n_u32(c))
 }
-
 #[doc = "Multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_s8)"]
 #[doc = "## Safety"]
@@ -17968,7 +17275,6 @@ pub unsafe fn vmlaq_n_u32(a: uint32x4_t, b: uint32x4_t, c: u32) -> uint32x4_t {
 pub unsafe fn vmla_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
     simd_add(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_s8)"]
 #[doc = "## Safety"]
@@ -17992,7 +17298,6 @@ pub unsafe fn vmla_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
 pub unsafe fn vmlaq_s8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
     simd_add(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_s16)"]
 #[doc = "## Safety"]
@@ -18016,7 +17321,6 @@ pub unsafe fn vmlaq_s8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
 pub unsafe fn vmla_s16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
     simd_add(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_s16)"]
 #[doc = "## Safety"]
@@ -18040,7 +17344,6 @@ pub unsafe fn vmla_s16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
 pub unsafe fn vmlaq_s16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     simd_add(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_s32)"]
 #[doc = "## Safety"]
@@ -18064,7 +17367,6 @@ pub unsafe fn vmlaq_s16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
 pub unsafe fn vmla_s32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
     simd_add(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_s32)"]
 #[doc = "## Safety"]
@@ -18088,7 +17390,6 @@ pub unsafe fn vmla_s32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
 pub unsafe fn vmlaq_s32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     simd_add(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_u8)"]
 #[doc = "## Safety"]
@@ -18112,7 +17413,6 @@ pub unsafe fn vmlaq_s32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
 pub unsafe fn vmla_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
     simd_add(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_u8)"]
 #[doc = "## Safety"]
@@ -18136,7 +17436,6 @@ pub unsafe fn vmla_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
 pub unsafe fn vmlaq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_t {
     simd_add(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_u16)"]
 #[doc = "## Safety"]
@@ -18160,7 +17459,6 @@ pub unsafe fn vmlaq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_
 pub unsafe fn vmla_u16(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_t {
     simd_add(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_u16)"]
 #[doc = "## Safety"]
@@ -18184,7 +17482,6 @@ pub unsafe fn vmla_u16(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_
 pub unsafe fn vmlaq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8_t {
     simd_add(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_u32)"]
 #[doc = "## Safety"]
@@ -18208,7 +17505,6 @@ pub unsafe fn vmlaq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8
 pub unsafe fn vmla_u32(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_t {
     simd_add(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_u32)"]
 #[doc = "## Safety"]
@@ -18232,7 +17528,6 @@ pub unsafe fn vmla_u32(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_
 pub unsafe fn vmlaq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t {
     simd_add(a, simd_mul(b, c))
 }
-
 #[doc = "Vector widening multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_lane_s16)"]
 #[doc = "## Safety"]
@@ -18266,7 +17561,6 @@ pub unsafe fn vmlal_lane_s16<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector widening multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_laneq_s16)"]
 #[doc = "## Safety"]
@@ -18300,7 +17594,6 @@ pub unsafe fn vmlal_laneq_s16<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector widening multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_lane_s32)"]
 #[doc = "## Safety"]
@@ -18330,7 +17623,6 @@ pub unsafe fn vmlal_lane_s32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 1);
     vmlal_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector widening multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_laneq_s32)"]
 #[doc = "## Safety"]
@@ -18360,7 +17652,6 @@ pub unsafe fn vmlal_laneq_s32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 2);
     vmlal_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector widening multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_lane_u16)"]
 #[doc = "## Safety"]
@@ -18394,7 +17685,6 @@ pub unsafe fn vmlal_lane_u16<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector widening multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_laneq_u16)"]
 #[doc = "## Safety"]
@@ -18428,7 +17718,6 @@ pub unsafe fn vmlal_laneq_u16<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector widening multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_lane_u32)"]
 #[doc = "## Safety"]
@@ -18458,7 +17747,6 @@ pub unsafe fn vmlal_lane_u32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 1);
     vmlal_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector widening multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_laneq_u32)"]
 #[doc = "## Safety"]
@@ -18488,7 +17776,6 @@ pub unsafe fn vmlal_laneq_u32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 2);
     vmlal_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector widening multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_n_s16)"]
 #[doc = "## Safety"]
@@ -18512,7 +17799,6 @@ pub unsafe fn vmlal_laneq_u32<const LANE: i32>(
 pub unsafe fn vmlal_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
     vmlal_s16(a, b, vdup_n_s16(c))
 }
-
 #[doc = "Vector widening multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_n_s32)"]
 #[doc = "## Safety"]
@@ -18536,7 +17822,6 @@ pub unsafe fn vmlal_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
 pub unsafe fn vmlal_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
     vmlal_s32(a, b, vdup_n_s32(c))
 }
-
 #[doc = "Vector widening multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_n_u16)"]
 #[doc = "## Safety"]
@@ -18560,7 +17845,6 @@ pub unsafe fn vmlal_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
 pub unsafe fn vmlal_n_u16(a: uint32x4_t, b: uint16x4_t, c: u16) -> uint32x4_t {
     vmlal_u16(a, b, vdup_n_u16(c))
 }
-
 #[doc = "Vector widening multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_n_u32)"]
 #[doc = "## Safety"]
@@ -18584,7 +17868,6 @@ pub unsafe fn vmlal_n_u16(a: uint32x4_t, b: uint16x4_t, c: u16) -> uint32x4_t {
 pub unsafe fn vmlal_n_u32(a: uint64x2_t, b: uint32x2_t, c: u32) -> uint64x2_t {
     vmlal_u32(a, b, vdup_n_u32(c))
 }
-
 #[doc = "Signed multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_s8)"]
 #[doc = "## Safety"]
@@ -18608,7 +17891,6 @@ pub unsafe fn vmlal_n_u32(a: uint64x2_t, b: uint32x2_t, c: u32) -> uint64x2_t {
 pub unsafe fn vmlal_s8(a: int16x8_t, b: int8x8_t, c: int8x8_t) -> int16x8_t {
     simd_add(a, vmull_s8(b, c))
 }
-
 #[doc = "Signed multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_s16)"]
 #[doc = "## Safety"]
@@ -18632,7 +17914,6 @@ pub unsafe fn vmlal_s8(a: int16x8_t, b: int8x8_t, c: int8x8_t) -> int16x8_t {
 pub unsafe fn vmlal_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     simd_add(a, vmull_s16(b, c))
 }
-
 #[doc = "Signed multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_s32)"]
 #[doc = "## Safety"]
@@ -18656,7 +17937,6 @@ pub unsafe fn vmlal_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
 pub unsafe fn vmlal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     simd_add(a, vmull_s32(b, c))
 }
-
 #[doc = "Unsigned multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_u8)"]
 #[doc = "## Safety"]
@@ -18680,7 +17960,6 @@ pub unsafe fn vmlal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
 pub unsafe fn vmlal_u8(a: uint16x8_t, b: uint8x8_t, c: uint8x8_t) -> uint16x8_t {
     simd_add(a, vmull_u8(b, c))
 }
-
 #[doc = "Unsigned multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_u16)"]
 #[doc = "## Safety"]
@@ -18704,7 +17983,6 @@ pub unsafe fn vmlal_u8(a: uint16x8_t, b: uint8x8_t, c: uint8x8_t) -> uint16x8_t 
 pub unsafe fn vmlal_u16(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4_t {
     simd_add(a, vmull_u16(b, c))
 }
-
 #[doc = "Unsigned multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_u32)"]
 #[doc = "## Safety"]
@@ -18728,7 +18006,6 @@ pub unsafe fn vmlal_u16(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4
 pub unsafe fn vmlal_u32(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2_t {
     simd_add(a, vmull_u32(b, c))
 }
-
 #[doc = "Floating-point multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_f32)"]
 #[doc = "## Safety"]
@@ -18752,7 +18029,6 @@ pub unsafe fn vmlal_u32(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2
 pub unsafe fn vmls_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
     simd_sub(a, simd_mul(b, c))
 }
-
 #[doc = "Floating-point multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_f32)"]
 #[doc = "## Safety"]
@@ -18776,7 +18052,6 @@ pub unsafe fn vmls_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float3
 pub unsafe fn vmlsq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
     simd_sub(a, simd_mul(b, c))
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_lane_f32)"]
 #[doc = "## Safety"]
@@ -18806,7 +18081,6 @@ pub unsafe fn vmls_lane_f32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 1);
     vmls_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_laneq_f32)"]
 #[doc = "## Safety"]
@@ -18836,7 +18110,6 @@ pub unsafe fn vmls_laneq_f32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 2);
     vmls_f32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_lane_f32)"]
 #[doc = "## Safety"]
@@ -18870,7 +18143,6 @@ pub unsafe fn vmlsq_lane_f32<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_laneq_f32)"]
 #[doc = "## Safety"]
@@ -18904,7 +18176,6 @@ pub unsafe fn vmlsq_laneq_f32<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_lane_s16)"]
 #[doc = "## Safety"]
@@ -18938,7 +18209,6 @@ pub unsafe fn vmls_lane_s16<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_lane_u16)"]
 #[doc = "## Safety"]
@@ -18972,7 +18242,6 @@ pub unsafe fn vmls_lane_u16<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_laneq_s16)"]
 #[doc = "## Safety"]
@@ -19006,7 +18275,6 @@ pub unsafe fn vmls_laneq_s16<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_laneq_u16)"]
 #[doc = "## Safety"]
@@ -19040,7 +18308,6 @@ pub unsafe fn vmls_laneq_u16<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_lane_s16)"]
 #[doc = "## Safety"]
@@ -19087,7 +18354,6 @@ pub unsafe fn vmlsq_lane_s16<const LANE: i32>(
         ),
     )
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_lane_u16)"]
 #[doc = "## Safety"]
@@ -19134,7 +18400,6 @@ pub unsafe fn vmlsq_lane_u16<const LANE: i32>(
         ),
     )
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_laneq_s16)"]
 #[doc = "## Safety"]
@@ -19181,7 +18446,6 @@ pub unsafe fn vmlsq_laneq_s16<const LANE: i32>(
         ),
     )
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_laneq_u16)"]
 #[doc = "## Safety"]
@@ -19228,7 +18492,6 @@ pub unsafe fn vmlsq_laneq_u16<const LANE: i32>(
         ),
     )
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_lane_s32)"]
 #[doc = "## Safety"]
@@ -19258,7 +18521,6 @@ pub unsafe fn vmls_lane_s32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 1);
     vmls_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_lane_u32)"]
 #[doc = "## Safety"]
@@ -19288,7 +18550,6 @@ pub unsafe fn vmls_lane_u32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 1);
     vmls_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_laneq_s32)"]
 #[doc = "## Safety"]
@@ -19318,7 +18579,6 @@ pub unsafe fn vmls_laneq_s32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 2);
     vmls_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_laneq_u32)"]
 #[doc = "## Safety"]
@@ -19348,7 +18608,6 @@ pub unsafe fn vmls_laneq_u32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 2);
     vmls_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_lane_s32)"]
 #[doc = "## Safety"]
@@ -19382,7 +18641,6 @@ pub unsafe fn vmlsq_lane_s32<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_lane_u32)"]
 #[doc = "## Safety"]
@@ -19416,7 +18674,6 @@ pub unsafe fn vmlsq_lane_u32<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_laneq_s32)"]
 #[doc = "## Safety"]
@@ -19450,7 +18707,6 @@ pub unsafe fn vmlsq_laneq_s32<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_laneq_u32)"]
 #[doc = "## Safety"]
@@ -19484,7 +18740,6 @@ pub unsafe fn vmlsq_laneq_u32<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_n_f32)"]
 #[doc = "## Safety"]
@@ -19508,7 +18763,6 @@ pub unsafe fn vmlsq_laneq_u32<const LANE: i32>(
 pub unsafe fn vmls_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t {
     vmls_f32(a, b, vdup_n_f32(c))
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_n_f32)"]
 #[doc = "## Safety"]
@@ -19532,7 +18786,6 @@ pub unsafe fn vmls_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t 
 pub unsafe fn vmlsq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t {
     vmlsq_f32(a, b, vdupq_n_f32(c))
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_n_s16)"]
 #[doc = "## Safety"]
@@ -19556,7 +18809,6 @@ pub unsafe fn vmlsq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t
 pub unsafe fn vmls_n_s16(a: int16x4_t, b: int16x4_t, c: i16) -> int16x4_t {
     vmls_s16(a, b, vdup_n_s16(c))
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_n_s16)"]
 #[doc = "## Safety"]
@@ -19580,7 +18832,6 @@ pub unsafe fn vmls_n_s16(a: int16x4_t, b: int16x4_t, c: i16) -> int16x4_t {
 pub unsafe fn vmlsq_n_s16(a: int16x8_t, b: int16x8_t, c: i16) -> int16x8_t {
     vmlsq_s16(a, b, vdupq_n_s16(c))
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_n_u16)"]
 #[doc = "## Safety"]
@@ -19604,7 +18855,6 @@ pub unsafe fn vmlsq_n_s16(a: int16x8_t, b: int16x8_t, c: i16) -> int16x8_t {
 pub unsafe fn vmls_n_u16(a: uint16x4_t, b: uint16x4_t, c: u16) -> uint16x4_t {
     vmls_u16(a, b, vdup_n_u16(c))
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_n_u16)"]
 #[doc = "## Safety"]
@@ -19628,7 +18878,6 @@ pub unsafe fn vmls_n_u16(a: uint16x4_t, b: uint16x4_t, c: u16) -> uint16x4_t {
 pub unsafe fn vmlsq_n_u16(a: uint16x8_t, b: uint16x8_t, c: u16) -> uint16x8_t {
     vmlsq_u16(a, b, vdupq_n_u16(c))
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_n_s32)"]
 #[doc = "## Safety"]
@@ -19652,7 +18901,6 @@ pub unsafe fn vmlsq_n_u16(a: uint16x8_t, b: uint16x8_t, c: u16) -> uint16x8_t {
 pub unsafe fn vmls_n_s32(a: int32x2_t, b: int32x2_t, c: i32) -> int32x2_t {
     vmls_s32(a, b, vdup_n_s32(c))
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_n_s32)"]
 #[doc = "## Safety"]
@@ -19676,7 +18924,6 @@ pub unsafe fn vmls_n_s32(a: int32x2_t, b: int32x2_t, c: i32) -> int32x2_t {
 pub unsafe fn vmlsq_n_s32(a: int32x4_t, b: int32x4_t, c: i32) -> int32x4_t {
     vmlsq_s32(a, b, vdupq_n_s32(c))
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_n_u32)"]
 #[doc = "## Safety"]
@@ -19700,7 +18947,6 @@ pub unsafe fn vmlsq_n_s32(a: int32x4_t, b: int32x4_t, c: i32) -> int32x4_t {
 pub unsafe fn vmls_n_u32(a: uint32x2_t, b: uint32x2_t, c: u32) -> uint32x2_t {
     vmls_u32(a, b, vdup_n_u32(c))
 }
-
 #[doc = "Vector multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_n_u32)"]
 #[doc = "## Safety"]
@@ -19724,7 +18970,6 @@ pub unsafe fn vmls_n_u32(a: uint32x2_t, b: uint32x2_t, c: u32) -> uint32x2_t {
 pub unsafe fn vmlsq_n_u32(a: uint32x4_t, b: uint32x4_t, c: u32) -> uint32x4_t {
     vmlsq_u32(a, b, vdupq_n_u32(c))
 }
-
 #[doc = "Multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_s8)"]
 #[doc = "## Safety"]
@@ -19748,7 +18993,6 @@ pub unsafe fn vmlsq_n_u32(a: uint32x4_t, b: uint32x4_t, c: u32) -> uint32x4_t {
 pub unsafe fn vmls_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
     simd_sub(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_s8)"]
 #[doc = "## Safety"]
@@ -19772,7 +19016,6 @@ pub unsafe fn vmls_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
 pub unsafe fn vmlsq_s8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
     simd_sub(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_s16)"]
 #[doc = "## Safety"]
@@ -19796,7 +19039,6 @@ pub unsafe fn vmlsq_s8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
 pub unsafe fn vmls_s16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
     simd_sub(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_s16)"]
 #[doc = "## Safety"]
@@ -19820,7 +19062,6 @@ pub unsafe fn vmls_s16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
 pub unsafe fn vmlsq_s16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     simd_sub(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_s32)"]
 #[doc = "## Safety"]
@@ -19844,7 +19085,6 @@ pub unsafe fn vmlsq_s16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
 pub unsafe fn vmls_s32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
     simd_sub(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_s32)"]
 #[doc = "## Safety"]
@@ -19868,7 +19108,6 @@ pub unsafe fn vmls_s32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
 pub unsafe fn vmlsq_s32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     simd_sub(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_u8)"]
 #[doc = "## Safety"]
@@ -19892,7 +19131,6 @@ pub unsafe fn vmlsq_s32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
 pub unsafe fn vmls_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
     simd_sub(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_u8)"]
 #[doc = "## Safety"]
@@ -19916,7 +19154,6 @@ pub unsafe fn vmls_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
 pub unsafe fn vmlsq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_t {
     simd_sub(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_u16)"]
 #[doc = "## Safety"]
@@ -19940,7 +19177,6 @@ pub unsafe fn vmlsq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_
 pub unsafe fn vmls_u16(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_t {
     simd_sub(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_u16)"]
 #[doc = "## Safety"]
@@ -19964,7 +19200,6 @@ pub unsafe fn vmls_u16(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_
 pub unsafe fn vmlsq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8_t {
     simd_sub(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_u32)"]
 #[doc = "## Safety"]
@@ -19988,7 +19223,6 @@ pub unsafe fn vmlsq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8
 pub unsafe fn vmls_u32(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_t {
     simd_sub(a, simd_mul(b, c))
 }
-
 #[doc = "Multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_u32)"]
 #[doc = "## Safety"]
@@ -20012,7 +19246,6 @@ pub unsafe fn vmls_u32(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_
 pub unsafe fn vmlsq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t {
     simd_sub(a, simd_mul(b, c))
 }
-
 #[doc = "Vector widening multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_lane_s16)"]
 #[doc = "## Safety"]
@@ -20046,7 +19279,6 @@ pub unsafe fn vmlsl_lane_s16<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector widening multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_laneq_s16)"]
 #[doc = "## Safety"]
@@ -20080,7 +19312,6 @@ pub unsafe fn vmlsl_laneq_s16<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector widening multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_lane_s32)"]
 #[doc = "## Safety"]
@@ -20110,7 +19341,6 @@ pub unsafe fn vmlsl_lane_s32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 1);
     vmlsl_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector widening multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_laneq_s32)"]
 #[doc = "## Safety"]
@@ -20140,7 +19370,6 @@ pub unsafe fn vmlsl_laneq_s32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 2);
     vmlsl_s32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector widening multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_lane_u16)"]
 #[doc = "## Safety"]
@@ -20174,7 +19403,6 @@ pub unsafe fn vmlsl_lane_u16<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector widening multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_laneq_u16)"]
 #[doc = "## Safety"]
@@ -20208,7 +19436,6 @@ pub unsafe fn vmlsl_laneq_u16<const LANE: i32>(
         simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector widening multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_lane_u32)"]
 #[doc = "## Safety"]
@@ -20238,7 +19465,6 @@ pub unsafe fn vmlsl_lane_u32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 1);
     vmlsl_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector widening multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_laneq_u32)"]
 #[doc = "## Safety"]
@@ -20268,7 +19494,6 @@ pub unsafe fn vmlsl_laneq_u32<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 2);
     vmlsl_u32(a, b, simd_shuffle!(c, c, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector widening multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_n_s16)"]
 #[doc = "## Safety"]
@@ -20292,7 +19517,6 @@ pub unsafe fn vmlsl_laneq_u32<const LANE: i32>(
 pub unsafe fn vmlsl_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
     vmlsl_s16(a, b, vdup_n_s16(c))
 }
-
 #[doc = "Vector widening multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_n_s32)"]
 #[doc = "## Safety"]
@@ -20316,7 +19540,6 @@ pub unsafe fn vmlsl_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
 pub unsafe fn vmlsl_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
     vmlsl_s32(a, b, vdup_n_s32(c))
 }
-
 #[doc = "Vector widening multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_n_u16)"]
 #[doc = "## Safety"]
@@ -20340,7 +19563,6 @@ pub unsafe fn vmlsl_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
 pub unsafe fn vmlsl_n_u16(a: uint32x4_t, b: uint16x4_t, c: u16) -> uint32x4_t {
     vmlsl_u16(a, b, vdup_n_u16(c))
 }
-
 #[doc = "Vector widening multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_n_u32)"]
 #[doc = "## Safety"]
@@ -20364,7 +19586,6 @@ pub unsafe fn vmlsl_n_u16(a: uint32x4_t, b: uint16x4_t, c: u16) -> uint32x4_t {
 pub unsafe fn vmlsl_n_u32(a: uint64x2_t, b: uint32x2_t, c: u32) -> uint64x2_t {
     vmlsl_u32(a, b, vdup_n_u32(c))
 }
-
 #[doc = "Signed multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_s8)"]
 #[doc = "## Safety"]
@@ -20388,7 +19609,6 @@ pub unsafe fn vmlsl_n_u32(a: uint64x2_t, b: uint32x2_t, c: u32) -> uint64x2_t {
 pub unsafe fn vmlsl_s8(a: int16x8_t, b: int8x8_t, c: int8x8_t) -> int16x8_t {
     simd_sub(a, vmull_s8(b, c))
 }
-
 #[doc = "Signed multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_s16)"]
 #[doc = "## Safety"]
@@ -20412,7 +19632,6 @@ pub unsafe fn vmlsl_s8(a: int16x8_t, b: int8x8_t, c: int8x8_t) -> int16x8_t {
 pub unsafe fn vmlsl_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     simd_sub(a, vmull_s16(b, c))
 }
-
 #[doc = "Signed multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_s32)"]
 #[doc = "## Safety"]
@@ -20436,7 +19655,6 @@ pub unsafe fn vmlsl_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
 pub unsafe fn vmlsl_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     simd_sub(a, vmull_s32(b, c))
 }
-
 #[doc = "Unsigned multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_u8)"]
 #[doc = "## Safety"]
@@ -20460,7 +19678,6 @@ pub unsafe fn vmlsl_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
 pub unsafe fn vmlsl_u8(a: uint16x8_t, b: uint8x8_t, c: uint8x8_t) -> uint16x8_t {
     simd_sub(a, vmull_u8(b, c))
 }
-
 #[doc = "Unsigned multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_u16)"]
 #[doc = "## Safety"]
@@ -20484,7 +19701,6 @@ pub unsafe fn vmlsl_u8(a: uint16x8_t, b: uint8x8_t, c: uint8x8_t) -> uint16x8_t 
 pub unsafe fn vmlsl_u16(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4_t {
     simd_sub(a, vmull_u16(b, c))
 }
-
 #[doc = "Unsigned multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_u32)"]
 #[doc = "## Safety"]
@@ -20508,7 +19724,6 @@ pub unsafe fn vmlsl_u16(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4
 pub unsafe fn vmlsl_u32(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2_t {
     simd_sub(a, vmull_u32(b, c))
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_f32)"]
 #[doc = "## Safety"]
@@ -20532,7 +19747,6 @@ pub unsafe fn vmlsl_u32(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2
 pub unsafe fn vmul_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     simd_mul(a, b)
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_f32)"]
 #[doc = "## Safety"]
@@ -20556,7 +19770,6 @@ pub unsafe fn vmul_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 pub unsafe fn vmulq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     simd_mul(a, b)
 }
-
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_lane_f32)"]
 #[doc = "## Safety"]
@@ -20582,7 +19795,6 @@ pub unsafe fn vmul_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t) -> 
     static_assert_uimm_bits!(LANE, 1);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_laneq_f32)"]
 #[doc = "## Safety"]
@@ -20608,7 +19820,6 @@ pub unsafe fn vmul_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x4_t) ->
     static_assert_uimm_bits!(LANE, 2);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_lane_f32)"]
 #[doc = "## Safety"]
@@ -20637,7 +19848,6 @@ pub unsafe fn vmulq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x2_t) ->
         simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_laneq_f32)"]
 #[doc = "## Safety"]
@@ -20666,7 +19876,6 @@ pub unsafe fn vmulq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t) -
         simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_lane_s16)"]
 #[doc = "## Safety"]
@@ -20695,7 +19904,6 @@ pub unsafe fn vmul_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int1
         simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_lane_s16)"]
 #[doc = "## Safety"]
@@ -20737,7 +19945,6 @@ pub unsafe fn vmulq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int
         ),
     )
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_lane_s32)"]
 #[doc = "## Safety"]
@@ -20763,7 +19970,6 @@ pub unsafe fn vmul_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int3
     static_assert_uimm_bits!(LANE, 1);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_lane_s32)"]
 #[doc = "## Safety"]
@@ -20792,7 +19998,6 @@ pub unsafe fn vmulq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int
         simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_lane_u16)"]
 #[doc = "## Safety"]
@@ -20821,7 +20026,6 @@ pub unsafe fn vmul_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> ui
         simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_lane_u16)"]
 #[doc = "## Safety"]
@@ -20863,7 +20067,6 @@ pub unsafe fn vmulq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x4_t) -> u
         ),
     )
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_lane_u32)"]
 #[doc = "## Safety"]
@@ -20889,7 +20092,6 @@ pub unsafe fn vmul_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> ui
     static_assert_uimm_bits!(LANE, 1);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_lane_u32)"]
 #[doc = "## Safety"]
@@ -20918,7 +20120,6 @@ pub unsafe fn vmulq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x2_t) -> u
         simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_laneq_s16)"]
 #[doc = "## Safety"]
@@ -20947,7 +20148,6 @@ pub unsafe fn vmul_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int
         simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_laneq_s16)"]
 #[doc = "## Safety"]
@@ -20989,7 +20189,6 @@ pub unsafe fn vmulq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> in
         ),
     )
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_laneq_s32)"]
 #[doc = "## Safety"]
@@ -21015,7 +20214,6 @@ pub unsafe fn vmul_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int
     static_assert_uimm_bits!(LANE, 2);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_laneq_s32)"]
 #[doc = "## Safety"]
@@ -21044,7 +20242,6 @@ pub unsafe fn vmulq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> in
         simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_laneq_u16)"]
 #[doc = "## Safety"]
@@ -21073,7 +20270,6 @@ pub unsafe fn vmul_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> u
         simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_laneq_u16)"]
 #[doc = "## Safety"]
@@ -21115,7 +20311,6 @@ pub unsafe fn vmulq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t) -> 
         ),
     )
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_laneq_u32)"]
 #[doc = "## Safety"]
@@ -21141,7 +20336,6 @@ pub unsafe fn vmul_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> u
     static_assert_uimm_bits!(LANE, 2);
     simd_mul(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_laneq_u32)"]
 #[doc = "## Safety"]
@@ -21170,7 +20364,6 @@ pub unsafe fn vmulq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t) -> 
         simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_n_f32)"]
 #[doc = "## Safety"]
@@ -21194,7 +20387,6 @@ pub unsafe fn vmulq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t) -> 
 pub unsafe fn vmul_n_f32(a: float32x2_t, b: f32) -> float32x2_t {
     simd_mul(a, vdup_n_f32(b))
 }
-
 #[doc = "Vector multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_n_f32)"]
 #[doc = "## Safety"]
@@ -21218,7 +20410,6 @@ pub unsafe fn vmul_n_f32(a: float32x2_t, b: f32) -> float32x2_t {
 pub unsafe fn vmulq_n_f32(a: float32x4_t, b: f32) -> float32x4_t {
     simd_mul(a, vdupq_n_f32(b))
 }
-
 #[doc = "Vector multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_n_s16)"]
 #[doc = "## Safety"]
@@ -21242,7 +20433,6 @@ pub unsafe fn vmulq_n_f32(a: float32x4_t, b: f32) -> float32x4_t {
 pub unsafe fn vmul_n_s16(a: int16x4_t, b: i16) -> int16x4_t {
     simd_mul(a, vdup_n_s16(b))
 }
-
 #[doc = "Vector multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_n_s16)"]
 #[doc = "## Safety"]
@@ -21266,7 +20456,6 @@ pub unsafe fn vmul_n_s16(a: int16x4_t, b: i16) -> int16x4_t {
 pub unsafe fn vmulq_n_s16(a: int16x8_t, b: i16) -> int16x8_t {
     simd_mul(a, vdupq_n_s16(b))
 }
-
 #[doc = "Vector multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_n_s32)"]
 #[doc = "## Safety"]
@@ -21290,7 +20479,6 @@ pub unsafe fn vmulq_n_s16(a: int16x8_t, b: i16) -> int16x8_t {
 pub unsafe fn vmul_n_s32(a: int32x2_t, b: i32) -> int32x2_t {
     simd_mul(a, vdup_n_s32(b))
 }
-
 #[doc = "Vector multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_n_s32)"]
 #[doc = "## Safety"]
@@ -21314,7 +20502,6 @@ pub unsafe fn vmul_n_s32(a: int32x2_t, b: i32) -> int32x2_t {
 pub unsafe fn vmulq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
     simd_mul(a, vdupq_n_s32(b))
 }
-
 #[doc = "Vector multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_n_u16)"]
 #[doc = "## Safety"]
@@ -21338,7 +20525,6 @@ pub unsafe fn vmulq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
 pub unsafe fn vmul_n_u16(a: uint16x4_t, b: u16) -> uint16x4_t {
     simd_mul(a, vdup_n_u16(b))
 }
-
 #[doc = "Vector multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_n_u16)"]
 #[doc = "## Safety"]
@@ -21362,7 +20548,6 @@ pub unsafe fn vmul_n_u16(a: uint16x4_t, b: u16) -> uint16x4_t {
 pub unsafe fn vmulq_n_u16(a: uint16x8_t, b: u16) -> uint16x8_t {
     simd_mul(a, vdupq_n_u16(b))
 }
-
 #[doc = "Vector multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_n_u32)"]
 #[doc = "## Safety"]
@@ -21386,7 +20571,6 @@ pub unsafe fn vmulq_n_u16(a: uint16x8_t, b: u16) -> uint16x8_t {
 pub unsafe fn vmul_n_u32(a: uint32x2_t, b: u32) -> uint32x2_t {
     simd_mul(a, vdup_n_u32(b))
 }
-
 #[doc = "Vector multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_n_u32)"]
 #[doc = "## Safety"]
@@ -21410,7 +20594,6 @@ pub unsafe fn vmul_n_u32(a: uint32x2_t, b: u32) -> uint32x2_t {
 pub unsafe fn vmulq_n_u32(a: uint32x4_t, b: u32) -> uint32x4_t {
     simd_mul(a, vdupq_n_u32(b))
 }
-
 #[doc = "Polynomial multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_p8)"]
 #[doc = "## Safety"]
@@ -21442,7 +20625,6 @@ pub unsafe fn vmul_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     }
     _vmul_p8(a, b)
 }
-
 #[doc = "Polynomial multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_p8)"]
 #[doc = "## Safety"]
@@ -21474,7 +20656,6 @@ pub unsafe fn vmulq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
     }
     _vmulq_p8(a, b)
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_s16)"]
 #[doc = "## Safety"]
@@ -21498,7 +20679,6 @@ pub unsafe fn vmulq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 pub unsafe fn vmul_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     simd_mul(a, b)
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_s16)"]
 #[doc = "## Safety"]
@@ -21522,7 +20702,6 @@ pub unsafe fn vmul_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 pub unsafe fn vmulq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     simd_mul(a, b)
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_u16)"]
 #[doc = "## Safety"]
@@ -21546,7 +20725,6 @@ pub unsafe fn vmulq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 pub unsafe fn vmul_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_mul(a, b)
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_u16)"]
 #[doc = "## Safety"]
@@ -21570,7 +20748,6 @@ pub unsafe fn vmul_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 pub unsafe fn vmulq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_mul(a, b)
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_s32)"]
 #[doc = "## Safety"]
@@ -21594,7 +20771,6 @@ pub unsafe fn vmulq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 pub unsafe fn vmul_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_mul(a, b)
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_s32)"]
 #[doc = "## Safety"]
@@ -21618,7 +20794,6 @@ pub unsafe fn vmul_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 pub unsafe fn vmulq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_mul(a, b)
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_u32)"]
 #[doc = "## Safety"]
@@ -21642,7 +20817,6 @@ pub unsafe fn vmulq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 pub unsafe fn vmul_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_mul(a, b)
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_u32)"]
 #[doc = "## Safety"]
@@ -21666,7 +20840,6 @@ pub unsafe fn vmul_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 pub unsafe fn vmulq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_mul(a, b)
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_s8)"]
 #[doc = "## Safety"]
@@ -21690,7 +20863,6 @@ pub unsafe fn vmulq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 pub unsafe fn vmul_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     simd_mul(a, b)
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_s8)"]
 #[doc = "## Safety"]
@@ -21714,7 +20886,6 @@ pub unsafe fn vmul_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 pub unsafe fn vmulq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     simd_mul(a, b)
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_u8)"]
 #[doc = "## Safety"]
@@ -21738,7 +20909,6 @@ pub unsafe fn vmulq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 pub unsafe fn vmul_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_mul(a, b)
 }
-
 #[doc = "Multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_u8)"]
 #[doc = "## Safety"]
@@ -21762,7 +20932,6 @@ pub unsafe fn vmul_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 pub unsafe fn vmulq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_mul(a, b)
 }
-
 #[doc = "Vector long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_lane_s16)"]
 #[doc = "## Safety"]
@@ -21791,7 +20960,6 @@ pub unsafe fn vmull_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int
         simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_laneq_s16)"]
 #[doc = "## Safety"]
@@ -21820,7 +20988,6 @@ pub unsafe fn vmull_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> in
         simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_lane_s32)"]
 #[doc = "## Safety"]
@@ -21846,7 +21013,6 @@ pub unsafe fn vmull_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int
     static_assert_uimm_bits!(LANE, 1);
     vmull_s32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_laneq_s32)"]
 #[doc = "## Safety"]
@@ -21872,7 +21038,6 @@ pub unsafe fn vmull_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> in
     static_assert_uimm_bits!(LANE, 2);
     vmull_s32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_lane_u16)"]
 #[doc = "## Safety"]
@@ -21901,7 +21066,6 @@ pub unsafe fn vmull_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> u
         simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_laneq_u16)"]
 #[doc = "## Safety"]
@@ -21930,7 +21094,6 @@ pub unsafe fn vmull_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> 
         simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
     )
 }
-
 #[doc = "Vector long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_lane_u32)"]
 #[doc = "## Safety"]
@@ -21956,7 +21119,6 @@ pub unsafe fn vmull_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> u
     static_assert_uimm_bits!(LANE, 1);
     vmull_u32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_laneq_u32)"]
 #[doc = "## Safety"]
@@ -21982,7 +21144,6 @@ pub unsafe fn vmull_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> 
     static_assert_uimm_bits!(LANE, 2);
     vmull_u32(a, simd_shuffle!(b, b, [LANE as u32, LANE as u32]))
 }
-
 #[doc = "Vector long multiply with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_n_s16)"]
 #[doc = "## Safety"]
@@ -22006,7 +21167,6 @@ pub unsafe fn vmull_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> 
 pub unsafe fn vmull_n_s16(a: int16x4_t, b: i16) -> int32x4_t {
     vmull_s16(a, vdup_n_s16(b))
 }
-
 #[doc = "Vector long multiply with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_n_s32)"]
 #[doc = "## Safety"]
@@ -22030,7 +21190,6 @@ pub unsafe fn vmull_n_s16(a: int16x4_t, b: i16) -> int32x4_t {
 pub unsafe fn vmull_n_s32(a: int32x2_t, b: i32) -> int64x2_t {
     vmull_s32(a, vdup_n_s32(b))
 }
-
 #[doc = "Vector long multiply with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_n_u16)"]
 #[doc = "## Safety"]
@@ -22054,7 +21213,6 @@ pub unsafe fn vmull_n_s32(a: int32x2_t, b: i32) -> int64x2_t {
 pub unsafe fn vmull_n_u16(a: uint16x4_t, b: u16) -> uint32x4_t {
     vmull_u16(a, vdup_n_u16(b))
 }
-
 #[doc = "Vector long multiply with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_n_u32)"]
 #[doc = "## Safety"]
@@ -22078,7 +21236,6 @@ pub unsafe fn vmull_n_u16(a: uint16x4_t, b: u16) -> uint32x4_t {
 pub unsafe fn vmull_n_u32(a: uint32x2_t, b: u32) -> uint64x2_t {
     vmull_u32(a, vdup_n_u32(b))
 }
-
 #[doc = "Polynomial multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_p8)"]
 #[doc = "## Safety"]
@@ -22110,7 +21267,6 @@ pub unsafe fn vmull_p8(a: poly8x8_t, b: poly8x8_t) -> poly16x8_t {
     }
     _vmull_p8(a, b)
 }
-
 #[doc = "Signed multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_s16)"]
 #[doc = "## Safety"]
@@ -22142,7 +21298,6 @@ pub unsafe fn vmull_s16(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     }
     _vmull_s16(a, b)
 }
-
 #[doc = "Signed multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_s32)"]
 #[doc = "## Safety"]
@@ -22174,7 +21329,6 @@ pub unsafe fn vmull_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     }
     _vmull_s32(a, b)
 }
-
 #[doc = "Signed multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_s8)"]
 #[doc = "## Safety"]
@@ -22206,7 +21360,6 @@ pub unsafe fn vmull_s8(a: int8x8_t, b: int8x8_t) -> int16x8_t {
     }
     _vmull_s8(a, b)
 }
-
 #[doc = "Unsigned multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_u8)"]
 #[doc = "## Safety"]
@@ -22238,7 +21391,6 @@ pub unsafe fn vmull_u8(a: uint8x8_t, b: uint8x8_t) -> uint16x8_t {
     }
     _vmull_u8(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Unsigned multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_u16)"]
 #[doc = "## Safety"]
@@ -22270,7 +21422,6 @@ pub unsafe fn vmull_u16(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t {
     }
     _vmull_u16(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Unsigned multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_u32)"]
 #[doc = "## Safety"]
@@ -22302,7 +21453,6 @@ pub unsafe fn vmull_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
     }
     _vmull_u32(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vneg_f32)"]
 #[doc = "## Safety"]
@@ -22326,7 +21476,6 @@ pub unsafe fn vmull_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
 pub unsafe fn vneg_f32(a: float32x2_t) -> float32x2_t {
     simd_neg(a)
 }
-
 #[doc = "Negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vnegq_f32)"]
 #[doc = "## Safety"]
@@ -22350,7 +21499,6 @@ pub unsafe fn vneg_f32(a: float32x2_t) -> float32x2_t {
 pub unsafe fn vnegq_f32(a: float32x4_t) -> float32x4_t {
     simd_neg(a)
 }
-
 #[doc = "Negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vneg_s8)"]
 #[doc = "## Safety"]
@@ -22374,7 +21522,6 @@ pub unsafe fn vnegq_f32(a: float32x4_t) -> float32x4_t {
 pub unsafe fn vneg_s8(a: int8x8_t) -> int8x8_t {
     simd_neg(a)
 }
-
 #[doc = "Negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vnegq_s8)"]
 #[doc = "## Safety"]
@@ -22398,7 +21545,6 @@ pub unsafe fn vneg_s8(a: int8x8_t) -> int8x8_t {
 pub unsafe fn vnegq_s8(a: int8x16_t) -> int8x16_t {
     simd_neg(a)
 }
-
 #[doc = "Negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vneg_s16)"]
 #[doc = "## Safety"]
@@ -22422,7 +21568,6 @@ pub unsafe fn vnegq_s8(a: int8x16_t) -> int8x16_t {
 pub unsafe fn vneg_s16(a: int16x4_t) -> int16x4_t {
     simd_neg(a)
 }
-
 #[doc = "Negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vnegq_s16)"]
 #[doc = "## Safety"]
@@ -22446,7 +21591,6 @@ pub unsafe fn vneg_s16(a: int16x4_t) -> int16x4_t {
 pub unsafe fn vnegq_s16(a: int16x8_t) -> int16x8_t {
     simd_neg(a)
 }
-
 #[doc = "Negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vneg_s32)"]
 #[doc = "## Safety"]
@@ -22470,7 +21614,6 @@ pub unsafe fn vnegq_s16(a: int16x8_t) -> int16x8_t {
 pub unsafe fn vneg_s32(a: int32x2_t) -> int32x2_t {
     simd_neg(a)
 }
-
 #[doc = "Negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vnegq_s32)"]
 #[doc = "## Safety"]
@@ -22494,7 +21637,6 @@ pub unsafe fn vneg_s32(a: int32x2_t) -> int32x2_t {
 pub unsafe fn vnegq_s32(a: int32x4_t) -> int32x4_t {
     simd_neg(a)
 }
-
 #[doc = "Vector bitwise or (immediate, inclusive)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorr_s8)"]
 #[doc = "## Safety"]
@@ -22518,7 +21660,6 @@ pub unsafe fn vnegq_s32(a: int32x4_t) -> int32x4_t {
 pub unsafe fn vorr_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     simd_or(a, b)
 }
-
 #[doc = "Vector bitwise or (immediate, inclusive)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorrq_s8)"]
 #[doc = "## Safety"]
@@ -22542,7 +21683,6 @@ pub unsafe fn vorr_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 pub unsafe fn vorrq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     simd_or(a, b)
 }
-
 #[doc = "Vector bitwise or (immediate, inclusive)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorr_s16)"]
 #[doc = "## Safety"]
@@ -22566,7 +21706,6 @@ pub unsafe fn vorrq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 pub unsafe fn vorr_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     simd_or(a, b)
 }
-
 #[doc = "Vector bitwise or (immediate, inclusive)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorrq_s16)"]
 #[doc = "## Safety"]
@@ -22590,7 +21729,6 @@ pub unsafe fn vorr_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 pub unsafe fn vorrq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     simd_or(a, b)
 }
-
 #[doc = "Vector bitwise or (immediate, inclusive)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorr_s32)"]
 #[doc = "## Safety"]
@@ -22614,7 +21752,6 @@ pub unsafe fn vorrq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 pub unsafe fn vorr_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_or(a, b)
 }
-
 #[doc = "Vector bitwise or (immediate, inclusive)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorrq_s32)"]
 #[doc = "## Safety"]
@@ -22638,7 +21775,6 @@ pub unsafe fn vorr_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 pub unsafe fn vorrq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_or(a, b)
 }
-
 #[doc = "Vector bitwise or (immediate, inclusive)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorr_s64)"]
 #[doc = "## Safety"]
@@ -22662,7 +21798,6 @@ pub unsafe fn vorrq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 pub unsafe fn vorr_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     simd_or(a, b)
 }
-
 #[doc = "Vector bitwise or (immediate, inclusive)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorrq_s64)"]
 #[doc = "## Safety"]
@@ -22686,7 +21821,6 @@ pub unsafe fn vorr_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 pub unsafe fn vorrq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     simd_or(a, b)
 }
-
 #[doc = "Vector bitwise or (immediate, inclusive)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorr_u8)"]
 #[doc = "## Safety"]
@@ -22710,7 +21844,6 @@ pub unsafe fn vorrq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 pub unsafe fn vorr_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_or(a, b)
 }
-
 #[doc = "Vector bitwise or (immediate, inclusive)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorrq_u8)"]
 #[doc = "## Safety"]
@@ -22734,7 +21867,6 @@ pub unsafe fn vorr_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 pub unsafe fn vorrq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_or(a, b)
 }
-
 #[doc = "Vector bitwise or (immediate, inclusive)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorr_u16)"]
 #[doc = "## Safety"]
@@ -22758,7 +21890,6 @@ pub unsafe fn vorrq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 pub unsafe fn vorr_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_or(a, b)
 }
-
 #[doc = "Vector bitwise or (immediate, inclusive)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorrq_u16)"]
 #[doc = "## Safety"]
@@ -22782,7 +21913,6 @@ pub unsafe fn vorr_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 pub unsafe fn vorrq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_or(a, b)
 }
-
 #[doc = "Vector bitwise or (immediate, inclusive)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorr_u32)"]
 #[doc = "## Safety"]
@@ -22806,7 +21936,6 @@ pub unsafe fn vorrq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 pub unsafe fn vorr_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_or(a, b)
 }
-
 #[doc = "Vector bitwise or (immediate, inclusive)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorrq_u32)"]
 #[doc = "## Safety"]
@@ -22830,7 +21959,6 @@ pub unsafe fn vorr_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 pub unsafe fn vorrq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_or(a, b)
 }
-
 #[doc = "Vector bitwise or (immediate, inclusive)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorr_u64)"]
 #[doc = "## Safety"]
@@ -22854,7 +21982,6 @@ pub unsafe fn vorrq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 pub unsafe fn vorr_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     simd_or(a, b)
 }
-
 #[doc = "Vector bitwise or (immediate, inclusive)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorrq_u64)"]
 #[doc = "## Safety"]
@@ -22878,7 +22005,6 @@ pub unsafe fn vorr_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 pub unsafe fn vorrq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     simd_or(a, b)
 }
-
 #[doc = "Floating-point add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpadd_f32)"]
 #[doc = "## Safety"]
@@ -22910,7 +22036,6 @@ pub unsafe fn vpadd_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     }
     _vpadd_f32(a, b)
 }
-
 #[doc = "Signed saturating Absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabs_s8)"]
 #[doc = "## Safety"]
@@ -22942,7 +22067,6 @@ pub unsafe fn vqabs_s8(a: int8x8_t) -> int8x8_t {
     }
     _vqabs_s8(a)
 }
-
 #[doc = "Signed saturating Absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabsq_s8)"]
 #[doc = "## Safety"]
@@ -22974,7 +22098,6 @@ pub unsafe fn vqabsq_s8(a: int8x16_t) -> int8x16_t {
     }
     _vqabsq_s8(a)
 }
-
 #[doc = "Signed saturating Absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabs_s16)"]
 #[doc = "## Safety"]
@@ -23006,7 +22129,6 @@ pub unsafe fn vqabs_s16(a: int16x4_t) -> int16x4_t {
     }
     _vqabs_s16(a)
 }
-
 #[doc = "Signed saturating Absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabsq_s16)"]
 #[doc = "## Safety"]
@@ -23038,7 +22160,6 @@ pub unsafe fn vqabsq_s16(a: int16x8_t) -> int16x8_t {
     }
     _vqabsq_s16(a)
 }
-
 #[doc = "Signed saturating Absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabs_s32)"]
 #[doc = "## Safety"]
@@ -23070,7 +22191,6 @@ pub unsafe fn vqabs_s32(a: int32x2_t) -> int32x2_t {
     }
     _vqabs_s32(a)
 }
-
 #[doc = "Signed saturating Absolute value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabsq_s32)"]
 #[doc = "## Safety"]
@@ -23102,7 +22222,6 @@ pub unsafe fn vqabsq_s32(a: int32x4_t) -> int32x4_t {
     }
     _vqabsq_s32(a)
 }
-
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqadd_s8)"]
 #[doc = "## Safety"]
@@ -23134,7 +22253,6 @@ pub unsafe fn vqadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     }
     _vqadd_s8(a, b)
 }
-
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddq_s8)"]
 #[doc = "## Safety"]
@@ -23166,7 +22284,6 @@ pub unsafe fn vqaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     }
     _vqaddq_s8(a, b)
 }
-
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqadd_s16)"]
 #[doc = "## Safety"]
@@ -23198,7 +22315,6 @@ pub unsafe fn vqadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     }
     _vqadd_s16(a, b)
 }
-
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddq_s16)"]
 #[doc = "## Safety"]
@@ -23230,7 +22346,6 @@ pub unsafe fn vqaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     }
     _vqaddq_s16(a, b)
 }
-
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqadd_s32)"]
 #[doc = "## Safety"]
@@ -23262,7 +22377,6 @@ pub unsafe fn vqadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     }
     _vqadd_s32(a, b)
 }
-
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddq_s32)"]
 #[doc = "## Safety"]
@@ -23294,7 +22408,6 @@ pub unsafe fn vqaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     }
     _vqaddq_s32(a, b)
 }
-
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqadd_s64)"]
 #[doc = "## Safety"]
@@ -23326,7 +22439,6 @@ pub unsafe fn vqadd_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     }
     _vqadd_s64(a, b)
 }
-
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddq_s64)"]
 #[doc = "## Safety"]
@@ -23358,7 +22470,6 @@ pub unsafe fn vqaddq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     }
     _vqaddq_s64(a, b)
 }
-
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqadd_u8)"]
 #[doc = "## Safety"]
@@ -23390,7 +22501,6 @@ pub unsafe fn vqadd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     }
     _vqadd_u8(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddq_u8)"]
 #[doc = "## Safety"]
@@ -23422,7 +22532,6 @@ pub unsafe fn vqaddq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     }
     _vqaddq_u8(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqadd_u16)"]
 #[doc = "## Safety"]
@@ -23454,7 +22563,6 @@ pub unsafe fn vqadd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     }
     _vqadd_u16(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddq_u16)"]
 #[doc = "## Safety"]
@@ -23486,7 +22594,6 @@ pub unsafe fn vqaddq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     }
     _vqaddq_u16(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqadd_u32)"]
 #[doc = "## Safety"]
@@ -23518,7 +22625,6 @@ pub unsafe fn vqadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     }
     _vqadd_u32(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddq_u32)"]
 #[doc = "## Safety"]
@@ -23550,7 +22656,6 @@ pub unsafe fn vqaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     }
     _vqaddq_u32(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqadd_u64)"]
 #[doc = "## Safety"]
@@ -23582,7 +22687,6 @@ pub unsafe fn vqadd_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     }
     _vqadd_u64(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddq_u64)"]
 #[doc = "## Safety"]
@@ -23614,7 +22718,6 @@ pub unsafe fn vqaddq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     }
     _vqaddq_u64(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Vector widening saturating doubling multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlal_lane_s16)"]
 #[doc = "## Safety"]
@@ -23644,7 +22747,6 @@ pub unsafe fn vqdmlal_lane_s16<const N: i32>(
     static_assert_uimm_bits!(N, 2);
     vqaddq_s32(a, vqdmull_lane_s16::<N>(b, c))
 }
-
 #[doc = "Vector widening saturating doubling multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlal_lane_s32)"]
 #[doc = "## Safety"]
@@ -23674,7 +22776,6 @@ pub unsafe fn vqdmlal_lane_s32<const N: i32>(
     static_assert_uimm_bits!(N, 1);
     vqaddq_s64(a, vqdmull_lane_s32::<N>(b, c))
 }
-
 #[doc = "Vector widening saturating doubling multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlal_n_s16)"]
 #[doc = "## Safety"]
@@ -23698,7 +22799,6 @@ pub unsafe fn vqdmlal_lane_s32<const N: i32>(
 pub unsafe fn vqdmlal_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
     vqaddq_s32(a, vqdmull_n_s16(b, c))
 }
-
 #[doc = "Vector widening saturating doubling multiply accumulate with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlal_n_s32)"]
 #[doc = "## Safety"]
@@ -23722,7 +22822,6 @@ pub unsafe fn vqdmlal_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
 pub unsafe fn vqdmlal_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
     vqaddq_s64(a, vqdmull_n_s32(b, c))
 }
-
 #[doc = "Signed saturating doubling multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlal_s16)"]
 #[doc = "## Safety"]
@@ -23746,7 +22845,6 @@ pub unsafe fn vqdmlal_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
 pub unsafe fn vqdmlal_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     vqaddq_s32(a, vqdmull_s16(b, c))
 }
-
 #[doc = "Signed saturating doubling multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlal_s32)"]
 #[doc = "## Safety"]
@@ -23770,7 +22868,6 @@ pub unsafe fn vqdmlal_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t
 pub unsafe fn vqdmlal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     vqaddq_s64(a, vqdmull_s32(b, c))
 }
-
 #[doc = "Vector widening saturating doubling multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlsl_lane_s16)"]
 #[doc = "## Safety"]
@@ -23800,7 +22897,6 @@ pub unsafe fn vqdmlsl_lane_s16<const N: i32>(
     static_assert_uimm_bits!(N, 2);
     vqsubq_s32(a, vqdmull_lane_s16::<N>(b, c))
 }
-
 #[doc = "Vector widening saturating doubling multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlsl_lane_s32)"]
 #[doc = "## Safety"]
@@ -23830,7 +22926,6 @@ pub unsafe fn vqdmlsl_lane_s32<const N: i32>(
     static_assert_uimm_bits!(N, 1);
     vqsubq_s64(a, vqdmull_lane_s32::<N>(b, c))
 }
-
 #[doc = "Vector widening saturating doubling multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlsl_n_s16)"]
 #[doc = "## Safety"]
@@ -23854,7 +22949,6 @@ pub unsafe fn vqdmlsl_lane_s32<const N: i32>(
 pub unsafe fn vqdmlsl_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
     vqsubq_s32(a, vqdmull_n_s16(b, c))
 }
-
 #[doc = "Vector widening saturating doubling multiply subtract with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlsl_n_s32)"]
 #[doc = "## Safety"]
@@ -23878,7 +22972,6 @@ pub unsafe fn vqdmlsl_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
 pub unsafe fn vqdmlsl_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
     vqsubq_s64(a, vqdmull_n_s32(b, c))
 }
-
 #[doc = "Signed saturating doubling multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlsl_s16)"]
 #[doc = "## Safety"]
@@ -23902,7 +22995,6 @@ pub unsafe fn vqdmlsl_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
 pub unsafe fn vqdmlsl_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     vqsubq_s32(a, vqdmull_s16(b, c))
 }
-
 #[doc = "Signed saturating doubling multiply-subtract long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlsl_s32)"]
 #[doc = "## Safety"]
@@ -23926,7 +23018,6 @@ pub unsafe fn vqdmlsl_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t
 pub unsafe fn vqdmlsl_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     vqsubq_s64(a, vqdmull_s32(b, c))
 }
-
 #[doc = "Vector saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulh_laneq_s16)"]
 #[doc = "## Safety"]
@@ -23952,7 +23043,6 @@ pub unsafe fn vqdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> 
     static_assert_uimm_bits!(LANE, 3);
     vqdmulh_s16(a, vdup_n_s16(simd_extract!(b, LANE as u32)))
 }
-
 #[doc = "Vector saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhq_laneq_s16)"]
 #[doc = "## Safety"]
@@ -23978,7 +23068,6 @@ pub unsafe fn vqdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) ->
     static_assert_uimm_bits!(LANE, 3);
     vqdmulhq_s16(a, vdupq_n_s16(simd_extract!(b, LANE as u32)))
 }
-
 #[doc = "Vector saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulh_laneq_s32)"]
 #[doc = "## Safety"]
@@ -24004,7 +23093,6 @@ pub unsafe fn vqdmulh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> 
     static_assert_uimm_bits!(LANE, 2);
     vqdmulh_s32(a, vdup_n_s32(simd_extract!(b, LANE as u32)))
 }
-
 #[doc = "Vector saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhq_laneq_s32)"]
 #[doc = "## Safety"]
@@ -24030,7 +23118,6 @@ pub unsafe fn vqdmulhq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) ->
     static_assert_uimm_bits!(LANE, 2);
     vqdmulhq_s32(a, vdupq_n_s32(simd_extract!(b, LANE as u32)))
 }
-
 #[doc = "Vector saturating doubling multiply high with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulh_n_s16)"]
 #[doc = "## Safety"]
@@ -24055,7 +23142,6 @@ pub unsafe fn vqdmulh_n_s16(a: int16x4_t, b: i16) -> int16x4_t {
     let b: int16x4_t = vdup_n_s16(b);
     vqdmulh_s16(a, b)
 }
-
 #[doc = "Vector saturating doubling multiply high with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhq_n_s16)"]
 #[doc = "## Safety"]
@@ -24080,7 +23166,6 @@ pub unsafe fn vqdmulhq_n_s16(a: int16x8_t, b: i16) -> int16x8_t {
     let b: int16x8_t = vdupq_n_s16(b);
     vqdmulhq_s16(a, b)
 }
-
 #[doc = "Vector saturating doubling multiply high with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulh_n_s32)"]
 #[doc = "## Safety"]
@@ -24105,7 +23190,6 @@ pub unsafe fn vqdmulh_n_s32(a: int32x2_t, b: i32) -> int32x2_t {
     let b: int32x2_t = vdup_n_s32(b);
     vqdmulh_s32(a, b)
 }
-
 #[doc = "Vector saturating doubling multiply high with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhq_n_s32)"]
 #[doc = "## Safety"]
@@ -24130,7 +23214,6 @@ pub unsafe fn vqdmulhq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
     let b: int32x4_t = vdupq_n_s32(b);
     vqdmulhq_s32(a, b)
 }
-
 #[doc = "Signed saturating doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulh_s16)"]
 #[doc = "## Safety"]
@@ -24162,7 +23245,6 @@ pub unsafe fn vqdmulh_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     }
     _vqdmulh_s16(a, b)
 }
-
 #[doc = "Signed saturating doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhq_s16)"]
 #[doc = "## Safety"]
@@ -24194,7 +23276,6 @@ pub unsafe fn vqdmulhq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     }
     _vqdmulhq_s16(a, b)
 }
-
 #[doc = "Signed saturating doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulh_s32)"]
 #[doc = "## Safety"]
@@ -24226,7 +23307,6 @@ pub unsafe fn vqdmulh_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     }
     _vqdmulh_s32(a, b)
 }
-
 #[doc = "Signed saturating doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhq_s32)"]
 #[doc = "## Safety"]
@@ -24258,7 +23338,6 @@ pub unsafe fn vqdmulhq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     }
     _vqdmulhq_s32(a, b)
 }
-
 #[doc = "Vector saturating doubling long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_lane_s16)"]
 #[doc = "## Safety"]
@@ -24285,7 +23364,6 @@ pub unsafe fn vqdmull_lane_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int3
     let b: int16x4_t = simd_shuffle!(b, b, [N as u32, N as u32, N as u32, N as u32]);
     vqdmull_s16(a, b)
 }
-
 #[doc = "Vector saturating doubling long multiply by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_lane_s32)"]
 #[doc = "## Safety"]
@@ -24312,7 +23390,6 @@ pub unsafe fn vqdmull_lane_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int6
     let b: int32x2_t = simd_shuffle!(b, b, [N as u32, N as u32]);
     vqdmull_s32(a, b)
 }
-
 #[doc = "Vector saturating doubling long multiply with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_n_s16)"]
 #[doc = "## Safety"]
@@ -24336,7 +23413,6 @@ pub unsafe fn vqdmull_lane_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int6
 pub unsafe fn vqdmull_n_s16(a: int16x4_t, b: i16) -> int32x4_t {
     vqdmull_s16(a, vdup_n_s16(b))
 }
-
 #[doc = "Vector saturating doubling long multiply with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_n_s32)"]
 #[doc = "## Safety"]
@@ -24360,7 +23436,6 @@ pub unsafe fn vqdmull_n_s16(a: int16x4_t, b: i16) -> int32x4_t {
 pub unsafe fn vqdmull_n_s32(a: int32x2_t, b: i32) -> int64x2_t {
     vqdmull_s32(a, vdup_n_s32(b))
 }
-
 #[doc = "Signed saturating doubling multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_s16)"]
 #[doc = "## Safety"]
@@ -24392,7 +23467,6 @@ pub unsafe fn vqdmull_s16(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     }
     _vqdmull_s16(a, b)
 }
-
 #[doc = "Signed saturating doubling multiply long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_s32)"]
 #[doc = "## Safety"]
@@ -24424,7 +23498,6 @@ pub unsafe fn vqdmull_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     }
     _vqdmull_s32(a, b)
 }
-
 #[doc = "Signed saturating extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovn_s16)"]
 #[doc = "## Safety"]
@@ -24456,7 +23529,6 @@ pub unsafe fn vqmovn_s16(a: int16x8_t) -> int8x8_t {
     }
     _vqmovn_s16(a)
 }
-
 #[doc = "Signed saturating extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovn_s32)"]
 #[doc = "## Safety"]
@@ -24488,7 +23560,6 @@ pub unsafe fn vqmovn_s32(a: int32x4_t) -> int16x4_t {
     }
     _vqmovn_s32(a)
 }
-
 #[doc = "Signed saturating extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovn_s64)"]
 #[doc = "## Safety"]
@@ -24520,7 +23591,6 @@ pub unsafe fn vqmovn_s64(a: int64x2_t) -> int32x2_t {
     }
     _vqmovn_s64(a)
 }
-
 #[doc = "Unsigned saturating extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovn_u16)"]
 #[doc = "## Safety"]
@@ -24552,7 +23622,6 @@ pub unsafe fn vqmovn_u16(a: uint16x8_t) -> uint8x8_t {
     }
     _vqmovn_u16(a.as_signed()).as_unsigned()
 }
-
 #[doc = "Unsigned saturating extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovn_u32)"]
 #[doc = "## Safety"]
@@ -24584,7 +23653,6 @@ pub unsafe fn vqmovn_u32(a: uint32x4_t) -> uint16x4_t {
     }
     _vqmovn_u32(a.as_signed()).as_unsigned()
 }
-
 #[doc = "Unsigned saturating extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovn_u64)"]
 #[doc = "## Safety"]
@@ -24616,7 +23684,6 @@ pub unsafe fn vqmovn_u64(a: uint64x2_t) -> uint32x2_t {
     }
     _vqmovn_u64(a.as_signed()).as_unsigned()
 }
-
 #[doc = "Signed saturating extract unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovun_s16)"]
 #[doc = "## Safety"]
@@ -24648,7 +23715,6 @@ pub unsafe fn vqmovun_s16(a: int16x8_t) -> uint8x8_t {
     }
     _vqmovun_s16(a).as_unsigned()
 }
-
 #[doc = "Signed saturating extract unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovun_s32)"]
 #[doc = "## Safety"]
@@ -24680,7 +23746,6 @@ pub unsafe fn vqmovun_s32(a: int32x4_t) -> uint16x4_t {
     }
     _vqmovun_s32(a).as_unsigned()
 }
-
 #[doc = "Signed saturating extract unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovun_s64)"]
 #[doc = "## Safety"]
@@ -24712,7 +23777,6 @@ pub unsafe fn vqmovun_s64(a: int64x2_t) -> uint32x2_t {
     }
     _vqmovun_s64(a).as_unsigned()
 }
-
 #[doc = "Signed saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqneg_s8)"]
 #[doc = "## Safety"]
@@ -24744,7 +23808,6 @@ pub unsafe fn vqneg_s8(a: int8x8_t) -> int8x8_t {
     }
     _vqneg_s8(a)
 }
-
 #[doc = "Signed saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqnegq_s8)"]
 #[doc = "## Safety"]
@@ -24776,7 +23839,6 @@ pub unsafe fn vqnegq_s8(a: int8x16_t) -> int8x16_t {
     }
     _vqnegq_s8(a)
 }
-
 #[doc = "Signed saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqneg_s16)"]
 #[doc = "## Safety"]
@@ -24808,7 +23870,6 @@ pub unsafe fn vqneg_s16(a: int16x4_t) -> int16x4_t {
     }
     _vqneg_s16(a)
 }
-
 #[doc = "Signed saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqnegq_s16)"]
 #[doc = "## Safety"]
@@ -24840,7 +23901,6 @@ pub unsafe fn vqnegq_s16(a: int16x8_t) -> int16x8_t {
     }
     _vqnegq_s16(a)
 }
-
 #[doc = "Signed saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqneg_s32)"]
 #[doc = "## Safety"]
@@ -24872,7 +23932,6 @@ pub unsafe fn vqneg_s32(a: int32x2_t) -> int32x2_t {
     }
     _vqneg_s32(a)
 }
-
 #[doc = "Signed saturating negate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqnegq_s32)"]
 #[doc = "## Safety"]
@@ -24904,7 +23963,6 @@ pub unsafe fn vqnegq_s32(a: int32x4_t) -> int32x4_t {
     }
     _vqnegq_s32(a)
 }
-
 #[doc = "Vector rounding saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_lane_s16)"]
 #[doc = "## Safety"]
@@ -24931,7 +23989,6 @@ pub unsafe fn vqrdmulh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> 
     let b: int16x4_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vqrdmulh_s16(a, b)
 }
-
 #[doc = "Vector rounding saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_lane_s32)"]
 #[doc = "## Safety"]
@@ -24958,7 +24015,6 @@ pub unsafe fn vqrdmulh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> 
     let b: int32x2_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32]);
     vqrdmulh_s32(a, b)
 }
-
 #[doc = "Vector rounding saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_laneq_s16)"]
 #[doc = "## Safety"]
@@ -24985,7 +24041,6 @@ pub unsafe fn vqrdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) ->
     let b: int16x4_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vqrdmulh_s16(a, b)
 }
-
 #[doc = "Vector rounding saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_laneq_s32)"]
 #[doc = "## Safety"]
@@ -25012,7 +24067,6 @@ pub unsafe fn vqrdmulh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) ->
     let b: int32x2_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32]);
     vqrdmulh_s32(a, b)
 }
-
 #[doc = "Vector rounding saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_lane_s16)"]
 #[doc = "## Safety"]
@@ -25052,7 +24106,6 @@ pub unsafe fn vqrdmulhq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) ->
     );
     vqrdmulhq_s16(a, b)
 }
-
 #[doc = "Vector rounding saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_lane_s32)"]
 #[doc = "## Safety"]
@@ -25079,7 +24132,6 @@ pub unsafe fn vqrdmulhq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) ->
     let b: int32x4_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vqrdmulhq_s32(a, b)
 }
-
 #[doc = "Vector rounding saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_laneq_s16)"]
 #[doc = "## Safety"]
@@ -25119,7 +24171,6 @@ pub unsafe fn vqrdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -
     );
     vqrdmulhq_s16(a, b)
 }
-
 #[doc = "Vector rounding saturating doubling multiply high by scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_laneq_s32)"]
 #[doc = "## Safety"]
@@ -25146,7 +24197,6 @@ pub unsafe fn vqrdmulhq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -
     let b: int32x4_t = simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vqrdmulhq_s32(a, b)
 }
-
 #[doc = "Vector saturating rounding doubling multiply high with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_n_s16)"]
 #[doc = "## Safety"]
@@ -25170,7 +24220,6 @@ pub unsafe fn vqrdmulhq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -
 pub unsafe fn vqrdmulh_n_s16(a: int16x4_t, b: i16) -> int16x4_t {
     vqrdmulh_s16(a, vdup_n_s16(b))
 }
-
 #[doc = "Vector saturating rounding doubling multiply high with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_n_s16)"]
 #[doc = "## Safety"]
@@ -25194,7 +24243,6 @@ pub unsafe fn vqrdmulh_n_s16(a: int16x4_t, b: i16) -> int16x4_t {
 pub unsafe fn vqrdmulhq_n_s16(a: int16x8_t, b: i16) -> int16x8_t {
     vqrdmulhq_s16(a, vdupq_n_s16(b))
 }
-
 #[doc = "Vector saturating rounding doubling multiply high with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_n_s32)"]
 #[doc = "## Safety"]
@@ -25218,7 +24266,6 @@ pub unsafe fn vqrdmulhq_n_s16(a: int16x8_t, b: i16) -> int16x8_t {
 pub unsafe fn vqrdmulh_n_s32(a: int32x2_t, b: i32) -> int32x2_t {
     vqrdmulh_s32(a, vdup_n_s32(b))
 }
-
 #[doc = "Vector saturating rounding doubling multiply high with scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_n_s32)"]
 #[doc = "## Safety"]
@@ -25242,7 +24289,6 @@ pub unsafe fn vqrdmulh_n_s32(a: int32x2_t, b: i32) -> int32x2_t {
 pub unsafe fn vqrdmulhq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
     vqrdmulhq_s32(a, vdupq_n_s32(b))
 }
-
 #[doc = "Signed saturating rounding doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_s16)"]
 #[doc = "## Safety"]
@@ -25274,7 +24320,6 @@ pub unsafe fn vqrdmulh_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     }
     _vqrdmulh_s16(a, b)
 }
-
 #[doc = "Signed saturating rounding doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_s16)"]
 #[doc = "## Safety"]
@@ -25306,7 +24351,6 @@ pub unsafe fn vqrdmulhq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     }
     _vqrdmulhq_s16(a, b)
 }
-
 #[doc = "Signed saturating rounding doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_s32)"]
 #[doc = "## Safety"]
@@ -25338,7 +24382,6 @@ pub unsafe fn vqrdmulh_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     }
     _vqrdmulh_s32(a, b)
 }
-
 #[doc = "Signed saturating rounding doubling multiply returning high half"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_s32)"]
 #[doc = "## Safety"]
@@ -25370,7 +24413,6 @@ pub unsafe fn vqrdmulhq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     }
     _vqrdmulhq_s32(a, b)
 }
-
 #[doc = "Signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshl_s8)"]
 #[doc = "## Safety"]
@@ -25402,7 +24444,6 @@ pub unsafe fn vqrshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     }
     _vqrshl_s8(a, b)
 }
-
 #[doc = "Signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlq_s8)"]
 #[doc = "## Safety"]
@@ -25434,7 +24475,6 @@ pub unsafe fn vqrshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     }
     _vqrshlq_s8(a, b)
 }
-
 #[doc = "Signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshl_s16)"]
 #[doc = "## Safety"]
@@ -25466,7 +24506,6 @@ pub unsafe fn vqrshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     }
     _vqrshl_s16(a, b)
 }
-
 #[doc = "Signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlq_s16)"]
 #[doc = "## Safety"]
@@ -25498,7 +24537,6 @@ pub unsafe fn vqrshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     }
     _vqrshlq_s16(a, b)
 }
-
 #[doc = "Signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshl_s32)"]
 #[doc = "## Safety"]
@@ -25530,7 +24568,6 @@ pub unsafe fn vqrshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     }
     _vqrshl_s32(a, b)
 }
-
 #[doc = "Signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlq_s32)"]
 #[doc = "## Safety"]
@@ -25562,7 +24599,6 @@ pub unsafe fn vqrshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     }
     _vqrshlq_s32(a, b)
 }
-
 #[doc = "Signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshl_s64)"]
 #[doc = "## Safety"]
@@ -25594,7 +24630,6 @@ pub unsafe fn vqrshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     }
     _vqrshl_s64(a, b)
 }
-
 #[doc = "Signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlq_s64)"]
 #[doc = "## Safety"]
@@ -25626,7 +24661,6 @@ pub unsafe fn vqrshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     }
     _vqrshlq_s64(a, b)
 }
-
 #[doc = "Unsigned signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshl_u8)"]
 #[doc = "## Safety"]
@@ -25658,7 +24692,6 @@ pub unsafe fn vqrshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
     }
     _vqrshl_u8(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlq_u8)"]
 #[doc = "## Safety"]
@@ -25690,7 +24723,6 @@ pub unsafe fn vqrshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
     }
     _vqrshlq_u8(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshl_u16)"]
 #[doc = "## Safety"]
@@ -25722,7 +24754,6 @@ pub unsafe fn vqrshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
     }
     _vqrshl_u16(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlq_u16)"]
 #[doc = "## Safety"]
@@ -25754,7 +24785,6 @@ pub unsafe fn vqrshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
     }
     _vqrshlq_u16(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshl_u32)"]
 #[doc = "## Safety"]
@@ -25786,7 +24816,6 @@ pub unsafe fn vqrshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
     }
     _vqrshl_u32(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlq_u32)"]
 #[doc = "## Safety"]
@@ -25818,7 +24847,6 @@ pub unsafe fn vqrshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
     }
     _vqrshlq_u32(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshl_u64)"]
 #[doc = "## Safety"]
@@ -25850,7 +24878,6 @@ pub unsafe fn vqrshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
     }
     _vqrshl_u64(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlq_u64)"]
 #[doc = "## Safety"]
@@ -25882,7 +24909,6 @@ pub unsafe fn vqrshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
     }
     _vqrshlq_u64(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_s16)"]
 #[doc = "## Safety"]
@@ -25909,7 +24935,6 @@ pub unsafe fn vqrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
         },
     )
 }
-
 #[doc = "Signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_s32)"]
 #[doc = "## Safety"]
@@ -25931,7 +24956,6 @@ pub unsafe fn vqrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
         const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) },
     )
 }
-
 #[doc = "Signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_s64)"]
 #[doc = "## Safety"]
@@ -25950,7 +24974,6 @@ pub unsafe fn vqrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     }
     _vqrshrn_n_s64(a, const { int64x2_t([-N as i64, -N as i64]) })
 }
-
 #[doc = "Signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_s16)"]
 #[doc = "## Safety"]
@@ -25972,7 +24995,6 @@ pub unsafe fn vqrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     }
     _vqrshrn_n_s16(a, N)
 }
-
 #[doc = "Signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_s32)"]
 #[doc = "## Safety"]
@@ -25994,7 +25016,6 @@ pub unsafe fn vqrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     }
     _vqrshrn_n_s32(a, N)
 }
-
 #[doc = "Signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_s64)"]
 #[doc = "## Safety"]
@@ -26016,7 +25037,6 @@ pub unsafe fn vqrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     }
     _vqrshrn_n_s64(a, N)
 }
-
 #[doc = "Unsigned signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_u16)"]
 #[doc = "## Safety"]
@@ -26045,7 +25065,6 @@ pub unsafe fn vqrshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Unsigned signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_u32)"]
 #[doc = "## Safety"]
@@ -26068,7 +25087,6 @@ pub unsafe fn vqrshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Unsigned signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_u64)"]
 #[doc = "## Safety"]
@@ -26091,7 +25109,6 @@ pub unsafe fn vqrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Unsigned signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_u16)"]
 #[doc = "## Safety"]
@@ -26113,7 +25130,6 @@ pub unsafe fn vqrshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     }
     _vqrshrn_n_u16(a.as_signed(), N).as_unsigned()
 }
-
 #[doc = "Unsigned signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_u32)"]
 #[doc = "## Safety"]
@@ -26135,7 +25151,6 @@ pub unsafe fn vqrshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     }
     _vqrshrn_n_u32(a.as_signed(), N).as_unsigned()
 }
-
 #[doc = "Unsigned signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_u64)"]
 #[doc = "## Safety"]
@@ -26157,7 +25172,6 @@ pub unsafe fn vqrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     }
     _vqrshrn_n_u64(a.as_signed(), N).as_unsigned()
 }
-
 #[doc = "Signed saturating rounded shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrun_n_s16)"]
 #[doc = "## Safety"]
@@ -26185,7 +25199,6 @@ pub unsafe fn vqrshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Signed saturating rounded shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrun_n_s32)"]
 #[doc = "## Safety"]
@@ -26208,7 +25221,6 @@ pub unsafe fn vqrshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Signed saturating rounded shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrun_n_s64)"]
 #[doc = "## Safety"]
@@ -26227,7 +25239,6 @@ pub unsafe fn vqrshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
     }
     _vqrshrun_n_s64(a, const { int64x2_t([-N as i64, -N as i64]) }).as_unsigned()
 }
-
 #[doc = "Signed saturating rounded shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrun_n_s16)"]
 #[doc = "## Safety"]
@@ -26249,7 +25260,6 @@ pub unsafe fn vqrshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
     }
     _vqrshrun_n_s16(a, N).as_unsigned()
 }
-
 #[doc = "Signed saturating rounded shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrun_n_s32)"]
 #[doc = "## Safety"]
@@ -26271,7 +25281,6 @@ pub unsafe fn vqrshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
     }
     _vqrshrun_n_s32(a, N).as_unsigned()
 }
-
 #[doc = "Signed saturating rounded shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrun_n_s64)"]
 #[doc = "## Safety"]
@@ -26293,7 +25302,6 @@ pub unsafe fn vqrshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
     }
     _vqrshrun_n_s64(a, N).as_unsigned()
 }
-
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_n_s8)"]
 #[doc = "## Safety"]
@@ -26319,7 +25327,6 @@ pub unsafe fn vqshl_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
     static_assert_uimm_bits!(N, 3);
     vqshl_s8(a, vdup_n_s8(N as _))
 }
-
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_n_s8)"]
 #[doc = "## Safety"]
@@ -26345,7 +25352,6 @@ pub unsafe fn vqshlq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
     static_assert_uimm_bits!(N, 3);
     vqshlq_s8(a, vdupq_n_s8(N as _))
 }
-
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_n_s16)"]
 #[doc = "## Safety"]
@@ -26371,7 +25377,6 @@ pub unsafe fn vqshl_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(N, 4);
     vqshl_s16(a, vdup_n_s16(N as _))
 }
-
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_n_s16)"]
 #[doc = "## Safety"]
@@ -26397,7 +25402,6 @@ pub unsafe fn vqshlq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(N, 4);
     vqshlq_s16(a, vdupq_n_s16(N as _))
 }
-
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_n_s32)"]
 #[doc = "## Safety"]
@@ -26423,7 +25427,6 @@ pub unsafe fn vqshl_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(N, 5);
     vqshl_s32(a, vdup_n_s32(N as _))
 }
-
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_n_s32)"]
 #[doc = "## Safety"]
@@ -26449,7 +25452,6 @@ pub unsafe fn vqshlq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 5);
     vqshlq_s32(a, vdupq_n_s32(N as _))
 }
-
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_n_s64)"]
 #[doc = "## Safety"]
@@ -26475,7 +25477,6 @@ pub unsafe fn vqshl_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
     static_assert_uimm_bits!(N, 6);
     vqshl_s64(a, vdup_n_s64(N as _))
 }
-
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_n_s64)"]
 #[doc = "## Safety"]
@@ -26501,7 +25502,6 @@ pub unsafe fn vqshlq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
     static_assert_uimm_bits!(N, 6);
     vqshlq_s64(a, vdupq_n_s64(N as _))
 }
-
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_n_u8)"]
 #[doc = "## Safety"]
@@ -26527,7 +25527,6 @@ pub unsafe fn vqshl_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(N, 3);
     vqshl_u8(a, vdup_n_s8(N as _))
 }
-
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_n_u8)"]
 #[doc = "## Safety"]
@@ -26553,7 +25552,6 @@ pub unsafe fn vqshlq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
     static_assert_uimm_bits!(N, 3);
     vqshlq_u8(a, vdupq_n_s8(N as _))
 }
-
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_n_u16)"]
 #[doc = "## Safety"]
@@ -26579,7 +25577,6 @@ pub unsafe fn vqshl_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(N, 4);
     vqshl_u16(a, vdup_n_s16(N as _))
 }
-
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_n_u16)"]
 #[doc = "## Safety"]
@@ -26605,7 +25602,6 @@ pub unsafe fn vqshlq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(N, 4);
     vqshlq_u16(a, vdupq_n_s16(N as _))
 }
-
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_n_u32)"]
 #[doc = "## Safety"]
@@ -26631,7 +25627,6 @@ pub unsafe fn vqshl_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(N, 5);
     vqshl_u32(a, vdup_n_s32(N as _))
 }
-
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_n_u32)"]
 #[doc = "## Safety"]
@@ -26657,7 +25652,6 @@ pub unsafe fn vqshlq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(N, 5);
     vqshlq_u32(a, vdupq_n_s32(N as _))
 }
-
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_n_u64)"]
 #[doc = "## Safety"]
@@ -26683,7 +25677,6 @@ pub unsafe fn vqshl_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
     static_assert_uimm_bits!(N, 6);
     vqshl_u64(a, vdup_n_s64(N as _))
 }
-
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_n_u64)"]
 #[doc = "## Safety"]
@@ -26709,7 +25702,6 @@ pub unsafe fn vqshlq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(N, 6);
     vqshlq_u64(a, vdupq_n_s64(N as _))
 }
-
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_s8)"]
 #[doc = "## Safety"]
@@ -26741,7 +25733,6 @@ pub unsafe fn vqshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     }
     _vqshl_s8(a, b)
 }
-
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_s8)"]
 #[doc = "## Safety"]
@@ -26773,7 +25764,6 @@ pub unsafe fn vqshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     }
     _vqshlq_s8(a, b)
 }
-
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_s16)"]
 #[doc = "## Safety"]
@@ -26805,7 +25795,6 @@ pub unsafe fn vqshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     }
     _vqshl_s16(a, b)
 }
-
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_s16)"]
 #[doc = "## Safety"]
@@ -26837,7 +25826,6 @@ pub unsafe fn vqshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     }
     _vqshlq_s16(a, b)
 }
-
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_s32)"]
 #[doc = "## Safety"]
@@ -26869,7 +25857,6 @@ pub unsafe fn vqshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     }
     _vqshl_s32(a, b)
 }
-
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_s32)"]
 #[doc = "## Safety"]
@@ -26901,7 +25888,6 @@ pub unsafe fn vqshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     }
     _vqshlq_s32(a, b)
 }
-
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_s64)"]
 #[doc = "## Safety"]
@@ -26933,7 +25919,6 @@ pub unsafe fn vqshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     }
     _vqshl_s64(a, b)
 }
-
 #[doc = "Signed saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_s64)"]
 #[doc = "## Safety"]
@@ -26965,7 +25950,6 @@ pub unsafe fn vqshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     }
     _vqshlq_s64(a, b)
 }
-
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_u8)"]
 #[doc = "## Safety"]
@@ -26997,7 +25981,6 @@ pub unsafe fn vqshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
     }
     _vqshl_u8(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_u8)"]
 #[doc = "## Safety"]
@@ -27029,7 +26012,6 @@ pub unsafe fn vqshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
     }
     _vqshlq_u8(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_u16)"]
 #[doc = "## Safety"]
@@ -27061,7 +26043,6 @@ pub unsafe fn vqshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
     }
     _vqshl_u16(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_u16)"]
 #[doc = "## Safety"]
@@ -27093,7 +26074,6 @@ pub unsafe fn vqshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
     }
     _vqshlq_u16(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_u32)"]
 #[doc = "## Safety"]
@@ -27125,7 +26105,6 @@ pub unsafe fn vqshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
     }
     _vqshl_u32(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_u32)"]
 #[doc = "## Safety"]
@@ -27157,7 +26136,6 @@ pub unsafe fn vqshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
     }
     _vqshlq_u32(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_u64)"]
 #[doc = "## Safety"]
@@ -27189,7 +26167,6 @@ pub unsafe fn vqshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
     }
     _vqshl_u64(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned saturating shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_u64)"]
 #[doc = "## Safety"]
@@ -27221,7 +26198,6 @@ pub unsafe fn vqshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
     }
     _vqshlq_u64(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlu_n_s8)"]
 #[doc = "## Safety"]
@@ -27248,7 +26224,6 @@ pub unsafe fn vqshlu_n_s8<const N: i32>(a: int8x8_t) -> uint8x8_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshluq_n_s8)"]
 #[doc = "## Safety"]
@@ -27276,7 +26251,6 @@ pub unsafe fn vqshluq_n_s8<const N: i32>(a: int8x16_t) -> uint8x16_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlu_n_s16)"]
 #[doc = "## Safety"]
@@ -27299,7 +26273,6 @@ pub unsafe fn vqshlu_n_s16<const N: i32>(a: int16x4_t) -> uint16x4_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshluq_n_s16)"]
 #[doc = "## Safety"]
@@ -27326,7 +26299,6 @@ pub unsafe fn vqshluq_n_s16<const N: i32>(a: int16x8_t) -> uint16x8_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlu_n_s32)"]
 #[doc = "## Safety"]
@@ -27345,7 +26317,6 @@ pub unsafe fn vqshlu_n_s32<const N: i32>(a: int32x2_t) -> uint32x2_t {
     }
     _vqshlu_n_s32(a, const { int32x2_t([N as i32, N as i32]) }).as_unsigned()
 }
-
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshluq_n_s32)"]
 #[doc = "## Safety"]
@@ -27368,7 +26339,6 @@ pub unsafe fn vqshluq_n_s32<const N: i32>(a: int32x4_t) -> uint32x4_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlu_n_s64)"]
 #[doc = "## Safety"]
@@ -27387,7 +26357,6 @@ pub unsafe fn vqshlu_n_s64<const N: i32>(a: int64x1_t) -> uint64x1_t {
     }
     _vqshlu_n_s64(a, const { int64x1_t([N as i64]) }).as_unsigned()
 }
-
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshluq_n_s64)"]
 #[doc = "## Safety"]
@@ -27406,7 +26375,6 @@ pub unsafe fn vqshluq_n_s64<const N: i32>(a: int64x2_t) -> uint64x2_t {
     }
     _vqshluq_n_s64(a, const { int64x2_t([N as i64, N as i64]) }).as_unsigned()
 }
-
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlu_n_s8)"]
 #[doc = "## Safety"]
@@ -27436,7 +26404,6 @@ pub unsafe fn vqshlu_n_s8<const N: i32>(a: int8x8_t) -> uint8x8_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshluq_n_s8)"]
 #[doc = "## Safety"]
@@ -27467,7 +26434,6 @@ pub unsafe fn vqshluq_n_s8<const N: i32>(a: int8x16_t) -> uint8x16_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlu_n_s16)"]
 #[doc = "## Safety"]
@@ -27493,7 +26459,6 @@ pub unsafe fn vqshlu_n_s16<const N: i32>(a: int16x4_t) -> uint16x4_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshluq_n_s16)"]
 #[doc = "## Safety"]
@@ -27523,7 +26488,6 @@ pub unsafe fn vqshluq_n_s16<const N: i32>(a: int16x8_t) -> uint16x8_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlu_n_s32)"]
 #[doc = "## Safety"]
@@ -27545,7 +26509,6 @@ pub unsafe fn vqshlu_n_s32<const N: i32>(a: int32x2_t) -> uint32x2_t {
     }
     _vqshlu_n_s32(a, const { int32x2_t([N as i32, N as i32]) }).as_unsigned()
 }
-
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshluq_n_s32)"]
 #[doc = "## Safety"]
@@ -27571,7 +26534,6 @@ pub unsafe fn vqshluq_n_s32<const N: i32>(a: int32x4_t) -> uint32x4_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlu_n_s64)"]
 #[doc = "## Safety"]
@@ -27593,7 +26555,6 @@ pub unsafe fn vqshlu_n_s64<const N: i32>(a: int64x1_t) -> uint64x1_t {
     }
     _vqshlu_n_s64(a, const { int64x1_t([N as i64]) }).as_unsigned()
 }
-
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshluq_n_s64)"]
 #[doc = "## Safety"]
@@ -27615,7 +26576,6 @@ pub unsafe fn vqshluq_n_s64<const N: i32>(a: int64x2_t) -> uint64x2_t {
     }
     _vqshluq_n_s64(a, const { int64x2_t([N as i64, N as i64]) }).as_unsigned()
 }
-
 #[doc = "Signed saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_s16)"]
 #[doc = "## Safety"]
@@ -27642,7 +26602,6 @@ pub unsafe fn vqshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
         },
     )
 }
-
 #[doc = "Signed saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_s32)"]
 #[doc = "## Safety"]
@@ -27664,7 +26623,6 @@ pub unsafe fn vqshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
         const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) },
     )
 }
-
 #[doc = "Signed saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_s64)"]
 #[doc = "## Safety"]
@@ -27683,7 +26641,6 @@ pub unsafe fn vqshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     }
     _vqshrn_n_s64(a, const { int64x2_t([-N as i64, -N as i64]) })
 }
-
 #[doc = "Signed saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_s16)"]
 #[doc = "## Safety"]
@@ -27705,7 +26662,6 @@ pub unsafe fn vqshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     }
     _vqshrn_n_s16(a, N)
 }
-
 #[doc = "Signed saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_s32)"]
 #[doc = "## Safety"]
@@ -27727,7 +26683,6 @@ pub unsafe fn vqshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     }
     _vqshrn_n_s32(a, N)
 }
-
 #[doc = "Signed saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_s64)"]
 #[doc = "## Safety"]
@@ -27749,7 +26704,6 @@ pub unsafe fn vqshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     }
     _vqshrn_n_s64(a, N)
 }
-
 #[doc = "Unsigned saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_u16)"]
 #[doc = "## Safety"]
@@ -27778,7 +26732,6 @@ pub unsafe fn vqshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Unsigned saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_u32)"]
 #[doc = "## Safety"]
@@ -27801,7 +26754,6 @@ pub unsafe fn vqshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Unsigned saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_u64)"]
 #[doc = "## Safety"]
@@ -27824,7 +26776,6 @@ pub unsafe fn vqshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Unsigned saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_u16)"]
 #[doc = "## Safety"]
@@ -27846,7 +26797,6 @@ pub unsafe fn vqshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     }
     _vqshrn_n_u16(a.as_signed(), N).as_unsigned()
 }
-
 #[doc = "Unsigned saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_u32)"]
 #[doc = "## Safety"]
@@ -27868,7 +26818,6 @@ pub unsafe fn vqshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     }
     _vqshrn_n_u32(a.as_signed(), N).as_unsigned()
 }
-
 #[doc = "Unsigned saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_u64)"]
 #[doc = "## Safety"]
@@ -27890,7 +26839,6 @@ pub unsafe fn vqshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     }
     _vqshrn_n_u64(a.as_signed(), N).as_unsigned()
 }
-
 #[doc = "Signed saturating shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrun_n_s16)"]
 #[doc = "## Safety"]
@@ -27918,7 +26866,6 @@ pub unsafe fn vqshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Signed saturating shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrun_n_s32)"]
 #[doc = "## Safety"]
@@ -27941,7 +26888,6 @@ pub unsafe fn vqshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
     )
     .as_unsigned()
 }
-
 #[doc = "Signed saturating shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrun_n_s64)"]
 #[doc = "## Safety"]
@@ -27960,7 +26906,6 @@ pub unsafe fn vqshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
     }
     _vqshrun_n_s64(a, const { int64x2_t([-N as i64, -N as i64]) }).as_unsigned()
 }
-
 #[doc = "Signed saturating shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrun_n_s16)"]
 #[doc = "## Safety"]
@@ -27982,7 +26927,6 @@ pub unsafe fn vqshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
     }
     _vqshrun_n_s16(a, N).as_unsigned()
 }
-
 #[doc = "Signed saturating shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrun_n_s32)"]
 #[doc = "## Safety"]
@@ -28004,7 +26948,6 @@ pub unsafe fn vqshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
     }
     _vqshrun_n_s32(a, N).as_unsigned()
 }
-
 #[doc = "Signed saturating shift right unsigned narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrun_n_s64)"]
 #[doc = "## Safety"]
@@ -28026,7 +26969,6 @@ pub unsafe fn vqshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
     }
     _vqshrun_n_s64(a, N).as_unsigned()
 }
-
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsub_s8)"]
 #[doc = "## Safety"]
@@ -28058,7 +27000,6 @@ pub unsafe fn vqsub_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     }
     _vqsub_s8(a, b)
 }
-
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubq_s8)"]
 #[doc = "## Safety"]
@@ -28090,7 +27031,6 @@ pub unsafe fn vqsubq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     }
     _vqsubq_s8(a, b)
 }
-
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsub_s16)"]
 #[doc = "## Safety"]
@@ -28122,7 +27062,6 @@ pub unsafe fn vqsub_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     }
     _vqsub_s16(a, b)
 }
-
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubq_s16)"]
 #[doc = "## Safety"]
@@ -28154,7 +27093,6 @@ pub unsafe fn vqsubq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     }
     _vqsubq_s16(a, b)
 }
-
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsub_s32)"]
 #[doc = "## Safety"]
@@ -28186,7 +27124,6 @@ pub unsafe fn vqsub_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     }
     _vqsub_s32(a, b)
 }
-
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubq_s32)"]
 #[doc = "## Safety"]
@@ -28218,7 +27155,6 @@ pub unsafe fn vqsubq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     }
     _vqsubq_s32(a, b)
 }
-
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsub_s64)"]
 #[doc = "## Safety"]
@@ -28250,7 +27186,6 @@ pub unsafe fn vqsub_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     }
     _vqsub_s64(a, b)
 }
-
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubq_s64)"]
 #[doc = "## Safety"]
@@ -28282,7 +27217,6 @@ pub unsafe fn vqsubq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     }
     _vqsubq_s64(a, b)
 }
-
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsub_u8)"]
 #[doc = "## Safety"]
@@ -28314,7 +27248,6 @@ pub unsafe fn vqsub_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     }
     _vqsub_u8(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubq_u8)"]
 #[doc = "## Safety"]
@@ -28346,7 +27279,6 @@ pub unsafe fn vqsubq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     }
     _vqsubq_u8(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsub_u16)"]
 #[doc = "## Safety"]
@@ -28378,7 +27310,6 @@ pub unsafe fn vqsub_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     }
     _vqsub_u16(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubq_u16)"]
 #[doc = "## Safety"]
@@ -28410,7 +27341,6 @@ pub unsafe fn vqsubq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     }
     _vqsubq_u16(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsub_u32)"]
 #[doc = "## Safety"]
@@ -28442,7 +27372,6 @@ pub unsafe fn vqsub_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     }
     _vqsub_u32(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubq_u32)"]
 #[doc = "## Safety"]
@@ -28474,7 +27403,6 @@ pub unsafe fn vqsubq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     }
     _vqsubq_u32(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsub_u64)"]
 #[doc = "## Safety"]
@@ -28506,7 +27434,6 @@ pub unsafe fn vqsub_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     }
     _vqsub_u64(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubq_u64)"]
 #[doc = "## Safety"]
@@ -28538,7 +27465,6 @@ pub unsafe fn vqsubq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     }
     _vqsubq_u64(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Reciprocal estimate."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecpe_f32)"]
 #[doc = "## Safety"]
@@ -28570,7 +27496,6 @@ pub unsafe fn vrecpe_f32(a: float32x2_t) -> float32x2_t {
     }
     _vrecpe_f32(a)
 }
-
 #[doc = "Reciprocal estimate."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecpeq_f32)"]
 #[doc = "## Safety"]
@@ -28602,7 +27527,6 @@ pub unsafe fn vrecpeq_f32(a: float32x4_t) -> float32x4_t {
     }
     _vrecpeq_f32(a)
 }
-
 #[doc = "Unsigned reciprocal estimate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecpe_u32)"]
 #[doc = "## Safety"]
@@ -28634,7 +27558,6 @@ pub unsafe fn vrecpe_u32(a: uint32x2_t) -> uint32x2_t {
     }
     _vrecpe_u32(a.as_signed()).as_unsigned()
 }
-
 #[doc = "Unsigned reciprocal estimate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecpeq_u32)"]
 #[doc = "## Safety"]
@@ -28666,7 +27589,6 @@ pub unsafe fn vrecpeq_u32(a: uint32x4_t) -> uint32x4_t {
     }
     _vrecpeq_u32(a.as_signed()).as_unsigned()
 }
-
 #[doc = "Floating-point reciprocal step"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecps_f32)"]
 #[doc = "## Safety"]
@@ -28698,7 +27620,6 @@ pub unsafe fn vrecps_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     }
     _vrecps_f32(a, b)
 }
-
 #[doc = "Floating-point reciprocal step"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecpsq_f32)"]
 #[doc = "## Safety"]
@@ -28730,7 +27651,6 @@ pub unsafe fn vrecpsq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     }
     _vrecpsq_f32(a, b)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_p128)"]
 #[doc = "## Safety"]
@@ -28754,7 +27674,6 @@ pub unsafe fn vrecpsq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 pub unsafe fn vreinterpretq_f32_p128(a: p128) -> float32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_f32)"]
 #[doc = "## Safety"]
@@ -28778,7 +27697,6 @@ pub unsafe fn vreinterpretq_f32_p128(a: p128) -> float32x4_t {
 pub unsafe fn vreinterpret_s8_f32(a: float32x2_t) -> int8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_f32)"]
 #[doc = "## Safety"]
@@ -28802,7 +27720,6 @@ pub unsafe fn vreinterpret_s8_f32(a: float32x2_t) -> int8x8_t {
 pub unsafe fn vreinterpret_s16_f32(a: float32x2_t) -> int16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_f32)"]
 #[doc = "## Safety"]
@@ -28826,7 +27743,6 @@ pub unsafe fn vreinterpret_s16_f32(a: float32x2_t) -> int16x4_t {
 pub unsafe fn vreinterpret_s32_f32(a: float32x2_t) -> int32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_f32)"]
 #[doc = "## Safety"]
@@ -28850,7 +27766,6 @@ pub unsafe fn vreinterpret_s32_f32(a: float32x2_t) -> int32x2_t {
 pub unsafe fn vreinterpret_s64_f32(a: float32x2_t) -> int64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_f32)"]
 #[doc = "## Safety"]
@@ -28874,7 +27789,6 @@ pub unsafe fn vreinterpret_s64_f32(a: float32x2_t) -> int64x1_t {
 pub unsafe fn vreinterpret_u8_f32(a: float32x2_t) -> uint8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_f32)"]
 #[doc = "## Safety"]
@@ -28898,7 +27812,6 @@ pub unsafe fn vreinterpret_u8_f32(a: float32x2_t) -> uint8x8_t {
 pub unsafe fn vreinterpret_u16_f32(a: float32x2_t) -> uint16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_f32)"]
 #[doc = "## Safety"]
@@ -28922,7 +27835,6 @@ pub unsafe fn vreinterpret_u16_f32(a: float32x2_t) -> uint16x4_t {
 pub unsafe fn vreinterpret_u32_f32(a: float32x2_t) -> uint32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_f32)"]
 #[doc = "## Safety"]
@@ -28946,7 +27858,6 @@ pub unsafe fn vreinterpret_u32_f32(a: float32x2_t) -> uint32x2_t {
 pub unsafe fn vreinterpret_u64_f32(a: float32x2_t) -> uint64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_f32)"]
 #[doc = "## Safety"]
@@ -28970,7 +27881,6 @@ pub unsafe fn vreinterpret_u64_f32(a: float32x2_t) -> uint64x1_t {
 pub unsafe fn vreinterpret_p8_f32(a: float32x2_t) -> poly8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_f32)"]
 #[doc = "## Safety"]
@@ -28994,7 +27904,6 @@ pub unsafe fn vreinterpret_p8_f32(a: float32x2_t) -> poly8x8_t {
 pub unsafe fn vreinterpret_p16_f32(a: float32x2_t) -> poly16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_f32)"]
 #[doc = "## Safety"]
@@ -29018,7 +27927,6 @@ pub unsafe fn vreinterpret_p16_f32(a: float32x2_t) -> poly16x4_t {
 pub unsafe fn vreinterpretq_p128_f32(a: float32x4_t) -> p128 {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_f32)"]
 #[doc = "## Safety"]
@@ -29042,7 +27950,6 @@ pub unsafe fn vreinterpretq_p128_f32(a: float32x4_t) -> p128 {
 pub unsafe fn vreinterpretq_s8_f32(a: float32x4_t) -> int8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_f32)"]
 #[doc = "## Safety"]
@@ -29066,7 +27973,6 @@ pub unsafe fn vreinterpretq_s8_f32(a: float32x4_t) -> int8x16_t {
 pub unsafe fn vreinterpretq_s16_f32(a: float32x4_t) -> int16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_f32)"]
 #[doc = "## Safety"]
@@ -29090,7 +27996,6 @@ pub unsafe fn vreinterpretq_s16_f32(a: float32x4_t) -> int16x8_t {
 pub unsafe fn vreinterpretq_s32_f32(a: float32x4_t) -> int32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_f32)"]
 #[doc = "## Safety"]
@@ -29114,7 +28019,6 @@ pub unsafe fn vreinterpretq_s32_f32(a: float32x4_t) -> int32x4_t {
 pub unsafe fn vreinterpretq_s64_f32(a: float32x4_t) -> int64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_f32)"]
 #[doc = "## Safety"]
@@ -29138,7 +28042,6 @@ pub unsafe fn vreinterpretq_s64_f32(a: float32x4_t) -> int64x2_t {
 pub unsafe fn vreinterpretq_u8_f32(a: float32x4_t) -> uint8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_f32)"]
 #[doc = "## Safety"]
@@ -29162,7 +28065,6 @@ pub unsafe fn vreinterpretq_u8_f32(a: float32x4_t) -> uint8x16_t {
 pub unsafe fn vreinterpretq_u16_f32(a: float32x4_t) -> uint16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_f32)"]
 #[doc = "## Safety"]
@@ -29186,7 +28088,6 @@ pub unsafe fn vreinterpretq_u16_f32(a: float32x4_t) -> uint16x8_t {
 pub unsafe fn vreinterpretq_u32_f32(a: float32x4_t) -> uint32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_f32)"]
 #[doc = "## Safety"]
@@ -29210,7 +28111,6 @@ pub unsafe fn vreinterpretq_u32_f32(a: float32x4_t) -> uint32x4_t {
 pub unsafe fn vreinterpretq_u64_f32(a: float32x4_t) -> uint64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_f32)"]
 #[doc = "## Safety"]
@@ -29234,7 +28134,6 @@ pub unsafe fn vreinterpretq_u64_f32(a: float32x4_t) -> uint64x2_t {
 pub unsafe fn vreinterpretq_p8_f32(a: float32x4_t) -> poly8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_f32)"]
 #[doc = "## Safety"]
@@ -29258,7 +28157,6 @@ pub unsafe fn vreinterpretq_p8_f32(a: float32x4_t) -> poly8x16_t {
 pub unsafe fn vreinterpretq_p16_f32(a: float32x4_t) -> poly16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_s8)"]
 #[doc = "## Safety"]
@@ -29282,7 +28180,6 @@ pub unsafe fn vreinterpretq_p16_f32(a: float32x4_t) -> poly16x8_t {
 pub unsafe fn vreinterpret_f32_s8(a: int8x8_t) -> float32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_s8)"]
 #[doc = "## Safety"]
@@ -29306,7 +28203,6 @@ pub unsafe fn vreinterpret_f32_s8(a: int8x8_t) -> float32x2_t {
 pub unsafe fn vreinterpret_s16_s8(a: int8x8_t) -> int16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_s8)"]
 #[doc = "## Safety"]
@@ -29330,7 +28226,6 @@ pub unsafe fn vreinterpret_s16_s8(a: int8x8_t) -> int16x4_t {
 pub unsafe fn vreinterpret_s32_s8(a: int8x8_t) -> int32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_s8)"]
 #[doc = "## Safety"]
@@ -29354,7 +28249,6 @@ pub unsafe fn vreinterpret_s32_s8(a: int8x8_t) -> int32x2_t {
 pub unsafe fn vreinterpret_s64_s8(a: int8x8_t) -> int64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_s8)"]
 #[doc = "## Safety"]
@@ -29378,7 +28272,6 @@ pub unsafe fn vreinterpret_s64_s8(a: int8x8_t) -> int64x1_t {
 pub unsafe fn vreinterpret_u8_s8(a: int8x8_t) -> uint8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_s8)"]
 #[doc = "## Safety"]
@@ -29402,7 +28295,6 @@ pub unsafe fn vreinterpret_u8_s8(a: int8x8_t) -> uint8x8_t {
 pub unsafe fn vreinterpret_u16_s8(a: int8x8_t) -> uint16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_s8)"]
 #[doc = "## Safety"]
@@ -29426,7 +28318,6 @@ pub unsafe fn vreinterpret_u16_s8(a: int8x8_t) -> uint16x4_t {
 pub unsafe fn vreinterpret_u32_s8(a: int8x8_t) -> uint32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_s8)"]
 #[doc = "## Safety"]
@@ -29450,7 +28341,6 @@ pub unsafe fn vreinterpret_u32_s8(a: int8x8_t) -> uint32x2_t {
 pub unsafe fn vreinterpret_u64_s8(a: int8x8_t) -> uint64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_s8)"]
 #[doc = "## Safety"]
@@ -29474,7 +28364,6 @@ pub unsafe fn vreinterpret_u64_s8(a: int8x8_t) -> uint64x1_t {
 pub unsafe fn vreinterpret_p8_s8(a: int8x8_t) -> poly8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_s8)"]
 #[doc = "## Safety"]
@@ -29498,7 +28387,6 @@ pub unsafe fn vreinterpret_p8_s8(a: int8x8_t) -> poly8x8_t {
 pub unsafe fn vreinterpret_p16_s8(a: int8x8_t) -> poly16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_s8)"]
 #[doc = "## Safety"]
@@ -29522,7 +28410,6 @@ pub unsafe fn vreinterpret_p16_s8(a: int8x8_t) -> poly16x4_t {
 pub unsafe fn vreinterpretq_f32_s8(a: int8x16_t) -> float32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_s8)"]
 #[doc = "## Safety"]
@@ -29546,7 +28433,6 @@ pub unsafe fn vreinterpretq_f32_s8(a: int8x16_t) -> float32x4_t {
 pub unsafe fn vreinterpretq_s16_s8(a: int8x16_t) -> int16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_s8)"]
 #[doc = "## Safety"]
@@ -29570,7 +28456,6 @@ pub unsafe fn vreinterpretq_s16_s8(a: int8x16_t) -> int16x8_t {
 pub unsafe fn vreinterpretq_s32_s8(a: int8x16_t) -> int32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_s8)"]
 #[doc = "## Safety"]
@@ -29594,7 +28479,6 @@ pub unsafe fn vreinterpretq_s32_s8(a: int8x16_t) -> int32x4_t {
 pub unsafe fn vreinterpretq_s64_s8(a: int8x16_t) -> int64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_s8)"]
 #[doc = "## Safety"]
@@ -29618,7 +28502,6 @@ pub unsafe fn vreinterpretq_s64_s8(a: int8x16_t) -> int64x2_t {
 pub unsafe fn vreinterpretq_u8_s8(a: int8x16_t) -> uint8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_s8)"]
 #[doc = "## Safety"]
@@ -29642,7 +28525,6 @@ pub unsafe fn vreinterpretq_u8_s8(a: int8x16_t) -> uint8x16_t {
 pub unsafe fn vreinterpretq_u16_s8(a: int8x16_t) -> uint16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_s8)"]
 #[doc = "## Safety"]
@@ -29666,7 +28548,6 @@ pub unsafe fn vreinterpretq_u16_s8(a: int8x16_t) -> uint16x8_t {
 pub unsafe fn vreinterpretq_u32_s8(a: int8x16_t) -> uint32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_s8)"]
 #[doc = "## Safety"]
@@ -29690,7 +28571,6 @@ pub unsafe fn vreinterpretq_u32_s8(a: int8x16_t) -> uint32x4_t {
 pub unsafe fn vreinterpretq_u64_s8(a: int8x16_t) -> uint64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_s8)"]
 #[doc = "## Safety"]
@@ -29714,7 +28594,6 @@ pub unsafe fn vreinterpretq_u64_s8(a: int8x16_t) -> uint64x2_t {
 pub unsafe fn vreinterpretq_p8_s8(a: int8x16_t) -> poly8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_s8)"]
 #[doc = "## Safety"]
@@ -29738,7 +28617,6 @@ pub unsafe fn vreinterpretq_p8_s8(a: int8x16_t) -> poly8x16_t {
 pub unsafe fn vreinterpretq_p16_s8(a: int8x16_t) -> poly16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_s16)"]
 #[doc = "## Safety"]
@@ -29762,7 +28640,6 @@ pub unsafe fn vreinterpretq_p16_s8(a: int8x16_t) -> poly16x8_t {
 pub unsafe fn vreinterpret_f32_s16(a: int16x4_t) -> float32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_s16)"]
 #[doc = "## Safety"]
@@ -29786,7 +28663,6 @@ pub unsafe fn vreinterpret_f32_s16(a: int16x4_t) -> float32x2_t {
 pub unsafe fn vreinterpret_s8_s16(a: int16x4_t) -> int8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_s16)"]
 #[doc = "## Safety"]
@@ -29810,7 +28686,6 @@ pub unsafe fn vreinterpret_s8_s16(a: int16x4_t) -> int8x8_t {
 pub unsafe fn vreinterpret_s32_s16(a: int16x4_t) -> int32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_s16)"]
 #[doc = "## Safety"]
@@ -29834,7 +28709,6 @@ pub unsafe fn vreinterpret_s32_s16(a: int16x4_t) -> int32x2_t {
 pub unsafe fn vreinterpret_s64_s16(a: int16x4_t) -> int64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_s16)"]
 #[doc = "## Safety"]
@@ -29858,7 +28732,6 @@ pub unsafe fn vreinterpret_s64_s16(a: int16x4_t) -> int64x1_t {
 pub unsafe fn vreinterpret_u8_s16(a: int16x4_t) -> uint8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_s16)"]
 #[doc = "## Safety"]
@@ -29882,7 +28755,6 @@ pub unsafe fn vreinterpret_u8_s16(a: int16x4_t) -> uint8x8_t {
 pub unsafe fn vreinterpret_u16_s16(a: int16x4_t) -> uint16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_s16)"]
 #[doc = "## Safety"]
@@ -29906,7 +28778,6 @@ pub unsafe fn vreinterpret_u16_s16(a: int16x4_t) -> uint16x4_t {
 pub unsafe fn vreinterpret_u32_s16(a: int16x4_t) -> uint32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_s16)"]
 #[doc = "## Safety"]
@@ -29930,7 +28801,6 @@ pub unsafe fn vreinterpret_u32_s16(a: int16x4_t) -> uint32x2_t {
 pub unsafe fn vreinterpret_u64_s16(a: int16x4_t) -> uint64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_s16)"]
 #[doc = "## Safety"]
@@ -29954,7 +28824,6 @@ pub unsafe fn vreinterpret_u64_s16(a: int16x4_t) -> uint64x1_t {
 pub unsafe fn vreinterpret_p8_s16(a: int16x4_t) -> poly8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_s16)"]
 #[doc = "## Safety"]
@@ -29978,7 +28847,6 @@ pub unsafe fn vreinterpret_p8_s16(a: int16x4_t) -> poly8x8_t {
 pub unsafe fn vreinterpret_p16_s16(a: int16x4_t) -> poly16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_s16)"]
 #[doc = "## Safety"]
@@ -30002,7 +28870,6 @@ pub unsafe fn vreinterpret_p16_s16(a: int16x4_t) -> poly16x4_t {
 pub unsafe fn vreinterpretq_f32_s16(a: int16x8_t) -> float32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_s16)"]
 #[doc = "## Safety"]
@@ -30026,7 +28893,6 @@ pub unsafe fn vreinterpretq_f32_s16(a: int16x8_t) -> float32x4_t {
 pub unsafe fn vreinterpretq_s8_s16(a: int16x8_t) -> int8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_s16)"]
 #[doc = "## Safety"]
@@ -30050,7 +28916,6 @@ pub unsafe fn vreinterpretq_s8_s16(a: int16x8_t) -> int8x16_t {
 pub unsafe fn vreinterpretq_s32_s16(a: int16x8_t) -> int32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_s16)"]
 #[doc = "## Safety"]
@@ -30074,7 +28939,6 @@ pub unsafe fn vreinterpretq_s32_s16(a: int16x8_t) -> int32x4_t {
 pub unsafe fn vreinterpretq_s64_s16(a: int16x8_t) -> int64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_s16)"]
 #[doc = "## Safety"]
@@ -30098,7 +28962,6 @@ pub unsafe fn vreinterpretq_s64_s16(a: int16x8_t) -> int64x2_t {
 pub unsafe fn vreinterpretq_u8_s16(a: int16x8_t) -> uint8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_s16)"]
 #[doc = "## Safety"]
@@ -30122,7 +28985,6 @@ pub unsafe fn vreinterpretq_u8_s16(a: int16x8_t) -> uint8x16_t {
 pub unsafe fn vreinterpretq_u16_s16(a: int16x8_t) -> uint16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_s16)"]
 #[doc = "## Safety"]
@@ -30146,7 +29008,6 @@ pub unsafe fn vreinterpretq_u16_s16(a: int16x8_t) -> uint16x8_t {
 pub unsafe fn vreinterpretq_u32_s16(a: int16x8_t) -> uint32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_s16)"]
 #[doc = "## Safety"]
@@ -30170,7 +29031,6 @@ pub unsafe fn vreinterpretq_u32_s16(a: int16x8_t) -> uint32x4_t {
 pub unsafe fn vreinterpretq_u64_s16(a: int16x8_t) -> uint64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_s16)"]
 #[doc = "## Safety"]
@@ -30194,7 +29054,6 @@ pub unsafe fn vreinterpretq_u64_s16(a: int16x8_t) -> uint64x2_t {
 pub unsafe fn vreinterpretq_p8_s16(a: int16x8_t) -> poly8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_s16)"]
 #[doc = "## Safety"]
@@ -30218,7 +29077,6 @@ pub unsafe fn vreinterpretq_p8_s16(a: int16x8_t) -> poly8x16_t {
 pub unsafe fn vreinterpretq_p16_s16(a: int16x8_t) -> poly16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_s32)"]
 #[doc = "## Safety"]
@@ -30242,7 +29100,6 @@ pub unsafe fn vreinterpretq_p16_s16(a: int16x8_t) -> poly16x8_t {
 pub unsafe fn vreinterpret_f32_s32(a: int32x2_t) -> float32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_s32)"]
 #[doc = "## Safety"]
@@ -30266,7 +29123,6 @@ pub unsafe fn vreinterpret_f32_s32(a: int32x2_t) -> float32x2_t {
 pub unsafe fn vreinterpret_s8_s32(a: int32x2_t) -> int8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_s32)"]
 #[doc = "## Safety"]
@@ -30290,7 +29146,6 @@ pub unsafe fn vreinterpret_s8_s32(a: int32x2_t) -> int8x8_t {
 pub unsafe fn vreinterpret_s16_s32(a: int32x2_t) -> int16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_s32)"]
 #[doc = "## Safety"]
@@ -30314,7 +29169,6 @@ pub unsafe fn vreinterpret_s16_s32(a: int32x2_t) -> int16x4_t {
 pub unsafe fn vreinterpret_s64_s32(a: int32x2_t) -> int64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_s32)"]
 #[doc = "## Safety"]
@@ -30338,7 +29192,6 @@ pub unsafe fn vreinterpret_s64_s32(a: int32x2_t) -> int64x1_t {
 pub unsafe fn vreinterpret_u8_s32(a: int32x2_t) -> uint8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_s32)"]
 #[doc = "## Safety"]
@@ -30362,7 +29215,6 @@ pub unsafe fn vreinterpret_u8_s32(a: int32x2_t) -> uint8x8_t {
 pub unsafe fn vreinterpret_u16_s32(a: int32x2_t) -> uint16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_s32)"]
 #[doc = "## Safety"]
@@ -30386,7 +29238,6 @@ pub unsafe fn vreinterpret_u16_s32(a: int32x2_t) -> uint16x4_t {
 pub unsafe fn vreinterpret_u32_s32(a: int32x2_t) -> uint32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_s32)"]
 #[doc = "## Safety"]
@@ -30410,7 +29261,6 @@ pub unsafe fn vreinterpret_u32_s32(a: int32x2_t) -> uint32x2_t {
 pub unsafe fn vreinterpret_u64_s32(a: int32x2_t) -> uint64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_s32)"]
 #[doc = "## Safety"]
@@ -30434,7 +29284,6 @@ pub unsafe fn vreinterpret_u64_s32(a: int32x2_t) -> uint64x1_t {
 pub unsafe fn vreinterpret_p8_s32(a: int32x2_t) -> poly8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_s32)"]
 #[doc = "## Safety"]
@@ -30458,7 +29307,6 @@ pub unsafe fn vreinterpret_p8_s32(a: int32x2_t) -> poly8x8_t {
 pub unsafe fn vreinterpret_p16_s32(a: int32x2_t) -> poly16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_s32)"]
 #[doc = "## Safety"]
@@ -30482,7 +29330,6 @@ pub unsafe fn vreinterpret_p16_s32(a: int32x2_t) -> poly16x4_t {
 pub unsafe fn vreinterpretq_f32_s32(a: int32x4_t) -> float32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_s32)"]
 #[doc = "## Safety"]
@@ -30506,7 +29353,6 @@ pub unsafe fn vreinterpretq_f32_s32(a: int32x4_t) -> float32x4_t {
 pub unsafe fn vreinterpretq_s8_s32(a: int32x4_t) -> int8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_s32)"]
 #[doc = "## Safety"]
@@ -30530,7 +29376,6 @@ pub unsafe fn vreinterpretq_s8_s32(a: int32x4_t) -> int8x16_t {
 pub unsafe fn vreinterpretq_s16_s32(a: int32x4_t) -> int16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_s32)"]
 #[doc = "## Safety"]
@@ -30554,7 +29399,6 @@ pub unsafe fn vreinterpretq_s16_s32(a: int32x4_t) -> int16x8_t {
 pub unsafe fn vreinterpretq_s64_s32(a: int32x4_t) -> int64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_s32)"]
 #[doc = "## Safety"]
@@ -30578,7 +29422,6 @@ pub unsafe fn vreinterpretq_s64_s32(a: int32x4_t) -> int64x2_t {
 pub unsafe fn vreinterpretq_u8_s32(a: int32x4_t) -> uint8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_s32)"]
 #[doc = "## Safety"]
@@ -30602,7 +29445,6 @@ pub unsafe fn vreinterpretq_u8_s32(a: int32x4_t) -> uint8x16_t {
 pub unsafe fn vreinterpretq_u16_s32(a: int32x4_t) -> uint16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_s32)"]
 #[doc = "## Safety"]
@@ -30626,7 +29468,6 @@ pub unsafe fn vreinterpretq_u16_s32(a: int32x4_t) -> uint16x8_t {
 pub unsafe fn vreinterpretq_u32_s32(a: int32x4_t) -> uint32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_s32)"]
 #[doc = "## Safety"]
@@ -30650,7 +29491,6 @@ pub unsafe fn vreinterpretq_u32_s32(a: int32x4_t) -> uint32x4_t {
 pub unsafe fn vreinterpretq_u64_s32(a: int32x4_t) -> uint64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_s32)"]
 #[doc = "## Safety"]
@@ -30674,7 +29514,6 @@ pub unsafe fn vreinterpretq_u64_s32(a: int32x4_t) -> uint64x2_t {
 pub unsafe fn vreinterpretq_p8_s32(a: int32x4_t) -> poly8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_s32)"]
 #[doc = "## Safety"]
@@ -30698,7 +29537,6 @@ pub unsafe fn vreinterpretq_p8_s32(a: int32x4_t) -> poly8x16_t {
 pub unsafe fn vreinterpretq_p16_s32(a: int32x4_t) -> poly16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_s64)"]
 #[doc = "## Safety"]
@@ -30722,7 +29560,6 @@ pub unsafe fn vreinterpretq_p16_s32(a: int32x4_t) -> poly16x8_t {
 pub unsafe fn vreinterpret_f32_s64(a: int64x1_t) -> float32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_s64)"]
 #[doc = "## Safety"]
@@ -30746,7 +29583,6 @@ pub unsafe fn vreinterpret_f32_s64(a: int64x1_t) -> float32x2_t {
 pub unsafe fn vreinterpret_s8_s64(a: int64x1_t) -> int8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_s64)"]
 #[doc = "## Safety"]
@@ -30770,7 +29606,6 @@ pub unsafe fn vreinterpret_s8_s64(a: int64x1_t) -> int8x8_t {
 pub unsafe fn vreinterpret_s16_s64(a: int64x1_t) -> int16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_s64)"]
 #[doc = "## Safety"]
@@ -30794,7 +29629,6 @@ pub unsafe fn vreinterpret_s16_s64(a: int64x1_t) -> int16x4_t {
 pub unsafe fn vreinterpret_s32_s64(a: int64x1_t) -> int32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_s64)"]
 #[doc = "## Safety"]
@@ -30818,7 +29652,6 @@ pub unsafe fn vreinterpret_s32_s64(a: int64x1_t) -> int32x2_t {
 pub unsafe fn vreinterpret_u8_s64(a: int64x1_t) -> uint8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_s64)"]
 #[doc = "## Safety"]
@@ -30842,7 +29675,6 @@ pub unsafe fn vreinterpret_u8_s64(a: int64x1_t) -> uint8x8_t {
 pub unsafe fn vreinterpret_u16_s64(a: int64x1_t) -> uint16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_s64)"]
 #[doc = "## Safety"]
@@ -30866,7 +29698,6 @@ pub unsafe fn vreinterpret_u16_s64(a: int64x1_t) -> uint16x4_t {
 pub unsafe fn vreinterpret_u32_s64(a: int64x1_t) -> uint32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_s64)"]
 #[doc = "## Safety"]
@@ -30890,7 +29721,6 @@ pub unsafe fn vreinterpret_u32_s64(a: int64x1_t) -> uint32x2_t {
 pub unsafe fn vreinterpret_u64_s64(a: int64x1_t) -> uint64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_s64)"]
 #[doc = "## Safety"]
@@ -30914,7 +29744,6 @@ pub unsafe fn vreinterpret_u64_s64(a: int64x1_t) -> uint64x1_t {
 pub unsafe fn vreinterpret_p8_s64(a: int64x1_t) -> poly8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_s64)"]
 #[doc = "## Safety"]
@@ -30938,7 +29767,6 @@ pub unsafe fn vreinterpret_p8_s64(a: int64x1_t) -> poly8x8_t {
 pub unsafe fn vreinterpret_p16_s64(a: int64x1_t) -> poly16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_s64)"]
 #[doc = "## Safety"]
@@ -30962,7 +29790,6 @@ pub unsafe fn vreinterpret_p16_s64(a: int64x1_t) -> poly16x4_t {
 pub unsafe fn vreinterpretq_f32_s64(a: int64x2_t) -> float32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_s64)"]
 #[doc = "## Safety"]
@@ -30986,7 +29813,6 @@ pub unsafe fn vreinterpretq_f32_s64(a: int64x2_t) -> float32x4_t {
 pub unsafe fn vreinterpretq_s8_s64(a: int64x2_t) -> int8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_s64)"]
 #[doc = "## Safety"]
@@ -31010,7 +29836,6 @@ pub unsafe fn vreinterpretq_s8_s64(a: int64x2_t) -> int8x16_t {
 pub unsafe fn vreinterpretq_s16_s64(a: int64x2_t) -> int16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_s64)"]
 #[doc = "## Safety"]
@@ -31034,7 +29859,6 @@ pub unsafe fn vreinterpretq_s16_s64(a: int64x2_t) -> int16x8_t {
 pub unsafe fn vreinterpretq_s32_s64(a: int64x2_t) -> int32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_s64)"]
 #[doc = "## Safety"]
@@ -31058,7 +29882,6 @@ pub unsafe fn vreinterpretq_s32_s64(a: int64x2_t) -> int32x4_t {
 pub unsafe fn vreinterpretq_u8_s64(a: int64x2_t) -> uint8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_s64)"]
 #[doc = "## Safety"]
@@ -31082,7 +29905,6 @@ pub unsafe fn vreinterpretq_u8_s64(a: int64x2_t) -> uint8x16_t {
 pub unsafe fn vreinterpretq_u16_s64(a: int64x2_t) -> uint16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_s64)"]
 #[doc = "## Safety"]
@@ -31106,7 +29928,6 @@ pub unsafe fn vreinterpretq_u16_s64(a: int64x2_t) -> uint16x8_t {
 pub unsafe fn vreinterpretq_u32_s64(a: int64x2_t) -> uint32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_s64)"]
 #[doc = "## Safety"]
@@ -31130,7 +29951,6 @@ pub unsafe fn vreinterpretq_u32_s64(a: int64x2_t) -> uint32x4_t {
 pub unsafe fn vreinterpretq_u64_s64(a: int64x2_t) -> uint64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_s64)"]
 #[doc = "## Safety"]
@@ -31154,7 +29974,6 @@ pub unsafe fn vreinterpretq_u64_s64(a: int64x2_t) -> uint64x2_t {
 pub unsafe fn vreinterpretq_p8_s64(a: int64x2_t) -> poly8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_s64)"]
 #[doc = "## Safety"]
@@ -31178,7 +29997,6 @@ pub unsafe fn vreinterpretq_p8_s64(a: int64x2_t) -> poly8x16_t {
 pub unsafe fn vreinterpretq_p16_s64(a: int64x2_t) -> poly16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_u8)"]
 #[doc = "## Safety"]
@@ -31202,7 +30020,6 @@ pub unsafe fn vreinterpretq_p16_s64(a: int64x2_t) -> poly16x8_t {
 pub unsafe fn vreinterpret_f32_u8(a: uint8x8_t) -> float32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_u8)"]
 #[doc = "## Safety"]
@@ -31226,7 +30043,6 @@ pub unsafe fn vreinterpret_f32_u8(a: uint8x8_t) -> float32x2_t {
 pub unsafe fn vreinterpret_s8_u8(a: uint8x8_t) -> int8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_u8)"]
 #[doc = "## Safety"]
@@ -31250,7 +30066,6 @@ pub unsafe fn vreinterpret_s8_u8(a: uint8x8_t) -> int8x8_t {
 pub unsafe fn vreinterpret_s16_u8(a: uint8x8_t) -> int16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_u8)"]
 #[doc = "## Safety"]
@@ -31274,7 +30089,6 @@ pub unsafe fn vreinterpret_s16_u8(a: uint8x8_t) -> int16x4_t {
 pub unsafe fn vreinterpret_s32_u8(a: uint8x8_t) -> int32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_u8)"]
 #[doc = "## Safety"]
@@ -31298,7 +30112,6 @@ pub unsafe fn vreinterpret_s32_u8(a: uint8x8_t) -> int32x2_t {
 pub unsafe fn vreinterpret_s64_u8(a: uint8x8_t) -> int64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_u8)"]
 #[doc = "## Safety"]
@@ -31322,7 +30135,6 @@ pub unsafe fn vreinterpret_s64_u8(a: uint8x8_t) -> int64x1_t {
 pub unsafe fn vreinterpret_u16_u8(a: uint8x8_t) -> uint16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_u8)"]
 #[doc = "## Safety"]
@@ -31346,7 +30158,6 @@ pub unsafe fn vreinterpret_u16_u8(a: uint8x8_t) -> uint16x4_t {
 pub unsafe fn vreinterpret_u32_u8(a: uint8x8_t) -> uint32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_u8)"]
 #[doc = "## Safety"]
@@ -31370,7 +30181,6 @@ pub unsafe fn vreinterpret_u32_u8(a: uint8x8_t) -> uint32x2_t {
 pub unsafe fn vreinterpret_u64_u8(a: uint8x8_t) -> uint64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_u8)"]
 #[doc = "## Safety"]
@@ -31394,7 +30204,6 @@ pub unsafe fn vreinterpret_u64_u8(a: uint8x8_t) -> uint64x1_t {
 pub unsafe fn vreinterpret_p8_u8(a: uint8x8_t) -> poly8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_u8)"]
 #[doc = "## Safety"]
@@ -31418,7 +30227,6 @@ pub unsafe fn vreinterpret_p8_u8(a: uint8x8_t) -> poly8x8_t {
 pub unsafe fn vreinterpret_p16_u8(a: uint8x8_t) -> poly16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_u8)"]
 #[doc = "## Safety"]
@@ -31442,7 +30250,6 @@ pub unsafe fn vreinterpret_p16_u8(a: uint8x8_t) -> poly16x4_t {
 pub unsafe fn vreinterpretq_f32_u8(a: uint8x16_t) -> float32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_u8)"]
 #[doc = "## Safety"]
@@ -31466,7 +30273,6 @@ pub unsafe fn vreinterpretq_f32_u8(a: uint8x16_t) -> float32x4_t {
 pub unsafe fn vreinterpretq_s8_u8(a: uint8x16_t) -> int8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_u8)"]
 #[doc = "## Safety"]
@@ -31490,7 +30296,6 @@ pub unsafe fn vreinterpretq_s8_u8(a: uint8x16_t) -> int8x16_t {
 pub unsafe fn vreinterpretq_s16_u8(a: uint8x16_t) -> int16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_u8)"]
 #[doc = "## Safety"]
@@ -31514,7 +30319,6 @@ pub unsafe fn vreinterpretq_s16_u8(a: uint8x16_t) -> int16x8_t {
 pub unsafe fn vreinterpretq_s32_u8(a: uint8x16_t) -> int32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_u8)"]
 #[doc = "## Safety"]
@@ -31538,7 +30342,6 @@ pub unsafe fn vreinterpretq_s32_u8(a: uint8x16_t) -> int32x4_t {
 pub unsafe fn vreinterpretq_s64_u8(a: uint8x16_t) -> int64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_u8)"]
 #[doc = "## Safety"]
@@ -31562,7 +30365,6 @@ pub unsafe fn vreinterpretq_s64_u8(a: uint8x16_t) -> int64x2_t {
 pub unsafe fn vreinterpretq_u16_u8(a: uint8x16_t) -> uint16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_u8)"]
 #[doc = "## Safety"]
@@ -31586,7 +30388,6 @@ pub unsafe fn vreinterpretq_u16_u8(a: uint8x16_t) -> uint16x8_t {
 pub unsafe fn vreinterpretq_u32_u8(a: uint8x16_t) -> uint32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_u8)"]
 #[doc = "## Safety"]
@@ -31610,7 +30411,6 @@ pub unsafe fn vreinterpretq_u32_u8(a: uint8x16_t) -> uint32x4_t {
 pub unsafe fn vreinterpretq_u64_u8(a: uint8x16_t) -> uint64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_u8)"]
 #[doc = "## Safety"]
@@ -31634,7 +30434,6 @@ pub unsafe fn vreinterpretq_u64_u8(a: uint8x16_t) -> uint64x2_t {
 pub unsafe fn vreinterpretq_p8_u8(a: uint8x16_t) -> poly8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_u8)"]
 #[doc = "## Safety"]
@@ -31658,7 +30457,6 @@ pub unsafe fn vreinterpretq_p8_u8(a: uint8x16_t) -> poly8x16_t {
 pub unsafe fn vreinterpretq_p16_u8(a: uint8x16_t) -> poly16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_u16)"]
 #[doc = "## Safety"]
@@ -31682,7 +30480,6 @@ pub unsafe fn vreinterpretq_p16_u8(a: uint8x16_t) -> poly16x8_t {
 pub unsafe fn vreinterpret_f32_u16(a: uint16x4_t) -> float32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_u16)"]
 #[doc = "## Safety"]
@@ -31706,7 +30503,6 @@ pub unsafe fn vreinterpret_f32_u16(a: uint16x4_t) -> float32x2_t {
 pub unsafe fn vreinterpret_s8_u16(a: uint16x4_t) -> int8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_u16)"]
 #[doc = "## Safety"]
@@ -31730,7 +30526,6 @@ pub unsafe fn vreinterpret_s8_u16(a: uint16x4_t) -> int8x8_t {
 pub unsafe fn vreinterpret_s16_u16(a: uint16x4_t) -> int16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_u16)"]
 #[doc = "## Safety"]
@@ -31754,7 +30549,6 @@ pub unsafe fn vreinterpret_s16_u16(a: uint16x4_t) -> int16x4_t {
 pub unsafe fn vreinterpret_s32_u16(a: uint16x4_t) -> int32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_u16)"]
 #[doc = "## Safety"]
@@ -31778,7 +30572,6 @@ pub unsafe fn vreinterpret_s32_u16(a: uint16x4_t) -> int32x2_t {
 pub unsafe fn vreinterpret_s64_u16(a: uint16x4_t) -> int64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_u16)"]
 #[doc = "## Safety"]
@@ -31802,7 +30595,6 @@ pub unsafe fn vreinterpret_s64_u16(a: uint16x4_t) -> int64x1_t {
 pub unsafe fn vreinterpret_u8_u16(a: uint16x4_t) -> uint8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_u16)"]
 #[doc = "## Safety"]
@@ -31826,7 +30618,6 @@ pub unsafe fn vreinterpret_u8_u16(a: uint16x4_t) -> uint8x8_t {
 pub unsafe fn vreinterpret_u32_u16(a: uint16x4_t) -> uint32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_u16)"]
 #[doc = "## Safety"]
@@ -31850,7 +30641,6 @@ pub unsafe fn vreinterpret_u32_u16(a: uint16x4_t) -> uint32x2_t {
 pub unsafe fn vreinterpret_u64_u16(a: uint16x4_t) -> uint64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_u16)"]
 #[doc = "## Safety"]
@@ -31874,7 +30664,6 @@ pub unsafe fn vreinterpret_u64_u16(a: uint16x4_t) -> uint64x1_t {
 pub unsafe fn vreinterpret_p8_u16(a: uint16x4_t) -> poly8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_u16)"]
 #[doc = "## Safety"]
@@ -31898,7 +30687,6 @@ pub unsafe fn vreinterpret_p8_u16(a: uint16x4_t) -> poly8x8_t {
 pub unsafe fn vreinterpret_p16_u16(a: uint16x4_t) -> poly16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_u16)"]
 #[doc = "## Safety"]
@@ -31922,7 +30710,6 @@ pub unsafe fn vreinterpret_p16_u16(a: uint16x4_t) -> poly16x4_t {
 pub unsafe fn vreinterpretq_f32_u16(a: uint16x8_t) -> float32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_u16)"]
 #[doc = "## Safety"]
@@ -31946,7 +30733,6 @@ pub unsafe fn vreinterpretq_f32_u16(a: uint16x8_t) -> float32x4_t {
 pub unsafe fn vreinterpretq_s8_u16(a: uint16x8_t) -> int8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_u16)"]
 #[doc = "## Safety"]
@@ -31970,7 +30756,6 @@ pub unsafe fn vreinterpretq_s8_u16(a: uint16x8_t) -> int8x16_t {
 pub unsafe fn vreinterpretq_s16_u16(a: uint16x8_t) -> int16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_u16)"]
 #[doc = "## Safety"]
@@ -31994,7 +30779,6 @@ pub unsafe fn vreinterpretq_s16_u16(a: uint16x8_t) -> int16x8_t {
 pub unsafe fn vreinterpretq_s32_u16(a: uint16x8_t) -> int32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_u16)"]
 #[doc = "## Safety"]
@@ -32018,7 +30802,6 @@ pub unsafe fn vreinterpretq_s32_u16(a: uint16x8_t) -> int32x4_t {
 pub unsafe fn vreinterpretq_s64_u16(a: uint16x8_t) -> int64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_u16)"]
 #[doc = "## Safety"]
@@ -32042,7 +30825,6 @@ pub unsafe fn vreinterpretq_s64_u16(a: uint16x8_t) -> int64x2_t {
 pub unsafe fn vreinterpretq_u8_u16(a: uint16x8_t) -> uint8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_u16)"]
 #[doc = "## Safety"]
@@ -32066,7 +30848,6 @@ pub unsafe fn vreinterpretq_u8_u16(a: uint16x8_t) -> uint8x16_t {
 pub unsafe fn vreinterpretq_u32_u16(a: uint16x8_t) -> uint32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_u16)"]
 #[doc = "## Safety"]
@@ -32090,7 +30871,6 @@ pub unsafe fn vreinterpretq_u32_u16(a: uint16x8_t) -> uint32x4_t {
 pub unsafe fn vreinterpretq_u64_u16(a: uint16x8_t) -> uint64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_u16)"]
 #[doc = "## Safety"]
@@ -32114,7 +30894,6 @@ pub unsafe fn vreinterpretq_u64_u16(a: uint16x8_t) -> uint64x2_t {
 pub unsafe fn vreinterpretq_p8_u16(a: uint16x8_t) -> poly8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_u16)"]
 #[doc = "## Safety"]
@@ -32138,7 +30917,6 @@ pub unsafe fn vreinterpretq_p8_u16(a: uint16x8_t) -> poly8x16_t {
 pub unsafe fn vreinterpretq_p16_u16(a: uint16x8_t) -> poly16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_u32)"]
 #[doc = "## Safety"]
@@ -32162,7 +30940,6 @@ pub unsafe fn vreinterpretq_p16_u16(a: uint16x8_t) -> poly16x8_t {
 pub unsafe fn vreinterpret_f32_u32(a: uint32x2_t) -> float32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_u32)"]
 #[doc = "## Safety"]
@@ -32186,7 +30963,6 @@ pub unsafe fn vreinterpret_f32_u32(a: uint32x2_t) -> float32x2_t {
 pub unsafe fn vreinterpret_s8_u32(a: uint32x2_t) -> int8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_u32)"]
 #[doc = "## Safety"]
@@ -32210,7 +30986,6 @@ pub unsafe fn vreinterpret_s8_u32(a: uint32x2_t) -> int8x8_t {
 pub unsafe fn vreinterpret_s16_u32(a: uint32x2_t) -> int16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_u32)"]
 #[doc = "## Safety"]
@@ -32234,7 +31009,6 @@ pub unsafe fn vreinterpret_s16_u32(a: uint32x2_t) -> int16x4_t {
 pub unsafe fn vreinterpret_s32_u32(a: uint32x2_t) -> int32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_u32)"]
 #[doc = "## Safety"]
@@ -32258,7 +31032,6 @@ pub unsafe fn vreinterpret_s32_u32(a: uint32x2_t) -> int32x2_t {
 pub unsafe fn vreinterpret_s64_u32(a: uint32x2_t) -> int64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_u32)"]
 #[doc = "## Safety"]
@@ -32282,7 +31055,6 @@ pub unsafe fn vreinterpret_s64_u32(a: uint32x2_t) -> int64x1_t {
 pub unsafe fn vreinterpret_u8_u32(a: uint32x2_t) -> uint8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_u32)"]
 #[doc = "## Safety"]
@@ -32306,7 +31078,6 @@ pub unsafe fn vreinterpret_u8_u32(a: uint32x2_t) -> uint8x8_t {
 pub unsafe fn vreinterpret_u16_u32(a: uint32x2_t) -> uint16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_u32)"]
 #[doc = "## Safety"]
@@ -32330,7 +31101,6 @@ pub unsafe fn vreinterpret_u16_u32(a: uint32x2_t) -> uint16x4_t {
 pub unsafe fn vreinterpret_u64_u32(a: uint32x2_t) -> uint64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_u32)"]
 #[doc = "## Safety"]
@@ -32354,7 +31124,6 @@ pub unsafe fn vreinterpret_u64_u32(a: uint32x2_t) -> uint64x1_t {
 pub unsafe fn vreinterpret_p8_u32(a: uint32x2_t) -> poly8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_u32)"]
 #[doc = "## Safety"]
@@ -32378,7 +31147,6 @@ pub unsafe fn vreinterpret_p8_u32(a: uint32x2_t) -> poly8x8_t {
 pub unsafe fn vreinterpret_p16_u32(a: uint32x2_t) -> poly16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_u32)"]
 #[doc = "## Safety"]
@@ -32402,7 +31170,6 @@ pub unsafe fn vreinterpret_p16_u32(a: uint32x2_t) -> poly16x4_t {
 pub unsafe fn vreinterpretq_f32_u32(a: uint32x4_t) -> float32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_u32)"]
 #[doc = "## Safety"]
@@ -32426,7 +31193,6 @@ pub unsafe fn vreinterpretq_f32_u32(a: uint32x4_t) -> float32x4_t {
 pub unsafe fn vreinterpretq_s8_u32(a: uint32x4_t) -> int8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_u32)"]
 #[doc = "## Safety"]
@@ -32450,7 +31216,6 @@ pub unsafe fn vreinterpretq_s8_u32(a: uint32x4_t) -> int8x16_t {
 pub unsafe fn vreinterpretq_s16_u32(a: uint32x4_t) -> int16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_u32)"]
 #[doc = "## Safety"]
@@ -32474,7 +31239,6 @@ pub unsafe fn vreinterpretq_s16_u32(a: uint32x4_t) -> int16x8_t {
 pub unsafe fn vreinterpretq_s32_u32(a: uint32x4_t) -> int32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_u32)"]
 #[doc = "## Safety"]
@@ -32498,7 +31262,6 @@ pub unsafe fn vreinterpretq_s32_u32(a: uint32x4_t) -> int32x4_t {
 pub unsafe fn vreinterpretq_s64_u32(a: uint32x4_t) -> int64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_u32)"]
 #[doc = "## Safety"]
@@ -32522,7 +31285,6 @@ pub unsafe fn vreinterpretq_s64_u32(a: uint32x4_t) -> int64x2_t {
 pub unsafe fn vreinterpretq_u8_u32(a: uint32x4_t) -> uint8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_u32)"]
 #[doc = "## Safety"]
@@ -32546,7 +31308,6 @@ pub unsafe fn vreinterpretq_u8_u32(a: uint32x4_t) -> uint8x16_t {
 pub unsafe fn vreinterpretq_u16_u32(a: uint32x4_t) -> uint16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_u32)"]
 #[doc = "## Safety"]
@@ -32570,7 +31331,6 @@ pub unsafe fn vreinterpretq_u16_u32(a: uint32x4_t) -> uint16x8_t {
 pub unsafe fn vreinterpretq_u64_u32(a: uint32x4_t) -> uint64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_u32)"]
 #[doc = "## Safety"]
@@ -32594,7 +31354,6 @@ pub unsafe fn vreinterpretq_u64_u32(a: uint32x4_t) -> uint64x2_t {
 pub unsafe fn vreinterpretq_p8_u32(a: uint32x4_t) -> poly8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_u32)"]
 #[doc = "## Safety"]
@@ -32618,7 +31377,6 @@ pub unsafe fn vreinterpretq_p8_u32(a: uint32x4_t) -> poly8x16_t {
 pub unsafe fn vreinterpretq_p16_u32(a: uint32x4_t) -> poly16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_u64)"]
 #[doc = "## Safety"]
@@ -32642,7 +31400,6 @@ pub unsafe fn vreinterpretq_p16_u32(a: uint32x4_t) -> poly16x8_t {
 pub unsafe fn vreinterpret_f32_u64(a: uint64x1_t) -> float32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_u64)"]
 #[doc = "## Safety"]
@@ -32666,7 +31423,6 @@ pub unsafe fn vreinterpret_f32_u64(a: uint64x1_t) -> float32x2_t {
 pub unsafe fn vreinterpret_s8_u64(a: uint64x1_t) -> int8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_u64)"]
 #[doc = "## Safety"]
@@ -32690,7 +31446,6 @@ pub unsafe fn vreinterpret_s8_u64(a: uint64x1_t) -> int8x8_t {
 pub unsafe fn vreinterpret_s16_u64(a: uint64x1_t) -> int16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_u64)"]
 #[doc = "## Safety"]
@@ -32714,7 +31469,6 @@ pub unsafe fn vreinterpret_s16_u64(a: uint64x1_t) -> int16x4_t {
 pub unsafe fn vreinterpret_s32_u64(a: uint64x1_t) -> int32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_u64)"]
 #[doc = "## Safety"]
@@ -32738,7 +31492,6 @@ pub unsafe fn vreinterpret_s32_u64(a: uint64x1_t) -> int32x2_t {
 pub unsafe fn vreinterpret_s64_u64(a: uint64x1_t) -> int64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_u64)"]
 #[doc = "## Safety"]
@@ -32762,7 +31515,6 @@ pub unsafe fn vreinterpret_s64_u64(a: uint64x1_t) -> int64x1_t {
 pub unsafe fn vreinterpret_u8_u64(a: uint64x1_t) -> uint8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_u64)"]
 #[doc = "## Safety"]
@@ -32786,7 +31538,6 @@ pub unsafe fn vreinterpret_u8_u64(a: uint64x1_t) -> uint8x8_t {
 pub unsafe fn vreinterpret_u16_u64(a: uint64x1_t) -> uint16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_u64)"]
 #[doc = "## Safety"]
@@ -32810,7 +31561,6 @@ pub unsafe fn vreinterpret_u16_u64(a: uint64x1_t) -> uint16x4_t {
 pub unsafe fn vreinterpret_u32_u64(a: uint64x1_t) -> uint32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_u64)"]
 #[doc = "## Safety"]
@@ -32834,7 +31584,6 @@ pub unsafe fn vreinterpret_u32_u64(a: uint64x1_t) -> uint32x2_t {
 pub unsafe fn vreinterpret_p8_u64(a: uint64x1_t) -> poly8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_u64)"]
 #[doc = "## Safety"]
@@ -32858,7 +31607,6 @@ pub unsafe fn vreinterpret_p8_u64(a: uint64x1_t) -> poly8x8_t {
 pub unsafe fn vreinterpret_p16_u64(a: uint64x1_t) -> poly16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_u64)"]
 #[doc = "## Safety"]
@@ -32882,7 +31630,6 @@ pub unsafe fn vreinterpret_p16_u64(a: uint64x1_t) -> poly16x4_t {
 pub unsafe fn vreinterpretq_f32_u64(a: uint64x2_t) -> float32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_u64)"]
 #[doc = "## Safety"]
@@ -32906,7 +31653,6 @@ pub unsafe fn vreinterpretq_f32_u64(a: uint64x2_t) -> float32x4_t {
 pub unsafe fn vreinterpretq_s8_u64(a: uint64x2_t) -> int8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_u64)"]
 #[doc = "## Safety"]
@@ -32930,7 +31676,6 @@ pub unsafe fn vreinterpretq_s8_u64(a: uint64x2_t) -> int8x16_t {
 pub unsafe fn vreinterpretq_s16_u64(a: uint64x2_t) -> int16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_u64)"]
 #[doc = "## Safety"]
@@ -32954,7 +31699,6 @@ pub unsafe fn vreinterpretq_s16_u64(a: uint64x2_t) -> int16x8_t {
 pub unsafe fn vreinterpretq_s32_u64(a: uint64x2_t) -> int32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_u64)"]
 #[doc = "## Safety"]
@@ -32978,7 +31722,6 @@ pub unsafe fn vreinterpretq_s32_u64(a: uint64x2_t) -> int32x4_t {
 pub unsafe fn vreinterpretq_s64_u64(a: uint64x2_t) -> int64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_u64)"]
 #[doc = "## Safety"]
@@ -33002,7 +31745,6 @@ pub unsafe fn vreinterpretq_s64_u64(a: uint64x2_t) -> int64x2_t {
 pub unsafe fn vreinterpretq_u8_u64(a: uint64x2_t) -> uint8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_u64)"]
 #[doc = "## Safety"]
@@ -33026,7 +31768,6 @@ pub unsafe fn vreinterpretq_u8_u64(a: uint64x2_t) -> uint8x16_t {
 pub unsafe fn vreinterpretq_u16_u64(a: uint64x2_t) -> uint16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_u64)"]
 #[doc = "## Safety"]
@@ -33050,7 +31791,6 @@ pub unsafe fn vreinterpretq_u16_u64(a: uint64x2_t) -> uint16x8_t {
 pub unsafe fn vreinterpretq_u32_u64(a: uint64x2_t) -> uint32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_u64)"]
 #[doc = "## Safety"]
@@ -33074,7 +31814,6 @@ pub unsafe fn vreinterpretq_u32_u64(a: uint64x2_t) -> uint32x4_t {
 pub unsafe fn vreinterpretq_p8_u64(a: uint64x2_t) -> poly8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_u64)"]
 #[doc = "## Safety"]
@@ -33098,7 +31837,6 @@ pub unsafe fn vreinterpretq_p8_u64(a: uint64x2_t) -> poly8x16_t {
 pub unsafe fn vreinterpretq_p16_u64(a: uint64x2_t) -> poly16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_p8)"]
 #[doc = "## Safety"]
@@ -33122,7 +31860,6 @@ pub unsafe fn vreinterpretq_p16_u64(a: uint64x2_t) -> poly16x8_t {
 pub unsafe fn vreinterpret_f32_p8(a: poly8x8_t) -> float32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_p8)"]
 #[doc = "## Safety"]
@@ -33146,7 +31883,6 @@ pub unsafe fn vreinterpret_f32_p8(a: poly8x8_t) -> float32x2_t {
 pub unsafe fn vreinterpret_s8_p8(a: poly8x8_t) -> int8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_p8)"]
 #[doc = "## Safety"]
@@ -33170,7 +31906,6 @@ pub unsafe fn vreinterpret_s8_p8(a: poly8x8_t) -> int8x8_t {
 pub unsafe fn vreinterpret_s16_p8(a: poly8x8_t) -> int16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_p8)"]
 #[doc = "## Safety"]
@@ -33194,7 +31929,6 @@ pub unsafe fn vreinterpret_s16_p8(a: poly8x8_t) -> int16x4_t {
 pub unsafe fn vreinterpret_s32_p8(a: poly8x8_t) -> int32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_p8)"]
 #[doc = "## Safety"]
@@ -33218,7 +31952,6 @@ pub unsafe fn vreinterpret_s32_p8(a: poly8x8_t) -> int32x2_t {
 pub unsafe fn vreinterpret_s64_p8(a: poly8x8_t) -> int64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_p8)"]
 #[doc = "## Safety"]
@@ -33242,7 +31975,6 @@ pub unsafe fn vreinterpret_s64_p8(a: poly8x8_t) -> int64x1_t {
 pub unsafe fn vreinterpret_u8_p8(a: poly8x8_t) -> uint8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_p8)"]
 #[doc = "## Safety"]
@@ -33266,7 +31998,6 @@ pub unsafe fn vreinterpret_u8_p8(a: poly8x8_t) -> uint8x8_t {
 pub unsafe fn vreinterpret_u16_p8(a: poly8x8_t) -> uint16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_p8)"]
 #[doc = "## Safety"]
@@ -33290,7 +32021,6 @@ pub unsafe fn vreinterpret_u16_p8(a: poly8x8_t) -> uint16x4_t {
 pub unsafe fn vreinterpret_u32_p8(a: poly8x8_t) -> uint32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_p8)"]
 #[doc = "## Safety"]
@@ -33314,7 +32044,6 @@ pub unsafe fn vreinterpret_u32_p8(a: poly8x8_t) -> uint32x2_t {
 pub unsafe fn vreinterpret_u64_p8(a: poly8x8_t) -> uint64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_p8)"]
 #[doc = "## Safety"]
@@ -33338,7 +32067,6 @@ pub unsafe fn vreinterpret_u64_p8(a: poly8x8_t) -> uint64x1_t {
 pub unsafe fn vreinterpret_p16_p8(a: poly8x8_t) -> poly16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_p8)"]
 #[doc = "## Safety"]
@@ -33362,7 +32090,6 @@ pub unsafe fn vreinterpret_p16_p8(a: poly8x8_t) -> poly16x4_t {
 pub unsafe fn vreinterpretq_f32_p8(a: poly8x16_t) -> float32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_p8)"]
 #[doc = "## Safety"]
@@ -33386,7 +32113,6 @@ pub unsafe fn vreinterpretq_f32_p8(a: poly8x16_t) -> float32x4_t {
 pub unsafe fn vreinterpretq_s8_p8(a: poly8x16_t) -> int8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_p8)"]
 #[doc = "## Safety"]
@@ -33410,7 +32136,6 @@ pub unsafe fn vreinterpretq_s8_p8(a: poly8x16_t) -> int8x16_t {
 pub unsafe fn vreinterpretq_s16_p8(a: poly8x16_t) -> int16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_p8)"]
 #[doc = "## Safety"]
@@ -33434,7 +32159,6 @@ pub unsafe fn vreinterpretq_s16_p8(a: poly8x16_t) -> int16x8_t {
 pub unsafe fn vreinterpretq_s32_p8(a: poly8x16_t) -> int32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_p8)"]
 #[doc = "## Safety"]
@@ -33458,7 +32182,6 @@ pub unsafe fn vreinterpretq_s32_p8(a: poly8x16_t) -> int32x4_t {
 pub unsafe fn vreinterpretq_s64_p8(a: poly8x16_t) -> int64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_p8)"]
 #[doc = "## Safety"]
@@ -33482,7 +32205,6 @@ pub unsafe fn vreinterpretq_s64_p8(a: poly8x16_t) -> int64x2_t {
 pub unsafe fn vreinterpretq_u8_p8(a: poly8x16_t) -> uint8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_p8)"]
 #[doc = "## Safety"]
@@ -33506,7 +32228,6 @@ pub unsafe fn vreinterpretq_u8_p8(a: poly8x16_t) -> uint8x16_t {
 pub unsafe fn vreinterpretq_u16_p8(a: poly8x16_t) -> uint16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_p8)"]
 #[doc = "## Safety"]
@@ -33530,7 +32251,6 @@ pub unsafe fn vreinterpretq_u16_p8(a: poly8x16_t) -> uint16x8_t {
 pub unsafe fn vreinterpretq_u32_p8(a: poly8x16_t) -> uint32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_p8)"]
 #[doc = "## Safety"]
@@ -33554,7 +32274,6 @@ pub unsafe fn vreinterpretq_u32_p8(a: poly8x16_t) -> uint32x4_t {
 pub unsafe fn vreinterpretq_u64_p8(a: poly8x16_t) -> uint64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_p8)"]
 #[doc = "## Safety"]
@@ -33578,7 +32297,6 @@ pub unsafe fn vreinterpretq_u64_p8(a: poly8x16_t) -> uint64x2_t {
 pub unsafe fn vreinterpretq_p16_p8(a: poly8x16_t) -> poly16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_p16)"]
 #[doc = "## Safety"]
@@ -33602,7 +32320,6 @@ pub unsafe fn vreinterpretq_p16_p8(a: poly8x16_t) -> poly16x8_t {
 pub unsafe fn vreinterpret_f32_p16(a: poly16x4_t) -> float32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_p16)"]
 #[doc = "## Safety"]
@@ -33626,7 +32343,6 @@ pub unsafe fn vreinterpret_f32_p16(a: poly16x4_t) -> float32x2_t {
 pub unsafe fn vreinterpret_s8_p16(a: poly16x4_t) -> int8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_p16)"]
 #[doc = "## Safety"]
@@ -33650,7 +32366,6 @@ pub unsafe fn vreinterpret_s8_p16(a: poly16x4_t) -> int8x8_t {
 pub unsafe fn vreinterpret_s16_p16(a: poly16x4_t) -> int16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_p16)"]
 #[doc = "## Safety"]
@@ -33674,7 +32389,6 @@ pub unsafe fn vreinterpret_s16_p16(a: poly16x4_t) -> int16x4_t {
 pub unsafe fn vreinterpret_s32_p16(a: poly16x4_t) -> int32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_p16)"]
 #[doc = "## Safety"]
@@ -33698,7 +32412,6 @@ pub unsafe fn vreinterpret_s32_p16(a: poly16x4_t) -> int32x2_t {
 pub unsafe fn vreinterpret_s64_p16(a: poly16x4_t) -> int64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_p16)"]
 #[doc = "## Safety"]
@@ -33722,7 +32435,6 @@ pub unsafe fn vreinterpret_s64_p16(a: poly16x4_t) -> int64x1_t {
 pub unsafe fn vreinterpret_u8_p16(a: poly16x4_t) -> uint8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_p16)"]
 #[doc = "## Safety"]
@@ -33746,7 +32458,6 @@ pub unsafe fn vreinterpret_u8_p16(a: poly16x4_t) -> uint8x8_t {
 pub unsafe fn vreinterpret_u16_p16(a: poly16x4_t) -> uint16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_p16)"]
 #[doc = "## Safety"]
@@ -33770,7 +32481,6 @@ pub unsafe fn vreinterpret_u16_p16(a: poly16x4_t) -> uint16x4_t {
 pub unsafe fn vreinterpret_u32_p16(a: poly16x4_t) -> uint32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_p16)"]
 #[doc = "## Safety"]
@@ -33794,7 +32504,6 @@ pub unsafe fn vreinterpret_u32_p16(a: poly16x4_t) -> uint32x2_t {
 pub unsafe fn vreinterpret_u64_p16(a: poly16x4_t) -> uint64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_p16)"]
 #[doc = "## Safety"]
@@ -33818,7 +32527,6 @@ pub unsafe fn vreinterpret_u64_p16(a: poly16x4_t) -> uint64x1_t {
 pub unsafe fn vreinterpret_p8_p16(a: poly16x4_t) -> poly8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_p16)"]
 #[doc = "## Safety"]
@@ -33842,7 +32550,6 @@ pub unsafe fn vreinterpret_p8_p16(a: poly16x4_t) -> poly8x8_t {
 pub unsafe fn vreinterpretq_f32_p16(a: poly16x8_t) -> float32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_p16)"]
 #[doc = "## Safety"]
@@ -33866,7 +32573,6 @@ pub unsafe fn vreinterpretq_f32_p16(a: poly16x8_t) -> float32x4_t {
 pub unsafe fn vreinterpretq_s8_p16(a: poly16x8_t) -> int8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_p16)"]
 #[doc = "## Safety"]
@@ -33890,7 +32596,6 @@ pub unsafe fn vreinterpretq_s8_p16(a: poly16x8_t) -> int8x16_t {
 pub unsafe fn vreinterpretq_s16_p16(a: poly16x8_t) -> int16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_p16)"]
 #[doc = "## Safety"]
@@ -33914,7 +32619,6 @@ pub unsafe fn vreinterpretq_s16_p16(a: poly16x8_t) -> int16x8_t {
 pub unsafe fn vreinterpretq_s32_p16(a: poly16x8_t) -> int32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_p16)"]
 #[doc = "## Safety"]
@@ -33938,7 +32642,6 @@ pub unsafe fn vreinterpretq_s32_p16(a: poly16x8_t) -> int32x4_t {
 pub unsafe fn vreinterpretq_s64_p16(a: poly16x8_t) -> int64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_p16)"]
 #[doc = "## Safety"]
@@ -33962,7 +32665,6 @@ pub unsafe fn vreinterpretq_s64_p16(a: poly16x8_t) -> int64x2_t {
 pub unsafe fn vreinterpretq_u8_p16(a: poly16x8_t) -> uint8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_p16)"]
 #[doc = "## Safety"]
@@ -33986,7 +32688,6 @@ pub unsafe fn vreinterpretq_u8_p16(a: poly16x8_t) -> uint8x16_t {
 pub unsafe fn vreinterpretq_u16_p16(a: poly16x8_t) -> uint16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_p16)"]
 #[doc = "## Safety"]
@@ -34010,7 +32711,6 @@ pub unsafe fn vreinterpretq_u16_p16(a: poly16x8_t) -> uint16x8_t {
 pub unsafe fn vreinterpretq_u32_p16(a: poly16x8_t) -> uint32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_p16)"]
 #[doc = "## Safety"]
@@ -34034,7 +32734,6 @@ pub unsafe fn vreinterpretq_u32_p16(a: poly16x8_t) -> uint32x4_t {
 pub unsafe fn vreinterpretq_u64_p16(a: poly16x8_t) -> uint64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_p16)"]
 #[doc = "## Safety"]
@@ -34058,7 +32757,6 @@ pub unsafe fn vreinterpretq_u64_p16(a: poly16x8_t) -> uint64x2_t {
 pub unsafe fn vreinterpretq_p8_p16(a: poly16x8_t) -> poly8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_p128)"]
 #[doc = "## Safety"]
@@ -34082,7 +32780,6 @@ pub unsafe fn vreinterpretq_p8_p16(a: poly16x8_t) -> poly8x16_t {
 pub unsafe fn vreinterpretq_s8_p128(a: p128) -> int8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_p128)"]
 #[doc = "## Safety"]
@@ -34106,7 +32803,6 @@ pub unsafe fn vreinterpretq_s8_p128(a: p128) -> int8x16_t {
 pub unsafe fn vreinterpretq_s16_p128(a: p128) -> int16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_p128)"]
 #[doc = "## Safety"]
@@ -34130,7 +32826,6 @@ pub unsafe fn vreinterpretq_s16_p128(a: p128) -> int16x8_t {
 pub unsafe fn vreinterpretq_s32_p128(a: p128) -> int32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_p128)"]
 #[doc = "## Safety"]
@@ -34154,7 +32849,6 @@ pub unsafe fn vreinterpretq_s32_p128(a: p128) -> int32x4_t {
 pub unsafe fn vreinterpretq_s64_p128(a: p128) -> int64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_p128)"]
 #[doc = "## Safety"]
@@ -34178,7 +32872,6 @@ pub unsafe fn vreinterpretq_s64_p128(a: p128) -> int64x2_t {
 pub unsafe fn vreinterpretq_u8_p128(a: p128) -> uint8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_p128)"]
 #[doc = "## Safety"]
@@ -34202,7 +32895,6 @@ pub unsafe fn vreinterpretq_u8_p128(a: p128) -> uint8x16_t {
 pub unsafe fn vreinterpretq_u16_p128(a: p128) -> uint16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_p128)"]
 #[doc = "## Safety"]
@@ -34226,7 +32918,6 @@ pub unsafe fn vreinterpretq_u16_p128(a: p128) -> uint16x8_t {
 pub unsafe fn vreinterpretq_u32_p128(a: p128) -> uint32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_p128)"]
 #[doc = "## Safety"]
@@ -34250,7 +32941,6 @@ pub unsafe fn vreinterpretq_u32_p128(a: p128) -> uint32x4_t {
 pub unsafe fn vreinterpretq_u64_p128(a: p128) -> uint64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_p128)"]
 #[doc = "## Safety"]
@@ -34274,7 +32964,6 @@ pub unsafe fn vreinterpretq_u64_p128(a: p128) -> uint64x2_t {
 pub unsafe fn vreinterpretq_p8_p128(a: p128) -> poly8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_p128)"]
 #[doc = "## Safety"]
@@ -34298,7 +32987,6 @@ pub unsafe fn vreinterpretq_p8_p128(a: p128) -> poly8x16_t {
 pub unsafe fn vreinterpretq_p16_p128(a: p128) -> poly16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_p128)"]
 #[doc = "## Safety"]
@@ -34322,7 +33010,6 @@ pub unsafe fn vreinterpretq_p16_p128(a: p128) -> poly16x8_t {
 pub unsafe fn vreinterpretq_p64_p128(a: p128) -> poly64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_s8)"]
 #[doc = "## Safety"]
@@ -34346,7 +33033,6 @@ pub unsafe fn vreinterpretq_p64_p128(a: p128) -> poly64x2_t {
 pub unsafe fn vreinterpret_p64_s8(a: int8x8_t) -> poly64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_s8)"]
 #[doc = "## Safety"]
@@ -34370,7 +33056,6 @@ pub unsafe fn vreinterpret_p64_s8(a: int8x8_t) -> poly64x1_t {
 pub unsafe fn vreinterpretq_p128_s8(a: int8x16_t) -> p128 {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_s8)"]
 #[doc = "## Safety"]
@@ -34394,7 +33079,6 @@ pub unsafe fn vreinterpretq_p128_s8(a: int8x16_t) -> p128 {
 pub unsafe fn vreinterpretq_p64_s8(a: int8x16_t) -> poly64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_s16)"]
 #[doc = "## Safety"]
@@ -34418,7 +33102,6 @@ pub unsafe fn vreinterpretq_p64_s8(a: int8x16_t) -> poly64x2_t {
 pub unsafe fn vreinterpret_p64_s16(a: int16x4_t) -> poly64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_s16)"]
 #[doc = "## Safety"]
@@ -34442,7 +33125,6 @@ pub unsafe fn vreinterpret_p64_s16(a: int16x4_t) -> poly64x1_t {
 pub unsafe fn vreinterpretq_p128_s16(a: int16x8_t) -> p128 {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_s16)"]
 #[doc = "## Safety"]
@@ -34466,7 +33148,6 @@ pub unsafe fn vreinterpretq_p128_s16(a: int16x8_t) -> p128 {
 pub unsafe fn vreinterpretq_p64_s16(a: int16x8_t) -> poly64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_s32)"]
 #[doc = "## Safety"]
@@ -34490,7 +33171,6 @@ pub unsafe fn vreinterpretq_p64_s16(a: int16x8_t) -> poly64x2_t {
 pub unsafe fn vreinterpret_p64_s32(a: int32x2_t) -> poly64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_s32)"]
 #[doc = "## Safety"]
@@ -34514,7 +33194,6 @@ pub unsafe fn vreinterpret_p64_s32(a: int32x2_t) -> poly64x1_t {
 pub unsafe fn vreinterpretq_p128_s32(a: int32x4_t) -> p128 {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_s32)"]
 #[doc = "## Safety"]
@@ -34538,7 +33217,6 @@ pub unsafe fn vreinterpretq_p128_s32(a: int32x4_t) -> p128 {
 pub unsafe fn vreinterpretq_p64_s32(a: int32x4_t) -> poly64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_s64)"]
 #[doc = "## Safety"]
@@ -34562,7 +33240,6 @@ pub unsafe fn vreinterpretq_p64_s32(a: int32x4_t) -> poly64x2_t {
 pub unsafe fn vreinterpretq_p128_s64(a: int64x2_t) -> p128 {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_u8)"]
 #[doc = "## Safety"]
@@ -34586,7 +33263,6 @@ pub unsafe fn vreinterpretq_p128_s64(a: int64x2_t) -> p128 {
 pub unsafe fn vreinterpret_p64_u8(a: uint8x8_t) -> poly64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_u8)"]
 #[doc = "## Safety"]
@@ -34610,7 +33286,6 @@ pub unsafe fn vreinterpret_p64_u8(a: uint8x8_t) -> poly64x1_t {
 pub unsafe fn vreinterpretq_p128_u8(a: uint8x16_t) -> p128 {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_u8)"]
 #[doc = "## Safety"]
@@ -34634,7 +33309,6 @@ pub unsafe fn vreinterpretq_p128_u8(a: uint8x16_t) -> p128 {
 pub unsafe fn vreinterpretq_p64_u8(a: uint8x16_t) -> poly64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_u16)"]
 #[doc = "## Safety"]
@@ -34658,7 +33332,6 @@ pub unsafe fn vreinterpretq_p64_u8(a: uint8x16_t) -> poly64x2_t {
 pub unsafe fn vreinterpret_p64_u16(a: uint16x4_t) -> poly64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_u16)"]
 #[doc = "## Safety"]
@@ -34682,7 +33355,6 @@ pub unsafe fn vreinterpret_p64_u16(a: uint16x4_t) -> poly64x1_t {
 pub unsafe fn vreinterpretq_p128_u16(a: uint16x8_t) -> p128 {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_u16)"]
 #[doc = "## Safety"]
@@ -34706,7 +33378,6 @@ pub unsafe fn vreinterpretq_p128_u16(a: uint16x8_t) -> p128 {
 pub unsafe fn vreinterpretq_p64_u16(a: uint16x8_t) -> poly64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_u32)"]
 #[doc = "## Safety"]
@@ -34730,7 +33401,6 @@ pub unsafe fn vreinterpretq_p64_u16(a: uint16x8_t) -> poly64x2_t {
 pub unsafe fn vreinterpret_p64_u32(a: uint32x2_t) -> poly64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_u32)"]
 #[doc = "## Safety"]
@@ -34754,7 +33424,6 @@ pub unsafe fn vreinterpret_p64_u32(a: uint32x2_t) -> poly64x1_t {
 pub unsafe fn vreinterpretq_p128_u32(a: uint32x4_t) -> p128 {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_u32)"]
 #[doc = "## Safety"]
@@ -34778,7 +33447,6 @@ pub unsafe fn vreinterpretq_p128_u32(a: uint32x4_t) -> p128 {
 pub unsafe fn vreinterpretq_p64_u32(a: uint32x4_t) -> poly64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_u64)"]
 #[doc = "## Safety"]
@@ -34802,7 +33470,6 @@ pub unsafe fn vreinterpretq_p64_u32(a: uint32x4_t) -> poly64x2_t {
 pub unsafe fn vreinterpretq_p128_u64(a: uint64x2_t) -> p128 {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_p8)"]
 #[doc = "## Safety"]
@@ -34826,7 +33493,6 @@ pub unsafe fn vreinterpretq_p128_u64(a: uint64x2_t) -> p128 {
 pub unsafe fn vreinterpret_p64_p8(a: poly8x8_t) -> poly64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_p8)"]
 #[doc = "## Safety"]
@@ -34850,7 +33516,6 @@ pub unsafe fn vreinterpret_p64_p8(a: poly8x8_t) -> poly64x1_t {
 pub unsafe fn vreinterpretq_p128_p8(a: poly8x16_t) -> p128 {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_p8)"]
 #[doc = "## Safety"]
@@ -34874,7 +33539,6 @@ pub unsafe fn vreinterpretq_p128_p8(a: poly8x16_t) -> p128 {
 pub unsafe fn vreinterpretq_p64_p8(a: poly8x16_t) -> poly64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_p16)"]
 #[doc = "## Safety"]
@@ -34898,7 +33562,6 @@ pub unsafe fn vreinterpretq_p64_p8(a: poly8x16_t) -> poly64x2_t {
 pub unsafe fn vreinterpret_p64_p16(a: poly16x4_t) -> poly64x1_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_p16)"]
 #[doc = "## Safety"]
@@ -34922,7 +33585,6 @@ pub unsafe fn vreinterpret_p64_p16(a: poly16x4_t) -> poly64x1_t {
 pub unsafe fn vreinterpretq_p128_p16(a: poly16x8_t) -> p128 {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_p16)"]
 #[doc = "## Safety"]
@@ -34946,7 +33608,6 @@ pub unsafe fn vreinterpretq_p128_p16(a: poly16x8_t) -> p128 {
 pub unsafe fn vreinterpretq_p64_p16(a: poly16x8_t) -> poly64x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_p64)"]
 #[doc = "## Safety"]
@@ -34970,7 +33631,6 @@ pub unsafe fn vreinterpretq_p64_p16(a: poly16x8_t) -> poly64x2_t {
 pub unsafe fn vreinterpret_s8_p64(a: poly64x1_t) -> int8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_p64)"]
 #[doc = "## Safety"]
@@ -34994,7 +33654,6 @@ pub unsafe fn vreinterpret_s8_p64(a: poly64x1_t) -> int8x8_t {
 pub unsafe fn vreinterpret_s16_p64(a: poly64x1_t) -> int16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_p64)"]
 #[doc = "## Safety"]
@@ -35018,7 +33677,6 @@ pub unsafe fn vreinterpret_s16_p64(a: poly64x1_t) -> int16x4_t {
 pub unsafe fn vreinterpret_s32_p64(a: poly64x1_t) -> int32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_p64)"]
 #[doc = "## Safety"]
@@ -35042,7 +33700,6 @@ pub unsafe fn vreinterpret_s32_p64(a: poly64x1_t) -> int32x2_t {
 pub unsafe fn vreinterpret_u8_p64(a: poly64x1_t) -> uint8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_p64)"]
 #[doc = "## Safety"]
@@ -35066,7 +33723,6 @@ pub unsafe fn vreinterpret_u8_p64(a: poly64x1_t) -> uint8x8_t {
 pub unsafe fn vreinterpret_u16_p64(a: poly64x1_t) -> uint16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_p64)"]
 #[doc = "## Safety"]
@@ -35090,7 +33746,6 @@ pub unsafe fn vreinterpret_u16_p64(a: poly64x1_t) -> uint16x4_t {
 pub unsafe fn vreinterpret_u32_p64(a: poly64x1_t) -> uint32x2_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_p64)"]
 #[doc = "## Safety"]
@@ -35114,7 +33769,6 @@ pub unsafe fn vreinterpret_u32_p64(a: poly64x1_t) -> uint32x2_t {
 pub unsafe fn vreinterpret_p8_p64(a: poly64x1_t) -> poly8x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_p64)"]
 #[doc = "## Safety"]
@@ -35138,7 +33792,6 @@ pub unsafe fn vreinterpret_p8_p64(a: poly64x1_t) -> poly8x8_t {
 pub unsafe fn vreinterpret_p16_p64(a: poly64x1_t) -> poly16x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_p64)"]
 #[doc = "## Safety"]
@@ -35162,7 +33815,6 @@ pub unsafe fn vreinterpret_p16_p64(a: poly64x1_t) -> poly16x4_t {
 pub unsafe fn vreinterpretq_p128_p64(a: poly64x2_t) -> p128 {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_p64)"]
 #[doc = "## Safety"]
@@ -35186,7 +33838,6 @@ pub unsafe fn vreinterpretq_p128_p64(a: poly64x2_t) -> p128 {
 pub unsafe fn vreinterpretq_s8_p64(a: poly64x2_t) -> int8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_p64)"]
 #[doc = "## Safety"]
@@ -35210,7 +33861,6 @@ pub unsafe fn vreinterpretq_s8_p64(a: poly64x2_t) -> int8x16_t {
 pub unsafe fn vreinterpretq_s16_p64(a: poly64x2_t) -> int16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_p64)"]
 #[doc = "## Safety"]
@@ -35234,7 +33884,6 @@ pub unsafe fn vreinterpretq_s16_p64(a: poly64x2_t) -> int16x8_t {
 pub unsafe fn vreinterpretq_s32_p64(a: poly64x2_t) -> int32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_p64)"]
 #[doc = "## Safety"]
@@ -35258,7 +33907,6 @@ pub unsafe fn vreinterpretq_s32_p64(a: poly64x2_t) -> int32x4_t {
 pub unsafe fn vreinterpretq_u8_p64(a: poly64x2_t) -> uint8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_p64)"]
 #[doc = "## Safety"]
@@ -35282,7 +33930,6 @@ pub unsafe fn vreinterpretq_u8_p64(a: poly64x2_t) -> uint8x16_t {
 pub unsafe fn vreinterpretq_u16_p64(a: poly64x2_t) -> uint16x8_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_p64)"]
 #[doc = "## Safety"]
@@ -35306,7 +33953,6 @@ pub unsafe fn vreinterpretq_u16_p64(a: poly64x2_t) -> uint16x8_t {
 pub unsafe fn vreinterpretq_u32_p64(a: poly64x2_t) -> uint32x4_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_p64)"]
 #[doc = "## Safety"]
@@ -35330,7 +33976,6 @@ pub unsafe fn vreinterpretq_u32_p64(a: poly64x2_t) -> uint32x4_t {
 pub unsafe fn vreinterpretq_p8_p64(a: poly64x2_t) -> poly8x16_t {
     transmute(a)
 }
-
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_p64)"]
 #[doc = "## Safety"]
@@ -35354,7 +33999,6 @@ pub unsafe fn vreinterpretq_p8_p64(a: poly64x2_t) -> poly8x16_t {
 pub unsafe fn vreinterpretq_p16_p64(a: poly64x2_t) -> poly16x8_t {
     transmute(a)
 }
-
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhadd_s8)"]
 #[doc = "## Safety"]
@@ -35386,7 +34030,6 @@ pub unsafe fn vrhadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     }
     _vrhadd_s8(a, b)
 }
-
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhaddq_s8)"]
 #[doc = "## Safety"]
@@ -35418,7 +34061,6 @@ pub unsafe fn vrhaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     }
     _vrhaddq_s8(a, b)
 }
-
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhadd_s16)"]
 #[doc = "## Safety"]
@@ -35450,7 +34092,6 @@ pub unsafe fn vrhadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     }
     _vrhadd_s16(a, b)
 }
-
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhaddq_s16)"]
 #[doc = "## Safety"]
@@ -35482,7 +34123,6 @@ pub unsafe fn vrhaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     }
     _vrhaddq_s16(a, b)
 }
-
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhadd_s32)"]
 #[doc = "## Safety"]
@@ -35514,7 +34154,6 @@ pub unsafe fn vrhadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     }
     _vrhadd_s32(a, b)
 }
-
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhaddq_s32)"]
 #[doc = "## Safety"]
@@ -35546,7 +34185,6 @@ pub unsafe fn vrhaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     }
     _vrhaddq_s32(a, b)
 }
-
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhadd_u8)"]
 #[doc = "## Safety"]
@@ -35578,7 +34216,6 @@ pub unsafe fn vrhadd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     }
     _vrhadd_u8(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhaddq_u8)"]
 #[doc = "## Safety"]
@@ -35610,7 +34247,6 @@ pub unsafe fn vrhaddq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     }
     _vrhaddq_u8(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhadd_u16)"]
 #[doc = "## Safety"]
@@ -35642,7 +34278,6 @@ pub unsafe fn vrhadd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     }
     _vrhadd_u16(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhaddq_u16)"]
 #[doc = "## Safety"]
@@ -35674,7 +34309,6 @@ pub unsafe fn vrhaddq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     }
     _vrhaddq_u16(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhadd_u32)"]
 #[doc = "## Safety"]
@@ -35706,7 +34340,6 @@ pub unsafe fn vrhadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     }
     _vrhadd_u32(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Rounding halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhaddq_u32)"]
 #[doc = "## Safety"]
@@ -35738,7 +34371,6 @@ pub unsafe fn vrhaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     }
     _vrhaddq_u32(a.as_signed(), b.as_signed()).as_unsigned()
 }
-
 #[doc = "Floating-point round to integral, to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndn_f32)"]
 #[doc = "## Safety"]
@@ -35770,7 +34402,6 @@ pub unsafe fn vrndn_f32(a: float32x2_t) -> float32x2_t {
     }
     _vrndn_f32(a)
 }
-
 #[doc = "Floating-point round to integral, to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndnq_f32)"]
 #[doc = "## Safety"]
@@ -35802,7 +34433,6 @@ pub unsafe fn vrndnq_f32(a: float32x4_t) -> float32x4_t {
     }
     _vrndnq_f32(a)
 }
-
 #[doc = "Signed rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshl_s8)"]
 #[doc = "## Safety"]
@@ -35834,7 +34464,6 @@ pub unsafe fn vrshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     }
     _vrshl_s8(a, b)
 }
-
 #[doc = "Signed rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshlq_s8)"]
 #[doc = "## Safety"]
@@ -35866,7 +34495,6 @@ pub unsafe fn vrshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     }
     _vrshlq_s8(a, b)
 }
-
 #[doc = "Signed rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshl_s16)"]
 #[doc = "## Safety"]
@@ -35898,7 +34526,6 @@ pub unsafe fn vrshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     }
     _vrshl_s16(a, b)
 }
-
 #[doc = "Signed rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshlq_s16)"]
 #[doc = "## Safety"]
@@ -35930,7 +34557,6 @@ pub unsafe fn vrshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     }
     _vrshlq_s16(a, b)
 }
-
 #[doc = "Signed rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshl_s32)"]
 #[doc = "## Safety"]
@@ -35962,7 +34588,6 @@ pub unsafe fn vrshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     }
     _vrshl_s32(a, b)
 }
-
 #[doc = "Signed rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshlq_s32)"]
 #[doc = "## Safety"]
@@ -35994,7 +34619,6 @@ pub unsafe fn vrshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     }
     _vrshlq_s32(a, b)
 }
-
 #[doc = "Signed rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshl_s64)"]
 #[doc = "## Safety"]
@@ -36026,7 +34650,6 @@ pub unsafe fn vrshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     }
     _vrshl_s64(a, b)
 }
-
 #[doc = "Signed rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshlq_s64)"]
 #[doc = "## Safety"]
@@ -36058,7 +34681,6 @@ pub unsafe fn vrshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     }
     _vrshlq_s64(a, b)
 }
-
 #[doc = "Unsigned rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshl_u8)"]
 #[doc = "## Safety"]
@@ -36090,7 +34712,6 @@ pub unsafe fn vrshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
     }
     _vrshl_u8(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshlq_u8)"]
 #[doc = "## Safety"]
@@ -36122,7 +34743,6 @@ pub unsafe fn vrshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
     }
     _vrshlq_u8(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshl_u16)"]
 #[doc = "## Safety"]
@@ -36154,7 +34774,6 @@ pub unsafe fn vrshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
     }
     _vrshl_u16(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshlq_u16)"]
 #[doc = "## Safety"]
@@ -36186,7 +34805,6 @@ pub unsafe fn vrshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
     }
     _vrshlq_u16(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshl_u32)"]
 #[doc = "## Safety"]
@@ -36218,7 +34836,6 @@ pub unsafe fn vrshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
     }
     _vrshl_u32(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshlq_u32)"]
 #[doc = "## Safety"]
@@ -36250,7 +34867,6 @@ pub unsafe fn vrshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
     }
     _vrshlq_u32(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshl_u64)"]
 #[doc = "## Safety"]
@@ -36282,7 +34898,6 @@ pub unsafe fn vrshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
     }
     _vrshl_u64(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshlq_u64)"]
 #[doc = "## Safety"]
@@ -36314,7 +34929,6 @@ pub unsafe fn vrshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
     }
     _vrshlq_u64(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Signed rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshr_n_s8)"]
 #[doc = "## Safety"]
@@ -36340,7 +34954,6 @@ pub unsafe fn vrshr_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
     vrshl_s8(a, vdup_n_s8(-N as _))
 }
-
 #[doc = "Signed rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrq_n_s8)"]
 #[doc = "## Safety"]
@@ -36366,7 +34979,6 @@ pub unsafe fn vrshrq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
     static_assert!(N >= 1 && N <= 8);
     vrshlq_s8(a, vdupq_n_s8(-N as _))
 }
-
 #[doc = "Signed rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshr_n_s16)"]
 #[doc = "## Safety"]
@@ -36392,7 +35004,6 @@ pub unsafe fn vrshr_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
     vrshl_s16(a, vdup_n_s16(-N as _))
 }
-
 #[doc = "Signed rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrq_n_s16)"]
 #[doc = "## Safety"]
@@ -36418,7 +35029,6 @@ pub unsafe fn vrshrq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
     static_assert!(N >= 1 && N <= 16);
     vrshlq_s16(a, vdupq_n_s16(-N as _))
 }
-
 #[doc = "Signed rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshr_n_s32)"]
 #[doc = "## Safety"]
@@ -36444,7 +35054,6 @@ pub unsafe fn vrshr_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
     vrshl_s32(a, vdup_n_s32(-N as _))
 }
-
 #[doc = "Signed rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrq_n_s32)"]
 #[doc = "## Safety"]
@@ -36470,7 +35079,6 @@ pub unsafe fn vrshrq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
     static_assert!(N >= 1 && N <= 32);
     vrshlq_s32(a, vdupq_n_s32(-N as _))
 }
-
 #[doc = "Signed rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshr_n_s64)"]
 #[doc = "## Safety"]
@@ -36496,7 +35104,6 @@ pub unsafe fn vrshr_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
     static_assert!(N >= 1 && N <= 64);
     vrshl_s64(a, vdup_n_s64(-N as _))
 }
-
 #[doc = "Signed rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrq_n_s64)"]
 #[doc = "## Safety"]
@@ -36522,7 +35129,6 @@ pub unsafe fn vrshrq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
     static_assert!(N >= 1 && N <= 64);
     vrshlq_s64(a, vdupq_n_s64(-N as _))
 }
-
 #[doc = "Unsigned rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshr_n_u8)"]
 #[doc = "## Safety"]
@@ -36548,7 +35154,6 @@ pub unsafe fn vrshr_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
     vrshl_u8(a, vdup_n_s8(-N as _))
 }
-
 #[doc = "Unsigned rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrq_n_u8)"]
 #[doc = "## Safety"]
@@ -36574,7 +35179,6 @@ pub unsafe fn vrshrq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
     static_assert!(N >= 1 && N <= 8);
     vrshlq_u8(a, vdupq_n_s8(-N as _))
 }
-
 #[doc = "Unsigned rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshr_n_u16)"]
 #[doc = "## Safety"]
@@ -36600,7 +35204,6 @@ pub unsafe fn vrshr_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
     vrshl_u16(a, vdup_n_s16(-N as _))
 }
-
 #[doc = "Unsigned rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrq_n_u16)"]
 #[doc = "## Safety"]
@@ -36626,7 +35229,6 @@ pub unsafe fn vrshrq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
     static_assert!(N >= 1 && N <= 16);
     vrshlq_u16(a, vdupq_n_s16(-N as _))
 }
-
 #[doc = "Unsigned rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshr_n_u32)"]
 #[doc = "## Safety"]
@@ -36652,7 +35254,6 @@ pub unsafe fn vrshr_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
     vrshl_u32(a, vdup_n_s32(-N as _))
 }
-
 #[doc = "Unsigned rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrq_n_u32)"]
 #[doc = "## Safety"]
@@ -36678,7 +35279,6 @@ pub unsafe fn vrshrq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
     static_assert!(N >= 1 && N <= 32);
     vrshlq_u32(a, vdupq_n_s32(-N as _))
 }
-
 #[doc = "Unsigned rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshr_n_u64)"]
 #[doc = "## Safety"]
@@ -36704,7 +35304,6 @@ pub unsafe fn vrshr_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
     static_assert!(N >= 1 && N <= 64);
     vrshl_u64(a, vdup_n_s64(-N as _))
 }
-
 #[doc = "Unsigned rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrq_n_u64)"]
 #[doc = "## Safety"]
@@ -36730,7 +35329,6 @@ pub unsafe fn vrshrq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
     static_assert!(N >= 1 && N <= 64);
     vrshlq_u64(a, vdupq_n_s64(-N as _))
 }
-
 #[doc = "Rounding shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_s16)"]
 #[doc = "## Safety"]
@@ -36757,7 +35355,6 @@ pub unsafe fn vrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
         },
     )
 }
-
 #[doc = "Rounding shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_s32)"]
 #[doc = "## Safety"]
@@ -36779,7 +35376,6 @@ pub unsafe fn vrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
         const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) },
     )
 }
-
 #[doc = "Rounding shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_s64)"]
 #[doc = "## Safety"]
@@ -36798,7 +35394,6 @@ pub unsafe fn vrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     }
     _vrshrn_n_s64(a, const { int64x2_t([-N as i64, -N as i64]) })
 }
-
 #[doc = "Rounding shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_s16)"]
 #[doc = "## Safety"]
@@ -36820,7 +35415,6 @@ pub unsafe fn vrshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     }
     _vrshrn_n_s16(a, N)
 }
-
 #[doc = "Rounding shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_s32)"]
 #[doc = "## Safety"]
@@ -36842,7 +35436,6 @@ pub unsafe fn vrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     }
     _vrshrn_n_s32(a, N)
 }
-
 #[doc = "Rounding shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_s64)"]
 #[doc = "## Safety"]
@@ -36864,7 +35457,6 @@ pub unsafe fn vrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     }
     _vrshrn_n_s64(a, N)
 }
-
 #[doc = "Rounding shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_u16)"]
 #[doc = "## Safety"]
@@ -36890,7 +35482,6 @@ pub unsafe fn vrshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
     transmute(vrshrn_n_s16::<N>(transmute(a)))
 }
-
 #[doc = "Rounding shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_u32)"]
 #[doc = "## Safety"]
@@ -36916,7 +35507,6 @@ pub unsafe fn vrshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
     transmute(vrshrn_n_s32::<N>(transmute(a)))
 }
-
 #[doc = "Rounding shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_u64)"]
 #[doc = "## Safety"]
@@ -36942,7 +35532,6 @@ pub unsafe fn vrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
     transmute(vrshrn_n_s64::<N>(transmute(a)))
 }
-
 #[doc = "Reciprocal square-root estimate."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrte_f32)"]
 #[doc = "## Safety"]
@@ -36974,7 +35563,6 @@ pub unsafe fn vrsqrte_f32(a: float32x2_t) -> float32x2_t {
     }
     _vrsqrte_f32(a)
 }
-
 #[doc = "Reciprocal square-root estimate."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrteq_f32)"]
 #[doc = "## Safety"]
@@ -37006,7 +35594,6 @@ pub unsafe fn vrsqrteq_f32(a: float32x4_t) -> float32x4_t {
     }
     _vrsqrteq_f32(a)
 }
-
 #[doc = "Unsigned reciprocal square root estimate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrte_u32)"]
 #[doc = "## Safety"]
@@ -37038,7 +35625,6 @@ pub unsafe fn vrsqrte_u32(a: uint32x2_t) -> uint32x2_t {
     }
     _vrsqrte_u32(a.as_signed()).as_unsigned()
 }
-
 #[doc = "Unsigned reciprocal square root estimate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrteq_u32)"]
 #[doc = "## Safety"]
@@ -37070,7 +35656,6 @@ pub unsafe fn vrsqrteq_u32(a: uint32x4_t) -> uint32x4_t {
     }
     _vrsqrteq_u32(a.as_signed()).as_unsigned()
 }
-
 #[doc = "Floating-point reciprocal square root step"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrts_f32)"]
 #[doc = "## Safety"]
@@ -37102,7 +35687,6 @@ pub unsafe fn vrsqrts_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     }
     _vrsqrts_f32(a, b)
 }
-
 #[doc = "Floating-point reciprocal square root step"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrtsq_f32)"]
 #[doc = "## Safety"]
@@ -37134,7 +35718,6 @@ pub unsafe fn vrsqrtsq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     }
     _vrsqrtsq_f32(a, b)
 }
-
 #[doc = "Signed rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsra_n_s8)"]
 #[doc = "## Safety"]
@@ -37160,7 +35743,6 @@ pub unsafe fn vrsra_n_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
     simd_add(a, vrshr_n_s8::<N>(b))
 }
-
 #[doc = "Signed rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsraq_n_s8)"]
 #[doc = "## Safety"]
@@ -37186,7 +35768,6 @@ pub unsafe fn vrsraq_n_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t
     static_assert!(N >= 1 && N <= 8);
     simd_add(a, vrshrq_n_s8::<N>(b))
 }
-
 #[doc = "Signed rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsra_n_s16)"]
 #[doc = "## Safety"]
@@ -37212,7 +35793,6 @@ pub unsafe fn vrsra_n_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t
     static_assert!(N >= 1 && N <= 16);
     simd_add(a, vrshr_n_s16::<N>(b))
 }
-
 #[doc = "Signed rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsraq_n_s16)"]
 #[doc = "## Safety"]
@@ -37238,7 +35818,6 @@ pub unsafe fn vrsraq_n_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_
     static_assert!(N >= 1 && N <= 16);
     simd_add(a, vrshrq_n_s16::<N>(b))
 }
-
 #[doc = "Signed rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsra_n_s32)"]
 #[doc = "## Safety"]
@@ -37264,7 +35843,6 @@ pub unsafe fn vrsra_n_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t
     static_assert!(N >= 1 && N <= 32);
     simd_add(a, vrshr_n_s32::<N>(b))
 }
-
 #[doc = "Signed rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsraq_n_s32)"]
 #[doc = "## Safety"]
@@ -37290,7 +35868,6 @@ pub unsafe fn vrsraq_n_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_
     static_assert!(N >= 1 && N <= 32);
     simd_add(a, vrshrq_n_s32::<N>(b))
 }
-
 #[doc = "Signed rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsra_n_s64)"]
 #[doc = "## Safety"]
@@ -37316,7 +35893,6 @@ pub unsafe fn vrsra_n_s64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t
     static_assert!(N >= 1 && N <= 64);
     simd_add(a, vrshr_n_s64::<N>(b))
 }
-
 #[doc = "Signed rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsraq_n_s64)"]
 #[doc = "## Safety"]
@@ -37342,7 +35918,6 @@ pub unsafe fn vrsraq_n_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_
     static_assert!(N >= 1 && N <= 64);
     simd_add(a, vrshrq_n_s64::<N>(b))
 }
-
 #[doc = "Unsigned rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsra_n_u8)"]
 #[doc = "## Safety"]
@@ -37368,7 +35943,6 @@ pub unsafe fn vrsra_n_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t 
     static_assert!(N >= 1 && N <= 8);
     simd_add(a, vrshr_n_u8::<N>(b))
 }
-
 #[doc = "Unsigned rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsraq_n_u8)"]
 #[doc = "## Safety"]
@@ -37394,7 +35968,6 @@ pub unsafe fn vrsraq_n_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x1
     static_assert!(N >= 1 && N <= 8);
     simd_add(a, vrshrq_n_u8::<N>(b))
 }
-
 #[doc = "Unsigned rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsra_n_u16)"]
 #[doc = "## Safety"]
@@ -37420,7 +35993,6 @@ pub unsafe fn vrsra_n_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x
     static_assert!(N >= 1 && N <= 16);
     simd_add(a, vrshr_n_u16::<N>(b))
 }
-
 #[doc = "Unsigned rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsraq_n_u16)"]
 #[doc = "## Safety"]
@@ -37446,7 +36018,6 @@ pub unsafe fn vrsraq_n_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16
     static_assert!(N >= 1 && N <= 16);
     simd_add(a, vrshrq_n_u16::<N>(b))
 }
-
 #[doc = "Unsigned rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsra_n_u32)"]
 #[doc = "## Safety"]
@@ -37472,7 +36043,6 @@ pub unsafe fn vrsra_n_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x
     static_assert!(N >= 1 && N <= 32);
     simd_add(a, vrshr_n_u32::<N>(b))
 }
-
 #[doc = "Unsigned rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsraq_n_u32)"]
 #[doc = "## Safety"]
@@ -37498,7 +36068,6 @@ pub unsafe fn vrsraq_n_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32
     static_assert!(N >= 1 && N <= 32);
     simd_add(a, vrshrq_n_u32::<N>(b))
 }
-
 #[doc = "Unsigned rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsra_n_u64)"]
 #[doc = "## Safety"]
@@ -37524,7 +36093,6 @@ pub unsafe fn vrsra_n_u64<const N: i32>(a: uint64x1_t, b: uint64x1_t) -> uint64x
     static_assert!(N >= 1 && N <= 64);
     simd_add(a, vrshr_n_u64::<N>(b))
 }
-
 #[doc = "Unsigned rounding shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsraq_n_u64)"]
 #[doc = "## Safety"]
@@ -37550,7 +36118,6 @@ pub unsafe fn vrsraq_n_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64
     static_assert!(N >= 1 && N <= 64);
     simd_add(a, vrshrq_n_u64::<N>(b))
 }
-
 #[doc = "Rounding subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_s16)"]
 #[doc = "## Safety"]
@@ -37582,7 +36149,6 @@ pub unsafe fn vrsubhn_s16(a: int16x8_t, b: int16x8_t) -> int8x8_t {
     }
     _vrsubhn_s16(a, b)
 }
-
 #[doc = "Rounding subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_s32)"]
 #[doc = "## Safety"]
@@ -37614,7 +36180,6 @@ pub unsafe fn vrsubhn_s32(a: int32x4_t, b: int32x4_t) -> int16x4_t {
     }
     _vrsubhn_s32(a, b)
 }
-
 #[doc = "Rounding subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_s64)"]
 #[doc = "## Safety"]
@@ -37646,7 +36211,6 @@ pub unsafe fn vrsubhn_s64(a: int64x2_t, b: int64x2_t) -> int32x2_t {
     }
     _vrsubhn_s64(a, b)
 }
-
 #[doc = "Rounding subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_u16)"]
 #[doc = "## Safety"]
@@ -37670,7 +36234,6 @@ pub unsafe fn vrsubhn_s64(a: int64x2_t, b: int64x2_t) -> int32x2_t {
 pub unsafe fn vrsubhn_u16(a: uint16x8_t, b: uint16x8_t) -> uint8x8_t {
     transmute(vrsubhn_s16(transmute(a), transmute(b)))
 }
-
 #[doc = "Rounding subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_u32)"]
 #[doc = "## Safety"]
@@ -37694,7 +36257,6 @@ pub unsafe fn vrsubhn_u16(a: uint16x8_t, b: uint16x8_t) -> uint8x8_t {
 pub unsafe fn vrsubhn_u32(a: uint32x4_t, b: uint32x4_t) -> uint16x4_t {
     transmute(vrsubhn_s32(transmute(a), transmute(b)))
 }
-
 #[doc = "Rounding subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_u64)"]
 #[doc = "## Safety"]
@@ -37718,7 +36280,6 @@ pub unsafe fn vrsubhn_u32(a: uint32x4_t, b: uint32x4_t) -> uint16x4_t {
 pub unsafe fn vrsubhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
     transmute(vrsubhn_s64(transmute(a), transmute(b)))
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_f32)"]
 #[doc = "## Safety"]
@@ -37744,7 +36305,6 @@ pub unsafe fn vset_lane_f32<const LANE: i32>(a: f32, b: float32x2_t) -> float32x
     static_assert_uimm_bits!(LANE, 1);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_f32)"]
 #[doc = "## Safety"]
@@ -37770,7 +36330,6 @@ pub unsafe fn vsetq_lane_f32<const LANE: i32>(a: f32, b: float32x4_t) -> float32
     static_assert_uimm_bits!(LANE, 2);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_s8)"]
 #[doc = "## Safety"]
@@ -37796,7 +36355,6 @@ pub unsafe fn vset_lane_s8<const LANE: i32>(a: i8, b: int8x8_t) -> int8x8_t {
     static_assert_uimm_bits!(LANE, 3);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_s8)"]
 #[doc = "## Safety"]
@@ -37822,7 +36380,6 @@ pub unsafe fn vsetq_lane_s8<const LANE: i32>(a: i8, b: int8x16_t) -> int8x16_t {
     static_assert_uimm_bits!(LANE, 4);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_s16)"]
 #[doc = "## Safety"]
@@ -37848,7 +36405,6 @@ pub unsafe fn vset_lane_s16<const LANE: i32>(a: i16, b: int16x4_t) -> int16x4_t 
     static_assert_uimm_bits!(LANE, 2);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_s16)"]
 #[doc = "## Safety"]
@@ -37874,7 +36430,6 @@ pub unsafe fn vsetq_lane_s16<const LANE: i32>(a: i16, b: int16x8_t) -> int16x8_t
     static_assert_uimm_bits!(LANE, 3);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_s32)"]
 #[doc = "## Safety"]
@@ -37900,7 +36455,6 @@ pub unsafe fn vset_lane_s32<const LANE: i32>(a: i32, b: int32x2_t) -> int32x2_t 
     static_assert_uimm_bits!(LANE, 1);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_s32)"]
 #[doc = "## Safety"]
@@ -37926,7 +36480,6 @@ pub unsafe fn vsetq_lane_s32<const LANE: i32>(a: i32, b: int32x4_t) -> int32x4_t
     static_assert_uimm_bits!(LANE, 2);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_s64)"]
 #[doc = "## Safety"]
@@ -37952,7 +36505,6 @@ pub unsafe fn vsetq_lane_s64<const LANE: i32>(a: i64, b: int64x2_t) -> int64x2_t
     static_assert_uimm_bits!(LANE, 1);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_u8)"]
 #[doc = "## Safety"]
@@ -37978,7 +36530,6 @@ pub unsafe fn vset_lane_u8<const LANE: i32>(a: u8, b: uint8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(LANE, 3);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_u8)"]
 #[doc = "## Safety"]
@@ -38004,7 +36555,6 @@ pub unsafe fn vsetq_lane_u8<const LANE: i32>(a: u8, b: uint8x16_t) -> uint8x16_t
     static_assert_uimm_bits!(LANE, 4);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_u16)"]
 #[doc = "## Safety"]
@@ -38030,7 +36580,6 @@ pub unsafe fn vset_lane_u16<const LANE: i32>(a: u16, b: uint16x4_t) -> uint16x4_
     static_assert_uimm_bits!(LANE, 2);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_u16)"]
 #[doc = "## Safety"]
@@ -38056,7 +36605,6 @@ pub unsafe fn vsetq_lane_u16<const LANE: i32>(a: u16, b: uint16x8_t) -> uint16x8
     static_assert_uimm_bits!(LANE, 3);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_u32)"]
 #[doc = "## Safety"]
@@ -38082,7 +36630,6 @@ pub unsafe fn vset_lane_u32<const LANE: i32>(a: u32, b: uint32x2_t) -> uint32x2_
     static_assert_uimm_bits!(LANE, 1);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_u32)"]
 #[doc = "## Safety"]
@@ -38108,7 +36655,6 @@ pub unsafe fn vsetq_lane_u32<const LANE: i32>(a: u32, b: uint32x4_t) -> uint32x4
     static_assert_uimm_bits!(LANE, 2);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_u64)"]
 #[doc = "## Safety"]
@@ -38134,7 +36680,6 @@ pub unsafe fn vsetq_lane_u64<const LANE: i32>(a: u64, b: uint64x2_t) -> uint64x2
     static_assert_uimm_bits!(LANE, 1);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_p8)"]
 #[doc = "## Safety"]
@@ -38160,7 +36705,6 @@ pub unsafe fn vset_lane_p8<const LANE: i32>(a: p8, b: poly8x8_t) -> poly8x8_t {
     static_assert_uimm_bits!(LANE, 3);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_p8)"]
 #[doc = "## Safety"]
@@ -38186,7 +36730,6 @@ pub unsafe fn vsetq_lane_p8<const LANE: i32>(a: p8, b: poly8x16_t) -> poly8x16_t
     static_assert_uimm_bits!(LANE, 4);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_p16)"]
 #[doc = "## Safety"]
@@ -38212,7 +36755,6 @@ pub unsafe fn vset_lane_p16<const LANE: i32>(a: p16, b: poly16x4_t) -> poly16x4_
     static_assert_uimm_bits!(LANE, 2);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_p16)"]
 #[doc = "## Safety"]
@@ -38238,7 +36780,6 @@ pub unsafe fn vsetq_lane_p16<const LANE: i32>(a: p16, b: poly16x8_t) -> poly16x8
     static_assert_uimm_bits!(LANE, 3);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_p64)"]
 #[doc = "## Safety"]
@@ -38264,7 +36805,6 @@ pub unsafe fn vset_lane_p64<const LANE: i32>(a: p64, b: poly64x1_t) -> poly64x1_
     static_assert!(LANE == 0);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_s64)"]
 #[doc = "## Safety"]
@@ -38290,7 +36830,6 @@ pub unsafe fn vset_lane_s64<const LANE: i32>(a: i64, b: int64x1_t) -> int64x1_t 
     static_assert!(LANE == 0);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_u64)"]
 #[doc = "## Safety"]
@@ -38316,7 +36855,6 @@ pub unsafe fn vset_lane_u64<const LANE: i32>(a: u64, b: uint64x1_t) -> uint64x1_
     static_assert!(LANE == 0);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_p64)"]
 #[doc = "## Safety"]
@@ -38342,7 +36880,6 @@ pub unsafe fn vsetq_lane_p64<const LANE: i32>(a: p64, b: poly64x2_t) -> poly64x2
     static_assert_uimm_bits!(LANE, 1);
     simd_insert!(b, LANE as u32, a)
 }
-
 #[doc = "Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_n_s8)"]
 #[doc = "## Safety"]
@@ -38368,7 +36905,6 @@ pub unsafe fn vshl_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
     static_assert_uimm_bits!(N, 3);
     simd_shl(a, vdup_n_s8(N as _))
 }
-
 #[doc = "Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_n_s8)"]
 #[doc = "## Safety"]
@@ -38394,7 +36930,6 @@ pub unsafe fn vshlq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
     static_assert_uimm_bits!(N, 3);
     simd_shl(a, vdupq_n_s8(N as _))
 }
-
 #[doc = "Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_n_s16)"]
 #[doc = "## Safety"]
@@ -38420,7 +36955,6 @@ pub unsafe fn vshl_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(N, 4);
     simd_shl(a, vdup_n_s16(N as _))
 }
-
 #[doc = "Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_n_s16)"]
 #[doc = "## Safety"]
@@ -38446,7 +36980,6 @@ pub unsafe fn vshlq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(N, 4);
     simd_shl(a, vdupq_n_s16(N as _))
 }
-
 #[doc = "Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_n_s32)"]
 #[doc = "## Safety"]
@@ -38472,7 +37005,6 @@ pub unsafe fn vshl_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(N, 5);
     simd_shl(a, vdup_n_s32(N as _))
 }
-
 #[doc = "Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_n_s32)"]
 #[doc = "## Safety"]
@@ -38498,7 +37030,6 @@ pub unsafe fn vshlq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(N, 5);
     simd_shl(a, vdupq_n_s32(N as _))
 }
-
 #[doc = "Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_n_s64)"]
 #[doc = "## Safety"]
@@ -38524,7 +37055,6 @@ pub unsafe fn vshl_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
     static_assert_uimm_bits!(N, 6);
     simd_shl(a, vdup_n_s64(N as _))
 }
-
 #[doc = "Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_n_s64)"]
 #[doc = "## Safety"]
@@ -38550,7 +37080,6 @@ pub unsafe fn vshlq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
     static_assert_uimm_bits!(N, 6);
     simd_shl(a, vdupq_n_s64(N as _))
 }
-
 #[doc = "Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_n_u8)"]
 #[doc = "## Safety"]
@@ -38576,7 +37105,6 @@ pub unsafe fn vshl_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(N, 3);
     simd_shl(a, vdup_n_u8(N as _))
 }
-
 #[doc = "Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_n_u8)"]
 #[doc = "## Safety"]
@@ -38602,7 +37130,6 @@ pub unsafe fn vshlq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
     static_assert_uimm_bits!(N, 3);
     simd_shl(a, vdupq_n_u8(N as _))
 }
-
 #[doc = "Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_n_u16)"]
 #[doc = "## Safety"]
@@ -38628,7 +37155,6 @@ pub unsafe fn vshl_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(N, 4);
     simd_shl(a, vdup_n_u16(N as _))
 }
-
 #[doc = "Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_n_u16)"]
 #[doc = "## Safety"]
@@ -38654,7 +37180,6 @@ pub unsafe fn vshlq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(N, 4);
     simd_shl(a, vdupq_n_u16(N as _))
 }
-
 #[doc = "Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_n_u32)"]
 #[doc = "## Safety"]
@@ -38680,7 +37205,6 @@ pub unsafe fn vshl_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(N, 5);
     simd_shl(a, vdup_n_u32(N as _))
 }
-
 #[doc = "Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_n_u32)"]
 #[doc = "## Safety"]
@@ -38706,7 +37230,6 @@ pub unsafe fn vshlq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(N, 5);
     simd_shl(a, vdupq_n_u32(N as _))
 }
-
 #[doc = "Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_n_u64)"]
 #[doc = "## Safety"]
@@ -38732,7 +37255,6 @@ pub unsafe fn vshl_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
     static_assert_uimm_bits!(N, 6);
     simd_shl(a, vdup_n_u64(N as _))
 }
-
 #[doc = "Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_n_u64)"]
 #[doc = "## Safety"]
@@ -38758,7 +37280,6 @@ pub unsafe fn vshlq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(N, 6);
     simd_shl(a, vdupq_n_u64(N as _))
 }
-
 #[doc = "Signed Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_s8)"]
 #[doc = "## Safety"]
@@ -38790,7 +37311,6 @@ pub unsafe fn vshl_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     }
     _vshl_s8(a, b)
 }
-
 #[doc = "Signed Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_s8)"]
 #[doc = "## Safety"]
@@ -38822,7 +37342,6 @@ pub unsafe fn vshlq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     }
     _vshlq_s8(a, b)
 }
-
 #[doc = "Signed Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_s16)"]
 #[doc = "## Safety"]
@@ -38854,7 +37373,6 @@ pub unsafe fn vshl_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     }
     _vshl_s16(a, b)
 }
-
 #[doc = "Signed Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_s16)"]
 #[doc = "## Safety"]
@@ -38886,7 +37404,6 @@ pub unsafe fn vshlq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     }
     _vshlq_s16(a, b)
 }
-
 #[doc = "Signed Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_s32)"]
 #[doc = "## Safety"]
@@ -38918,7 +37435,6 @@ pub unsafe fn vshl_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     }
     _vshl_s32(a, b)
 }
-
 #[doc = "Signed Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_s32)"]
 #[doc = "## Safety"]
@@ -38950,7 +37466,6 @@ pub unsafe fn vshlq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     }
     _vshlq_s32(a, b)
 }
-
 #[doc = "Signed Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_s64)"]
 #[doc = "## Safety"]
@@ -38982,7 +37497,6 @@ pub unsafe fn vshl_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     }
     _vshl_s64(a, b)
 }
-
 #[doc = "Signed Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_s64)"]
 #[doc = "## Safety"]
@@ -39014,7 +37528,6 @@ pub unsafe fn vshlq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     }
     _vshlq_s64(a, b)
 }
-
 #[doc = "Unsigned Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_u8)"]
 #[doc = "## Safety"]
@@ -39046,7 +37559,6 @@ pub unsafe fn vshl_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
     }
     _vshl_u8(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_u8)"]
 #[doc = "## Safety"]
@@ -39078,7 +37590,6 @@ pub unsafe fn vshlq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
     }
     _vshlq_u8(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_u16)"]
 #[doc = "## Safety"]
@@ -39110,7 +37621,6 @@ pub unsafe fn vshl_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
     }
     _vshl_u16(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_u16)"]
 #[doc = "## Safety"]
@@ -39142,7 +37652,6 @@ pub unsafe fn vshlq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
     }
     _vshlq_u16(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_u32)"]
 #[doc = "## Safety"]
@@ -39174,7 +37683,6 @@ pub unsafe fn vshl_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
     }
     _vshl_u32(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_u32)"]
 #[doc = "## Safety"]
@@ -39206,7 +37714,6 @@ pub unsafe fn vshlq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
     }
     _vshlq_u32(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_u64)"]
 #[doc = "## Safety"]
@@ -39238,7 +37745,6 @@ pub unsafe fn vshl_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
     }
     _vshl_u64(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Unsigned Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_u64)"]
 #[doc = "## Safety"]
@@ -39270,7 +37776,6 @@ pub unsafe fn vshlq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
     }
     _vshlq_u64(a.as_signed(), b).as_unsigned()
 }
-
 #[doc = "Signed shift left long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshll_n_s16)"]
 #[doc = "## Safety"]
@@ -39296,7 +37801,6 @@ pub unsafe fn vshll_n_s16<const N: i32>(a: int16x4_t) -> int32x4_t {
     static_assert!(N >= 0 && N <= 16);
     simd_shl(simd_cast(a), vdupq_n_s32(N as _))
 }
-
 #[doc = "Signed shift left long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshll_n_s32)"]
 #[doc = "## Safety"]
@@ -39322,7 +37826,6 @@ pub unsafe fn vshll_n_s32<const N: i32>(a: int32x2_t) -> int64x2_t {
     static_assert!(N >= 0 && N <= 32);
     simd_shl(simd_cast(a), vdupq_n_s64(N as _))
 }
-
 #[doc = "Signed shift left long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshll_n_s8)"]
 #[doc = "## Safety"]
@@ -39348,7 +37851,6 @@ pub unsafe fn vshll_n_s8<const N: i32>(a: int8x8_t) -> int16x8_t {
     static_assert!(N >= 0 && N <= 8);
     simd_shl(simd_cast(a), vdupq_n_s16(N as _))
 }
-
 #[doc = "Signed shift left long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshll_n_u16)"]
 #[doc = "## Safety"]
@@ -39374,7 +37876,6 @@ pub unsafe fn vshll_n_u16<const N: i32>(a: uint16x4_t) -> uint32x4_t {
     static_assert!(N >= 0 && N <= 16);
     simd_shl(simd_cast(a), vdupq_n_u32(N as _))
 }
-
 #[doc = "Signed shift left long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshll_n_u32)"]
 #[doc = "## Safety"]
@@ -39400,7 +37901,6 @@ pub unsafe fn vshll_n_u32<const N: i32>(a: uint32x2_t) -> uint64x2_t {
     static_assert!(N >= 0 && N <= 32);
     simd_shl(simd_cast(a), vdupq_n_u64(N as _))
 }
-
 #[doc = "Signed shift left long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshll_n_u8)"]
 #[doc = "## Safety"]
@@ -39426,7 +37926,6 @@ pub unsafe fn vshll_n_u8<const N: i32>(a: uint8x8_t) -> uint16x8_t {
     static_assert!(N >= 0 && N <= 8);
     simd_shl(simd_cast(a), vdupq_n_u16(N as _))
 }
-
 #[doc = "Shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshr_n_s8)"]
 #[doc = "## Safety"]
@@ -39453,7 +37952,6 @@ pub unsafe fn vshr_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
     let n: i32 = if N == 8 { 7 } else { N };
     simd_shr(a, vdup_n_s8(n as _))
 }
-
 #[doc = "Shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrq_n_s8)"]
 #[doc = "## Safety"]
@@ -39480,7 +37978,6 @@ pub unsafe fn vshrq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
     let n: i32 = if N == 8 { 7 } else { N };
     simd_shr(a, vdupq_n_s8(n as _))
 }
-
 #[doc = "Shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshr_n_s16)"]
 #[doc = "## Safety"]
@@ -39507,7 +38004,6 @@ pub unsafe fn vshr_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
     let n: i32 = if N == 16 { 15 } else { N };
     simd_shr(a, vdup_n_s16(n as _))
 }
-
 #[doc = "Shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrq_n_s16)"]
 #[doc = "## Safety"]
@@ -39534,7 +38030,6 @@ pub unsafe fn vshrq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
     let n: i32 = if N == 16 { 15 } else { N };
     simd_shr(a, vdupq_n_s16(n as _))
 }
-
 #[doc = "Shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshr_n_s32)"]
 #[doc = "## Safety"]
@@ -39561,7 +38056,6 @@ pub unsafe fn vshr_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
     let n: i32 = if N == 32 { 31 } else { N };
     simd_shr(a, vdup_n_s32(n as _))
 }
-
 #[doc = "Shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrq_n_s32)"]
 #[doc = "## Safety"]
@@ -39588,7 +38082,6 @@ pub unsafe fn vshrq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
     let n: i32 = if N == 32 { 31 } else { N };
     simd_shr(a, vdupq_n_s32(n as _))
 }
-
 #[doc = "Shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshr_n_s64)"]
 #[doc = "## Safety"]
@@ -39615,7 +38108,6 @@ pub unsafe fn vshr_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
     let n: i32 = if N == 64 { 63 } else { N };
     simd_shr(a, vdup_n_s64(n as _))
 }
-
 #[doc = "Shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrq_n_s64)"]
 #[doc = "## Safety"]
@@ -39642,7 +38134,6 @@ pub unsafe fn vshrq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
     let n: i32 = if N == 64 { 63 } else { N };
     simd_shr(a, vdupq_n_s64(n as _))
 }
-
 #[doc = "Shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshr_n_u8)"]
 #[doc = "## Safety"]
@@ -39673,7 +38164,6 @@ pub unsafe fn vshr_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
     };
     simd_shr(a, vdup_n_u8(n as _))
 }
-
 #[doc = "Shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrq_n_u8)"]
 #[doc = "## Safety"]
@@ -39704,7 +38194,6 @@ pub unsafe fn vshrq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
     };
     simd_shr(a, vdupq_n_u8(n as _))
 }
-
 #[doc = "Shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshr_n_u16)"]
 #[doc = "## Safety"]
@@ -39735,7 +38224,6 @@ pub unsafe fn vshr_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
     };
     simd_shr(a, vdup_n_u16(n as _))
 }
-
 #[doc = "Shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrq_n_u16)"]
 #[doc = "## Safety"]
@@ -39766,7 +38254,6 @@ pub unsafe fn vshrq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
     };
     simd_shr(a, vdupq_n_u16(n as _))
 }
-
 #[doc = "Shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshr_n_u32)"]
 #[doc = "## Safety"]
@@ -39797,7 +38284,6 @@ pub unsafe fn vshr_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
     };
     simd_shr(a, vdup_n_u32(n as _))
 }
-
 #[doc = "Shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrq_n_u32)"]
 #[doc = "## Safety"]
@@ -39828,7 +38314,6 @@ pub unsafe fn vshrq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
     };
     simd_shr(a, vdupq_n_u32(n as _))
 }
-
 #[doc = "Shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshr_n_u64)"]
 #[doc = "## Safety"]
@@ -39859,7 +38344,6 @@ pub unsafe fn vshr_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
     };
     simd_shr(a, vdup_n_u64(n as _))
 }
-
 #[doc = "Shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrq_n_u64)"]
 #[doc = "## Safety"]
@@ -39890,7 +38374,6 @@ pub unsafe fn vshrq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
     };
     simd_shr(a, vdupq_n_u64(n as _))
 }
-
 #[doc = "Shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_n_s16)"]
 #[doc = "## Safety"]
@@ -39916,7 +38399,6 @@ pub unsafe fn vshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
     simd_cast(simd_shr(a, vdupq_n_s16(N as _)))
 }
-
 #[doc = "Shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_n_s32)"]
 #[doc = "## Safety"]
@@ -39942,7 +38424,6 @@ pub unsafe fn vshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
     simd_cast(simd_shr(a, vdupq_n_s32(N as _)))
 }
-
 #[doc = "Shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_n_s64)"]
 #[doc = "## Safety"]
@@ -39968,7 +38449,6 @@ pub unsafe fn vshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
     static_assert!(N >= 1 && N <= 32);
     simd_cast(simd_shr(a, vdupq_n_s64(N as _)))
 }
-
 #[doc = "Shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_n_u16)"]
 #[doc = "## Safety"]
@@ -39994,7 +38474,6 @@ pub unsafe fn vshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
     simd_cast(simd_shr(a, vdupq_n_u16(N as _)))
 }
-
 #[doc = "Shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_n_u32)"]
 #[doc = "## Safety"]
@@ -40020,7 +38499,6 @@ pub unsafe fn vshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
     simd_cast(simd_shr(a, vdupq_n_u32(N as _)))
 }
-
 #[doc = "Shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_n_u64)"]
 #[doc = "## Safety"]
@@ -40046,7 +38524,6 @@ pub unsafe fn vshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     static_assert!(N >= 1 && N <= 32);
     simd_cast(simd_shr(a, vdupq_n_u64(N as _)))
 }
-
 #[doc = "Signed shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsra_n_s8)"]
 #[doc = "## Safety"]
@@ -40072,7 +38549,6 @@ pub unsafe fn vsra_n_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     static_assert!(N >= 1 && N <= 8);
     simd_add(a, vshr_n_s8::<N>(b))
 }
-
 #[doc = "Signed shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsraq_n_s8)"]
 #[doc = "## Safety"]
@@ -40098,7 +38574,6 @@ pub unsafe fn vsraq_n_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t 
     static_assert!(N >= 1 && N <= 8);
     simd_add(a, vshrq_n_s8::<N>(b))
 }
-
 #[doc = "Signed shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsra_n_s16)"]
 #[doc = "## Safety"]
@@ -40124,7 +38599,6 @@ pub unsafe fn vsra_n_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t 
     static_assert!(N >= 1 && N <= 16);
     simd_add(a, vshr_n_s16::<N>(b))
 }
-
 #[doc = "Signed shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsraq_n_s16)"]
 #[doc = "## Safety"]
@@ -40150,7 +38624,6 @@ pub unsafe fn vsraq_n_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t
     static_assert!(N >= 1 && N <= 16);
     simd_add(a, vshrq_n_s16::<N>(b))
 }
-
 #[doc = "Signed shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsra_n_s32)"]
 #[doc = "## Safety"]
@@ -40176,7 +38649,6 @@ pub unsafe fn vsra_n_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t 
     static_assert!(N >= 1 && N <= 32);
     simd_add(a, vshr_n_s32::<N>(b))
 }
-
 #[doc = "Signed shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsraq_n_s32)"]
 #[doc = "## Safety"]
@@ -40202,7 +38674,6 @@ pub unsafe fn vsraq_n_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t
     static_assert!(N >= 1 && N <= 32);
     simd_add(a, vshrq_n_s32::<N>(b))
 }
-
 #[doc = "Signed shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsra_n_s64)"]
 #[doc = "## Safety"]
@@ -40228,7 +38699,6 @@ pub unsafe fn vsra_n_s64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t 
     static_assert!(N >= 1 && N <= 64);
     simd_add(a, vshr_n_s64::<N>(b))
 }
-
 #[doc = "Signed shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsraq_n_s64)"]
 #[doc = "## Safety"]
@@ -40254,7 +38724,6 @@ pub unsafe fn vsraq_n_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t
     static_assert!(N >= 1 && N <= 64);
     simd_add(a, vshrq_n_s64::<N>(b))
 }
-
 #[doc = "Unsigned shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsra_n_u8)"]
 #[doc = "## Safety"]
@@ -40280,7 +38749,6 @@ pub unsafe fn vsra_n_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     static_assert!(N >= 1 && N <= 8);
     simd_add(a, vshr_n_u8::<N>(b))
 }
-
 #[doc = "Unsigned shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsraq_n_u8)"]
 #[doc = "## Safety"]
@@ -40306,7 +38774,6 @@ pub unsafe fn vsraq_n_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16
     static_assert!(N >= 1 && N <= 8);
     simd_add(a, vshrq_n_u8::<N>(b))
 }
-
 #[doc = "Unsigned shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsra_n_u16)"]
 #[doc = "## Safety"]
@@ -40332,7 +38799,6 @@ pub unsafe fn vsra_n_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4
     static_assert!(N >= 1 && N <= 16);
     simd_add(a, vshr_n_u16::<N>(b))
 }
-
 #[doc = "Unsigned shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsraq_n_u16)"]
 #[doc = "## Safety"]
@@ -40358,7 +38824,6 @@ pub unsafe fn vsraq_n_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x
     static_assert!(N >= 1 && N <= 16);
     simd_add(a, vshrq_n_u16::<N>(b))
 }
-
 #[doc = "Unsigned shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsra_n_u32)"]
 #[doc = "## Safety"]
@@ -40384,7 +38849,6 @@ pub unsafe fn vsra_n_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2
     static_assert!(N >= 1 && N <= 32);
     simd_add(a, vshr_n_u32::<N>(b))
 }
-
 #[doc = "Unsigned shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsraq_n_u32)"]
 #[doc = "## Safety"]
@@ -40410,7 +38874,6 @@ pub unsafe fn vsraq_n_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x
     static_assert!(N >= 1 && N <= 32);
     simd_add(a, vshrq_n_u32::<N>(b))
 }
-
 #[doc = "Unsigned shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsra_n_u64)"]
 #[doc = "## Safety"]
@@ -40436,7 +38899,6 @@ pub unsafe fn vsra_n_u64<const N: i32>(a: uint64x1_t, b: uint64x1_t) -> uint64x1
     static_assert!(N >= 1 && N <= 64);
     simd_add(a, vshr_n_u64::<N>(b))
 }
-
 #[doc = "Unsigned shift right and accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsraq_n_u64)"]
 #[doc = "## Safety"]
@@ -40462,7 +38924,6 @@ pub unsafe fn vsraq_n_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x
     static_assert!(N >= 1 && N <= 64);
     simd_add(a, vshrq_n_u64::<N>(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f32_x2)"]
 #[doc = "## Safety"]
@@ -40479,7 +38940,6 @@ pub unsafe fn vst1_f32_x2(a: *mut f32, b: float32x2x2_t) {
     }
     _vst1_f32_x2(a, b.0, b.1)
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f32_x2)"]
 #[doc = "## Safety"]
@@ -40496,7 +38956,6 @@ pub unsafe fn vst1q_f32_x2(a: *mut f32, b: float32x4x2_t) {
     }
     _vst1q_f32_x2(a, b.0, b.1)
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f32_x2)"]
 #[doc = "## Safety"]
@@ -40516,7 +38975,6 @@ pub unsafe fn vst1_f32_x2(a: *mut f32, b: float32x2x2_t) {
     }
     _vst1_f32_x2(b.0, b.1, a)
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f32_x2)"]
 #[doc = "## Safety"]
@@ -40536,7 +38994,6 @@ pub unsafe fn vst1q_f32_x2(a: *mut f32, b: float32x4x2_t) {
     }
     _vst1q_f32_x2(b.0, b.1, a)
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f32_x3)"]
 #[doc = "## Safety"]
@@ -40553,7 +39010,6 @@ pub unsafe fn vst1_f32_x3(a: *mut f32, b: float32x2x3_t) {
     }
     _vst1_f32_x3(a, b.0, b.1, b.2)
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f32_x3)"]
 #[doc = "## Safety"]
@@ -40570,7 +39026,6 @@ pub unsafe fn vst1q_f32_x3(a: *mut f32, b: float32x4x3_t) {
     }
     _vst1q_f32_x3(a, b.0, b.1, b.2)
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f32_x3)"]
 #[doc = "## Safety"]
@@ -40590,7 +39045,6 @@ pub unsafe fn vst1_f32_x3(a: *mut f32, b: float32x2x3_t) {
     }
     _vst1_f32_x3(b.0, b.1, b.2, a)
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f32_x3)"]
 #[doc = "## Safety"]
@@ -40610,7 +39064,6 @@ pub unsafe fn vst1q_f32_x3(a: *mut f32, b: float32x4x3_t) {
     }
     _vst1q_f32_x3(b.0, b.1, b.2, a)
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f32_x4)"]
 #[doc = "## Safety"]
@@ -40633,7 +39086,6 @@ pub unsafe fn vst1_f32_x4(a: *mut f32, b: float32x2x4_t) {
     }
     _vst1_f32_x4(a, b.0, b.1, b.2, b.3)
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f32_x4)"]
 #[doc = "## Safety"]
@@ -40656,7 +39108,6 @@ pub unsafe fn vst1q_f32_x4(a: *mut f32, b: float32x4x4_t) {
     }
     _vst1q_f32_x4(a, b.0, b.1, b.2, b.3)
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f32_x4)"]
 #[doc = "## Safety"]
@@ -40682,7 +39133,6 @@ pub unsafe fn vst1_f32_x4(a: *mut f32, b: float32x2x4_t) {
     }
     _vst1_f32_x4(b.0, b.1, b.2, b.3, a)
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f32_x4)"]
 #[doc = "## Safety"]
@@ -40708,7 +39158,6 @@ pub unsafe fn vst1q_f32_x4(a: *mut f32, b: float32x4x4_t) {
     }
     _vst1q_f32_x4(b.0, b.1, b.2, b.3, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_f32)"]
 #[doc = "## Safety"]
@@ -40734,7 +39183,6 @@ pub unsafe fn vst1_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_f32)"]
 #[doc = "## Safety"]
@@ -40760,7 +39208,6 @@ pub unsafe fn vst1q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_s8)"]
 #[doc = "## Safety"]
@@ -40786,7 +39233,6 @@ pub unsafe fn vst1_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8_t) {
     static_assert_uimm_bits!(LANE, 3);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_s8)"]
 #[doc = "## Safety"]
@@ -40812,7 +39258,6 @@ pub unsafe fn vst1q_lane_s8<const LANE: i32>(a: *mut i8, b: int8x16_t) {
     static_assert_uimm_bits!(LANE, 4);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_s16)"]
 #[doc = "## Safety"]
@@ -40838,7 +39283,6 @@ pub unsafe fn vst1_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_s16)"]
 #[doc = "## Safety"]
@@ -40864,7 +39308,6 @@ pub unsafe fn vst1q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8_t) {
     static_assert_uimm_bits!(LANE, 3);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_s32)"]
 #[doc = "## Safety"]
@@ -40890,7 +39333,6 @@ pub unsafe fn vst1_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_s32)"]
 #[doc = "## Safety"]
@@ -40916,7 +39358,6 @@ pub unsafe fn vst1q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_s64)"]
 #[doc = "## Safety"]
@@ -40942,7 +39383,6 @@ pub unsafe fn vst1q_lane_s64<const LANE: i32>(a: *mut i64, b: int64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_u8)"]
 #[doc = "## Safety"]
@@ -40968,7 +39408,6 @@ pub unsafe fn vst1_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8_t) {
     static_assert_uimm_bits!(LANE, 3);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_u8)"]
 #[doc = "## Safety"]
@@ -40994,7 +39433,6 @@ pub unsafe fn vst1q_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x16_t) {
     static_assert_uimm_bits!(LANE, 4);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_u16)"]
 #[doc = "## Safety"]
@@ -41020,7 +39458,6 @@ pub unsafe fn vst1_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_u16)"]
 #[doc = "## Safety"]
@@ -41046,7 +39483,6 @@ pub unsafe fn vst1q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8_t) {
     static_assert_uimm_bits!(LANE, 3);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_u32)"]
 #[doc = "## Safety"]
@@ -41072,7 +39508,6 @@ pub unsafe fn vst1_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_u32)"]
 #[doc = "## Safety"]
@@ -41098,7 +39533,6 @@ pub unsafe fn vst1q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_u64)"]
 #[doc = "## Safety"]
@@ -41124,7 +39558,6 @@ pub unsafe fn vst1q_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_p8)"]
 #[doc = "## Safety"]
@@ -41150,7 +39583,6 @@ pub unsafe fn vst1_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8_t) {
     static_assert_uimm_bits!(LANE, 3);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_p8)"]
 #[doc = "## Safety"]
@@ -41176,7 +39608,6 @@ pub unsafe fn vst1q_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x16_t) {
     static_assert_uimm_bits!(LANE, 4);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_p16)"]
 #[doc = "## Safety"]
@@ -41202,7 +39633,6 @@ pub unsafe fn vst1_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_p16)"]
 #[doc = "## Safety"]
@@ -41228,7 +39658,6 @@ pub unsafe fn vst1q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8_t) {
     static_assert_uimm_bits!(LANE, 3);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_p64)"]
 #[doc = "## Safety"]
@@ -41254,7 +39683,6 @@ pub unsafe fn vst1_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1_t) {
     static_assert!(LANE == 0);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_s64)"]
 #[doc = "## Safety"]
@@ -41280,7 +39708,6 @@ pub unsafe fn vst1_lane_s64<const LANE: i32>(a: *mut i64, b: int64x1_t) {
     static_assert!(LANE == 0);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_u64)"]
 #[doc = "## Safety"]
@@ -41306,7 +39733,6 @@ pub unsafe fn vst1_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1_t) {
     static_assert!(LANE == 0);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p64_x2)"]
 #[doc = "## Safety"]
@@ -41330,7 +39756,6 @@ pub unsafe fn vst1_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1_t) {
 pub unsafe fn vst1_p64_x2(a: *mut p64, b: poly64x1x2_t) {
     vst1_s64_x2(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p64_x3)"]
 #[doc = "## Safety"]
@@ -41354,7 +39779,6 @@ pub unsafe fn vst1_p64_x2(a: *mut p64, b: poly64x1x2_t) {
 pub unsafe fn vst1_p64_x3(a: *mut p64, b: poly64x1x3_t) {
     vst1_s64_x3(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p64_x4)"]
 #[doc = "## Safety"]
@@ -41378,7 +39802,6 @@ pub unsafe fn vst1_p64_x3(a: *mut p64, b: poly64x1x3_t) {
 pub unsafe fn vst1_p64_x4(a: *mut p64, b: poly64x1x4_t) {
     vst1_s64_x4(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p64_x2)"]
 #[doc = "## Safety"]
@@ -41402,7 +39825,6 @@ pub unsafe fn vst1_p64_x4(a: *mut p64, b: poly64x1x4_t) {
 pub unsafe fn vst1q_p64_x2(a: *mut p64, b: poly64x2x2_t) {
     vst1q_s64_x2(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p64_x3)"]
 #[doc = "## Safety"]
@@ -41426,7 +39848,6 @@ pub unsafe fn vst1q_p64_x2(a: *mut p64, b: poly64x2x2_t) {
 pub unsafe fn vst1q_p64_x3(a: *mut p64, b: poly64x2x3_t) {
     vst1q_s64_x3(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p64_x4)"]
 #[doc = "## Safety"]
@@ -41450,7 +39871,6 @@ pub unsafe fn vst1q_p64_x3(a: *mut p64, b: poly64x2x3_t) {
 pub unsafe fn vst1q_p64_x4(a: *mut p64, b: poly64x2x4_t) {
     vst1q_s64_x4(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s8_x2)"]
 #[doc = "## Safety"]
@@ -41470,7 +39890,6 @@ pub unsafe fn vst1_s8_x2(a: *mut i8, b: int8x8x2_t) {
     }
     _vst1_s8_x2(b.0, b.1, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s8_x2)"]
 #[doc = "## Safety"]
@@ -41490,7 +39909,6 @@ pub unsafe fn vst1q_s8_x2(a: *mut i8, b: int8x16x2_t) {
     }
     _vst1q_s8_x2(b.0, b.1, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s16_x2)"]
 #[doc = "## Safety"]
@@ -41510,7 +39928,6 @@ pub unsafe fn vst1_s16_x2(a: *mut i16, b: int16x4x2_t) {
     }
     _vst1_s16_x2(b.0, b.1, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s16_x2)"]
 #[doc = "## Safety"]
@@ -41530,7 +39947,6 @@ pub unsafe fn vst1q_s16_x2(a: *mut i16, b: int16x8x2_t) {
     }
     _vst1q_s16_x2(b.0, b.1, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s32_x2)"]
 #[doc = "## Safety"]
@@ -41550,7 +39966,6 @@ pub unsafe fn vst1_s32_x2(a: *mut i32, b: int32x2x2_t) {
     }
     _vst1_s32_x2(b.0, b.1, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s32_x2)"]
 #[doc = "## Safety"]
@@ -41570,7 +39985,6 @@ pub unsafe fn vst1q_s32_x2(a: *mut i32, b: int32x4x2_t) {
     }
     _vst1q_s32_x2(b.0, b.1, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s64_x2)"]
 #[doc = "## Safety"]
@@ -41590,7 +40004,6 @@ pub unsafe fn vst1_s64_x2(a: *mut i64, b: int64x1x2_t) {
     }
     _vst1_s64_x2(b.0, b.1, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s64_x2)"]
 #[doc = "## Safety"]
@@ -41610,7 +40023,6 @@ pub unsafe fn vst1q_s64_x2(a: *mut i64, b: int64x2x2_t) {
     }
     _vst1q_s64_x2(b.0, b.1, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s8_x2)"]
 #[doc = "## Safety"]
@@ -41627,7 +40039,6 @@ pub unsafe fn vst1_s8_x2(a: *mut i8, b: int8x8x2_t) {
     }
     _vst1_s8_x2(a, b.0, b.1)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s8_x2)"]
 #[doc = "## Safety"]
@@ -41644,7 +40055,6 @@ pub unsafe fn vst1q_s8_x2(a: *mut i8, b: int8x16x2_t) {
     }
     _vst1q_s8_x2(a, b.0, b.1)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s16_x2)"]
 #[doc = "## Safety"]
@@ -41661,7 +40071,6 @@ pub unsafe fn vst1_s16_x2(a: *mut i16, b: int16x4x2_t) {
     }
     _vst1_s16_x2(a, b.0, b.1)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s16_x2)"]
 #[doc = "## Safety"]
@@ -41678,7 +40087,6 @@ pub unsafe fn vst1q_s16_x2(a: *mut i16, b: int16x8x2_t) {
     }
     _vst1q_s16_x2(a, b.0, b.1)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s32_x2)"]
 #[doc = "## Safety"]
@@ -41695,7 +40103,6 @@ pub unsafe fn vst1_s32_x2(a: *mut i32, b: int32x2x2_t) {
     }
     _vst1_s32_x2(a, b.0, b.1)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s32_x2)"]
 #[doc = "## Safety"]
@@ -41712,7 +40119,6 @@ pub unsafe fn vst1q_s32_x2(a: *mut i32, b: int32x4x2_t) {
     }
     _vst1q_s32_x2(a, b.0, b.1)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s64_x2)"]
 #[doc = "## Safety"]
@@ -41729,7 +40135,6 @@ pub unsafe fn vst1_s64_x2(a: *mut i64, b: int64x1x2_t) {
     }
     _vst1_s64_x2(a, b.0, b.1)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s64_x2)"]
 #[doc = "## Safety"]
@@ -41746,7 +40151,6 @@ pub unsafe fn vst1q_s64_x2(a: *mut i64, b: int64x2x2_t) {
     }
     _vst1q_s64_x2(a, b.0, b.1)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s8_x3)"]
 #[doc = "## Safety"]
@@ -41766,7 +40170,6 @@ pub unsafe fn vst1_s8_x3(a: *mut i8, b: int8x8x3_t) {
     }
     _vst1_s8_x3(b.0, b.1, b.2, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s8_x3)"]
 #[doc = "## Safety"]
@@ -41786,7 +40189,6 @@ pub unsafe fn vst1q_s8_x3(a: *mut i8, b: int8x16x3_t) {
     }
     _vst1q_s8_x3(b.0, b.1, b.2, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s16_x3)"]
 #[doc = "## Safety"]
@@ -41806,7 +40208,6 @@ pub unsafe fn vst1_s16_x3(a: *mut i16, b: int16x4x3_t) {
     }
     _vst1_s16_x3(b.0, b.1, b.2, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s16_x3)"]
 #[doc = "## Safety"]
@@ -41826,7 +40227,6 @@ pub unsafe fn vst1q_s16_x3(a: *mut i16, b: int16x8x3_t) {
     }
     _vst1q_s16_x3(b.0, b.1, b.2, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s32_x3)"]
 #[doc = "## Safety"]
@@ -41846,7 +40246,6 @@ pub unsafe fn vst1_s32_x3(a: *mut i32, b: int32x2x3_t) {
     }
     _vst1_s32_x3(b.0, b.1, b.2, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s32_x3)"]
 #[doc = "## Safety"]
@@ -41866,7 +40265,6 @@ pub unsafe fn vst1q_s32_x3(a: *mut i32, b: int32x4x3_t) {
     }
     _vst1q_s32_x3(b.0, b.1, b.2, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s64_x3)"]
 #[doc = "## Safety"]
@@ -41886,7 +40284,6 @@ pub unsafe fn vst1_s64_x3(a: *mut i64, b: int64x1x3_t) {
     }
     _vst1_s64_x3(b.0, b.1, b.2, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s64_x3)"]
 #[doc = "## Safety"]
@@ -41906,7 +40303,6 @@ pub unsafe fn vst1q_s64_x3(a: *mut i64, b: int64x2x3_t) {
     }
     _vst1q_s64_x3(b.0, b.1, b.2, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s8_x3)"]
 #[doc = "## Safety"]
@@ -41923,7 +40319,6 @@ pub unsafe fn vst1_s8_x3(a: *mut i8, b: int8x8x3_t) {
     }
     _vst1_s8_x3(a, b.0, b.1, b.2)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s8_x3)"]
 #[doc = "## Safety"]
@@ -41940,7 +40335,6 @@ pub unsafe fn vst1q_s8_x3(a: *mut i8, b: int8x16x3_t) {
     }
     _vst1q_s8_x3(a, b.0, b.1, b.2)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s16_x3)"]
 #[doc = "## Safety"]
@@ -41957,7 +40351,6 @@ pub unsafe fn vst1_s16_x3(a: *mut i16, b: int16x4x3_t) {
     }
     _vst1_s16_x3(a, b.0, b.1, b.2)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s16_x3)"]
 #[doc = "## Safety"]
@@ -41974,7 +40367,6 @@ pub unsafe fn vst1q_s16_x3(a: *mut i16, b: int16x8x3_t) {
     }
     _vst1q_s16_x3(a, b.0, b.1, b.2)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s32_x3)"]
 #[doc = "## Safety"]
@@ -41991,7 +40383,6 @@ pub unsafe fn vst1_s32_x3(a: *mut i32, b: int32x2x3_t) {
     }
     _vst1_s32_x3(a, b.0, b.1, b.2)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s32_x3)"]
 #[doc = "## Safety"]
@@ -42008,7 +40399,6 @@ pub unsafe fn vst1q_s32_x3(a: *mut i32, b: int32x4x3_t) {
     }
     _vst1q_s32_x3(a, b.0, b.1, b.2)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s64_x3)"]
 #[doc = "## Safety"]
@@ -42025,7 +40415,6 @@ pub unsafe fn vst1_s64_x3(a: *mut i64, b: int64x1x3_t) {
     }
     _vst1_s64_x3(a, b.0, b.1, b.2)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s64_x3)"]
 #[doc = "## Safety"]
@@ -42042,7 +40431,6 @@ pub unsafe fn vst1q_s64_x3(a: *mut i64, b: int64x2x3_t) {
     }
     _vst1q_s64_x3(a, b.0, b.1, b.2)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s8_x4)"]
 #[doc = "## Safety"]
@@ -42062,7 +40450,6 @@ pub unsafe fn vst1_s8_x4(a: *mut i8, b: int8x8x4_t) {
     }
     _vst1_s8_x4(b.0, b.1, b.2, b.3, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s8_x4)"]
 #[doc = "## Safety"]
@@ -42082,7 +40469,6 @@ pub unsafe fn vst1q_s8_x4(a: *mut i8, b: int8x16x4_t) {
     }
     _vst1q_s8_x4(b.0, b.1, b.2, b.3, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s16_x4)"]
 #[doc = "## Safety"]
@@ -42102,7 +40488,6 @@ pub unsafe fn vst1_s16_x4(a: *mut i16, b: int16x4x4_t) {
     }
     _vst1_s16_x4(b.0, b.1, b.2, b.3, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s16_x4)"]
 #[doc = "## Safety"]
@@ -42122,7 +40507,6 @@ pub unsafe fn vst1q_s16_x4(a: *mut i16, b: int16x8x4_t) {
     }
     _vst1q_s16_x4(b.0, b.1, b.2, b.3, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s32_x4)"]
 #[doc = "## Safety"]
@@ -42142,7 +40526,6 @@ pub unsafe fn vst1_s32_x4(a: *mut i32, b: int32x2x4_t) {
     }
     _vst1_s32_x4(b.0, b.1, b.2, b.3, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s32_x4)"]
 #[doc = "## Safety"]
@@ -42162,7 +40545,6 @@ pub unsafe fn vst1q_s32_x4(a: *mut i32, b: int32x4x4_t) {
     }
     _vst1q_s32_x4(b.0, b.1, b.2, b.3, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s64_x4)"]
 #[doc = "## Safety"]
@@ -42182,7 +40564,6 @@ pub unsafe fn vst1_s64_x4(a: *mut i64, b: int64x1x4_t) {
     }
     _vst1_s64_x4(b.0, b.1, b.2, b.3, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s64_x4)"]
 #[doc = "## Safety"]
@@ -42202,7 +40583,6 @@ pub unsafe fn vst1q_s64_x4(a: *mut i64, b: int64x2x4_t) {
     }
     _vst1q_s64_x4(b.0, b.1, b.2, b.3, a)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s8_x4)"]
 #[doc = "## Safety"]
@@ -42219,7 +40599,6 @@ pub unsafe fn vst1_s8_x4(a: *mut i8, b: int8x8x4_t) {
     }
     _vst1_s8_x4(a, b.0, b.1, b.2, b.3)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s8_x4)"]
 #[doc = "## Safety"]
@@ -42236,7 +40615,6 @@ pub unsafe fn vst1q_s8_x4(a: *mut i8, b: int8x16x4_t) {
     }
     _vst1q_s8_x4(a, b.0, b.1, b.2, b.3)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s16_x4)"]
 #[doc = "## Safety"]
@@ -42253,7 +40631,6 @@ pub unsafe fn vst1_s16_x4(a: *mut i16, b: int16x4x4_t) {
     }
     _vst1_s16_x4(a, b.0, b.1, b.2, b.3)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s16_x4)"]
 #[doc = "## Safety"]
@@ -42270,7 +40647,6 @@ pub unsafe fn vst1q_s16_x4(a: *mut i16, b: int16x8x4_t) {
     }
     _vst1q_s16_x4(a, b.0, b.1, b.2, b.3)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s32_x4)"]
 #[doc = "## Safety"]
@@ -42287,7 +40663,6 @@ pub unsafe fn vst1_s32_x4(a: *mut i32, b: int32x2x4_t) {
     }
     _vst1_s32_x4(a, b.0, b.1, b.2, b.3)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s32_x4)"]
 #[doc = "## Safety"]
@@ -42304,7 +40679,6 @@ pub unsafe fn vst1q_s32_x4(a: *mut i32, b: int32x4x4_t) {
     }
     _vst1q_s32_x4(a, b.0, b.1, b.2, b.3)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s64_x4)"]
 #[doc = "## Safety"]
@@ -42321,7 +40695,6 @@ pub unsafe fn vst1_s64_x4(a: *mut i64, b: int64x1x4_t) {
     }
     _vst1_s64_x4(a, b.0, b.1, b.2, b.3)
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s64_x4)"]
 #[doc = "## Safety"]
@@ -42338,7 +40711,6 @@ pub unsafe fn vst1q_s64_x4(a: *mut i64, b: int64x2x4_t) {
     }
     _vst1q_s64_x4(a, b.0, b.1, b.2, b.3)
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u8_x2)"]
 #[doc = "## Safety"]
@@ -42362,7 +40734,6 @@ pub unsafe fn vst1q_s64_x4(a: *mut i64, b: int64x2x4_t) {
 pub unsafe fn vst1_u8_x2(a: *mut u8, b: uint8x8x2_t) {
     vst1_s8_x2(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u8_x3)"]
 #[doc = "## Safety"]
@@ -42386,7 +40757,6 @@ pub unsafe fn vst1_u8_x2(a: *mut u8, b: uint8x8x2_t) {
 pub unsafe fn vst1_u8_x3(a: *mut u8, b: uint8x8x3_t) {
     vst1_s8_x3(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u8_x4)"]
 #[doc = "## Safety"]
@@ -42410,7 +40780,6 @@ pub unsafe fn vst1_u8_x3(a: *mut u8, b: uint8x8x3_t) {
 pub unsafe fn vst1_u8_x4(a: *mut u8, b: uint8x8x4_t) {
     vst1_s8_x4(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u8_x2)"]
 #[doc = "## Safety"]
@@ -42434,7 +40803,6 @@ pub unsafe fn vst1_u8_x4(a: *mut u8, b: uint8x8x4_t) {
 pub unsafe fn vst1q_u8_x2(a: *mut u8, b: uint8x16x2_t) {
     vst1q_s8_x2(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u8_x3)"]
 #[doc = "## Safety"]
@@ -42458,7 +40826,6 @@ pub unsafe fn vst1q_u8_x2(a: *mut u8, b: uint8x16x2_t) {
 pub unsafe fn vst1q_u8_x3(a: *mut u8, b: uint8x16x3_t) {
     vst1q_s8_x3(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u8_x4)"]
 #[doc = "## Safety"]
@@ -42482,7 +40849,6 @@ pub unsafe fn vst1q_u8_x3(a: *mut u8, b: uint8x16x3_t) {
 pub unsafe fn vst1q_u8_x4(a: *mut u8, b: uint8x16x4_t) {
     vst1q_s8_x4(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u16_x2)"]
 #[doc = "## Safety"]
@@ -42506,7 +40872,6 @@ pub unsafe fn vst1q_u8_x4(a: *mut u8, b: uint8x16x4_t) {
 pub unsafe fn vst1_u16_x2(a: *mut u16, b: uint16x4x2_t) {
     vst1_s16_x2(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u16_x3)"]
 #[doc = "## Safety"]
@@ -42530,7 +40895,6 @@ pub unsafe fn vst1_u16_x2(a: *mut u16, b: uint16x4x2_t) {
 pub unsafe fn vst1_u16_x3(a: *mut u16, b: uint16x4x3_t) {
     vst1_s16_x3(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u16_x4)"]
 #[doc = "## Safety"]
@@ -42554,7 +40918,6 @@ pub unsafe fn vst1_u16_x3(a: *mut u16, b: uint16x4x3_t) {
 pub unsafe fn vst1_u16_x4(a: *mut u16, b: uint16x4x4_t) {
     vst1_s16_x4(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u16_x2)"]
 #[doc = "## Safety"]
@@ -42578,7 +40941,6 @@ pub unsafe fn vst1_u16_x4(a: *mut u16, b: uint16x4x4_t) {
 pub unsafe fn vst1q_u16_x2(a: *mut u16, b: uint16x8x2_t) {
     vst1q_s16_x2(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u16_x3)"]
 #[doc = "## Safety"]
@@ -42602,7 +40964,6 @@ pub unsafe fn vst1q_u16_x2(a: *mut u16, b: uint16x8x2_t) {
 pub unsafe fn vst1q_u16_x3(a: *mut u16, b: uint16x8x3_t) {
     vst1q_s16_x3(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u16_x4)"]
 #[doc = "## Safety"]
@@ -42626,7 +40987,6 @@ pub unsafe fn vst1q_u16_x3(a: *mut u16, b: uint16x8x3_t) {
 pub unsafe fn vst1q_u16_x4(a: *mut u16, b: uint16x8x4_t) {
     vst1q_s16_x4(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u32_x2)"]
 #[doc = "## Safety"]
@@ -42650,7 +41010,6 @@ pub unsafe fn vst1q_u16_x4(a: *mut u16, b: uint16x8x4_t) {
 pub unsafe fn vst1_u32_x2(a: *mut u32, b: uint32x2x2_t) {
     vst1_s32_x2(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u32_x3)"]
 #[doc = "## Safety"]
@@ -42674,7 +41033,6 @@ pub unsafe fn vst1_u32_x2(a: *mut u32, b: uint32x2x2_t) {
 pub unsafe fn vst1_u32_x3(a: *mut u32, b: uint32x2x3_t) {
     vst1_s32_x3(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u32_x4)"]
 #[doc = "## Safety"]
@@ -42698,7 +41056,6 @@ pub unsafe fn vst1_u32_x3(a: *mut u32, b: uint32x2x3_t) {
 pub unsafe fn vst1_u32_x4(a: *mut u32, b: uint32x2x4_t) {
     vst1_s32_x4(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u32_x2)"]
 #[doc = "## Safety"]
@@ -42722,7 +41079,6 @@ pub unsafe fn vst1_u32_x4(a: *mut u32, b: uint32x2x4_t) {
 pub unsafe fn vst1q_u32_x2(a: *mut u32, b: uint32x4x2_t) {
     vst1q_s32_x2(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u32_x3)"]
 #[doc = "## Safety"]
@@ -42746,7 +41102,6 @@ pub unsafe fn vst1q_u32_x2(a: *mut u32, b: uint32x4x2_t) {
 pub unsafe fn vst1q_u32_x3(a: *mut u32, b: uint32x4x3_t) {
     vst1q_s32_x3(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u32_x4)"]
 #[doc = "## Safety"]
@@ -42770,7 +41125,6 @@ pub unsafe fn vst1q_u32_x3(a: *mut u32, b: uint32x4x3_t) {
 pub unsafe fn vst1q_u32_x4(a: *mut u32, b: uint32x4x4_t) {
     vst1q_s32_x4(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u64_x2)"]
 #[doc = "## Safety"]
@@ -42794,7 +41148,6 @@ pub unsafe fn vst1q_u32_x4(a: *mut u32, b: uint32x4x4_t) {
 pub unsafe fn vst1_u64_x2(a: *mut u64, b: uint64x1x2_t) {
     vst1_s64_x2(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u64_x3)"]
 #[doc = "## Safety"]
@@ -42818,7 +41171,6 @@ pub unsafe fn vst1_u64_x2(a: *mut u64, b: uint64x1x2_t) {
 pub unsafe fn vst1_u64_x3(a: *mut u64, b: uint64x1x3_t) {
     vst1_s64_x3(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u64_x4)"]
 #[doc = "## Safety"]
@@ -42842,7 +41194,6 @@ pub unsafe fn vst1_u64_x3(a: *mut u64, b: uint64x1x3_t) {
 pub unsafe fn vst1_u64_x4(a: *mut u64, b: uint64x1x4_t) {
     vst1_s64_x4(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u64_x2)"]
 #[doc = "## Safety"]
@@ -42866,7 +41217,6 @@ pub unsafe fn vst1_u64_x4(a: *mut u64, b: uint64x1x4_t) {
 pub unsafe fn vst1q_u64_x2(a: *mut u64, b: uint64x2x2_t) {
     vst1q_s64_x2(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u64_x3)"]
 #[doc = "## Safety"]
@@ -42890,7 +41240,6 @@ pub unsafe fn vst1q_u64_x2(a: *mut u64, b: uint64x2x2_t) {
 pub unsafe fn vst1q_u64_x3(a: *mut u64, b: uint64x2x3_t) {
     vst1q_s64_x3(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u64_x4)"]
 #[doc = "## Safety"]
@@ -42914,7 +41263,6 @@ pub unsafe fn vst1q_u64_x3(a: *mut u64, b: uint64x2x3_t) {
 pub unsafe fn vst1q_u64_x4(a: *mut u64, b: uint64x2x4_t) {
     vst1q_s64_x4(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p8_x2)"]
 #[doc = "## Safety"]
@@ -42938,7 +41286,6 @@ pub unsafe fn vst1q_u64_x4(a: *mut u64, b: uint64x2x4_t) {
 pub unsafe fn vst1_p8_x2(a: *mut p8, b: poly8x8x2_t) {
     vst1_s8_x2(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p8_x3)"]
 #[doc = "## Safety"]
@@ -42962,7 +41309,6 @@ pub unsafe fn vst1_p8_x2(a: *mut p8, b: poly8x8x2_t) {
 pub unsafe fn vst1_p8_x3(a: *mut p8, b: poly8x8x3_t) {
     vst1_s8_x3(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p8_x4)"]
 #[doc = "## Safety"]
@@ -42986,7 +41332,6 @@ pub unsafe fn vst1_p8_x3(a: *mut p8, b: poly8x8x3_t) {
 pub unsafe fn vst1_p8_x4(a: *mut p8, b: poly8x8x4_t) {
     vst1_s8_x4(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p8_x2)"]
 #[doc = "## Safety"]
@@ -43010,7 +41355,6 @@ pub unsafe fn vst1_p8_x4(a: *mut p8, b: poly8x8x4_t) {
 pub unsafe fn vst1q_p8_x2(a: *mut p8, b: poly8x16x2_t) {
     vst1q_s8_x2(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p8_x3)"]
 #[doc = "## Safety"]
@@ -43034,7 +41378,6 @@ pub unsafe fn vst1q_p8_x2(a: *mut p8, b: poly8x16x2_t) {
 pub unsafe fn vst1q_p8_x3(a: *mut p8, b: poly8x16x3_t) {
     vst1q_s8_x3(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p8_x4)"]
 #[doc = "## Safety"]
@@ -43058,7 +41401,6 @@ pub unsafe fn vst1q_p8_x3(a: *mut p8, b: poly8x16x3_t) {
 pub unsafe fn vst1q_p8_x4(a: *mut p8, b: poly8x16x4_t) {
     vst1q_s8_x4(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p16_x2)"]
 #[doc = "## Safety"]
@@ -43082,7 +41424,6 @@ pub unsafe fn vst1q_p8_x4(a: *mut p8, b: poly8x16x4_t) {
 pub unsafe fn vst1_p16_x2(a: *mut p16, b: poly16x4x2_t) {
     vst1_s16_x2(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p16_x3)"]
 #[doc = "## Safety"]
@@ -43106,7 +41447,6 @@ pub unsafe fn vst1_p16_x2(a: *mut p16, b: poly16x4x2_t) {
 pub unsafe fn vst1_p16_x3(a: *mut p16, b: poly16x4x3_t) {
     vst1_s16_x3(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p16_x4)"]
 #[doc = "## Safety"]
@@ -43130,7 +41470,6 @@ pub unsafe fn vst1_p16_x3(a: *mut p16, b: poly16x4x3_t) {
 pub unsafe fn vst1_p16_x4(a: *mut p16, b: poly16x4x4_t) {
     vst1_s16_x4(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p16_x2)"]
 #[doc = "## Safety"]
@@ -43154,7 +41493,6 @@ pub unsafe fn vst1_p16_x4(a: *mut p16, b: poly16x4x4_t) {
 pub unsafe fn vst1q_p16_x2(a: *mut p16, b: poly16x8x2_t) {
     vst1q_s16_x2(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p16_x3)"]
 #[doc = "## Safety"]
@@ -43178,7 +41516,6 @@ pub unsafe fn vst1q_p16_x2(a: *mut p16, b: poly16x8x2_t) {
 pub unsafe fn vst1q_p16_x3(a: *mut p16, b: poly16x8x3_t) {
     vst1q_s16_x3(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p16_x4)"]
 #[doc = "## Safety"]
@@ -43202,7 +41539,6 @@ pub unsafe fn vst1q_p16_x3(a: *mut p16, b: poly16x8x3_t) {
 pub unsafe fn vst1q_p16_x4(a: *mut p16, b: poly16x8x4_t) {
     vst1q_s16_x4(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_p64)"]
 #[doc = "## Safety"]
@@ -43228,7 +41564,6 @@ pub unsafe fn vst1q_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     *a = simd_extract!(b, LANE as u32);
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_f32)"]
 #[doc = "## Safety"]
@@ -43248,7 +41583,6 @@ pub unsafe fn vst2_f32(a: *mut f32, b: float32x2x2_t) {
     }
     _vst2_f32(b.0, b.1, a as _)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_f32)"]
 #[doc = "## Safety"]
@@ -43268,7 +41602,6 @@ pub unsafe fn vst2q_f32(a: *mut f32, b: float32x4x2_t) {
     }
     _vst2q_f32(b.0, b.1, a as _)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_s8)"]
 #[doc = "## Safety"]
@@ -43288,7 +41621,6 @@ pub unsafe fn vst2_s8(a: *mut i8, b: int8x8x2_t) {
     }
     _vst2_s8(b.0, b.1, a as _)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_s8)"]
 #[doc = "## Safety"]
@@ -43308,7 +41640,6 @@ pub unsafe fn vst2q_s8(a: *mut i8, b: int8x16x2_t) {
     }
     _vst2q_s8(b.0, b.1, a as _)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_s16)"]
 #[doc = "## Safety"]
@@ -43328,7 +41659,6 @@ pub unsafe fn vst2_s16(a: *mut i16, b: int16x4x2_t) {
     }
     _vst2_s16(b.0, b.1, a as _)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_s16)"]
 #[doc = "## Safety"]
@@ -43348,7 +41678,6 @@ pub unsafe fn vst2q_s16(a: *mut i16, b: int16x8x2_t) {
     }
     _vst2q_s16(b.0, b.1, a as _)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_s32)"]
 #[doc = "## Safety"]
@@ -43368,7 +41697,6 @@ pub unsafe fn vst2_s32(a: *mut i32, b: int32x2x2_t) {
     }
     _vst2_s32(b.0, b.1, a as _)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_s32)"]
 #[doc = "## Safety"]
@@ -43388,7 +41716,6 @@ pub unsafe fn vst2q_s32(a: *mut i32, b: int32x4x2_t) {
     }
     _vst2q_s32(b.0, b.1, a as _)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_f32)"]
 #[doc = "## Safety"]
@@ -43405,7 +41732,6 @@ pub unsafe fn vst2_f32(a: *mut f32, b: float32x2x2_t) {
     }
     _vst2_f32(a as _, b.0, b.1, 4)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_f32)"]
 #[doc = "## Safety"]
@@ -43422,7 +41748,6 @@ pub unsafe fn vst2q_f32(a: *mut f32, b: float32x4x2_t) {
     }
     _vst2q_f32(a as _, b.0, b.1, 4)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_s8)"]
 #[doc = "## Safety"]
@@ -43439,7 +41764,6 @@ pub unsafe fn vst2_s8(a: *mut i8, b: int8x8x2_t) {
     }
     _vst2_s8(a as _, b.0, b.1, 1)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_s8)"]
 #[doc = "## Safety"]
@@ -43456,7 +41780,6 @@ pub unsafe fn vst2q_s8(a: *mut i8, b: int8x16x2_t) {
     }
     _vst2q_s8(a as _, b.0, b.1, 1)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_s16)"]
 #[doc = "## Safety"]
@@ -43473,7 +41796,6 @@ pub unsafe fn vst2_s16(a: *mut i16, b: int16x4x2_t) {
     }
     _vst2_s16(a as _, b.0, b.1, 2)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_s16)"]
 #[doc = "## Safety"]
@@ -43490,7 +41812,6 @@ pub unsafe fn vst2q_s16(a: *mut i16, b: int16x8x2_t) {
     }
     _vst2q_s16(a as _, b.0, b.1, 2)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_s32)"]
 #[doc = "## Safety"]
@@ -43507,7 +41828,6 @@ pub unsafe fn vst2_s32(a: *mut i32, b: int32x2x2_t) {
     }
     _vst2_s32(a as _, b.0, b.1, 4)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_s32)"]
 #[doc = "## Safety"]
@@ -43524,7 +41844,6 @@ pub unsafe fn vst2q_s32(a: *mut i32, b: int32x4x2_t) {
     }
     _vst2q_s32(a as _, b.0, b.1, 4)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_f32)"]
 #[doc = "## Safety"]
@@ -43546,7 +41865,6 @@ pub unsafe fn vst2_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x2_t) {
     }
     _vst2_lane_f32(b.0, b.1, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_f32)"]
 #[doc = "## Safety"]
@@ -43568,7 +41886,6 @@ pub unsafe fn vst2q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x2_t) {
     }
     _vst2q_lane_f32(b.0, b.1, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_s8)"]
 #[doc = "## Safety"]
@@ -43590,7 +41907,6 @@ pub unsafe fn vst2_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x2_t) {
     }
     _vst2_lane_s8(b.0, b.1, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_s16)"]
 #[doc = "## Safety"]
@@ -43612,7 +41928,6 @@ pub unsafe fn vst2_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x2_t) {
     }
     _vst2_lane_s16(b.0, b.1, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_s16)"]
 #[doc = "## Safety"]
@@ -43634,7 +41949,6 @@ pub unsafe fn vst2q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x2_t) {
     }
     _vst2q_lane_s16(b.0, b.1, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_s32)"]
 #[doc = "## Safety"]
@@ -43656,7 +41970,6 @@ pub unsafe fn vst2_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x2_t) {
     }
     _vst2_lane_s32(b.0, b.1, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_s32)"]
 #[doc = "## Safety"]
@@ -43678,7 +41991,6 @@ pub unsafe fn vst2q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x2_t) {
     }
     _vst2q_lane_s32(b.0, b.1, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_f32)"]
 #[doc = "## Safety"]
@@ -43697,7 +42009,6 @@ pub unsafe fn vst2_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x2_t) {
     }
     _vst2_lane_f32(a as _, b.0, b.1, LANE, 4)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_f32)"]
 #[doc = "## Safety"]
@@ -43716,7 +42027,6 @@ pub unsafe fn vst2q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x2_t) {
     }
     _vst2q_lane_f32(a as _, b.0, b.1, LANE, 4)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_s8)"]
 #[doc = "## Safety"]
@@ -43735,7 +42045,6 @@ pub unsafe fn vst2_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x2_t) {
     }
     _vst2_lane_s8(a as _, b.0, b.1, LANE, 1)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_s16)"]
 #[doc = "## Safety"]
@@ -43754,7 +42063,6 @@ pub unsafe fn vst2_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x2_t) {
     }
     _vst2_lane_s16(a as _, b.0, b.1, LANE, 2)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_s16)"]
 #[doc = "## Safety"]
@@ -43773,7 +42081,6 @@ pub unsafe fn vst2q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x2_t) {
     }
     _vst2q_lane_s16(a as _, b.0, b.1, LANE, 2)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_s32)"]
 #[doc = "## Safety"]
@@ -43792,7 +42099,6 @@ pub unsafe fn vst2_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x2_t) {
     }
     _vst2_lane_s32(a as _, b.0, b.1, LANE, 4)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_s32)"]
 #[doc = "## Safety"]
@@ -43811,7 +42117,6 @@ pub unsafe fn vst2q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x2_t) {
     }
     _vst2q_lane_s32(a as _, b.0, b.1, LANE, 4)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_u8)"]
 #[doc = "## Safety"]
@@ -43837,7 +42142,6 @@ pub unsafe fn vst2_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
     vst2_lane_s8::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_u16)"]
 #[doc = "## Safety"]
@@ -43863,7 +42167,6 @@ pub unsafe fn vst2_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
     vst2_lane_s16::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_u16)"]
 #[doc = "## Safety"]
@@ -43889,7 +42192,6 @@ pub unsafe fn vst2q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
     vst2q_lane_s16::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_u32)"]
 #[doc = "## Safety"]
@@ -43915,7 +42217,6 @@ pub unsafe fn vst2_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     vst2_lane_s32::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_u32)"]
 #[doc = "## Safety"]
@@ -43941,7 +42242,6 @@ pub unsafe fn vst2q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
     vst2q_lane_s32::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_p8)"]
 #[doc = "## Safety"]
@@ -43967,7 +42267,6 @@ pub unsafe fn vst2_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
     vst2_lane_s8::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_p16)"]
 #[doc = "## Safety"]
@@ -43993,7 +42292,6 @@ pub unsafe fn vst2_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
     vst2_lane_s16::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_p16)"]
 #[doc = "## Safety"]
@@ -44019,7 +42317,6 @@ pub unsafe fn vst2q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
     vst2q_lane_s16::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_p64)"]
 #[doc = "## Safety"]
@@ -44043,7 +42340,6 @@ pub unsafe fn vst2q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x2_t) {
 pub unsafe fn vst2_p64(a: *mut p64, b: poly64x1x2_t) {
     vst2_s64(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_s64)"]
 #[doc = "## Safety"]
@@ -44060,7 +42356,6 @@ pub unsafe fn vst2_s64(a: *mut i64, b: int64x1x2_t) {
     }
     _vst2_s64(a as _, b.0, b.1, 8)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_s64)"]
 #[doc = "## Safety"]
@@ -44080,7 +42375,6 @@ pub unsafe fn vst2_s64(a: *mut i64, b: int64x1x2_t) {
     }
     _vst2_s64(b.0, b.1, a as _)
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_u64)"]
 #[doc = "## Safety"]
@@ -44104,7 +42398,6 @@ pub unsafe fn vst2_s64(a: *mut i64, b: int64x1x2_t) {
 pub unsafe fn vst2_u64(a: *mut u64, b: uint64x1x2_t) {
     vst2_s64(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_u8)"]
 #[doc = "## Safety"]
@@ -44128,7 +42421,6 @@ pub unsafe fn vst2_u64(a: *mut u64, b: uint64x1x2_t) {
 pub unsafe fn vst2_u8(a: *mut u8, b: uint8x8x2_t) {
     vst2_s8(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_u8)"]
 #[doc = "## Safety"]
@@ -44152,7 +42444,6 @@ pub unsafe fn vst2_u8(a: *mut u8, b: uint8x8x2_t) {
 pub unsafe fn vst2q_u8(a: *mut u8, b: uint8x16x2_t) {
     vst2q_s8(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_u16)"]
 #[doc = "## Safety"]
@@ -44176,7 +42467,6 @@ pub unsafe fn vst2q_u8(a: *mut u8, b: uint8x16x2_t) {
 pub unsafe fn vst2_u16(a: *mut u16, b: uint16x4x2_t) {
     vst2_s16(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_u16)"]
 #[doc = "## Safety"]
@@ -44200,7 +42490,6 @@ pub unsafe fn vst2_u16(a: *mut u16, b: uint16x4x2_t) {
 pub unsafe fn vst2q_u16(a: *mut u16, b: uint16x8x2_t) {
     vst2q_s16(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_u32)"]
 #[doc = "## Safety"]
@@ -44224,7 +42513,6 @@ pub unsafe fn vst2q_u16(a: *mut u16, b: uint16x8x2_t) {
 pub unsafe fn vst2_u32(a: *mut u32, b: uint32x2x2_t) {
     vst2_s32(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_u32)"]
 #[doc = "## Safety"]
@@ -44248,7 +42536,6 @@ pub unsafe fn vst2_u32(a: *mut u32, b: uint32x2x2_t) {
 pub unsafe fn vst2q_u32(a: *mut u32, b: uint32x4x2_t) {
     vst2q_s32(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_p8)"]
 #[doc = "## Safety"]
@@ -44272,7 +42559,6 @@ pub unsafe fn vst2q_u32(a: *mut u32, b: uint32x4x2_t) {
 pub unsafe fn vst2_p8(a: *mut p8, b: poly8x8x2_t) {
     vst2_s8(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_p8)"]
 #[doc = "## Safety"]
@@ -44296,7 +42582,6 @@ pub unsafe fn vst2_p8(a: *mut p8, b: poly8x8x2_t) {
 pub unsafe fn vst2q_p8(a: *mut p8, b: poly8x16x2_t) {
     vst2q_s8(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_p16)"]
 #[doc = "## Safety"]
@@ -44320,7 +42605,6 @@ pub unsafe fn vst2q_p8(a: *mut p8, b: poly8x16x2_t) {
 pub unsafe fn vst2_p16(a: *mut p16, b: poly16x4x2_t) {
     vst2_s16(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_p16)"]
 #[doc = "## Safety"]
@@ -44344,7 +42628,6 @@ pub unsafe fn vst2_p16(a: *mut p16, b: poly16x4x2_t) {
 pub unsafe fn vst2q_p16(a: *mut p16, b: poly16x8x2_t) {
     vst2q_s16(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_f32)"]
 #[doc = "## Safety"]
@@ -44361,7 +42644,6 @@ pub unsafe fn vst3_f32(a: *mut f32, b: float32x2x3_t) {
     }
     _vst3_f32(a as _, b.0, b.1, b.2, 4)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_f32)"]
 #[doc = "## Safety"]
@@ -44378,7 +42660,6 @@ pub unsafe fn vst3q_f32(a: *mut f32, b: float32x4x3_t) {
     }
     _vst3q_f32(a as _, b.0, b.1, b.2, 4)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_s8)"]
 #[doc = "## Safety"]
@@ -44395,7 +42676,6 @@ pub unsafe fn vst3_s8(a: *mut i8, b: int8x8x3_t) {
     }
     _vst3_s8(a as _, b.0, b.1, b.2, 1)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_s8)"]
 #[doc = "## Safety"]
@@ -44412,7 +42692,6 @@ pub unsafe fn vst3q_s8(a: *mut i8, b: int8x16x3_t) {
     }
     _vst3q_s8(a as _, b.0, b.1, b.2, 1)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_s16)"]
 #[doc = "## Safety"]
@@ -44429,7 +42708,6 @@ pub unsafe fn vst3_s16(a: *mut i16, b: int16x4x3_t) {
     }
     _vst3_s16(a as _, b.0, b.1, b.2, 2)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_s16)"]
 #[doc = "## Safety"]
@@ -44446,7 +42724,6 @@ pub unsafe fn vst3q_s16(a: *mut i16, b: int16x8x3_t) {
     }
     _vst3q_s16(a as _, b.0, b.1, b.2, 2)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_s32)"]
 #[doc = "## Safety"]
@@ -44463,7 +42740,6 @@ pub unsafe fn vst3_s32(a: *mut i32, b: int32x2x3_t) {
     }
     _vst3_s32(a as _, b.0, b.1, b.2, 4)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_s32)"]
 #[doc = "## Safety"]
@@ -44480,7 +42756,6 @@ pub unsafe fn vst3q_s32(a: *mut i32, b: int32x4x3_t) {
     }
     _vst3q_s32(a as _, b.0, b.1, b.2, 4)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_f32)"]
 #[doc = "## Safety"]
@@ -44500,7 +42775,6 @@ pub unsafe fn vst3_f32(a: *mut f32, b: float32x2x3_t) {
     }
     _vst3_f32(b.0, b.1, b.2, a as _)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_f32)"]
 #[doc = "## Safety"]
@@ -44520,7 +42794,6 @@ pub unsafe fn vst3q_f32(a: *mut f32, b: float32x4x3_t) {
     }
     _vst3q_f32(b.0, b.1, b.2, a as _)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_s8)"]
 #[doc = "## Safety"]
@@ -44540,7 +42813,6 @@ pub unsafe fn vst3_s8(a: *mut i8, b: int8x8x3_t) {
     }
     _vst3_s8(b.0, b.1, b.2, a as _)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_s8)"]
 #[doc = "## Safety"]
@@ -44560,7 +42832,6 @@ pub unsafe fn vst3q_s8(a: *mut i8, b: int8x16x3_t) {
     }
     _vst3q_s8(b.0, b.1, b.2, a as _)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_s16)"]
 #[doc = "## Safety"]
@@ -44580,7 +42851,6 @@ pub unsafe fn vst3_s16(a: *mut i16, b: int16x4x3_t) {
     }
     _vst3_s16(b.0, b.1, b.2, a as _)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_s16)"]
 #[doc = "## Safety"]
@@ -44600,7 +42870,6 @@ pub unsafe fn vst3q_s16(a: *mut i16, b: int16x8x3_t) {
     }
     _vst3q_s16(b.0, b.1, b.2, a as _)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_s32)"]
 #[doc = "## Safety"]
@@ -44620,7 +42889,6 @@ pub unsafe fn vst3_s32(a: *mut i32, b: int32x2x3_t) {
     }
     _vst3_s32(b.0, b.1, b.2, a as _)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_s32)"]
 #[doc = "## Safety"]
@@ -44640,7 +42908,6 @@ pub unsafe fn vst3q_s32(a: *mut i32, b: int32x4x3_t) {
     }
     _vst3q_s32(b.0, b.1, b.2, a as _)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_f32)"]
 #[doc = "## Safety"]
@@ -44666,7 +42933,6 @@ pub unsafe fn vst3_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x3_t) {
     }
     _vst3_lane_f32(a as _, b.0, b.1, b.2, LANE, 4)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_f32)"]
 #[doc = "## Safety"]
@@ -44692,7 +42958,6 @@ pub unsafe fn vst3q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x3_t) {
     }
     _vst3q_lane_f32(a as _, b.0, b.1, b.2, LANE, 4)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_s8)"]
 #[doc = "## Safety"]
@@ -44711,7 +42976,6 @@ pub unsafe fn vst3_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x3_t) {
     }
     _vst3_lane_s8(a as _, b.0, b.1, b.2, LANE, 1)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_s16)"]
 #[doc = "## Safety"]
@@ -44737,7 +43001,6 @@ pub unsafe fn vst3_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x3_t) {
     }
     _vst3_lane_s16(a as _, b.0, b.1, b.2, LANE, 2)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_s16)"]
 #[doc = "## Safety"]
@@ -44763,7 +43026,6 @@ pub unsafe fn vst3q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x3_t) {
     }
     _vst3q_lane_s16(a as _, b.0, b.1, b.2, LANE, 2)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_s32)"]
 #[doc = "## Safety"]
@@ -44789,7 +43051,6 @@ pub unsafe fn vst3_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x3_t) {
     }
     _vst3_lane_s32(a as _, b.0, b.1, b.2, LANE, 4)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_s32)"]
 #[doc = "## Safety"]
@@ -44815,7 +43076,6 @@ pub unsafe fn vst3q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x3_t) {
     }
     _vst3q_lane_s32(a as _, b.0, b.1, b.2, LANE, 4)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_f32)"]
 #[doc = "## Safety"]
@@ -44837,7 +43097,6 @@ pub unsafe fn vst3_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x3_t) {
     }
     _vst3_lane_f32(b.0, b.1, b.2, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_f32)"]
 #[doc = "## Safety"]
@@ -44859,7 +43118,6 @@ pub unsafe fn vst3q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x3_t) {
     }
     _vst3q_lane_f32(b.0, b.1, b.2, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_s8)"]
 #[doc = "## Safety"]
@@ -44881,7 +43139,6 @@ pub unsafe fn vst3_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x3_t) {
     }
     _vst3_lane_s8(b.0, b.1, b.2, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_s16)"]
 #[doc = "## Safety"]
@@ -44903,7 +43160,6 @@ pub unsafe fn vst3_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x3_t) {
     }
     _vst3_lane_s16(b.0, b.1, b.2, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_s16)"]
 #[doc = "## Safety"]
@@ -44925,7 +43181,6 @@ pub unsafe fn vst3q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x3_t) {
     }
     _vst3q_lane_s16(b.0, b.1, b.2, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_s32)"]
 #[doc = "## Safety"]
@@ -44947,7 +43202,6 @@ pub unsafe fn vst3_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x3_t) {
     }
     _vst3_lane_s32(b.0, b.1, b.2, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_s32)"]
 #[doc = "## Safety"]
@@ -44969,7 +43223,6 @@ pub unsafe fn vst3q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x3_t) {
     }
     _vst3q_lane_s32(b.0, b.1, b.2, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_u8)"]
 #[doc = "## Safety"]
@@ -44995,7 +43248,6 @@ pub unsafe fn vst3_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
     vst3_lane_s8::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_u16)"]
 #[doc = "## Safety"]
@@ -45021,7 +43273,6 @@ pub unsafe fn vst3_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
     vst3_lane_s16::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_u16)"]
 #[doc = "## Safety"]
@@ -45047,7 +43298,6 @@ pub unsafe fn vst3q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
     vst3q_lane_s16::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_u32)"]
 #[doc = "## Safety"]
@@ -45073,7 +43323,6 @@ pub unsafe fn vst3_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x3_t) {
     static_assert_uimm_bits!(LANE, 1);
     vst3_lane_s32::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_u32)"]
 #[doc = "## Safety"]
@@ -45099,7 +43348,6 @@ pub unsafe fn vst3q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
     vst3q_lane_s32::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_p8)"]
 #[doc = "## Safety"]
@@ -45125,7 +43373,6 @@ pub unsafe fn vst3_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
     vst3_lane_s8::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_p16)"]
 #[doc = "## Safety"]
@@ -45151,7 +43398,6 @@ pub unsafe fn vst3_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
     vst3_lane_s16::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_p16)"]
 #[doc = "## Safety"]
@@ -45177,7 +43423,6 @@ pub unsafe fn vst3q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
     vst3q_lane_s16::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_p64)"]
 #[doc = "## Safety"]
@@ -45201,7 +43446,6 @@ pub unsafe fn vst3q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x3_t) {
 pub unsafe fn vst3_p64(a: *mut p64, b: poly64x1x3_t) {
     vst3_s64(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_s64)"]
 #[doc = "## Safety"]
@@ -45221,7 +43465,6 @@ pub unsafe fn vst3_s64(a: *mut i64, b: int64x1x3_t) {
     }
     _vst3_s64(b.0, b.1, b.2, a as _)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_s64)"]
 #[doc = "## Safety"]
@@ -45238,7 +43481,6 @@ pub unsafe fn vst3_s64(a: *mut i64, b: int64x1x3_t) {
     }
     _vst3_s64(a as _, b.0, b.1, b.2, 8)
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_u64)"]
 #[doc = "## Safety"]
@@ -45262,7 +43504,6 @@ pub unsafe fn vst3_s64(a: *mut i64, b: int64x1x3_t) {
 pub unsafe fn vst3_u64(a: *mut u64, b: uint64x1x3_t) {
     vst3_s64(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_u8)"]
 #[doc = "## Safety"]
@@ -45286,7 +43527,6 @@ pub unsafe fn vst3_u64(a: *mut u64, b: uint64x1x3_t) {
 pub unsafe fn vst3_u8(a: *mut u8, b: uint8x8x3_t) {
     vst3_s8(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_u8)"]
 #[doc = "## Safety"]
@@ -45310,7 +43550,6 @@ pub unsafe fn vst3_u8(a: *mut u8, b: uint8x8x3_t) {
 pub unsafe fn vst3q_u8(a: *mut u8, b: uint8x16x3_t) {
     vst3q_s8(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_u16)"]
 #[doc = "## Safety"]
@@ -45334,7 +43573,6 @@ pub unsafe fn vst3q_u8(a: *mut u8, b: uint8x16x3_t) {
 pub unsafe fn vst3_u16(a: *mut u16, b: uint16x4x3_t) {
     vst3_s16(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_u16)"]
 #[doc = "## Safety"]
@@ -45358,7 +43596,6 @@ pub unsafe fn vst3_u16(a: *mut u16, b: uint16x4x3_t) {
 pub unsafe fn vst3q_u16(a: *mut u16, b: uint16x8x3_t) {
     vst3q_s16(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_u32)"]
 #[doc = "## Safety"]
@@ -45382,7 +43619,6 @@ pub unsafe fn vst3q_u16(a: *mut u16, b: uint16x8x3_t) {
 pub unsafe fn vst3_u32(a: *mut u32, b: uint32x2x3_t) {
     vst3_s32(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_u32)"]
 #[doc = "## Safety"]
@@ -45406,7 +43642,6 @@ pub unsafe fn vst3_u32(a: *mut u32, b: uint32x2x3_t) {
 pub unsafe fn vst3q_u32(a: *mut u32, b: uint32x4x3_t) {
     vst3q_s32(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_p8)"]
 #[doc = "## Safety"]
@@ -45430,7 +43665,6 @@ pub unsafe fn vst3q_u32(a: *mut u32, b: uint32x4x3_t) {
 pub unsafe fn vst3_p8(a: *mut p8, b: poly8x8x3_t) {
     vst3_s8(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_p8)"]
 #[doc = "## Safety"]
@@ -45454,7 +43688,6 @@ pub unsafe fn vst3_p8(a: *mut p8, b: poly8x8x3_t) {
 pub unsafe fn vst3q_p8(a: *mut p8, b: poly8x16x3_t) {
     vst3q_s8(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_p16)"]
 #[doc = "## Safety"]
@@ -45478,7 +43711,6 @@ pub unsafe fn vst3q_p8(a: *mut p8, b: poly8x16x3_t) {
 pub unsafe fn vst3_p16(a: *mut p16, b: poly16x4x3_t) {
     vst3_s16(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_p16)"]
 #[doc = "## Safety"]
@@ -45502,7 +43734,6 @@ pub unsafe fn vst3_p16(a: *mut p16, b: poly16x4x3_t) {
 pub unsafe fn vst3q_p16(a: *mut p16, b: poly16x8x3_t) {
     vst3q_s16(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_f32)"]
 #[doc = "## Safety"]
@@ -45526,7 +43757,6 @@ pub unsafe fn vst4_f32(a: *mut f32, b: float32x2x4_t) {
     }
     _vst4_f32(a as _, b.0, b.1, b.2, b.3, 4)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_f32)"]
 #[doc = "## Safety"]
@@ -45550,7 +43780,6 @@ pub unsafe fn vst4q_f32(a: *mut f32, b: float32x4x4_t) {
     }
     _vst4q_f32(a as _, b.0, b.1, b.2, b.3, 4)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_s8)"]
 #[doc = "## Safety"]
@@ -45567,7 +43796,6 @@ pub unsafe fn vst4_s8(a: *mut i8, b: int8x8x4_t) {
     }
     _vst4_s8(a as _, b.0, b.1, b.2, b.3, 1)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_s8)"]
 #[doc = "## Safety"]
@@ -45591,7 +43819,6 @@ pub unsafe fn vst4q_s8(a: *mut i8, b: int8x16x4_t) {
     }
     _vst4q_s8(a as _, b.0, b.1, b.2, b.3, 1)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_s16)"]
 #[doc = "## Safety"]
@@ -45615,7 +43842,6 @@ pub unsafe fn vst4_s16(a: *mut i16, b: int16x4x4_t) {
     }
     _vst4_s16(a as _, b.0, b.1, b.2, b.3, 2)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_s16)"]
 #[doc = "## Safety"]
@@ -45639,7 +43865,6 @@ pub unsafe fn vst4q_s16(a: *mut i16, b: int16x8x4_t) {
     }
     _vst4q_s16(a as _, b.0, b.1, b.2, b.3, 2)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_s32)"]
 #[doc = "## Safety"]
@@ -45663,7 +43888,6 @@ pub unsafe fn vst4_s32(a: *mut i32, b: int32x2x4_t) {
     }
     _vst4_s32(a as _, b.0, b.1, b.2, b.3, 4)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_s32)"]
 #[doc = "## Safety"]
@@ -45687,7 +43911,6 @@ pub unsafe fn vst4q_s32(a: *mut i32, b: int32x4x4_t) {
     }
     _vst4q_s32(a as _, b.0, b.1, b.2, b.3, 4)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_f32)"]
 #[doc = "## Safety"]
@@ -45707,7 +43930,6 @@ pub unsafe fn vst4_f32(a: *mut f32, b: float32x2x4_t) {
     }
     _vst4_f32(b.0, b.1, b.2, b.3, a as _)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_f32)"]
 #[doc = "## Safety"]
@@ -45727,7 +43949,6 @@ pub unsafe fn vst4q_f32(a: *mut f32, b: float32x4x4_t) {
     }
     _vst4q_f32(b.0, b.1, b.2, b.3, a as _)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_s8)"]
 #[doc = "## Safety"]
@@ -45747,7 +43968,6 @@ pub unsafe fn vst4_s8(a: *mut i8, b: int8x8x4_t) {
     }
     _vst4_s8(b.0, b.1, b.2, b.3, a as _)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_s8)"]
 #[doc = "## Safety"]
@@ -45767,7 +43987,6 @@ pub unsafe fn vst4q_s8(a: *mut i8, b: int8x16x4_t) {
     }
     _vst4q_s8(b.0, b.1, b.2, b.3, a as _)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_s16)"]
 #[doc = "## Safety"]
@@ -45787,7 +44006,6 @@ pub unsafe fn vst4_s16(a: *mut i16, b: int16x4x4_t) {
     }
     _vst4_s16(b.0, b.1, b.2, b.3, a as _)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_s16)"]
 #[doc = "## Safety"]
@@ -45807,7 +44025,6 @@ pub unsafe fn vst4q_s16(a: *mut i16, b: int16x8x4_t) {
     }
     _vst4q_s16(b.0, b.1, b.2, b.3, a as _)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_s32)"]
 #[doc = "## Safety"]
@@ -45827,7 +44044,6 @@ pub unsafe fn vst4_s32(a: *mut i32, b: int32x2x4_t) {
     }
     _vst4_s32(b.0, b.1, b.2, b.3, a as _)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_s32)"]
 #[doc = "## Safety"]
@@ -45847,7 +44063,6 @@ pub unsafe fn vst4q_s32(a: *mut i32, b: int32x4x4_t) {
     }
     _vst4q_s32(b.0, b.1, b.2, b.3, a as _)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_f32)"]
 #[doc = "## Safety"]
@@ -45874,7 +44089,6 @@ pub unsafe fn vst4_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x4_t) {
     }
     _vst4_lane_f32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_f32)"]
 #[doc = "## Safety"]
@@ -45901,7 +44115,6 @@ pub unsafe fn vst4q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x4_t) {
     }
     _vst4q_lane_f32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_s8)"]
 #[doc = "## Safety"]
@@ -45928,7 +44141,6 @@ pub unsafe fn vst4_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x4_t) {
     }
     _vst4_lane_s8(a as _, b.0, b.1, b.2, b.3, LANE, 1)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_s16)"]
 #[doc = "## Safety"]
@@ -45955,7 +44167,6 @@ pub unsafe fn vst4_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x4_t) {
     }
     _vst4_lane_s16(a as _, b.0, b.1, b.2, b.3, LANE, 2)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_s16)"]
 #[doc = "## Safety"]
@@ -45982,7 +44193,6 @@ pub unsafe fn vst4q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x4_t) {
     }
     _vst4q_lane_s16(a as _, b.0, b.1, b.2, b.3, LANE, 2)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_s32)"]
 #[doc = "## Safety"]
@@ -46009,7 +44219,6 @@ pub unsafe fn vst4_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x4_t) {
     }
     _vst4_lane_s32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_s32)"]
 #[doc = "## Safety"]
@@ -46036,7 +44245,6 @@ pub unsafe fn vst4q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x4_t) {
     }
     _vst4q_lane_s32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_f32)"]
 #[doc = "## Safety"]
@@ -46065,7 +44273,6 @@ pub unsafe fn vst4_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x4_t) {
     }
     _vst4_lane_f32(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_f32)"]
 #[doc = "## Safety"]
@@ -46094,7 +44301,6 @@ pub unsafe fn vst4q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x4_t) {
     }
     _vst4q_lane_f32(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_s8)"]
 #[doc = "## Safety"]
@@ -46116,7 +44322,6 @@ pub unsafe fn vst4_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x4_t) {
     }
     _vst4_lane_s8(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_s16)"]
 #[doc = "## Safety"]
@@ -46145,7 +44350,6 @@ pub unsafe fn vst4_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x4_t) {
     }
     _vst4_lane_s16(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_s16)"]
 #[doc = "## Safety"]
@@ -46174,7 +44378,6 @@ pub unsafe fn vst4q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x4_t) {
     }
     _vst4q_lane_s16(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_s32)"]
 #[doc = "## Safety"]
@@ -46203,7 +44406,6 @@ pub unsafe fn vst4_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x4_t) {
     }
     _vst4_lane_s32(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_s32)"]
 #[doc = "## Safety"]
@@ -46232,7 +44434,6 @@ pub unsafe fn vst4q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x4_t) {
     }
     _vst4q_lane_s32(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_u8)"]
 #[doc = "## Safety"]
@@ -46258,7 +44459,6 @@ pub unsafe fn vst4_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
     vst4_lane_s8::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_u16)"]
 #[doc = "## Safety"]
@@ -46284,7 +44484,6 @@ pub unsafe fn vst4_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     vst4_lane_s16::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_u16)"]
 #[doc = "## Safety"]
@@ -46310,7 +44509,6 @@ pub unsafe fn vst4q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
     vst4q_lane_s16::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_u32)"]
 #[doc = "## Safety"]
@@ -46336,7 +44534,6 @@ pub unsafe fn vst4_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x4_t) {
     static_assert_uimm_bits!(LANE, 1);
     vst4_lane_s32::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_u32)"]
 #[doc = "## Safety"]
@@ -46362,7 +44559,6 @@ pub unsafe fn vst4q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     vst4q_lane_s32::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_p8)"]
 #[doc = "## Safety"]
@@ -46388,7 +44584,6 @@ pub unsafe fn vst4_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
     vst4_lane_s8::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_p16)"]
 #[doc = "## Safety"]
@@ -46414,7 +44609,6 @@ pub unsafe fn vst4_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     vst4_lane_s16::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_p16)"]
 #[doc = "## Safety"]
@@ -46440,7 +44634,6 @@ pub unsafe fn vst4q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
     vst4q_lane_s16::<LANE>(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_p64)"]
 #[doc = "## Safety"]
@@ -46464,7 +44657,6 @@ pub unsafe fn vst4q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x4_t) {
 pub unsafe fn vst4_p64(a: *mut p64, b: poly64x1x4_t) {
     vst4_s64(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_s64)"]
 #[doc = "## Safety"]
@@ -46488,7 +44680,6 @@ pub unsafe fn vst4_s64(a: *mut i64, b: int64x1x4_t) {
     }
     _vst4_s64(a as _, b.0, b.1, b.2, b.3, 8)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_s64)"]
 #[doc = "## Safety"]
@@ -46508,7 +44699,6 @@ pub unsafe fn vst4_s64(a: *mut i64, b: int64x1x4_t) {
     }
     _vst4_s64(b.0, b.1, b.2, b.3, a as _)
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_u64)"]
 #[doc = "## Safety"]
@@ -46532,7 +44722,6 @@ pub unsafe fn vst4_s64(a: *mut i64, b: int64x1x4_t) {
 pub unsafe fn vst4_u64(a: *mut u64, b: uint64x1x4_t) {
     vst4_s64(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_u8)"]
 #[doc = "## Safety"]
@@ -46556,7 +44745,6 @@ pub unsafe fn vst4_u64(a: *mut u64, b: uint64x1x4_t) {
 pub unsafe fn vst4_u8(a: *mut u8, b: uint8x8x4_t) {
     vst4_s8(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_u8)"]
 #[doc = "## Safety"]
@@ -46580,7 +44768,6 @@ pub unsafe fn vst4_u8(a: *mut u8, b: uint8x8x4_t) {
 pub unsafe fn vst4q_u8(a: *mut u8, b: uint8x16x4_t) {
     vst4q_s8(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_u16)"]
 #[doc = "## Safety"]
@@ -46604,7 +44791,6 @@ pub unsafe fn vst4q_u8(a: *mut u8, b: uint8x16x4_t) {
 pub unsafe fn vst4_u16(a: *mut u16, b: uint16x4x4_t) {
     vst4_s16(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_u16)"]
 #[doc = "## Safety"]
@@ -46628,7 +44814,6 @@ pub unsafe fn vst4_u16(a: *mut u16, b: uint16x4x4_t) {
 pub unsafe fn vst4q_u16(a: *mut u16, b: uint16x8x4_t) {
     vst4q_s16(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_u32)"]
 #[doc = "## Safety"]
@@ -46652,7 +44837,6 @@ pub unsafe fn vst4q_u16(a: *mut u16, b: uint16x8x4_t) {
 pub unsafe fn vst4_u32(a: *mut u32, b: uint32x2x4_t) {
     vst4_s32(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_u32)"]
 #[doc = "## Safety"]
@@ -46676,7 +44860,6 @@ pub unsafe fn vst4_u32(a: *mut u32, b: uint32x2x4_t) {
 pub unsafe fn vst4q_u32(a: *mut u32, b: uint32x4x4_t) {
     vst4q_s32(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_p8)"]
 #[doc = "## Safety"]
@@ -46700,7 +44883,6 @@ pub unsafe fn vst4q_u32(a: *mut u32, b: uint32x4x4_t) {
 pub unsafe fn vst4_p8(a: *mut p8, b: poly8x8x4_t) {
     vst4_s8(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_p8)"]
 #[doc = "## Safety"]
@@ -46724,7 +44906,6 @@ pub unsafe fn vst4_p8(a: *mut p8, b: poly8x8x4_t) {
 pub unsafe fn vst4q_p8(a: *mut p8, b: poly8x16x4_t) {
     vst4q_s8(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_p16)"]
 #[doc = "## Safety"]
@@ -46748,7 +44929,6 @@ pub unsafe fn vst4q_p8(a: *mut p8, b: poly8x16x4_t) {
 pub unsafe fn vst4_p16(a: *mut p16, b: poly16x4x4_t) {
     vst4_s16(transmute(a), transmute(b))
 }
-
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_p16)"]
 #[doc = "## Safety"]
@@ -46772,7 +44952,6 @@ pub unsafe fn vst4_p16(a: *mut p16, b: poly16x4x4_t) {
 pub unsafe fn vst4q_p16(a: *mut p16, b: poly16x8x4_t) {
     vst4q_s16(transmute(a), transmute(b))
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_f32)"]
 #[doc = "## Safety"]
@@ -46796,7 +44975,6 @@ pub unsafe fn vst4q_p16(a: *mut p16, b: poly16x8x4_t) {
 pub unsafe fn vsub_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_f32)"]
 #[doc = "## Safety"]
@@ -46820,7 +44998,6 @@ pub unsafe fn vsub_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 pub unsafe fn vsubq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_s16)"]
 #[doc = "## Safety"]
@@ -46844,7 +45021,6 @@ pub unsafe fn vsubq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 pub unsafe fn vsub_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_s16)"]
 #[doc = "## Safety"]
@@ -46868,7 +45044,6 @@ pub unsafe fn vsub_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 pub unsafe fn vsubq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_u16)"]
 #[doc = "## Safety"]
@@ -46892,7 +45067,6 @@ pub unsafe fn vsubq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 pub unsafe fn vsub_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_u16)"]
 #[doc = "## Safety"]
@@ -46916,7 +45090,6 @@ pub unsafe fn vsub_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 pub unsafe fn vsubq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_s32)"]
 #[doc = "## Safety"]
@@ -46940,7 +45113,6 @@ pub unsafe fn vsubq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 pub unsafe fn vsub_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_s32)"]
 #[doc = "## Safety"]
@@ -46964,7 +45136,6 @@ pub unsafe fn vsub_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 pub unsafe fn vsubq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_u32)"]
 #[doc = "## Safety"]
@@ -46988,7 +45159,6 @@ pub unsafe fn vsubq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 pub unsafe fn vsub_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_u32)"]
 #[doc = "## Safety"]
@@ -47012,7 +45182,6 @@ pub unsafe fn vsub_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 pub unsafe fn vsubq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_s64)"]
 #[doc = "## Safety"]
@@ -47036,7 +45205,6 @@ pub unsafe fn vsubq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 pub unsafe fn vsub_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_s64)"]
 #[doc = "## Safety"]
@@ -47060,7 +45228,6 @@ pub unsafe fn vsub_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 pub unsafe fn vsubq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_u64)"]
 #[doc = "## Safety"]
@@ -47084,7 +45251,6 @@ pub unsafe fn vsubq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 pub unsafe fn vsub_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_u64)"]
 #[doc = "## Safety"]
@@ -47108,7 +45274,6 @@ pub unsafe fn vsub_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 pub unsafe fn vsubq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_s8)"]
 #[doc = "## Safety"]
@@ -47132,7 +45297,6 @@ pub unsafe fn vsubq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 pub unsafe fn vsub_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_s8)"]
 #[doc = "## Safety"]
@@ -47156,7 +45320,6 @@ pub unsafe fn vsub_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 pub unsafe fn vsubq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_u8)"]
 #[doc = "## Safety"]
@@ -47180,7 +45343,6 @@ pub unsafe fn vsubq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 pub unsafe fn vsub_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_u8)"]
 #[doc = "## Safety"]
@@ -47204,7 +45366,6 @@ pub unsafe fn vsub_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 pub unsafe fn vsubq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     simd_sub(a, b)
 }
-
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_high_s16)"]
 #[doc = "## Safety"]
@@ -47229,7 +45390,6 @@ pub unsafe fn vsubhn_high_s16(a: int8x8_t, b: int16x8_t, c: int16x8_t) -> int8x1
     let d: int8x8_t = vsubhn_s16(b, c);
     simd_shuffle!(a, d, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
-
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_high_s32)"]
 #[doc = "## Safety"]
@@ -47254,7 +45414,6 @@ pub unsafe fn vsubhn_high_s32(a: int16x4_t, b: int32x4_t, c: int32x4_t) -> int16
     let d: int16x4_t = vsubhn_s32(b, c);
     simd_shuffle!(a, d, [0, 1, 2, 3, 4, 5, 6, 7])
 }
-
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_high_s64)"]
 #[doc = "## Safety"]
@@ -47279,7 +45438,6 @@ pub unsafe fn vsubhn_high_s64(a: int32x2_t, b: int64x2_t, c: int64x2_t) -> int32
     let d: int32x2_t = vsubhn_s64(b, c);
     simd_shuffle!(a, d, [0, 1, 2, 3])
 }
-
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_high_u16)"]
 #[doc = "## Safety"]
@@ -47304,7 +45462,6 @@ pub unsafe fn vsubhn_high_u16(a: uint8x8_t, b: uint16x8_t, c: uint16x8_t) -> uin
     let d: uint8x8_t = vsubhn_u16(b, c);
     simd_shuffle!(a, d, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
-
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_high_u32)"]
 #[doc = "## Safety"]
@@ -47329,7 +45486,6 @@ pub unsafe fn vsubhn_high_u32(a: uint16x4_t, b: uint32x4_t, c: uint32x4_t) -> ui
     let d: uint16x4_t = vsubhn_u32(b, c);
     simd_shuffle!(a, d, [0, 1, 2, 3, 4, 5, 6, 7])
 }
-
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_high_u64)"]
 #[doc = "## Safety"]
@@ -47354,7 +45510,6 @@ pub unsafe fn vsubhn_high_u64(a: uint32x2_t, b: uint64x2_t, c: uint64x2_t) -> ui
     let d: uint32x2_t = vsubhn_u64(b, c);
     simd_shuffle!(a, d, [0, 1, 2, 3])
 }
-
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_s16)"]
 #[doc = "## Safety"]
@@ -47379,7 +45534,6 @@ pub unsafe fn vsubhn_s16(a: int16x8_t, b: int16x8_t) -> int8x8_t {
     let c: i16x8 = i16x8::new(8, 8, 8, 8, 8, 8, 8, 8);
     simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
 }
-
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_s32)"]
 #[doc = "## Safety"]
@@ -47404,7 +45558,6 @@ pub unsafe fn vsubhn_s32(a: int32x4_t, b: int32x4_t) -> int16x4_t {
     let c: i32x4 = i32x4::new(16, 16, 16, 16);
     simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
 }
-
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_s64)"]
 #[doc = "## Safety"]
@@ -47429,7 +45582,6 @@ pub unsafe fn vsubhn_s64(a: int64x2_t, b: int64x2_t) -> int32x2_t {
     let c: i64x2 = i64x2::new(32, 32);
     simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
 }
-
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_u16)"]
 #[doc = "## Safety"]
@@ -47454,7 +45606,6 @@ pub unsafe fn vsubhn_u16(a: uint16x8_t, b: uint16x8_t) -> uint8x8_t {
     let c: u16x8 = u16x8::new(8, 8, 8, 8, 8, 8, 8, 8);
     simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
 }
-
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_u32)"]
 #[doc = "## Safety"]
@@ -47479,7 +45630,6 @@ pub unsafe fn vsubhn_u32(a: uint32x4_t, b: uint32x4_t) -> uint16x4_t {
     let c: u32x4 = u32x4::new(16, 16, 16, 16);
     simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
 }
-
 #[doc = "Subtract returning high narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_u64)"]
 #[doc = "## Safety"]
@@ -47504,7 +45654,6 @@ pub unsafe fn vsubhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
     let c: u64x2 = u64x2::new(32, 32);
     simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
 }
-
 #[doc = "Signed Subtract Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubl_s8)"]
 #[doc = "## Safety"]
@@ -47530,7 +45679,6 @@ pub unsafe fn vsubl_s8(a: int8x8_t, b: int8x8_t) -> int16x8_t {
     let d: int16x8_t = simd_cast(b);
     simd_sub(c, d)
 }
-
 #[doc = "Signed Subtract Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubl_s16)"]
 #[doc = "## Safety"]
@@ -47556,7 +45704,6 @@ pub unsafe fn vsubl_s16(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     let d: int32x4_t = simd_cast(b);
     simd_sub(c, d)
 }
-
 #[doc = "Signed Subtract Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubl_s32)"]
 #[doc = "## Safety"]
@@ -47582,7 +45729,6 @@ pub unsafe fn vsubl_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     let d: int64x2_t = simd_cast(b);
     simd_sub(c, d)
 }
-
 #[doc = "Unsigned Subtract Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubl_u8)"]
 #[doc = "## Safety"]
@@ -47608,7 +45754,6 @@ pub unsafe fn vsubl_u8(a: uint8x8_t, b: uint8x8_t) -> uint16x8_t {
     let d: uint16x8_t = simd_cast(b);
     simd_sub(c, d)
 }
-
 #[doc = "Unsigned Subtract Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubl_u16)"]
 #[doc = "## Safety"]
@@ -47634,7 +45779,6 @@ pub unsafe fn vsubl_u16(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t {
     let d: uint32x4_t = simd_cast(b);
     simd_sub(c, d)
 }
-
 #[doc = "Unsigned Subtract Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubl_u32)"]
 #[doc = "## Safety"]
@@ -47660,7 +45804,6 @@ pub unsafe fn vsubl_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
     let d: uint64x2_t = simd_cast(b);
     simd_sub(c, d)
 }
-
 #[doc = "Signed Subtract Wide"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubw_s8)"]
 #[doc = "## Safety"]
@@ -47684,7 +45827,6 @@ pub unsafe fn vsubl_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
 pub unsafe fn vsubw_s8(a: int16x8_t, b: int8x8_t) -> int16x8_t {
     simd_sub(a, simd_cast(b))
 }
-
 #[doc = "Signed Subtract Wide"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubw_s16)"]
 #[doc = "## Safety"]
@@ -47708,7 +45850,6 @@ pub unsafe fn vsubw_s8(a: int16x8_t, b: int8x8_t) -> int16x8_t {
 pub unsafe fn vsubw_s16(a: int32x4_t, b: int16x4_t) -> int32x4_t {
     simd_sub(a, simd_cast(b))
 }
-
 #[doc = "Signed Subtract Wide"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubw_s32)"]
 #[doc = "## Safety"]
@@ -47732,7 +45873,6 @@ pub unsafe fn vsubw_s16(a: int32x4_t, b: int16x4_t) -> int32x4_t {
 pub unsafe fn vsubw_s32(a: int64x2_t, b: int32x2_t) -> int64x2_t {
     simd_sub(a, simd_cast(b))
 }
-
 #[doc = "Unsigned Subtract Wide"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubw_u8)"]
 #[doc = "## Safety"]
@@ -47756,7 +45896,6 @@ pub unsafe fn vsubw_s32(a: int64x2_t, b: int32x2_t) -> int64x2_t {
 pub unsafe fn vsubw_u8(a: uint16x8_t, b: uint8x8_t) -> uint16x8_t {
     simd_sub(a, simd_cast(b))
 }
-
 #[doc = "Unsigned Subtract Wide"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubw_u16)"]
 #[doc = "## Safety"]
@@ -47780,7 +45919,6 @@ pub unsafe fn vsubw_u8(a: uint16x8_t, b: uint8x8_t) -> uint16x8_t {
 pub unsafe fn vsubw_u16(a: uint32x4_t, b: uint16x4_t) -> uint32x4_t {
     simd_sub(a, simd_cast(b))
 }
-
 #[doc = "Unsigned Subtract Wide"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubw_u32)"]
 #[doc = "## Safety"]
@@ -47804,7 +45942,6 @@ pub unsafe fn vsubw_u16(a: uint32x4_t, b: uint16x4_t) -> uint32x4_t {
 pub unsafe fn vsubw_u32(a: uint64x2_t, b: uint32x2_t) -> uint64x2_t {
     simd_sub(a, simd_cast(b))
 }
-
 #[doc = "Dot product index form with signed and unsigned integers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsudot_lane_s32)"]
 #[doc = "## Safety"]
@@ -47836,7 +45973,6 @@ pub unsafe fn vsudot_lane_s32<const LANE: i32>(
     let c: uint32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
     vusdot_s32(a, transmute(c), b)
 }
-
 #[doc = "Dot product index form with signed and unsigned integers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsudotq_lane_s32)"]
 #[doc = "## Safety"]
@@ -47868,7 +46004,6 @@ pub unsafe fn vsudotq_lane_s32<const LANE: i32>(
     let c: uint32x4_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vusdotq_s32(a, transmute(c), b)
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_f32)"]
 #[doc = "## Safety"]
@@ -47894,7 +46029,6 @@ pub unsafe fn vtrn_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
     let b1: float32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a1, b1))
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_s32)"]
 #[doc = "## Safety"]
@@ -47920,7 +46054,6 @@ pub unsafe fn vtrn_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
     let b1: int32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a1, b1))
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_u32)"]
 #[doc = "## Safety"]
@@ -47946,7 +46079,6 @@ pub unsafe fn vtrn_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
     let b1: uint32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a1, b1))
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_f32)"]
 #[doc = "## Safety"]
@@ -47972,7 +46104,6 @@ pub unsafe fn vtrnq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
     let b1: float32x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
     transmute((a1, b1))
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_s8)"]
 #[doc = "## Safety"]
@@ -47998,7 +46129,6 @@ pub unsafe fn vtrn_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
     let b1: int8x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
     transmute((a1, b1))
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_s8)"]
 #[doc = "## Safety"]
@@ -48032,7 +46162,6 @@ pub unsafe fn vtrnq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
     );
     transmute((a1, b1))
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_s16)"]
 #[doc = "## Safety"]
@@ -48058,7 +46187,6 @@ pub unsafe fn vtrn_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
     let b1: int16x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
     transmute((a1, b1))
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_s16)"]
 #[doc = "## Safety"]
@@ -48084,7 +46212,6 @@ pub unsafe fn vtrnq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
     let b1: int16x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
     transmute((a1, b1))
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_s32)"]
 #[doc = "## Safety"]
@@ -48110,7 +46237,6 @@ pub unsafe fn vtrnq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
     let b1: int32x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
     transmute((a1, b1))
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_u8)"]
 #[doc = "## Safety"]
@@ -48136,7 +46262,6 @@ pub unsafe fn vtrn_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
     let b1: uint8x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
     transmute((a1, b1))
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_u8)"]
 #[doc = "## Safety"]
@@ -48170,7 +46295,6 @@ pub unsafe fn vtrnq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
     );
     transmute((a1, b1))
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_u16)"]
 #[doc = "## Safety"]
@@ -48196,7 +46320,6 @@ pub unsafe fn vtrn_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
     let b1: uint16x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
     transmute((a1, b1))
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_u16)"]
 #[doc = "## Safety"]
@@ -48222,7 +46345,6 @@ pub unsafe fn vtrnq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
     let b1: uint16x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
     transmute((a1, b1))
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_u32)"]
 #[doc = "## Safety"]
@@ -48248,7 +46370,6 @@ pub unsafe fn vtrnq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
     let b1: uint32x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
     transmute((a1, b1))
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_p8)"]
 #[doc = "## Safety"]
@@ -48274,7 +46395,6 @@ pub unsafe fn vtrn_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
     let b1: poly8x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
     transmute((a1, b1))
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_p8)"]
 #[doc = "## Safety"]
@@ -48308,7 +46428,6 @@ pub unsafe fn vtrnq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
     );
     transmute((a1, b1))
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_p16)"]
 #[doc = "## Safety"]
@@ -48334,7 +46453,6 @@ pub unsafe fn vtrn_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
     let b1: poly16x4_t = simd_shuffle!(a, b, [1, 5, 3, 7]);
     transmute((a1, b1))
 }
-
 #[doc = "Transpose elements"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_p16)"]
 #[doc = "## Safety"]
@@ -48360,7 +46478,6 @@ pub unsafe fn vtrnq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
     let b1: poly16x8_t = simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15]);
     transmute((a1, b1))
 }
-
 #[doc = "Signed compare bitwise Test bits nonzero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtst_s8)"]
 #[doc = "## Safety"]
@@ -48386,7 +46503,6 @@ pub unsafe fn vtst_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
     let d: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
     simd_ne(c, transmute(d))
 }
-
 #[doc = "Signed compare bitwise Test bits nonzero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtstq_s8)"]
 #[doc = "## Safety"]
@@ -48412,7 +46528,6 @@ pub unsafe fn vtstq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
     let d: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     simd_ne(c, transmute(d))
 }
-
 #[doc = "Signed compare bitwise Test bits nonzero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtst_s16)"]
 #[doc = "## Safety"]
@@ -48438,7 +46553,6 @@ pub unsafe fn vtst_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
     let d: i16x4 = i16x4::new(0, 0, 0, 0);
     simd_ne(c, transmute(d))
 }
-
 #[doc = "Signed compare bitwise Test bits nonzero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtstq_s16)"]
 #[doc = "## Safety"]
@@ -48464,7 +46578,6 @@ pub unsafe fn vtstq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
     let d: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
     simd_ne(c, transmute(d))
 }
-
 #[doc = "Signed compare bitwise Test bits nonzero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtst_s32)"]
 #[doc = "## Safety"]
@@ -48490,7 +46603,6 @@ pub unsafe fn vtst_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
     let d: i32x2 = i32x2::new(0, 0);
     simd_ne(c, transmute(d))
 }
-
 #[doc = "Signed compare bitwise Test bits nonzero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtstq_s32)"]
 #[doc = "## Safety"]
@@ -48516,7 +46628,6 @@ pub unsafe fn vtstq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
     let d: i32x4 = i32x4::new(0, 0, 0, 0);
     simd_ne(c, transmute(d))
 }
-
 #[doc = "Signed compare bitwise Test bits nonzero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtst_p8)"]
 #[doc = "## Safety"]
@@ -48542,7 +46653,6 @@ pub unsafe fn vtst_p8(a: poly8x8_t, b: poly8x8_t) -> uint8x8_t {
     let d: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
     simd_ne(c, transmute(d))
 }
-
 #[doc = "Signed compare bitwise Test bits nonzero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtstq_p8)"]
 #[doc = "## Safety"]
@@ -48568,7 +46678,6 @@ pub unsafe fn vtstq_p8(a: poly8x16_t, b: poly8x16_t) -> uint8x16_t {
     let d: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     simd_ne(c, transmute(d))
 }
-
 #[doc = "Signed compare bitwise Test bits nonzero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtst_p16)"]
 #[doc = "## Safety"]
@@ -48594,7 +46703,6 @@ pub unsafe fn vtst_p16(a: poly16x4_t, b: poly16x4_t) -> uint16x4_t {
     let d: i16x4 = i16x4::new(0, 0, 0, 0);
     simd_ne(c, transmute(d))
 }
-
 #[doc = "Signed compare bitwise Test bits nonzero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtstq_p16)"]
 #[doc = "## Safety"]
@@ -48620,7 +46728,6 @@ pub unsafe fn vtstq_p16(a: poly16x8_t, b: poly16x8_t) -> uint16x8_t {
     let d: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
     simd_ne(c, transmute(d))
 }
-
 #[doc = "Unsigned compare bitwise Test bits nonzero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtst_u8)"]
 #[doc = "## Safety"]
@@ -48646,7 +46753,6 @@ pub unsafe fn vtst_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     let d: u8x8 = u8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
     simd_ne(c, transmute(d))
 }
-
 #[doc = "Unsigned compare bitwise Test bits nonzero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtstq_u8)"]
 #[doc = "## Safety"]
@@ -48672,7 +46778,6 @@ pub unsafe fn vtstq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     let d: u8x16 = u8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     simd_ne(c, transmute(d))
 }
-
 #[doc = "Unsigned compare bitwise Test bits nonzero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtst_u16)"]
 #[doc = "## Safety"]
@@ -48698,7 +46803,6 @@ pub unsafe fn vtst_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     let d: u16x4 = u16x4::new(0, 0, 0, 0);
     simd_ne(c, transmute(d))
 }
-
 #[doc = "Unsigned compare bitwise Test bits nonzero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtstq_u16)"]
 #[doc = "## Safety"]
@@ -48724,7 +46828,6 @@ pub unsafe fn vtstq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     let d: u16x8 = u16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
     simd_ne(c, transmute(d))
 }
-
 #[doc = "Unsigned compare bitwise Test bits nonzero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtst_u32)"]
 #[doc = "## Safety"]
@@ -48750,7 +46853,6 @@ pub unsafe fn vtst_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     let d: u32x2 = u32x2::new(0, 0);
     simd_ne(c, transmute(d))
 }
-
 #[doc = "Unsigned compare bitwise Test bits nonzero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtstq_u32)"]
 #[doc = "## Safety"]
@@ -48776,7 +46878,6 @@ pub unsafe fn vtstq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     let d: u32x4 = u32x4::new(0, 0, 0, 0);
     simd_ne(c, transmute(d))
 }
-
 #[doc = "Dot product index form with unsigned and signed integers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vusdot_lane_s32)"]
 #[doc = "## Safety"]
@@ -48808,7 +46909,6 @@ pub unsafe fn vusdot_lane_s32<const LANE: i32>(
     let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
     vusdot_s32(a, b, transmute(c))
 }
-
 #[doc = "Dot product index form with unsigned and signed integers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vusdotq_lane_s32)"]
 #[doc = "## Safety"]
@@ -48840,7 +46940,6 @@ pub unsafe fn vusdotq_lane_s32<const LANE: i32>(
     let c: int32x4_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vusdotq_s32(a, b, transmute(c))
 }
-
 #[doc = "Dot product vector form with unsigned and signed integers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vusdot_s32)"]
 #[doc = "## Safety"]
@@ -48872,7 +46971,6 @@ pub unsafe fn vusdot_s32(a: int32x2_t, b: uint8x8_t, c: int8x8_t) -> int32x2_t {
     }
     _vusdot_s32(a, b.as_signed(), c)
 }
-
 #[doc = "Dot product vector form with unsigned and signed integers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vusdotq_s32)"]
 #[doc = "## Safety"]
@@ -48904,7 +47002,6 @@ pub unsafe fn vusdotq_s32(a: int32x4_t, b: uint8x16_t, c: int8x16_t) -> int32x4_
     }
     _vusdotq_s32(a, b.as_signed(), c)
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_f32)"]
 #[doc = "## Safety"]
@@ -48930,7 +47027,6 @@ pub unsafe fn vuzp_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
     let b0: float32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a0, b0))
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_s32)"]
 #[doc = "## Safety"]
@@ -48956,7 +47052,6 @@ pub unsafe fn vuzp_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
     let b0: int32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a0, b0))
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_u32)"]
 #[doc = "## Safety"]
@@ -48982,7 +47077,6 @@ pub unsafe fn vuzp_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
     let b0: uint32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a0, b0))
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_f32)"]
 #[doc = "## Safety"]
@@ -49008,7 +47102,6 @@ pub unsafe fn vuzpq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
     let b0: float32x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
     transmute((a0, b0))
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_s8)"]
 #[doc = "## Safety"]
@@ -49034,7 +47127,6 @@ pub unsafe fn vuzp_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
     let b0: int8x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
     transmute((a0, b0))
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_s8)"]
 #[doc = "## Safety"]
@@ -49068,7 +47160,6 @@ pub unsafe fn vuzpq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
     );
     transmute((a0, b0))
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_s16)"]
 #[doc = "## Safety"]
@@ -49094,7 +47185,6 @@ pub unsafe fn vuzp_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
     let b0: int16x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
     transmute((a0, b0))
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_s16)"]
 #[doc = "## Safety"]
@@ -49120,7 +47210,6 @@ pub unsafe fn vuzpq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
     let b0: int16x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
     transmute((a0, b0))
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_s32)"]
 #[doc = "## Safety"]
@@ -49146,7 +47235,6 @@ pub unsafe fn vuzpq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
     let b0: int32x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
     transmute((a0, b0))
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_u8)"]
 #[doc = "## Safety"]
@@ -49172,7 +47260,6 @@ pub unsafe fn vuzp_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
     let b0: uint8x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
     transmute((a0, b0))
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_u8)"]
 #[doc = "## Safety"]
@@ -49206,7 +47293,6 @@ pub unsafe fn vuzpq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
     );
     transmute((a0, b0))
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_u16)"]
 #[doc = "## Safety"]
@@ -49232,7 +47318,6 @@ pub unsafe fn vuzp_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
     let b0: uint16x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
     transmute((a0, b0))
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_u16)"]
 #[doc = "## Safety"]
@@ -49258,7 +47343,6 @@ pub unsafe fn vuzpq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
     let b0: uint16x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
     transmute((a0, b0))
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_u32)"]
 #[doc = "## Safety"]
@@ -49284,7 +47368,6 @@ pub unsafe fn vuzpq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
     let b0: uint32x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
     transmute((a0, b0))
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_p8)"]
 #[doc = "## Safety"]
@@ -49310,7 +47393,6 @@ pub unsafe fn vuzp_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
     let b0: poly8x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
     transmute((a0, b0))
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_p8)"]
 #[doc = "## Safety"]
@@ -49344,7 +47426,6 @@ pub unsafe fn vuzpq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
     );
     transmute((a0, b0))
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_p16)"]
 #[doc = "## Safety"]
@@ -49370,7 +47451,6 @@ pub unsafe fn vuzp_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
     let b0: poly16x4_t = simd_shuffle!(a, b, [1, 3, 5, 7]);
     transmute((a0, b0))
 }
-
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_p16)"]
 #[doc = "## Safety"]
@@ -49396,7 +47476,6 @@ pub unsafe fn vuzpq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
     let b0: poly16x8_t = simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15]);
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_f32)"]
 #[doc = "## Safety"]
@@ -49422,7 +47501,6 @@ pub unsafe fn vzip_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
     let b0: float32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_s32)"]
 #[doc = "## Safety"]
@@ -49448,7 +47526,6 @@ pub unsafe fn vzip_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
     let b0: int32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_u32)"]
 #[doc = "## Safety"]
@@ -49474,7 +47551,6 @@ pub unsafe fn vzip_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
     let b0: uint32x2_t = simd_shuffle!(a, b, [1, 3]);
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_s8)"]
 #[doc = "## Safety"]
@@ -49500,7 +47576,6 @@ pub unsafe fn vzip_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
     let b0: int8x8_t = simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_s16)"]
 #[doc = "## Safety"]
@@ -49526,7 +47601,6 @@ pub unsafe fn vzip_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
     let b0: int16x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_u8)"]
 #[doc = "## Safety"]
@@ -49552,7 +47626,6 @@ pub unsafe fn vzip_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
     let b0: uint8x8_t = simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_u16)"]
 #[doc = "## Safety"]
@@ -49578,7 +47651,6 @@ pub unsafe fn vzip_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
     let b0: uint16x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_p8)"]
 #[doc = "## Safety"]
@@ -49604,7 +47676,6 @@ pub unsafe fn vzip_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
     let b0: poly8x8_t = simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_p16)"]
 #[doc = "## Safety"]
@@ -49630,7 +47701,6 @@ pub unsafe fn vzip_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
     let b0: poly16x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_f32)"]
 #[doc = "## Safety"]
@@ -49656,7 +47726,6 @@ pub unsafe fn vzipq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
     let b0: float32x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_s8)"]
 #[doc = "## Safety"]
@@ -49690,7 +47759,6 @@ pub unsafe fn vzipq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
     );
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_s16)"]
 #[doc = "## Safety"]
@@ -49716,7 +47784,6 @@ pub unsafe fn vzipq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
     let b0: int16x8_t = simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_s32)"]
 #[doc = "## Safety"]
@@ -49742,7 +47809,6 @@ pub unsafe fn vzipq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
     let b0: int32x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_u8)"]
 #[doc = "## Safety"]
@@ -49776,7 +47842,6 @@ pub unsafe fn vzipq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
     );
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_u16)"]
 #[doc = "## Safety"]
@@ -49802,7 +47867,6 @@ pub unsafe fn vzipq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
     let b0: uint16x8_t = simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15]);
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_u32)"]
 #[doc = "## Safety"]
@@ -49828,7 +47892,6 @@ pub unsafe fn vzipq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
     let b0: uint32x4_t = simd_shuffle!(a, b, [2, 6, 3, 7]);
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_p8)"]
 #[doc = "## Safety"]
@@ -49862,7 +47925,6 @@ pub unsafe fn vzipq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
     );
     transmute((a0, b0))
 }
-
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_p16)"]
 #[doc = "## Safety"]

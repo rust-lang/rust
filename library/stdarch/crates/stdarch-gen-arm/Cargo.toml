@@ -12,7 +12,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-itertools = "0.10"
+itertools = "0.14.0"
 lazy_static = "1.4.0"
 proc-macro2 = "1.0"
 quote = "1.0"

@@ -253,6 +253,7 @@ impl IntrinsicInput {
             .into_iter()
             .map(|v| v.into_iter())
             .multi_cartesian_product()
+            .filter(|set| !set.is_empty())
             .map(|set| InputSet(set.into_iter().flatten().collect_vec()));
         Ok(it)
     }
