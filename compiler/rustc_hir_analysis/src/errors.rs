@@ -217,7 +217,7 @@ pub(crate) struct DropImplOnWrongItem {
 pub(crate) enum FieldAlreadyDeclared {
     #[diag(hir_analysis_field_already_declared, code = E0124)]
     NotNested {
-        field_name: Symbol,
+        field_name: Ident,
         #[primary_span]
         #[label]
         span: Span,
@@ -226,7 +226,7 @@ pub(crate) enum FieldAlreadyDeclared {
     },
     #[diag(hir_analysis_field_already_declared_current_nested)]
     CurrentNested {
-        field_name: Symbol,
+        field_name: Ident,
         #[primary_span]
         #[label]
         span: Span,
@@ -239,7 +239,7 @@ pub(crate) enum FieldAlreadyDeclared {
     },
     #[diag(hir_analysis_field_already_declared_previous_nested)]
     PreviousNested {
-        field_name: Symbol,
+        field_name: Ident,
         #[primary_span]
         #[label]
         span: Span,
@@ -252,7 +252,7 @@ pub(crate) enum FieldAlreadyDeclared {
     },
     #[diag(hir_analysis_field_already_declared_both_nested)]
     BothNested {
-        field_name: Symbol,
+        field_name: Ident,
         #[primary_span]
         #[label]
         span: Span,
@@ -418,7 +418,7 @@ pub(crate) struct ValueOfAssociatedStructAlreadySpecified {
 pub(crate) struct UnconstrainedOpaqueType {
     #[primary_span]
     pub span: Span,
-    pub name: Symbol,
+    pub name: Ident,
     pub what: &'static str,
 }
 
@@ -802,7 +802,7 @@ pub(crate) struct EnumDiscriminantOverflowed {
     #[label]
     pub span: Span,
     pub discr: String,
-    pub item_name: Symbol,
+    pub item_name: Ident,
     pub wrapped_discr: String,
 }
 
@@ -893,7 +893,7 @@ pub(crate) enum ImplNotMarkedDefault {
         span: Span,
         #[label(hir_analysis_ok_label)]
         ok_label: Span,
-        ident: Symbol,
+        ident: Ident,
     },
     #[diag(hir_analysis_impl_not_marked_default_err, code = E0520)]
     #[note]
@@ -901,7 +901,7 @@ pub(crate) enum ImplNotMarkedDefault {
         #[primary_span]
         span: Span,
         cname: Symbol,
-        ident: Symbol,
+        ident: Ident,
     },
 }
 
@@ -977,7 +977,7 @@ pub(crate) struct MissingTraitItemUnstable {
     pub some_note: bool,
     #[note(hir_analysis_none_note)]
     pub none_note: bool,
-    pub missing_item_name: Symbol,
+    pub missing_item_name: Ident,
     pub feature: Symbol,
     pub reason: String,
 }
@@ -1249,7 +1249,7 @@ pub(crate) struct InherentNominal {
 pub(crate) struct DispatchFromDynZST<'a> {
     #[primary_span]
     pub span: Span,
-    pub name: Symbol,
+    pub name: Ident,
     pub ty: Ty<'a>,
 }
 
@@ -1389,7 +1389,7 @@ pub(crate) struct TyParamFirstLocal<'tcx> {
     pub span: Span,
     #[note(hir_analysis_case_note)]
     pub note: (),
-    pub param: Symbol,
+    pub param: Ident,
     pub local_type: Ty<'tcx>,
 }
 
@@ -1401,7 +1401,7 @@ pub(crate) struct TyParamFirstLocalLint<'tcx> {
     pub span: Span,
     #[note(hir_analysis_case_note)]
     pub note: (),
-    pub param: Symbol,
+    pub param: Ident,
     pub local_type: Ty<'tcx>,
 }
 
@@ -1414,7 +1414,7 @@ pub(crate) struct TyParamSome {
     pub span: Span,
     #[note(hir_analysis_only_note)]
     pub note: (),
-    pub param: Symbol,
+    pub param: Ident,
 }
 
 #[derive(LintDiagnostic)]
@@ -1425,7 +1425,7 @@ pub(crate) struct TyParamSomeLint {
     pub span: Span,
     #[note(hir_analysis_only_note)]
     pub note: (),
-    pub param: Symbol,
+    pub param: Ident,
 }
 
 #[derive(Diagnostic)]
@@ -1533,7 +1533,7 @@ pub(crate) struct UnsupportedDelegation<'a> {
 pub(crate) struct MethodShouldReturnFuture {
     #[primary_span]
     pub span: Span,
-    pub method_name: Symbol,
+    pub method_name: Ident,
     #[note]
     pub trait_item_span: Option<Span>,
 }
@@ -1585,7 +1585,7 @@ pub(crate) struct UnconstrainedGenericParameter {
     #[primary_span]
     #[label]
     pub span: Span,
-    pub param_name: Symbol,
+    pub param_name: Ident,
     pub param_def_kind: &'static str,
     #[note(hir_analysis_const_param_note)]
     pub const_param_note: bool,

@@ -3233,7 +3233,7 @@ pub(crate) struct MalformedCfgAttr {
 pub(crate) struct UnknownBuiltinConstruct {
     #[primary_span]
     pub span: Span,
-    pub name: Symbol,
+    pub name: Ident,
 }
 
 #[derive(Diagnostic)]

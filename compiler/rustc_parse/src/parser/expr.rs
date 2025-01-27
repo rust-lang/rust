@@ -1958,7 +1958,7 @@ impl<'a> Parser<'a> {
         } else {
             let err = self.dcx().create_err(errors::UnknownBuiltinConstruct {
                 span: lo.to(ident.span),
-                name: ident.name,
+                name: ident,
             });
             return Err(err);
         };

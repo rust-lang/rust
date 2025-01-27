@@ -495,7 +495,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                         .iter()
                         .any(|constraint| constraint.ident.name == item.name)
                 })
-                .map(|item| item.name.to_ident_string())
+                .map(|item| self.tcx.item_ident(item.def_id).to_string())
                 .collect()
         } else {
             Vec::default()

@@ -2362,7 +2362,7 @@ fn try_report_async_mismatch<'tcx>(
             // the right span is a bit difficult.
             return Err(tcx.sess.dcx().emit_err(MethodShouldReturnFuture {
                 span: tcx.def_span(impl_m.def_id),
-                method_name: trait_m.name,
+                method_name: tcx.item_ident(impl_m.def_id),
                 trait_item_span: tcx.hir().span_if_local(trait_m.def_id),
             }));
         }

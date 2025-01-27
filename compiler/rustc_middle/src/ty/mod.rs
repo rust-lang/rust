@@ -1596,6 +1596,15 @@ impl<'tcx> TyCtxt<'tcx> {
         Some(Ident::new(def, span))
     }
 
+    /// Look up the name and span of a definition.
+    ///
+    /// See [`item_name`][Self::item_name] for more information.
+    pub fn item_ident(self, def_id: DefId) -> Ident {
+        self.opt_item_ident(def_id).unwrap_or_else(|| {
+            bug!("item_ident: no name for {:?}", self.def_path(def_id));
+        })
+    }
+
     pub fn opt_associated_item(self, def_id: DefId) -> Option<AssocItem> {
         if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
             Some(self.associated_item(def_id))
