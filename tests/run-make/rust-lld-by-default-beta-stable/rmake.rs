@@ -12,7 +12,7 @@ use run_make_support::rustc;
 fn main() {
     // A regular compilation should not use rust-lld by default. We'll check that by asking the
     // linker to display its version number with a link-arg.
-    let output = rustc().link_arg("-Wl,-v").input("main.rs").run();
+    let output = rustc().arg("-Wlinker-messages").link_arg("-Wl,-v").input("main.rs").run();
     assert!(
         !find_lld_version_in_logs(output.stderr_utf8()),
         "the LLD version string should not be present in the output logs:\n{}",

@@ -17,6 +17,7 @@ fn main() {
         .arg("-Zlinker-features=+lld")
         .arg("-Clink-self-contained=+linker")
         .arg("-Zunstable-options")
+        .arg("-Wlinker-messages")
         .link_arg(linker_version_flag)
         .input("main.rs")
         .run();
@@ -27,8 +28,12 @@ fn main() {
     );
 
     // It should not be used when we explicitly opt-out of lld.
-    let output =
-        rustc().link_arg(linker_version_flag).arg("-Zlinker-features=-lld").input("main.rs").run();
+    let output = rustc()
+        .link_arg(linker_version_flag)
+        .arg("-Zlinker-features=-lld")
+        .arg("-Wlinker-messages")
+        .input("main.rs")
+        .run();
     assert!(
         !find_lld_version_in_logs(output.stderr_utf8()),
         "the LLD version string should not be present in the output logs:\n{}",
@@ -44,6 +49,7 @@ fn main() {
         .arg("-Zlinker-features=-lld")
         .arg("-Zlinker-features=+lld")
         .arg("-Zlinker-features=-lld,+lld")
+        .arg("-Wlinker-messages")
         .input("main.rs")
         .run();
     assert!(
