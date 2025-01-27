@@ -47,8 +47,8 @@ windows-sys = { version = "0.52", features = [
 ] }
 
 [dev-dependencies]
+ui_test = "0.27.1"
 colored = "2"
-ui_test = "0.26.5"
 rustc_version = "0.4"
 regex = "1.5.5"
 tempfile = "3"
