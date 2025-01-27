@@ -4,6 +4,7 @@
 //! That's useful because it means other passes (e.g. promotion) can rely on `const`s
 //! to be const-safe.
 
+use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::fmt::Write;
 use std::hash::Hash;
@@ -1238,6 +1239,17 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 // Validate just the first element (if any).
                 if val.len(self.ecx)? > 0 {
                     self.visit_field(val, 0, &self.ecx.project_index(val, 0)?)?;
+                }
+            }
+            ty::Pat(_base, pat) => {
+                // When you extend this match, make sure to also add tests to
+                // tests/ui/type/pattern_types/validity.rs((
+                match **pat {
+                    // Range patterns are precisely reflected into `valid_range` and thus
+                    // handled fully by `visit_scalar` (called below).
+                    ty::PatternKind::Range { .. } => {
+                        assert_matches!(val.layout.backend_repr, BackendRepr::Scalar(_));
+                    },
                 }
             }
             _ => {
