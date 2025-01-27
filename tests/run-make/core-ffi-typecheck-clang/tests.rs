@@ -100,12 +100,14 @@ cfg_if! {
     if #[cfg(all(target_arch = "aarch64", target_abi = "ilp32"))] {
         // FIXME: c_ptrdiff_t is not short enough on aarch64 ilp32, should be 4, defaulting to 8
         const XFAIL_C_PTRDIFF_T_SIZE: usize = 4;
-        pub const TEST_C_PTRDIFF_T_SIZE: () = if size_of::<ffi::c_ptrdiff_t>() != XFAIL_C_PTRDIFF_T_SIZE {
+        pub const TEST_C_PTRDIFF_T_SIZE: () =
+            if size_of::<ffi::c_ptrdiff_t>() != XFAIL_C_PTRDIFF_T_SIZE {
             panic!("wrong c_ssize_t size, target_arch: aarch64, target_abi: ilp32");
         };
     }
     else {
-        pub const TEST_C_PTRDIFF_T_SIZE: () = if size_of::<ffi::c_ptrdiff_t>() != CLANG_C_PTRDIFF_T_SIZE {
+        pub const TEST_C_PTRDIFF_T_SIZE: () =
+            if size_of::<ffi::c_ptrdiff_t>() != CLANG_C_PTRDIFF_T_SIZE {
             panic!("wrong c_size_t size");
         };
     }
