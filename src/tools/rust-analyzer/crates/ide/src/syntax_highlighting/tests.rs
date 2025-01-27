@@ -466,6 +466,10 @@ macro_rules! reuse_twice {
     ($literal:literal) => {{stringify!($literal); format_args!($literal)}};
 }
 
+use foo::bar as baz;
+trait Bar = Baz;
+trait Foo = Bar;
+
 fn main() {
     let a = '\n';
     let a = '\t';

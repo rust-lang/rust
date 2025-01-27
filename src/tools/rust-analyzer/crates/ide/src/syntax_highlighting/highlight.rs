@@ -669,6 +669,12 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
         STATIC => SymbolKind::Static,
         IDENT_PAT => SymbolKind::Local,
         FORMAT_ARGS_ARG => SymbolKind::Local,
+        RENAME => SymbolKind::Local,
+        MACRO_RULES => SymbolKind::Macro,
+        CONST_PARAM => SymbolKind::ConstParam,
+        SELF_PARAM => SymbolKind::SelfParam,
+        TRAIT_ALIAS => SymbolKind::TraitAlias,
+        ASM_OPERAND_NAMED => SymbolKind::Local,
         _ => return default.into(),
     };
 
