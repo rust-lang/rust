@@ -1399,7 +1399,11 @@ impl HasModule for DefWithBodyId {
             DefWithBodyId::ConstId(it) => it.module(db),
             DefWithBodyId::VariantId(it) => it.module(db),
             DefWithBodyId::InTypeConstId(it) => it.lookup(db).owner.module(db),
-            DefWithBodyId::FieldId(it) => it.module(db),
+            DefWithBodyId::FieldId(it) => match it.parent {
+                VariantId::EnumVariantId(it) => it.module(db),
+                VariantId::StructId(it) => it.module(db),
+                VariantId::UnionId(it) => it.module(db),
+            },
         }
     }
 }
