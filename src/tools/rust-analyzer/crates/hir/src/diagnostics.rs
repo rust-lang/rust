@@ -271,11 +271,17 @@ pub struct PrivateField {
     pub field: Field,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnsafeLint {
+    HardError,
+    UnsafeOpInUnsafeFn,
+    DeprecatedSafe2024,
+}
+
 #[derive(Debug)]
 pub struct MissingUnsafe {
     pub node: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
-    /// If true, the diagnostics is an `unsafe_op_in_unsafe_fn` lint instead of a hard error.
-    pub only_lint: bool,
+    pub lint: UnsafeLint,
     pub reason: UnsafetyReason,
 }
 

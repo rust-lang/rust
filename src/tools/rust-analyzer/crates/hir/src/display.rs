@@ -82,7 +82,7 @@ impl HirDisplay for Function {
         }
         // FIXME: This will show `unsafe` for functions that are `#[target_feature]` but not unsafe
         // (they are conditionally unsafe to call). We probably should show something else.
-        if self.is_unsafe_to_call(db, None) {
+        if self.is_unsafe_to_call(db, None, f.edition()) {
             f.write_str("unsafe ")?;
         }
         if let Some(abi) = &data.abi {

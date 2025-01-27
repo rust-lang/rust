@@ -24,6 +24,7 @@ use intern::{sym, Symbol};
 use rustc_abi::TargetDataLayout;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
+use span::Edition;
 use stdx::never;
 
 use crate::{
@@ -292,21 +293,38 @@ impl TargetFeatures {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Unsafety {
+    Safe,
+    Unsafe,
+    /// A lint.
+    DeprecatedSafe2024,
+}
+
 pub fn is_fn_unsafe_to_call(
     db: &dyn HirDatabase,
     func: FunctionId,
     caller_target_features: &TargetFeatures,
-) -> bool {
+    call_edition: Edition,
+) -> Unsafety {
     let data = db.function_data(func);
     if data.is_unsafe() {
-        return true;
+        return Unsafety::Unsafe;
     }
 
     if data.has_target_feature() {
         // RFC 2396 <https://rust-lang.github.io/rfcs/2396-target-feature-1.1.html>.
         let callee_target_features = TargetFeatures::from_attrs(&db.attrs(func.into()));
         if !caller_target_features.enabled.is_superset(&callee_target_features.enabled) {
-            return true;
+            return Unsafety::Unsafe;
+        }
+    }
+
+    if data.is_deprecated_safe_2024() {
+        if call_edition.at_least_2024() {
+            return Unsafety::Unsafe;
+        } else {
+            return Unsafety::DeprecatedSafe2024;
         }
     }
 
@@ -319,14 +337,22 @@ pub fn is_fn_unsafe_to_call(
             if is_intrinsic_block {
                 // legacy intrinsics
                 // extern "rust-intrinsic" intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
-                !db.attrs(func.into()).by_key(&sym::rustc_safe_intrinsic).exists()
+                if db.attrs(func.into()).by_key(&sym::rustc_safe_intrinsic).exists() {
+                    Unsafety::Safe
+                } else {
+                    Unsafety::Unsafe
+                }
             } else {
                 // Function in an `extern` block are always unsafe to call, except when
                 // it is marked as `safe`.
-                !data.is_safe()
+                if data.is_safe() {
+                    Unsafety::Safe
+                } else {
+                    Unsafety::Unsafe
+                }
             }
         }
-        _ => false,
+        _ => Unsafety::Safe,
     }
 }
 

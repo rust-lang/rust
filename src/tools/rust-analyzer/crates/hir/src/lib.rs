@@ -2040,14 +2040,38 @@ impl DefWithBody {
             );
         }
 
-        let (unsafe_exprs, only_lint) = hir_ty::diagnostics::missing_unsafe(db, self.into());
-        for (node, reason) in unsafe_exprs {
+        let missing_unsafe = hir_ty::diagnostics::missing_unsafe(db, self.into());
+        for (node, reason) in missing_unsafe.unsafe_exprs {
             match source_map.expr_or_pat_syntax(node) {
-                Ok(node) => acc.push(MissingUnsafe { node, only_lint, reason }.into()),
+                Ok(node) => acc.push(
+                    MissingUnsafe {
+                        node,
+                        lint: if missing_unsafe.fn_is_unsafe {
+                            UnsafeLint::UnsafeOpInUnsafeFn
+                        } else {
+                            UnsafeLint::HardError
+                        },
+                        reason,
+                    }
+                    .into(),
+                ),
                 Err(SyntheticSyntax) => {
                     // FIXME: Here and elsewhere in this file, the `expr` was
                     // desugared, report or assert that this doesn't happen.
                 }
+            }
+        }
+        for node in missing_unsafe.deprecated_safe_calls {
+            match source_map.expr_syntax(node) {
+                Ok(node) => acc.push(
+                    MissingUnsafe {
+                        node: node.map(|it| it.wrap_left()),
+                        lint: UnsafeLint::DeprecatedSafe2024,
+                        reason: UnsafetyReason::UnsafeFnCall,
+                    }
+                    .into(),
+                ),
+                Err(SyntheticSyntax) => never!("synthetic DeprecatedSafe2024"),
             }
         }
 
@@ -2425,11 +2449,19 @@ impl Function {
         db.attrs(self.id.into()).is_unstable()
     }
 
-    pub fn is_unsafe_to_call(self, db: &dyn HirDatabase, caller: Option<Function>) -> bool {
+    pub fn is_unsafe_to_call(
+        self,
+        db: &dyn HirDatabase,
+        caller: Option<Function>,
+        call_edition: Edition,
+    ) -> bool {
         let target_features = caller
             .map(|caller| hir_ty::TargetFeatures::from_attrs(&db.attrs(caller.id.into())))
             .unwrap_or_default();
-        hir_ty::is_fn_unsafe_to_call(db, self.id, &target_features)
+        matches!(
+            hir_ty::is_fn_unsafe_to_call(db, self.id, &target_features, call_edition),
+            hir_ty::Unsafety::Unsafe
+        )
     }
 
     /// Whether this function declaration has a definition.

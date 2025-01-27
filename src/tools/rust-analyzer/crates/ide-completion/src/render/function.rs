@@ -320,7 +320,7 @@ fn detail(ctx: &CompletionContext<'_>, func: hir::Function, edition: Edition) ->
             ret_ty = async_ret;
         }
     }
-    if func.is_unsafe_to_call(ctx.db, ctx.containing_function) {
+    if func.is_unsafe_to_call(ctx.db, ctx.containing_function, ctx.edition) {
         format_to!(detail, "unsafe ");
     }
 
