@@ -462,6 +462,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             err.note(
                                 "`#[target_feature]` functions do not implement the `Fn` traits",
                             );
+                            err.note(
+                                "try casting the function to a `fn` pointer or wrapping it in a closure",
+                            );
                         }
 
                         self.try_to_add_help_message(
