@@ -550,7 +550,7 @@ pub fn record_literal_missing_fields(
 ) -> Option<(VariantId, Vec<LocalFieldId>, /*has spread expr*/ bool)> {
     let (fields, has_spread_expr, has_ellipsis) = match expr {
         Expr::RecordLit { fields, spread, .. } => {
-            (fields, !matches!(spread, Spread::Base(_)), matches!(spread, Spread::Yes))
+            (fields, matches!(spread, Spread::Base(_)), matches!(spread, Spread::Yes))
         }
         _ => return None,
     };
