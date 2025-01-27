@@ -253,6 +253,11 @@ impl GlobalState {
         &self,
         inbox: &Receiver<lsp_server::Message>,
     ) -> Result<Option<Event>, crossbeam_channel::RecvError> {
+        // Make sure we reply to formatting requests ASAP so the editor doesn't block
+        if let Ok(task) = self.fmt_pool.receiver.try_recv() {
+            return Ok(Some(Event::Task(task)));
+        }
+
         select! {
             recv(inbox) -> msg =>
                 return Ok(msg.ok().map(Event::Lsp)),
