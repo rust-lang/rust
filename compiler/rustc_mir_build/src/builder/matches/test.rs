@@ -141,47 +141,49 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }
 
-            TestKind::Eq { value, ty } => {
+            TestKind::Eq { value, mut ty } => {
                 let tcx = self.tcx;
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
 
                 let expect_ty = value.ty();
                 let expect = self.literal_operand(test.span, value);
-                if let ty::Adt(def, _) = ty.kind()
-                    && tcx.is_lang_item(def.did(), LangItem::String)
-                {
-                    if !tcx.features().string_deref_patterns() {
-                        span_bug!(
+
+                let mut place = place;
+                let mut block = block;
+                match ty.kind() {
+                    ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::String) => {
+                        if !tcx.features().string_deref_patterns() {
+                            span_bug!(
+                                test.span,
+                                "matching on `String` went through without enabling string_deref_patterns"
+                            );
+                        }
+                        let re_erased = tcx.lifetimes.re_erased;
+                        let ref_str_ty = Ty::new_imm_ref(tcx, re_erased, tcx.types.str_);
+                        let ref_str = self.temp(ref_str_ty, test.span);
+                        let eq_block = self.cfg.start_new_block();
+                        // `let ref_str: &str = <String as Deref>::deref(&place);`
+                        self.call_deref(
+                            block,
+                            eq_block,
+                            place,
+                            Mutability::Not,
+                            ty,
+                            ref_str,
                             test.span,
-                            "matching on `String` went through without enabling string_deref_patterns"
                         );
+                        // Since we generated a `ref_str = <String as Deref>::deref(&place) -> eq_block` terminator,
+                        // we need to add all further statements to `eq_block`.
+                        // Similarly, the normal test code should be generated for the `&str`, instead of the `String`.
+                        block = eq_block;
+                        place = ref_str;
+                        ty = ref_str_ty;
                     }
-                    let re_erased = tcx.lifetimes.re_erased;
-                    let ref_str_ty = Ty::new_imm_ref(tcx, re_erased, tcx.types.str_);
-                    let ref_str = self.temp(ref_str_ty, test.span);
-                    let eq_block = self.cfg.start_new_block();
-                    // `let ref_str: &str = <String as Deref>::deref(&place);`
-                    self.call_deref(
-                        block,
-                        eq_block,
-                        place,
-                        Mutability::Not,
-                        ty,
-                        ref_str,
-                        test.span,
-                    );
-                    self.non_scalar_compare(
-                        eq_block,
-                        success_block,
-                        fail_block,
-                        source_info,
-                        expect,
-                        expect_ty,
-                        Operand::Copy(ref_str),
-                        ref_str_ty,
-                    );
-                } else if !ty.is_scalar() {
+                    _ => {}
+                }
+
+                if !ty.is_scalar() {
                     // Use `PartialEq::eq` instead of `BinOp::Eq`
                     // (the binop can only handle primitives)
                     self.non_scalar_compare(
