@@ -20,6 +20,8 @@ The target name follow this format: `ARCH[-VENDOR]-nuttx-ABI`, where `ARCH` is t
 
 The following target names are defined:
 
+- `i686-unknown-nuttx`
+- `x86_64-unknown-nuttx`
 - `aarch64-unknown-nuttx`
 - `armv7a-nuttx-eabi`
 - `armv7a-nuttx-eabihf`
@@ -52,12 +54,21 @@ linker = "riscv-none-elf-gcc"
 
 The toolchain for the target can be found in [NuttX's quick start guide](https://nuttx.apache.org/docs/latest/quickstart/install.html).
 
-
 ## Testing
 
 This is a cross-compiled `no-std` target, which must be run either in a simulator
 or by programming them onto suitable hardware. It is not possible to run the
 Rust test-suite on this target.
+
+## Note for Floating-Point support on X86/X86_64
+
+For the NuttX platform, X86/X86_64 targets have two usage scenarios:
+1. Linked to a "SIM" running in a POSIX environment (more common)
+2. Running directly on baremetal hardware
+
+In the SIM environment, the FPU (Floating Point Unit) configuration is fixed and not configurable. For baremetal scenarios:
+- On i686 (targeting i486 in NuttX), the FPU is typically disabled
+- On x86_64, the FPU is enabled by default but can be disabled if needed
 
 ## Cross-compilation toolchains and C code
 

@@ -2004,6 +2004,8 @@ supported_targets! {
 
     ("x86_64-unknown-linux-none", x86_64_unknown_linux_none),
 
+    ("i686-unknown-nuttx", i686_unknown_nuttx),
+    ("x86_64-unknown-nuttx", x86_64_unknown_nuttx),
     ("thumbv6m-nuttx-eabi", thumbv6m_nuttx_eabi),
     ("thumbv7a-nuttx-eabi", thumbv7a_nuttx_eabi),
     ("thumbv7a-nuttx-eabihf", thumbv7a_nuttx_eabihf),

@@ -314,6 +314,7 @@ target | std | host | notes
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku (Pentium 4) [^x86_32-floats-return-ABI]
 [`i686-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 32-bit GNU/Hurd (PentiumPro) [^x86_32-floats-x87]
 [`i686-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/i386 (Pentium 4) [^x86_32-floats-return-ABI]
+[`i686-unknown-nuttx`](platform-support/nuttx.md) | ✓ |  | 32-bit x86 with NuttX
 [`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD (Pentium 4) [^x86_32-floats-return-ABI]
 [`i686-unknown-redox`](platform-support/redox.md) | ✓ |  | i686 Redox OS (PentiumPro) [^x86_32-floats-x87]
 `i686-uwp-windows-gnu` | ✓ |  | [^x86_32-floats-return-ABI]
@@ -417,6 +418,7 @@ target | std | host | notes
 `x86_64-unknown-l4re-uclibc` | ? |  |
 [`x86_64-unknown-linux-none`](platform-support/x86_64-unknown-linux-none.md) | * |  | 64-bit Linux with no libc
 [`x86_64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 64-bit OpenBSD
+[`x86_64-unknown-nuttx`](platform-support/nuttx.md) | ✓ |  | 64-bit x86 with NuttX
 [`x86_64-unknown-trusty`](platform-support/trusty.md) | ? |  |
 `x86_64-uwp-windows-gnu` | ✓ |  |
 [`x86_64-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ✓ |  |
