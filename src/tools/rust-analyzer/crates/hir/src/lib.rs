@@ -4730,17 +4730,6 @@ impl Type {
         Type { env: TraitEnvironment::empty(krate), ty }
     }
 
-    pub fn reference(inner: &Type, m: Mutability) -> Type {
-        inner.derived(
-            TyKind::Ref(
-                if m.is_mut() { hir_ty::Mutability::Mut } else { hir_ty::Mutability::Not },
-                hir_ty::error_lifetime(),
-                inner.ty.clone(),
-            )
-            .intern(Interner),
-        )
-    }
-
     fn new(db: &dyn HirDatabase, lexical_env: impl HasResolver, ty: Ty) -> Type {
         let resolver = lexical_env.resolver(db.upcast());
         let environment = resolver
