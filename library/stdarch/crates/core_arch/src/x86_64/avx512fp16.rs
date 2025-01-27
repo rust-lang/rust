@@ -11,8 +11,8 @@ use stdarch_test::assert_instr;
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsi2sh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub unsafe fn _mm_cvti64_sh(a: __m128h, b: i64) -> __m128h {
-    vcvtsi642sh(a, b, _MM_FROUND_CUR_DIRECTION)
+pub fn _mm_cvti64_sh(a: __m128h, b: i64) -> __m128h {
+    unsafe { vcvtsi642sh(a, b, _MM_FROUND_CUR_DIRECTION) }
 }
 
 /// Convert the signed 64-bit integer b to a half-precision (16-bit) floating-point element, store the
@@ -33,9 +33,11 @@ pub unsafe fn _mm_cvti64_sh(a: __m128h, b: i64) -> __m128h {
 #[cfg_attr(test, assert_instr(vcvtsi2sh, ROUNDING = 8))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub unsafe fn _mm_cvt_roundi64_sh<const ROUNDING: i32>(a: __m128h, b: i64) -> __m128h {
-    static_assert_rounding!(ROUNDING);
-    vcvtsi642sh(a, b, ROUNDING)
+pub fn _mm_cvt_roundi64_sh<const ROUNDING: i32>(a: __m128h, b: i64) -> __m128h {
+    unsafe {
+        static_assert_rounding!(ROUNDING);
+        vcvtsi642sh(a, b, ROUNDING)
+    }
 }
 
 /// Convert the unsigned 64-bit integer b to a half-precision (16-bit) floating-point element, store the
@@ -47,8 +49,8 @@ pub unsafe fn _mm_cvt_roundi64_sh<const ROUNDING: i32>(a: __m128h, b: i64) -> __
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtusi2sh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub unsafe fn _mm_cvtu64_sh(a: __m128h, b: u64) -> __m128h {
-    vcvtusi642sh(a, b, _MM_FROUND_CUR_DIRECTION)
+pub fn _mm_cvtu64_sh(a: __m128h, b: u64) -> __m128h {
+    unsafe { vcvtusi642sh(a, b, _MM_FROUND_CUR_DIRECTION) }
 }
 
 /// Convert the unsigned 64-bit integer b to a half-precision (16-bit) floating-point element, store the
@@ -69,9 +71,11 @@ pub unsafe fn _mm_cvtu64_sh(a: __m128h, b: u64) -> __m128h {
 #[cfg_attr(test, assert_instr(vcvtusi2sh, ROUNDING = 8))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub unsafe fn _mm_cvt_roundu64_sh<const ROUNDING: i32>(a: __m128h, b: u64) -> __m128h {
-    static_assert_rounding!(ROUNDING);
-    vcvtusi642sh(a, b, ROUNDING)
+pub fn _mm_cvt_roundu64_sh<const ROUNDING: i32>(a: __m128h, b: u64) -> __m128h {
+    unsafe {
+        static_assert_rounding!(ROUNDING);
+        vcvtusi642sh(a, b, ROUNDING)
+    }
 }
 
 /// Convert the lower half-precision (16-bit) floating-point element in a to a 64-bit integer, and store
@@ -82,8 +86,8 @@ pub unsafe fn _mm_cvt_roundu64_sh<const ROUNDING: i32>(a: __m128h, b: u64) -> __
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsh2si))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub unsafe fn _mm_cvtsh_i64(a: __m128h) -> i64 {
-    vcvtsh2si64(a, _MM_FROUND_CUR_DIRECTION)
+pub fn _mm_cvtsh_i64(a: __m128h) -> i64 {
+    unsafe { vcvtsh2si64(a, _MM_FROUND_CUR_DIRECTION) }
 }
 
 /// Convert the lower half-precision (16-bit) floating-point element in a to a 64-bit integer, and store
@@ -103,9 +107,11 @@ pub unsafe fn _mm_cvtsh_i64(a: __m128h) -> i64 {
 #[cfg_attr(test, assert_instr(vcvtsh2si, ROUNDING = 8))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub unsafe fn _mm_cvt_roundsh_i64<const ROUNDING: i32>(a: __m128h) -> i64 {
-    static_assert_rounding!(ROUNDING);
-    vcvtsh2si64(a, ROUNDING)
+pub fn _mm_cvt_roundsh_i64<const ROUNDING: i32>(a: __m128h) -> i64 {
+    unsafe {
+        static_assert_rounding!(ROUNDING);
+        vcvtsh2si64(a, ROUNDING)
+    }
 }
 
 /// Convert the lower half-precision (16-bit) floating-point element in a to a 64-bit unsigned integer, and store
@@ -116,8 +122,8 @@ pub unsafe fn _mm_cvt_roundsh_i64<const ROUNDING: i32>(a: __m128h) -> i64 {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvtsh2usi))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub unsafe fn _mm_cvtsh_u64(a: __m128h) -> u64 {
-    vcvtsh2usi64(a, _MM_FROUND_CUR_DIRECTION)
+pub fn _mm_cvtsh_u64(a: __m128h) -> u64 {
+    unsafe { vcvtsh2usi64(a, _MM_FROUND_CUR_DIRECTION) }
 }
 
 /// Convert the lower half-precision (16-bit) floating-point element in a to a 64-bit unsigned integer, and store
@@ -137,9 +143,11 @@ pub unsafe fn _mm_cvtsh_u64(a: __m128h) -> u64 {
 #[cfg_attr(test, assert_instr(vcvtsh2usi, ROUNDING = 8))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub unsafe fn _mm_cvt_roundsh_u64<const ROUNDING: i32>(a: __m128h) -> u64 {
-    static_assert_rounding!(ROUNDING);
-    vcvtsh2usi64(a, ROUNDING)
+pub fn _mm_cvt_roundsh_u64<const ROUNDING: i32>(a: __m128h) -> u64 {
+    unsafe {
+        static_assert_rounding!(ROUNDING);
+        vcvtsh2usi64(a, ROUNDING)
+    }
 }
 
 /// Convert the lower half-precision (16-bit) floating-point element in a to a 64-bit integer with truncation,
@@ -150,8 +158,8 @@ pub unsafe fn _mm_cvt_roundsh_u64<const ROUNDING: i32>(a: __m128h) -> u64 {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttsh2si))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub unsafe fn _mm_cvttsh_i64(a: __m128h) -> i64 {
-    vcvttsh2si64(a, _MM_FROUND_CUR_DIRECTION)
+pub fn _mm_cvttsh_i64(a: __m128h) -> i64 {
+    unsafe { vcvttsh2si64(a, _MM_FROUND_CUR_DIRECTION) }
 }
 
 /// Convert the lower half-precision (16-bit) floating-point element in a to a 64-bit integer with truncation,
@@ -165,9 +173,11 @@ pub unsafe fn _mm_cvttsh_i64(a: __m128h) -> i64 {
 #[cfg_attr(test, assert_instr(vcvttsh2si, SAE = 8))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub unsafe fn _mm_cvtt_roundsh_i64<const SAE: i32>(a: __m128h) -> i64 {
-    static_assert_sae!(SAE);
-    vcvttsh2si64(a, SAE)
+pub fn _mm_cvtt_roundsh_i64<const SAE: i32>(a: __m128h) -> i64 {
+    unsafe {
+        static_assert_sae!(SAE);
+        vcvttsh2si64(a, SAE)
+    }
 }
 
 /// Convert the lower half-precision (16-bit) floating-point element in a to a 64-bit unsigned integer with truncation,
@@ -178,8 +188,8 @@ pub unsafe fn _mm_cvtt_roundsh_i64<const SAE: i32>(a: __m128h) -> i64 {
 #[target_feature(enable = "avx512fp16")]
 #[cfg_attr(test, assert_instr(vcvttsh2usi))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub unsafe fn _mm_cvttsh_u64(a: __m128h) -> u64 {
-    vcvttsh2usi64(a, _MM_FROUND_CUR_DIRECTION)
+pub fn _mm_cvttsh_u64(a: __m128h) -> u64 {
+    unsafe { vcvttsh2usi64(a, _MM_FROUND_CUR_DIRECTION) }
 }
 
 /// Convert the lower half-precision (16-bit) floating-point element in a to a 64-bit unsigned integer with truncation,
@@ -193,9 +203,11 @@ pub unsafe fn _mm_cvttsh_u64(a: __m128h) -> u64 {
 #[cfg_attr(test, assert_instr(vcvttsh2usi, SAE = 8))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub unsafe fn _mm_cvtt_roundsh_u64<const SAE: i32>(a: __m128h) -> u64 {
-    static_assert_sae!(SAE);
-    vcvttsh2usi64(a, SAE)
+pub fn _mm_cvtt_roundsh_u64<const SAE: i32>(a: __m128h) -> u64 {
+    unsafe {
+        static_assert_sae!(SAE);
+        vcvttsh2usi64(a, SAE)
+    }
 }
 
 #[allow(improper_ctypes)]

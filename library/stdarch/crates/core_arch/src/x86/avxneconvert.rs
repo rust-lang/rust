@@ -199,15 +199,17 @@ pub unsafe fn _mm256_cvtneoph_ps(a: *const __m256h) -> __m256 {
     assert_instr(vcvtneps2bf16)
 )]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-pub unsafe fn _mm_cvtneps_avx_pbh(a: __m128) -> __m128bh {
-    let mut dst: __m128bh;
-    asm!(
-        "{{vex}}vcvtneps2bf16 {dst},{src}",
-        dst = lateout(xmm_reg) dst,
-        src = in(xmm_reg) a,
-        options(pure, nomem, nostack, preserves_flags)
-    );
-    dst
+pub fn _mm_cvtneps_avx_pbh(a: __m128) -> __m128bh {
+    unsafe {
+        let mut dst: __m128bh;
+        asm!(
+            "{{vex}}vcvtneps2bf16 {dst},{src}",
+            dst = lateout(xmm_reg) dst,
+            src = in(xmm_reg) a,
+            options(pure, nomem, nostack, preserves_flags)
+        );
+        dst
+    }
 }
 
 /// Convert packed single precision (32-bit) floating-point elements in a to packed BF16 (16-bit) floating-point
@@ -221,15 +223,17 @@ pub unsafe fn _mm_cvtneps_avx_pbh(a: __m128) -> __m128bh {
     assert_instr(vcvtneps2bf16)
 )]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-pub unsafe fn _mm256_cvtneps_avx_pbh(a: __m256) -> __m128bh {
-    let mut dst: __m128bh;
-    asm!(
-        "{{vex}}vcvtneps2bf16 {dst},{src}",
-        dst = lateout(xmm_reg) dst,
-        src = in(ymm_reg) a,
-        options(pure, nomem, nostack, preserves_flags)
-    );
-    dst
+pub fn _mm256_cvtneps_avx_pbh(a: __m256) -> __m128bh {
+    unsafe {
+        let mut dst: __m128bh;
+        asm!(
+            "{{vex}}vcvtneps2bf16 {dst},{src}",
+            dst = lateout(xmm_reg) dst,
+            src = in(ymm_reg) a,
+            options(pure, nomem, nostack, preserves_flags)
+        );
+        dst
+    }
 }
 
 #[allow(improper_ctypes)]
