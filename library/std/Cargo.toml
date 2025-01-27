@@ -109,6 +109,13 @@ panic_immediate_abort = [
 # Choose algorithms that are optimized for binary size instead of runtime performance
 optimize_for_size = ["core/optimize_for_size", "alloc/optimize_for_size"]
 
+# Make `RefCell` store additional debugging information, which is printed out when
+# a borrow error occurs
+debug_refcell = ["core/debug_refcell"]
+# Make `TypeId` store a reference to the name of the type, so that it can print that name.
+debug_typeid = ["core/debug_typeid"]
+
+
 # Enable std_detect default features for stdarch/crates/std_detect:
 # https://github.com/rust-lang/stdarch/blob/master/crates/std_detect/Cargo.toml
 std_detect_file_io = ["std_detect/std_detect_file_io"]
