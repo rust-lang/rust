@@ -46,7 +46,6 @@ pub(crate) use rustc_resolve::rustdoc::main_body_opts;
 use rustc_resolve::rustdoc::may_be_doc_link;
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
-use serde::{Serialize, Serializer};
 use tracing::{debug, trace};
 
 use crate::clean::RenderedLink;
@@ -821,17 +820,7 @@ impl<'tcx> ExtraInfo<'tcx> {
     }
 }
 
-fn edition_to_string<S: Serializer>(
-    edition: &Option<Edition>,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    match edition {
-        Some(edition) => serializer.serialize_some(&edition.to_string()),
-        None => serializer.serialize_none(),
-    }
-}
-
-#[derive(Eq, PartialEq, Clone, Debug, Serialize)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub(crate) struct LangString {
     pub(crate) original: String,
     pub(crate) should_panic: bool,
@@ -842,13 +831,12 @@ pub(crate) struct LangString {
     pub(crate) compile_fail: bool,
     pub(crate) standalone_crate: bool,
     pub(crate) error_codes: Vec<String>,
-    #[serde(serialize_with = "edition_to_string")]
     pub(crate) edition: Option<Edition>,
     pub(crate) added_classes: Vec<String>,
     pub(crate) unknown: Vec<String>,
 }
 
-#[derive(Eq, PartialEq, Clone, Debug, Serialize)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub(crate) enum Ignore {
     All,
     None,

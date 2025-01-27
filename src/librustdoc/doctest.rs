@@ -1,3 +1,4 @@
+mod extracted;
 mod make;
 mod markdown;
 mod runner;
@@ -26,7 +27,6 @@ use rustc_span::FileName;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
 use rustc_target::spec::{Target, TargetTuple};
-use serde::{Serialize, Serializer};
 use tempfile::{Builder as TempFileBuilder, TempDir};
 use tracing::debug;
 
@@ -134,14 +134,6 @@ fn get_doctest_dir() -> io::Result<TempDir> {
     TempFileBuilder::new().prefix("rustdoctest").tempdir()
 }
 
-#[derive(Serialize)]
-struct ExtractedDoctest {
-    /// `None` if the code syntax is invalid.
-    doctest_code: Option<String>,
-    #[serde(flatten)] // We make all `ScrapedDocTest` fields at the same level as `doctest_code`.
-    scraped_test: ScrapedDocTest,
-}
-
 pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions) {
     let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
@@ -243,34 +235,12 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
             );
             let tests = hir_collector.collect_crate();
             if extract_doctests {
-                let extracted = tests
-                    .into_iter()
-                    .map(|scraped_test| {
-                        let edition = scraped_test.edition(&options);
-                        let doctest = DocTestBuilder::new(
-                            &scraped_test.text,
-                            Some(&opts.crate_name),
-                            edition,
-                            false,
-                            None,
-                            Some(&scraped_test.langstr),
-                        );
-                        let (full_test_code, size) = doctest.generate_unique_doctest(
-                            &scraped_test.text,
-                            scraped_test.langstr.test_harness,
-                            &opts,
-                            Some(&opts.crate_name),
-                        );
-                        ExtractedDoctest {
-                            doctest_code: if size != 0 { Some(full_test_code) } else { None },
-                            scraped_test,
-                        }
-                    })
-                    .collect::<Vec<_>>();
+                let mut collector = extracted::ExtractedDocTests::new();
+                tests.into_iter().for_each(|t| collector.add_test(t, &opts, &options));
 
                 let stdout = std::io::stdout();
                 let mut stdout = stdout.lock();
-                if let Err(error) = serde_json::ser::to_writer(&mut stdout, &extracted) {
+                if let Err(error) = serde_json::ser::to_writer(&mut stdout, &collector) {
                     eprintln!();
                     Err(format!("Failed to generate JSON output for doctests: {error:?}"))
                 } else {
@@ -805,14 +775,6 @@ impl IndividualTestOptions {
     }
 }
 
-fn filename_to_string<S: Serializer>(
-    filename: &FileName,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    let filename = filename.prefer_remapped_unconditionaly().to_string();
-    serializer.serialize_str(&filename)
-}
-
 /// A doctest scraped from the code, ready to be turned into a runnable test.
 ///
 /// The pipeline goes: [`clean`] AST -> `ScrapedDoctest` -> `RunnableDoctest`.
@@ -822,14 +784,10 @@ fn filename_to_string<S: Serializer>(
 /// [`clean`]: crate::clean
 /// [`run_merged_tests`]: crate::doctest::runner::DocTestRunner::run_merged_tests
 /// [`generate_unique_doctest`]: crate::doctest::make::DocTestBuilder::generate_unique_doctest
-#[derive(Serialize)]
 pub(crate) struct ScrapedDocTest {
-    #[serde(serialize_with = "filename_to_string")]
     filename: FileName,
     line: usize,
-    #[serde(rename = "doctest_attributes")]
     langstr: LangString,
-    #[serde(rename = "original_code")]
     text: String,
     name: String,
 }
