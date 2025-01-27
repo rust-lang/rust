@@ -210,7 +210,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     // Check if help was requested.
     if matches.opt_present("h") {
         // Show help and do nothing more.
-        usage(binary, &opts);
+        usage(binary, &optgroups());
         return None;
     }
 
