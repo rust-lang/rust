@@ -1150,7 +1150,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             // FIXME(inherent_associated_types, #106719): Support self types other than ADTs.
             if let Some((ty, did)) = self.probe_inherent_assoc_ty(
-                assoc_ident,
                 assoc_segment,
                 adt_def.did(),
                 qself_ty,
@@ -1355,7 +1354,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     fn probe_inherent_assoc_ty(
         &self,
-        name: Ident,
         segment: &hir::PathSegment<'tcx>,
         adt_did: DefId,
         self_ty: Ty<'tcx>,
@@ -1374,6 +1372,60 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return Ok(None);
         }
 
+        let Some((def_id, args)) = self.probe_inherent_assoc_shared(
+            segment,
+            adt_did,
+            self_ty,
+            block,
+            span,
+            ty::AssocKind::Type,
+        )?
+        else {
+            return Ok(None);
+        };
+
+        let ty = Ty::new_alias(tcx, ty::Inherent, ty::AliasTy::new_from_args(tcx, def_id, args));
+        Ok(Some((ty, def_id)))
+    }
+
+    fn probe_inherent_assoc_const(
+        &self,
+        segment: &hir::PathSegment<'tcx>,
+        adt_did: DefId,
+        self_ty: Ty<'tcx>,
+        block: HirId,
+        span: Span,
+    ) -> Result<Option<(Const<'tcx>, DefId)>, ErrorGuaranteed> {
+        let tcx = self.tcx();
+
+        let Some((def_id, args)) = self.probe_inherent_assoc_shared(
+            segment,
+            adt_did,
+            self_ty,
+            block,
+            span,
+            ty::AssocKind::Const,
+        )?
+        else {
+            return Ok(None);
+        };
+
+        let ct = Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(def_id, args));
+        Ok(Some((ct, def_id)))
+    }
+
+    fn probe_inherent_assoc_shared(
+        &self,
+        segment: &hir::PathSegment<'tcx>,
+        adt_did: DefId,
+        self_ty: Ty<'tcx>,
+        block: HirId,
+        span: Span,
+        kind: ty::AssocKind,
+    ) -> Result<Option<(DefId, GenericArgsRef<'tcx>)>, ErrorGuaranteed> {
+        let tcx = self.tcx();
+
+        let name = segment.ident;
         let candidates: Vec<_> = tcx
             .inherent_impls(adt_did)
             .iter()
@@ -1417,8 +1469,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             &mut universes,
             self_ty,
             |self_ty| {
-                self.select_inherent_assoc_type_candidates(
-                    infcx, name, span, self_ty, param_env, candidates,
+                self.select_inherent_assoc_candidates(
+                    infcx, name, span, self_ty, param_env, candidates, kind,
                 )
             },
         )?;
@@ -1435,13 +1487,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .chain(args.into_iter().skip(parent_args.len())),
         );
 
-        let ty =
-            Ty::new_alias(tcx, ty::Inherent, ty::AliasTy::new_from_args(tcx, assoc_item, args));
-
-        Ok(Some((ty, assoc_item)))
+        Ok(Some((assoc_item, args)))
     }
 
-    fn select_inherent_assoc_type_candidates(
+    fn select_inherent_assoc_candidates(
         &self,
         infcx: &InferCtxt<'tcx>,
         name: Ident,
@@ -1449,6 +1498,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         self_ty: Ty<'tcx>,
         param_env: ParamEnv<'tcx>,
         candidates: Vec<(DefId, (DefId, DefId))>,
+        kind: ty::AssocKind,
     ) -> Result<(DefId, (DefId, DefId)), ErrorGuaranteed> {
         let tcx = self.tcx();
         let mut fulfillment_errors = Vec::new();
@@ -1493,17 +1543,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .collect();
 
         match &applicable_candidates[..] {
-            &[] => Err(self.complain_about_inherent_assoc_ty_not_found(
+            &[] => Err(self.complain_about_inherent_assoc_not_found(
                 name,
                 self_ty,
                 candidates,
                 fulfillment_errors,
                 span,
+                kind,
             )),
 
             &[applicable_candidate] => Ok(applicable_candidate),
 
-            &[_, ..] => Err(self.complain_about_ambiguous_inherent_assoc_ty(
+            &[_, ..] => Err(self.complain_about_ambiguous_inherent_assoc(
                 name,
                 applicable_candidates.into_iter().map(|(_, (candidate, _))| candidate).collect(),
                 span,
@@ -2197,6 +2248,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 debug!(?qself, ?segment);
                 let ty = self.lower_ty(qself);
                 self.lower_const_assoc_path(hir_id, const_arg.span(), ty, qself, segment)
+                    .unwrap_or_else(|guar| Const::new_error(tcx, guar))
             }
             hir::ConstArgKind::Path(qpath @ hir::QPath::LangItem(..)) => {
                 ty::Const::new_error_with_message(
@@ -2318,7 +2370,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         qself_ty: Ty<'tcx>,
         qself: &'tcx hir::Ty<'tcx>,
         assoc_segment: &'tcx hir::PathSegment<'tcx>,
-    ) -> Const<'tcx> {
+    ) -> Result<Const<'tcx>, ErrorGuaranteed> {
         debug!(%qself_ty, ?assoc_segment.ident);
         let tcx = self.tcx();
 
@@ -2339,42 +2391,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         GenericsArgsErrExtend::EnumVariant { qself, assoc_segment, adt_def },
                     );
                     let uv = ty::UnevaluatedConst::new(variant_def.def_id, ty::List::empty());
-                    return Const::new_unevaluated(tcx, uv);
+                    return Ok(Const::new_unevaluated(tcx, uv));
                 }
             }
 
             // FIXME(mgca): Support self types other than ADTs.
-            let candidates = tcx
-                .inherent_impls(adt_def.did())
-                .iter()
-                .filter_map(|&impl_| {
-                    self.probe_assoc_item(
-                        assoc_ident,
-                        ty::AssocKind::Const,
-                        hir_ref_id,
-                        span,
-                        impl_,
-                    )
-                    .map(|assoc| (impl_, assoc))
-                })
-                .collect::<Vec<_>>();
-            match &candidates[..] {
-                [] => {}
-                &[(impl_, assoc)] => {
-                    // FIXME(mgca): adapted from temporary inherent assoc ty code that may be incorrect
-                    let parent_args = ty::GenericArgs::identity_for_item(tcx, impl_);
-                    let args = self.lower_generic_args_of_assoc_item(
-                        span,
-                        assoc.def_id,
-                        assoc_segment,
-                        parent_args,
-                    );
-                    let uv = ty::UnevaluatedConst::new(assoc.def_id, args);
-                    return Const::new_unevaluated(tcx, uv);
-                }
-                [..] => {
-                    return Const::new_error_with_message(tcx, span, "ambiguous assoc const path");
-                }
+            if let Some((ct, _)) = self.probe_inherent_assoc_const(
+                assoc_segment,
+                adt_def.did(),
+                qself_ty,
+                hir_ref_id,
+                span,
+            )? {
+                return Ok(ct);
             }
         }
 
@@ -2423,7 +2452,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
         let bound = match bound_result {
             Ok(b) => b,
-            Err(reported) => return Const::new_error(tcx, reported),
+            Err(reported) => return Err(reported),
         };
 
         let trait_did = bound.def_id();
@@ -2431,13 +2460,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .probe_assoc_item(assoc_ident, ty::AssocKind::Const, hir_ref_id, span, trait_did)
             .expect("failed to find associated const");
         if assoc_const.has_type_const_attr(tcx) {
-            self.lower_assoc_const(span, assoc_const.def_id, assoc_segment, bound)
+            Ok(self.lower_assoc_const(span, assoc_const.def_id, assoc_segment, bound))
         } else {
             let mut err = tcx
                 .dcx()
                 .struct_span_err(span, "use of trait associated const without `#[type_const]`");
             err.note("the declaration in the trait must be marked with `#[type_const]`");
-            Const::new_error(tcx, err.emit())
+            Err(err.emit())
         }
     }
 

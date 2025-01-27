@@ -2,7 +2,7 @@ error[E0220]: associated type `Cursor` not found for `Lexer<T>` in the current s
   --> $DIR/issue-109299-1.rs:10:40
    |
 LL | struct Lexer<T>(T);
-   | --------------- associated item `Cursor` not found for this struct
+   | --------------- associated type `Cursor` not found for this struct
 ...
 LL | type X = impl for<T> Fn() -> Lexer<T>::Cursor;
    |                                        ^^^^^^ associated item not found in `Lexer<T>`
@@ -14,7 +14,7 @@ error[E0220]: associated type `Cursor` not found for `Lexer<T>` in the current s
   --> $DIR/issue-109299-1.rs:10:40
    |
 LL | struct Lexer<T>(T);
-   | --------------- associated item `Cursor` not found for this struct
+   | --------------- associated type `Cursor` not found for this struct
 ...
 LL | type X = impl for<T> Fn() -> Lexer<T>::Cursor;
    |                                        ^^^^^^ associated item not found in `Lexer<T>`
