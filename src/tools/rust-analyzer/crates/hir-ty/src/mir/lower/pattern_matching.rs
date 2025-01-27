@@ -632,12 +632,10 @@ impl MirLowerCtx<'_> {
                     .map(|x| {
                         let field_id =
                             variant_data.field(&x.name).ok_or(MirLowerError::UnresolvedField)?;
-                        let has_default = variant_data.fields()[field_id].has_default;
                         Ok((
                             PlaceElem::Field(Either::Left(FieldId {
                                 parent: v,
                                 local_id: field_id,
-                                has_default,
                             })),
                             x.pat,
                         ))
@@ -646,12 +644,8 @@ impl MirLowerCtx<'_> {
                 self.pattern_match_adt(current, current_else, it.into_iter(), cond_place, mode)?
             }
             AdtPatternShape::Tuple { args, ellipsis } => {
-                let fields = variant_data.fields().iter().map(|(x, d)| {
-                    PlaceElem::Field(Either::Left(FieldId {
-                        parent: v,
-                        local_id: x,
-                        has_default: d.has_default,
-                    }))
+                let fields = variant_data.fields().iter().map(|(x, _)| {
+                    PlaceElem::Field(Either::Left(FieldId { parent: v, local_id: x }))
                 });
                 self.pattern_match_tuple_like(
                     current,

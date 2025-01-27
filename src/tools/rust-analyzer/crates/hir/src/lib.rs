@@ -423,9 +423,6 @@ impl ModuleDef {
         };
         if let Some(fields) = fields {
             for field in fields {
-                if !field.has_default {
-                    continue;
-                }
                 let def: DefWithBody = field.into();
                 def.diagnostics(db, &mut acc, style_lints);
             }
@@ -1252,7 +1249,6 @@ impl From<&Field> for DefWithBodyId {
 pub struct Field {
     pub(crate) parent: VariantDef,
     pub(crate) id: LocalFieldId,
-    pub(crate) has_default: bool,
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -1418,7 +1414,7 @@ impl Struct {
             .variant_data
             .fields()
             .iter()
-            .map(|(id, d)| Field { parent: self.into(), id, has_default: d.has_default })
+            .map(|(id, _)| Field { parent: self.into(), id })
             .collect()
     }
 
@@ -1480,7 +1476,7 @@ impl Union {
             .variant_data
             .fields()
             .iter()
-            .map(|(id, d)| Field { parent: self.into(), id, has_default: d.has_default })
+            .map(|(id, _)| Field { parent: self.into(), id })
             .collect()
     }
 
@@ -1610,7 +1606,7 @@ impl Variant {
         self.variant_data(db)
             .fields()
             .iter()
-            .map(|(id, d)| Field { parent: self.into(), id, has_default: d.has_default })
+            .map(|(id, _)| Field { parent: self.into(), id })
             .collect()
     }
 
@@ -5198,13 +5194,10 @@ impl Type {
             _ => return Vec::new(),
         };
 
-        let var_data = db.variant_data(variant_id);
-        let fields = var_data.fields();
         db.field_types(variant_id)
             .iter()
             .map(|(local_id, ty)| {
-                let has_default = fields[local_id].has_default;
-                let def = Field { parent: variant_id.into(), id: local_id, has_default };
+                let def = Field { parent: variant_id.into(), id: local_id };
                 let ty = ty.clone().substitute(Interner, substs);
                 (def, self.derived(ty))
             })
