@@ -471,7 +471,7 @@ impl Step for Rustc {
                 }
             }
 
-            {
+            if builder.config.llvm_enabled(compiler.host) && builder.config.llvm_tools_enabled {
                 let src_dir = builder.sysroot_target_bindir(compiler, host);
                 let llvm_objcopy = exe("llvm-objcopy", compiler.host);
                 let rust_objcopy = exe("rust-objcopy", compiler.host);
