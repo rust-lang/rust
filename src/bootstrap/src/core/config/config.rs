@@ -18,6 +18,8 @@ use build_helper::exit;
 use build_helper::git::{GitConfig, get_closest_merge_commit, output_result};
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
+#[cfg(feature = "tracing")]
+use tracing::{instrument, span};
 
 use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
 use crate::core::build_steps::llvm;
@@ -1227,7 +1229,14 @@ define_config! {
 }
 
 impl Config {
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(target = "CONFIG_HANDLING", level = "trace", name = "Config::default_opts")
+    )]
     pub fn default_opts() -> Config {
+        #[cfg(feature = "tracing")]
+        span!(target: "CONFIG_HANDLING", tracing::Level::TRACE, "constructing default config");
+
         Config {
             bypass_bootstrap_lock: false,
             llvm_optimize: true,
@@ -1311,10 +1320,23 @@ impl Config {
             })
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(target = "CONFIG_HANDLING", level = "trace", name = "Config::parse", skip_all)
+    )]
     pub fn parse(flags: Flags) -> Config {
         Self::parse_inner(flags, Self::get_toml)
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            target = "CONFIG_HANDLING",
+            level = "trace",
+            name = "Config::parse_inner",
+            skip_all
+        )
+    )]
     pub(crate) fn parse_inner(
         mut flags: Flags,
         get_toml: impl Fn(&Path) -> Result<TomlConfig, toml::de::Error>,
@@ -1323,6 +1345,17 @@ impl Config {
 
         // Set flags.
         config.paths = std::mem::take(&mut flags.paths);
+
+        #[cfg(feature = "tracing")]
+        span!(
+            target: "CONFIG_HANDLING",
+            tracing::Level::TRACE,
+            "collecting paths and path exclusions",
+            "flags.paths" = ?flags.paths,
+            "flags.skip" = ?flags.skip,
+            "flags.exclude" = ?flags.exclude
+        );
+
         config.skip = flags
             .skip
             .into_iter()
@@ -1338,6 +1371,14 @@ impl Config {
                 }
             })
             .collect();
+
+        #[cfg(feature = "tracing")]
+        span!(
+            target: "CONFIG_HANDLING",
+            tracing::Level::TRACE,
+            "normalizing and combining `flag.skip`/`flag.exclude` paths",
+            "config.skip" = ?config.skip,
+        );
 
         config.include_default_paths = flags.include_default_paths;
         config.rustc_error_format = flags.rustc_error_format;
@@ -1418,7 +1459,11 @@ impl Config {
 
         config.stage0_metadata = build_helper::stage0_parser::parse_stage0_file();
 
-        // Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`, then `config.toml` in the root directory.
+        // Find configuration file, with the following cascading fallback (first match wins):
+        // - `--config <path>`
+        // - `RUST_BOOTSTRAP_CONFIG`
+        // - `./config.toml`
+        // - `config.toml` in the root directory.
         let toml_path = flags
             .config
             .clone()

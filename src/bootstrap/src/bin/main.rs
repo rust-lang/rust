@@ -16,11 +16,7 @@ use bootstrap::{
 };
 use build_helper::ci::CiEnv;
 #[cfg(feature = "tracing")]
-use tracing::*;
-#[cfg(feature = "tracing")]
-use tracing_subscriber::EnvFilter;
-#[cfg(feature = "tracing")]
-use tracing_subscriber::prelude::*;
+use tracing::{debug, instrument};
 
 #[cfg_attr(feature = "tracing", instrument(level = "trace", name = "main"))]
 fn main() {
@@ -33,7 +29,11 @@ fn main() {
         return;
     }
 
+    #[cfg(feature = "tracing")]
+    debug!("parsing flags");
     let flags = Flags::parse(&args);
+    #[cfg(feature = "tracing")]
+    debug!("parsing config based on flags");
     let config = Config::parse(flags);
 
     let mut build_lock;
@@ -95,6 +95,8 @@ fn main() {
     let dump_bootstrap_shims = config.dump_bootstrap_shims;
     let out_dir = config.out.clone();
 
+    #[cfg(feature = "tracing")]
+    debug!("creating new build based on config");
     Build::new(config).build();
 
     if suggest_setup {
@@ -211,16 +213,14 @@ fn check_version(config: &Config) -> Option<String> {
 //   "tracing", instrument(..))]`.
 #[cfg(feature = "tracing")]
 fn setup_tracing() {
-    let filter = EnvFilter::from_env("BOOTSTRAP_TRACING");
-    let layer = tracing_tree::HierarchicalLayer::default()
-        .with_writer(std::io::stderr)
-        .with_ansi(true)
-        .with_targets(true)
-        .with_bracketed_fields(true)
-        .with_indent_amount(2)
-        .with_indent_lines(true);
-    let subscriber = tracing_subscriber::registry().with(filter).with(layer);
+    use tracing_subscriber::EnvFilter;
+    use tracing_subscriber::layer::SubscriberExt;
 
-    tracing::subscriber::set_global_default(subscriber).unwrap();
-    trace!("tracing subscriber setup");
+    let filter = EnvFilter::from_env("BOOTSTRAP_TRACING");
+    // cf. <https://docs.rs/tracing-tree/latest/tracing_tree/struct.HierarchicalLayer.html>.
+    let layer = tracing_tree::HierarchicalLayer::default().with_targets(true).with_indent_amount(2);
+
+    let registry = tracing_subscriber::registry().with(filter).with(layer);
+
+    tracing::subscriber::set_global_default(registry).unwrap();
 }
