@@ -1,4 +1,5 @@
 //@compile-flags: -Zmiri-tree-borrows
+#![allow(unsafe_cell_transmutes)]
 
 //! Testing `mem::transmute` between types with and without interior mutability.
 //! All transmutations should work, as long as we don't do any actual accesses
