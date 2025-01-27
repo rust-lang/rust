@@ -1,9 +1,10 @@
 #![warn(clippy::pedantic)]
 
-use macros::init_statics;
-use std::alloc::{alloc, dealloc, Layout};
+use std::alloc::{Layout, alloc, dealloc};
 use std::marker::PhantomData;
 use std::ops::BitAnd;
+
+use macros::init_statics;
 
 init_statics!(X86, 48);
 
@@ -19,10 +20,7 @@ impl<const W: usize, T: Provenance> L2<W, T> {
     fn new() -> Self {
         unsafe {
             let bytes = alloc(Layout::from_size_align(W, 1).unwrap());
-            Self {
-                bytes,
-                phantom: PhantomData,
-            }
+            Self { bytes, phantom: PhantomData }
         }
     }
     #[inline]
@@ -98,11 +96,11 @@ impl<const W1: usize, const W2: usize, T: Provenance> Drop for L1<W1, W2, T> {
     }
 }
 
-pub struct MemTable<const W1: usize, const W2: usize, T: Provenance> {
+pub struct Table<const W1: usize, const W2: usize, T: Provenance> {
     l1: L1<W1, W2, T>,
 }
 
-impl<const W1: usize, const W2: usize, T: Provenance> Default for MemTable<W1, W2, T> {
+impl<const W1: usize, const W2: usize, T: Provenance> Default for Table<W1, W2, T> {
     fn default() -> Self {
         let l1 = L1::<W1, W2, T>::new();
         Self { l1 }

@@ -1,21 +1,19 @@
 #![feature(rustc_private)]
-#![warn(clippy::pedantic)]
 #![allow(unused)]
 
 extern crate rustc_abi;
 extern crate rustc_middle;
 
-use std::num::NonZero;
-use std::sync::OnceLock;
-
 mod table;
 
-use log::info;
-use rustc_middle::mir::{PlaceKind, RetagKind};
+use std::num::NonZero;
+use std::os::raw::c_void;
+use std::sync::OnceLock;
 
+use log::info;
 use miri::{AllocId, BorTag, Pointer, Provenance, ProvenanceExtra};
 use rustc_abi::Size;
-use std::os::raw::c_void;
+use rustc_middle::mir::{PlaceKind, RetagKind};
 
 mod state;
 use state::GlobalState;

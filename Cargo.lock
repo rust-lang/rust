@@ -290,7 +290,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "borrowtracker"
+name = "bsan"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "log",
+ "rustc_version",
+]
+
+[[package]]
+name = "bsanrt"
 version = "0.1.0"
 dependencies = [
  "cbindgen",
@@ -299,10 +308,6 @@ dependencies = [
  "macros",
  "miri",
 ]
-
-[[package]]
-name = "bsan"
-version = "0.1.0"
 
 [[package]]
 name = "bstr"
@@ -385,11 +390,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "cargo-bsan"
+version = "0.1.0"
+dependencies = [
+ "cargo_metadata 0.19.1",
+ "directories 6.0.0",
+ "env_logger",
+ "log",
+ "rustc-build-sysroot",
+ "rustc_tools_util",
+ "rustc_version",
+]
+
+[[package]]
 name = "cargo-miri"
 version = "0.1.0"
 dependencies = [
- "cargo_metadata",
- "directories",
+ "cargo_metadata 0.18.1",
+ "directories 5.0.1",
  "rustc-build-sysroot",
  "rustc_tools_util",
  "rustc_version",
@@ -417,7 +435,21 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "thiserror",
+ "thiserror 1.0.66",
+]
+
+[[package]]
+name = "cargo_metadata"
+version = "0.19.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8769706aad5d996120af43197bf46ef6ad0fda35216b4505f926a365a232d924"
+dependencies = [
+ "camino",
+ "cargo-platform",
+ "semver",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.11",
 ]
 
 [[package]]
@@ -573,7 +605,7 @@ name = "clippy"
 version = "0.1.84"
 dependencies = [
  "anstream",
- "cargo_metadata",
+ "cargo_metadata 0.18.1",
  "clippy_config",
  "clippy_lints",
  "clippy_utils",
@@ -627,7 +659,7 @@ name = "clippy_lints"
 version = "0.1.84"
 dependencies = [
  "arrayvec",
- "cargo_metadata",
+ "cargo_metadata 0.18.1",
  "clippy_config",
  "clippy_utils",
  "itertools",
@@ -1039,7 +1071,16 @@ version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a49173b84e034382284f27f1af4dcbbd231ffa358c0fe316541a7337f376a35"
 dependencies = [
- "dirs-sys",
+ "dirs-sys 0.4.1",
+]
+
+[[package]]
+name = "directories"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16f5094c54661b38d03bd7e50df373292118db60b585c08a411c6d840017fe7d"
+dependencies = [
+ "dirs-sys 0.5.0",
 ]
 
 [[package]]
@@ -1048,7 +1089,7 @@ version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44c45a9d03d6676652bcb5e724c7e988de1acad23a711b5217ab9cbecbec2225"
 dependencies = [
- "dirs-sys",
+ "dirs-sys 0.4.1",
 ]
 
 [[package]]
@@ -1069,8 +1110,20 @@ checksum = "520f05a5cbd335fae5a99ff7a6ab8627577660ee5cfd6a94a6a929b52ff0321c"
 dependencies = [
  "libc",
  "option-ext",
- "redox_users",
+ "redox_users 0.4.6",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "dirs-sys"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e01a3366d27ee9890022452ee61b2b63a67e6f13f58900b651ff5665f0bb1fab"
+dependencies = [
+ "libc",
+ "option-ext",
+ "redox_users 0.5.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1080,7 +1133,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ebda144c4fe02d1f7ea1a7d9641b6fc6b580adcfa024ae48797ecdeb6825b4d"
 dependencies = [
  "libc",
- "redox_users",
+ "redox_users 0.4.6",
  "winapi",
 ]
 
@@ -1155,9 +1208,9 @@ dependencies = [
 
 [[package]]
 name = "env_logger"
-version = "0.11.5"
+version = "0.11.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e13fa619b91fb2381732789fc5de83b45675e882f66623b7d8cb4f643017018d"
+checksum = "dcaee3d8e3cfc3fd92428d477bc97fc29ec8716d180c0d74c643bb26166660e0"
 dependencies = [
  "anstream",
  "anstyle",
@@ -1284,7 +1337,7 @@ version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a530c4694a6a8d528794ee9bbd8ba0122e779629ac908d15ad5a7ae7763a33d"
 dependencies = [
- "thiserror",
+ "thiserror 1.0.66",
 ]
 
 [[package]]
@@ -1427,11 +1480,11 @@ name = "generate-copyright"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "cargo_metadata",
+ "cargo_metadata 0.18.1",
  "rinja",
  "serde",
  "serde_json",
- "thiserror",
+ "thiserror 1.0.66",
 ]
 
 [[package]]
@@ -1538,7 +1591,7 @@ dependencies = [
  "pest_derive",
  "serde",
  "serde_json",
- "thiserror",
+ "thiserror 1.0.66",
 ]
 
 [[package]]
@@ -2110,7 +2163,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "clap",
- "thiserror",
+ "thiserror 1.0.66",
  "tracing",
  "tracing-subscriber",
 ]
@@ -2325,7 +2378,7 @@ dependencies = [
  "chrono-tz",
  "colored",
  "ctrlc",
- "directories",
+ "directories 5.0.1",
  "getrandom",
  "jemalloc-sys",
  "libc",
@@ -2687,7 +2740,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "879952a81a83930934cbf1786752d6dedc3b1f29e8f8fb2ad1d0a36f377cf442"
 dependencies = [
  "memchr",
- "thiserror",
+ "thiserror 1.0.66",
  "ucd-trie",
 ]
 
@@ -3016,7 +3069,18 @@ checksum = "ba009ff324d1fc1b900bd1fdb31564febe58a8ccc8a6fdbb93b543d33b13ca43"
 dependencies = [
  "getrandom",
  "libredox",
- "thiserror",
+ "thiserror 1.0.66",
+]
+
+[[package]]
+name = "redox_users"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd6f9d3d47bdd2ad6945c5015a226ec6155d0bcdfd8f7cd29f86b71f8de99d2b"
+dependencies = [
+ "getrandom",
+ "libredox",
+ "thiserror 2.0.11",
 ]
 
 [[package]]
@@ -4688,7 +4752,7 @@ checksum = "81864b097046da5df3758fdc6e4822bbb70afa06317e8ca45ea1b51cb8c5e5a4"
 dependencies = [
  "serde",
  "serde_json",
- "thiserror",
+ "thiserror 1.0.66",
  "tracing",
 ]
 
@@ -4709,7 +4773,7 @@ dependencies = [
  "annotate-snippets 0.9.2",
  "anyhow",
  "bytecount",
- "cargo_metadata",
+ "cargo_metadata 0.18.1",
  "clap",
  "clap-cargo",
  "diff",
@@ -4722,7 +4786,7 @@ dependencies = [
  "serde",
  "serde_json",
  "term",
- "thiserror",
+ "thiserror 1.0.66",
  "toml 0.7.8",
  "tracing",
  "tracing-subscriber",
@@ -4968,7 +5032,7 @@ checksum = "53d7ac03c67c572d85049d6db815e20a4a19b41b3d5cca732ac582342021ad77"
 dependencies = [
  "nom",
  "serde",
- "thiserror",
+ "thiserror 1.0.66",
  "tracing",
 ]
 
@@ -4985,7 +5049,7 @@ dependencies = [
  "spdx-expression",
  "strum",
  "strum_macros",
- "thiserror",
+ "thiserror 1.0.66",
  "uuid",
 ]
 
@@ -5233,7 +5297,16 @@ version = "1.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d171f59dbaa811dbbb1aee1e73db92ec2b122911a48e1390dfe327a821ddede"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 1.0.66",
+]
+
+[[package]]
+name = "thiserror"
+version = "2.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d452f284b73e6d76dd36758a0c8684b1d5be31f92b89d07fd5822175732206fc"
+dependencies = [
+ "thiserror-impl 2.0.11",
 ]
 
 [[package]]
@@ -5241,6 +5314,17 @@ name = "thiserror-impl"
 version = "1.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b08be0f17bd307950653ce45db00cd31200d82b624b36e181337d9c7d92765b5"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "2.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26afc1baea8a989337eeb52b6e72a039780ce45c3edfcc9c5b9d112feeb173c2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5283,7 +5367,7 @@ name = "tidy"
 version = "0.1.0"
 dependencies = [
  "build_helper",
- "cargo_metadata",
+ "cargo_metadata 0.18.1",
  "fluent-syntax",
  "ignore",
  "miropt-test-tools",
@@ -5576,7 +5660,7 @@ dependencies = [
  "anyhow",
  "bstr",
  "cargo-platform",
- "cargo_metadata",
+ "cargo_metadata 0.18.1",
  "color-eyre",
  "colored",
  "comma",

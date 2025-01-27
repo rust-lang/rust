@@ -341,7 +341,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         &mut self,
         place: PlaceValue<Self::Value>,
         place_kind: PlaceKind,
-        retag_kind: RetagKind
+        retag_kind: RetagKind,
     );
 
     /// *Typed* copy for non-overlapping places.

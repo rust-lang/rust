@@ -526,7 +526,7 @@ pub enum RetagKind {
 pub enum PlaceKind {
     Freeze,
     Unpin,
-    Default
+    Default,
 }
 
 /// The `FakeReadCause` describes the type of pattern why a FakeRead statement exists.

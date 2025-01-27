@@ -9,7 +9,7 @@ pub struct TrackedPointer {
 }
 
 impl TrackedPointer {
-    fn to_miri_pointer(pointer: TrackedPointer) -> Pointer {
+    fn to_miri_pointer(pointer: &TrackedPointer) -> Pointer {
         let addr = Size::from_bytes(pointer.addr as u64);
         let alloc_id = pointer.alloc_id;
         let tag = pointer.tag;

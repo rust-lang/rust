@@ -337,10 +337,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                                 codegen_fn_attrs.no_sanitize |=
                                     SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS
                             }
-                            sym::borrow => {
-                                codegen_fn_attrs.no_sanitize |=
-                                    SanitizerSet::BORROW
-                            }
+                            sym::borrow => codegen_fn_attrs.no_sanitize |= SanitizerSet::BORROW,
                             sym::cfi => codegen_fn_attrs.no_sanitize |= SanitizerSet::CFI,
                             sym::kcfi => codegen_fn_attrs.no_sanitize |= SanitizerSet::KCFI,
                             sym::memory => codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY,

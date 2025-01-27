@@ -3,10 +3,7 @@ use std::path::PathBuf;
 use std::process;
 use std::process::Command;
 
-use rustc_build_sysroot::BuildMode;
-use rustc_build_sysroot::SysrootBuilder;
-use rustc_build_sysroot::SysrootConfig;
-use rustc_build_sysroot::SysrootStatus;
+use rustc_build_sysroot::{BuildMode, SysrootBuilder, SysrootConfig, SysrootStatus};
 use rustc_version::VersionMeta;
 
 use crate::BSANCommand;
@@ -31,7 +28,7 @@ pub fn setup(
         }
     }
 
-    // Determine where the rust sources are located.  
+    // Determine where the rust sources are located.
     // The env var trumps auto-detection.
     let rust_src_env_var = std::env::var_os("BSAN_LIB_SRC");
     let rust_src = match rust_src_env_var {
@@ -58,10 +55,7 @@ pub fn setup(
         }
     };
     if !rust_src.exists() {
-        show_error!(
-            "given Rust source directory `{}` does not exist.",
-            rust_src.display()
-        );
+        show_error!("given Rust source directory `{}` does not exist.", rust_src.display());
     }
     if rust_src.file_name().and_then(OsStr::to_str) != Some("library") {
         show_error!(
@@ -91,10 +85,7 @@ pub fn setup(
         SysrootConfig::NoStd
     } else {
         SysrootConfig::WithStd {
-            std_features: ["panic_unwind", "backtrace"]
-                .into_iter()
-                .map(Into::into)
-                .collect(),
+            std_features: ["panic_unwind", "backtrace"].into_iter().map(Into::into).collect(),
         }
     };
     let cargo_cmd = {

@@ -2911,7 +2911,13 @@ pub(crate) mod dep_tracking {
     };
 
     use super::{
-        AliasingModel, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail, LtoCli, NextSolverConfig, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius, RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel
+        AliasingModel, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo,
+        CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
+        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
+        LocationDetail, LtoCli, NextSolverConfig, OomStrategy, OptLevel, OutFileName, OutputType,
+        OutputTypes, PatchableFunctionEntry, Polonius, RemapPathScopeComponents, ResolveDocLinks,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;

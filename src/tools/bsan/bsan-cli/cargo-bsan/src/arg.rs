@@ -10,10 +10,7 @@ pub fn has_arg_flag(name: &str) -> bool {
 
 /// Determines how many times a `--flag` is present.
 pub fn num_arg_flag(name: &str) -> usize {
-    env::args()
-        .take_while(|val| val != "--")
-        .filter(|val| val == name)
-        .count()
+    env::args().take_while(|val| val != "--").filter(|val| val == name).count()
 }
 
 /// Yields all values of command line flag `name` as `Ok(arg)`, and all other arguments except
@@ -25,10 +22,7 @@ pub struct ArgSplitFlagValue<'a, I> {
 
 impl<'a, I: Iterator> ArgSplitFlagValue<'a, I> {
     fn new(args: I, name: &'a str) -> Self {
-        Self {
-            args: Some(args),
-            name,
-        }
+        Self { args: Some(args), name }
     }
 }
 

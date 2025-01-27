@@ -1,14 +1,14 @@
-use crate::arg::get_arg_flag_values;
+use std::env;
+use std::ffi::OsString;
+use std::fs::File;
+use std::io::{self, Write};
+use std::ops::Not;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+
 use cargo_metadata::MetadataCommand;
-use std::{
-    env,
-    ffi::OsString,
-    fs::File,
-    io::{self, Write},
-    ops::Not,
-    path::{Path, PathBuf},
-    process::Command,
-};
+
+use crate::arg::get_arg_flag_values;
 
 pub fn show_error_(msg: &impl std::fmt::Display) -> ! {
     eprintln!("fatal error: {msg}");
@@ -147,12 +147,7 @@ pub fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
         eprintln!("Running `{cmd:?}` to {text}.");
     }
 
-    if cmd
-        .status()
-        .unwrap_or_else(|_| panic!("failed to execute {cmd:?}"))
-        .success()
-        .not()
-    {
+    if cmd.status().unwrap_or_else(|_| panic!("failed to execute {cmd:?}")).success().not() {
         show_error!("failed to {}", text);
     }
 }
@@ -193,11 +188,7 @@ fn cargo_extra_flags() -> Vec<String> {
 
 pub fn get_cargo_metadata() -> Metadata {
     // This will honor the `CARGO` env var the same way our `cargo()` does.
-    MetadataCommand::new()
-        .no_deps()
-        .other_options(cargo_extra_flags())
-        .exec()
-        .unwrap()
+    MetadataCommand::new().no_deps().other_options(cargo_extra_flags()).exec().unwrap()
 }
 
 pub fn clean_sysroot_dir() {

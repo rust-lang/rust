@@ -331,7 +331,9 @@ lint_any!(
     BuildHelper, "src/build_helper", "build_helper";
     BuildManifest, "src/tools/build-manifest", "build-manifest";
     CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri";
-    CargoBsan, "src/tools/bsan/cargo-bsan", "cargo-bsan";
+    CargoBsan, "src/tools/bsan/bsan-cli/cargo-bsan", "cargo-bsan";
+    BsanDriver, "src/tools/bsan/bsan-cli/", "bsan";
+    BsanCore, "src/tools/bsan/bsan-rt/", "bsan-rt";
     Clippy, "src/tools/clippy", "clippy";
     CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
     Compiletest, "src/tools/compiletest", "compiletest";
@@ -341,7 +343,6 @@ lint_any!(
     LintDocs, "src/tools/lint-docs", "lint-docs";
     LlvmBitcodeLinker, "src/tools/llvm-bitcode-linker", "llvm-bitcode-linker";
     Miri, "src/tools/miri", "miri";
-    Bsan, "src/tools/bsan", "bsan";
     MiroptTestTools, "src/tools/miropt-test-tools", "miropt-test-tools";
     OptDist, "src/tools/opt-dist", "opt-dist";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";

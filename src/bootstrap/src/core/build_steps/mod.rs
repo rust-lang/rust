@@ -1,3 +1,4 @@
+pub(crate) mod bsan;
 pub(crate) mod check;
 pub(crate) mod clean;
 pub(crate) mod clippy;
@@ -17,4 +18,3 @@ pub(crate) mod test;
 pub(crate) mod tool;
 pub(crate) mod toolstate;
 pub(crate) mod vendor;
-pub(crate) mod bsan;

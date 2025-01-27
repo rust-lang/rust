@@ -1,9 +1,9 @@
+use rustc_version::VersionMeta;
+
 use crate::arg::*;
 use crate::setup::*;
 use crate::util::*;
 use crate::*;
-
-use rustc_version::VersionMeta;
 
 #[derive(Clone, Debug)]
 pub enum BSANCommand {
@@ -43,10 +43,7 @@ pub fn phase_cargo_bsan(mut args: impl Iterator<Item = String>) {
 
     // Determine the involved architectures.
     let rustc_version = VersionMeta::for_command(bsan_for_host()).unwrap_or_else(|err| {
-        panic!(
-            "failed to determine underlying rustc version of BSAN ({:?}):\n{err:?}",
-            bsan()
-        )
+        panic!("failed to determine underlying rustc version of BSAN ({:?}):\n{err:?}", bsan())
     });
 
     let mut targets = get_arg_flag_values("--target").collect::<Vec<_>>();

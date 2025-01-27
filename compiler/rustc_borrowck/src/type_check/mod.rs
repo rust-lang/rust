@@ -1249,7 +1249,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 if !self.infcx.tcx.sess.emit_retags() {
                     bug!("Statement not allowed in this MIR phase")
                 }
-            },
+            }
             StatementKind::FakeRead(..)
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)

@@ -1,16 +1,16 @@
 #![feature(rustc_private)]
-#![warn(clippy::pedantic)]
 
 mod arg;
 mod phases;
 mod setup;
 mod util;
 
-use crate::util::show_error;
-use phases::*;
+use std::env;
 
 use log::debug;
-use std::env;
+use phases::*;
+
+use crate::util::show_error;
 
 const CARGO_BSAN_HELP: &str = r"Runs binary crates and tests with BorrowSanitizer enabled.
 

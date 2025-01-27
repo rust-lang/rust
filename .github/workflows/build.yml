@@ -21,9 +21,22 @@ concurrency:
   group: "build"
   cancel-in-progress: true
 jobs:
+  fmt:
+    runs-on: macos-latest
+    name: Formatting
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Upstream
+        run: src/ci/scripts/setup-upstream-remote.sh
+      - name: Format
+        run: ./x.py fmt --check
   build-linux:
     runs-on: ubuntu-latest
-    name: Build (Linux)
+    name: Build (x86 Linux)
+    strategy:
+      fail-fast: true
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,13 +45,22 @@ jobs:
         run: |
             sudo apt-get install ninja-build
             rustup component add llvm-tools-preview
+            cp src/bootstrap/defaults/config.bsan.dev.toml config.toml
       - name: Upstream
         run: src/ci/scripts/setup-upstream-remote.sh
       - name: Build
-        run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.dev.toml
+        run: ./x.py build --stage 1
+      - name: Clippy - bsan-cli
+        run: ./x.py clippy src/tools/bsan/bsan-cli
+      - name: Clippy - cargo-bsan
+        run: ./x.py clippy src/tools/bsan/bsan-cli/cargo-bsan
+      - name: Clippy - bsan-rt
+        run: ./x.py clippy src/tools/bsan/bsan-rt
   build-macos:
     runs-on: macos-latest
-    name: Build (macOS)
+    name: Build (ARM64 macOS)
+    strategy:
+      fail-fast: true
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,7 +68,14 @@ jobs:
       - name: Install dependencies
         run: |
             brew install ninja
+            cp src/bootstrap/defaults/config.bsan.dev.toml config.toml
       - name: Upstream
         run: src/ci/scripts/setup-upstream-remote.sh
       - name: Stage 1 Build
-        run: ./x.py build --stage 1 --config src/bootstrap/defaults/config.bsan.dev.toml
+        run: ./x.py build --stage 1 
+      - name: Clippy - bsan-cli
+        run: ./x.py clippy src/tools/bsan/bsan-cli
+      - name: Clippy - cargo-bsan
+        run: ./x.py clippy src/tools/bsan/bsan-cli/cargo-bsan
+      - name: Clippy - bsan-rt
+        run: ./x.py clippy src/tools/bsan/bsan-rt

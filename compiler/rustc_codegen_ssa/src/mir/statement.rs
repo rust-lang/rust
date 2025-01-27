@@ -1,4 +1,4 @@
-use rustc_middle::mir::{self, PlaceKind, NonDivergingIntrinsic};
+use rustc_middle::mir::{self, NonDivergingIntrinsic, PlaceKind};
 use rustc_middle::span_bug;
 use tracing::instrument;
 
@@ -94,9 +94,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let place_value = if let Some(index) = place.as_local() {
                         match self.locals[index] {
                             LocalRef::Place(cg_dest) => cg_dest.val,
-                            LocalRef::UnsizedPlace(cg_indirect_dest) => {
-                                cg_indirect_dest.val
-                            }
+                            LocalRef::UnsizedPlace(cg_indirect_dest) => cg_indirect_dest.val,
                             LocalRef::PendingOperand => {
                                 span_bug!(
                                     statement.source_info.span,
@@ -107,12 +105,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             LocalRef::Operand(op) => {
                                 if let OperandValue::Ref(r) = op.val {
                                     r
-                                }else{
+                                } else {
                                     op.deref(bx.cx()).val
                                 }
                             }
                         }
-                    }else{
+                    } else {
                         self.codegen_place(bx, place.as_ref()).val
                     };
                     bx.retag(place_value, PlaceKind::Default, retag_kind);

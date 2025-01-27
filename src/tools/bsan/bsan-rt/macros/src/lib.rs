@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Ident, LitInt, Token};
 use syn::parse::{Parse, ParseStream};
+use syn::{Ident, LitInt, Token, parse_macro_input};
 
 struct StaticInitInput {
     prefix: Ident,
