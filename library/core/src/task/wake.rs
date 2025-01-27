@@ -1,6 +1,7 @@
 #![stable(feature = "futures_api", since = "1.36.0")]
 
-use crate::any::Any;
+use crate::any::{Any, TypeId};
+use crate::error::{Request, Tagged, TaggedOption, tags};
 use crate::marker::PhantomData;
 use crate::mem::{ManuallyDrop, transmute};
 use crate::panic::AssertUnwindSafe;
@@ -211,6 +212,155 @@ enum ExtData<'a> {
     None(()),
 }
 
+/// `Provider` is a trait that allows querying for arbitrary context data.
+#[unstable(feature = "context_provider", issue = "none")]
+pub trait Provider: fmt::Debug {
+    /// Provides type-based access to additional context data.
+    ///
+    /// Used in conjunction with [`Request::provide_value`] and [`Request::provide_ref`] to extract
+    /// references to member variables from `dyn Provider` trait objects.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// #![feature(error_generic_member_access)]
+    /// #![feature(context_provider)]
+    /// #![feature(noop_waker)]
+    /// use core::fmt;
+    ///
+    /// #[derive(Debug)]
+    /// enum MyLittleTeaPot {
+    ///     Empty,
+    /// }
+    ///
+    /// #[derive(Debug)]
+    /// struct MyExtensionData {
+    ///     // ...
+    /// }
+    ///
+    /// impl MyExtensionData {
+    ///     fn new() -> MyExtensionData {
+    ///         // ...
+    ///         # MyExtensionData {}
+    ///     }
+    /// }
+    ///
+    /// #[derive(Debug)]
+    /// struct MyProvider {
+    ///     ext: MyExtensionData,
+    /// }
+    ///
+    /// impl std::task::Provider for MyProvider {
+    ///     fn provide<'a>(&'a self, request: &mut Request<'a>) {
+    ///         request
+    ///             .provide_ref::<MyExtensionData>(&self.ext);
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let ext = MyExtensionData::new();
+    ///     let mut provider = MyProvider { ext };
+    ///     let ext_ref_orig = &provider.ext as *const MyExtensionData;
+    ///     let dyn_provider = &mut provider as &mut dyn std::task::Provider;
+    ///     let cx = std::task::ContextBuilder::from_waker(Waker::noop()).provider(dyn_provider).build();
+    ///     let ext_ref = cx.request_ref::<MyExtensionData>().unwrap();
+    ///
+    ///     assert!(core::ptr::eq(ext_ref_orig, ext_ref));
+    ///     assert!(cx.request_ref::<MyLittleTeaPot>().is_none());
+    /// }
+    /// ```
+    #[allow(unused_variables)]
+    fn provide<'a>(&'a self, request: &mut Request<'a>) {}
+
+    /// Provides type-based access to additional mutable context data.
+    ///
+    /// Used in conjunction with [`Request::provide_mut`] to extract
+    /// mutable references to member variables from `dyn Provider` trait objects.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// #![feature(error_generic_member_access)]
+    /// #![feature(context_provider)]
+    /// #![feature(noop_waker)]
+    /// use core::fmt;
+    ///
+    /// #[derive(Debug)]
+    /// enum MyLittleTeaPot {
+    ///     Empty,
+    /// }
+    ///
+    /// #[derive(Debug)]
+    /// struct MyExtensionData {
+    ///     // ...
+    /// }
+    ///
+    /// impl MyExtensionData {
+    ///     fn new() -> MyExtensionData {
+    ///         // ...
+    ///         # MyExtensionData {}
+    ///     }
+    /// }
+    ///
+    /// #[derive(Debug)]
+    /// struct MyProvider {
+    ///     ext: MyExtensionData,
+    /// }
+    ///
+    /// impl std::task::Provider for MyProvider {
+    ///     fn provide_mut<'a>(&'a mut self, request: &mut Request<'a>) {
+    ///         request
+    ///             .provide_mut::<MyExtensionData>(&mut self.ext);
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let ext = MyExtensionData::new();
+    ///     let mut provider = MyProvider { ext };
+    ///     let ext_ref_orig = &mut provider.ext as *mut MyExtensionData;
+    ///     let dyn_provider = &mut provider as &mut dyn std::task::Provider;
+    ///     let cx = std::task::ContextBuilder::from_waker(Waker::noop()).provider(dyn_provider).build();
+    ///     let ext_ref = cx.request_mut::<MyExtensionData>().unwrap();
+    ///
+    ///     assert!(core::ptr::eq(ext_ref_orig, ext_ref));
+    ///     assert!(cx.request_mut::<MyLittleTeaPot>().is_none());
+    /// }
+    /// ```
+    #[allow(unused_variables)]
+    fn provide_mut<'a>(&'a mut self, request: &mut Request<'a>) {}
+}
+
+#[unstable(feature = "context_provider", issue = "none")]
+impl Provider for &mut (dyn Provider + 'static) {
+    fn provide<'a>(&'a self, request: &mut Request<'a>) {
+        Provider::provide(*self, request)
+    }
+
+    fn provide_mut<'a>(&'a mut self, request: &mut Request<'a>) {
+        Provider::provide_mut(*self, request)
+    }
+}
+
+/// Request a specific value by tag from the `Provider`.
+fn request_by_type_tag<'a, I>(provider: &'a (impl Provider + ?Sized)) -> Option<I::Reified>
+where
+    I: tags::Type<'a>,
+{
+    let mut tagged = Tagged { tag_id: TypeId::of::<I>(), value: TaggedOption::<'a, I>(None) };
+    provider.provide(tagged.as_request());
+    tagged.value.0
+}
+
+/// Request a specific value by tag from the `Provider`.
+fn request_by_type_tag_mut<'a, I>(provider: &'a mut (impl Provider + ?Sized)) -> Option<I::Reified>
+where
+    I: tags::Type<'a>,
+{
+    let mut tagged = Tagged { tag_id: TypeId::of::<I>(), value: TaggedOption::<'a, I>(None) };
+    provider.provide_mut(tagged.as_request());
+    tagged.value.0
+}
+
 /// The context of an asynchronous task.
 ///
 /// Currently, `Context` only serves to provide access to a [`&Waker`](Waker)
@@ -220,6 +370,8 @@ enum ExtData<'a> {
 pub struct Context<'a> {
     waker: &'a Waker,
     local_waker: &'a LocalWaker,
+    provider: Option<&'a mut (dyn Provider + 'static)>,
+    parent_provider: Option<&'a mut (dyn Provider + 'static)>,
     ext: AssertUnwindSafe<ExtData<'a>>,
     // Ensure we future-proof against variance changes by forcing
     // the lifetime to be invariant (argument-position lifetimes
@@ -255,6 +407,96 @@ impl<'a> Context<'a> {
     #[unstable(feature = "local_waker", issue = "118959")]
     pub const fn local_waker(&self) -> &'a LocalWaker {
         &self.local_waker
+    }
+
+    /// Requests a value of type `T` from the context's provider, if available.
+    ///
+    /// # Examples
+    ///
+    /// Get a string value from a context.
+    ///
+    /// ```rust
+    /// #![feature(context_provider)]
+    /// use core::task::Context;
+    ///
+    /// fn get_string(cx: &Context) -> String {
+    ///     cx.request_value::<String>().unwrap()
+    /// }
+    /// ```
+    #[unstable(feature = "context_provider", issue = "none")]
+    pub fn request_value<T>(&self) -> Option<T>
+    where
+        T: 'static,
+    {
+        let Some(provider) = &self.provider else { return None };
+
+        request_by_type_tag::<tags::Value<T>>(provider).or_else(|| {
+            if let Some(parent) = &self.parent_provider {
+                request_by_type_tag::<tags::Value<T>>(parent)
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Requests a reference of type `T` from the context's provider, if available.
+    ///
+    /// # Examples
+    ///
+    /// Get a string reference from a context.
+    ///
+    /// ```rust
+    /// #![feature(context_provider)]
+    /// use core::task::Context;
+    ///
+    /// fn get_str(cx: &Context) -> &str {
+    ///     cx.request_ref::<str>().unwrap()
+    /// }
+    /// ```
+    #[unstable(feature = "context_provider", issue = "none")]
+    pub fn request_ref<T>(&self) -> Option<&T>
+    where
+        T: 'static + ?Sized,
+    {
+        let Some(provider) = &self.provider else { return None };
+
+        request_by_type_tag::<tags::Ref<tags::MaybeSizedValue<T>>>(provider).or_else(|| {
+            if let Some(parent) = &self.parent_provider {
+                request_by_type_tag::<tags::Ref<tags::MaybeSizedValue<T>>>(parent)
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Requests a mutable reference of type `T` from the context's provider, if available.
+    ///
+    /// # Examples
+    ///
+    /// Get a mutable string reference from a context.
+    ///
+    /// ```rust
+    /// #![feature(context_provider)]
+    /// use core::task::Context;
+    ///
+    /// fn get_str(cx: &mut Context) -> &mut str {
+    ///     cx.request_mut::<str>().unwrap()
+    /// }
+    /// ```
+    #[unstable(feature = "context_provider", issue = "none")]
+    pub fn request_mut<T>(&mut self) -> Option<&mut T>
+    where
+        T: 'static + ?Sized,
+    {
+        let Some(provider) = &mut self.provider else { return None };
+
+        request_by_type_tag_mut::<tags::RefMut<tags::MaybeSizedValue<T>>>(provider).or_else(|| {
+            if let Some(parent) = &mut self.parent_provider {
+                request_by_type_tag_mut::<tags::RefMut<tags::MaybeSizedValue<T>>>(parent)
+            } else {
+                None
+            }
+        })
     }
 
     /// Returns a reference to the extension data for the current task.
@@ -303,6 +545,8 @@ impl fmt::Debug for Context<'_> {
 pub struct ContextBuilder<'a> {
     waker: &'a Waker,
     local_waker: &'a LocalWaker,
+    provider: Option<&'a mut (dyn Provider + 'static)>,
+    parent_provider: Option<&'a mut (dyn Provider + 'static)>,
     ext: ExtData<'a>,
     // Ensure we future-proof against variance changes by forcing
     // the lifetime to be invariant (argument-position lifetimes
@@ -324,6 +568,8 @@ impl<'a> ContextBuilder<'a> {
         Self {
             waker,
             local_waker,
+            provider: None,
+            parent_provider: None,
             ext: ExtData::None(()),
             _marker: PhantomData,
             _marker2: PhantomData,
@@ -333,7 +579,7 @@ impl<'a> ContextBuilder<'a> {
     /// Creates a ContextBuilder from an existing Context.
     #[inline]
     #[unstable(feature = "context_ext", issue = "123392")]
-    pub const fn from(cx: &'a mut Context<'_>) -> Self {
+    pub fn from(cx: &'a mut Context<'_>) -> Self {
         let ext = match &mut cx.ext.0 {
             ExtData::Some(ext) => ExtData::Some(*ext),
             ExtData::None(()) => ExtData::None(()),
@@ -341,6 +587,8 @@ impl<'a> ContextBuilder<'a> {
         Self {
             waker: cx.waker,
             local_waker: cx.local_waker,
+            provider: None,
+            parent_provider: cx.provider.as_deref_mut(),
             ext,
             _marker: PhantomData,
             _marker2: PhantomData,
@@ -361,6 +609,13 @@ impl<'a> ContextBuilder<'a> {
         Self { local_waker, ..self }
     }
 
+    /// Sets the value for the provider on `Context`.
+    #[inline]
+    #[unstable(feature = "context_provider", issue = "none")]
+    pub const fn provider(self, provider: &'a mut (dyn Provider + 'static)) -> Self {
+        Self { provider: Some(provider), ..self }
+    }
+
     /// Sets the value for the extension data on `Context`.
     #[inline]
     #[unstable(feature = "context_ext", issue = "123392")]
@@ -372,8 +627,24 @@ impl<'a> ContextBuilder<'a> {
     #[inline]
     #[unstable(feature = "local_waker", issue = "118959")]
     pub const fn build(self) -> Context<'a> {
-        let ContextBuilder { waker, local_waker, ext, _marker, _marker2 } = self;
-        Context { waker, local_waker, ext: AssertUnwindSafe(ext), _marker, _marker2 }
+        let ContextBuilder {
+            waker,
+            local_waker,
+            provider,
+            parent_provider,
+            ext,
+            _marker,
+            _marker2,
+        } = self;
+        Context {
+            waker,
+            local_waker,
+            provider,
+            parent_provider,
+            ext: AssertUnwindSafe(ext),
+            _marker,
+            _marker2,
+        }
     }
 }
 
