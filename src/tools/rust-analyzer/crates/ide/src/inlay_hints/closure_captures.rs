@@ -53,10 +53,6 @@ pub(super) fn hints(
     let last = captures.len() - 1;
     for (idx, capture) in captures.into_iter().enumerate() {
         let local = capture.local();
-        let source = local.primary_source(sema.db);
-
-        // force cache the source file, otherwise sema lookup will potentially panic
-        _ = sema.parse_or_expand(source.file());
 
         let label = format!(
             "{}{}",
@@ -73,8 +69,17 @@ pub(super) fn hints(
         }
         hint.label.append_part(InlayHintLabelPart {
             text: label,
-            linked_location: source.name().and_then(|name| {
-                name.syntax().original_file_range_opt(sema.db).map(TupleExt::head).map(Into::into)
+            linked_location: config.lazy_location_opt(|| {
+                let source = local.primary_source(sema.db);
+
+                // force cache the source file, otherwise sema lookup will potentially panic
+                _ = sema.parse_or_expand(source.file());
+                source.name().and_then(|name| {
+                    name.syntax()
+                        .original_file_range_opt(sema.db)
+                        .map(TupleExt::head)
+                        .map(Into::into)
+                })
             }),
             tooltip: None,
         });

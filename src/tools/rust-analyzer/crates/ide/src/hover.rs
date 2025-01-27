@@ -346,7 +346,7 @@ fn hover_offset(
         .unique()
         .reduce(|mut acc: HoverResult, HoverResult { markup, actions }| {
             acc.actions.extend(actions);
-            acc.markup = Markup::from(format!("{}\n---\n{markup}", acc.markup));
+            acc.markup = Markup::from(format!("{}\n\n---\n{markup}", acc.markup));
             acc
         })
         .map(|mut res: HoverResult| {

@@ -1965,3 +1965,24 @@ fn bar() {
         "#]],
     );
 }
+
+#[test]
+fn doc_hidden_enum_variant() {
+    check(
+        r#"
+//- /foo.rs crate:foo
+pub enum Enum {
+    #[doc(hidden)] Hidden,
+    Visible,
+}
+
+//- /lib.rs crate:lib deps:foo
+fn foo() {
+    let _ = foo::Enum::$0;
+}
+    "#,
+        expect![[r#"
+            ev Visible Visible
+        "#]],
+    );
+}

@@ -1391,6 +1391,41 @@ pub struct FooStruct {}
 }
 
 #[test]
+fn flyimport_pattern_unstable_path() {
+    check(
+        r#"
+//- /main.rs crate:main deps:std
+fn function() {
+    let foo$0
+}
+//- /std.rs crate:std
+#[unstable]
+pub mod unstable {
+    pub struct FooStruct {}
+}
+"#,
+        expect![""],
+    );
+    check(
+        r#"
+//- toolchain:nightly
+//- /main.rs crate:main deps:std
+fn function() {
+    let foo$0
+}
+//- /std.rs crate:std
+#[unstable]
+pub mod unstable {
+    pub struct FooStruct {}
+}
+"#,
+        expect![[r#"
+            st FooStruct (use std::unstable::FooStruct)
+        "#]],
+    );
+}
+
+#[test]
 fn flyimport_pattern_unstable_item_on_nightly() {
     check(
         r#"
