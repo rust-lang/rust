@@ -5,14 +5,13 @@
 
 #![allow(unused_features)]
 #![allow(internal_features)]
-#![cfg_attr(thumb, no_main)]
 #![deny(dead_code)]
 #![feature(allocator_api)]
 #![feature(f128)]
 #![feature(f16)]
 #![feature(lang_items)]
-#![feature(start)]
 #![no_std]
+#![no_main]
 
 extern crate panic_handler;
 
@@ -630,11 +629,10 @@ fn run() {
     extern "C" {
         fn rust_begin_unwind(x: usize);
     }
-    // if bb(false) {
+
     unsafe {
         rust_begin_unwind(0);
     }
-    // }
 }
 
 fn something_with_a_dtor(f: &dyn Fn()) {
@@ -649,15 +647,15 @@ fn something_with_a_dtor(f: &dyn Fn()) {
     f();
 }
 
+#[no_mangle]
 #[cfg(not(thumb))]
-#[start]
-fn main(_: isize, _: *const *const u8) -> isize {
+fn main(_argc: core::ffi::c_int, _argv: *const *const u8) -> core::ffi::c_int {
     run();
     0
 }
 
-#[cfg(thumb)]
 #[no_mangle]
+#[cfg(thumb)]
 pub fn _start() -> ! {
     run();
     loop {}
