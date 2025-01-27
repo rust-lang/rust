@@ -38,9 +38,10 @@ fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>)
         item: DefId,
         name: &'a str,
     ) -> impl Iterator<Item = DefId> + 'a {
+        let name = Symbol::intern(name);
         tcx.module_children(item)
             .iter()
-            .filter(move |item| item.ident.name.as_str() == name)
+            .filter(move |item| item.ident.name == name)
             .map(move |item| item.res.def_id())
     }
 
