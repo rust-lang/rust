@@ -1357,12 +1357,6 @@ impl HasModule for VariantId {
     }
 }
 
-impl HasModule for FieldId {
-    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
-        self.parent.module(db)
-    }
-}
-
 impl HasModule for MacroId {
     fn module(&self, db: &dyn DefDatabase) -> ModuleId {
         match *self {
@@ -1386,7 +1380,11 @@ impl HasModule for TypeOwnerId {
             TypeOwnerId::ImplId(it) => it.module(db),
             TypeOwnerId::EnumVariantId(it) => it.module(db),
             TypeOwnerId::InTypeConstId(it) => it.lookup(db).owner.module(db),
-            TypeOwnerId::FieldId(it) => it.module(db),
+            TypeOwnerId::FieldId(it) => match it.parent {
+                VariantId::EnumVariantId(it) => it.module(db),
+                VariantId::StructId(it) => it.module(db),
+                VariantId::UnionId(it) => it.module(db),
+            },
         }
     }
 }
