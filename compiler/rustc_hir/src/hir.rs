@@ -297,7 +297,7 @@ impl<'hir> ConstArg<'hir, AmbigArg> {
 }
 
 impl<'hir> ConstArg<'hir> {
-    /// Converts a `ConstArg` in an unambigous position to one in an ambiguous position. This is
+    /// Converts a `ConstArg` in an unambiguous position to one in an ambiguous position. This is
     /// fallible as the [`ConstArgKind::Infer`] variant is not present in ambiguous positions.
     ///
     /// Functions accepting ambiguous consts will not handle the [`ConstArgKind::Infer`] variant, if
@@ -366,7 +366,7 @@ pub enum GenericArg<'hir> {
     Lifetime(&'hir Lifetime),
     Type(&'hir Ty<'hir, AmbigArg>),
     Const(&'hir ConstArg<'hir, AmbigArg>),
-    /// Inference variables in [`GenericArg`] are always represnted by
+    /// Inference variables in [`GenericArg`] are always represented by
     /// `GenericArg::Infer` instead of the `Infer` variants on [`TyKind`] and
     /// [`ConstArgKind`] as it is not clear until hir ty lowering whether a
     /// `_` argument is a type or const argument.
@@ -3004,7 +3004,7 @@ impl<'hir> Ty<'hir, AmbigArg> {
 }
 
 impl<'hir> Ty<'hir> {
-    /// Converts a `Ty` in an unambigous position to one in an ambiguous position. This is
+    /// Converts a `Ty` in an unambiguous position to one in an ambiguous position. This is
     /// fallible as the [`TyKind::Infer`] variant is not present in ambiguous positions.
     ///
     /// Functions accepting ambiguous types will not handle the [`TyKind::Infer`] variant, if
