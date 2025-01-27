@@ -1,22 +1,21 @@
 name: build
-on:
+'on':
   pull_request:
     branches:
-      - "bsan"
+      - bsan
     paths:
       - '**/*.rs'
       - '**/*.toml'
       - '**/*.yml'
-      - 'src/llvm-project'
-  workflow_dispatch:
-
+      - src/llvm-project
+  workflow_dispatch: null
 permissions:
   contents: read
 defaults:
   run:
     shell: bash
 concurrency:
-  group: "build"
+  group: build
   cancel-in-progress: true
 jobs:
   fmt:
@@ -30,56 +29,30 @@ jobs:
         run: src/ci/scripts/setup-upstream-remote.sh
       - name: Format
         run: ./x.py fmt --check
-      - name: Clippy - bsan-cli
-        run: ./x.py clippy src/tools/bsan/bsan-cli
-      - name: Clippy - cargo-bsan
-        run: ./x.py clippy src/tools/bsan/bsan-cli/cargo-bsan
-      - name: Clippy - bsan-rt
-        run: ./x.py clippy src/tools/bsan/bsan-rt
-  build-linux:
-    runs-on: ubuntu-latest
-    name: Build (x86 Linux)
+  build:
+    needs: [fmt]
     strategy:
       fail-fast: true
+      matrix:
+        config:
+          - arch: x86 Linux
+            os: ubuntu-latest
+            install_cmd: sudo apt-get install ninja-build
+          - arch: arm64 macOS
+            os: macos-latest
+            install_cmd: brew install ninja
+    runs-on: '${{ matrix.config.os }}'
+    name: 'Build (${{ matrix.config.arch }})'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Install dependencies
         run: |
-            sudo apt-get install ninja-build
-            rustup component add llvm-tools-preview
-            cp src/bootstrap/defaults/config.bsan.dev.toml config.toml
+          ${{matrix.config.install_cmd}}
+          rustup component add llvm-tools-preview
+          cp src/bootstrap/defaults/config.bsan.dev.toml config.toml
       - name: Upstream
         run: src/ci/scripts/setup-upstream-remote.sh
       - name: Build
         run: ./x.py build --stage 1
-      - name: Clippy - bsan-cli
-        run: ./x.py clippy src/tools/bsan/bsan-cli
-      - name: Clippy - cargo-bsan
-        run: ./x.py clippy src/tools/bsan/bsan-cli/cargo-bsan
-      - name: Clippy - bsan-rt
-        run: ./x.py clippy src/tools/bsan/bsan-rt
-  build-macos:
-    runs-on: macos-latest
-    name: Build (ARM64 macOS)
-    strategy:
-      fail-fast: true
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Install dependencies
-        run: |
-            brew install ninja
-            cp src/bootstrap/defaults/config.bsan.dev.toml config.toml
-      - name: Upstream
-        run: src/ci/scripts/setup-upstream-remote.sh
-      - name: Stage 1 Build
-        run: ./x.py build --stage 1 
-      - name: Clippy - bsan-cli
-        run: ./x.py clippy src/tools/bsan/bsan-cli
-      - name: Clippy - cargo-bsan
-        run: ./x.py clippy src/tools/bsan/bsan-cli/cargo-bsan
-      - name: Clippy - bsan-rt
-        run: ./x.py clippy src/tools/bsan/bsan-rt
