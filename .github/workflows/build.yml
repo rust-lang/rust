@@ -1,15 +1,13 @@
 name: build
 on:
-  push:
+  pull_request:
     branches:
-      - bsan
+      - "bsan"
     paths:
       - '**/*.rs'
       - '**/*.toml'
+      - '**/*.yml'
       - 'src/llvm-project'
-  pull_request:
-    branches:
-      - "**"
   workflow_dispatch:
 
 permissions:
@@ -32,6 +30,12 @@ jobs:
         run: src/ci/scripts/setup-upstream-remote.sh
       - name: Format
         run: ./x.py fmt --check
+      - name: Clippy - bsan-cli
+        run: ./x.py clippy src/tools/bsan/bsan-cli
+      - name: Clippy - cargo-bsan
+        run: ./x.py clippy src/tools/bsan/bsan-cli/cargo-bsan
+      - name: Clippy - bsan-rt
+        run: ./x.py clippy src/tools/bsan/bsan-rt
   build-linux:
     runs-on: ubuntu-latest
     name: Build (x86 Linux)
