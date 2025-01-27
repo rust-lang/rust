@@ -616,6 +616,8 @@ pub struct TypeId {
     // We avoid using `u128` because that imposes higher alignment requirements on many platforms.
     // See issue #115620 for more information.
     t: (u64, u64),
+    #[cfg(feature = "debug_typeid")]
+    name: &'static str,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -647,10 +649,14 @@ impl TypeId {
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
         let t: u128 = intrinsics::type_id::<T>();
-
         let t1 = (t >> 64) as u64;
         let t2 = t as u64;
-        TypeId { t: (t1, t2) }
+
+        TypeId {
+            t: (t1, t2),
+            #[cfg(feature = "debug_typeid")]
+            name: type_name::<T>(),
+        }
     }
 
     fn as_u128(self) -> u128 {
@@ -681,7 +687,15 @@ impl hash::Hash for TypeId {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "TypeId({:#034x})", self.as_u128())
+        #[cfg(feature = "debug_typeid")]
+        {
+            write!(f, "TypeId({:#034x} = {})", self.as_u128(), self.name)?;
+        }
+        #[cfg(not(feature = "debug_typeid"))]
+        {
+            write!(f, "TypeId({:#034x})", self.as_u128())?;
+        }
+        Ok(())
     }
 }
 
