@@ -21,6 +21,60 @@
 #![no_std]
 #![no_core]
 
+/// Vendored from the 'cfg_if' crate
+
+macro_rules! cfg_if {
+    // match if/else chains with a final `else`
+    (
+        $(
+            if #[cfg( $i_meta:meta )] { $( $i_tokens:tt )* }
+        ) else+
+        else { $( $e_tokens:tt )* }
+    ) => {
+        cfg_if! {
+            @__items () ;
+            $(
+                (( $i_meta ) ( $( $i_tokens )* )) ,
+            )+
+            (() ( $( $e_tokens )* )) ,
+        }
+    };
+
+    // Internal and recursive macro to emit all the items
+    //
+    // Collects all the previous cfgs in a list at the beginning, so they can be
+    // negated. After the semicolon is all the remaining items.
+    (@__items ( $( $_:meta , )* ) ; ) => {};
+    (
+        @__items ( $( $no:meta , )* ) ;
+        (( $( $yes:meta )? ) ( $( $tokens:tt )* )) ,
+        $( $rest:tt , )*
+    ) => {
+        // Emit all items within one block, applying an appropriate #[cfg]. The
+        // #[cfg] will require all `$yes` matchers specified and must also negate
+        // all previous matchers.
+        #[cfg(all(
+            $( $yes , )?
+            not(any( $( $no ),* ))
+        ))]
+        cfg_if! { @__identity $( $tokens )* }
+
+        // Recurse to emit all other items in `$rest`, and when we do so add all
+        // our `$yes` matchers to the list of `$no` matchers as future emissions
+        // will have to negate everything we just matched as well.
+        cfg_if! {
+            @__items ( $( $no , )* $( $yes , )? ) ;
+            $( $rest , )*
+        }
+    };
+
+    // Internal macro to make __apply work out right for different match types,
+    // because of how macros match/expand stuff.
+    (@__identity $( $tokens:tt )* ) => {
+        $( $tokens )*
+    };
+}
+
 // `core` has some exotic `marker_impls!` macro for handling the with-generics cases, but for our
 // purposes, just use a simple macro_rules macro.
 macro_rules! impl_marker_trait {
@@ -102,63 +156,12 @@ macro_rules! concat {
         /* compiler built-in */
     };
 }
+
 #[rustc_builtin_macro]
 #[macro_export]
 macro_rules! stringify {
     ($($t:tt)*) => {
         /* compiler built-in */
-    };
-}
-
-macro_rules! cfg_if {
-    // match if/else chains with a final `else`
-    (
-        $(
-            if #[cfg( $i_meta:meta )] { $( $i_tokens:tt )* }
-        ) else+
-        else { $( $e_tokens:tt )* }
-    ) => {
-        cfg_if! {
-            @__items () ;
-            $(
-                (( $i_meta ) ( $( $i_tokens )* )) ,
-            )+
-            (() ( $( $e_tokens )* )) ,
-        }
-    };
-
-    // Internal and recursive macro to emit all the items
-    //
-    // Collects all the previous cfgs in a list at the beginning, so they can be
-    // negated. After the semicolon is all the remaining items.
-    (@__items ( $( $_:meta , )* ) ; ) => {};
-    (
-        @__items ( $( $no:meta , )* ) ;
-        (( $( $yes:meta )? ) ( $( $tokens:tt )* )) ,
-        $( $rest:tt , )*
-    ) => {
-        // Emit all items within one block, applying an appropriate #[cfg]. The
-        // #[cfg] will require all `$yes` matchers specified and must also negate
-        // all previous matchers.
-        #[cfg(all(
-            $( $yes , )?
-            not(any( $( $no ),* ))
-        ))]
-        cfg_if! { @__identity $( $tokens )* }
-
-        // Recurse to emit all other items in `$rest`, and when we do so add all
-        // our `$yes` matchers to the list of `$no` matchers as future emissions
-        // will have to negate everything we just matched as well.
-        cfg_if! {
-            @__items ( $( $no , )* $( $yes , )? ) ;
-            $( $rest , )*
-        }
-    };
-
-    // Internal macro to make __apply work out right for different match types,
-    // because of how macros match/expand stuff.
-    (@__identity $( $tokens:tt )* ) => {
-        $( $tokens )*
     };
 }
 
@@ -205,19 +208,6 @@ impl PartialEq for usize {
 impl PartialEq for bool {
     fn eq(&self, other: &bool) -> bool {
         (*self) == (*other)
-    }
-}
-
-#[lang = "bitxor"]
-pub trait BitXor<Rhs = Self> {
-    type Output;
-    fn bitxor(self, rhs: Rhs) -> Self::Output;
-}
-
-impl BitXor for bool {
-    type Output = bool;
-    fn bitxor(self, rhs: bool) -> bool {
-        (self || rhs) && !(self && rhs)
     }
 }
 

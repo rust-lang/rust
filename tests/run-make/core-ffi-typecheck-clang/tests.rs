@@ -1,7 +1,13 @@
-// tests.rs
+/// This file compares the size and signedness of Rust `c_*` types to those from Clang,
+/// based on the `CLANG_C_*` constants. Comparisons are done at compile time so this
+/// does not need to be executed.
+use super::*; // `super` will include everything from the common template
 
-use super::*; // `super` will include everything from `smallcore` once glued together
+trait Signed {
+    const SIGNED: bool;
+}
 
+// Verify Rust's 'c_long' is correct.
 cfg_if! {
     if #[cfg(all(target_arch = "aarch64", target_abi = "ilp32"))] {
         // FIXME: long is not long enough on aarch64 ilp32, should be 8, defaulting to 4
@@ -18,28 +24,30 @@ cfg_if! {
     }
 }
 
+// Verify Rust's 'c_char' has correct sign.
 cfg_if! {
     if #[cfg(target_arch = "csky")] {
         // FIXME: c_char signedness misallignment on csky, should be signed on CLANG
         const XFAIL_C_CHAR_SIGNED: bool = false;
-        pub const TEST_C_CHAR_UNSIGNED: () = if ffi::c_char::SIGNED ^ XFAIL_C_CHAR_SIGNED {
+        pub const TEST_C_CHAR_UNSIGNED: () = if ffi::c_char::SIGNED != XFAIL_C_CHAR_SIGNED {
             panic!("mismatched c_char signed, target_arch: csky");
         };
     }
     else if #[cfg(target_arch = "msp430")] {
         // FIXME: c_char signedness misallignment on msp430, should be signed on CLANG
-        const XFAIL_C_CHAR_SIGNED: bool = false;  // Change to true for darwin
-        pub const TEST_C_CHAR_UNSIGNED: () = if ffi::c_char::SIGNED ^ XFAIL_C_CHAR_SIGNED {
+        const XFAIL_C_CHAR_SIGNED: bool = false;
+        pub const TEST_C_CHAR_UNSIGNED: () = if ffi::c_char::SIGNED != XFAIL_C_CHAR_SIGNED {
             panic!("mismatched c_char signed, target_arch: msp430");
         };
     }
     else {
-        pub const TEST_C_CHAR_UNSIGNED: () = if ffi::c_char::SIGNED ^ CLANG_C_CHAR_SIGNED {
+        pub const TEST_C_CHAR_UNSIGNED: () = if ffi::c_char::SIGNED != CLANG_C_CHAR_SIGNED {
             panic!("mismatched c_char sign");
         };
     }
 }
 
+// Verify Rust's 'c_double' is correct.
 cfg_if! {
     if #[cfg(target_arch = "avr")] {
         // FIXME: double is not short enough on avr-unknown-gnu-atmega328 (should be 4 bytes)
@@ -53,10 +61,6 @@ cfg_if! {
             panic!("wrong c_double size");
         };
     }
-}
-
-trait Signed {
-    const SIGNED: bool;
 }
 
 impl Signed for i8 {

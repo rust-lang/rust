@@ -1,11 +1,52 @@
 //@ needs-force-clang-based-tests
+// This test checks that the clang defines for each target allign with the core ffi types defined in
+// mod.rs. Therefore each rust target is queried and the clang defines for each target are read and
+// compared to the core sizes to verify all types and sizes allign at buildtime.
+//
+// If this test fails because Rust adds a target that Clang does not support, this target should be
+// added to SKIPPED_TARGETS.
 
 use run_make_support::{clang, regex, rfs, rustc};
 
+// It is not possible to run the Rust test-suite on these targets.
 const SKIPPED_TARGETS: &[&str] = &[
-    "riscv",  //error: unknown target triple 'riscv32e-unknown-none-elf'
-    "wasm",   //error: unknown target triple 'wasm32v1-none'
-    "xtensa", //error: unknown target triple 'xtensa-esp32-espidf'
+    "riscv32gc-unknown-linux-gnu",
+    "riscv32gc-unknown-linux-musl",
+    "riscv32im-risc0-zkvm-elf",
+    "riscv32imac-esp-espidf",
+    "riscv32imafc-esp-espidf",
+    "riscv32imafc-unknown-nuttx-elf",
+    "riscv32imc-esp-espidf",
+    "riscv32imac-unknown-nuttx-elf",
+    "riscv32imac-unknown-xous-elf",
+    "riscv32imc-unknown-nuttx-elf",
+    "riscv32e-unknown-none-elf",
+    "riscv32em-unknown-none-elf",
+    "riscv32emc-unknown-none-elf",
+    "riscv32i-unknown-none-elf",
+    "riscv32im-unknown-none-elf",
+    "riscv32imc-unknown-none-elf",
+    "riscv32ima-unknown-none-elf",
+    "riscv32imac-unknown-none-elf",
+    "riscv32imafc-unknown-none-elf",
+    "riscv64gc-unknown-freebsd",
+    "riscv64gc-unknown-fuchsia",
+    "riscv64gc-unknown-hermit",
+    "riscv64gc-unknown-linux-gnu",
+    "riscv64gc-unknown-linux-musl",
+    "riscv64gc-unknown-netbsd",
+    "riscv64gc-unknown-none-elf",
+    "riscv64gc-unknown-nuttx-elf",
+    "riscv64gc-unknown-openbsd",
+    "riscv64imac-unknown-none-elf",
+    "riscv64imac-unknown-nuttx-elf",
+    "wasm32v1-none",
+    "xtensa-esp32-espidf",
+    "xtensa-esp32-none-elf",
+    "xtensa-esp32s2-espidf",
+    "xtensa-esp32s2-none-elf",
+    "xtensa-esp32s3-espidf",
+    "xtensa-esp32s3-none-elf",
 ];
 
 fn main() {
@@ -16,12 +57,17 @@ fn main() {
     regex_mod();
 
     for target in targets.lines() {
-        if SKIPPED_TARGETS.iter().any(|prefix| target.starts_with(prefix)) {
+        if SKIPPED_TARGETS.iter().any(|&to_skip_target| target == to_skip_target) {
             continue;
         }
 
+        // Run Clang's preprocessor for the relevant target, printing default macro definitions.
         let clang_output =
             clang().args(&["-E", "-dM", "-x", "c", "/dev/null", "-target", target]).run();
+
+        if !clang_output.status().success() {
+            continue;
+        }
 
         let defines = String::from_utf8(clang_output.stdout()).expect("Invalid UTF-8");
 
@@ -33,13 +79,16 @@ fn main() {
             #![feature(link_cfg)]
             #![allow(unused)]
             #![crate_type = "rlib"]
-            {}
+
+            /* begin minicore content */
+            {minicore_content}
+            /* end minicore content */
+
             #[path = "processed_mod.rs"]
             mod ffi;
             #[path = "tests.rs"]
             mod tests;
-            "#,
-            minicore_content
+            "#
         );
 
         rmake_content.push_str(&format!(
@@ -54,7 +103,7 @@ fn main() {
             const CLANG_C_DOUBLE_SIZE: usize = {};
             ",
             parse_size(&defines, "CHAR"),
-            parse_signed(&defines, "CHAR"),
+            char_is_signed(&defines),
             parse_size(&defines, "SHORT"),
             parse_size(&defines, "INT"),
             parse_size(&defines, "LONG"),
@@ -63,20 +112,20 @@ fn main() {
             parse_size(&defines, "DOUBLE"),
         ));
 
-        // Write to target-specific rmake file
-        let mut file_name = format!("{}_rmake.rs", target.replace("-", "_"));
+        // Generate a target-specific rmake file.
+        // If type misalignments occur, use the generated rmake file name to identify the failing target.
+        // Replace dots (.) and hyphens (-) in the target name with underscores to ensure valid filenames.
+        let file_name = format!("{}_rmake.rs", target.replace("-", "_").replace(".", "_"));
 
-        if target.starts_with("thumbv8m") {
-            file_name = String::from("thumbv8m_rmake.rs");
-        }
-
-        rfs::create_file(&file_name);
+        // Attempt to build the test file for the relevant target. Tests use constant evaluation,
+        // so running is not necessary.
         rfs::write(&file_name, rmake_content);
         let rustc_output = rustc()
             .arg("-Zunstable-options")
             .arg("--emit=metadata")
             .arg("--target")
             .arg(target)
+            .arg("-o-")
             .arg(&file_name)
             .run();
         rfs::remove_file(&file_name);
@@ -89,6 +138,7 @@ fn main() {
     rfs::remove_file("processed_mod.rs");
 }
 
+/// Get a list of available targets for 'rustc'.
 fn get_target_list() -> String {
     let completed_process = rustc().arg("--print").arg("target-list").run();
     String::from_utf8(completed_process.stdout()).expect("error not a string")
@@ -113,18 +163,11 @@ fn parse_size(defines: &str, type_name: &str) -> usize {
     panic!("Could not find size definition for type: {}", type_name);
 }
 
-// Helper to parse signedness from clang defines
-fn parse_signed(defines: &str, type_name: &str) -> bool {
-    match type_name.to_uppercase().as_str() {
-        "CHAR" => {
-            // Check if char is explicitly unsigned
-            !defines.lines().any(|line| line.contains("__CHAR_UNSIGNED__"))
-        }
-        _ => true,
-    }
+fn char_is_signed(defines: &str) -> bool {
+    !defines.lines().any(|line| line.contains("__CHAR_UNSIGNED__"))
 }
 
-// Parse core/ffi/mod.rs to retrieve only necessary macros and type defines
+/// Parse core/ffi/mod.rs to retrieve only necessary macros and type defines
 fn regex_mod() {
     let mod_path = run_make_support::source_root().join("library/core/src/ffi/mod.rs");
     let mut content = rfs::read_to_string(&mod_path);
@@ -157,7 +200,7 @@ fn regex_mod() {
     re = regex::Regex::new(r"(?s)impl fmt::Debug for.*?\{.*?\}").unwrap();
     content = re.replace_all(&content, "").to_string();
 
-    let file_name = format!("processed_mod.rs");
+    let file_name = "processed_mod.rs";
 
     rfs::create_file(&file_name);
     rfs::write(&file_name, content);
