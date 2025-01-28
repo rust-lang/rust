@@ -43,10 +43,6 @@ runners:
     os: windows-2022-8core-32gb
     <<: *base-job
 
-  - &job-windows-16c
-    os: windows-2022-16core-64gb
-    <<: *base-job
-
   - &job-aarch64-linux
     # Free some disk space to avoid running out of space during the build.
     free_disk: true
