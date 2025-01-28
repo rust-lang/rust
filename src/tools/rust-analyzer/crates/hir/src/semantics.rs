@@ -1439,8 +1439,20 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(call.syntax())?.resolve_method_call_fallback(self.db, call)
     }
 
-    pub fn resolve_known_blanket_dual_impls(&self, call: &ast::MethodCallExpr) -> Option<Function> {
-        self.analyze(call.syntax())?.resolve_known_blanket_dual_impls(self.db, call)
+    /// Env is used to derive the trait environment
+    // FIXME: better api for the trait environment
+    pub fn resolve_trait_impl_method(
+        &self,
+        env: Type,
+        trait_: Trait,
+        func: Function,
+        subst: impl IntoIterator<Item = Type>,
+    ) -> Option<Function> {
+        let mut substs = hir_ty::TyBuilder::subst_for_def(self.db, TraitId::from(trait_), None);
+        for s in subst {
+            substs = substs.push(s.ty);
+        }
+        Some(self.db.lookup_impl_method(env.env, func.into(), substs.build()).0.into())
     }
 
     fn resolve_range_pat(&self, range_pat: &ast::RangePat) -> Option<StructId> {
@@ -1471,6 +1483,8 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(try_expr.syntax())?.resolve_try_expr(self.db, try_expr)
     }
 
+    // This does not resolve the method call to the correct trait impl!
+    // We should probably fix that.
     pub fn resolve_method_call_as_callable(&self, call: &ast::MethodCallExpr) -> Option<Callable> {
         self.analyze(call.syntax())?.resolve_method_call_as_callable(self.db, call)
     }

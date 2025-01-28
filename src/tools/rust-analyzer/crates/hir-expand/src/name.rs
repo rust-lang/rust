@@ -4,8 +4,8 @@ use std::fmt;
 
 use intern::{sym, Symbol};
 use span::{Edition, SyntaxContextId};
-use syntax::ast;
 use syntax::utils::is_raw_identifier;
+use syntax::{ast, format_smolstr};
 
 /// `Name` is a wrapper around string, which is used in hir for both references
 /// and declarations. In theory, names should also carry hygiene info, but we are
@@ -51,33 +51,26 @@ impl PartialEq<Symbol> for Name {
     }
 }
 
+impl PartialEq<&Symbol> for Name {
+    fn eq(&self, &sym: &&Symbol) -> bool {
+        self.symbol == *sym
+    }
+}
+
 impl PartialEq<Name> for Symbol {
     fn eq(&self, name: &Name) -> bool {
         *self == name.symbol
     }
 }
 
-/// Wrapper of `Name` to print the name without "r#" even when it is a raw identifier.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct UnescapedName<'a>(&'a Name);
-
-impl<'a> UnescapedName<'a> {
-    pub fn display(self, db: &dyn crate::db::ExpandDatabase) -> impl fmt::Display + 'a {
-        _ = db;
-        UnescapedDisplay { name: self }
-    }
-    #[doc(hidden)]
-    pub fn display_no_db(self) -> impl fmt::Display + 'a {
-        UnescapedDisplay { name: self }
+impl PartialEq<Name> for &Symbol {
+    fn eq(&self, name: &Name) -> bool {
+        **self == name.symbol
     }
 }
 
 impl Name {
-    /// Note: this is private to make creating name from random string hard.
-    /// Hopefully, this should allow us to integrate hygiene cleaner in the
-    /// future, and to switch to interned representation of names.
     fn new_text(text: &str) -> Name {
-        debug_assert!(!text.starts_with("r#"));
         Name { symbol: Symbol::intern(text), ctx: () }
     }
 
@@ -87,12 +80,15 @@ impl Name {
         // Can't do that for all `SyntaxContextId`s because it breaks Salsa.
         ctx.remove_root_edition();
         _ = ctx;
-        Self::new_text(text)
+        match text.strip_prefix("r#") {
+            Some(text) => Self::new_text(text),
+            None => Self::new_text(text),
+        }
     }
 
     pub fn new_root(text: &str) -> Name {
         // The edition doesn't matter for hygiene.
-        Self::new(text.trim_start_matches("r#"), SyntaxContextId::root(Edition::Edition2015))
+        Self::new(text, SyntaxContextId::root(Edition::Edition2015))
     }
 
     pub fn new_tuple_field(idx: usize) -> Name {
@@ -119,12 +115,22 @@ impl Name {
     }
 
     pub fn new_lifetime(lt: &ast::Lifetime) -> Name {
-        Self::new_text(lt.text().as_str().trim_start_matches("r#"))
+        let text = lt.text();
+        match text.strip_prefix("'r#") {
+            Some(text) => Self::new_text(&format_smolstr!("'{text}")),
+            None => Self::new_text(text.as_str()),
+        }
     }
 
-    /// Resolve a name from the text of token.
-    fn resolve(raw_text: &str) -> Name {
-        Name::new_text(raw_text.trim_start_matches("r#"))
+    pub fn new_symbol(symbol: Symbol, ctx: SyntaxContextId) -> Self {
+        debug_assert!(!symbol.as_str().starts_with("r#"));
+        _ = ctx;
+        Self { symbol, ctx: () }
+    }
+
+    // FIXME: This needs to go once we have hygiene
+    pub fn new_symbol_root(sym: Symbol) -> Self {
+        Self::new_symbol(sym, SyntaxContextId::root(Edition::Edition2015))
     }
 
     /// A fake name for things missing in the source code.
@@ -161,20 +167,17 @@ impl Name {
         self.symbol.as_str().parse().ok()
     }
 
+    /// Whether this name needs to be escaped in the given edition via `r#`.
+    pub fn needs_escape(&self, edition: Edition) -> bool {
+        is_raw_identifier(self.symbol.as_str(), edition)
+    }
+
     /// Returns the text this name represents if it isn't a tuple field.
     ///
     /// Do not use this for user-facing text, use `display` instead to handle editions properly.
+    // FIXME: This should take a database argument to hide the interning
     pub fn as_str(&self) -> &str {
         self.symbol.as_str()
-    }
-
-    // FIXME: Remove this
-    pub fn unescaped(&self) -> UnescapedName<'_> {
-        UnescapedName(self)
-    }
-
-    pub fn needs_escape(&self, edition: Edition) -> bool {
-        is_raw_identifier(self.symbol.as_str(), edition)
     }
 
     pub fn display<'a>(
@@ -186,7 +189,7 @@ impl Name {
         self.display_no_db(edition)
     }
 
-    // FIXME: Remove this
+    // FIXME: Remove this in favor of `display`, see fixme on `as_str`
     #[doc(hidden)]
     pub fn display_no_db(&self, edition: Edition) -> impl fmt::Display + '_ {
         Display { name: self, needs_escaping: is_raw_identifier(self.symbol.as_str(), edition) }
@@ -194,24 +197,6 @@ impl Name {
 
     pub fn symbol(&self) -> &Symbol {
         &self.symbol
-    }
-
-    pub fn new_symbol(symbol: Symbol, ctx: SyntaxContextId) -> Self {
-        debug_assert!(!symbol.as_str().starts_with("r#"));
-        _ = ctx;
-        Self { symbol, ctx: () }
-    }
-
-    // FIXME: This needs to go once we have hygiene
-    pub fn new_symbol_root(sym: Symbol) -> Self {
-        debug_assert!(!sym.as_str().starts_with("r#"));
-        Self { symbol: sym, ctx: () }
-    }
-
-    // FIXME: Remove this
-    #[inline]
-    pub fn eq_ident(&self, ident: &str) -> bool {
-        self.as_str() == ident.trim_start_matches("r#")
     }
 }
 
@@ -229,17 +214,6 @@ impl fmt::Display for Display<'_> {
     }
 }
 
-struct UnescapedDisplay<'a> {
-    name: UnescapedName<'a>,
-}
-
-impl fmt::Display for UnescapedDisplay<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let symbol = self.name.0.symbol.as_str();
-        fmt::Display::fmt(symbol, f)
-    }
-}
-
 pub trait AsName {
     fn as_name(&self) -> Name;
 }
@@ -248,14 +222,14 @@ impl AsName for ast::NameRef {
     fn as_name(&self) -> Name {
         match self.as_tuple_field() {
             Some(idx) => Name::new_tuple_field(idx),
-            None => Name::resolve(&self.text()),
+            None => Name::new_root(&self.text()),
         }
     }
 }
 
 impl AsName for ast::Name {
     fn as_name(&self) -> Name {
-        Name::resolve(&self.text())
+        Name::new_root(&self.text())
     }
 }
 
@@ -270,7 +244,7 @@ impl AsName for ast::NameOrNameRef {
 
 impl<Span> AsName for tt::Ident<Span> {
     fn as_name(&self) -> Name {
-        Name::resolve(self.sym.as_str())
+        Name::new_root(self.sym.as_str())
     }
 }
 
@@ -288,6 +262,6 @@ impl AsName for ast::FieldKind {
 
 impl AsName for base_db::Dependency {
     fn as_name(&self) -> Name {
-        Name::new_text(&self.name)
+        Name::new_root(&self.name)
     }
 }
