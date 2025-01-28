@@ -1,0 +1,14 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/trait-missing-dyn-in-qualified-path.rs:5:19
+   |
+LL |     let x: u32 = <Default>::default();
+   |                   ^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL |     let x: u32 = <dyn Default>::default();
+   |                   +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0782`.
