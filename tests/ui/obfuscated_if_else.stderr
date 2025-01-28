@@ -25,5 +25,17 @@ error: this method chain can be written more clearly with `if .. else ..`
 LL |     (a == 1).then(|| "a").unwrap_or("b");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if a == 1 { "a" } else { "b" }`
 
-error: aborting due to 4 previous errors
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:16:5
+   |
+LL |     true.then_some(a += 1).unwrap_or(());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { a += 1 } else { () }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:17:5
+   |
+LL |     true.then_some(()).unwrap_or(a += 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { () } else { a += 2 }`
+
+error: aborting due to 6 previous errors
 
