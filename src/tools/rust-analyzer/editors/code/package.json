@@ -501,6 +501,10 @@
                                 },
                                 {
                                     "pattern": "**/Cargo.lock"
+                                },
+                                {
+                                    "scheme": "output",
+                                    "pattern": "extension-output-rust-lang.rust-analyzer*"
                                 }
                             ]
                         }
