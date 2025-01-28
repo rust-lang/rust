@@ -4,6 +4,7 @@ use ide_db::{
     syntax_helpers::{suggest_name, LexedStr},
 };
 use syntax::{
+    algo::ancestors_at_offset,
     ast::{
         self, edit::IndentLevel, edit_in_place::Indent, make, syntax_factory::SyntaxFactory,
         AstNode,
@@ -68,7 +69,10 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     let node = if ctx.has_empty_selection() {
         if let Some(t) = ctx.token_at_offset().find(|it| it.kind() == T![;]) {
             t.parent().and_then(ast::ExprStmt::cast)?.syntax().clone()
-        } else if let Some(expr) = ctx.find_node_at_offset::<ast::Expr>() {
+        } else if let Some(expr) = ancestors_at_offset(ctx.source_file().syntax(), ctx.offset())
+            .next()
+            .and_then(ast::Expr::cast)
+        {
             expr.syntax().ancestors().find_map(valid_target_expr)?.syntax().clone()
         } else {
             return None;
@@ -469,11 +473,11 @@ mod tests {
             extract_variable,
             r#"
 fn main() -> i32 {
-    if true {
+    if$0 true {
         1
     } else {
         2
-    }$0
+    }
 }
 "#,
             r#"
@@ -581,11 +585,11 @@ fn main() {
             extract_variable,
             r#"
 fn main() -> i32 {
-    if true {
+    if$0 true {
         1
     } else {
         2
-    }$0
+    }
 }
 "#,
             r#"
@@ -676,11 +680,11 @@ fn main() {
             extract_variable,
             r#"
 fn main() -> i32 {
-    if true {
+    if$0 true {
         1
     } else {
         2
-    }$0
+    }
 }
 "#,
             r#"

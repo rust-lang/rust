@@ -69,9 +69,9 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::format::{
-    Buffer, Ending, HrefError, PrintWithSpace, display_fn, href, join_with_double_colon,
-    print_abi_with_space, print_constness_with_space, print_default_space, print_generic_bounds,
-    print_where_clause, visibility_print_with_space,
+    Buffer, Ending, HrefError, PrintWithSpace, href, join_with_double_colon, print_abi_with_space,
+    print_constness_with_space, print_default_space, print_generic_bounds, print_where_clause,
+    visibility_print_with_space,
 };
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine,
@@ -82,13 +82,14 @@ use crate::scrape_examples::{CallData, CallLocation};
 use crate::{DOC_RUST_LANG_ORG_CHANNEL, try_none};
 
 pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
-    crate::html::format::display_fn(move |f| {
+    fmt::from_fn(move |f| {
         if !v.ends_with('/') && !v.is_empty() { write!(f, "{v}/") } else { f.write_str(v) }
     })
 }
 
 /// Specifies whether rendering directly implemented trait items or ones from a certain Deref
 /// impl.
+#[derive(Copy, Clone)]
 pub(crate) enum AssocItemRender<'a> {
     All,
     DerefFor { trait_: &'a clean::Path, type_: &'a clean::Type, deref_mut_: bool },
@@ -309,9 +310,7 @@ impl ItemEntry {
 
 impl ItemEntry {
     pub(crate) fn print(&self) -> impl fmt::Display + '_ {
-        crate::html::format::display_fn(move |f| {
-            write!(f, "<a href=\"{}\">{}</a>", self.url, Escape(&self.name))
-        })
+        fmt::from_fn(move |f| write!(f, "<a href=\"{}\">{}</a>", self.url, Escape(&self.name)))
     }
 }
 
@@ -513,7 +512,7 @@ fn document<'a, 'cx: 'a>(
         info!("Documenting {name}");
     }
 
-    display_fn(move |f| {
+    fmt::from_fn(move |f| {
         document_item_info(cx, item, parent).render_into(f).unwrap();
         if parent.is_none() {
             write!(f, "{}", document_full_collapsible(item, cx, heading_offset))
@@ -530,7 +529,7 @@ fn render_markdown<'a, 'cx: 'a>(
     links: Vec<RenderedLink>,
     heading_offset: HeadingOffset,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
-    display_fn(move |f| {
+    fmt::from_fn(move |f| {
         write!(
             f,
             "<div class=\"docblock\">{}</div>",
@@ -557,7 +556,7 @@ fn document_short<'a, 'cx: 'a>(
     parent: &'a clean::Item,
     show_def_docs: bool,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
-    display_fn(move |f| {
+    fmt::from_fn(move |f| {
         document_item_info(cx, item, Some(parent)).render_into(f).unwrap();
         if !show_def_docs {
             return Ok(());
@@ -605,7 +604,7 @@ fn document_full_inner<'a, 'cx: 'a>(
     is_collapsible: bool,
     heading_offset: HeadingOffset,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
-    display_fn(move |f| {
+    fmt::from_fn(move |f| {
         if let Some(s) = item.opt_doc_value() {
             debug!("Doc block: =====\n{s}\n=====");
             if is_collapsible {
@@ -1159,7 +1158,7 @@ fn render_attributes_in_pre<'a, 'tcx: 'a>(
     prefix: &'a str,
     cx: &'a Context<'tcx>,
 ) -> impl fmt::Display + Captures<'a> + Captures<'tcx> {
-    crate::html::format::display_fn(move |f| {
+    fmt::from_fn(move |f| {
         for a in it.attributes(cx.tcx(), cx.cache(), false) {
             writeln!(f, "{prefix}{a}")?;
         }
@@ -1256,9 +1255,9 @@ fn render_assoc_items<'a, 'cx: 'a>(
     it: DefId,
     what: AssocItemRender<'a>,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
-    let mut derefs = DefIdSet::default();
-    derefs.insert(it);
-    display_fn(move |f| {
+    fmt::from_fn(move |f| {
+        let mut derefs = DefIdSet::default();
+        derefs.insert(it);
         render_assoc_items_inner(f, cx, containing_item, it, what, &mut derefs);
         Ok(())
     })
@@ -2577,7 +2576,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &Context<'_>, item: &clean
             file_span,
             cx,
             &cx.root_path(),
-            highlight::DecorationInfo(decoration_info),
+            &highlight::DecorationInfo(decoration_info),
             sources::SourceContext::Embedded(sources::ScrapedInfo {
                 needs_expansion,
                 offset: line_min,

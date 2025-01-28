@@ -1636,13 +1636,12 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                         .enumerate()
                                         .map(|(idx, new)| (new, old_fields.get(idx)))
                                         .map(|(new, old)| {
-                                            let new = new.name.to_ident_string();
                                             if let Some(Some(old)) = old
-                                                && new != *old
+                                                && new.as_str() != old
                                             {
                                                 format!("{new}: {old}")
                                             } else {
-                                                new
+                                                new.to_string()
                                             }
                                         })
                                         .collect::<Vec<String>>()
@@ -1696,7 +1695,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             ) => {
                 // Don't suggest macro if it's unstable.
                 let suggestable = def_id.is_local()
-                    || self.r.tcx.lookup_stability(def_id).map_or(true, |s| s.is_stable());
+                    || self.r.tcx.lookup_stability(def_id).is_none_or(|s| s.is_stable());
 
                 err.span_label(span, fallback_label.to_string());
 
@@ -2135,7 +2134,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 .r
                                 .delegation_fn_sigs
                                 .get(&self.r.local_def_id(assoc_item.id))
-                                .map_or(false, |sig| sig.has_self) =>
+                                .is_some_and(|sig| sig.has_self) =>
                         {
                             AssocSuggestion::MethodWithSelf { called }
                         }
@@ -2166,7 +2165,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                     .r
                                     .delegation_fn_sigs
                                     .get(&def_id)
-                                    .map_or(false, |sig| sig.has_self),
+                                    .is_some_and(|sig| sig.has_self),
                                 None => self
                                     .r
                                     .tcx

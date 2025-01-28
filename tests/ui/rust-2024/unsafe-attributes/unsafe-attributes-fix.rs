@@ -40,6 +40,15 @@ macro_rules! meta2 {
     }
 }
 
+macro_rules! with_cfg_attr {
+    () => {
+        #[cfg_attr(all(), link_section = ".custom_section")]
+        //~^ ERROR: unsafe attribute used without unsafe
+        //~| WARN this is accepted in the current edition
+        pub extern "C" fn abc() {}
+    };
+}
+
 tt!([no_mangle]);
 //~^ ERROR: unsafe attribute used without unsafe
 //~| WARN this is accepted in the current edition
@@ -51,6 +60,8 @@ meta2!(export_name = "baw");
 //~^ ERROR: unsafe attribute used without unsafe
 //~| WARN this is accepted in the current edition
 ident2!(export_name, "bars");
+
+with_cfg_attr!();
 
 #[no_mangle]
 //~^ ERROR: unsafe attribute used without unsafe

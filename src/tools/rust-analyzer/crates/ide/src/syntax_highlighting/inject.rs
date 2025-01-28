@@ -28,7 +28,14 @@ pub(super) fn ra_fixture(
     expanded: &ast::String,
 ) -> Option<()> {
     let active_parameter = ActiveParameter::at_token(sema, expanded.syntax().clone())?;
-    if !active_parameter.ident().is_some_and(|name| name.text().starts_with("ra_fixture")) {
+    let has_rust_fixture_attr = active_parameter.attrs().is_some_and(|attrs| {
+        attrs.filter_map(|attr| attr.as_simple_path()).any(|path| {
+            path.segments()
+                .zip(["rust_analyzer", "rust_fixture"])
+                .all(|(seg, name)| seg.name_ref().map_or(false, |nr| nr.text() == name))
+        })
+    });
+    if !has_rust_fixture_attr {
         return None;
     }
     let value = literal.value().ok()?;
@@ -287,7 +294,9 @@ fn find_doc_string_in_attr(attr: &hir::Attr, it: &ast::Attr) -> Option<ast::Stri
 
 fn module_def_to_hl_tag(def: Definition) -> HlTag {
     let symbol = match def {
-        Definition::Module(_) | Definition::ExternCrateDecl(_) => SymbolKind::Module,
+        Definition::Module(_) | Definition::Crate(_) | Definition::ExternCrateDecl(_) => {
+            SymbolKind::Module
+        }
         Definition::Function(_) => SymbolKind::Function,
         Definition::Adt(hir::Adt::Struct(_)) => SymbolKind::Struct,
         Definition::Adt(hir::Adt::Enum(_)) => SymbolKind::Enum,

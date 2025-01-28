@@ -23,7 +23,7 @@ use crate::{
 #[derive(Debug)]
 enum FuncKind<'ctx> {
     Function(&'ctx PathCompletionCtx),
-    Method(&'ctx DotAccess, Option<hir::Name>),
+    Method(&'ctx DotAccess, Option<SmolStr>),
 }
 
 pub(crate) fn render_fn(
@@ -39,7 +39,7 @@ pub(crate) fn render_fn(
 pub(crate) fn render_method(
     ctx: RenderContext<'_>,
     dot_access: &DotAccess,
-    receiver: Option<hir::Name>,
+    receiver: Option<SmolStr>,
     local_name: Option<hir::Name>,
     func: hir::Function,
 ) -> Builder {
@@ -59,16 +59,8 @@ fn render(
 
     let (call, escaped_call) = match &func_kind {
         FuncKind::Method(_, Some(receiver)) => (
-            format_smolstr!(
-                "{}.{}",
-                receiver.unescaped().display(ctx.db()),
-                name.unescaped().display(ctx.db())
-            ),
-            format_smolstr!(
-                "{}.{}",
-                receiver.display(ctx.db(), completion.edition),
-                name.display(ctx.db(), completion.edition)
-            ),
+            format_smolstr!("{}.{}", receiver, name.unescaped().display(ctx.db())),
+            format_smolstr!("{}.{}", receiver, name.display(ctx.db(), completion.edition)),
         ),
         _ => (
             name.unescaped().display(db).to_smolstr(),
@@ -143,8 +135,8 @@ fn render(
         }
         FuncKind::Method(DotAccess { receiver: Some(receiver), .. }, _) => {
             if let Some(original_expr) = completion.sema.original_ast_node(receiver.clone()) {
-                if let Some(ref_match) = compute_ref_match(completion, &ret_type) {
-                    item.ref_match(ref_match, original_expr.syntax().text_range().start());
+                if let Some(ref_mode) = compute_ref_match(completion, &ret_type) {
+                    item.ref_match(ref_mode, original_expr.syntax().text_range().start());
                 }
             }
         }

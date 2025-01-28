@@ -52,6 +52,10 @@ impl crate::MirPass<'_> for UnreachablePropagation {
             body.basic_blocks_mut()[bb].statements.clear();
         }
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 /// Return whether the current terminator is fully unreachable.

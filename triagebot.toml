@@ -1025,6 +1025,8 @@ users_on_vacation = [
     "nnethercote",
     "spastorino",
     "workingjubilee",
+    "kobzol",
+    "jieyouxu",
 ]
 
 [[assign.warn_non_default_branch.exceptions]]

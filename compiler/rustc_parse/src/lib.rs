@@ -11,18 +11,21 @@
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
+#![feature(string_from_utf8_lossy_owned)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::str::Utf8Error;
 
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrItem, Attribute, MetaItemInner, token};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Diag, FatalError, PResult};
+use rustc_errors::{Diag, EmissionGuarantee, FatalError, PResult, pluralize};
 use rustc_session::parse::ParseSess;
+use rustc_span::source_map::SourceMap;
 use rustc_span::{FileName, SourceFile, Span};
 pub use unicode_normalization::UNICODE_VERSION as UNICODE_NORMALIZATION_VERSION;
 
@@ -73,15 +76,71 @@ pub fn new_parser_from_file<'a>(
     path: &Path,
     sp: Option<Span>,
 ) -> Result<Parser<'a>, Vec<Diag<'a>>> {
-    let source_file = psess.source_map().load_file(path).unwrap_or_else(|e| {
-        let msg = format!("couldn't read {}: {}", path.display(), e);
+    let sm = psess.source_map();
+    let source_file = sm.load_file(path).unwrap_or_else(|e| {
+        let msg = format!("couldn't read `{}`: {}", path.display(), e);
         let mut err = psess.dcx().struct_fatal(msg);
+        if let Ok(contents) = std::fs::read(path)
+            && let Err(utf8err) = String::from_utf8(contents.clone())
+        {
+            utf8_error(
+                sm,
+                &path.display().to_string(),
+                sp,
+                &mut err,
+                utf8err.utf8_error(),
+                &contents,
+            );
+        }
         if let Some(sp) = sp {
             err.span(sp);
         }
         err.emit();
     });
     new_parser_from_source_file(psess, source_file)
+}
+
+pub fn utf8_error<E: EmissionGuarantee>(
+    sm: &SourceMap,
+    path: &str,
+    sp: Option<Span>,
+    err: &mut Diag<'_, E>,
+    utf8err: Utf8Error,
+    contents: &[u8],
+) {
+    // The file exists, but it wasn't valid UTF-8.
+    let start = utf8err.valid_up_to();
+    let note = format!("invalid utf-8 at byte `{start}`");
+    let msg = if let Some(len) = utf8err.error_len() {
+        format!(
+            "byte{s} `{bytes}` {are} not valid utf-8",
+            bytes = if len == 1 {
+                format!("{:?}", contents[start])
+            } else {
+                format!("{:?}", &contents[start..start + len])
+            },
+            s = pluralize!(len),
+            are = if len == 1 { "is" } else { "are" },
+        )
+    } else {
+        note.clone()
+    };
+    let contents = String::from_utf8_lossy(contents).to_string();
+    let source = sm.new_source_file(PathBuf::from(path).into(), contents);
+    let span = Span::with_root_ctxt(
+        source.normalized_byte_pos(start as u32),
+        source.normalized_byte_pos(start as u32),
+    );
+    if span.is_dummy() {
+        err.note(note);
+    } else {
+        if sp.is_some() {
+            err.span_note(span, msg);
+        } else {
+            err.span(span);
+            err.span_label(span, msg);
+        }
+    }
 }
 
 /// Given a session and a `source_file`, return a parser. Returns any buffered errors from lexing

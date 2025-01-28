@@ -10,7 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::Visitor;
+use rustc_hir::intravisit::{InferKind, Visitor};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
@@ -641,16 +641,21 @@ impl<'tcx> AnnotateUnitFallbackVisitor<'_, 'tcx> {
 impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
     type Result = ControlFlow<errors::SuggestAnnotation>;
 
-    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) -> Self::Result {
+    fn visit_infer(
+        &mut self,
+        inf_id: HirId,
+        inf_span: Span,
+        _kind: InferKind<'tcx>,
+    ) -> Self::Result {
         // Try to replace `_` with `()`.
-        if let hir::TyKind::Infer = hir_ty.kind
-            && let Some(ty) = self.fcx.typeck_results.borrow().node_type_opt(hir_ty.hir_id)
+        if let Some(ty) = self.fcx.typeck_results.borrow().node_type_opt(inf_id)
             && let Some(vid) = self.fcx.root_vid(ty)
             && self.reachable_vids.contains(&vid)
         {
-            return ControlFlow::Break(errors::SuggestAnnotation::Unit(hir_ty.span));
+            return ControlFlow::Break(errors::SuggestAnnotation::Unit(inf_span));
         }
-        hir::intravisit::walk_ty(self, hir_ty)
+
+        ControlFlow::Continue(())
     }
 
     fn visit_qpath(

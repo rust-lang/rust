@@ -141,7 +141,7 @@ fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
             expr.hir_id,
             method.ident.span,
             DanglingPointersFromTemporaries {
-                callee: method.ident.name,
+                callee: method.ident,
                 ty,
                 ptr_span: method.ident.span,
                 temporary_span: receiver.span,

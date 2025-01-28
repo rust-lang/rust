@@ -608,7 +608,7 @@ where
         let before = diffs_before.as_mut().map(next_in_dataflow_order);
 
         assert!(diffs_after.is_empty());
-        assert!(diffs_before.as_ref().map_or(true, ExactSizeIterator::is_empty));
+        assert!(diffs_before.as_ref().is_none_or(ExactSizeIterator::is_empty));
 
         let terminator = self.cursor.body()[block].terminator();
         let mut terminator_str = String::new();

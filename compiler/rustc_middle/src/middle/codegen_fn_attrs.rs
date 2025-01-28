@@ -147,7 +147,7 @@ impl CodegenFnAttrs {
         CodegenFnAttrs {
             flags: CodegenFnAttrFlags::empty(),
             inline: InlineAttr::None,
-            optimize: OptimizeAttr::None,
+            optimize: OptimizeAttr::Default,
             export_name: None,
             link_name: None,
             link_ordinal: None,

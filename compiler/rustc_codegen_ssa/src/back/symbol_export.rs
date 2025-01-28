@@ -293,7 +293,7 @@ fn exported_symbols_provider_local(
         // external linkage is enough for monomorphization to be linked to.
         let need_visibility = tcx.sess.target.dynamic_linking && !tcx.sess.target.only_cdylib;
 
-        let (_, cgus) = tcx.collect_and_partition_mono_items(());
+        let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;
 
         // The symbols created in this loop are sorted below it
         #[allow(rustc::potential_query_instability)]

@@ -12,11 +12,11 @@ note: const parameter `START` defined here
 LL | type Pat<const START: u32, const END: u32> =
    |                ^^^^^
 
-error[E0109]: type arguments are not allowed on const parameter `END`
+error[E0109]: generic arguments are not allowed on const parameter `END`
   --> $DIR/bad_const_generics_args_on_const_param.rs:5:64
    |
 LL |     std::pat::pattern_type!(u32 is START::<(), i32, 2>..=END::<_, Assoc = ()>);
-   |                                                          ---   ^ type argument not allowed
+   |                                                          ---   ^ generic argument not allowed
    |                                                          |
    |                                                          not allowed on const parameter `END`
    |

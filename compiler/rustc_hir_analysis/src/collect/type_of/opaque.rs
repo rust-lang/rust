@@ -55,7 +55,7 @@ pub(super) fn find_opaque_ty_constraints_for_impl_trait_in_assoc_type(
     } else {
         let reported = tcx.dcx().emit_err(UnconstrainedOpaqueType {
             span: tcx.def_span(def_id),
-            name: tcx.item_name(parent_def_id.to_def_id()),
+            name: tcx.item_ident(parent_def_id.to_def_id()),
             what: "impl",
         });
         Ty::new_error(tcx, reported)
@@ -136,7 +136,7 @@ pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: Local
         }
         let reported = tcx.dcx().emit_err(UnconstrainedOpaqueType {
             span: tcx.def_span(def_id),
-            name: tcx.item_name(parent_def_id.to_def_id()),
+            name: tcx.item_ident(parent_def_id.to_def_id()),
             what: match tcx.hir_node(scope) {
                 _ if scope == hir::CRATE_HIR_ID => "module",
                 Node::Item(hir::Item { kind: hir::ItemKind::Mod(_), .. }) => "module",

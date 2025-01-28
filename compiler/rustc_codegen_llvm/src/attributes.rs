@@ -333,8 +333,11 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     let mut to_add = SmallVec::<[_; 16]>::new();
 
     match codegen_fn_attrs.optimize {
-        OptimizeAttr::None => {
+        OptimizeAttr::Default => {
             to_add.extend(default_optimisation_attrs(cx));
+        }
+        OptimizeAttr::DoNotOptimize => {
+            to_add.push(llvm::AttributeKind::OptimizeNone.create_attr(cx.llcx));
         }
         OptimizeAttr::Size => {
             to_add.push(llvm::AttributeKind::MinSize.create_attr(cx.llcx));
@@ -343,12 +346,12 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         OptimizeAttr::Speed => {}
     }
 
-    let inline =
-        if codegen_fn_attrs.inline == InlineAttr::None && instance.def.requires_inline(cx.tcx) {
-            InlineAttr::Hint
-        } else {
-            codegen_fn_attrs.inline
-        };
+    // `optnone` requires `noinline`
+    let inline = match (codegen_fn_attrs.inline, &codegen_fn_attrs.optimize) {
+        (_, OptimizeAttr::DoNotOptimize) => InlineAttr::Never,
+        (InlineAttr::None, _) if instance.def.requires_inline(cx.tcx) => InlineAttr::Hint,
+        (inline, _) => inline,
+    };
     to_add.extend(inline_attr(cx, inline));
 
     // The `uwtable` attribute according to LLVM is:

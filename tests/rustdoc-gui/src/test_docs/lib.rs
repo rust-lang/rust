@@ -691,3 +691,25 @@ impl ImplDoc {
 impl ImplDoc {
     pub fn bar5() {}
 }
+
+pub trait ItemsTrait {
+    /// You want doc, here is doc!
+    ///
+    /// blablala
+    type F;
+
+    /// You want doc, here is doc!
+    ///
+    /// blablala
+    const X: u32;
+
+    /// You want doc, here is doc!
+    ///
+    /// blablala
+    fn foo() {}
+
+    /// You want doc, here is doc!
+    ///
+    /// blablala
+    fn bar();
+}

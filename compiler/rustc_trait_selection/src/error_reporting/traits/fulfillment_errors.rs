@@ -462,6 +462,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             err.note(
                                 "`#[target_feature]` functions do not implement the `Fn` traits",
                             );
+                            err.note(
+                                "try casting the function to a `fn` pointer or wrapping it in a closure",
+                            );
                         }
 
                         self.try_to_add_help_message(
@@ -580,8 +583,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             self.tcx.hir_node_by_def_id(obligation.cause.body_id)
                             && let hir::ItemKind::Impl(impl_) = item.kind
                             && let None = impl_.of_trait
-                            && let hir::TyKind::TraitObject(_, _, syntax) = impl_.self_ty.kind
-                            && let TraitObjectSyntax::None = syntax
+                            && let hir::TyKind::TraitObject(_, tagged_ptr) = impl_.self_ty.kind
+                            && let TraitObjectSyntax::None = tagged_ptr.tag()
                             && impl_.self_ty.span.edition().at_least_rust_2021()
                         {
                             // Silence the dyn-compatibility error in favor of the missing dyn on
@@ -1338,20 +1341,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let derive_better_type_error =
                         |alias_term: ty::AliasTerm<'tcx>, expected_term: ty::Term<'tcx>| {
                             let ocx = ObligationCtxt::new(self);
-                            let normalized_term = match expected_term.unpack() {
-                                ty::TermKind::Ty(_) => self.next_ty_var(DUMMY_SP).into(),
-                                ty::TermKind::Const(_) => self.next_const_var(DUMMY_SP).into(),
-                            };
-                            ocx.register_obligation(Obligation::new(
-                                self.tcx,
-                                ObligationCause::dummy(),
+
+                            let Ok(normalized_term) = ocx.structurally_normalize_term(
+                                &ObligationCause::dummy(),
                                 obligation.param_env,
-                                ty::PredicateKind::NormalizesTo(ty::NormalizesTo {
-                                    alias: alias_term,
-                                    term: normalized_term,
-                                }),
-                            ));
-                            let _ = ocx.select_where_possible();
+                                alias_term.to_term(self.tcx),
+                            ) else {
+                                return None;
+                            };
+
                             if let Err(terr) = ocx.eq(
                                 &ObligationCause::dummy(),
                                 obligation.param_env,

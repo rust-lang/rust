@@ -172,10 +172,10 @@ mod c_char_definition {
                 target_arch = "xtensa",
             )
         ))] {
-            pub type c_char = u8;
+            pub(super) type c_char = u8;
         } else {
             // On every other target, c_char is signed.
-            pub type c_char = i8;
+            pub(super) type c_char = i8;
         }
     }
 }
@@ -183,11 +183,11 @@ mod c_char_definition {
 mod c_int_definition {
     cfg_if! {
         if #[cfg(any(target_arch = "avr", target_arch = "msp430"))] {
-            pub type c_int = i16;
-            pub type c_uint = u16;
+            pub(super) type c_int = i16;
+            pub(super) type c_uint = u16;
         } else {
-            pub type c_int = i32;
-            pub type c_uint = u32;
+            pub(super) type c_int = i32;
+            pub(super) type c_uint = u32;
         }
     }
 }
@@ -195,12 +195,12 @@ mod c_int_definition {
 mod c_long_definition {
     cfg_if! {
         if #[cfg(all(target_pointer_width = "64", not(windows)))] {
-            pub type c_long = i64;
-            pub type c_ulong = u64;
+            pub(super) type c_long = i64;
+            pub(super) type c_ulong = u64;
         } else {
             // The minimal size of `long` in the C standard is 32 bits
-            pub type c_long = i32;
-            pub type c_ulong = u32;
+            pub(super) type c_long = i32;
+            pub(super) type c_ulong = u32;
         }
     }
 }

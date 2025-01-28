@@ -104,14 +104,12 @@ fn map_error<'tcx>(
             // This is sometimes not a compile error if there are trivially false where clauses.
             // See `tests/ui/layout/trivial-bounds-sized.rs` for an example.
             assert!(field.layout.is_unsized(), "invalid layout error {err:#?}");
-            if !field.ty.is_sized(cx.tcx(), cx.typing_env) {
-                let guar = cx.tcx().dcx().delayed_bug(format!(
+            if cx.typing_env.param_env.caller_bounds().is_empty() {
+                cx.tcx().dcx().delayed_bug(format!(
                     "encountered unexpected unsized field in layout of {ty:?}: {field:#?}"
                 ));
-                LayoutError::ReferencesError(guar)
-            } else {
-                LayoutError::Unknown(ty)
             }
+            LayoutError::Unknown(ty)
         }
         LayoutCalculatorError::EmptyUnion => {
             // This is always a compile error.
@@ -144,6 +142,35 @@ fn univariant_uninterned<'tcx>(
     }
 
     cx.calc.univariant(fields, repr, kind).map_err(|err| map_error(cx, ty, err))
+}
+
+fn validate_const_with_value<'tcx>(
+    const_: ty::Const<'tcx>,
+    ty: Ty<'tcx>,
+    cx: &LayoutCx<'tcx>,
+) -> Result<ty::Const<'tcx>, &'tcx LayoutError<'tcx>> {
+    match const_.kind() {
+        ty::ConstKind::Value(..) => Ok(const_),
+        ty::ConstKind::Error(guar) => {
+            return Err(error(cx, LayoutError::ReferencesError(guar)));
+        }
+        ty::ConstKind::Param(_) | ty::ConstKind::Expr(_) => {
+            if !const_.has_param() {
+                bug!("no generic type found in the type: {ty:?}");
+            }
+            return Err(error(cx, LayoutError::TooGeneric(ty)));
+        }
+        ty::ConstKind::Unevaluated(_) => {
+            if !const_.has_param() {
+                return Err(error(cx, LayoutError::Unknown(ty)));
+            } else {
+                return Err(error(cx, LayoutError::TooGeneric(ty)));
+            }
+        }
+        ty::ConstKind::Infer(_) | ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
+            bug!("unexpected type: {ty:?}");
+        }
+    }
 }
 
 fn layout_of_uncached<'tcx>(
@@ -182,12 +209,13 @@ fn layout_of_uncached<'tcx>(
                         &mut layout.backend_repr
                     {
                         if let Some(start) = start {
-                            scalar.valid_range_mut().start = start
-                                .try_to_bits(tcx, cx.typing_env)
-                                .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
+                            scalar.valid_range_mut().start =
+                                validate_const_with_value(start, ty, cx)?
+                                    .try_to_bits(tcx, cx.typing_env)
+                                    .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                         }
                         if let Some(end) = end {
-                            let mut end = end
+                            let mut end = validate_const_with_value(end, ty, cx)?
                                 .try_to_bits(tcx, cx.typing_env)
                                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                             if !include_end {
@@ -319,17 +347,13 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Arrays and slices.
-        ty::Array(element, mut count) => {
-            if count.has_aliases() {
-                count = tcx.normalize_erasing_regions(cx.typing_env, count);
-                if count.has_aliases() {
-                    return Err(error(cx, LayoutError::Unknown(ty)));
-                }
-            }
-
-            let count = count
+        ty::Array(element, count) => {
+            let count = validate_const_with_value(count, ty, cx)?
+                .to_valtree()
+                .0
                 .try_to_target_usize(tcx)
                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
+
             let element = cx.layout_of(element)?;
             let size = element
                 .size
@@ -687,6 +711,9 @@ fn layout_of_uncached<'tcx>(
 
         // Types with no meaningful known layout.
         ty::Alias(..) => {
+            if ty.has_param() {
+                return Err(error(cx, LayoutError::TooGeneric(ty)));
+            }
             // NOTE(eddyb) `layout_of` query should've normalized these away,
             // if that was possible, so there's no reason to try again here.
             return Err(error(cx, LayoutError::Unknown(ty)));
@@ -696,7 +723,11 @@ fn layout_of_uncached<'tcx>(
             bug!("Layout::compute: unexpected type `{}`", ty)
         }
 
-        ty::Placeholder(..) | ty::Param(_) => {
+        ty::Param(_) => {
+            return Err(error(cx, LayoutError::TooGeneric(ty)));
+        }
+
+        ty::Placeholder(..) => {
             return Err(error(cx, LayoutError::Unknown(ty)));
         }
     })

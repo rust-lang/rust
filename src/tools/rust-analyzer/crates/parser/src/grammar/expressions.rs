@@ -134,10 +134,12 @@ pub(super) fn let_stmt(p: &mut Parser<'_>, with_semi: Semicolon) {
         // test_err let_else_right_curly_brace
         // fn func() { let Some(_) = {Some(1)} else { panic!("h") };}
         if let Some(expr) = expr_after_eq {
-            if BlockLike::is_blocklike(expr.kind()) {
-                p.error(
-                    "right curly brace `}` before `else` in a `let...else` statement not allowed",
-                )
+            if let Some(token) = expr.last_token(p) {
+                if token == T!['}'] {
+                    p.error(
+                        "right curly brace `}` before `else` in a `let...else` statement not allowed"
+                    )
+                }
             }
         }
 
@@ -339,13 +341,20 @@ fn lhs(p: &mut Parser<'_>, r: Restrictions) -> Option<(CompletedMarker, BlockLik
         //     // raw reference operator
         //     let _ = &raw mut foo;
         //     let _ = &raw const foo;
+        //     let _ = &raw foo;
         // }
         T![&] => {
             m = p.start();
             p.bump(T![&]);
-            if p.at_contextual_kw(T![raw]) && [T![mut], T![const]].contains(&p.nth(1)) {
-                p.bump_remap(T![raw]);
-                p.bump_any();
+            if p.at_contextual_kw(T![raw]) {
+                if [T![mut], T![const]].contains(&p.nth(1)) {
+                    p.bump_remap(T![raw]);
+                    p.bump_any();
+                } else if p.nth_at(1, SyntaxKind::IDENT) {
+                    // we treat raw as keyword in this case
+                    // &raw foo;
+                    p.bump_remap(T![raw]);
+                }
             } else {
                 p.eat(T![mut]);
             }

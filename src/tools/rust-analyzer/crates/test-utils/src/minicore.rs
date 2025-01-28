@@ -32,7 +32,7 @@
 //!     error: fmt
 //!     fmt: option, result, transmute, coerce_unsized, copy, clone, derive
 //!     fn: tuple
-//!     from: sized
+//!     from: sized, result
 //!     future: pin
 //!     coroutine: pin
 //!     dispatch_from_dyn: unsize, pin
@@ -330,6 +330,25 @@ pub mod convert {
     impl<T> From<T> for T {
         fn from(t: T) -> T {
             t
+        }
+    }
+
+    pub trait TryFrom<T>: Sized {
+        type Error;
+        fn try_from(value: T) -> Result<Self, Self::Error>;
+    }
+    pub trait TryInto<T>: Sized {
+        type Error;
+        fn try_into(self) -> Result<T, Self::Error>;
+    }
+
+    impl<T, U> TryInto<U> for T
+    where
+        U: TryFrom<T>,
+    {
+        type Error = U::Error;
+        fn try_into(self) -> Result<U, U::Error> {
+            U::try_from(self)
         }
     }
     // endregion:from
@@ -1510,12 +1529,35 @@ pub mod iter {
             impl<T, const N: usize> IntoIterator for [T; N] {
                 type Item = T;
                 type IntoIter = IntoIter<T, N>;
-                fn into_iter(self) -> I {
+                fn into_iter(self) -> Self::IntoIter {
                     IntoIter { data: self, range: IndexRange { start: 0, end: loop {} } }
                 }
             }
             impl<T, const N: usize> Iterator for IntoIter<T, N> {
                 type Item = T;
+                fn next(&mut self) -> Option<T> {
+                    loop {}
+                }
+            }
+            pub struct Iter<'a, T> {
+                slice: &'a [T],
+            }
+            impl<'a, T> IntoIterator for &'a [T; N] {
+                type Item = &'a T;
+                type IntoIter = Iter<'a, T>;
+                fn into_iter(self) -> Self::IntoIter {
+                    loop {}
+                }
+            }
+            impl<'a, T> IntoIterator for &'a [T] {
+                type Item = &'a T;
+                type IntoIter = Iter<'a, T>;
+                fn into_iter(self) -> Self::IntoIter {
+                    loop {}
+                }
+            }
+            impl<'a, T> Iterator for Iter<'a, T> {
+                type Item = &'a T;
                 fn next(&mut self) -> Option<T> {
                     loop {}
                 }
@@ -1531,6 +1573,15 @@ pub mod iter {
 pub mod str {
     pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
         ""
+    }
+    pub trait FromStr: Sized {
+        type Err;
+        fn from_str(s: &str) -> Result<Self, Self::Err>;
+    }
+    impl str {
+        pub fn parse<F: FromStr>(&self) -> Result<F, F::Err> {
+            FromStr::from_str(self)
+        }
     }
 }
 // endregion:str
@@ -1791,7 +1842,7 @@ pub mod prelude {
             cmp::{Eq, PartialEq},                    // :eq
             cmp::{Ord, PartialOrd},                  // :ord
             convert::AsRef,                          // :as_ref
-            convert::{From, Into},                   // :from
+            convert::{From, Into, TryFrom, TryInto}, // :from
             default::Default,                        // :default
             iter::{IntoIterator, Iterator},          // :iterator
             macros::builtin::{derive, derive_const}, // :derive
@@ -1806,6 +1857,7 @@ pub mod prelude {
             option::Option::{self, None, Some},      // :option
             panic,                                   // :panic
             result::Result::{self, Err, Ok},         // :result
+            str::FromStr,                            // :str
         };
     }
 

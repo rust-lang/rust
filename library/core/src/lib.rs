@@ -44,7 +44,7 @@
 //!    called. The `lang` attribute is called `eh_personality`.
 
 // Since core defines many fundamental lang items, all tests live in a
-// separate crate, libcoretest (library/core/tests), to avoid bizarre issues.
+// separate crate, coretests (library/coretests), to avoid bizarre issues.
 //
 // Here we explicitly #[cfg]-out this whole crate when testing. If we don't do
 // this, both the generated test artifact and the linked libtest (which
@@ -101,6 +101,7 @@
 #![warn(multiple_supertrait_upcastable)]
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
+#![warn(unreachable_pub)]
 // Do not check link redundancy on bootstraping phase
 #![allow(rustdoc::redundant_explicit_links)]
 #![warn(rustdoc::unescaped_backticks)]
@@ -110,6 +111,8 @@
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
 #![feature(bigint_helper_methods)]
+#![feature(bstr)]
+#![feature(bstr_internals)]
 #![feature(const_carrying_mul_add)]
 #![feature(const_eval_select)]
 #![feature(core_intrinsics)]
@@ -335,6 +338,8 @@ pub mod ascii;
 pub mod asserting;
 #[unstable(feature = "async_iterator", issue = "79024")]
 pub mod async_iter;
+#[unstable(feature = "bstr", issue = "134915")]
+pub mod bstr;
 pub mod cell;
 pub mod char;
 pub mod ffi;
@@ -396,7 +401,8 @@ pub mod primitive;
     unused_imports,
     unsafe_op_in_unsafe_fn,
     ambiguous_glob_reexports,
-    deprecated_in_future
+    deprecated_in_future,
+    unreachable_pub
 )]
 #[allow(rustdoc::bare_urls)]
 mod core_arch;

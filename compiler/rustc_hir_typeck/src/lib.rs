@@ -251,7 +251,8 @@ fn typeck_with_inspect<'tcx>(
 fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Option<Ty<'tcx>> {
     let tcx = fcx.tcx;
     let def_id = fcx.body_id;
-    let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer, span, .. }) = node.ty() {
+    let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer(()), span, .. }) = node.ty()
+    {
         if let Some(item) = tcx.opt_associated_item(def_id.into())
             && let ty::AssocKind::Const = item.kind
             && let ty::AssocItemContainer::Impl = item.container
@@ -452,7 +453,7 @@ fn report_unexpected_variant_res(
                 );
                 let fields = fields
                     .iter()
-                    .map(|field| format!("{}: _", field.name.to_ident_string()))
+                    .map(|field| format!("{}: _", field.ident(tcx)))
                     .collect::<Vec<_>>()
                     .join(", ");
                 let sugg = format!(" {{ {} }}", fields);

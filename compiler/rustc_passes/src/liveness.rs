@@ -1620,24 +1620,28 @@ impl<'tcx> Liveness<'_, 'tcx> {
             && let item = self.ir.tcx.hir_owner_node(item_id)
             && let Some(fn_decl) = item.fn_decl()
             && let hir::PatKind::Binding(hir::BindingMode::MUT, _hir_id, ident, _) = pat.kind
-            && let Some((ty_span, pre)) = fn_decl
+            && let Some((lt, mut_ty)) = fn_decl
                 .inputs
                 .iter()
                 .filter_map(|ty| {
                     if ty.span == *ty_span
                         && let hir::TyKind::Ref(lt, mut_ty) = ty.kind
                     {
-                        // `&'name Ty` -> `&'name mut Ty` or `&Ty` -> `&mut Ty`
-                        Some((
-                            mut_ty.ty.span.shrink_to_lo(),
-                            if lt.ident.span.lo() == lt.ident.span.hi() { "" } else { " " },
-                        ))
+                        Some((lt, mut_ty))
                     } else {
                         None
                     }
                 })
                 .next()
         {
+            let ty_span = if mut_ty.mutbl.is_mut() {
+                // Leave `&'name mut Ty` and `&mut Ty` as they are (#136028).
+                None
+            } else {
+                // `&'name Ty` -> `&'name mut Ty` or `&Ty` -> `&mut Ty`
+                Some(mut_ty.ty.span.shrink_to_lo())
+            };
+            let pre = if lt.ident.span.lo() == lt.ident.span.hi() { "" } else { " " };
             Some(errors::UnusedAssignSuggestion {
                 ty_span,
                 pre,

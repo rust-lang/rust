@@ -513,8 +513,27 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             _ => ChildMode::PassThrough,
         };
 
+        let nested_goals = candidate.instantiate_nested_goals(self.span());
+
+        // If the candidate requires some `T: FnPtr` bound which does not hold should not be treated as
+        // an actual candidate, instead we should treat them as if the impl was never considered to
+        // have potentially applied. As if `impl<A, R> Trait for for<..> fn(..A) -> R` was written
+        // instead of `impl<T: FnPtr> Trait for T`.
+        //
+        // We do this as a separate loop so that we do not choose to tell the user about some nested
+        // goal before we encounter a `T: FnPtr` nested goal.
+        for nested_goal in &nested_goals {
+            if let Some(fn_ptr_trait) = tcx.lang_items().fn_ptr_trait()
+                && let Some(poly_trait_pred) = nested_goal.goal().predicate.as_trait_clause()
+                && poly_trait_pred.def_id() == fn_ptr_trait
+                && let Err(NoSolution) = nested_goal.result()
+            {
+                return ControlFlow::Break(self.obligation.clone());
+            }
+        }
+
         let mut impl_where_bound_count = 0;
-        for nested_goal in candidate.instantiate_nested_goals(self.span()) {
+        for nested_goal in nested_goals {
             trace!(nested_goal = ?(nested_goal.goal(), nested_goal.source(), nested_goal.result()));
 
             let make_obligation = |cause| Obligation {
@@ -605,7 +624,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 enum ChildMode<'tcx> {
     // Try to derive an `ObligationCause::{ImplDerived,BuiltinDerived}`,
     // and skip all `GoalSource::Misc`, which represent useless obligations

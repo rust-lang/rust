@@ -6,7 +6,9 @@ mod tests;
 use std::{iter, ops::Not};
 
 use either::Either;
-use hir::{db::DefDatabase, GenericSubstitution, HasCrate, HasSource, LangItem, Semantics};
+use hir::{
+    db::DefDatabase, GenericDef, GenericSubstitution, HasCrate, HasSource, LangItem, Semantics,
+};
 use ide_db::{
     defs::{Definition, IdentClass, NameRefClass, OperatorClass},
     famous_defs::FamousDefs,
@@ -548,24 +550,29 @@ fn goto_type_action_for_def(
         });
     }
 
-    if let Definition::GenericParam(hir::GenericParam::TypeParam(it)) = def {
-        let krate = it.module(db).krate();
-        let sized_trait =
-            db.lang_item(krate.into(), LangItem::Sized).and_then(|lang_item| lang_item.as_trait());
+    if let Ok(generic_def) = GenericDef::try_from(def) {
+        generic_def.type_or_const_params(db).into_iter().for_each(|it| {
+            walk_and_push_ty(db, &it.ty(db), &mut push_new_def);
+        });
+    }
 
-        it.trait_bounds(db)
-            .into_iter()
-            .filter(|&it| Some(it.into()) != sized_trait)
-            .for_each(|it| push_new_def(it.into()));
-    } else {
-        let ty = match def {
-            Definition::Local(it) => it.ty(db),
-            Definition::GenericParam(hir::GenericParam::ConstParam(it)) => it.ty(db),
-            Definition::Field(field) => field.ty(db),
-            Definition::Function(function) => function.ret_type(db),
-            _ => return HoverAction::goto_type_from_targets(db, targets, edition),
-        };
-
+    let ty = match def {
+        Definition::Local(it) => Some(it.ty(db)),
+        Definition::Field(field) => Some(field.ty(db)),
+        Definition::TupleField(field) => Some(field.ty(db)),
+        Definition::Const(it) => Some(it.ty(db)),
+        Definition::Static(it) => Some(it.ty(db)),
+        Definition::Function(func) => {
+            for param in func.assoc_fn_params(db) {
+                walk_and_push_ty(db, param.ty(), &mut push_new_def);
+            }
+            Some(func.ret_type(db))
+        }
+        Definition::GenericParam(hir::GenericParam::ConstParam(it)) => Some(it.ty(db)),
+        Definition::GenericParam(hir::GenericParam::TypeParam(it)) => Some(it.ty(db)),
+        _ => None,
+    };
+    if let Some(ty) = ty {
         walk_and_push_ty(db, &ty, &mut push_new_def);
     }
 
@@ -592,6 +599,14 @@ fn walk_and_push_ty(
             traits.for_each(|it| push_new_def(it.into()));
         } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
             push_new_def(trait_.into());
+        } else if let Some(tp) = t.as_type_param(db) {
+            let sized_trait = db
+                .lang_item(t.krate(db).into(), LangItem::Sized)
+                .and_then(|lang_item| lang_item.as_trait());
+            tp.trait_bounds(db)
+                .into_iter()
+                .filter(|&it| Some(it.into()) != sized_trait)
+                .for_each(|it| push_new_def(it.into()));
         }
     });
 }

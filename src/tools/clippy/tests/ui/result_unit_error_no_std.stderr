@@ -1,5 +1,5 @@
 error: this returns a `Result<_, ()>`
-  --> tests/ui/result_unit_error_no_std.rs:11:1
+  --> tests/ui/result_unit_error_no_std.rs:12:1
    |
 LL | pub fn returns_unit_error_lint() -> Result<u32, ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

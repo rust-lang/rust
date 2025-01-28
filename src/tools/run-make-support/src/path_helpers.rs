@@ -34,6 +34,12 @@ pub fn source_root() -> PathBuf {
     env_var("SOURCE_ROOT").into()
 }
 
+/// Path to the build directory root.
+#[must_use]
+pub fn build_root() -> PathBuf {
+    env_var("BUILD_ROOT").into()
+}
+
 /// Browse the directory `path` non-recursively and return all files which respect the parameters
 /// outlined by `closure`.
 #[track_caller]

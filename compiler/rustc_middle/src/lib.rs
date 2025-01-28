@@ -40,6 +40,7 @@
 #![feature(const_type_name)]
 #![feature(core_intrinsics)]
 #![feature(coroutines)]
+#![feature(debug_closure_helpers)]
 #![feature(decl_macro)]
 #![feature(discriminant_kind)]
 #![feature(extern_types)]

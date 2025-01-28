@@ -71,6 +71,10 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
         let mut patch = visitor.patch;
         debug_span!("patch").in_scope(|| patch.visit_body_preserves_cfg(body));
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 // Note: Currently, places that have their reference taken cannot be tracked. Although this would

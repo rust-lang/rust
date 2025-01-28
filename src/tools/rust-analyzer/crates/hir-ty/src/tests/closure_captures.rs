@@ -14,7 +14,7 @@ use crate::test_db::TestDB;
 
 use super::visit_module;
 
-fn check_closure_captures(ra_fixture: &str, expect: Expect) {
+fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (db, file_id) = TestDB::with_single_file(ra_fixture);
     let module = db.module_for_file(file_id);
     let def_map = module.def_map(&db);

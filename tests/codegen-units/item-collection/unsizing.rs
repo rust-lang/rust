@@ -5,7 +5,7 @@
 #![deny(dead_code)]
 #![feature(coerce_unsized)]
 #![feature(unsize)]
-#![feature(start)]
+#![crate_type = "lib"]
 
 use std::marker::Unsize;
 use std::ops::CoerceUnsized;
@@ -45,8 +45,8 @@ struct Wrapper<T: ?Sized>(#[allow(dead_code)] *const T);
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Wrapper<U>> for Wrapper<T> {}
 
 //~ MONO_ITEM fn start
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+#[no_mangle]
+pub fn start(_: isize, _: *const *const u8) -> isize {
     // simple case
     let bool_sized = &true;
     //~ MONO_ITEM fn std::ptr::drop_in_place::<bool> - shim(None) @@ unsizing-cgu.0[Internal]

@@ -163,7 +163,7 @@ declare_features! (
     /// then removed. But there was no utility storing it separately, so now
     /// it's in this list.
     (removed, no_stack_check, "1.0.0", None, None),
-    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn-compatible (object safe).
+    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn compatible (object safe).
     /// Renamed to `dyn_compatible_for_dispatch`.
     (removed, object_safe_for_dispatch, "1.83.0", Some(43561),
      Some("renamed to `dyn_compatible_for_dispatch`")),
@@ -220,8 +220,9 @@ declare_features! (
     (removed, rustc_diagnostic_macros, "1.38.0", None, None),
     /// Allows identifying crates that contain sanitizer runtimes.
     (removed, sanitizer_runtime, "1.17.0", None, None),
-    (removed, simd, "1.0.0", Some(27731),
-     Some("removed in favor of `#[repr(simd)]`")),
+    (removed, simd, "1.0.0", Some(27731), Some("removed in favor of `#[repr(simd)]`")),
+    /// Allows using `#[start]` on a function indicating that it is the program entrypoint.
+    (removed, start, "1.0.0", Some(29633), Some("not portable enough and never RFC'd")),
     /// Allows `#[link(kind = "static-nobundle", ...)]`.
     (removed, static_nobundle, "1.16.0", Some(37403),
      Some(r#"subsumed by `#[link(kind = "static", modifiers = "-bundle", ...)]`"#)),
