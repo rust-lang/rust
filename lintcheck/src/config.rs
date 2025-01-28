@@ -107,7 +107,7 @@ impl LintcheckConfig {
             } else {
                 std::thread::available_parallelism().map_or(1, NonZero::get)
             };
-        };
+        }
 
         for lint_name in &mut config.lint_filter {
             *lint_name = format!(

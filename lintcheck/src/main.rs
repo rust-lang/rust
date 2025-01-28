@@ -145,7 +145,7 @@ impl Crate {
             assert_eq!(status.code(), Some(0));
 
             return Vec::new();
-        };
+        }
 
         if !config.fix {
             cmd.arg("--message-format=json");
@@ -313,7 +313,7 @@ fn lintcheck(config: LintcheckConfig) {
                 filter
             })
             .collect_into(&mut lint_level_args);
-    };
+    }
 
     let crates: Vec<Crate> = crates
         .into_iter()

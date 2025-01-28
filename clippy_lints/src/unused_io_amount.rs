@@ -182,7 +182,7 @@ fn check_expr<'a>(cx: &LateContext<'a>, expr: &'a hir::Expr<'a>) {
             emit_lint(cx, expr.span, expr.hir_id, op, &[]);
         },
         _ => {},
-    };
+    }
 }
 
 fn should_lint<'a>(cx: &LateContext<'a>, mut inner: &'a hir::Expr<'a>) -> Option<IoOp> {

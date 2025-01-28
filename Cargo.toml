@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 keywords = ["clippy", "lint", "plugin"]
 categories = ["development-tools", "development-tools::cargo-plugins"]
 build = "build.rs"
-edition = "2021"
+edition = "2024"
 publish = false
 
 [[bin]]
@@ -71,3 +71,10 @@ harness = false
 [[test]]
 name = "dogfood"
 harness = false
+
+# quine-mc_cluskey makes up a significant part of the runtime in dogfood
+# due to the number of conditions in the clippy_lints crate
+# and enabling optimizations for that specific dependency helps a bit
+# without increasing total build times.
+[profile.dev.package.quine-mc_cluskey]
+opt-level = 3

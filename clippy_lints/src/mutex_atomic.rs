@@ -91,7 +91,7 @@ impl<'tcx> LateLintPass<'tcx> for Mutex {
                         ty::Uint(t) if t != UintTy::Usize => span_lint(cx, MUTEX_INTEGER, expr.span, msg),
                         ty::Int(t) if t != IntTy::Isize => span_lint(cx, MUTEX_INTEGER, expr.span, msg),
                         _ => span_lint(cx, MUTEX_ATOMIC, expr.span, msg),
-                    };
+                    }
                 }
             }
         }

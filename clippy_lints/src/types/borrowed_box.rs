@@ -71,7 +71,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                     Applicability::Unspecified,
                 );
                 return true;
-            };
+            }
             false
         },
         _ => false,

@@ -223,7 +223,7 @@ pub fn main() {
                 if !has_sysroot_arg(args) {
                     args.extend(vec!["--sysroot".into(), sys_root]);
                 }
-            };
+            }
         };
 
         // make "clippy-driver --rustc" work like a subcommand that passes further args to "rustc"

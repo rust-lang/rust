@@ -1,5 +1,5 @@
-error: use of `.then_some(..).unwrap_or(..)` can be written more clearly with `if .. else ..`
-  --> tests/ui/obfuscated_if_else.rs:4:5
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:5:5
    |
 LL |     true.then_some("a").unwrap_or("b");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { "a" } else { "b" }`
@@ -7,5 +7,35 @@ LL |     true.then_some("a").unwrap_or("b");
    = note: `-D clippy::obfuscated-if-else` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::obfuscated_if_else)]`
 
-error: aborting due to 1 previous error
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:6:5
+   |
+LL |     true.then(|| "a").unwrap_or("b");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { "a" } else { "b" }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:9:5
+   |
+LL |     (a == 1).then_some("a").unwrap_or("b");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if a == 1 { "a" } else { "b" }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:10:5
+   |
+LL |     (a == 1).then(|| "a").unwrap_or("b");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if a == 1 { "a" } else { "b" }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:16:5
+   |
+LL |     true.then_some(a += 1).unwrap_or(());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { a += 1 } else { () }`
+
+error: this method chain can be written more clearly with `if .. else ..`
+  --> tests/ui/obfuscated_if_else.rs:17:5
+   |
+LL |     true.then_some(()).unwrap_or(a += 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { () } else { a += 2 }`
+
+error: aborting due to 6 previous errors
 
