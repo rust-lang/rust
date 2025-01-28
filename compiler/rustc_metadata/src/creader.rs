@@ -168,7 +168,10 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
 enum CrateOrigin<'a> {
     /// This crate was a dependency of another crate.
     IndirectDependency {
+        /// Where this dependency was included from.
         dep_root: &'a CratePaths,
+        /// True if the parent is private, meaning the dependent should also be private.
+        parent_private: bool,
         /// Dependency info about this crate.
         dep: &'a CrateDep,
     },
@@ -191,6 +194,17 @@ impl<'a> CrateOrigin<'a> {
     fn dep(&self) -> Option<&'a CrateDep> {
         match self {
             CrateOrigin::IndirectDependency { dep, .. } => Some(dep),
+            _ => None,
+        }
+    }
+
+    /// `Some(true)` if the dependency is private or its parent is private, `Some(false)` if the
+    /// dependency is not private, `None` if it could not be determined.
+    fn private_dep(&self) -> Option<bool> {
+        match self {
+            CrateOrigin::IndirectDependency { parent_private, dep, .. } => {
+                Some(dep.is_private || *parent_private)
+            }
             _ => None,
         }
     }
@@ -585,7 +599,8 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             &crate_paths
         };
 
-        let cnum_map = self.resolve_crate_deps(dep_root, &crate_root, &metadata, cnum, dep_kind)?;
+        let cnum_map =
+            self.resolve_crate_deps(dep_root, &crate_root, &metadata, cnum, dep_kind, private_dep)?;
 
         let raw_proc_macros = if crate_root.is_proc_macro_crate() {
             let temp_root;
@@ -722,7 +737,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         let host_hash = dep.map(|d| d.host_hash).flatten();
         let extra_filename = dep.map(|d| &d.extra_filename[..]);
         let path_kind = if dep.is_some() { PathKind::Dependency } else { PathKind::Crate };
-        let private_dep = dep.map(|d| d.is_private);
+        let private_dep = origin.private_dep();
 
         let result = if let Some(cnum) = self.existing_match(name, hash, path_kind) {
             (LoadResult::Previous(cnum), None)
@@ -819,6 +834,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         metadata: &MetadataBlob,
         krate: CrateNum,
         dep_kind: CrateDepKind,
+        parent_is_private: bool,
     ) -> Result<CrateNumMap, CrateError> {
         debug!(
             "resolving deps of external crate `{}` with dep root `{}`",
@@ -837,11 +853,12 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         crate_num_map.push(krate);
         for dep in deps {
             info!(
-                "resolving dep `{}`->`{}` hash: `{}` extra filename: `{}`",
+                "resolving dep `{}`->`{}` hash: `{}` extra filename: `{}` private {}",
                 crate_root.name(),
                 dep.name,
                 dep.hash,
-                dep.extra_filename
+                dep.extra_filename,
+                dep.is_private,
             );
             let dep_kind = match dep_kind {
                 CrateDepKind::MacrosOnly => CrateDepKind::MacrosOnly,
@@ -850,7 +867,11 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             let cnum = self.maybe_resolve_crate(
                 dep.name,
                 dep_kind,
-                CrateOrigin::IndirectDependency { dep_root, dep: &dep },
+                CrateOrigin::IndirectDependency {
+                    dep_root,
+                    parent_private: parent_is_private,
+                    dep: &dep,
+                },
             )?;
             crate_num_map.push(cnum);
         }
