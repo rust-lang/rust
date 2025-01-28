@@ -91,11 +91,11 @@ pub fn generate_load_store_tests(
         format!(
             "// This code is automatically generated. DO NOT MODIFY.
 //
-// Instead, modify `crates/stdarch-gen2/spec/sve` and run the following command to re-generate this
-// file:
+// Instead, modify `crates/stdarch-gen-arm/spec/sve` and run the following command to re-generate
+// this file:
 //
 // ```
-// cargo run --bin=stdarch-gen2 -- crates/stdarch-gen2/spec
+// cargo run --bin=stdarch-gen-arm -- crates/stdarch-gen-arm/spec
 // ```
 {}",
             quote! { #preamble #(#tests)* #manual_tests }
