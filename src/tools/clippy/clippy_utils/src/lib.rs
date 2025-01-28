@@ -112,7 +112,6 @@ use rustc_hir::{
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
-use rustc_middle::mir::Const;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::layout::IntegerExt;
@@ -1584,8 +1583,8 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
         let start_is_none_or_min = start.is_none_or(|start| {
             if let rustc_ty::Adt(_, subst) = ty.kind()
                 && let bnd_ty = subst.type_at(0)
-                && let Some(min_val) = bnd_ty.numeric_min_val(cx.tcx)
-                && let Some(min_const) = mir_to_const(cx.tcx, Const::from_ty_const(min_val, bnd_ty, cx.tcx))
+                && let Some(min_const) = bnd_ty.numeric_min_val(cx.tcx)
+                && let Some(min_const) = mir_to_const(cx.tcx, min_const)
                 && let Some(start_const) = ConstEvalCtxt::new(cx).eval(start)
             {
                 start_const == min_const
@@ -1597,8 +1596,8 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
             RangeLimits::Closed => {
                 if let rustc_ty::Adt(_, subst) = ty.kind()
                     && let bnd_ty = subst.type_at(0)
-                    && let Some(max_val) = bnd_ty.numeric_max_val(cx.tcx)
-                    && let Some(max_const) = mir_to_const(cx.tcx, Const::from_ty_const(max_val, bnd_ty, cx.tcx))
+                    && let Some(max_const) = bnd_ty.numeric_max_val(cx.tcx)
+                    && let Some(max_const) = mir_to_const(cx.tcx, max_const)
                     && let Some(end_const) = ConstEvalCtxt::new(cx).eval(end)
                 {
                     end_const == max_const

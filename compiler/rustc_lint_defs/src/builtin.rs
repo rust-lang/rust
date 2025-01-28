@@ -144,7 +144,6 @@ declare_lint_pass! {
         UNUSED_VARIABLES,
         USELESS_DEPRECATED,
         WARNINGS,
-        WASM_C_ABI,
         // tidy-alphabetical-end
     ]
 }
@@ -4092,6 +4091,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,ignore (needs CLI args, platform-specific)
+    /// #[warn(linker_messages)]
     /// extern "C" {
     ///   fn foo();
     /// }
@@ -4105,17 +4105,24 @@ declare_lint! {
     ///          >>> referenced by rust_out.69edbd30df4ae57d-cgu.0
     ///          >>>               rust_out.rust_out.69edbd30df4ae57d-cgu.0.rcgu.o:(rust_out::main::h3a90094b06757803)
     ///   |
-    ///   = note: `#[warn(linker_messages)]` on by default
-    ///
+    /// note: the lint level is defined here
+    ///  --> warn.rs:1:9
+    ///   |
+    /// 1 | #![warn(linker_messages)]
+    ///   |         ^^^^^^^^^^^^^^^
     /// warning: 1 warning emitted
     /// ```
     ///
     /// ### Explanation
     ///
-    /// Linkers emit platform-specific and program-specific warnings that cannot be predicted in advance by the rust compiler.
-    /// They are forwarded by default, but can be disabled by adding `#![allow(linker_messages)]` at the crate root.
+    /// Linkers emit platform-specific and program-specific warnings that cannot be predicted in
+    /// advance by the Rust compiler. Such messages are ignored by default for now. While linker
+    /// warnings could be very useful they have been ignored for many years by essentially all
+    /// users, so we need to do a bit more work than just surfacing their text to produce a clear
+    /// and actionable warning of similar quality to our other diagnostics. See this tracking
+    /// issue for more details: <https://github.com/rust-lang/rust/issues/136096>.
     pub LINKER_MESSAGES,
-    Warn,
+    Allow,
     "warnings emitted at runtime by the target-specific linker program"
 }
 
@@ -4679,44 +4686,6 @@ declare_lint! {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #120192 <https://github.com/rust-lang/rust/issues/120192>",
     };
-}
-
-declare_lint! {
-    /// The `wasm_c_abi` lint detects crate dependencies that are incompatible
-    /// with future versions of Rust that will emit spec-compliant C ABI.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,ignore (needs extern crate)
-    /// #![deny(wasm_c_abi)]
-    /// ```
-    ///
-    /// This will produce:
-    ///
-    /// ```text
-    /// error: the following packages contain code that will be rejected by a future version of Rust: wasm-bindgen v0.2.87
-    ///   |
-    /// note: the lint level is defined here
-    ///  --> src/lib.rs:1:9
-    ///   |
-    /// 1 | #![deny(wasm_c_abi)]
-    ///   |         ^^^^^^^^^^
-    /// ```
-    ///
-    /// ### Explanation
-    ///
-    /// Rust has historically emitted non-spec-compliant C ABI. This has caused
-    /// incompatibilities between other compilers and Wasm targets. In a future
-    /// version of Rust this will be fixed and therefore dependencies relying
-    /// on the non-spec-compliant C ABI will stop functioning.
-    pub WASM_C_ABI,
-    Deny,
-    "detects dependencies that are incompatible with the Wasm C ABI",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #71871 <https://github.com/rust-lang/rust/issues/71871>",
-    };
-    crate_level_only
 }
 
 declare_lint! {

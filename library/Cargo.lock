@@ -72,6 +72,10 @@ dependencies = [
 [[package]]
 name = "core"
 version = "0.0.0"
+
+[[package]]
+name = "coretests"
+version = "0.0.0"
 dependencies = [
  "rand",
  "rand_xorshift",

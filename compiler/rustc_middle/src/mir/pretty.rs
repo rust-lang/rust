@@ -1,8 +1,7 @@
 use std::collections::BTreeSet;
 use std::fmt::{Display, Write as _};
-use std::fs;
-use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
+use std::{fs, io};
 
 use rustc_abi::Size;
 use rustc_ast::InlineAsmTemplatePiece;
@@ -149,37 +148,59 @@ pub fn dump_enabled(tcx: TyCtxt<'_>, pass_name: &str, def_id: DefId) -> bool {
 // `def_path_str()` would otherwise trigger `type_of`, and this can
 // run while we are already attempting to evaluate `type_of`.
 
+/// Most use-cases of dumping MIR should use the [dump_mir] entrypoint instead, which will also
+/// check if dumping MIR is enabled, and if this body matches the filters passed on the CLI.
+///
+/// That being said, if the above requirements have been validated already, this function is where
+/// most of the MIR dumping occurs, if one needs to export it to a file they have created with
+/// [create_dump_file], rather than to a new file created as part of [dump_mir], or to stdout/stderr
+/// for debugging purposes.
+pub fn dump_mir_to_writer<'tcx, F>(
+    tcx: TyCtxt<'tcx>,
+    pass_name: &str,
+    disambiguator: &dyn Display,
+    body: &Body<'tcx>,
+    w: &mut dyn io::Write,
+    mut extra_data: F,
+    options: PrettyPrintMirOptions,
+) -> io::Result<()>
+where
+    F: FnMut(PassWhere, &mut dyn io::Write) -> io::Result<()>,
+{
+    // see notes on #41697 above
+    let def_path =
+        ty::print::with_forced_impl_filename_line!(tcx.def_path_str(body.source.def_id()));
+    // ignore-tidy-odd-backticks the literal below is fine
+    write!(w, "// MIR for `{def_path}")?;
+    match body.source.promoted {
+        None => write!(w, "`")?,
+        Some(promoted) => write!(w, "::{promoted:?}`")?,
+    }
+    writeln!(w, " {disambiguator} {pass_name}")?;
+    if let Some(ref layout) = body.coroutine_layout_raw() {
+        writeln!(w, "/* coroutine_layout = {layout:#?} */")?;
+    }
+    writeln!(w)?;
+    extra_data(PassWhere::BeforeCFG, w)?;
+    write_user_type_annotations(tcx, body, w)?;
+    write_mir_fn(tcx, body, &mut extra_data, w, options)?;
+    extra_data(PassWhere::AfterCFG, w)
+}
+
 fn dump_matched_mir_node<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     pass_num: bool,
     pass_name: &str,
     disambiguator: &dyn Display,
     body: &Body<'tcx>,
-    mut extra_data: F,
+    extra_data: F,
     options: PrettyPrintMirOptions,
 ) where
     F: FnMut(PassWhere, &mut dyn io::Write) -> io::Result<()>,
 {
     let _: io::Result<()> = try {
         let mut file = create_dump_file(tcx, "mir", pass_num, pass_name, disambiguator, body)?;
-        // see notes on #41697 above
-        let def_path =
-            ty::print::with_forced_impl_filename_line!(tcx.def_path_str(body.source.def_id()));
-        // ignore-tidy-odd-backticks the literal below is fine
-        write!(file, "// MIR for `{def_path}")?;
-        match body.source.promoted {
-            None => write!(file, "`")?,
-            Some(promoted) => write!(file, "::{promoted:?}`")?,
-        }
-        writeln!(file, " {disambiguator} {pass_name}")?;
-        if let Some(ref layout) = body.coroutine_layout_raw() {
-            writeln!(file, "/* coroutine_layout = {layout:#?} */")?;
-        }
-        writeln!(file)?;
-        extra_data(PassWhere::BeforeCFG, &mut file)?;
-        write_user_type_annotations(tcx, body, &mut file)?;
-        write_mir_fn(tcx, body, &mut extra_data, &mut file, options)?;
-        extra_data(PassWhere::AfterCFG, &mut file)?;
+        dump_mir_to_writer(tcx, pass_name, disambiguator, body, &mut file, extra_data, options)?;
     };
 
     if tcx.sess.opts.unstable_opts.dump_mir_graphviz {

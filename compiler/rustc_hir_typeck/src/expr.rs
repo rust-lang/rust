@@ -3337,10 +3337,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
                 .map(|mut field_path| {
                     field_path.pop();
-                    field_path
-                        .iter()
-                        .map(|id| format!("{}.", id.name.to_ident_string()))
-                        .collect::<String>()
+                    field_path.iter().map(|id| format!("{}.", id)).collect::<String>()
                 })
                 .collect::<Vec<_>>();
             candidate_fields.sort();

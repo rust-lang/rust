@@ -23,7 +23,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{
-    CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
+    CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
 };
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, TraitCandidate};
@@ -58,7 +58,7 @@ use crate::mir::interpret::{
     EvalStaticInitializerRawResult, EvalToAllocationRawResult, EvalToConstValueResult,
     EvalToValTreeResult, GlobalId, LitToConstInput,
 };
-use crate::mir::mono::{CodegenUnit, CollectionMode, MonoItem};
+use crate::mir::mono::{CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions};
 use crate::query::erase::{Erase, erase, restore};
 use crate::query::plumbing::{
     CyclePlaceholder, DynamicQuery, query_ensure, query_ensure_error_guaranteed, query_get_at,
@@ -2166,7 +2166,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query collect_and_partition_mono_items(_: ()) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
+    query collect_and_partition_mono_items(_: ()) -> MonoItemPartitions<'tcx> {
         eval_always
         desc { "collect_and_partition_mono_items" }
     }

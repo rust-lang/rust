@@ -5,7 +5,7 @@ use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::{self, Lint};
 use rustc_span::def_id::DefId;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
 
@@ -114,7 +114,7 @@ pub(crate) struct FnItemRef {
     #[suggestion(code = "{sugg}", applicability = "unspecified")]
     pub span: Span,
     pub sugg: String,
-    pub ident: String,
+    pub ident: Ident,
 }
 
 #[derive(Diagnostic)]

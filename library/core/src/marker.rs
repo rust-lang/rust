@@ -6,6 +6,13 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+mod variance;
+
+#[unstable(feature = "phantom_variance_markers", issue = "135806")]
+pub use self::variance::{
+    PhantomContravariant, PhantomContravariantLifetime, PhantomCovariant, PhantomCovariantLifetime,
+    PhantomInvariant, PhantomInvariantLifetime, Variance, variance,
+};
 use crate::cell::UnsafeCell;
 use crate::cmp;
 use crate::fmt::Debug;

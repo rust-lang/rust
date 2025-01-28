@@ -13,7 +13,7 @@ use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{self, GenericArgsRef, GenericParamDefKind, TyCtxt};
 use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
-use rustc_span::{Span, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Symbol, kw, sym};
 use tracing::{debug, info};
 use {rustc_attr_parsing as attr, rustc_hir as hir};
 
@@ -375,7 +375,7 @@ impl IgnoredDiagnosticOption {
 #[help]
 pub struct UnknownFormatParameterForOnUnimplementedAttr {
     argument_name: Symbol,
-    trait_name: Symbol,
+    trait_name: Ident,
 }
 
 #[derive(LintDiagnostic)]
@@ -792,7 +792,7 @@ impl<'tcx> OnUnimplementedFormatString {
             tcx.trait_id_of_impl(item_def_id)
                 .expect("expected `on_unimplemented` to correspond to a trait")
         };
-        let trait_name = tcx.item_name(trait_def_id);
+        let trait_name = tcx.item_ident(trait_def_id);
         let generics = tcx.generics_of(item_def_id);
         let s = self.symbol.as_str();
         let mut parser = Parser::new(s, None, None, false, ParseMode::Format);
@@ -821,7 +821,11 @@ impl<'tcx> OnUnimplementedFormatString {
                         Position::ArgumentNamed(s) => {
                             match Symbol::intern(s) {
                                 // `{ThisTraitsName}` is allowed
-                                s if s == trait_name && !self.is_diagnostic_namespace_variant => (),
+                                s if s == trait_name.name
+                                    && !self.is_diagnostic_namespace_variant =>
+                                {
+                                    ()
+                                }
                                 s if ALLOWED_FORMAT_SYMBOLS.contains(&s)
                                     && !self.is_diagnostic_namespace_variant =>
                                 {

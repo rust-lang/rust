@@ -38,9 +38,17 @@ where
     }
 
     let size = arg.layout.size;
-    if size.bits() <= 128 && arg.layout.is_single_vector_element(cx, size) {
-        arg.cast_to(Reg { kind: RegKind::Vector, size });
-        return;
+    if size.bits() <= 128 {
+        if let BackendRepr::Vector { .. } = arg.layout.backend_repr {
+            // pass non-wrapped vector types using `PassMode::Direct`
+            return;
+        }
+
+        if arg.layout.is_single_vector_element(cx, size) {
+            // pass non-transparant wrappers around a vector as `PassMode::Cast`
+            arg.cast_to(Reg { kind: RegKind::Vector, size });
+            return;
+        }
     }
     if !arg.layout.is_aggregate() && size.bits() <= 64 {
         arg.extend_integer_width_to(64);

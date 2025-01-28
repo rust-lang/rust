@@ -455,7 +455,7 @@ fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> 
     });
 
     // Find both the last lint declaration (declare_clippy_lint!) and the lint pass impl
-    while let Some(LintDeclSearchResult { content, .. }) = iter.find(|result| result.token == TokenKind::Ident) {
+    while let Some(LintDeclSearchResult { content, .. }) = iter.find(|result| result.token_kind == TokenKind::Ident) {
         let mut iter = iter
             .by_ref()
             .filter(|t| !matches!(t.token_kind, TokenKind::Whitespace | TokenKind::LineComment { .. }));
@@ -465,7 +465,7 @@ fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> 
                 // matches `!{`
                 match_tokens!(iter, Bang OpenBrace);
                 if let Some(LintDeclSearchResult { range, .. }) =
-                    iter.find(|result| result.token == TokenKind::CloseBrace)
+                    iter.find(|result| result.token_kind == TokenKind::CloseBrace)
                 {
                     last_decl_curly_offset = Some(range.end);
                 }

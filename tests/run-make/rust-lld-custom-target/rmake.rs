@@ -16,6 +16,7 @@ fn main() {
     // the linker to display its version number with a link-arg.
     let output = rustc()
         .crate_type("cdylib")
+        .arg("-Wlinker-messages")
         .target("custom-target.json")
         .link_arg("-Wl,-v")
         .input("lib.rs")
@@ -29,6 +30,7 @@ fn main() {
     // But it can also be disabled via linker features.
     let output = rustc()
         .crate_type("cdylib")
+        .arg("-Wlinker-messages")
         .target("custom-target.json")
         .arg("-Zlinker-features=-lld")
         .link_arg("-Wl,-v")

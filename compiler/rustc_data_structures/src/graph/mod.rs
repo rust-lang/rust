@@ -14,7 +14,23 @@ mod tests;
 pub trait DirectedGraph {
     type Node: Idx;
 
+    /// Returns the total number of nodes in this graph.
+    ///
+    /// Several graph algorithm implementations assume that every node ID is
+    /// strictly less than the number of nodes, i.e. nodes are densely numbered.
+    /// That assumption allows them to use `num_nodes` to allocate per-node
+    /// data structures, indexed by node.
     fn num_nodes(&self) -> usize;
+
+    /// Iterates over all nodes of a graph in ascending numeric order.
+    ///
+    /// Assumes that nodes are densely numbered, i.e. every index in
+    /// `0..num_nodes` is a valid node.
+    fn iter_nodes(
+        &self,
+    ) -> impl Iterator<Item = Self::Node> + DoubleEndedIterator + ExactSizeIterator {
+        (0..self.num_nodes()).map(<Self::Node as Idx>::new)
+    }
 }
 
 pub trait NumEdges: DirectedGraph {

@@ -507,7 +507,6 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::misc::USED_UNDERSCORE_BINDING_INFO,
     crate::misc::USED_UNDERSCORE_ITEMS_INFO,
     crate::misc_early::BUILTIN_TYPE_SHADOW_INFO,
-    crate::misc_early::DOUBLE_NEG_INFO,
     crate::misc_early::DUPLICATE_UNDERSCORE_ARGUMENT_INFO,
     crate::misc_early::MIXED_CASE_HEX_LITERALS_INFO,
     crate::misc_early::REDUNDANT_AT_REST_PATTERN_INFO,
