@@ -1958,7 +1958,7 @@ impl fmt::Display for ConstContext {
 }
 
 // NOTE: `IntoDiagArg` impl for `ConstContext` lives in `rustc_errors`
-// due to a cyclical dependency between hir that crate.
+// due to a cyclical dependency between hir and that crate.
 
 /// A literal.
 pub type Lit = Spanned<LitKind>;
