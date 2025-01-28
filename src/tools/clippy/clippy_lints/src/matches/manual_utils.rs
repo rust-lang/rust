@@ -109,7 +109,7 @@ where
             }
         },
         None => return None,
-    };
+    }
 
     let mut app = Applicability::MachineApplicable;
 

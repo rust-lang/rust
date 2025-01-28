@@ -96,9 +96,9 @@ git tag rust-1.XX.0               # XX should be exchanged with the correspondin
 git push upstream rust-1.XX.0     # `upstream` is the `rust-lang/rust-clippy` remote
 ```
 
-After this, the release should be available on the Clippy [release page].
+After this, the release should be available on the Clippy [tags page].
 
-[release page]: https://github.com/rust-lang/rust-clippy/releases
+[tags page]: https://github.com/rust-lang/rust-clippy/tags
 
 ## Publish `clippy_utils`
 

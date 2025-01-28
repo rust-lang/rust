@@ -7,7 +7,7 @@ use clippy_utils::{higher, is_in_const_context, path_to_local, peel_ref_operator
 use rustc_ast::LitKind::{Byte, Char};
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Node, Param, PatKind, RangeEnd, PatExpr, PatExprKind, Lit};
+use rustc_hir::{Expr, ExprKind, Lit, Node, Param, PatExpr, PatExprKind, PatKind, RangeEnd};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
@@ -202,8 +202,14 @@ fn check_expr_range(start: &Expr<'_>, end: &Expr<'_>) -> CharRange {
 }
 
 fn check_range(start: &PatExpr<'_>, end: &PatExpr<'_>) -> CharRange {
-    if let PatExprKind::Lit{ lit: start_lit, negated: false } = &start.kind
-        && let PatExprKind::Lit{ lit: end_lit, negated: false  } = &end.kind
+    if let PatExprKind::Lit {
+        lit: start_lit,
+        negated: false,
+    } = &start.kind
+        && let PatExprKind::Lit {
+            lit: end_lit,
+            negated: false,
+        } = &end.kind
     {
         check_lit_range(start_lit, end_lit)
     } else {

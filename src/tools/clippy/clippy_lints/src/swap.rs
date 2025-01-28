@@ -296,7 +296,7 @@ fn check_xor_swap<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         {
             let span = s1.span.to(s3.span);
             generate_swap_warning(block, cx, lhs0, rhs0, rhs1, rhs2, span, true);
-        };
+        }
     }
 }
 

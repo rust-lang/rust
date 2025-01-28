@@ -12,7 +12,9 @@ use rustc_apfloat::ieee::{Half, Quad};
 use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{BinOp, BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, Item, ItemKind, Node, QPath, UnOp, PatExpr, PatExprKind};
+use rustc_hir::{
+    BinOp, BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, Item, ItemKind, Node, PatExpr, PatExprKind, QPath, UnOp,
+};
 use rustc_lexer::tokenize;
 use rustc_lint::LateContext;
 use rustc_middle::mir::ConstValue;
@@ -451,8 +453,8 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 } else {
                     Some(val)
                 }
-            }
-            PatExprKind::ConstBlock(ConstBlock { body, ..}) => self.expr(self.tcx.hir().body(*body).value),
+            },
+            PatExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir().body(*body).value),
             PatExprKind::Path(qpath) => self.qpath(qpath, pat_expr.hir_id),
         }
     }

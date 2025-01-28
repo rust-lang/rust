@@ -60,7 +60,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, item_span: Span, attrs: &[Attribute])
                 }
                 outer_attr_kind.insert(kind);
             },
-        };
+        }
     }
 }
 

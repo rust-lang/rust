@@ -50,3 +50,14 @@ fn issue_13843() {
 
     let _ = 1_000_000_u32.div_ceil(6u32);
 }
+
+fn issue_13950() {
+    let x = 33u32;
+    let _ = x.div_ceil(8);
+    let _ = x.div_ceil(8);
+
+    let y = -33i32;
+    let _ = y.div_ceil(-7);
+    let _ = y.div_ceil(-7);
+    let _ = y.div_ceil(-7);
+}

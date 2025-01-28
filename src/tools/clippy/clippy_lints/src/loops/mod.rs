@@ -830,7 +830,7 @@ impl Loops {
         for_kv_map::check(cx, pat, arg, body);
         mut_range_bound::check(cx, arg, body);
         single_element_loop::check(cx, pat, arg, body, expr);
-        same_item_push::check(cx, pat, arg, body, expr);
+        same_item_push::check(cx, pat, arg, body, expr, &self.msrv);
         manual_flatten::check(cx, pat, arg, body, span);
         manual_find::check(cx, pat, arg, body, span, expr);
         unused_enumerate_index::check(cx, pat, arg, body);
