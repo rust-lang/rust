@@ -3531,10 +3531,10 @@ impl<'hir> FnRetTy<'hir> {
     }
 
     pub fn is_suggestable_infer_ty(&self) -> Option<&'hir Ty<'hir>> {
-        if let Self::Return(ty) = self {
-            if ty.is_suggestable_infer_ty() {
-                return Some(*ty);
-            }
+        if let Self::Return(ty) = self
+            && ty.is_suggestable_infer_ty()
+        {
+            return Some(*ty);
         }
         None
     }
@@ -4409,16 +4409,14 @@ impl<'hir> Node<'hir> {
 
     /// Get a `hir::Impl` if the node is an impl block for the given `trait_def_id`.
     pub fn impl_block_of_trait(self, trait_def_id: DefId) -> Option<&'hir Impl<'hir>> {
-        match self {
-            Node::Item(Item { kind: ItemKind::Impl(impl_block), .. })
-                if impl_block
-                    .of_trait
-                    .and_then(|trait_ref| trait_ref.trait_def_id())
-                    .is_some_and(|trait_id| trait_id == trait_def_id) =>
-            {
-                Some(impl_block)
-            }
-            _ => None,
+        if let Node::Item(Item { kind: ItemKind::Impl(impl_block), .. }) = self
+            && let Some(trait_ref) = impl_block.of_trait
+            && let Some(trait_id) = trait_ref.trait_def_id()
+            && trait_id == trait_def_id
+        {
+            Some(impl_block)
+        } else {
+            None
         }
     }
 
