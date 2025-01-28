@@ -1,5 +1,5 @@
 use clippy_config::Conf;
-use clippy_config::types::{AmendDiag, DisallowedPathWithoutReplacement, create_disallowed_map};
+use clippy_config::types::{DisallowedPathWithoutReplacement, create_disallowed_map};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{match_def_path, paths};
 use rustc_hir as hir;
@@ -266,7 +266,7 @@ fn emit_invalid_type(
         AWAIT_HOLDING_INVALID_TYPE,
         span,
         format!("holding a disallowed type across an await point `{path}`"),
-        |diag| disallowed_path.amend_diag(span, diag),
+        disallowed_path.diag_amendment(span),
     );
 }
 

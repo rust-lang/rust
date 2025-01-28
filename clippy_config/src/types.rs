@@ -14,41 +14,24 @@ pub struct Rename {
     pub rename: String,
 }
 
-#[derive(Debug, Serialize)]
-pub struct DisallowedPathWithoutReplacement {
-    path: String,
-    reason: Option<String>,
-}
+pub type DisallowedPathWithoutReplacement = DisallowedPath<false>;
 
-#[derive(Clone, Debug, Serialize)]
-pub struct DisallowedPath {
+#[derive(Debug, Serialize)]
+pub struct DisallowedPath<const REPLACEMENT_ALLOWED: bool = true> {
     path: String,
     reason: Option<String>,
     replacement: Option<String>,
 }
 
-impl<'de> Deserialize<'de> for DisallowedPathWithoutReplacement {
+impl<'de, const REPLACEMENT_ALLOWED: bool> Deserialize<'de> for DisallowedPath<REPLACEMENT_ALLOWED> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         let enum_ = DisallowedPathEnum::deserialize(deserializer)?;
-        if enum_.replacement().is_some() {
+        if !REPLACEMENT_ALLOWED && enum_.replacement().is_some() {
             return Err(de::Error::custom("replacement not allowed for this configuration"));
         }
-        Ok(Self {
-            path: enum_.path().to_owned(),
-            reason: enum_.reason().map(ToOwned::to_owned),
-        })
-    }
-}
-
-impl<'de> Deserialize<'de> for DisallowedPath {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let enum_ = DisallowedPathEnum::deserialize(deserializer)?;
         Ok(Self {
             path: enum_.path().to_owned(),
             reason: enum_.reason().map(ToOwned::to_owned),
@@ -68,45 +51,24 @@ pub enum DisallowedPathEnum {
     },
 }
 
-pub trait AmendDiag {
-    fn path(&self) -> &str;
-    fn reason(&self) -> Option<&str>;
-    fn replacement(&self) -> Option<&str>;
-    fn amend_diag(&self, span: Span, diag: &mut Diag<'_, ()>) {
-        if let Some(replacement) = &self.replacement() {
-            diag.span_suggestion(
-                span,
-                self.reason().map_or_else(|| String::from("use"), ToOwned::to_owned),
-                replacement,
-                Applicability::MachineApplicable,
-            );
-        } else if let Some(reason) = self.reason() {
-            diag.note(reason.to_owned());
+impl<const REPLACEMENT_ALLOWED: bool> DisallowedPath<REPLACEMENT_ALLOWED> {
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
+    pub fn diag_amendment(&self, span: Span) -> impl FnOnce(&mut Diag<'_, ()>) + use<'_, REPLACEMENT_ALLOWED> {
+        move |diag| {
+            if let Some(replacement) = &self.replacement {
+                diag.span_suggestion(
+                    span,
+                    self.reason.as_ref().map_or_else(|| String::from("use"), Clone::clone),
+                    replacement,
+                    Applicability::MachineApplicable,
+                );
+            } else if let Some(reason) = &self.reason {
+                diag.note(reason.clone());
+            }
         }
-    }
-}
-
-impl AmendDiag for DisallowedPathWithoutReplacement {
-    fn path(&self) -> &str {
-        &self.path
-    }
-    fn reason(&self) -> Option<&str> {
-        self.reason.as_deref()
-    }
-    fn replacement(&self) -> Option<&str> {
-        None
-    }
-}
-
-impl AmendDiag for DisallowedPath {
-    fn path(&self) -> &str {
-        &self.path
-    }
-    fn reason(&self) -> Option<&str> {
-        self.reason.as_deref()
-    }
-    fn replacement(&self) -> Option<&str> {
-        self.replacement.as_deref()
     }
 }
 
@@ -133,10 +95,10 @@ impl DisallowedPathEnum {
 }
 
 /// Creates a map of disallowed items to the reason they were disallowed.
-pub fn create_disallowed_map<T: AmendDiag>(
+pub fn create_disallowed_map<const REPLACEMENT_ALLOWED: bool>(
     tcx: TyCtxt<'_>,
-    disallowed: &'static [T],
-) -> DefIdMap<(&'static str, &'static T)> {
+    disallowed: &'static [DisallowedPath<REPLACEMENT_ALLOWED>],
+) -> DefIdMap<(&'static str, &'static DisallowedPath<REPLACEMENT_ALLOWED>)> {
     disallowed
         .iter()
         .map(|x| (x.path(), x.path().split("::").collect::<Vec<_>>(), x))
