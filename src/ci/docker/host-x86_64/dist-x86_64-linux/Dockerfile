@@ -21,6 +21,8 @@ RUN yum upgrade -y && \
       git \
       glibc-devel.i686 \
       glibc-devel.x86_64 \
+      glibc-static.i686 \
+      glibc-static.x86_64 \
       libedit-devel \
       libstdc++-devel.i686 \
       libstdc++-devel.x86_64 \
