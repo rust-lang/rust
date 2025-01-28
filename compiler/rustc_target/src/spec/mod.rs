@@ -1624,7 +1624,7 @@ macro_rules! supported_targets {
         }
 
         /// List of supported targets
-        pub const TARGETS: &[&str] = &[$($tuple),+];
+        pub static TARGETS: &[&str] = &[$($tuple),+];
 
         fn load_builtin(target: &str) -> Option<Target> {
             let t = match target {

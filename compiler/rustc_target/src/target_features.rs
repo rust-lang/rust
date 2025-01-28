@@ -133,7 +133,7 @@ impl Stability {
 // Both of these are also applied transitively.
 type ImpliedFeatures = &'static [&'static str];
 
-const ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("aclass", Unstable(sym::arm_target_feature), &[]),
     ("aes", Unstable(sym::arm_target_feature), &["neon"]),
@@ -172,7 +172,7 @@ const ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     // FEAT_AES & FEAT_PMULL
     ("aes", Stable, &["neon"]),
@@ -368,7 +368,7 @@ const AARCH64_TIED_FEATURES: &[&[&str]] = &[
     &["paca", "pacg"], // Together these represent `pauth` in LLVM
 ];
 
-const X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("adx", Stable, &[]),
     ("aes", Stable, &["sse2"]),
@@ -446,7 +446,7 @@ const HEXAGON_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("altivec", Unstable(sym::powerpc_target_feature), &[]),
     ("partword-atomics", Unstable(sym::powerpc_target_feature), &[]),
@@ -469,7 +469,7 @@ const MIPS_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("a", Stable, &["zaamo", "zalrsc"]),
     ("c", Stable, &[]),
@@ -514,7 +514,7 @@ const RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const WASM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static WASM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("atomics", Unstable(sym::wasm_target_feature), &[]),
     ("bulk-memory", Stable, &[]),
@@ -535,7 +535,7 @@ const WASM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 const BPF_FEATURES: &[(&str, Stability, ImpliedFeatures)] =
     &[("alu32", Unstable(sym::bpf_target_feature), &[])];
 
-const CSKY_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static CSKY_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("10e60", Unstable(sym::csky_target_feature), &["7e10"]),
     ("2e3", Unstable(sym::csky_target_feature), &["e2"]),
@@ -582,7 +582,7 @@ const CSKY_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const LOONGARCH_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static LOONGARCH_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("d", Unstable(sym::loongarch_target_feature), &["f"]),
     ("f", Unstable(sym::loongarch_target_feature), &[]),
@@ -611,7 +611,7 @@ const SPARC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const M68K_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static M68K_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("isa-68000", Unstable(sym::m68k_target_feature), &[]),
     ("isa-68010", Unstable(sym::m68k_target_feature), &["isa-68000"]),
