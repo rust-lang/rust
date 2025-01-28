@@ -1,0 +1,62 @@
+error: `(u32) is 1..=` is not a valid base type for range patterns
+  --> $DIR/nested.rs:10:34
+   |
+LL | const BAD_NESTING: pattern_type!(pattern_type!(u32 is 1..) is 0..) = todo!();
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: range patterns only support integers
+  --> $DIR/nested.rs:10:63
+   |
+LL | const BAD_NESTING: pattern_type!(pattern_type!(u32 is 1..) is 0..) = todo!();
+   |                                                               ^^^
+
+error: `(i32) is 1..=` is not a valid base type for range patterns
+  --> $DIR/nested.rs:14:35
+   |
+LL | const BAD_NESTING2: pattern_type!(pattern_type!(i32 is 1..) is ..=-1) = todo!();
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: range patterns only support integers
+  --> $DIR/nested.rs:14:64
+   |
+LL | const BAD_NESTING2: pattern_type!(pattern_type!(i32 is 1..) is ..=-1) = todo!();
+   |                                                                ^^^^^
+
+error: `(i32) is 1..=` is not a valid base type for range patterns
+  --> $DIR/nested.rs:17:35
+   |
+LL | const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!();
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: range patterns only support integers
+  --> $DIR/nested.rs:17:64
+   |
+LL | const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!();
+   |                                                                ^^^
+
+error: `()` is not a valid base type for range patterns
+  --> $DIR/nested.rs:20:35
+   |
+LL | const BAD_NESTING4: pattern_type!(() is ..0) = todo!();
+   |                                   ^^
+   |
+note: range patterns only support integers
+  --> $DIR/nested.rs:20:41
+   |
+LL | const BAD_NESTING4: pattern_type!(() is ..0) = todo!();
+   |                                         ^^^
+
+error: `f32` is not a valid base type for range patterns
+  --> $DIR/nested.rs:23:35
+   |
+LL | const BAD_NESTING5: pattern_type!(f32 is 1.0 .. 2.0) = todo!();
+   |                                   ^^^
+   |
+note: range patterns only support integers
+  --> $DIR/nested.rs:23:42
+   |
+LL | const BAD_NESTING5: pattern_type!(f32 is 1.0 .. 2.0) = todo!();
+   |                                          ^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
