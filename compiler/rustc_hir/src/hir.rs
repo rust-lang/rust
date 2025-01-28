@@ -1061,10 +1061,7 @@ impl Attribute {
 
     pub fn value_lit(&self) -> Option<&MetaItemLit> {
         match &self.kind {
-            AttrKind::Normal(n) => match n.as_ref() {
-                AttrItem { args: AttrArgs::Eq { expr, .. }, .. } => Some(expr),
-                _ => None,
-            },
+            AttrKind::Normal(box AttrItem { args: AttrArgs::Eq { expr, .. }, .. }) => Some(expr),
             _ => None,
         }
     }
@@ -1077,12 +1074,9 @@ impl AttributeExt for Attribute {
 
     fn meta_item_list(&self) -> Option<ThinVec<ast::MetaItemInner>> {
         match &self.kind {
-            AttrKind::Normal(n) => match n.as_ref() {
-                AttrItem { args: AttrArgs::Delimited(d), .. } => {
-                    ast::MetaItemKind::list_from_tokens(d.tokens.clone())
-                }
-                _ => None,
-            },
+            AttrKind::Normal(box AttrItem { args: AttrArgs::Delimited(d), .. }) => {
+                ast::MetaItemKind::list_from_tokens(d.tokens.clone())
+            }
             _ => None,
         }
     }
@@ -1098,14 +1092,10 @@ impl AttributeExt for Attribute {
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     fn ident(&self) -> Option<Ident> {
         match &self.kind {
-            AttrKind::Normal(n) => {
-                if let [ident] = n.path.segments.as_ref() {
-                    Some(*ident)
-                } else {
-                    None
-                }
-            }
-            AttrKind::DocComment(..) => None,
+            AttrKind::Normal(box AttrItem {
+                path: AttrPath { segments: box [ident], .. }, ..
+            }) => Some(*ident),
+            _ => None,
         }
     }
 
@@ -1128,12 +1118,7 @@ impl AttributeExt for Attribute {
     }
 
     fn is_word(&self) -> bool {
-        match &self.kind {
-            AttrKind::Normal(n) => {
-                matches!(n.args, AttrArgs::Empty)
-            }
-            AttrKind::DocComment(..) => false,
-        }
+        matches!(self.kind, AttrKind::Normal(box AttrItem { args: AttrArgs::Empty, .. }))
     }
 
     fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
