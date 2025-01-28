@@ -3903,11 +3903,11 @@ pub struct FnHeader {
 
 impl FnHeader {
     pub fn is_async(&self) -> bool {
-        matches!(&self.asyncness, IsAsync::Async(_))
+        matches!(self.asyncness, IsAsync::Async(_))
     }
 
     pub fn is_const(&self) -> bool {
-        matches!(&self.constness, Constness::Const)
+        matches!(self.constness, Constness::Const)
     }
 
     pub fn is_unsafe(&self) -> bool {
@@ -4003,16 +4003,16 @@ pub struct Impl<'hir> {
 
 impl ItemKind<'_> {
     pub fn generics(&self) -> Option<&Generics<'_>> {
-        Some(match *self {
-            ItemKind::Fn { ref generics, .. }
-            | ItemKind::TyAlias(_, ref generics)
-            | ItemKind::Const(_, ref generics, _)
-            | ItemKind::Enum(_, ref generics)
-            | ItemKind::Struct(_, ref generics)
-            | ItemKind::Union(_, ref generics)
-            | ItemKind::Trait(_, _, ref generics, _, _)
-            | ItemKind::TraitAlias(ref generics, _)
-            | ItemKind::Impl(Impl { ref generics, .. }) => generics,
+        Some(match self {
+            ItemKind::Fn { generics, .. }
+            | ItemKind::TyAlias(_, generics)
+            | ItemKind::Const(_, generics, _)
+            | ItemKind::Enum(_, generics)
+            | ItemKind::Struct(_, generics)
+            | ItemKind::Union(_, generics)
+            | ItemKind::Trait(_, _, generics, _, _)
+            | ItemKind::TraitAlias(generics, _)
+            | ItemKind::Impl(Impl { generics, .. }) => generics,
             _ => return None,
         })
     }
