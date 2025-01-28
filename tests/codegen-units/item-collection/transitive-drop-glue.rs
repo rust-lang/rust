@@ -1,6 +1,5 @@
-//
 //@ compile-flags:-Zprint-mono-items=eager
-//@ compile-flags:-Zinline-in-all-cgus
+//@ compile-flags: -O
 
 #![deny(dead_code)]
 #![crate_type = "lib"]
