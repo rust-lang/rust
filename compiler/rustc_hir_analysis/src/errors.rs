@@ -1196,6 +1196,13 @@ pub(crate) struct CoercePointeeNotConcreteType {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_pointee_no_user_validity_assertion, code = E0802)]
+pub(crate) struct CoercePointeeNoUserValidityAssertion {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_coerce_pointee_not_transparent, code = E0802)]
 pub(crate) struct CoercePointeeNotTransparent {
     #[primary_span]
