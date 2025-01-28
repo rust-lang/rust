@@ -6,7 +6,6 @@ use rustc_ast::{
     self as ast, GenericArg, GenericBound, GenericParamKind, Generics, ItemKind, MetaItem,
     TraitBoundModifiers, VariantData, WherePredicate,
 };
-use rustc_attr_parsing as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::E0802;
 use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -33,15 +32,6 @@ pub(crate) fn expand_deriving_coerce_pointee(
     let (name_ident, generics) = if let Annotatable::Item(aitem) = item
         && let ItemKind::Struct(struct_data, g) = &aitem.kind
     {
-        let is_transparent = aitem.attrs.iter().any(|attr| {
-            attr::find_repr_attrs(cx.sess, attr)
-                .into_iter()
-                .any(|r| matches!(r, attr::ReprTransparent))
-        });
-        if !is_transparent {
-            cx.dcx().emit_err(RequireTransparent { span });
-            return;
-        }
         if !matches!(
             struct_data,
             VariantData::Struct { fields, recovered: _ } | VariantData::Tuple(fields, _)

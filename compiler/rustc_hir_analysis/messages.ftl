@@ -85,6 +85,8 @@ hir_analysis_cmse_output_stack_spill =
     .note1 = functions with the `"{$abi_name}"` ABI must pass their result via the available return registers
     .note2 = the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
+hir_analysis_coerce_pointee_no_field = `CoercePointee` can only be derived on `struct`s with at least one field
+
 hir_analysis_coerce_pointee_no_user_validity_assertion = asserting applicability of `derive(CoercePointee)` on a target data is forbidden
 
 hir_analysis_coerce_pointee_not_concrete_ty = `derive(CoercePointee)` is only applicable to `struct`

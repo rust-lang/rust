@@ -1210,6 +1210,13 @@ pub(crate) struct CoercePointeeNotTransparent {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_pointee_no_field, code = E0802)]
+pub(crate) struct CoercePointeeNoField {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_inherent_ty_outside_relevant, code = E0390)]
 #[help]
 pub(crate) struct InherentTyOutsideRelevant {
