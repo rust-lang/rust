@@ -182,6 +182,59 @@ pub enum BorrowKind {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(Hash, HashStable)]
+pub enum RawPtrKind {
+    Mut,
+    Const,
+    /// Creates a raw pointer to a place that will only be used to access its metadata,
+    /// not the data behind the pointer. Note that this limitation is *not* enforced
+    /// by the validator.
+    ///
+    /// The borrow checker allows overlap of these raw pointers with references to the
+    /// data. This is sound even if the pointer is "misused" since any such use is anyway
+    /// unsafe. In terms of the operational semantics (i.e., Miri), this is equivalent
+    /// to `RawPtrKind::Mut`, but will never incur a retag.
+    FakeForPtrMetadata,
+}
+
+impl From<Mutability> for RawPtrKind {
+    fn from(other: Mutability) -> Self {
+        match other {
+            Mutability::Mut => RawPtrKind::Mut,
+            Mutability::Not => RawPtrKind::Const,
+        }
+    }
+}
+
+impl RawPtrKind {
+    pub fn is_fake(self) -> bool {
+        match self {
+            RawPtrKind::Mut | RawPtrKind::Const => false,
+            RawPtrKind::FakeForPtrMetadata => true,
+        }
+    }
+
+    pub fn to_mutbl_lossy(self) -> Mutability {
+        match self {
+            RawPtrKind::Mut => Mutability::Mut,
+            RawPtrKind::Const => Mutability::Not,
+
+            // We have no type corresponding to a fake borrow, so use
+            // `*const` as an approximation.
+            RawPtrKind::FakeForPtrMetadata => Mutability::Not,
+        }
+    }
+
+    pub fn ptr_str(self) -> &'static str {
+        match self {
+            RawPtrKind::Mut => "mut",
+            RawPtrKind::Const => "const",
+            RawPtrKind::FakeForPtrMetadata => "const (fake)",
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Hash, HashStable)]
 pub enum MutBorrowKind {
     Default,
     /// This borrow arose from method-call auto-ref. (i.e., `adjustment::Adjust::Borrow`)
@@ -1356,7 +1409,7 @@ pub enum Rvalue<'tcx> {
     ///
     /// Like with references, the semantics of this operation are heavily dependent on the aliasing
     /// model.
-    RawPtr(Mutability, Place<'tcx>),
+    RawPtr(RawPtrKind, Place<'tcx>),
 
     /// Yields the length of the place, as a `usize`.
     ///

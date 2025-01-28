@@ -7,20 +7,19 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     let mut _3: usize;
     let mut _4: usize;
     let mut _9: std::option::Option<usize>;
-    let mut _11: usize;
-    let mut _12: bool;
-    let mut _14: &impl Fn(usize, &T);
-    let mut _15: (usize, &T);
-    let _16: ();
+    let mut _11: bool;
+    let mut _13: &impl Fn(usize, &T);
+    let mut _14: (usize, &T);
+    let _15: ();
     scope 1 {
         debug ((iter: std::ops::Range<usize>).0: usize) => _4;
         debug ((iter: std::ops::Range<usize>).1: usize) => _3;
         let _10: usize;
         scope 2 {
             debug i => _10;
-            let _13: &T;
+            let _12: &T;
             scope 3 {
-                debug x => _13;
+                debug x => _12;
             }
         }
         scope 5 (inlined iter::range::<impl Iterator for std::ops::Range<usize>>::next) {
@@ -82,23 +81,22 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageDead(_6);
         StorageDead(_7);
         _10 = copy ((_9 as Some).0: usize);
-        _11 = Len((*_1));
-        _12 = Lt(copy _10, copy _11);
-        assert(move _12, "index out of bounds: the length is {} but the index is {}", move _11, copy _10) -> [success: bb6, unwind: bb8];
+        _11 = Lt(copy _10, copy _3);
+        assert(move _11, "index out of bounds: the length is {} but the index is {}", copy _3, copy _10) -> [success: bb6, unwind: bb8];
     }
 
     bb6: {
-        _13 = &(*_1)[_10];
+        _12 = &(*_1)[_10];
+        StorageLive(_13);
+        _13 = &_2;
         StorageLive(_14);
-        _14 = &_2;
-        StorageLive(_15);
-        _15 = (copy _10, copy _13);
-        _16 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _14, move _15) -> [return: bb7, unwind: bb8];
+        _14 = (copy _10, copy _12);
+        _15 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _13, move _14) -> [return: bb7, unwind: bb8];
     }
 
     bb7: {
-        StorageDead(_15);
         StorageDead(_14);
+        StorageDead(_13);
         StorageDead(_9);
         goto -> bb1;
     }

@@ -9,7 +9,7 @@ use std::ops::Range;
 // EMIT_MIR slice_index.slice_index_usize.PreCodegen.after.mir
 pub fn slice_index_usize(slice: &[u32], index: usize) -> u32 {
     // CHECK-LABEL: slice_index_usize
-    // CHECK: [[LEN:_[0-9]+]] = Len((*_1))
+    // CHECK: [[LEN:_[0-9]+]] = PtrMetadata(copy _1)
     // CHECK: Lt(copy _2, copy [[LEN]])
     // CHECK-NOT: precondition_check
     // CHECK: _0 = copy (*_1)[_2];
