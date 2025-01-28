@@ -47,9 +47,9 @@ extern "rust-intrinsic" {
 pub unsafe extern "C" fn load_i8x16(mask: m8x16, pointer: *const i8) -> i8x16 {
     // Since avx2 supports no masked loads for bytes, the code tests each individual bit
     // and jumps to code that inserts individual bytes.
-    // x86-avx2: vpsllw xmm0, xmm0, 7
-    // x86-avx2-NEXT: vpmovmskb eax, xmm0
-    // x86-avx2-NEXT: vpxor xmm0, xmm0
+    // x86-avx2-NOT: vpsllw
+    // x86-avx2-DAG: vpmovmskb eax
+    // x86-avx2-DAG: vpxor
     // x86-avx2-NEXT: test al, 1
     // x86-avx2-NEXT: jne
     // x86-avx2-NEXT: test al, 2
@@ -58,8 +58,8 @@ pub unsafe extern "C" fn load_i8x16(mask: m8x16, pointer: *const i8) -> i8x16 {
     // x86-avx2-NEXT: vmovd xmm0, [[REG]]
     // x86-avx2-DAG: vpinsrb xmm0, xmm0, byte ptr [rdi + 1], 1
     //
-    // x86-avx512: vpsllw xmm0, xmm0, 7
-    // x86-avx512-NEXT: vpmovb2m k1, xmm0
+    // x86-avx512-NOT: vpsllw
+    // x86-avx512: vpmovb2m k1, xmm0
     // x86-avx512-NEXT: vmovdqu8 xmm0 {k1} {z}, xmmword ptr [rdi]
     simd_masked_load(mask, pointer, i8x16([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
 }
@@ -67,11 +67,11 @@ pub unsafe extern "C" fn load_i8x16(mask: m8x16, pointer: *const i8) -> i8x16 {
 // CHECK-LABEL: load_f32x8
 #[no_mangle]
 pub unsafe extern "C" fn load_f32x8(mask: m32x8, pointer: *const f32) -> f32x8 {
-    // x86-avx2: vpslld ymm0, ymm0, 31
-    // x86-avx2-NEXT: vmaskmovps ymm0, ymm0, ymmword ptr [rdi]
+    // x86-avx2-NOT: vpslld
+    // x86-avx2: vmaskmovps ymm0, ymm0, ymmword ptr [rdi]
     //
-    // x86-avx512: vpslld ymm0, ymm0, 31
-    // x86-avx512-NEXT: vpmovd2m k1, ymm0
+    // x86-avx512-NOT: vpslld
+    // x86-avx512: vpmovd2m k1, ymm0
     // x86-avx512-NEXT: vmovups ymm0 {k1} {z}, ymmword ptr [rdi]
     simd_masked_load(mask, pointer, f32x8([0_f32, 0_f32, 0_f32, 0_f32, 0_f32, 0_f32, 0_f32, 0_f32]))
 }
@@ -79,11 +79,10 @@ pub unsafe extern "C" fn load_f32x8(mask: m32x8, pointer: *const f32) -> f32x8 {
 // CHECK-LABEL: load_f64x4
 #[no_mangle]
 pub unsafe extern "C" fn load_f64x4(mask: m64x4, pointer: *const f64) -> f64x4 {
-    // x86-avx2: vpsllq ymm0, ymm0, 63
-    // x86-avx2-NEXT: vmaskmovpd ymm0, ymm0, ymmword ptr [rdi]
+    // x86-avx2-NOT: vpsllq
+    // x86-avx2: vmaskmovpd ymm0, ymm0, ymmword ptr [rdi]
     //
-    // x86-avx512: vpsllq ymm0, ymm0, 63
-    // x86-avx512-NEXT: vpmovq2m k1, ymm0
-    // x86-avx512-NEXT: vmovupd ymm0 {k1} {z}, ymmword ptr [rdi]
+    // x86-avx512-NOT: vpsllq
+    // x86-avx512: vpmovq2m k1, ymm0
     simd_masked_load(mask, pointer, f64x4([0_f64, 0_f64, 0_f64, 0_f64]))
 }

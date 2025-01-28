@@ -28,7 +28,7 @@ Our CI is primarily executed on [GitHub Actions], with a single workflow defined
 in [`.github/workflows/ci.yml`], which contains a bunch of steps that are
 unified for all CI jobs that we execute. When a commit is pushed to a
 corresponding branch or a PR, the workflow executes the
-[`ci.py`] script, which dynamically generates the specific CI
+[`src/ci/github-actions/ci.py`] script, which dynamically generates the specific CI
 jobs that should be executed. This script uses the [`jobs.yml`] file as an
 input, which contains a declarative configuration of all our CI jobs.
 
@@ -409,10 +409,25 @@ To learn more about the dashboard, see the [Datadog CI docs].
 [Datadog CI docs]: https://docs.datadoghq.com/continuous_integration/
 [public dashboard]: https://p.datadoghq.com/sb/3a172e20-e9e1-11ed-80e3-da7ad0900002-b5f7bb7e08b664a06b08527da85f7e30
 
+## Determining the CI configuration
+
+If you want to determine which `config.toml` settings are used in CI for a
+particular job, it is probably easiest to just look at the build log. To do
+this:
+
+1. Go to
+   <https://github.com/rust-lang-ci/rust/actions?query=branch%3Aauto+is%3Asuccess>
+   to find the most recently successful build, and click on it.
+2. Choose the job you are interested in on the left-hand side.
+3. Click on the gear icon and choose "View raw logs"
+4. Search for the string "Configure the build"
+5. All of the build settings are listed below that starting with the
+   `configure:` prefix.
+
 [GitHub Actions]: https://github.com/rust-lang/rust/actions
 [`jobs.yml`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/jobs.yml
 [`.github/workflows/ci.yml`]: https://github.com/rust-lang/rust/blob/master/.github/workflows/ci.yml
-[`ci.py`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/ci.py
+[`src/ci/github-actions/ci.py`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/ci.py
 [rust-lang-ci]: https://github.com/rust-lang-ci/rust/actions
 [bors]: https://github.com/bors
 [homu]: https://github.com/rust-lang/homu

@@ -58,15 +58,15 @@ extern "rust-intrinsic" {
 // CHECK-LABEL: select_i8x16
 #[no_mangle]
 pub unsafe extern "C" fn select_i8x16(mask: m8x16, a: i8x16, b: i8x16) -> i8x16 {
-    // x86-avx2: vpsllw xmm0, xmm0, 7
-    // x86-avx2-NEXT: vpblendvb xmm0, xmm2, xmm1, xmm0
+    // x86-avx2-NOT: vpsllw
+    // x86-avx2: vpblendvb xmm0, xmm2, xmm1, xmm0
     //
-    // x86-avx512: vpsllw xmm0, xmm0, 7
-    // x86-avx512-NEXT: vpmovb2m k1, xmm0
+    // x86-avx512-NOT: vpsllw
+    // x86-avx512: vpmovb2m k1, xmm0
     // x86-avx512-NEXT: vpblendmb xmm0 {k1}, xmm2, xmm1
     //
-    // aarch64: shl v0.16b, v0.16b, #7
-    // aarch64-NEXT: cmlt v0.16b, v0.16b, #0
+    // aarch64-NOT: shl
+    // aarch64: cmlt v0.16b, v0.16b, #0
     // aarch64-NEXT: bsl v0.16b, v1.16b, v2.16b
     simd_select(mask, a, b)
 }
@@ -74,15 +74,15 @@ pub unsafe extern "C" fn select_i8x16(mask: m8x16, a: i8x16, b: i8x16) -> i8x16 
 // CHECK-LABEL: select_f32x4
 #[no_mangle]
 pub unsafe extern "C" fn select_f32x4(mask: m32x4, a: f32x4, b: f32x4) -> f32x4 {
-    // x86-avx2: vpslld xmm0, xmm0, 31
-    // x86-avx2-NEXT: vblendvps xmm0, xmm2, xmm1, xmm0
+    // x86-avx2-NOT: vpslld
+    // x86-avx2: vblendvps xmm0, xmm2, xmm1, xmm0
     //
-    // x86-avx512: vpslld xmm0, xmm0, 31
-    // x86-avx512-NEXT: vpmovd2m k1, xmm0
+    // x86-avx512-NOT: vpslld
+    // x86-avx512: vpmovd2m k1, xmm0
     // x86-avx512-NEXT: vblendmps xmm0 {k1}, xmm2, xmm1
     //
-    // aarch64: shl v0.4s, v0.4s, #31
-    // aarch64-NEXT: cmlt v0.4s, v0.4s, #0
+    // aarch64-NOT: shl
+    // aarch64: cmlt v0.4s, v0.4s, #0
     // aarch64-NEXT: bsl v0.16b, v1.16b, v2.16b
     simd_select(mask, a, b)
 }
@@ -90,15 +90,15 @@ pub unsafe extern "C" fn select_f32x4(mask: m32x4, a: f32x4, b: f32x4) -> f32x4 
 // CHECK-LABEL: select_f64x2
 #[no_mangle]
 pub unsafe extern "C" fn select_f64x2(mask: m64x2, a: f64x2, b: f64x2) -> f64x2 {
-    // x86-avx2: vpsllq xmm0, xmm0, 63
-    // x86-avx2-NEXT: vblendvpd xmm0, xmm2, xmm1, xmm0
+    // x86-avx2-NOT: vpsllq
+    // x86-avx2: vblendvpd xmm0, xmm2, xmm1, xmm0
     //
-    // x86-avx512: vpsllq xmm0, xmm0, 63
-    // x86-avx512-NEXT: vpmovq2m k1, xmm0
+    // x86-avx512-NOT: vpsllq
+    // x86-avx512: vpmovq2m k1, xmm0
     // x86-avx512-NEXT: vblendmpd xmm0 {k1}, xmm2, xmm1
     //
-    // aarch64: shl v0.2d, v0.2d, #63
-    // aarch64-NEXT: cmlt v0.2d, v0.2d, #0
+    // aarch64-NOT: shl
+    // aarch64: cmlt v0.2d, v0.2d, #0
     // aarch64-NEXT: bsl v0.16b, v1.16b, v2.16b
     simd_select(mask, a, b)
 }
@@ -108,11 +108,11 @@ pub unsafe extern "C" fn select_f64x2(mask: m64x2, a: f64x2, b: f64x2) -> f64x2 
 pub unsafe extern "C" fn select_f64x4(mask: m64x4, a: f64x4, b: f64x4) -> f64x4 {
     // The parameter is a 256 bit vector which in the C abi is only valid for avx targets.
     //
-    // x86-avx2: vpsllq ymm0, ymm0, 63
-    // x86-avx2-NEXT: vblendvpd ymm0, ymm2, ymm1, ymm0
+    // x86-avx2-NOT: vpsllq
+    // x86-avx2: vblendvpd ymm0, ymm2, ymm1, ymm0
     //
-    // x86-avx512: vpsllq ymm0, ymm0, 63
-    // x86-avx512-NEXT: vpmovq2m k1, ymm0
+    // x86-avx512-NOT: vpsllq
+    // x86-avx512: vpmovq2m k1, ymm0
     // x86-avx512-NEXT: vblendmpd ymm0 {k1}, ymm2, ymm1
     simd_select(mask, a, b)
 }
@@ -122,8 +122,8 @@ pub unsafe extern "C" fn select_f64x4(mask: m64x4, a: f64x4, b: f64x4) -> f64x4 
 pub unsafe extern "C" fn select_f64x8(mask: m64x8, a: f64x8, b: f64x8) -> f64x8 {
     // The parameter is a 256 bit vector which in the C abi is only valid for avx512 targets.
     //
-    // x86-avx512: vpsllq zmm0, zmm0, 63
-    // x86-avx512-NEXT: vpmovq2m k1, zmm0
+    // x86-avx512-NOT: vpsllq
+    // x86-avx512: vpmovq2m k1, zmm0
     // x86-avx512-NEXT: vblendmpd zmm0 {k1}, zmm2, zmm1
     simd_select(mask, a, b)
 }

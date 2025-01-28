@@ -8,6 +8,7 @@ edition = "2021"
 ar_archive_writer = "0.4.2"
 arrayvec = { version = "0.7", default-features = false }
 bitflags = "2.4.1"
+bstr = "1.11.3"
 # Pinned so `cargo update` bumps don't cause breakage. Please also update the
 # `cc` in `rustc_llvm` if you update the `cc` here.
 cc = "=1.2.7"
@@ -59,5 +60,5 @@ default-features = false
 features = ["read_core", "elf", "macho", "pe", "xcoff", "unaligned", "archive", "write", "wasm"]
 
 [target.'cfg(windows)'.dependencies.windows]
-version = "0.57.0"
+version = "0.59.0"
 features = ["Win32_Globalization"]

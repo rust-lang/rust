@@ -11,12 +11,11 @@ use rustc_attr_parsing::{
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
 use rustc_feature::{ACCEPTED_LANG_FEATURES, EnabledLangFeature, EnabledLibFeature};
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::hir_id::CRATE_HIR_ID;
-use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{FieldDef, Item, ItemKind, TraitRef, Ty, TyKind, Variant};
+use rustc_hir::intravisit::{self, Visitor, VisitorExt};
+use rustc_hir::{self as hir, AmbigArg, FieldDef, Item, ItemKind, TraitRef, Ty, TyKind, Variant};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
@@ -802,7 +801,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     )) = stab
                     {
                         let mut c = CheckTraitImplStable { tcx: self.tcx, fully_stable: true };
-                        c.visit_ty(self_ty);
+                        c.visit_ty_unambig(self_ty);
                         c.visit_trait_ref(t);
 
                         // do not lint when the trait isn't resolved, since resolution error should
@@ -1028,7 +1027,7 @@ impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
         intravisit::walk_trait_ref(self, t)
     }
 
-    fn visit_ty(&mut self, t: &'tcx Ty<'tcx>) {
+    fn visit_ty(&mut self, t: &'tcx Ty<'tcx, AmbigArg>) {
         if let TyKind::Never = t.kind {
             self.fully_stable = false;
         }
@@ -1042,12 +1041,12 @@ impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
 
     fn visit_fn_decl(&mut self, fd: &'tcx hir::FnDecl<'tcx>) {
         for ty in fd.inputs {
-            self.visit_ty(ty)
+            self.visit_ty_unambig(ty)
         }
         if let hir::FnRetTy::Return(output_ty) = fd.output {
             match output_ty.kind {
                 TyKind::Never => {} // `-> !` is stable
-                _ => self.visit_ty(output_ty),
+                _ => self.visit_ty_unambig(output_ty),
             }
         }
     }

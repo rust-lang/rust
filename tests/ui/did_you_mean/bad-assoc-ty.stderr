@@ -233,11 +233,6 @@ LL | fn foo<X: K<_, _>>(x: X) {}
    |             ^  ^ not allowed in type signatures
    |             |
    |             not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL | fn foo<X: K<T, T>, T>(x: X) {}
-   |             ~  ~ +++
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/bad-assoc-ty.rs:54:34

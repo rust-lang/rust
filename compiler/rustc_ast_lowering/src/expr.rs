@@ -2159,7 +2159,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let path = hir::ExprKind::Path(hir::QPath::TypeRelative(
             self.arena.alloc(self.ty(span, hir::TyKind::Path(qpath))),
             self.arena.alloc(hir::PathSegment::new(
-                Ident::new(name, span),
+                Ident::new(name, self.lower_span(span)),
                 self.next_id(),
                 Res::Err,
             )),

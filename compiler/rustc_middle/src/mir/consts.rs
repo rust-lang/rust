@@ -460,17 +460,6 @@ impl<'tcx> Const<'tcx> {
         Self::Val(val, ty)
     }
 
-    pub fn from_ty_const(c: ty::Const<'tcx>, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        match c.kind() {
-            ty::ConstKind::Value(ty, valtree) => {
-                // Make sure that if `c` is normalized, then the return value is normalized.
-                let const_val = tcx.valtree_to_const_val((ty, valtree));
-                Self::Val(const_val, ty)
-            }
-            _ => Self::Ty(ty, c),
-        }
-    }
-
     /// Return true if any evaluation of this constant always returns the same value,
     /// taking into account even pointer identity tests.
     pub fn is_deterministic(&self) -> bool {

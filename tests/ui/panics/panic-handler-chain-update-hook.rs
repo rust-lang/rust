@@ -2,7 +2,7 @@
 //@ needs-unwind
 #![allow(stable_features)]
 
-//@ ignore-emscripten no threads support
+//@ needs-threads
 
 #![feature(std_panic)]
 #![feature(panic_update_hook)]

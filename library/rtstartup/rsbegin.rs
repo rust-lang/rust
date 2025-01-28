@@ -19,6 +19,7 @@
 #![no_core]
 #![allow(non_camel_case_types)]
 #![allow(internal_features)]
+#![warn(unreachable_pub)]
 
 #[lang = "sized"]
 trait Sized {}

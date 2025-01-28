@@ -31,6 +31,10 @@ impl<'tcx> crate::MirPass<'tcx> for DeduplicateBlocks {
             simplify_cfg(body);
         }
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 struct OptApplier<'tcx> {

@@ -8,9 +8,8 @@ use std::cell::Cell;
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::join;
-use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
-use rustc_hir::{HirId, intravisit as hir_visit};
+use rustc_hir::{self as hir, AmbigArg, HirId, intravisit as hir_visit};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
@@ -214,13 +213,9 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         })
     }
 
-    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx, AmbigArg>) {
         lint_callback!(self, check_ty, t);
         hir_visit::walk_ty(self, t);
-    }
-
-    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
-        hir_visit::walk_inf(self, inf);
     }
 
     fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, _: Span, n: HirId) {

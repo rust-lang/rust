@@ -19,6 +19,7 @@ import {
     RustDependenciesProvider,
     type DependencyId,
 } from "./dependencies_provider";
+import { SyntaxTreeProvider, type SyntaxElement } from "./syntax_tree_provider";
 import { execRevealDependency } from "./commands";
 import { PersistentState } from "./persistent_state";
 import { bootstrap } from "./bootstrap";
@@ -84,8 +85,12 @@ export class Ctx implements RustAnalyzerExtensionApi {
     private commandFactories: Record<string, CommandFactory>;
     private commandDisposables: Disposable[];
     private unlinkedFiles: vscode.Uri[];
-    private _dependencies: RustDependenciesProvider | undefined;
-    private _treeView: vscode.TreeView<Dependency | DependencyFile | DependencyId> | undefined;
+    private _dependenciesProvider: RustDependenciesProvider | undefined;
+    private _dependencyTreeView:
+        | vscode.TreeView<Dependency | DependencyFile | DependencyId>
+        | undefined;
+    private _syntaxTreeProvider: SyntaxTreeProvider | undefined;
+    private _syntaxTreeView: vscode.TreeView<SyntaxElement> | undefined;
     private lastStatus: ServerStatusParams | { health: "stopped" } = { health: "stopped" };
     private _serverVersion: string;
     private statusBarActiveEditorListener: Disposable;
@@ -102,12 +107,20 @@ export class Ctx implements RustAnalyzerExtensionApi {
         return this._client;
     }
 
-    get treeView() {
-        return this._treeView;
+    get dependencyTreeView() {
+        return this._dependencyTreeView;
     }
 
-    get dependencies() {
-        return this._dependencies;
+    get dependenciesProvider() {
+        return this._dependenciesProvider;
+    }
+
+    get syntaxTreeView() {
+        return this._syntaxTreeView;
+    }
+
+    get syntaxTreeProvider() {
+        return this._syntaxTreeProvider;
     }
 
     constructor(
@@ -278,6 +291,9 @@ export class Ctx implements RustAnalyzerExtensionApi {
         if (this.config.showDependenciesExplorer) {
             this.prepareTreeDependenciesView(client);
         }
+        if (this.config.showSyntaxTree) {
+            this.prepareSyntaxTreeView(client);
+        }
     }
 
     private prepareTreeDependenciesView(client: lc.LanguageClient) {
@@ -285,13 +301,13 @@ export class Ctx implements RustAnalyzerExtensionApi {
             ...this,
             client: client,
         };
-        this._dependencies = new RustDependenciesProvider(ctxInit);
-        this._treeView = vscode.window.createTreeView("rustDependencies", {
-            treeDataProvider: this._dependencies,
+        this._dependenciesProvider = new RustDependenciesProvider(ctxInit);
+        this._dependencyTreeView = vscode.window.createTreeView("rustDependencies", {
+            treeDataProvider: this._dependenciesProvider,
             showCollapseAll: true,
         });
 
-        this.pushExtCleanup(this._treeView);
+        this.pushExtCleanup(this._dependencyTreeView);
         vscode.window.onDidChangeActiveTextEditor(async (e) => {
             // we should skip documents that belong to the current workspace
             if (this.shouldRevealDependency(e)) {
@@ -303,7 +319,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
             }
         });
 
-        this.treeView?.onDidChangeVisibility(async (e) => {
+        this.dependencyTreeView?.onDidChangeVisibility(async (e) => {
             if (e.visible) {
                 const activeEditor = vscode.window.activeTextEditor;
                 if (this.shouldRevealDependency(activeEditor)) {
@@ -322,8 +338,58 @@ export class Ctx implements RustAnalyzerExtensionApi {
             e !== undefined &&
             isRustEditor(e) &&
             !isDocumentInWorkspace(e.document) &&
-            (this.treeView?.visible || false)
+            (this.dependencyTreeView?.visible || false)
         );
+    }
+
+    private prepareSyntaxTreeView(client: lc.LanguageClient) {
+        const ctxInit: CtxInit = {
+            ...this,
+            client: client,
+        };
+        this._syntaxTreeProvider = new SyntaxTreeProvider(ctxInit);
+        this._syntaxTreeView = vscode.window.createTreeView("rustSyntaxTree", {
+            treeDataProvider: this._syntaxTreeProvider,
+            showCollapseAll: true,
+        });
+
+        this.pushExtCleanup(this._syntaxTreeView);
+
+        vscode.window.onDidChangeActiveTextEditor(async () => {
+            if (this.syntaxTreeView?.visible) {
+                await this.syntaxTreeProvider?.refresh();
+            }
+        });
+
+        vscode.workspace.onDidChangeTextDocument(async () => {
+            if (this.syntaxTreeView?.visible) {
+                await this.syntaxTreeProvider?.refresh();
+            }
+        });
+
+        vscode.window.onDidChangeTextEditorSelection(async (e) => {
+            if (!this.syntaxTreeView?.visible || !isRustEditor(e.textEditor)) {
+                return;
+            }
+
+            const selection = e.selections[0];
+            if (selection === undefined) {
+                return;
+            }
+
+            const start = e.textEditor.document.offsetAt(selection.start);
+            const end = e.textEditor.document.offsetAt(selection.end);
+            const result = this.syntaxTreeProvider?.getElementByRange(start, end);
+            if (result !== undefined) {
+                await this.syntaxTreeView?.reveal(result);
+            }
+        });
+
+        this._syntaxTreeView.onDidChangeVisibility(async (e) => {
+            if (e.visible) {
+                await this.syntaxTreeProvider?.refresh();
+            }
+        });
     }
 
     async restart() {
@@ -423,7 +489,8 @@ export class Ctx implements RustAnalyzerExtensionApi {
                 } else {
                     statusBar.command = "rust-analyzer.openLogs";
                 }
-                this.dependencies?.refresh();
+                this.dependenciesProvider?.refresh();
+                void this.syntaxTreeProvider?.refresh();
                 break;
             case "warning":
                 statusBar.color = new vscode.ThemeColor("statusBarItem.warningForeground");

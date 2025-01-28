@@ -507,22 +507,12 @@ LL | impl BadTrait<_> for BadStruct<_> {}
    |               ^                ^ not allowed in type signatures
    |               |
    |               not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL | impl<T> BadTrait<T> for BadStruct<T> {}
-   |     +++          ~                ~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/typeck_type_placeholder_item.rs:162:34
    |
 LL | fn impl_trait() -> impl BadTrait<_> {
    |                                  ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL | fn impl_trait<T>() -> impl BadTrait<T> {
-   |              +++                    ~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for structs
   --> $DIR/typeck_type_placeholder_item.rs:167:25

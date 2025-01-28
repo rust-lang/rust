@@ -166,6 +166,17 @@ impl Resolver {
         db: &dyn DefDatabase,
         path: &Path,
     ) -> Option<(TypeNs, Option<usize>, Option<ImportOrExternCrate>)> {
+        self.resolve_path_in_type_ns_with_prefix_info(db, path).map(
+            |(resolution, remaining_segments, import, _)| (resolution, remaining_segments, import),
+        )
+    }
+
+    pub fn resolve_path_in_type_ns_with_prefix_info(
+        &self,
+        db: &dyn DefDatabase,
+        path: &Path,
+    ) -> Option<(TypeNs, Option<usize>, Option<ImportOrExternCrate>, ResolvePathResultPrefixInfo)>
+    {
         let path = match path {
             Path::BarePath(mod_path) => mod_path,
             Path::Normal(it) => it.mod_path(),
@@ -181,7 +192,12 @@ impl Resolver {
                     | LangItemTarget::ImplDef(_)
                     | LangItemTarget::Static(_) => return None,
                 };
-                return Some((type_ns, seg.as_ref().map(|_| 1), None));
+                return Some((
+                    type_ns,
+                    seg.as_ref().map(|_| 1),
+                    None,
+                    ResolvePathResultPrefixInfo::default(),
+                ));
             }
         };
         let first_name = path.segments().first()?;
@@ -197,17 +213,32 @@ impl Resolver {
                 Scope::ExprScope(_) | Scope::MacroDefScope(_) => continue,
                 Scope::GenericParams { params, def } => {
                     if let Some(id) = params.find_type_by_name(first_name, *def) {
-                        return Some((TypeNs::GenericParam(id), remaining_idx(), None));
+                        return Some((
+                            TypeNs::GenericParam(id),
+                            remaining_idx(),
+                            None,
+                            ResolvePathResultPrefixInfo::default(),
+                        ));
                     }
                 }
                 &Scope::ImplDefScope(impl_) => {
                     if *first_name == sym::Self_.clone() {
-                        return Some((TypeNs::SelfType(impl_), remaining_idx(), None));
+                        return Some((
+                            TypeNs::SelfType(impl_),
+                            remaining_idx(),
+                            None,
+                            ResolvePathResultPrefixInfo::default(),
+                        ));
                     }
                 }
                 &Scope::AdtScope(adt) => {
                     if *first_name == sym::Self_.clone() {
-                        return Some((TypeNs::AdtSelfType(adt), remaining_idx(), None));
+                        return Some((
+                            TypeNs::AdtSelfType(adt),
+                            remaining_idx(),
+                            None,
+                            ResolvePathResultPrefixInfo::default(),
+                        ));
                     }
                 }
                 Scope::BlockScope(m) => {
@@ -218,18 +249,6 @@ impl Resolver {
             }
         }
         self.module_scope.resolve_path_in_type_ns(db, path)
-    }
-
-    pub fn resolve_path_in_type_ns_fully_with_imports(
-        &self,
-        db: &dyn DefDatabase,
-        path: &Path,
-    ) -> Option<(TypeNs, Option<ImportOrExternCrate>)> {
-        let (res, unresolved, imp) = self.resolve_path_in_type_ns(db, path)?;
-        if unresolved.is_some() {
-            return None;
-        }
-        Some((res, imp))
     }
 
     pub fn resolve_path_in_type_ns_fully(
@@ -324,7 +343,7 @@ impl Resolver {
 
         if n_segments <= 1 {
             let mut hygiene_info = if !hygiene_id.is_root() {
-                let ctx = db.lookup_intern_syntax_context(hygiene_id.0);
+                let ctx = hygiene_id.lookup(db);
                 ctx.outer_expn.map(|expansion| {
                     let expansion = db.lookup_intern_macro_call(expansion);
                     (ctx.parent, expansion.def)
@@ -986,11 +1005,12 @@ impl ModuleItemMap {
         &self,
         db: &dyn DefDatabase,
         path: &ModPath,
-    ) -> Option<(TypeNs, Option<usize>, Option<ImportOrExternCrate>)> {
-        let (module_def, idx, _) =
+    ) -> Option<(TypeNs, Option<usize>, Option<ImportOrExternCrate>, ResolvePathResultPrefixInfo)>
+    {
+        let (module_def, idx, prefix_info) =
             self.def_map.resolve_path_locally(db, self.module_id, path, BuiltinShadowMode::Other);
         let (res, import) = to_type_ns(module_def)?;
-        Some((res, idx, import))
+        Some((res, idx, import, prefix_info))
     }
 }
 

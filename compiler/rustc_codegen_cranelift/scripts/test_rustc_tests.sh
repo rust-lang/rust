@@ -176,12 +176,11 @@ diff --git a/src/tools/run-make-support/src/rustdoc.rs b/src/tools/run-make-supp
 index 9607ff02f96..b7d97caf9a2 100644
 --- a/src/tools/run-make-support/src/external_deps/rustdoc.rs
 +++ b/src/tools/run-make-support/src/external_deps/rustdoc.rs
-@@ -34,8 +34,6 @@ pub fn bare() -> Self {
+@@ -34,7 +34,6 @@ pub fn bare() -> Self {
      #[track_caller]
      pub fn new() -> Self {
          let mut cmd = setup_common();
--        let target_rpath_dir = env_var_os("TARGET_RPATH_DIR");
--        cmd.arg(format!("-L{}", target_rpath_dir.to_string_lossy()));
+-        cmd.arg("-L").arg(env_var_os("TARGET_RPATH_DIR"));
          Self { cmd }
      }
 

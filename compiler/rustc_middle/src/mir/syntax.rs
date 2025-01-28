@@ -417,7 +417,14 @@ pub enum StatementKind<'tcx> {
     ///
     /// Interpreters and codegen backends that don't support coverage instrumentation
     /// can usually treat this as a no-op.
-    Coverage(CoverageKind),
+    Coverage(
+        // Coverage statements are unlikely to ever contain type information in
+        // the foreseeable future, so excluding them from TypeFoldable/TypeVisitable
+        // avoids some unhelpful derive boilerplate.
+        #[type_foldable(identity)]
+        #[type_visitable(ignore)]
+        CoverageKind,
+    ),
 
     /// Denotes a call to an intrinsic that does not require an unwind path and always returns.
     /// This avoids adding a new block and a terminator for simple intrinsics.

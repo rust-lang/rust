@@ -17,7 +17,7 @@ Prominent examples are:
     * need to be known to check for overlapping patterns
 
 Additionally constant evaluation can be used to reduce the workload or binary
-size at runtime by precomputing complex operations at compiletime and only
+size at runtime by precomputing complex operations at compile time and only
 storing the result.
 
 All uses of constant evaluation can either be categorized as "influencing the type system"

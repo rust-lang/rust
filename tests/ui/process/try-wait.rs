@@ -1,9 +1,5 @@
 //@ run-pass
-
-#![allow(stable_features)]
-//@ ignore-wasm32 no processes
-//@ ignore-sgx no processes
-#![feature(process_try_wait)]
+//@ needs-subprocess
 
 use std::env;
 use std::process::Command;

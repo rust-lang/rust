@@ -92,6 +92,8 @@ pub struct CargoConfig {
     pub sysroot_src: Option<AbsPathBuf>,
     /// rustc private crate source
     pub rustc_source: Option<RustLibSource>,
+    /// Extra includes to add to the VFS.
+    pub extra_includes: Vec<AbsPathBuf>,
     pub cfg_overrides: CfgOverrides,
     /// Invoke `cargo check` through the RUSTC_WRAPPER.
     pub wrap_rustc_in_build_scripts: bool,

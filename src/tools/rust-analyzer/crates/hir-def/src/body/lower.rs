@@ -8,6 +8,7 @@ use std::mem;
 use base_db::CrateId;
 use either::Either;
 use hir_expand::{
+    mod_path::tool_path,
     name::{AsName, Name},
     span_map::{ExpansionSpanMap, SpanMap},
     InFile, MacroDefId,
@@ -27,6 +28,7 @@ use text_size::TextSize;
 use triomphe::Arc;
 
 use crate::{
+    attr::Attrs,
     body::{Body, BodyDiagnostic, BodySourceMap, ExprPtr, HygieneId, LabelPtr, PatPtr},
     builtin_type::BuiltinUint,
     data::adt::StructKind,
@@ -212,6 +214,43 @@ impl ExprCollector<'_> {
         body: Option<ast::Expr>,
         is_async_fn: bool,
     ) -> (Body, BodySourceMap) {
+        let skip_body = match self.owner {
+            DefWithBodyId::FunctionId(it) => self.db.attrs(it.into()),
+            DefWithBodyId::StaticId(it) => self.db.attrs(it.into()),
+            DefWithBodyId::ConstId(it) => self.db.attrs(it.into()),
+            DefWithBodyId::InTypeConstId(_) => Attrs::EMPTY,
+            DefWithBodyId::VariantId(it) => self.db.attrs(it.into()),
+        }
+        .rust_analyzer_tool()
+        .any(|attr| *attr.path() == tool_path![skip]);
+        // If #[rust_analyzer::skip] annotated, only construct enough information for the signature
+        // and skip the body.
+        if skip_body {
+            self.body.body_expr = self.missing_expr();
+            if let Some((param_list, mut attr_enabled)) = param_list {
+                if let Some(self_param) =
+                    param_list.self_param().filter(|_| attr_enabled.next().unwrap_or(false))
+                {
+                    let is_mutable =
+                        self_param.mut_token().is_some() && self_param.amp_token().is_none();
+                    let binding_id: la_arena::Idx<Binding> = self.alloc_binding(
+                        Name::new_symbol_root(sym::self_.clone()),
+                        BindingAnnotation::new(is_mutable, false),
+                    );
+                    self.body.self_param = Some(binding_id);
+                    self.source_map.self_param =
+                        Some(self.expander.in_file(AstPtr::new(&self_param)));
+                }
+                self.body.params = param_list
+                    .params()
+                    .zip(attr_enabled)
+                    .filter(|(_, enabled)| *enabled)
+                    .map(|_| self.missing_pat())
+                    .collect();
+            };
+            return (self.body, self.source_map);
+        }
+
         self.awaitable_context.replace(if is_async_fn {
             Awaitable::Yes
         } else {
@@ -542,10 +581,7 @@ impl ExprCollector<'_> {
                 let mutability = if raw_tok {
                     if e.mut_token().is_some() {
                         Mutability::Mut
-                    } else if e.const_token().is_some() {
-                        Mutability::Shared
                     } else {
-                        never!("parser only remaps to raw_token() if matching mutability token follows");
                         Mutability::Shared
                     }
                 } else {
@@ -2460,7 +2496,7 @@ impl ExprCollector<'_> {
             None => HygieneId::ROOT,
             Some(span_map) => {
                 let ctx = span_map.span_at(span_start).ctx;
-                HygieneId(self.db.lookup_intern_syntax_context(ctx).opaque_and_semitransparent)
+                HygieneId::new(self.db.lookup_intern_syntax_context(ctx).opaque_and_semitransparent)
             }
         }
     }

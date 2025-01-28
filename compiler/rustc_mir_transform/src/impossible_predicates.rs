@@ -53,4 +53,8 @@ impl<'tcx> MirPass<'tcx> for ImpossiblePredicates {
             body.local_decls.raw.truncate(body.arg_count + 1);
         }
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }

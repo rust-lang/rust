@@ -76,22 +76,22 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         if let ExprKind::MethodCall(_method, receiver, args, _) = expr.kind {
             for arg in args {
-                check_clousure(cx, Some(receiver), arg);
+                check_closure(cx, Some(receiver), arg);
             }
         }
         if let ExprKind::Call(func, args) = expr.kind {
-            check_clousure(cx, None, func);
+            check_closure(cx, None, func);
             for arg in args {
-                check_clousure(cx, None, arg);
+                check_closure(cx, None, arg);
             }
         }
     }
 }
 
 #[allow(clippy::too_many_lines)]
-fn check_clousure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx>>, expr: &Expr<'tcx>) {
+fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx>>, expr: &Expr<'tcx>) {
     let body = if let ExprKind::Closure(c) = expr.kind
-        && c.fn_decl.inputs.iter().all(|ty| matches!(ty.kind, TyKind::Infer))
+        && c.fn_decl.inputs.iter().all(|ty| matches!(ty.kind, TyKind::Infer(())))
         && matches!(c.fn_decl.output, FnRetTy::DefaultReturn(_))
         && !expr.span.from_expansion()
     {

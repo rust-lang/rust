@@ -189,7 +189,7 @@ pub struct Session {
     /// enabled. Makes it so that "please report a bug" is hidden, as ICEs with
     /// internal features are wontfix, and they are usually the cause of the ICEs.
     /// None signifies that this is not tracked.
-    pub using_internal_features: Arc<AtomicBool>,
+    pub using_internal_features: &'static AtomicBool,
 
     /// All commandline args used to invoke the compiler, with @file args fully expanded.
     /// This will only be used within debug info, e.g. in the pdb file on windows
@@ -895,13 +895,16 @@ fn default_emitter(
         }
         t => t,
     };
+
+    let source_map = if sopts.unstable_opts.link_only { None } else { Some(source_map) };
+
     match sopts.error_format {
         config::ErrorOutputType::HumanReadable(kind, color_config) => {
             let short = kind.short();
 
             if let HumanReadableErrorType::AnnotateSnippet = kind {
                 let emitter = AnnotateSnippetEmitter::new(
-                    Some(source_map),
+                    source_map,
                     bundle,
                     fallback_bundle,
                     short,
@@ -911,7 +914,7 @@ fn default_emitter(
             } else {
                 let emitter = HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
                     .fluent_bundle(bundle)
-                    .sm(Some(source_map))
+                    .sm(source_map)
                     .short_message(short)
                     .teach(sopts.unstable_opts.teach)
                     .diagnostic_width(sopts.diagnostic_width)
@@ -966,7 +969,7 @@ pub fn build_session(
     sysroot: PathBuf,
     cfg_version: &'static str,
     ice_file: Option<PathBuf>,
-    using_internal_features: Arc<AtomicBool>,
+    using_internal_features: &'static AtomicBool,
     expanded_args: Vec<String>,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
@@ -1442,7 +1445,7 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
         config::ErrorOutputType::Json { pretty, json_rendered, color_config } => {
             Box::new(JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),
-                Lrc::new(SourceMap::new(FilePathMapping::empty())),
+                Some(Lrc::new(SourceMap::new(FilePathMapping::empty()))),
                 fallback_bundle,
                 pretty,
                 json_rendered,

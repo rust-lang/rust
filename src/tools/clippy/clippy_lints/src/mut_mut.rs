@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_hir};
 use clippy_utils::higher;
-use rustc_hir as hir;
-use rustc_hir::intravisit;
+use rustc_hir::{self as hir, AmbigArg, intravisit};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
@@ -34,7 +33,7 @@ impl<'tcx> LateLintPass<'tcx> for MutMut {
         intravisit::walk_block(&mut MutVisitor { cx }, block);
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'_>) {
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'_, AmbigArg>) {
         if let hir::TyKind::Ref(_, mty) = ty.kind
             && mty.mutbl == hir::Mutability::Mut
             && let hir::TyKind::Ref(_, mty) = mty.ty.kind

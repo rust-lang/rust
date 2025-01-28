@@ -125,6 +125,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       build_args+=("--build-arg" "SCRIPT_ARG=${DOCKER_SCRIPT}")
     fi
 
+    GHCR_BUILDKIT_IMAGE="ghcr.io/rust-lang/buildkit:buildx-stable-1"
     # On non-CI jobs, we try to download a pre-built image from the rust-lang-ci
     # ghcr.io registry. If it is not possible, we fall back to building the image
     # locally.
@@ -142,8 +143,9 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     elif [[ "$PR_CI_JOB" == "1" ]];
     then
         # Enable a new Docker driver so that --cache-from works with a registry backend
+        # Use a custom image to avoid DockerHub rate limits
         docker buildx create --use --driver docker-container \
-          --driver-opt image=ghcr.io/marcoieni/buildkit:buildx-stable-1
+          --driver-opt image=${GHCR_BUILDKIT_IMAGE}
 
         # Build the image using registry caching backend
         retry docker \
@@ -160,8 +162,9 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
             --password-stdin
 
         # Enable a new Docker driver so that --cache-from/to works with a registry backend
+        # Use a custom image to avoid DockerHub rate limits
         docker buildx create --use --driver docker-container \
-          --driver-opt image=ghcr.io/marcoieni/buildkit:buildx-stable-1
+          --driver-opt image=${GHCR_BUILDKIT_IMAGE}
 
         echo "Building Docker image with cache"
         # Build the image using registry caching backend

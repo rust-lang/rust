@@ -8,7 +8,6 @@ use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::solve::CanonicalResponse;
 use rustc_type_ir::visit::TypeVisitableExt as _;
 use rustc_type_ir::{self as ty, Interner, TraitPredicate, TypingMode, Upcast as _, elaborate};
-use smallvec::SmallVec;
 use tracing::{instrument, trace};
 
 use crate::delegate::SolverDelegate;
@@ -1199,33 +1198,42 @@ where
         // nested requirements, over all others. This is a fix for #53123 and
         // prevents where-bounds from accidentally extending the lifetime of a
         // variable.
-        if candidates
-            .iter()
-            .any(|c| matches!(c.source, CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial)))
-        {
-            let trivial_builtin_impls: SmallVec<[_; 1]> = candidates
-                .iter()
-                .filter(|c| {
-                    matches!(c.source, CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial))
-                })
-                .map(|c| c.result)
-                .collect();
+        let mut trivial_builtin_impls = candidates.iter().filter(|c| {
+            matches!(c.source, CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial))
+        });
+        if let Some(candidate) = trivial_builtin_impls.next() {
             // There should only ever be a single trivial builtin candidate
             // as they would otherwise overlap.
-            assert_eq!(trivial_builtin_impls.len(), 1);
-            return if let Some(response) = self.try_merge_responses(&trivial_builtin_impls) {
-                Ok((response, Some(TraitGoalProvenVia::Misc)))
-            } else {
-                Ok((self.bail_with_ambiguity(&trivial_builtin_impls), None))
-            };
+            assert!(trivial_builtin_impls.next().is_none());
+            return Ok((candidate.result, Some(TraitGoalProvenVia::Misc)));
         }
 
         // If there are non-global where-bounds, prefer where-bounds
         // (including global ones) over everything else.
         let has_non_global_where_bounds = candidates.iter().any(|c| match c.source {
             CandidateSource::ParamEnv(idx) => {
-                let where_bound = goal.param_env.caller_bounds().get(idx);
-                where_bound.has_bound_vars() || !where_bound.is_global()
+                let where_bound = goal.param_env.caller_bounds().get(idx).unwrap();
+                let ty::ClauseKind::Trait(trait_pred) = where_bound.kind().skip_binder() else {
+                    unreachable!("expected trait-bound: {where_bound:?}");
+                };
+
+                if trait_pred.has_bound_vars() || !trait_pred.is_global() {
+                    return true;
+                }
+
+                // We don't consider a trait-bound global if it has a projection bound.
+                //
+                // See ui/traits/next-solver/normalization-shadowing/global-trait-with-project.rs
+                // for an example where this is necessary.
+                for p in goal.param_env.caller_bounds().iter() {
+                    if let ty::ClauseKind::Projection(proj) = p.kind().skip_binder() {
+                        if proj.projection_term.trait_ref(self.cx()) == trait_pred.trait_ref {
+                            return true;
+                        }
+                    }
+                }
+
+                false
             }
             _ => false,
         });

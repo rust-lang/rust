@@ -88,29 +88,9 @@ impl<Key: Idx> UnionFind<Key> {
         a
     }
 
-    /// Creates a snapshot of this disjoint-set forest that can no longer be
-    /// mutated, but can be queried without mutation.
-    pub(crate) fn freeze(&mut self) -> FrozenUnionFind<Key> {
-        // Just resolve each key to its actual root.
-        let roots = self.table.indices().map(|key| self.find(key)).collect();
-        FrozenUnionFind { roots }
-    }
-}
-
-/// Snapshot of a disjoint-set forest that can no longer be mutated, but can be
-/// queried in O(1) time without mutation.
-///
-/// This is really just a wrapper around a direct mapping from keys to roots,
-/// but with a [`Self::find`] method that resembles [`UnionFind::find`].
-#[derive(Debug)]
-pub(crate) struct FrozenUnionFind<Key: Idx> {
-    roots: IndexVec<Key, Key>,
-}
-
-impl<Key: Idx> FrozenUnionFind<Key> {
-    /// Returns the "root" key of the disjoint-set containing the given key.
-    /// If two keys have the same root, they belong to the same set.
-    pub(crate) fn find(&self, key: Key) -> Key {
-        self.roots[key]
+    /// Takes a "snapshot" of the current state of this disjoint-set forest, in
+    /// the form of a vector that directly maps each key to its current root.
+    pub(crate) fn snapshot(&mut self) -> IndexVec<Key, Key> {
+        self.table.indices().map(|key| self.find(key)).collect()
     }
 }

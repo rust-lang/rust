@@ -266,7 +266,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for LayoutConstrainedPlaceVisitor<'a, 'tcx> {
             // place, i.e. the expression is a place expression and not a dereference
             // (since dereferencing something leads us to a different place).
             ExprKind::Deref { .. } => {}
-            ref kind if ExprCategory::of(kind).map_or(true, |cat| cat == ExprCategory::Place) => {
+            ref kind if ExprCategory::of(kind).is_none_or(|cat| cat == ExprCategory::Place) => {
                 visit::walk_expr(self, expr);
             }
 

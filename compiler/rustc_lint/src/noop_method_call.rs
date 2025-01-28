@@ -129,7 +129,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                 _ => None,
             };
             cx.emit_span_lint(NOOP_METHOD_CALL, span, NoopMethodCallDiag {
-                method: call.ident.name,
+                method: call.ident,
                 orig_ty,
                 trait_,
                 label: span,

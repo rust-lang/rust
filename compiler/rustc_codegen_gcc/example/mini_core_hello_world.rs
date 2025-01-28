@@ -1,7 +1,7 @@
 // Adapted from https://github.com/sunfishcode/mir2cranelift/blob/master/rust-examples/nocore-hello-world.rs
 
 #![feature(
-    no_core, unboxed_closures, start, lang_items, never_type, linkage,
+    no_core, unboxed_closures, lang_items, never_type, linkage,
     extern_types, thread_local
 )]
 #![no_core]

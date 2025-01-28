@@ -3727,33 +3727,33 @@ pub fn fence(order: Ordering) {
 ///
 /// # Examples
 ///
-/// Without `compiler_fence`, the `assert_eq!` in following code
-/// is *not* guaranteed to succeed, despite everything happening in a single thread.
-/// To see why, remember that the compiler is free to swap the stores to
-/// `IMPORTANT_VARIABLE` and `IS_READY` since they are both
-/// `Ordering::Relaxed`. If it does, and the signal handler is invoked right
-/// after `IS_READY` is updated, then the signal handler will see
-/// `IS_READY=1`, but `IMPORTANT_VARIABLE=0`.
-/// Using a `compiler_fence` remedies this situation.
+/// Without the two `compiler_fence` calls, the read of `IMPORTANT_VARIABLE` in `signal_handler`
+/// is *undefined behavior* due to a data race, despite everything happening in a single thread.
+/// This is because the signal handler is considered to run concurrently with its associated
+/// thread, and explicit synchronization is required to pass data between a thread and its
+/// signal handler. The code below uses two `compiler_fence` calls to establish the usual
+/// release-acquire synchronization pattern (see [`fence`] for an image).
 ///
 /// ```
-/// use std::sync::atomic::{AtomicBool, AtomicUsize};
+/// use std::sync::atomic::AtomicBool;
 /// use std::sync::atomic::Ordering;
 /// use std::sync::atomic::compiler_fence;
 ///
-/// static IMPORTANT_VARIABLE: AtomicUsize = AtomicUsize::new(0);
+/// static mut IMPORTANT_VARIABLE: usize = 0;
 /// static IS_READY: AtomicBool = AtomicBool::new(false);
 ///
 /// fn main() {
-///     IMPORTANT_VARIABLE.store(42, Ordering::Relaxed);
-///     // prevent earlier writes from being moved beyond this point
+///     unsafe { IMPORTANT_VARIABLE = 42 };
+///     // Marks earlier writes as being released with future relaxed stores.
 ///     compiler_fence(Ordering::Release);
 ///     IS_READY.store(true, Ordering::Relaxed);
 /// }
 ///
 /// fn signal_handler() {
 ///     if IS_READY.load(Ordering::Relaxed) {
-///         assert_eq!(IMPORTANT_VARIABLE.load(Ordering::Relaxed), 42);
+///         // Acquires writes that were released with relaxed stores that we read from.
+///         compiler_fence(Ordering::Acquire);
+///         assert_eq!(unsafe { IMPORTANT_VARIABLE }, 42);
 ///     }
 /// }
 /// ```

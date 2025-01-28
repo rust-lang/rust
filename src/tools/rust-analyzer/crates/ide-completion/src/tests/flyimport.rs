@@ -6,11 +6,15 @@ use crate::{
     CompletionConfig,
 };
 
-fn check(ra_fixture: &str, expect: Expect) {
+fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     check_with_config(TEST_CONFIG, ra_fixture, expect);
 }
 
-fn check_with_config(config: CompletionConfig<'_>, ra_fixture: &str, expect: Expect) {
+fn check_with_config(
+    config: CompletionConfig<'_>,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    expect: Expect,
+) {
     let (db, position) = crate::tests::position(ra_fixture);
     let (ctx, analysis) = crate::context::CompletionContext::new(&db, position, &config).unwrap();
 
@@ -1742,7 +1746,7 @@ fn intrinsics() {
     fn function() {
             transmute$0
     }
-    "#,
+"#,
         expect![[r#"
             fn transmute(…) (use core::mem::transmute) unsafe fn(Src) -> Dst
         "#]],
@@ -1763,7 +1767,9 @@ fn function() {
         mem::transmute$0
 }
 "#,
-        expect![""],
+        expect![[r#"
+            fn transmute(…) (use core::mem) unsafe fn(Src) -> Dst
+        "#]],
     );
 }
 

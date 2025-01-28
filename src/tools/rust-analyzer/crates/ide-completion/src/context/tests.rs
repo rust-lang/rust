@@ -6,7 +6,7 @@ use crate::{
     tests::{position, TEST_CONFIG},
 };
 
-fn check_expected_type_and_name(ra_fixture: &str, expect: Expect) {
+fn check_expected_type_and_name(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (db, pos) = position(ra_fixture);
     let config = TEST_CONFIG;
     let (completion_context, _analysis) = CompletionContext::new(&db, pos, &config).unwrap();

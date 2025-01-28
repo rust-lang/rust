@@ -1,7 +1,7 @@
 // Copied from tests/pass/no-std.rs
 
-#![feature(start)]
 #![no_std]
+#![no_main]
 
 // Plumbing to let us use `writeln!` to host stdout:
 
@@ -22,8 +22,8 @@ impl Write for Host {
     }
 }
 
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+#[no_mangle]
+fn miri_start(_: isize, _: *const *const u8) -> isize {
     writeln!(Host, "hello, world!").unwrap();
     0
 }

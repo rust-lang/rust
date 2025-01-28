@@ -10,7 +10,7 @@ impl IntoIterator for AlwaysTrue {
     type Item = bool;
 
     //@ count '$.index[*][?(@.docs=="type IntoIter")].inner.assoc_type.type.impl_trait[*]' 1
-    //@ is    '$.index[*][?(@.docs=="type IntoIter")].inner.assoc_type.type.impl_trait[0].trait_bound.trait.name' '"Iterator"'
+    //@ is    '$.index[*][?(@.docs=="type IntoIter")].inner.assoc_type.type.impl_trait[0].trait_bound.trait.path' '"Iterator"'
     //@ count '$.index[*][?(@.docs=="type IntoIter")].inner.assoc_type.type.impl_trait[0].trait_bound.trait.args.angle_bracketed.constraints[*]' 1
     //@ is    '$.index[*][?(@.docs=="type IntoIter")].inner.assoc_type.type.impl_trait[0].trait_bound.trait.args.angle_bracketed.constraints[0].name' '"Item"'
     //@ is    '$.index[*][?(@.docs=="type IntoIter")].inner.assoc_type.type.impl_trait[0].trait_bound.trait.args.angle_bracketed.constraints[0].binding.equality.type.primitive' '"bool"'

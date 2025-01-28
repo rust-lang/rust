@@ -1,14 +1,15 @@
-error[E0038]: the trait `Bar` cannot be made into an object
+error[E0038]: the trait `Bar` is not dyn compatible
   --> $DIR/issue-48027.rs:6:6
    |
 LL | impl dyn Bar {}
-   |      ^^^^^^^ `Bar` cannot be made into an object
+   |      ^^^^^^^ `Bar` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/issue-48027.rs:2:11
    |
 LL | trait Bar {
-   |       --- this trait cannot be made into an object...
+   |       --- this trait is not dyn compatible...
 LL |     const X: usize;
    |           ^ ...because it contains this associated `const`
    = help: consider moving `X` to another trait

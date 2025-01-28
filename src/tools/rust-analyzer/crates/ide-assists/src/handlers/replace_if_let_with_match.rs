@@ -1,4 +1,4 @@
-use std::iter::{self, successors};
+use std::iter::successors;
 
 use either::Either;
 use ide_db::{
@@ -8,11 +8,7 @@ use ide_db::{
     RootDatabase,
 };
 use syntax::{
-    ast::{
-        self,
-        edit::{AstNodeEdit, IndentLevel},
-        make, HasName,
-    },
+    ast::{self, edit::IndentLevel, edit_in_place::Indent, syntax_factory::SyntaxFactory, HasName},
     AstNode, TextRange, T,
 };
 
@@ -108,53 +104,58 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
         AssistId("replace_if_let_with_match", AssistKind::RefactorRewrite),
         format!("Replace if{let_} with match"),
         available_range,
-        move |edit| {
+        move |builder| {
+            let make = SyntaxFactory::new();
             let match_expr = {
-                let else_arm = make_else_arm(ctx, else_block, &cond_bodies);
+                let else_arm = make_else_arm(ctx, &make, else_block, &cond_bodies);
                 let make_match_arm = |(pat, body): (_, ast::BlockExpr)| {
-                    let body = body.reset_indent().indent(IndentLevel(1));
+                    let body = make.block_expr(body.statements(), body.tail_expr());
+                    body.indent(IndentLevel::from(1));
+                    let body = unwrap_trivial_block(body);
                     match pat {
-                        Either::Left(pat) => {
-                            make::match_arm(iter::once(pat), None, unwrap_trivial_block(body))
+                        Either::Left(pat) => make.match_arm(pat, None, body),
+                        Either::Right(_) if !pat_seen => {
+                            make.match_arm(make.literal_pat("true").into(), None, body)
                         }
-                        Either::Right(_) if !pat_seen => make::match_arm(
-                            iter::once(make::literal_pat("true").into()),
-                            None,
-                            unwrap_trivial_block(body),
-                        ),
-                        Either::Right(expr) => make::match_arm(
-                            iter::once(make::wildcard_pat().into()),
-                            Some(expr),
-                            unwrap_trivial_block(body),
+                        Either::Right(expr) => make.match_arm(
+                            make.wildcard_pat().into(),
+                            Some(make.match_guard(expr)),
+                            body,
                         ),
                     }
                 };
-                let arms = cond_bodies.into_iter().map(make_match_arm).chain(iter::once(else_arm));
-                let match_expr = make::expr_match(scrutinee_to_be_expr, make::match_arm_list(arms));
-                match_expr.indent(IndentLevel::from_node(if_expr.syntax()))
+                let arms = cond_bodies.into_iter().map(make_match_arm).chain([else_arm]);
+                let match_expr = make.expr_match(scrutinee_to_be_expr, make.match_arm_list(arms));
+                match_expr.indent(IndentLevel::from_node(if_expr.syntax()));
+                match_expr.into()
             };
 
             let has_preceding_if_expr =
                 if_expr.syntax().parent().is_some_and(|it| ast::IfExpr::can_cast(it.kind()));
             let expr = if has_preceding_if_expr {
                 // make sure we replace the `else if let ...` with a block so we don't end up with `else expr`
-                make::block_expr(None, Some(match_expr)).into()
+                make.block_expr([], Some(match_expr)).into()
             } else {
                 match_expr
             };
-            edit.replace_ast::<ast::Expr>(if_expr.into(), expr);
+
+            let mut editor = builder.make_editor(if_expr.syntax());
+            editor.replace(if_expr.syntax(), expr.syntax());
+            editor.add_mappings(make.finish_with_mappings());
+            builder.add_file_edits(ctx.file_id(), editor);
         },
     )
 }
 
 fn make_else_arm(
     ctx: &AssistContext<'_>,
+    make: &SyntaxFactory,
     else_block: Option<ast::BlockExpr>,
     conditionals: &[(Either<ast::Pat, ast::Expr>, ast::BlockExpr)],
 ) -> ast::MatchArm {
     let (pattern, expr) = if let Some(else_block) = else_block {
         let pattern = match conditionals {
-            [(Either::Right(_), _)] => make::literal_pat("false").into(),
+            [(Either::Right(_), _)] => make.literal_pat("false").into(),
             [(Either::Left(pat), _)] => match ctx
                 .sema
                 .type_of_pat(pat)
@@ -164,24 +165,24 @@ fn make_else_arm(
                     if does_pat_match_variant(pat, &it.sad_pattern()) {
                         it.happy_pattern_wildcard()
                     } else if does_pat_variant_nested_or_literal(ctx, pat) {
-                        make::wildcard_pat().into()
+                        make.wildcard_pat().into()
                     } else {
                         it.sad_pattern()
                     }
                 }
-                None => make::wildcard_pat().into(),
+                None => make.wildcard_pat().into(),
             },
-            _ => make::wildcard_pat().into(),
+            _ => make.wildcard_pat().into(),
         };
         (pattern, unwrap_trivial_block(else_block))
     } else {
         let pattern = match conditionals {
-            [(Either::Right(_), _)] => make::literal_pat("false").into(),
-            _ => make::wildcard_pat().into(),
+            [(Either::Right(_), _)] => make.literal_pat("false").into(),
+            _ => make.wildcard_pat().into(),
         };
-        (pattern, make::expr_unit())
+        (pattern, make.expr_unit())
     };
-    make::match_arm(iter::once(pattern), None, expr)
+    make.match_arm(pattern, None, expr)
 }
 
 // Assist: replace_match_with_if_let
@@ -247,21 +248,21 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
         }
         _ => " let",
     };
-    let target = match_expr.syntax().text_range();
     acc.add(
         AssistId("replace_match_with_if_let", AssistKind::RefactorRewrite),
         format!("Replace match with if{let_}"),
-        target,
-        move |edit| {
-            fn make_block_expr(expr: ast::Expr) -> ast::BlockExpr {
+        match_expr.syntax().text_range(),
+        move |builder| {
+            let make = SyntaxFactory::new();
+            let make_block_expr = |expr: ast::Expr| {
                 // Blocks with modifiers (unsafe, async, etc.) are parsed as BlockExpr, but are
                 // formatted without enclosing braces. If we encounter such block exprs,
                 // wrap them in another BlockExpr.
                 match expr {
                     ast::Expr::BlockExpr(block) if block.modifier().is_none() => block,
-                    expr => make::block_expr(iter::empty(), Some(expr)),
+                    expr => make.block_expr([], Some(expr)),
                 }
-            }
+            };
 
             let condition = match if_let_pat {
                 ast::Pat::LiteralPat(p)
@@ -272,20 +273,25 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
                 ast::Pat::LiteralPat(p)
                     if p.literal().is_some_and(|it| it.token().kind() == T![false]) =>
                 {
-                    make::expr_prefix(T![!], scrutinee)
+                    make.expr_prefix(T![!], scrutinee).into()
                 }
-                _ => make::expr_let(if_let_pat, scrutinee).into(),
+                _ => make.expr_let(if_let_pat, scrutinee).into(),
             };
-            let then_block = make_block_expr(then_expr.reset_indent());
+            let then_expr = then_expr.clone_for_update();
+            then_expr.reindent_to(IndentLevel::single());
+            let then_block = make_block_expr(then_expr);
             let else_expr = if is_empty_expr(&else_expr) { None } else { Some(else_expr) };
-            let if_let_expr = make::expr_if(
+            let if_let_expr = make.expr_if(
                 condition,
                 then_block,
                 else_expr.map(make_block_expr).map(ast::ElseBranch::Block),
-            )
-            .indent(IndentLevel::from_node(match_expr.syntax()));
+            );
+            if_let_expr.indent(IndentLevel::from_node(match_expr.syntax()));
 
-            edit.replace_ast::<ast::Expr>(match_expr.into(), if_let_expr);
+            let mut editor = builder.make_editor(match_expr.syntax());
+            editor.replace(match_expr.syntax(), if_let_expr.syntax());
+            editor.add_mappings(make.finish_with_mappings());
+            builder.add_file_edits(ctx.file_id(), editor);
         },
     )
 }

@@ -10,18 +10,13 @@ use rustc_session::RemapFileNameExt;
 use rustc_session::config::{CrateType, EntryFnType, RemapPathScopeComponents, sigpipe};
 use rustc_span::{Span, Symbol, sym};
 
-use crate::errors::{
-    AttrOnlyInFunctions, ExternMain, MultipleRustcMain, MultipleStartFunctions, NoMainErr,
-};
+use crate::errors::{AttrOnlyInFunctions, ExternMain, MultipleRustcMain, NoMainErr};
 
 struct EntryContext<'tcx> {
     tcx: TyCtxt<'tcx>,
 
     /// The function has the `#[rustc_main]` attribute.
     rustc_main_fn: Option<(LocalDefId, Span)>,
-
-    /// The function that has the attribute `#[start]` on it.
-    start_fn: Option<(LocalDefId, Span)>,
 
     /// The functions that one might think are `main` but aren't, e.g.
     /// main functions not defined at the top level. For diagnostics.
@@ -40,8 +35,7 @@ fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
         return None;
     }
 
-    let mut ctxt =
-        EntryContext { tcx, rustc_main_fn: None, start_fn: None, non_main_fns: Vec::new() };
+    let mut ctxt = EntryContext { tcx, rustc_main_fn: None, non_main_fns: Vec::new() };
 
     for id in tcx.hir().items() {
         check_and_search_item(id, &mut ctxt);
@@ -57,7 +51,7 @@ fn attr_span_by_symbol(ctxt: &EntryContext<'_>, id: ItemId, sym: Symbol) -> Opti
 
 fn check_and_search_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
     if !matches!(ctxt.tcx.def_kind(id.owner_id), DefKind::Fn) {
-        for attr in [sym::start, sym::rustc_main] {
+        for attr in [sym::rustc_main] {
             if let Some(span) = attr_span_by_symbol(ctxt, id, attr) {
                 ctxt.tcx.dcx().emit_err(AttrOnlyInFunctions { span, attr });
             }
@@ -91,24 +85,11 @@ fn check_and_search_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
                 });
             }
         }
-        EntryPointType::Start => {
-            if ctxt.start_fn.is_none() {
-                ctxt.start_fn = Some((id.owner_id.def_id, ctxt.tcx.def_span(id.owner_id)));
-            } else {
-                ctxt.tcx.dcx().emit_err(MultipleStartFunctions {
-                    span: ctxt.tcx.def_span(id.owner_id),
-                    labeled: ctxt.tcx.def_span(id.owner_id.to_def_id()),
-                    previous: ctxt.start_fn.unwrap().1,
-                });
-            }
-        }
     }
 }
 
 fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) -> Option<(DefId, EntryFnType)> {
-    if let Some((def_id, _)) = visitor.start_fn {
-        Some((def_id.to_def_id(), EntryFnType::Start))
-    } else if let Some((local_def_id, _)) = visitor.rustc_main_fn {
+    if let Some((local_def_id, _)) = visitor.rustc_main_fn {
         let def_id = local_def_id.to_def_id();
         Some((def_id, EntryFnType::Main { sigpipe: sigpipe(tcx) }))
     } else {

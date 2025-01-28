@@ -277,23 +277,7 @@ where
         param_env: I::ParamEnv,
         ty: I::Ty,
     ) -> Result<I::Ty, NoSolution> {
-        if let ty::Alias(..) = ty.kind() {
-            let normalized_ty = self.next_ty_infer();
-            let alias_relate_goal = Goal::new(
-                self.cx(),
-                param_env,
-                ty::PredicateKind::AliasRelate(
-                    ty.into(),
-                    normalized_ty.into(),
-                    ty::AliasRelationDirection::Equate,
-                ),
-            );
-            self.add_goal(GoalSource::Misc, alias_relate_goal);
-            self.try_evaluate_added_goals()?;
-            Ok(self.resolve_vars_if_possible(normalized_ty))
-        } else {
-            Ok(ty)
-        }
+        self.structurally_normalize_term(param_env, ty.into()).map(|term| term.expect_ty())
     }
 
     /// Normalize a const for when it is structurally matched on, or more likely
@@ -308,22 +292,34 @@ where
         param_env: I::ParamEnv,
         ct: I::Const,
     ) -> Result<I::Const, NoSolution> {
-        if let ty::ConstKind::Unevaluated(..) = ct.kind() {
-            let normalized_ct = self.next_const_infer();
+        self.structurally_normalize_term(param_env, ct.into()).map(|term| term.expect_const())
+    }
+
+    /// Normalize a term for when it is structurally matched on.
+    ///
+    /// This function is necessary in nearly all cases before matching on a ty/const.
+    /// Not doing so is likely to be incomplete and therefore unsound during coherence.
+    fn structurally_normalize_term(
+        &mut self,
+        param_env: I::ParamEnv,
+        term: I::Term,
+    ) -> Result<I::Term, NoSolution> {
+        if let Some(_) = term.to_alias_term() {
+            let normalized_term = self.next_term_infer_of_kind(term);
             let alias_relate_goal = Goal::new(
                 self.cx(),
                 param_env,
                 ty::PredicateKind::AliasRelate(
-                    ct.into(),
-                    normalized_ct.into(),
+                    term,
+                    normalized_term,
                     ty::AliasRelationDirection::Equate,
                 ),
             );
             self.add_goal(GoalSource::Misc, alias_relate_goal);
             self.try_evaluate_added_goals()?;
-            Ok(self.resolve_vars_if_possible(normalized_ct))
+            Ok(self.resolve_vars_if_possible(normalized_term))
         } else {
-            Ok(ct)
+            Ok(term)
         }
     }
 

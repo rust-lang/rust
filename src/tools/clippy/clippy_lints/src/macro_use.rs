@@ -3,7 +3,7 @@ use clippy_utils::source::snippet;
 use hir::def::{DefKind, Res};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
+use rustc_hir::{self as hir, AmbigArg};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition;
@@ -123,7 +123,7 @@ impl LateLintPass<'_> for MacroUseImports {
             self.push_unique_macro_pat_ty(cx, pat.span);
         }
     }
-    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &hir::Ty<'_>) {
+    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &hir::Ty<'_, AmbigArg>) {
         if ty.span.from_expansion() {
             self.push_unique_macro_pat_ty(cx, ty.span);
         }

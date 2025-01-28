@@ -61,7 +61,7 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext<'_>)
             };
 
             edit.delete(guard.syntax().text_range());
-            edit.replace_ast(arm_expr, if_expr);
+            edit.replace_ast(arm_expr, if_expr.into());
         },
     )
 }

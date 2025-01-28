@@ -5,9 +5,6 @@ codegen_gcc_unknown_ctarget_feature_prefix =
 codegen_gcc_invalid_minimum_alignment =
     invalid minimum global alignment: {$err}
 
-codegen_gcc_lto_not_supported =
-    LTO is not supported. You may get a linker error.
-
 codegen_gcc_forbidden_ctarget_feature =
     target feature `{$feature}` cannot be toggled with `-Ctarget-feature`: {$reason}
 

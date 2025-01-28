@@ -90,6 +90,26 @@ impl_zeroable_primitive!(
 ///
 /// assert_eq!(size_of::<Option<NonZero<u32>>>(), size_of::<u32>());
 /// ```
+///
+/// # Layout
+///
+/// `NonZero<T>` is guaranteed to have the same layout and bit validity as `T`
+/// with the exception that the all-zero bit pattern is invalid.
+/// `Option<NonZero<T>>` is guaranteed to be compatible with `T`, including in
+/// FFI.
+///
+/// Thanks to the [null pointer optimization], `NonZero<T>` and
+/// `Option<NonZero<T>>` are guaranteed to have the same size and alignment:
+///
+/// ```
+/// # use std::mem::{size_of, align_of};
+/// use std::num::NonZero;
+///
+/// assert_eq!(size_of::<NonZero<u32>>(), size_of::<Option<NonZero<u32>>>());
+/// assert_eq!(align_of::<NonZero<u32>>(), align_of::<Option<NonZero<u32>>>());
+/// ```
+///
+/// [null pointer optimization]: crate::option#representation
 #[stable(feature = "generic_nonzero", since = "1.79.0")]
 #[repr(transparent)]
 #[rustc_nonnull_optimization_guaranteed]
@@ -1165,8 +1185,12 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
         impl Div<NonZero<$Int>> for $Int {
             type Output = $Int;
 
+            /// Same as `self / other.get()`, but because `other` is a `NonZero<_>`,
+            /// there's never a runtime check for division-by-zero.
+            ///
             /// This operation rounds towards zero, truncating any fractional
             /// part of the exact result, and cannot panic.
+            #[doc(alias = "unchecked_div")]
             #[inline]
             fn div(self, other: NonZero<$Int>) -> $Int {
                 // SAFETY: Division by zero is checked because `other` is non-zero,
@@ -1177,6 +1201,9 @@ macro_rules! nonzero_integer_signedness_dependent_impls {
 
         #[stable(feature = "nonzero_div_assign", since = "1.79.0")]
         impl DivAssign<NonZero<$Int>> for $Int {
+            /// Same as `self /= other.get()`, but because `other` is a `NonZero<_>`,
+            /// there's never a runtime check for division-by-zero.
+            ///
             /// This operation rounds towards zero, truncating any fractional
             /// part of the exact result, and cannot panic.
             #[inline]

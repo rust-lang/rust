@@ -244,7 +244,7 @@ bitflags::bitflags! {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraitData {
     pub name: Name,
-    pub items: Vec<(Name, AssocItemId)>,
+    pub items: Box<[(Name, AssocItemId)]>,
     pub flags: TraitFlags,
     pub visibility: RawVisibility,
     // box it as the vec is usually empty anyways
@@ -360,7 +360,7 @@ impl TraitAliasData {
 pub struct ImplData {
     pub target_trait: Option<TraitRef>,
     pub self_ty: TypeRefId,
-    pub items: Box<[AssocItemId]>,
+    pub items: Box<[(Name, AssocItemId)]>,
     pub is_negative: bool,
     pub is_unsafe: bool,
     // box it as the vec is usually empty anyways
@@ -393,7 +393,6 @@ impl ImplData {
         collector.collect(&item_tree, tree_id.tree_id(), &impl_def.items);
 
         let (items, macro_calls, diagnostics) = collector.finish();
-        let items = items.into_iter().map(|(_, item)| item).collect();
 
         (
             Arc::new(ImplData {
@@ -648,12 +647,12 @@ impl<'a> AssocItemCollector<'a> {
     fn finish(
         self,
     ) -> (
-        Vec<(Name, AssocItemId)>,
+        Box<[(Name, AssocItemId)]>,
         Option<Box<Vec<(AstId<ast::Item>, MacroCallId)>>>,
         Vec<DefDiagnostic>,
     ) {
         (
-            self.items,
+            self.items.into_boxed_slice(),
             if self.macro_calls.is_empty() { None } else { Some(Box::new(self.macro_calls)) },
             self.diagnostics,
         )

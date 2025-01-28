@@ -746,16 +746,9 @@ fn lookup_impl_assoc_item_for_trait_ref(
     let table = InferenceTable::new(db, env);
 
     let (impl_data, impl_subst) = find_matching_impl(impls, table, trait_ref)?;
-    let item = impl_data.items.iter().find_map(|&it| match it {
-        AssocItemId::FunctionId(f) => {
-            (db.function_data(f).name == *name).then_some(AssocItemId::FunctionId(f))
-        }
-        AssocItemId::ConstId(c) => db
-            .const_data(c)
-            .name
-            .as_ref()
-            .map(|n| n == name)
-            .and_then(|result| if result { Some(AssocItemId::ConstId(c)) } else { None }),
+    let item = impl_data.items.iter().find_map(|(n, it)| match *it {
+        AssocItemId::FunctionId(f) => (n == name).then_some(AssocItemId::FunctionId(f)),
+        AssocItemId::ConstId(c) => (n == name).then_some(AssocItemId::ConstId(c)),
         AssocItemId::TypeAliasId(_) => None,
     })?;
     Some((item, impl_subst))
@@ -850,7 +843,7 @@ fn is_inherent_impl_coherent(
         };
         rustc_has_incoherent_inherent_impls
             && !impl_data.items.is_empty()
-            && impl_data.items.iter().copied().all(|assoc| match assoc {
+            && impl_data.items.iter().all(|&(_, assoc)| match assoc {
                 AssocItemId::FunctionId(it) => db.function_data(it).rustc_allow_incoherent_impl,
                 AssocItemId::ConstId(it) => db.const_data(it).rustc_allow_incoherent_impl,
                 AssocItemId::TypeAliasId(it) => db.type_alias_data(it).rustc_allow_incoherent_impl,
@@ -1399,7 +1392,7 @@ fn iterate_inherent_methods(
         callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
     ) -> ControlFlow<()> {
         for &impl_id in impls.for_self_ty(self_ty) {
-            for &item in table.db.impl_data(impl_id).items.iter() {
+            for &(ref item_name, item) in table.db.impl_data(impl_id).items.iter() {
                 let visible = match is_valid_impl_method_candidate(
                     table,
                     self_ty,
@@ -1408,6 +1401,7 @@ fn iterate_inherent_methods(
                     name,
                     impl_id,
                     item,
+                    item_name,
                 ) {
                     IsValidCandidate::Yes => true,
                     IsValidCandidate::NotVisible => false,
@@ -1467,6 +1461,7 @@ fn is_valid_impl_method_candidate(
     name: Option<&Name>,
     impl_id: ImplId,
     item: AssocItemId,
+    item_name: &Name,
 ) -> IsValidCandidate {
     match item {
         AssocItemId::FunctionId(f) => is_valid_impl_fn_candidate(
@@ -1477,11 +1472,12 @@ fn is_valid_impl_method_candidate(
             receiver_ty,
             self_ty,
             visible_from_module,
+            item_name,
         ),
         AssocItemId::ConstId(c) => {
             let db = table.db;
             check_that!(receiver_ty.is_none());
-            check_that!(name.is_none_or(|n| db.const_data(c).name.as_ref() == Some(n)));
+            check_that!(name.is_none_or(|n| n == item_name));
 
             if let Some(from_module) = visible_from_module {
                 if !db.const_visibility(c).is_visible_from(db.upcast(), from_module) {
@@ -1565,11 +1561,13 @@ fn is_valid_impl_fn_candidate(
     receiver_ty: Option<&Ty>,
     self_ty: &Ty,
     visible_from_module: Option<ModuleId>,
+    item_name: &Name,
 ) -> IsValidCandidate {
+    check_that!(name.is_none_or(|n| n == item_name));
+
     let db = table.db;
     let data = db.function_data(fn_id);
 
-    check_that!(name.is_none_or(|n| n == &data.name));
     if let Some(from_module) = visible_from_module {
         if !db.function_visibility(fn_id).is_visible_from(db.upcast(), from_module) {
             cov_mark::hit!(autoderef_candidate_not_visible);

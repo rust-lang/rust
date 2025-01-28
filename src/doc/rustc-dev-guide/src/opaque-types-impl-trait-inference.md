@@ -78,7 +78,7 @@ If that fails, we reveal the hidden type of the opaque type,
 but only to prove this specific trait bound, not in general.
 Revealing is done by invoking the `type_of` query on the `DefId` of the opaque type.
 The query will internally request the hidden types from the defining function(s)
-and return that (see [the section on `type_of`](#Within-the-type_of-query) for more details).
+and return that (see [the section on `type_of`](#within-the-type_of-query) for more details).
 
 #### Flowchart of type checking steps
 

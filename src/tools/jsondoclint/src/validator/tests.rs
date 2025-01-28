@@ -163,7 +163,7 @@ fn errors_on_missing_path() {
                     sig: FunctionSignature {
                         inputs: vec![],
                         output: Some(Type::ResolvedPath(Path {
-                            name: "Bar".to_owned(),
+                            path: "Bar".to_owned(),
                             id: Id(1),
                             args: None,
                         })),
@@ -191,7 +191,7 @@ fn errors_on_missing_path() {
 
     check(&krate, &[Error {
         kind: ErrorKind::Custom(
-            r#"No entry in '$.paths' for Path { name: "Bar", id: Id(1), args: None }"#.to_owned(),
+            r#"No entry in '$.paths' for Path { path: "Bar", id: Id(1), args: None }"#.to_owned(),
         ),
         id: Id(1),
     }]);

@@ -162,6 +162,20 @@ impl ItemScope {
             .map(move |name| (name, self.get(name)))
     }
 
+    pub fn values(&self) -> impl Iterator<Item = (&Name, Item<ModuleDefId, ImportId>)> + '_ {
+        self.values.iter().map(|(n, &i)| (n, i))
+    }
+
+    pub fn types(
+        &self,
+    ) -> impl Iterator<Item = (&Name, Item<ModuleDefId, ImportOrExternCrate>)> + '_ {
+        self.types.iter().map(|(n, &i)| (n, i))
+    }
+
+    pub fn macros(&self) -> impl Iterator<Item = (&Name, Item<MacroId, ImportId>)> + '_ {
+        self.macros.iter().map(|(n, &i)| (n, i))
+    }
+
     pub fn imports(&self) -> impl Iterator<Item = ImportId> + '_ {
         self.use_imports_types
             .keys()
@@ -261,11 +275,6 @@ impl ItemScope {
 
     pub fn unnamed_consts(&self) -> impl Iterator<Item = ConstId> + '_ {
         self.unnamed_consts.iter().copied()
-    }
-
-    /// Iterate over all module scoped macros
-    pub(crate) fn macros(&self) -> impl Iterator<Item = (&Name, MacroId)> + '_ {
-        self.entries().filter_map(|(name, def)| def.take_macros().map(|macro_| (name, macro_)))
     }
 
     /// Iterate over all legacy textual scoped macros visible at the end of the module

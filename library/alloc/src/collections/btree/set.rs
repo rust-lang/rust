@@ -1442,20 +1442,20 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     ///
     /// let mut set = BTreeSet::from([1, 2, 3, 4]);
     ///
-    /// let mut cursor = unsafe { set.upper_bound_mut(Bound::Included(&3)) };
+    /// let mut cursor = set.upper_bound_mut(Bound::Included(&3));
     /// assert_eq!(cursor.peek_prev(), Some(&3));
     /// assert_eq!(cursor.peek_next(), Some(&4));
     ///
-    /// let mut cursor = unsafe { set.upper_bound_mut(Bound::Excluded(&3)) };
+    /// let mut cursor = set.upper_bound_mut(Bound::Excluded(&3));
     /// assert_eq!(cursor.peek_prev(), Some(&2));
     /// assert_eq!(cursor.peek_next(), Some(&3));
     ///
-    /// let mut cursor = unsafe { set.upper_bound_mut(Bound::Unbounded) };
+    /// let mut cursor = set.upper_bound_mut(Bound::Unbounded);
     /// assert_eq!(cursor.peek_prev(), Some(&4));
     /// assert_eq!(cursor.peek_next(), None);
     /// ```
     #[unstable(feature = "btree_cursors", issue = "107540")]
-    pub unsafe fn upper_bound_mut<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, T, A>
+    pub fn upper_bound_mut<Q: ?Sized>(&mut self, bound: Bound<&Q>) -> CursorMut<'_, T, A>
     where
         T: Borrow<Q> + Ord,
         Q: Ord,
