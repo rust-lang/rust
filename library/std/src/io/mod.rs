@@ -2250,24 +2250,18 @@ fn skip_until<R: BufRead + ?Sized>(r: &mut R, delim: u8) -> Result<usize> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait BufRead: Read {
-    /// Returns the contents of the internal buffer, filling it with more data
-    /// from the inner reader if it is empty.
+    /// Returns the contents of the internal buffer, filling it with more data, via Read methods, if empty.
     ///
-    /// This function is a lower-level call. It needs to be paired with the
-    /// [`consume`] method to function properly. When calling this
-    /// method, none of the contents will be "read" in the sense that later
-    /// calling `read` may return the same contents. As such, [`consume`] must
-    /// be called with the number of bytes that are consumed from this buffer to
-    /// ensure that the bytes are never returned twice.
+    /// This is a lower-level method and is meant to be used together with [`consume`],
+    /// which can be used to mark bytes that should not be returned by subsequent calls to `read`.
     ///
     /// [`consume`]: BufRead::consume
     ///
-    /// An empty buffer returned indicates that the stream has reached EOF.
+    /// Returns an empty buffer to indicate that the stream has reached EOF.
     ///
     /// # Errors
     ///
-    /// This function will return an I/O error if the underlying reader was
-    /// read, but returned an error.
+    /// Passes on I/O errors from Read.
     ///
     /// # Examples
     ///
@@ -2285,7 +2279,7 @@ pub trait BufRead: Read {
     /// // work with buffer
     /// println!("{buffer:?}");
     ///
-    /// // ensure the bytes we worked with aren't returned again later
+    /// // mark the bytes we worked with as read
     /// let length = buffer.len();
     /// stdin.consume(length);
     /// # std::io::Result::Ok(())
@@ -2293,18 +2287,13 @@ pub trait BufRead: Read {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fill_buf(&mut self) -> Result<&[u8]>;
 
-    /// Tells this buffer that `amt` bytes have been consumed from the buffer,
-    /// so they should no longer be returned in calls to `read`.
+    /// Marks the given `amount` of additional bytes from the internal buffer as having been read.
+    /// Subsequent calls to `read` return bytes that have not yet been so marked.
     ///
-    /// This function is a lower-level call. It needs to be paired with the
-    /// [`fill_buf`] method to function properly. This function does
-    /// not perform any I/O, it simply informs this object that some amount of
-    /// its buffer, returned from [`fill_buf`], has been consumed and should
-    /// no longer be returned. As such, this function may do odd things if
-    /// [`fill_buf`] isn't called before calling it.
+    /// This is a lower-level method and is meant to be used together with [`fill_buf`],
+    /// which can be used to fill the internal buffer via Read methods.
     ///
-    /// The `amt` must be `<=` the number of bytes in the buffer returned by
-    /// [`fill_buf`].
+    /// It is a logic error if `amount` exceeds the number of unread bytes in the internal buffer.
     ///
     /// # Examples
     ///
@@ -2313,9 +2302,9 @@ pub trait BufRead: Read {
     ///
     /// [`fill_buf`]: BufRead::fill_buf
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn consume(&mut self, amt: usize);
+    fn consume(&mut self, amount: usize);
 
-    /// Checks if the underlying `Read` has any data left to be read.
+    /// Checks if there is any data left to be `read`.
     ///
     /// This function may fill the buffer to check for data,
     /// so this functions returns `Result<bool>`, not `bool`.
@@ -2323,6 +2312,10 @@ pub trait BufRead: Read {
     /// Default implementation calls `fill_buf` and checks that
     /// returned slice is empty (which means that there is no data left,
     /// since EOF is reached).
+    ///
+    /// # Errors
+    ///
+    /// Passes on I/O errors from Read.
     ///
     /// Examples
     ///
