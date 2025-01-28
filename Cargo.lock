@@ -1859,7 +1859,6 @@ checksum = "62f822373a4fe84d4bb149bf54e584a7f4abec90e072ed49cda0edea5b95471f"
 dependencies = [
  "equivalent",
  "hashbrown 0.15.2",
- "rustc-rayon",
  "serde",
 ]
 
@@ -3240,11 +3239,12 @@ dependencies = [
 
 [[package]]
 name = "rustc-rayon"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb81aadc8837ca6ecebe0fe1353f15df83b3b3cc2cf7a8afd571bc22aa121710"
+checksum = "2cd9fb077db982d7ceb42a90471e5a69a990b58f71e06f0d8340bb2cf35eb751"
 dependencies = [
  "either",
+ "indexmap",
  "rustc-rayon-core",
 ]
 
