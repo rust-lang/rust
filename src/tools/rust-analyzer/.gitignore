@@ -6,10 +6,11 @@ target/
 *.log
 *.iml
 .vscode/settings.json
-generated_assists.adoc
-generated_features.adoc
-generated_diagnostic.adoc
 .DS_Store
 /out/
 /dump.lsif
 .envrc
+docs/book/book
+docs/book/src/assists_generated.md
+docs/book/src/diagnostics_generated.md
+docs/book/src/features_generated.md

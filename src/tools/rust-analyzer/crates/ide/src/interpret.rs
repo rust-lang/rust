@@ -7,11 +7,9 @@ use syntax::{algo::ancestors_at_offset, ast, AstNode, TextRange};
 
 // Feature: Interpret A Function, Static Or Const.
 //
-// |===
-// | Editor  | Action Name
-//
-// | VS Code | **rust-analyzer: Interpret**
-// |===
+// | Editor  | Action Name |
+// |---------|-------------|
+// | VS Code | **rust-analyzer: Interpret** |
 pub(crate) fn interpret(db: &RootDatabase, position: FilePosition) -> String {
     match find_and_interpret(db, position) {
         Some((duration, mut result)) => {

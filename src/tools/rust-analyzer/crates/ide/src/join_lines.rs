@@ -21,17 +21,13 @@ pub struct JoinLinesConfig {
 //
 // Join selected lines into one, smartly fixing up whitespace, trailing commas, and braces.
 //
-// See
-// https://user-images.githubusercontent.com/1711539/124515923-4504e800-dde9-11eb-8d58-d97945a1a785.gif[this gif]
-// for the cases handled specially by joined lines.
+// See [this gif](https://user-images.githubusercontent.com/1711539/124515923-4504e800-dde9-11eb-8d58-d97945a1a785.gif) for the cases handled specially by joined lines.
 //
-// |===
-// | Editor  | Action Name
+// | Editor  | Action Name |
+// |---------|-------------|
+// | VS Code | **rust-analyzer: Join lines** |
 //
-// | VS Code | **rust-analyzer: Join lines**
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113020661-b6922200-917a-11eb-87c4-b75acc028f11.gif[]
+// ![Join Lines](https://user-images.githubusercontent.com/48062697/113020661-b6922200-917a-11eb-87c4-b75acc028f11.gif)
 pub(crate) fn join_lines(
     config: &JoinLinesConfig,
     file: &SourceFile,
