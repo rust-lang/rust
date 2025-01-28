@@ -6,13 +6,11 @@ use std::pat::pattern_type;
 // ok
 fn create<const S: u32, const E: u32>(x: u32) -> pattern_type!(u32 is S..=E) {
     unsafe { std::mem::transmute(x) }
-    //~^ ERROR types of different sizes
 }
 
 // ok
 fn unwrap<const S: u32, const E: u32>(x: pattern_type!(u32 is S..=E)) -> u32 {
     unsafe { std::mem::transmute(x) }
-    //~^ ERROR types of different sizes
 }
 
 // bad, only when S != u32::MIN or E != u32::MAX will this ok
