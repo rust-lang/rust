@@ -377,11 +377,11 @@ fn build_error_for_const_call<'tcx>(
     err
 }
 
-/// A call to an `#[unstable]` const fn or `#[rustc_const_unstable]` function.
+/// A call to an `#[unstable]` const fn, `#[rustc_const_unstable]` function or trait.
 ///
-/// Contains the name of the feature that would allow the use of this function.
+/// Contains the name of the feature that would allow the use of this function/trait.
 #[derive(Debug)]
-pub(crate) struct FnCallUnstable {
+pub(crate) struct CallUnstable {
     pub def_id: DefId,
     pub feature: Symbol,
     /// If this is true, then the feature is enabled, but we need to still check if it is safe to
@@ -389,24 +389,33 @@ pub(crate) struct FnCallUnstable {
     pub feature_enabled: bool,
     pub safe_to_expose_on_stable: bool,
     pub suggestion_span: Option<Span>,
+    /// true if `def_id` is the function we are calling, false if `def_id` is an unstable trait.
+    pub is_function_call: bool,
 }
 
-impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
+impl<'tcx> NonConstOp<'tcx> for CallUnstable {
     fn status_in_item(&self, _ccx: &ConstCx<'_, 'tcx>) -> Status {
         Status::Unstable {
             gate: self.feature,
             gate_already_checked: self.feature_enabled,
             safe_to_expose_on_stable: self.safe_to_expose_on_stable,
-            is_function_call: true,
+            is_function_call: self.is_function_call,
         }
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         assert!(!self.feature_enabled);
-        let mut err = ccx.dcx().create_err(errors::UnstableConstFn {
-            span,
-            def_path: ccx.tcx.def_path_str(self.def_id),
-        });
+        let mut err = if self.is_function_call {
+            ccx.dcx().create_err(errors::UnstableConstFn {
+                span,
+                def_path: ccx.tcx.def_path_str(self.def_id),
+            })
+        } else {
+            ccx.dcx().create_err(errors::UnstableConstTrait {
+                span,
+                def_path: ccx.tcx.def_path_str(self.def_id),
+            })
+        };
         // FIXME: make this translatable
         let msg = format!("add `#![feature({})]` to the crate attributes to enable", self.feature);
         #[allow(rustc::untranslatable_diagnostic)]
