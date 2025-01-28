@@ -117,11 +117,8 @@ LL | struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
 error[E0802]: `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout
   --> $DIR/deriving-coerce-pointee-neg.rs:140:1
    |
-LL | / struct TryToWipeRepr<'a, #[pointee] T: ?Sized> {
-LL | |
-LL | |     ptr: &'a T,
-LL | | }
-   | |_^
+LL | struct TryToWipeRepr<'a, #[pointee] T: ?Sized> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 17 previous errors
 
