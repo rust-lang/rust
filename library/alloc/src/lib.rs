@@ -88,6 +88,7 @@
 #![allow(rustdoc::redundant_explicit_links)]
 #![warn(rustdoc::unescaped_backticks)]
 #![deny(ffi_unwind_calls)]
+#![warn(unreachable_pub)]
 //
 // Library features:
 // tidy-alphabetical-start
@@ -227,7 +228,7 @@ pub mod alloc;
 pub mod boxed;
 #[cfg(test)]
 mod boxed {
-    pub use std::boxed::Box;
+    pub(crate) use std::boxed::Box;
 }
 pub mod borrow;
 #[unstable(feature = "bstr", issue = "134915")]
