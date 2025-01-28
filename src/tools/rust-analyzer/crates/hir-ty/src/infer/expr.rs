@@ -334,7 +334,11 @@ impl InferenceContext<'_> {
                     ExprIsRead::No
                 };
                 let input_ty = self.infer_expr(expr, &Expectation::none(), child_is_read);
-                self.infer_top_pat(pat, &input_ty, None);
+                self.infer_top_pat(
+                    pat,
+                    &input_ty,
+                    Some(DeclContext { origin: DeclOrigin::LetExpr }),
+                );
                 self.result.standard_types.bool_.clone()
             }
             Expr::Block { statements, tail, label, id } => {
@@ -1633,8 +1637,7 @@ impl InferenceContext<'_> {
                             };
 
                             let decl = DeclContext {
-                                has_else: else_branch.is_some(),
-                                origin: DeclOrigin::LocalDecl,
+                                origin: DeclOrigin::LocalDecl { has_else: else_branch.is_some() },
                             };
 
                             this.infer_top_pat(*pat, &ty, Some(decl));

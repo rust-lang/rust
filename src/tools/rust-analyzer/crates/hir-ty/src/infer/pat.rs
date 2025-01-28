@@ -498,7 +498,7 @@ impl InferenceContext<'_> {
 
         // If `expected` is an infer ty, we try to equate it to an array if the given pattern
         // allows it. See issue #16609
-        if self.decl_allows_array_type_infer(decl) && expected.is_ty_var() {
+        if self.pat_is_irrefutable(decl) && expected.is_ty_var() {
             if let Some(resolved_array_ty) =
                 self.try_resolve_slice_ty_to_array_ty(prefix, suffix, slice)
             {
@@ -601,42 +601,38 @@ impl InferenceContext<'_> {
         Some(array_ty)
     }
 
-    /// Determines whether we can infer the expected type in the slice pattern to be of type array.
+    /// Used to determine whether we can infer the expected type in the slice pattern to be of type array.
     /// This is only possible if we're in an irrefutable pattern. If we were to allow this in refutable
     /// patterns we wouldn't e.g. report ambiguity in the following situation:
     ///
     /// ```ignore(rust)
-    /// struct Zeroes;
-    /// const ARR: [usize; 2] = [0; 2];
-    /// const ARR2: [usize; 2] = [2; 2];
+    ///    struct Zeroes;
+    ///    const ARR: [usize; 2] = [0; 2];
+    ///    const ARR2: [usize; 2] = [2; 2];
     ///
-    /// impl Into<&'static [usize; 2]> for Zeroes {
-    ///     fn into(self) -> &'static [usize; 2] {
+    ///    impl Into<&'static [usize; 2]> for Zeroes {
+    ///        fn into(self) -> &'static [usize; 2] {
     ///            &ARR
-    ///     }
-    /// }
+    ///        }
+    ///    }
     ///
-    /// impl Into<&'static [usize]> for Zeroes {
-    ///     fn into(self) -> &'static [usize] {
-    ///        &ARR2
-    ///     }
-    /// }
+    ///    impl Into<&'static [usize]> for Zeroes {
+    ///        fn into(self) -> &'static [usize] {
+    ///            &ARR2
+    ///        }
+    ///    }
     ///
-    /// fn main() {
-    ///     let &[a, b]: &[usize] = Zeroes.into() else {
-    ///       ..
-    ///     };
-    /// }
+    ///    fn main() {
+    ///        let &[a, b]: &[usize] = Zeroes.into() else {
+    ///           ..
+    ///        };
+    ///    }
     /// ```
     ///
     /// If we're in an irrefutable pattern we prefer the array impl candidate given that
-    /// the slice impl candidate would be be rejected anyway (if no ambiguity existed).
-    fn decl_allows_array_type_infer(&self, decl_ctxt: Option<DeclContext>) -> bool {
-        if let Some(decl_ctxt) = decl_ctxt {
-            !decl_ctxt.has_else && matches!(decl_ctxt.origin, DeclOrigin::LocalDecl)
-        } else {
-            false
-        }
+    /// the slice impl candidate would be rejected anyway (if no ambiguity existed).
+    fn pat_is_irrefutable(&self, decl_ctxt: Option<DeclContext>) -> bool {
+        matches!(decl_ctxt, Some(DeclContext { origin: DeclOrigin::LocalDecl { has_else: false } }))
     }
 }
 

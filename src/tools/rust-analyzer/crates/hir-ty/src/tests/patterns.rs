@@ -67,9 +67,9 @@ fn infer_pattern() {
             143..144 'e': {unknown}
             157..204 'if let...     }': ()
             160..175 'let [val] = opt': bool
-            164..169 '[val]': [{unknown}; 1]
+            164..169 '[val]': [{unknown}]
             165..168 'val': {unknown}
-            172..175 'opt': [{unknown}; 1]
+            172..175 'opt': [{unknown}]
             176..204 '{     ...     }': ()
             190..191 'h': {unknown}
             194..197 'val': {unknown}
