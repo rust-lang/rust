@@ -9,8 +9,8 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{
     AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, ImplItem, ImplItemKind,
-    ImplicitSelfKind, Item, ItemKind, Mutability, Node, OpaqueTyOrigin, PatKind, PathSegment, PrimTy, QPath,
-    TraitItemRef, TyKind,
+    ImplicitSelfKind, Item, ItemKind, Mutability, Node, OpaqueTyOrigin, PatExprKind, PatKind, PathSegment, PrimTy,
+    QPath, TraitItemRef, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, AssocKind, FnSig, Ty};
@@ -18,6 +18,7 @@ use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
+use rustc_trait_selection::traits::supertrait_def_ids;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -164,7 +165,13 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
         if let ExprKind::Let(lt) = expr.kind
             && match lt.pat.kind {
                 PatKind::Slice([], None, []) => true,
-                PatKind::Lit(lit) if is_empty_string(lit) => true,
+                PatKind::Expr(lit) => match lit.kind {
+                    PatExprKind::Lit { lit, .. } => match lit.node {
+                        LitKind::Str(lit, _) => lit.as_str().is_empty(),
+                        _ => false,
+                    },
+                    _ => false,
+                },
                 _ => false,
             }
             && !expr.span.from_expansion()
@@ -264,7 +271,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
     // fill the set with current and super traits
     fn fill_trait_set(traitt: DefId, set: &mut DefIdSet, cx: &LateContext<'_>) {
         if set.insert(traitt) {
-            for supertrait in cx.tcx.supertrait_def_ids(traitt) {
+            for supertrait in supertrait_def_ids(cx.tcx, traitt) {
                 fill_trait_set(supertrait, set, cx);
             }
         }

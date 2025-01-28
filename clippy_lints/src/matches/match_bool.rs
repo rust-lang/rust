@@ -4,7 +4,7 @@ use clippy_utils::source::expr_block;
 use clippy_utils::sugg::Sugg;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, Expr, ExprKind, PatKind};
+use rustc_hir::{Arm, Expr, PatExprKind, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 
@@ -17,13 +17,13 @@ pub(crate) fn check(cx: &LateContext<'_>, scrutinee: &Expr<'_>, arms: &[Arm<'_>]
             cx,
             MATCH_BOOL,
             expr.span,
-            "you seem to be trying to match on a boolean expression",
+            "`match` on a boolean expression",
             move |diag| {
                 if arms.len() == 2 {
                     let mut app = Applicability::MachineApplicable;
-                    let test_sugg = if let PatKind::Lit(arm_bool) = arms[0].pat.kind {
+                    let test_sugg = if let PatKind::Expr(arm_bool) = arms[0].pat.kind {
                         let test = Sugg::hir_with_applicability(cx, scrutinee, "_", &mut app);
-                        if let ExprKind::Lit(lit) = arm_bool.kind {
+                        if let PatExprKind::Lit { lit, .. } = arm_bool.kind {
                             match &lit.node {
                                 LitKind::Bool(true) => Some(test),
                                 LitKind::Bool(false) => Some(!test),

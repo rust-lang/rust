@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
                 Node::Param(..) => (),
                 Node::LetStmt(local) => {
                     let Some(ty) = local.ty else { return };
-                    if matches!(ty.kind, TyKind::Infer) {
+                    if matches!(ty.kind, TyKind::Infer(())) {
                         return;
                     }
                 },

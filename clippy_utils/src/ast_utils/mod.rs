@@ -36,7 +36,7 @@ pub fn eq_pat(l: &Pat, r: &Pat) -> bool {
         (Paren(l), _) => eq_pat(l, r),
         (_, Paren(r)) => eq_pat(l, r),
         (Wild, Wild) | (Rest, Rest) => true,
-        (Lit(l), Lit(r)) => eq_expr(l, r),
+        (Expr(l), Expr(r)) => eq_expr(l, r),
         (Ident(b1, i1, s1), Ident(b2, i2, s2)) => {
             b1 == b2 && eq_id(*i1, *i2) && both(s1.as_deref(), s2.as_deref(), eq_pat)
         },

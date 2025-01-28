@@ -93,7 +93,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
 #[allow(clippy::too_many_lines)]
 fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx>>, expr: &Expr<'tcx>) {
     let body = if let ExprKind::Closure(c) = expr.kind
-        && c.fn_decl.inputs.iter().all(|ty| matches!(ty.kind, TyKind::Infer))
+        && c.fn_decl.inputs.iter().all(|ty| matches!(ty.kind, TyKind::Infer(())))
         && matches!(c.fn_decl.output, FnRetTy::DefaultReturn(_))
         && !expr.span.from_expansion()
     {

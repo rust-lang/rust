@@ -75,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                     if let hir::ImplItemKind::Fn(ref sig, _) = impl_item.kind {
                         let name = impl_item.ident.name;
                         let id = impl_item.owner_id;
-                        if sig.header.safety.is_unsafe() {
+                        if sig.header.is_unsafe() {
                             // can't be implemented for unsafe new
                             return;
                         }

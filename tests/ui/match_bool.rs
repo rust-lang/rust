@@ -5,20 +5,20 @@ fn match_bool() {
     let test: bool = true;
 
     match test {
-        //~^ ERROR: you seem to be trying to match on a boolean expression
+        //~^ ERROR: `match` on a boolean expression
         true => 0,
         false => 42,
     };
 
     let option = 1;
     match option == 1 {
-        //~^ ERROR: you seem to be trying to match on a boolean expression
+        //~^ ERROR: `match` on a boolean expression
         true => 1,
         false => 0,
     };
 
     match test {
-        //~^ ERROR: you seem to be trying to match on a boolean expression
+        //~^ ERROR: `match` on a boolean expression
         true => (),
         false => {
             println!("Noooo!");
@@ -26,7 +26,7 @@ fn match_bool() {
     };
 
     match test {
-        //~^ ERROR: you seem to be trying to match on a boolean expression
+        //~^ ERROR: `match` on a boolean expression
         false => {
             println!("Noooo!");
         },
@@ -34,7 +34,7 @@ fn match_bool() {
     };
 
     match test && test {
-        //~^ ERROR: you seem to be trying to match on a boolean expression
+        //~^ ERROR: `match` on a boolean expression
         false => {
             println!("Noooo!");
         },
@@ -42,7 +42,7 @@ fn match_bool() {
     };
 
     match test {
-        //~^ ERROR: you seem to be trying to match on a boolean expression
+        //~^ ERROR: `match` on a boolean expression
         false => {
             println!("Noooo!");
         },
@@ -67,37 +67,37 @@ fn match_bool() {
     };
 
     let _ = match test {
-        //~^ ERROR: you seem to be trying to match on a boolean expression
+        //~^ ERROR: `match` on a boolean expression
         true if option == 5 => 10,
         _ => 1,
     };
 
     let _ = match test {
-        //~^ ERROR: you seem to be trying to match on a boolean expression
+        //~^ ERROR: `match` on a boolean expression
         false if option == 5 => 10,
         _ => 1,
     };
 
     match test {
-        //~^ ERROR: you seem to be trying to match on a boolean expression
+        //~^ ERROR: `match` on a boolean expression
         true if option == 5 => println!("Hello"),
         _ => (),
     };
 
     match test {
-        //~^ ERROR: you seem to be trying to match on a boolean expression
+        //~^ ERROR: `match` on a boolean expression
         true if option == 5 => (),
         _ => println!("Hello"),
     };
 
     match test {
-        //~^ ERROR: you seem to be trying to match on a boolean expression
+        //~^ ERROR: `match` on a boolean expression
         false if option == 5 => println!("Hello"),
         _ => (),
     };
 
     match test {
-        //~^ ERROR: you seem to be trying to match on a boolean expression
+        //~^ ERROR: `match` on a boolean expression
         false if option == 5 => (),
         _ => println!("Hello"),
     };

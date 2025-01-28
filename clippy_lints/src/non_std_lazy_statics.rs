@@ -163,7 +163,7 @@ impl<'hir> LateLintPass<'hir> for NonStdLazyStatic {
         }
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'hir>, ty: &'hir rustc_hir::Ty<'hir>) {
+    fn check_ty(&mut self, cx: &LateContext<'hir>, ty: &'hir rustc_hir::Ty<'hir, rustc_hir::AmbigArg>) {
         ensure_prerequisite!(self.msrv, cx);
 
         // Record if types from `once_cell` besides `sync::Lazy` are used.

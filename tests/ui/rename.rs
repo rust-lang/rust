@@ -39,6 +39,7 @@
 #![allow(invalid_reference_casting)]
 #![allow(suspicious_double_ref_op)]
 #![allow(invalid_nan_comparisons)]
+#![allow(double_negations)]
 #![allow(drop_bounds)]
 #![allow(dropping_copy_types)]
 #![allow(dropping_references)]
@@ -103,6 +104,7 @@
 #![warn(clippy::cast_ref_to_mut)] //~ ERROR: lint `clippy::cast_ref_to_mut`
 #![warn(clippy::clone_double_ref)] //~ ERROR: lint `clippy::clone_double_ref`
 #![warn(clippy::cmp_nan)] //~ ERROR: lint `clippy::cmp_nan`
+#![warn(clippy::double_neg)] //~ ERROR: lint `clippy::double_neg`
 #![warn(clippy::drop_bounds)] //~ ERROR: lint `clippy::drop_bounds`
 #![warn(clippy::drop_copy)] //~ ERROR: lint `clippy::drop_copy`
 #![warn(clippy::drop_ref)] //~ ERROR: lint `clippy::drop_ref`

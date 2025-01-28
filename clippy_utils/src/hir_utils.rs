@@ -9,8 +9,8 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
     AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr, ExprField,
     ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime, LifetimeName,
-    Pat, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, StructTailExpr, TraitBoundModifiers, Ty,
-    TyKind,
+    Pat, PatExpr, PatExprKind, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, StructTailExpr,
+    TraitBoundModifiers, Ty, TyKind,
 };
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::LateContext;
@@ -459,9 +459,9 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     fn eq_generic_arg(&mut self, left: &GenericArg<'_>, right: &GenericArg<'_>) -> bool {
         match (left, right) {
-            (GenericArg::Const(l), GenericArg::Const(r)) => self.eq_const_arg(l, r),
+            (GenericArg::Const(l), GenericArg::Const(r)) => self.eq_const_arg(l.as_unambig_ct(), r.as_unambig_ct()),
             (GenericArg::Lifetime(l_lt), GenericArg::Lifetime(r_lt)) => Self::eq_lifetime(l_lt, r_lt),
-            (GenericArg::Type(l_ty), GenericArg::Type(r_ty)) => self.eq_ty(l_ty, r_ty),
+            (GenericArg::Type(l_ty), GenericArg::Type(r_ty)) => self.eq_ty(l_ty.as_unambig_ty(), r_ty.as_unambig_ty()),
             (GenericArg::Infer(l_inf), GenericArg::Infer(r_inf)) => self.eq_ty(&l_inf.to_ty(), &r_inf.to_ty()),
             _ => false,
         }
@@ -489,6 +489,24 @@ impl HirEqInterExpr<'_, '_, '_> {
         li.name == ri.name && self.eq_pat(lp, rp)
     }
 
+    fn eq_pat_expr(&mut self, left: &PatExpr<'_>, right: &PatExpr<'_>) -> bool {
+        match (&left.kind, &right.kind) {
+            (
+                &PatExprKind::Lit {
+                    lit: left,
+                    negated: left_neg,
+                },
+                &PatExprKind::Lit {
+                    lit: right,
+                    negated: right_neg,
+                },
+            ) => left_neg == right_neg && left.node == right.node,
+            (PatExprKind::ConstBlock(left), PatExprKind::ConstBlock(right)) => self.eq_body(left.body, right.body),
+            (PatExprKind::Path(left), PatExprKind::Path(right)) => self.eq_qpath(left, right),
+            (PatExprKind::Lit { .. } | PatExprKind::ConstBlock(..) | PatExprKind::Path(..), _) => false,
+        }
+    }
+
     /// Checks whether two patterns are the same.
     fn eq_pat(&mut self, left: &Pat<'_>, right: &Pat<'_>) -> bool {
         match (&left.kind, &right.kind) {
@@ -507,11 +525,11 @@ impl HirEqInterExpr<'_, '_, '_> {
                 eq
             },
             (PatKind::Path(l), PatKind::Path(r)) => self.eq_qpath(l, r),
-            (&PatKind::Lit(l), &PatKind::Lit(r)) => self.eq_expr(l, r),
+            (&PatKind::Expr(l), &PatKind::Expr(r)) => self.eq_pat_expr(l, r),
             (&PatKind::Tuple(l, ls), &PatKind::Tuple(r, rs)) => ls == rs && over(l, r, |l, r| self.eq_pat(l, r)),
             (&PatKind::Range(ref ls, ref le, li), &PatKind::Range(ref rs, ref re, ri)) => {
-                both(ls.as_ref(), rs.as_ref(), |a, b| self.eq_expr(a, b))
-                    && both(le.as_ref(), re.as_ref(), |a, b| self.eq_expr(a, b))
+                both(ls.as_ref(), rs.as_ref(), |a, b| self.eq_pat_expr(a, b))
+                    && both(le.as_ref(), re.as_ref(), |a, b| self.eq_pat_expr(a, b))
                     && (li == ri)
             },
             (&PatKind::Ref(le, ref lm), &PatKind::Ref(re, ref rm)) => lm == rm && self.eq_pat(le, re),
@@ -600,7 +618,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             },
             (TyKind::Path(l), TyKind::Path(r)) => self.eq_qpath(l, r),
             (&TyKind::Tup(l), &TyKind::Tup(r)) => over(l, r, |l, r| self.eq_ty(l, r)),
-            (&TyKind::Infer, &TyKind::Infer) => true,
+            (&TyKind::Infer(()), &TyKind::Infer(())) => true,
             _ => false,
         }
     }
@@ -1073,6 +1091,18 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         // self.maybe_typeck_results.unwrap().qpath_res(p, id).hash(&mut self.s);
     }
 
+    pub fn hash_pat_expr(&mut self, lit: &PatExpr<'_>) {
+        std::mem::discriminant(&lit.kind).hash(&mut self.s);
+        match &lit.kind {
+            PatExprKind::Lit { lit, negated } => {
+                lit.node.hash(&mut self.s);
+                negated.hash(&mut self.s);
+            },
+            PatExprKind::ConstBlock(c) => self.hash_body(c.body),
+            PatExprKind::Path(qpath) => self.hash_qpath(qpath),
+        }
+    }
+
     pub fn hash_pat(&mut self, pat: &Pat<'_>) {
         std::mem::discriminant(&pat.kind).hash(&mut self.s);
         match pat.kind {
@@ -1084,7 +1114,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
             },
             PatKind::Box(pat) | PatKind::Deref(pat) => self.hash_pat(pat),
-            PatKind::Lit(expr) => self.hash_expr(expr),
+            PatKind::Expr(expr) => self.hash_pat_expr(expr),
             PatKind::Or(pats) => {
                 for pat in pats {
                     self.hash_pat(pat);
@@ -1093,10 +1123,10 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             PatKind::Path(ref qpath) => self.hash_qpath(qpath),
             PatKind::Range(s, e, i) => {
                 if let Some(s) = s {
-                    self.hash_expr(s);
+                    self.hash_pat_expr(s);
                 }
                 if let Some(e) = e {
-                    self.hash_expr(e);
+                    self.hash_pat_expr(e);
                 }
                 std::mem::discriminant(&i).hash(&mut self.s);
             },
@@ -1251,7 +1281,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
             },
             TyKind::Path(qpath) => self.hash_qpath(qpath),
-            TyKind::TraitObject(_, lifetime, _) => {
+            TyKind::TraitObject(_, lifetime) => {
                 self.hash_lifetime(lifetime);
             },
             TyKind::Typeof(anon_const) => {
@@ -1261,7 +1291,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_ty(binder.inner_ty);
             },
             TyKind::Err(_)
-            | TyKind::Infer
+            | TyKind::Infer(())
             | TyKind::Never
             | TyKind::InferDelegation(..)
             | TyKind::OpaqueDef(_)
@@ -1288,8 +1318,8 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         for arg in arg_list {
             match *arg {
                 GenericArg::Lifetime(l) => self.hash_lifetime(l),
-                GenericArg::Type(ty) => self.hash_ty(ty),
-                GenericArg::Const(ca) => self.hash_const_arg(ca),
+                GenericArg::Type(ty) => self.hash_ty(ty.as_unambig_ty()),
+                GenericArg::Const(ca) => self.hash_const_arg(ca.as_unambig_ct()),
                 GenericArg::Infer(ref inf) => self.hash_ty(&inf.to_ty()),
             }
         }

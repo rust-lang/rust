@@ -1,14 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{MaybePath, is_res_lang_ctor, last_path_segment, path_res};
 use rustc_errors::Applicability;
-use rustc_hir as hir;
+use rustc_hir::{self as hir, AmbigArg};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 
 use super::UNNECESSARY_LITERAL_UNWRAP;
 
-fn get_ty_from_args<'a>(args: Option<&'a [hir::GenericArg<'a>]>, index: usize) -> Option<&'a hir::Ty<'a>> {
+fn get_ty_from_args<'a>(args: Option<&'a [hir::GenericArg<'a>]>, index: usize) -> Option<&'a hir::Ty<'a, AmbigArg>> {
     let args = args?;
 
     if args.len() <= index {
@@ -16,10 +16,7 @@ fn get_ty_from_args<'a>(args: Option<&'a [hir::GenericArg<'a>]>, index: usize) -
     }
 
     match args[index] {
-        hir::GenericArg::Type(ty) => match ty.kind {
-            hir::TyKind::Infer => None,
-            _ => Some(ty),
-        },
+        hir::GenericArg::Type(ty) => Some(ty),
         _ => None,
     }
 }

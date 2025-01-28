@@ -3,10 +3,10 @@ use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
 use clippy_utils::{is_from_proc_macro, trait_ref_of_method};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{Visitor, walk_impl_item, walk_item, walk_param_bound, walk_ty};
+use rustc_hir::intravisit::{Visitor, walk_impl_item, walk_item, walk_param_bound, walk_ty, walk_unambig_ty};
 use rustc_hir::{
-    BodyId, ExprKind, GenericBound, GenericParam, GenericParamKind, Generics, ImplItem, ImplItemKind, Item, ItemKind,
-    PredicateOrigin, Ty, WherePredicate, WherePredicateKind,
+    AmbigArg, BodyId, ExprKind, GenericBound, GenericParam, GenericParamKind, Generics, ImplItem, ImplItemKind, Item,
+    ItemKind, PredicateOrigin, Ty, WherePredicate, WherePredicateKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
@@ -196,7 +196,7 @@ fn bound_to_trait_def_id(bound: &GenericBound<'_>) -> Option<LocalDefId> {
 impl<'tcx> Visitor<'tcx> for TypeWalker<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn visit_ty(&mut self, t: &'tcx Ty<'tcx>) {
+    fn visit_ty(&mut self, t: &'tcx Ty<'tcx, AmbigArg>) {
         if let Some((def_id, _)) = t.peel_refs().as_generic_param() {
             self.ty_params.remove(&def_id);
         } else {
@@ -234,7 +234,7 @@ impl<'tcx> Visitor<'tcx> for TypeWalker<'_, 'tcx> {
                 // type, any params we find nested inside of it are being used as concrete types,
                 // and can therefore can be considered used. So, we're fine to walk the left-hand
                 // side of the where bound.
-                walk_ty(self, predicate.bounded_ty);
+                walk_unambig_ty(self, predicate.bounded_ty);
             }
             for bound in predicate.bounds {
                 walk_param_bound(self, bound);
