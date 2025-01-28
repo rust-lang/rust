@@ -19,8 +19,8 @@ use crate::{
     },
     lower::lower_to_chalk_mutability,
     primitive::UintTy,
-    static_lifetime, InferenceDiagnostic, Interner, Mutability, Scalar, Substitution, Ty,
-    TyBuilder, TyExt, TyKind,
+    static_lifetime, DeclContext, DeclOrigin, InferenceDiagnostic, Interner, Mutability, Scalar,
+    Substitution, Ty, TyBuilder, TyExt, TyKind,
 };
 
 impl InferenceContext<'_> {
@@ -35,6 +35,7 @@ impl InferenceContext<'_> {
         id: PatId,
         ellipsis: Option<u32>,
         subs: &[PatId],
+        decl: Option<DeclContext>,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(id.into(), path, true);
         let var_data = def.map(|it| it.variant_data(self.db.upcast()));
@@ -93,13 +94,13 @@ impl InferenceContext<'_> {
                         }
                     };
 
-                    self.infer_pat(subpat, &expected_ty, default_bm);
+                    self.infer_pat(subpat, &expected_ty, default_bm, decl);
                 }
             }
             None => {
                 let err_ty = self.err_ty();
                 for &inner in subs {
-                    self.infer_pat(inner, &err_ty, default_bm);
+                    self.infer_pat(inner, &err_ty, default_bm, decl);
                 }
             }
         }
@@ -115,6 +116,7 @@ impl InferenceContext<'_> {
         default_bm: BindingMode,
         id: PatId,
         subs: impl ExactSizeIterator<Item = (Name, PatId)>,
+        decl: Option<DeclContext>,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(id.into(), path, false);
         if let Some(variant) = def {
@@ -163,13 +165,13 @@ impl InferenceContext<'_> {
                         }
                     };
 
-                    self.infer_pat(inner, &expected_ty, default_bm);
+                    self.infer_pat(inner, &expected_ty, default_bm, decl);
                 }
             }
             None => {
                 let err_ty = self.err_ty();
                 for (_, inner) in subs {
-                    self.infer_pat(inner, &err_ty, default_bm);
+                    self.infer_pat(inner, &err_ty, default_bm, decl);
                 }
             }
         }
@@ -186,6 +188,7 @@ impl InferenceContext<'_> {
         default_bm: BindingMode,
         ellipsis: Option<u32>,
         subs: &[PatId],
+        decl: Option<DeclContext>,
     ) -> Ty {
         let expected = self.resolve_ty_shallow(expected);
         let expectations = match expected.as_tuple() {
@@ -210,12 +213,12 @@ impl InferenceContext<'_> {
 
         // Process pre
         for (ty, pat) in inner_tys.iter_mut().zip(pre) {
-            *ty = self.infer_pat(*pat, ty, default_bm);
+            *ty = self.infer_pat(*pat, ty, default_bm, decl);
         }
 
         // Process post
         for (ty, pat) in inner_tys.iter_mut().skip(pre.len() + n_uncovered_patterns).zip(post) {
-            *ty = self.infer_pat(*pat, ty, default_bm);
+            *ty = self.infer_pat(*pat, ty, default_bm, decl);
         }
 
         TyKind::Tuple(inner_tys.len(), Substitution::from_iter(Interner, inner_tys))
@@ -224,11 +227,17 @@ impl InferenceContext<'_> {
 
     /// The resolver needs to be updated to the surrounding expression when inside assignment
     /// (because there, `Pat::Path` can refer to a variable).
-    pub(super) fn infer_top_pat(&mut self, pat: PatId, expected: &Ty) {
-        self.infer_pat(pat, expected, BindingMode::default());
+    pub(super) fn infer_top_pat(&mut self, pat: PatId, expected: &Ty, decl: Option<DeclContext>) {
+        self.infer_pat(pat, expected, BindingMode::default(), decl);
     }
 
-    fn infer_pat(&mut self, pat: PatId, expected: &Ty, mut default_bm: BindingMode) -> Ty {
+    fn infer_pat(
+        &mut self,
+        pat: PatId,
+        expected: &Ty,
+        mut default_bm: BindingMode,
+        decl: Option<DeclContext>,
+    ) -> Ty {
         let mut expected = self.resolve_ty_shallow(expected);
 
         if matches!(&self.body[pat], Pat::Ref { .. }) || self.inside_assignment {
@@ -262,11 +271,11 @@ impl InferenceContext<'_> {
 
         let ty = match &self.body[pat] {
             Pat::Tuple { args, ellipsis } => {
-                self.infer_tuple_pat_like(&expected, default_bm, *ellipsis, args)
+                self.infer_tuple_pat_like(&expected, default_bm, *ellipsis, args, decl)
             }
             Pat::Or(pats) => {
                 for pat in pats.iter() {
-                    self.infer_pat(*pat, &expected, default_bm);
+                    self.infer_pat(*pat, &expected, default_bm, decl);
                 }
                 expected.clone()
             }
@@ -275,6 +284,7 @@ impl InferenceContext<'_> {
                 lower_to_chalk_mutability(mutability),
                 &expected,
                 default_bm,
+                decl,
             ),
             Pat::TupleStruct { path: p, args: subpats, ellipsis } => self
                 .infer_tuple_struct_pat_like(
@@ -284,10 +294,11 @@ impl InferenceContext<'_> {
                     pat,
                     *ellipsis,
                     subpats,
+                    decl,
                 ),
             Pat::Record { path: p, args: fields, ellipsis: _ } => {
                 let subs = fields.iter().map(|f| (f.name.clone(), f.pat));
-                self.infer_record_pat_like(p.as_deref(), &expected, default_bm, pat, subs)
+                self.infer_record_pat_like(p.as_deref(), &expected, default_bm, pat, subs, decl)
             }
             Pat::Path(path) => {
                 let ty = self.infer_path(path, pat.into()).unwrap_or_else(|| self.err_ty());
@@ -320,10 +331,10 @@ impl InferenceContext<'_> {
                 }
             }
             Pat::Bind { id, subpat } => {
-                return self.infer_bind_pat(pat, *id, default_bm, *subpat, &expected);
+                return self.infer_bind_pat(pat, *id, default_bm, *subpat, &expected, decl);
             }
             Pat::Slice { prefix, slice, suffix } => {
-                self.infer_slice_pat(&expected, prefix, slice, suffix, default_bm)
+                self.infer_slice_pat(&expected, prefix, slice, suffix, default_bm, decl)
             }
             Pat::Wild => expected.clone(),
             Pat::Range { .. } => {
@@ -346,7 +357,7 @@ impl InferenceContext<'_> {
                         _ => (self.result.standard_types.unknown.clone(), None),
                     };
 
-                    let inner_ty = self.infer_pat(*inner, &inner_ty, default_bm);
+                    let inner_ty = self.infer_pat(*inner, &inner_ty, default_bm, decl);
                     let mut b = TyBuilder::adt(self.db, box_adt).push(inner_ty);
 
                     if let Some(alloc_ty) = alloc_ty {
@@ -421,6 +432,7 @@ impl InferenceContext<'_> {
         mutability: Mutability,
         expected: &Ty,
         default_bm: BindingMode,
+        decl: Option<DeclContext>,
     ) -> Ty {
         let (expectation_type, expectation_lt) = match expected.as_reference() {
             Some((inner_ty, lifetime, _exp_mut)) => (inner_ty.clone(), lifetime.clone()),
@@ -434,7 +446,7 @@ impl InferenceContext<'_> {
                 (inner_ty, inner_lt)
             }
         };
-        let subty = self.infer_pat(inner_pat, &expectation_type, default_bm);
+        let subty = self.infer_pat(inner_pat, &expectation_type, default_bm, decl);
         TyKind::Ref(mutability, expectation_lt, subty).intern(Interner)
     }
 
@@ -445,6 +457,7 @@ impl InferenceContext<'_> {
         default_bm: BindingMode,
         subpat: Option<PatId>,
         expected: &Ty,
+        decl: Option<DeclContext>,
     ) -> Ty {
         let Binding { mode, .. } = self.body.bindings[binding];
         let mode = if mode == BindingAnnotation::Unannotated {
@@ -455,7 +468,7 @@ impl InferenceContext<'_> {
         self.result.binding_modes.insert(pat, mode);
 
         let inner_ty = match subpat {
-            Some(subpat) => self.infer_pat(subpat, expected, default_bm),
+            Some(subpat) => self.infer_pat(subpat, expected, default_bm, decl),
             None => expected.clone(),
         };
         let inner_ty = self.insert_type_vars_shallow(inner_ty);
@@ -479,12 +492,13 @@ impl InferenceContext<'_> {
         slice: &Option<PatId>,
         suffix: &[PatId],
         default_bm: BindingMode,
+        decl: Option<DeclContext>,
     ) -> Ty {
         let expected = self.resolve_ty_shallow(expected);
 
         // If `expected` is an infer ty, we try to equate it to an array if the given pattern
         // allows it. See issue #16609
-        if expected.is_ty_var() {
+        if self.decl_allows_array_type_infer(decl) && expected.is_ty_var() {
             if let Some(resolved_array_ty) =
                 self.try_resolve_slice_ty_to_array_ty(prefix, suffix, slice)
             {
@@ -499,7 +513,7 @@ impl InferenceContext<'_> {
         };
 
         for &pat_id in prefix.iter().chain(suffix.iter()) {
-            self.infer_pat(pat_id, &elem_ty, default_bm);
+            self.infer_pat(pat_id, &elem_ty, default_bm, decl);
         }
 
         if let &Some(slice_pat_id) = slice {
@@ -513,7 +527,7 @@ impl InferenceContext<'_> {
                 _ => TyKind::Slice(elem_ty.clone()),
             }
             .intern(Interner);
-            self.infer_pat(slice_pat_id, &rest_pat_ty, default_bm);
+            self.infer_pat(slice_pat_id, &rest_pat_ty, default_bm, decl);
         }
 
         match expected.kind(Interner) {
@@ -585,6 +599,44 @@ impl InferenceContext<'_> {
         let elem_ty = self.table.new_type_var();
         let array_ty = TyKind::Array(elem_ty.clone(), size).intern(Interner);
         Some(array_ty)
+    }
+
+    /// Determines whether we can infer the expected type in the slice pattern to be of type array.
+    /// This is only possible if we're in an irrefutable pattern. If we were to allow this in refutable
+    /// patterns we wouldn't e.g. report ambiguity in the following situation:
+    ///
+    /// ```ignore(rust)
+    /// struct Zeroes;
+    /// const ARR: [usize; 2] = [0; 2];
+    /// const ARR2: [usize; 2] = [2; 2];
+    ///
+    /// impl Into<&'static [usize; 2]> for Zeroes {
+    ///     fn into(self) -> &'static [usize; 2] {
+    ///            &ARR
+    ///     }
+    /// }
+    ///
+    /// impl Into<&'static [usize]> for Zeroes {
+    ///     fn into(self) -> &'static [usize] {
+    ///        &ARR2
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let &[a, b]: &[usize] = Zeroes.into() else {
+    ///       ..
+    ///     };
+    /// }
+    /// ```
+    ///
+    /// If we're in an irrefutable pattern we prefer the array impl candidate given that
+    /// the slice impl candidate would be be rejected anyway (if no ambiguity existed).
+    fn decl_allows_array_type_infer(&self, decl_ctxt: Option<DeclContext>) -> bool {
+        if let Some(decl_ctxt) = decl_ctxt {
+            !decl_ctxt.has_else && matches!(decl_ctxt.origin, DeclOrigin::LocalDecl)
+        } else {
+            false
+        }
     }
 }
 
