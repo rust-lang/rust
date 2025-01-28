@@ -568,5 +568,37 @@ LL |     }
    |
    = note: this might lead to deadlocks or other unexpected behavior
 
-error: aborting due to 29 previous errors
+error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
+  --> tests/ui/significant_drop_in_scrutinee.rs:840:11
+   |
+LL |     match *foo_async(&mutex).await.unwrap() {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     }
+   |      - temporary lives until here
+   |
+   = note: this might lead to deadlocks or other unexpected behavior
+help: try moving the temporary above the match
+   |
+LL ~     let value = *foo_async(&mutex).await.unwrap();
+LL ~     match value {
+   |
+
+error: temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression
+  --> tests/ui/significant_drop_in_scrutinee.rs:859:19
+   |
+LL |     let _ = match mutex.lock().unwrap().foo() {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     };
+   |      - temporary lives until here
+   |
+   = note: this might lead to deadlocks or other unexpected behavior
+help: try moving the temporary above the match
+   |
+LL ~     let value = mutex.lock().unwrap().foo();
+LL ~     let _ = match value {
+   |
+
+error: aborting due to 31 previous errors
 

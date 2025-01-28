@@ -8,16 +8,40 @@ LL |     f() && g();
    = help: to override `-D warnings` add `#[allow(clippy::short_circuit_statement)]`
 
 error: boolean short circuit operator in statement may be clearer using an explicit test
-  --> tests/ui/short_circuit_statement.rs:6:5
+  --> tests/ui/short_circuit_statement.rs:7:5
    |
 LL |     f() || g();
    |     ^^^^^^^^^^^ help: replace it with: `if !f() { g(); }`
 
 error: boolean short circuit operator in statement may be clearer using an explicit test
-  --> tests/ui/short_circuit_statement.rs:7:5
+  --> tests/ui/short_circuit_statement.rs:9:5
    |
 LL |     1 == 2 || g();
    |     ^^^^^^^^^^^^^^ help: replace it with: `if 1 != 2 { g(); }`
 
-error: aborting due to 3 previous errors
+error: boolean short circuit operator in statement may be clearer using an explicit test
+  --> tests/ui/short_circuit_statement.rs:11:5
+   |
+LL |     (f() || g()) && (H * 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `if f() || g() { H * 2; }`
+
+error: boolean short circuit operator in statement may be clearer using an explicit test
+  --> tests/ui/short_circuit_statement.rs:13:5
+   |
+LL |     (f() || g()) || (H * 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `if !(f() || g()) { H * 2; }`
+
+error: boolean short circuit operator in statement may be clearer using an explicit test
+  --> tests/ui/short_circuit_statement.rs:28:5
+   |
+LL |     mac!() && mac!();
+   |     ^^^^^^^^^^^^^^^^^ help: replace it with: `if mac!() { mac!(); }`
+
+error: boolean short circuit operator in statement may be clearer using an explicit test
+  --> tests/ui/short_circuit_statement.rs:30:5
+   |
+LL |     mac!() || mac!();
+   |     ^^^^^^^^^^^^^^^^^ help: replace it with: `if !mac!() { mac!(); }`
+
+error: aborting due to 7 previous errors
 

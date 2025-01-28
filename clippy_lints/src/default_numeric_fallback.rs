@@ -223,19 +223,17 @@ impl<'tcx> Visitor<'tcx> for NumericFallbackVisitor<'_, 'tcx> {
     }
 
     fn visit_pat(&mut self, pat: &'tcx Pat<'_>) {
-        match pat.kind {
-            PatKind::Expr(&PatExpr {
-                hir_id,
-                kind: PatExprKind::Lit { lit, .. },
-                ..
-            }) => {
-                let ty = self.cx.typeck_results().node_type(hir_id);
-                self.check_lit(lit, ty, hir_id);
-                return;
-            },
-            _ => {},
+        if let PatKind::Expr(&PatExpr {
+            hir_id,
+            kind: PatExprKind::Lit { lit, .. },
+            ..
+        }) = pat.kind
+        {
+            let ty = self.cx.typeck_results().node_type(hir_id);
+            self.check_lit(lit, ty, hir_id);
+            return;
         }
-        walk_pat(self, pat)
+        walk_pat(self, pat);
     }
 
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {

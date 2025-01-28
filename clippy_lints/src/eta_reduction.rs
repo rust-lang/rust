@@ -3,7 +3,9 @@ use clippy_utils::higher::VecArgs;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::get_type_diagnostic_name;
 use clippy_utils::usage::{local_used_after_expr, local_used_in};
-use clippy_utils::{get_path_from_caller_to_method_type, is_adjusted, path_to_local, path_to_local_id};
+use clippy_utils::{
+    get_path_from_caller_to_method_type, is_adjusted, is_no_std_crate, path_to_local, path_to_local_id,
+};
 use rustc_errors::Applicability;
 use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, Param, PatKind, QPath, Safety, TyKind};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -101,19 +103,20 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
     };
 
     if body.value.span.from_expansion() {
-        if body.params.is_empty() {
-            if let Some(VecArgs::Vec(&[])) = VecArgs::hir(cx, body.value) {
-                // replace `|| vec![]` with `Vec::new`
-                span_lint_and_sugg(
-                    cx,
-                    REDUNDANT_CLOSURE,
-                    expr.span,
-                    "redundant closure",
-                    "replace the closure with `Vec::new`",
-                    "std::vec::Vec::new".into(),
-                    Applicability::MachineApplicable,
-                );
-            }
+        if body.params.is_empty()
+            && let Some(VecArgs::Vec(&[])) = VecArgs::hir(cx, body.value)
+        {
+            let vec_crate = if is_no_std_crate(cx) { "alloc" } else { "std" };
+            // replace `|| vec![]` with `Vec::new`
+            span_lint_and_sugg(
+                cx,
+                REDUNDANT_CLOSURE,
+                expr.span,
+                "redundant closure",
+                "replace the closure with `Vec::new`",
+                format!("{vec_crate}::vec::Vec::new"),
+                Applicability::MachineApplicable,
+            );
         }
         // skip `foo(|| macro!())`
         return;

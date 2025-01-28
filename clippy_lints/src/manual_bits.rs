@@ -6,7 +6,7 @@ use clippy_utils::source::snippet_with_context;
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
+use rustc_hir::{BinOpKind, Expr, ExprKind, GenericArg, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
@@ -99,7 +99,7 @@ fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<
         && let QPath::Resolved(_, count_func_path) = count_func_qpath
         && let Some(segment_zero) = count_func_path.segments.first()
         && let Some(args) = segment_zero.args
-        && let Some(real_ty_span) = args.args.first().map(|arg| arg.span())
+        && let Some(real_ty_span) = args.args.first().map(GenericArg::span)
         && let Some(def_id) = cx.qpath_res(count_func_qpath, count_func.hir_id).opt_def_id()
         && cx.tcx.is_diagnostic_item(sym::mem_size_of, def_id)
     {

@@ -118,7 +118,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                                     if contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen) {
                                         return true;
                                     }
-                                };
+                                }
                             },
                             _ => (),
                         }
@@ -1338,6 +1338,17 @@ pub fn get_field_by_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, name: Symbol) ->
             .find(|f| f.name == name)
             .map(|f| f.ty(tcx, args)),
         ty::Tuple(args) => name.as_str().parse::<usize>().ok().and_then(|i| args.get(i).copied()),
+        _ => None,
+    }
+}
+
+/// Check if `ty` is an `Option` and return its argument type if it is.
+pub fn option_arg_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    match ty.kind() {
+        ty::Adt(adt, args) => cx
+            .tcx
+            .is_diagnostic_item(sym::Option, adt.did())
+            .then(|| args.type_at(0)),
         _ => None,
     }
 }

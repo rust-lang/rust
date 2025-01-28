@@ -107,6 +107,10 @@ struct LocalAssign {
 
 impl LocalAssign {
     fn from_expr(expr: &Expr<'_>, span: Span) -> Option<Self> {
+        if expr.span.from_expansion() {
+            return None;
+        }
+
         if let ExprKind::Assign(lhs, rhs, _) = expr.kind {
             if lhs.span.from_expansion() {
                 return None;
@@ -336,7 +340,7 @@ fn check<'tcx>(
             );
         },
         _ => {},
-    };
+    }
 
     Some(())
 }

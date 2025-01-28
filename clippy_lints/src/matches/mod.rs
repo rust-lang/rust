@@ -2,6 +2,7 @@ mod collapsible_match;
 mod infallible_destructuring_match;
 mod manual_filter;
 mod manual_map;
+mod manual_ok_err;
 mod manual_unwrap_or;
 mod manual_utils;
 mod match_as_ref;
@@ -972,6 +973,40 @@ declare_clippy_lint! {
     "checks for unnecessary guards in match expressions"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for manual implementation of `.ok()` or `.err()`
+    /// on `Result` values.
+    ///
+    /// ### Why is this bad?
+    /// Using `.ok()` or `.err()` rather than a `match` or
+    /// `if let` is less complex and more readable.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # fn func() -> Result<u32, &'static str> { Ok(0) }
+    /// let a = match func() {
+    ///     Ok(v) => Some(v),
+    ///     Err(_) => None,
+    /// };
+    /// let b = if let Err(v) = func() {
+    ///     Some(v)
+    /// } else {
+    ///     None
+    /// };
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # fn func() -> Result<u32, &'static str> { Ok(0) }
+    /// let a = func().ok();
+    /// let b = func().err();
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub MANUAL_OK_ERR,
+    complexity,
+    "find manual implementations of `.ok()` or `.err()` on `Result`"
+}
+
 pub struct Matches {
     msrv: Msrv,
     infallible_destructuring_match_linted: bool,
@@ -1013,6 +1048,7 @@ impl_lint_pass!(Matches => [
     MANUAL_MAP,
     MANUAL_FILTER,
     REDUNDANT_GUARDS,
+    MANUAL_OK_ERR,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
@@ -1091,6 +1127,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                         manual_unwrap_or::check_match(cx, expr, ex, arms);
                         manual_map::check_match(cx, expr, ex, arms);
                         manual_filter::check_match(cx, ex, arms, expr);
+                        manual_ok_err::check_match(cx, expr, ex, arms);
                     }
 
                     if self.infallible_destructuring_match_linted {
@@ -1127,6 +1164,14 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                         );
                         manual_map::check_if_let(cx, expr, if_let.let_pat, if_let.let_expr, if_let.if_then, else_expr);
                         manual_filter::check_if_let(
+                            cx,
+                            expr,
+                            if_let.let_pat,
+                            if_let.let_expr,
+                            if_let.if_then,
+                            else_expr,
+                        );
+                        manual_ok_err::check_if_let(
                             cx,
                             expr,
                             if_let.let_pat,

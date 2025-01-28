@@ -210,3 +210,9 @@ mod with_ty_alias {
         let _: Foo = 1;
     }
 }
+
+// Do not lint because mutable references in const functions are unstable in 1.82
+#[clippy::msrv = "1.82"]
+fn mut_add(x: &mut i32) {
+    *x += 1;
+}

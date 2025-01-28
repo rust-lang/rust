@@ -58,6 +58,7 @@ mod manual_inspect;
 mod manual_is_variant_and;
 mod manual_next_back;
 mod manual_ok_or;
+mod manual_repeat_n;
 mod manual_saturating_arithmetic;
 mod manual_str_repeat;
 mod manual_try_fold;
@@ -101,6 +102,7 @@ mod single_char_add_str;
 mod single_char_insert_string;
 mod single_char_push_string;
 mod skip_while_next;
+mod sliced_string_as_bytes;
 mod stable_sort_primitive;
 mod str_split;
 mod str_splitn;
@@ -130,6 +132,7 @@ mod unnecessary_to_owned;
 mod unused_enumerate_index;
 mod unwrap_expect_used;
 mod useless_asref;
+mod useless_nonzero_new_unchecked;
 mod utils;
 mod vec_resize_to_zero;
 mod verbose_file_reads;
@@ -2416,14 +2419,14 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `.then_some(..).unwrap_or(..)`
+    /// Checks for unnecessary method chains that can be simplified into `if .. else ..`.
     ///
     /// ### Why is this bad?
     /// This can be written more clearly with `if .. else ..`
     ///
     /// ### Limitations
     /// This lint currently only looks for usages of
-    /// `.then_some(..).unwrap_or(..)`, but will be expanded
+    /// `.then_some(..).unwrap_or(..)` and `.then(..).unwrap_or(..)`, but will be expanded
     /// to account for similar patterns.
     ///
     /// ### Example
@@ -4311,6 +4314,84 @@ declare_clippy_lint! {
     "using `Iterator::last` on a `DoubleEndedIterator`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for `NonZero*::new_unchecked()` being used in a `const` context.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Using `NonZero*::new_unchecked()` is an `unsafe` function and requires an `unsafe` context. When used in a
+    /// context evaluated at compilation time, `NonZero*::new().unwrap()` will provide the same result with identical
+    /// runtime performances while not requiring `unsafe`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::num::NonZeroUsize;
+    /// const PLAYERS: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(3) };
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::num::NonZeroUsize;
+    /// const PLAYERS: NonZeroUsize = NonZeroUsize::new(3).unwrap();
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub USELESS_NONZERO_NEW_UNCHECKED,
+    complexity,
+    "using `NonZero::new_unchecked()` in a `const` context"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for `repeat().take()` that can be replaced with `repeat_n()`.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Using `repeat_n()` is more concise and clearer. Also, `repeat_n()` is sometimes faster than `repeat().take()` when the type of the element is non-trivial to clone because the original value can be reused for the last `.next()` call rather than always cloning.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let _ = std::iter::repeat(10).take(3);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let _ = std::iter::repeat_n(10, 3);
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub MANUAL_REPEAT_N,
+    style,
+    "detect `repeat().take()` that can be replaced with `repeat_n()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for string slices immediantly followed by `as_bytes`.
+    ///
+    /// ### Why is this bad?
+    /// It involves doing an unnecessary UTF-8 alignment check which is less efficient, and can cause a panic.
+    ///
+    /// ### Known problems
+    /// In some cases, the UTF-8 validation and potential panic from string slicing may be required for
+    /// the code's correctness. If you need to ensure the slice boundaries fall on valid UTF-8 character
+    /// boundaries, the original form (`s[1..5].as_bytes()`) should be preferred.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let s = "Lorem ipsum";
+    /// s[1..5].as_bytes();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let s = "Lorem ipsum";
+    /// &s.as_bytes()[1..5];
+    /// ```
+     #[clippy::version = "1.86.0"]
+     pub SLICED_STRING_AS_BYTES,
+     perf,
+     "slicing a string and immediately calling as_bytes is less efficient and can lead to panics"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -4477,6 +4558,9 @@ impl_lint_pass!(Methods => [
     MAP_WITH_UNUSED_ARGUMENT_OVER_RANGES,
     UNNECESSARY_MAP_OR,
     DOUBLE_ENDED_ITERATOR_LAST,
+    USELESS_NONZERO_NEW_UNCHECKED,
+    MANUAL_REPEAT_N,
+    SLICED_STRING_AS_BYTES,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4505,6 +4589,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 from_iter_instead_of_collect::check(cx, expr, args, func);
                 unnecessary_fallible_conversions::check_function(cx, expr, func);
                 manual_c_str_literals::check(cx, expr, func, args, &self.msrv);
+                useless_nonzero_new_unchecked::check(cx, expr, func, args, &self.msrv);
             },
             ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;
@@ -4743,6 +4828,7 @@ impl Methods {
                     if let Some(("as_str", recv, [], as_str_span, _)) = method_call(recv) {
                         redundant_as_str::check(cx, expr, recv, as_str_span, span);
                     }
+                    sliced_string_as_bytes::check(cx, expr, recv);
                 },
                 ("as_mut", []) => useless_asref::check(cx, expr, "as_mut", recv),
                 ("as_ptr", []) => manual_c_str_literals::check_as_ptr(cx, expr, recv, &self.msrv),
@@ -4924,8 +5010,8 @@ impl Methods {
                 },
                 ("is_empty", []) => {
                     match method_call(recv) {
-                        Some(("as_bytes", prev_recv, [], _, _)) => {
-                            needless_as_bytes::check(cx, "is_empty", recv, prev_recv, expr.span);
+                        Some((prev_method @ ("as_bytes" | "bytes"), prev_recv, [], _, _)) => {
+                            needless_as_bytes::check(cx, prev_method, "is_empty", prev_recv, expr.span);
                         },
                         Some(("as_str", recv, [], as_str_span, _)) => {
                             redundant_as_str::check(cx, expr, recv, as_str_span, span);
@@ -4962,8 +5048,8 @@ impl Methods {
                     double_ended_iterator_last::check(cx, expr, recv, call_span);
                 },
                 ("len", []) => {
-                    if let Some(("as_bytes", prev_recv, [], _, _)) = method_call(recv) {
-                        needless_as_bytes::check(cx, "len", recv, prev_recv, expr.span);
+                    if let Some((prev_method @ ("as_bytes" | "bytes"), prev_recv, [], _, _)) = method_call(recv) {
+                        needless_as_bytes::check(cx, prev_method, "len", prev_recv, expr.span);
                     }
                 },
                 ("lock", []) => {
@@ -5015,7 +5101,7 @@ impl Methods {
                     option_map_or_none::check(cx, expr, recv, def, map);
                     manual_ok_or::check(cx, expr, recv, def, map);
                     option_map_or_err_ok::check(cx, expr, recv, def, map);
-                    unnecessary_map_or::check(cx, expr, recv, def, map, &self.msrv);
+                    unnecessary_map_or::check(cx, expr, recv, def, map, span, &self.msrv);
                 },
                 ("map_or_else", [def, map]) => {
                     result_map_or_else_none::check(cx, expr, recv, def, map);
@@ -5146,6 +5232,7 @@ impl Methods {
                 ("step_by", [arg]) => iterator_step_by_zero::check(cx, expr, arg),
                 ("take", [arg]) => {
                     iter_out_of_bounds::check_take(cx, expr, recv, arg);
+                    manual_repeat_n::check(cx, expr, recv, arg, &self.msrv);
                     if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
                         iter_overeager_cloned::check(
                             cx,
@@ -5220,8 +5307,8 @@ impl Methods {
                         Some(("map", m_recv, [m_arg], span, _)) => {
                             option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, &self.msrv);
                         },
-                        Some(("then_some", t_recv, [t_arg], _, _)) => {
-                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg);
+                        Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
+                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg, then_method);
                         },
                         _ => {},
                     }

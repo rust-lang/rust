@@ -1,4 +1,6 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::trait_ref_of_method;
 use itertools::Itertools;
 use rustc_ast::visit::{try_visit, walk_list};
@@ -20,7 +22,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter as middle_nested_filter;
 use rustc_middle::lint::in_external_macro;
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{Ident, kw};
@@ -91,7 +93,19 @@ declare_clippy_lint! {
     "unused lifetimes in function definitions"
 }
 
-declare_lint_pass!(Lifetimes => [NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES]);
+pub struct Lifetimes {
+    msrv: Msrv,
+}
+
+impl Lifetimes {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
+    }
+}
+
+impl_lint_pass!(Lifetimes => [NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES]);
 
 impl<'tcx> LateLintPass<'tcx> for Lifetimes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
@@ -102,7 +116,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
             ..
         } = item.kind
         {
-            check_fn_inner(cx, sig, Some(id), None, generics, item.span, true);
+            check_fn_inner(cx, sig, Some(id), None, generics, item.span, true, &self.msrv);
         } else if let ItemKind::Impl(impl_) = item.kind {
             if !item.span.from_expansion() {
                 report_extra_impl_lifetimes(cx, impl_);
@@ -121,6 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
                 item.generics,
                 item.span,
                 report_extra_lifetimes,
+                &self.msrv,
             );
         }
     }
@@ -131,11 +146,14 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
                 TraitFn::Required(sig) => (None, Some(sig)),
                 TraitFn::Provided(id) => (Some(id), None),
             };
-            check_fn_inner(cx, sig, body, trait_sig, item.generics, item.span, true);
+            check_fn_inner(cx, sig, body, trait_sig, item.generics, item.span, true, &self.msrv);
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn check_fn_inner<'tcx>(
     cx: &LateContext<'tcx>,
     sig: &'tcx FnSig<'_>,
@@ -144,6 +162,7 @@ fn check_fn_inner<'tcx>(
     generics: &'tcx Generics<'_>,
     span: Span,
     report_extra_lifetimes: bool,
+    msrv: &Msrv,
 ) {
     if in_external_macro(cx.sess(), span) || has_where_lifetimes(cx, generics) {
         return;
@@ -195,7 +214,7 @@ fn check_fn_inner<'tcx>(
         }
     }
 
-    if let Some((elidable_lts, usages)) = could_use_elision(cx, sig.decl, body, trait_sig, generics.params) {
+    if let Some((elidable_lts, usages)) = could_use_elision(cx, sig.decl, body, trait_sig, generics.params, msrv) {
         if usages.iter().any(|usage| !usage.ident.span.eq_ctxt(span)) {
             return;
         }
@@ -216,6 +235,7 @@ fn could_use_elision<'tcx>(
     body: Option<BodyId>,
     trait_sig: Option<&[Ident]>,
     named_generics: &'tcx [GenericParam<'_>],
+    msrv: &Msrv,
 ) -> Option<(Vec<LocalDefId>, Vec<Lifetime>)> {
     // There are two scenarios where elision works:
     // * no output references, all input references have different LT
@@ -249,17 +269,17 @@ fn could_use_elision<'tcx>(
     let input_lts = input_visitor.lts;
     let output_lts = output_visitor.lts;
 
-    if let Some(trait_sig) = trait_sig {
-        if explicit_self_type(cx, func, trait_sig.first().copied()) {
-            return None;
-        }
+    if let Some(trait_sig) = trait_sig
+        && non_elidable_self_type(cx, func, trait_sig.first().copied(), msrv)
+    {
+        return None;
     }
 
     if let Some(body_id) = body {
         let body = cx.tcx.hir().body(body_id);
 
         let first_ident = body.params.first().and_then(|param| param.pat.simple_ident());
-        if explicit_self_type(cx, func, first_ident) {
+        if non_elidable_self_type(cx, func, first_ident, msrv) {
             return None;
         }
 
@@ -332,9 +352,15 @@ fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxIndexSet<LocalDefI
         .collect()
 }
 
-// elision doesn't work for explicit self types, see rust-lang/rust#69064
-fn explicit_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: Option<Ident>) -> bool {
-    if let Some(ident) = ident
+// elision doesn't work for explicit self types before Rust 1.81, see rust-lang/rust#69064
+fn non_elidable_self_type<'tcx>(
+    cx: &LateContext<'tcx>,
+    func: &FnDecl<'tcx>,
+    ident: Option<Ident>,
+    msrv: &Msrv,
+) -> bool {
+    if !msrv.meets(msrvs::EXPLICIT_SELF_TYPE_ELISION)
+        && let Some(ident) = ident
         && ident.name == kw::SelfLower
         && !func.implicit_self.has_implicit_self()
         && let Some(self_ty) = func.inputs.first()
@@ -488,11 +514,13 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
     false
 }
 
+#[allow(clippy::struct_excessive_bools)]
 struct Usage {
     lifetime: Lifetime,
     in_where_predicate: bool,
     in_bounded_ty: bool,
     in_generics_arg: bool,
+    lifetime_elision_impossible: bool,
 }
 
 struct LifetimeChecker<'cx, 'tcx, F> {
@@ -501,6 +529,7 @@ struct LifetimeChecker<'cx, 'tcx, F> {
     where_predicate_depth: usize,
     bounded_ty_depth: usize,
     generic_args_depth: usize,
+    lifetime_elision_impossible: bool,
     phantom: std::marker::PhantomData<F>,
 }
 
@@ -525,6 +554,7 @@ where
             where_predicate_depth: 0,
             bounded_ty_depth: 0,
             generic_args_depth: 0,
+            lifetime_elision_impossible: false,
             phantom: std::marker::PhantomData,
         }
     }
@@ -566,6 +596,7 @@ where
                 in_where_predicate: self.where_predicate_depth != 0,
                 in_bounded_ty: self.bounded_ty_depth != 0,
                 in_generics_arg: self.generic_args_depth != 0,
+                lifetime_elision_impossible: self.lifetime_elision_impossible,
             });
         }
     }
@@ -592,8 +623,41 @@ where
         self.generic_args_depth -= 1;
     }
 
+    fn visit_fn_decl(&mut self, fd: &'tcx FnDecl<'tcx>) -> Self::Result {
+        self.lifetime_elision_impossible = !is_candidate_for_elision(fd);
+        walk_fn_decl(self, fd);
+        self.lifetime_elision_impossible = false;
+    }
+
     fn nested_visit_map(&mut self) -> Self::Map {
         self.cx.tcx.hir()
+    }
+}
+
+/// Check if `fd` supports function elision with an anonymous (or elided) lifetime,
+/// and has a lifetime somewhere in its output type.
+fn is_candidate_for_elision(fd: &FnDecl<'_>) -> bool {
+    struct V;
+
+    impl Visitor<'_> for V {
+        type Result = ControlFlow<bool>;
+
+        fn visit_lifetime(&mut self, lifetime: &Lifetime) -> Self::Result {
+            ControlFlow::Break(lifetime.is_elided() || lifetime.is_anonymous())
+        }
+    }
+
+    if fd.lifetime_elision_allowed
+        && let Return(ret_ty) = fd.output
+        && walk_unambig_ty(&mut V, ret_ty).is_break()
+    {
+        // The first encountered input lifetime will either be one on `self`, or will be the only lifetime.
+        fd.inputs
+            .iter()
+            .find_map(|ty| walk_unambig_ty(&mut V, ty).break_value())
+            .unwrap()
+    } else {
+        false
     }
 }
 
@@ -662,6 +726,7 @@ fn report_elidable_impl_lifetimes<'tcx>(
                 Usage {
                     lifetime,
                     in_where_predicate: false,
+                    lifetime_elision_impossible: false,
                     ..
                 },
             ] = usages.as_slice()
@@ -719,7 +784,7 @@ fn report_elidable_lifetimes(
         |diag| {
             if !include_suggestions {
                 return;
-            };
+            }
 
             if let Some(suggestions) = elision_suggestions(cx, generics, elidable_lts, usages) {
                 diag.multipart_suggestion("elide the lifetimes", suggestions, Applicability::MachineApplicable);

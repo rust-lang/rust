@@ -279,6 +279,7 @@ mod non_copy_const;
 mod non_expressive_names;
 mod non_octal_unix_permissions;
 mod non_send_fields_in_send_ty;
+mod non_std_lazy_statics;
 mod non_zero_suggestions;
 mod nonstandard_macro_braces;
 mod octal_escapes;
@@ -372,8 +373,10 @@ mod unnecessary_literal_bound;
 mod unnecessary_map_on_constructor;
 mod unnecessary_owned_empty_strings;
 mod unnecessary_self_imports;
+mod unnecessary_semicolon;
 mod unnecessary_struct_initialization;
 mod unnecessary_wraps;
+mod unneeded_struct_pattern;
 mod unnested_or_patterns;
 mod unsafe_removed_from_name;
 mod unused_async;
@@ -680,7 +683,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(unit_types::UnitTypes));
     store.register_late_pass(move |_| Box::new(loops::Loops::new(conf)));
     store.register_late_pass(|_| Box::<main_recursion::MainRecursion>::default());
-    store.register_late_pass(|_| Box::new(lifetimes::Lifetimes));
+    store.register_late_pass(move |_| Box::new(lifetimes::Lifetimes::new(conf)));
     store.register_late_pass(|_| Box::new(entry::HashMapPass));
     store.register_late_pass(|_| Box::new(minmax::MinMaxPass));
     store.register_late_pass(|_| Box::new(zero_div_zero::ZeroDiv));
@@ -970,5 +973,8 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(manual_ignore_case_cmp::ManualIgnoreCaseCmp));
     store.register_late_pass(|_| Box::new(unnecessary_literal_bound::UnnecessaryLiteralBound));
     store.register_late_pass(move |_| Box::new(arbitrary_source_item_ordering::ArbitrarySourceItemOrdering::new(conf)));
+    store.register_late_pass(|_| Box::new(unneeded_struct_pattern::UnneededStructPattern));
+    store.register_late_pass(|_| Box::<unnecessary_semicolon::UnnecessarySemicolon>::default());
+    store.register_late_pass(move |_| Box::new(non_std_lazy_statics::NonStdLazyStatic::new(conf)));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }

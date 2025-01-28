@@ -273,7 +273,7 @@ fn get_types_from_cast<'a>(
             },
             _ => {},
         }
-    };
+    }
     None
 }
 
