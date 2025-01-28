@@ -308,7 +308,7 @@ pub trait MirVisitor {
     fn super_rvalue(&mut self, rvalue: &Rvalue, location: Location) {
         match rvalue {
             Rvalue::AddressOf(mutability, place) => {
-                let pcx = PlaceContext { is_mut: *mutability == Mutability::Mut };
+                let pcx = PlaceContext { is_mut: *mutability == RawPtrKind::Mut };
                 self.visit_place(place, pcx, location);
             }
             Rvalue::Aggregate(_, operands) => {

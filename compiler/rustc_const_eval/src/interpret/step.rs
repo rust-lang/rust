@@ -237,7 +237,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_immediate(*val, &dest)?;
             }
 
-            RawPtr(_, place) => {
+            RawPtr(kind, place) => {
                 // Figure out whether this is an addr_of of an already raw place.
                 let place_base_raw = if place.is_indirect_first_projection() {
                     let ty = self.frame().body.local_decls[place.local].ty;
@@ -250,8 +250,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let src = self.eval_place(place)?;
                 let place = self.force_allocation(&src)?;
                 let mut val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
-                if !place_base_raw {
-                    // If this was not already raw, it needs retagging.
+                if !place_base_raw && !kind.is_fake() {
+                    // If this was not already raw, it needs retagging -- except for "fake"
+                    // raw borrows whose defining property is that they do not get retagged.
                     val = M::retag_ptr_value(self, mir::RetagKind::Raw, &val)?;
                 }
                 self.write_immediate(*val, &dest)?;
