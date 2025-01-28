@@ -6,40 +6,10 @@
 // If this test fails because Rust adds a target that Clang does not support, this target should be
 // added to SKIPPED_TARGETS.
 
-use run_make_support::{clang, regex, rfs, rustc};
+use run_make_support::{clang, llvm_components_contain, regex, rfs, rustc};
 
 // It is not possible to run the Rust test-suite on these targets.
 const SKIPPED_TARGETS: &[&str] = &[
-    "riscv32gc-unknown-linux-gnu",
-    "riscv32gc-unknown-linux-musl",
-    "riscv32im-risc0-zkvm-elf",
-    "riscv32imac-esp-espidf",
-    "riscv32imafc-esp-espidf",
-    "riscv32imafc-unknown-nuttx-elf",
-    "riscv32imc-esp-espidf",
-    "riscv32imac-unknown-nuttx-elf",
-    "riscv32imac-unknown-xous-elf",
-    "riscv32imc-unknown-nuttx-elf",
-    "riscv32e-unknown-none-elf",
-    "riscv32em-unknown-none-elf",
-    "riscv32emc-unknown-none-elf",
-    "riscv32i-unknown-none-elf",
-    "riscv32im-unknown-none-elf",
-    "riscv32imc-unknown-none-elf",
-    "riscv32ima-unknown-none-elf",
-    "riscv32imac-unknown-none-elf",
-    "riscv32imafc-unknown-none-elf",
-    "riscv64gc-unknown-freebsd",
-    "riscv64gc-unknown-fuchsia",
-    "riscv64gc-unknown-hermit",
-    "riscv64gc-unknown-linux-gnu",
-    "riscv64gc-unknown-linux-musl",
-    "riscv64gc-unknown-netbsd",
-    "riscv64gc-unknown-none-elf",
-    "riscv64gc-unknown-nuttx-elf",
-    "riscv64gc-unknown-openbsd",
-    "riscv64imac-unknown-none-elf",
-    "riscv64imac-unknown-nuttx-elf",
     "wasm32v1-none",
     "xtensa-esp32-espidf",
     "xtensa-esp32-none-elf",
@@ -70,15 +40,34 @@ fn main() {
             continue;
         }
 
-        // Map the Rust target string to a Clang target string if needed.
-        let ctarget = match MAPPED_TARGETS.iter().find(|(rtarget, _ctarget)| rtarget == &target) {
-            Some((_rtarget, ctarget)) => ctarget,
-            None => target,
-        };
+        // Map the Rust target string to a Clang target string if needed
+        // Also replace riscv with necessary replacements to match clang
+        // If neither just use target string
+        let ctarget = MAPPED_TARGETS
+            .iter()
+            .find(|(rtarget, _)| *rtarget == target)
+            .map(|(_, ctarget)| ctarget.to_string())
+            .unwrap_or_else(|| {
+                if target.starts_with("riscv") {
+                    target
+                        .replace("imac", "")
+                        .replace("gc", "")
+                        .replace("imafc", "")
+                        .replace("imc", "")
+                        .replace("ima", "")
+                        .replace("im", "")
+                        .replace("emc", "")
+                        .replace("em", "")
+                        .replace("e-", "-")
+                        .replace("i-", "-")
+                } else {
+                    target.to_string()
+                }
+            });
 
         // Run Clang's preprocessor for the relevant target, printing default macro definitions.
         let clang_output =
-            clang().args(&["-E", "-dM", "-x", "c", "/dev/null", "-target", ctarget]).run();
+            clang().args(&["-E", "-dM", "-x", "c", "/dev/null", "-target", &ctarget]).run();
 
         let defines = String::from_utf8(clang_output.stdout()).expect("Invalid UTF-8");
 
