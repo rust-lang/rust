@@ -1636,13 +1636,12 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                         .enumerate()
                                         .map(|(idx, new)| (new, old_fields.get(idx)))
                                         .map(|(new, old)| {
-                                            let new = new.name.to_ident_string();
                                             if let Some(Some(old)) = old
-                                                && new != *old
+                                                && new.as_str() != old
                                             {
                                                 format!("{new}: {old}")
                                             } else {
-                                                new
+                                                new.to_string()
                                             }
                                         })
                                         .collect::<Vec<String>>()

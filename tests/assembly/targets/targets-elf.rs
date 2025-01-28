@@ -57,6 +57,12 @@
 //@ revisions: aarch64_unknown_nto_qnx710
 //@ [aarch64_unknown_nto_qnx710] compile-flags: --target aarch64-unknown-nto-qnx710
 //@ [aarch64_unknown_nto_qnx710] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_nto_qnx710_iosock
+//@ [aarch64_unknown_nto_qnx710_iosock] compile-flags: --target aarch64-unknown-nto-qnx710_iosock
+//@ [aarch64_unknown_nto_qnx710_iosock] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_nto_qnx800
+//@ [aarch64_unknown_nto_qnx800] compile-flags: --target aarch64-unknown-nto-qnx800
+//@ [aarch64_unknown_nto_qnx800] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_openbsd
 //@ [aarch64_unknown_openbsd] compile-flags: --target aarch64-unknown-openbsd
 //@ [aarch64_unknown_openbsd] needs-llvm-components: aarch64
@@ -564,6 +570,12 @@
 //@ revisions: x86_64_pc_nto_qnx710
 //@ [x86_64_pc_nto_qnx710] compile-flags: --target x86_64-pc-nto-qnx710
 //@ [x86_64_pc_nto_qnx710] needs-llvm-components: x86
+//@ revisions: x86_64_pc_nto_qnx710_iosock
+//@ [x86_64_pc_nto_qnx710_iosock] compile-flags: --target x86_64-pc-nto-qnx710_iosock
+//@ [x86_64_pc_nto_qnx710_iosock] needs-llvm-components: x86
+//@ revisions: x86_64_pc_nto_qnx800
+//@ [x86_64_pc_nto_qnx800] compile-flags: --target x86_64-pc-nto-qnx800
+//@ [x86_64_pc_nto_qnx800] needs-llvm-components: x86
 //@ revisions: x86_64_pc_solaris
 //@ [x86_64_pc_solaris] compile-flags: --target x86_64-pc-solaris
 //@ [x86_64_pc_solaris] needs-llvm-components: x86

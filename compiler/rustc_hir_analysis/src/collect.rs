@@ -928,7 +928,7 @@ fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
                 tcx.dcx().emit_err(errors::EnumDiscriminantOverflowed {
                     span,
                     discr: prev_discr.unwrap().to_string(),
-                    item_name: tcx.item_name(variant.def_id),
+                    item_name: tcx.item_ident(variant.def_id),
                     wrapped_discr: wrapped_discr.to_string(),
                 });
                 None
@@ -990,11 +990,10 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
     }
 
     /// Check if a given field `ident` declared at `field_decl` has been declared elsewhere before.
-    fn check_field_decl(&mut self, ident: Ident, field_decl: FieldDeclSpan) {
+    fn check_field_decl(&mut self, field_name: Ident, field_decl: FieldDeclSpan) {
         use FieldDeclSpan::*;
-        let field_name = ident.name;
-        let ident = ident.normalize_to_macros_2_0();
-        match (field_decl, self.seen_fields.get(&ident).copied()) {
+        let field_name = field_name.normalize_to_macros_2_0();
+        match (field_decl, self.seen_fields.get(&field_name).copied()) {
             (NotNested(span), Some(NotNested(prev_span))) => {
                 self.tcx.dcx().emit_err(errors::FieldAlreadyDeclared::NotNested {
                     field_name,
@@ -1035,7 +1034,7 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
                 });
             }
             (field_decl, None) => {
-                self.seen_fields.insert(ident, field_decl);
+                self.seen_fields.insert(field_name, field_decl);
             }
         }
     }

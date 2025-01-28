@@ -677,7 +677,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 if could_be_path {
                     let import_suggestions = self.lookup_import_candidates(
-                        Ident::with_dummy_span(name),
+                        name,
                         Namespace::ValueNS,
                         &parent_scope,
                         &|res: Res| {

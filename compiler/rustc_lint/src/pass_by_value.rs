@@ -45,7 +45,7 @@ fn path_for_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<Stri
     if let TyKind::Path(QPath::Resolved(_, path)) = &ty.kind {
         match path.res {
             Res::Def(_, def_id) if cx.tcx.has_attr(def_id, sym::rustc_pass_by_value) => {
-                let name = cx.tcx.item_name(def_id).to_ident_string();
+                let name = cx.tcx.item_ident(def_id);
                 let path_segment = path.segments.last().unwrap();
                 return Some(format!("{}{}", name, gen_args(cx, path_segment)));
             }

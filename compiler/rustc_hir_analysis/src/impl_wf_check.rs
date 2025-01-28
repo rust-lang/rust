@@ -152,7 +152,7 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
                 {
                     let mut diag = tcx.dcx().create_err(UnconstrainedGenericParameter {
                         span: tcx.def_span(param.def_id),
-                        param_name: param.name,
+                        param_name: tcx.item_ident(param.def_id),
                         param_def_kind: tcx.def_descr(param.def_id),
                         const_param_note: false,
                         const_param_note2: false,
@@ -223,7 +223,7 @@ pub(crate) fn enforce_impl_non_lifetime_params_are_constrained(
             let const_param_note = matches!(param.kind, ty::GenericParamDefKind::Const { .. });
             let mut diag = tcx.dcx().create_err(UnconstrainedGenericParameter {
                 span: tcx.def_span(param.def_id),
-                param_name: param.name,
+                param_name: tcx.item_ident(param.def_id),
                 param_def_kind: tcx.def_descr(param.def_id),
                 const_param_note,
                 const_param_note2: const_param_note,

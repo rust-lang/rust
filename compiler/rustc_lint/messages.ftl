@@ -76,6 +76,11 @@ lint_builtin_deprecated_attr_link = use of deprecated attribute `{$name}`: {$rea
 lint_builtin_deref_nullptr = dereferencing a null pointer
     .label = this code causes undefined behavior when executed
 
+lint_builtin_double_negations = use of a double negation
+    .note = the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
+    .note_decrement = use `-= 1` if you meant to decrement the value
+    .add_parens_suggestion = add parentheses for clarity
+
 lint_builtin_ellipsis_inclusive_range_patterns = `...` range patterns are deprecated
     .suggestion = use `..=` for an inclusive range
 
@@ -974,6 +979,3 @@ lint_uses_power_alignment = repr(C) does not follow the power alignment rule. Th
 
 lint_variant_size_differences =
     enum variant is more than three times larger ({$largest} bytes) than the next largest
-
-lint_wasm_c_abi =
-    older versions of the `wasm-bindgen` crate will be incompatible with future versions of Rust; please update to `wasm-bindgen` v0.2.88

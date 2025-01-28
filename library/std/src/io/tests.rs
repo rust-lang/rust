@@ -7,7 +7,6 @@ use crate::mem::MaybeUninit;
 use crate::ops::Deref;
 
 #[test]
-#[cfg_attr(target_os = "emscripten", ignore)]
 fn read_until() {
     let mut buf = Cursor::new(&b"12"[..]);
     let mut v = Vec::new();
@@ -359,7 +358,6 @@ fn chain_zero_length_read_is_not_eof() {
 }
 
 #[bench]
-#[cfg_attr(target_os = "emscripten", ignore)]
 #[cfg_attr(miri, ignore)] // Miri isn't fast...
 fn bench_read_to_end(b: &mut test::Bencher) {
     b.iter(|| {
@@ -822,21 +820,4 @@ fn try_oom_error() {
     let reserve_err = v.try_reserve(isize::MAX as usize - 1).unwrap_err();
     let io_err = io::Error::from(reserve_err);
     assert_eq!(io::ErrorKind::OutOfMemory, io_err.kind());
-}
-
-#[test]
-#[cfg(all(windows, unix, not(miri)))]
-fn pipe_creation_clone_and_rw() {
-    let (rx, tx) = std::io::pipe().unwrap();
-
-    tx.try_clone().unwrap().write_all(b"12345").unwrap();
-    drop(tx);
-
-    let mut rx2 = rx.try_clone().unwrap();
-    drop(rx);
-
-    let mut s = String::new();
-    rx2.read_to_string(&mut s).unwrap();
-    drop(rx2);
-    assert_eq!(s, "12345");
 }

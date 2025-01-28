@@ -184,6 +184,50 @@ enum Scope<'a> {
     },
 }
 
+impl<'a> Scope<'a> {
+    // A helper for debugging scopes without printing parent scopes
+    fn debug_truncated(&'a self) -> impl fmt::Debug + 'a {
+        fmt::from_fn(move |f| match self {
+            Self::Binder { bound_vars, scope_type, hir_id, where_bound_origin, s: _ } => f
+                .debug_struct("Binder")
+                .field("bound_vars", bound_vars)
+                .field("scope_type", scope_type)
+                .field("hir_id", hir_id)
+                .field("where_bound_origin", where_bound_origin)
+                .field("s", &"..")
+                .finish(),
+            Self::Opaque { captures, def_id, s: _ } => f
+                .debug_struct("Opaque")
+                .field("def_id", def_id)
+                .field("captures", &captures.borrow())
+                .field("s", &"..")
+                .finish(),
+            Self::Body { id, s: _ } => {
+                f.debug_struct("Body").field("id", id).field("s", &"..").finish()
+            }
+            Self::ObjectLifetimeDefault { lifetime, s: _ } => f
+                .debug_struct("ObjectLifetimeDefault")
+                .field("lifetime", lifetime)
+                .field("s", &"..")
+                .finish(),
+            Self::Supertrait { bound_vars, s: _ } => f
+                .debug_struct("Supertrait")
+                .field("bound_vars", bound_vars)
+                .field("s", &"..")
+                .finish(),
+            Self::TraitRefBoundary { s: _ } => f.debug_struct("TraitRefBoundary").finish(),
+            Self::LateBoundary { s: _, what, deny_late_regions } => f
+                .debug_struct("LateBoundary")
+                .field("what", what)
+                .field("deny_late_regions", deny_late_regions)
+                .finish(),
+            Self::Root { opt_parent_item } => {
+                f.debug_struct("Root").field("opt_parent_item", &opt_parent_item).finish()
+            }
+        })
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 enum BinderScopeType {
     /// Any non-concatenating binder scopes.
@@ -198,52 +242,6 @@ enum BinderScopeType {
     /// out any lifetimes because they aren't needed to show the two scopes).
     /// The inner `for<>` has a scope of `Concatenating`.
     Concatenating,
-}
-
-// A helper struct for debugging scopes without printing parent scopes
-struct TruncatedScopeDebug<'a>(&'a Scope<'a>);
-
-impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0 {
-            Scope::Binder { bound_vars, scope_type, hir_id, where_bound_origin, s: _ } => f
-                .debug_struct("Binder")
-                .field("bound_vars", bound_vars)
-                .field("scope_type", scope_type)
-                .field("hir_id", hir_id)
-                .field("where_bound_origin", where_bound_origin)
-                .field("s", &"..")
-                .finish(),
-            Scope::Opaque { captures, def_id, s: _ } => f
-                .debug_struct("Opaque")
-                .field("def_id", def_id)
-                .field("captures", &captures.borrow())
-                .field("s", &"..")
-                .finish(),
-            Scope::Body { id, s: _ } => {
-                f.debug_struct("Body").field("id", id).field("s", &"..").finish()
-            }
-            Scope::ObjectLifetimeDefault { lifetime, s: _ } => f
-                .debug_struct("ObjectLifetimeDefault")
-                .field("lifetime", lifetime)
-                .field("s", &"..")
-                .finish(),
-            Scope::Supertrait { bound_vars, s: _ } => f
-                .debug_struct("Supertrait")
-                .field("bound_vars", bound_vars)
-                .field("s", &"..")
-                .finish(),
-            Scope::TraitRefBoundary { s: _ } => f.debug_struct("TraitRefBoundary").finish(),
-            Scope::LateBoundary { s: _, what, deny_late_regions } => f
-                .debug_struct("LateBoundary")
-                .field("what", what)
-                .field("deny_late_regions", deny_late_regions)
-                .finish(),
-            Scope::Root { opt_parent_item } => {
-                f.debug_struct("Root").field("opt_parent_item", &opt_parent_item).finish()
-            }
-        }
-    }
 }
 
 type ScopeRef<'a> = &'a Scope<'a>;
@@ -1144,7 +1142,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     {
         let BoundVarContext { tcx, map, .. } = self;
         let mut this = BoundVarContext { tcx: *tcx, map, scope: &wrap_scope };
-        let span = debug_span!("scope", scope = ?TruncatedScopeDebug(this.scope));
+        let span = debug_span!("scope", scope = ?this.scope.debug_truncated());
         {
             let _enter = span.enter();
             f(&mut this);

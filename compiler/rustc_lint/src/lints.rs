@@ -332,6 +332,24 @@ pub(crate) struct BuiltinTrivialBounds<'a> {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_builtin_double_negations)]
+#[note(lint_note)]
+#[note(lint_note_decrement)]
+pub(crate) struct BuiltinDoubleNegations {
+    #[subdiagnostic]
+    pub add_parens: BuiltinDoubleNegationsAddParens,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(lint_add_parens_suggestion, applicability = "maybe-incorrect")]
+pub(crate) struct BuiltinDoubleNegationsAddParens {
+    #[suggestion_part(code = "(")]
+    pub start_span: Span,
+    #[suggestion_part(code = ")")]
+    pub end_span: Span,
+}
+
+#[derive(LintDiagnostic)]
 pub(crate) enum BuiltinEllipsisInclusiveRangePatternsLint {
     #[diag(lint_builtin_ellipsis_inclusive_range_patterns)]
     Parenthesise {
@@ -1132,7 +1150,7 @@ pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
 #[help(lint_help_visit)]
 // FIXME: put #[primary_span] on `ptr_span` once it does not cause conflicts
 pub(crate) struct DanglingPointersFromTemporaries<'tcx> {
-    pub callee: Symbol,
+    pub callee: Ident,
     pub ty: Ty<'tcx>,
     #[label(lint_label_ptr)]
     pub ptr_span: Span,
@@ -1333,7 +1351,7 @@ pub(crate) enum NonUpperCaseGlobalSub {
 #[diag(lint_noop_method_call)]
 #[note]
 pub(crate) struct NoopMethodCallDiag<'a> {
-    pub method: Symbol,
+    pub method: Ident,
     pub orig_ty: Ty<'a>,
     pub trait_: Symbol,
     #[suggestion(code = "", applicability = "machine-applicable")]
@@ -2552,10 +2570,6 @@ pub(crate) struct UnusedCrateDependency {
     pub extern_crate: Symbol,
     pub local_crate: Symbol,
 }
-
-#[derive(LintDiagnostic)]
-#[diag(lint_wasm_c_abi)]
-pub(crate) struct WasmCAbi;
 
 #[derive(LintDiagnostic)]
 #[diag(lint_ill_formed_attribute_input)]

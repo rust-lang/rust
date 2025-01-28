@@ -9,6 +9,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::IndexVec;
 use rustc_middle::mir;
+use rustc_middle::mir::mono::MonoItemPartitions;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::RemapFileNameExt;
 use rustc_session::config::RemapPathScopeComponents;
@@ -297,12 +298,13 @@ struct UsageSets<'tcx> {
 /// Prepare sets of definitions that are relevant to deciding whether something
 /// is an "unused function" for coverage purposes.
 fn prepare_usage_sets<'tcx>(tcx: TyCtxt<'tcx>) -> UsageSets<'tcx> {
-    let (all_mono_items, cgus) = tcx.collect_and_partition_mono_items(());
+    let MonoItemPartitions { all_mono_items, codegen_units } =
+        tcx.collect_and_partition_mono_items(());
 
     // Obtain a MIR body for each function participating in codegen, via an
     // arbitrary instance.
     let mut def_ids_seen = FxHashSet::default();
-    let def_and_mir_for_all_mono_fns = cgus
+    let def_and_mir_for_all_mono_fns = codegen_units
         .iter()
         .flat_map(|cgu| cgu.items().keys())
         .filter_map(|item| match item {

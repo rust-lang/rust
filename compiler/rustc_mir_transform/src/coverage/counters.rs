@@ -10,14 +10,12 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::coverage::{CounterId, CovTerm, Expression, ExpressionId, Op};
 
 use crate::coverage::counters::balanced_flow::BalancedFlowGraph;
-use crate::coverage::counters::iter_nodes::IterNodes;
 use crate::coverage::counters::node_flow::{
     CounterTerm, NodeCounters, make_node_counters, node_flow_data_for_balanced_graph,
 };
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
 
 mod balanced_flow;
-mod iter_nodes;
 mod node_flow;
 mod union_find;
 

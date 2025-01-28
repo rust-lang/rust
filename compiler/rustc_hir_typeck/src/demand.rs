@@ -851,32 +851,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let hir::PatKind::Binding(hir::BindingMode::MUT, _hir_id, ident, _) = pat.kind
 
             // Look for the type corresponding to the argument pattern we have in the argument list.
-            && let Some(ty_sugg) = fn_decl
+            && let Some(ty_ref) = fn_decl
                 .inputs
                 .iter()
-                .filter_map(|ty| {
-                    if ty.span == *ty_span
-                        && let hir::TyKind::Ref(lt, x) = ty.kind
-                    {
-                        // `&'name Ty` -> `&'name mut Ty` or `&Ty` -> `&mut Ty`
-                        Some((
-                            x.ty.span.shrink_to_lo(),
-                            format!(
-                                "{}mut ",
-                                if lt.ident.span.lo() == lt.ident.span.hi() { "" } else { " " }
-                            ),
-                        ))
-                    } else {
-                        None
-                    }
+                .filter_map(|ty| match ty.kind {
+                    hir::TyKind::Ref(lt, mut_ty) if ty.span == *ty_span => Some((lt, mut_ty)),
+                    _ => None,
                 })
                 .next()
         {
-            let sugg = vec![
-                ty_sugg,
+            let mut sugg = if ty_ref.1.mutbl.is_mut() {
+                // Leave `&'name mut Ty` and `&mut Ty` as they are (#136028).
+                vec![]
+            } else {
+                // `&'name Ty` -> `&'name mut Ty` or `&Ty` -> `&mut Ty`
+                vec![(
+                    ty_ref.1.ty.span.shrink_to_lo(),
+                    format!(
+                        "{}mut ",
+                        if ty_ref.0.ident.span.lo() == ty_ref.0.ident.span.hi() { "" } else { " " },
+                    ),
+                )]
+            };
+            sugg.extend([
                 (pat.span.until(ident.span), String::new()),
                 (lhs.span.shrink_to_lo(), "*".to_string()),
-            ];
+            ]);
             // We suggest changing the argument from `mut ident: &Ty` to `ident: &'_ mut Ty` and the
             // assignment from `ident = val;` to `*ident = val;`.
             err.multipart_suggestion_verbose(

@@ -44,7 +44,7 @@
 //!    called. The `lang` attribute is called `eh_personality`.
 
 // Since core defines many fundamental lang items, all tests live in a
-// separate crate, libcoretest (library/core/tests), to avoid bizarre issues.
+// separate crate, coretests (library/coretests), to avoid bizarre issues.
 //
 // Here we explicitly #[cfg]-out this whole crate when testing. If we don't do
 // this, both the generated test artifact and the linked libtest (which

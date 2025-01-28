@@ -1099,10 +1099,15 @@ impl<T> [T] {
     /// assert!(iter.next().is_none());
     /// ```
     ///
-    /// There's no `windows_mut`, as that existing would let safe code violate the
-    /// "only one `&mut` at a time to the same thing" rule.  However, you can sometimes
-    /// use [`Cell::as_slice_of_cells`](crate::cell::Cell::as_slice_of_cells) in
-    /// conjunction with `windows` to accomplish something similar:
+    /// Because the [Iterator] trait cannot represent the required lifetimes,
+    /// there is no `windows_mut` analog to `windows`;
+    /// `[0,1,2].windows_mut(2).collect()` would violate [the rules of references]
+    /// (though a [LendingIterator] analog is possible). You can sometimes use
+    /// [`Cell::as_slice_of_cells`](crate::cell::Cell::as_slice_of_cells) in
+    /// conjunction with `windows` instead:
+    ///
+    /// [the rules of references]: https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html#the-rules-of-references
+    /// [LendingIterator]: https://blog.rust-lang.org/2022/10/28/gats-stabilization.html
     /// ```
     /// use std::cell::Cell;
     ///

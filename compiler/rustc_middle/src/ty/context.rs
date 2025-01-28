@@ -1349,6 +1349,33 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Stores memory for globals (statics/consts).
     pub(crate) alloc_map: Lock<interpret::AllocMap<'tcx>>,
+
+    current_gcx: CurrentGcx,
+}
+
+impl<'tcx> GlobalCtxt<'tcx> {
+    /// Installs `self` in a `TyCtxt` and `ImplicitCtxt` for the duration of
+    /// `f`.
+    pub fn enter<F, R>(&'tcx self, f: F) -> R
+    where
+        F: FnOnce(TyCtxt<'tcx>) -> R,
+    {
+        let icx = tls::ImplicitCtxt::new(self);
+
+        // Reset `current_gcx` to `None` when we exit.
+        let _on_drop = defer(move || {
+            *self.current_gcx.value.write() = None;
+        });
+
+        // Set this `GlobalCtxt` as the current one.
+        {
+            let mut guard = self.current_gcx.value.write();
+            assert!(guard.is_none(), "no `GlobalCtxt` is currently set");
+            *guard = Some(self as *const _ as *const ());
+        }
+
+        tls::enter_context(&icx, || f(icx.tcx))
+    }
 }
 
 /// This is used to get a reference to a `GlobalCtxt` if one is available.
@@ -1539,23 +1566,11 @@ impl<'tcx> TyCtxt<'tcx> {
             canonical_param_env_cache: Default::default(),
             data_layout,
             alloc_map: Lock::new(interpret::AllocMap::new()),
+            current_gcx,
         });
 
-        let icx = tls::ImplicitCtxt::new(&gcx);
-
-        // Reset `current_gcx` to `None` when we exit.
-        let _on_drop = defer(|| {
-            *current_gcx.value.write() = None;
-        });
-
-        // Set this `GlobalCtxt` as the current one.
-        {
-            let mut guard = current_gcx.value.write();
-            assert!(guard.is_none(), "no `GlobalCtxt` is currently set");
-            *guard = Some(&gcx as *const _ as *const ());
-        }
-
-        tls::enter_context(&icx, || f(icx.tcx))
+        // This is a separate function to work around a crash with parallel rustc (#135870)
+        gcx.enter(f)
     }
 
     /// Obtain all lang items of this crate and all dependencies (recursively)
@@ -2325,51 +2340,41 @@ macro_rules! sty_debug_print {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn debug_stats(self) -> impl std::fmt::Debug + 'tcx {
-        struct DebugStats<'tcx>(TyCtxt<'tcx>);
+    pub fn debug_stats(self) -> impl fmt::Debug + 'tcx {
+        fmt::from_fn(move |fmt| {
+            sty_debug_print!(
+                fmt,
+                self,
+                Adt,
+                Array,
+                Slice,
+                RawPtr,
+                Ref,
+                FnDef,
+                FnPtr,
+                UnsafeBinder,
+                Placeholder,
+                Coroutine,
+                CoroutineWitness,
+                Dynamic,
+                Closure,
+                CoroutineClosure,
+                Tuple,
+                Bound,
+                Param,
+                Infer,
+                Alias,
+                Pat,
+                Foreign
+            )?;
 
-        impl<'tcx> std::fmt::Debug for DebugStats<'tcx> {
-            fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                sty_debug_print!(
-                    fmt,
-                    self.0,
-                    Adt,
-                    Array,
-                    Slice,
-                    RawPtr,
-                    Ref,
-                    FnDef,
-                    FnPtr,
-                    UnsafeBinder,
-                    Placeholder,
-                    Coroutine,
-                    CoroutineWitness,
-                    Dynamic,
-                    Closure,
-                    CoroutineClosure,
-                    Tuple,
-                    Bound,
-                    Param,
-                    Infer,
-                    Alias,
-                    Pat,
-                    Foreign
-                )?;
+            writeln!(fmt, "GenericArgs interner: #{}", self.interners.args.len())?;
+            writeln!(fmt, "Region interner: #{}", self.interners.region.len())?;
+            writeln!(fmt, "Const Allocation interner: #{}", self.interners.const_allocation.len())?;
+            writeln!(fmt, "Layout interner: #{}", self.interners.layout.len())?;
 
-                writeln!(fmt, "GenericArgs interner: #{}", self.0.interners.args.len())?;
-                writeln!(fmt, "Region interner: #{}", self.0.interners.region.len())?;
-                writeln!(
-                    fmt,
-                    "Const Allocation interner: #{}",
-                    self.0.interners.const_allocation.len()
-                )?;
-                writeln!(fmt, "Layout interner: #{}", self.0.interners.layout.len())?;
-
-                Ok(())
-            }
-        }
-
-        DebugStats(self)
+            Ok(())
+        })
     }
 }
 

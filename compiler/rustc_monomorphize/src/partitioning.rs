@@ -110,7 +110,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::mir::mono::{
     CodegenUnit, CodegenUnitNameBuilder, InstantiationMode, Linkage, MonoItem, MonoItemData,
-    Visibility,
+    MonoItemPartitions, Visibility,
 };
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
 use rustc_middle::ty::{self, InstanceKind, TyCtxt};
@@ -1114,7 +1114,7 @@ where
     }
 }
 
-fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[CodegenUnit<'_>]) {
+fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitions<'_> {
     let collection_strategy = match tcx.sess.opts.unstable_opts.print_mono_items {
         Some(ref s) => {
             let mode = s.to_lowercase();
@@ -1236,7 +1236,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
         }
     }
 
-    (tcx.arena.alloc(mono_items), codegen_units)
+    MonoItemPartitions { all_mono_items: tcx.arena.alloc(mono_items), codegen_units }
 }
 
 /// Outputs stats about instantiation counts and estimated size, per `MonoItem`'s
@@ -1319,14 +1319,13 @@ fn dump_mono_items_stats<'tcx>(
 pub(crate) fn provide(providers: &mut Providers) {
     providers.collect_and_partition_mono_items = collect_and_partition_mono_items;
 
-    providers.is_codegened_item = |tcx, def_id| {
-        let (all_mono_items, _) = tcx.collect_and_partition_mono_items(());
-        all_mono_items.contains(&def_id)
-    };
+    providers.is_codegened_item =
+        |tcx, def_id| tcx.collect_and_partition_mono_items(()).all_mono_items.contains(&def_id);
 
     providers.codegen_unit = |tcx, name| {
-        let (_, all) = tcx.collect_and_partition_mono_items(());
-        all.iter()
+        tcx.collect_and_partition_mono_items(())
+            .codegen_units
+            .iter()
             .find(|cgu| cgu.name() == name)
             .unwrap_or_else(|| panic!("failed to find cgu with name {name:?}"))
     };

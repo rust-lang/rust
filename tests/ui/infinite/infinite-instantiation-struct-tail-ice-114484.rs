@@ -24,7 +24,7 @@ impl<T, const L: u8> VirtualWrapper<T, L> {
 impl<T: MyTrait + 'static, const L: u8> MyTrait for VirtualWrapper<T, L> {
     fn virtualize(&self) -> &dyn MyTrait {
         unsafe { virtualize_my_trait(L, self) }
-        // unsafe { virtualize_my_trait(L, &self.0) }    // <-- this code fixes the problem
+        // unsafe { virtualize_my_trait(L, &self.0) } // <-- this code fixes the problem
     }
 }
 
