@@ -8,7 +8,7 @@ use std::env;
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use libm::support::{hf32, hf64};
+use libm::support::{Hexf, hf32, hf64};
 #[cfg(feature = "build-mpfr")]
 use libm_test::mpfloat::MpOp;
 use libm_test::{MathOp, TupleCall};
@@ -73,7 +73,7 @@ macro_rules! handle_call {
                 }
                 _ => panic!("unrecognized or disabled basis '{}'", $basis),
             };
-            println!("{output:?}");
+            println!("{output:?} {:x}", Hexf(output));
             return;
         }
     };
@@ -303,6 +303,10 @@ impl FromStrRadix for i32 {
 #[cfg(f16_enabled)]
 impl FromStrRadix for f16 {
     fn from_str_radix(s: &str, radix: u32) -> Result<Self, ParseIntError> {
+        if radix == 16 && s.contains("p") {
+            return Ok(libm::support::hf16(s));
+        }
+
         let s = strip_radix_prefix(s, radix);
         u16::from_str_radix(s, radix).map(Self::from_bits)
     }
@@ -334,6 +338,9 @@ impl FromStrRadix for f64 {
 #[cfg(f128_enabled)]
 impl FromStrRadix for f128 {
     fn from_str_radix(s: &str, radix: u32) -> Result<Self, ParseIntError> {
+        if radix == 16 && s.contains("p") {
+            return Ok(libm::support::hf128(s));
+        }
         let s = strip_radix_prefix(s, radix);
         u128::from_str_radix(s, radix).map(Self::from_bits)
     }
