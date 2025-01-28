@@ -206,7 +206,7 @@ pub type UsePath<'hir> = Path<'hir, SmallVec<[Res; 3]>>;
 
 impl Path<'_> {
     pub fn is_global(&self) -> bool {
-        !self.segments.is_empty() && self.segments[0].ident.name == kw::PathRoot
+        self.segments.first().is_some_and(|segment| segment.ident.name == kw::PathRoot)
     }
 }
 
