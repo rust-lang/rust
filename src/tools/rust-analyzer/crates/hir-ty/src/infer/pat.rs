@@ -6,12 +6,13 @@ use hir_def::{
     expr_store::Body,
     hir::{Binding, BindingAnnotation, BindingId, Expr, ExprId, Literal, Pat, PatId},
     path::Path,
+    HasModule,
 };
 use hir_expand::name::Name;
 use stdx::TupleExt;
 
 use crate::{
-    consteval::{try_const_usize, usize_const},
+    consteval::{self, try_const_usize, usize_const},
     infer::{
         coerce::CoerceNever, expr::ExprIsRead, BindingMode, Expectation, InferenceContext,
         TypeMismatch,
@@ -479,6 +480,19 @@ impl InferenceContext<'_> {
         suffix: &[PatId],
         default_bm: BindingMode,
     ) -> Ty {
+        let expected = self.resolve_ty_shallow(expected);
+
+        // If `expected` is an infer ty, we try to equate it to an array if the given pattern
+        // allows it. See issue #16609
+        if expected.is_ty_var() {
+            if let Some(resolved_array_ty) =
+                self.try_resolve_slice_ty_to_array_ty(prefix, suffix, slice)
+            {
+                self.unify(&expected, &resolved_array_ty);
+            }
+        }
+
+        let expected = self.resolve_ty_shallow(&expected);
         let elem_ty = match expected.kind(Interner) {
             TyKind::Array(st, _) | TyKind::Slice(st) => st.clone(),
             _ => self.err_ty(),
@@ -552,6 +566,25 @@ impl InferenceContext<'_> {
             | Pat::Missing
             | Pat::Expr(_) => false,
         }
+    }
+
+    fn try_resolve_slice_ty_to_array_ty(
+        &mut self,
+        before: &[PatId],
+        suffix: &[PatId],
+        slice: &Option<PatId>,
+    ) -> Option<Ty> {
+        if !slice.is_none() {
+            return None;
+        }
+
+        let len = before.len() + suffix.len();
+        let size =
+            consteval::usize_const(self.db, Some(len as u128), self.owner.krate(self.db.upcast()));
+
+        let elem_ty = self.table.new_type_var();
+        let array_ty = TyKind::Array(elem_ty.clone(), size).intern(Interner);
+        Some(array_ty)
     }
 }
 

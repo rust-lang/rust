@@ -3814,3 +3814,31 @@ async fn foo(a: (), b: i32) -> u32 {
         "#,
     );
 }
+
+#[test]
+fn irrefutable_slices() {
+    check_infer(
+        r#"
+//- minicore: from
+struct A;
+
+impl From<A> for [u8; 2] {
+    fn from(a: A) -> Self {
+        [0; 2]
+    }
+}
+impl From<A> for [u8; 3] {
+    fn from(a: A) -> Self {
+        [0; 3]
+    }
+}
+
+
+fn main() {
+    let a = A;
+    let [b, c] = a.into();
+}
+"#,
+        expect![],
+    );
+}
