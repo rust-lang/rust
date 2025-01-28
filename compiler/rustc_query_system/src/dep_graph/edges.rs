@@ -27,6 +27,13 @@ impl EdgesVec {
     }
 
     #[inline]
+    pub(crate) fn eval_always() -> Self {
+        let mut vec = EdgesVec::new();
+        vec.push(DepNodeIndex::FOREVER_RED_NODE);
+        vec
+    }
+
+    #[inline]
     pub(crate) fn push(&mut self, edge: DepNodeIndex) {
         self.max = self.max.max(edge.as_u32());
         self.edges.push(edge);
