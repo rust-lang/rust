@@ -2,7 +2,9 @@
 
 #![allow(dead_code)] // FIXME: remove once this gets used
 
-use super::{f32_from_bits, f64_from_bits};
+use core::fmt;
+
+use super::{Float, f32_from_bits, f64_from_bits};
 
 /// Construct a 16-bit float from hex float representation (C-style)
 #[cfg(f16_enabled)]
@@ -42,7 +44,7 @@ pub const fn parse_any(s: &str, bits: u32, sig_bits: u32) -> u128 {
         Parsed::Finite { neg, sig, exp } => (neg, sig, exp),
         Parsed::Infinite { neg } => return ((neg as u128) << (bits - 1)) | exp_mask,
         Parsed::Nan { neg } => {
-            return ((neg as u128) << (bits - 1)) | exp_mask | 1 << (sig_bits - 1);
+            return ((neg as u128) << (bits - 1)) | exp_mask | (1 << (sig_bits - 1));
         }
     };
 
@@ -206,8 +208,107 @@ const fn u128_ilog2(v: u128) -> u32 {
     u128::BITS - 1 - v.leading_zeros()
 }
 
+/// Format a floating point number as its IEEE hex (`%a`) representation.
+pub struct Hexf<F>(pub F);
+
+// Adapted from https://github.com/ericseppanen/hexfloat2/blob/a5c27932f0ff/src/format.rs
+fn fmt_any_hex<F: Float>(x: &F, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    if x.is_sign_negative() {
+        write!(f, "-")?;
+    }
+
+    if x.is_nan() {
+        return write!(f, "NaN");
+    } else if x.is_infinite() {
+        return write!(f, "inf");
+    } else if *x == F::ZERO {
+        return write!(f, "0x0p+0");
+    }
+
+    let mut exponent = x.exp_unbiased();
+    let sig = x.to_bits() & F::SIG_MASK;
+
+    let bias = F::EXP_BIAS as i32;
+    // The mantissa MSB needs to be shifted up to the nearest nibble.
+    let mshift = (4 - (F::SIG_BITS % 4)) % 4;
+    let sig = sig << mshift;
+    // The width is rounded up to the nearest char (4 bits)
+    let mwidth = (F::SIG_BITS as usize + 3) / 4;
+    let leading = if exponent == -bias {
+        // subnormal number means we shift our output by 1 bit.
+        exponent += 1;
+        "0."
+    } else {
+        "1."
+    };
+
+    write!(f, "0x{leading}{sig:0mwidth$x}p{exponent:+}")
+}
+
+#[cfg(f16_enabled)]
+impl fmt::LowerHex for Hexf<f16> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt_any_hex(&self.0, f)
+    }
+}
+
+impl fmt::LowerHex for Hexf<f32> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt_any_hex(&self.0, f)
+    }
+}
+
+impl fmt::LowerHex for Hexf<f64> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt_any_hex(&self.0, f)
+    }
+}
+
+#[cfg(f128_enabled)]
+impl fmt::LowerHex for Hexf<f128> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt_any_hex(&self.0, f)
+    }
+}
+
+impl fmt::LowerHex for Hexf<i32> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::LowerHex::fmt(&self.0, f)
+    }
+}
+
+impl<T1, T2> fmt::LowerHex for Hexf<(T1, T2)>
+where
+    T1: Copy,
+    T2: Copy,
+    Hexf<T1>: fmt::LowerHex,
+    Hexf<T2>: fmt::LowerHex,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({:x}, {:x})", Hexf(self.0.0), Hexf(self.0.1))
+    }
+}
+
+impl<T> fmt::Debug for Hexf<T>
+where
+    Hexf<T>: fmt::LowerHex,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::LowerHex::fmt(self, f)
+    }
+}
+
+impl<T> fmt::Display for Hexf<T>
+where
+    Hexf<T>: fmt::LowerHex,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::LowerHex::fmt(self, f)
+    }
+}
+
 #[cfg(test)]
-mod tests {
+mod parse_tests {
     extern crate std;
     use std::{format, println};
 
@@ -665,4 +766,80 @@ mod tests_panicking {
 
     #[cfg(f128_enabled)]
     f128_tests!();
+}
+
+#[cfg(test)]
+mod print_tests {
+    extern crate std;
+    use std::string::ToString;
+
+    use super::*;
+
+    #[test]
+    #[cfg(f16_enabled)]
+    fn test_f16() {
+        use std::format;
+        // Exhaustively check that `f16` roundtrips.
+        for x in 0..=u16::MAX {
+            let f = f16::from_bits(x);
+            let s = format!("{}", Hexf(f));
+            let from_s = hf16(&s);
+
+            if f.is_nan() && from_s.is_nan() {
+                continue;
+            }
+
+            assert_eq!(
+                f.to_bits(),
+                from_s.to_bits(),
+                "{f:?} formatted as {s} but parsed as {from_s:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn spot_checks() {
+        assert_eq!(Hexf(f32::MAX).to_string(), "0x1.fffffep+127");
+        assert_eq!(Hexf(f64::MAX).to_string(), "0x1.fffffffffffffp+1023");
+
+        assert_eq!(Hexf(f32::MIN).to_string(), "-0x1.fffffep+127");
+        assert_eq!(Hexf(f64::MIN).to_string(), "-0x1.fffffffffffffp+1023");
+
+        assert_eq!(Hexf(f32::ZERO).to_string(), "0x0p+0");
+        assert_eq!(Hexf(f64::ZERO).to_string(), "0x0p+0");
+
+        assert_eq!(Hexf(f32::NEG_ZERO).to_string(), "-0x0p+0");
+        assert_eq!(Hexf(f64::NEG_ZERO).to_string(), "-0x0p+0");
+
+        assert_eq!(Hexf(f32::NAN).to_string(), "NaN");
+        assert_eq!(Hexf(f64::NAN).to_string(), "NaN");
+
+        assert_eq!(Hexf(f32::INFINITY).to_string(), "inf");
+        assert_eq!(Hexf(f64::INFINITY).to_string(), "inf");
+
+        assert_eq!(Hexf(f32::NEG_INFINITY).to_string(), "-inf");
+        assert_eq!(Hexf(f64::NEG_INFINITY).to_string(), "-inf");
+
+        #[cfg(f16_enabled)]
+        {
+            assert_eq!(Hexf(f16::MAX).to_string(), "0x1.ffcp+15");
+            assert_eq!(Hexf(f16::MIN).to_string(), "-0x1.ffcp+15");
+            assert_eq!(Hexf(f16::ZERO).to_string(), "0x0p+0");
+            assert_eq!(Hexf(f16::NEG_ZERO).to_string(), "-0x0p+0");
+            assert_eq!(Hexf(f16::NAN).to_string(), "NaN");
+            assert_eq!(Hexf(f16::INFINITY).to_string(), "inf");
+            assert_eq!(Hexf(f16::NEG_INFINITY).to_string(), "-inf");
+        }
+
+        #[cfg(f128_enabled)]
+        {
+            assert_eq!(Hexf(f128::MAX).to_string(), "0x1.ffffffffffffffffffffffffffffp+16383");
+            assert_eq!(Hexf(f128::MIN).to_string(), "-0x1.ffffffffffffffffffffffffffffp+16383");
+            assert_eq!(Hexf(f128::ZERO).to_string(), "0x0p+0");
+            assert_eq!(Hexf(f128::NEG_ZERO).to_string(), "-0x0p+0");
+            assert_eq!(Hexf(f128::NAN).to_string(), "NaN");
+            assert_eq!(Hexf(f128::INFINITY).to_string(), "inf");
+            assert_eq!(Hexf(f128::NEG_INFINITY).to_string(), "-inf");
+        }
+    }
 }

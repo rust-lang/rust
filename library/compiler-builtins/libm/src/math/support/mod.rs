@@ -13,7 +13,7 @@ pub use hex_float::hf16;
 #[cfg(f128_enabled)]
 pub use hex_float::hf128;
 #[allow(unused_imports)]
-pub use hex_float::{hf32, hf64};
+pub use hex_float::{Hexf, hf32, hf64};
 pub use int_traits::{CastFrom, CastInto, DInt, HInt, Int, MinInt};
 
 /// Hint to the compiler that the current path is cold.
