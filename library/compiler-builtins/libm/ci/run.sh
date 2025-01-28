@@ -117,4 +117,14 @@ $cmd "$profile" release-checked --features unstable-intrinsics
 $cmd "$profile" release-checked --features unstable-intrinsics --benches
 
 # Ensure that the routines do not panic.
-ENSURE_NO_PANIC=1 cargo build -p libm --target "$target" --no-default-features --release
+# 
+# `--tests` must be passed because no-panic is only enabled as a dev
+# dependency. The `release-opt` profile must be used to enable LTO and a
+# single CGU.
+ENSURE_NO_PANIC=1 cargo build \
+     -p libm \
+    --target "$target" \
+    --no-default-features \
+    --features unstable-float \
+    --tests \
+    --profile release-opt
