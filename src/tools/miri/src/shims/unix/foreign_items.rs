@@ -354,10 +354,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "pipe2" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
-                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd" | "solaris" | "illumos")
-                {
-                    throw_unsup_format!("`pipe2` is not supported on {}", this.tcx.sess.target.os);
-                }
+                this.check_target_os(&["linux", "freebsd", "solaris", "illumos"], link_name)?;
                 let [pipefd, flags] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let result = this.pipe2(pipefd, Some(flags))?;
                 this.write_scalar(result, dest)?;
@@ -402,12 +399,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             "reallocarray" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
-                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd" | "android") {
-                    throw_unsup_format!(
-                        "`reallocarray` is not supported on {}",
-                        this.tcx.sess.target.os
-                    );
-                }
+                this.check_target_os(&["linux", "freebsd", "android"], link_name)?;
                 let [ptr, nmemb, size] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let nmemb = this.read_target_usize(nmemb)?;
@@ -656,13 +648,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "sched_getaffinity" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
-                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd" | "android") {
-                    throw_unsup_format!(
-                        "`sched_getaffinity` is not supported on {}",
-                        this.tcx.sess.target.os
-                    );
-                }
-
+                this.check_target_os(&["linux", "freebsd", "android"], link_name)?;
                 let [pid, cpusetsize, mask] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let pid = this.read_scalar(pid)?.to_u32()?;
                 let cpusetsize = this.read_target_usize(cpusetsize)?;
@@ -699,13 +685,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "sched_setaffinity" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
-                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd" | "android") {
-                    throw_unsup_format!(
-                        "`sched_setaffinity` is not supported on {}",
-                        this.tcx.sess.target.os
-                    );
-                }
-
+                this.check_target_os(&["linux", "freebsd", "android"], link_name)?;
                 let [pid, cpusetsize, mask] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let pid = this.read_scalar(pid)?.to_u32()?;
                 let cpusetsize = this.read_target_usize(cpusetsize)?;
@@ -761,16 +741,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "getentropy" => {
                 // This function is non-standard but exists with the same signature and behavior on
                 // Linux, macOS, FreeBSD and Solaris/Illumos.
-                if !matches!(
-                    &*this.tcx.sess.target.os,
-                    "linux" | "macos" | "freebsd" | "illumos" | "solaris" | "android"
-                ) {
-                    throw_unsup_format!(
-                        "`getentropy` is not supported on {}",
-                        this.tcx.sess.target.os
-                    );
-                }
-
+                this.check_target_os(
+                    &["linux", "macos", "freebsd", "illumos", "solaris", "android"],
+                    link_name,
+                )?;
                 let [buf, bufsize] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let buf = this.read_pointer(buf)?;
                 let bufsize = this.read_target_usize(bufsize)?;
@@ -797,15 +771,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "getrandom" => {
                 // This function is non-standard but exists with the same signature and behavior on
                 // Linux, FreeBSD and Solaris/Illumos.
-                if !matches!(
-                    &*this.tcx.sess.target.os,
-                    "linux" | "freebsd" | "illumos" | "solaris" | "android"
-                ) {
-                    throw_unsup_format!(
-                        "`getrandom` is not supported on {}",
-                        this.tcx.sess.target.os
-                    );
-                }
+                this.check_target_os(
+                    &["linux", "freebsd", "illumos", "solaris", "android"],
+                    link_name,
+                )?;
                 let [ptr, len, flags] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let len = this.read_target_usize(len)?;
@@ -817,12 +786,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "arc4random_buf" => {
                 // This function is non-standard but exists with the same signature and
                 // same behavior (eg never fails) on FreeBSD and Solaris/Illumos.
-                if !matches!(&*this.tcx.sess.target.os, "freebsd" | "illumos" | "solaris") {
-                    throw_unsup_format!(
-                        "`arc4random_buf` is not supported on {}",
-                        this.tcx.sess.target.os
-                    );
-                }
+                this.check_target_os(&["freebsd", "illumos", "solaris"], link_name)?;
                 let [ptr, len] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let len = this.read_target_usize(len)?;
@@ -842,15 +806,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // For arm32 they did something custom, but similar enough that the same
                 // `_Unwind_RaiseException` impl in miri should work:
                 // https://github.com/ARM-software/abi-aa/blob/main/ehabi32/ehabi32.rst
-                if !matches!(
-                    &*this.tcx.sess.target.os,
-                    "linux" | "freebsd" | "illumos" | "solaris" | "android" | "macos"
-                ) {
-                    throw_unsup_format!(
-                        "`_Unwind_RaiseException` is not supported on {}",
-                        this.tcx.sess.target.os
-                    );
-                }
+                this.check_target_os(
+                    &["linux", "freebsd", "illumos", "solaris", "android", "macos"],
+                    link_name,
+                )?;
                 // This function looks and behaves excatly like miri_start_unwind.
                 let [payload] = this.check_shim(abi, Conv::C, link_name, args)?;
                 this.handle_miri_start_unwind(payload)?;
