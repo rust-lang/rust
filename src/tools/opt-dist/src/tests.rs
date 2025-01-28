@@ -89,7 +89,7 @@ llvm-config = "{llvm_config}"
     std::fs::write("config.toml", config_content)?;
 
     let x_py = env.checkout_path().join("x.py");
-    let mut args = vec![
+    let args = vec![
         env.python_binary(),
         x_py.as_str(),
         "test",
@@ -107,9 +107,6 @@ llvm-config = "{llvm_config}"
         "tests/ui",
         "tests/crashes",
     ];
-    for test_path in env.skipped_tests() {
-        args.extend(["--skip", test_path]);
-    }
     cmd(&args)
         .env("COMPILETEST_FORCE_STAGE0", "1")
         // Also run dist-only tests

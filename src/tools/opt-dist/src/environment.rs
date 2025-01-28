@@ -15,8 +15,6 @@ pub struct Environment {
     artifact_dir: Utf8PathBuf,
     /// Path to the host LLVM used to compile LLVM in `src/llvm-project`.
     host_llvm_dir: Utf8PathBuf,
-    /// List of test paths that should be skipped when testing the optimized artifacts.
-    skipped_tests: Vec<String>,
     /// Arguments passed to `rustc-perf --cargo-config <value>` when running benchmarks.
     #[builder(default)]
     benchmark_cargo_config: Vec<String>,
@@ -92,10 +90,6 @@ impl Environment {
 
     pub fn supports_shared_llvm(&self) -> bool {
         self.shared_llvm
-    }
-
-    pub fn skipped_tests(&self) -> &[String] {
-        &self.skipped_tests
     }
 
     pub fn benchmark_cargo_config(&self) -> &[String] {
