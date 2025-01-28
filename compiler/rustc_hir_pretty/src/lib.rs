@@ -10,7 +10,7 @@ use std::cell::Cell;
 use std::vec;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::util::parser::{self, AssocOp, ExprPrecedence, Fixity};
+use rustc_ast::util::parser::{self, ExprPrecedence, Fixity};
 use rustc_ast::{DUMMY_NODE_ID, DelimArgs};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
@@ -1290,19 +1290,18 @@ impl<'a> State<'a> {
         self.print_call_post(base_args)
     }
 
-    fn print_expr_binary(&mut self, op: hir::BinOp, lhs: &hir::Expr<'_>, rhs: &hir::Expr<'_>) {
-        let assoc_op = AssocOp::from_ast_binop(op.node);
-        let binop_prec = assoc_op.precedence();
+    fn print_expr_binary(&mut self, op: hir::BinOpKind, lhs: &hir::Expr<'_>, rhs: &hir::Expr<'_>) {
+        let binop_prec = op.precedence();
         let left_prec = lhs.precedence();
         let right_prec = rhs.precedence();
 
-        let (mut left_needs_paren, right_needs_paren) = match assoc_op.fixity() {
+        let (mut left_needs_paren, right_needs_paren) = match op.fixity() {
             Fixity::Left => (left_prec < binop_prec, right_prec <= binop_prec),
             Fixity::Right => (left_prec <= binop_prec, right_prec < binop_prec),
             Fixity::None => (left_prec <= binop_prec, right_prec <= binop_prec),
         };
 
-        match (&lhs.kind, op.node) {
+        match (&lhs.kind, op) {
             // These cases need parens: `x as i32 < y` has the parser thinking that `i32 < y` is
             // the beginning of a path type. It starts trying to parse `x as (i32 < y ...` instead
             // of `(x as i32) < ...`. We need to convince it _not_ to do that.
@@ -1317,7 +1316,7 @@ impl<'a> State<'a> {
 
         self.print_expr_cond_paren(lhs, left_needs_paren);
         self.space();
-        self.word_space(op.node.as_str());
+        self.word_space(op.as_str());
         self.print_expr_cond_paren(rhs, right_needs_paren);
     }
 
@@ -1466,7 +1465,7 @@ impl<'a> State<'a> {
                 self.print_expr_method_call(segment, receiver, args);
             }
             hir::ExprKind::Binary(op, lhs, rhs) => {
-                self.print_expr_binary(op, lhs, rhs);
+                self.print_expr_binary(op.node, lhs, rhs);
             }
             hir::ExprKind::Unary(op, expr) => {
                 self.print_expr_unary(op, expr);
@@ -1587,8 +1586,7 @@ impl<'a> State<'a> {
             hir::ExprKind::AssignOp(op, lhs, rhs) => {
                 self.print_expr_cond_paren(lhs, lhs.precedence() <= ExprPrecedence::Assign);
                 self.space();
-                self.word(op.node.as_str());
-                self.word_space("=");
+                self.word_space(op.node.as_str());
                 self.print_expr_cond_paren(rhs, rhs.precedence() < ExprPrecedence::Assign);
             }
             hir::ExprKind::Field(expr, ident) => {

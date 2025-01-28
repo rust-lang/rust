@@ -1,4 +1,4 @@
-use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw};
+use rustc_ast::token::{self, Delimiter, IdentIsRaw};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::PrintState;
 use rustc_ast_pretty::pprust::state::State as Printer;
@@ -137,15 +137,10 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
                 (Dollar, token::Ident(..)) => (false, DollarIdent),
                 (DollarIdent, token::Colon) => (false, DollarIdentColon),
                 (DollarIdentColon, token::Ident(..)) => (false, Other),
-                (
-                    DollarParen,
-                    token::BinOp(BinOpToken::Plus | BinOpToken::Star) | token::Question,
-                ) => (false, Other),
+                (DollarParen, token::Plus | token::Star | token::Question) => (false, Other),
                 (DollarParen, _) => (false, DollarParenSep),
-                (DollarParenSep, token::BinOp(BinOpToken::Plus | BinOpToken::Star)) => {
-                    (false, Other)
-                }
-                (Pound, token::Not) => (false, PoundBang),
+                (DollarParenSep, token::Plus | token::Star) => (false, Other),
+                (Pound, token::Bang) => (false, PoundBang),
                 (_, token::Ident(symbol, IdentIsRaw::No))
                     if !usually_needs_space_between_keyword_and_open_delim(*symbol, tt.span) =>
                 {

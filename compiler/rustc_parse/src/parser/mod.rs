@@ -754,9 +754,7 @@ impl<'a> Parser<'a> {
         self.is_keyword_ahead(0, &[kw::Const])
             && self.look_ahead(1, |t| match &t.kind {
                 // async closures do not work with const closures, so we do not parse that here.
-                token::Ident(kw::Move | kw::Static, _) | token::OrOr | token::BinOp(token::Or) => {
-                    true
-                }
+                token::Ident(kw::Move | kw::Static, _) | token::OrOr | token::Or => true,
                 _ => false,
             })
     }
@@ -1590,7 +1588,7 @@ impl<'a> Parser<'a> {
     /// `::{` or `::*`
     fn is_import_coupler(&mut self) -> bool {
         self.check_path_sep_and_look_ahead(|t| {
-            matches!(t.kind, token::OpenDelim(Delimiter::Brace) | token::BinOp(token::Star))
+            matches!(t.kind, token::OpenDelim(Delimiter::Brace) | token::Star)
         })
     }
 

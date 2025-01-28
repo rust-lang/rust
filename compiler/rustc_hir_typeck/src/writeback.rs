@@ -157,7 +157,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     self.typeck_results.node_args_mut().remove(e.hir_id);
                 }
             }
-            hir::ExprKind::Binary(ref op, lhs, rhs) | hir::ExprKind::AssignOp(ref op, lhs, rhs) => {
+            hir::ExprKind::Binary(ref op, lhs, rhs) => {
                 let lhs_ty = self.typeck_results.node_type(lhs.hir_id);
                 let rhs_ty = self.typeck_results.node_type(rhs.hir_id);
 
@@ -165,25 +165,27 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     self.typeck_results.type_dependent_defs_mut().remove(e.hir_id);
                     self.typeck_results.node_args_mut().remove(e.hir_id);
 
-                    match e.kind {
-                        hir::ExprKind::Binary(..) => {
-                            if !op.node.is_by_value() {
-                                let mut adjustments = self.typeck_results.adjustments_mut();
-                                if let Some(a) = adjustments.get_mut(lhs.hir_id) {
-                                    a.pop();
-                                }
-                                if let Some(a) = adjustments.get_mut(rhs.hir_id) {
-                                    a.pop();
-                                }
-                            }
-                        }
-                        hir::ExprKind::AssignOp(..)
-                            if let Some(a) =
-                                self.typeck_results.adjustments_mut().get_mut(lhs.hir_id) =>
-                        {
+                    if !op.node.is_by_value() {
+                        let mut adjustments = self.typeck_results.adjustments_mut();
+                        if let Some(a) = adjustments.get_mut(lhs.hir_id) {
                             a.pop();
                         }
-                        _ => {}
+                        if let Some(a) = adjustments.get_mut(rhs.hir_id) {
+                            a.pop();
+                        }
+                    }
+                }
+            }
+            hir::ExprKind::AssignOp(_, lhs, rhs) => {
+                let lhs_ty = self.typeck_results.node_type(lhs.hir_id);
+                let rhs_ty = self.typeck_results.node_type(rhs.hir_id);
+
+                if lhs_ty.is_scalar() && rhs_ty.is_scalar() {
+                    self.typeck_results.type_dependent_defs_mut().remove(e.hir_id);
+                    self.typeck_results.node_args_mut().remove(e.hir_id);
+
+                    if let Some(a) = self.typeck_results.adjustments_mut().get_mut(lhs.hir_id) {
+                        a.pop();
                     }
                 }
             }
