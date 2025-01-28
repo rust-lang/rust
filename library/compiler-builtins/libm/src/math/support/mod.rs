@@ -2,7 +2,7 @@
 pub mod macros;
 mod big;
 mod float_traits;
-mod hex_float;
+pub mod hex_float;
 mod int_traits;
 
 #[allow(unused_imports)]

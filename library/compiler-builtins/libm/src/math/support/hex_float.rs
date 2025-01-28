@@ -26,17 +26,25 @@ pub const fn hf128(s: &str) -> f128 {
     f128::from_bits(parse_any(s, 128, 112))
 }
 
-const fn parse_any(s: &str, bits: u32, sig_bits: u32) -> u128 {
+/// Parse any float from hex to its bitwise representation.
+///
+/// `nan_repr` is passed rather than constructed so the platform-specific NaN is returned.
+pub const fn parse_any(s: &str, bits: u32, sig_bits: u32) -> u128 {
     let exp_bits: u32 = bits - sig_bits - 1;
     let max_msb: i32 = (1 << (exp_bits - 1)) - 1;
     // The exponent of one ULP in the subnormals
     let min_lsb: i32 = 1 - max_msb - sig_bits as i32;
 
-    let (neg, mut sig, exp) = parse_hex(s.as_bytes());
+    let exp_mask = ((1 << exp_bits) - 1) << sig_bits;
 
-    if sig == 0 {
-        return (neg as u128) << (bits - 1);
-    }
+    let (neg, mut sig, exp) = match parse_hex(s.as_bytes()) {
+        Parsed::Finite { neg, sig: 0, .. } => return (neg as u128) << (bits - 1),
+        Parsed::Finite { neg, sig, exp } => (neg, sig, exp),
+        Parsed::Infinite { neg } => return ((neg as u128) << (bits - 1)) | exp_mask,
+        Parsed::Nan { neg } => {
+            return ((neg as u128) << (bits - 1)) | exp_mask | 1 << (sig_bits - 1);
+        }
+    };
 
     // exponents of the least and most significant bits in the value
     let lsb = sig.trailing_zeros() as i32;
@@ -76,11 +84,24 @@ const fn parse_any(s: &str, bits: u32, sig_bits: u32) -> u128 {
     sig | ((neg as u128) << (bits - 1))
 }
 
+/// A parsed floating point number.
+enum Parsed {
+    /// Absolute value sig * 2^e
+    Finite {
+        neg: bool,
+        sig: u128,
+        exp: i32,
+    },
+    Infinite {
+        neg: bool,
+    },
+    Nan {
+        neg: bool,
+    },
+}
+
 /// Parse a hexadecimal float x
-/// returns (s,n,e):
-///     s == x.is_sign_negative()
-///     n * 2^e == x.abs()
-const fn parse_hex(mut b: &[u8]) -> (bool, u128, i32) {
+const fn parse_hex(mut b: &[u8]) -> Parsed {
     let mut neg = false;
     let mut sig: u128 = 0;
     let mut exp: i32 = 0;
@@ -88,6 +109,12 @@ const fn parse_hex(mut b: &[u8]) -> (bool, u128, i32) {
     if let &[c @ (b'-' | b'+'), ref rest @ ..] = b {
         b = rest;
         neg = c == b'-';
+    }
+
+    match *b {
+        [b'i' | b'I', b'n' | b'N', b'f' | b'F'] => return Parsed::Infinite { neg },
+        [b'n' | b'N', b'a' | b'A', b'n' | b'N'] => return Parsed::Nan { neg },
+        _ => (),
     }
 
     if let &[b'0', b'x' | b'X', ref rest @ ..] = b {
@@ -152,7 +179,7 @@ const fn parse_hex(mut b: &[u8]) -> (bool, u128, i32) {
         exp += pexp;
     }
 
-    (neg, sig, exp)
+    Parsed::Finite { neg, sig, exp }
 }
 
 const fn dec_digit(c: u8) -> u8 {
@@ -272,6 +299,10 @@ mod tests {
                     ("-0x1.998p-4", (-0.1f16).to_bits()),
                     ("0x0.123p-12", 0x0123),
                     ("0x1p-24", 0x0001),
+                    ("nan", f16::NAN.to_bits()),
+                    ("-nan", (-f16::NAN).to_bits()),
+                    ("inf", f16::INFINITY.to_bits()),
+                    ("-inf", f16::NEG_INFINITY.to_bits()),
                 ];
                 for (s, exp) in checks {
                     println!("parsing {s}");
@@ -322,6 +353,10 @@ mod tests {
             ("0x1.111114p-127", 0x00444445),
             ("0x1.23456p-130", 0x00091a2b),
             ("0x1p-149", 0x00000001),
+            ("nan", f32::NAN.to_bits()),
+            ("-nan", (-f32::NAN).to_bits()),
+            ("inf", f32::INFINITY.to_bits()),
+            ("-inf", f32::NEG_INFINITY.to_bits()),
         ];
         for (s, exp) in checks {
             println!("parsing {s}");
@@ -360,6 +395,10 @@ mod tests {
             ("0x0.8000000000001p-1022", 0x0008000000000001),
             ("0x0.123456789abcdp-1022", 0x000123456789abcd),
             ("0x0.0000000000002p-1022", 0x0000000000000002),
+            ("nan", f64::NAN.to_bits()),
+            ("-nan", (-f64::NAN).to_bits()),
+            ("inf", f64::INFINITY.to_bits()),
+            ("-inf", f64::NEG_INFINITY.to_bits()),
         ];
         for (s, exp) in checks {
             println!("parsing {s}");
@@ -401,6 +440,10 @@ mod tests {
                     ("-0x1.999999999999999999999999999ap-4", (-0.1f128).to_bits()),
                     ("0x0.abcdef0123456789abcdef012345p-16382", 0x0000abcdef0123456789abcdef012345),
                     ("0x1p-16494", 0x00000000000000000000000000000001),
+                    ("nan", f128::NAN.to_bits()),
+                    ("-nan", (-f128::NAN).to_bits()),
+                    ("inf", f128::INFINITY.to_bits()),
+                    ("-inf", f128::NEG_INFINITY.to_bits()),
                 ];
                 for (s, exp) in checks {
                     println!("parsing {s}");
