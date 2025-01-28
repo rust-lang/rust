@@ -1,0 +1,34 @@
+// MIR for `index_custom` after built
+
+fn index_custom(_1: &WithSliceTail, _2: usize) -> &i32 {
+    debug custom => _1;
+    debug index => _2;
+    let mut _0: &i32;
+    let _3: &i32;
+    let _4: usize;
+    let mut _5: *const [i32];
+    let mut _6: usize;
+    let mut _7: bool;
+
+    bb0: {
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = copy _2;
+        _5 = &raw const (fake) ((*_1).1: [i32]);
+        _6 = PtrMetadata(move _5);
+        _7 = Lt(copy _4, copy _6);
+        assert(move _7, "index out of bounds: the length is {} but the index is {}", move _6, copy _4) -> [success: bb1, unwind: bb2];
+    }
+
+    bb1: {
+        _3 = &((*_1).1: [i32])[_4];
+        _0 = &(*_3);
+        StorageDead(_4);
+        StorageDead(_3);
+        return;
+    }
+
+    bb2 (cleanup): {
+        resume;
+    }
+}

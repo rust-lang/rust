@@ -1,17 +1,3 @@
-error[E0503]: cannot use `arr` because it was mutably borrowed
-  --> $DIR/arrays.rs:14:5
-   |
-LL |     let mut c = || {
-   |                 -- `arr` is borrowed here
-LL |         arr[0] += 10;
-   |         --- borrow occurs due to use of `arr` in closure
-...
-LL |     arr[1] += 10;
-   |     ^^^^^^ use of borrowed `arr`
-...
-LL |     c();
-   |     - borrow later used here
-
 error[E0503]: cannot use `arr[_]` because it was mutably borrowed
   --> $DIR/arrays.rs:14:5
    |
@@ -22,12 +8,12 @@ LL |         arr[0] += 10;
 ...
 LL |     arr[1] += 10;
    |     ^^^^^^^^^^^^ use of borrowed `arr`
-...
+LL |
 LL |     c();
    |     - borrow later used here
 
 error[E0506]: cannot assign to `arr[_]` because it is borrowed
-  --> $DIR/arrays.rs:29:5
+  --> $DIR/arrays.rs:28:5
    |
 LL |     let c = || {
    |             -- `arr[_]` is borrowed here
@@ -41,7 +27,7 @@ LL |     c();
    |     - borrow later used here
 
 error[E0506]: cannot assign to `arr[_]` because it is borrowed
-  --> $DIR/arrays.rs:43:5
+  --> $DIR/arrays.rs:42:5
    |
 LL |     let c = || {
    |             -- `arr[_]` is borrowed here
@@ -54,22 +40,8 @@ LL |
 LL |     c();
    |     - borrow later used here
 
-error[E0503]: cannot use `arr` because it was mutably borrowed
-  --> $DIR/arrays.rs:57:20
-   |
-LL |     let mut c = || {
-   |                 -- `arr` is borrowed here
-LL |         arr[1] += 10;
-   |         --- borrow occurs due to use of `arr` in closure
-...
-LL |     println!("{}", arr[3]);
-   |                    ^^^^^^ use of borrowed `arr`
-...
-LL |     c();
-   |     - borrow later used here
-
 error[E0502]: cannot borrow `arr[_]` as immutable because it is also borrowed as mutable
-  --> $DIR/arrays.rs:57:20
+  --> $DIR/arrays.rs:56:20
    |
 LL |     let mut c = || {
    |                 -- mutable borrow occurs here
@@ -85,7 +57,7 @@ LL |     c();
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0502]: cannot borrow `arr` as immutable because it is also borrowed as mutable
-  --> $DIR/arrays.rs:73:24
+  --> $DIR/arrays.rs:71:24
    |
 LL |     let mut c = || {
    |                 -- mutable borrow occurs here
@@ -98,7 +70,7 @@ LL |     println!("{:#?}", &arr[3..2]);
 LL |     c();
    |     - mutable borrow later used here
 
-error: aborting due to 7 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0502, E0503, E0506.
 For more information about an error, try `rustc --explain E0502`.

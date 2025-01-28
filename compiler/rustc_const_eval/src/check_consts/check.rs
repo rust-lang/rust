@@ -518,7 +518,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Ref(_, BorrowKind::Mut { .. }, place)
-            | Rvalue::RawPtr(Mutability::Mut, place) => {
+            | Rvalue::RawPtr(RawPtrKind::Mut, place) => {
                 // Inside mutable statics, we allow arbitrary mutable references.
                 // We've allowed `static mut FOO = &mut [elements];` for a long time (the exact
                 // reasons why are lost to history), and there is no reason to restrict that to
@@ -536,7 +536,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Fake(_), place)
-            | Rvalue::RawPtr(Mutability::Not, place) => {
+            | Rvalue::RawPtr(RawPtrKind::Const, place) => {
                 let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
                     self.ccx,
                     &mut |local| self.qualifs.has_mut_interior(self.ccx, local, location),
@@ -546,6 +546,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 if borrowed_place_has_mut_interior && self.place_may_escape(place) {
                     self.check_op(ops::EscapingCellBorrow);
                 }
+            }
+
+            Rvalue::RawPtr(RawPtrKind::FakeForPtrMetadata, place) => {
+                // These are only inserted for slice length, so the place must already be indirect.
+                // This implies we do not have to worry about whether the borrow escapes.
+                assert!(place.is_indirect(), "fake borrows are always indirect");
             }
 
             Rvalue::Cast(
@@ -586,12 +592,23 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             ) => {}
             Rvalue::ShallowInitBox(_, _) => {}
 
-            Rvalue::UnaryOp(_, operand) => {
+            Rvalue::UnaryOp(op, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
-                if is_int_bool_float_or_char(ty) {
-                    // Int, bool, float, and char operations are fine.
-                } else {
-                    span_bug!(self.span, "non-primitive type in `Rvalue::UnaryOp`: {:?}", ty);
+                match op {
+                    UnOp::Not | UnOp::Neg => {
+                        if is_int_bool_float_or_char(ty) {
+                            // Int, bool, float, and char operations are fine.
+                        } else {
+                            span_bug!(
+                                self.span,
+                                "non-primitive type in `Rvalue::UnaryOp{op:?}`: {ty:?}",
+                            );
+                        }
+                    }
+                    UnOp::PtrMetadata => {
+                        // Getting the metadata from a pointer is always const.
+                        // We already validated the type is valid in the validator.
+                    }
                 }
             }
 
