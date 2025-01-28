@@ -44,8 +44,8 @@ struct TooManyPointees<'a, #[pointee] A: ?Sized, #[pointee] B: ?Sized>((&'a A, &
 //~^ ERROR: only one type parameter can be marked as `#[pointee]` when deriving `CoercePointee` traits
 
 #[derive(CoercePointee)]
-//~^ ERROR: `CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`
 struct NotTransparent<'a, #[pointee] T: ?Sized> {
+    //~^ ERROR: `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout
     ptr: &'a T,
 }
 

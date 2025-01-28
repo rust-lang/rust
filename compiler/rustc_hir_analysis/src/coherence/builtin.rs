@@ -810,5 +810,8 @@ fn visit_implementation_of_coerce_pointee_validity(
     if !def.repr().transparent() {
         return Err(tcx.dcx().emit_err(errors::CoercePointeeNotTransparent { span }));
     }
+    if def.all_fields().next().is_none() {
+        return Err(tcx.dcx().emit_err(errors::CoercePointeeNoField { span }));
+    }
     Ok(())
 }

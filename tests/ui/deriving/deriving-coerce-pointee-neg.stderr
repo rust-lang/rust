@@ -44,14 +44,6 @@ error[E0802]: only one type parameter can be marked as `#[pointee]` when derivin
 LL | struct TooManyPointees<'a, #[pointee] A: ?Sized, #[pointee] B: ?Sized>((&'a A, &'a B));
    |                                       ^                     - here another type parameter is marked as `#[pointee]`
 
-error[E0802]: `CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`
-  --> $DIR/deriving-coerce-pointee-neg.rs:46:10
-   |
-LL | #[derive(CoercePointee)]
-   |          ^^^^^^^^^^^^^
-   |
-   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
-
 error[E0802]: `derive(CoercePointee)` requires `T` to be marked `?Sized`
   --> $DIR/deriving-coerce-pointee-neg.rs:54:36
    |
@@ -113,6 +105,12 @@ LL | struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
    |                                   ^ unused type parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0802]: `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout
+  --> $DIR/deriving-coerce-pointee-neg.rs:47:1
+   |
+LL | struct NotTransparent<'a, #[pointee] T: ?Sized> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0802]: `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout
   --> $DIR/deriving-coerce-pointee-neg.rs:140:1
