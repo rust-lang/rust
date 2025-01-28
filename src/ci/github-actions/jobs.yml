@@ -162,7 +162,7 @@ auto:
     <<: *job-linux-4c
 
   - name: dist-arm-linux
-    <<: *job-linux-8c
+    <<: *job-linux-8c-codebuild
 
   - name: dist-armhf-linux
     <<: *job-linux-4c
@@ -192,7 +192,7 @@ auto:
     <<: *job-linux-4c
 
   - name: dist-powerpc64le-linux
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-8c-codebuild
 
   - name: dist-riscv64-linux
     <<: *job-linux-4c
@@ -215,13 +215,13 @@ auto:
   - name: dist-x86_64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-16c
+    <<: *job-linux-36c-codebuild
 
   - name: dist-x86_64-linux-alt
     env:
       IMAGE: dist-x86_64-linux
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-16c
+    <<: *job-linux-36c-codebuild
 
   - name: dist-x86_64-musl
     env:
@@ -305,10 +305,10 @@ auto:
   - name: x86_64-gnu-debug
     # This seems to be needed because a full stage 2 build + run-make tests
     # overwhelms the storage capacity of the standard 4c runner.
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-8c-codebuild
 
   - name: x86_64-gnu-distcheck
-    <<: *job-linux-8c
+    <<: *job-linux-8c-codebuild
 
   # The x86_64-gnu-llvm-19 job is split into multiple jobs to run tests in parallel.
   # x86_64-gnu-llvm-19-1 skips tests that run in x86_64-gnu-llvm-19-{2,3}.
