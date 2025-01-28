@@ -1101,10 +1101,7 @@ impl AttributeExt for Attribute {
 
     fn path_matches(&self, name: &[Symbol]) -> bool {
         match &self.kind {
-            AttrKind::Normal(n) => {
-                n.path.segments.len() == name.len()
-                    && n.path.segments.iter().zip(name).all(|(s, n)| s.name == *n)
-            }
+            AttrKind::Normal(n) => n.path.segments.iter().map(|segment| &segment.name).eq(name),
             AttrKind::DocComment(..) => false,
         }
     }
