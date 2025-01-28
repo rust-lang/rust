@@ -97,7 +97,7 @@ impl<T> RawVec<T, Global> {
     /// `RawVec` with capacity `usize::MAX`. Useful for implementing
     /// delayed allocation.
     #[must_use]
-    pub const fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self::new_in(Global)
     }
 
@@ -120,7 +120,7 @@ impl<T> RawVec<T, Global> {
     #[must_use]
     #[inline]
     #[track_caller]
-    pub fn with_capacity(capacity: usize) -> Self {
+    pub(crate) fn with_capacity(capacity: usize) -> Self {
         Self { inner: RawVecInner::with_capacity(capacity, T::LAYOUT), _marker: PhantomData }
     }
 
@@ -129,7 +129,7 @@ impl<T> RawVec<T, Global> {
     #[must_use]
     #[inline]
     #[track_caller]
-    pub fn with_capacity_zeroed(capacity: usize) -> Self {
+    pub(crate) fn with_capacity_zeroed(capacity: usize) -> Self {
         Self {
             inner: RawVecInner::with_capacity_zeroed_in(capacity, Global, T::LAYOUT),
             _marker: PhantomData,
@@ -172,7 +172,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// Like `new`, but parameterized over the choice of allocator for
     /// the returned `RawVec`.
     #[inline]
-    pub const fn new_in(alloc: A) -> Self {
+    pub(crate) const fn new_in(alloc: A) -> Self {
         Self { inner: RawVecInner::new_in(alloc, align_of::<T>()), _marker: PhantomData }
     }
 
@@ -181,7 +181,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[track_caller]
-    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
+    pub(crate) fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         Self {
             inner: RawVecInner::with_capacity_in(capacity, alloc, T::LAYOUT),
             _marker: PhantomData,
@@ -191,7 +191,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// Like `try_with_capacity`, but parameterized over the choice of
     /// allocator for the returned `RawVec`.
     #[inline]
-    pub fn try_with_capacity_in(capacity: usize, alloc: A) -> Result<Self, TryReserveError> {
+    pub(crate) fn try_with_capacity_in(capacity: usize, alloc: A) -> Result<Self, TryReserveError> {
         match RawVecInner::try_with_capacity_in(capacity, alloc, T::LAYOUT) {
             Ok(inner) => Ok(Self { inner, _marker: PhantomData }),
             Err(e) => Err(e),
@@ -203,7 +203,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[track_caller]
-    pub fn with_capacity_zeroed_in(capacity: usize, alloc: A) -> Self {
+    pub(crate) fn with_capacity_zeroed_in(capacity: usize, alloc: A) -> Self {
         Self {
             inner: RawVecInner::with_capacity_zeroed_in(capacity, alloc, T::LAYOUT),
             _marker: PhantomData,
@@ -222,7 +222,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// Note, that the requested capacity and `self.capacity()` could differ, as
     /// an allocator could overallocate and return a greater memory block than requested.
-    pub unsafe fn into_box(self, len: usize) -> Box<[MaybeUninit<T>], A> {
+    pub(crate) unsafe fn into_box(self, len: usize) -> Box<[MaybeUninit<T>], A> {
         // Sanity-check one half of the safety requirement (we cannot check the other half).
         debug_assert!(
             len <= self.capacity(),
@@ -247,7 +247,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// If the `ptr` and `capacity` come from a `RawVec` created via `alloc`, then this is
     /// guaranteed.
     #[inline]
-    pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, alloc: A) -> Self {
+    pub(crate) unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, alloc: A) -> Self {
         // SAFETY: Precondition passed to the caller
         unsafe {
             let ptr = ptr.cast();
@@ -265,7 +265,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// See [`RawVec::from_raw_parts_in`].
     #[inline]
-    pub unsafe fn from_nonnull_in(ptr: NonNull<T>, capacity: usize, alloc: A) -> Self {
+    pub(crate) unsafe fn from_nonnull_in(ptr: NonNull<T>, capacity: usize, alloc: A) -> Self {
         // SAFETY: Precondition passed to the caller
         unsafe {
             let ptr = ptr.cast();
@@ -278,12 +278,12 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// `Unique::dangling()` if `capacity == 0` or `T` is zero-sized. In the former case, you must
     /// be careful.
     #[inline]
-    pub const fn ptr(&self) -> *mut T {
+    pub(crate) const fn ptr(&self) -> *mut T {
         self.inner.ptr()
     }
 
     #[inline]
-    pub fn non_null(&self) -> NonNull<T> {
+    pub(crate) fn non_null(&self) -> NonNull<T> {
         self.inner.non_null()
     }
 
@@ -291,13 +291,13 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// This will always be `usize::MAX` if `T` is zero-sized.
     #[inline]
-    pub const fn capacity(&self) -> usize {
+    pub(crate) const fn capacity(&self) -> usize {
         self.inner.capacity(size_of::<T>())
     }
 
     /// Returns a shared reference to the allocator backing this `RawVec`.
     #[inline]
-    pub fn allocator(&self) -> &A {
+    pub(crate) fn allocator(&self) -> &A {
         self.inner.allocator()
     }
 
@@ -323,7 +323,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[track_caller]
-    pub fn reserve(&mut self, len: usize, additional: usize) {
+    pub(crate) fn reserve(&mut self, len: usize, additional: usize) {
         self.inner.reserve(len, additional, T::LAYOUT)
     }
 
@@ -332,12 +332,16 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline(never)]
     #[track_caller]
-    pub fn grow_one(&mut self) {
+    pub(crate) fn grow_one(&mut self) {
         self.inner.grow_one(T::LAYOUT)
     }
 
     /// The same as `reserve`, but returns on errors instead of panicking or aborting.
-    pub fn try_reserve(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
+    pub(crate) fn try_reserve(
+        &mut self,
+        len: usize,
+        additional: usize,
+    ) -> Result<(), TryReserveError> {
         self.inner.try_reserve(len, additional, T::LAYOUT)
     }
 
@@ -360,12 +364,12 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// Aborts on OOM.
     #[cfg(not(no_global_oom_handling))]
     #[track_caller]
-    pub fn reserve_exact(&mut self, len: usize, additional: usize) {
+    pub(crate) fn reserve_exact(&mut self, len: usize, additional: usize) {
         self.inner.reserve_exact(len, additional, T::LAYOUT)
     }
 
     /// The same as `reserve_exact`, but returns on errors instead of panicking or aborting.
-    pub fn try_reserve_exact(
+    pub(crate) fn try_reserve_exact(
         &mut self,
         len: usize,
         additional: usize,
@@ -386,7 +390,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[track_caller]
     #[inline]
-    pub fn shrink_to_fit(&mut self, cap: usize) {
+    pub(crate) fn shrink_to_fit(&mut self, cap: usize) {
         self.inner.shrink_to_fit(cap, T::LAYOUT)
     }
 }
