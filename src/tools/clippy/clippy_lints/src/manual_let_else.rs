@@ -106,7 +106,7 @@ impl<'tcx> QuestionMark {
                     emit_manual_let_else(cx, stmt.span, match_expr, &ident_map, pat_arm.pat, diverging_arm.body);
                 },
             }
-        };
+        }
     }
 }
 
@@ -295,7 +295,7 @@ fn pat_allowed_for_else(cx: &LateContext<'_>, pat: &'_ Pat<'_>, check_types: boo
             PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..)
         ) {
             return;
-        };
+        }
         let ty = typeck_results.pat_ty(pat);
         // Option and Result are allowed, everything else isn't.
         if !(is_type_diagnostic_item(cx, ty, sym::Option) || is_type_diagnostic_item(cx, ty, sym::Result)) {

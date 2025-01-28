@@ -1,9 +1,8 @@
 use std::borrow::Cow;
 
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::snippet_opt;
 use clippy_utils::sugg::{Sugg, make_binop};
 use clippy_utils::ty::{get_type_diagnostic_name, implements_trait};
 use clippy_utils::visitors::is_local_used;
@@ -12,7 +11,7 @@ use rustc_ast::LitKind::Bool;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PatKind};
 use rustc_lint::LateContext;
-use rustc_span::sym;
+use rustc_span::{Span, sym};
 
 use super::UNNECESSARY_MAP_OR;
 
@@ -42,13 +41,14 @@ pub(super) fn check<'a>(
     recv: &Expr<'_>,
     def: &Expr<'_>,
     map: &Expr<'_>,
+    method_span: Span,
     msrv: &Msrv,
 ) {
     let ExprKind::Lit(def_kind) = def.kind else {
         return;
     };
 
-    let recv_ty = cx.typeck_results().expr_ty(recv);
+    let recv_ty = cx.typeck_results().expr_ty_adjusted(recv);
 
     let Bool(def_bool) = def_kind.node else {
         return;
@@ -59,6 +59,8 @@ pub(super) fn check<'a>(
         Some(sym::Result) => Variant::Ok,
         Some(_) | None => return,
     };
+
+    let ext_def_span = def.span.until(map.span);
 
     let (sugg, method, applicability) = if let ExprKind::Closure(map_closure) = map.kind
             && let closure_body = cx.tcx.hir().body(map_closure.body)
@@ -114,26 +116,17 @@ pub(super) fn check<'a>(
         }
         .into_string();
 
-        (sugg, "a standard comparison", app)
-    } else if !def_bool
-        && msrv.meets(msrvs::OPTION_RESULT_IS_VARIANT_AND)
-        && let Some(recv_callsite) = snippet_opt(cx, recv.span.source_callsite())
-        && let Some(span_callsite) = snippet_opt(cx, map.span.source_callsite())
-    {
+        (vec![(expr.span, sugg)], "a standard comparison", app)
+    } else if !def_bool && msrv.meets(msrvs::OPTION_RESULT_IS_VARIANT_AND) {
         let suggested_name = variant.method_name();
         (
-            format!("{recv_callsite}.{suggested_name}({span_callsite})",),
+            vec![(method_span, suggested_name.into()), (ext_def_span, String::default())],
             suggested_name,
             Applicability::MachineApplicable,
         )
-    } else if def_bool
-        && matches!(variant, Variant::Some)
-        && msrv.meets(msrvs::IS_NONE_OR)
-        && let Some(recv_callsite) = snippet_opt(cx, recv.span.source_callsite())
-        && let Some(span_callsite) = snippet_opt(cx, map.span.source_callsite())
-    {
+    } else if def_bool && matches!(variant, Variant::Some) && msrv.meets(msrvs::IS_NONE_OR) {
         (
-            format!("{recv_callsite}.is_none_or({span_callsite})"),
+            vec![(method_span, "is_none_or".into()), (ext_def_span, String::default())],
             "is_none_or",
             Applicability::MachineApplicable,
         )
@@ -145,13 +138,13 @@ pub(super) fn check<'a>(
         return;
     }
 
-    span_lint_and_sugg(
+    span_lint_and_then(
         cx,
         UNNECESSARY_MAP_OR,
         expr.span,
         "this `map_or` can be simplified",
-        format!("use {method} instead"),
-        sugg,
-        applicability,
+        |diag| {
+            diag.multipart_suggestion_verbose(format!("use {method} instead"), sugg, applicability);
+        },
     );
 }

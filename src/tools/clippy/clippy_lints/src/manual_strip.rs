@@ -86,7 +86,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
             let target_res = cx.qpath_res(target_path, target_arg.hir_id);
             if target_res == Res::Err {
                 return;
-            };
+            }
 
             if let Res::Local(hir_id) = target_res
                 && let Some(used_mutably) = mutated_variables(then, cx)

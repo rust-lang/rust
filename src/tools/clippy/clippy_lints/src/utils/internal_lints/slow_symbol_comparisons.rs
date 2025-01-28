@@ -69,6 +69,6 @@ impl<'tcx> LateLintPass<'tcx> for SlowSymbolComparisons {
                 ),
                 applicability,
             );
-        };
+        }
     }
 }

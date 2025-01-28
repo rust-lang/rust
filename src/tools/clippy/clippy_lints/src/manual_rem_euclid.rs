@@ -85,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
                     }
                 },
                 _ => return,
-            };
+            }
 
             let mut app = Applicability::MachineApplicable;
             let rem_of = snippet_with_context(cx, rem2_lhs.span, ctxt, "_", &mut app).0;
