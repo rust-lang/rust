@@ -499,13 +499,11 @@ mod pattern_types {
         extern "C" {
             fn pt_non_zero_usize() -> pattern_type!(usize is 1..);
             fn pt_non_zero_usize_opt() -> Option<pattern_type!(usize is 1..)>;
-            //~^ WARN not FFI-safe
             fn pt_non_zero_usize_opt_full_range() -> Option<pattern_type!(usize is 0..)>;
             //~^ WARN not FFI-safe
             fn pt_non_null_ptr() -> pattern_type!(usize is 1..);
             fn pt_non_zero_usize_wrapper() -> NonZeroUsize;
             fn pt_non_zero_usize_wrapper_opt() -> Option<NonZeroUsize>;
-            //~^ WARN not FFI-safe
         }
     }
     mod b {
@@ -515,12 +513,10 @@ mod pattern_types {
             // cases are warning for, from both a caller-convenience and optimisation perspective.
             fn pt_non_zero_usize() -> usize;
             fn pt_non_zero_usize_opt() -> usize;
-            //~^ WARN `pt_non_zero_usize_opt` redeclared with a different signature
             fn pt_non_null_ptr() -> *const ();
             //~^ WARN `pt_non_null_ptr` redeclared with a different signature
             fn pt_non_zero_usize_wrapper() -> usize;
             fn pt_non_zero_usize_wrapper_opt() -> usize;
-            //~^ WARN `pt_non_zero_usize_wrapper_opt` redeclared with a different signature
         }
     }
 }

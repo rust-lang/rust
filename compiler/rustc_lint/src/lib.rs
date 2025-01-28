@@ -33,6 +33,7 @@
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(trait_upcasting)]
+#![feature(try_blocks)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 

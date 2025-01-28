@@ -861,6 +861,37 @@ fn ty_is_known_nonnull<'tcx>(
                 .filter_map(|variant| transparent_newtype_field(tcx, variant))
                 .any(|field| ty_is_known_nonnull(tcx, typing_env, field.ty(tcx, args), mode))
         }
+        ty::Pat(base, pat) => {
+            ty_is_known_nonnull(tcx, typing_env, *base, mode)
+                || Option::unwrap_or_default(
+                    try {
+                        match **pat {
+                            ty::PatternKind::Range { start, end, include_end } => {
+                                match (start, end) {
+                                    (Some(start), None) => {
+                                        start.try_to_value()?.try_to_bits(tcx, typing_env)? > 0
+                                    }
+                                    (Some(start), Some(end)) => {
+                                        let start =
+                                            start.try_to_value()?.try_to_bits(tcx, typing_env)?;
+                                        let end =
+                                            end.try_to_value()?.try_to_bits(tcx, typing_env)?;
+
+                                        if include_end {
+                                            // This also works for negative numbers, as we just need
+                                            // to ensure we aren't wrapping over zero.
+                                            start > 0 && end >= start
+                                        } else {
+                                            start > 0 && end > start
+                                        }
+                                    }
+                                    _ => false,
+                                }
+                            }
+                        }
+                    },
+                )
+        }
         _ => false,
     }
 }
