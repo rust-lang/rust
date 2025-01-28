@@ -273,7 +273,7 @@ impl UnixFileDescription for FileHandle {
 
 impl<'tcx> EvalContextExtPrivate<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn macos_fbsd_solaris_write_buf(
+    fn macos_fbsd_solarish_write_stat_buf(
         &mut self,
         metadata: FileMetadata,
         buf_op: &OpTy<'tcx>,
@@ -321,9 +321,9 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         if matches!(&*this.tcx.sess.target.os, "solaris" | "illumos") {
-            // FIXME: write st_fstype field once libc is updated.
-            // https://github.com/rust-lang/libc/pull/4145
-            //this.write_int_fields_named(&[("st_fstype", 0)], &buf)?;
+            let st_fstype = this.project_field_named(&buf, "st_fstype")?;
+            // This is an array; write 0 into first element so that it encodes the empty string.
+            this.write_int(0, &this.project_index(&st_fstype, 0)?)?;
         }
 
         interp_ok(0)
@@ -668,7 +668,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
-    fn macos_fbsd_solaris_stat(
+    fn macos_fbsd_solarish_stat(
         &mut self,
         path_op: &OpTy<'tcx>,
         buf_op: &OpTy<'tcx>,
@@ -694,11 +694,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_last_error_and_return_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.macos_fbsd_solaris_write_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.macos_fbsd_solarish_write_stat_buf(metadata, buf_op)?))
     }
 
     // `lstat` is used to get symlink metadata.
-    fn macos_fbsd_solaris_lstat(
+    fn macos_fbsd_solarish_lstat(
         &mut self,
         path_op: &OpTy<'tcx>,
         buf_op: &OpTy<'tcx>,
@@ -726,10 +726,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_last_error_and_return_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.macos_fbsd_solaris_write_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.macos_fbsd_solarish_write_stat_buf(metadata, buf_op)?))
     }
 
-    fn macos_fbsd_solaris_fstat(
+    fn macos_fbsd_solarish_fstat(
         &mut self,
         fd_op: &OpTy<'tcx>,
         buf_op: &OpTy<'tcx>,
@@ -756,7 +756,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(metadata) => metadata,
             Err(err) => return this.set_last_error_and_return_i32(err),
         };
-        interp_ok(Scalar::from_i32(this.macos_fbsd_solaris_write_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.macos_fbsd_solarish_write_stat_buf(metadata, buf_op)?))
     }
 
     fn linux_statx(
