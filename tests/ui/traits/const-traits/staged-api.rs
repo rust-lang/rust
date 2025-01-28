@@ -72,4 +72,17 @@ const fn stable_const_context() {
     //~^ ERROR cannot use `#[feature(const_trait_impl)]`
 }
 
+const fn implicitly_stable_const_context() {
+    Unstable::func();
+    //~^ ERROR cannot use `#[feature(const_trait_impl)]`
+    //~| ERROR cannot use `#[feature(unstable)]`
+    Foo::func();
+    //~^ ERROR cannot use `#[feature(const_trait_impl)]`
+    //~| ERROR cannot use `#[feature(unstable)]`
+    const_context_not_const_stable();
+    //~^ ERROR cannot use `#[feature(local_feature)]`
+    conditionally_const::<Foo>();
+    //~^ ERROR cannot use `#[feature(const_trait_impl)]`
+}
+
 fn main() {}
