@@ -1,17 +1,19 @@
 use std::io;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_index::IndexVec;
 use rustc_middle::mir::pretty::{
     PassWhere, PrettyPrintMirOptions, create_dump_file, dump_enabled, dump_mir_to_writer,
 };
-use rustc_middle::mir::{Body, ClosureRegionRequirements};
+use rustc_middle::mir::{Body, ClosureRegionRequirements, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
+use rustc_mir_dataflow::points::PointIndex;
 use rustc_session::config::MirIncludeSpans;
 
 use crate::borrow_set::BorrowSet;
 use crate::constraints::OutlivesConstraint;
 use crate::polonius::{LocalizedOutlivesConstraint, LocalizedOutlivesConstraintSet};
+use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
 use crate::{BorrowckInferCtxt, RegionInferenceContext};
 
@@ -80,14 +82,27 @@ fn emit_polonius_dump<'tcx>(
         body,
         regioncx,
         borrow_set,
-        localized_outlives_constraints,
+        &localized_outlives_constraints,
         closure_region_requirements,
         out,
     )?;
     writeln!(out, "</code></pre>")?;
     writeln!(out, "</div>")?;
 
-    // Section 2: mermaid visualization of the CFG.
+    // Section 2: mermaid visualization of the polonius constraint graph.
+    writeln!(out, "<div>")?;
+    writeln!(out, "Polonius constraint graph")?;
+    writeln!(out, "<pre class='mermaid'>")?;
+    let edge_count = emit_mermaid_constraint_graph(
+        borrow_set,
+        regioncx.liveness_constraints(),
+        &localized_outlives_constraints,
+        out,
+    )?;
+    writeln!(out, "</pre>")?;
+    writeln!(out, "</div>")?;
+
+    // Section 3: mermaid visualization of the CFG.
     writeln!(out, "<div>")?;
     writeln!(out, "Control-flow graph")?;
     writeln!(out, "<pre class='mermaid'>")?;
@@ -95,7 +110,7 @@ fn emit_polonius_dump<'tcx>(
     writeln!(out, "</pre>")?;
     writeln!(out, "</div>")?;
 
-    // Section 3: mermaid visualization of the NLL region graph.
+    // Section 4: mermaid visualization of the NLL region graph.
     writeln!(out, "<div>")?;
     writeln!(out, "NLL regions")?;
     writeln!(out, "<pre class='mermaid'>")?;
@@ -103,7 +118,7 @@ fn emit_polonius_dump<'tcx>(
     writeln!(out, "</pre>")?;
     writeln!(out, "</div>")?;
 
-    // Section 4: mermaid visualization of the NLL SCC graph.
+    // Section 5: mermaid visualization of the NLL SCC graph.
     writeln!(out, "<div>")?;
     writeln!(out, "NLL SCCs")?;
     writeln!(out, "<pre class='mermaid'>")?;
@@ -117,7 +132,11 @@ fn emit_polonius_dump<'tcx>(
         "<script src='https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js'></script>"
     )?;
     writeln!(out, "<script>")?;
-    writeln!(out, "mermaid.initialize({{ startOnLoad: false, maxEdges: 100 }});")?;
+    writeln!(
+        out,
+        "mermaid.initialize({{ startOnLoad: false, maxEdges: {} }});",
+        edge_count.max(100),
+    )?;
     writeln!(out, "mermaid.run({{ querySelector: '.mermaid' }})")?;
     writeln!(out, "</script>")?;
     writeln!(out, "</body>")?;
@@ -132,7 +151,7 @@ fn emit_html_mir<'tcx>(
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
-    localized_outlives_constraints: LocalizedOutlivesConstraintSet,
+    localized_outlives_constraints: &LocalizedOutlivesConstraintSet,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
@@ -160,7 +179,7 @@ fn emit_html_mir<'tcx>(
                 regioncx,
                 closure_region_requirements,
                 borrow_set,
-                &localized_outlives_constraints,
+                localized_outlives_constraints,
                 pass_where,
                 out,
             )
@@ -391,4 +410,77 @@ fn emit_mermaid_nll_sccs<'tcx>(
     }
 
     Ok(())
+}
+
+/// Emits a mermaid flowchart of the polonius localized outlives constraints, with subgraphs per
+/// region, and loan introductions.
+fn emit_mermaid_constraint_graph<'tcx>(
+    borrow_set: &BorrowSet<'tcx>,
+    liveness: &LivenessValues,
+    localized_outlives_constraints: &LocalizedOutlivesConstraintSet,
+    out: &mut dyn io::Write,
+) -> io::Result<usize> {
+    let location_name = |location: Location| {
+        // A MIR location looks like `bb5[2]`. As that is not a syntactically valid mermaid node id,
+        // transform it into `BB5_2`.
+        format!("BB{}_{}", location.block.index(), location.statement_index)
+    };
+    let region_name = |region: RegionVid| format!("'{}", region.index());
+    let node_name = |region: RegionVid, point: PointIndex| {
+        let location = liveness.location_from_point(point);
+        format!("{}_{}", region_name(region), location_name(location))
+    };
+
+    // The mermaid chart type: a top-down flowchart, which supports subgraphs.
+    writeln!(out, "flowchart TD")?;
+
+    // The loans subgraph: a node per loan.
+    writeln!(out, "    subgraph \"Loans\"")?;
+    for loan_idx in 0..borrow_set.len() {
+        writeln!(out, "        L{loan_idx}")?;
+    }
+    writeln!(out, "    end\n")?;
+
+    // And an edge from that loan node to where it enters the constraint graph.
+    for (loan_idx, loan) in borrow_set.iter_enumerated() {
+        writeln!(
+            out,
+            "    L{} --> {}_{}",
+            loan_idx.index(),
+            region_name(loan.region),
+            location_name(loan.reserve_location),
+        )?;
+    }
+    writeln!(out, "")?;
+
+    // The regions subgraphs containing the region/point nodes.
+    let mut points_per_region: FxIndexMap<RegionVid, FxIndexSet<PointIndex>> =
+        FxIndexMap::default();
+    for constraint in &localized_outlives_constraints.outlives {
+        points_per_region.entry(constraint.source).or_default().insert(constraint.from);
+        points_per_region.entry(constraint.target).or_default().insert(constraint.to);
+    }
+    for (region, points) in points_per_region {
+        writeln!(out, "    subgraph \"{}\"", region_name(region))?;
+        for point in points {
+            writeln!(out, "        {}", node_name(region, point))?;
+        }
+        writeln!(out, "    end\n")?;
+    }
+
+    // The constraint graph edges.
+    for constraint in &localized_outlives_constraints.outlives {
+        // FIXME: add killed loans and constraint kind as edge labels.
+        writeln!(
+            out,
+            "    {} --> {}",
+            node_name(constraint.source, constraint.from),
+            node_name(constraint.target, constraint.to),
+        )?;
+    }
+
+    // Return the number of edges: this is the biggest graph in the dump and its edge count will be
+    // mermaid's max edge count to support.
+    let edge_count = borrow_set.len() + localized_outlives_constraints.outlives.len();
+    Ok(edge_count)
 }
