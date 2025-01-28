@@ -45,7 +45,7 @@ use crate::{
         },
         Array, Binding, BindingAnnotation, BindingId, BindingProblems, CaptureBy, ClosureKind,
         Expr, ExprId, Item, Label, LabelId, Literal, LiteralOrConst, MatchArm, Movability,
-        OffsetOf, Pat, PatId, RecordFieldPat, RecordLitField, Spread, Statement,
+        OffsetOf, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
     },
     item_scope::BuiltinShadowMode,
     lang_item::LangItem,
@@ -90,7 +90,6 @@ pub(super) fn lower_body(
         DefWithBodyId::ConstId(it) => db.attrs(it.into()),
         DefWithBodyId::InTypeConstId(_) => Attrs::EMPTY,
         DefWithBodyId::VariantId(it) => db.attrs(it.into()),
-        DefWithBodyId::FieldId(it) => db.attrs(it.into()),
     }
     .rust_analyzer_tool()
     .any(|attr| *attr.path() == tool_path![skip]);
@@ -169,7 +168,6 @@ pub(super) fn lower_body(
                     Awaitable::No("constant")
                 }
                 DefWithBodyId::VariantId(..) => Awaitable::No("enum variant"),
-                DefWithBodyId::FieldId(..) => Awaitable::No("field"),
             }
         },
     );
@@ -602,13 +600,10 @@ impl ExprCollector<'_> {
                             Some(RecordLitField { name, expr })
                         })
                         .collect();
-                    let spread = nfl.spread().map(|s| self.collect_expr(s)).map_or_else(
-                        || if nfl.dotdot_token().is_some() { Spread::Yes } else { Spread::No },
-                        Spread::Base,
-                    );
+                    let spread = nfl.spread().map(|s| self.collect_expr(s));
                     Expr::RecordLit { path, fields, spread }
                 } else {
-                    Expr::RecordLit { path, fields: Box::default(), spread: Spread::No }
+                    Expr::RecordLit { path, fields: Box::default(), spread: None }
                 };
 
                 self.alloc_expr(record_lit, syntax_ptr)

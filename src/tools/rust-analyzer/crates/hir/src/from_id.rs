@@ -147,7 +147,6 @@ impl From<DefWithBody> for DefWithBodyId {
             DefWithBody::Const(it) => DefWithBodyId::ConstId(it.id),
             DefWithBody::Variant(it) => DefWithBodyId::VariantId(it.into()),
             DefWithBody::InTypeConst(it) => DefWithBodyId::InTypeConstId(it.id),
-            DefWithBody::Field(it) => DefWithBodyId::FieldId(it.into()),
         }
     }
 }
@@ -160,7 +159,6 @@ impl From<DefWithBodyId> for DefWithBody {
             DefWithBodyId::ConstId(it) => DefWithBody::Const(it.into()),
             DefWithBodyId::VariantId(it) => DefWithBody::Variant(it.into()),
             DefWithBodyId::InTypeConstId(it) => DefWithBody::InTypeConst(it.into()),
-            DefWithBodyId::FieldId(it) => DefWithBody::Field(it.into()),
         }
     }
 }

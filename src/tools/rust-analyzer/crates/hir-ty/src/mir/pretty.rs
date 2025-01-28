@@ -6,7 +6,7 @@ use std::{
 };
 
 use either::Either;
-use hir_def::{expr_store::Body, hir::BindingId, VariantId};
+use hir_def::{expr_store::Body, hir::BindingId};
 use hir_expand::{name::Name, Lookup};
 use la_arena::ArenaMap;
 use span::Edition;
@@ -78,38 +78,6 @@ impl MirBody {
             }
             hir_def::DefWithBodyId::InTypeConstId(id) => {
                 w!(this, "in type const {id:?} = ");
-            }
-            hir_def::DefWithBodyId::FieldId(id) => {
-                w!(this, "field ");
-                match id.parent {
-                    VariantId::EnumVariantId(it) => {
-                        let loc = it.lookup(db.upcast());
-                        let enum_loc = loc.parent.lookup(db.upcast());
-                        w!(
-                            this,
-                            "{}::{}",
-                            enum_loc.id.item_tree(db.upcast())[enum_loc.id.value]
-                                .name
-                                .display(db.upcast(), Edition::LATEST),
-                            loc.id.item_tree(db.upcast())[loc.id.value]
-                                .name
-                                .display(db.upcast(), Edition::LATEST),
-                        );
-                    }
-                    VariantId::StructId(id) => {
-                        id.lookup(db.upcast()).id.resolved(db.upcast(), |it| {
-                            w!(this, "{}", it.name.display(db.upcast(), Edition::LATEST));
-                        });
-                    }
-                    VariantId::UnionId(id) => {
-                        id.lookup(db.upcast()).id.resolved(db.upcast(), |it| {
-                            w!(this, "{}", it.name.display(db.upcast(), Edition::LATEST));
-                        });
-                    }
-                };
-                let variant_data = id.parent.variant_data(db.upcast());
-                let field_name = &variant_data.fields()[id.local_id].name;
-                w!(this, ".{}: _ = ", field_name.display(db.upcast(), Edition::LATEST));
             }
         });
         ctx.result

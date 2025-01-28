@@ -35,8 +35,7 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> MissingUnsafe
         DefWithBodyId::StaticId(_)
         | DefWithBodyId::ConstId(_)
         | DefWithBodyId::VariantId(_)
-        | DefWithBodyId::InTypeConstId(_)
-        | DefWithBodyId::FieldId(_) => false,
+        | DefWithBodyId::InTypeConstId(_) => false,
     };
 
     let mut res = MissingUnsafeResult { fn_is_unsafe: is_unsafe, ..MissingUnsafeResult::default() };

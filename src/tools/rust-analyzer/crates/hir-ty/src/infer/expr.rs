@@ -10,7 +10,7 @@ use either::Either;
 use hir_def::{
     hir::{
         ArithOp, Array, AsmOperand, AsmOptions, BinaryOp, ClosureKind, Expr, ExprId, ExprOrPatId,
-        LabelId, Literal, Pat, PatId, Spread, Statement, UnaryOp,
+        LabelId, Literal, Pat, PatId, Statement, UnaryOp,
     },
     lang_item::{LangItem, LangItemTarget},
     path::{GenericArg, GenericArgs, Path},
@@ -775,7 +775,7 @@ impl InferenceContext<'_> {
                         }
                     }
                 }
-                if let Spread::Base(expr) = spread {
+                if let Some(expr) = spread {
                     self.infer_expr(*expr, &Expectation::has_type(ty.clone()), ExprIsRead::Yes);
                 }
                 ty
@@ -1746,14 +1746,12 @@ impl InferenceContext<'_> {
                     });
                 }
                 TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), parameters) => {
-                    let vd = &self.db.struct_data(*s).variant_data;
-                    let local_id = vd.field(name)?;
+                    let local_id = self.db.struct_data(*s).variant_data.field(name)?;
                     let field = FieldId { parent: (*s).into(), local_id };
                     (field, parameters.clone())
                 }
                 TyKind::Adt(AdtId(hir_def::AdtId::UnionId(u)), parameters) => {
-                    let vd = &self.db.union_data(*u).variant_data;
-                    let local_id = vd.field(name)?;
+                    let local_id = self.db.union_data(*u).variant_data.field(name)?;
                     let field = FieldId { parent: (*u).into(), local_id };
                     (field, parameters.clone())
                 }

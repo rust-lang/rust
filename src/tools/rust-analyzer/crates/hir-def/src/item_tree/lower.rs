@@ -319,9 +319,8 @@ impl<'a> Ctx<'a> {
         };
         let visibility = self.lower_visibility(field);
         let type_ref = TypeRef::from_ast_opt(body_ctx, field.ty());
-        let has_default = field.expr().is_some();
 
-        Field { name, type_ref, visibility, has_default }
+        Field { name, type_ref, visibility }
     }
 
     fn lower_tuple_field(
@@ -333,7 +332,7 @@ impl<'a> Ctx<'a> {
         let name = Name::new_tuple_field(idx);
         let visibility = self.lower_visibility(field);
         let type_ref = TypeRef::from_ast_opt(body_ctx, field.ty());
-        Field { name, type_ref, visibility, has_default: false }
+        Field { name, type_ref, visibility }
     }
 
     fn lower_union(&mut self, union: &ast::Union) -> Option<FileItemTreeId<Union>> {

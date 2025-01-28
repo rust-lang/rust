@@ -157,53 +157,5 @@ static ALIAS: i32 = {
             217..218 '5': i32
             205..211: expected impl Trait + ?Sized, got Struct
         "#]],
-    );
-}
-
-#[test]
-fn defining_type_alias_impl_trait_from_default_fields() {
-    check_no_mismatches(
-        r#"
-trait Trait {}
-
-struct Struct;
-
-impl Trait for Struct {}
-
-type AliasTy = impl Trait;
-
-struct Foo {
-    foo: AliasTy = {
-        let x: AliasTy = Struct;
-        x
-    },
-}
-"#,
-    );
-
-    check_infer_with_mismatches(
-        r#"
-trait Trait {}
-
-struct Struct;
-
-impl Trait for Struct {}
-
-type AliasTy = impl Trait;
-
-struct Foo {
-    foo: i32 = {
-        let x: AliasTy = Struct;
-        5
-    },
-}
-"#,
-        expect![[r#"
-            114..164 '{     ...     }': i32
-            128..129 'x': impl Trait + ?Sized
-            141..147 'Struct': Struct
-            157..158 '5': i32
-            141..147: expected impl Trait + ?Sized, got Struct
-        "#]],
-    );
+    )
 }

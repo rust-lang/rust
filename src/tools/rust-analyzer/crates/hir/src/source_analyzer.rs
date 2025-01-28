@@ -630,8 +630,7 @@ impl SourceAnalyzer {
         let (adt, subst) = self.infer.as_ref()?.type_of_expr_or_pat(expr_id)?.as_adt()?;
         let variant = self.infer.as_ref()?.variant_resolution_for_expr_or_pat(expr_id)?;
         let variant_data = variant.variant_data(db.upcast());
-        let local_id = variant_data.field(&local_name)?;
-        let field = FieldId { parent: variant, local_id };
+        let field = FieldId { parent: variant, local_id: variant_data.field(&local_name)? };
         let field_ty =
             db.field_types(variant).get(field.local_id)?.clone().substitute(Interner, subst);
         Some((
@@ -652,8 +651,7 @@ impl SourceAnalyzer {
         let pat_id = self.pat_id(&record_pat.into())?;
         let variant = self.infer.as_ref()?.variant_resolution_for_pat(pat_id)?;
         let variant_data = variant.variant_data(db.upcast());
-        let local_id = variant_data.field(&field_name)?;
-        let field = FieldId { parent: variant, local_id };
+        let field = FieldId { parent: variant, local_id: variant_data.field(&field_name)? };
         let (adt, subst) = self.infer.as_ref()?.type_of_pat.get(pat_id)?.as_adt()?;
         let field_ty =
             db.field_types(variant).get(field.local_id)?.clone().substitute(Interner, subst);
@@ -1025,7 +1023,7 @@ impl SourceAnalyzer {
         let expr_id = self.expr_id(db, &literal.clone().into())?;
         let substs = infer[expr_id].as_adt()?.1;
 
-        let (variant, missing_fields, _) = match expr_id {
+        let (variant, missing_fields, _exhaustive) = match expr_id {
             ExprOrPatId::ExprId(expr_id) => {
                 record_literal_missing_fields(db, infer, expr_id, &body[expr_id])?
             }

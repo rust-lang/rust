@@ -211,20 +211,6 @@ enum Bar {
     #[default]
     Bar,
 }
-#[derive(Default)]
-struct Baz {
-    field1: i32 = 2,
-    field2: bool = { false },
-}
-#[derive(Default)]
-enum Qux {
-    #[default]
-    Foo {
-        field1: i32,
-        field2: bool = true,
-        field3: (),
-    }
-}
 "#,
         expect![[r#"
 #[derive(Default)]
@@ -238,20 +224,6 @@ enum Bar {
     #[default]
     Bar,
 }
-#[derive(Default)]
-struct Baz {
-    field1: i32 = 2,
-    field2: bool = { false },
-}
-#[derive(Default)]
-enum Qux {
-    #[default]
-    Foo {
-        field1: i32,
-        field2: bool = true,
-        field3: (),
-    }
-}
 
 impl <> $crate::default::Default for Foo< > where {
     fn default() -> Self {
@@ -263,20 +235,6 @@ impl <> $crate::default::Default for Foo< > where {
 impl <> $crate::default::Default for Bar< > where {
     fn default() -> Self {
         Bar::Bar
-    }
-}
-impl <> $crate::default::Default for Baz< > where {
-    fn default() -> Self {
-        Baz {
-            ..
-        }
-    }
-}
-impl <> $crate::default::Default for Qux< > where {
-    fn default() -> Self {
-        Qux::Foo {
-            field1: $crate::default::Default::default(), field3: $crate::default::Default::default(), ..
-        }
     }
 }"#]],
     );

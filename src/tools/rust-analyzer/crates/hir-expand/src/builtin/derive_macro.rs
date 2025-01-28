@@ -80,15 +80,9 @@ pub fn find_builtin_derive(ident: &name::Name) -> Option<BuiltinDeriveExpander> 
     BuiltinDeriveExpander::find_by_name(ident)
 }
 
-#[derive(Clone, Copy)]
-enum HasDefault {
-    Yes,
-    No,
-}
-
 #[derive(Clone)]
 enum VariantShape {
-    Struct(Vec<(tt::Ident, HasDefault)>),
+    Struct(Vec<tt::Ident>),
     Tuple(usize),
     Unit,
 }
@@ -104,7 +98,7 @@ impl VariantShape {
 
     fn field_names(&self, span: Span) -> Vec<tt::Ident> {
         match self {
-            VariantShape::Struct(s) => s.iter().map(|(ident, _)| ident.clone()).collect(),
+            VariantShape::Struct(s) => s.clone(),
             VariantShape::Tuple(n) => tuple_field_iterator(span, *n).collect(),
             VariantShape::Unit => vec![],
         }
@@ -118,69 +112,12 @@ impl VariantShape {
     ) -> tt::TopSubtree {
         match self {
             VariantShape::Struct(fields) => {
-                let fields = fields.iter().map(|(it, _)| {
+                let fields = fields.iter().map(|it| {
                     let mapped = field_map(it);
                     quote! {span => #it : #mapped , }
                 });
                 quote! {span =>
                     #path { ##fields }
-                }
-            }
-            &VariantShape::Tuple(n) => {
-                let fields = tuple_field_iterator(span, n).map(|it| {
-                    let mapped = field_map(&it);
-                    quote! {span =>
-                        #mapped ,
-                    }
-                });
-                quote! {span =>
-                    #path ( ##fields )
-                }
-            }
-            VariantShape::Unit => path,
-        }
-    }
-
-    fn default_expand(
-        &self,
-        path: tt::TopSubtree,
-        span: Span,
-        field_map: impl Fn(&tt::Ident) -> tt::TopSubtree,
-    ) -> tt::TopSubtree {
-        match self {
-            VariantShape::Struct(fields) => {
-                let contains_default = fields.iter().any(|it| matches!(it.1, HasDefault::Yes));
-                let fields = fields
-                    .iter()
-                    .filter_map(|(it, has_default)| match has_default {
-                        HasDefault::Yes => None,
-                        HasDefault::No => Some(it),
-                    })
-                    .map(|it| {
-                        let mapped = field_map(it);
-                        quote! {span => #it : #mapped , }
-                    });
-                if contains_default {
-                    let mut double_dots =
-                        tt::TopSubtreeBuilder::new(tt::Delimiter::invisible_spanned(span));
-                    double_dots.push(tt::Leaf::Punct(tt::Punct {
-                        char: '.',
-                        spacing: tt::Spacing::Joint,
-                        span,
-                    }));
-                    double_dots.push(tt::Leaf::Punct(tt::Punct {
-                        char: '.',
-                        spacing: tt::Spacing::Alone,
-                        span,
-                    }));
-                    let double_dots = double_dots.build();
-                    quote! {span =>
-                        #path { ##fields #double_dots }
-                    }
-                } else {
-                    quote! {span =>
-                        #path { ##fields }
-                    }
                 }
             }
             &VariantShape::Tuple(n) => {
@@ -207,15 +144,8 @@ impl VariantShape {
             None => VariantShape::Unit,
             Some(FieldList::RecordFieldList(it)) => VariantShape::Struct(
                 it.fields()
-                    .map(|it| {
-                        (
-                            it.name(),
-                            if it.expr().is_some() { HasDefault::Yes } else { HasDefault::No },
-                        )
-                    })
-                    .map(|(it, has_default)| {
-                        name_to_token(call_site, tm, it).map(|ident| (ident, has_default))
-                    })
+                    .map(|it| it.name())
+                    .map(|it| name_to_token(call_site, tm, it))
                     .collect::<Result<_, _>>()?,
             ),
             Some(FieldList::TupleFieldList(it)) => VariantShape::Tuple(it.fields().count()),
@@ -671,7 +601,7 @@ fn default_expand(
         let body = match &adt.shape {
             AdtShape::Struct(fields) => {
                 let name = &adt.name;
-                fields.default_expand(
+                fields.as_pattern_map(
                     quote!(span =>#name),
                     span,
                     |_| quote!(span =>#krate::default::Default::default()),
@@ -681,7 +611,7 @@ fn default_expand(
                 if let Some(d) = default_variant {
                     let (name, fields) = &variants[*d];
                     let adt_name = &adt.name;
-                    fields.default_expand(
+                    fields.as_pattern_map(
                         quote!(span =>#adt_name :: #name),
                         span,
                         |_| quote!(span =>#krate::default::Default::default()),
@@ -713,7 +643,7 @@ fn debug_expand(
     expand_simple_derive(db, span, tt, quote! {span => #krate::fmt::Debug }, |adt| {
         let for_variant = |name: String, v: &VariantShape| match v {
             VariantShape::Struct(fields) => {
-                let for_fields = fields.iter().map(|(it, _)| {
+                let for_fields = fields.iter().map(|it| {
                     let x_string = it.to_string();
                     quote! {span =>
                         .field(#x_string, & #it)
