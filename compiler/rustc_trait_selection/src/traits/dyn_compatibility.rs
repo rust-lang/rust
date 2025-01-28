@@ -27,6 +27,7 @@ use super::elaborate;
 use crate::infer::TyCtxtInferExt;
 pub use crate::traits::DynCompatibilityViolation;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
+use crate::traits::ty::layout::LayoutError;
 use crate::traits::{MethodViolationCode, Obligation, ObligationCause, util};
 
 /// Returns the dyn-compatibility violations that affect HIR ty lowering.
@@ -112,7 +113,7 @@ fn dyn_compatibility_violations_for_trait(
     if violations.is_empty() {
         for item in tcx.associated_items(trait_def_id).in_definition_order() {
             if let ty::AssocKind::Fn = item.kind {
-                check_receiver_correct(tcx, trait_def_id, *item);
+                check_receiver_correct(tcx, trait_def_id, *item, &mut violations);
             }
         }
     }
@@ -501,9 +502,16 @@ fn virtual_call_violations_for_method<'tcx>(
 
 /// This code checks that `receiver_is_dispatchable` is correctly implemented.
 ///
+/// Any errors are appended to `violations`.
+///
 /// This check is outlined from the dyn-compatibility check to avoid cycles with
 /// layout computation, which relies on knowing whether methods are dyn-compatible.
-fn check_receiver_correct<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, method: ty::AssocItem) {
+fn check_receiver_correct<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_def_id: DefId,
+    method: ty::AssocItem,
+    violations: &mut Vec<DynCompatibilityViolation>,
+) {
     if !is_vtable_safe_method(tcx, trait_def_id, method) {
         return;
     }
@@ -522,6 +530,9 @@ fn check_receiver_correct<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, method: 
     let unit_receiver_ty = receiver_for_self_ty(tcx, receiver_ty, tcx.types.unit, method_def_id);
     match tcx.layout_of(typing_env.as_query_input(unit_receiver_ty)).map(|l| l.backend_repr) {
         Ok(BackendRepr::Scalar(..)) => (),
+        Err(LayoutError::TooGeneric(..)) => {
+            violations.push(DynCompatibilityViolation::TooGeneric(tcx.def_span(method_def_id)));
+        }
         abi => {
             tcx.dcx().span_delayed_bug(
                 tcx.def_span(method_def_id),
@@ -537,6 +548,9 @@ fn check_receiver_correct<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, method: 
         receiver_for_self_ty(tcx, receiver_ty, trait_object_ty, method_def_id);
     match tcx.layout_of(typing_env.as_query_input(trait_object_receiver)).map(|l| l.backend_repr) {
         Ok(BackendRepr::ScalarPair(..)) => (),
+        Err(LayoutError::TooGeneric(..)) => {
+            violations.push(DynCompatibilityViolation::TooGeneric(tcx.def_span(method_def_id)));
+        }
         abi => {
             tcx.dcx().span_delayed_bug(
                 tcx.def_span(method_def_id),

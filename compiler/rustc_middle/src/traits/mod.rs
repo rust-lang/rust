@@ -786,6 +786,9 @@ pub enum DynCompatibilityViolation {
 
     /// GAT
     GAT(Symbol, Span),
+
+    /// Type layout can't be determined
+    TooGeneric(Span),
 }
 
 impl DynCompatibilityViolation {
@@ -853,6 +856,9 @@ impl DynCompatibilityViolation {
             DynCompatibilityViolation::GAT(name, _) => {
                 format!("it contains the generic associated type `{name}`").into()
             }
+            DynCompatibilityViolation::TooGeneric(_span) => {
+                format!("it is too generic to determine type layout").into()
+            }
         }
     }
 
@@ -860,9 +866,8 @@ impl DynCompatibilityViolation {
         match self {
             DynCompatibilityViolation::SizedSelf(_)
             | DynCompatibilityViolation::SupertraitSelf(_)
-            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(..) => {
-                DynCompatibilityViolationSolution::None
-            }
+            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(..)
+            | DynCompatibilityViolation::TooGeneric(..) => DynCompatibilityViolationSolution::None,
             DynCompatibilityViolation::Method(
                 name,
                 MethodViolationCode::StaticMethod(Some((add_self_sugg, make_sized_sugg))),

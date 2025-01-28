@@ -1,0 +1,26 @@
+error: associated item referring to unboxed trait object for its own trait
+  --> $DIR/dispatch-from-dyn-layout.rs:6:24
+   |
+LL | trait Trait<T: Deref<Target=Self> + DispatchFromDyn<T>> {
+   |       ----- in this trait
+LL |     fn foo(self: T) -> dyn Trait<T>;
+   |                        ^^^^^^^^^^^^
+   |
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL |     fn foo(self: T) -> Self;
+   |                        ~~~~
+
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/dispatch-from-dyn-layout.rs:6:24
+   |
+LL |     fn foo(self: T) -> dyn Trait<T>;
+   |                        ^^^^^^^^^^^^ `Trait` is not dyn compatible
+   |
+   = note: the trait is not dyn compatible because it is too generic to determine type layout
+   = note: for a trait to be dyn compatible it needs to allow building a vtable
+           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.
