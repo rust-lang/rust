@@ -83,12 +83,11 @@ pub mod autoderef;
 mod bounds;
 mod check_unused;
 mod coherence;
-mod delegation;
-pub mod hir_ty_lowering;
-// FIXME: This module shouldn't be public.
-pub mod collect;
+mod collect;
 mod constrained_generic_params;
+mod delegation;
 mod errors;
+pub mod hir_ty_lowering;
 pub mod hir_wf_check;
 mod impl_wf_check;
 mod outlives;
@@ -104,7 +103,8 @@ use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 
-use self::hir_ty_lowering::{FeedConstTy, HirTyLowerer};
+pub use crate::collect::suggest_impl_trait;
+use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 

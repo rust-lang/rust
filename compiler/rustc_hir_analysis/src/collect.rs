@@ -57,7 +57,7 @@ mod type_of;
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     resolve_bound_vars::provide(providers);
     *providers = Providers {
         type_of: type_of::type_of,
@@ -122,7 +122,7 @@ pub fn provide(providers: &mut Providers) {
 /// `ItemCtxt` is parameterized by a `DefId` that it uses to satisfy
 /// `probe_ty_param_bounds` requests, drawing the information from
 /// the HIR (`hir::Generics`), recursively.
-pub struct ItemCtxt<'tcx> {
+pub(crate) struct ItemCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     item_def_id: LocalDefId,
     tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
@@ -148,7 +148,7 @@ impl<'v> Visitor<'v> for HirPlaceholderCollector {
     }
 }
 
-pub struct CollectItemTypesVisitor<'tcx> {
+pub(crate) struct CollectItemTypesVisitor<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
 
@@ -364,19 +364,19 @@ fn bad_placeholder<'cx, 'tcx>(
 }
 
 impl<'tcx> ItemCtxt<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId) -> ItemCtxt<'tcx> {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId) -> ItemCtxt<'tcx> {
         ItemCtxt { tcx, item_def_id, tainted_by_errors: Cell::new(None) }
     }
 
-    pub fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
+    pub(crate) fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
         self.lowerer().lower_ty(hir_ty)
     }
 
-    pub fn hir_id(&self) -> hir::HirId {
+    pub(crate) fn hir_id(&self) -> hir::HirId {
         self.tcx.local_def_id_to_hir_id(self.item_def_id)
     }
 
-    pub fn node(&self) -> hir::Node<'tcx> {
+    pub(crate) fn node(&self) -> hir::Node<'tcx> {
         self.tcx.hir_node(self.hir_id())
     }
 
