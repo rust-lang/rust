@@ -444,14 +444,14 @@ impl SymbolGenerator {
                     MonikerResult::Moniker(moniker) => TokenSymbols {
                         symbol: scip::symbol::format_symbol(moniker_to_symbol(moniker)),
                         enclosing_symbol: None,
-                        is_inherent_impl: moniker
-                            .identifier
-                            .description
-                            .get(moniker.identifier.description.len() - 2)
-                            .is_some_and(|descriptor| {
+                        is_inherent_impl: match &moniker.identifier.description[..] {
+                            // inherent impls are represented as impl#[SelfType]
+                            [.., descriptor, _] => {
                                 descriptor.desc == MonikerDescriptorKind::Type
                                     && descriptor.name == "impl"
-                            }),
+                            }
+                            _ => false,
+                        },
                     },
                     MonikerResult::Local { enclosing_moniker } => {
                         let local_symbol = scip::types::Symbol::new_local(local_count);
