@@ -464,7 +464,7 @@ fn fn_abi_sanity_check<'tcx>(
 
         match &arg.mode {
             PassMode::Ignore => {
-                assert!(arg.layout.is_zst() || arg.layout.is_uninhabited());
+                assert!(arg.layout.is_zst());
             }
             PassMode::Direct(_) => {
                 // Here the Rust type is used to determine the actual ABI, so we have to be very
