@@ -4,7 +4,7 @@
 use std::pat::pattern_type;
 
 fn drop_pattern(arg: pattern_type!(u32 is 1..)) -> u32 {
-    arg //~ ERROR mismatched types
+    arg
 }
 
 fn drop_pattern_type_changing(arg: pattern_type!(u32 is 1..)) -> u64 {
@@ -17,12 +17,10 @@ fn drop_pattern_nested(arg: Option<pattern_type!(u32 is 1..)>) -> Option<u32> {
 
 fn eq(a: pattern_type!(u32 is 1..), b: u32) -> bool {
     a == b
-    //~^ `==` cannot be applied to type `(u32) is 1..`
 }
 
 fn eq2(a: pattern_type!(u32 is 1..), b: pattern_type!(u32 is 1..)) -> bool {
     a == b
-    //~^ `==` cannot be applied to type `(u32) is 1..`
 }
 
 fn relax_pattern(arg: pattern_type!(u32 is 2..)) -> pattern_type!(u32 is 1..) {
@@ -35,7 +33,7 @@ fn arms(b: bool) -> u32 {
         0
     } else {
         let x: pattern_type!(u32 is 1..) = 12;
-        x //~ ERROR mismatched types
+        x
     }
 }
 
@@ -43,7 +41,7 @@ fn arms(b: bool) -> u32 {
 fn arms2(b: bool) -> u32 {
     if b {
         let x: pattern_type!(u32 is 1..) = 12;
-        x //~ ERROR mismatched types
+        x
     } else {
         0
     }
