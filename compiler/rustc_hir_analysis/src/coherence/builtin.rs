@@ -404,17 +404,12 @@ pub(crate) fn coerce_unsized_info<'tcx>(
             check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ref(tcx, r_b, ty))
         }
 
-        (&ty::Ref(_, ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b)) => check_mutbl(
-            ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a },
-            ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b },
-            &|ty| Ty::new_imm_ptr(tcx, ty),
-        ),
-
-        (&ty::RawPtr(ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b)) => check_mutbl(
-            ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a },
-            ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b },
-            &|ty| Ty::new_imm_ptr(tcx, ty),
-        ),
+        (&ty::Ref(_, ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b))
+        | (&ty::RawPtr(ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b)) => {
+            let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
+            let mt_b = ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b };
+            check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ptr(tcx, ty))
+        }
 
         (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
             if def_a.is_struct() && def_b.is_struct() =>
