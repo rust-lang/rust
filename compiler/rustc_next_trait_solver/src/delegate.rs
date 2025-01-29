@@ -11,8 +11,6 @@ pub trait SolverDelegate: Deref<Target = <Self as SolverDelegate>::Infcx> + Size
         (**self).cx()
     }
 
-    type Span: Copy;
-
     fn build_with_canonical<V>(
         cx: Self::Interner,
         canonical: &ty::CanonicalQueryInput<Self::Interner, V>,
@@ -23,7 +21,7 @@ pub trait SolverDelegate: Deref<Target = <Self as SolverDelegate>::Infcx> + Size
     fn fresh_var_for_kind_with_span(
         &self,
         arg: <Self::Interner as Interner>::GenericArg,
-        span: Self::Span,
+        span: <Self::Interner as Interner>::Span,
     ) -> <Self::Interner as Interner>::GenericArg;
 
     // FIXME: Uplift the leak check into this crate.

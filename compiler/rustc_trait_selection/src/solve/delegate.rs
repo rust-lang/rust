@@ -43,8 +43,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         self.0.tcx
     }
 
-    type Span = Span;
-
     fn build_with_canonical<V>(
         interner: TyCtxt<'tcx>,
         canonical: &CanonicalQueryInput<'tcx, V>,
