@@ -685,7 +685,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
 
         match result {
             (LoadResult::Previous(cnum), None) => {
-                info!("library for `{}` was loaded previously", name);
+                info!("library for `{}` was loaded previously, cnum {cnum}", name);
                 // When `private_dep` is none, it indicates the directly dependent crate. If it is
                 // not specified by `--extern` on command line parameters, it may be
                 // `private-dependency` when `register_crate` is called for the first time. Then it must be updated to
@@ -1031,6 +1031,39 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         }
     }
 
+    fn inject_compiler_builtins(&mut self, krate: &ast::Crate) {
+        if attr::contains_name(&krate.attrs, sym::compiler_builtins)
+            || attr::contains_name(&krate.attrs, sym::no_core)
+        {
+            // `compiler_builtins` does not get extern builtins, nor do `#![no_core]` crates
+            info!("`compiler_builtins` unneeded");
+            return;
+        }
+
+        for (cnum, cmeta) in self.cstore.iter_crate_data() {
+            if cmeta.is_compiler_builtins() {
+                info!("`compiler_builtins` already exists (cnum = {cnum}); skipping injection");
+                return;
+            }
+        }
+
+        let Ok(cnum) = self.maybe_resolve_crate(
+            sym::compiler_builtins,
+            CrateDepKind::Implicit,
+            CrateOrigin::Injected,
+        ) else {
+            info!("`compiler_builtins` not resolved");
+            return;
+        };
+
+        let cmeta = self.cstore.get_crate_data(cnum);
+
+        // Sanity check the loaded crate to ensure it is indeed compiler_builtins
+        if !cmeta.is_compiler_builtins() {
+            self.dcx().emit_err(errors::CrateNotCompilerBuiltins { crate_name: cmeta.name() });
+        }
+    }
+
     fn inject_dependency_if(
         &mut self,
         krate: CrateNum,
@@ -1140,6 +1173,8 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     }
 
     pub fn postprocess(&mut self, krate: &ast::Crate) {
+        info!("POSTPROCESS");
+        self.inject_compiler_builtins(krate);
         self.inject_forced_externs();
         self.inject_profiler_runtime();
         self.inject_allocator_crate(krate);
@@ -1171,11 +1206,17 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                     }
                     None => item.ident.name,
                 };
+
                 let dep_kind = if attr::contains_name(&item.attrs, sym::no_link) {
                     CrateDepKind::MacrosOnly
                 } else {
                     CrateDepKind::Explicit
                 };
+
+                if name == sym::compiler_builtins {
+                    info!("BUILTINS DETECTED dep_kind {dep_kind:?}");
+                    return None;
+                }
 
                 let cnum = self.resolve_crate(name, item.span, dep_kind, CrateOrigin::AstExtern)?;
 

@@ -47,6 +47,7 @@ pub fn inject(
     for &name in names.iter().rev() {
         let ident_span = if edition >= Edition2018 { span } else { call_site };
         let item = if name == sym::compiler_builtins {
+            eprintln!("INJECTING BUILTINS");
             // compiler_builtins is a private implementation detail. We only
             // need to insert it into the crate graph for linking and should not
             // expose any of its public API.
