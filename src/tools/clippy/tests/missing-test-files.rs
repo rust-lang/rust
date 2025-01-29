@@ -60,7 +60,7 @@ fn explore_directory(dir: &Path) -> Vec<String> {
                         }
                     },
                     _ => {},
-                };
+                }
             }
         }
     }

@@ -30,8 +30,8 @@ pub fn output_result(cmd: &mut Command) -> Result<String, String> {
 /// Finds the remote for rust-lang/rust.
 /// For example for these remotes it will return `upstream`.
 /// ```text
-/// origin  https://github.com/Nilstrieb/rust.git (fetch)
-/// origin  https://github.com/Nilstrieb/rust.git (push)
+/// origin  https://github.com/pietroalbani/rust.git (fetch)
+/// origin  https://github.com/pietroalbani/rust.git (push)
 /// upstream        https://github.com/rust-lang/rust (fetch)
 /// upstream        https://github.com/rust-lang/rust (push)
 /// ```

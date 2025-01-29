@@ -126,7 +126,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         &mut self,
         name: &str,
         params: Vec<AbiParam>,
-        returns: Vec<AbiParam>,
+        mut returns: Vec<AbiParam>,
         args: &[Value],
     ) -> Cow<'_, [Value]> {
         // Pass i128 arguments by-ref on Windows.
@@ -150,15 +150,19 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
             (params, args.into())
         };
 
-        // Return i128 using a return area pointer on Windows and s390x.
-        let adjust_ret_param =
-            if self.tcx.sess.target.is_like_windows || self.tcx.sess.target.arch == "s390x" {
-                returns.len() == 1 && returns[0].value_type == types::I128
-            } else {
-                false
-            };
+        let ret_single_i128 = returns.len() == 1 && returns[0].value_type == types::I128;
+        if ret_single_i128 && self.tcx.sess.target.is_like_windows {
+            // Return i128 using the vector ABI on Windows
+            returns[0].value_type = types::I64X2;
 
-        if adjust_ret_param {
+            let ret = self.lib_call_unadjusted(name, params, returns, &args)[0];
+
+            // FIXME(bytecodealliance/wasmtime#6104) use bitcast instead of store to get from i64x2 to i128
+            let ret_ptr = self.create_stack_slot(16, 16);
+            ret_ptr.store(self, ret, MemFlags::trusted());
+            Cow::Owned(vec![ret_ptr.load(self, types::I128, MemFlags::trusted())])
+        } else if ret_single_i128 && self.tcx.sess.target.arch == "s390x" {
+            // Return i128 using a return area pointer on s390x.
             let mut params = params;
             let mut args = args.to_vec();
 

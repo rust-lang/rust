@@ -341,8 +341,8 @@ window.filters = {
                 || !filters.levels_filter[lint.level]
                 || !filters.applicabilities_filter[lint.applicability]
                 || !(filters.version_filter["="] === null || lint.version === filters.version_filter["="])
-                || !(filters.version_filter["≥"] === null || lint.version > filters.version_filter["≥"])
-                || !(filters.version_filter["≤"] === null || lint.version < filters.version_filter["≤"])
+                || !(filters.version_filter["≥"] === null || lint.version >= filters.version_filter["≥"])
+                || !(filters.version_filter["≤"] === null || lint.version <= filters.version_filter["≤"])
             );
             if (lint.filteredOut || lint.searchFilteredOut) {
                 lint.elem.style.display = "none";

@@ -8,6 +8,7 @@ use std::ops::Deref;
 
 use rustc_attr_parsing::{ConstStability, StabilityLevel};
 use rustc_errors::{Diag, ErrorGuaranteed};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_index::bit_set::DenseBitSet;
@@ -29,7 +30,7 @@ use super::ops::{self, NonConstOp, Status};
 use super::qualifs::{self, HasMutInterior, NeedsDrop, NeedsNonConstDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{ConstCx, Qualif};
-use crate::check_consts::is_safe_to_expose_on_stable_const_fn;
+use crate::check_consts::is_fn_or_trait_safe_to_expose_on_stable;
 use crate::errors;
 
 type QualifResults<'mir, 'tcx, Q> =
@@ -470,6 +471,88 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             self.tcx.crate_level_attribute_injection_span(self.tcx.local_def_id_to_hir_id(id))
         })
     }
+
+    /// Check the const stability of the given item (fn or trait).
+    fn check_callee_stability(&mut self, def_id: DefId) {
+        match self.tcx.lookup_const_stability(def_id) {
+            Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
+                // All good.
+            }
+            None => {
+                // This doesn't need a separate const-stability check -- const-stability equals
+                // regular stability, and regular stability is checked separately.
+                // However, we *do* have to worry about *recursive* const stability.
+                if self.enforce_recursive_const_stability()
+                    && !is_fn_or_trait_safe_to_expose_on_stable(self.tcx, def_id)
+                {
+                    self.dcx().emit_err(errors::UnmarkedConstItemExposed {
+                        span: self.span,
+                        def_path: self.tcx.def_path_str(def_id),
+                    });
+                }
+            }
+            Some(ConstStability {
+                level: StabilityLevel::Unstable { implied_by: implied_feature, issue, .. },
+                feature,
+                ..
+            }) => {
+                // An unstable const fn/trait with a feature gate.
+                let callee_safe_to_expose_on_stable =
+                    is_fn_or_trait_safe_to_expose_on_stable(self.tcx, def_id);
+
+                // We only honor `span.allows_unstable` aka `#[allow_internal_unstable]` if
+                // the callee is safe to expose, to avoid bypassing recursive stability.
+                // This is not ideal since it means the user sees an error, not the macro
+                // author, but that's also the case if one forgets to set
+                // `#[allow_internal_unstable]` in the first place. Note that this cannot be
+                // integrated in the check below since we want to enforce
+                // `callee_safe_to_expose_on_stable` even if
+                // `!self.enforce_recursive_const_stability()`.
+                if (self.span.allows_unstable(feature)
+                    || implied_feature.is_some_and(|f| self.span.allows_unstable(f)))
+                    && callee_safe_to_expose_on_stable
+                {
+                    return;
+                }
+
+                // We can't use `check_op` to check whether the feature is enabled because
+                // the logic is a bit different than elsewhere: local functions don't need
+                // the feature gate, and there might be an "implied" gate that also suffices
+                // to allow this.
+                let feature_enabled = def_id.is_local()
+                    || self.tcx.features().enabled(feature)
+                    || implied_feature.is_some_and(|f| self.tcx.features().enabled(f))
+                    || {
+                        // When we're compiling the compiler itself we may pull in
+                        // crates from crates.io, but those crates may depend on other
+                        // crates also pulled in from crates.io. We want to ideally be
+                        // able to compile everything without requiring upstream
+                        // modifications, so in the case that this looks like a
+                        // `rustc_private` crate (e.g., a compiler crate) and we also have
+                        // the `-Z force-unstable-if-unmarked` flag present (we're
+                        // compiling a compiler crate), then let this missing feature
+                        // annotation slide.
+                        // This matches what we do in `eval_stability_allow_unstable` for
+                        // regular stability.
+                        feature == sym::rustc_private
+                            && issue == NonZero::new(27812)
+                            && self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked
+                    };
+                // Even if the feature is enabled, we still need check_op to double-check
+                // this if the callee is not safe to expose on stable.
+                if !feature_enabled || !callee_safe_to_expose_on_stable {
+                    self.check_op(ops::CallUnstable {
+                        def_id,
+                        feature,
+                        feature_enabled,
+                        safe_to_expose_on_stable: callee_safe_to_expose_on_stable,
+                        suggestion_span: self.crate_inject_span(),
+                        is_function_call: self.tcx.def_kind(def_id) != DefKind::Trait,
+                    });
+                }
+            }
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
@@ -518,7 +601,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Ref(_, BorrowKind::Mut { .. }, place)
-            | Rvalue::RawPtr(Mutability::Mut, place) => {
+            | Rvalue::RawPtr(RawPtrKind::Mut, place) => {
                 // Inside mutable statics, we allow arbitrary mutable references.
                 // We've allowed `static mut FOO = &mut [elements];` for a long time (the exact
                 // reasons why are lost to history), and there is no reason to restrict that to
@@ -536,7 +619,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Fake(_), place)
-            | Rvalue::RawPtr(Mutability::Not, place) => {
+            | Rvalue::RawPtr(RawPtrKind::Const, place) => {
                 let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
                     self.ccx,
                     &mut |local| self.qualifs.has_mut_interior(self.ccx, local, location),
@@ -546,6 +629,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 if borrowed_place_has_mut_interior && self.place_may_escape(place) {
                     self.check_op(ops::EscapingCellBorrow);
                 }
+            }
+
+            Rvalue::RawPtr(RawPtrKind::FakeForPtrMetadata, place) => {
+                // These are only inserted for slice length, so the place must already be indirect.
+                // This implies we do not have to worry about whether the borrow escapes.
+                assert!(place.is_indirect(), "fake borrows are always indirect");
             }
 
             Rvalue::Cast(
@@ -586,12 +675,23 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             ) => {}
             Rvalue::ShallowInitBox(_, _) => {}
 
-            Rvalue::UnaryOp(_, operand) => {
+            Rvalue::UnaryOp(op, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
-                if is_int_bool_float_or_char(ty) {
-                    // Int, bool, float, and char operations are fine.
-                } else {
-                    span_bug!(self.span, "non-primitive type in `Rvalue::UnaryOp`: {:?}", ty);
+                match op {
+                    UnOp::Not | UnOp::Neg => {
+                        if is_int_bool_float_or_char(ty) {
+                            // Int, bool, float, and char operations are fine.
+                        } else {
+                            span_bug!(
+                                self.span,
+                                "non-primitive type in `Rvalue::UnaryOp{op:?}`: {ty:?}",
+                            );
+                        }
+                    }
+                    UnOp::PtrMetadata => {
+                        // Getting the metadata from a pointer is always const.
+                        // We already validated the type is valid in the validator.
+                    }
                 }
             }
 
@@ -716,8 +816,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             span: *fn_span,
                             call_source,
                         });
-                        // FIXME(const_trait_impl): do a more fine-grained check whether this
-                        // particular trait can be const-stably called.
+                        self.check_callee_stability(trait_did);
                     } else {
                         // Not even a const trait.
                         self.check_op(ops::FnCallNonConst {
@@ -793,7 +892,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // fallback body is safe to expose on stable.
                     let is_const_stable = intrinsic.const_stable
                         || (!intrinsic.must_be_overridden
-                            && is_safe_to_expose_on_stable_const_fn(tcx, callee));
+                            && is_fn_or_trait_safe_to_expose_on_stable(tcx, callee));
                     match tcx.lookup_const_stability(callee) {
                         None => {
                             // This doesn't need a separate const-stability check -- const-stability equals
@@ -842,83 +941,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
 
                 // Finally, stability for regular function calls -- this is the big one.
-                match tcx.lookup_const_stability(callee) {
-                    Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
-                        // All good.
-                    }
-                    None => {
-                        // This doesn't need a separate const-stability check -- const-stability equals
-                        // regular stability, and regular stability is checked separately.
-                        // However, we *do* have to worry about *recursive* const stability.
-                        if self.enforce_recursive_const_stability()
-                            && !is_safe_to_expose_on_stable_const_fn(tcx, callee)
-                        {
-                            self.dcx().emit_err(errors::UnmarkedConstFnExposed {
-                                span: self.span,
-                                def_path: self.tcx.def_path_str(callee),
-                            });
-                        }
-                    }
-                    Some(ConstStability {
-                        level: StabilityLevel::Unstable { implied_by: implied_feature, issue, .. },
-                        feature,
-                        ..
-                    }) => {
-                        // An unstable const fn with a feature gate.
-                        let callee_safe_to_expose_on_stable =
-                            is_safe_to_expose_on_stable_const_fn(tcx, callee);
-
-                        // We only honor `span.allows_unstable` aka `#[allow_internal_unstable]` if
-                        // the callee is safe to expose, to avoid bypassing recursive stability.
-                        // This is not ideal since it means the user sees an error, not the macro
-                        // author, but that's also the case if one forgets to set
-                        // `#[allow_internal_unstable]` in the first place. Note that this cannot be
-                        // integrated in the check below since we want to enforce
-                        // `callee_safe_to_expose_on_stable` even if
-                        // `!self.enforce_recursive_const_stability()`.
-                        if (self.span.allows_unstable(feature)
-                            || implied_feature.is_some_and(|f| self.span.allows_unstable(f)))
-                            && callee_safe_to_expose_on_stable
-                        {
-                            return;
-                        }
-
-                        // We can't use `check_op` to check whether the feature is enabled because
-                        // the logic is a bit different than elsewhere: local functions don't need
-                        // the feature gate, and there might be an "implied" gate that also suffices
-                        // to allow this.
-                        let feature_enabled = callee.is_local()
-                            || tcx.features().enabled(feature)
-                            || implied_feature.is_some_and(|f| tcx.features().enabled(f))
-                            || {
-                                // When we're compiling the compiler itself we may pull in
-                                // crates from crates.io, but those crates may depend on other
-                                // crates also pulled in from crates.io. We want to ideally be
-                                // able to compile everything without requiring upstream
-                                // modifications, so in the case that this looks like a
-                                // `rustc_private` crate (e.g., a compiler crate) and we also have
-                                // the `-Z force-unstable-if-unmarked` flag present (we're
-                                // compiling a compiler crate), then let this missing feature
-                                // annotation slide.
-                                // This matches what we do in `eval_stability_allow_unstable` for
-                                // regular stability.
-                                feature == sym::rustc_private
-                                    && issue == NonZero::new(27812)
-                                    && tcx.sess.opts.unstable_opts.force_unstable_if_unmarked
-                            };
-                        // Even if the feature is enabled, we still need check_op to double-check
-                        // this if the callee is not safe to expose on stable.
-                        if !feature_enabled || !callee_safe_to_expose_on_stable {
-                            self.check_op(ops::FnCallUnstable {
-                                def_id: callee,
-                                feature,
-                                feature_enabled,
-                                safe_to_expose_on_stable: callee_safe_to_expose_on_stable,
-                                suggestion_span: self.crate_inject_span(),
-                            });
-                        }
-                    }
-                }
+                self.check_callee_stability(callee);
             }
 
             // Forbid all `Drop` terminators unless the place being dropped is a local with no

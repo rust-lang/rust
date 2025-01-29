@@ -119,7 +119,7 @@ fn check_tuple<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &
                         && let LitKind::Int(val, _) = lit.node
                     {
                         return (val == i as u128).then_some(lhs);
-                    };
+                    }
 
                     None
                 })

@@ -6,7 +6,8 @@ use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
 use crate::traits::query::NoSolution;
-use crate::traits::{ObligationCause, ObligationCtxt};
+use crate::traits::query::normalize::QueryNormalizeExt;
+use crate::traits::{Normalized, ObligationCause, ObligationCtxt};
 
 /// This returns true if the type `ty` is "trivial" for
 /// dropck-outlives -- that is, if it doesn't require any types to
@@ -90,6 +91,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
 pub fn compute_dropck_outlives_inner<'tcx>(
     ocx: &ObligationCtxt<'_, 'tcx>,
     goal: ParamEnvAnd<'tcx, DropckOutlives<'tcx>>,
+    span: Span,
 ) -> Result<DropckOutlivesResult<'tcx>, NoSolution> {
     let tcx = ocx.infcx.tcx;
     let ParamEnvAnd { param_env, value: DropckOutlives { dropped_ty } } = goal;
@@ -135,7 +137,7 @@ pub fn compute_dropck_outlives_inner<'tcx>(
     // Set used to detect infinite recursion.
     let mut ty_set = FxHashSet::default();
 
-    let cause = ObligationCause::dummy();
+    let cause = ObligationCause::dummy_with_span(span);
     let mut constraints = DropckConstraint::empty();
     while let Some((ty, depth)) = ty_stack.pop() {
         debug!(
@@ -171,18 +173,13 @@ pub fn compute_dropck_outlives_inner<'tcx>(
         // do not themselves define a destructor", more or less. We have
         // to push them onto the stack to be expanded.
         for ty in constraints.dtorck_types.drain(..) {
-            let normalized_ty = ocx.normalize(&cause, param_env, ty);
+            let Normalized { value: ty, obligations } =
+                ocx.infcx.at(&cause, param_env).query_normalize(ty)?;
+            ocx.register_obligations(obligations);
 
-            let errors = ocx.select_where_possible();
-            if !errors.is_empty() {
-                debug!("failed to normalize dtorck type: {ty} ~> {errors:#?}");
-                return Err(NoSolution);
-            }
+            debug!("dropck_outlives: ty from dtorck_types = {:?}", ty);
 
-            let normalized_ty = ocx.infcx.resolve_vars_if_possible(normalized_ty);
-            debug!("dropck_outlives: ty from dtorck_types = {:?}", normalized_ty);
-
-            match normalized_ty.kind() {
+            match ty.kind() {
                 // All parameters live for the duration of the
                 // function.
                 ty::Param(..) => {}
@@ -190,12 +187,12 @@ pub fn compute_dropck_outlives_inner<'tcx>(
                 // A projection that we couldn't resolve - it
                 // might have a destructor.
                 ty::Alias(..) => {
-                    result.kinds.push(normalized_ty.into());
+                    result.kinds.push(ty.into());
                 }
 
                 _ => {
-                    if ty_set.insert(normalized_ty) {
-                        ty_stack.push((normalized_ty, depth + 1));
+                    if ty_set.insert(ty) {
+                        ty_stack.push((ty, depth + 1));
                     }
                 }
             }

@@ -43,7 +43,7 @@ impl EarlyLintPass for Precedence {
                     cx,
                     PRECEDENCE,
                     expr.span,
-                    "operator precedence can trip the unwary",
+                    "operator precedence might not be obvious",
                     "consider parenthesizing your expression",
                     sugg,
                     appl,

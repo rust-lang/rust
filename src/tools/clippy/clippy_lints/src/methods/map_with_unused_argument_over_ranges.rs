@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{eager_or_lazy, higher, usage};
+use clippy_utils::{eager_or_lazy, higher, std_or_core, usage};
 use rustc_ast::LitKind;
 use rustc_ast::ast::RangeLimits;
 use rustc_data_structures::packed::Pu128;
@@ -75,6 +75,7 @@ pub(super) fn check(
         } = body_hir
         && !usage::BindingUsageFinder::are_params_used(cx, body_hir)
         && let Some(count) = extract_count_with_applicability(cx, range, &mut applicability)
+        && let Some(exec_context) = std_or_core(cx)
     {
         let method_to_use_name;
         let new_span;
@@ -105,7 +106,7 @@ pub(super) fn check(
         let mut parts = vec![
             (
                 receiver.span.to(method_call_span),
-                format!("std::iter::{method_to_use_name}"),
+                format!("{exec_context}::iter::{method_to_use_name}"),
             ),
             new_span,
         ];

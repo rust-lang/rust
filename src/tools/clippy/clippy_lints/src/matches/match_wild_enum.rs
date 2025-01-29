@@ -170,7 +170,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
                 );
             });
         },
-    };
+    }
 }
 
 enum CommonPrefixSearcher<'a> {

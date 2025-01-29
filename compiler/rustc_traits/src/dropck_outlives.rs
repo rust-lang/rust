@@ -6,6 +6,7 @@ use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::query::{DropckConstraint, DropckOutlivesResult};
 use rustc_middle::ty::{self, GenericArgs, TyCtxt};
+use rustc_span::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::dropck_outlives::{
     compute_dropck_outlives_inner, dtorck_constraint_for_ty_inner,
@@ -24,7 +25,7 @@ fn dropck_outlives<'tcx>(
     debug!("dropck_outlives(goal={:#?})", canonical_goal);
 
     tcx.infer_ctxt().enter_canonical_trait_query(&canonical_goal, |ocx, goal| {
-        compute_dropck_outlives_inner(ocx, goal)
+        compute_dropck_outlives_inner(ocx, goal, DUMMY_SP)
     })
 }
 

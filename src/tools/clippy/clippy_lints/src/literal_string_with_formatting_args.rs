@@ -29,9 +29,9 @@ declare_clippy_lint! {
     /// let y = "hello";
     /// x.expect(&format!("{y:?}"));
     /// ```
-    #[clippy::version = "1.83.0"]
+    #[clippy::version = "1.85.0"]
     pub LITERAL_STRING_WITH_FORMATTING_ARGS,
-    suspicious,
+    nursery,
     "Checks if string literals have formatting arguments"
 }
 

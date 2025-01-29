@@ -1,8 +1,10 @@
-// We specify incremental here because we want to test the partitioning for incremental compilation
 //@ incremental
-//@ compile-flags:-Zprint-mono-items=lazy
+//@ compile-flags: -Zprint-mono-items=lazy -Copt-level=0
 
 #![crate_type = "lib"]
+
+// This test ensures that methods are assigned to the module where their self-type is defined, not
+// where the method is defined.
 
 pub struct SomeType;
 

@@ -87,7 +87,7 @@ pub fn check_for_loop_iter(
                 // skip lint
                 return true;
             }
-        };
+        }
 
         // the lint should not be executed if no violation happens
         let snippet = if let ExprKind::MethodCall(maybe_iter_method_name, collection, [], _) = receiver.kind
