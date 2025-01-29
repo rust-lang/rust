@@ -2001,9 +2001,9 @@ dependencies = [
 
 [[package]]
 name = "tenthash"
-version = "0.4.0"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d67f9f3cf70e0852941d7bc3cb884b49b24b8ee956baf91ad0abae31f5ef11fb"
+checksum = "2d092d622df8bb64e5de8dc86a3667702d5f1e0fe2f0604c6035540703c8cd1e"
 
 [[package]]
 name = "test-fixture"
