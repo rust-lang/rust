@@ -41,10 +41,20 @@ where
         let min_idx = min_index(v, &mut is_less).unwrap();
         v.swap(min_idx, index);
     } else {
+        #[cfg(bootstrap)]
         cfg_if! {
             if #[cfg(feature = "optimize_for_size")] {
                 median_of_medians(v, &mut is_less, index);
             } else {
+                partition_at_index_loop(v, index, None, &mut is_less);
+            }
+        }
+        #[cfg(not(bootstrap))]
+        crate::cfg_match! {
+            feature = "optimize_for_size" => {
+                median_of_medians(v, &mut is_less, index);
+            }
+            _ => {
                 partition_at_index_loop(v, index, None, &mut is_less);
             }
         }

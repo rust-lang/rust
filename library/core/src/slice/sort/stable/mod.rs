@@ -39,6 +39,7 @@ pub fn sort<T, F: FnMut(&T, &T) -> bool, BufT: BufGuard<T>>(v: &mut [T], is_less
         return;
     }
 
+    #[cfg(bootstrap)]
     cfg_if! {
         if #[cfg(any(feature = "optimize_for_size", target_pointer_width = "16"))] {
             let alloc_len = len / 2;
@@ -64,6 +65,50 @@ pub fn sort<T, F: FnMut(&T, &T) -> bool, BufT: BufGuard<T>>(v: &mut [T], is_less
 
             tiny::mergesort(v, scratch, is_less);
         } else {
+            // More advanced sorting methods than insertion sort are faster if called in
+            // a hot loop for small inputs, but for general-purpose code the small
+            // binary size of insertion sort is more important. The instruction cache in
+            // modern processors is very valuable, and for a single sort call in general
+            // purpose code any gains from an advanced method are cancelled by i-cache
+            // misses during the sort, and thrashing the i-cache for surrounding code.
+            const MAX_LEN_ALWAYS_INSERTION_SORT: usize = 20;
+            if intrinsics::likely(len <= MAX_LEN_ALWAYS_INSERTION_SORT) {
+                insertion_sort_shift_left(v, 1, is_less);
+                return;
+            }
+
+            driftsort_main::<T, F, BufT>(v, is_less);
+        }
+    }
+
+    #[cfg(not(bootstrap))]
+    crate::cfg_match! {
+        any(feature = "optimize_for_size", target_pointer_width = "16") => {
+            let alloc_len = len / 2;
+
+            crate::cfg_match! {
+                target_pointer_width = "16" => {
+                    let mut heap_buf = BufT::with_capacity(alloc_len);
+                    let scratch = heap_buf.as_uninit_slice_mut();
+                }
+                _ => {
+                    // For small inputs 4KiB of stack storage suffices, which allows us to avoid
+                    // calling the (de-)allocator. Benchmarks showed this was quite beneficial.
+                    let mut stack_buf = AlignedStorage::<T, 4096>::new();
+                    let stack_scratch = stack_buf.as_uninit_slice_mut();
+                    let mut heap_buf;
+                    let scratch = if stack_scratch.len() >= alloc_len {
+                        stack_scratch
+                    } else {
+                        heap_buf = BufT::with_capacity(alloc_len);
+                        heap_buf.as_uninit_slice_mut()
+                    };
+                }
+            }
+
+            tiny::mergesort(v, scratch, is_less);
+        }
+        _ => {
             // More advanced sorting methods than insertion sort are faster if called in
             // a hot loop for small inputs, but for general-purpose code the small
             // binary size of insertion sort is more important. The instruction cache in
