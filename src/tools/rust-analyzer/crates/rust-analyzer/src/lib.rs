@@ -156,12 +156,12 @@ fn completion_item_hash(item: &CompletionItem, is_ref_completion: bool) -> [u8; 
 
     hasher.update([u8::from(item.ref_match.is_some())]);
     if let Some((ref_mode, text_size)) = &item.ref_match {
-        let descriminant = match ref_mode {
+        let discriminant = match ref_mode {
             CompletionItemRefMode::Reference(Mutability::Shared) => 0u8,
             CompletionItemRefMode::Reference(Mutability::Mut) => 1u8,
             CompletionItemRefMode::Dereference => 2u8,
         };
-        hasher.update([descriminant]);
+        hasher.update([discriminant]);
         hasher.update(u32::from(*text_size).to_le_bytes());
     }
 
