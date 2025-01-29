@@ -25,7 +25,7 @@ define-function: (
         // We put the toggle in the original state.
         click: ".more-examples-toggle"
         // Moving cursor away from the toggle line to prevent disrupting next test.
-        move-cursor-to: ".search-input"
+        move-cursor-to: "rustdoc-toolbar #search-button"
     },
 )
 

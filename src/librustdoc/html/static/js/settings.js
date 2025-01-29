@@ -1,7 +1,7 @@
 // Local js definitions:
 /* global getSettingValue, updateLocalStorage, updateTheme */
 /* global addClass, removeClass, onEach, onEachLazy */
-/* global MAIN_ID, getVar, getSettingsButton, getHelpButton */
+/* global MAIN_ID, getVar */
 
 "use strict";
 
@@ -248,7 +248,12 @@
             document.getElementById(MAIN_ID).appendChild(el);
         } else {
             el.setAttribute("tabindex", "-1");
-            getSettingsButton().appendChild(el);
+            onEachLazy(document.querySelectorAll(".settings-menu"), menu => {
+                if (menu.offsetWidth !== 0) {
+                    menu.appendChild(el);
+                    return true;
+                }
+            });
         }
         return el;
     }
@@ -257,6 +262,15 @@
 
     function displaySettings() {
         settingsMenu.style.display = "";
+        onEachLazy(document.querySelectorAll(".settings-menu"), menu => {
+            if (menu.offsetWidth !== 0) {
+                if (!menu.contains(settingsMenu)) {
+                    settingsMenu.parentElement.removeChild(settingsMenu);
+                    menu.appendChild(settingsMenu);
+                }
+                return true;
+            }
+        });
         onEachLazy(settingsMenu.querySelectorAll("input[type='checkbox']"), el => {
             const val = getSettingValue(el.id);
             const checked = val === "true";
@@ -267,33 +281,36 @@
     }
 
     function settingsBlurHandler(event) {
-        if (!getHelpButton().contains(document.activeElement) &&
-            !getHelpButton().contains(event.relatedTarget) &&
-            !getSettingsButton().contains(document.activeElement) &&
-            !getSettingsButton().contains(event.relatedTarget)
-        ) {
+        const isInPopover = onEachLazy(
+            document.querySelectorAll(".settings-menu, .help-menu"),
+            menu => {
+                return menu.contains(document.activeElement) || menu.contains(event.relatedTarget);
+            },
+        );
+        if (!isInPopover) {
             window.hidePopoverMenus();
         }
     }
 
     if (!isSettingsPage) {
         // We replace the existing "onclick" callback.
-        const settingsButton = getSettingsButton();
         const settingsMenu = document.getElementById("settings");
-        settingsButton.onclick = event => {
-            if (settingsMenu.contains(event.target)) {
-                return;
-            }
-            event.preventDefault();
-            const shouldDisplaySettings = settingsMenu.style.display === "none";
+        onEachLazy(document.querySelectorAll(".settings-menu"), settingsButton => {
+            settingsButton.onclick = event => {
+                if (settingsMenu.contains(event.target)) {
+                    return;
+                }
+                event.preventDefault();
+                const shouldDisplaySettings = settingsMenu.style.display === "none";
 
-            window.hideAllModals();
-            if (shouldDisplaySettings) {
-                displaySettings();
-            }
-        };
-        settingsButton.onblur = settingsBlurHandler;
-        settingsButton.querySelector("a").onblur = settingsBlurHandler;
+                window.hideAllModals();
+                if (shouldDisplaySettings) {
+                    displaySettings();
+                }
+            };
+            settingsButton.onblur = settingsBlurHandler;
+            settingsButton.querySelector("a").onblur = settingsBlurHandler;
+        });
         onEachLazy(settingsMenu.querySelectorAll("input"), el => {
             el.onblur = settingsBlurHandler;
         });
@@ -307,6 +324,8 @@
         if (!isSettingsPage) {
             displaySettings();
         }
-        removeClass(getSettingsButton(), "rotate");
+        onEachLazy(document.querySelectorAll(".settings-menu"), settingsButton => {
+            removeClass(settingsButton, "rotate");
+        });
     }, 0);
 })();

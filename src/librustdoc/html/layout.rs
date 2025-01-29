@@ -25,6 +25,7 @@ pub(crate) struct Layout {
 
 pub(crate) struct Page<'a> {
     pub(crate) title: &'a str,
+    pub(crate) short_title: &'a str,
     pub(crate) css_class: &'a str,
     pub(crate) root_path: &'a str,
     pub(crate) static_root_path: Option<&'a str>,

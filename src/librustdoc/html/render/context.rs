@@ -205,6 +205,18 @@ impl<'tcx> Context<'tcx> {
         if !is_module {
             title.push_str(it.name.unwrap().as_str());
         }
+        let short_title;
+        let short_title = if is_module {
+            let module_name = self.current.last().unwrap();
+            short_title = if it.is_crate() {
+                format!("Crate {module_name}")
+            } else {
+                format!("Module {module_name}")
+            };
+            &short_title[..]
+        } else {
+            it.name.as_ref().unwrap().as_str()
+        };
         if !it.is_primitive() && !it.is_keyword() {
             if !is_module {
                 title.push_str(" in ");
@@ -242,6 +254,7 @@ impl<'tcx> Context<'tcx> {
                 root_path: &self.root_path(),
                 static_root_path: self.shared.static_root_path.as_deref(),
                 title: &title,
+                short_title,
                 description: &desc,
                 resource_suffix: &self.shared.resource_suffix,
                 rust_logo: has_doc_flag(self.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
@@ -619,6 +632,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let shared = &self.shared;
         let mut page = layout::Page {
             title: "List of all items in this crate",
+            short_title: "All",
             css_class: "mod sys",
             root_path: "../",
             static_root_path: shared.static_root_path.as_deref(),

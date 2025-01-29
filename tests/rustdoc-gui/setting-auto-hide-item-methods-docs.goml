@@ -6,7 +6,7 @@ define-function: (
     [storage_value, setting_attribute_value, toggle_attribute_value],
     block {
         assert-local-storage: {"rustdoc-auto-hide-method-docs": |storage_value|}
-        click: "#settings-menu"
+        click: "rustdoc-toolbar .settings-menu"
         wait-for: "#settings"
         assert-property: ("#auto-hide-method-docs", {"checked": |setting_attribute_value|})
         assert-attribute: (".toggle.method-toggle", {"open": |toggle_attribute_value|})

@@ -72,18 +72,9 @@
     <![endif]-->
     {{ layout.external_html.before_content|safe }}
     {% if page.css_class != "src" %}
-    <nav class="mobile-topbar"> {# #}
-        <button class="sidebar-menu-toggle" title="show sidebar"></button>
-        {% if !layout.logo.is_empty() || page.rust_logo %}
-        <a class="logo-container" href="{{page.root_path|safe}}{{display_krate_with_trailing_slash|safe}}index.html">
-        {% if page.rust_logo %}
-            <img class="rust-logo" src="{{static_root_path|safe}}{{files.rust_logo_svg}}" alt="">
-        {% else if !layout.logo.is_empty() %}
-            <img src="{{layout.logo}}" alt="">
-        {% endif %}
-        </a>
-        {% endif %}
-    </nav>
+    <rustdoc-topbar> {# #}
+        <h2><a href="#">{{page.short_title}}</a></h2> {# #}
+    </rustdoc-topbar>
     {% endif %}
     <nav class="sidebar">
         {% if page.css_class != "src" %}
@@ -117,9 +108,6 @@
     <div class="sidebar-resizer"></div> {# #}
     <main>
         {% if page.css_class != "src" %}<div class="width-limiter">{% endif %}
-            {# defined in storage.js to avoid duplicating complex UI across every page #}
-            {# and because the search form only works if JS is enabled anyway #}
-            <rustdoc-search></rustdoc-search> {# #}
             <section id="main-content" class="content">{{ content|safe }}</section>
         {% if page.css_class != "src" %}</div>{% endif %}
     </main>

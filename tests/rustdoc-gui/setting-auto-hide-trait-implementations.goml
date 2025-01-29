@@ -5,7 +5,7 @@ define-function: (
     [storage_value, setting_attribute_value, toggle_attribute_value],
     block {
         assert-local-storage: {"rustdoc-auto-hide-trait-implementations": |storage_value|}
-        click: "#settings-menu"
+        click: "rustdoc-toolbar .settings-menu"
         wait-for: "#settings"
         assert-property: ("#auto-hide-trait-implementations", {"checked": |setting_attribute_value|})
         assert-attribute: ("#trait-implementations-list > details", {"open": |toggle_attribute_value|}, ALL)

@@ -6,12 +6,12 @@ assert-css: ("#help", {"display": "block"})
 assert-css: ("#help dd", {"font-size": "16px"})
 assert-false: "#help-button > a"
 assert-css: ("#help", {"display": "block"})
-compare-elements-property: (".sub", "#help", ["offsetWidth"])
-compare-elements-position: (".sub", "#help", ["x"])
+compare-elements-property: (".main-heading", "#help", ["offsetWidth"])
+compare-elements-position: (".main-heading", "#help", ["x"])
 set-window-size: (500, 1000) // Try mobile next.
 assert-css: ("#help", {"display": "block"})
-compare-elements-property: (".sub", "#help", ["offsetWidth"])
-compare-elements-position: (".sub", "#help", ["x"])
+compare-elements-property: (".main-heading", "#help", ["offsetWidth"])
+compare-elements-position: (".main-heading", "#help", ["x"])
 
 // Checking the color of the elements of the help menu.
 show-text: true
@@ -54,19 +54,17 @@ go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=a"
 wait-for: "#search-tabs" // Waiting for the search.js to load.
 set-window-size: (1000, 1000) // Only supported on desktop.
 assert-false: "#help"
-click: "#help-button > a"
+click: "rustdoc-toolbar .help-menu > a"
 assert-css: ("#help", {"display": "block"})
 assert-css: ("#help dd", {"font-size": "16px"})
-click: "#help-button > a"
-assert-css: ("#help", {"display": "none"})
-compare-elements-property-false: (".sub", "#help", ["offsetWidth"])
-compare-elements-position-false: (".sub", "#help", ["x"])
+click: "rustdoc-toolbar .help-menu > a"
+assert-false: "#help"
 
 // This test ensures that the "the rustdoc book" anchor link within the help popover works.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=a"
 wait-for: "#search-tabs" // Waiting for the search.js to load.
 set-window-size: (1000, 1000) // Popover only appears when the screen width is >700px.
 assert-false: "#help"
-click: "#help-button > a"
+click: "rustdoc-toolbar .help-menu > a"
 click: "//*[@id='help']//a[text()='the rustdoc book']"
 wait-for-document-property: ({"URL": "https://doc.rust-lang.org/"}, STARTS_WITH)

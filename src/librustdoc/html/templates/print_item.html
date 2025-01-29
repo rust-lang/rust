@@ -12,8 +12,8 @@
     <h1>
         {{typ}}
         <span{% if item_type != "mod" +%} class="{{item_type}}"{% endif %}>
-        {{name}}
-        </span> {# #}
+        {{name|wrapped|safe}}
+        </span>&nbsp;{# #}
         <button id="copy-path" title="Copy item path to clipboard"> {# #}
             Copy item path {# #}
         </button> {# #}

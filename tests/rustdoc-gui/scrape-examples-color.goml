@@ -27,7 +27,7 @@ define-function: (
             "color": |help_hover_color|,
         })
         // Moving the cursor to another item to not break next runs.
-        move-cursor-to: ".search-input"
+        move-cursor-to: "#search-button"
     }
 )
 
