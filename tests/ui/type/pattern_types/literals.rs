@@ -12,27 +12,24 @@ fn out_of_range() -> pattern_type!(u32 is 1..) {
 
 fn at_range_start() -> pattern_type!(u32 is 1..) {
     1
-    //~^ mismatched types
 }
 
 fn in_range() -> pattern_type!(u32 is 1..) {
     2
-    //~^ mismatched types
 }
 
 fn negative_lit_on_unsigned_ty() -> pattern_type!(u32 is 1..) {
     -3
-    //~^ mismatched types
+    //~^ ERROR: cannot apply unary operator `-` to type `(u32) is 1..`
 }
 
 fn negative_lit_in_range() -> pattern_type!(i8 is -5..5) {
     -2
-    //~^ mismatched types
+    //~^ ERROR: cannot apply unary operator `-` to type `(i8) is -5..=4`
 }
 
 fn positive_lit_in_range_of_signed() -> pattern_type!(i8 is -5..5) {
     2
-    //~^ mismatched types
 }
 
 fn negative_lit_at_range_start() -> pattern_type!(i8 is -5..5) {
@@ -42,7 +39,6 @@ fn negative_lit_at_range_start() -> pattern_type!(i8 is -5..5) {
 
 fn positive_lit_at_range_end() -> pattern_type!(i8 is -5..5) {
     4
-    //~^ mismatched types
 }
 
 fn lit_one_beyond_range_end() -> pattern_type!(i8 is -5..5) {
@@ -67,12 +63,10 @@ fn char_lit_out_of_range() -> pattern_type!(char is 'a'..'z') {
 
 fn lit_at_unsigned_range_inclusive_end() -> pattern_type!(u32 is 0..=1) {
     1
-    //~^ mismatched types
 }
 
 fn single_element_range() -> pattern_type!(u32 is 0..=0) {
     0
-    //~^ mismatched types
 }
 
 fn lit_oob_single_element_range() -> pattern_type!(u32 is 0..=0) {
@@ -87,7 +81,6 @@ fn lit_oob_single_element_range_exclusive() -> pattern_type!(u32 is 0..1) {
 
 fn single_element_range_exclusive() -> pattern_type!(u32 is 0..1) {
     0
-    //~^ mismatched types
 }
 
 fn empty_range_at_base_type_min() -> pattern_type!(u32 is 0..0) {
