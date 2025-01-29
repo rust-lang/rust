@@ -118,8 +118,8 @@ cleanPackages() {
 
     echo "=> Installed packages sorted by size:"
     # sort always fails because `head` stops reading stdin
-    dpkg-query -W --showformat='${Installed-Size} ${Package}\n' | \
-      sort -nr 2>/dev/null | head -200 || true
+    dpkg-query -W --showformat='${Installed-Size} ${Package}\n' |
+        sort -nr 2>/dev/null | head -200 || true
 }
 
 # Remove Docker images
@@ -158,6 +158,10 @@ removeUnusedDirectories() {
     local before
 
     for dir in "${dirs_to_remove[@]}"; do
+        if [ ! -d "$dir" ]; then
+            echo "::warning::Directory $dir does not exist, skipping."
+            continue
+        fi
         before=$(getAvailableSpace)
         sudo rm -rf "$dir" || true
         printSavedSpace "$before" "Removed $dir"
@@ -165,7 +169,7 @@ removeUnusedDirectories() {
 
     echo "=> largest directories:"
     # sort always fails because `head` stops reading stdin
-    sudo du --max-depth=7 /* -h | sort -nr 2>/dev/null  | head -1000 || true
+    sudo du --max-depth=7 /* -h | sort -nr 2>/dev/null | head -1000 || true
 }
 
 # Display initial disk space stats
