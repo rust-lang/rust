@@ -12,13 +12,11 @@ use std::ops::ControlFlow;
 
 use rustc_ast::visit::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
 use rustc_hir::{
-    self as hir, AmbigArg, GenericArg, GenericParam, GenericParamKind, HirId, ItemLocalMap,
-    LifetimeName, Node,
+    self as hir, AmbigArg, GenericArg, GenericParam, GenericParamKind, HirId, LifetimeName, Node,
 };
 use rustc_macros::extension;
 use rustc_middle::hir::nested_filter;
@@ -26,7 +24,7 @@ use rustc_middle::middle::resolve_bound_vars::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_middle::{bug, span_bug};
-use rustc_span::def_id::{DefId, LocalDefId, LocalDefIdMap};
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{Ident, Span, sym};
 use tracing::{debug, debug_span, instrument};
 
@@ -62,33 +60,9 @@ impl ResolvedArg {
     }
 }
 
-/// Maps the id of each bound variable reference to the variable decl
-/// that it corresponds to.
-///
-/// FIXME. This struct gets converted to a `ResolveBoundVars` for
-/// actual use. It has the same data, but indexed by `LocalDefId`. This
-/// is silly.
-#[derive(Debug, Default)]
-struct NamedVarMap {
-    // maps from every use of a named (not anonymous) bound var to a
-    // `ResolvedArg` describing how that variable is bound
-    defs: ItemLocalMap<ResolvedArg>,
-
-    // Maps relevant hir items to the bound vars on them. These include:
-    // - function defs
-    // - function pointers
-    // - closures
-    // - trait refs
-    // - bound types (like `T` in `for<'a> T<'a>: Foo`)
-    late_bound_vars: ItemLocalMap<Vec<ty::BoundVariableKind>>,
-
-    // List captured variables for each opaque type.
-    opaque_captured_lifetimes: LocalDefIdMap<Vec<(ResolvedArg, LocalDefId)>>,
-}
-
 struct BoundVarContext<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    map: &'a mut NamedVarMap,
+    rbv: &'a mut ResolveBoundVars,
     scope: ScopeRef<'a>,
 }
 
@@ -267,19 +241,12 @@ pub(crate) fn provide(providers: &mut Providers) {
 
 /// Computes the `ResolveBoundVars` map that contains data for an entire `Item`.
 /// You should not read the result of this query directly, but rather use
-/// `named_variable_map`, `is_late_bound_map`, etc.
+/// `named_variable_map`, `late_bound_vars_map`, etc.
 #[instrument(level = "debug", skip(tcx))]
 fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBoundVars {
-    let mut named_variable_map = NamedVarMap {
-        defs: Default::default(),
-        late_bound_vars: Default::default(),
-        opaque_captured_lifetimes: Default::default(),
-    };
-    let mut visitor = BoundVarContext {
-        tcx,
-        map: &mut named_variable_map,
-        scope: &Scope::Root { opt_parent_item: None },
-    };
+    let mut rbv = ResolveBoundVars::default();
+    let mut visitor =
+        BoundVarContext { tcx, rbv: &mut rbv, scope: &Scope::Root { opt_parent_item: None } };
     match tcx.hir_owner_node(local_def_id) {
         hir::OwnerNode::Item(item) => visitor.visit_item(item),
         hir::OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
@@ -299,19 +266,10 @@ fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBou
         hir::OwnerNode::Synthetic => unreachable!(),
     }
 
-    let defs = named_variable_map.defs.into_sorted_stable_ord();
-    let late_bound_vars = named_variable_map.late_bound_vars.into_sorted_stable_ord();
-    let opaque_captured_lifetimes = named_variable_map.opaque_captured_lifetimes;
-    let rl = ResolveBoundVars {
-        defs: SortedMap::from_presorted_elements(defs),
-        late_bound_vars: SortedMap::from_presorted_elements(late_bound_vars),
-        opaque_captured_lifetimes,
-    };
-
-    debug!(?rl.defs);
-    debug!(?rl.late_bound_vars);
-    debug!(?rl.opaque_captured_lifetimes);
-    rl
+    debug!(?rbv.defs);
+    debug!(?rbv.late_bound_vars);
+    debug!(?rbv.opaque_captured_lifetimes);
+    rbv
 }
 
 fn late_arg_as_bound_arg<'tcx>(
@@ -404,7 +362,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 Scope::Binder { hir_id, .. } => {
                     // Nested poly trait refs have the binders concatenated
                     let mut full_binders =
-                        self.map.late_bound_vars.entry(hir_id.local_id).or_default().clone();
+                        self.rbv.late_bound_vars.get_mut_or_insert_default(hir_id.local_id).clone();
                     full_binders.extend(supertrait_bound_vars);
                     break (full_binders, BinderScopeType::Concatenating);
                 }
@@ -646,7 +604,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
         let captures = captures.into_inner().into_iter().collect();
         debug!(?captures);
-        self.map.opaque_captured_lifetimes.insert(opaque.def_id, captures);
+        self.rbv.opaque_captured_lifetimes.insert(opaque.def_id, captures);
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -848,7 +806,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             hir::TyKind::Ref(lifetime_ref, ref mt) => {
                 self.visit_lifetime(lifetime_ref);
                 let scope = Scope::ObjectLifetimeDefault {
-                    lifetime: self.map.defs.get(&lifetime_ref.hir_id.local_id).cloned(),
+                    lifetime: self.rbv.defs.get(&lifetime_ref.hir_id.local_id).cloned(),
                     s: self.scope,
                 };
                 self.with(scope, |this| this.visit_ty_unambig(mt.ty));
@@ -966,7 +924,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             let bound_vars: Vec<_> =
                 self.tcx.fn_sig(sig_id).skip_binder().bound_vars().iter().collect();
             let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
-            self.map.late_bound_vars.insert(hir_id.local_id, bound_vars);
+            self.rbv.late_bound_vars.insert(hir_id.local_id, bound_vars);
         }
         self.visit_fn_like_elision(fd.inputs, output, matches!(fk, intravisit::FnKind::Closure));
         intravisit::walk_fn_kind(self, fk);
@@ -1140,8 +1098,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     where
         F: for<'b> FnOnce(&mut BoundVarContext<'b, 'tcx>),
     {
-        let BoundVarContext { tcx, map, .. } = self;
-        let mut this = BoundVarContext { tcx: *tcx, map, scope: &wrap_scope };
+        let BoundVarContext { tcx, rbv, .. } = self;
+        let mut this = BoundVarContext { tcx: *tcx, rbv, scope: &wrap_scope };
         let span = debug_span!("scope", scope = ?this.scope.debug_truncated());
         {
             let _enter = span.enter();
@@ -1150,10 +1108,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     }
 
     fn record_late_bound_vars(&mut self, hir_id: HirId, binder: Vec<ty::BoundVariableKind>) {
-        if let Some(old) = self.map.late_bound_vars.insert(hir_id.local_id, binder) {
+        if let Some(old) = self.rbv.late_bound_vars.insert(hir_id.local_id, binder) {
             bug!(
                 "overwrote bound vars for {hir_id:?}:\nold={old:?}\nnew={:?}",
-                self.map.late_bound_vars[&hir_id.local_id]
+                self.rbv.late_bound_vars[&hir_id.local_id]
             )
         }
     }
@@ -1597,9 +1555,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         kind.descr(param_def_id.to_def_id())
                     ),
                 };
-                self.map.defs.insert(hir_id.local_id, ResolvedArg::Error(guar));
+                self.rbv.defs.insert(hir_id.local_id, ResolvedArg::Error(guar));
             } else {
-                self.map.defs.insert(hir_id.local_id, def);
+                self.rbv.defs.insert(hir_id.local_id, def);
             }
             return;
         }
@@ -1632,7 +1590,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                             bug!("unexpected def-kind: {}", kind.descr(param_def_id.to_def_id()))
                         }
                     });
-                    self.map.defs.insert(hir_id.local_id, ResolvedArg::Error(guar));
+                    self.rbv.defs.insert(hir_id.local_id, ResolvedArg::Error(guar));
                     return;
                 }
                 Scope::Root { .. } => break,
@@ -1725,7 +1683,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 }
             };
 
-            let map = &self.map;
+            let rbv = &self.rbv;
             let generics = self.tcx.generics_of(def_id);
 
             // `type_def_id` points to an item, so there is nothing to inherit generics from.
@@ -1744,7 +1702,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     // This index can be used with `generic_args` since `parent_count == 0`.
                     let index = generics.param_def_id_to_index[&param_def_id] as usize;
                     generic_args.args.get(index).and_then(|arg| match arg {
-                        GenericArg::Lifetime(lt) => map.defs.get(&lt.hir_id.local_id).copied(),
+                        GenericArg::Lifetime(lt) => rbv.defs.get(&lt.hir_id.local_id).copied(),
                         _ => None,
                     })
                 }
@@ -2042,7 +2000,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn insert_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime, def: ResolvedArg) {
         debug!(span = ?lifetime_ref.ident.span);
-        self.map.defs.insert(lifetime_ref.hir_id.local_id, def);
+        self.rbv.defs.insert(lifetime_ref.hir_id.local_id, def);
     }
 
     // When we have a return type notation type in a where clause, like
@@ -2197,7 +2155,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         // See where these vars are used in `HirTyLowerer::lower_ty_maybe_return_type_notation`.
         // And this is exercised in:
         // `tests/ui/associated-type-bounds/return-type-notation/higher-ranked-bound-works.rs`.
-        let existing_bound_vars = self.map.late_bound_vars.get_mut(&hir_id.local_id).unwrap();
+        let existing_bound_vars = self.rbv.late_bound_vars.get_mut(&hir_id.local_id).unwrap();
         let existing_bound_vars_saved = existing_bound_vars.clone();
         existing_bound_vars.extend(bound_vars);
         self.record_late_bound_vars(item_segment.hir_id, existing_bound_vars_saved);
