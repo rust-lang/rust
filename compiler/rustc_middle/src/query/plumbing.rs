@@ -150,13 +150,12 @@ pub fn query_ensure<'tcx, Cache>(
     execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
     query_cache: &Cache,
     key: Cache::Key,
-    check_cache: bool,
 ) where
     Cache: QueryCache,
 {
     let key = key.into_query_param();
     if try_get_cached(tcx, query_cache, &key).is_none() {
-        execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { check_cache });
+        execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure);
     }
 }
 
@@ -166,7 +165,6 @@ pub fn query_ensure_error_guaranteed<'tcx, Cache, T>(
     execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
     query_cache: &Cache,
     key: Cache::Key,
-    check_cache: bool,
 ) -> Result<(), ErrorGuaranteed>
 where
     Cache: QueryCache<Value = super::erase::Erase<Result<T, ErrorGuaranteed>>>,
@@ -176,7 +174,7 @@ where
     if let Some(res) = try_get_cached(tcx, query_cache, &key) {
         super::erase::restore(res).map(drop)
     } else {
-        execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure { check_cache })
+        execute_query(tcx, DUMMY_SP, key, QueryMode::Ensure)
             .map(super::erase::restore)
             .map(|res| res.map(drop))
             // Either we actually executed the query, which means we got a full `Result`,
@@ -393,7 +391,6 @@ macro_rules! define_callbacks {
                     self.tcx.query_system.fns.engine.$name,
                     &self.tcx.query_system.caches.$name,
                     key.into_query_param(),
-                    false,
                 )
             })*
         }
@@ -402,13 +399,8 @@ macro_rules! define_callbacks {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                query_ensure(
-                    self.tcx,
-                    self.tcx.query_system.fns.engine.$name,
-                    &self.tcx.query_system.caches.$name,
-                    key.into_query_param(),
-                    true,
-                );
+                // Just call the query normally, and discard its result.
+                let _ = self.tcx.$name(key);
             })*
         }
 

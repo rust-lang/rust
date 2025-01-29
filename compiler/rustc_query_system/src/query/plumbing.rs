@@ -743,12 +743,7 @@ fn incremental_verify_ich_failed<Tcx>(
 ///
 /// Note: The optimization is only available during incr. comp.
 #[inline(never)]
-fn ensure_must_run<Q, Qcx>(
-    query: Q,
-    qcx: Qcx,
-    key: &Q::Key,
-    check_cache: bool,
-) -> (bool, Option<DepNode>)
+fn ensure_must_run<Q, Qcx>(query: Q, qcx: Qcx, key: &Q::Key) -> (bool, Option<DepNode>)
 where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
@@ -763,7 +758,7 @@ where
     let dep_node = query.construct_dep_node(*qcx.dep_context(), key);
 
     let dep_graph = qcx.dep_context().dep_graph();
-    let serialized_dep_node_index = match dep_graph.try_mark_green(qcx, &dep_node) {
+    match dep_graph.try_mark_green(qcx, &dep_node) {
         None => {
             // A None return from `try_mark_green` means that this is either
             // a new dep node or that the dep node has already been marked red.
@@ -773,26 +768,17 @@ where
             // in-memory cache, or another query down the line will.
             return (true, Some(dep_node));
         }
-        Some((serialized_dep_node_index, dep_node_index)) => {
-            dep_graph.read_index(dep_node_index);
-            qcx.dep_context().profiler().query_cache_hit(dep_node_index.into());
-            serialized_dep_node_index
-        }
+        Some(_) => {}
     };
 
     // We do not need the value at all, so do not check the cache.
-    if !check_cache {
-        return (false, None);
-    }
-
-    let loadable = query.loadable_from_disk(qcx, key, serialized_dep_node_index);
-    (!loadable, Some(dep_node))
+    (false, None)
 }
 
 #[derive(Debug)]
 pub enum QueryMode {
     Get,
-    Ensure { check_cache: bool },
+    Ensure,
 }
 
 #[inline(always)]
@@ -820,19 +806,18 @@ where
 {
     debug_assert!(qcx.dep_context().dep_graph().is_fully_enabled());
 
-    let dep_node = if let QueryMode::Ensure { check_cache } = mode {
-        let (must_run, dep_node) = ensure_must_run(query, qcx, &key, check_cache);
-        if !must_run {
-            return None;
+    match mode {
+        QueryMode::Ensure => {
+            let (must_run, _) = ensure_must_run(query, qcx, &key);
+            if !must_run {
+                return None;
+            }
         }
-        dep_node
-    } else {
-        None
-    };
+        QueryMode::Get => {}
+    }
 
-    let (result, dep_node_index) = ensure_sufficient_stack(|| {
-        try_execute_query::<_, _, true>(query, qcx, span, key, dep_node)
-    });
+    let (result, dep_node_index) =
+        ensure_sufficient_stack(|| try_execute_query::<_, _, true>(query, qcx, span, key, None));
     if let Some(dep_node_index) = dep_node_index {
         qcx.dep_context().dep_graph().read_index(dep_node_index)
     }
