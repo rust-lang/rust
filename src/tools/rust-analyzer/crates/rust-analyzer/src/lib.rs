@@ -50,7 +50,7 @@ mod integrated_benchmarks;
 use hir::Mutability;
 use ide::{CompletionItem, CompletionItemRefMode, CompletionRelevance};
 use serde::de::DeserializeOwned;
-use tenthash::TentHasher;
+use tenthash::TentHash;
 
 pub use crate::{
     lsp::capabilities::server_capabilities, main_loop::main_loop, reload::ws_to_crate_graph,
@@ -66,7 +66,7 @@ pub fn from_json<T: DeserializeOwned>(
 }
 
 fn completion_item_hash(item: &CompletionItem, is_ref_completion: bool) -> [u8; 20] {
-    fn hash_completion_relevance(hasher: &mut TentHasher, relevance: &CompletionRelevance) {
+    fn hash_completion_relevance(hasher: &mut TentHash, relevance: &CompletionRelevance) {
         use ide_completion::{
             CompletionRelevancePostfixMatch, CompletionRelevanceReturnType,
             CompletionRelevanceTypeMatch,
@@ -108,7 +108,7 @@ fn completion_item_hash(item: &CompletionItem, is_ref_completion: bool) -> [u8; 
         }
     }
 
-    let mut hasher = TentHasher::new();
+    let mut hasher = TentHash::new();
     hasher.update([
         u8::from(is_ref_completion),
         u8::from(item.is_snippet),
