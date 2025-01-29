@@ -9,9 +9,10 @@ use std::mem::transmute;
 // CHECK-LABEL: @check_sse_float_to_int(
 #[no_mangle]
 pub unsafe fn check_sse_float_to_int(x: __m128) -> __m128i {
-    // CHECK-NOT: alloca
-    // CHECK: %0 = load <4 x float>, ptr %x, align 16
-    // CHECK: store <4 x float> %0, ptr %_0, align 16
+    // FIXME: the MIR opt still works, but the ABI logic now introduces
+    // an alloca here.
+    // CHECK: alloca
+    // CHECK: store <4 x float> %x, ptr %_0, align 16
     transmute(x)
 }
 

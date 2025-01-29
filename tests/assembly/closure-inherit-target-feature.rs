@@ -15,9 +15,8 @@ pub unsafe fn sse41_blend_nofeature(x: __m128, y: __m128) -> __m128 {
         // check that _mm_blend_ps is not being inlined into the closure
         // CHECK-LABEL: {{sse41_blend_nofeature.*closure.*:}}
         // CHECK-NOT: blendps
-        // CHECK: {{call .*_mm_blend_ps.*}}
+        // CHECK: {{jmp .*_mm_blend_ps.*}}
         // CHECK-NOT: blendps
-        // CHECK: ret
         #[inline(never)]
         |x, y| _mm_blend_ps(x, y, 0b0101)
     };
