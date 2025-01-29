@@ -1,4 +1,5 @@
 // https://github.com/rust-lang/rust/issues/104145
+//@ check-pass
 
 // Doc links in `Trait`'s methods are resolved because it has a local impl.
 
