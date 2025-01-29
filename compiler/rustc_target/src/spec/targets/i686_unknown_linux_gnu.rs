@@ -1,7 +1,13 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, base};
+use crate::spec::{Cc, LinkerFlavor, Lld, RustcAbi, SanitizerSet, StackProbeType, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_gnu::opts();
+    base.rustc_abi = Some(RustcAbi::X86Sse2);
+    // Dear distribution packager, if you are changing the base CPU model with the goal of removing
+    // the SSE2 requirement, make sure to also set the `rustc_abi` to `None` above or else the compiler
+    // will complain that the chosen ABI cannot be realized with the given CPU features.
+    // Also note that x86 without SSE2 is *not* considered a Tier 1 target by the Rust project, and
+    // it has some known floating-point correctness issues that can lead to unsoundness.
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.supported_sanitizers = SanitizerSet::ADDRESS;
