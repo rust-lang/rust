@@ -196,7 +196,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
 
         self.tcx
-            .explicit_item_super_predicates(def_id)
+            .explicit_item_self_bounds(def_id)
             .iter_instantiated_copied(self.tcx, args)
             .find_map(|(predicate, _)| {
                 predicate
