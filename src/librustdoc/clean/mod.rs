@@ -516,8 +516,7 @@ fn projection_to_path_segment<'tcx>(
                 ty.map_bound(|ty| &ty.args[generics.parent_count..]),
                 false,
                 def_id,
-            )
-            .into(),
+            ),
             constraints: Default::default(),
         },
     }
@@ -2202,8 +2201,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                             alias_ty.map_bound(|ty| ty.args.as_slice()),
                             true,
                             def_id,
-                        )
-                        .into(),
+                        ),
                         constraints: Default::default(),
                     },
                 },
@@ -2521,7 +2519,7 @@ fn clean_generic_args<'tcx>(
 ) -> GenericArgs {
     // FIXME(return_type_notation): Fix RTN parens rendering
     if let Some((inputs, output)) = generic_args.paren_sugar_inputs_output() {
-        let inputs = inputs.iter().map(|x| clean_ty(x, cx)).collect::<Vec<_>>().into();
+        let inputs = inputs.iter().map(|x| clean_ty(x, cx)).collect::<ThinVec<_>>().into();
         let output = match output.kind {
             hir::TyKind::Tup(&[]) => None,
             _ => Some(Box::new(clean_ty(output, cx))),
@@ -2542,7 +2540,7 @@ fn clean_generic_args<'tcx>(
                 }
                 hir::GenericArg::Infer(_inf) => GenericArg::Infer,
             })
-            .collect::<Vec<_>>()
+            .collect::<ThinVec<_>>()
             .into();
         let constraints = generic_args
             .constraints

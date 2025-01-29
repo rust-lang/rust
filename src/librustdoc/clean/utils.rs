@@ -81,11 +81,11 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
     mut has_self: bool,
     owner: DefId,
-) -> Vec<GenericArg> {
+) -> ThinVec<GenericArg> {
     let (args, bound_vars) = (args.skip_binder(), args.bound_vars());
     if args.is_empty() {
         // Fast path which avoids executing the query `generics_of`.
-        return Vec::new();
+        return ThinVec::new();
     }
 
     // If the container is a trait object type, the arguments won't contain the self type but the
@@ -144,7 +144,7 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     };
 
     let offset = if has_self { 1 } else { 0 };
-    let mut clean_args = Vec::with_capacity(args.len().saturating_sub(offset));
+    let mut clean_args = ThinVec::with_capacity(args.len().saturating_sub(offset));
     clean_args.extend(args.iter().enumerate().rev().filter_map(clean_arg));
     clean_args.reverse();
     clean_args
