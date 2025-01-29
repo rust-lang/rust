@@ -194,6 +194,9 @@ pub enum ObligationCauseCode<'tcx> {
     /// A slice or array is WF only if `T: Sized`.
     SliceOrArrayElem,
 
+    /// An array `[T; N]` can only be indexed (and is only well-formed if) `N` has type usize.
+    ArrayLen(Ty<'tcx>),
+
     /// A tuple is WF only if its middle elements are `Sized`.
     TupleElem,
 
