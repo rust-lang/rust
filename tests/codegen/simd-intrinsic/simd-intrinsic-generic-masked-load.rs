@@ -21,7 +21,7 @@ extern "rust-intrinsic" {
 #[no_mangle]
 pub unsafe fn load_f32x2(mask: Vec2<i32>, pointer: *const f32,
                          values: Vec2<f32>) -> Vec2<f32> {
-    // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> {{.*}}, <i32 31, i32 31>
+    // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> {{.*}}, {{<i32 31, i32 31>|splat \(i32 31\)}}
     // CHECK: [[B:%[0-9]+]] = trunc <2 x i32> [[A]] to <2 x i1>
     // CHECK: call <2 x float> @llvm.masked.load.v2f32.p0(ptr {{.*}}, i32 4, <2 x i1> [[B]], <2 x float> {{.*}})
     simd_masked_load(mask, pointer, values)
@@ -31,7 +31,7 @@ pub unsafe fn load_f32x2(mask: Vec2<i32>, pointer: *const f32,
 #[no_mangle]
 pub unsafe fn load_pf32x4(mask: Vec4<i32>, pointer: *const *const f32,
                           values: Vec4<*const f32>) -> Vec4<*const f32> {
-    // CHECK: [[A:%[0-9]+]] = lshr <4 x i32> {{.*}}, <i32 31, i32 31, i32 31, i32 31>
+    // CHECK: [[A:%[0-9]+]] = lshr <4 x i32> {{.*}}, {{<i32 31, i32 31, i32 31, i32 31>|splat \(i32 31\)}}
     // CHECK: [[B:%[0-9]+]] = trunc <4 x i32> [[A]] to <4 x i1>
     // CHECK: call <4 x ptr> @llvm.masked.load.v4p0.p0(ptr {{.*}}, i32 {{.*}}, <4 x i1> [[B]], <4 x ptr> {{.*}})
     simd_masked_load(mask, pointer, values)

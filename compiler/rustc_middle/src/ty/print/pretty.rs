@@ -1740,6 +1740,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     " as ",
                 )?;
             }
+            ty::Pat(base_ty, pat) => {
+                self.pretty_print_const_scalar_int(int, *base_ty, print_ty)?;
+                p!(write(" is {pat:?}"));
+            }
             // Nontrivial types with scalar bit representation
             _ => {
                 let print = |this: &mut Self| {

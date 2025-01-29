@@ -5,6 +5,9 @@
 /* global addClass, onEachLazy, removeClass, browserSupportsHistoryApi */
 /* global updateLocalStorage, getVar */
 
+// Eventually fix this.
+// @ts-nocheck
+
 "use strict";
 
 (function() {
