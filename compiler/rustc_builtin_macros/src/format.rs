@@ -406,7 +406,7 @@ fn make_format_args(
 
     for piece in &pieces {
         match *piece {
-            parse::Piece::String(s) => {
+            parse::Piece::Lit(s) => {
                 unfinished_literal.push_str(s);
             }
             parse::Piece::NextArgument(box parse::Argument { position, position_span, format }) => {
