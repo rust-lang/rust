@@ -293,7 +293,7 @@ impl SourceFileRange {
     }
 }
 
-/// Like `snippet_block`, but add braces if the expr is not an `ExprKind::Block`.
+/// Like `snippet_block`, but add braces if the expr is not an `ExprKind::Block` with no label.
 pub fn expr_block(
     sess: &impl HasSession,
     expr: &Expr<'_>,
@@ -304,7 +304,7 @@ pub fn expr_block(
 ) -> String {
     let (code, from_macro) = snippet_block_with_context(sess, expr.span, outer, default, indent_relative_to, app);
     if !from_macro
-        && let ExprKind::Block(block, _) = expr.kind
+        && let ExprKind::Block(block, None) = expr.kind
         && block.rules != BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
     {
         format!("{code}")
