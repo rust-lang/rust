@@ -393,13 +393,8 @@ pub(crate) fn inherit_generics_for_delegation_item<'tcx>(
         }
 
         (FnKind::AssocInherentImpl, FnKind::AssocTrait)
-        | (FnKind::AssocTrait, FnKind::AssocTrait) => {
-            builder
-            .with_parent(tcx.parent(def_id.into()))
-            .build()
-        }
-
-        (FnKind::AssocInherentImpl, FnKind::Free)
+        | (FnKind::AssocTrait, FnKind::AssocTrait)
+        | (FnKind::AssocInherentImpl, FnKind::Free)
         | (FnKind::AssocTrait, FnKind::Free) => {
             builder
             .with_parent(tcx.parent(def_id.into()))
