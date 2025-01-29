@@ -226,8 +226,8 @@ impl<'a> TyLoweringContext<'a> {
         self
     }
 
-    pub fn push_diagnostic(&mut self, type_ref: TypeRefId, kind: TyLoweringDiagnosticKind) {
-        let source = match self.types_source_map {
+    pub fn push_diagnostic(&mut self, type_ref: TypeRefId, _kind: TyLoweringDiagnosticKind) {
+        let _source = match self.types_source_map {
             Some(source_map) => {
                 let Ok(source) = source_map.type_syntax(type_ref) else {
                     stdx::never!("error in synthetic type");
@@ -237,7 +237,7 @@ impl<'a> TyLoweringContext<'a> {
             }
             None => Either::Left(type_ref),
         };
-        self.diagnostics.push(TyLoweringDiagnostic { source, kind });
+        // self.diagnostics.push(TyLoweringDiagnostic { source, kind });
     }
 }
 

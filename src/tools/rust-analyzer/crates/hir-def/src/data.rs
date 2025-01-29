@@ -94,7 +94,7 @@ impl FunctionData {
             .map(Box::new);
         let rustc_allow_incoherent_impl = attrs.by_key(&sym::rustc_allow_incoherent_impl).exists();
         if flags.contains(FnFlags::HAS_UNSAFE_KW)
-            && !crate_graph[krate].edition.at_least_2024()
+            // && !crate_graph[krate].edition.at_least_2024()
             && attrs.by_key(&sym::rustc_deprecated_safe_2024).exists()
         {
             flags.remove(FnFlags::HAS_UNSAFE_KW);
