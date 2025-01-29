@@ -205,10 +205,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "fcntl" => {
-                // `fcntl` is variadic. The argument count is checked based on the first argument
-                // in `this.fcntl()`, so we do not use `check_shim` here.
-                this.check_abi_and_shim_symbol_clash(abi, Conv::C, link_name)?;
-                let result = this.fcntl(args)?;
+                let ([fd_num, cmd], varargs) =
+                    this.check_shim_variadic(abi, Conv::C, link_name, args)?;
+                let result = this.fcntl(fd_num, cmd, varargs)?;
                 this.write_scalar(result, dest)?;
             }
             "dup" => {
@@ -236,8 +235,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "open" | "open64" => {
                 // `open` is variadic, the third argument is only present when the second argument
                 // has O_CREAT (or on linux O_TMPFILE, but miri doesn't support that) set
-                this.check_abi_and_shim_symbol_clash(abi, Conv::C, link_name)?;
-                let result = this.open(args)?;
+                let ([path_raw, flag], varargs) =
+                    this.check_shim_variadic(abi, Conv::C, link_name, args)?;
+                let result = this.open(path_raw, flag, varargs)?;
                 this.write_scalar(result, dest)?;
             }
             "unlink" => {

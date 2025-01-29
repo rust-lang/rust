@@ -3,7 +3,6 @@ use rustc_span::Symbol;
 use rustc_target::callconv::{Conv, FnAbi};
 
 use super::sync::EvalContextExt as _;
-use crate::helpers::check_min_arg_count;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -69,10 +68,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "ioctl" => {
-                // `ioctl` is variadic. The argument count is checked based on the first argument
-                // in `this.ioctl()`, so we do not use `check_shim` here.
-                this.check_abi_and_shim_symbol_clash(abi, Conv::C, link_name)?;
-                let result = this.ioctl(args)?;
+                let ([fd_num, cmd], varargs) =
+                    this.check_shim_variadic(abi, Conv::C, link_name, args)?;
+                let result = this.ioctl(fd_num, cmd, varargs)?;
                 this.write_scalar(result, dest)?;
             }
 
@@ -243,12 +241,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(EmulateItemResult::NeedsReturn)
     }
 
-    fn ioctl(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, Scalar> {
+    fn ioctl(
+        &mut self,
+        fd_num: &OpTy<'tcx>,
+        cmd: &OpTy<'tcx>,
+        _varargs: &[OpTy<'tcx>],
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let fioclex = this.eval_libc_u64("FIOCLEX");
 
-        let [fd_num, cmd] = check_min_arg_count("ioctl", args)?;
         let fd_num = this.read_scalar(fd_num)?.to_i32()?;
         let cmd = this.read_scalar(cmd)?.to_u64()?;
 
