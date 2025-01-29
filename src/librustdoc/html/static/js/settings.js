@@ -3,6 +3,9 @@
 /* global addClass, removeClass, onEach, onEachLazy */
 /* global MAIN_ID, getVar, getSettingsButton, getHelpButton */
 
+// Eventually fix this.
+// @ts-nocheck
+
 "use strict";
 
 (function() {

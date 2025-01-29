@@ -10,11 +10,19 @@ if (!Array.prototype.toSpliced) {
     // Can't use arrow functions, because we want `this`
     Array.prototype.toSpliced = function() {
         const me = this.slice();
+        // @ts-expect-error
         Array.prototype.splice.apply(me, arguments);
         return me;
     };
 }
 
+/**
+ *
+ * @template T
+ * @param {Iterable<T>} arr
+ * @param {function(T): any} func
+ * @param {function(T): boolean} funcBtwn
+ */
 function onEachBtwn(arr, func, funcBtwn) {
     let skipped = true;
     for (const value of arr) {
@@ -98,9 +106,24 @@ const NO_TYPE_FILTER = -1;
  * documentation.
  */
 const editDistanceState = {
+    /**
+     * @type {number[]}
+     */
     current: [],
+    /**
+     * @type {number[]}
+     */
     prev: [],
+    /**
+     * @type {number[]}
+     */
     prevPrev: [],
+    /**
+     * @param {string} a
+     * @param {string} b
+     * @param {number} limit
+     * @returns
+     */
     calculate: function calculate(a, b, limit) {
         // Ensure that `b` is the shorter string, minimizing memory use.
         if (a.length < b.length) {
@@ -186,14 +209,28 @@ const editDistanceState = {
     },
 };
 
+/**
+ * @param {string} a
+ * @param {string} b
+ * @param {number} limit
+ * @returns
+ */
 function editDistance(a, b, limit) {
     return editDistanceState.calculate(a, b, limit);
 }
 
+/**
+ * @param {string} c
+ * @returns {boolean}
+ */
 function isEndCharacter(c) {
     return "=,>-])".indexOf(c) !== -1;
 }
 
+/**
+ * @param {number} ty
+ * @returns
+ */
 function isFnLikeTy(ty) {
     return ty === TY_FN || ty === TY_METHOD || ty === TY_TYMETHOD;
 }
@@ -212,7 +249,7 @@ function isSeparatorCharacter(c) {
 /**
  * Returns `true` if the current parser position is starting with "->".
  *
- * @param {ParserState} parserState
+ * @param {rustdoc.ParserState} parserState
  *
  * @return {boolean}
  */
@@ -223,7 +260,7 @@ function isReturnArrow(parserState) {
 /**
  * Increase current parser position until it doesn't find a whitespace anymore.
  *
- * @param {ParserState} parserState
+ * @param {rustdoc.ParserState} parserState
  */
 function skipWhitespace(parserState) {
     while (parserState.pos < parserState.userQuery.length) {
@@ -238,7 +275,7 @@ function skipWhitespace(parserState) {
 /**
  * Returns `true` if the previous character is `lookingFor`.
  *
- * @param {ParserState} parserState
+ * @param {rustdoc.ParserState} parserState
  * @param {String} lookingFor
  *
  * @return {boolean}
@@ -260,8 +297,8 @@ function prevIs(parserState, lookingFor) {
 /**
  * Returns `true` if the last element in the `elems` argument has generics.
  *
- * @param {Array<QueryElement>} elems
- * @param {ParserState} parserState
+ * @param {Array<rustdoc.ParserQueryElement>} elems
+ * @param {rustdoc.ParserState} parserState
  *
  * @return {boolean}
  */
@@ -270,6 +307,13 @@ function isLastElemGeneric(elems, parserState) {
         prevIs(parserState, ">");
 }
 
+/**
+ *
+ * @param {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} query
+ * @param {rustdoc.ParserState} parserState
+ * @param {rustdoc.ParserQueryElement[]} elems
+ * @param {boolean} isInGenerics
+ */
 function getFilteredNextElem(query, parserState, elems, isInGenerics) {
     const start = parserState.pos;
     if (parserState.userQuery[parserState.pos] === ":" && !isPathStart(parserState)) {
@@ -294,6 +338,8 @@ function getFilteredNextElem(query, parserState, elems, isInGenerics) {
         // The type filter doesn't count as an element since it's a modifier.
         const typeFilterElem = elems.pop();
         checkExtraTypeFilterCharacters(start, parserState);
+        // typeFilterElem is not null. If it was, the elems.length check would have fired.
+        // @ts-expect-error
         parserState.typeFilter = typeFilterElem.normalizedPathLast;
         parserState.pos += 1;
         parserState.totalElems -= 1;
@@ -309,12 +355,13 @@ function getFilteredNextElem(query, parserState, elems, isInGenerics) {
  * If there is no `endChar`, this function will implicitly stop at the end
  * without raising an error.
  *
- * @param {ParsedQuery} query
- * @param {ParserState} parserState
- * @param {Array<QueryElement>} elems - This is where the new {QueryElement} will be added.
- * @param {string} endChar            - This function will stop when it'll encounter this
- *                                      character.
- * @returns {{foundSeparator: bool}}
+ * @param {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} query
+ * @param {rustdoc.ParserState} parserState
+ * @param {Array<rustdoc.ParserQueryElement>} elems
+ *     - This is where the new {QueryElement} will be added.
+ * @param {string} endChar - This function will stop when it'll encounter this
+ *                           character.
+ * @returns {{foundSeparator: boolean}}
  */
 function getItemsBefore(query, parserState, elems, endChar) {
     let foundStopChar = true;
@@ -385,6 +432,7 @@ function getItemsBefore(query, parserState, elems, endChar) {
             throw ["Unexpected ", c, " after ", extra];
         }
         if (!foundStopChar) {
+            /** @type {string[]} */
             let extra = [];
             if (isLastElemGeneric(query.elems, parserState)) {
                 extra = [" after ", ">"];
@@ -463,12 +511,14 @@ function getItemsBefore(query, parserState, elems, endChar) {
 }
 
 /**
- * @param {ParsedQuery} query
- * @param {ParserState} parserState
- * @param {Array<QueryElement>} elems - This is where the new {QueryElement} will be added.
+ * @param {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} query
+ * @param {rustdoc.ParserState} parserState
+ * @param {Array<rustdoc.ParserQueryElement>} elems
+ *     - This is where the new {QueryElement} will be added.
  * @param {boolean} isInGenerics
  */
 function getNextElem(query, parserState, elems, isInGenerics) {
+    /** @type {rustdoc.ParserQueryElement[]} */
     const generics = [];
 
     skipWhitespace(parserState);
@@ -588,6 +638,7 @@ function getNextElem(query, parserState, elems, isInGenerics) {
                 getFilteredNextElem(query, parserState, generics, isInGenerics);
                 generics[generics.length - 1].bindingName = makePrimitiveElement("output");
             } else {
+                // @ts-expect-error
                 generics.push(makePrimitiveElement(null, {
                     bindingName: makePrimitiveElement("output"),
                     typeFilter: null,
@@ -640,7 +691,8 @@ function getNextElem(query, parserState, elems, isInGenerics) {
  * Checks that the type filter doesn't have unwanted characters like `<>` (which are ignored
  * if empty).
  *
- * @param {ParserState} parserState
+ * @param {number} start
+ * @param {rustdoc.ParserState} parserState
  */
 function checkExtraTypeFilterCharacters(start, parserState) {
     const query = parserState.userQuery.slice(start, parserState.pos).trim();
@@ -658,12 +710,13 @@ function checkExtraTypeFilterCharacters(start, parserState) {
 }
 
 /**
- * @param {ParsedQuery} query
- * @param {ParserState} parserState
- * @param {string} name                  - Name of the query element.
- * @param {Array<QueryElement>} generics - List of generics of this query element.
+ * @param {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} query
+ * @param {rustdoc.ParserState} parserState
+ * @param {string} name - Name of the query element.
+ * @param {Array<rustdoc.ParserQueryElement>} generics - List of generics of this query element.
+ * @param {boolean} isInGenerics
  *
- * @return {QueryElement}                - The newly created `QueryElement`.
+ * @return {rustdoc.ParserQueryElement} - The newly created `QueryElement`.
  */
 function createQueryElement(query, parserState, name, generics, isInGenerics) {
     const path = name.trim();
@@ -756,9 +809,15 @@ function createQueryElement(query, parserState, name, generics, isInGenerics) {
     };
 }
 
+/**
+ *
+ * @param {string} name
+ * @param {Object=} extra
+ * @returns {rustdoc.ParserQueryElement}
+ */
 function makePrimitiveElement(name, extra) {
     return Object.assign({
-        name,
+        name: name,
         id: null,
         fullPath: [name],
         pathWithoutLast: [],
@@ -781,8 +840,8 @@ function makePrimitiveElement(name, extra) {
  * * There is more than one element.
  * * There is no closing `"`.
  *
- * @param {ParsedQuery} query
- * @param {ParserState} parserState
+ * @param {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} query
+ * @param {rustdoc.ParserState} parserState
  * @param {boolean} isInGenerics
  */
 function getStringElem(query, parserState, isInGenerics) {
@@ -813,9 +872,9 @@ function getStringElem(query, parserState, isInGenerics) {
  * character or the end of the query. It returns the position of the last
  * character of the ident.
  *
- * @param {ParserState} parserState
+ * @param {rustdoc.ParserState} parserState
  *
- * @return {integer}
+ * @return {number}
  */
 function getIdentEndPosition(parserState) {
     let afterIdent = consumeIdent(parserState);
@@ -890,6 +949,10 @@ function getIdentEndPosition(parserState) {
     return end;
 }
 
+/**
+ * @param {string} c
+ * @returns
+ */
 function isSpecialStartCharacter(c) {
     return "<\"".indexOf(c) !== -1;
 }
@@ -897,7 +960,7 @@ function isSpecialStartCharacter(c) {
 /**
  * Returns `true` if the current parser position is starting with "::".
  *
- * @param {ParserState} parserState
+ * @param {rustdoc.ParserState} parserState
  *
  * @return {boolean}
  */
@@ -909,7 +972,7 @@ function isPathStart(parserState) {
  * If the current parser position is at the beginning of an identifier,
  * move the position to the end of it and return `true`. Otherwise, return `false`.
  *
- * @param {ParserState} parserState
+ * @param {rustdoc.ParserState} parserState
  *
  * @return {boolean}
  */
@@ -935,14 +998,25 @@ function isPathSeparator(c) {
     return c === ":" || c === " ";
 }
 
+/**
+ * @template T
+ */
 class VlqHexDecoder {
+    /**
+     * @param {string} string
+     * @param {function(rustdoc.VlqData): T} cons
+     */
     constructor(string, cons) {
         this.string = string;
         this.cons = cons;
         this.offset = 0;
+        /** @type {T[]} */
         this.backrefQueue = [];
     }
-    // call after consuming `{`
+    /**
+     * call after consuming `{`
+     * @returns {rustdoc.VlqData[]}
+     */
     decodeList() {
         let c = this.string.charCodeAt(this.offset);
         const ret = [];
@@ -953,7 +1027,10 @@ class VlqHexDecoder {
         this.offset += 1; // eat cb
         return ret;
     }
-    // consumes and returns a list or integer
+    /**
+     * consumes and returns a list or integer
+     * @returns {rustdoc.VlqData}
+     */
     decode() {
         let n = 0;
         let c = this.string.charCodeAt(this.offset);
@@ -972,6 +1049,9 @@ class VlqHexDecoder {
         this.offset += 1;
         return sign ? -value : value;
     }
+    /**
+     * @returns {T}
+     */
     next() {
         const c = this.string.charCodeAt(this.offset);
         // sixteen characters after "0" are backref
@@ -994,6 +1074,7 @@ class VlqHexDecoder {
     }
 }
 class RoaringBitmap {
+    /** @param {string} str */
     constructor(str) {
         // https://github.com/RoaringBitmap/RoaringFormatSpec
         //
@@ -1063,6 +1144,7 @@ class RoaringBitmap {
             }
         }
     }
+    /** @param {number} keyvalue */
     contains(keyvalue) {
         const key = keyvalue >> 16;
         const value = keyvalue & 0xFFFF;
@@ -1091,10 +1173,15 @@ class RoaringBitmap {
 }
 
 class RoaringBitmapRun {
+    /**
+     * @param {number} runcount
+     * @param {Uint8Array} array
+     */
     constructor(runcount, array) {
         this.runcount = runcount;
         this.array = array;
     }
+    /** @param {number} value */
     contains(value) {
         // Binary search algorithm copied from
         // https://en.wikipedia.org/wiki/Binary_search#Procedure
@@ -1120,10 +1207,15 @@ class RoaringBitmapRun {
     }
 }
 class RoaringBitmapArray {
+    /**
+     * @param {number} cardinality
+     * @param {Uint8Array} array
+     */
     constructor(cardinality, array) {
         this.cardinality = cardinality;
         this.array = array;
     }
+    /** @param {number} value */
     contains(value) {
         // Binary search algorithm copied from
         // https://en.wikipedia.org/wiki/Binary_search#Procedure
@@ -1148,9 +1240,13 @@ class RoaringBitmapArray {
     }
 }
 class RoaringBitmapBits {
+    /**
+     * @param {Uint8Array} array
+     */
     constructor(array) {
         this.array = array;
     }
+    /** @param {number} value */
     contains(value) {
         return !!(this.array[value >> 3] & (1 << (value & 7)));
     }
@@ -1176,9 +1272,9 @@ class RoaringBitmapBits {
  * matches
  * : A list of search index IDs for this node.
  *
- * @typedef {{
- *     children: [NameTrie],
- *     matches: [number],
+ * @type {{
+ *     children: NameTrie[],
+ *     matches: number[],
  * }}
  */
 class NameTrie {
@@ -1186,9 +1282,20 @@ class NameTrie {
         this.children = [];
         this.matches = [];
     }
+    /**
+     * @param {string} name
+     * @param {number} id
+     * @param {Map<string, NameTrie[]>} tailTable
+     */
     insert(name, id, tailTable) {
         this.insertSubstring(name, 0, id, tailTable);
     }
+    /**
+     * @param {string} name
+     * @param {number} substart
+     * @param {number} id
+     * @param {Map<string, NameTrie[]>} tailTable
+     */
     insertSubstring(name, substart, id, tailTable) {
         const l = name.length;
         if (substart === l) {
@@ -1201,10 +1308,13 @@ class NameTrie {
             } else {
                 child = new NameTrie();
                 this.children[sb] = child;
+                /** @type {NameTrie[]} */
                 let sste;
                 if (substart >= 2) {
                     const tail = name.substring(substart - 2, substart + 1);
                     if (tailTable.has(tail)) {
+                        // it's not undefined
+                        // @ts-expect-error
                         sste = tailTable.get(tail);
                     } else {
                         sste = [];
@@ -1216,6 +1326,10 @@ class NameTrie {
             child.insertSubstring(name, substart + 1, id, tailTable);
         }
     }
+    /**
+     * @param {string} name
+     * @param {Map<string, NameTrie[]>} tailTable
+     */
     search(name, tailTable) {
         const results = new Set();
         this.searchSubstringPrefix(name, 0, results);
@@ -1226,6 +1340,8 @@ class NameTrie {
             this.searchLev(name, 0, levParams, results);
             const tail = name.substring(0, 3);
             if (tailTable.has(tail)) {
+                // it's not undefined
+                // @ts-expect-error
                 for (const entry of tailTable.get(tail)) {
                     entry.searchSubstringPrefix(name, 3, results);
                 }
@@ -1233,6 +1349,11 @@ class NameTrie {
         }
         return [...results];
     }
+    /**
+     * @param {string} name
+     * @param {number} substart
+     * @param {Set<number>} results
+     */
     searchSubstringPrefix(name, substart, results) {
         const l = name.length;
         if (substart === l) {
@@ -1240,14 +1361,18 @@ class NameTrie {
                 results.add(match);
             }
             // breadth-first traversal orders prefix matches by length
+            /** @type {NameTrie[]} */
             let unprocessedChildren = [];
             for (const child of this.children) {
                 if (child) {
                     unprocessedChildren.push(child);
                 }
             }
+            /** @type {NameTrie[]} */
             let nextSet = [];
             while (unprocessedChildren.length !== 0) {
+                /** @type {NameTrie} */
+                // @ts-expect-error
                 const next = unprocessedChildren.pop();
                 for (const child of next.children) {
                     if (child) {
@@ -1270,10 +1395,18 @@ class NameTrie {
             }
         }
     }
+    /**
+     * @param {string} name
+     * @param {number} substart
+     * @param {Lev2TParametricDescription|Lev1TParametricDescription} levParams
+     * @param {Set<number>} results
+     */
     searchLev(name, substart, levParams, results) {
         const stack = [[this, 0]];
         const n = levParams.n;
         while (stack.length !== 0) {
+            // It's not empty
+            //@ts-expect-error
             const [trie, levState] = stack.pop();
             for (const [charCode, child] of trie.children.entries()) {
                 if (!child) {
@@ -1305,6 +1438,11 @@ class NameTrie {
 }
 
 class DocSearch {
+    /**
+     * @param {Map<string, rustdoc.RawSearchIndexCrate>} rawSearchIndex
+     * @param {string} rootPath
+     * @param {rustdoc.SearchState} searchState
+     */
     constructor(rawSearchIndex, rootPath, searchState) {
         /**
          * @type {Map<String, RoaringBitmap>}
@@ -1317,19 +1455,19 @@ class DocSearch {
         /**
          *  @type {Uint32Array}
          */
-        this.functionTypeFingerprint = null;
+        this.functionTypeFingerprint = new Uint32Array(0);
         /**
          * Map from normalized type names to integers. Used to make type search
          * more efficient.
          *
-         * @type {Map<string, {id: integer, assocOnly: boolean}>}
+         * @type {Map<string, {id: number, assocOnly: boolean}>}
          */
         this.typeNameIdMap = new Map();
         /**
          * Map from type ID to associated type name. Used for display,
          * not for search.
          *
-         * @type {Map<integer, string>}
+         * @type {Map<number, string>}
          */
         this.assocTypeIdNameMap = new Map();
         this.ALIASES = new Map();
@@ -1338,64 +1476,88 @@ class DocSearch {
 
         /**
          * Special type name IDs for searching by array.
+         * @type {number}
          */
+        // @ts-expect-error
         this.typeNameIdOfArray = this.buildTypeMapIndex("array");
         /**
          * Special type name IDs for searching by slice.
+         * @type {number}
          */
+        // @ts-expect-error
         this.typeNameIdOfSlice = this.buildTypeMapIndex("slice");
         /**
          * Special type name IDs for searching by both array and slice (`[]` syntax).
+         * @type {number}
          */
+        // @ts-expect-error
         this.typeNameIdOfArrayOrSlice = this.buildTypeMapIndex("[]");
         /**
          * Special type name IDs for searching by tuple.
+         * @type {number}
          */
+        // @ts-expect-error
         this.typeNameIdOfTuple = this.buildTypeMapIndex("tuple");
         /**
          * Special type name IDs for searching by unit.
+         * @type {number}
          */
+        // @ts-expect-error
         this.typeNameIdOfUnit = this.buildTypeMapIndex("unit");
         /**
          * Special type name IDs for searching by both tuple and unit (`()` syntax).
+         * @type {number}
          */
+        // @ts-expect-error
         this.typeNameIdOfTupleOrUnit = this.buildTypeMapIndex("()");
         /**
          * Special type name IDs for searching `fn`.
+         * @type {number}
          */
+        // @ts-expect-error
         this.typeNameIdOfFn = this.buildTypeMapIndex("fn");
         /**
          * Special type name IDs for searching `fnmut`.
+         * @type {number}
          */
+        // @ts-expect-error
         this.typeNameIdOfFnMut = this.buildTypeMapIndex("fnmut");
         /**
          * Special type name IDs for searching `fnonce`.
+         * @type {number}
          */
+        // @ts-expect-error
         this.typeNameIdOfFnOnce = this.buildTypeMapIndex("fnonce");
         /**
          * Special type name IDs for searching higher order functions (`->` syntax).
+         * @type {number}
          */
+        // @ts-expect-error
         this.typeNameIdOfHof = this.buildTypeMapIndex("->");
         /**
          * Special type name IDs the output assoc type.
+         * @type {number}
          */
+        // @ts-expect-error
         this.typeNameIdOfOutput = this.buildTypeMapIndex("output", true);
         /**
          * Special type name IDs for searching by reference.
+         * @type {number}
          */
+        // @ts-expect-error
         this.typeNameIdOfReference = this.buildTypeMapIndex("reference");
 
         /**
          * Empty, immutable map used in item search types with no bindings.
          *
-         * @type {Map<number, Array<FunctionType>>}
+         * @type {Map<number, Array<any>>}
          */
         this.EMPTY_BINDINGS_MAP = new Map();
 
         /**
          * Empty, immutable map used in item search types with no bindings.
          *
-         * @type {Array<FunctionType>}
+         * @type {Array<any>}
          */
         this.EMPTY_GENERICS_ARRAY = [];
 
@@ -1403,7 +1565,7 @@ class DocSearch {
          * Object pool for function types with no bindings or generics.
          * This is reset after loading the index.
          *
-         * @type {Map<number|null, FunctionType>}
+         * @type {Map<number|null, rustdoc.FunctionType>}
          */
         this.TYPES_POOL = new Map();
 
@@ -1422,8 +1584,9 @@ class DocSearch {
         this.tailTable = new Map();
 
         /**
-         *  @type {Array<Row>}
+         *  @type {Array<rustdoc.Row>}
          */
+        // @ts-expect-error
         this.searchIndex = this.buildIndex(rawSearchIndex);
     }
 
@@ -1436,9 +1599,9 @@ class DocSearch {
      * get the same ID.
      *
      * @param {string} name
-     * @param {boolean} isAssocType - True if this is an assoc type
+     * @param {boolean=} isAssocType - True if this is an assoc type
      *
-     * @returns {integer}
+     * @returns {number?}
      */
     buildTypeMapIndex(name, isAssocType) {
         if (name === "" || name === null) {
@@ -1446,12 +1609,14 @@ class DocSearch {
         }
 
         if (this.typeNameIdMap.has(name)) {
+            /** @type {{id: number, assocOnly: boolean}} */
+            // @ts-expect-error
             const obj = this.typeNameIdMap.get(name);
-            obj.assocOnly = isAssocType && obj.assocOnly;
+            obj.assocOnly = !!(isAssocType && obj.assocOnly);
             return obj.id;
         } else {
             const id = this.typeNameIdMap.size;
-            this.typeNameIdMap.set(name, { id, assocOnly: isAssocType });
+            this.typeNameIdMap.set(name, { id, assocOnly: !!isAssocType });
             return id;
         }
     }
@@ -1469,13 +1634,26 @@ class DocSearch {
      * The format for individual function types is encoded in
      * librustdoc/html/render/mod.rs: impl Serialize for RenderType
      *
-     * @param {null|Array<RawFunctionType>} types
-     * @param {Array<{name: string, ty: number}>} lowercasePaths
+     * @param {null|Array<rustdoc.RawFunctionType>} types
+     * @param {Array<{
+     *     name: string,
+    *     ty: number,
+    *     path: string|null,
+    *     exactPath: string|null,
+    *     unboxFlag: boolean
+    * }>} paths
+    * @param {Array<{
+    *     name: string,
+    *     ty: number,
+    *     path: string|null,
+    *     exactPath: string|null,
+    *     unboxFlag: boolean,
+    * }>} lowercasePaths
      *
-     * @return {Array<FunctionSearchType>}
+     * @return {Array<rustdoc.FunctionType>}
      */
     buildItemSearchTypeAll(types, paths, lowercasePaths) {
-        return types.length > 0 ?
+        return types && types.length > 0 ?
             types.map(type => this.buildItemSearchType(type, paths, lowercasePaths)) :
             this.EMPTY_GENERICS_ARRAY;
     }
@@ -1483,7 +1661,22 @@ class DocSearch {
     /**
      * Converts a single type.
      *
-     * @param {RawFunctionType} type
+     * @param {rustdoc.RawFunctionType} type
+     * @param {Array<{
+     *     name: string,
+     *     ty: number,
+     *     path: string|null,
+     *     exactPath: string|null,
+     *     unboxFlag: boolean
+     * }>} paths
+     * @param {Array<{
+     *     name: string,
+     *     ty: number,
+     *     path: string|null,
+     *     exactPath: string|null,
+     *     unboxFlag: boolean,
+     * }>} lowercasePaths
+     * @param {boolean=} isAssocType
      */
     buildItemSearchType(type, paths, lowercasePaths, isAssocType) {
         const PATH_INDEX_DATA = 0;
@@ -1501,7 +1694,9 @@ class DocSearch {
                 paths,
                 lowercasePaths,
             );
+            // @ts-expect-error
             if (type.length > BINDINGS_DATA && type[BINDINGS_DATA].length > 0) {
+                // @ts-expect-error
                 bindings = new Map(type[BINDINGS_DATA].map(binding => {
                     const [assocType, constraints] = binding;
                     // Associated type constructors are represented sloppily in rustdoc's
@@ -1524,7 +1719,7 @@ class DocSearch {
             }
         }
         /**
-         * @type {FunctionType}
+         * @type {rustdoc.FunctionType}
          */
         let result;
         if (pathIndex < 0) {
@@ -1555,7 +1750,7 @@ class DocSearch {
         } else {
             const item = lowercasePaths[pathIndex - 1];
             const id = this.buildTypeMapIndex(item.name, isAssocType);
-            if (isAssocType) {
+            if (isAssocType && id !== null) {
                 this.assocTypeIdNameMap.set(id, paths[pathIndex - 1].name);
             }
             result = {
@@ -1585,6 +1780,7 @@ class DocSearch {
             if (cr.bindings.size === result.bindings.size && cr.bindings !== result.bindings) {
                 let ok = true;
                 for (const [k, v] of cr.bindings.entries()) {
+                    // @ts-expect-error
                     const v2 = result.bindings.get(v);
                     if (!v2) {
                         ok = false;
@@ -1629,7 +1825,7 @@ class DocSearch {
      * [^1]: Distance is the relatively naive metric of counting the number of distinct items in
      * the function that are not present in the query.
      *
-     * @param {FunctionType|QueryElement} type - a single type
+     * @param {rustdoc.FingerprintableType} type - a single type
      * @param {Uint32Array} output - write the fingerprint to this data structure: uses 128 bits
      */
     buildFunctionTypeFingerprint(type, output) {
@@ -1647,9 +1843,12 @@ class DocSearch {
             input === this.typeNameIdOfFnOnce) {
             input = this.typeNameIdOfHof;
         }
-        // http://burtleburtle.net/bob/hash/integer.html
-        // ~~ is toInt32. It's used before adding, so
-        // the number stays in safe integer range.
+        /**
+         * http://burtleburtle.net/bob/hash/integer.html
+         * ~~ is toInt32. It's used before adding, so
+         * the number stays in safe integer range.
+         * @param {number} k
+         */
         const hashint1 = k => {
             k = (~~k + 0x7ed55d16) + (k << 12);
             k = (k ^ 0xc761c23c) ^ (k >>> 19);
@@ -1658,6 +1857,7 @@ class DocSearch {
             k = (~~k + 0xfd7046c5) + (k << 3);
             return (k ^ 0xb55a4f09) ^ (k >>> 16);
         };
+        /** @param {number} k */
         const hashint2 = k => {
             k = ~k + (k << 15);
             k ^= k >>> 12;
@@ -1684,6 +1884,14 @@ class DocSearch {
         for (const g of type.generics) {
             this.buildFunctionTypeFingerprint(g, output);
         }
+        /**
+         * @type {{
+         *   id: number|null,
+         *   ty: number,
+         *   generics: rustdoc.FingerprintableType[],
+         *   bindings: Map<number, rustdoc.FingerprintableType[]>
+         * }}
+         */
         const fb = {
             id: null,
             ty: 0,
@@ -1700,7 +1908,7 @@ class DocSearch {
     /**
      * Convert raw search index into in-memory search index.
      *
-     * @param {[string, RawSearchIndexCrate][]} rawSearchIndex
+     * @param {Map<string, rustdoc.RawSearchIndexCrate>} rawSearchIndex
      */
     buildIndex(rawSearchIndex) {
         /**
@@ -1714,19 +1922,37 @@ class DocSearch {
          * The raw function search type format is generated using serde in
          * librustdoc/html/render/mod.rs: IndexItemFunctionType::write_to_string
          *
-         * @param {Array<{name: string, ty: number}>} paths
-         * @param {Array<{name: string, ty: number}>} lowercasePaths
+         * @param {Array<{
+         *     name: string,
+         *     ty: number,
+         *     path: string|null,
+         *     exactPath: string|null,
+         *     unboxFlag: boolean
+         * }>} paths
+         * @param {Array<{
+         *     name: string,
+         *     ty: number,
+         *     path: string|null,
+         *     exactPath: string|null,
+         *     unboxFlag: boolean
+         * }>} lowercasePaths
          *
-         * @return {null|FunctionSearchType}
+         * @return {function(rustdoc.RawFunctionSearchType): null|rustdoc.FunctionSearchType}
          */
         const buildFunctionSearchTypeCallback = (paths, lowercasePaths) => {
-            return functionSearchType => {
+            /**
+             * @param {rustdoc.RawFunctionSearchType} functionSearchType
+             */
+            const cb = functionSearchType => {
                 if (functionSearchType === 0) {
                     return null;
                 }
                 const INPUTS_DATA = 0;
                 const OUTPUT_DATA = 1;
-                let inputs, output;
+                /** @type {rustdoc.FunctionType[]} */
+                let inputs;
+                /** @type {rustdoc.FunctionType[]} */
+                let output;
                 if (typeof functionSearchType[INPUTS_DATA] === "number") {
                     inputs = [
                         this.buildItemSearchType(
@@ -1753,6 +1979,7 @@ class DocSearch {
                         ];
                     } else {
                         output = this.buildItemSearchTypeAll(
+                            // @ts-expect-error
                             functionSearchType[OUTPUT_DATA],
                             paths,
                             lowercasePaths,
@@ -1765,8 +1992,10 @@ class DocSearch {
                 const l = functionSearchType.length;
                 for (let i = 2; i < l; ++i) {
                     where_clause.push(typeof functionSearchType[i] === "number"
+                        // @ts-expect-error
                         ? [this.buildItemSearchType(functionSearchType[i], paths, lowercasePaths)]
                         : this.buildItemSearchTypeAll(
+                            // @ts-expect-error
                             functionSearchType[i],
                             paths,
                             lowercasePaths,
@@ -1776,6 +2005,7 @@ class DocSearch {
                     inputs, output, where_clause,
                 };
             };
+            return cb;
         };
 
         const searchIndex = [];
@@ -1798,7 +2028,12 @@ class DocSearch {
         for (const [crate, crateCorpus] of rawSearchIndex) {
             // a string representing the lengths of each description shard
             // a string representing the list of function types
-            const itemDescShardDecoder = new VlqHexDecoder(crateCorpus.D, noop => noop);
+            const itemDescShardDecoder = new VlqHexDecoder(crateCorpus.D, noop => {
+                /** @type {number} */
+                // @ts-expect-error
+                const n = noop;
+                return n;
+            });
             let descShard = {
                 crate,
                 shard: 0,
@@ -1817,7 +2052,7 @@ class DocSearch {
             /**
              * List of generic function type parameter names.
              * Used for display, not for searching.
-             * @type {[string]}
+             * @type {string[]}
              */
             let lastParamNames = [];
 
@@ -1847,6 +2082,8 @@ class DocSearch {
             id += 1;
             searchIndex.push(crateRow);
             currentIndex += 1;
+            // it's not undefined
+            // @ts-expect-error
             if (!this.searchIndexEmptyDesc.get(crate).contains(0)) {
                 descIndex += 1;
             }
@@ -1870,7 +2107,7 @@ class DocSearch {
             const implDisambiguator = new Map(crateCorpus.b);
             // an array of [(Number) item type,
             //              (String) name]
-            const paths = crateCorpus.p;
+            const rawPaths = crateCorpus.p;
             // an array of [(String) alias name
             //             [Number] index to items]
             const aliases = crateCorpus.a;
@@ -1879,32 +2116,60 @@ class DocSearch {
             // an item whose index is not present will fall back to the previous present path
             const itemParamNames = new Map(crateCorpus.P);
 
-            // an array of [{name: String, ty: Number}]
+            /**
+             * @type {Array<{
+             *     name: string,
+             *     ty: number,
+             *     path: string|null,
+             *     exactPath: string|null,
+             *     unboxFlag: boolean
+             * }>}
+             */
             const lowercasePaths = [];
+            /**
+             * @type {Array<{
+             *     name: string,
+             *     ty: number,
+             *     path: string|null,
+             *     exactPath: string|null,
+             *     unboxFlag: boolean
+             * }>}
+             */
+            const paths = [];
 
             // a string representing the list of function types
             const itemFunctionDecoder = new VlqHexDecoder(
                 crateCorpus.f,
+                // @ts-expect-error
                 buildFunctionSearchTypeCallback(paths, lowercasePaths),
             );
 
             // convert `rawPaths` entries into object form
             // generate normalizedPaths for function search mode
-            let len = paths.length;
+            let len = rawPaths.length;
             let lastPath = itemPaths.get(0);
             for (let i = 0; i < len; ++i) {
-                const elem = paths[i];
+                const elem = rawPaths[i];
                 const ty = elem[0];
                 const name = elem[1];
                 let path = null;
                 if (elem.length > 2 && elem[2] !== null) {
+                    // @ts-expect-error
                     path = itemPaths.has(elem[2]) ? itemPaths.get(elem[2]) : lastPath;
                     lastPath = path;
                 }
-                const exactPath = elem.length > 3 && elem[3] !== null ?
+                let exactPath = elem.length > 3 && elem[3] !== null ?
+                    // @ts-expect-error
                     itemPaths.get(elem[3]) :
                     path;
                 const unboxFlag = elem.length > 4 && !!elem[4];
+
+                if (path === undefined) {
+                    path = null;
+                }
+                if (exactPath === undefined) {
+                    exactPath = null;
+                }
 
                 lowercasePaths.push({ ty, name: name.toLowerCase(), path, exactPath, unboxFlag });
                 paths[i] = { ty, name, path, exactPath, unboxFlag };
@@ -1924,6 +2189,7 @@ class DocSearch {
             for (let i = 0; i < len; ++i) {
                 const bitIndex = i + 1;
                 if (descIndex >= descShard.len &&
+                    // @ts-expect-error
                     !this.searchIndexEmptyDesc.get(crate).contains(bitIndex)) {
                     descShard = {
                         crate,
@@ -1938,8 +2204,11 @@ class DocSearch {
                 }
                 const name = itemNames[i] === "" ? lastName : itemNames[i];
                 const word = itemNames[i] === "" ? lastWord : itemNames[i].toLowerCase();
+                /** @type {string} */
+                // @ts-expect-error
                 const path = itemPaths.has(i) ? itemPaths.get(i) : lastPath;
                 const paramNames = itemParamNames.has(i) ?
+                    // @ts-expect-error
                     itemParamNames.get(i).split(",") :
                     lastParamNames;
                 const type = itemFunctionDecoder.next();
@@ -1971,7 +2240,9 @@ class DocSearch {
                     descShard,
                     descIndex,
                     exactPath: itemReexports.has(i) ?
+                        // @ts-expect-error
                         itemPaths.get(itemReexports.get(i)) : path,
+                    // @ts-expect-error
                     parent: itemParentIdx > 0 ? paths[itemParentIdx - 1] : undefined,
                     type,
                     paramNames,
@@ -1987,6 +2258,7 @@ class DocSearch {
                 searchIndex.push(row);
                 lastPath = row.path;
                 lastParamNames = row.paramNames;
+                // @ts-expect-error
                 if (!this.searchIndexEmptyDesc.get(crate).contains(bitIndex)) {
                     descIndex += 1;
                 }
@@ -2002,13 +2274,16 @@ class DocSearch {
                         continue;
                     }
 
+                    // @ts-expect-error
                     let currentNameAliases;
                     if (currentCrateAliases.has(alias_name)) {
                         currentNameAliases = currentCrateAliases.get(alias_name);
                     } else {
                         currentNameAliases = [];
+                        // @ts-expect-error
                         currentCrateAliases.set(alias_name, currentNameAliases);
                     }
+                    // @ts-expect-error
                     for (const local_alias of aliases[alias_name]) {
                         currentNameAliases.push(local_alias + currentIndex);
                     }
@@ -2030,11 +2305,15 @@ class DocSearch {
      *
      * When adding new things to the parser, add them there, too!
      *
-     * @param  {string} val     - The user query
+     * @param  {string} userQuery - The user query
      *
-     * @return {ParsedQuery}    - The parsed query
+     * @return {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} - The parsed query
      */
     static parseQuery(userQuery) {
+        /**
+         * @param {string} typename
+         * @returns {number}
+         */
         function itemTypeFromName(typename) {
             const index = itemTypes.findIndex(i => i === typename);
             if (index < 0) {
@@ -2043,14 +2322,19 @@ class DocSearch {
             return index;
         }
 
+        /**
+         * @param {rustdoc.ParserQueryElement} elem
+         */
         function convertTypeFilterOnElem(elem) {
             if (elem.typeFilter !== null) {
                 let typeFilter = elem.typeFilter;
                 if (typeFilter === "const") {
                     typeFilter = "constant";
                 }
+                // @ts-expect-error
                 elem.typeFilter = itemTypeFromName(typeFilter);
             } else {
+                // @ts-expect-error
                 elem.typeFilter = NO_TYPE_FILTER;
             }
             for (const elem2 of elem.generics) {
@@ -2068,7 +2352,7 @@ class DocSearch {
          *
          * @param {string} userQuery
          *
-         * @return {ParsedQuery}
+         * @return {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>}
          */
         function newParsedQuery(userQuery) {
             return {
@@ -2094,8 +2378,8 @@ class DocSearch {
         * Parses the provided `query` input to fill `parserState`. If it encounters an error while
         * parsing `query`, it'll throw an error.
         *
-        * @param {ParsedQuery} query
-        * @param {ParserState} parserState
+        * @param {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} query
+        * @param {rustdoc.ParserState} parserState
         */
         function parseInput(query, parserState) {
             let foundStopChar = true;
@@ -2125,6 +2409,7 @@ class DocSearch {
                 if (!foundStopChar) {
                     let extra = "";
                     if (isLastElemGeneric(query.elems, parserState)) {
+                        // @ts-expect-error
                         extra = [" after ", ">"];
                     } else if (prevIs(parserState, "\"")) {
                         throw ["Cannot have more than one element if you use quotes"];
@@ -2208,6 +2493,8 @@ class DocSearch {
             }
         } catch (err) {
             query = newParsedQuery(userQuery);
+            // is string list
+            // @ts-expect-error
             query.error = err;
             return query;
         }
@@ -2224,25 +2511,167 @@ class DocSearch {
     /**
      * Executes the parsed query and builds a {ResultsTable}.
      *
-     * @param  {ParsedQuery} parsedQuery - The parsed user query
-     * @param  {Object} [filterCrates]   - Crate to search in if defined
-     * @param  {Object} [currentCrate]   - Current crate, to rank results from this crate higher
+     * @param  {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} origParsedQuery
+     *     - The parsed user query
+     * @param  {Object} [filterCrates] - Crate to search in if defined
+     * @param  {Object} [currentCrate] - Current crate, to rank results from this crate higher
      *
-     * @return {ResultsTable}
+     * @return {Promise<rustdoc.ResultsTable>}
      */
-    async execQuery(parsedQuery, filterCrates, currentCrate) {
+    async execQuery(origParsedQuery, filterCrates, currentCrate) {
         const results_others = new Map(), results_in_args = new Map(),
             results_returned = new Map();
+
+        /** @type {rustdoc.ParsedQuery<rustdoc.QueryElement>} */
+        // @ts-expect-error
+        const parsedQuery = origParsedQuery;
+
+        const queryLen =
+            parsedQuery.elems.reduce((acc, next) => acc + next.pathLast.length, 0) +
+            parsedQuery.returned.reduce((acc, next) => acc + next.pathLast.length, 0);
+        const maxEditDistance = Math.floor(queryLen / 3);
+
+        /**
+         * @type {Map<string, number>}
+         */
+        const genericSymbols = new Map();
+
+        /**
+         * Convert names to ids in parsed query elements.
+         * This is not used for the "In Names" tab, but is used for the
+         * "In Params", "In Returns", and "In Function Signature" tabs.
+         *
+         * If there is no matching item, but a close-enough match, this
+         * function also that correction.
+         *
+         * See `buildTypeMapIndex` for more information.
+         *
+         * @param {rustdoc.QueryElement} elem
+         * @param {boolean} isAssocType
+         */
+        const convertNameToId = (elem, isAssocType) => {
+            const loweredName = elem.pathLast.toLowerCase();
+            if (this.typeNameIdMap.has(loweredName) &&
+                // @ts-expect-error
+                (isAssocType || !this.typeNameIdMap.get(loweredName).assocOnly)) {
+                // @ts-expect-error
+                elem.id = this.typeNameIdMap.get(loweredName).id;
+            } else if (!parsedQuery.literalSearch) {
+                let match = null;
+                let matchDist = maxEditDistance + 1;
+                let matchName = "";
+                for (const [name, { id, assocOnly }] of this.typeNameIdMap) {
+                    const dist = Math.min(
+                        editDistance(name, loweredName, maxEditDistance),
+                        editDistance(name, elem.normalizedPathLast, maxEditDistance),
+                    );
+                    if (dist <= matchDist && dist <= maxEditDistance &&
+                        (isAssocType || !assocOnly)) {
+                        if (dist === matchDist && matchName > name) {
+                            continue;
+                        }
+                        match = id;
+                        matchDist = dist;
+                        matchName = name;
+                    }
+                }
+                if (match !== null) {
+                    parsedQuery.correction = matchName;
+                }
+                elem.id = match;
+            }
+            if ((elem.id === null && parsedQuery.totalElems > 1 && elem.typeFilter === -1
+                && elem.generics.length === 0 && elem.bindings.size === 0)
+                || elem.typeFilter === TY_GENERIC) {
+                if (genericSymbols.has(elem.normalizedPathLast)) {
+                    // @ts-expect-error
+                    elem.id = genericSymbols.get(elem.normalizedPathLast);
+                } else {
+                    elem.id = -(genericSymbols.size + 1);
+                    genericSymbols.set(elem.normalizedPathLast, elem.id);
+                }
+                if (elem.typeFilter === -1 && elem.normalizedPathLast.length >= 3) {
+                    // Silly heuristic to catch if the user probably meant
+                    // to not write a generic parameter. We don't use it,
+                    // just bring it up.
+                    const maxPartDistance = Math.floor(elem.normalizedPathLast.length / 3);
+                    let matchDist = maxPartDistance + 1;
+                    let matchName = "";
+                    for (const name of this.typeNameIdMap.keys()) {
+                        const dist = editDistance(
+                            name,
+                            elem.normalizedPathLast,
+                            maxPartDistance,
+                        );
+                        if (dist <= matchDist && dist <= maxPartDistance) {
+                            if (dist === matchDist && matchName > name) {
+                                continue;
+                            }
+                            matchDist = dist;
+                            matchName = name;
+                        }
+                    }
+                    if (matchName !== "") {
+                        parsedQuery.proposeCorrectionFrom = elem.name;
+                        parsedQuery.proposeCorrectionTo = matchName;
+                    }
+                }
+                elem.typeFilter = TY_GENERIC;
+            }
+            if (elem.generics.length > 0 && elem.typeFilter === TY_GENERIC) {
+                // Rust does not have HKT
+                parsedQuery.error = [
+                    "Generic type parameter ",
+                    elem.name,
+                    " does not accept generic parameters",
+                ];
+            }
+            for (const elem2 of elem.generics) {
+                // @ts-expect-error
+                convertNameToId(elem2);
+            }
+            elem.bindings = new Map(Array.from(elem.bindings.entries())
+                .map(entry => {
+                    const [name, constraints] = entry;
+                    // @ts-expect-error
+                    if (!this.typeNameIdMap.has(name)) {
+                        parsedQuery.error = [
+                            "Type parameter ",
+                            // @ts-expect-error
+                            name,
+                            " does not exist",
+                        ];
+                        return [0, []];
+                    }
+                    for (const elem2 of constraints) {
+                        convertNameToId(elem2, false);
+                    }
+
+                    // @ts-expect-error
+                    return [this.typeNameIdMap.get(name).id, constraints];
+                }),
+            );
+        };
+
+        for (const elem of parsedQuery.elems) {
+            convertNameToId(elem, false);
+            this.buildFunctionTypeFingerprint(elem, parsedQuery.typeFingerprint);
+        }
+        for (const elem of parsedQuery.returned) {
+            convertNameToId(elem, false);
+            this.buildFunctionTypeFingerprint(elem, parsedQuery.typeFingerprint);
+        }
+
 
         /**
          * Creates the query results.
          *
-         * @param {Array<Result>} results_in_args
-         * @param {Array<Result>} results_returned
-         * @param {Array<Result>} results_others
-         * @param {ParsedQuery} parsedQuery
+         * @param {Array<rustdoc.ResultObject>} results_in_args
+         * @param {Array<rustdoc.ResultObject>} results_returned
+         * @param {Array<rustdoc.ResultObject>} results_others
+         * @param {rustdoc.ParsedQuery<rustdoc.QueryElement>} parsedQuery
          *
-         * @return {ResultsTable}
+         * @return {rustdoc.ResultsTable}
          */
         function createQueryResults(
             results_in_args,
@@ -2257,6 +2686,7 @@ class DocSearch {
             };
         }
 
+        // @ts-expect-error
         const buildHrefAndPath = item => {
             let displayPath;
             let href;
@@ -2320,6 +2750,7 @@ class DocSearch {
             return [displayPath, href, `${exactPath}::${name}`];
         };
 
+        // @ts-expect-error
         function pathSplitter(path) {
             const tmp = "<span>" + path.replace(/::/g, "::</span><span>");
             if (tmp.endsWith("<span>")) {
@@ -2332,10 +2763,9 @@ class DocSearch {
          * Add extra data to result objects, and filter items that have been
          * marked for removal.
          *
-         * @param {[ResultObject]} results
+         * @param {[rustdoc.ResultObject]} results
          * @param {"sig"|"elems"|"returned"|null} typeInfo
-         * @param {ParsedQuery} query
-         * @returns {[ResultObject]}
+         * @returns {[rustdoc.ResultObject]}
          */
         const transformResults = (results, typeInfo) => {
             const duplicates = new Set();
@@ -2350,7 +2780,9 @@ class DocSearch {
                     }, this.searchIndex[result.id]);
 
                     // To be sure than it some items aren't considered as duplicate.
+                    // @ts-expect-error
                     obj.fullPath = res[2] + "|" + obj.ty;
+                    // @ts-expect-error
                     if (duplicates.has(obj.fullPath)) {
                         continue;
                     }
@@ -2363,14 +2795,18 @@ class DocSearch {
                     if (duplicates.has(res[2] + "|" + TY_IMPORT)) {
                         continue;
                     }
+                    // @ts-expect-error
                     duplicates.add(obj.fullPath);
                     duplicates.add(res[2]);
 
                     if (typeInfo !== null) {
+                        // @ts-expect-error
                         obj.displayTypeSignature =
+                            // @ts-expect-error
                             this.formatDisplayTypeSignature(obj, typeInfo);
                     }
 
+                    // @ts-expect-error
                     obj.href = res[1];
                     out.push(obj);
                     if (out.length >= MAX_RESULTS) {
@@ -2378,6 +2814,7 @@ class DocSearch {
                     }
                 }
             }
+            // @ts-expect-error
             return out;
         };
 
@@ -2388,30 +2825,34 @@ class DocSearch {
          * The output is formatted as an array of hunks, where odd numbered
          * hunks are highlighted and even numbered ones are not.
          *
-         * @param {ResultObject} obj
+         * @param {rustdoc.ResultObject} obj
          * @param {"sig"|"elems"|"returned"|null} typeInfo
-         * @param {ParsedQuery} query
-         * @returns Promise<
+         * @returns {Promise<{
          *   "type": Array<string>,
          *   "mappedNames": Map<string, string>,
          *   "whereClause": Map<string, Array<string>>,
-         * >
+         * }>}
          */
         this.formatDisplayTypeSignature = async(obj, typeInfo) => {
+            const objType = obj.type;
+            if (!objType) {
+                return {type: [], mappedNames: new Map(), whereClause: new Map()};
+            }
             let fnInputs = null;
             let fnOutput = null;
+            // @ts-expect-error
             let mgens = null;
             if (typeInfo !== "elems" && typeInfo !== "returned") {
                 fnInputs = unifyFunctionTypes(
-                    obj.type.inputs,
+                    objType.inputs,
                     parsedQuery.elems,
-                    obj.type.where_clause,
+                    objType.where_clause,
                     null,
                     mgensScratch => {
                         fnOutput = unifyFunctionTypes(
-                            obj.type.output,
+                            objType.output,
                             parsedQuery.returned,
-                            obj.type.where_clause,
+                            objType.where_clause,
                             mgensScratch,
                             mgensOut => {
                                 mgens = mgensOut;
@@ -2424,11 +2865,11 @@ class DocSearch {
                     0,
                 );
             } else {
-                const arr = typeInfo === "elems" ? obj.type.inputs : obj.type.output;
+                const arr = typeInfo === "elems" ? objType.inputs : objType.output;
                 const highlighted = unifyFunctionTypes(
                     arr,
                     parsedQuery.elems,
-                    obj.type.where_clause,
+                    objType.where_clause,
                     null,
                     mgensOut => {
                         mgens = mgensOut;
@@ -2443,15 +2884,16 @@ class DocSearch {
                 }
             }
             if (!fnInputs) {
-                fnInputs = obj.type.inputs;
+                fnInputs = objType.inputs;
             }
             if (!fnOutput) {
-                fnOutput = obj.type.output;
+                fnOutput = objType.output;
             }
             const mappedNames = new Map();
             const whereClause = new Map();
 
-            const fnParamNames = obj.paramNames;
+            const fnParamNames = obj.paramNames || [];
+            // @ts-expect-error
             const queryParamNames = [];
             /**
              * Recursively writes a map of IDs to query generic names,
@@ -2461,10 +2903,10 @@ class DocSearch {
              * mapping `(-1, "X")`, and the writeFn function looks up the entry
              * for -1 to form the final, user-visible mapping of "X is T".
              *
-             * @param {QueryElement} queryElem
+             * @param {rustdoc.QueryElement} queryElem
              */
             const remapQuery = queryElem => {
-                if (queryElem.id < 0) {
+                if (queryElem.id !== null && queryElem.id < 0) {
                     queryParamNames[-1 - queryElem.id] = queryElem.name;
                 }
                 if (queryElem.generics.length > 0) {
@@ -2483,7 +2925,7 @@ class DocSearch {
              * Index 0 is not highlighted, index 1 is highlighted,
              * index 2 is not highlighted, etc.
              *
-             * @param {{name: string, highlighted: bool|undefined}} fnType - input
+             * @param {{name?: string, highlighted?: boolean}} fnType - input
              * @param {[string]} result
              */
             const pushText = (fnType, result) => {
@@ -2496,6 +2938,7 @@ class DocSearch {
                 // needs coerced to a boolean.
                 if (!!(result.length % 2) === !!fnType.highlighted) {
                     result.push("");
+                // @ts-expect-error
                 } else if (result.length === 0 && !!fnType.highlighted) {
                     result.push("");
                     result.push("");
@@ -2508,7 +2951,7 @@ class DocSearch {
              * Write a higher order function type: either a function pointer
              * or a trait bound on Fn, FnMut, or FnOnce.
              *
-             * @param {FunctionType} fnType - input
+             * @param {rustdoc.HighlightedFunctionType} fnType - input
              * @param {[string]} result
              */
             const writeHof = (fnType, result) => {
@@ -2548,7 +2991,7 @@ class DocSearch {
              * Write a primitive type with special syntax, like `!` or `[T]`.
              * Returns `false` if the supplied type isn't special.
              *
-             * @param {FunctionType} fnType
+             * @param {rustdoc.HighlightedFunctionType} fnType
              * @param {[string]} result
              */
             const writeSpecialPrimitive = (fnType, result) => {
@@ -2563,6 +3006,7 @@ class DocSearch {
                     onEachBtwn(
                         fnType.generics,
                         nested => writeFn(nested, result),
+                        // @ts-expect-error
                         () => pushText({ name: ", ", highlighted: false }, result),
                     );
                     pushText({ name: sb, highlighted: fnType.highlighted }, result);
@@ -2573,9 +3017,10 @@ class DocSearch {
                     onEachBtwn(
                         fnType.generics,
                         value => {
-                            prevHighlighted = value.highlighted;
+                            prevHighlighted = !!value.highlighted;
                             writeFn(value, result);
                         },
+                        // @ts-expect-error
                         value => pushText({
                             name: " ",
                             highlighted: prevHighlighted && value.highlighted,
@@ -2593,25 +3038,27 @@ class DocSearch {
              * like slices, with their own formatting. It also handles
              * updating the where clause and generic type param map.
              *
-             * @param {FunctionType} fnType
+             * @param {rustdoc.HighlightedFunctionType} fnType
              * @param {[string]} result
              */
             const writeFn = (fnType, result) => {
-                if (fnType.id < 0) {
+                if (fnType.id !== null && fnType.id < 0) {
                     if (fnParamNames[-1 - fnType.id] === "") {
                         // Normally, there's no need to shown an unhighlighted
                         // where clause, but if it's impl Trait, then we do.
                         const generics = fnType.generics.length > 0 ?
                             fnType.generics :
-                            obj.type.where_clause[-1 - fnType.id];
+                            objType.where_clause[-1 - fnType.id];
                         for (const nested of generics) {
                             writeFn(nested, result);
                         }
                         return;
+                    // @ts-expect-error
                     } else if (mgens) {
                         for (const [queryId, fnId] of mgens) {
                             if (fnId === fnType.id) {
                                 mappedNames.set(
+                                    // @ts-expect-error
                                     queryParamNames[-1 - queryId],
                                     fnParamNames[-1 - fnType.id],
                                 );
@@ -2622,13 +3069,17 @@ class DocSearch {
                         name: fnParamNames[-1 - fnType.id],
                         highlighted: !!fnType.highlighted,
                     }, result);
+                    // @ts-expect-error
                     const where = [];
                     onEachBtwn(
                         fnType.generics,
+                        // @ts-expect-error
                         nested => writeFn(nested, where),
+                        // @ts-expect-error
                         () => pushText({ name: " + ", highlighted: false }, where),
                     );
                     if (where.length > 0) {
+                        // @ts-expect-error
                         whereClause.set(fnParamNames[-1 - fnType.id], where);
                     }
                 } else {
@@ -2650,12 +3101,15 @@ class DocSearch {
                             fnType.bindings,
                             ([key, values]) => {
                                 const name = this.assocTypeIdNameMap.get(key);
+                                // @ts-expect-error
                                 if (values.length === 1 && values[0].id < 0 &&
+                                    // @ts-expect-error
                                     `${fnType.name}::${name}` === fnParamNames[-1 - values[0].id]) {
                                     // the internal `Item=Iterator::Item` type variable should be
                                     // shown in the where clause and name mapping output, but is
                                     // redundant in this spot
                                     for (const value of values) {
+                                        // @ts-expect-error
                                         writeFn(value, []);
                                     }
                                     return true;
@@ -2672,12 +3126,14 @@ class DocSearch {
                                 onEachBtwn(
                                     values || [],
                                     value => writeFn(value, result),
+                                    // @ts-expect-error
                                     () => pushText({ name: " + ",  highlighted: false }, result),
                                 );
                                 if (values.length !== 1) {
                                     pushText({ name: ")", highlighted: false }, result);
                                 }
                             },
+                            // @ts-expect-error
                             () => pushText({ name: ", ",  highlighted: false }, result),
                         );
                     }
@@ -2687,6 +3143,7 @@ class DocSearch {
                     onEachBtwn(
                         fnType.generics,
                         value => writeFn(value, result),
+                        // @ts-expect-error
                         () => pushText({ name: ", ",  highlighted: false }, result),
                     );
                     if (hasBindings || fnType.generics.length > 0) {
@@ -2694,19 +3151,26 @@ class DocSearch {
                     }
                 }
             };
+            // @ts-expect-error
             const type = [];
             onEachBtwn(
                 fnInputs,
+                // @ts-expect-error
                 fnType => writeFn(fnType, type),
+                // @ts-expect-error
                 () => pushText({ name: ", ",  highlighted: false }, type),
             );
+            // @ts-expect-error
             pushText({ name: " -> ", highlighted: false }, type);
             onEachBtwn(
                 fnOutput,
+                // @ts-expect-error
                 fnType => writeFn(fnType, type),
+                // @ts-expect-error
                 () => pushText({ name: ", ",  highlighted: false }, type),
             );
 
+            // @ts-expect-error
             return {type, mappedNames, whereClause};
         };
 
@@ -2714,10 +3178,10 @@ class DocSearch {
          * This function takes a result map, and sorts it by various criteria, including edit
          * distance, substring match, and the crate it comes from.
          *
-         * @param {Results} results
-         * @param {boolean} isType
+         * @param {rustdoc.Results} results
+         * @param {"sig"|"elems"|"returned"|null} typeInfo
          * @param {string} preferredCrate
-         * @returns {Promise<[ResultObject]>}
+         * @returns {Promise<[rustdoc.ResultObject]>}
          */
         const sortResults = async(results, typeInfo, preferredCrate) => {
             const userQuery = parsedQuery.userQuery;
@@ -2733,12 +3197,12 @@ class DocSearch {
                     // we are doing a return-type based search,
                     // deprioritize "clone-like" results,
                     // ie. functions that also take the queried type as an argument.
-                    const hasType = result.item && result.item.type;
-                    if (!hasType) {
+                    const resultItemType = result.item && result.item.type;
+                    if (!resultItemType) {
                         continue;
                     }
-                    const inputs = result.item.type.inputs;
-                    const where_clause = result.item.type.where_clause;
+                    const inputs = resultItemType.inputs;
+                    const where_clause = resultItemType.where_clause;
                     if (containsTypeFromQuery(inputs, where_clause)) {
                         result.path_dist *= 100;
                         result.dist *= 100;
@@ -2748,35 +3212,38 @@ class DocSearch {
             }
 
             result_list.sort((aaa, bbb) => {
-                let a, b;
+                /** @type {number} */
+                let a;
+                /** @type {number} */
+                let b;
 
                 // sort by exact case-sensitive match
                 if (isMixedCase) {
-                    a = (aaa.item.name !== userQuery);
-                    b = (bbb.item.name !== userQuery);
+                    a = Number(aaa.item.name !== userQuery);
+                    b = Number(bbb.item.name !== userQuery);
                     if (a !== b) {
                         return a - b;
                     }
                 }
 
                 // sort by exact match with regard to the last word (mismatch goes later)
-                a = (aaa.word !== normalizedUserQuery);
-                b = (bbb.word !== normalizedUserQuery);
+                a = Number(aaa.word !== normalizedUserQuery);
+                b = Number(bbb.word !== normalizedUserQuery);
                 if (a !== b) {
                     return a - b;
                 }
 
                 // sort by index of keyword in item name (no literal occurrence goes later)
-                a = (aaa.index < 0);
-                b = (bbb.index < 0);
+                a = Number(aaa.index < 0);
+                b = Number(bbb.index < 0);
                 if (a !== b) {
                     return a - b;
                 }
 
                 // in type based search, put functions first
                 if (parsedQuery.hasReturnArrow) {
-                    a = !isFnLikeTy(aaa.item.ty);
-                    b = !isFnLikeTy(bbb.item.ty);
+                    a = Number(!isFnLikeTy(aaa.item.ty));
+                    b = Number(!isFnLikeTy(bbb.item.ty));
                     if (a !== b) {
                         return a - b;
                     }
@@ -2784,80 +3251,93 @@ class DocSearch {
 
                 // Sort by distance in the path part, if specified
                 // (less changes required to match means higher rankings)
-                a = aaa.path_dist;
-                b = bbb.path_dist;
+                a = Number(aaa.path_dist);
+                b = Number(bbb.path_dist);
                 if (a !== b) {
                     return a - b;
                 }
 
                 // (later literal occurrence, if any, goes later)
-                a = aaa.index;
-                b = bbb.index;
+                a = Number(aaa.index);
+                b = Number(bbb.index);
                 if (a !== b) {
                     return a - b;
                 }
 
                 // Sort by distance in the name part, the last part of the path
                 // (less changes required to match means higher rankings)
-                a = (aaa.dist);
-                b = (bbb.dist);
+                a = Number(aaa.dist);
+                b = Number(bbb.dist);
                 if (a !== b) {
                     return a - b;
                 }
 
                 // sort deprecated items later
-                a = this.searchIndexDeprecated.get(aaa.item.crate).contains(aaa.item.bitIndex);
-                b = this.searchIndexDeprecated.get(bbb.item.crate).contains(bbb.item.bitIndex);
+                a = Number(
+                    // @ts-expect-error
+                    this.searchIndexDeprecated.get(aaa.item.crate).contains(aaa.item.bitIndex),
+                );
+                b = Number(
+                    // @ts-expect-error
+                    this.searchIndexDeprecated.get(bbb.item.crate).contains(bbb.item.bitIndex),
+                );
                 if (a !== b) {
                     return a - b;
                 }
 
                 // sort by crate (current crate comes first)
-                a = (aaa.item.crate !== preferredCrate);
-                b = (bbb.item.crate !== preferredCrate);
+                a = Number(aaa.item.crate !== preferredCrate);
+                b = Number(bbb.item.crate !== preferredCrate);
                 if (a !== b) {
                     return a - b;
                 }
 
                 // sort by item name length (longer goes later)
-                a = aaa.word.length;
-                b = bbb.word.length;
+                a = Number(aaa.word.length);
+                b = Number(bbb.word.length);
                 if (a !== b) {
                     return a - b;
                 }
 
                 // sort by item name (lexicographically larger goes later)
-                a = aaa.word;
-                b = bbb.word;
-                if (a !== b) {
-                    return (a > b ? +1 : -1);
+                let aw = aaa.word;
+                let bw = bbb.word;
+                if (aw !== bw) {
+                    return (aw > bw ? +1 : -1);
                 }
 
                 // sort by description (no description goes later)
-                a = this.searchIndexEmptyDesc.get(aaa.item.crate).contains(aaa.item.bitIndex);
-                b = this.searchIndexEmptyDesc.get(bbb.item.crate).contains(bbb.item.bitIndex);
+                a = Number(
+                    // @ts-expect-error
+                    this.searchIndexEmptyDesc.get(aaa.item.crate).contains(aaa.item.bitIndex),
+                );
+                b = Number(
+                    // @ts-expect-error
+                    this.searchIndexEmptyDesc.get(bbb.item.crate).contains(bbb.item.bitIndex),
+                );
                 if (a !== b) {
                     return a - b;
                 }
 
                 // sort by type (later occurrence in `itemTypes` goes later)
-                a = aaa.item.ty;
-                b = bbb.item.ty;
+                a = Number(aaa.item.ty);
+                b = Number(bbb.item.ty);
                 if (a !== b) {
                     return a - b;
                 }
 
                 // sort by path (lexicographically larger goes later)
-                a = aaa.item.path;
-                b = bbb.item.path;
-                if (a !== b) {
-                    return (a > b ? +1 : -1);
+                aw = aaa.item.path;
+                bw = bbb.item.path;
+                if (aw !== bw) {
+                    return (aw > bw ? +1 : -1);
                 }
 
                 // que sera, sera
                 return 0;
             });
 
+            // @ts-expect-error
             return transformResults(result_list, typeInfo);
         };
 
@@ -2871,17 +3351,19 @@ class DocSearch {
          * then this function will try with a different solution, or bail with null if it
          * runs out of candidates.
          *
-         * @param {Array<FunctionType>} fnTypesIn - The objects to check.
-         * @param {Array<QueryElement>} queryElems - The elements from the parsed query.
-         * @param {[FunctionType]} whereClause - Trait bounds for generic items.
+         * @param {rustdoc.FunctionType[]} fnTypesIn - The objects to check.
+         * @param {rustdoc.QueryElement[]} queryElems - The elements from the parsed query.
+         * @param {rustdoc.FunctionType[][]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>|null} mgensIn
          *     - Map query generics to function generics (never modified).
-         * @param {Map<number,number> -> bool} solutionCb - Called for each `mgens` solution.
+         * @param {function(Map<number,number>?): boolean} solutionCb
+         *     - Called for each `mgens` solution.
          * @param {number} unboxingDepth
          *     - Limit checks that Ty matches Vec<Ty>,
          *       but not Vec<ParamEnvAnd<WithInfcx<ConstTy<Interner<Ty=Ty>>>>>
          *
-         * @return {[FunctionType]|null} - Returns highlighted results if a match, null otherwise.
+         * @return {rustdoc.HighlightedFunctionType[]|null}
+         *     - Returns highlighted results if a match, null otherwise.
          */
         function unifyFunctionTypes(
             fnTypesIn,
@@ -2895,7 +3377,7 @@ class DocSearch {
                 return null;
             }
             /**
-             * @type Map<integer, integer>|null
+             * @type {Map<number, number>|null}
              */
             const mgens = mgensIn === null ? null : new Map(mgensIn);
             if (queryElems.length === 0) {
@@ -2915,7 +3397,11 @@ class DocSearch {
                     if (!unifyFunctionTypeIsMatchCandidate(fnType, queryElem, mgens)) {
                         continue;
                     }
-                    if (fnType.id < 0 && queryElem.id < 0) {
+                    if (fnType.id !== null &&
+                        fnType.id < 0 &&
+                        queryElem.id !== null &&
+                        queryElem.id < 0
+                    ) {
                         if (mgens && mgens.has(queryElem.id) &&
                             mgens.get(queryElem.id) !== fnType.id) {
                             continue;
@@ -2959,8 +3445,10 @@ class DocSearch {
                     )) {
                         continue;
                     }
+                    // @ts-expect-error
                     if (fnType.id < 0) {
                         const highlightedGenerics = unifyFunctionTypes(
+                            // @ts-expect-error
                             whereClause[(-fnType.id) - 1],
                             queryElems,
                             whereClause,
@@ -2998,12 +3486,13 @@ class DocSearch {
                         }
                     }
                 }
+                // @ts-expect-error
                 return false;
             }
 
             // Multiple element recursive case
             /**
-             * @type Array<FunctionType>
+             * @type {Array<rustdoc.FunctionType>}
              */
             const fnTypes = fnTypesIn.slice();
             /**
@@ -3033,7 +3522,7 @@ class DocSearch {
                     continue;
                 }
                 let mgensScratch;
-                if (fnType.id < 0) {
+                if (fnType.id !== null && queryElem.id !== null && fnType.id < 0) {
                     mgensScratch = new Map(mgens);
                     if (mgensScratch.has(queryElem.id)
                         && mgensScratch.get(queryElem.id) !== fnType.id) {
@@ -3052,8 +3541,11 @@ class DocSearch {
                 if (!queryElemsTmp) {
                     queryElemsTmp = queryElems.slice(0, qlast);
                 }
+                /** @type {rustdoc.HighlightedFunctionType[]|null} */
                 let unifiedGenerics = [];
+                // @ts-expect-error
                 let unifiedGenericsMgens = null;
+                /** @type {rustdoc.HighlightedFunctionType[]|null} */
                 const passesUnification = unifyFunctionTypes(
                     fnTypes,
                     queryElemsTmp,
@@ -3102,11 +3594,14 @@ class DocSearch {
                         bindings: new Map([...fnType.bindings.entries()].map(([k, v]) => {
                             return [k, queryElem.bindings.has(k) ? unifyFunctionTypes(
                                 v,
+                                // @ts-expect-error
                                 queryElem.bindings.get(k),
                                 whereClause,
+                                // @ts-expect-error
                                 unifiedGenericsMgens,
                                 solutionCb,
                                 unboxingDepth,
+                            // @ts-expect-error
                             ) : unifiedGenerics.splice(0, v.length)];
                         })),
                     });
@@ -3128,7 +3623,7 @@ class DocSearch {
                 )) {
                     continue;
                 }
-                const generics = fnType.id < 0 ?
+                const generics = fnType.id !== null && fnType.id < 0 ?
                     whereClause[(-fnType.id) - 1] :
                     fnType.generics;
                 const bindings = fnType.bindings ?
@@ -3171,17 +3666,19 @@ class DocSearch {
          * `Vec` of `Allocators` and not the implicit `Allocator` parameter that every
          * `Vec` has.
          *
-         * @param {Array<FunctionType>} fnTypesIn - The objects to check.
-         * @param {Array<QueryElement>} queryElems - The elements from the parsed query.
-         * @param {[FunctionType]} whereClause - Trait bounds for generic items.
+         * @param {Array<rustdoc.FunctionType>} fnTypesIn - The objects to check.
+         * @param {Array<rustdoc.QueryElement>} queryElems - The elements from the parsed query.
+         * @param {rustdoc.FunctionType[][]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>|null} mgensIn
          *     - Map functions generics to query generics (never modified).
-         * @param {Map<number,number> -> bool} solutionCb - Called for each `mgens` solution.
+         * @param {function(Map<number,number>): boolean} solutionCb
+         *     - Called for each `mgens` solution.
          * @param {number} unboxingDepth
          *     - Limit checks that Ty matches Vec<Ty>,
          *       but not Vec<ParamEnvAnd<WithInfcx<ConstTy<Interner<Ty=Ty>>>>>
          *
-         * @return {[FunctionType]|null} - Returns highlighted results if a match, null otherwise.
+         * @return {rustdoc.HighlightedFunctionType[]|null}
+         *     - Returns highlighted results if a match, null otherwise.
          */
         function unifyGenericTypes(
             fnTypesIn,
@@ -3195,10 +3692,11 @@ class DocSearch {
                 return null;
             }
             /**
-             * @type Map<integer, integer>|null
+             * @type {Map<number, number>|null}
              */
             const mgens = mgensIn === null ? null : new Map(mgensIn);
             if (queryElems.length === 0) {
+                // @ts-expect-error
                 return solutionCb(mgens) ? fnTypesIn : null;
             }
             if (!fnTypesIn || fnTypesIn.length === 0) {
@@ -3207,7 +3705,11 @@ class DocSearch {
             const fnType = fnTypesIn[0];
             const queryElem = queryElems[0];
             if (unifyFunctionTypeIsMatchCandidate(fnType, queryElem, mgens)) {
-                if (fnType.id < 0 && queryElem.id < 0) {
+                if (fnType.id !== null &&
+                    fnType.id < 0 &&
+                    queryElem.id !== null &&
+                    queryElem.id < 0
+                ) {
                     if (!mgens || !mgens.has(queryElem.id) ||
                         mgens.get(queryElem.id) === fnType.id
                     ) {
@@ -3238,6 +3740,7 @@ class DocSearch {
                         queryElems.slice(1),
                         whereClause,
                         mgens,
+                        // @ts-expect-error
                         mgensScratch => {
                             const solution = unifyFunctionTypeCheckBindings(
                                 fnType,
@@ -3285,7 +3788,7 @@ class DocSearch {
                 unboxingDepth + 1,
             )) {
                 let highlightedRemaining;
-                if (fnType.id < 0) {
+                if (fnType.id !== null && fnType.id < 0) {
                     // Where clause corresponds to `F: A + B`
                     //                                 ^^^^^
                     // The order of the constraints doesn't matter, so
@@ -3295,6 +3798,7 @@ class DocSearch {
                         [queryElem],
                         whereClause,
                         mgens,
+                        // @ts-expect-error
                         mgensScratch => {
                             const hl = unifyGenericTypes(
                                 fnTypesIn.slice(1),
@@ -3316,6 +3820,7 @@ class DocSearch {
                             highlighted: true,
                         }, fnType, {
                             generics: highlightedGenerics,
+                        // @ts-expect-error
                         }), ...highlightedRemaining];
                     }
                 } else {
@@ -3327,6 +3832,7 @@ class DocSearch {
                         [queryElem],
                         whereClause,
                         mgens,
+                        // @ts-expect-error
                         mgensScratch => {
                             const hl = unifyGenericTypes(
                                 fnTypesIn.slice(1),
@@ -3349,6 +3855,7 @@ class DocSearch {
                             bindings: new Map([...fnType.bindings.entries()].map(([k, v]) => {
                                 return [k, highlightedGenerics.splice(0, v.length)];
                             })),
+                        // @ts-expect-error
                         }), ...highlightedRemaining];
                     }
                 }
@@ -3364,8 +3871,8 @@ class DocSearch {
          * or associated type bindings: that's not load-bearing, but it prevents unnecessary
          * backtracking later.
          *
-         * @param {FunctionType} fnType
-         * @param {QueryElement} queryElem
+         * @param {rustdoc.FunctionType} fnType
+         * @param {rustdoc.QueryElement} queryElem
          * @param {Map<number,number>|null} mgensIn - Map query generics to function generics.
          * @returns {boolean}
          */
@@ -3377,7 +3884,7 @@ class DocSearch {
             // fnType.id < 0 means generic
             // queryElem.id < 0 does too
             // mgensIn[queryElem.id] = fnType.id
-            if (fnType.id < 0 && queryElem.id < 0) {
+            if (fnType.id !== null && fnType.id < 0 && queryElem.id !== null && queryElem.id < 0) {
                 if (
                     mgensIn && mgensIn.has(queryElem.id) &&
                     mgensIn.get(queryElem.id) !== fnType.id
@@ -3456,13 +3963,15 @@ class DocSearch {
          * ID of u32 in it, and the rest of the matching engine acts as if `Iterator<u32>` were
          * the type instead.
          *
-         * @param {FunctionType} fnType
-         * @param {QueryElement} queryElem
-         * @param {[FunctionType]} whereClause - Trait bounds for generic items.
-         * @param {Map<number,number>} mgensIn - Map query generics to function generics.
+         * @param {rustdoc.FunctionType} fnType
+         * @param {rustdoc.QueryElement} queryElem
+         * @param {rustdoc.FunctionType[][]} whereClause - Trait bounds for generic items.
+         * @param {Map<number,number>|null} mgensIn - Map query generics to function generics.
          *                                            Never modified.
          * @param {number} unboxingDepth
-         * @returns {false|{mgens: [Map<number,number>], simplifiedGenerics: [FunctionType]}}
+         * @returns {false|{
+         *     mgens: [Map<number,number>|null], simplifiedGenerics: rustdoc.FunctionType[]
+         * }}
          */
         function unifyFunctionTypeCheckBindings(
             fnType,
@@ -3486,8 +3995,10 @@ class DocSearch {
                     }
                     const fnTypeBindings = fnType.bindings.get(name);
                     mgensSolutionSet = mgensSolutionSet.flatMap(mgens => {
+                        // @ts-expect-error
                         const newSolutions = [];
                         unifyFunctionTypes(
+                            // @ts-expect-error
                             fnTypeBindings,
                             constraints,
                             whereClause,
@@ -3500,6 +4011,7 @@ class DocSearch {
                             },
                             unboxingDepth,
                         );
+                        // @ts-expect-error
                         return newSolutions;
                     });
                 }
@@ -3519,14 +4031,15 @@ class DocSearch {
                 } else {
                     simplifiedGenerics = binds;
                 }
+                // @ts-expect-error
                 return { simplifiedGenerics, mgens: mgensSolutionSet };
             }
             return { simplifiedGenerics, mgens: [mgensIn] };
         }
         /**
-         * @param {FunctionType} fnType
-         * @param {QueryElement} queryElem
-         * @param {[FunctionType]} whereClause - Trait bounds for generic items.
+         * @param {rustdoc.FunctionType} fnType
+         * @param {rustdoc.QueryElement} queryElem
+         * @param {rustdoc.FunctionType[][]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>|null} mgens - Map query generics to function generics.
          * @param {number} unboxingDepth
          * @returns {boolean}
@@ -3541,7 +4054,7 @@ class DocSearch {
             if (unboxingDepth >= UNBOXING_LIMIT) {
                 return false;
             }
-            if (fnType.id < 0) {
+            if (fnType.id !== null && fnType.id < 0) {
                 if (!whereClause) {
                     return false;
                 }
@@ -3577,14 +4090,14 @@ class DocSearch {
          * This function checks if the given list contains any
          * (non-generic) types mentioned in the query.
          *
-         * @param {Array<FunctionType>} list    - A list of function types.
-         * @param {[FunctionType]} where_clause - Trait bounds for generic items.
+         * @param {rustdoc.FunctionType[]} list    - A list of function types.
+         * @param {rustdoc.FunctionType[][]} where_clause - Trait bounds for generic items.
          */
         function containsTypeFromQuery(list, where_clause) {
             if (!list) return false;
             for (const ty of parsedQuery.returned) {
                 // negative type ids are generics
-                if (ty.id < 0) {
+                if (ty.id !== null && ty.id < 0) {
                     continue;
                 }
                 if (checkIfInList(list, ty, where_clause, null, 0)) {
@@ -3592,7 +4105,7 @@ class DocSearch {
                 }
             }
             for (const ty of parsedQuery.elems) {
-                if (ty.id < 0) {
+                if (ty.id !== null && ty.id < 0) {
                     continue;
                 }
                 if (checkIfInList(list, ty, where_clause, null, 0)) {
@@ -3606,9 +4119,9 @@ class DocSearch {
          * This function checks if the object (`row`) matches the given type (`elem`) and its
          * generics (if any).
          *
-         * @param {Array<FunctionType>} list
-         * @param {QueryElement} elem          - The element from the parsed query.
-         * @param {[FunctionType]} whereClause - Trait bounds for generic items.
+         * @param {rustdoc.FunctionType[]} list
+         * @param {rustdoc.QueryElement} elem          - The element from the parsed query.
+         * @param {rustdoc.FunctionType[][]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>|null} mgens - Map functions generics to query generics.
          * @param {number} unboxingDepth
          *
@@ -3627,18 +4140,20 @@ class DocSearch {
          * This function checks if the object (`row`) matches the given type (`elem`) and its
          * generics (if any).
          *
-         * @param {Row} row
-         * @param {QueryElement} elem          - The element from the parsed query.
-         * @param {[FunctionType]} whereClause - Trait bounds for generic items.
+         * @param {rustdoc.FunctionType} row
+         * @param {rustdoc.QueryElement} elem          - The element from the parsed query.
+         * @param {rustdoc.FunctionType[][]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>|null} mgens - Map query generics to function generics.
          *
          * @return {boolean} - Returns true if the type matches, false otherwise.
          */
+        // @ts-expect-error
         const checkType = (row, elem, whereClause, mgens, unboxingDepth) => {
             if (unboxingDepth >= UNBOXING_LIMIT) {
                 return false;
             }
-            if (row.id > 0 && elem.id > 0 && elem.pathWithoutLast.length === 0 &&
+            if (row.id !== null && elem.id !== null &&
+                row.id > 0 && elem.id > 0 && elem.pathWithoutLast.length === 0 &&
                 row.generics.length === 0 && elem.generics.length === 0 &&
                 row.bindings.size === 0 && elem.bindings.size === 0 &&
                 // special case
@@ -3648,6 +4163,7 @@ class DocSearch {
             ) {
                 return row.id === elem.id && typePassesFilter(elem.typeFilter, row.ty);
             } else {
+                // @ts-expect-error
                 return unifyFunctionTypes(
                     [row],
                     [elem],
@@ -3662,6 +4178,7 @@ class DocSearch {
         /**
          * Check a query solution for conflicting generics.
          */
+        // @ts-expect-error
         const checkTypeMgensForConflict = mgens => {
             if (!mgens) {
                 return true;
@@ -3679,7 +4196,7 @@ class DocSearch {
         /**
          * Compute an "edit distance" that ignores missing path elements.
          * @param {string[]} contains search query path
-         * @param {Row} ty indexed item
+         * @param {rustdoc.Row} ty indexed item
          * @returns {null|number} edit distance
          */
         function checkPath(contains, ty) {
@@ -3720,6 +4237,7 @@ class DocSearch {
             return ret_dist > maxPathEditDistance ? null : ret_dist;
         }
 
+        // @ts-expect-error
         function typePassesFilter(filter, type) {
             // No filter or Exact mach
             if (filter <= NO_TYPE_FILTER || filter === type) return true;
@@ -3741,6 +4259,7 @@ class DocSearch {
             return false;
         }
 
+        // @ts-expect-error
         function createAliasFromItem(item) {
             return {
                 crate: item.crate,
@@ -3758,11 +4277,14 @@ class DocSearch {
             };
         }
 
+        // @ts-expect-error
         const handleAliases = async(ret, query, filterCrates, currentCrate) => {
             const lowerQuery = query.toLowerCase();
             // We separate aliases and crate aliases because we want to have current crate
             // aliases to be before the others in the displayed results.
+            // @ts-expect-error
             const aliases = [];
+            // @ts-expect-error
             const crateAliases = [];
             if (filterCrates !== null) {
                 if (this.ALIASES.has(filterCrates)
@@ -3775,6 +4297,7 @@ class DocSearch {
             } else {
                 for (const [crate, crateAliasesIndex] of this.ALIASES) {
                     if (crateAliasesIndex.has(lowerQuery)) {
+                        // @ts-expect-error
                         const pushTo = crate === currentCrate ? crateAliases : aliases;
                         const query_aliases = crateAliasesIndex.get(lowerQuery);
                         for (const alias of query_aliases) {
@@ -3784,6 +4307,7 @@ class DocSearch {
                 }
             }
 
+            // @ts-expect-error
             const sortFunc = (aaa, bbb) => {
                 if (aaa.path < bbb.path) {
                     return 1;
@@ -3792,18 +4316,23 @@ class DocSearch {
                 }
                 return -1;
             };
+            // @ts-expect-error
             crateAliases.sort(sortFunc);
             aliases.sort(sortFunc);
 
+            // @ts-expect-error
             const fetchDesc = alias => {
+                // @ts-expect-error
                 return this.searchIndexEmptyDesc.get(alias.crate).contains(alias.bitIndex) ?
                     "" : this.searchState.loadDesc(alias);
             };
             const [crateDescs, descs] = await Promise.all([
+                // @ts-expect-error
                 Promise.all(crateAliases.map(fetchDesc)),
                 Promise.all(aliases.map(fetchDesc)),
             ]);
 
+            // @ts-expect-error
             const pushFunc = alias => {
                 alias.alias = query;
                 const res = buildHrefAndPath(alias);
@@ -3818,12 +4347,15 @@ class DocSearch {
             };
 
             aliases.forEach((alias, i) => {
+                // @ts-expect-error
                 alias.desc = descs[i];
             });
             aliases.forEach(pushFunc);
+            // @ts-expect-error
             crateAliases.forEach((alias, i) => {
                 alias.desc = crateDescs[i];
             });
+            // @ts-expect-error
             crateAliases.forEach(pushFunc);
         };
 
@@ -3843,21 +4375,24 @@ class DocSearch {
          * * `path_dist` is zero if a single-component search query is used, otherwise it's the
          *   distance computed for everything other than the last path component.
          *
-         * @param {Results} results
+         * @param {rustdoc.Results} results
          * @param {string} fullId
-         * @param {integer} id
-         * @param {integer} index
-         * @param {integer} dist
-         * @param {integer} path_dist
+         * @param {number} id
+         * @param {number} index
+         * @param {number} dist
+         * @param {number} path_dist
          */
+        // @ts-expect-error
         function addIntoResults(results, fullId, id, index, dist, path_dist, maxEditDistance) {
             if (dist <= maxEditDistance || index !== -1) {
                 if (results.has(fullId)) {
                     const result = results.get(fullId);
+                    // @ts-expect-error
                     if (result.dontValidate || result.dist <= dist) {
                         return;
                     }
                 }
+                // @ts-expect-error
                 results.set(fullId, {
                     id: id,
                     index: index,
@@ -3873,12 +4408,16 @@ class DocSearch {
          * try to match the items which validates all the elements. For `aa -> bb` will look for
          * functions which have a parameter `aa` and has `bb` in its returned values.
          *
-         * @param {Row} row
-         * @param {integer} pos      - Position in the `searchIndex`.
-         * @param {Object} results
+         * @param {rustdoc.Row} row
+         * @param {number} pos      - Position in the `searchIndex`.
+         * @param {rustdoc.Results} results
          */
         function handleArgs(row, pos, results) {
-            if (!row || (filterCrates !== null && row.crate !== filterCrates) || !row.type) {
+            if (!row || (filterCrates !== null && row.crate !== filterCrates)) {
+                return;
+            }
+            const rowType = row.type;
+            if (!rowType) {
                 return;
             }
 
@@ -3889,21 +4428,23 @@ class DocSearch {
             if (tfpDist === null) {
                 return;
             }
+            // @ts-expect-error
             if (results.size >= MAX_RESULTS && tfpDist > results.max_dist) {
                 return;
             }
 
             // If the result is too "bad", we return false and it ends this search.
             if (!unifyFunctionTypes(
-                row.type.inputs,
+                rowType.inputs,
                 parsedQuery.elems,
-                row.type.where_clause,
+                rowType.where_clause,
                 null,
+                // @ts-expect-error
                 mgens => {
                     return unifyFunctionTypes(
-                        row.type.output,
+                        rowType.output,
                         parsedQuery.returned,
-                        row.type.where_clause,
+                        rowType.where_clause,
                         mgens,
                         checkTypeMgensForConflict,
                         0, // unboxing depth
@@ -3914,15 +4455,16 @@ class DocSearch {
                 return;
             }
 
+            // @ts-expect-error
             results.max_dist = Math.max(results.max_dist || 0, tfpDist);
-            addIntoResults(results, row.id, pos, 0, tfpDist, 0, Number.MAX_VALUE);
+            addIntoResults(results, row.id.toString(), pos, 0, tfpDist, 0, Number.MAX_VALUE);
         }
 
         /**
          * Compare the query fingerprint with the function fingerprint.
          *
-         * @param {{number}} fullId - The function
-         * @param {{Uint32Array}} queryFingerprint - The query
+         * @param {number} fullId - The function
+         * @param {Uint32Array} queryFingerprint - The query
          * @returns {number|null} - Null if non-match, number if distance
          *                          This function might return 0!
          */
@@ -3953,138 +4495,10 @@ class DocSearch {
 
 
         const innerRunQuery = () => {
-            const queryLen =
-                parsedQuery.elems.reduce((acc, next) => acc + next.pathLast.length, 0) +
-                parsedQuery.returned.reduce((acc, next) => acc + next.pathLast.length, 0);
-            const maxEditDistance = Math.floor(queryLen / 3);
-
-            /**
-             * @type {Map<string, integer>}
-             */
-            const genericSymbols = new Map();
-
-            /**
-             * Convert names to ids in parsed query elements.
-             * This is not used for the "In Names" tab, but is used for the
-             * "In Params", "In Returns", and "In Function Signature" tabs.
-             *
-             * If there is no matching item, but a close-enough match, this
-             * function also that correction.
-             *
-             * See `buildTypeMapIndex` for more information.
-             *
-             * @param {QueryElement} elem
-             * @param {boolean} isAssocType
-             */
-            const convertNameToId = (elem, isAssocType) => {
-                const loweredName = elem.pathLast.toLowerCase();
-                if (this.typeNameIdMap.has(loweredName) &&
-                    (isAssocType || !this.typeNameIdMap.get(loweredName).assocOnly)) {
-                    elem.id = this.typeNameIdMap.get(loweredName).id;
-                } else if (!parsedQuery.literalSearch) {
-                    let match = null;
-                    let matchDist = maxEditDistance + 1;
-                    let matchName = "";
-                    for (const [name, { id, assocOnly }] of this.typeNameIdMap) {
-                        const dist = Math.min(
-                            editDistance(name, loweredName, maxEditDistance),
-                            editDistance(name, elem.normalizedPathLast, maxEditDistance),
-                        );
-                        if (dist <= matchDist && dist <= maxEditDistance &&
-                            (isAssocType || !assocOnly)) {
-                            if (dist === matchDist && matchName > name) {
-                                continue;
-                            }
-                            match = id;
-                            matchDist = dist;
-                            matchName = name;
-                        }
-                    }
-                    if (match !== null) {
-                        parsedQuery.correction = matchName;
-                    }
-                    elem.id = match;
-                }
-                if ((elem.id === null && parsedQuery.totalElems > 1 && elem.typeFilter === -1
-                    && elem.generics.length === 0 && elem.bindings.size === 0)
-                    || elem.typeFilter === TY_GENERIC) {
-                    if (genericSymbols.has(elem.normalizedPathLast)) {
-                        elem.id = genericSymbols.get(elem.normalizedPathLast);
-                    } else {
-                        elem.id = -(genericSymbols.size + 1);
-                        genericSymbols.set(elem.normalizedPathLast, elem.id);
-                    }
-                    if (elem.typeFilter === -1 && elem.normalizedPathLast.length >= 3) {
-                        // Silly heuristic to catch if the user probably meant
-                        // to not write a generic parameter. We don't use it,
-                        // just bring it up.
-                        const maxPartDistance = Math.floor(elem.normalizedPathLast.length / 3);
-                        let matchDist = maxPartDistance + 1;
-                        let matchName = "";
-                        for (const name of this.typeNameIdMap.keys()) {
-                            const dist = editDistance(
-                                name,
-                                elem.normalizedPathLast,
-                                maxPartDistance,
-                            );
-                            if (dist <= matchDist && dist <= maxPartDistance) {
-                                if (dist === matchDist && matchName > name) {
-                                    continue;
-                                }
-                                matchDist = dist;
-                                matchName = name;
-                            }
-                        }
-                        if (matchName !== "") {
-                            parsedQuery.proposeCorrectionFrom = elem.name;
-                            parsedQuery.proposeCorrectionTo = matchName;
-                        }
-                    }
-                    elem.typeFilter = TY_GENERIC;
-                }
-                if (elem.generics.length > 0 && elem.typeFilter === TY_GENERIC) {
-                    // Rust does not have HKT
-                    parsedQuery.error = [
-                        "Generic type parameter ",
-                        elem.name,
-                        " does not accept generic parameters",
-                    ];
-                }
-                for (const elem2 of elem.generics) {
-                    convertNameToId(elem2);
-                }
-                elem.bindings = new Map(Array.from(elem.bindings.entries())
-                    .map(entry => {
-                        const [name, constraints] = entry;
-                        if (!this.typeNameIdMap.has(name)) {
-                            parsedQuery.error = [
-                                "Type parameter ",
-                                name,
-                                " does not exist",
-                            ];
-                            return [null, []];
-                        }
-                        for (const elem2 of constraints) {
-                            convertNameToId(elem2);
-                        }
-
-                        return [this.typeNameIdMap.get(name).id, constraints];
-                    }),
-                );
-            };
-
-            for (const elem of parsedQuery.elems) {
-                convertNameToId(elem);
-                this.buildFunctionTypeFingerprint(elem, parsedQuery.typeFingerprint);
-            }
-            for (const elem of parsedQuery.returned) {
-                convertNameToId(elem);
-                this.buildFunctionTypeFingerprint(elem, parsedQuery.typeFingerprint);
-            }
-
             if (parsedQuery.foundElems === 1 && !parsedQuery.hasReturnArrow) {
                 const elem = parsedQuery.elems[0];
                 // use arrow functions to preserve `this`.
+                // @ts-expect-error
                 const handleNameSearch = id => {
                     const row = this.searchIndex[id];
                     if (!typePassesFilter(elem.typeFilter, row.ty) ||
@@ -4094,6 +4508,7 @@ class DocSearch {
 
                     let pathDist = 0;
                     if (elem.fullPath.length > 1) {
+                        // @ts-expect-error
                         pathDist = checkPath(elem.pathWithoutLast, row);
                         if (pathDist === null) {
                             return;
@@ -4102,11 +4517,13 @@ class DocSearch {
 
                     if (parsedQuery.literalSearch) {
                         if (row.word === elem.pathLast) {
+                            // @ts-expect-error
                             addIntoResults(results_others, row.id, id, 0, 0, pathDist);
                         }
                     } else {
                         addIntoResults(
                             results_others,
+                            // @ts-expect-error
                             row.id,
                             id,
                             row.normalizedName.indexOf(elem.normalizedPathLast),
@@ -4147,23 +4564,31 @@ class DocSearch {
                         const returned = row.type && row.type.output
                             && checkIfInList(row.type.output, elem, row.type.where_clause, null, 0);
                         if (in_args) {
+                            // @ts-expect-error
                             results_in_args.max_dist = Math.max(
+                                // @ts-expect-error
                                 results_in_args.max_dist || 0,
                                 tfpDist,
                             );
                             const maxDist = results_in_args.size < MAX_RESULTS ?
                                 (tfpDist + 1) :
+                                // @ts-expect-error
                                 results_in_args.max_dist;
+                            // @ts-expect-error
                             addIntoResults(results_in_args, row.id, i, -1, tfpDist, 0, maxDist);
                         }
                         if (returned) {
+                            // @ts-expect-error
                             results_returned.max_dist = Math.max(
+                                // @ts-expect-error
                                 results_returned.max_dist || 0,
                                 tfpDist,
                             );
                             const maxDist = results_returned.size < MAX_RESULTS ?
                                 (tfpDist + 1) :
+                                // @ts-expect-error
                                 results_returned.max_dist;
+                            // @ts-expect-error
                             addIntoResults(results_returned, row.id, i, -1, tfpDist, 0, maxDist);
                         }
                     }
@@ -4173,14 +4598,17 @@ class DocSearch {
                 // types with generic parameters go last.
                 // That's because of the way unification is structured: it eats off
                 // the end, and hits a fast path if the last item is a simple atom.
+                // @ts-expect-error
                 const sortQ = (a, b) => {
                     const ag = a.generics.length === 0 && a.bindings.size === 0;
                     const bg = b.generics.length === 0 && b.bindings.size === 0;
                     if (ag !== bg) {
+                        // @ts-expect-error
                         return ag - bg;
                     }
                     const ai = a.id > 0;
                     const bi = b.id > 0;
+                    // @ts-expect-error
                     return ai - bi;
                 };
                 parsedQuery.elems.sort(sortQ);
@@ -4197,8 +4625,11 @@ class DocSearch {
 
         const isType = parsedQuery.foundElems !== 1 || parsedQuery.hasReturnArrow;
         const [sorted_in_args, sorted_returned, sorted_others] = await Promise.all([
+            // @ts-expect-error
             sortResults(results_in_args, "elems", currentCrate),
+            // @ts-expect-error
             sortResults(results_returned, "returned", currentCrate),
+            // @ts-expect-error
             sortResults(results_others, (isType ? "query" : null), currentCrate),
         ]);
         const ret = createQueryResults(
@@ -4210,11 +4641,14 @@ class DocSearch {
             filterCrates, currentCrate);
         await Promise.all([ret.others, ret.returned, ret.in_args].map(async list => {
             const descs = await Promise.all(list.map(result => {
+                // @ts-expect-error
                 return this.searchIndexEmptyDesc.get(result.crate).contains(result.bitIndex) ?
                     "" :
+                    // @ts-expect-error
                     this.searchState.loadDesc(result);
             }));
             for (const [i, result] of list.entries()) {
+                // @ts-expect-error
                 result.desc = descs[i];
             }
         }));
@@ -4229,7 +4663,9 @@ class DocSearch {
 
 // ==================== Core search logic end ====================
 
+/** @type {Map<string, rustdoc.RawSearchIndexCrate>} */
 let rawSearchIndex;
+// @ts-expect-error
 let docSearch;
 const longItemTypes = [
     "keyword",
@@ -4259,13 +4695,16 @@ const longItemTypes = [
     "derive macro",
     "trait alias",
 ];
+// @ts-expect-error
 let currentResults;
 
 // In the search display, allows to switch between tabs.
+// @ts-expect-error
 function printTab(nb) {
     let iter = 0;
     let foundCurrentTab = false;
     let foundCurrentResultSet = false;
+    // @ts-expect-error
     onEachLazy(document.getElementById("search-tabs").childNodes, elem => {
         if (nb === iter) {
             addClass(elem, "selected");
@@ -4277,6 +4716,7 @@ function printTab(nb) {
     });
     const isTypeSearch = (nb > 0 || iter === 1);
     iter = 0;
+    // @ts-expect-error
     onEachLazy(document.getElementById("results").childNodes, elem => {
         if (nb === iter) {
             addClass(elem, "active");
@@ -4287,12 +4727,15 @@ function printTab(nb) {
         iter += 1;
     });
     if (foundCurrentTab && foundCurrentResultSet) {
+        // @ts-expect-error
         searchState.currentTab = nb;
         // Corrections only kick in on type-based searches.
         const correctionsElem = document.getElementsByClassName("search-corrections");
         if (isTypeSearch) {
+            // @ts-expect-error
             removeClass(correctionsElem[0], "hidden");
         } else {
+            // @ts-expect-error
             addClass(correctionsElem[0], "hidden");
         }
     } else if (nb !== 0) {
@@ -4326,16 +4769,22 @@ function getFilterCrates() {
     const elem = document.getElementById("crate-search");
 
     if (elem &&
+        // @ts-expect-error
         elem.value !== "all crates" &&
+        // @ts-expect-error
         window.searchIndex.has(elem.value)
     ) {
+        // @ts-expect-error
         return elem.value;
     }
     return null;
 }
 
+// @ts-expect-error
 function nextTab(direction) {
+    // @ts-expect-error
     const next = (searchState.currentTab + direction + 3) % searchState.focusedByTab.length;
+    // @ts-expect-error
     searchState.focusedByTab[searchState.currentTab] = document.activeElement;
     printTab(next);
     focusSearchResult();
@@ -4344,9 +4793,12 @@ function nextTab(direction) {
 // Focus the first search result on the active tab, or the result that
 // was focused last time this tab was active.
 function focusSearchResult() {
+    // @ts-expect-error
     const target = searchState.focusedByTab[searchState.currentTab] ||
         document.querySelectorAll(".search-results.active a").item(0) ||
+        // @ts-expect-error
         document.querySelectorAll("#search-tabs button").item(searchState.currentTab);
+    // @ts-expect-error
     searchState.focusedByTab[searchState.currentTab] = null;
     if (target) {
         target.focus();
@@ -4356,9 +4808,8 @@ function focusSearchResult() {
 /**
  * Render a set of search results for a single tab.
  * @param {Array<?>}    array   - The search results for this tab
- * @param {ParsedQuery} query
+ * @param {rustdoc.ParsedQuery<rustdoc.QueryElement>} query
  * @param {boolean}     display - True if this is the active tab
- * @param {"sig"|"elems"|"returned"|null} typeInfo
  */
 async function addTab(array, query, display) {
     const extraClass = display ? " active" : "";
@@ -4405,6 +4856,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             if (item.displayTypeSignature) {
                 const {type, mappedNames, whereClause} = await item.displayTypeSignature;
                 const displayType = document.createElement("div");
+                // @ts-expect-error
                 type.forEach((value, index) => {
                     if (index % 2 !== 0) {
                         const highlight = document.createElement("strong");
@@ -4445,6 +4897,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                         const line = document.createElement("div");
                         line.className = "where";
                         line.appendChild(document.createTextNode(`    ${name}: `));
+                        // @ts-expect-error
                         innerType.forEach((value, index) => {
                             if (index % 2 !== 0) {
                                 const highlight = document.createElement("strong");
@@ -4488,6 +4941,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
     return output;
 }
 
+// @ts-expect-error
 function makeTabHeader(tabNb, text, nbElems) {
     // https://blog.horizon-eda.org/misc/2020/02/19/ui.html
     //
@@ -4497,6 +4951,7 @@ function makeTabHeader(tabNb, text, nbElems) {
     const fmtNbElems =
         nbElems < 10  ? `\u{2007}(${nbElems})\u{2007}\u{2007}` :
         nbElems < 100 ? `\u{2007}(${nbElems})\u{2007}` : `\u{2007}(${nbElems})`;
+    // @ts-expect-error
     if (searchState.currentTab === tabNb) {
         return "<button class=\"selected\">" + text +
             "<span class=\"count\">" + fmtNbElems + "</span></button>";
@@ -4505,11 +4960,12 @@ function makeTabHeader(tabNb, text, nbElems) {
 }
 
 /**
- * @param {ResultsTable} results
+ * @param {rustdoc.ResultsTable} results
  * @param {boolean} go_to_first
  * @param {string} filterCrates
  */
 async function showResults(results, go_to_first, filterCrates) {
+    // @ts-expect-error
     const search = searchState.outputElement();
     if (go_to_first || (results.others.length === 1
         && getSettingValue("go-to-only-result") === "true")
@@ -4527,6 +4983,7 @@ async function showResults(results, go_to_first, filterCrates) {
         // will be used, starting search again since the search input is not empty, leading you
         // back to the previous page again.
         window.onunload = () => { };
+        // @ts-expect-error
         searchState.removeQueryParameters();
         const elem = document.createElement("a");
         elem.href = results.others[0].href;
@@ -4537,6 +4994,7 @@ async function showResults(results, go_to_first, filterCrates) {
         return;
     }
     if (results.query === undefined) {
+        // @ts-expect-error
         results.query = DocSearch.parseQuery(searchState.input.value);
     }
 
@@ -4545,6 +5003,7 @@ async function showResults(results, go_to_first, filterCrates) {
     // Navigate to the relevant tab if the current tab is empty, like in case users search
     // for "-> String". If they had selected another tab previously, they have to click on
     // it again.
+    // @ts-expect-error
     let currentTab = searchState.currentTab;
     if ((currentTab === 0 && results.others.length === 0) ||
         (currentTab === 1 && results.in_args.length === 0) ||
@@ -4572,6 +5031,7 @@ async function showResults(results, go_to_first, filterCrates) {
         <h1 class="search-results-title">Results</h1>${crates}</div>`;
     if (results.query.error !== null) {
         const error = results.query.error;
+        // @ts-expect-error
         error.forEach((value, index) => {
             value = value.split("<").join("&lt;").split(">").join("&gt;");
             if (index % 2 !== 0) {
@@ -4632,7 +5092,9 @@ async function showResults(results, go_to_first, filterCrates) {
     resultsElem.appendChild(ret_returned);
 
     search.innerHTML = output;
+    // @ts-expect-error
     if (searchState.rustdocToolbar) {
+        // @ts-expect-error
         search.querySelector(".main-heading").appendChild(searchState.rustdocToolbar);
     }
     const crateSearch = document.getElementById("crate-search");
@@ -4641,23 +5103,30 @@ async function showResults(results, go_to_first, filterCrates) {
     }
     search.appendChild(resultsElem);
     // Reset focused elements.
+    // @ts-expect-error
     searchState.showResults(search);
+    // @ts-expect-error
     const elems = document.getElementById("search-tabs").childNodes;
+    // @ts-expect-error
     searchState.focusedByTab = [];
     let i = 0;
     for (const elem of elems) {
         const j = i;
+        // @ts-expect-error
         elem.onclick = () => printTab(j);
+        // @ts-expect-error
         searchState.focusedByTab.push(null);
         i += 1;
     }
     printTab(currentTab);
 }
 
+// @ts-expect-error
 function updateSearchHistory(url) {
     if (!browserSupportsHistoryApi()) {
         return;
     }
+    // @ts-expect-error
     const params = searchState.getQueryStringParams();
     if (!history.state && !params.search) {
         history.pushState(null, "", url);
@@ -4672,9 +5141,11 @@ function updateSearchHistory(url) {
  * @param {boolean} [forced]
  */
 async function search(forced) {
+    // @ts-expect-error
     const query = DocSearch.parseQuery(searchState.input.value.trim());
     let filterCrates = getFilterCrates();
 
+    // @ts-expect-error
     if (!forced && query.userQuery === currentResults) {
         if (query.userQuery.length > 0) {
             putBackSearch();
@@ -4682,8 +5153,10 @@ async function search(forced) {
         return;
     }
 
+    // @ts-expect-error
     searchState.setLoadingSearch();
 
+    // @ts-expect-error
     const params = searchState.getQueryStringParams();
 
     // In case we have no information about the saved crate and there is a URL query parameter,
@@ -4693,6 +5166,7 @@ async function search(forced) {
     }
 
     // Update document title to maintain a meaningful browser history
+    // @ts-expect-error
     searchState.title = "\"" + query.userQuery + "\" Search - Rust";
 
     // Because searching is incremental by character, only the most
@@ -4700,8 +5174,10 @@ async function search(forced) {
     updateSearchHistory(buildUrl(query.userQuery, filterCrates));
 
     await showResults(
+        // @ts-expect-error
         await docSearch.execQuery(query, filterCrates, window.currentCrate),
         params.go_to_first,
+        // @ts-expect-error
         filterCrates);
 }
 
@@ -4710,62 +5186,83 @@ async function search(forced) {
  * @param {Event} [e] - The event that triggered this call, if any
  */
 function onSearchSubmit(e) {
+    // @ts-expect-error
     e.preventDefault();
+    // @ts-expect-error
     searchState.clearInputTimeout();
     search();
 }
 
 function putBackSearch() {
+    // @ts-expect-error
     const search_input = searchState.input;
+    // @ts-expect-error
     if (!searchState.input) {
         return;
     }
+    // @ts-expect-error
     if (search_input.value !== "" && !searchState.isDisplayed()) {
+        // @ts-expect-error
         searchState.showResults();
         if (browserSupportsHistoryApi()) {
             history.replaceState(null, "",
                 buildUrl(search_input.value, getFilterCrates()));
         }
+        // @ts-expect-error
         document.title = searchState.title;
     }
 }
 
 function registerSearchEvents() {
+    // @ts-expect-error
     const params = searchState.getQueryStringParams();
 
     // Populate search bar with query string search term when provided,
     // but only if the input bar is empty. This avoid the obnoxious issue
     // where you start trying to do a search, and the index loads, and
     // suddenly your search is gone!
+    // @ts-expect-error
     if (searchState.input.value === "") {
+        // @ts-expect-error
         searchState.input.value = params.search || "";
     }
 
     const searchAfter500ms = () => {
+        // @ts-expect-error
         searchState.clearInputTimeout();
+        // @ts-expect-error
         if (searchState.input.value.length === 0) {
+            // @ts-expect-error
             searchState.hideResults();
         } else {
+            // @ts-expect-error
             searchState.timeout = setTimeout(search, 500);
         }
     };
+    // @ts-expect-error
     searchState.input.onkeyup = searchAfter500ms;
+    // @ts-expect-error
     searchState.input.oninput = searchAfter500ms;
+    // @ts-expect-error
     document.getElementsByClassName("search-form")[0].onsubmit = onSearchSubmit;
+    // @ts-expect-error
     searchState.input.onchange = e => {
         if (e.target !== document.activeElement) {
             // To prevent doing anything when it's from a blur event.
             return;
         }
         // Do NOT e.preventDefault() here. It will prevent pasting.
+        // @ts-expect-error
         searchState.clearInputTimeout();
         // zero-timeout necessary here because at the time of event handler execution the
         // pasted content is not in the input field yet. Shouldn’t make any difference for
         // change, though.
         setTimeout(search, 0);
     };
+    // @ts-expect-error
     searchState.input.onpaste = searchState.input.onchange;
 
+    // @ts-expect-error
     searchState.outputElement().addEventListener("keydown", e => {
         // We only handle unmodified keystrokes here. We don't want to interfere with,
         // for instance, alt-left and alt-right for history navigation.
@@ -4775,18 +5272,24 @@ function registerSearchEvents() {
         // up and down arrow select next/previous search result, or the
         // search box if we're already at the top.
         if (e.which === 38) { // up
+            // @ts-expect-error
             const previous = document.activeElement.previousElementSibling;
             if (previous) {
+                // @ts-expect-error
                 previous.focus();
             } else {
+                // @ts-expect-error
                 searchState.focus();
             }
             e.preventDefault();
         } else if (e.which === 40) { // down
+            // @ts-expect-error
             const next = document.activeElement.nextElementSibling;
             if (next) {
+                // @ts-expect-error
                 next.focus();
             }
+            // @ts-expect-error
             const rect = document.activeElement.getBoundingClientRect();
             if (window.innerHeight - rect.bottom < rect.height) {
                 window.scrollBy(0, rect.height);
@@ -4801,6 +5304,7 @@ function registerSearchEvents() {
         }
     });
 
+    // @ts-expect-error
     searchState.input.addEventListener("keydown", e => {
         if (e.which === 40) { // down
             focusSearchResult();
@@ -4808,11 +5312,14 @@ function registerSearchEvents() {
         }
     });
 
+    // @ts-expect-error
     searchState.input.addEventListener("focus", () => {
         putBackSearch();
     });
 
+    // @ts-expect-error
     searchState.input.addEventListener("blur", () => {
+        // @ts-expect-error
         searchState.input.placeholder = searchState.input.origPlaceholder;
     });
 
@@ -4823,6 +5330,7 @@ function registerSearchEvents() {
         const previousTitle = document.title;
 
         window.addEventListener("popstate", e => {
+            // @ts-expect-error
             const params = searchState.getQueryStringParams();
             // Revert to the previous title manually since the History
             // API ignores the title parameter.
@@ -4836,6 +5344,7 @@ function registerSearchEvents() {
             // nothing there, which lets you really go back to a
             // previous state with nothing in the bar.
             if (params.search && params.search.length > 0) {
+                // @ts-expect-error
                 searchState.input.value = params.search;
                 // Some browsers fire "onpopstate" for every page load
                 // (Chrome), while others fire the event only when actually
@@ -4845,9 +5354,11 @@ function registerSearchEvents() {
                 e.preventDefault();
                 search();
             } else {
+                // @ts-expect-error
                 searchState.input.value = "";
                 // When browsing back from search results the main page
                 // visibility must be reset.
+                // @ts-expect-error
                 searchState.hideResults();
             }
         });
@@ -4860,17 +5371,22 @@ function registerSearchEvents() {
     // that try to sync state between the URL and the search input. To work around it,
     // do a small amount of re-init on page show.
     window.onpageshow = () => {
+        // @ts-expect-error
         const qSearch = searchState.getQueryStringParams().search;
+        // @ts-expect-error
         if (searchState.input.value === "" && qSearch) {
+            // @ts-expect-error
             searchState.input.value = qSearch;
         }
         search();
     };
 }
 
+// @ts-expect-error
 function updateCrate(ev) {
     if (ev.target.value === "all crates") {
         // If we don't remove it from the URL, it'll be picked up again by the search.
+        // @ts-expect-error
         const query = searchState.input.value.trim();
         updateSearchHistory(buildUrl(query, null));
     }
@@ -4881,9 +5397,11 @@ function updateCrate(ev) {
     search(true);
 }
 
+// @ts-expect-error
 function initSearch(searchIndx) {
     rawSearchIndex = searchIndx;
     if (typeof window !== "undefined") {
+        // @ts-expect-error
         docSearch = new DocSearch(rawSearchIndex, ROOT_PATH, searchState);
         registerSearchEvents();
         // If there's a search term in the URL, execute the search now.
@@ -4891,6 +5409,7 @@ function initSearch(searchIndx) {
             search();
         }
     } else if (typeof exports !== "undefined") {
+        // @ts-expect-error
         docSearch = new DocSearch(rawSearchIndex, ROOT_PATH, searchState);
         exports.docSearch = docSearch;
         exports.parseQuery = DocSearch.parseQuery;
@@ -4902,8 +5421,11 @@ if (typeof exports !== "undefined") {
 }
 
 if (typeof window !== "undefined") {
+    // @ts-expect-error
     window.initSearch = initSearch;
+    // @ts-expect-error
     if (window.searchIndex !== undefined) {
+        // @ts-expect-error
         initSearch(window.searchIndex);
     }
 } else {
@@ -4918,19 +5440,23 @@ if (typeof window !== "undefined") {
 // https://fossies.org/linux/lucene/lucene/core/src/java/org/apache/lucene/util/automaton/
 //   LevenshteinAutomata.java
 class ParametricDescription {
+    // @ts-expect-error
     constructor(w, n, minErrors) {
         this.w = w;
         this.n = n;
         this.minErrors = minErrors;
     }
+    // @ts-expect-error
     isAccept(absState) {
         const state = Math.floor(absState / (this.w + 1));
         const offset = absState % (this.w + 1);
         return this.w - offset + this.minErrors[state] <= this.n;
     }
+    // @ts-expect-error
     getPosition(absState) {
         return absState % (this.w + 1);
     }
+    // @ts-expect-error
     getVector(name, charCode, pos, end) {
         let vector = 0;
         for (let i = pos; i < end; i += 1) {
@@ -4941,6 +5467,7 @@ class ParametricDescription {
         }
         return vector;
     }
+    // @ts-expect-error
     unpack(data, index, bitsPerValue) {
         const bitLoc = (bitsPerValue * index);
         const dataLoc = bitLoc >> 5;
