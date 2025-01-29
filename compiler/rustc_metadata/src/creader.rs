@@ -1118,6 +1118,43 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         }
     }
 
+    /// Inject the `compiler_builtins` crate if it is not already in the graph.
+    fn inject_compiler_builtins(&mut self, krate: &ast::Crate) {
+        // `compiler_builtins` does not get extern builtins, nor do `#![no_core]` crates
+        if attr::contains_name(&krate.attrs, sym::compiler_builtins)
+            || attr::contains_name(&krate.attrs, sym::no_core)
+        {
+            info!("`compiler_builtins` unneeded");
+            return;
+        }
+
+        // If a `#![compiler_builtins]` crate already exists, avoid injecting it twice. This is
+        // the common case since usually it appears as a dependency of `std` or `alloc`.
+        for (cnum, cmeta) in self.cstore.iter_crate_data() {
+            if cmeta.is_compiler_builtins() {
+                info!("`compiler_builtins` already exists (cnum = {cnum}); skipping injection");
+                return;
+            }
+        }
+
+        // `compiler_builtins` is not yet in the graph; inject it. Error on resolution failure.
+        let Some(cnum) = self.resolve_crate(
+            sym::compiler_builtins,
+            krate.spans.inner_span.shrink_to_lo(),
+            CrateDepKind::Explicit,
+            CrateOrigin::Injected,
+        ) else {
+            info!("`compiler_builtins` not resolved");
+            return;
+        };
+
+        // Sanity check that the loaded crate is `#![compiler_builtins]`
+        let cmeta = self.cstore.get_crate_data(cnum);
+        if !cmeta.is_compiler_builtins() {
+            self.dcx().emit_err(errors::CrateNotCompilerBuiltins { crate_name: cmeta.name() });
+        }
+    }
+
     fn inject_dependency_if(
         &mut self,
         krate: CrateNum,
@@ -1227,6 +1264,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     }
 
     pub fn postprocess(&mut self, krate: &ast::Crate) {
+        self.inject_compiler_builtins(krate);
         self.inject_forced_externs();
         self.inject_profiler_runtime();
         self.inject_allocator_crate(krate);

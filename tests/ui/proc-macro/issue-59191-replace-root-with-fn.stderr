@@ -1,10 +1,9 @@
-error: requires `sized` lang_item
-  --> $DIR/issue-59191-replace-root-with-fn.rs:9:1
-   |
-LL | #![issue_59191::no_main]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the attribute macro `issue_59191::no_main` (in Nightly builds, run with -Z macro-backtrace for more info)
+error: `#[panic_handler]` function required, but not found
 
-error: aborting due to 1 previous error
+error: unwinding panics are not supported without std
+   |
+   = help: using nightly cargo, use -Zbuild-std with panic="abort" to avoid unwinding
+   = note: since the core library is usually precompiled with panic="unwind", rebuilding your crate with panic="abort" may not be enough to fix the problem
+
+error: aborting due to 2 previous errors
 
