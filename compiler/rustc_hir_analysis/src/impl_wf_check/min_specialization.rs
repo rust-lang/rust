@@ -34,7 +34,7 @@
 //! impl<T, I: Iterator<Item=T>> SpecExtend<T> for I { /* default impl */ }
 //! ```
 //!
-//! We get that the generic pamameters for `impl2` are `[T, std::vec::IntoIter<T>]`.
+//! We get that the generic parameters for `impl2` are `[T, std::vec::IntoIter<T>]`.
 //! `T` is constrained to be `<I as Iterator>::Item`, so we check only
 //! `std::vec::IntoIter<T>` for repeated parameters, which it doesn't have. The
 //! predicates of `impl1` are only `T: Sized`, which is also a predicate of
