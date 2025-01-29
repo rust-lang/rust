@@ -1,4 +1,4 @@
-error: associated type bound for `Assoc` in `dyn Fixed` differs from associated type bound from supertrait
+warning: associated type bound for `Assoc` in `dyn Fixed` differs from associated type bound from supertrait
   --> $DIR/pretty.rs:28:34
    |
 LL | trait Fixed: Super<Assoc = u8> {}
@@ -8,9 +8,9 @@ LL | fn dyn_fixed_multi(x: &dyn Fixed<Assoc = u16>) { x }
    |                                  ^^^^^^^^^^^ this bound has no effect and will be ignored
    |
    = note: `Assoc = u8` was implied by a supertrait and shadows any user-written bounds, so `Assoc = u16` will be ignored
-   = note: `#[deny(dyn_assoc_shadowed)]` on by default
+   = note: `#[warn(dyn_assoc_shadowed)]` on by default
 
-error: associated type bound for `Assoc2` in `dyn FixedGeneric1` differs from associated type bound from supertrait
+warning: associated type bound for `Assoc2` in `dyn FixedGeneric1` differs from associated type bound from supertrait
   --> $DIR/pretty.rs:37:62
    |
 LL | trait FixedGeneric1<'a>: SuperGeneric<'a, Assoc2 = &'a u8> {}
@@ -67,12 +67,12 @@ error[E0308]: mismatched types
   --> $DIR/pretty.rs:28:50
    |
 LL | fn dyn_fixed_multi(x: &dyn Fixed<Assoc = u16>) { x }
-   |                                               -  ^ expected `()`, found `&dyn Fixed`
+   |                                               -  ^ expected `()`, found `&dyn Fixed<Assoc = u16>`
    |                                               |
-   |                                               help: try adding a return type: `-> &dyn Fixed`
+   |                                               help: try adding a return type: `-> &dyn Fixed<Assoc = u16>`
    |
    = note: expected unit type `()`
-              found reference `&dyn Fixed`
+              found reference `&dyn Fixed<Assoc = u16>`
 
 error[E0308]: mismatched types
   --> $DIR/pretty.rs:30:38
@@ -133,12 +133,12 @@ error[E0308]: mismatched types
   --> $DIR/pretty.rs:37:79
    |
 LL | fn dyn_fixed_generic_multi(x: &dyn for<'a> FixedGeneric1<'a, Assoc2 = &u8>) { x }
-   |                                                                            -  ^ expected `()`, found `&dyn FixedGeneric1<'a>`
+   |                                                                            -  ^ expected `()`, found `&dyn FixedGeneric1<'a, Assoc2 = ...>`
    |                                                                            |
-   |                                                                            help: try adding a return type: `-> &dyn for<'a> FixedGeneric1<'a>`
+   |                                                                            help: try adding a return type: `-> &dyn for<'a> FixedGeneric1<'a, Assoc2 = &u8>`
    |
    = note: expected unit type `()`
-              found reference `&dyn for<'a> FixedGeneric1<'a>`
+              found reference `&dyn for<'a> FixedGeneric1<'a, Assoc2 = &u8>`
 
 error[E0308]: mismatched types
   --> $DIR/pretty.rs:39:40
@@ -184,6 +184,6 @@ LL | fn dyn_has_gat(x: &dyn HasGat<u8, Assoc<bool> = ()>) { x }
    = note: expected unit type `()`
               found reference `&dyn HasGat<u8, Assoc<bool> = ()>`
 
-error: aborting due to 16 previous errors; 1 warning emitted
+error: aborting due to 14 previous errors; 3 warnings emitted
 
 For more information about this error, try `rustc --explain E0308`.

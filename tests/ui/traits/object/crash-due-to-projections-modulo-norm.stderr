@@ -1,5 +1,5 @@
-error: associated type bound for `Foo` in `dyn Subtrait` differs from associated type bound from supertrait
-  --> $DIR/crash-due-to-projections-modulo-norm.rs:34:31
+warning: associated type bound for `Foo` in `dyn Subtrait` differs from associated type bound from supertrait
+  --> $DIR/crash-due-to-projections-modulo-norm.rs:36:31
    |
 LL | trait Subtrait: Supertrait<Foo = TraitObject> {}
    |                            ----------------- shadowed due to this supertrait bound
@@ -8,10 +8,10 @@ LL |     F: HasOutput<dyn Subtrait<Foo = AlsoTraitObject>>,
    |                               ^^^^^^^^^^^^^^^^^^^^^ this bound has no effect and will be ignored
    |
    = note: `Foo = (dyn SomeTrait<Item = <Dummy as DummyTrait>::DummyType> + 'static)` was implied by a supertrait and shadows any user-written bounds, so `Foo = (dyn SomeTrait<Item = Thing> + 'static)` will be ignored
-   = note: `#[deny(dyn_assoc_shadowed)]` on by default
+   = note: `#[warn(dyn_assoc_shadowed)]` on by default
 
-error: associated type bound for `Foo` in `dyn Subtrait` differs from associated type bound from supertrait
-  --> $DIR/crash-due-to-projections-modulo-norm.rs:34:31
+warning: associated type bound for `Foo` in `dyn Subtrait` differs from associated type bound from supertrait
+  --> $DIR/crash-due-to-projections-modulo-norm.rs:36:31
    |
 LL | trait Subtrait: Supertrait<Foo = TraitObject> {}
    |                            ----------------- shadowed due to this supertrait bound
@@ -22,5 +22,5 @@ LL |     F: HasOutput<dyn Subtrait<Foo = AlsoTraitObject>>,
    = note: `Foo = (dyn SomeTrait<Item = <Dummy as DummyTrait>::DummyType> + 'static)` was implied by a supertrait and shadows any user-written bounds, so `Foo = (dyn SomeTrait<Item = Thing> + 'static)` will be ignored
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 2 previous errors
+warning: 2 warnings emitted
 

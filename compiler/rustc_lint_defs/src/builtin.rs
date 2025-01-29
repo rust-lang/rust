@@ -5132,7 +5132,7 @@ declare_lint! {
 declare_lint! {
     /// Hi
     pub DYN_ASSOC_SHADOWED,
-    Deny,
+    Warn,
     "oops",
 }
 

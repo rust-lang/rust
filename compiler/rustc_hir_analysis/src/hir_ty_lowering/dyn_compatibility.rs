@@ -210,14 +210,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             // Include projections defined on supertraits.
                             implied_projection_bounds.push(pred);
 
-                            if let Some((user_written_projection, user_written_span)) =
-                                projection_bounds.shift_remove(&tcx.anonymize_bound_vars(
-                                    pred.map_bound(|pred| pred.projection_term),
-                                ))
+                            let key = tcx
+                                .anonymize_bound_vars(pred.map_bound(|pred| pred.projection_term));
+                            if let Some(&(user_written_projection, user_written_span)) =
+                                projection_bounds.get(&key)
                             {
                                 if tcx.anonymize_bound_vars(user_written_projection)
                                     == tcx.anonymize_bound_vars(pred)
                                 {
+                                    projection_bounds.shift_remove(&key);
                                     self.lint_redundant_projection(
                                         hir_id,
                                         user_written_projection,

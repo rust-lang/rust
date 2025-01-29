@@ -1,3 +1,5 @@
+//@ check-pass
+
 // Step 1: Create two names for a single type: `Thing` and `AlsoThing`
 
 struct Thing;
@@ -32,8 +34,8 @@ trait HasOutput<A: ?Sized> {
 fn foo<F>() -> F::Output
 where
     F: HasOutput<dyn Subtrait<Foo = AlsoTraitObject>>,
-    //~^ ERROR associated type bound for `Foo` in `dyn Subtrait` differs from associated type bound from supertrait
-    //~| ERROR associated type bound for `Foo` in `dyn Subtrait` differs from associated type bound from supertrait
+    //~^ WARN associated type bound for `Foo` in `dyn Subtrait` differs from associated type bound from supertrait
+    //~| WARN associated type bound for `Foo` in `dyn Subtrait` differs from associated type bound from supertrait
     {
     todo!()
 }
