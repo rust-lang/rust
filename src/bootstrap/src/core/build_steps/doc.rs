@@ -845,6 +845,9 @@ impl Step for Rustc {
         cargo.rustdocflag("--extern-html-root-url");
         cargo.rustdocflag("ena=https://docs.rs/ena/latest/");
 
+        // Enabling the "jump to def" feature on rustc's source code pages.
+        cargo.rustdocflag("--generate-link-to-definition");
+
         let mut to_open = None;
 
         let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target).join("doc");
