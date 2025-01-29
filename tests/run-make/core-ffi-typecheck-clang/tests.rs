@@ -26,14 +26,7 @@ cfg_if! {
 
 // Verify Rust's 'c_char' has correct sign.
 cfg_if! {
-    if #[cfg(target_arch = "csky")] {
-        // FIXME: c_char signedness misallignment on csky, should be signed on CLANG
-        const XFAIL_C_CHAR_SIGNED: bool = false;
-        pub const TEST_C_CHAR_UNSIGNED: () = if ffi::c_char::SIGNED != XFAIL_C_CHAR_SIGNED {
-            panic!("mismatched c_char signed, target_arch: csky");
-        };
-    }
-    else if #[cfg(target_arch = "msp430")] {
+    if #[cfg(target_arch = "msp430")] {
         // FIXME: c_char signedness misallignment on msp430, should be signed on CLANG
         const XFAIL_C_CHAR_SIGNED: bool = false;
         pub const TEST_C_CHAR_UNSIGNED: () = if ffi::c_char::SIGNED != XFAIL_C_CHAR_SIGNED {

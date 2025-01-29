@@ -17,6 +17,8 @@ const SKIPPED_TARGETS: &[&str] = &[
     "xtensa-esp32s2-none-elf",
     "xtensa-esp32s3-espidf",
     "xtensa-esp32s3-none-elf",
+    "csky-unknown-linux-gnuabiv2",
+    "csky-unknown-linux-gnuabiv2hf",
 ];
 
 /// Map from a Rust target to the Clang target if they are not the same.
@@ -26,6 +28,32 @@ const MAPPED_TARGETS: &[(&str, &str)] = &[
     ("aarch64-apple-visionos-sim", "aarch64-apple-visionos"),
     ("aarch64-apple-watchos-sim", "aarch64-apple-watchos"),
     ("x86_64-apple-watchos-sim", "x86_64-apple-watchos"),
+    ("aarch64-pc-windows-gnullvm", "aarch64-pc-windows-gnu"),
+    ("aarch64-unknown-linux-gnu_ilp32", "aarch64-unknown-linux-gnu"),
+    ("aarch64-unknown-none-softfloat", "aarch64-unknown-none"),
+    ("aarch64-unknown-nto-qnx700", "aarch64-unknown-nto-700"),
+    ("aarch64-unknown-nto-qnx710", "aarch64-unknown-nto-710"),
+    ("aarch64-unknown-uefi", "aarch64-unknown"),
+    ("aarch64_be-unknown-linux-gnu_ilp32", "aarch64_be-unknown-linux-gnu"),
+    ("armv5te-unknown-linux-uclibceabi", "armv5te-unknown-linux"),
+    ("armv7-sony-vita-newlibeabihf", "armv7-sony-vita"),
+    ("armv7-unknown-linux-uclibceabi", "armv7-unknown-linux"),
+    ("armv7-unknown-linux-uclibceabihf", "armv7-unknown-linux"),
+    ("avr-unknown-gnu-atmega328", "avr-unknown-gnu"),
+    ("csky-unknown-linux-gnuabiv2", "csky-unknown-linux-gnu"),
+    ("i586-pc-nto-qnx700", "i586-pc-nto-700"),
+    ("i686-pc-windows-gnullvm", "i686-pc-windows-gnu"),
+    ("i686-unknown-uefi", "i686-unknown"),
+    ("loongarch64-unknown-none-softfloat", "loongarch64-unknown-none"),
+    ("mips-unknown-linux-uclibc", "mips-unknown-linux"),
+    ("mipsel-unknown-linux-uclibc", "mipsel-unknown-linux"),
+    ("powerpc-unknown-linux-gnuspe", "powerpc-unknown-linux-gnu"),
+    ("powerpc-unknown-linux-muslspe", "powerpc-unknown-linux-musl"),
+    ("powerpc-wrs-vxworks-spe", "powerpc-wrs-vxworks"),
+    ("x86_64-fortanix-unknown-sgx", "x86_64-fortanix-unknown"),
+    ("x86_64-pc-nto-qnx710", "x86_64-pc-nto-710"),
+    ("x86_64-pc-windows-gnullvm", "x86_64-pc-windows-gnu"),
+    ("x86_64-unknown-l4re-uclibc", "x86_64-unknown-l4re"),
 ];
 
 fn main() {
@@ -33,7 +61,7 @@ fn main() {
 
     let minicore_path = run_make_support::source_root().join("tests/auxiliary/minicore.rs");
 
-    regex_mod();
+    preprocess_core_ffi();
 
     for target in targets.lines() {
         if SKIPPED_TARGETS.iter().any(|&to_skip_target| target == to_skip_target) {
@@ -50,14 +78,14 @@ fn main() {
             .unwrap_or_else(|| {
                 if target.starts_with("riscv") {
                     target
-                        .replace("imac", "")
-                        .replace("gc", "")
-                        .replace("imafc", "")
-                        .replace("imc", "")
-                        .replace("ima", "")
-                        .replace("im", "")
-                        .replace("emc", "")
-                        .replace("em", "")
+                        .replace("imac-", "-")
+                        .replace("gc-", "-")
+                        .replace("imafc-", "-")
+                        .replace("imc-", "-")
+                        .replace("ima-", "-")
+                        .replace("im-", "-")
+                        .replace("emc-", "-")
+                        .replace("em-", "-")
                         .replace("e-", "-")
                         .replace("i-", "-")
                 } else {
@@ -172,7 +200,7 @@ fn char_is_signed(defines: &str) -> bool {
 }
 
 /// Parse core/ffi/mod.rs to retrieve only necessary macros and type defines
-fn regex_mod() {
+fn preprocess_core_ffi() {
     let mod_path = run_make_support::source_root().join("library/core/src/ffi/mod.rs");
     let mut content = rfs::read_to_string(&mod_path);
 
