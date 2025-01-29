@@ -33,19 +33,18 @@ use minicore::*;
 // CHECK-LABEL: return_f32:
 #[no_mangle]
 pub fn return_f32(x: f32) -> f32 {
-    // CHECK: movl {{.*}}(%ebp), %eax
-    // CHECK-NOT: ax
-    // CHECK: retl
+    // CHECK: movss {{.*}}(%ebp), %xmm0
+    // CHECK-NEXT: popl %ebp
+    // CHECK-NEXT: retl
     x
 }
 
 // CHECK-LABEL: return_f64:
 #[no_mangle]
 pub fn return_f64(x: f64) -> f64 {
-    // CHECK: movl [[#%d,OFFSET:]](%ebp), %[[PTR:.*]]
-    // CHECK-NEXT: movsd [[#%d,OFFSET+4]](%ebp), %[[VAL:.*]]
-    // CHECK-NEXT: movsd %[[VAL]], (%[[PTR]])
-    // CHECK: retl
+    // CHECK: movsd {{.*}}(%ebp), %xmm0
+    // CHECK-NEXT: popl %ebp
+    // CHECK-NEXT: retl
     x
 }
 
@@ -157,7 +156,7 @@ pub unsafe fn call_f32(x: &mut f32) {
     }
     // CHECK: movl {{.*}}(%ebp), %[[PTR:.*]]
     // CHECK: calll {{()|_}}get_f32
-    // CHECK-NEXT: movl %eax, (%[[PTR]])
+    // CHECK-NEXT: movss %xmm0, (%[[PTR]])
     *x = get_f32();
 }
 
@@ -169,8 +168,7 @@ pub unsafe fn call_f64(x: &mut f64) {
     }
     // CHECK: movl {{.*}}(%ebp), %[[PTR:.*]]
     // CHECK: calll {{()|_}}get_f64
-    // CHECK: movsd {{.*}}(%{{ebp|esp}}), %[[VAL:.*]]
-    // CHECK-NEXT: movsd %[[VAL:.*]], (%[[PTR]])
+    // CHECK-NEXT: movlps %xmm0, (%[[PTR]])
     *x = get_f64();
 }
 
@@ -315,25 +313,21 @@ pub unsafe fn call_other_f64(x: &mut (usize, f64)) {
 #[no_mangle]
 pub fn return_f16(x: f16) -> f16 {
     // CHECK: pushl %ebp
-    // CHECK: movl %esp, %ebp
-    // CHECK: movzwl 8(%ebp), %eax
-    // CHECK: popl %ebp
-    // CHECK: retl
+    // CHECK-NEXT: movl %esp, %ebp
+    // CHECK-NEXT: pinsrw $0, 8(%ebp), %xmm0
+    // CHECK-NEXT: popl %ebp
+    // CHECK-NEXT: retl
     x
 }
 
 // CHECK-LABEL: return_f128:
 #[no_mangle]
 pub fn return_f128(x: f128) -> f128 {
-    // CHECK: movl [[#%d,OFFSET:]](%ebp), %[[PTR:.*]]
-    // CHECK-NEXT: movl [[#%d,OFFSET+4]](%ebp), %[[VAL1:.*]]
-    // CHECK-NEXT: movl [[#%d,OFFSET+8]](%ebp), %[[VAL2:.*]]
-    // CHECK-NEXT: movl [[#%d,OFFSET+12]](%ebp), %[[VAL3:.*]]
-    // CHECK-NEXT: movl [[#%d,OFFSET+16]](%ebp), %[[VAL4:.*]]
-    // CHECK-NEXT: movl %[[VAL4:.*]] 12(%[[PTR]])
-    // CHECK-NEXT: movl %[[VAL3:.*]] 8(%[[PTR]])
-    // CHECK-NEXT: movl %[[VAL2:.*]] 4(%[[PTR]])
-    // CHECK-NEXT: movl %[[VAL1:.*]] (%[[PTR]])
-    // CHECK: retl
+    // CHECK: pushl %ebp
+    // CHECK-NEXT: movl %esp, %ebp
+    // linux-NEXT: movaps 8(%ebp), %xmm0
+    // win-NEXT: movups 8(%ebp), %xmm0
+    // CHECK-NEXT: popl %ebp
+    // CHECK-NEXT: retl
     x
 }

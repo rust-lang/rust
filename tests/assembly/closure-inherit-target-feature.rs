@@ -8,8 +8,9 @@
 
 use std::arch::x86_64::{__m128, _mm_blend_ps};
 
+// Use an explicit return pointer to prevent tail call optimization.
 #[no_mangle]
-pub unsafe fn sse41_blend_nofeature(x: __m128, y: __m128) -> __m128 {
+pub unsafe fn sse41_blend_nofeature(x: __m128, y: __m128, ret: *mut __m128) {
     let f = {
         // check that _mm_blend_ps is not being inlined into the closure
         // CHECK-LABEL: {{sse41_blend_nofeature.*closure.*:}}
@@ -18,9 +19,9 @@ pub unsafe fn sse41_blend_nofeature(x: __m128, y: __m128) -> __m128 {
         // CHECK-NOT: blendps
         // CHECK: ret
         #[inline(never)]
-        |x, y| _mm_blend_ps(x, y, 0b0101)
+        |x, y, ret: *mut __m128| unsafe { *ret = _mm_blend_ps(x, y, 0b0101) }
     };
-    f(x, y)
+    f(x, y, ret);
 }
 
 #[no_mangle]

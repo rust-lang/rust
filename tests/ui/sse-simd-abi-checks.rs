@@ -1,7 +1,8 @@
 //! Ensure we trigger abi_unsupported_vector_types for target features that are usually enabled
-//! on a target, but disabled in this file via a `-C` flag.
+//! on a target via the base CPU, but disabled in this file via a `-C` flag.
+//@ compile-flags: --crate-type=rlib --target=i586-unknown-linux-gnu
+//@ compile-flags: -Ctarget-cpu=pentium4 -C target-feature=-sse,-sse2
 //@ add-core-stubs
-//@ compile-flags: --crate-type=rlib --target=i586-unknown-linux-gnu -C target-feature=-sse,-sse2
 //@ build-pass
 //@ ignore-pass (test emits codegen-time warnings)
 //@ needs-llvm-components: x86

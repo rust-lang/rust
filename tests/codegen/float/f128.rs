@@ -1,8 +1,11 @@
 // 32-bit x86 returns float types differently to avoid the x87 stack.
 // 32-bit systems will return 128bit values using a return area pointer.
 // Emscripten aligns f128 to 8 bytes, not 16.
-//@ revisions: x86 bit32 bit64 emscripten
-//@[x86] only-x86
+//@ revisions: x86-sse x86-nosse bit32 bit64 emscripten
+//@[x86-sse] only-x86
+//@[x86-sse] only-rustc_abi-x86-sse2
+//@[x86-nosse] only-x86
+//@[x86-nosse] ignore-rustc_abi-x86-sse2
 //@[bit32] ignore-x86
 //@[bit32] ignore-emscripten
 //@[bit32] only-32bit
@@ -60,7 +63,8 @@ pub fn f128_le(a: f128, b: f128) -> bool {
     a <= b
 }
 
-// x86-LABEL: void @f128_neg({{.*}}sret([16 x i8])
+// x86-nosse-LABEL: void @f128_neg({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @f128_neg(fp128
 // bit32-LABEL: void @f128_neg({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @f128_neg(
 // emscripten-LABEL: void @f128_neg({{.*}}sret([16 x i8])
@@ -70,7 +74,8 @@ pub fn f128_neg(a: f128) -> f128 {
     -a
 }
 
-// x86-LABEL: void @f128_add({{.*}}sret([16 x i8])
+// x86-nosse-LABEL: void @f128_add({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @f128_add(fp128
 // bit32-LABEL: void @f128_add({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @f128_add(
 // emscripten-LABEL: void @f128_add({{.*}}sret([16 x i8])
@@ -80,7 +85,8 @@ pub fn f128_add(a: f128, b: f128) -> f128 {
     a + b
 }
 
-// x86-LABEL: void @f128_sub({{.*}}sret([16 x i8])
+// x86-nosse-LABEL: void @f128_sub({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @f128_sub(fp128
 // bit32-LABEL: void @f128_sub({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @f128_sub(
 // emscripten-LABEL: void @f128_sub({{.*}}sret([16 x i8])
@@ -90,7 +96,8 @@ pub fn f128_sub(a: f128, b: f128) -> f128 {
     a - b
 }
 
-// x86-LABEL: void @f128_mul({{.*}}sret([16 x i8])
+// x86-nosse-LABEL: void @f128_mul({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @f128_mul(fp128
 // bit32-LABEL: void @f128_mul({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @f128_mul(
 // emscripten-LABEL: void @f128_mul({{.*}}sret([16 x i8])
@@ -100,7 +107,8 @@ pub fn f128_mul(a: f128, b: f128) -> f128 {
     a * b
 }
 
-// x86-LABEL: void @f128_div({{.*}}sret([16 x i8])
+// x86-nosse-LABEL: void @f128_div({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @f128_div(fp128
 // bit32-LABEL: void @f128_div({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @f128_div(
 // emscripten-LABEL: void @f128_div({{.*}}sret([16 x i8])
@@ -110,7 +118,8 @@ pub fn f128_div(a: f128, b: f128) -> f128 {
     a / b
 }
 
-// x86-LABEL: void @f128_rem({{.*}}sret([16 x i8])
+// x86-nosse-LABEL: void @f128_rem({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @f128_rem(fp128
 // bit32-LABEL: void @f128_rem({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @f128_rem(
 // emscripten-LABEL: void @f128_rem({{.*}}sret([16 x i8])
@@ -162,7 +171,8 @@ pub fn f128_rem_assign(a: &mut f128, b: f128) {
 
 /* float to float conversions */
 
-// x86-LABEL: i16 @f128_as_f16(
+// x86-sse-LABEL: <2 x i8> @f128_as_f16(
+// x86-nosse-LABEL: i16 @f128_as_f16(
 // bits32-LABEL: half @f128_as_f16(
 // bits64-LABEL: half @f128_as_f16(
 #[no_mangle]
@@ -171,7 +181,8 @@ pub fn f128_as_f16(a: f128) -> f16 {
     a as f16
 }
 
-// x86-LABEL: i32 @f128_as_f32(
+// x86-sse-LABEL: <4 x i8> @f128_as_f32(
+// x86-nosse-LABEL: i32 @f128_as_f32(
 // bit32-LABEL: float @f128_as_f32(
 // bit64-LABEL: float @f128_as_f32(
 // emscripten-LABEL: float @f128_as_f32(
@@ -181,7 +192,8 @@ pub fn f128_as_f32(a: f128) -> f32 {
     a as f32
 }
 
-// x86-LABEL: void @f128_as_f64(
+// x86-sse-LABEL: <8 x i8> @f128_as_f64(
+// x86-nosse-LABEL: void @f128_as_f64({{.*}}sret([8 x i8])
 // bit32-LABEL: double @f128_as_f64(
 // bit64-LABEL: double @f128_as_f64(
 // emscripten-LABEL: double @f128_as_f64(
@@ -191,7 +203,8 @@ pub fn f128_as_f64(a: f128) -> f64 {
     a as f64
 }
 
-// x86-LABEL: void @f128_as_self({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @f128_as_self(
+// x86-nosse-LABEL: void @f128_as_self({{.*}}sret([16 x i8])
 // bit32-LABEL: void @f128_as_self({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @f128_as_self(
 // emscripten-LABEL: void @f128_as_self({{.*}}sret([16 x i8])
@@ -204,7 +217,8 @@ pub fn f128_as_self(a: f128) -> f128 {
     a as f128
 }
 
-// x86-LABEL: void @f16_as_f128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @f16_as_f128(
+// x86-nosse-LABEL: void @f16_as_f128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @f16_as_f128({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @f16_as_f128(
 // emscripten-LABEL: void @f16_as_f128({{.*}}sret([16 x i8])
@@ -214,7 +228,8 @@ pub fn f16_as_f128(a: f16) -> f128 {
     a as f128
 }
 
-// x86-LABEL: void @f32_as_f128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @f32_as_f128(
+// x86-nosse-LABEL: void @f32_as_f128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @f32_as_f128({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @f32_as_f128(
 // emscripten-LABEL: void @f32_as_f128({{.*}}sret([16 x i8])
@@ -224,7 +239,8 @@ pub fn f32_as_f128(a: f32) -> f128 {
     a as f128
 }
 
-// x86-LABEL: void @f64_as_f128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @f64_as_f128(
+// x86-nosse-LABEL: void @f64_as_f128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @f64_as_f128({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @f64_as_f128(
 // emscripten-LABEL: void @f64_as_f128({{.*}}sret([16 x i8])
@@ -263,7 +279,8 @@ pub fn f128_as_u64(a: f128) -> u64 {
     a as u64
 }
 
-// x86-LABEL: void @f128_as_u128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: void @f128_as_u128({{.*}}sret([16 x i8])
+// x86-nosse-LABEL: void @f128_as_u128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @f128_as_u128({{.*}}sret([16 x i8])
 // bit64-LABEL: i128 @f128_as_u128(
 // emscripten-LABEL: void @f128_as_u128({{.*}}sret([16 x i8])
@@ -300,7 +317,8 @@ pub fn f128_as_i64(a: f128) -> i64 {
     a as i64
 }
 
-// x86-LABEL: void @f128_as_i128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: void @f128_as_i128({{.*}}sret([16 x i8])
+// x86-nosse-LABEL: void @f128_as_i128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @f128_as_i128({{.*}}sret([16 x i8])
 // bit64-LABEL: i128 @f128_as_i128(
 // emscripten-LABEL: void @f128_as_i128({{.*}}sret([16 x i8])
@@ -312,7 +330,8 @@ pub fn f128_as_i128(a: f128) -> i128 {
 
 /* int to float conversions */
 
-// x86-LABEL: void @u8_as_f128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @u8_as_f128(
+// x86-nosse-LABEL: void @u8_as_f128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @u8_as_f128({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @u8_as_f128(
 // emscripten-LABEL: void @u8_as_f128({{.*}}sret([16 x i8])
@@ -322,7 +341,8 @@ pub fn u8_as_f128(a: u8) -> f128 {
     a as f128
 }
 
-// x86-LABEL: void @u16_as_f128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @u16_as_f128(
+// x86-nosse-LABEL: void @u16_as_f128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @u16_as_f128({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @u16_as_f128(
 // emscripten-LABEL: void @u16_as_f128({{.*}}sret([16 x i8])
@@ -332,7 +352,8 @@ pub fn u16_as_f128(a: u16) -> f128 {
     a as f128
 }
 
-// x86-LABEL: void @u32_as_f128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @u32_as_f128(
+// x86-nosse-LABEL: void @u32_as_f128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @u32_as_f128({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @u32_as_f128(
 // emscripten-LABEL: void @u32_as_f128({{.*}}sret([16 x i8])
@@ -342,7 +363,8 @@ pub fn u32_as_f128(a: u32) -> f128 {
     a as f128
 }
 
-// x86-LABEL: void @u64_as_f128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @u64_as_f128(
+// x86-nosse-LABEL: void @u64_as_f128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @u64_as_f128({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @u64_as_f128(
 // emscripten-LABEL: void @u64_as_f128({{.*}}sret([16 x i8])
@@ -352,7 +374,8 @@ pub fn u64_as_f128(a: u64) -> f128 {
     a as f128
 }
 
-// x86-LABEL: void @u128_as_f128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @u128_as_f128(
+// x86-nosse-LABEL: void @u128_as_f128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @u128_as_f128({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @u128_as_f128(
 // emscripten-LABEL: void @u128_as_f128({{.*}}sret([16 x i8])
@@ -362,7 +385,8 @@ pub fn u128_as_f128(a: u128) -> f128 {
     a as f128
 }
 
-// x86-LABEL: void @i8_as_f128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @i8_as_f128(
+// x86-nosse-LABEL: void @i8_as_f128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @i8_as_f128({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @i8_as_f128(
 // emscripten-LABEL: void @i8_as_f128({{.*}}sret([16 x i8])
@@ -372,7 +396,8 @@ pub fn i8_as_f128(a: i8) -> f128 {
     a as f128
 }
 
-// x86-LABEL: void @i16_as_f128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @i16_as_f128(
+// x86-nosse-LABEL: void @i16_as_f128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @i16_as_f128({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @i16_as_f128(
 // emscripten-LABEL: void @i16_as_f128({{.*}}sret([16 x i8])
@@ -382,7 +407,8 @@ pub fn i16_as_f128(a: i16) -> f128 {
     a as f128
 }
 
-// x86-LABEL: void @i32_as_f128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @i32_as_f128(
+// x86-nosse-LABEL: void @i32_as_f128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @i32_as_f128({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @i32_as_f128(
 // emscripten-LABEL: void @i32_as_f128({{.*}}sret([16 x i8])
@@ -392,7 +418,8 @@ pub fn i32_as_f128(a: i32) -> f128 {
     a as f128
 }
 
-// x86-LABEL: void @i64_as_f128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @i64_as_f128(
+// x86-nosse-LABEL: void @i64_as_f128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @i64_as_f128({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @i64_as_f128(
 // emscripten-LABEL: void @i64_as_f128({{.*}}sret([16 x i8])
@@ -402,7 +429,8 @@ pub fn i64_as_f128(a: i64) -> f128 {
     a as f128
 }
 
-// x86-LABEL: void @i128_as_f128({{.*}}sret([16 x i8])
+// x86-sse-LABEL: <16 x i8> @i128_as_f128(
+// x86-nosse-LABEL: void @i128_as_f128({{.*}}sret([16 x i8])
 // bit32-LABEL: void @i128_as_f128({{.*}}sret([16 x i8])
 // bit64-LABEL: fp128 @i128_as_f128(
 // emscripten-LABEL: void @i128_as_f128({{.*}}sret([16 x i8])
