@@ -600,6 +600,9 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
     /// no cleanup is done on any of the keys, values and other children.
     /// This decreases the height by 1 and is the opposite of `push_internal_level`.
     ///
+    /// Does not invalidate any handles or references pointing into the subtree
+    /// rooted at the first child of `self`.
+    ///
     /// Panics if there is no internal level, i.e., if the root node is a leaf.
     pub(super) fn pop_internal_level<A: Allocator + Clone>(&mut self, alloc: A) {
         assert!(self.height > 0);
