@@ -431,7 +431,7 @@ where
 // `rustc_trait_selection::solve::inspect::analyse`.
 pub fn instantiate_canonical_state<D, I, T: TypeFoldable<I>>(
     delegate: &D,
-    span: D::Span,
+    span: I::Span,
     param_env: I::ParamEnv,
     orig_values: &mut Vec<I::GenericArg>,
     state: inspect::CanonicalState<I, T>,
