@@ -1,3 +1,5 @@
+// https://github.com/rust-lang/rust/issues/76736
+
 //@ aux-build:issue-76736-1.rs
 //@ aux-build:issue-76736-2.rs
 

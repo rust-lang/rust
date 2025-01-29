@@ -1,3 +1,5 @@
+// https://github.com/rust-lang/rust/issues/82209
+
 #![crate_name = "foo"]
 #![deny(rustdoc::broken_intra_doc_links)]
 pub enum Foo {

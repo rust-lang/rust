@@ -1,3 +1,5 @@
+// https://github.com/rust-lang/rust/issues/104145
+
 // Doc links in `Trait`'s methods are resolved because it has a local impl.
 
 //@ aux-build:issue-103463-aux.rs
