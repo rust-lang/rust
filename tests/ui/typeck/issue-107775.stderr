@@ -10,6 +10,8 @@ LL |         Self { map }
    |
    = note: expected struct `HashMap<u16, fn(_) -> Pin<Box<(dyn Future<Output = ()> + Send + 'static)>>>`
               found struct `HashMap<{integer}, fn(_) -> Pin<Box<dyn Future<Output = ()> + Send>> {<Struct as Trait>::do_something::<'_>}>`
+   = note: fn items are distinct from fn pointers
+   = help: consider casting the fn item to a fn pointer: `<Struct as Trait>::do_something::<'_> as fn(u8) -> Pin<Box<(dyn Future<Output = ()> + Send + 'static)>>`
 
 error: aborting due to 1 previous error
 
