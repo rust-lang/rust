@@ -192,7 +192,7 @@ auto:
     <<: *job-linux-4c
 
   - name: dist-powerpc64le-linux
-    <<: *job-linux-8c-codebuild
+    <<: *job-linux-36c-codebuild
 
   - name: dist-riscv64-linux
     <<: *job-linux-4c
