@@ -1,3 +1,5 @@
+//@ run-pass
+
 #![deny(dead_code)]
 
 #[derive(PartialEq, Eq)]
@@ -11,7 +13,7 @@ impl Foo {
     const A2: Foo = Self::FooA(());
     const A3: Self = Foo::FooA(());
     const A4: Self = Self::FooA(());
-    const A5: u32 = 1; //~ ERROR: dead_code
+    const A5: u32 = 1;
 }
 
 fn main() {
