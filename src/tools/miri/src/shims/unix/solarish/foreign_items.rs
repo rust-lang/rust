@@ -87,17 +87,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // File related shims
             "stat" | "stat64" => {
                 let [path, buf] = this.check_shim(abi, Conv::C, link_name, args)?;
-                let result = this.macos_fbsd_solaris_stat(path, buf)?;
+                let result = this.macos_fbsd_solarish_stat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "lstat" | "lstat64" => {
                 let [path, buf] = this.check_shim(abi, Conv::C, link_name, args)?;
-                let result = this.macos_fbsd_solaris_lstat(path, buf)?;
+                let result = this.macos_fbsd_solarish_lstat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "fstat" | "fstat64" => {
                 let [fd, buf] = this.check_shim(abi, Conv::C, link_name, args)?;
-                let result = this.macos_fbsd_solaris_fstat(fd, buf)?;
+                let result = this.macos_fbsd_solarish_fstat(fd, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "readdir" => {
