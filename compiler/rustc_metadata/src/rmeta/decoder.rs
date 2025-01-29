@@ -1932,6 +1932,10 @@ impl CrateMetadata {
         self.root.profiler_runtime
     }
 
+    pub(crate) fn is_compiler_builtins(&self) -> bool {
+        self.root.compiler_builtins
+    }
+
     pub(crate) fn needs_allocator(&self) -> bool {
         self.root.needs_allocator
     }

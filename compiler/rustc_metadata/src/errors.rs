@@ -333,6 +333,12 @@ pub struct CrateNotPanicRuntime {
 }
 
 #[derive(Diagnostic)]
+#[diag(metadata_crate_not_compiler_builtins)]
+pub struct CrateNotCompilerBuiltins {
+    pub crate_name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(metadata_no_panic_strategy)]
 pub struct NoPanicStrategy {
     pub crate_name: Symbol,
