@@ -58,7 +58,7 @@ impl rustc_driver::Callbacks for MyCallbacks {
     fn after_crate_root_parsing(
         &mut self,
         _compiler: &Compiler,
-        krate: &rustc_ast::Crate,
+        krate: &mut rustc_ast::Crate,
     ) -> Compilation {
         for item in &krate.items {
             println!("{}", item_to_string(&item));

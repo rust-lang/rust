@@ -689,7 +689,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 self.require_sized(subty, ObligationCauseCode::SliceOrArrayElem);
                 // Note that the len being WF is implicitly checked while visiting.
                 // Here we just check that it's of type usize.
-                let cause = self.cause(ObligationCauseCode::Misc);
+                let cause = self.cause(ObligationCauseCode::ArrayLen(t));
                 self.out.push(traits::Obligation::with_depth(
                     tcx,
                     cause,

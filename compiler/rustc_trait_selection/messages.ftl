@@ -165,6 +165,8 @@ trait_selection_explicit_lifetime_required_with_param_type = explicit lifetime r
 
 trait_selection_fn_consider_casting = consider casting the fn item to a fn pointer: `{$casting}`
 
+trait_selection_fn_consider_casting_both = consider casting both fn items to fn pointers using `as {$sig}`
+
 trait_selection_fn_uniq_types = different fn items have unique types, even if their signatures are the same
 trait_selection_fps_cast = consider casting to a fn pointer
 trait_selection_fps_cast_both = consider casting both fn items to fn pointers using `as {$expected_sig}`
