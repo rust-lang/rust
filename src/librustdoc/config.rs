@@ -453,12 +453,10 @@ impl Options {
             && !matches.opt_present("show-coverage")
             && !nightly_options::is_unstable_enabled(matches)
         {
-            let extra = if format == "json" {
-                " (see https://github.com/rust-lang/rust/issues/76578)"
-            } else if format == "doctest" {
-                " (see https://github.com/rust-lang/rust/issues/134529)"
-            } else {
-                ""
+            let extra = match format {
+                "json" => " (see https://github.com/rust-lang/rust/issues/76578)",
+                "doctest" => " (see https://github.com/rust-lang/rust/issues/134529)",
+                _ => "",
             };
             dcx.fatal(
                 format!(

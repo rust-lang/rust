@@ -211,15 +211,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
     crate::wrap_return(dcx, generate_args_file(&args_path, &options));
 
     let extract_doctests = options.output_format == OutputFormat::Doctest;
-    let CreateRunnableDocTests {
-        standalone_tests,
-        mergeable_tests,
-        rustdoc_options,
-        opts,
-        unused_extern_reports,
-        compiling_test_count,
-        ..
-    } = match interface::run_compiler(config, |compiler| {
+    let result = interface::run_compiler(config, |compiler| {
         let krate = rustc_interface::passes::parse(&compiler.sess);
 
         let collector = rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
@@ -256,7 +248,17 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         compiler.sess.dcx().abort_if_errors();
 
         collector
-    }) {
+    });
+
+    let CreateRunnableDocTests {
+        standalone_tests,
+        mergeable_tests,
+        rustdoc_options,
+        opts,
+        unused_extern_reports,
+        compiling_test_count,
+        ..
+    } = match result {
         Ok(Some(collector)) => collector,
         Ok(None) => return,
         Err(error) => {

@@ -1,14 +1,23 @@
+//! Rustdoc's doctest extraction.
+//!
+//! This module contains the logic to extract doctests and output a JSON containing this
+//! information.
+
 use serde::Serialize;
 
 use super::{DocTestBuilder, ScrapedDocTest};
 use crate::config::Options as RustdocOptions;
 use crate::html::markdown;
 
+/// The version of JSON output that this code generates.
+///
+/// This integer is incremented with every breaking change to the API,
+/// and is returned along with the JSON blob into the `format_version` root field.
+/// Consuming code should assert that this value matches the format version(s) that it supports.
 const FORMAT_VERSION: u32 = 1;
 
 #[derive(Serialize)]
 pub(crate) struct ExtractedDocTests {
-    #[allow(non_snake_case)]
     format_version: u32,
     doctests: Vec<ExtractedDocTest>,
 }
