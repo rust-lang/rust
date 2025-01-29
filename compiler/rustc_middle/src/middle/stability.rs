@@ -408,6 +408,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 inspecting def_id={:?} span={:?} of stability={:?}",
             def_id, span, stability
         );
+        tracing::info!("stability table: {:#?}", self.stability());
 
         match stability {
             Some(Stability {

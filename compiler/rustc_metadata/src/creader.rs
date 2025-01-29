@@ -1213,11 +1213,6 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                     CrateDepKind::Explicit
                 };
 
-                if name == sym::compiler_builtins {
-                    info!("BUILTINS DETECTED dep_kind {dep_kind:?}");
-                    return None;
-                }
-
                 let cnum = self.resolve_crate(name, item.span, dep_kind, CrateOrigin::AstExtern)?;
 
                 let path_len = definitions.def_path(def_id).data.len();
