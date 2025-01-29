@@ -7,7 +7,6 @@ use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
-use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -107,7 +106,7 @@ fn make_sugg<'a>(
     els_span: Span,
     default: &'a str,
     indent_relative_to: Option<Span>,
-) -> Cow<'a, str> {
+) -> String {
     let cond_inner_snip = snippet(sess, cond_inner, default);
     let els_snip = snippet(sess, els_span, default);
     let indent = indent_relative_to.and_then(|s| indent_of(sess, s));
@@ -130,5 +129,5 @@ fn make_sugg<'a>(
         _ => String::new(),
     };
 
-    reindent_multiline(suggestion.into(), true, indent)
+    reindent_multiline(&suggestion, true, indent)
 }

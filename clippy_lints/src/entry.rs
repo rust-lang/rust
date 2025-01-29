@@ -135,8 +135,8 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
                 format!(
                     "match {map_str}.entry({key_str}) {{\n{indent_str}    {entry}::{then_entry} => {}\n\
                         {indent_str}    {entry}::{else_entry} => {}\n{indent_str}}}",
-                    reindent_multiline(then_str.into(), true, Some(4 + indent_str.len())),
-                    reindent_multiline(else_str.into(), true, Some(4 + indent_str.len())),
+                    reindent_multiline(&then_str, true, Some(4 + indent_str.len())),
+                    reindent_multiline(&else_str, true, Some(4 + indent_str.len())),
                     entry = map_ty.entry_path(),
                 )
             }

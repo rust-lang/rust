@@ -57,14 +57,13 @@ pub(super) fn check<'tcx>(
                     };
 
                     let suggestion_source = reindent_multiline(
-                        format!(
+                        &format!(
                             "std::path::Path::new({})
                                 .extension()
                                 .map_or(false, |ext| ext.eq_ignore_ascii_case(\"{}\"))",
                             recv_source,
                             ext_str.strip_prefix('.').unwrap()
-                        )
-                        .into(),
+                        ),
                         true,
                         Some(indent_of(cx, call_span).unwrap_or(0) + 4),
                     );
