@@ -830,9 +830,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// [`InterpCx::get_alloc_info`] if all you need to check is whether the kind is
     /// [`AllocKind::Dead`] because it doesn't have to look up the type and layout of statics.
     pub fn is_alloc_live(&self, id: AllocId) -> bool {
-        self.tcx.try_get_global_alloc(id).is_some()
-            || self.memory.alloc_map.contains_key_ref(&id)
+        self.memory.alloc_map.contains_key_ref(&id)
             || self.memory.extra_fn_ptr_map.contains_key(&id)
+            // We check `tcx` last as that has to acquire a lock in `many-seeds` mode.
+            // This also matches the order in `get_alloc_info`.
+            || self.tcx.try_get_global_alloc(id).is_some()
     }
 
     /// Obtain the size and alignment of an allocation, even if that allocation has
