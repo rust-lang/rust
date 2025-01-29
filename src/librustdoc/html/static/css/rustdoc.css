@@ -74,7 +74,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 }
 @font-face {
 	font-family: 'Fira Sans';
-	font-style: normal;
+	font-style: italic;
 	font-weight: 500;
 	src: local('Fira Sans Medium Italic'),
 		url("FiraSans-MediumItalic-ccf7e434.woff2") format("woff2");
@@ -112,6 +112,14 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-weight: 400;
 	src: local('Source Serif 4 Italic'),
 		url("SourceSerif4-It-ca3b17ed.ttf.woff2") format("woff2");
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Source Serif 4';
+	font-style: normal;
+	font-weight: 500;
+	src: local('Source Serif 4 Semibold'),
+		url("SourceSerif4-Semibold-457a13ac.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -289,7 +297,7 @@ summary.hideme,
 .rustdoc-breadcrumbs,
 /* This selector is for the items listed in the "all items" page. */
 ul.all-items {
-	font-family: var(--font-family);
+	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
 }
 
 #toggle-all-docs,

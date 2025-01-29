@@ -106,6 +106,7 @@ static_files! {
     fira_mono_medium => "static/fonts/FiraMono-Medium.woff2",
     fira_sans_license => "static/fonts/FiraSans-LICENSE.txt",
     source_serif_4_regular => "static/fonts/SourceSerif4-Regular.ttf.woff2",
+    source_serif_4_semibold => "static/fonts/SourceSerif4-Semibold.ttf.woff2",
     source_serif_4_bold => "static/fonts/SourceSerif4-Bold.ttf.woff2",
     source_serif_4_italic => "static/fonts/SourceSerif4-It.ttf.woff2",
     source_serif_4_license => "static/fonts/SourceSerif4-LICENSE.md",
