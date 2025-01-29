@@ -4732,10 +4732,8 @@ function printTab(nb) {
         // Corrections only kick in on type-based searches.
         const correctionsElem = document.getElementsByClassName("search-corrections");
         if (isTypeSearch) {
-            // @ts-expect-error
             removeClass(correctionsElem[0], "hidden");
         } else {
-            // @ts-expect-error
             addClass(correctionsElem[0], "hidden");
         }
     } else if (nb !== 0) {
