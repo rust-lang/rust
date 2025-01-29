@@ -865,7 +865,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let new_perm = NewPermission::from_ref_ty(val.layout.ty, kind, this);
         let cause = match kind {
-            RetagKind::TwoPhase { .. } => RetagCause::TwoPhase,
+            RetagKind::TwoPhase => RetagCause::TwoPhase,
             RetagKind::FnEntry => unreachable!(),
             RetagKind::Raw | RetagKind::Default => RetagCause::Normal,
         };
@@ -880,7 +880,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let retag_fields = this.machine.borrow_tracker.as_mut().unwrap().get_mut().retag_fields;
         let retag_cause = match kind {
-            RetagKind::TwoPhase { .. } => unreachable!(), // can only happen in `retag_ptr_value`
+            RetagKind::TwoPhase => unreachable!(), // can only happen in `retag_ptr_value`
             RetagKind::FnEntry => RetagCause::FnEntry,
             RetagKind::Default | RetagKind::Raw => RetagCause::Normal,
         };
