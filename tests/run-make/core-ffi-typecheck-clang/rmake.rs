@@ -11,7 +11,6 @@ use serde_json::Value;
 
 // It is not possible to run the Rust test-suite on these targets.
 const SKIPPED_TARGETS: &[&str] = &[
-    "wasm32v1-none",
     "xtensa-esp32-espidf",
     "xtensa-esp32-none-elf",
     "xtensa-esp32s2-espidf",
@@ -115,12 +114,6 @@ fn main() {
 
     // Cleanup
     rfs::remove_file("processed_mod.rs");
-}
-
-/// Get a list of available targets for 'rustc'.
-fn get_target_list() -> String {
-    let completed_process = rustc().arg("--print").arg("target-list").run();
-    String::from_utf8(completed_process.stdout()).expect("error not a string")
 }
 
 // Helper to parse size from clang defines
