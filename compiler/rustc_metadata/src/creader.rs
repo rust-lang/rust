@@ -157,6 +157,43 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
     }
 }
 
+/// Reason that a crate is being sourced as a dependency.
+#[derive(Clone, Copy)]
+enum CrateOrigin<'a> {
+    /// This crate was a dependency of another crate.
+    Dependency {
+        dep_root: &'a CratePaths,
+        /// Dependency info about this crate.
+        dep: &'a CrateDep,
+    },
+    /// Injected by `rustc`.
+    Injected,
+    /// An extern that has been provided with the `force` option.
+    ForcedExtern,
+    /// Part of the extern prelude.
+    ExternPrelude,
+    /// Provided by `extern crate foo`.
+    AstExtern,
+}
+
+impl<'a> CrateOrigin<'a> {
+    /// Return the dependency root, if any.
+    fn dep_root(&self) -> Option<&'a CratePaths> {
+        match self {
+            CrateOrigin::Dependency { dep_root, .. } => Some(dep_root),
+            _ => None,
+        }
+    }
+
+    /// Return dependency information, if any.
+    fn dep(&self) -> Option<&'a CrateDep> {
+        match self {
+            CrateOrigin::Dependency { dep, .. } => Some(dep),
+            _ => None,
+        }
+    }
+}
+
 impl CStore {
     pub fn from_tcx(tcx: TyCtxt<'_>) -> FreezeReadGuard<'_, CStore> {
         FreezeReadGuard::map(tcx.untracked().cstore.read(), |cstore| {
@@ -404,7 +441,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         &self,
         name: Symbol,
         private_dep: Option<bool>,
-        dep_root: Option<&CratePaths>,
+        origin: CrateOrigin<'_>,
     ) -> bool {
         // Standard library crates are never private.
         if STDLIB_STABLE_CRATES.contains(&name) {
@@ -414,10 +451,14 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
 
         let extern_private = self.sess.opts.externs.get(name.as_str()).map(|e| e.is_private_dep);
 
+        if matches!(origin, CrateOrigin::Injected) {
+            return true;
+        }
+
         // Any descendants of `std` should be private. These crates are usually not marked
         // private in metadata, so we ignore that field.
         if extern_private.is_none()
-            && let Some(dep) = dep_root
+            && let Some(dep) = origin.dep_root()
             && STDLIB_STABLE_CRATES.contains(&dep.name)
         {
             return true;
@@ -435,7 +476,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     fn register_crate(
         &mut self,
         host_lib: Option<Library>,
-        dep_root: Option<&CratePaths>,
+        origin: CrateOrigin<'_>,
         lib: Library,
         dep_kind: CrateDepKind,
         name: Symbol,
@@ -447,7 +488,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
         let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
-        let private_dep = self.is_private_dep(name, private_dep, dep_root);
+        let private_dep = self.is_private_dep(name, private_dep, origin);
 
         // Claim this crate number and cache it
         let feed = self.cstore.intern_stable_crate_id(&crate_root, self.tcx)?;
@@ -463,7 +504,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // Maintain a reference to the top most crate.
         // Stash paths for top-most crate locally if necessary.
         let crate_paths;
-        let dep_root = if let Some(dep_root) = dep_root {
+        let dep_root = if let Some(dep_root) = origin.dep_root() {
             dep_root
         } else {
             crate_paths = CratePaths::new(crate_root.name(), source.clone());
@@ -571,17 +612,23 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         name: Symbol,
         span: Span,
         dep_kind: CrateDepKind,
+        origin: CrateOrigin<'_>,
     ) -> Option<CrateNum> {
         self.used_extern_options.insert(name);
-        match self.maybe_resolve_crate(name, dep_kind, None) {
+        match self.maybe_resolve_crate(name, dep_kind, origin) {
             Ok(cnum) => {
                 self.cstore.set_used_recursively(cnum);
                 Some(cnum)
             }
             Err(err) => {
                 debug!("failed to resolve crate {} {:?}", name, dep_kind);
-                let missing_core =
-                    self.maybe_resolve_crate(sym::core, CrateDepKind::Explicit, None).is_err();
+                let missing_core = self
+                    .maybe_resolve_crate(
+                        sym::core,
+                        CrateDepKind::Explicit,
+                        CrateOrigin::ExternPrelude,
+                    )
+                    .is_err();
                 err.report(self.sess, span, missing_core);
                 None
             }
@@ -592,15 +639,15 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         &'b mut self,
         name: Symbol,
         mut dep_kind: CrateDepKind,
-        dep_of: Option<(&'b CratePaths, &'b CrateDep)>,
+        origin: CrateOrigin<'b>,
     ) -> Result<CrateNum, CrateError> {
         info!("resolving crate `{}`", name);
         if !name.as_str().is_ascii() {
             return Err(CrateError::NonAsciiName(name));
         }
 
-        let dep_root = dep_of.map(|d| d.0);
-        let dep = dep_of.map(|d| d.1);
+        let dep_root = origin.dep_root();
+        let dep = origin.dep();
         let hash = dep.map(|d| d.hash);
         let host_hash = dep.map(|d| d.host_hash).flatten();
         let extra_filename = dep.map(|d| &d.extra_filename[..]);
@@ -643,7 +690,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 // not specified by `--extern` on command line parameters, it may be
                 // `private-dependency` when `register_crate` is called for the first time. Then it must be updated to
                 // `public-dependency` here.
-                let private_dep = self.is_private_dep(name, private_dep, dep_root);
+                let private_dep = self.is_private_dep(name, private_dep, origin);
                 let data = self.cstore.get_crate_data_mut(cnum);
                 if data.is_proc_macro_crate() {
                     dep_kind = CrateDepKind::MacrosOnly;
@@ -654,7 +701,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             }
             (LoadResult::Loaded(library), host_library) => {
                 info!("register newly loaded library for `{}`", name);
-                self.register_crate(host_library, dep_root, library, dep_kind, name, private_dep)
+                self.register_crate(host_library, origin, library, dep_kind, name, private_dep)
             }
             _ => panic!(),
         }
@@ -730,7 +777,10 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 CrateDepKind::MacrosOnly => CrateDepKind::MacrosOnly,
                 _ => dep.kind,
             };
-            let cnum = self.maybe_resolve_crate(dep.name, dep_kind, Some((dep_root, &dep)))?;
+            let cnum = self.maybe_resolve_crate(dep.name, dep_kind, CrateOrigin::Dependency {
+                dep_root,
+                dep: &dep,
+            })?;
             crate_num_map.push(cnum);
         }
 
@@ -824,7 +874,9 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         };
         info!("panic runtime not found -- loading {}", name);
 
-        let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else {
+        let Some(cnum) =
+            self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit, CrateOrigin::Injected)
+        else {
             return;
         };
         let data = self.cstore.get_crate_data(cnum);
@@ -853,7 +905,9 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         info!("loading profiler");
 
         let name = Symbol::intern(&self.sess.opts.unstable_opts.profiler_runtime);
-        let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else {
+        let Some(cnum) =
+            self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit, CrateOrigin::Injected)
+        else {
             return;
         };
         let data = self.cstore.get_crate_data(cnum);
@@ -966,7 +1020,12 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             if entry.force {
                 let name_interned = Symbol::intern(name);
                 if !self.used_extern_options.contains(&name_interned) {
-                    self.resolve_crate(name_interned, DUMMY_SP, CrateDepKind::Explicit);
+                    self.resolve_crate(
+                        name_interned,
+                        DUMMY_SP,
+                        CrateDepKind::Explicit,
+                        CrateOrigin::ForcedExtern,
+                    );
                 }
             }
         }
@@ -1092,6 +1151,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         info!("{:?}", CrateDump(self.cstore));
     }
 
+    /// Process an `extern crate foo` AST node.
     pub fn process_extern_crate(
         &mut self,
         item: &ast::Item,
@@ -1117,7 +1177,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                     CrateDepKind::Explicit
                 };
 
-                let cnum = self.resolve_crate(name, item.span, dep_kind)?;
+                let cnum = self.resolve_crate(name, item.span, dep_kind, CrateOrigin::AstExtern)?;
 
                 let path_len = definitions.def_path(def_id).data.len();
                 self.cstore.update_extern_crate(cnum, ExternCrate {
@@ -1133,7 +1193,8 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     }
 
     pub fn process_path_extern(&mut self, name: Symbol, span: Span) -> Option<CrateNum> {
-        let cnum = self.resolve_crate(name, span, CrateDepKind::Explicit)?;
+        let cnum =
+            self.resolve_crate(name, span, CrateDepKind::Explicit, CrateOrigin::ExternPrelude)?;
 
         self.cstore.update_extern_crate(cnum, ExternCrate {
             src: ExternCrateSource::Path,
@@ -1147,7 +1208,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     }
 
     pub fn maybe_process_path_extern(&mut self, name: Symbol) -> Option<CrateNum> {
-        self.maybe_resolve_crate(name, CrateDepKind::Explicit, None).ok()
+        self.maybe_resolve_crate(name, CrateDepKind::Explicit, CrateOrigin::ExternPrelude).ok()
     }
 }
 
