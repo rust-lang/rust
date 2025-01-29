@@ -244,14 +244,16 @@ fn check_index<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut Uni
                     assert_span,
                     slice,
                 } => {
-                    *entry = IndexEntry::AssertWithIndex {
-                        highest_index: index,
-                        asserted_len: *asserted_len,
-                        assert_span: *assert_span,
-                        slice,
-                        indexes: vec![expr.span],
-                        comparison: *comparison,
-                    };
+                    if slice.span.lo() > assert_span.lo() {
+                        *entry = IndexEntry::AssertWithIndex {
+                            highest_index: index,
+                            asserted_len: *asserted_len,
+                            assert_span: *assert_span,
+                            slice,
+                            indexes: vec![expr.span],
+                            comparison: *comparison,
+                        };
+                    }
                 },
                 IndexEntry::IndexWithoutAssert {
                     highest_index, indexes, ..
@@ -287,6 +289,7 @@ fn check_assert<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut Un
                 indexes,
                 slice,
             } = entry
+                && expr.span.lo() <= slice.span.lo()
             {
                 *entry = IndexEntry::AssertWithIndex {
                     highest_index: *highest_index,
