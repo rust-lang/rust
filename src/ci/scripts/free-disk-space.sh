@@ -1,7 +1,12 @@
 #!/bin/bash
+set -euo pipefail
 
 # Free disk space on Linux GitHub action runners
 # Script inspired by https://github.com/jlumbroso/free-disk-space
+
+# When updating to a new ubuntu version:
+# - Check that there are no docker images preinstalled with `docker image ls`
+# - Check that there are no big packages preinstalled that we aren't using
 
 # print a line of the specified character
 printSeparationLine() {
@@ -14,11 +19,15 @@ printSeparationLine() {
 # compute available space
 # REF: https://unix.stackexchange.com/a/42049/60849
 # REF: https://stackoverflow.com/a/450821/408734
-getAvailableSpace() { echo $(df -a | awk 'NR > 1 {avail+=$4} END {print avail}'); }
+getAvailableSpace() {
+    df -a | awk 'NR > 1 {avail+=$4} END {print avail}'
+}
 
 # make Kb human readable (assume the input is Kb)
 # REF: https://unix.stackexchange.com/a/44087/60849
-formatByteCount() { echo $(numfmt --to=iec-i --suffix=B --padding=7 $1'000'); }
+formatByteCount() {
+    numfmt --to=iec-i --suffix=B --padding=7 "$1"'000'
+}
 
 # macro to output saved space
 printSavedSpace() {
@@ -58,11 +67,30 @@ removeDir() {
     dir=${1}
 
     local before
-    before=$(getAvailableSpace)
+    if [ ! -d "$dir" ]; then
+        echo "::warning::Directory $dir does not exist, skipping."
+    else
+        before=$(getAvailableSpace)
+        sudo rm -rf "$dir"
+        printSavedSpace "$before" "Removed $dir"
+    fi
+}
 
-    sudo rm -rf "$dir" || true
+removeUnusedDirectories() {
+    local dirs_to_remove=(
+        "/usr/local/lib/android"
+        # Haskell runtime
+        "/usr/local/.ghcup"
+        # Azure
+        "/opt/az"
+        "/etc/mysql"
+        "/usr/share/php"
+        "/etc/php/"
+    )
 
-    printSavedSpace "$before" "$dir"
+    for dir in "${dirs_to_remove[@]}"; do
+        removeDir "$dir"
+    done
 }
 
 execAndMeasureSpaceChange() {
@@ -79,32 +107,31 @@ execAndMeasureSpaceChange() {
 # Remove large packages
 # REF: https://github.com/apache/flink/blob/master/tools/azure-pipelines/free_disk_space.sh
 cleanPackages() {
-    sudo apt-get -qq remove -y --fix-missing \
-        '^aspnetcore-.*'       \
-        '^dotnet-.*'           \
-        '^llvm-.*'             \
-        'php.*'                \
-        '^mongodb-.*'          \
-        '^mysql-.*'            \
-        'azure-cli'            \
-        'google-chrome-stable' \
-        'firefox'              \
-        'powershell'           \
-        'mono-devel'           \
-        'libgl1-mesa-dri'      \
-        'google-cloud-sdk'     \
-        'google-cloud-cli'
+    sudo apt-get purge -y --fix-missing \
+        '^aspnetcore-.*'        \
+        '^dotnet-.*'            \
+        '^java-*'               \
+        '^libllvm.*'            \
+        '^llvm-.*'              \
+        '^mysql-.*'             \
+        '^vim.*'                \
+        'azure-cli'             \
+        'firefox'               \
+        'gcc'                   \
+        'gcc-12'                \
+        'gcc-13'                \
+        'google-chrome-stable'  \
+        'google-cloud-cli'      \
+        'groff-base'            \
+        'kubectl'               \
+        'libgl1-mesa-dri'       \
+        'microsoft-edge-stable' \
+        'php.*'                 \
+        'powershell'            \
+        'snapd'
 
     sudo apt-get autoremove -y || echo "::warning::The command [sudo apt-get autoremove -y] failed"
     sudo apt-get clean || echo "::warning::The command [sudo apt-get clean] failed failed"
-}
-
-# Remove Docker images
-cleanDocker() {
-    echo "Removing the following docker images:"
-    sudo docker image ls
-    echo "Removing docker images..."
-    sudo docker image prune --all --force || true
 }
 
 # Remove Swap storage
@@ -121,16 +148,10 @@ AVAILABLE_INITIAL=$(getAvailableSpace)
 printDF "BEFORE CLEAN-UP:"
 echo ""
 
-removeDir /usr/local/lib/android
-removeDir /usr/share/dotnet
-
-# Haskell runtime
-removeDir /opt/ghc
-removeDir /usr/local/.ghcup
-
-execAndMeasureSpaceChange cleanPackages "Large misc. packages"
-execAndMeasureSpaceChange cleanDocker "Docker images"
+execAndMeasureSpaceChange cleanPackages "Unused packages"
 execAndMeasureSpaceChange cleanSwap "Swap storage"
+
+removeUnusedDirectories
 
 # Output saved space statistic
 echo ""
