@@ -517,14 +517,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         self.lowerer.lower_lifetime(lt, RegionInferReason::Param(param)).into()
                     }
                     (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
-                        handle_ty_args(has_default, ty)
+                        // We handle the other parts of `Ty` in the match arm below
+                        handle_ty_args(has_default, ty.as_unambig_ty())
                     }
                     (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Infer(inf)) => {
                         handle_ty_args(has_default, &inf.to_ty())
                     }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.lowerer.lower_const_arg(ct, FeedConstTy::Param(param.def_id)).into()
-                    }
+                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => self
+                        .lowerer
+                        // Ambig portions of `ConstArg` are handled in the match arm below
+                        .lower_const_arg(ct.as_unambig_ct(), FeedConstTy::Param(param.def_id))
+                        .into(),
                     (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         self.lowerer.ct_infer(Some(param), inf.span).into()
                     }
@@ -2115,7 +2118,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 format!("Const::lower_const_arg: invalid qpath {qpath:?}"),
             ),
             hir::ConstArgKind::Anon(anon) => self.lower_anon_const(anon),
-            hir::ConstArgKind::Infer(span) => self.ct_infer(None, span),
+            hir::ConstArgKind::Infer(span, ()) => self.ct_infer(None, span),
         }
     }
 
@@ -2311,7 +2314,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     tcx.late_bound_vars(hir_ty.hir_id),
                 ),
             ),
-            hir::TyKind::TraitObject(bounds, lifetime, repr) => {
+            hir::TyKind::TraitObject(bounds, tagged_ptr) => {
+                let lifetime = tagged_ptr.pointer();
+                let repr = tagged_ptr.tag();
+
                 if let Some(guar) = self.prohibit_or_lint_bare_trait_object_ty(hir_ty) {
                     // Don't continue with type analysis if the `dyn` keyword is missing
                     // It generates confusing errors, especially if the user meant to use another
@@ -2420,7 +2426,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 Ty::new_array_with_const_len(tcx, self.lower_ty(ty), length)
             }
             hir::TyKind::Typeof(e) => tcx.type_of(e.def_id).instantiate_identity(),
-            hir::TyKind::Infer => {
+            hir::TyKind::Infer(()) => {
                 // Infer also appears as the type of arguments or return
                 // values in an ExprKind::Closure, or as
                 // the type of local variables. Both of these cases are
@@ -2553,7 +2559,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     pub fn lower_arg_ty(&self, ty: &hir::Ty<'tcx>, expected_ty: Option<Ty<'tcx>>) -> Ty<'tcx> {
         match ty.kind {
-            hir::TyKind::Infer if let Some(expected_ty) = expected_ty => {
+            hir::TyKind::Infer(()) if let Some(expected_ty) = expected_ty => {
                 self.record_ty(ty.hir_id, expected_ty, ty.span);
                 expected_ty
             }

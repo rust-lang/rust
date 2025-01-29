@@ -3802,3 +3802,15 @@ fn foo() {
         "#,
     );
 }
+
+#[test]
+fn tool_attr_skip() {
+    check_no_mismatches(
+        r#"
+#[rust_analyzer::skip]
+async fn foo(a: (), b: i32) -> u32 {
+    0 + 1 + b()
+}
+        "#,
+    );
+}

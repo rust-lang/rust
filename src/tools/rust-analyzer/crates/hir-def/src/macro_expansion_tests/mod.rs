@@ -47,7 +47,7 @@ use crate::{
 };
 
 #[track_caller]
-fn check_errors(ra_fixture: &str, expect: Expect) {
+fn check_errors(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let db = TestDB::with_files(ra_fixture);
     let krate = db.fetch_test_crate();
     let def_map = db.crate_def_map(krate);
@@ -77,7 +77,7 @@ fn check_errors(ra_fixture: &str, expect: Expect) {
 }
 
 #[track_caller]
-fn check(ra_fixture: &str, mut expect: Expect) {
+fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, mut expect: Expect) {
     let extra_proc_macros = vec![(
         r#"
 #[proc_macro_attribute]
@@ -358,6 +358,7 @@ impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
         let (parse, _) = syntax_bridge::token_tree_to_syntax_node(
             subtree,
             syntax_bridge::TopEntryPoint::MacroItems,
+            &mut |_| span::Edition::CURRENT,
             span::Edition::CURRENT,
         );
         if parse.errors().is_empty() {

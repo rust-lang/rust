@@ -1,11 +1,8 @@
 //@ run-pass
+//@ needs-subprocess
 
-#![allow(unused_must_use)]
 // Be sure that when a SIGPIPE would have been received that the entire process
 // doesn't die in a ball of fire, but rather it's gracefully handled.
-
-//@ ignore-wasm32 no processes
-//@ ignore-sgx no processes
 
 use std::env;
 use std::io::prelude::*;
@@ -14,7 +11,7 @@ use std::process::{Command, Stdio};
 
 fn test() {
     let _ = io::stdin().read_line(&mut String::new());
-    io::stdout().write(&[1]);
+    io::stdout().write(&[1]).unwrap();
     assert!(io::stdout().flush().is_err());
 }
 

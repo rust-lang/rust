@@ -20,6 +20,7 @@ itertools.workspace = true
 smallvec.workspace = true
 tracing.workspace = true
 triomphe.workspace = true
+indexmap.workspace = true
 
 # local deps
 base-db.workspace = true

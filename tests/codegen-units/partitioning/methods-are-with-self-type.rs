@@ -46,6 +46,7 @@ mod type2 {
 }
 
 //~ MONO_ITEM fn start @@ methods_are_with_self_type[External]
+#[no_mangle]
 pub fn start() {
     //~ MONO_ITEM fn mod1::<impl SomeGenericType<u32, u64>>::method @@ methods_are_with_self_type.volatile[External]
     SomeGenericType(0u32, 0u64).method();

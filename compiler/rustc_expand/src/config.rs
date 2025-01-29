@@ -391,7 +391,7 @@ impl<'a> StripUnconfigured<'a> {
         validate_attr::deny_builtin_meta_unsafety(&self.sess.psess, &meta_item);
 
         (
-            parse_cfg(&meta_item, self.sess).map_or(true, |meta_item| {
+            parse_cfg(&meta_item, self.sess).is_none_or(|meta_item| {
                 attr::cfg_matches(meta_item, &self.sess, self.lint_node_id, self.features)
             }),
             Some(meta_item),

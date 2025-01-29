@@ -83,7 +83,7 @@ impl<'a> PostExpansionVisitor<'a> {
                 feature_err_issue(&self.sess, feature, span, GateIssue::Language, explain).emit();
             }
             Err(abi::AbiDisabled::Unrecognized) => {
-                if self.sess.opts.pretty.map_or(true, |ppm| ppm.needs_hir()) {
+                if self.sess.opts.pretty.is_none_or(|ppm| ppm.needs_hir()) {
                     self.sess.dcx().span_delayed_bug(
                         span,
                         format!(
@@ -227,18 +227,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ItemKind::ForeignMod(foreign_module) => {
                 if let Some(abi) = foreign_module.abi {
                     self.check_abi(abi);
-                }
-            }
-
-            ast::ItemKind::Fn(..) => {
-                if attr::contains_name(&i.attrs, sym::start) {
-                    gate!(
-                        &self,
-                        start,
-                        i.span,
-                        "`#[start]` functions are experimental and their signature may change \
-                         over time"
-                    );
                 }
             }
 

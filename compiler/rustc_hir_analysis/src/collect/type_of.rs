@@ -1,10 +1,9 @@
 use core::ops::ControlFlow;
 
 use rustc_errors::{Applicability, StashKey, Suggestions};
-use rustc_hir as hir;
-use rustc_hir::HirId;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::Visitor;
+use rustc_hir::intravisit::VisitorExt;
+use rustc_hir::{self as hir, AmbigArg, HirId};
 use rustc_middle::query::plumbing::CyclePlaceholder;
 use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
@@ -451,7 +450,7 @@ fn infer_placeholder_type<'tcx>(
             let mut visitor = HirPlaceholderCollector::default();
             let node = tcx.hir_node_by_def_id(def_id);
             if let Some(ty) = node.ty() {
-                visitor.visit_ty(ty);
+                visitor.visit_ty_unambig(ty);
             }
             // If we have just one span, let's try to steal a const `_` feature error.
             let try_steal_span = if !tcx.features().generic_arg_infer() && visitor.spans.len() == 1
@@ -525,7 +524,7 @@ pub(crate) fn type_alias_is_lazy<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) ->
     struct HasTait;
     impl<'tcx> Visitor<'tcx> for HasTait {
         type Result = ControlFlow<()>;
-        fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) -> Self::Result {
+        fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx, AmbigArg>) -> Self::Result {
             if let hir::TyKind::OpaqueDef(..) = t.kind {
                 ControlFlow::Break(())
             } else {
@@ -533,5 +532,5 @@ pub(crate) fn type_alias_is_lazy<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) ->
             }
         }
     }
-    HasTait.visit_ty(tcx.hir().expect_item(def_id).expect_ty_alias().0).is_break()
+    HasTait.visit_ty_unambig(tcx.hir().expect_item(def_id).expect_ty_alias().0).is_break()
 }

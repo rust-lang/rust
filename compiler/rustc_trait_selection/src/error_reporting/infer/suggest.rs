@@ -167,6 +167,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             exp_span, exp_found.expected, exp_found.found,
         );
 
+        match self.tcx.coroutine_kind(cause.body_id) {
+            Some(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async | hir::CoroutineDesugaring::AsyncGen,
+                _,
+            )) => (),
+            None
+            | Some(
+                hir::CoroutineKind::Coroutine(_)
+                | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _),
+            ) => return,
+        }
+
         if let ObligationCauseCode::CompareImplItem { .. } = cause.code() {
             return;
         }
@@ -643,7 +655,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     && let ty::Ref(found_region, _, _) = found.kind()
                     && expected_region.is_bound()
                     && !found_region.is_bound()
-                    && let hir::TyKind::Infer = arg_hir.kind
+                    && let hir::TyKind::Infer(()) = arg_hir.kind
                 {
                     // If the expected region is late bound, the found region is not, and users are asking compiler
                     // to infer the type, we can suggest adding `: &_`.

@@ -44,13 +44,16 @@ pub struct NavigationTarget {
     ///
     /// This range must be contained within [`Self::full_range`].
     pub focus_range: Option<TextRange>,
+    // FIXME: Symbol
     pub name: SmolStr,
     pub kind: Option<SymbolKind>,
+    // FIXME: Symbol
     pub container_name: Option<SmolStr>,
     pub description: Option<String>,
     pub docs: Option<Documentation>,
     /// In addition to a `name` field, a `NavigationTarget` may also be aliased
     /// In such cases we want a `NavigationTarget` to be accessible by its alias
+    // FIXME: Symbol
     pub alias: Option<SmolStr>,
 }
 
@@ -191,11 +194,11 @@ impl TryToNav for FileSymbol {
                 NavigationTarget {
                     file_id,
                     name: self.is_alias.then(|| self.def.name(db)).flatten().map_or_else(
-                        || self.name.clone(),
+                        || self.name.as_str().into(),
                         |it| it.display_no_db(edition).to_smolstr(),
                     ),
-                    alias: self.is_alias.then(|| self.name.clone()),
-                    kind: Some(hir::ModuleDefId::from(self.def).into()),
+                    alias: self.is_alias.then(|| self.name.as_str().into()),
+                    kind: Some(self.def.into()),
                     full_range,
                     focus_range,
                     container_name: self.container_name.clone(),
@@ -225,6 +228,7 @@ impl TryToNav for Definition {
             Definition::Local(it) => Some(it.to_nav(db)),
             Definition::Label(it) => it.try_to_nav(db),
             Definition::Module(it) => Some(it.to_nav(db)),
+            Definition::Crate(it) => Some(it.to_nav(db)),
             Definition::Macro(it) => it.try_to_nav(db),
             Definition::Field(it) => it.try_to_nav(db),
             Definition::SelfType(it) => it.try_to_nav(db),
@@ -395,6 +399,12 @@ impl ToNav for hir::Module {
                 )
             },
         )
+    }
+}
+
+impl ToNav for hir::Crate {
+    fn to_nav(&self, db: &RootDatabase) -> UpmappingResult<NavigationTarget> {
+        self.root_module().to_nav(db)
     }
 }
 

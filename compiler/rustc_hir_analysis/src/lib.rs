@@ -63,6 +63,7 @@ This API is completely unstable and subject to change.
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(coroutines)]
+#![feature(debug_closure_helpers)]
 #![feature(if_let_guard)]
 #![feature(iter_from_coroutine)]
 #![feature(iter_intersperse)]

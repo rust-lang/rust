@@ -74,7 +74,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
 
     let proc_macros = if krate.is_proc_macro {
         db.proc_macros()
-            .for_crate(def_map.krate, db.syntax_context(tree_id.file_id()))
+            .for_crate(def_map.krate, db.syntax_context(tree_id.file_id(), krate.edition))
             .unwrap_or_default()
     } else {
         Default::default()
@@ -717,8 +717,8 @@ impl DefCollector<'_> {
                 }
             }
             None => {
-                for (name, def) in root_scope.macros() {
-                    self.def_map.macro_use_prelude.insert(name.clone(), (def, extern_crate));
+                for (name, it) in root_scope.macros() {
+                    self.def_map.macro_use_prelude.insert(name.clone(), (it.def, extern_crate));
                 }
             }
         }

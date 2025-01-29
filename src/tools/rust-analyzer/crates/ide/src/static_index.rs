@@ -138,6 +138,7 @@ impl StaticIndex<'_> {
                     render_colons: true,
                     discriminant_hints: crate::DiscriminantHints::Fieldless,
                     type_hints: true,
+                    sized_bound: false,
                     parameter_hints: true,
                     generic_parameter_hints: crate::GenericParameterHints {
                         type_hints: false,
@@ -290,7 +291,10 @@ mod tests {
 
     use super::VendoredLibrariesConfig;
 
-    fn check_all_ranges(ra_fixture: &str, vendored_libs_config: VendoredLibrariesConfig<'_>) {
+    fn check_all_ranges(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        vendored_libs_config: VendoredLibrariesConfig<'_>,
+    ) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
         let s = StaticIndex::compute(&analysis, vendored_libs_config);
         let mut range_set: FxHashSet<_> = ranges.iter().map(|it| it.0).collect();
@@ -309,7 +313,10 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_definitions(ra_fixture: &str, vendored_libs_config: VendoredLibrariesConfig<'_>) {
+    fn check_definitions(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        vendored_libs_config: VendoredLibrariesConfig<'_>,
+    ) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
         let s = StaticIndex::compute(&analysis, vendored_libs_config);
         let mut range_set: FxHashSet<_> = ranges.iter().map(|it| it.0).collect();

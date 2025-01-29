@@ -102,6 +102,8 @@
 #![feature(async_fn_traits)]
 #![feature(async_iterator)]
 #![feature(box_uninit_write)]
+#![feature(bstr)]
+#![feature(bstr_internals)]
 #![feature(clone_to_uninit)]
 #![feature(coerce_unsized)]
 #![feature(const_eval_select)]
@@ -228,6 +230,8 @@ mod boxed {
     pub use std::boxed::Box;
 }
 pub mod borrow;
+#[unstable(feature = "bstr", issue = "134915")]
+pub mod bstr;
 pub mod collections;
 #[cfg(all(not(no_rc), not(no_sync), not(no_global_oom_handling)))]
 pub mod ffi;

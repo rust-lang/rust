@@ -5,8 +5,8 @@ use rustc_ast as ast;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
-    BinOp, BinOpKind, Expr, ExprKind, GenericArg, HirId, Impl, Item, ItemKind, Node, Pat, PatKind,
-    Path, PathSegment, QPath, Ty, TyKind,
+    AmbigArg, BinOp, BinOpKind, Expr, ExprKind, GenericArg, HirId, Impl, Item, ItemKind, Node, Pat,
+    PatKind, Path, PathSegment, QPath, Ty, TyKind,
 };
 use rustc_middle::ty::{self, GenericArgsRef, Ty as MiddleTy};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -159,7 +159,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
         }
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx Ty<'tcx>) {
+    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx Ty<'tcx, AmbigArg>) {
         match &ty.kind {
             TyKind::Path(QPath::Resolved(_, path)) => {
                 if lint_ty_kind_usage(cx, &path.res) {

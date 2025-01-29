@@ -35,7 +35,7 @@ unsafe impl GlobalAlloc for Alloc {
 static __rust_no_alloc_shim_is_unstable: u8 = 0;
 
 #[no_mangle]
-extern "C" fn main(_argc: usize, _argv: *const *const i8) -> i32 {
+extern "C" fn main(_argc: core::ffi::c_int, _argv: *const *const i8) -> i32 {
     unsafe {
         assert_eq!(alloc::alloc::alloc(Layout::new::<()>()), core::ptr::null_mut());
     }

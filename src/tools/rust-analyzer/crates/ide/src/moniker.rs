@@ -191,7 +191,7 @@ pub(crate) fn def_to_kind(db: &RootDatabase, def: Definition) -> SymbolInformati
             MacroKind::ProcMacro => Macro,
         },
         Definition::Field(..) | Definition::TupleField(..) => Field,
-        Definition::Module(..) => Module,
+        Definition::Module(..) | Definition::Crate(..) => Module,
         Definition::Function(it) => {
             if it.as_assoc_item(db).is_some() {
                 if it.has_self_param(db) {
@@ -405,7 +405,7 @@ mod tests {
 
     #[allow(dead_code)]
     #[track_caller]
-    fn no_moniker(ra_fixture: &str) {
+    fn no_moniker(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position) = fixture::position(ra_fixture);
         if let Some(x) = analysis.moniker(position).unwrap() {
             assert_eq!(x.info.len(), 0, "Moniker found but no moniker expected: {x:?}");
@@ -413,7 +413,12 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_local_moniker(ra_fixture: &str, identifier: &str, package: &str, kind: MonikerKind) {
+    fn check_local_moniker(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        identifier: &str,
+        package: &str,
+        kind: MonikerKind,
+    ) {
         let (analysis, position) = fixture::position(ra_fixture);
         let x = analysis.moniker(position).unwrap().expect("no moniker found").info;
         assert_eq!(x.len(), 1);
@@ -433,7 +438,12 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_moniker(ra_fixture: &str, identifier: &str, package: &str, kind: MonikerKind) {
+    fn check_moniker(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        identifier: &str,
+        package: &str,
+        kind: MonikerKind,
+    ) {
         let (analysis, position) = fixture::position(ra_fixture);
         let x = analysis.moniker(position).unwrap().expect("no moniker found").info;
         assert_eq!(x.len(), 1);

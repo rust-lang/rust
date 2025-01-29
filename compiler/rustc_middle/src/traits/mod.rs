@@ -345,9 +345,6 @@ pub enum ObligationCauseCode<'tcx> {
     /// `main` has wrong type
     MainFunctionType,
 
-    /// `start` has wrong type
-    StartFunctionType,
-
     /// language function has wrong type
     LangFunctionType(Symbol),
 

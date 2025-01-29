@@ -329,7 +329,7 @@ impl Completions {
         ctx: &CompletionContext<'_>,
         dot_access: &DotAccess,
         func: hir::Function,
-        receiver: Option<hir::Name>,
+        receiver: Option<SmolStr>,
         local_name: Option<hir::Name>,
     ) {
         if !ctx.check_stability(Some(&func.attrs(ctx.db))) {
@@ -475,7 +475,7 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext<'_>,
         dot_access: &DotAccess,
-        receiver: Option<hir::Name>,
+        receiver: Option<SmolStr>,
         field: hir::Field,
         ty: &hir::Type,
     ) {
@@ -533,7 +533,7 @@ impl Completions {
     pub(crate) fn add_tuple_field(
         &mut self,
         ctx: &CompletionContext<'_>,
-        receiver: Option<hir::Name>,
+        receiver: Option<SmolStr>,
         field: usize,
         ty: &hir::Type,
     ) {

@@ -292,7 +292,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
 
                         res = Err(tcx.dcx().emit_err(errors::DispatchFromDynZST {
                             span,
-                            name: field.name,
+                            name: field.ident(tcx),
                             ty: ty_a,
                         }));
 

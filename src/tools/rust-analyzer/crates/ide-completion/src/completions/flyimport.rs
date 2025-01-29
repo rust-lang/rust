@@ -5,7 +5,7 @@ use ide_db::imports::{
     insert_use::ImportScope,
 };
 use itertools::Itertools;
-use syntax::{ast, AstNode, SyntaxNode, ToSmolStr, T};
+use syntax::{ast, AstNode, SyntaxNode, ToSmolStr};
 
 use crate::{
     config::AutoImportExclusionType,
@@ -403,10 +403,11 @@ fn import_on_the_fly_method(
 
 fn import_name(ctx: &CompletionContext<'_>) -> String {
     let token_kind = ctx.token.kind();
-    if matches!(token_kind, T![.] | T![::]) {
-        String::new()
-    } else {
+
+    if token_kind.is_any_identifier() {
         ctx.token.to_string()
+    } else {
+        String::new()
     }
 }
 

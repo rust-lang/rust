@@ -19,6 +19,12 @@ use crate::diagnostics::report_leaks;
 use crate::shims::tls;
 use crate::*;
 
+#[derive(Copy, Clone, Debug)]
+pub enum MiriEntryFnType {
+    MiriStart,
+    Rustc(EntryFnType),
+}
+
 /// When the main thread would exit, we will yield to any other thread that is ready to execute.
 /// But we must only do that a finite number of times, or a background thread running `loop {}`
 /// will hang the program.
@@ -272,7 +278,7 @@ impl<'tcx> MainThreadState<'tcx> {
 pub fn create_ecx<'tcx>(
     tcx: TyCtxt<'tcx>,
     entry_id: DefId,
-    entry_type: EntryFnType,
+    entry_type: MiriEntryFnType,
     config: &MiriConfig,
 ) -> InterpResult<'tcx, InterpCx<'tcx, MiriMachine<'tcx>>> {
     let typing_env = ty::TypingEnv::fully_monomorphized();
@@ -300,7 +306,7 @@ pub fn create_ecx<'tcx>(
     // Setup first stack frame.
     let entry_instance = ty::Instance::mono(tcx, entry_id);
 
-    // First argument is constructed later, because it's skipped if the entry function uses #[start].
+    // First argument is constructed later, because it's skipped for `miri_start.`
 
     // Second argument (argc): length of `config.args`.
     let argc =
@@ -373,11 +379,9 @@ pub fn create_ecx<'tcx>(
     // Call start function.
 
     match entry_type {
-        EntryFnType::Main { .. } => {
+        MiriEntryFnType::Rustc(EntryFnType::Main { .. }) => {
             let start_id = tcx.lang_items().start_fn().unwrap_or_else(|| {
-                tcx.dcx().fatal(
-                    "could not find start function. Make sure the entry point is marked with `#[start]`."
-                );
+                tcx.dcx().fatal("could not find start lang item");
             });
             let main_ret_ty = tcx.fn_sig(entry_id).no_bound_vars().unwrap().output();
             let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
@@ -413,7 +417,7 @@ pub fn create_ecx<'tcx>(
                 StackPopCleanup::Root { cleanup: true },
             )?;
         }
-        EntryFnType::Start => {
+        MiriEntryFnType::MiriStart => {
             ecx.call_function(
                 entry_instance,
                 ExternAbi::Rust,
@@ -434,7 +438,7 @@ pub fn create_ecx<'tcx>(
 pub fn eval_entry<'tcx>(
     tcx: TyCtxt<'tcx>,
     entry_id: DefId,
-    entry_type: EntryFnType,
+    entry_type: MiriEntryFnType,
     config: MiriConfig,
 ) -> Option<i32> {
     // Copy setting before we move `config`.

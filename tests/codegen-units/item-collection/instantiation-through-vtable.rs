@@ -2,7 +2,7 @@
 //@ compile-flags:-Zprint-mono-items=eager -Zinline-in-all-cgus -Zmir-opt-level=0
 
 #![deny(dead_code)]
-#![feature(start)]
+#![crate_type = "lib"]
 
 trait Trait {
     fn foo(&self) -> u32;
@@ -21,8 +21,8 @@ impl<T> Trait for Struct<T> {
 }
 
 //~ MONO_ITEM fn start
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+#[no_mangle]
+pub fn start(_: isize, _: *const *const u8) -> isize {
     let s1 = Struct { _a: 0u32 };
 
     //~ MONO_ITEM fn std::ptr::drop_in_place::<Struct<u32>> - shim(None) @@ instantiation_through_vtable-cgu.0[Internal]

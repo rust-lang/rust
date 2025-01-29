@@ -1,6 +1,5 @@
-use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::{GenericArg, PathSegment, QPath, TyKind};
+use rustc_hir::{self as hir, AmbigArg, GenericArg, PathSegment, QPath, TyKind};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -22,7 +21,7 @@ declare_tool_lint! {
 declare_lint_pass!(PassByValue => [PASS_BY_VALUE]);
 
 impl<'tcx> LateLintPass<'tcx> for PassByValue {
-    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx>) {
+    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         match &ty.kind {
             TyKind::Ref(_, hir::MutTy { ty: inner_ty, mutbl: hir::Mutability::Not }) => {
                 if let Some(impl_did) = cx.tcx.impl_of_method(ty.hir_id.owner.to_def_id()) {
@@ -46,7 +45,7 @@ fn path_for_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<Stri
     if let TyKind::Path(QPath::Resolved(_, path)) = &ty.kind {
         match path.res {
             Res::Def(_, def_id) if cx.tcx.has_attr(def_id, sym::rustc_pass_by_value) => {
-                let name = cx.tcx.item_name(def_id).to_ident_string();
+                let name = cx.tcx.item_ident(def_id);
                 let path_segment = path.segments.last().unwrap();
                 return Some(format!("{}{}", name, gen_args(cx, path_segment)));
             }

@@ -3,7 +3,7 @@
 //@ compile-flags:-Zinline-in-all-cgus
 
 #![deny(dead_code)]
-#![feature(start)]
+#![crate_type = "lib"]
 
 //~ MONO_ITEM fn std::ptr::drop_in_place::<Dropped> - shim(Some(Dropped)) @@ tuple_drop_glue-cgu.0[Internal]
 struct Dropped;
@@ -14,8 +14,8 @@ impl Drop for Dropped {
 }
 
 //~ MONO_ITEM fn start
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+#[no_mangle]
+pub fn start(_: isize, _: *const *const u8) -> isize {
     //~ MONO_ITEM fn std::ptr::drop_in_place::<(u32, Dropped)> - shim(Some((u32, Dropped))) @@ tuple_drop_glue-cgu.0[Internal]
     let x = (0u32, Dropped);
 

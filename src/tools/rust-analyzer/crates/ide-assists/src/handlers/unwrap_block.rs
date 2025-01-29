@@ -61,7 +61,7 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                 }
             }
             None => {
-                let empty_tuple = make::expr_tuple([]);
+                let empty_tuple = make::ext::expr_unit();
                 make::let_stmt(pattern, ty, Some(empty_tuple)).to_string()
             }
         };

@@ -547,7 +547,18 @@ pub(crate) fn inlay_hint(
     file_id: FileId,
     mut inlay_hint: InlayHint,
 ) -> Cancellable<lsp_types::InlayHint> {
-    let resolve_range_and_hash = inlay_hint.needs_resolve().map(|range| {
+    let hint_needs_resolve = |hint: &InlayHint| -> Option<TextRange> {
+        hint.resolve_parent.filter(|_| {
+            hint.text_edit.is_some()
+                || hint
+                    .label
+                    .parts
+                    .iter()
+                    .any(|part| part.linked_location.is_some() || part.tooltip.is_some())
+        })
+    };
+
+    let resolve_range_and_hash = hint_needs_resolve(&inlay_hint).map(|range| {
         (
             range,
             std::hash::BuildHasher::hash_one(
@@ -568,7 +579,11 @@ pub(crate) fn inlay_hint(
         something_to_resolve |= inlay_hint.text_edit.is_some();
         None
     } else {
-        inlay_hint.text_edit.take().map(|it| text_edit_vec(line_index, it))
+        inlay_hint
+            .text_edit
+            .take()
+            .and_then(|it| it.computed())
+            .map(|it| text_edit_vec(line_index, it))
     };
     let (label, tooltip) = inlay_hint_label(
         snap,
@@ -626,7 +641,7 @@ fn inlay_hint_label(
                 *something_to_resolve |= tooltip.is_some();
                 None
             } else {
-                match tooltip {
+                match tooltip.and_then(|it| it.computed()) {
                     Some(ide::InlayTooltip::String(s)) => {
                         Some(lsp_types::InlayHintTooltip::String(s))
                     }
@@ -650,7 +665,7 @@ fn inlay_hint_label(
                         *something_to_resolve |= part.tooltip.is_some();
                         None
                     } else {
-                        match part.tooltip {
+                        match part.tooltip.and_then(|it| it.computed()) {
                             Some(ide::InlayTooltip::String(s)) => {
                                 Some(lsp_types::InlayHintLabelPartTooltip::String(s))
                             }
@@ -1993,7 +2008,7 @@ fn bar(_: usize) {}
 
     #[track_caller]
     fn check_rendered_snippets_in_source(
-        ra_fixture: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
         edit: TextEdit,
         snippets: SnippetEdit,
         expect: Expect,

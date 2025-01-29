@@ -14,11 +14,11 @@ use rustc_ast::visit::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
 use rustc_hir::{
-    GenericArg, GenericParam, GenericParamKind, HirId, ItemLocalMap, LifetimeName, Node,
+    self as hir, AmbigArg, GenericArg, GenericParam, GenericParamKind, HirId, ItemLocalMap,
+    LifetimeName, Node,
 };
 use rustc_macros::extension;
 use rustc_middle::hir::nested_filter;
@@ -184,6 +184,50 @@ enum Scope<'a> {
     },
 }
 
+impl<'a> Scope<'a> {
+    // A helper for debugging scopes without printing parent scopes
+    fn debug_truncated(&'a self) -> impl fmt::Debug + 'a {
+        fmt::from_fn(move |f| match self {
+            Self::Binder { bound_vars, scope_type, hir_id, where_bound_origin, s: _ } => f
+                .debug_struct("Binder")
+                .field("bound_vars", bound_vars)
+                .field("scope_type", scope_type)
+                .field("hir_id", hir_id)
+                .field("where_bound_origin", where_bound_origin)
+                .field("s", &"..")
+                .finish(),
+            Self::Opaque { captures, def_id, s: _ } => f
+                .debug_struct("Opaque")
+                .field("def_id", def_id)
+                .field("captures", &captures.borrow())
+                .field("s", &"..")
+                .finish(),
+            Self::Body { id, s: _ } => {
+                f.debug_struct("Body").field("id", id).field("s", &"..").finish()
+            }
+            Self::ObjectLifetimeDefault { lifetime, s: _ } => f
+                .debug_struct("ObjectLifetimeDefault")
+                .field("lifetime", lifetime)
+                .field("s", &"..")
+                .finish(),
+            Self::Supertrait { bound_vars, s: _ } => f
+                .debug_struct("Supertrait")
+                .field("bound_vars", bound_vars)
+                .field("s", &"..")
+                .finish(),
+            Self::TraitRefBoundary { s: _ } => f.debug_struct("TraitRefBoundary").finish(),
+            Self::LateBoundary { s: _, what, deny_late_regions } => f
+                .debug_struct("LateBoundary")
+                .field("what", what)
+                .field("deny_late_regions", deny_late_regions)
+                .finish(),
+            Self::Root { opt_parent_item } => {
+                f.debug_struct("Root").field("opt_parent_item", &opt_parent_item).finish()
+            }
+        })
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 enum BinderScopeType {
     /// Any non-concatenating binder scopes.
@@ -198,52 +242,6 @@ enum BinderScopeType {
     /// out any lifetimes because they aren't needed to show the two scopes).
     /// The inner `for<>` has a scope of `Concatenating`.
     Concatenating,
-}
-
-// A helper struct for debugging scopes without printing parent scopes
-struct TruncatedScopeDebug<'a>(&'a Scope<'a>);
-
-impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0 {
-            Scope::Binder { bound_vars, scope_type, hir_id, where_bound_origin, s: _ } => f
-                .debug_struct("Binder")
-                .field("bound_vars", bound_vars)
-                .field("scope_type", scope_type)
-                .field("hir_id", hir_id)
-                .field("where_bound_origin", where_bound_origin)
-                .field("s", &"..")
-                .finish(),
-            Scope::Opaque { captures, def_id, s: _ } => f
-                .debug_struct("Opaque")
-                .field("def_id", def_id)
-                .field("captures", &captures.borrow())
-                .field("s", &"..")
-                .finish(),
-            Scope::Body { id, s: _ } => {
-                f.debug_struct("Body").field("id", id).field("s", &"..").finish()
-            }
-            Scope::ObjectLifetimeDefault { lifetime, s: _ } => f
-                .debug_struct("ObjectLifetimeDefault")
-                .field("lifetime", lifetime)
-                .field("s", &"..")
-                .finish(),
-            Scope::Supertrait { bound_vars, s: _ } => f
-                .debug_struct("Supertrait")
-                .field("bound_vars", bound_vars)
-                .field("s", &"..")
-                .finish(),
-            Scope::TraitRefBoundary { s: _ } => f.debug_struct("TraitRefBoundary").finish(),
-            Scope::LateBoundary { s: _, what, deny_late_regions } => f
-                .debug_struct("LateBoundary")
-                .field("what", what)
-                .field("deny_late_regions", deny_late_regions)
-                .finish(),
-            Scope::Root { opt_parent_item } => {
-                f.debug_struct("Root").field("opt_parent_item", &opt_parent_item).finish()
-            }
-        }
-    }
 }
 
 type ScopeRef<'a> = &'a Scope<'a>;
@@ -489,15 +487,17 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     struct FindInferInClosureWithBinder;
                     impl<'v> Visitor<'v> for FindInferInClosureWithBinder {
                         type Result = ControlFlow<Span>;
-                        fn visit_ty(&mut self, t: &'v hir::Ty<'v>) -> Self::Result {
-                            if matches!(t.kind, hir::TyKind::Infer) {
-                                ControlFlow::Break(t.span)
-                            } else {
-                                intravisit::walk_ty(self, t)
-                            }
+
+                        fn visit_infer(
+                            &mut self,
+                            _inf_id: HirId,
+                            inf_span: Span,
+                            _kind: InferKind<'v>,
+                        ) -> Self::Result {
+                            ControlFlow::Break(inf_span)
                         }
                     }
-                    FindInferInClosureWithBinder.visit_ty(ty).break_value()
+                    FindInferInClosureWithBinder.visit_ty_unambig(ty).break_value()
                 }
 
                 let infer_in_rt_sp = match fn_decl.output {
@@ -749,7 +749,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         match ty.kind {
             hir::TyKind::BareFn(c) => {
                 let (mut bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) = c
@@ -810,7 +810,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     intravisit::walk_ty(this, ty);
                 });
             }
-            hir::TyKind::TraitObject(bounds, lifetime, _) => {
+            hir::TyKind::TraitObject(bounds, lifetime) => {
+                let lifetime = lifetime.pointer();
+
                 debug!(?bounds, ?lifetime, "TraitObject");
                 let scope = Scope::TraitRefBoundary { s: self.scope };
                 self.with(scope, |this| {
@@ -827,7 +829,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         // use the object lifetime defaulting
                         // rules. So e.g., `Box<dyn Debug>` becomes
                         // `Box<dyn Debug + 'static>`.
-                        self.resolve_object_lifetime_default(lifetime)
+                        self.resolve_object_lifetime_default(&*lifetime)
                     }
                     LifetimeName::Infer => {
                         // If the user writes `'_`, we use the *ordinary* elision
@@ -838,7 +840,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     }
                     LifetimeName::Param(..) | LifetimeName::Static => {
                         // If the user wrote an explicit name, use that.
-                        self.visit_lifetime(lifetime);
+                        self.visit_lifetime(&*lifetime);
                     }
                     LifetimeName::Error => {}
                 }
@@ -849,7 +851,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     lifetime: self.map.defs.get(&lifetime_ref.hir_id.local_id).cloned(),
                     s: self.scope,
                 };
-                self.with(scope, |this| this.visit_ty(mt.ty));
+                self.with(scope, |this| this.visit_ty_unambig(mt.ty));
             }
             hir::TyKind::TraitAscription(bounds) => {
                 let scope = Scope::TraitRefBoundary { s: self.scope };
@@ -891,7 +893,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         this.visit_param_bound(bound);
                     }
                     if let Some(ty) = ty {
-                        this.visit_ty(ty);
+                        this.visit_ty_unambig(ty);
                     }
                 })
             }
@@ -910,7 +912,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             }),
             Type(ty) => self.visit_early(impl_item.hir_id(), impl_item.generics, |this| {
                 this.visit_generics(impl_item.generics);
-                this.visit_ty(ty);
+                this.visit_ty_unambig(ty);
             }),
             Const(_, _) => self.visit_early(impl_item.hir_id(), impl_item.generics, |this| {
                 intravisit::walk_impl_item(this, impl_item)
@@ -1019,7 +1021,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 };
                 self.with(scope, |this| {
                     walk_list!(this, visit_generic_param, bound_generic_params);
-                    this.visit_ty(bounded_ty);
+                    this.visit_ty_unambig(bounded_ty);
                     walk_list!(this, visit_param_bound, bounds);
                 })
             }
@@ -1034,8 +1036,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             &hir::WherePredicateKind::EqPredicate(hir::WhereEqPredicate {
                 lhs_ty, rhs_ty, ..
             }) => {
-                self.visit_ty(lhs_ty);
-                self.visit_ty(rhs_ty);
+                self.visit_ty_unambig(lhs_ty);
+                self.visit_ty_unambig(rhs_ty);
             }
         }
     }
@@ -1068,13 +1070,13 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             GenericParamKind::Lifetime { .. } => {}
             GenericParamKind::Type { default, .. } => {
                 if let Some(ty) = default {
-                    self.visit_ty(ty);
+                    self.visit_ty_unambig(ty);
                 }
             }
             GenericParamKind::Const { ty, default, .. } => {
-                self.visit_ty(ty);
+                self.visit_ty_unambig(ty);
                 if let Some(default) = default {
-                    self.visit_const_arg(default);
+                    self.visit_const_arg_unambig(default);
                 }
             }
         }
@@ -1140,7 +1142,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     {
         let BoundVarContext { tcx, map, .. } = self;
         let mut this = BoundVarContext { tcx: *tcx, map, scope: &wrap_scope };
-        let span = debug_span!("scope", scope = ?TruncatedScopeDebug(this.scope));
+        let span = debug_span!("scope", scope = ?this.scope.debug_truncated());
         {
             let _enter = span.enter();
             f(&mut this);
@@ -1983,15 +1985,15 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             },
             |this| {
                 for input in inputs {
-                    this.visit_ty(input);
+                    this.visit_ty_unambig(input);
                 }
                 if !in_closure && let Some(output) = output {
-                    this.visit_ty(output);
+                    this.visit_ty_unambig(output);
                 }
             },
         );
         if in_closure && let Some(output) = output {
-            self.visit_ty(output);
+            self.visit_ty_unambig(output);
         }
     }
 
@@ -2309,7 +2311,7 @@ fn is_late_bound_map(
 
     let mut constrained_by_input = ConstrainedCollector { regions: Default::default(), tcx };
     for arg_ty in sig.decl.inputs {
-        constrained_by_input.visit_ty(arg_ty);
+        constrained_by_input.visit_ty_unambig(arg_ty);
     }
 
     let mut appears_in_output =
@@ -2417,7 +2419,7 @@ fn is_late_bound_map(
     }
 
     impl<'v> Visitor<'v> for ConstrainedCollector<'_> {
-        fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+        fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
             match ty.kind {
                 hir::TyKind::Path(
                     hir::QPath::Resolved(Some(_), _) | hir::QPath::TypeRelative(..),

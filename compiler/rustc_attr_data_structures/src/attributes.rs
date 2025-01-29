@@ -35,11 +35,23 @@ pub enum InstructionSetAttr {
     ArmT32,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, HashStable_Generic, Default)]
 pub enum OptimizeAttr {
-    None,
+    /// No `#[optimize(..)]` attribute
+    #[default]
+    Default,
+    /// `#[optimize(none)]`
+    DoNotOptimize,
+    /// `#[optimize(speed)]`
     Speed,
+    /// `#[optimize(size)]`
     Size,
+}
+
+impl OptimizeAttr {
+    pub fn do_not_optimize(&self) -> bool {
+        matches!(self, Self::DoNotOptimize)
+    }
 }
 
 #[derive(Clone, Debug, Encodable, Decodable)]

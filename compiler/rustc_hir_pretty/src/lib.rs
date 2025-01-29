@@ -402,7 +402,8 @@ impl<'a> State<'a> {
                 self.print_bounds("impl", bounds);
             }
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
-            hir::TyKind::TraitObject(bounds, lifetime, syntax) => {
+            hir::TyKind::TraitObject(bounds, lifetime) => {
+                let syntax = lifetime.tag();
                 match syntax {
                     ast::TraitObjectSyntax::Dyn => self.word_nbsp("dyn"),
                     ast::TraitObjectSyntax::DynStar => self.word_nbsp("dyn*"),
@@ -421,7 +422,7 @@ impl<'a> State<'a> {
                 if !lifetime.is_elided() {
                     self.nbsp();
                     self.word_space("+");
-                    self.print_lifetime(lifetime);
+                    self.print_lifetime(lifetime.pointer());
                 }
             }
             hir::TyKind::Array(ty, ref length) => {
@@ -441,7 +442,7 @@ impl<'a> State<'a> {
                 self.word("/*ERROR*/");
                 self.pclose();
             }
-            hir::TyKind::Infer | hir::TyKind::InferDelegation(..) => {
+            hir::TyKind::Infer(()) | hir::TyKind::InferDelegation(..) => {
                 self.word("_");
             }
             hir::TyKind::Pat(ty, pat) => {
@@ -1799,8 +1800,8 @@ impl<'a> State<'a> {
                         match generic_arg {
                             GenericArg::Lifetime(lt) if !elide_lifetimes => s.print_lifetime(lt),
                             GenericArg::Lifetime(_) => {}
-                            GenericArg::Type(ty) => s.print_type(ty),
-                            GenericArg::Const(ct) => s.print_const_arg(ct),
+                            GenericArg::Type(ty) => s.print_type(ty.as_unambig_ty()),
+                            GenericArg::Const(ct) => s.print_const_arg(ct.as_unambig_ct()),
                             GenericArg::Infer(_inf) => s.word("_"),
                         }
                     });
@@ -2150,7 +2151,7 @@ impl<'a> State<'a> {
             s.ann.nested(s, Nested::BodyParamPat(body_id, i));
             i += 1;
 
-            if let hir::TyKind::Infer = ty.kind {
+            if let hir::TyKind::Infer(()) = ty.kind {
                 // Print nothing.
             } else {
                 s.word(":");

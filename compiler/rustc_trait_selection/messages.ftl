@@ -261,7 +261,6 @@ trait_selection_oc_fn_lang_correct_type = {$lang_item_name ->
         *[lang_item_name] lang item `{$lang_item_name}`
     } function has wrong type
 trait_selection_oc_fn_main_correct_type = `main` function has wrong type
-trait_selection_oc_fn_start_correct_type = `#[start]` function has wrong type
 trait_selection_oc_generic = mismatched types
 
 trait_selection_oc_if_else_different = `if` and `else` have incompatible types
@@ -396,7 +395,6 @@ trait_selection_subtype = ...so that the {$requirement ->
     [if_else_different] `if` and `else` have incompatible types
     [no_else] `if` missing an `else` returns `()`
     [fn_main_correct_type] `main` function has the correct type
-    [fn_start_correct_type] `#[start]` function has the correct type
     [fn_lang_correct_type] lang item function has the correct type
     [intrinsic_correct_type] intrinsic has the correct type
     [method_correct_type] method receiver has the correct type
@@ -410,7 +408,6 @@ trait_selection_subtype_2 = ...so that {$requirement ->
     [if_else_different] `if` and `else` have incompatible types
     [no_else] `if` missing an `else` returns `()`
     [fn_main_correct_type] `main` function has the correct type
-    [fn_start_correct_type] `#[start]` function has the correct type
     [fn_lang_correct_type] lang item function has the correct type
     [intrinsic_correct_type] intrinsic has the correct type
     [method_correct_type] method receiver has the correct type

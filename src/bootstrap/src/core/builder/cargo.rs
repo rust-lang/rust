@@ -121,6 +121,10 @@ impl Cargo {
         cargo
     }
 
+    pub fn compiler(&self) -> Compiler {
+        self.compiler
+    }
+
     pub fn into_cmd(self) -> BootstrapCommand {
         self.into()
     }
@@ -267,6 +271,13 @@ impl Cargo {
             && builder.cc.borrow()[&target].args().iter().any(|arg| arg == "-gz")
         {
             self.rustflags.arg("-Clink-arg=-gz");
+        }
+
+        // Ignore linker warnings for now. These are complicated to fix and don't affect the build.
+        // FIXME: we should really investigate these...
+        // cfg(bootstrap)
+        if compiler.stage != 0 {
+            self.rustflags.arg("-Alinker-messages");
         }
 
         // Throughout the build Cargo can execute a number of build scripts

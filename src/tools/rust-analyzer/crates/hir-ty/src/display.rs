@@ -471,10 +471,55 @@ impl HirDisplay for ProjectionTy {
         if f.should_truncate() {
             return write!(f, "{TYPE_HINT_TRUNCATION}");
         }
-
         let trait_ref = self.trait_ref(f.db);
+        let self_ty = trait_ref.self_type_parameter(Interner);
+
+        // if we are projection on a type parameter, check if the projection target has bounds
+        // itself, if so, we render them directly as `impl Bound` instead of the less useful
+        // `<Param as Trait>::Assoc`
+        if !f.display_target.is_source_code() {
+            if let TyKind::Placeholder(idx) = self_ty.kind(Interner) {
+                let db = f.db;
+                let id = from_placeholder_idx(db, *idx);
+                let generics = generics(db.upcast(), id.parent);
+
+                let substs = generics.placeholder_subst(db);
+                let bounds = db
+                    .generic_predicates(id.parent)
+                    .iter()
+                    .map(|pred| pred.clone().substitute(Interner, &substs))
+                    .filter(|wc| match wc.skip_binders() {
+                        WhereClause::Implemented(tr) => {
+                            match tr.self_type_parameter(Interner).kind(Interner) {
+                                TyKind::Alias(AliasTy::Projection(proj)) => proj == self,
+                                _ => false,
+                            }
+                        }
+                        WhereClause::TypeOutlives(t) => match t.ty.kind(Interner) {
+                            TyKind::Alias(AliasTy::Projection(proj)) => proj == self,
+                            _ => false,
+                        },
+                        // We shouldn't be here if these exist
+                        WhereClause::AliasEq(_) => false,
+                        WhereClause::LifetimeOutlives(_) => false,
+                    })
+                    .collect::<Vec<_>>();
+                if !bounds.is_empty() {
+                    return write_bounds_like_dyn_trait_with_prefix(
+                        f,
+                        "impl",
+                        Either::Left(
+                            &TyKind::Alias(AliasTy::Projection(self.clone())).intern(Interner),
+                        ),
+                        &bounds,
+                        SizedByDefault::NotSized,
+                    );
+                };
+            }
+        }
+
         write!(f, "<")?;
-        trait_ref.self_type_parameter(Interner).hir_fmt(f)?;
+        self_ty.hir_fmt(f)?;
         write!(f, " as ")?;
         trait_ref.hir_fmt(f)?;
         write!(

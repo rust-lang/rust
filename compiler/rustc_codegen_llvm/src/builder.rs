@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::borrow::{Borrow, Cow};
 use std::ops::Deref;
 use std::{iter, ptr};
 
@@ -31,24 +31,132 @@ use tracing::{debug, instrument};
 use crate::abi::FnAbiLlvmExt;
 use crate::attributes;
 use crate::common::Funclet;
-use crate::context::CodegenCx;
+use crate::context::{CodegenCx, SimpleCx};
 use crate::llvm::{self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, True};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 
-// All Builders must have an llfn associated with them
 #[must_use]
-pub(crate) struct Builder<'a, 'll, 'tcx> {
+pub(crate) struct GenericBuilder<'a, 'll, CX: Borrow<SimpleCx<'ll>>> {
     pub llbuilder: &'ll mut llvm::Builder<'ll>,
-    pub cx: &'a CodegenCx<'ll, 'tcx>,
+    pub cx: &'a CX,
 }
 
-impl Drop for Builder<'_, '_, '_> {
+pub(crate) type SBuilder<'a, 'll> = GenericBuilder<'a, 'll, SimpleCx<'ll>>;
+pub(crate) type Builder<'a, 'll, 'tcx> = GenericBuilder<'a, 'll, CodegenCx<'ll, 'tcx>>;
+
+impl<'a, 'll, CX: Borrow<SimpleCx<'ll>>> Drop for GenericBuilder<'a, 'll, CX> {
     fn drop(&mut self) {
         unsafe {
             llvm::LLVMDisposeBuilder(&mut *(self.llbuilder as *mut _));
         }
+    }
+}
+
+impl<'a, 'll> SBuilder<'a, 'll> {
+    fn call(
+        &mut self,
+        llty: &'ll Type,
+        llfn: &'ll Value,
+        args: &[&'ll Value],
+        funclet: Option<&Funclet<'ll>>,
+    ) -> &'ll Value {
+        debug!("call {:?} with args ({:?})", llfn, args);
+
+        let args = self.check_call("call", llty, llfn, args);
+        let funclet_bundle = funclet.map(|funclet| funclet.bundle());
+        let mut bundles: SmallVec<[_; 2]> = SmallVec::new();
+        if let Some(funclet_bundle) = funclet_bundle {
+            bundles.push(funclet_bundle);
+        }
+
+        let call = unsafe {
+            llvm::LLVMBuildCallWithOperandBundles(
+                self.llbuilder,
+                llty,
+                llfn,
+                args.as_ptr() as *const &llvm::Value,
+                args.len() as c_uint,
+                bundles.as_ptr(),
+                bundles.len() as c_uint,
+                c"".as_ptr(),
+            )
+        };
+        call
+    }
+
+    fn with_scx(scx: &'a SimpleCx<'ll>) -> Self {
+        // Create a fresh builder from the simple context.
+        let llbuilder = unsafe { llvm::LLVMCreateBuilderInContext(scx.llcx) };
+        SBuilder { llbuilder, cx: scx }
+    }
+}
+impl<'a, 'll, CX: Borrow<SimpleCx<'ll>>> GenericBuilder<'a, 'll, CX> {
+    pub(crate) fn bitcast(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
+        unsafe { llvm::LLVMBuildBitCast(self.llbuilder, val, dest_ty, UNNAMED) }
+    }
+
+    fn ret_void(&mut self) {
+        unsafe {
+            llvm::LLVMBuildRetVoid(self.llbuilder);
+        }
+    }
+
+    fn ret(&mut self, v: &'ll Value) {
+        unsafe {
+            llvm::LLVMBuildRet(self.llbuilder, v);
+        }
+    }
+}
+impl<'a, 'll> SBuilder<'a, 'll> {
+    fn build(cx: &'a SimpleCx<'ll>, llbb: &'ll BasicBlock) -> SBuilder<'a, 'll> {
+        let bx = SBuilder::with_scx(cx);
+        unsafe {
+            llvm::LLVMPositionBuilderAtEnd(bx.llbuilder, llbb);
+        }
+        bx
+    }
+
+    fn check_call<'b>(
+        &mut self,
+        typ: &str,
+        fn_ty: &'ll Type,
+        llfn: &'ll Value,
+        args: &'b [&'ll Value],
+    ) -> Cow<'b, [&'ll Value]> {
+        assert!(
+            self.cx.type_kind(fn_ty) == TypeKind::Function,
+            "builder::{typ} not passed a function, but {fn_ty:?}"
+        );
+
+        let param_tys = self.cx.func_params_types(fn_ty);
+
+        let all_args_match = iter::zip(&param_tys, args.iter().map(|&v| self.cx.val_ty(v)))
+            .all(|(expected_ty, actual_ty)| *expected_ty == actual_ty);
+
+        if all_args_match {
+            return Cow::Borrowed(args);
+        }
+
+        let casted_args: Vec<_> = iter::zip(param_tys, args)
+            .enumerate()
+            .map(|(i, (expected_ty, &actual_val))| {
+                let actual_ty = self.cx.val_ty(actual_val);
+                if expected_ty != actual_ty {
+                    debug!(
+                        "type mismatch in function call of {:?}. \
+                            Expected {:?} for param {}, got {:?}; injecting bitcast",
+                        llfn, expected_ty, i, actual_ty
+                    );
+                    self.bitcast(actual_val, expected_ty)
+                } else {
+                    actual_val
+                }
+            })
+            .collect();
+
+        Cow::Owned(casted_args)
     }
 }
 
@@ -1222,6 +1330,14 @@ impl<'ll> StaticBuilderMethods for Builder<'_, 'll, '_> {
 }
 
 impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
+    fn build(cx: &'a CodegenCx<'ll, 'tcx>, llbb: &'ll BasicBlock) -> Builder<'a, 'll, 'tcx> {
+        let bx = Builder::with_cx(cx);
+        unsafe {
+            llvm::LLVMPositionBuilderAtEnd(bx.llbuilder, llbb);
+        }
+        bx
+    }
+
     fn with_cx(cx: &'a CodegenCx<'ll, 'tcx>) -> Self {
         // Create a fresh builder from the crate context.
         let llbuilder = unsafe { llvm::LLVMCreateBuilderInContext(cx.llcx) };
@@ -1231,13 +1347,16 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     pub(crate) fn llfn(&self) -> &'ll Value {
         unsafe { llvm::LLVMGetBasicBlockParent(self.llbb()) }
     }
+}
 
+impl<'a, 'll, CX: Borrow<SimpleCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     fn position_at_start(&mut self, llbb: &'ll BasicBlock) {
         unsafe {
             llvm::LLVMRustPositionBuilderAtStart(self.llbuilder, llbb);
         }
     }
-
+}
+impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     fn align_metadata(&mut self, load: &'ll Value, align: Align) {
         unsafe {
             let md = [llvm::LLVMValueAsMetadata(self.cx.const_u64(align.bytes()))];
@@ -1259,7 +1378,8 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             self.set_metadata(inst, llvm::MD_unpredictable, md);
         }
     }
-
+}
+impl<'a, 'll, CX: Borrow<SimpleCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     pub(crate) fn minnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildMinNum(self.llbuilder, lhs, rhs) }
     }
@@ -1360,7 +1480,9 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         let ret = unsafe { llvm::LLVMBuildCatchRet(self.llbuilder, funclet.cleanuppad(), unwind) };
         ret.expect("LLVM does not have support for catchret")
     }
+}
 
+impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     fn check_call<'b>(
         &mut self,
         typ: &str,
@@ -1401,11 +1523,13 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
         Cow::Owned(casted_args)
     }
-
+}
+impl<'a, 'll, CX: Borrow<SimpleCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     pub(crate) fn va_arg(&mut self, list: &'ll Value, ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMBuildVAArg(self.llbuilder, list, ty, UNNAMED) }
     }
-
+}
+impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     pub(crate) fn call_intrinsic(&mut self, intrinsic: &str, args: &[&'ll Value]) -> &'ll Value {
         let (ty, f) = self.cx.get_intrinsic(intrinsic);
         self.call(ty, None, None, f, args, None, None)
@@ -1423,7 +1547,8 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
         self.call_intrinsic(intrinsic, &[self.cx.const_u64(size), ptr]);
     }
-
+}
+impl<'a, 'll, CX: Borrow<SimpleCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     pub(crate) fn phi(
         &mut self,
         ty: &'ll Type,
@@ -1443,7 +1568,8 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             llvm::LLVMAddIncoming(phi, &val, &bb, 1 as c_uint);
         }
     }
-
+}
+impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     fn fptoint_sat(&mut self, signed: bool, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         let src_ty = self.cx.val_ty(val);
         let (float_ty, int_ty, vector_length) = if self.cx.type_kind(src_ty) == TypeKind::Vector {

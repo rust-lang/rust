@@ -6,11 +6,11 @@ use clippy_utils::source::snippet_with_context;
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, GenericArg, QPath};
+use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
-use rustc_span::sym;
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -57,13 +57,13 @@ impl<'tcx> LateLintPass<'tcx> for ManualBits {
             && let ctxt = expr.span.ctxt()
             && left_expr.span.ctxt() == ctxt
             && right_expr.span.ctxt() == ctxt
-            && let Some((real_ty, resolved_ty, other_expr)) = get_one_size_of_ty(cx, left_expr, right_expr)
+            && let Some((real_ty_span, resolved_ty, other_expr)) = get_one_size_of_ty(cx, left_expr, right_expr)
             && matches!(resolved_ty.kind(), ty::Int(_) | ty::Uint(_))
             && let ExprKind::Lit(lit) = &other_expr.kind
             && let LitKind::Int(Pu128(8), _) = lit.node
         {
             let mut app = Applicability::MachineApplicable;
-            let ty_snip = snippet_with_context(cx, real_ty.span, ctxt, "..", &mut app).0;
+            let ty_snip = snippet_with_context(cx, real_ty_span, ctxt, "..", &mut app).0;
             let sugg = create_sugg(cx, expr, format!("{ty_snip}::BITS"));
 
             span_lint_and_sugg(
@@ -85,21 +85,21 @@ fn get_one_size_of_ty<'tcx>(
     cx: &LateContext<'tcx>,
     expr1: &'tcx Expr<'_>,
     expr2: &'tcx Expr<'_>,
-) -> Option<(&'tcx rustc_hir::Ty<'tcx>, Ty<'tcx>, &'tcx Expr<'tcx>)> {
+) -> Option<(Span, Ty<'tcx>, &'tcx Expr<'tcx>)> {
     match (get_size_of_ty(cx, expr1), get_size_of_ty(cx, expr2)) {
-        (Some((real_ty, resolved_ty)), None) => Some((real_ty, resolved_ty, expr2)),
-        (None, Some((real_ty, resolved_ty))) => Some((real_ty, resolved_ty, expr1)),
+        (Some((real_ty_span, resolved_ty)), None) => Some((real_ty_span, resolved_ty, expr2)),
+        (None, Some((real_ty_span, resolved_ty))) => Some((real_ty_span, resolved_ty, expr1)),
         _ => None,
     }
 }
 
-fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<(&'tcx rustc_hir::Ty<'tcx>, Ty<'tcx>)> {
+fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<(Span, Ty<'tcx>)> {
     if let ExprKind::Call(count_func, []) = expr.kind
         && let ExprKind::Path(ref count_func_qpath) = count_func.kind
         && let QPath::Resolved(_, count_func_path) = count_func_qpath
         && let Some(segment_zero) = count_func_path.segments.first()
         && let Some(args) = segment_zero.args
-        && let Some(GenericArg::Type(real_ty)) = args.args.first()
+        && let Some(real_ty_span) = args.args.first().map(|arg| arg.span())
         && let Some(def_id) = cx.qpath_res(count_func_qpath, count_func.hir_id).opt_def_id()
         && cx.tcx.is_diagnostic_item(sym::mem_size_of, def_id)
     {
@@ -107,7 +107,7 @@ fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<
             .node_args(count_func.hir_id)
             .types()
             .next()
-            .map(|resolved_ty| (*real_ty, resolved_ty))
+            .map(|resolved_ty| (real_ty_span, resolved_ty))
     } else {
         None
     }

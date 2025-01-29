@@ -185,7 +185,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 CustomTypeOp::new(
                     |ocx| {
                         let structurally_normalize = |ty| {
-                            ocx.structurally_normalize(
+                            ocx.structurally_normalize_ty(
                                 &ObligationCause::misc(
                                     location.to_locations().span(body),
                                     body.source.def_id().expect_local(),
@@ -230,7 +230,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 ConstraintCategory::Boring,
                 CustomTypeOp::new(
                     |ocx| {
-                        ocx.structurally_normalize(
+                        ocx.structurally_normalize_ty(
                             &ObligationCause::misc(
                                 location.to_locations().span(body),
                                 body.source.def_id().expect_local(),

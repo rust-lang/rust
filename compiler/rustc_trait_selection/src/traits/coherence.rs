@@ -709,7 +709,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
             if matches!(ty.kind(), ty::Alias(..)) {
                 let ocx = ObligationCtxt::new(infcx);
                 ty = ocx
-                    .structurally_normalize(&ObligationCause::dummy(), param_env, ty)
+                    .structurally_normalize_ty(&ObligationCause::dummy(), param_env, ty)
                     .map_err(|_| ())?;
                 if !ocx.select_where_possible().is_empty() {
                     return Err(());

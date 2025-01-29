@@ -2,27 +2,11 @@
 //@ignore-target: apple
 
 #![warn(clippy::empty_loop)]
-#![feature(lang_items, start, libc)]
+#![crate_type = "lib"]
 #![no_std]
 
-use core::panic::PanicInfo;
-
-#[start]
-fn main(argc: isize, argv: *const *const u8) -> isize {
+pub fn main(argc: isize, argv: *const *const u8) -> isize {
     // This should trigger the lint
-    loop {}
-    //~^ ERROR: empty `loop {}` wastes CPU cycles
-}
-
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    // This should NOT trigger the lint
-    loop {}
-}
-
-#[lang = "eh_personality"]
-extern "C" fn eh_personality() {
-    // This should also trigger the lint
     loop {}
     //~^ ERROR: empty `loop {}` wastes CPU cycles
 }

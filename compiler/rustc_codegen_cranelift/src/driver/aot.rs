@@ -333,9 +333,17 @@ fn make_module(sess: &Session, name: String) -> UnwindModule<ObjectModule> {
 
     let mut builder =
         ObjectBuilder::new(isa, name + ".o", cranelift_module::default_libcall_names()).unwrap();
+
+    // Disable function sections by default on MSVC as it causes significant slowdowns with link.exe.
+    // Maybe link.exe has exponential behavior when there are many sections with the same name? Also
+    // explicitly disable it on MinGW as rustc already disables it by default on MinGW and as such
+    // isn't tested. If rustc enables it in the future on MinGW, we can re-enable it too once it has
+    // been on MinGW.
+    let default_function_sections = sess.target.function_sections && !sess.target.is_like_windows;
     builder.per_function_section(
-        sess.opts.unstable_opts.function_sections.unwrap_or(sess.target.function_sections),
+        sess.opts.unstable_opts.function_sections.unwrap_or(default_function_sections),
     );
+
     UnwindModule::new(ObjectModule::new(builder), true)
 }
 
@@ -668,7 +676,7 @@ pub(crate) fn run_aot(
     .to_owned();
 
     let cgus = if tcx.sess.opts.output_types.should_codegen() {
-        tcx.collect_and_partition_mono_items(()).1
+        tcx.collect_and_partition_mono_items(()).codegen_units
     } else {
         // If only `--emit metadata` is used, we shouldn't perform any codegen.
         // Also `tcx.collect_and_partition_mono_items` may panic in that case.

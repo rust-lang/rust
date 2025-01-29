@@ -55,14 +55,14 @@ check-aux:
 		$(BOOTSTRAP_ARGS)
 	# Run standard library tests in Miri.
 	$(Q)$(BOOTSTRAP) miri --stage 2 \
-		library/core \
+		library/coretests \
 		library/alloc \
 		$(BOOTSTRAP_ARGS) \
 		--no-doc
 	# Some doctests use file system operations to demonstrate dealing with `Result`.
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" \
 		$(BOOTSTRAP) miri --stage 2 \
-		library/core \
+		library/coretests \
 		library/alloc \
 		$(BOOTSTRAP_ARGS) \
 		--doc
@@ -106,14 +106,10 @@ STAGE_2_TEST_SET2 := test --stage 2 --skip=tests --skip=coverage-map --skip=cove
 
 # this intentionally doesn't use `$(BOOTSTRAP)` so we can test the shebang on Windows
 ci-msvc-py:
-	$(Q)$(CFG_SRC_DIR)/x.py test --stage 2 tidy
-ci-msvc-ps1:
-	$(Q)$(CFG_SRC_DIR)/x.ps1 test --stage 2 --skip tidy
-ci-msvc: ci-msvc-py ci-msvc-ps1
-ci-msvc-py-set1:
 	$(Q)$(CFG_SRC_DIR)/x.py $(STAGE_2_TEST_SET1)
-ci-msvc-ps1-set2:
+ci-msvc-ps1:
 	$(Q)$(CFG_SRC_DIR)/x.ps1 $(STAGE_2_TEST_SET2)
+ci-msvc: ci-msvc-py ci-msvc-ps1
 
 ## MingW native builders
 

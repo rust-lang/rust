@@ -74,6 +74,10 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
 
         debug!("removed {:?} jumps and {:?} landing pads", jumps_folded, landing_pads_removed);
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
 impl RemoveNoopLandingPads {

@@ -114,7 +114,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         )
     }
 
-    fn enter_forall<T: TypeFoldable<TyCtxt<'tcx>> + Copy, U>(
+    fn enter_forall<T: TypeFoldable<TyCtxt<'tcx>>, U>(
         &self,
         value: ty::Binder<'tcx, T>,
         f: impl FnOnce(T) -> U,

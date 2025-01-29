@@ -11,19 +11,20 @@ help: you might have meant to use `Self` to refer to the implementing type
 LL |     fn f(a: Self) -> Self;
    |             ~~~~     ~~~~
 
-error[E0038]: the trait `A` cannot be made into an object
+error[E0038]: the trait `A` is not dyn compatible
   --> $DIR/dyn-incompatible-trait-should-use-self-2021.rs:4:13
    |
 LL |     fn f(a: dyn A) -> dyn A;
-   |             ^^^^^ `A` cannot be made into an object
+   |             ^^^^^ `A` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/dyn-incompatible-trait-should-use-self-2021.rs:3:10
    |
 LL | trait A: Sized {
    |       -  ^^^^^ ...because it requires `Self: Sized`
    |       |
-   |       this trait cannot be made into an object...
+   |       this trait is not dyn compatible...
 
 error: associated item referring to unboxed trait object for its own trait
   --> $DIR/dyn-incompatible-trait-should-use-self-2021.rs:9:13
@@ -38,17 +39,18 @@ help: you might have meant to use `Self` to refer to the implementing type
 LL |     fn f(a: Self) -> Self;
    |             ~~~~     ~~~~
 
-error[E0038]: the trait `B` cannot be made into an object
+error[E0038]: the trait `B` is not dyn compatible
   --> $DIR/dyn-incompatible-trait-should-use-self-2021.rs:9:13
    |
 LL |     fn f(a: dyn B) -> dyn B;
-   |             ^^^^^ `B` cannot be made into an object
+   |             ^^^^^ `B` is not dyn compatible
    |
-note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/dyn-incompatible-trait-should-use-self-2021.rs:9:8
    |
 LL | trait B {
-   |       - this trait cannot be made into an object...
+   |       - this trait is not dyn compatible...
 LL |     fn f(a: dyn B) -> dyn B;
    |        ^ ...because associated function `f` has no `self` parameter
 help: consider turning `f` into a method by giving it a `&self` argument

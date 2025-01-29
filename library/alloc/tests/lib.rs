@@ -38,6 +38,7 @@
 #![feature(str_as_str)]
 #![feature(strict_provenance_lints)]
 #![feature(vec_pop_if)]
+#![feature(vec_deque_pop_if)]
 #![feature(unique_rc_arc)]
 #![feature(macro_metavar_expr_concat)]
 #![allow(internal_features)]
@@ -93,9 +94,6 @@ fn test_rng() -> rand_xorshift::XorShiftRng {
     rand::SeedableRng::from_seed(seed)
 }
 
-// FIXME: Instantiated functions with i128 in the signature is not supported in Emscripten.
-// See https://github.com/kripken/emscripten-fastcomp/issues/169
-#[cfg(not(target_os = "emscripten"))]
 #[test]
 fn test_boxed_hasher() {
     let ordinary_hash = hash(&5u32);

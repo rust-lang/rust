@@ -94,7 +94,7 @@ for more details.
 | Directive                         | Explanation                                                                                                              | Supported test suites                        | Possible values                                                                         |
 |-----------------------------------|--------------------------------------------------------------------------------------------------------------------------|----------------------------------------------|-----------------------------------------------------------------------------------------|
 | `check-run-results`               | Check run test binary `run-{pass,fail}` output snapshot                                                                  | `ui`, `crashes`, `incremental` if `run-pass` | N/A                                                                                     |
-| `error-pattern`                   | Check that output contains a specific string                                                                             | `ui`, `crashes`, `incremental` if `run-pass` | String                                                                                   |
+| `error-pattern`                   | Check that output contains a specific string                                                                             | `ui`, `crashes`, `incremental` if `run-pass` | String                                                                                  |
 | `regex-error-pattern`             | Check that output contains a regex pattern                                                                               | `ui`, `crashes`, `incremental` if `run-pass` | Regex                                                                                   |
 | `check-stdout`                    | Check `stdout` against `error-pattern`s from running test binary[^check_stdout]                                          | `ui`, `crashes`, `incremental`               | N/A                                                                                     |
 | `normalize-stderr-32bit`          | Normalize actual stderr (for 32-bit platforms) with a rule `"<raw>" -> "<normalized>"` before comparing against snapshot | `ui`, `incremental`                          | `"<RAW>" -> "<NORMALIZED>"`, `<RAW>`/`<NORMALIZED>` is regex capture and replace syntax |
@@ -152,6 +152,8 @@ Some examples of `X` in `ignore-X` or `only-X`:
   `compare-mode-split-dwarf`, `compare-mode-split-dwarf-single`
 - The two different test modes used by coverage tests:
   `ignore-coverage-map`, `ignore-coverage-run`
+- When testing a dist toolchain: `dist`
+  - This needs to be enabled with `COMPILETEST_ENABLE_DIST_TESTS=1`
 
 The following directives will check rustc build settings and target
 settings:
@@ -174,6 +176,7 @@ settings:
 - `needs-rust-lld` — ignores if the rust lld support is not enabled (`rust.lld =
   true` in `config.toml`)
 - `needs-threads` — ignores if the target does not have threading support
+- `needs-subprocess`  — ignores if the target does not have subprocess support
 - `needs-symlink` — ignores if the target does not support symlinks. This can be
   the case on Windows if the developer did not enable privileged symlink
   permissions.

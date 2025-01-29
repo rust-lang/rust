@@ -129,6 +129,9 @@ pub enum LayoutError<'tcx> {
     #[diag(middle_unknown_layout)]
     Unknown { ty: Ty<'tcx> },
 
+    #[diag(middle_too_generic)]
+    TooGeneric { ty: Ty<'tcx> },
+
     #[diag(middle_values_too_big)]
     Overflow { ty: Ty<'tcx> },
 

@@ -3,7 +3,7 @@ use std::{env, mem, ops::Not};
 
 use either::Either;
 use hir::{
-    db::ExpandDatabase, Adt, AsAssocItem, AsExternAssocItem, AssocItemContainer, CaptureKind,
+    db::ExpandDatabase, Adt, AsAssocItem, AsExternAssocItem, CaptureKind,
     DynCompatibilityViolation, HasCrate, HasSource, HirDisplay, Layout, LayoutError,
     MethodViolationCode, Name, Semantics, Symbol, Trait, Type, TypeInfo, VariantDef,
 };
@@ -376,7 +376,7 @@ pub(super) fn process_markup(
     Markup::from(markup)
 }
 
-fn definition_owner_name(db: &RootDatabase, def: &Definition, edition: Edition) -> Option<String> {
+fn definition_owner_name(db: &RootDatabase, def: Definition, edition: Edition) -> Option<String> {
     match def {
         Definition::Field(f) => {
             let parent = f.parent_def(db);
@@ -390,9 +390,52 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition, edition: Edition) 
                 _ => Some(parent_name),
             };
         }
-        Definition::Local(l) => l.parent(db).name(db),
         Definition::Variant(e) => Some(e.parent_enum(db).name(db)),
+        Definition::GenericParam(generic_param) => match generic_param.parent() {
+            hir::GenericDef::Adt(it) => Some(it.name(db)),
+            hir::GenericDef::Trait(it) => Some(it.name(db)),
+            hir::GenericDef::TraitAlias(it) => Some(it.name(db)),
+            hir::GenericDef::TypeAlias(it) => Some(it.name(db)),
 
+            hir::GenericDef::Impl(i) => i.self_ty(db).as_adt().map(|adt| adt.name(db)),
+            hir::GenericDef::Function(it) => {
+                let container = it.as_assoc_item(db).and_then(|assoc| match assoc.container(db) {
+                    hir::AssocItemContainer::Trait(t) => Some(t.name(db)),
+                    hir::AssocItemContainer::Impl(i) => {
+                        i.self_ty(db).as_adt().map(|adt| adt.name(db))
+                    }
+                });
+                match container {
+                    Some(name) => {
+                        return Some(format!(
+                            "{}::{}",
+                            name.display(db, edition),
+                            it.name(db).display(db, edition)
+                        ))
+                    }
+                    None => Some(it.name(db)),
+                }
+            }
+            hir::GenericDef::Const(it) => {
+                let container = it.as_assoc_item(db).and_then(|assoc| match assoc.container(db) {
+                    hir::AssocItemContainer::Trait(t) => Some(t.name(db)),
+                    hir::AssocItemContainer::Impl(i) => {
+                        i.self_ty(db).as_adt().map(|adt| adt.name(db))
+                    }
+                });
+                match container {
+                    Some(name) => {
+                        return Some(format!(
+                            "{}::{}",
+                            name.display(db, edition),
+                            it.name(db)?.display(db, edition)
+                        ))
+                    }
+                    None => it.name(db),
+                }
+            }
+        },
+        Definition::DeriveHelper(derive_helper) => Some(derive_helper.derive().name(db)),
         d => {
             if let Some(assoc_item) = d.as_assoc_item(db) {
                 match assoc_item.container(db) {
@@ -436,7 +479,7 @@ pub(super) fn definition(
     config: &HoverConfig,
     edition: Edition,
 ) -> Markup {
-    let mod_path = definition_mod_path(db, &def, edition);
+    let mod_path = definition_path(db, &def, edition);
     let label = match def {
         Definition::Trait(trait_) => {
             trait_.display_limited(db, config.max_trait_assoc_items_count, edition).to_string()
@@ -915,19 +958,22 @@ fn closure_ty(
     Some(res)
 }
 
-fn definition_mod_path(db: &RootDatabase, def: &Definition, edition: Edition) -> Option<String> {
-    if matches!(def, Definition::GenericParam(_) | Definition::Local(_) | Definition::Label(_)) {
+fn definition_path(db: &RootDatabase, &def: &Definition, edition: Edition) -> Option<String> {
+    if matches!(
+        def,
+        Definition::TupleField(_)
+            | Definition::Label(_)
+            | Definition::Local(_)
+            | Definition::BuiltinAttr(_)
+            | Definition::BuiltinLifetime(_)
+            | Definition::BuiltinType(_)
+            | Definition::InlineAsmRegOrRegClass(_)
+            | Definition::InlineAsmOperand(_)
+    ) {
         return None;
     }
-    let container: Option<Definition> =
-        def.as_assoc_item(db).and_then(|assoc| match assoc.container(db) {
-            AssocItemContainer::Trait(trait_) => Some(trait_.into()),
-            AssocItemContainer::Impl(impl_) => impl_.self_ty(db).as_adt().map(|adt| adt.into()),
-        });
-    container
-        .unwrap_or(*def)
-        .module(db)
-        .map(|module| path(db, module, definition_owner_name(db, def, edition), edition))
+    let rendered_parent = definition_owner_name(db, def, edition);
+    def.module(db).map(|module| path(db, module, rendered_parent, edition))
 }
 
 fn markup(

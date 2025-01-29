@@ -4,8 +4,9 @@
 //@ run-flags: --test-threads=1
 
 //@ needs-unwind
-//@ ignore-wasm no panic or subprocess support
-//@ ignore-emscripten no panic or subprocess support
+//@ ignore-wasm no panic support
+//@ ignore-emscripten no panic support
+//@ needs-subprocess
 
 #![cfg(test)]
 

@@ -525,7 +525,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             FnRetTy::Default(_) => self.arena.alloc(self.ty_tup(*span, &[])),
         };
-        let args = smallvec![GenericArg::Type(self.arena.alloc(self.ty_tup(*inputs_span, inputs)))];
+        let args = smallvec![GenericArg::Type(
+            self.arena.alloc(self.ty_tup(*inputs_span, inputs)).try_as_ambig_ty().unwrap()
+        )];
 
         // If we have a bound like `async Fn() -> T`, make sure that we mark the
         // `Output = T` associated type bound with the right feature gates.

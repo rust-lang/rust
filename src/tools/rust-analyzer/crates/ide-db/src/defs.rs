@@ -32,6 +32,7 @@ pub enum Definition {
     Field(Field),
     TupleField(TupleField),
     Module(Module),
+    Crate(Crate),
     Function(Function),
     Adt(Adt),
     Variant(Variant),
@@ -62,14 +63,19 @@ impl Definition {
     pub fn krate(&self, db: &RootDatabase) -> Option<Crate> {
         Some(match self {
             Definition::Module(m) => m.krate(),
+            &Definition::Crate(it) => it,
             _ => self.module(db)?.krate(),
         })
     }
 
+    /// Returns the module this definition resides in.
+    ///
+    /// As such, for modules themselves this will return the parent module.
     pub fn module(&self, db: &RootDatabase) -> Option<Module> {
         let module = match self {
             Definition::Macro(it) => it.module(db),
             Definition::Module(it) => it.parent(db)?,
+            Definition::Crate(_) => return None,
             Definition::Field(it) => it.parent_def(db).module(db),
             Definition::Function(it) => it.module(db),
             Definition::Adt(it) => it.module(db),
@@ -86,11 +92,11 @@ impl Definition {
             Definition::ExternCrateDecl(it) => it.module(db),
             Definition::DeriveHelper(it) => it.derive().module(db),
             Definition::InlineAsmOperand(it) => it.parent(db).module(db),
+            Definition::ToolModule(t) => t.krate().root_module(),
             Definition::BuiltinAttr(_)
             | Definition::BuiltinType(_)
             | Definition::BuiltinLifetime(_)
             | Definition::TupleField(_)
-            | Definition::ToolModule(_)
             | Definition::InlineAsmRegOrRegClass(_) => return None,
         };
         Some(module)
@@ -108,6 +114,7 @@ impl Definition {
         match self {
             Definition::Macro(it) => Some(it.module(db).into()),
             Definition::Module(it) => it.parent(db).map(Definition::Module),
+            Definition::Crate(_) => None,
             Definition::Field(it) => Some(it.parent_def(db).into()),
             Definition::Function(it) => container_to_definition(it.container(db)),
             Definition::Adt(it) => Some(it.module(db).into()),
@@ -137,6 +144,7 @@ impl Definition {
         let vis = match self {
             Definition::Field(sf) => sf.visibility(db),
             Definition::Module(it) => it.visibility(db),
+            Definition::Crate(_) => return None,
             Definition::Function(it) => it.visibility(db),
             Definition::Adt(it) => it.visibility(db),
             Definition::Const(it) => it.visibility(db),
@@ -146,8 +154,8 @@ impl Definition {
             Definition::TypeAlias(it) => it.visibility(db),
             Definition::Variant(it) => it.visibility(db),
             Definition::ExternCrateDecl(it) => it.visibility(db),
+            Definition::Macro(it) => it.visibility(db),
             Definition::BuiltinType(_) | Definition::TupleField(_) => Visibility::Public,
-            Definition::Macro(_) => return None,
             Definition::BuiltinAttr(_)
             | Definition::BuiltinLifetime(_)
             | Definition::ToolModule(_)
@@ -167,6 +175,9 @@ impl Definition {
             Definition::Macro(it) => it.name(db),
             Definition::Field(it) => it.name(db),
             Definition::Module(it) => it.name(db)?,
+            Definition::Crate(it) => {
+                Name::new_symbol_root(it.display_name(db)?.crate_name().symbol().clone())
+            }
             Definition::Function(it) => it.name(db),
             Definition::Adt(it) => it.name(db),
             Definition::Variant(it) => it.name(db),
@@ -202,6 +213,7 @@ impl Definition {
             Definition::Macro(it) => it.docs(db),
             Definition::Field(it) => it.docs(db),
             Definition::Module(it) => it.docs(db),
+            Definition::Crate(it) => it.docs(db),
             Definition::Function(it) => it.docs(db),
             Definition::Adt(it) => it.docs(db),
             Definition::Variant(it) => it.docs(db),
@@ -282,6 +294,7 @@ impl Definition {
             Definition::Field(it) => it.display(db, edition).to_string(),
             Definition::TupleField(it) => it.display(db, edition).to_string(),
             Definition::Module(it) => it.display(db, edition).to_string(),
+            Definition::Crate(it) => it.display(db, edition).to_string(),
             Definition::Function(it) => it.display(db, edition).to_string(),
             Definition::Adt(it) => it.display(db, edition).to_string(),
             Definition::Variant(it) => it.display(db, edition).to_string(),
@@ -415,7 +428,7 @@ impl IdentClass {
             }
             IdentClass::NameRefClass(NameRefClass::ExternCrateShorthand { decl, krate }) => {
                 res.push((Definition::ExternCrateDecl(decl), None));
-                res.push((Definition::Module(krate.root_module()), None));
+                res.push((Definition::Crate(krate), None));
             }
             IdentClass::Operator(
                 OperatorClass::Await(func)
@@ -456,7 +469,7 @@ impl IdentClass {
             }
             IdentClass::NameRefClass(NameRefClass::ExternCrateShorthand { decl, krate }) => {
                 res.push(Definition::ExternCrateDecl(decl));
-                res.push(Definition::Module(krate.root_module()));
+                res.push(Definition::Crate(krate));
             }
             IdentClass::Operator(_) => (),
         }
@@ -800,7 +813,7 @@ impl NameRefClass {
                     let extern_crate = sema.to_def(&extern_crate_ast)?;
                     let krate = extern_crate.resolved_crate(sema.db)?;
                     Some(if extern_crate_ast.rename().is_some() {
-                        NameRefClass::Definition(Definition::Module(krate.root_module()), None)
+                        NameRefClass::Definition(Definition::Crate(krate), None)
                     } else {
                         NameRefClass::ExternCrateShorthand { krate, decl: extern_crate }
                     })
@@ -973,6 +986,22 @@ impl From<GenericDef> for Definition {
             GenericDef::TypeAlias(it) => it.into(),
             GenericDef::Impl(it) => it.into(),
             GenericDef::Const(it) => it.into(),
+        }
+    }
+}
+
+impl TryFrom<Definition> for GenericDef {
+    type Error = ();
+    fn try_from(def: Definition) -> Result<Self, Self::Error> {
+        match def {
+            Definition::Function(it) => Ok(it.into()),
+            Definition::Adt(it) => Ok(it.into()),
+            Definition::Trait(it) => Ok(it.into()),
+            Definition::TraitAlias(it) => Ok(it.into()),
+            Definition::TypeAlias(it) => Ok(it.into()),
+            Definition::SelfType(it) => Ok(it.into()),
+            Definition::Const(it) => Ok(it.into()),
+            _ => Err(()),
         }
     }
 }

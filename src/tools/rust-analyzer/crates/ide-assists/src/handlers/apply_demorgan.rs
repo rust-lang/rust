@@ -252,7 +252,7 @@ fn tail_cb_impl(edit: &mut SourceChangeBuilder, e: &ast::Expr) {
 
 /// Add bang and parentheses to the expression.
 fn add_bang_paren(expr: ast::Expr) -> ast::Expr {
-    make::expr_prefix(T![!], make::expr_paren(expr))
+    make::expr_prefix(T![!], make::expr_paren(expr)).into()
 }
 
 #[cfg(test)]

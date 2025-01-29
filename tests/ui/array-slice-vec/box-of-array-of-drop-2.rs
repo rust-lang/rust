@@ -1,11 +1,11 @@
 //@ run-pass
 //@ needs-unwind
+//@ needs-threads
+
 #![allow(overflowing_literals)]
 
 // Test that we cleanup dynamic sized Box<[D]> properly when D has a
 // destructor.
-
-//@ ignore-emscripten no threads support
 
 use std::thread;
 use std::sync::atomic::{AtomicUsize, Ordering};

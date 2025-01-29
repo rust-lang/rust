@@ -335,7 +335,7 @@ mod tests {
     #[test]
     fn basic_usage() {
         let root = make::match_arm(
-            [make::wildcard_pat().into()],
+            make::wildcard_pat().into(),
             None,
             make::expr_tuple([
                 make::expr_bin_op(
@@ -344,7 +344,8 @@ mod tests {
                     make::expr_literal("2").into(),
                 ),
                 make::expr_literal("true").into(),
-            ]),
+            ])
+            .into(),
         );
 
         let to_wrap = root.syntax().descendants().find_map(ast::TupleExpr::cast).unwrap();
@@ -549,7 +550,7 @@ mod tests {
             None,
             None,
             make::param_list(None, []),
-            make::block_expr([], Some(make::expr_unit())),
+            make::block_expr([], Some(make::ext::expr_unit())),
             Some(make::ret_type(make::ty_unit())),
             false,
             false,
