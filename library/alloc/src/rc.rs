@@ -1462,18 +1462,18 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// Provides a raw pointer to the data.
     ///
     /// The counts are not affected in any way and the `Rc` is not consumed. The pointer is valid
-    /// for as long there are strong counts in the `Rc`.
+    /// for as long as there are strong counts in the `Rc`.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::rc::Rc;
     ///
-    /// let x = Rc::new("hello".to_owned());
+    /// let x = Rc::new(0);
     /// let y = Rc::clone(&x);
     /// let x_ptr = Rc::as_ptr(&x);
     /// assert_eq!(x_ptr, Rc::as_ptr(&y));
-    /// assert_eq!(unsafe { &*x_ptr }, "hello");
+    /// assert_eq!(unsafe { *x_ptr }, 0);
     /// ```
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     #[rustc_never_returns_null_ptr]
