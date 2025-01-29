@@ -42,31 +42,38 @@ pub(crate) fn complete_dot(
         item.detail("expr.await");
         item.add_to(acc, ctx.db);
 
-        // Completions that skip `.await`, e.g. `.await.foo()`.
-        let dot_access_kind = match &dot_access.kind {
-            DotAccessKind::Field { receiver_is_ambiguous_float_literal: _ } => {
-                DotAccessKind::Field { receiver_is_ambiguous_float_literal: false }
-            }
-            it @ DotAccessKind::Method { .. } => *it,
-        };
-        let dot_access = DotAccess {
-            receiver: dot_access.receiver.clone(),
-            receiver_ty: Some(hir::TypeInfo { original: future_output.clone(), adjusted: None }),
-            kind: dot_access_kind,
-            ctx: dot_access.ctx,
-        };
-        complete_fields(
-            acc,
-            ctx,
-            &future_output,
-            |acc, field, ty| acc.add_field(ctx, &dot_access, Some(await_str.clone()), field, &ty),
-            |acc, field, ty| acc.add_tuple_field(ctx, Some(await_str.clone()), field, &ty),
-            is_field_access,
-            is_method_access_with_parens,
-        );
-        complete_methods(ctx, &future_output, &traits_in_scope, |func| {
-            acc.add_method(ctx, &dot_access, func, Some(await_str.clone()), None)
-        });
+        if ctx.config.enable_auto_await {
+            // Completions that skip `.await`, e.g. `.await.foo()`.
+            let dot_access_kind = match &dot_access.kind {
+                DotAccessKind::Field { receiver_is_ambiguous_float_literal: _ } => {
+                    DotAccessKind::Field { receiver_is_ambiguous_float_literal: false }
+                }
+                it @ DotAccessKind::Method { .. } => *it,
+            };
+            let dot_access = DotAccess {
+                receiver: dot_access.receiver.clone(),
+                receiver_ty: Some(hir::TypeInfo {
+                    original: future_output.clone(),
+                    adjusted: None,
+                }),
+                kind: dot_access_kind,
+                ctx: dot_access.ctx,
+            };
+            complete_fields(
+                acc,
+                ctx,
+                &future_output,
+                |acc, field, ty| {
+                    acc.add_field(ctx, &dot_access, Some(await_str.clone()), field, &ty)
+                },
+                |acc, field, ty| acc.add_tuple_field(ctx, Some(await_str.clone()), field, &ty),
+                is_field_access,
+                is_method_access_with_parens,
+            );
+            complete_methods(ctx, &future_output, &traits_in_scope, |func| {
+                acc.add_method(ctx, &dot_access, func, Some(await_str.clone()), None)
+            });
+        }
     }
 
     complete_fields(
@@ -82,39 +89,41 @@ pub(crate) fn complete_dot(
         acc.add_method(ctx, dot_access, func, None, None)
     });
 
-    // FIXME:
-    // Checking for the existence of `iter()` is complicated in our setup, because we need to substitute
-    // its return type, so we instead check for `<&Self as IntoIterator>::IntoIter`.
-    // Does <&receiver_ty as IntoIterator>::IntoIter` exist? Assume `iter` is valid
-    let iter = receiver_ty
-        .strip_references()
-        .add_reference(hir::Mutability::Shared)
-        .into_iterator_iter(ctx.db)
-        .map(|ty| (ty, SmolStr::new_static("iter()")));
-    // Does <receiver_ty as IntoIterator>::IntoIter` exist?
-    let into_iter = || {
-        receiver_ty
-            .clone()
+    if ctx.config.enable_auto_iter {
+        // FIXME:
+        // Checking for the existence of `iter()` is complicated in our setup, because we need to substitute
+        // its return type, so we instead check for `<&Self as IntoIterator>::IntoIter`.
+        // Does <&receiver_ty as IntoIterator>::IntoIter` exist? Assume `iter` is valid
+        let iter = receiver_ty
+            .strip_references()
+            .add_reference(hir::Mutability::Shared)
             .into_iterator_iter(ctx.db)
-            .map(|ty| (ty, SmolStr::new_static("into_iter()")))
-    };
-    if let Some((iter, iter_sym)) = iter.or_else(into_iter) {
-        // Skip iterators, e.g. complete `.iter().filter_map()`.
-        let dot_access_kind = match &dot_access.kind {
-            DotAccessKind::Field { receiver_is_ambiguous_float_literal: _ } => {
-                DotAccessKind::Field { receiver_is_ambiguous_float_literal: false }
-            }
-            it @ DotAccessKind::Method { .. } => *it,
+            .map(|ty| (ty, SmolStr::new_static("iter()")));
+        // Does <receiver_ty as IntoIterator>::IntoIter` exist?
+        let into_iter = || {
+            receiver_ty
+                .clone()
+                .into_iterator_iter(ctx.db)
+                .map(|ty| (ty, SmolStr::new_static("into_iter()")))
         };
-        let dot_access = DotAccess {
-            receiver: dot_access.receiver.clone(),
-            receiver_ty: Some(hir::TypeInfo { original: iter.clone(), adjusted: None }),
-            kind: dot_access_kind,
-            ctx: dot_access.ctx,
-        };
-        complete_methods(ctx, &iter, &traits_in_scope, |func| {
-            acc.add_method(ctx, &dot_access, func, Some(iter_sym.clone()), None)
-        });
+        if let Some((iter, iter_sym)) = iter.or_else(into_iter) {
+            // Skip iterators, e.g. complete `.iter().filter_map()`.
+            let dot_access_kind = match &dot_access.kind {
+                DotAccessKind::Field { receiver_is_ambiguous_float_literal: _ } => {
+                    DotAccessKind::Field { receiver_is_ambiguous_float_literal: false }
+                }
+                it @ DotAccessKind::Method { .. } => *it,
+            };
+            let dot_access = DotAccess {
+                receiver: dot_access.receiver.clone(),
+                receiver_ty: Some(hir::TypeInfo { original: iter.clone(), adjusted: None }),
+                kind: dot_access_kind,
+                ctx: dot_access.ctx,
+            };
+            complete_methods(ctx, &iter, &traits_in_scope, |func| {
+                acc.add_method(ctx, &dot_access, func, Some(iter_sym.clone()), None)
+            });
+        }
     }
 }
 
@@ -1464,6 +1473,36 @@ async fn bar() {
     foo().await.foo();$0
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn receiver_without_deref_impl_completion() {
+        check_no_kw(
+            r#"
+//- minicore: receiver
+use core::ops::Receiver;
+
+struct Foo;
+
+impl Foo {
+    fn foo(self: Bar) {}
+}
+
+struct Bar;
+
+impl Receiver for Bar {
+    type Target = Foo;
+}
+
+fn main() {
+    let bar = Bar;
+    bar.$0
+}
+"#,
+            expect![[r#"
+    me foo() fn(self: Bar)
+"#]],
         );
     }
 }

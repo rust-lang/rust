@@ -11,8 +11,8 @@ use ide::{
     Annotation, AnnotationKind, Assist, AssistKind, Cancellable, CompletionFieldsToResolve,
     CompletionItem, CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange,
     FileSystemEdit, Fold, FoldKind, Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel,
-    InlayFieldsToResolve, InlayHint, InlayHintLabel, InlayHintLabelPart, InlayKind, Markup,
-    NavigationTarget, ReferenceCategory, RenameError, Runnable, Severity, SignatureHelp,
+    InlayFieldsToResolve, InlayHint, InlayHintLabel, InlayHintLabelPart, InlayKind, LazyProperty,
+    Markup, NavigationTarget, ReferenceCategory, RenameError, Runnable, Severity, SignatureHelp,
     SnippetEdit, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
 };
 use ide_db::{assists, rust_doc::format_docs, FxHasher};
@@ -394,10 +394,7 @@ fn completion_item(
             item.import_to_add
                 .clone()
                 .into_iter()
-                .map(|(import_path, import_name)| lsp_ext::CompletionImport {
-                    full_import_path: import_path,
-                    imported_name: import_name,
-                })
+                .map(|import_path| lsp_ext::CompletionImport { full_import_path: import_path })
                 .collect()
         } else {
             Vec::new()
@@ -549,12 +546,11 @@ pub(crate) fn inlay_hint(
 ) -> Cancellable<lsp_types::InlayHint> {
     let hint_needs_resolve = |hint: &InlayHint| -> Option<TextRange> {
         hint.resolve_parent.filter(|_| {
-            hint.text_edit.is_some()
-                || hint
-                    .label
-                    .parts
-                    .iter()
-                    .any(|part| part.linked_location.is_some() || part.tooltip.is_some())
+            hint.text_edit.as_ref().is_some_and(LazyProperty::is_lazy)
+                || hint.label.parts.iter().any(|part| {
+                    part.linked_location.as_ref().is_some_and(LazyProperty::is_lazy)
+                        || part.tooltip.as_ref().is_some_and(LazyProperty::is_lazy)
+                })
         })
     };
 
@@ -569,22 +565,21 @@ pub(crate) fn inlay_hint(
     });
 
     let mut something_to_resolve = false;
-    let text_edits = if snap
-        .config
-        .visual_studio_code_version()
-        .is_none_or(|version| VersionReq::parse(">=1.86.0").unwrap().matches(version))
-        && resolve_range_and_hash.is_some()
-        && fields_to_resolve.resolve_text_edits
-    {
-        something_to_resolve |= inlay_hint.text_edit.is_some();
-        None
-    } else {
-        inlay_hint
-            .text_edit
-            .take()
-            .and_then(|it| it.computed())
-            .map(|it| text_edit_vec(line_index, it))
-    };
+    let text_edits = inlay_hint
+        .text_edit
+        .take()
+        .and_then(|it| match it {
+            LazyProperty::Computed(it) => Some(it),
+            LazyProperty::Lazy => {
+                something_to_resolve |=
+                    snap.config.visual_studio_code_version().is_none_or(|version| {
+                        VersionReq::parse(">=1.86.0").unwrap().matches(version)
+                    }) && resolve_range_and_hash.is_some()
+                        && fields_to_resolve.resolve_text_edits;
+                None
+            }
+        })
+        .map(|it| text_edit_vec(line_index, it));
     let (label, tooltip) = inlay_hint_label(
         snap,
         fields_to_resolve,
@@ -637,22 +632,23 @@ fn inlay_hint_label(
     let (label, tooltip) = match &*label.parts {
         [InlayHintLabelPart { linked_location: None, .. }] => {
             let InlayHintLabelPart { text, tooltip, .. } = label.parts.pop().unwrap();
-            let hint_tooltip = if needs_resolve && fields_to_resolve.resolve_hint_tooltip {
-                *something_to_resolve |= tooltip.is_some();
-                None
-            } else {
-                match tooltip.and_then(|it| it.computed()) {
-                    Some(ide::InlayTooltip::String(s)) => {
-                        Some(lsp_types::InlayHintTooltip::String(s))
-                    }
-                    Some(ide::InlayTooltip::Markdown(s)) => {
-                        Some(lsp_types::InlayHintTooltip::MarkupContent(lsp_types::MarkupContent {
-                            kind: lsp_types::MarkupKind::Markdown,
-                            value: s,
-                        }))
-                    }
-                    None => None,
+            let tooltip = tooltip.and_then(|it| match it {
+                LazyProperty::Computed(it) => Some(it),
+                LazyProperty::Lazy => {
+                    *something_to_resolve |=
+                        needs_resolve && fields_to_resolve.resolve_hint_tooltip;
+                    None
                 }
+            });
+            let hint_tooltip = match tooltip {
+                Some(ide::InlayTooltip::String(s)) => Some(lsp_types::InlayHintTooltip::String(s)),
+                Some(ide::InlayTooltip::Markdown(s)) => {
+                    Some(lsp_types::InlayHintTooltip::MarkupContent(lsp_types::MarkupContent {
+                        kind: lsp_types::MarkupKind::Markdown,
+                        value: s,
+                    }))
+                }
+                None => None,
             };
             (lsp_types::InlayHintLabel::String(text), hint_tooltip)
         }
@@ -661,31 +657,38 @@ fn inlay_hint_label(
                 .parts
                 .into_iter()
                 .map(|part| {
-                    let tooltip = if needs_resolve && fields_to_resolve.resolve_label_tooltip {
-                        *something_to_resolve |= part.tooltip.is_some();
-                        None
-                    } else {
-                        match part.tooltip.and_then(|it| it.computed()) {
-                            Some(ide::InlayTooltip::String(s)) => {
-                                Some(lsp_types::InlayHintLabelPartTooltip::String(s))
-                            }
-                            Some(ide::InlayTooltip::Markdown(s)) => {
-                                Some(lsp_types::InlayHintLabelPartTooltip::MarkupContent(
-                                    lsp_types::MarkupContent {
-                                        kind: lsp_types::MarkupKind::Markdown,
-                                        value: s,
-                                    },
-                                ))
-                            }
-                            None => None,
+                    let tooltip = part.tooltip.and_then(|it| match it {
+                        LazyProperty::Computed(it) => Some(it),
+                        LazyProperty::Lazy => {
+                            *something_to_resolve |= fields_to_resolve.resolve_label_tooltip;
+                            None
                         }
+                    });
+                    let tooltip = match tooltip {
+                        Some(ide::InlayTooltip::String(s)) => {
+                            Some(lsp_types::InlayHintLabelPartTooltip::String(s))
+                        }
+                        Some(ide::InlayTooltip::Markdown(s)) => {
+                            Some(lsp_types::InlayHintLabelPartTooltip::MarkupContent(
+                                lsp_types::MarkupContent {
+                                    kind: lsp_types::MarkupKind::Markdown,
+                                    value: s,
+                                },
+                            ))
+                        }
+                        None => None,
                     };
-                    let location = if needs_resolve && fields_to_resolve.resolve_label_location {
-                        *something_to_resolve |= part.linked_location.is_some();
-                        None
-                    } else {
-                        part.linked_location.map(|range| location(snap, range)).transpose()?
-                    };
+                    let location = part
+                        .linked_location
+                        .and_then(|it| match it {
+                            LazyProperty::Computed(it) => Some(it),
+                            LazyProperty::Lazy => {
+                                *something_to_resolve |= fields_to_resolve.resolve_label_location;
+                                None
+                            }
+                        })
+                        .map(|range| location(snap, range))
+                        .transpose()?;
                     Ok(lsp_types::InlayHintLabelPart {
                         value: part.text,
                         tooltip,

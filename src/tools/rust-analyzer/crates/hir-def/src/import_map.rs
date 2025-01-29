@@ -10,7 +10,6 @@ use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use span::Edition;
 use stdx::{format_to, TupleExt};
-use syntax::ToSmolStr;
 use triomphe::Arc;
 
 use crate::{
@@ -88,9 +87,9 @@ impl ImportMap {
             .iter()
             // We've only collected items, whose name cannot be tuple field so unwrapping is fine.
             .flat_map(|(&item, (info, _))| {
-                info.iter().enumerate().map(move |(idx, info)| {
-                    (item, info.name.unescaped().display(db.upcast()).to_smolstr(), idx as u32)
-                })
+                info.iter()
+                    .enumerate()
+                    .map(move |(idx, info)| (item, info.name.as_str(), idx as u32))
             })
             .collect();
         importables.sort_by(|(_, l_info, _), (_, r_info, _)| {
@@ -168,7 +167,8 @@ impl ImportMap {
                     let attr_id = if let Some(import) = import {
                         match import {
                             ImportOrExternCrate::ExternCrate(id) => Some(id.into()),
-                            ImportOrExternCrate::Import(id) => Some(id.import.into()),
+                            ImportOrExternCrate::Import(id) => Some(id.use_.into()),
+                            ImportOrExternCrate::Glob(id) => Some(id.use_.into()),
                         }
                     } else {
                         match item {
@@ -441,7 +441,7 @@ pub fn search_dependencies(
 }
 
 fn search_maps(
-    db: &dyn DefDatabase,
+    _db: &dyn DefDatabase,
     import_maps: &[Arc<ImportMap>],
     mut stream: fst::map::Union<'_>,
     query: &Query,
@@ -464,11 +464,7 @@ fn search_maps(
                         .then(|| (item, &import_infos[info_idx as usize]))
                 })
                 .filter(|&(_, info)| {
-                    query.search_mode.check(
-                        &query.query,
-                        query.case_sensitive,
-                        &info.name.unescaped().display(db.upcast()).to_smolstr(),
-                    )
+                    query.search_mode.check(&query.query, query.case_sensitive, info.name.as_str())
                 });
             res.extend(iter.map(TupleExt::head));
         }

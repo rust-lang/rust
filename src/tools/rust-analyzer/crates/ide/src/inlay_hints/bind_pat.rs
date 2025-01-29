@@ -1206,4 +1206,38 @@ fn f5<G: T<Assoc = ()>>(it: G) {
 "#,
         );
     }
+
+    #[test]
+    fn regression_19007() {
+        check_types(
+            r#"
+trait Foo {
+    type Assoc;
+
+    fn foo(&self) -> Self::Assoc;
+}
+
+trait Bar {
+    type Target;
+}
+
+trait Baz<T> {}
+
+struct Struct<T: Foo> {
+    field: T,
+}
+
+impl<T> Struct<T>
+where
+    T: Foo,
+    T::Assoc: Baz<<T::Assoc as Bar>::Target> + Bar,
+{
+    fn f(&self) {
+        let x = self.field.foo();
+          //^ impl Baz<<<T as Foo>::Assoc as Bar>::Target> + Bar
+    }
+}
+"#,
+        );
+    }
 }

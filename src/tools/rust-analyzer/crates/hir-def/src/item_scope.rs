@@ -31,21 +31,62 @@ pub struct PerNsGlobImports {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ImportOrExternCrate {
+    Glob(GlobId),
     Import(ImportId),
     ExternCrate(ExternCrateId),
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub(crate) enum ImportType {
-    Import(ImportId),
-    Glob(UseId),
-    ExternCrate(ExternCrateId),
+impl From<ImportOrGlob> for ImportOrExternCrate {
+    fn from(value: ImportOrGlob) -> Self {
+        match value {
+            ImportOrGlob::Glob(it) => ImportOrExternCrate::Glob(it),
+            ImportOrGlob::Import(it) => ImportOrExternCrate::Import(it),
+        }
+    }
 }
 
 impl ImportOrExternCrate {
-    pub fn into_import(self) -> Option<ImportId> {
+    pub fn import_or_glob(self) -> Option<ImportOrGlob> {
+        match self {
+            ImportOrExternCrate::Import(it) => Some(ImportOrGlob::Import(it)),
+            ImportOrExternCrate::Glob(it) => Some(ImportOrGlob::Glob(it)),
+            _ => None,
+        }
+    }
+
+    pub fn import(self) -> Option<ImportId> {
         match self {
             ImportOrExternCrate::Import(it) => Some(it),
+            _ => None,
+        }
+    }
+
+    pub fn glob(self) -> Option<GlobId> {
+        match self {
+            ImportOrExternCrate::Glob(id) => Some(id),
+            _ => None,
+        }
+    }
+
+    pub fn use_(self) -> Option<UseId> {
+        match self {
+            ImportOrExternCrate::Glob(id) => Some(id.use_),
+            ImportOrExternCrate::Import(id) => Some(id.use_),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum ImportOrGlob {
+    Glob(GlobId),
+    Import(ImportId),
+}
+
+impl ImportOrGlob {
+    pub fn into_import(self) -> Option<ImportId> {
+        match self {
+            ImportOrGlob::Import(it) => Some(it),
             _ => None,
         }
     }
@@ -54,12 +95,39 @@ impl ImportOrExternCrate {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ImportOrDef {
     Import(ImportId),
+    Glob(GlobId),
     ExternCrate(ExternCrateId),
     Def(ModuleDefId),
 }
+
+impl From<ImportOrExternCrate> for ImportOrDef {
+    fn from(value: ImportOrExternCrate) -> Self {
+        match value {
+            ImportOrExternCrate::Import(it) => ImportOrDef::Import(it),
+            ImportOrExternCrate::Glob(it) => ImportOrDef::Glob(it),
+            ImportOrExternCrate::ExternCrate(it) => ImportOrDef::ExternCrate(it),
+        }
+    }
+}
+
+impl From<ImportOrGlob> for ImportOrDef {
+    fn from(value: ImportOrGlob) -> Self {
+        match value {
+            ImportOrGlob::Import(it) => ImportOrDef::Import(it),
+            ImportOrGlob::Glob(it) => ImportOrDef::Glob(it),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct ImportId {
-    pub import: UseId,
+    pub use_: UseId,
+    pub idx: Idx<ast::UseTree>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct GlobId {
+    pub use_: UseId,
     pub idx: Idx<ast::UseTree>,
 }
 
@@ -96,8 +164,8 @@ pub struct ItemScope {
 
     // the resolutions of the imports of this scope
     use_imports_types: FxHashMap<ImportOrExternCrate, ImportOrDef>,
-    use_imports_values: FxHashMap<ImportId, ImportOrDef>,
-    use_imports_macros: FxHashMap<ImportId, ImportOrDef>,
+    use_imports_values: FxHashMap<ImportOrGlob, ImportOrDef>,
+    use_imports_macros: FxHashMap<ImportOrGlob, ImportOrDef>,
 
     use_decls: Vec<UseId>,
     extern_crate_decls: Vec<ExternCrateId>,
@@ -162,7 +230,7 @@ impl ItemScope {
             .map(move |name| (name, self.get(name)))
     }
 
-    pub fn values(&self) -> impl Iterator<Item = (&Name, Item<ModuleDefId, ImportId>)> + '_ {
+    pub fn values(&self) -> impl Iterator<Item = (&Name, Item<ModuleDefId, ImportOrGlob>)> + '_ {
         self.values.iter().map(|(n, &i)| (n, i))
     }
 
@@ -172,7 +240,7 @@ impl ItemScope {
         self.types.iter().map(|(n, &i)| (n, i))
     }
 
-    pub fn macros(&self) -> impl Iterator<Item = (&Name, Item<MacroId, ImportId>)> + '_ {
+    pub fn macros(&self) -> impl Iterator<Item = (&Name, Item<MacroId, ImportOrGlob>)> + '_ {
         self.macros.iter().map(|(n, &i)| (n, i))
     }
 
@@ -180,9 +248,10 @@ impl ItemScope {
         self.use_imports_types
             .keys()
             .copied()
-            .filter_map(ImportOrExternCrate::into_import)
+            .filter_map(ImportOrExternCrate::import_or_glob)
             .chain(self.use_imports_values.keys().copied())
             .chain(self.use_imports_macros.keys().copied())
+            .filter_map(ImportOrGlob::into_import)
             .sorted()
             .dedup()
     }
@@ -192,10 +261,10 @@ impl ItemScope {
 
         let mut def_map;
         let mut scope = self;
-        while let Some(&m) = scope.use_imports_macros.get(&import) {
+        while let Some(&m) = scope.use_imports_macros.get(&ImportOrGlob::Import(import)) {
             match m {
                 ImportOrDef::Import(i) => {
-                    let module_id = i.import.lookup(db).container;
+                    let module_id = i.use_.lookup(db).container;
                     def_map = module_id.def_map(db);
                     scope = &def_map[module_id.local_id].scope;
                     import = i;
@@ -211,7 +280,7 @@ impl ItemScope {
         while let Some(&m) = scope.use_imports_types.get(&ImportOrExternCrate::Import(import)) {
             match m {
                 ImportOrDef::Import(i) => {
-                    let module_id = i.import.lookup(db).container;
+                    let module_id = i.use_.lookup(db).container;
                     def_map = module_id.def_map(db);
                     scope = &def_map[module_id.local_id].scope;
                     import = i;
@@ -224,10 +293,10 @@ impl ItemScope {
             }
         }
         let mut scope = self;
-        while let Some(&m) = scope.use_imports_values.get(&import) {
+        while let Some(&m) = scope.use_imports_values.get(&ImportOrGlob::Import(import)) {
             match m {
                 ImportOrDef::Import(i) => {
-                    let module_id = i.import.lookup(db).container;
+                    let module_id = i.use_.lookup(db).container;
                     def_map = module_id.def_map(db);
                     scope = &def_map[module_id.local_id].scope;
                     import = i;
@@ -488,9 +557,13 @@ impl ItemScope {
         self.unnamed_trait_imports.get(&tr).map(|trait_| trait_.vis)
     }
 
-    pub(crate) fn push_unnamed_trait(&mut self, tr: TraitId, vis: Visibility) {
-        // FIXME: import
-        self.unnamed_trait_imports.insert(tr, Item { def: (), vis, import: None });
+    pub(crate) fn push_unnamed_trait(
+        &mut self,
+        tr: TraitId,
+        vis: Visibility,
+        import: Option<ImportId>,
+    ) {
+        self.unnamed_trait_imports.insert(tr, Item { def: (), vis, import });
     }
 
     pub(crate) fn push_res_with_import(
@@ -498,7 +571,7 @@ impl ItemScope {
         glob_imports: &mut PerNsGlobImports,
         lookup: (LocalModuleId, Name),
         def: PerNs,
-        import: Option<ImportType>,
+        import: Option<ImportOrExternCrate>,
     ) -> bool {
         let mut changed = false;
 
@@ -509,41 +582,22 @@ impl ItemScope {
             match existing {
                 Entry::Vacant(entry) => {
                     match import {
-                        Some(ImportType::Glob(_)) => {
+                        Some(ImportOrExternCrate::Glob(_)) => {
                             glob_imports.types.insert(lookup.clone());
                         }
                         _ => _ = glob_imports.types.remove(&lookup),
                     }
-                    let import = match import {
-                        Some(ImportType::ExternCrate(extern_crate)) => {
-                            Some(ImportOrExternCrate::ExternCrate(extern_crate))
-                        }
-                        Some(ImportType::Import(import)) => {
-                            Some(ImportOrExternCrate::Import(import))
-                        }
-                        None | Some(ImportType::Glob(_)) => None,
-                    };
                     let prev = std::mem::replace(&mut fld.import, import);
                     if let Some(import) = import {
-                        self.use_imports_types.insert(
-                            import,
-                            match prev {
-                                Some(ImportOrExternCrate::Import(import)) => {
-                                    ImportOrDef::Import(import)
-                                }
-                                Some(ImportOrExternCrate::ExternCrate(import)) => {
-                                    ImportOrDef::ExternCrate(import)
-                                }
-                                None => ImportOrDef::Def(fld.def),
-                            },
-                        );
+                        self.use_imports_types
+                            .insert(import, prev.map_or(ImportOrDef::Def(fld.def), Into::into));
                     }
                     entry.insert(fld);
                     changed = true;
                 }
                 Entry::Occupied(mut entry) => {
                     match import {
-                        Some(ImportType::Glob(..)) => {
+                        Some(ImportOrExternCrate::Glob(..)) => {
                             // Multiple globs may import the same item and they may
                             // override visibility from previously resolved globs. This is
                             // currently handled by `DefCollector`, because we need to
@@ -552,28 +606,11 @@ impl ItemScope {
                         }
                         _ => {
                             if glob_imports.types.remove(&lookup) {
-                                let import = match import {
-                                    Some(ImportType::ExternCrate(extern_crate)) => {
-                                        Some(ImportOrExternCrate::ExternCrate(extern_crate))
-                                    }
-                                    Some(ImportType::Import(import)) => {
-                                        Some(ImportOrExternCrate::Import(import))
-                                    }
-                                    None | Some(ImportType::Glob(_)) => None,
-                                };
                                 let prev = std::mem::replace(&mut fld.import, import);
                                 if let Some(import) = import {
                                     self.use_imports_types.insert(
                                         import,
-                                        match prev {
-                                            Some(ImportOrExternCrate::Import(import)) => {
-                                                ImportOrDef::Import(import)
-                                            }
-                                            Some(ImportOrExternCrate::ExternCrate(import)) => {
-                                                ImportOrDef::ExternCrate(import)
-                                            }
-                                            None => ImportOrDef::Def(fld.def),
-                                        },
+                                        prev.map_or(ImportOrDef::Def(fld.def), Into::into),
                                     );
                                 }
                                 cov_mark::hit!(import_shadowed);
@@ -591,44 +628,31 @@ impl ItemScope {
             match existing {
                 Entry::Vacant(entry) => {
                     match import {
-                        Some(ImportType::Glob(_)) => {
+                        Some(ImportOrExternCrate::Glob(_)) => {
                             glob_imports.values.insert(lookup.clone());
                         }
                         _ => _ = glob_imports.values.remove(&lookup),
                     }
-                    let import = match import {
-                        Some(ImportType::Import(import)) => Some(import),
-                        _ => None,
-                    };
+                    let import = import.and_then(ImportOrExternCrate::import_or_glob);
                     let prev = std::mem::replace(&mut fld.import, import);
                     if let Some(import) = import {
-                        self.use_imports_values.insert(
-                            import,
-                            match prev {
-                                Some(import) => ImportOrDef::Import(import),
-                                None => ImportOrDef::Def(fld.def),
-                            },
-                        );
+                        self.use_imports_values
+                            .insert(import, prev.map_or(ImportOrDef::Def(fld.def), Into::into));
                     }
                     entry.insert(fld);
                     changed = true;
                 }
-                Entry::Occupied(mut entry) if !matches!(import, Some(ImportType::Glob(..))) => {
+                Entry::Occupied(mut entry)
+                    if !matches!(import, Some(ImportOrExternCrate::Glob(..))) =>
+                {
                     if glob_imports.values.remove(&lookup) {
                         cov_mark::hit!(import_shadowed);
-                        let import = match import {
-                            Some(ImportType::Import(import)) => Some(import),
-                            _ => None,
-                        };
+
+                        let import = import.and_then(ImportOrExternCrate::import_or_glob);
                         let prev = std::mem::replace(&mut fld.import, import);
                         if let Some(import) = import {
-                            self.use_imports_values.insert(
-                                import,
-                                match prev {
-                                    Some(import) => ImportOrDef::Import(import),
-                                    None => ImportOrDef::Def(fld.def),
-                                },
-                            );
+                            self.use_imports_values
+                                .insert(import, prev.map_or(ImportOrDef::Def(fld.def), Into::into));
                         }
                         entry.insert(fld);
                         changed = true;
@@ -643,43 +667,33 @@ impl ItemScope {
             match existing {
                 Entry::Vacant(entry) => {
                     match import {
-                        Some(ImportType::Glob(_)) => {
+                        Some(ImportOrExternCrate::Glob(_)) => {
                             glob_imports.macros.insert(lookup.clone());
                         }
                         _ => _ = glob_imports.macros.remove(&lookup),
                     }
-                    let import = match import {
-                        Some(ImportType::Import(import)) => Some(import),
-                        _ => None,
-                    };
+                    let import = import.and_then(ImportOrExternCrate::import_or_glob);
                     let prev = std::mem::replace(&mut fld.import, import);
                     if let Some(import) = import {
                         self.use_imports_macros.insert(
                             import,
-                            match prev {
-                                Some(import) => ImportOrDef::Import(import),
-                                None => ImportOrDef::Def(fld.def.into()),
-                            },
+                            prev.map_or_else(|| ImportOrDef::Def(fld.def.into()), Into::into),
                         );
                     }
                     entry.insert(fld);
                     changed = true;
                 }
-                Entry::Occupied(mut entry) if !matches!(import, Some(ImportType::Glob(..))) => {
+                Entry::Occupied(mut entry)
+                    if !matches!(import, Some(ImportOrExternCrate::Glob(..))) =>
+                {
                     if glob_imports.macros.remove(&lookup) {
                         cov_mark::hit!(import_shadowed);
-                        let import = match import {
-                            Some(ImportType::Import(import)) => Some(import),
-                            _ => None,
-                        };
+                        let import = import.and_then(ImportOrExternCrate::import_or_glob);
                         let prev = std::mem::replace(&mut fld.import, import);
                         if let Some(import) = import {
                             self.use_imports_macros.insert(
                                 import,
-                                match prev {
-                                    Some(import) => ImportOrDef::Import(import),
-                                    None => ImportOrDef::Def(fld.def.into()),
-                                },
+                                prev.map_or_else(|| ImportOrDef::Def(fld.def.into()), Into::into),
                             );
                         }
                         entry.insert(fld);
@@ -704,16 +718,27 @@ impl ItemScope {
             .map(|def| &mut def.vis)
             .chain(self.values.values_mut().map(|def| &mut def.vis))
             .chain(self.unnamed_trait_imports.values_mut().map(|def| &mut def.vis))
-            .for_each(|vis| {
-                *vis = Visibility::Module(this_module, VisibilityExplicitness::Implicit)
+            .for_each(|vis| match vis {
+                &mut Visibility::Module(_, visibility_explicitness) => {
+                    *vis = Visibility::Module(this_module, visibility_explicitness)
+                }
+                Visibility::Public => {
+                    *vis = Visibility::Module(this_module, VisibilityExplicitness::Implicit)
+                }
             });
 
         for mac in self.macros.values_mut() {
             if matches!(mac.def, MacroId::ProcMacroId(_) if mac.import.is_none()) {
                 continue;
             }
-
-            mac.vis = Visibility::Module(this_module, VisibilityExplicitness::Implicit);
+            match mac.vis {
+                Visibility::Module(_, visibility_explicitness) => {
+                    mac.vis = Visibility::Module(this_module, visibility_explicitness)
+                }
+                Visibility::Public => {
+                    mac.vis = Visibility::Module(this_module, VisibilityExplicitness::Implicit)
+                }
+            }
         }
     }
 
@@ -732,20 +757,25 @@ impl ItemScope {
                 buf.push_str(" t");
                 match import {
                     Some(ImportOrExternCrate::Import(_)) => buf.push('i'),
+                    Some(ImportOrExternCrate::Glob(_)) => buf.push('g'),
                     Some(ImportOrExternCrate::ExternCrate(_)) => buf.push('e'),
                     None => (),
                 }
             }
             if let Some(Item { import, .. }) = def.values {
                 buf.push_str(" v");
-                if import.is_some() {
-                    buf.push('i');
+                match import {
+                    Some(ImportOrGlob::Import(_)) => buf.push('i'),
+                    Some(ImportOrGlob::Glob(_)) => buf.push('g'),
+                    None => (),
                 }
             }
             if let Some(Item { import, .. }) = def.macros {
                 buf.push_str(" m");
-                if import.is_some() {
-                    buf.push('i');
+                match import {
+                    Some(ImportOrGlob::Import(_)) => buf.push('i'),
+                    Some(ImportOrGlob::Glob(_)) => buf.push('g'),
+                    None => (),
                 }
             }
             if def.is_none() {
@@ -828,7 +858,7 @@ impl PerNs {
         match def {
             ModuleDefId::ModuleId(_) => PerNs::types(def, v, import),
             ModuleDefId::FunctionId(_) => {
-                PerNs::values(def, v, import.and_then(ImportOrExternCrate::into_import))
+                PerNs::values(def, v, import.and_then(ImportOrExternCrate::import_or_glob))
             }
             ModuleDefId::AdtId(adt) => match adt {
                 AdtId::UnionId(_) => PerNs::types(def, v, import),
@@ -843,14 +873,14 @@ impl PerNs {
             },
             ModuleDefId::EnumVariantId(_) => PerNs::both(def, def, v, import),
             ModuleDefId::ConstId(_) | ModuleDefId::StaticId(_) => {
-                PerNs::values(def, v, import.and_then(ImportOrExternCrate::into_import))
+                PerNs::values(def, v, import.and_then(ImportOrExternCrate::import_or_glob))
             }
             ModuleDefId::TraitId(_) => PerNs::types(def, v, import),
             ModuleDefId::TraitAliasId(_) => PerNs::types(def, v, import),
             ModuleDefId::TypeAliasId(_) => PerNs::types(def, v, import),
             ModuleDefId::BuiltinType(_) => PerNs::types(def, v, import),
             ModuleDefId::MacroId(mac) => {
-                PerNs::macros(mac, v, import.and_then(ImportOrExternCrate::into_import))
+                PerNs::macros(mac, v, import.and_then(ImportOrExternCrate::import_or_glob))
             }
         }
     }
