@@ -5,13 +5,15 @@ use rustc_infer::infer::canonical::{Canonical, CanonicalQueryInput, QueryRespons
 use rustc_middle::query::Providers;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{Clause, FnSig, ParamEnvAnd, PolyFnSig, Ty, TyCtxt, TypeFoldable};
+use rustc_span::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
+use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::query::type_op::ascribe_user_type::{
     AscribeUserType, type_op_ascribe_user_type_with_span,
 };
 use rustc_trait_selection::traits::query::type_op::normalize::Normalize;
 use rustc_trait_selection::traits::query::type_op::prove_predicate::ProvePredicate;
-use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
+use rustc_trait_selection::traits::{Normalized, Obligation, ObligationCause, ObligationCtxt};
 
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers {
@@ -30,7 +32,7 @@ fn type_op_ascribe_user_type<'tcx>(
     canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, AscribeUserType<'tcx>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
     tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |ocx, key| {
-        type_op_ascribe_user_type_with_span(ocx, key, None)
+        type_op_ascribe_user_type_with_span(ocx, key, DUMMY_SP)
     })
 }
 
@@ -42,7 +44,10 @@ where
     T: fmt::Debug + TypeFoldable<TyCtxt<'tcx>>,
 {
     let (param_env, Normalize { value }) = key.into_parts();
-    Ok(ocx.normalize(&ObligationCause::dummy(), param_env, value))
+    let Normalized { value, obligations } =
+        ocx.infcx.at(&ObligationCause::dummy(), param_env).query_normalize(value)?;
+    ocx.register_obligations(obligations);
+    Ok(value)
 }
 
 fn type_op_normalize_ty<'tcx>(

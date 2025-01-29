@@ -217,10 +217,13 @@ fn check_into_iter_call_arg(
         && implements_trait(cx, parent_ty, iterator_trait_id, &[])
         && let Some(item_ty) = get_iterator_item_ty(cx, parent_ty)
         && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
+        // If the receiver is a `Cow`, we can't remove the `into_owned` generally, see https://github.com/rust-lang/rust-clippy/issues/13624.
+        && !is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(receiver), sym::Cow)
     {
         if unnecessary_iter_cloned::check_for_loop_iter(cx, parent, method_name, receiver, true) {
             return true;
         }
+
         let cloned_or_copied = if is_copy(cx, item_ty) && msrv.meets(msrvs::ITERATOR_COPIED) {
             "copied"
         } else {

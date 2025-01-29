@@ -104,7 +104,7 @@ impl ArithmeticSideEffects {
 
             if !tcx.is_diagnostic_item(sym::NonZero, adt.did()) {
                 return false;
-            };
+            }
 
             let int_type = substs.type_at(0);
             let unsigned_int_types = [
@@ -214,13 +214,13 @@ impl ArithmeticSideEffects {
                 | hir::BinOpKind::Sub
         ) {
             return;
-        };
+        }
         let (mut actual_lhs, lhs_ref_counter) = peel_hir_expr_refs(lhs);
         let (mut actual_rhs, rhs_ref_counter) = peel_hir_expr_refs(rhs);
         actual_lhs = expr_or_init(cx, actual_lhs);
         actual_rhs = expr_or_init(cx, actual_rhs);
         let lhs_ty = cx.typeck_results().expr_ty(actual_lhs).peel_refs();
-        let rhs_ty = cx.typeck_results().expr_ty(actual_rhs).peel_refs();
+        let rhs_ty = cx.typeck_results().expr_ty_adjusted(actual_rhs).peel_refs();
         if self.has_allowed_binary(lhs_ty, rhs_ty) {
             return;
         }
@@ -283,7 +283,7 @@ impl ArithmeticSideEffects {
         if ConstEvalCtxt::new(cx).eval_simple(receiver).is_some() {
             return;
         }
-        let instance_ty = cx.typeck_results().expr_ty(receiver);
+        let instance_ty = cx.typeck_results().expr_ty_adjusted(receiver);
         if !Self::is_integral(instance_ty) {
             return;
         }
@@ -311,7 +311,7 @@ impl ArithmeticSideEffects {
         if ConstEvalCtxt::new(cx).eval(un_expr).is_some() {
             return;
         }
-        let ty = cx.typeck_results().expr_ty(expr).peel_refs();
+        let ty = cx.typeck_results().expr_ty_adjusted(expr).peel_refs();
         if self.has_allowed_unary(ty) {
             return;
         }

@@ -1870,8 +1870,6 @@ options! {
         "verify extended properties for incr. comp. (default: no):
         - hashes of green query instances
         - hash collisions of query keys"),
-    inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
-        "control whether `#[inline]` functions are in all CGUs"),
     inline_llvm: bool = (true, parse_bool, [TRACKED],
         "enable LLVM inlining (default: yes)"),
     inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],

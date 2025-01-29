@@ -232,6 +232,18 @@ impl<'tcx> Stable<'tcx> for mir::Mutability {
     }
 }
 
+impl<'tcx> Stable<'tcx> for mir::RawPtrKind {
+    type T = stable_mir::mir::RawPtrKind;
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
+        use mir::RawPtrKind::*;
+        match *self {
+            Const => stable_mir::mir::RawPtrKind::Const,
+            Mut => stable_mir::mir::RawPtrKind::Mut,
+            FakeForPtrMetadata => stable_mir::mir::RawPtrKind::FakeForPtrMetadata,
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for mir::BorrowKind {
     type T = stable_mir::mir::BorrowKind;
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {

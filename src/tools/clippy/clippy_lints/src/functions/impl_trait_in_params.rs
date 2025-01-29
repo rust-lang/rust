@@ -45,7 +45,7 @@ pub(super) fn check_fn<'tcx>(cx: &LateContext<'_>, kind: &'tcx FnKind<'_>, body:
         for param in generics.params {
             if param.is_impl_trait() {
                 report(cx, param, generics);
-            };
+            }
         }
     }
 }

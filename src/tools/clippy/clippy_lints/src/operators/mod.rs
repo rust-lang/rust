@@ -262,7 +262,7 @@ declare_clippy_lint! {
     /// to `trailing_zeros`
     ///
     /// ### Why is this bad?
-    /// `x.trailing_zeros() > 4` is much clearer than `x & 15
+    /// `x.trailing_zeros() >= 4` is much clearer than `x & 15
     /// == 0`
     ///
     /// ### Known problems
@@ -278,7 +278,7 @@ declare_clippy_lint! {
     ///
     /// ```no_run
     /// # let x: i32 = 1;
-    /// if x.trailing_zeros() > 4 { }
+    /// if x.trailing_zeros() >= 4 { }
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub VERBOSE_BIT_MASK,

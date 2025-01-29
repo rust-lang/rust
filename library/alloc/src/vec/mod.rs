@@ -1267,6 +1267,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_reserve")]
     pub fn reserve(&mut self, additional: usize) {
         self.buf.reserve(self.len, additional);
     }

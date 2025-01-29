@@ -6,7 +6,9 @@ use std::{fmt, io, iter};
 use fmt::{Display, Formatter};
 
 use super::{AggregateKind, AssertMessage, BinOp, BorrowKind, FakeBorrowKind, TerminatorKind};
-use crate::mir::{Operand, Place, Rvalue, StatementKind, UnwindAction, VarDebugInfoContents};
+use crate::mir::{
+    Operand, Place, RawPtrKind, Rvalue, StatementKind, UnwindAction, VarDebugInfoContents,
+};
 use crate::ty::{AdtKind, IndexedVal, MirConst, Ty, TyConst};
 use crate::{Body, CrateDef, Mutability, with};
 
@@ -325,7 +327,7 @@ fn pretty_ty_const(ct: &TyConst) -> String {
 fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
     match rval {
         Rvalue::AddressOf(mutability, place) => {
-            write!(writer, "&raw {} {:?}", pretty_mut(*mutability), place)
+            write!(writer, "&raw {} {:?}", pretty_raw_ptr_kind(*mutability), place)
         }
         Rvalue::Aggregate(aggregate_kind, operands) => {
             // FIXME: Add pretty_aggregate function that returns a pretty string
@@ -435,5 +437,13 @@ fn pretty_mut(mutability: Mutability) -> &'static str {
     match mutability {
         Mutability::Not => " ",
         Mutability::Mut => "mut ",
+    }
+}
+
+fn pretty_raw_ptr_kind(kind: RawPtrKind) -> &'static str {
+    match kind {
+        RawPtrKind::Const => "const",
+        RawPtrKind::Mut => "mut",
+        RawPtrKind::FakeForPtrMetadata => "const (fake)",
     }
 }

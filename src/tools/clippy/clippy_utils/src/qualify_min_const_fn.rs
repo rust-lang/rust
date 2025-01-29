@@ -29,13 +29,14 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
     let def_id = body.source.def_id();
 
     for local in &body.local_decls {
-        check_ty(tcx, local.ty, local.source_info.span)?;
+        check_ty(tcx, local.ty, local.source_info.span, msrv)?;
     }
     // impl trait is gone in MIR, so check the return type manually
     check_ty(
         tcx,
         tcx.fn_sig(def_id).instantiate_identity().output().skip_binder(),
         body.local_decls.iter().next().unwrap().source_info.span,
+        msrv,
     )?;
 
     for bb in &*body.basic_blocks {
@@ -51,7 +52,7 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
     Ok(())
 }
 
-fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
+fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, msrv: &Msrv) -> McfResult {
     for arg in ty.walk() {
         let ty = match arg.unpack() {
             GenericArgKind::Type(ty) => ty,
@@ -62,7 +63,7 @@ fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
         };
 
         match ty.kind() {
-            ty::Ref(_, _, hir::Mutability::Mut) => {
+            ty::Ref(_, _, hir::Mutability::Mut) if !msrv.meets(msrvs::CONST_MUT_REFS) => {
                 return Err((span, "mutable references in const fn are unstable".into()));
             },
             ty::Alias(ty::Opaque, ..) => return Err((span, "`impl Trait` in const fn is unstable".into())),

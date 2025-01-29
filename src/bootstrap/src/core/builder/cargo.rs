@@ -10,7 +10,7 @@ use crate::core::config::flags::Color;
 use crate::utils::build_stamp;
 use crate::utils::helpers::{self, LldThreads, check_cfg_arg, linker_args, linker_flags};
 use crate::{
-    BootstrapCommand, CLang, Compiler, DocTests, DryRun, EXTRA_CHECK_CFGS, GitRepo, Mode,
+    BootstrapCommand, CLang, Compiler, Config, DocTests, DryRun, EXTRA_CHECK_CFGS, GitRepo, Mode,
     TargetSelection, command, prepare_behaviour_dump_dir, t,
 };
 
@@ -484,10 +484,7 @@ impl Builder<'_> {
             build_stamp::clear_if_dirty(self, &my_out, &rustdoc);
         }
 
-        let profile_var = |name: &str| {
-            let profile = if self.config.rust_optimize.is_release() { "RELEASE" } else { "DEV" };
-            format!("CARGO_PROFILE_{}_{}", profile, name)
-        };
+        let profile_var = |name: &str| cargo_profile_var(name, &self.config);
 
         // See comment in rustc_llvm/build.rs for why this is necessary, largely llvm-config
         // needs to not accidentally link to libLLVM in stage0/lib.
@@ -1231,4 +1228,9 @@ impl Builder<'_> {
             allow_features,
         }
     }
+}
+
+pub fn cargo_profile_var(name: &str, config: &Config) -> String {
+    let profile = if config.rust_optimize.is_release() { "RELEASE" } else { "DEV" };
+    format!("CARGO_PROFILE_{}_{}", profile, name)
 }

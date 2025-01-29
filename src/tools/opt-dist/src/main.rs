@@ -148,18 +148,15 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
 
             let is_aarch64 = target_triple.starts_with("aarch64");
 
-            let mut skip_tests = vec![
-                // Fails because of linker errors, as of June 2023.
-                "tests/ui/process/nofile-limit.rs".to_string(),
-            ];
-
-            if is_aarch64 {
-                skip_tests.extend([
+            let skip_tests = if is_aarch64 {
+                vec![
                     // Those tests fail only inside of Docker on aarch64, as of December 2024
                     "tests/ui/consts/promoted_running_out_of_memory_issue-130687.rs".to_string(),
                     "tests/ui/consts/large_const_alloc.rs".to_string(),
-                ]);
-            }
+                ]
+            } else {
+                vec![]
+            };
 
             let checkout_dir = Utf8PathBuf::from("/checkout");
             let env = EnvironmentBuilder::default()
@@ -191,10 +188,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .build_dir(checkout_dir)
                 .shared_llvm(false)
                 .use_bolt(false)
-                .skipped_tests(vec![
-                    // Fails as of June 2023.
-                    "tests\\codegen\\vec-shrink-panik.rs".to_string(),
-                ])
+                .skipped_tests(vec![])
                 .build()?;
 
             (env, shared.build_args)
