@@ -1,4 +1,4 @@
-//@ run-pass
+#![deny(dead_code)]
 
 #[derive(PartialEq, Eq)]
 pub enum Foo {
@@ -11,6 +11,7 @@ impl Foo {
     const A2: Foo = Self::FooA(());
     const A3: Self = Foo::FooA(());
     const A4: Self = Self::FooA(());
+    const A5: u32 = 1; //~ ERROR: dead_code
 }
 
 fn main() {
@@ -34,5 +35,10 @@ fn main() {
     match foo {
         Foo::A4 => {},
         _ => {},
+    }
+
+    match 3 {
+        Foo::A5..5 => {}
+        _ => {}
     }
 }
