@@ -103,3 +103,12 @@ pub struct IgnoringOutDir;
 #[derive(Diagnostic)]
 #[diag(interface_multiple_output_types_to_stdout)]
 pub struct MultipleOutputTypesToStdout;
+
+#[derive(Diagnostic)]
+#[diag(interface_abi_required_feature)]
+#[note]
+#[note(interface_abi_required_feature_issue)]
+pub(crate) struct AbiRequiredTargetFeature<'a> {
+    pub feature: &'a str,
+    pub enabled: &'a str,
+}
