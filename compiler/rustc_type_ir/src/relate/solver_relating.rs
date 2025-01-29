@@ -13,6 +13,7 @@ pub trait RelateExt: InferCtxtLike {
         lhs: T,
         variance: ty::Variance,
         rhs: T,
+        span: <Self::Interner as Interner>::Span,
     ) -> Result<
         Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
         TypeError<Self::Interner>,
@@ -23,6 +24,7 @@ pub trait RelateExt: InferCtxtLike {
         param_env: <Self::Interner as Interner>::ParamEnv,
         lhs: T,
         rhs: T,
+        span: <Self::Interner as Interner>::Span,
     ) -> Result<
         Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
         TypeError<Self::Interner>,
@@ -36,12 +38,13 @@ impl<Infcx: InferCtxtLike> RelateExt for Infcx {
         lhs: T,
         variance: ty::Variance,
         rhs: T,
+        span: <Self::Interner as Interner>::Span,
     ) -> Result<
         Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
         TypeError<Self::Interner>,
     > {
         let mut relate =
-            SolverRelating::new(self, StructurallyRelateAliases::No, variance, param_env);
+            SolverRelating::new(self, StructurallyRelateAliases::No, variance, param_env, span);
         relate.relate(lhs, rhs)?;
         Ok(relate.goals)
     }
@@ -51,12 +54,18 @@ impl<Infcx: InferCtxtLike> RelateExt for Infcx {
         param_env: <Self::Interner as Interner>::ParamEnv,
         lhs: T,
         rhs: T,
+        span: <Self::Interner as Interner>::Span,
     ) -> Result<
         Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
         TypeError<Self::Interner>,
     > {
-        let mut relate =
-            SolverRelating::new(self, StructurallyRelateAliases::Yes, ty::Invariant, param_env);
+        let mut relate = SolverRelating::new(
+            self,
+            StructurallyRelateAliases::Yes,
+            ty::Invariant,
+            param_env,
+            span,
+        );
         relate.relate(lhs, rhs)?;
         Ok(relate.goals)
     }
@@ -68,6 +77,7 @@ pub struct SolverRelating<'infcx, Infcx, I: Interner> {
     // Immutable fields.
     structurally_relate_aliases: StructurallyRelateAliases,
     param_env: I::ParamEnv,
+    span: I::Span,
     // Mutable fields.
     ambient_variance: ty::Variance,
     goals: Vec<Goal<I, I::Predicate>>,
@@ -106,10 +116,12 @@ where
         structurally_relate_aliases: StructurallyRelateAliases,
         ambient_variance: ty::Variance,
         param_env: I::ParamEnv,
+        span: I::Span,
     ) -> Self {
         SolverRelating {
             infcx,
             structurally_relate_aliases,
+            span,
             ambient_variance,
             param_env,
             goals: vec![],
@@ -241,10 +253,10 @@ where
     fn regions(&mut self, a: I::Region, b: I::Region) -> RelateResult<I, I::Region> {
         match self.ambient_variance {
             // Subtype(&'a u8, &'b u8) => Outlives('a: 'b) => SubRegion('b, 'a)
-            ty::Covariant => self.infcx.sub_regions(b, a),
+            ty::Covariant => self.infcx.sub_regions(b, a, self.span),
             // Suptype(&'a u8, &'b u8) => Outlives('b: 'a) => SubRegion('a, 'b)
-            ty::Contravariant => self.infcx.sub_regions(a, b),
-            ty::Invariant => self.infcx.equate_regions(a, b),
+            ty::Contravariant => self.infcx.sub_regions(a, b, self.span),
+            ty::Invariant => self.infcx.equate_regions(a, b, self.span),
             ty::Bivariant => {
                 unreachable!("Expected bivariance to be handled in relate_with_variance")
             }
