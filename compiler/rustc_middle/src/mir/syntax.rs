@@ -1440,6 +1440,9 @@ pub enum CastKind {
     ///
     /// Allowed only in [`MirPhase::Runtime`]; Earlier it's a [`TerminatorKind::Call`].
     Transmute,
+    /// Removing the pattern of a pattern type and yielding the base type is entirely
+    /// safe and requires no additional checks.
+    StripPat,
 }
 
 /// Represents how a [`CastKind::PointerCoercion`] was constructed.

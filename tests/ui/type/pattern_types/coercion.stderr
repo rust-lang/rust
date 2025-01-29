@@ -1,24 +1,10 @@
 error[E0308]: mismatched types
-  --> $DIR/coercion.rs:7:5
-   |
-LL | fn drop_pattern(arg: pattern_type!(u32 is 1..)) -> u32 {
-   |                                                    --- expected `u32` because of return type
-LL |     arg
-   |     ^^^ expected `u32`, found `(u32) is 1..`
-   |
-   = note:      expected type `u32`
-           found pattern type `(u32) is 1..`
-
-error[E0308]: mismatched types
   --> $DIR/coercion.rs:11:5
    |
 LL | fn drop_pattern_type_changing(arg: pattern_type!(u32 is 1..)) -> u64 {
    |                                                                  --- expected `u64` because of return type
 LL |     arg
    |     ^^^ expected `u64`, found `(u32) is 1..`
-   |
-   = note:      expected type `u64`
-           found pattern type `(u32) is 1..`
 
 error[E0308]: mismatched types
   --> $DIR/coercion.rs:15:5
@@ -31,59 +17,19 @@ LL |     arg
    = note: expected enum `Option<u32>`
               found enum `Option<(u32) is 1..>`
 
-error[E0369]: binary operation `==` cannot be applied to type `(u32) is 1..`
-  --> $DIR/coercion.rs:19:7
-   |
-LL |     a == b
-   |     - ^^ - u32
-   |     |
-   |     (u32) is 1..
-
-error[E0369]: binary operation `==` cannot be applied to type `(u32) is 1..`
-  --> $DIR/coercion.rs:24:7
-   |
-LL |     a == b
-   |     - ^^ - (u32) is 1..
-   |     |
-   |     (u32) is 1..
-
 error[E0308]: mismatched types
-  --> $DIR/coercion.rs:29:5
+  --> $DIR/coercion.rs:27:5
    |
 LL | fn relax_pattern(arg: pattern_type!(u32 is 2..)) -> pattern_type!(u32 is 1..) {
    |                                                     ------------------------- expected `(u32) is 1..` because of return type
 LL |     arg
-   |     ^^^ expected `1`, found `2`
+   |     ^^^ expected `(u32) is 1..`, found `(u32) is 2..`
    |
    = note: expected pattern type `(u32) is 1..`
               found pattern type `(u32) is 2..`
 
 error[E0308]: mismatched types
-  --> $DIR/coercion.rs:38:9
-   |
-LL | fn arms(b: bool) -> u32 {
-   |                     --- expected `u32` because of return type
-...
-LL |         x
-   |         ^ expected `u32`, found `(u32) is 1..`
-   |
-   = note:      expected type `u32`
-           found pattern type `(u32) is 1..`
-
-error[E0308]: mismatched types
-  --> $DIR/coercion.rs:46:9
-   |
-LL | fn arms2(b: bool) -> u32 {
-   |                      --- expected `u32` because of return type
-...
-LL |         x
-   |         ^ expected `u32`, found `(u32) is 1..`
-   |
-   = note:      expected type `u32`
-           found pattern type `(u32) is 1..`
-
-error[E0308]: mismatched types
-  --> $DIR/coercion.rs:55:9
+  --> $DIR/coercion.rs:53:9
    |
 LL | fn arms3(b: bool) -> pattern_type!(u32 is 1..) {
    |                      ------------------------- expected `(u32) is 1..` because of return type
@@ -95,7 +41,7 @@ LL |         0
                       found type `{integer}`
 
 error[E0308]: mismatched types
-  --> $DIR/coercion.rs:68:9
+  --> $DIR/coercion.rs:66:9
    |
 LL | fn arms4(b: bool) -> pattern_type!(u32 is 1..) {
    |                      ------------------------- expected `(u32) is 1..` because of return type
@@ -107,19 +53,19 @@ LL |         0
                       found type `{integer}`
 
 error[E0599]: no method named `foo` found for pattern type `(u32) is 1..` in the current scope
-  --> $DIR/coercion.rs:83:11
+  --> $DIR/coercion.rs:81:11
    |
 LL |     foo().foo();
    |           ^^^ method not found in `(u32) is 1..`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Foo` defines an item `foo`, perhaps you need to implement it
-  --> $DIR/coercion.rs:72:1
+  --> $DIR/coercion.rs:70:1
    |
 LL | trait Foo {
    | ^^^^^^^^^
 
-error: aborting due to 11 previous errors
+error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0308, E0369, E0599.
+Some errors have detailed explanations: E0308, E0599.
 For more information about an error, try `rustc --explain E0308`.

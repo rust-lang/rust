@@ -106,6 +106,9 @@ pub enum Adjust {
 
     Pointer(PointerCoercion),
 
+    /// Strip the pattern of a pattern type to obtain the value at base type
+    StripPattern,
+
     /// Take a pinned reference and reborrow as a `Pin<&mut T>` or `Pin<&T>`.
     ReborrowPin(hir::Mutability),
 }
