@@ -11,10 +11,9 @@ use hir::def::DefKind;
 use hir::pat_util::EnumerateAndAdjustIterator as _;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, Res};
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{HirId, PatKind};
+use rustc_hir::{self as hir, HirId, PatExpr, PatExprKind, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::hir::place::ProjectionKind;
 // Export these here so that Clippy can use them.
@@ -564,11 +563,11 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         // FIXME(never_patterns): does this do what I expect?
                         needs_to_be_read = true;
                     }
-                    PatKind::Path(qpath) => {
+                    PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
                         // A `Path` pattern is just a name like `Foo`. This is either a
                         // named constant or else it refers to an ADT variant
 
-                        let res = self.cx.typeck_results().qpath_res(qpath, pat.hir_id);
+                        let res = self.cx.typeck_results().qpath_res(qpath, *hir_id);
                         match res {
                             Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => {
                                 // Named constants have to be equated with the value
@@ -581,7 +580,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                                 // Otherwise, this is a struct/enum variant, and so it's
                                 // only a read if we need to read the discriminant.
                                 needs_to_be_read |=
-                                    self.is_multivariant_adt(place.place.ty(), pat.span);
+                                    self.is_multivariant_adt(place.place.ty(), *span);
                             }
                         }
                     }
@@ -1801,8 +1800,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 }
             }
 
-            PatKind::Path(_)
-            | PatKind::Binding(.., None)
+            PatKind::Binding(.., None)
             | PatKind::Expr(..)
             | PatKind::Range(..)
             | PatKind::Never
