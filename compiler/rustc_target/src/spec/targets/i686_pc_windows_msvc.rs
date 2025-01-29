@@ -1,7 +1,8 @@
-use crate::spec::{LinkerFlavor, Lld, SanitizerSet, Target, base};
+use crate::spec::{LinkerFlavor, Lld, RustcAbi, SanitizerSet, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
+    base.rustc_abi = Some(RustcAbi::X86Sse2);
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.supported_sanitizers = SanitizerSet::ADDRESS;

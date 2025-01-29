@@ -1,5 +1,5 @@
 use crate::spec::base::nto_qnx;
-use crate::spec::{StackProbeType, Target, TargetOptions, base};
+use crate::spec::{RustcAbi, StackProbeType, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     let mut meta = nto_qnx::meta();
@@ -14,6 +14,7 @@ pub(crate) fn target() -> Target {
             .into(),
         arch: "x86".into(),
         options: TargetOptions {
+            rustc_abi: Some(RustcAbi::X86Sse2),
             cpu: "pentium4".into(),
             max_atomic_width: Some(64),
             pre_link_args: nto_qnx::pre_link_args(
