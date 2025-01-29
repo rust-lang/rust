@@ -917,7 +917,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
             }
-            ItemKind::Fn(box Fn { defaultness, sig, generics, body }) => {
+            ItemKind::Fn(func @ box Fn { defaultness, generics: _, sig, body }) => {
                 self.check_defaultness(item.span, *defaultness);
 
                 let is_intrinsic =
@@ -947,7 +947,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                 self.visit_vis(&item.vis);
                 self.visit_ident(&item.ident);
-                let kind = FnKind::Fn(FnCtxt::Free, &item.ident, sig, &item.vis, generics, body);
+                let kind = FnKind::Fn(FnCtxt::Free, &item.ident, &item.vis, &*func);
                 self.visit_fn(kind, item.span, item.id);
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
@@ -1350,17 +1350,18 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if let FnKind::Fn(
             _,
             _,
-            FnSig { header: FnHeader { ext: Extern::Implicit(extern_span), .. }, .. },
             _,
-            _,
-            _,
+            Fn {
+                sig: FnSig { header: FnHeader { ext: Extern::Implicit(extern_span), .. }, .. },
+                ..
+            },
         ) = fk
         {
             self.maybe_lint_missing_abi(*extern_span, id);
         }
 
         // Functions without bodies cannot have patterns.
-        if let FnKind::Fn(ctxt, _, sig, _, _, None) = fk {
+        if let FnKind::Fn(ctxt, _, _, Fn { body: None, sig, .. }) = fk {
             Self::check_decl_no_pat(&sig.decl, |span, ident, mut_ident| {
                 if mut_ident && matches!(ctxt, FnCtxt::Assoc(_)) {
                     if let Some(ident) = ident {
@@ -1394,7 +1395,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .is_some();
 
         let disallowed = (!tilde_const_allowed).then(|| match fk {
-            FnKind::Fn(_, ident, _, _, _, _) => TildeConstReason::Function { ident: ident.span },
+            FnKind::Fn(_, ident, _, _) => TildeConstReason::Function { ident: ident.span },
             FnKind::Closure(..) => TildeConstReason::Closure,
         });
         self.with_tilde_const(disallowed, |this| visit::walk_fn(this, fk));
@@ -1470,15 +1471,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.outer_trait_or_trait_impl.as_ref().and_then(TraitOrTraitImpl::constness).is_some();
 
         match &item.kind {
-            AssocItemKind::Fn(box Fn { sig, generics, body, .. })
+            AssocItemKind::Fn(func)
                 if parent_is_const
                     || ctxt == AssocCtxt::Trait
-                    || matches!(sig.header.constness, Const::Yes(_)) =>
+                    || matches!(func.sig.header.constness, Const::Yes(_)) =>
             {
                 self.visit_vis(&item.vis);
                 self.visit_ident(&item.ident);
-                let kind =
-                    FnKind::Fn(FnCtxt::Assoc(ctxt), &item.ident, sig, &item.vis, generics, body);
+                let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), &item.ident, &item.vis, &*func);
                 walk_list!(self, visit_attribute, &item.attrs);
                 self.visit_fn(kind, item.span, item.id);
             }

@@ -241,7 +241,7 @@ impl IntoArgs for (CrateNum, SimplifiedType) {
 
 provide! { tcx, def_id, other, cdata,
     explicit_item_bounds => { table_defaulted_array }
-    explicit_item_super_predicates => { table_defaulted_array }
+    explicit_item_self_bounds => { table_defaulted_array }
     explicit_predicates_of => { table }
     generics_of => { table }
     inferred_outlives_of => { table_defaulted_array }

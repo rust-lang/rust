@@ -350,7 +350,7 @@ pub(super) fn explicit_item_bounds(
     explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::All)
 }
 
-pub(super) fn explicit_item_super_predicates(
+pub(super) fn explicit_item_self_bounds(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
 ) -> ty::EarlyBinder<'_, &'_ [(ty::Clause<'_>, Span)]> {
@@ -434,11 +434,11 @@ pub(super) fn item_bounds(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<'_,
     })
 }
 
-pub(super) fn item_super_predicates(
+pub(super) fn item_self_bounds(
     tcx: TyCtxt<'_>,
     def_id: DefId,
 ) -> ty::EarlyBinder<'_, ty::Clauses<'_>> {
-    tcx.explicit_item_super_predicates(def_id).map_bound(|bounds| {
+    tcx.explicit_item_self_bounds(def_id).map_bound(|bounds| {
         tcx.mk_clauses_from_iter(
             util::elaborate(tcx, bounds.iter().map(|&(bound, _span)| bound)).filter_only_self(),
         )
@@ -447,13 +447,12 @@ pub(super) fn item_super_predicates(
 
 /// This exists as an optimization to compute only the item bounds of the item
 /// that are not `Self` bounds.
-pub(super) fn item_non_self_assumptions(
+pub(super) fn item_non_self_bounds(
     tcx: TyCtxt<'_>,
     def_id: DefId,
 ) -> ty::EarlyBinder<'_, ty::Clauses<'_>> {
     let all_bounds: FxIndexSet<_> = tcx.item_bounds(def_id).skip_binder().iter().collect();
-    let own_bounds: FxIndexSet<_> =
-        tcx.item_super_predicates(def_id).skip_binder().iter().collect();
+    let own_bounds: FxIndexSet<_> = tcx.item_self_bounds(def_id).skip_binder().iter().collect();
     if all_bounds.len() == own_bounds.len() {
         ty::EarlyBinder::bind(ty::ListWithCachedTypeInfo::empty())
     } else {

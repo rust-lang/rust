@@ -1,3 +1,5 @@
+use Piece::*;
+
 use super::*;
 
 #[track_caller]
@@ -32,12 +34,12 @@ fn musterr(s: &str) {
 
 #[test]
 fn simple() {
-    same("asdf", &[String("asdf")]);
-    same("a{{b", &[String("a"), String("{b")]);
-    same("a}}b", &[String("a"), String("}b")]);
-    same("a}}", &[String("a"), String("}")]);
-    same("}}", &[String("}")]);
-    same("\\}}", &[String("\\"), String("}")]);
+    same("asdf", &[Lit("asdf")]);
+    same("a{{b", &[Lit("a"), Lit("{b")]);
+    same("a}}b", &[Lit("a"), Lit("}b")]);
+    same("a}}", &[Lit("a"), Lit("}")]);
+    same("}}", &[Lit("}")]);
+    same("\\}}", &[Lit("\\"), Lit("}")]);
 }
 
 #[test]
@@ -370,7 +372,7 @@ fn format_flags() {
 #[test]
 fn format_mixture() {
     same("abcd {3:x} efg", &[
-        String("abcd "),
+        Lit("abcd "),
         NextArgument(Box::new(Argument {
             position: ArgumentIs(3),
             position_span: InnerSpan { start: 7, end: 8 },
@@ -390,7 +392,7 @@ fn format_mixture() {
                 ty_span: None,
             },
         })),
-        String(" efg"),
+        Lit(" efg"),
     ]);
 }
 #[test]
