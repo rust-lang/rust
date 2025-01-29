@@ -119,7 +119,6 @@ fn check_always_applicable(
     impl2_node: Node,
 ) -> Result<(), ErrorGuaranteed> {
     let span = tcx.def_span(impl1_def_id);
-    let mut res = check_has_items(tcx, impl1_def_id, impl2_node, span);
 
     let (impl1_args, impl2_args) = get_impl_args(tcx, impl1_def_id, impl2_node)?;
     let impl2_def_id = impl2_node.def_id();
@@ -131,11 +130,10 @@ fn check_always_applicable(
         unconstrained_parent_impl_args(tcx, impl2_def_id, impl2_args)
     };
 
-    res = res.and(check_static_lifetimes(tcx, &parent_args, span));
-    res = res.and(check_duplicate_params(tcx, impl1_args, parent_args, span));
-    res = res.and(check_predicates(tcx, impl1_def_id, impl1_args, impl2_node, impl2_args, span));
-
-    res
+    check_has_items(tcx, impl1_def_id, impl2_node, span)
+        .and(check_static_lifetimes(tcx, &parent_args, span))
+        .and(check_duplicate_params(tcx, impl1_args, parent_args, span))
+        .and(check_predicates(tcx, impl1_def_id, impl1_args, impl2_node, impl2_args, span))
 }
 
 fn check_has_items(

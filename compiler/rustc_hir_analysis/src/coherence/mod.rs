@@ -158,12 +158,12 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Result<(), ErrorGuaranteed>
         let trait_ref = trait_header.trait_ref.instantiate_identity();
         let trait_def = tcx.trait_def(trait_ref.def_id);
 
-        res = res.and(check_impl(tcx, impl_def_id, trait_ref, trait_def));
-        res = res.and(check_object_overlap(tcx, impl_def_id, trait_ref));
-
-        res = res.and(unsafety::check_item(tcx, impl_def_id, trait_header, trait_def));
-        res = res.and(tcx.ensure().orphan_check_impl(impl_def_id));
-        res = res.and(builtin::check_trait(tcx, def_id, impl_def_id, trait_header));
+        res = res
+            .and(check_impl(tcx, impl_def_id, trait_ref, trait_def))
+            .and(check_object_overlap(tcx, impl_def_id, trait_ref))
+            .and(unsafety::check_item(tcx, impl_def_id, trait_header, trait_def))
+            .and(tcx.ensure().orphan_check_impl(impl_def_id))
+            .and(builtin::check_trait(tcx, def_id, impl_def_id, trait_header));
     }
 
     res
