@@ -142,6 +142,7 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
             writeln!(fmt, "  cnum: {cnum}")?;
             writeln!(fmt, "  hash: {}", data.hash())?;
             writeln!(fmt, "  reqd: {:?}", data.dep_kind())?;
+            writeln!(fmt, "  priv: {:?}", data.is_private_dep())?;
             let CrateSource { dylib, rlib, rmeta } = data.source();
             if let Some(dylib) = dylib {
                 writeln!(fmt, "  dylib: {}", dylib.0.display())?;
@@ -685,7 +686,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
 
         match result {
             (LoadResult::Previous(cnum), None) => {
-                info!("library for `{}` was loaded previously", name);
+                info!("library for `{}` was loaded previously, cnum {cnum}", name);
                 // When `private_dep` is none, it indicates the directly dependent crate. If it is
                 // not specified by `--extern` on command line parameters, it may be
                 // `private-dependency` when `register_crate` is called for the first time. Then it must be updated to
