@@ -79,13 +79,18 @@ removeDir() {
 removeUnusedDirectories() {
     local dirs_to_remove=(
         "/usr/local/lib/android"
-        # Haskell runtime
-        "/usr/local/.ghcup"
-        # Azure
-        "/opt/az"
         "/etc/mysql"
         "/usr/share/php"
-        "/etc/php/"
+
+        # Haskell runtime
+        "/usr/local/.ghcup"
+
+        # Azure
+        "/opt/az"
+        "/usr/share/az_"*
+
+        # Environemnt variable set by GitHub Actions
+        "$AGENT_TOOLSDIRECTORY"
     )
 
     for dir in "${dirs_to_remove[@]}"; do
@@ -107,19 +112,27 @@ execAndMeasureSpaceChange() {
 # Remove large packages
 # REF: https://github.com/apache/flink/blob/master/tools/azure-pipelines/free_disk_space.sh
 cleanPackages() {
-    sudo apt-get purge -y --fix-missing \
+    sudo apt-get purge -y --autoremove --fix-missing \
+        '.*-icon-theme$'         \
         '^aspnetcore-.*'        \
         '^dotnet-.*'            \
         '^java-*'               \
         '^libllvm.*'            \
         '^llvm-.*'              \
+        '^mercurial.*'          \
         '^mysql-.*'             \
         '^vim.*'                \
+        '^fonts-.*'             \
         'azure-cli'             \
+        'buildah'               \
+        'cpp-13'                \
         'firefox'               \
-        'gcc'                   \
         'gcc-12'                \
         'gcc-13'                \
+        'gcc-14'                \
+        'gcc'                   \
+        'g++-14'                \
+        'gfortran-14'           \
         'google-chrome-stable'  \
         'google-cloud-cli'      \
         'groff-base'            \
@@ -127,10 +140,15 @@ cleanPackages() {
         'libgl1-mesa-dri'       \
         'microsoft-edge-stable' \
         'php.*'                 \
+        'podman'                \
         'powershell'            \
-        'snapd'
+        'skopeo'                \
+        'snapd'                 \
+        'tmux'
 
+    echo "=> apt-get autoremove"
     sudo apt-get autoremove -y || echo "::warning::The command [sudo apt-get autoremove -y] failed"
+    echo "=> apt-get clean"
     sudo apt-get clean || echo "::warning::The command [sudo apt-get clean] failed failed"
 }
 
