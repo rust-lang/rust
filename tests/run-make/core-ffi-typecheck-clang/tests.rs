@@ -13,7 +13,23 @@ cfg_if! {
         // FIXME: long is not long enough on aarch64 ilp32, should be 8, defaulting to 4
         const XFAIL_C_LONG_SIZE: usize = 4;
         pub const TEST_C_LONG_SIZE: () = if size_of::<ffi::c_long>() != XFAIL_C_LONG_SIZE {
-            panic!("wrong c_long size test ilp32");
+            panic!("mismatched c_long size, target_abi: ilp32");
+        };
+    }
+    else if #[cfg(all(target_arch = "aarch64", target_os = "uefi"))] {
+        // FIXME: c_long misallignment llvm target is aarch64-unknown-windows,
+        // discrepencies between Rust target configuration and LLVM alias.
+        const XFAIL_C_LONG_SIZE: usize = 8;
+        pub const TEST_C_LONG_SIZE: () = if size_of::<ffi::c_long>() != XFAIL_C_LONG_SIZE {
+            panic!("mismatched c_long size, target_os: uefi");
+        };
+    }
+    else if #[cfg(all(target_arch = "x86_64", target_os = "uefi"))] {
+        // FIXME: c_long misallignment llvm target is x86_64-unknown-windows,
+        // discrepencies between Rust target configuration and LLVM alias.
+        const XFAIL_C_LONG_SIZE: usize = 8;
+        pub const TEST_C_LONG_SIZE: () = if size_of::<ffi::c_long>() != XFAIL_C_LONG_SIZE {
+            panic!("mismatched c_long size, target_os: uefi");
         };
     }
     else {
@@ -31,6 +47,14 @@ cfg_if! {
         const XFAIL_C_CHAR_SIGNED: bool = false;
         pub const TEST_C_CHAR_UNSIGNED: () = if ffi::c_char::SIGNED != XFAIL_C_CHAR_SIGNED {
             panic!("mismatched c_char signed, target_arch: msp430");
+        };
+    }
+    else if #[cfg(all(target_arch = "aarch64", target_os = "uefi"))] {
+        // FIXME: c_char signedness misallignment llvm target is aarch64-unknown-windows,
+        // discrepencies between Rust target configuration and LLVM alias.
+        const XFAIL_C_CHAR_SIGNED: bool = false;
+        pub const TEST_C_CHAR_UNSIGNED: () = if ffi::c_char::SIGNED != XFAIL_C_CHAR_SIGNED {
+            panic!("mismatched c_char signed, target_os: uefi");
         };
     }
     else {

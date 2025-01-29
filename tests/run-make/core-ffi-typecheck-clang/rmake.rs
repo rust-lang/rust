@@ -6,7 +6,8 @@
 // If this test fails because Rust adds a target that Clang does not support, this target should be
 // added to SKIPPED_TARGETS.
 
-use run_make_support::{clang, llvm_components_contain, regex, rfs, rustc};
+use run_make_support::{clang, regex, rfs, rustc, serde_json};
+use serde_json::Value;
 
 // It is not possible to run the Rust test-suite on these targets.
 const SKIPPED_TARGETS: &[&str] = &[
@@ -21,81 +22,27 @@ const SKIPPED_TARGETS: &[&str] = &[
     "csky-unknown-linux-gnuabiv2hf",
 ];
 
-/// Map from a Rust target to the Clang target if they are not the same.
-const MAPPED_TARGETS: &[(&str, &str)] = &[
-    ("aarch64-apple-ios-sim", "aarch64-apple-ios"),
-    ("aarch64-apple-tvos-sim", "aarch64-apple-tvos"),
-    ("aarch64-apple-visionos-sim", "aarch64-apple-visionos"),
-    ("aarch64-apple-watchos-sim", "aarch64-apple-watchos"),
-    ("x86_64-apple-watchos-sim", "x86_64-apple-watchos"),
-    ("aarch64-pc-windows-gnullvm", "aarch64-pc-windows-gnu"),
-    ("aarch64-unknown-linux-gnu_ilp32", "aarch64-unknown-linux-gnu"),
-    ("aarch64-unknown-none-softfloat", "aarch64-unknown-none"),
-    ("aarch64-unknown-nto-qnx700", "aarch64-unknown-nto-700"),
-    ("aarch64-unknown-nto-qnx710", "aarch64-unknown-nto-710"),
-    ("aarch64-unknown-uefi", "aarch64-unknown"),
-    ("aarch64_be-unknown-linux-gnu_ilp32", "aarch64_be-unknown-linux-gnu"),
-    ("armv5te-unknown-linux-uclibceabi", "armv5te-unknown-linux"),
-    ("armv7-sony-vita-newlibeabihf", "armv7-sony-vita"),
-    ("armv7-unknown-linux-uclibceabi", "armv7-unknown-linux"),
-    ("armv7-unknown-linux-uclibceabihf", "armv7-unknown-linux"),
-    ("avr-unknown-gnu-atmega328", "avr-unknown-gnu"),
-    ("csky-unknown-linux-gnuabiv2", "csky-unknown-linux-gnu"),
-    ("i586-pc-nto-qnx700", "i586-pc-nto-700"),
-    ("i686-pc-windows-gnullvm", "i686-pc-windows-gnu"),
-    ("i686-unknown-uefi", "i686-unknown"),
-    ("loongarch64-unknown-none-softfloat", "loongarch64-unknown-none"),
-    ("mips-unknown-linux-uclibc", "mips-unknown-linux"),
-    ("mipsel-unknown-linux-uclibc", "mipsel-unknown-linux"),
-    ("powerpc-unknown-linux-gnuspe", "powerpc-unknown-linux-gnu"),
-    ("powerpc-unknown-linux-muslspe", "powerpc-unknown-linux-musl"),
-    ("powerpc-wrs-vxworks-spe", "powerpc-wrs-vxworks"),
-    ("x86_64-fortanix-unknown-sgx", "x86_64-fortanix-unknown"),
-    ("x86_64-pc-nto-qnx710", "x86_64-pc-nto-710"),
-    ("x86_64-pc-windows-gnullvm", "x86_64-pc-windows-gnu"),
-    ("x86_64-unknown-l4re-uclibc", "x86_64-unknown-l4re"),
-];
-
 fn main() {
-    let targets = get_target_list();
-
     let minicore_path = run_make_support::source_root().join("tests/auxiliary/minicore.rs");
 
     preprocess_core_ffi();
 
-    for target in targets.lines() {
+    let targets_json =
+        rustc().arg("--print").arg("all-target-specs-json").arg("-Z").arg("unstable-options").run();
+    let targets_json_str =
+        String::from_utf8(targets_json.stdout().to_vec()).expect("error not a string");
+
+    let j: Value = serde_json::from_str(&targets_json_str).unwrap();
+    for (target, v) in j.as_object().unwrap() {
+        let llvm_target = &v["llvm-target"].as_str().unwrap();
+
         if SKIPPED_TARGETS.iter().any(|&to_skip_target| target == to_skip_target) {
             continue;
         }
 
-        // Map the Rust target string to a Clang target string if needed
-        // Also replace riscv with necessary replacements to match clang
-        // If neither just use target string
-        let ctarget = MAPPED_TARGETS
-            .iter()
-            .find(|(rtarget, _)| *rtarget == target)
-            .map(|(_, ctarget)| ctarget.to_string())
-            .unwrap_or_else(|| {
-                if target.starts_with("riscv") {
-                    target
-                        .replace("imac-", "-")
-                        .replace("gc-", "-")
-                        .replace("imafc-", "-")
-                        .replace("imc-", "-")
-                        .replace("ima-", "-")
-                        .replace("im-", "-")
-                        .replace("emc-", "-")
-                        .replace("em-", "-")
-                        .replace("e-", "-")
-                        .replace("i-", "-")
-                } else {
-                    target.to_string()
-                }
-            });
-
         // Run Clang's preprocessor for the relevant target, printing default macro definitions.
         let clang_output =
-            clang().args(&["-E", "-dM", "-x", "c", "/dev/null", "-target", &ctarget]).run();
+            clang().args(&["-E", "-dM", "-x", "c", "/dev/null", "-target", &llvm_target]).run();
 
         let defines = String::from_utf8(clang_output.stdout()).expect("Invalid UTF-8");
 
