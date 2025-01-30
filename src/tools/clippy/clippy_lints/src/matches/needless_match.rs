@@ -8,7 +8,9 @@ use clippy_utils::{
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, BindingMode, ByRef, Expr, ExprKind, ItemKind, Node, Pat, PatExprKind, PatKind, Path, QPath};
+use rustc_hir::{
+    Arm, BindingMode, ByRef, Expr, ExprKind, ItemKind, Node, Pat, PatExpr, PatExprKind, PatKind, Path, QPath,
+};
 use rustc_lint::LateContext;
 use rustc_span::sym;
 
@@ -183,7 +185,13 @@ fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
             return !matches!(annot, BindingMode(ByRef::Yes(_), _)) && pat_ident.name == first_seg.ident.name;
         },
         // Example: `Custom::TypeA => Custom::TypeB`, or `None => None`
-        (PatKind::Path(QPath::Resolved(_, p_path)), ExprKind::Path(QPath::Resolved(_, e_path))) => {
+        (
+            PatKind::Expr(PatExpr {
+                kind: PatExprKind::Path(QPath::Resolved(_, p_path)),
+                ..
+            }),
+            ExprKind::Path(QPath::Resolved(_, e_path)),
+        ) => {
             return over(p_path.segments, e_path.segments, |p_seg, e_seg| {
                 p_seg.ident.name == e_seg.ident.name
             });

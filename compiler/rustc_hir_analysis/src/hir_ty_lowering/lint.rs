@@ -41,8 +41,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 kind: hir::ExprKind::Path(hir::QPath::TypeRelative(qself, _)),
                 ..
             })
-            | hir::Node::Pat(hir::Pat {
-                kind: hir::PatKind::Path(hir::QPath::TypeRelative(qself, _)),
+            | hir::Node::PatExpr(hir::PatExpr {
+                kind: hir::PatExprKind::Path(hir::QPath::TypeRelative(qself, _)),
                 ..
             }) if qself.hir_id == self_ty.hir_id => true,
             _ => false,

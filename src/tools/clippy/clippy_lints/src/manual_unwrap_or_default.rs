@@ -1,6 +1,6 @@
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{Arm, Expr, ExprKind, HirId, LangItem, MatchSource, Pat, PatKind, QPath};
+use rustc_hir::{Arm, Expr, ExprKind, HirId, LangItem, MatchSource, Pat, PatExpr, PatExprKind, PatKind, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::GenericArgKind;
 use rustc_session::declare_lint_pass;
@@ -68,7 +68,7 @@ fn get_some<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>) -> Option<HirId> {
 }
 
 fn get_none<'tcx>(cx: &LateContext<'tcx>, arm: &Arm<'tcx>) -> Option<&'tcx Expr<'tcx>> {
-    if let PatKind::Path(QPath::Resolved(_, path)) = arm.pat.kind
+    if let PatKind::Expr(PatExpr { kind: PatExprKind::Path(QPath::Resolved(_, path)), .. }) = arm.pat.kind
         && let Some(def_id) = path.res.opt_def_id()
         // Since it comes from a pattern binding, we need to get the parent to actually match
         // against it.

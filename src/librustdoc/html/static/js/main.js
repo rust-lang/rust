@@ -11,8 +11,13 @@
 window.RUSTDOC_TOOLTIP_HOVER_MS = 300;
 window.RUSTDOC_TOOLTIP_HOVER_EXIT_MS = 450;
 
-// Given a basename (e.g. "storage") and an extension (e.g. ".js"), return a URL
-// for a resource under the root-path, with the resource-suffix.
+/**
+ * Given a basename (e.g. "storage") and an extension (e.g. ".js"), return a URL
+ * for a resource under the root-path, with the resource-suffix.
+ *
+ * @param {string} basename
+ * @param {string} extension
+ */
 function resourcePath(basename, extension) {
     return getVar("root-path") + basename + getVar("resource-suffix") + extension;
 }
@@ -27,13 +32,18 @@ function hideMain() {
 
 function showMain() {
     const main = document.getElementById(MAIN_ID);
+    if (!main) {
+        return;
+    }
     removeClass(main, "hidden");
     const mainHeading = main.querySelector(".main-heading");
-    if (mainHeading && searchState.rustdocToolbar) {
-        if (searchState.rustdocToolbar.parentElement) {
-            searchState.rustdocToolbar.parentElement.removeChild(searchState.rustdocToolbar);
+    if (mainHeading && window.searchState.rustdocToolbar) {
+        if (window.searchState.rustdocToolbar.parentElement) {
+            window.searchState.rustdocToolbar.parentElement.removeChild(
+                window.searchState.rustdocToolbar,
+            );
         }
-        mainHeading.appendChild(searchState.rustdocToolbar);
+        mainHeading.appendChild(window.searchState.rustdocToolbar);
     }
     const toggle = document.getElementById("toggle-all-docs");
     if (toggle) {
@@ -61,16 +71,20 @@ function setMobileTopbar() {
     }
 }
 
-// Gets the human-readable string for the virtual-key code of the
-// given KeyboardEvent, ev.
-//
-// This function is meant as a polyfill for KeyboardEvent#key,
-// since it is not supported in IE 11 or Chrome for Android. We also test for
-// KeyboardEvent#keyCode because the handleShortcut handler is
-// also registered for the keydown event, because Blink doesn't fire
-// keypress on hitting the Escape key.
-//
-// So I guess you could say things are getting pretty interoperable.
+/**
+ * Gets the human-readable string for the virtual-key code of the
+ * given KeyboardEvent, ev.
+ *
+ * This function is meant as a polyfill for KeyboardEvent#key,
+ * since it is not supported in IE 11 or Chrome for Android. We also test for
+ * KeyboardEvent#keyCode because the handleShortcut handler is
+ * also registered for the keydown event, because Blink doesn't fire
+ * keypress on hitting the Escape key.
+ *
+ * So I guess you could say things are getting pretty interoperable.
+ *
+ * @param {KeyboardEvent} ev
+ */
 function getVirtualKey(ev) {
     if ("key" in ev && typeof ev.key !== "undefined") {
         return ev.key;
@@ -110,6 +124,9 @@ function getNakedUrl() {
  * @param {HTMLElement} referenceNode
  */
 function insertAfter(newNode, referenceNode) {
+    // You're not allowed to pass an element with no parent.
+    // I dunno how to make TS's typechecker see that.
+    // @ts-expect-error
     referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
 }
 
@@ -129,6 +146,7 @@ function getOrCreateSection(id, classes) {
         el = document.createElement("section");
         el.id = id;
         el.className = classes;
+        // @ts-expect-error
         insertAfter(el, document.getElementById(MAIN_ID));
     }
     return el;
@@ -159,12 +177,13 @@ function getNotDisplayedElem() {
  * contains the displayed element (there can be only one at the same time!). So basically, we switch
  * elements between the two `<section>` elements.
  *
- * @param {HTMLElement} elemToDisplay
+ * @param {HTMLElement|null} elemToDisplay
  */
 function switchDisplayedElement(elemToDisplay) {
     const el = getAlternativeDisplayElem();
 
     if (el.children.length > 0) {
+        // @ts-expect-error
         getNotDisplayedElem().appendChild(el.firstElementChild);
     }
     if (elemToDisplay === null) {
@@ -177,10 +196,14 @@ function switchDisplayedElement(elemToDisplay) {
     removeClass(el, "hidden");
 
     const mainHeading = elemToDisplay.querySelector(".main-heading");
+    // @ts-expect-error
     if (mainHeading && searchState.rustdocToolbar) {
+        // @ts-expect-error
         if (searchState.rustdocToolbar.parentElement) {
+            // @ts-expect-error
             searchState.rustdocToolbar.parentElement.removeChild(searchState.rustdocToolbar);
         }
+        // @ts-expect-error
         mainHeading.appendChild(searchState.rustdocToolbar);
     }
 }
@@ -189,6 +212,7 @@ function browserSupportsHistoryApi() {
     return window.history && typeof window.history.pushState === "function";
 }
 
+// @ts-expect-error
 function preLoadCss(cssUrl) {
     // https://developer.mozilla.org/en-US/docs/Web/HTML/Link_types/preload
     const link = document.createElement("link");
@@ -201,6 +225,7 @@ function preLoadCss(cssUrl) {
 (function() {
     const isHelpPage = window.location.pathname.endsWith("/help.html");
 
+    // @ts-expect-error
     function loadScript(url, errorCallback) {
         const script = document.createElement("script");
         script.src = url;
@@ -211,21 +236,25 @@ function preLoadCss(cssUrl) {
     }
 
     if (getSettingsButton()) {
+        // @ts-expect-error
         getSettingsButton().onclick = event => {
             if (event.ctrlKey || event.altKey || event.metaKey) {
                 return;
             }
+            // @ts-expect-error
             window.hideAllModals(false);
             addClass(getSettingsButton(), "rotate");
             event.preventDefault();
             // Sending request for the CSS and the JS files at the same time so it will
             // hopefully be loaded when the JS will generate the settings content.
+            // @ts-expect-error
             loadScript(getVar("static-root-path") + getVar("settings-js"));
             // Pre-load all theme CSS files, so that switching feels seamless.
             //
             // When loading settings.html as a standalone page, the equivalent HTML is
             // generated in context.rs.
             setTimeout(() => {
+                // @ts-expect-error
                 const themes = getVar("themes").split(",");
                 for (const theme of themes) {
                     // if there are no themes, do nothing
@@ -241,6 +270,8 @@ function preLoadCss(cssUrl) {
     window.searchState = {
         rustdocToolbar: document.querySelector("rustdoc-toolbar"),
         loadingText: "Loading search results...",
+        // This will always be an HTMLInputElement, but tsc can't see that
+        // @ts-expect-error
         input: document.getElementsByClassName("search-input")[0],
         outputElement: () => {
             let el = document.getElementById("search");
@@ -263,31 +294,38 @@ function preLoadCss(cssUrl) {
         // tab and back preserves the element that was focused.
         focusedByTab: [null, null, null],
         clearInputTimeout: () => {
-            if (searchState.timeout !== null) {
-                clearTimeout(searchState.timeout);
-                searchState.timeout = null;
+            if (window.searchState.timeout !== null) {
+                clearTimeout(window.searchState.timeout);
+                window.searchState.timeout = null;
             }
         },
-        isDisplayed: () => searchState.outputElement().parentElement.id === ALTERNATIVE_DISPLAY_ID,
+        // @ts-expect-error
+        isDisplayed: () => {
+            const outputElement = window.searchState.outputElement();
+            return outputElement &&
+                outputElement.parentElement &&
+                outputElement.parentElement.id === ALTERNATIVE_DISPLAY_ID;
+        },
         // Sets the focus on the search bar at the top of the page
         focus: () => {
-            searchState.input.focus();
+            window.searchState.input && window.searchState.input.focus();
         },
         // Removes the focus from the search bar.
         defocus: () => {
-            searchState.input.blur();
+            window.searchState.input && window.searchState.input.blur();
         },
         showResults: search => {
             if (search === null || typeof search === "undefined") {
-                search = searchState.outputElement();
+                search = window.searchState.outputElement();
             }
             switchDisplayedElement(search);
-            searchState.mouseMovedAfterSearch = false;
-            document.title = searchState.title;
+            // @ts-expect-error
+            window.searchState.mouseMovedAfterSearch = false;
+            document.title = window.searchState.title;
         },
         removeQueryParameters: () => {
             // We change the document title.
-            document.title = searchState.titleBeforeSearch;
+            document.title = window.searchState.titleBeforeSearch;
             if (browserSupportsHistoryApi()) {
                 history.replaceState(null, "", getNakedUrl() + window.location.hash);
             }
@@ -295,9 +333,10 @@ function preLoadCss(cssUrl) {
         hideResults: () => {
             switchDisplayedElement(null);
             // We also remove the query parameter from the URL.
-            searchState.removeQueryParameters();
+            window.searchState.removeQueryParameters();
         },
         getQueryStringParams: () => {
+            /** @type {Object.<any, string>} */
             const params = {};
             window.location.search.substring(1).split("&").
                 map(s => {
@@ -309,26 +348,28 @@ function preLoadCss(cssUrl) {
             return params;
         },
         setup: () => {
-            const search_input = searchState.input;
-            if (!searchState.input) {
+            const search_input = window.searchState.input;
+            if (!search_input) {
                 return;
             }
             let searchLoaded = false;
             // If you're browsing the nightly docs, the page might need to be refreshed for the
             // search to work because the hash of the JS scripts might have changed.
             function sendSearchForm() {
+                // @ts-expect-error
                 document.getElementsByClassName("search-form")[0].submit();
             }
             function loadSearch() {
                 if (!searchLoaded) {
                     searchLoaded = true;
+                    // @ts-expect-error
                     loadScript(getVar("static-root-path") + getVar("search-js"), sendSearchForm);
                     loadScript(resourcePath("search-index", ".js"), sendSearchForm);
                 }
             }
 
             search_input.addEventListener("focus", () => {
-                search_input.origPlaceholder = search_input.placeholder;
+                window.searchState.origPlaceholder = search_input.placeholder;
                 search_input.placeholder = "Type your search here.";
                 loadSearch();
             });
@@ -337,16 +378,21 @@ function preLoadCss(cssUrl) {
                 loadSearch();
             }
 
-            const params = searchState.getQueryStringParams();
+            const params = window.searchState.getQueryStringParams();
             if (params.search !== undefined) {
-                searchState.setLoadingSearch();
+                window.searchState.setLoadingSearch();
                 loadSearch();
             }
         },
         setLoadingSearch: () => {
-            const search = searchState.outputElement();
-            search.innerHTML = "<h3 class=\"search-loading\">" + searchState.loadingText + "</h3>";
-            searchState.showResults(search);
+            const search = window.searchState.outputElement();
+            if (!search) {
+                return;
+            }
+            search.innerHTML = "<h3 class=\"search-loading\">" +
+                window.searchState.loadingText +
+                "</h3>";
+            window.searchState.showResults(search);
         },
         descShards: new Map(),
         loadDesc: async function({descShard, descIndex}) {
@@ -370,6 +416,8 @@ function preLoadCss(cssUrl) {
             return list[descIndex];
         },
         loadedDescShard: function(crate, shard, data) {
+            // If loadedDescShard gets called, then the library must have been declared.
+            // @ts-expect-error
             this.descShards.get(crate)[shard].resolve(data.split("\n"));
         },
     };
@@ -377,8 +425,11 @@ function preLoadCss(cssUrl) {
     const toggleAllDocsId = "toggle-all-docs";
     let savedHash = "";
 
+    /**
+     * @param {HashChangeEvent|null} ev
+     */
     function handleHashes(ev) {
-        if (ev !== null && searchState.isDisplayed() && ev.newURL) {
+        if (ev !== null && window.searchState.isDisplayed() && ev.newURL) {
             // This block occurs when clicking on an element in the navbar while
             // in a search.
             switchDisplayedElement(null);
@@ -419,6 +470,7 @@ function preLoadCss(cssUrl) {
                     }
                     return onEachLazy(implElem.parentElement.parentElement.querySelectorAll(
                         `[id^="${assocId}"]`),
+                        // @ts-expect-error
                         item => {
                             const numbered = /^(.+?)-([0-9]+)$/.exec(item.id);
                             if (item.id === assocId || (numbered && numbered[1] === assocId)) {
@@ -437,12 +489,16 @@ function preLoadCss(cssUrl) {
         }
     }
 
+    /**
+     * @param {HashChangeEvent|null} ev
+     */
     function onHashChange(ev) {
         // If we're in mobile mode, we should hide the sidebar in any case.
         hideSidebar();
         handleHashes(ev);
     }
 
+    // @ts-expect-error
     function openParentDetails(elem) {
         while (elem) {
             if (elem.tagName === "DETAILS") {
@@ -452,18 +508,25 @@ function preLoadCss(cssUrl) {
         }
     }
 
+    // @ts-expect-error
     function expandSection(id) {
         openParentDetails(document.getElementById(id));
     }
 
+    // @ts-expect-error
     function handleEscape(ev) {
+        // @ts-expect-error
         searchState.clearInputTimeout();
+        // @ts-expect-error
         searchState.hideResults();
         ev.preventDefault();
+        // @ts-expect-error
         searchState.defocus();
+        // @ts-expect-error
         window.hideAllModals(true); // true = reset focus for tooltips
     }
 
+    // @ts-expect-error
     function handleShortcut(ev) {
         // Don't interfere with browser shortcuts
         const disableShortcuts = getSettingValue("disable-shortcuts") === "true";
@@ -471,8 +534,11 @@ function preLoadCss(cssUrl) {
             return;
         }
 
+        // @ts-expect-error
         if (document.activeElement.tagName === "INPUT" &&
+            // @ts-expect-error
             document.activeElement.type !== "checkbox" &&
+            // @ts-expect-error
             document.activeElement.type !== "radio") {
             switch (getVirtualKey(ev)) {
             case "Escape":
@@ -489,6 +555,7 @@ function preLoadCss(cssUrl) {
             case "S":
             case "/":
                 ev.preventDefault();
+                // @ts-expect-error
                 searchState.focus();
                 break;
 
@@ -515,6 +582,7 @@ function preLoadCss(cssUrl) {
     document.addEventListener("keydown", handleShortcut);
 
     function addSidebarItems() {
+        // @ts-expect-error
         if (!window.SIDEBAR_ITEMS) {
             return;
         }
@@ -529,6 +597,7 @@ function preLoadCss(cssUrl) {
          *                          "Modules", or "Macros".
          */
         function block(shortty, id, longty) {
+            // @ts-expect-error
             const filtered = window.SIDEBAR_ITEMS[shortty];
             if (!filtered) {
                 return;
@@ -564,7 +633,9 @@ function preLoadCss(cssUrl) {
                 li.appendChild(link);
                 ul.appendChild(li);
             }
+            // @ts-expect-error
             sidebar.appendChild(h3);
+            // @ts-expect-error
             sidebar.appendChild(ul);
         }
 
@@ -600,6 +671,7 @@ function preLoadCss(cssUrl) {
     }
 
     // <https://github.com/search?q=repo%3Arust-lang%2Frust+[RUSTDOCIMPL]+trait.impl&type=code>
+    // @ts-expect-error
     window.register_implementors = imp => {
         const implementors = document.getElementById("implementors-list");
         const synthetic_implementors = document.getElementById("synthetic-implementors-list");
@@ -615,18 +687,22 @@ function preLoadCss(cssUrl) {
             //
             // By the way, this is only used by and useful for traits implemented automatically
             // (like "Send" and "Sync").
+            // @ts-expect-error
             onEachLazy(synthetic_implementors.getElementsByClassName("impl"), el => {
                 const aliases = el.getAttribute("data-aliases");
                 if (!aliases) {
                     return;
                 }
+                // @ts-expect-error
                 aliases.split(",").forEach(alias => {
                     inlined_types.add(alias);
                 });
             });
         }
 
+        // @ts-expect-error
         let currentNbImpls = implementors.getElementsByClassName("impl").length;
+        // @ts-expect-error
         const traitName = document.querySelector(".main-heading h1 > .trait").textContent;
         const baseIdName = "impl-" + traitName + "-";
         const libs = Object.getOwnPropertyNames(imp);
@@ -636,6 +712,7 @@ function preLoadCss(cssUrl) {
         const script = document
             .querySelector("script[data-ignore-extern-crates]");
         const ignoreExternCrates = new Set(
+            // @ts-expect-error
             (script ? script.getAttribute("data-ignore-extern-crates") : "").split(","),
         );
         for (const lib of libs) {
@@ -663,6 +740,7 @@ function preLoadCss(cssUrl) {
                 code.innerHTML = struct[TEXT_IDX];
                 addClass(code, "code-header");
 
+                // @ts-expect-error
                 onEachLazy(code.getElementsByTagName("a"), elem => {
                     const href = elem.getAttribute("href");
 
@@ -681,12 +759,15 @@ function preLoadCss(cssUrl) {
                 addClass(display, "impl");
                 display.appendChild(anchor);
                 display.appendChild(code);
+                // @ts-expect-error
                 list.appendChild(display);
                 currentNbImpls += 1;
             }
         }
     };
+    // @ts-expect-error
     if (window.pending_implementors) {
+        // @ts-expect-error
         window.register_implementors(window.pending_implementors);
     }
 
@@ -719,12 +800,15 @@ function preLoadCss(cssUrl) {
      *
      * - After processing all of the impls, it sorts the sidebar items by name.
      *
-     * @param {{[cratename: string]: Array<Array<string|0>>}} impl
+     * @param {{[cratename: string]: Array<Array<string|0>>}} imp
      */
+    // @ts-expect-error
     window.register_type_impls = imp => {
+        // @ts-expect-error
         if (!imp || !imp[window.currentCrate]) {
             return;
         }
+        // @ts-expect-error
         window.pending_type_impls = null;
         const idMap = new Map();
 
@@ -744,6 +828,7 @@ function preLoadCss(cssUrl) {
         let associatedConstants = document.querySelector(".sidebar .block.associatedconstant");
         let sidebarTraitList = document.querySelector(".sidebar .block.trait-implementation");
 
+        // @ts-expect-error
         for (const impList of imp[window.currentCrate]) {
             const types = impList.slice(2);
             const text = impList[0];
@@ -772,20 +857,28 @@ function preLoadCss(cssUrl) {
                     h.appendChild(link);
                     trait_implementations = outputList;
                     trait_implementations_header = outputListHeader;
+                    // @ts-expect-error
                     sidebarSection.appendChild(h);
                     sidebarTraitList = document.createElement("ul");
                     sidebarTraitList.className = "block trait-implementation";
+                    // @ts-expect-error
                     sidebarSection.appendChild(sidebarTraitList);
+                    // @ts-expect-error
                     mainContent.appendChild(outputListHeader);
+                    // @ts-expect-error
                     mainContent.appendChild(outputList);
                 } else {
                     implementations = outputList;
                     if (trait_implementations) {
+                        // @ts-expect-error
                         mainContent.insertBefore(outputListHeader, trait_implementations_header);
+                        // @ts-expect-error
                         mainContent.insertBefore(outputList, trait_implementations_header);
                     } else {
                         const mainContent = document.querySelector("#main-content");
+                        // @ts-expect-error
                         mainContent.appendChild(outputListHeader);
+                        // @ts-expect-error
                         mainContent.appendChild(outputList);
                     }
                 }
@@ -793,6 +886,7 @@ function preLoadCss(cssUrl) {
             const template = document.createElement("template");
             template.innerHTML = text;
 
+            // @ts-expect-error
             onEachLazy(template.content.querySelectorAll("a"), elem => {
                 const href = elem.getAttribute("href");
 
@@ -800,6 +894,7 @@ function preLoadCss(cssUrl) {
                     elem.setAttribute("href", window.rootPath + href);
                 }
             });
+            // @ts-expect-error
             onEachLazy(template.content.querySelectorAll("[id]"), el => {
                 let i = 0;
                 if (idMap.has(el.id)) {
@@ -817,6 +912,7 @@ function preLoadCss(cssUrl) {
                     const oldHref = `#${el.id}`;
                     const newHref = `#${el.id}-${i}`;
                     el.id = `${el.id}-${i}`;
+                    // @ts-expect-error
                     onEachLazy(template.content.querySelectorAll("a[href]"), link => {
                         if (link.getAttribute("href") === oldHref) {
                             link.href = newHref;
@@ -830,11 +926,14 @@ function preLoadCss(cssUrl) {
             if (isTrait) {
                 const li = document.createElement("li");
                 const a = document.createElement("a");
+                // @ts-expect-error
                 a.href = `#${template.content.querySelector(".impl").id}`;
                 a.textContent = traitName;
                 li.appendChild(a);
+                // @ts-expect-error
                 sidebarTraitList.append(li);
             } else {
+                // @ts-expect-error
                 onEachLazy(templateAssocItems, item => {
                     let block = hasClass(item, "associatedtype") ? associatedTypes : (
                         hasClass(item, "associatedconstant") ? associatedConstants : (
@@ -856,10 +955,14 @@ function preLoadCss(cssUrl) {
                         const insertionReference = methods || sidebarTraitList;
                         if (insertionReference) {
                             const insertionReferenceH = insertionReference.previousElementSibling;
+                            // @ts-expect-error
                             sidebarSection.insertBefore(blockHeader, insertionReferenceH);
+                            // @ts-expect-error
                             sidebarSection.insertBefore(block, insertionReferenceH);
                         } else {
+                            // @ts-expect-error
                             sidebarSection.appendChild(blockHeader);
+                            // @ts-expect-error
                             sidebarSection.appendChild(block);
                         }
                         if (hasClass(item, "associatedtype")) {
@@ -896,11 +999,14 @@ function preLoadCss(cssUrl) {
             list.replaceChildren(...newChildren);
         }
     };
+    // @ts-expect-error
     if (window.pending_type_impls) {
+        // @ts-expect-error
         window.register_type_impls(window.pending_type_impls);
     }
 
     function addSidebarCrates() {
+        // @ts-expect-error
         if (!window.ALL_CRATES) {
             return;
         }
@@ -914,6 +1020,7 @@ function preLoadCss(cssUrl) {
         const ul = document.createElement("ul");
         ul.className = "block crate";
 
+        // @ts-expect-error
         for (const crate of window.ALL_CRATES) {
             const link = document.createElement("a");
             link.href = window.rootPath + crate + "/index.html";
@@ -933,17 +1040,20 @@ function preLoadCss(cssUrl) {
     function expandAllDocs() {
         const innerToggle = document.getElementById(toggleAllDocsId);
         removeClass(innerToggle, "will-expand");
+        // @ts-expect-error
         onEachLazy(document.getElementsByClassName("toggle"), e => {
             if (!hasClass(e, "type-contents-toggle") && !hasClass(e, "more-examples-toggle")) {
                 e.open = true;
             }
         });
+        // @ts-expect-error
         innerToggle.children[0].innerText = "Summary";
     }
 
     function collapseAllDocs() {
         const innerToggle = document.getElementById(toggleAllDocsId);
         addClass(innerToggle, "will-expand");
+        // @ts-expect-error
         onEachLazy(document.getElementsByClassName("toggle"), e => {
             if (e.parentNode.id !== "implementations-list" ||
                 (!hasClass(e, "implementors-toggle") &&
@@ -952,6 +1062,7 @@ function preLoadCss(cssUrl) {
                 e.open = false;
             }
         });
+        // @ts-expect-error
         innerToggle.children[0].innerText = "Show all";
     }
 
@@ -977,9 +1088,11 @@ function preLoadCss(cssUrl) {
         const hideImplementations = getSettingValue("auto-hide-trait-implementations") === "true";
         const hideLargeItemContents = getSettingValue("auto-hide-large-items") !== "false";
 
+        // @ts-expect-error
         function setImplementorsTogglesOpen(id, open) {
             const list = document.getElementById(id);
             if (list !== null) {
+                // @ts-expect-error
                 onEachLazy(list.getElementsByClassName("implementors-toggle"), e => {
                     e.open = open;
                 });
@@ -991,6 +1104,7 @@ function preLoadCss(cssUrl) {
             setImplementorsTogglesOpen("blanket-implementations-list", false);
         }
 
+        // @ts-expect-error
         onEachLazy(document.getElementsByClassName("toggle"), e => {
             if (!hideLargeItemContents && hasClass(e, "type-contents-toggle")) {
                 e.open = true;
@@ -1002,6 +1116,7 @@ function preLoadCss(cssUrl) {
         });
     }());
 
+    // @ts-expect-error
     window.rustdoc_add_line_numbers_to_examples = () => {
         if (document.querySelector(".rustdoc.src")) {
             // We are in the source code page, nothing to be done here!
@@ -1009,6 +1124,7 @@ function preLoadCss(cssUrl) {
         }
         onEachLazy(document.querySelectorAll(
             ":not(.scraped-example) > .example-wrap > pre:not(.example-line-numbers)",
+        // @ts-expect-error
         ), x => {
             const parent = x.parentNode;
             const line_numbers = parent.querySelectorAll(".example-line-numbers");
@@ -1027,33 +1143,41 @@ function preLoadCss(cssUrl) {
         });
     };
 
+    // @ts-expect-error
     window.rustdoc_remove_line_numbers_from_examples = () => {
+        // @ts-expect-error
         onEachLazy(document.querySelectorAll(".example-wrap > .example-line-numbers"), x => {
             x.parentNode.removeChild(x);
         });
     };
 
     if (getSettingValue("line-numbers") === "true") {
+        // @ts-expect-error
         window.rustdoc_add_line_numbers_to_examples();
     }
 
     function showSidebar() {
+        // @ts-expect-error
         window.hideAllModals(false);
         const sidebar = document.getElementsByClassName("sidebar")[0];
+        // @ts-expect-error
         addClass(sidebar, "shown");
     }
 
     function hideSidebar() {
         const sidebar = document.getElementsByClassName("sidebar")[0];
+        // @ts-expect-error
         removeClass(sidebar, "shown");
     }
 
     window.addEventListener("resize", () => {
+        // @ts-expect-error
         if (window.CURRENT_TOOLTIP_ELEMENT) {
             // As a workaround to the behavior of `contains: layout` used in doc togglers,
             // tooltip popovers are positioned using javascript.
             //
             // This means when the window is resized, we need to redo the layout.
+            // @ts-expect-error
             const base = window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE;
             const force_visible = base.TOOLTIP_FORCE_VISIBLE;
             hideTooltip(false);
@@ -1069,6 +1193,7 @@ function preLoadCss(cssUrl) {
         mainElem.addEventListener("click", hideSidebar);
     }
 
+    // @ts-expect-error
     onEachLazy(document.querySelectorAll("a[href^='#']"), el => {
         // For clicks on internal links (<A> tags with a hash property), we expand the section we're
         // jumping to *before* jumping there. We can't do this in onHashChange, because it changes
@@ -1079,7 +1204,9 @@ function preLoadCss(cssUrl) {
         });
     });
 
+    // @ts-expect-error
     onEachLazy(document.querySelectorAll(".toggle > summary:not(.hideme)"), el => {
+        // @ts-expect-error
         el.addEventListener("click", e => {
             if (e.target.tagName !== "SUMMARY" && e.target.tagName !== "A") {
                 e.preventDefault();
@@ -1090,15 +1217,17 @@ function preLoadCss(cssUrl) {
     /**
      * Show a tooltip immediately.
      *
-     * @param {DOMElement} e - The tooltip's anchor point. The DOM is consulted to figure
-     *                         out what the tooltip should contain, and where it should be
-     *                         positioned.
+     * @param {HTMLElement} e - The tooltip's anchor point. The DOM is consulted to figure
+     *                          out what the tooltip should contain, and where it should be
+     *                          positioned.
      */
     function showTooltip(e) {
         const notable_ty = e.getAttribute("data-notable-ty");
+        // @ts-expect-error
         if (!window.NOTABLE_TRAITS && notable_ty) {
             const data = document.getElementById("notable-traits-data");
             if (data) {
+                // @ts-expect-error
                 window.NOTABLE_TRAITS = JSON.parse(data.innerText);
             } else {
                 throw new Error("showTooltip() called with notable without any notable traits!");
@@ -1106,36 +1235,44 @@ function preLoadCss(cssUrl) {
         }
         // Make this function idempotent. If the tooltip is already shown, avoid doing extra work
         // and leave it alone.
+        // @ts-expect-error
         if (window.CURRENT_TOOLTIP_ELEMENT && window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE === e) {
+            // @ts-expect-error
             clearTooltipHoverTimeout(window.CURRENT_TOOLTIP_ELEMENT);
             return;
         }
+        // @ts-expect-error
         window.hideAllModals(false);
         const wrapper = document.createElement("div");
         if (notable_ty) {
             wrapper.innerHTML = "<div class=\"content\">" +
+                // @ts-expect-error
                 window.NOTABLE_TRAITS[notable_ty] + "</div>";
         } else {
             // Replace any `title` attribute with `data-title` to avoid double tooltips.
-            if (e.getAttribute("title") !== null) {
-                e.setAttribute("data-title", e.getAttribute("title"));
+            const ttl = e.getAttribute("title");
+            if (ttl !== null) {
+                e.setAttribute("data-title", ttl);
                 e.removeAttribute("title");
             }
-            if (e.getAttribute("data-title") !== null) {
+            const dttl = e.getAttribute("data-title");
+            if (dttl !== null) {
                 const titleContent = document.createElement("div");
                 titleContent.className = "content";
-                titleContent.appendChild(document.createTextNode(e.getAttribute("data-title")));
+                titleContent.appendChild(document.createTextNode(dttl));
                 wrapper.appendChild(titleContent);
             }
         }
         wrapper.className = "tooltip popover";
         const focusCatcher = document.createElement("div");
         focusCatcher.setAttribute("tabindex", "0");
+        // @ts-expect-error
         focusCatcher.onfocus = hideTooltip;
         wrapper.appendChild(focusCatcher);
         const pos = e.getBoundingClientRect();
         // 5px overlap so that the mouse can easily travel from place to place
         wrapper.style.top = (pos.top + window.scrollY + pos.height) + "px";
+        // @ts-expect-error
         wrapper.style.left = 0;
         wrapper.style.right = "auto";
         wrapper.style.visibility = "hidden";
@@ -1152,8 +1289,11 @@ function preLoadCss(cssUrl) {
             );
         }
         wrapper.style.visibility = "";
+        // @ts-expect-error
         window.CURRENT_TOOLTIP_ELEMENT = wrapper;
+        // @ts-expect-error
         window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE = e;
+        // @ts-expect-error
         clearTooltipHoverTimeout(window.CURRENT_TOOLTIP_ELEMENT);
         wrapper.onpointerenter = ev => {
             // If this is a synthetic touch event, ignore it. A click event will be along shortly.
@@ -1164,7 +1304,7 @@ function preLoadCss(cssUrl) {
         };
         wrapper.onpointerleave = ev => {
             // If this is a synthetic touch event, ignore it. A click event will be along shortly.
-            if (ev.pointerType !== "mouse") {
+            if (ev.pointerType !== "mouse" || !(ev.relatedTarget instanceof HTMLElement)) {
                 return;
             }
             if (!e.TOOLTIP_FORCE_VISIBLE && !e.contains(ev.relatedTarget)) {
@@ -1180,23 +1320,27 @@ function preLoadCss(cssUrl) {
      * was called, that timeout gets cleared. If the tooltip is already in the requested state,
      * this function will still clear any pending timeout, but otherwise do nothing.
      *
-     * @param {DOMElement} element - The tooltip's anchor point. The DOM is consulted to figure
-     *                               out what the tooltip should contain, and where it should be
-     *                               positioned.
+     * @param {HTMLElement} element - The tooltip's anchor point. The DOM is consulted to figure
+     *                                out what the tooltip should contain, and where it should be
+     *                                positioned.
      * @param {boolean}    show    - If true, the tooltip will be made visible. If false, it will
      *                               be hidden.
      */
     function setTooltipHoverTimeout(element, show) {
         clearTooltipHoverTimeout(element);
+        // @ts-expect-error
         if (!show && !window.CURRENT_TOOLTIP_ELEMENT) {
             // To "hide" an already hidden element, just cancel its timeout.
             return;
         }
+        // @ts-expect-error
         if (show && window.CURRENT_TOOLTIP_ELEMENT) {
             // To "show" an already visible element, just cancel its timeout.
             return;
         }
+        // @ts-expect-error
         if (window.CURRENT_TOOLTIP_ELEMENT &&
+            // @ts-expect-error
             window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE !== element) {
             // Don't do anything if another tooltip is already visible.
             return;
@@ -1214,22 +1358,29 @@ function preLoadCss(cssUrl) {
      * If a show/hide timeout was set by `setTooltipHoverTimeout`, cancel it. If none exists,
      * do nothing.
      *
-     * @param {DOMElement} element - The tooltip's anchor point,
-     *                               as passed to `setTooltipHoverTimeout`.
+     * @param {HTMLElement} element - The tooltip's anchor point,
+     *                                as passed to `setTooltipHoverTimeout`.
      */
     function clearTooltipHoverTimeout(element) {
         if (element.TOOLTIP_HOVER_TIMEOUT !== undefined) {
+            // @ts-expect-error
             removeClass(window.CURRENT_TOOLTIP_ELEMENT, "fade-out");
             clearTimeout(element.TOOLTIP_HOVER_TIMEOUT);
             delete element.TOOLTIP_HOVER_TIMEOUT;
         }
     }
 
+    // @ts-expect-error
     function tooltipBlurHandler(event) {
+        // @ts-expect-error
         if (window.CURRENT_TOOLTIP_ELEMENT &&
+            // @ts-expect-error
             !window.CURRENT_TOOLTIP_ELEMENT.contains(document.activeElement) &&
+            // @ts-expect-error
             !window.CURRENT_TOOLTIP_ELEMENT.contains(event.relatedTarget) &&
+            // @ts-expect-error
             !window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.contains(document.activeElement) &&
+            // @ts-expect-error
             !window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.contains(event.relatedTarget)
         ) {
             // Work around a difference in the focus behaviour between Firefox, Chrome, and Safari.
@@ -1251,32 +1402,45 @@ function preLoadCss(cssUrl) {
      *                          If set to `false`, leave keyboard focus alone.
      */
     function hideTooltip(focus) {
+        // @ts-expect-error
         if (window.CURRENT_TOOLTIP_ELEMENT) {
+            // @ts-expect-error
             if (window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.TOOLTIP_FORCE_VISIBLE) {
                 if (focus) {
+                    // @ts-expect-error
                     window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.focus();
                 }
+                // @ts-expect-error
                 window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.TOOLTIP_FORCE_VISIBLE = false;
             }
+            // @ts-expect-error
             document.body.removeChild(window.CURRENT_TOOLTIP_ELEMENT);
+            // @ts-expect-error
             clearTooltipHoverTimeout(window.CURRENT_TOOLTIP_ELEMENT);
+            // @ts-expect-error
             window.CURRENT_TOOLTIP_ELEMENT = null;
         }
     }
 
+    // @ts-expect-error
     onEachLazy(document.getElementsByClassName("tooltip"), e => {
         e.onclick = () => {
             e.TOOLTIP_FORCE_VISIBLE = e.TOOLTIP_FORCE_VISIBLE ? false : true;
+            // @ts-expect-error
             if (window.CURRENT_TOOLTIP_ELEMENT && !e.TOOLTIP_FORCE_VISIBLE) {
                 hideTooltip(true);
             } else {
                 showTooltip(e);
+                // @ts-expect-error
                 window.CURRENT_TOOLTIP_ELEMENT.setAttribute("tabindex", "0");
+                // @ts-expect-error
                 window.CURRENT_TOOLTIP_ELEMENT.focus();
+                // @ts-expect-error
                 window.CURRENT_TOOLTIP_ELEMENT.onblur = tooltipBlurHandler;
             }
             return false;
         };
+        // @ts-expect-error
         e.onpointerenter = ev => {
             // If this is a synthetic touch event, ignore it. A click event will be along shortly.
             if (ev.pointerType !== "mouse") {
@@ -1284,6 +1448,7 @@ function preLoadCss(cssUrl) {
             }
             setTooltipHoverTimeout(e, true);
         };
+        // @ts-expect-error
         e.onpointermove = ev => {
             // If this is a synthetic touch event, ignore it. A click event will be along shortly.
             if (ev.pointerType !== "mouse") {
@@ -1291,12 +1456,15 @@ function preLoadCss(cssUrl) {
             }
             setTooltipHoverTimeout(e, true);
         };
+        // @ts-expect-error
         e.onpointerleave = ev => {
             // If this is a synthetic touch event, ignore it. A click event will be along shortly.
             if (ev.pointerType !== "mouse") {
                 return;
             }
+            // @ts-expect-error
             if (!e.TOOLTIP_FORCE_VISIBLE && window.CURRENT_TOOLTIP_ELEMENT &&
+                // @ts-expect-error
                 !window.CURRENT_TOOLTIP_ELEMENT.contains(ev.relatedTarget)) {
                 // Tooltip pointer leave gesture:
                 //
@@ -1329,6 +1497,7 @@ function preLoadCss(cssUrl) {
                 // * https://www.nngroup.com/articles/tooltip-guidelines/
                 // * https://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown
                 setTooltipHoverTimeout(e, false);
+                // @ts-expect-error
                 addClass(window.CURRENT_TOOLTIP_ELEMENT, "fade-out");
             }
         };
@@ -1338,6 +1507,7 @@ function preLoadCss(cssUrl) {
     if (sidebar_menu_toggle) {
         sidebar_menu_toggle.addEventListener("click", () => {
             const sidebar = document.getElementsByClassName("sidebar")[0];
+            // @ts-expect-error
             if (!hasClass(sidebar, "shown")) {
                 showSidebar();
             } else {
@@ -1346,12 +1516,18 @@ function preLoadCss(cssUrl) {
         });
     }
 
+    // @ts-expect-error
     function helpBlurHandler(event) {
+        // @ts-expect-error
         if (!getHelpButton().contains(document.activeElement) &&
+            // @ts-expect-error
             !getHelpButton().contains(event.relatedTarget) &&
+            // @ts-expect-error
             !getSettingsButton().contains(document.activeElement) &&
+            // @ts-expect-error
             !getSettingsButton().contains(event.relatedTarget)
         ) {
+            // @ts-expect-error
             window.hidePopoverMenus();
         }
     }
@@ -1427,14 +1603,18 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         if (isHelpPage) {
             const help_section = document.createElement("section");
             help_section.appendChild(container);
+            // @ts-expect-error
             document.getElementById("main-content").appendChild(help_section);
             container.style.display = "block";
         } else {
             const help_button = getHelpButton();
+            // @ts-expect-error
             help_button.appendChild(container);
 
             container.onblur = helpBlurHandler;
+            // @ts-expect-error
             help_button.onblur = helpBlurHandler;
+            // @ts-expect-error
             help_button.children[0].onblur = helpBlurHandler;
         }
 
@@ -1446,8 +1626,10 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
      *
      * Pass "true" to reset focus for tooltip popovers.
      */
+    // @ts-expect-error
     window.hideAllModals = switchFocus => {
         hideSidebar();
+        // @ts-expect-error
         window.hidePopoverMenus();
         hideTooltip(switchFocus);
     };
@@ -1455,7 +1637,9 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
     /**
      * Hide all the popover menus.
      */
+    // @ts-expect-error
     window.hidePopoverMenus = () => {
+        // @ts-expect-error
         onEachLazy(document.querySelectorAll("rustdoc-toolbar .popover"), elem => {
             elem.style.display = "none";
         });
@@ -1474,10 +1658,12 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
      * @return {HTMLElement}
      */
     function getHelpMenu(buildNeeded) {
+        // @ts-expect-error
         let menu = getHelpButton().querySelector(".popover");
         if (!menu && buildNeeded) {
             menu = buildHelpMenu();
         }
+        // @ts-expect-error
         return menu;
     }
 
@@ -1489,9 +1675,11 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         // other modals.
         const button = getHelpButton();
         addClass(button, "help-open");
+        // @ts-expect-error
         button.querySelector("a").focus();
         const menu = getHelpMenu(true);
         if (menu.style.display === "none") {
+            // @ts-expect-error
             window.hideAllModals();
             menu.style.display = "";
         }
@@ -1506,8 +1694,11 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
             // If user clicks with a moderator, though, use default browser behavior,
             // probably opening in a new window or tab.
             if (!helpLink.contains(helpLink) ||
+                // @ts-expect-error
                 event.ctrlKey ||
+                // @ts-expect-error
                 event.altKey ||
+                // @ts-expect-error
                 event.metaKey) {
                 return;
             }
@@ -1517,6 +1708,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
             if (shouldShowHelp) {
                 showHelp();
             } else {
+                // @ts-expect-error
                 window.hidePopoverMenus();
             }
         });
@@ -1527,6 +1719,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
     addSidebarCrates();
     onHashChange(null);
     window.addEventListener("hashchange", onHashChange);
+    // @ts-expect-error
     searchState.setup();
 }());
 
@@ -1580,6 +1773,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
             removeClass(document.documentElement, "hide-sidebar");
             updateLocalStorage("hide-sidebar", "false");
             if (document.querySelector(".rustdoc.src")) {
+                // @ts-expect-error
                 window.rustdocToggleSrcSidebar();
             }
             e.preventDefault();
@@ -1589,6 +1783,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
     // Pointer capture.
     //
     // Resizing is a single-pointer gesture. Any secondary pointer is ignored
+    // @ts-expect-error
     let currentPointerId = null;
 
     // "Desired" sidebar size.
@@ -1596,6 +1791,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
     // This is stashed here for window resizing. If the sidebar gets
     // shrunk to maintain BODY_MIN, and then the user grows the window again,
     // it gets the sidebar to restore its size.
+    // @ts-expect-error
     let desiredSidebarSize = null;
 
     // Sidebar resize debouncer.
@@ -1626,7 +1822,9 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
     // through that size when using the shrink-to-nothing gesture.
     function hideSidebar() {
         if (isSrcPage) {
+            // @ts-expect-error
             window.rustdocCloseSourceSidebar();
+            // @ts-expect-error
             updateLocalStorage("src-sidebar-width", null);
             // [RUSTDOCIMPL] CSS variable fast path
             //
@@ -1639,14 +1837,19 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
             //
             // So, to clear it, we need to clear all three.
             document.documentElement.style.removeProperty("--src-sidebar-width");
+            // @ts-expect-error
             sidebar.style.removeProperty("--src-sidebar-width");
+            // @ts-expect-error
             resizer.style.removeProperty("--src-sidebar-width");
         } else {
             addClass(document.documentElement, "hide-sidebar");
             updateLocalStorage("hide-sidebar", "true");
+            // @ts-expect-error
             updateLocalStorage("desktop-sidebar-width", null);
             document.documentElement.style.removeProperty("--desktop-sidebar-width");
+            // @ts-expect-error
             sidebar.style.removeProperty("--desktop-sidebar-width");
+            // @ts-expect-error
             resizer.style.removeProperty("--desktop-sidebar-width");
         }
     }
@@ -1659,6 +1862,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
     // remains visible all the time on there.
     function showSidebar() {
         if (isSrcPage) {
+            // @ts-expect-error
             window.rustdocShowSourceSidebar();
         } else {
             removeClass(document.documentElement, "hide-sidebar");
@@ -1674,6 +1878,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
      */
     function changeSidebarSize(size) {
         if (isSrcPage) {
+            // @ts-expect-error
             updateLocalStorage("src-sidebar-width", size);
             // [RUSTDOCIMPL] CSS variable fast path
             //
@@ -1681,11 +1886,16 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
             // because the sidebar isn't actually loaded yet,
             // we scope this update to the sidebar to avoid hitting a slow
             // path in WebKit.
+            // @ts-expect-error
             sidebar.style.setProperty("--src-sidebar-width", size + "px");
+            // @ts-expect-error
             resizer.style.setProperty("--src-sidebar-width", size + "px");
         } else {
+            // @ts-expect-error
             updateLocalStorage("desktop-sidebar-width", size);
+            // @ts-expect-error
             sidebar.style.setProperty("--desktop-sidebar-width", size + "px");
+            // @ts-expect-error
             resizer.style.setProperty("--desktop-sidebar-width", size + "px");
         }
     }
@@ -1701,7 +1911,9 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
     // Respond to the resize handle event.
     // This function enforces size constraints, and implements the
     // shrink-to-nothing gesture based on thresholds defined above.
+    // @ts-expect-error
     function resize(e) {
+        // @ts-expect-error
         if (currentPointerId === null || currentPointerId !== e.pointerId) {
             return;
         }
@@ -1719,15 +1931,19 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
             changeSidebarSize(constrainedPos);
             desiredSidebarSize = constrainedPos;
             if (pendingSidebarResizingFrame !== false) {
+                // @ts-expect-error
                 clearTimeout(pendingSidebarResizingFrame);
             }
+            // @ts-expect-error
             pendingSidebarResizingFrame = setTimeout(() => {
+                // @ts-expect-error
                 if (currentPointerId === null || pendingSidebarResizingFrame === false) {
                     return;
                 }
                 pendingSidebarResizingFrame = false;
                 document.documentElement.style.setProperty(
                     "--resizing-sidebar-width",
+                    // @ts-expect-error
                     desiredSidebarSize + "px",
                 );
             }, 100);
@@ -1739,51 +1955,69 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
             return;
         }
         stopResize();
+        // @ts-expect-error
         if (desiredSidebarSize >= (window.innerWidth - BODY_MIN)) {
             changeSidebarSize(window.innerWidth - BODY_MIN);
+        // @ts-expect-error
         } else if (desiredSidebarSize !== null && desiredSidebarSize > SIDEBAR_MIN) {
+            // @ts-expect-error
             changeSidebarSize(desiredSidebarSize);
         }
     });
+    // @ts-expect-error
     function stopResize(e) {
+        // @ts-expect-error
         if (currentPointerId === null) {
             return;
         }
         if (e) {
             e.preventDefault();
         }
+        // @ts-expect-error
         desiredSidebarSize = sidebar.getBoundingClientRect().width;
+        // @ts-expect-error
         removeClass(resizer, "active");
         window.removeEventListener("pointermove", resize, false);
         window.removeEventListener("pointerup", stopResize, false);
         removeClass(document.documentElement, "sidebar-resizing");
         document.documentElement.style.removeProperty( "--resizing-sidebar-width");
+        // @ts-expect-error
         if (resizer.releasePointerCapture) {
+            // @ts-expect-error
             resizer.releasePointerCapture(currentPointerId);
             currentPointerId = null;
         }
     }
+    // @ts-expect-error
     function initResize(e) {
+        // @ts-expect-error
         if (currentPointerId !== null || e.altKey || e.ctrlKey || e.metaKey || e.button !== 0) {
             return;
         }
+        // @ts-expect-error
         if (resizer.setPointerCapture) {
+            // @ts-expect-error
             resizer.setPointerCapture(e.pointerId);
+            // @ts-expect-error
             if (!resizer.hasPointerCapture(e.pointerId)) {
                 // unable to capture pointer; something else has it
                 // on iOS, this usually means you long-clicked a link instead
+                // @ts-expect-error
                 resizer.releasePointerCapture(e.pointerId);
                 return;
             }
             currentPointerId = e.pointerId;
         }
+        // @ts-expect-error
         window.hideAllModals(false);
         e.preventDefault();
         window.addEventListener("pointermove", resize, false);
         window.addEventListener("pointercancel", stopResize, false);
         window.addEventListener("pointerup", stopResize, false);
+        // @ts-expect-error
         addClass(resizer, "active");
         addClass(document.documentElement, "sidebar-resizing");
+        // @ts-expect-error
         const pos = e.clientX - sidebar.offsetLeft - 3;
         document.documentElement.style.setProperty( "--resizing-sidebar-width", pos + "px");
         desiredSidebarSize = null;
@@ -1795,6 +2029,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
 // and the copy buttons on the code examples.
 (function() {
     // Common functions to copy buttons.
+    // @ts-expect-error
     function copyContentToClipboard(content) {
         const el = document.createElement("textarea");
         el.value = content;
@@ -1809,6 +2044,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         document.body.removeChild(el);
     }
 
+    // @ts-expect-error
     function copyButtonAnimation(button) {
         button.classList.add("clicked");
 
@@ -1831,6 +2067,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         // Most page titles are '<Item> in <path::to::module> - Rust', except
         // modules (which don't have the first part) and keywords/primitives
         // (which don't have a module path)
+        // @ts-expect-error
         const title = document.querySelector("title").textContent.replace(" - Rust", "");
         const [item, module] = title.split(" in ");
         const path = [item];
@@ -1843,6 +2080,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
     };
 
     // Copy buttons on code examples.
+    // @ts-expect-error
     function copyCode(codeElem) {
         if (!codeElem) {
             // Should never happen, but the world is a dark and dangerous place.
@@ -1851,6 +2089,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         copyContentToClipboard(codeElem.textContent);
     }
 
+    // @ts-expect-error
     function getExampleWrap(event) {
         let elem = event.target;
         while (!hasClass(elem, "example-wrap")) {
@@ -1866,6 +2105,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         return elem;
     }
 
+    // @ts-expect-error
     function addCopyButton(event) {
         const elem = getExampleWrap(event);
         if (elem === null) {
@@ -1896,9 +2136,11 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
             return;
         }
         const scrapedWrapped = elem.parentElement;
+        // @ts-expect-error
         window.updateScrapedExample(scrapedWrapped, parent);
     }
 
+    // @ts-expect-error
     function showHideCodeExampleButtons(event) {
         const elem = getExampleWrap(event);
         if (elem === null) {
@@ -1917,6 +2159,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         buttons.classList.toggle("keep-visible");
     }
 
+    // @ts-expect-error
     onEachLazy(document.querySelectorAll(".docblock .example-wrap"), elem => {
         elem.addEventListener("mouseover", addCopyButton);
         elem.addEventListener("click", showHideCodeExampleButtons);

@@ -1454,11 +1454,14 @@ impl<'v> RootCollector<'_, 'v> {
                 self.output.push(dummy_spanned(MonoItem::Static(def_id)));
             }
             DefKind::Const => {
-                // const items only generate mono items if they are
-                // actually used somewhere. Just declaring them is insufficient.
+                // Const items only generate mono items if they are actually used somewhere.
+                // Just declaring them is insufficient.
 
-                // but even just declaring them must collect the items they refer to
-                if let Ok(val) = self.tcx.const_eval_poly(id.owner_id.to_def_id()) {
+                // But even just declaring them must collect the items they refer to
+                // unless their generics require monomorphization.
+                if !self.tcx.generics_of(id.owner_id).requires_monomorphization(self.tcx)
+                    && let Ok(val) = self.tcx.const_eval_poly(id.owner_id.to_def_id())
+                {
                     collect_const_value(self.tcx, val, self.output);
                 }
             }

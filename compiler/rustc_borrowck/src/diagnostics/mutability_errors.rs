@@ -1140,10 +1140,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         let amp_mut_sugg = match *local_decl.local_info() {
             LocalInfo::User(mir::BindingForm::ImplicitSelf(_)) => {
-                let suggestion = suggest_ampmut_self(self.infcx.tcx, decl_span);
-                let additional =
-                    local_trait.map(|span| (span, suggest_ampmut_self(self.infcx.tcx, span)));
-                Some(AmpMutSugg { has_sugg: true, span: decl_span, suggestion, additional })
+                let (span, suggestion) = suggest_ampmut_self(self.infcx.tcx, decl_span);
+                let additional = local_trait.map(|span| suggest_ampmut_self(self.infcx.tcx, span));
+                Some(AmpMutSugg { has_sugg: true, span, suggestion, additional })
             }
 
             LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
@@ -1202,10 +1201,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     opt_ty_info: None,
                                     ..
                                 })) => {
-                                    let sugg = suggest_ampmut_self(self.infcx.tcx, decl_span);
+                                    let (span, sugg) =
+                                        suggest_ampmut_self(self.infcx.tcx, decl_span);
                                     Some(AmpMutSugg {
                                         has_sugg: true,
-                                        span: decl_span,
+                                        span,
                                         suggestion: sugg,
                                         additional: None,
                                     })
@@ -1461,17 +1461,12 @@ fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<Symb
     }
 }
 
-fn suggest_ampmut_self<'tcx>(tcx: TyCtxt<'tcx>, span: Span) -> String {
+fn suggest_ampmut_self(tcx: TyCtxt<'_>, span: Span) -> (Span, String) {
     match tcx.sess.source_map().span_to_snippet(span) {
-        Ok(snippet) => {
-            let lt_pos = snippet.find('\'');
-            if let Some(lt_pos) = lt_pos {
-                format!("&{}mut self", &snippet[lt_pos..snippet.len() - 4])
-            } else {
-                "&mut self".to_string()
-            }
+        Ok(snippet) if snippet.ends_with("self") => {
+            (span.with_hi(span.hi() - BytePos(4)).shrink_to_hi(), "mut ".to_string())
         }
-        _ => "&mut self".to_string(),
+        _ => (span, "&mut self".to_string()),
     }
 }
 

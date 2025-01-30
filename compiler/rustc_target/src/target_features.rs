@@ -135,6 +135,11 @@ const ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("aclass", Unstable(sym::arm_target_feature), &[]),
     ("aes", Unstable(sym::arm_target_feature), &["neon"]),
+    (
+        "atomics-32",
+        Stability::Forbidden { reason: "unsound because it changes the ABI of atomic operations" },
+        &[],
+    ),
     ("crc", Unstable(sym::arm_target_feature), &[]),
     ("d32", Unstable(sym::arm_target_feature), &[]),
     ("dotprod", Unstable(sym::arm_target_feature), &["neon"]),

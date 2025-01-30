@@ -460,7 +460,7 @@ mod uefi_command_internal {
                 helpers::open_protocol(self.handle, loaded_image::PROTOCOL_GUID).unwrap();
 
             let len = args.len();
-            let args_size: u32 = crate::mem::size_of_val(&args).try_into().unwrap();
+            let args_size: u32 = (len * crate::mem::size_of::<u16>()).try_into().unwrap();
             let ptr = Box::into_raw(args).as_mut_ptr();
 
             unsafe {
@@ -706,9 +706,10 @@ mod uefi_command_internal {
         res.push(QUOTE);
         res.extend(prog.encode_wide());
         res.push(QUOTE);
-        res.push(SPACE);
 
         for arg in args {
+            res.push(SPACE);
+
             // Wrap the argument in quotes to be treat as single arg
             res.push(QUOTE);
             for c in arg.encode_wide() {
@@ -719,8 +720,6 @@ mod uefi_command_internal {
                 res.push(c);
             }
             res.push(QUOTE);
-
-            res.push(SPACE);
         }
 
         res.into_boxed_slice()

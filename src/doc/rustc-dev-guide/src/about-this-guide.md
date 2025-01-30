@@ -72,7 +72,6 @@ You might also find the following sites useful:
 - The [Rust reference][rr], even though it doesn't specifically talk about
   Rust's internals, is a great resource nonetheless
 - Although out of date, [Tom Lee's great blog article][tlgba] is very helpful
-- [rustaceans.org][ro] is helpful, but mostly dedicated to IRC
 - The [Rust Compiler Testing Docs][rctd]
 - For [@bors], [this cheat sheet][cheatsheet] is helpful
 - Google is always helpful when programming.
