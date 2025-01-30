@@ -1,7 +1,5 @@
 //@ edition: 2018
 
-#![feature(arbitrary_self_types)]
-
 // tests that the referent type of a reference must be known to call methods on it
 
 struct SmartPtr<T>(T);

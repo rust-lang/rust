@@ -1,7 +1,5 @@
 //@ run-pass
 
-#![feature(arbitrary_self_types)]
-
 pub struct A;
 
 impl A {

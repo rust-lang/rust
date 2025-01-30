@@ -1,5 +1,4 @@
 //@ run-pass
-#![feature(arbitrary_self_types)]
 
 struct Foo;
 struct Bar;
