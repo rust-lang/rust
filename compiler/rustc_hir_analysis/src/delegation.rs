@@ -335,7 +335,8 @@ fn create_generic_args<'tcx>(
                 tcx.impl_trait_header(parent).unwrap().trait_ref.instantiate_identity().args;
 
             let trait_args = ty::GenericArgs::identity_for_item(tcx, sig_id);
-            let method_args = tcx.mk_args_from_iter(trait_args.iter().skip(callee_generics.parent_count));
+            let method_args =
+                tcx.mk_args_from_iter(trait_args.iter().skip(callee_generics.parent_count));
             let method_args = builder.build_from_args(method_args);
 
             tcx.mk_args_from_iter(parent_args.iter().chain(method_args))
@@ -354,9 +355,9 @@ fn create_generic_args<'tcx>(
         }
 
         // For trait impl's `sig_id` is always equal to the corresponding trait method.
+        // For inherent methods delegation is not yet supported.
         (FnKind::AssocTraitImpl, _)
         | (_, FnKind::AssocTraitImpl)
-        // Delegation to inherent methods is not yet supported.
         | (_, FnKind::AssocInherentImpl) => unreachable!(),
     }
 }
@@ -382,29 +383,26 @@ pub(crate) fn inherit_generics_for_delegation_item<'tcx>(
     let caller_kind = fn_kind(tcx, def_id.into());
     let callee_kind = fn_kind(tcx, sig_id);
     match (caller_kind, callee_kind) {
-        (FnKind::Free, FnKind::Free)
-        | (FnKind::Free, FnKind::AssocTrait) => builder.with_inheritance_kind(InheritanceKind::WithParent(true)).build(),
+        (FnKind::Free, FnKind::Free) | (FnKind::Free, FnKind::AssocTrait) => {
+            builder.with_inheritance_kind(InheritanceKind::WithParent(true)).build()
+        }
 
-        (FnKind::AssocTraitImpl, FnKind::AssocTrait) => {
-            builder
+        (FnKind::AssocTraitImpl, FnKind::AssocTrait) => builder
             .with_parent(tcx.parent(def_id.into()))
             .with_inheritance_kind(InheritanceKind::Own)
-            .build()
-        }
+            .build(),
 
         (FnKind::AssocInherentImpl, FnKind::AssocTrait)
         | (FnKind::AssocTrait, FnKind::AssocTrait)
         | (FnKind::AssocInherentImpl, FnKind::Free)
         | (FnKind::AssocTrait, FnKind::Free) => {
-            builder
-            .with_parent(tcx.parent(def_id.into()))
-            .build()
+            builder.with_parent(tcx.parent(def_id.into())).build()
         }
 
         // For trait impl's `sig_id` is always equal to the corresponding trait method.
+        // For inherent methods delegation is not yet supported.
         (FnKind::AssocTraitImpl, _)
         | (_, FnKind::AssocTraitImpl)
-        // Delegation to inherent methods is not yet supported.
         | (_, FnKind::AssocInherentImpl) => unreachable!(),
     }
 }
@@ -420,31 +418,26 @@ pub(crate) fn inherit_predicates_for_delegation_item<'tcx>(
     let caller_kind = fn_kind(tcx, def_id.into());
     let callee_kind = fn_kind(tcx, sig_id);
     match (caller_kind, callee_kind) {
-        (FnKind::Free, FnKind::Free)
-        | (FnKind::Free, FnKind::AssocTrait) => {
+        (FnKind::Free, FnKind::Free) | (FnKind::Free, FnKind::AssocTrait) => {
             builder.with_inheritance_kind(InheritanceKind::WithParent(true)).build()
         }
 
-        (FnKind::AssocTraitImpl, FnKind::AssocTrait) => {
-            builder
+        (FnKind::AssocTraitImpl, FnKind::AssocTrait) => builder
             .with_parent(tcx.parent(def_id.into()))
             .with_inheritance_kind(InheritanceKind::Own)
-            .build()
-        }
+            .build(),
 
         (FnKind::AssocInherentImpl, FnKind::AssocTrait)
         | (FnKind::AssocTrait, FnKind::AssocTrait)
         | (FnKind::AssocInherentImpl, FnKind::Free)
         | (FnKind::AssocTrait, FnKind::Free) => {
-            builder
-                .with_parent(tcx.parent(def_id.into()))
-                .build()
+            builder.with_parent(tcx.parent(def_id.into())).build()
         }
 
         // For trait impl's `sig_id` is always equal to the corresponding trait method.
+        // For inherent methods delegation is not yet supported.
         (FnKind::AssocTraitImpl, _)
         | (_, FnKind::AssocTraitImpl)
-        // Delegation to inherent methods is not yet supported.
         | (_, FnKind::AssocInherentImpl) => unreachable!(),
     }
 }
