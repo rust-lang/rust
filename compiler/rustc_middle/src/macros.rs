@@ -4,8 +4,8 @@
 ///
 /// If you have a span available, you should use [`span_bug`] instead.
 ///
-/// If the bug should only be emitted when compilation didn't fail, [`DiagCtxtHandle::span_delayed_bug`]
-/// may be useful.
+/// If the bug should only be emitted when compilation didn't fail,
+/// [`DiagCtxtHandle::span_delayed_bug`] may be useful.
 ///
 /// [`DiagCtxtHandle::span_delayed_bug`]: rustc_errors::DiagCtxtHandle::span_delayed_bug
 /// [`span_bug`]: crate::span_bug
@@ -14,14 +14,8 @@ macro_rules! bug {
     () => (
         $crate::bug!("impossible case reached")
     );
-    ($msg:expr) => (
-        $crate::util::bug::bug_fmt(::std::format_args!($msg))
-    );
-    ($msg:expr,) => (
-        $crate::bug!($msg)
-    );
-    ($fmt:expr, $($arg:tt)+) => (
-        $crate::util::bug::bug_fmt(::std::format_args!($fmt, $($arg)+))
+    ($($arg:tt)+) => (
+        $crate::util::bug::bug_fmt(::std::format_args!($($arg)+))
     );
 }
 
@@ -30,20 +24,14 @@ macro_rules! bug {
 /// at the code the compiler was compiling when it ICEd. This is the preferred way to trigger
 /// ICEs.
 ///
-/// If the bug should only be emitted when compilation didn't fail, [`DiagCtxtHandle::span_delayed_bug`]
-/// may be useful.
+/// If the bug should only be emitted when compilation didn't fail,
+/// [`DiagCtxtHandle::span_delayed_bug`] may be useful.
 ///
 /// [`DiagCtxtHandle::span_delayed_bug`]: rustc_errors::DiagCtxtHandle::span_delayed_bug
 #[macro_export]
 macro_rules! span_bug {
-    ($span:expr, $msg:expr) => (
-        $crate::util::bug::span_bug_fmt($span, ::std::format_args!($msg))
-    );
-    ($span:expr, $msg:expr,) => (
-        $crate::span_bug!($span, $msg)
-    );
-    ($span:expr, $fmt:expr, $($arg:tt)+) => (
-        $crate::util::bug::span_bug_fmt($span, ::std::format_args!($fmt, $($arg)+))
+    ($span:expr, $($arg:tt)+) => (
+        $crate::util::bug::span_bug_fmt($span, ::std::format_args!($($arg)+))
     );
 }
 
