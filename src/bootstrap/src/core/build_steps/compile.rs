@@ -17,6 +17,7 @@ use std::{env, fs, str};
 
 use serde_derive::Deserialize;
 
+use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::tool::SourceType;
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
@@ -1499,6 +1500,14 @@ impl Step for CodegenBackend {
             .arg("--manifest-path")
             .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
         rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
+
+        // Ideally, we'd have a separate step for the individual codegen backends,
+        // like we have in tests (test::CodegenGCC) but that would require a lot of restructuring.
+        // If the logic gets more complicated, it should probably be done.
+        if backend == "gcc" {
+            let gcc = builder.ensure(Gcc { target });
+            add_cg_gcc_cargo_flags(&mut cargo, &gcc);
+        }
 
         let tmp_stamp = BuildStamp::new(&out_dir).with_prefix("tmp");
 
