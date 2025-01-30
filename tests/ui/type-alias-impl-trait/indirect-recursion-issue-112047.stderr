@@ -1,11 +1,11 @@
 error[E0733]: recursion in an async block requires boxing
-  --> $DIR/indirect-recursion-issue-112047.rs:22:9
+  --> $DIR/indirect-recursion-issue-112047.rs:21:9
    |
 LL |         async move { recur(self).await; }
    |         ^^^^^^^^^^   ----------------- recursive call here
    |
 note: which leads to this async fn
-  --> $DIR/indirect-recursion-issue-112047.rs:14:1
+  --> $DIR/indirect-recursion-issue-112047.rs:13:1
    |
 LL | async fn recur(t: impl Recur) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
