@@ -1,9 +1,9 @@
 //@ edition: 2024
-//@ revisions: classic structural
+//@ revisions: classic2024 structural2024
 //! Test that `&mut` patterns don't match shared reference types under new typing rules in Rust 2024
 #![allow(incomplete_features)]
-#![cfg_attr(classic, feature(ref_pat_eat_one_layer_2024))]
-#![cfg_attr(structural, feature(ref_pat_eat_one_layer_2024_structural))]
+#![cfg_attr(classic2024, feature(ref_pat_eat_one_layer_2024))]
+#![cfg_attr(structural2024, feature(ref_pat_eat_one_layer_2024_structural))]
 
 pub fn main() {
     let &mut _ = &&0;

@@ -1,0 +1,228 @@
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:31:17
+   |
+LL |     if let Some(&mut Some(&_)) = &Some(&Some(0)) {
+   |                 ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     if let Some(&Some(&_)) = &Some(&Some(0)) {
+   |                 ~
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:36:23
+   |
+LL |     if let Some(&Some(&mut _)) = &Some(&mut Some(0)) {
+   |                       ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     if let Some(&Some(&_)) = &Some(&mut Some(0)) {
+   |                       ~
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:41:23
+   |
+LL |     if let Some(&Some(&mut _)) = &mut Some(&Some(0)) {
+   |                       ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     if let Some(&Some(&_)) = &mut Some(&Some(0)) {
+   |                       ~
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:46:28
+   |
+LL |     if let Some(&Some(Some(&mut _))) = &Some(Some(&mut Some(0))) {
+   |                            ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     if let Some(&Some(Some(&_))) = &Some(Some(&mut Some(0))) {
+   |                            ~
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:51:17
+   |
+LL |     if let Some(&mut Some(x)) = &Some(Some(0)) {
+   |                 ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     if let Some(&Some(x)) = &Some(Some(0)) {
+   |                 ~
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:59:11
+   |
+LL |     let &[&mut x] = &&mut [0];
+   |           ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     let &[&x] = &&mut [0];
+   |           ~
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:65:11
+   |
+LL |     let &[&mut x] = &mut &mut [0];
+   |           ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     let &[&x] = &mut &mut [0];
+   |           ~
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:71:11
+   |
+LL |     let &[&mut ref x] = &&mut [0];
+   |           ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     let &[&ref x] = &&mut [0];
+   |           ~
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:77:11
+   |
+LL |     let &[&mut ref x] = &mut &mut [0];
+   |           ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     let &[&ref x] = &mut &mut [0];
+   |           ~
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:83:11
+   |
+LL |     let &[&mut mut x] = &&mut [0];
+   |           ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     let &[&mut x] = &&mut [0];
+   |           ~
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:89:11
+   |
+LL |     let &[&mut mut x] = &mut &mut [0];
+   |           ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     let &[&mut x] = &mut &mut [0];
+   |           ~
+
+error[E0658]: binding cannot be both mutable and by-reference
+  --> $DIR/pattern-errors.rs:97:12
+   |
+LL |     let [&(mut x)] = &[&0];
+   |            ^^^^
+   |
+   = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
+   = help: add `#![feature(mut_ref)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: binding cannot be both mutable and by-reference
+  --> $DIR/pattern-errors.rs:102:12
+   |
+LL |     let [&(mut x)] = &mut [&0];
+   |            ^^^^
+   |
+   = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
+   = help: add `#![feature(mut_ref)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:109:11
+   |
+LL |     let [&&mut x] = &[&mut 0];
+   |           ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     let [&&x] = &[&mut 0];
+   |           ~
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:115:11
+   |
+LL |     let [&&mut x] = &mut [&mut 0];
+   |           ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     let [&&x] = &mut [&mut 0];
+   |           ~
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:121:11
+   |
+LL |     let [&&mut ref x] = &[&mut 0];
+   |           ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     let [&&ref x] = &[&mut 0];
+   |           ~
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:127:11
+   |
+LL |     let [&&mut ref x] = &mut [&mut 0];
+   |           ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     let [&&ref x] = &mut [&mut 0];
+   |           ~
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:133:11
+   |
+LL |     let [&&mut mut x] = &[&mut 0];
+   |           ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     let [&&mut x] = &[&mut 0];
+   |           ~
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:139:11
+   |
+LL |     let [&&mut mut x] = &mut [&mut 0];
+   |           ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     let [&&mut x] = &mut [&mut 0];
+   |           ~
+
+error: aborting due to 19 previous errors
+
+Some errors have detailed explanations: E0308, E0658.
+For more information about an error, try `rustc --explain E0308`.

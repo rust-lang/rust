@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/borrowck-errors.rs:9:29
+  --> $DIR/borrowck-errors.rs:27:29
    |
 LL |     if let Some(&Some(x)) = Some(&Some(&mut 0)) {
    |                       -     ^^^^^^^^^^^^^^^^^^^
@@ -14,7 +14,7 @@ LL +     if let Some(Some(x)) = Some(&Some(&mut 0)) {
    |
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-errors.rs:14:10
+  --> $DIR/borrowck-errors.rs:32:10
    |
 LL |     let &ref mut x = &0;
    |          ^^^^^^^^^ cannot borrow as mutable
