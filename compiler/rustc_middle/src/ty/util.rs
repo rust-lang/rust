@@ -1555,6 +1555,13 @@ impl<'tcx> Ty<'tcx> {
         ty
     }
 
+    pub fn pointee(self) -> Ty<'tcx> {
+        match *self.kind() {
+            ty::RawPtr(ty, _) => ty,
+            _ => bug!("pointee called on non-pointer type: {:?}", self),
+        }
+    }
+
     // FIXME(compiler-errors): Think about removing this.
     #[inline]
     pub fn outer_exclusive_binder(self) -> ty::DebruijnIndex {
