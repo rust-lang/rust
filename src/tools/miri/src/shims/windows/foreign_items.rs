@@ -335,7 +335,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Initialize with `0`.
                 this.write_bytes_ptr(
                     system_info.ptr(),
-                    iter::repeat(0u8).take(system_info.layout.size.bytes_usize()),
+                    iter::repeat_n(0u8, system_info.layout.size.bytes_usize()),
                 )?;
                 // Set selected fields.
                 this.write_int_fields_named(
