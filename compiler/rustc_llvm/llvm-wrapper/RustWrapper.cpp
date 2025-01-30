@@ -438,8 +438,7 @@ LLVMRustCreateAttrNoValue(LLVMContextRef C, LLVMRustAttributeKind RustAttr) {
 #if LLVM_VERSION_GE(21, 0)
   // LLVM 21 replaced the NoCapture attribute with Captures(none).
   if (RustAttr == LLVMRustAttributeKind::NoCapture) {
-    return wrap(Attribute::get(*unwrap(C), Attribute::Captures,
-                               CaptureInfo::none().toIntValue()));
+    return wrap(Attribute::getWithCaptureInfo(*unwrap(C), CaptureInfo::none()));
   }
 #endif
   return wrap(Attribute::get(*unwrap(C), fromRust(RustAttr)));
