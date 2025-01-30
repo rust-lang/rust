@@ -131,6 +131,7 @@ impl Crate {
                 "--",
                 "cargo",
             ]);
+            cmd.env("CARGO_PROFILE_RELEASE_DEBUG", "true");
         } else {
             cmd = Command::new("cargo");
         }
@@ -284,6 +285,13 @@ fn main() {
     }
 
     let config = LintcheckConfig::new();
+
+    if config.perf && config.max_jobs != 1 {
+        eprintln!(
+            "Lintcheck's --perf flag must be triggered only with 1 job,\nremove either the --jobs/-j flag or the --perf flag"
+        );
+        return;
+    }
 
     match config.subcommand {
         Some(Commands::Diff { old, new, truncate }) => json::diff(&old, &new, truncate),

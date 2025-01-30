@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use std::num::NonZero;
 use std::path::PathBuf;
 
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Parser, Clone, Debug)]
 #[command(args_conflicts_with_subcommands = true)]
 pub(crate) struct LintcheckConfig {
@@ -11,6 +12,8 @@ pub(crate) struct LintcheckConfig {
         short = 'j',
         value_name = "N",
         default_value_t = 0,
+        default_value_if("perf", "true", Some("1")), // Limit jobs to 1 when benchmarking
+        required = false,
         hide_default_value = true
     )]
     pub max_jobs: usize,
