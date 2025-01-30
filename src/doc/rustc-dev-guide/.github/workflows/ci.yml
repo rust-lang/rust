@@ -41,7 +41,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: book/linkcheck/cache.json
-          key: linkcheck--${{ env.MDBOOK_LINKCHECK2_VERSION }}
+          key: linkcheck--${{ env.MDBOOK_LINKCHECK2_VERSION }}--${{ github.run_id }}
+          restore-keys: |
+            linkcheck--${{ env.MDBOOK_LINKCHECK2_VERSION }}--
 
       - name: Install latest nightly Rust toolchain
         if: steps.mdbook-cache.outputs.cache-hit != 'true'
@@ -66,7 +68,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: book/linkcheck/cache.json
-          key: linkcheck--${{ env.MDBOOK_LINKCHECK2_VERSION }}
+          key: linkcheck--${{ env.MDBOOK_LINKCHECK2_VERSION }}--${{ github.run_id }}
 
       - name: Deploy to gh-pages
         if: github.event_name == 'push'

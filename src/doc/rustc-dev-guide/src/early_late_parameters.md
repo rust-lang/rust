@@ -126,9 +126,9 @@ In this example we call `foo`'s function item type twice, each time with a borro
 If the lifetime parameter on `foo` was late bound this would be able to compile as each caller could provide a different lifetime argument for its borrow. See the following example which demonstrates this using the `bar` function defined above:
 
 ```rust
-#fn foo<'a: 'a>(b: &'a String) -> &'a String { b }
-#fn bar<'a>(b: &'a String) -> &'a String { b }
-
+# fn foo<'a: 'a>(b: &'a String) -> &'a String { b }
+# fn bar<'a>(b: &'a String) -> &'a String { b }
+#
 // Early bound parameters are instantiated here, however as `'a` is
 // late bound it is not provided here.
 let b = bar;
@@ -220,24 +220,24 @@ Then, for the first case, we can call each function with a single lifetime argum
 ```rust
 #![deny(late_bound_lifetime_arguments)]
 
-#fn free_function<'a: 'a, 'b>(_: &'a (), _: &'b ()) {}
+# fn free_function<'a: 'a, 'b>(_: &'a (), _: &'b ()) {}
 #
-#struct Foo;
+# struct Foo;
 #
-#trait Trait: Sized {
-#    fn trait_method<'a: 'a, 'b>(self, _: &'a (), _: &'b ());
-#    fn trait_function<'a: 'a, 'b>(_: &'a (), _: &'b ());
-#}
+# trait Trait: Sized {
+#     fn trait_method<'a: 'a, 'b>(self, _: &'a (), _: &'b ());
+#     fn trait_function<'a: 'a, 'b>(_: &'a (), _: &'b ());
+# }
 #
-#impl Trait for Foo {
-#    fn trait_method<'a: 'a, 'b>(self, _: &'a (), _: &'b ()) {}
-#    fn trait_function<'a: 'a, 'b>(_: &'a (), _: &'b ()) {}
-#}
+# impl Trait for Foo {
+#     fn trait_method<'a: 'a, 'b>(self, _: &'a (), _: &'b ()) {}
+#     fn trait_function<'a: 'a, 'b>(_: &'a (), _: &'b ()) {}
+# }
 #
-#impl Foo {
-#    fn inherent_method<'a: 'a, 'b>(self, _: &'a (), _: &'b ()) {}
-#    fn inherent_function<'a: 'a, 'b>(_: &'a (), _: &'b ()) {}
-#}
+# impl Foo {
+#     fn inherent_method<'a: 'a, 'b>(self, _: &'a (), _: &'b ()) {}
+#     fn inherent_function<'a: 'a, 'b>(_: &'a (), _: &'b ()) {}
+# }
 #
 // Specifying as many arguments as there are early
 // bound parameters is always a future compat warning
@@ -251,24 +251,24 @@ free_function::<'static>(&(), &());
 
 For the second case we call each function with more lifetime arguments than there are lifetime parameters (be it early or late bound) and note that method calls result in a FCW as opposed to the free/associated functions which result in a hard error:
 ```rust
-#fn free_function<'a: 'a, 'b>(_: &'a (), _: &'b ()) {}
+# fn free_function<'a: 'a, 'b>(_: &'a (), _: &'b ()) {}
 #
-#struct Foo;
+# struct Foo;
 #
-#trait Trait: Sized {
-#    fn trait_method<'a: 'a, 'b>(self, _: &'a (), _: &'b ());
-#    fn trait_function<'a: 'a, 'b>(_: &'a (), _: &'b ());
-#}
+# trait Trait: Sized {
+#     fn trait_method<'a: 'a, 'b>(self, _: &'a (), _: &'b ());
+#     fn trait_function<'a: 'a, 'b>(_: &'a (), _: &'b ());
+# }
 #
-#impl Trait for Foo {
-#    fn trait_method<'a: 'a, 'b>(self, _: &'a (), _: &'b ()) {}
-#    fn trait_function<'a: 'a, 'b>(_: &'a (), _: &'b ()) {}
-#}
+# impl Trait for Foo {
+#     fn trait_method<'a: 'a, 'b>(self, _: &'a (), _: &'b ()) {}
+#     fn trait_function<'a: 'a, 'b>(_: &'a (), _: &'b ()) {}
+# }
 #
-#impl Foo {
-#    fn inherent_method<'a: 'a, 'b>(self, _: &'a (), _: &'b ()) {}
-#    fn inherent_function<'a: 'a, 'b>(_: &'a (), _: &'b ()) {}
-#}
+# impl Foo {
+#     fn inherent_method<'a: 'a, 'b>(self, _: &'a (), _: &'b ()) {}
+#     fn inherent_function<'a: 'a, 'b>(_: &'a (), _: &'b ()) {}
+# }
 #
 // Specifying more arguments than there are early
 // bound parameters is a future compat warning when
