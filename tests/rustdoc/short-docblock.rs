@@ -20,7 +20,7 @@ pub fn foo() {}
 /// foo mod
 pub mod foo {}
 
-//@ has foo/index.html '//dd/a[@href="https://nougat.world"]/code' 'nougat'
+//@ has foo/index.html '//dd/code/a[@href="https://nougat.world"]' 'nougat'
 
 /// [`nougat`](https://nougat.world)
 pub struct Bar;
