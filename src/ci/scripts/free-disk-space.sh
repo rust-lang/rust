@@ -142,8 +142,6 @@ removeUnusedDirsAndFiles() {
 }
 
 removeNodeModules() {
-    npm list -g --depth=0
-
     sudo npm uninstall -g \
         "@bazel/bazelisk" \
         "bazel"           \
@@ -206,7 +204,6 @@ cleanPackages() {
 
     echo "=> apt-get autoremove"
     sudo apt-get autoremove -y || echo "::warning::The command [sudo apt-get autoremove -y] failed"
-    echo "=> apt-get clean"
     sudo apt-get clean || echo "::warning::The command [sudo apt-get clean] failed failed"
 }
 
