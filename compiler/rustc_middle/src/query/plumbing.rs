@@ -93,7 +93,7 @@ pub struct TyCtxtEnsureOk<'tcx> {
 }
 
 #[derive(Copy, Clone)]
-pub struct TyCtxtEnsureWithValue<'tcx> {
+pub struct TyCtxtEnsureDone<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
 
@@ -123,13 +123,25 @@ impl<'tcx> TyCtxt<'tcx> {
         TyCtxtEnsureOk { tcx: self }
     }
 
-    /// Returns a transparent wrapper for `TyCtxt`, which ensures queries
-    /// are executed instead of just returning their results.
+    /// Wrapper that calls queries in a special "ensure done" mode, for callers
+    /// that don't need the return value and just want to guarantee that the
+    /// query won't be executed in the future, by executing it now if necessary.
     ///
-    /// This version verifies that the computed result exists in the cache before returning.
+    /// This is useful for queries that read from a [`Steal`] value, to ensure
+    /// that they are executed before the query that will steal the value.
+    ///
+    /// Unlike [`Self::ensure_ok`], a query with all-green inputs will only be
+    /// skipped if its return value is stored in the disk-cache. This is still
+    /// more efficient than a regular query, because in that situation the
+    /// return value doesn't necessarily need to be decoded.
+    ///
+    /// (As with all query calls, execution is also skipped if the query result
+    /// is already cached in memory.)
+    ///
+    /// [`Steal`]: rustc_data_structures::steal::Steal
     #[inline(always)]
-    pub fn ensure_with_value(self) -> TyCtxtEnsureWithValue<'tcx> {
-        TyCtxtEnsureWithValue { tcx: self }
+    pub fn ensure_done(self) -> TyCtxtEnsureDone<'tcx> {
+        TyCtxtEnsureDone { tcx: self }
     }
 
     /// Returns a transparent wrapper for `TyCtxt` which uses
@@ -419,7 +431,7 @@ macro_rules! define_callbacks {
             })*
         }
 
-        impl<'tcx> TyCtxtEnsureWithValue<'tcx> {
+        impl<'tcx> TyCtxtEnsureDone<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {

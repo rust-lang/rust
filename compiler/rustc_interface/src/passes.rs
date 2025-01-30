@@ -868,7 +868,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     sess.time("MIR_coroutine_by_move_body", || {
         tcx.hir().par_body_owners(|def_id| {
             if tcx.needs_coroutine_by_move_body_def_id(def_id.to_def_id()) {
-                tcx.ensure_with_value().coroutine_by_move_body_def_id(def_id);
+                tcx.ensure_done().coroutine_by_move_body_def_id(def_id);
             }
         });
     });

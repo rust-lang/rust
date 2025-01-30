@@ -47,7 +47,7 @@ pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
 /// Create the MIR for a given `DefId`, including unreachable code. Do not call
 /// this directly; instead use the cached version via `mir_built`.
 pub fn build_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
-    tcx.ensure_with_value().thir_abstract_const(def);
+    tcx.ensure_done().thir_abstract_const(def);
     if let Err(e) = tcx.check_match(def) {
         return construct_error(tcx, def, e);
     }
