@@ -276,10 +276,9 @@ impl<T: Copy> Clone for MaybeUninit<T> {
 impl<T> fmt::Debug for MaybeUninit<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // NB: there is no `.pad_fmt` so we can't use a simpler `format_args!("MaybeUninit<{..}>").
-        // This needs to be adjusted if `MaybeUninit` moves modules.
         let full_name = type_name::<Self>();
-        let short_name = full_name.split_once("mem::maybe_uninit::").unwrap().1;
-        f.pad(short_name)
+        let prefix_len = full_name.find("MaybeUninit").unwrap();
+        f.pad(&full_name[prefix_len..])
     }
 }
 
