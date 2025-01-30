@@ -1168,6 +1168,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let dirp = this.read_target_usize(dirp_op)?;
+        let result_place = this.deref_pointer_as(result_op, this.machine.layouts.mut_raw_ptr)?;
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
@@ -1253,15 +1254,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     }
                     _ => unreachable!(),
                 }
-
-                let result_place = this.deref_pointer(result_op)?;
                 this.write_scalar(this.read_scalar(entry_op)?, &result_place)?;
 
                 Scalar::from_i32(0)
             }
             None => {
                 // end of stream: return 0, assign *result=NULL
-                this.write_null(&this.deref_pointer(result_op)?)?;
+                this.write_null(&result_place)?;
                 Scalar::from_i32(0)
             }
             Some(Err(e)) => {

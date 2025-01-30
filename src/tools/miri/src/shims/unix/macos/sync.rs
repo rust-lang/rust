@@ -30,7 +30,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         'tcx: 'a,
     {
         let this = self.eval_context_mut();
-        let lock = this.deref_pointer(lock_ptr)?;
+        let lock = this.deref_pointer_as(lock_ptr, this.libc_ty_layout("os_unfair_lock_s"))?;
         this.lazy_sync_get_data(
             &lock,
             Size::ZERO, // offset for init tracking

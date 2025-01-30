@@ -102,7 +102,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         size: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-        let memptr = this.deref_pointer(memptr)?;
+        let memptr = this.deref_pointer_as(memptr, this.machine.layouts.mut_raw_ptr)?;
         let align = this.read_target_usize(align)?;
         let size = this.read_target_usize(size)?;
 
