@@ -424,12 +424,12 @@ fn compare_method_predicate_entailment<'tcx>(
     Ok(())
 }
 
-struct RemapLateParam<'a, 'tcx> {
+struct RemapLateParam<'tcx> {
     tcx: TyCtxt<'tcx>,
-    mapping: &'a FxIndexMap<ty::LateParamRegionKind, ty::LateParamRegionKind>,
+    mapping: FxIndexMap<ty::LateParamRegionKind, ty::LateParamRegionKind>,
 }
 
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateParam<'_, 'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateParam<'tcx> {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
