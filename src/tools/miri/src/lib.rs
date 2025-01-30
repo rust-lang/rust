@@ -36,8 +36,6 @@
     clippy::needless_question_mark,
     clippy::needless_lifetimes,
     clippy::too_long_first_doc_paragraph,
-    // Temporarily disabled as fixing it would cause conflicts
-    clippy::manual_repeat_n,
     // We don't use translatable diagnostics
     rustc::diagnostic_outside_of_impl,
     // We are not implementing queries here so it's fine
