@@ -1256,9 +1256,9 @@ rustc_queries! {
         desc { "evaluating type-level constant" }
     }
 
-    /// Converts a type level constant value into `ConstValue`
-    query valtree_to_const_val(key: (Ty<'tcx>, ty::ValTree<'tcx>)) -> mir::ConstValue<'tcx> {
-        desc { "converting type-level constant value to mir constant value"}
+    /// Converts a type-level constant value into a MIR constant value.
+    query valtree_to_const_val(key: ty::Value<'tcx>) -> mir::ConstValue<'tcx> {
+        desc { "converting type-level constant value to MIR constant value"}
     }
 
     /// Destructures array, ADT or tuple constants into the constants

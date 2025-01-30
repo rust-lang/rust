@@ -1,11 +1,9 @@
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 
 use super::ScalarInt;
 use crate::mir::interpret::Scalar;
 use crate::ty::{self, Ty, TyCtxt};
 
-#[derive(Copy, Clone, Debug, Hash, TyEncodable, TyDecodable, Eq, PartialEq)]
-#[derive(HashStable)]
 /// This datastructure is used to represent the value of constants used in the type system.
 ///
 /// We explicitly choose a different datastructure from the way values are processed within
@@ -18,6 +16,8 @@ use crate::ty::{self, Ty, TyCtxt};
 ///
 /// `ValTree` does not have this problem with representation, as it only contains integers or
 /// lists of (nested) `ValTree`.
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(HashStable, TyEncodable, TyDecodable)]
 pub enum ValTree<'tcx> {
     /// integers, `bool`, `char` are represented as scalars.
     /// See the `ScalarInt` documentation for how `ScalarInt` guarantees that equal values
@@ -79,10 +79,6 @@ impl<'tcx> ValTree<'tcx> {
         }
     }
 
-    pub fn try_to_target_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
-        self.try_to_scalar_int().map(|s| s.to_target_usize(tcx))
-    }
-
     /// Get the values inside the ValTree as a slice of bytes. This only works for
     /// constants with types &str, &[u8], or [u8; _].
     pub fn try_to_raw_bytes(self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<&'tcx [u8]> {
@@ -105,5 +101,56 @@ impl<'tcx> ValTree<'tcx> {
             tcx.arena
                 .alloc_from_iter(self.unwrap_branch().into_iter().map(|v| v.unwrap_leaf().to_u8())),
         )
+    }
+}
+
+/// A type-level constant value.
+///
+/// Represents a typed, fully evaluated constant.
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
+pub struct Value<'tcx> {
+    pub ty: Ty<'tcx>,
+    pub valtree: ValTree<'tcx>,
+}
+
+impl<'tcx> Value<'tcx> {
+    /// Attempts to extract the raw bits from the constant.
+    ///
+    /// Fails if the value can't be represented as bits (e.g. because it is a reference
+    /// or an aggregate).
+    #[inline]
+    pub fn try_to_bits(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> Option<u128> {
+        let (ty::Bool | ty::Char | ty::Uint(_) | ty::Int(_) | ty::Float(_)) = self.ty.kind() else {
+            return None;
+        };
+        let scalar = self.valtree.try_to_scalar_int()?;
+        let input = typing_env.with_post_analysis_normalized(tcx).as_query_input(self.ty);
+        let size = tcx.layout_of(input).ok()?.size;
+        Some(scalar.to_bits(size))
+    }
+
+    pub fn try_to_bool(self) -> Option<bool> {
+        if !self.ty.is_bool() {
+            return None;
+        }
+        self.valtree.try_to_scalar_int()?.try_to_bool().ok()
+    }
+
+    pub fn try_to_target_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+        if !self.ty.is_usize() {
+            return None;
+        }
+        self.valtree.try_to_scalar_int().map(|s| s.to_target_usize(tcx))
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::ValueConst<TyCtxt<'tcx>> for Value<'tcx> {
+    fn ty(self) -> Ty<'tcx> {
+        self.ty
+    }
+
+    fn valtree(self) -> ValTree<'tcx> {
+        self.valtree
     }
 }

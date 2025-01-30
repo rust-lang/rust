@@ -144,13 +144,13 @@ fn univariant_uninterned<'tcx>(
     cx.calc.univariant(fields, repr, kind).map_err(|err| map_error(cx, ty, err))
 }
 
-fn validate_const_with_value<'tcx>(
+fn extract_const_value<'tcx>(
     const_: ty::Const<'tcx>,
     ty: Ty<'tcx>,
     cx: &LayoutCx<'tcx>,
-) -> Result<ty::Const<'tcx>, &'tcx LayoutError<'tcx>> {
+) -> Result<ty::Value<'tcx>, &'tcx LayoutError<'tcx>> {
     match const_.kind() {
-        ty::ConstKind::Value(..) => Ok(const_),
+        ty::ConstKind::Value(cv) => Ok(cv),
         ty::ConstKind::Error(guar) => {
             return Err(error(cx, LayoutError::ReferencesError(guar)));
         }
@@ -209,13 +209,12 @@ fn layout_of_uncached<'tcx>(
                         &mut layout.backend_repr
                     {
                         if let Some(start) = start {
-                            scalar.valid_range_mut().start =
-                                validate_const_with_value(start, ty, cx)?
-                                    .try_to_bits(tcx, cx.typing_env)
-                                    .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
+                            scalar.valid_range_mut().start = extract_const_value(start, ty, cx)?
+                                .try_to_bits(tcx, cx.typing_env)
+                                .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                         }
                         if let Some(end) = end {
-                            let mut end = validate_const_with_value(end, ty, cx)?
+                            let mut end = extract_const_value(end, ty, cx)?
                                 .try_to_bits(tcx, cx.typing_env)
                                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                             if !include_end {
@@ -348,9 +347,7 @@ fn layout_of_uncached<'tcx>(
 
         // Arrays and slices.
         ty::Array(element, count) => {
-            let count = validate_const_with_value(count, ty, cx)?
-                .to_valtree()
-                .0
+            let count = extract_const_value(count, ty, cx)?
                 .try_to_target_usize(tcx)
                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
 
