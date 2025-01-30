@@ -86,6 +86,28 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for links with code directly adjacent to code text:
+    /// `` [`MyItem`]`<`[`u32`]`>` ``.
+    ///
+    /// ### Why is this bad?
+    /// It can be written more simply using HTML-style `<code>` tags.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// //! [`first`](x)`second`
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// //! <code>[first](x)second</code>
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub DOC_LINK_CODE,
+    nursery,
+    "link with code back-to-back with other code"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for the doc comments of publicly visible
     /// unsafe functions and warns if there is no `# Safety` section.
     ///
@@ -638,6 +660,7 @@ impl Documentation {
 }
 
 impl_lint_pass!(Documentation => [
+    DOC_LINK_CODE,
     DOC_LINK_WITH_QUOTES,
     DOC_MARKDOWN,
     DOC_NESTED_REFDEFS,
@@ -844,6 +867,14 @@ enum Container {
     List(usize),
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum CodeCluster {
+    // true means already in a link, so only needs to be followed by code
+    // false means we've hit code, and need to find a link
+    First(usize, bool),
+    Nth(usize, usize),
+}
+
 /// Checks parsed documentation.
 /// This walks the "events" (think sections of markdown) produced by `pulldown_cmark`,
 /// so lints here will generally access that information.
@@ -875,9 +906,40 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
 
     let mut containers = Vec::new();
 
+    let mut code_cluster = None;
+
     let mut events = events.peekable();
 
     while let Some((event, range)) = events.next() {
+        code_cluster = match (code_cluster, &event) {
+            (None, Code(_)) if in_link.is_some() && doc.as_bytes().get(range.start.wrapping_sub(1)) == Some(&b'[') => {
+                Some(CodeCluster::First(range.start - 1, true))
+            },
+            (None, Code(_)) => Some(CodeCluster::First(range.start, false)),
+            (Some(CodeCluster::First(pos, _)), Start(Link { .. })) | (Some(CodeCluster::First(pos, true)), Code(_)) => {
+                Some(CodeCluster::Nth(pos, range.end))
+            },
+            (Some(CodeCluster::Nth(start, end)), Code(_) | Start(Link { .. })) => {
+                Some(CodeCluster::Nth(start, range.end.max(end)))
+            },
+            (code_cluster @ Some(_), Code(_) | End(TagEnd::Link)) => code_cluster,
+            (Some(CodeCluster::First(_, _)) | None, _) => None,
+            (Some(CodeCluster::Nth(start, end)), _) => {
+                if let Some(span) = fragments.span(cx, start..end) {
+                    span_lint_and_then(cx, DOC_LINK_CODE, span, "code link adjacent to code text", |diag| {
+                        let sugg = format!("<code>{}</code>", doc[start..end].replace('`', ""));
+                        diag.span_suggestion_verbose(
+                            span,
+                            "wrap the entire group in `<code>` tags",
+                            sugg,
+                            Applicability::MaybeIncorrect,
+                        );
+                        diag.help("separate code snippets will be shown with a gap");
+                    });
+                }
+                None
+            },
+        };
         match event {
             Html(tag) | InlineHtml(tag) => {
                 if tag.starts_with("<code") {
