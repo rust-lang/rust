@@ -973,9 +973,6 @@ impl<'tcx> InferCtxt<'tcx> {
             TypingMode::Analysis { defining_opaque_types } => {
                 id.into().as_local().is_some_and(|def_id| defining_opaque_types.contains(&def_id))
             }
-            // FIXME(#132279): This function is quite weird in post-analysis
-            // and post-borrowck analysis mode. We may need to modify its uses
-            // to support PostBorrowckAnalysis in the old solver as well.
             TypingMode::Coherence
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => false,

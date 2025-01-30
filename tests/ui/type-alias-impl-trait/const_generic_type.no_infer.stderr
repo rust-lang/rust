@@ -36,5 +36,21 @@ note: this opaque type is in the signature
 LL | type Bar = impl std::fmt::Display;
    |            ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: the constant `N` is not of type `{type error}`
+  --> $DIR/const_generic_type.rs:7:38
+   |
+LL |   async fn test<const N: crate::Bar>() {
+   |  ______________________________________^
+...  |
+LL | |     let x: u32 = N;
+LL | | }
+   | |_^ expected type error, found opaque type
+   |
+note: required by a const generic parameter in `test`
+  --> $DIR/const_generic_type.rs:7:15
+   |
+LL | async fn test<const N: crate::Bar>() {
+   |               ^^^^^^^^^^^^^^^^^^^ required by this const generic parameter in `test`
+
+error: aborting due to 4 previous errors
 
