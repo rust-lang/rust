@@ -1,5 +1,5 @@
 error[E0658]: binding cannot be both mutable and by-reference
-  --> $DIR/mut-ref-mut.rs:11:13
+  --> $DIR/mut-ref-mut.rs:14:13
    |
 LL |     let Foo(mut a) = &Foo(0);
    |             ^^^^
@@ -9,7 +9,7 @@ LL |     let Foo(mut a) = &Foo(0);
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: binding cannot be both mutable and by-reference
-  --> $DIR/mut-ref-mut.rs:15:13
+  --> $DIR/mut-ref-mut.rs:19:13
    |
 LL |     let Foo(mut a) = &mut Foo(0);
    |             ^^^^
@@ -18,6 +18,19 @@ LL |     let Foo(mut a) = &mut Foo(0);
    = help: add `#![feature(mut_ref)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/mut-ref-mut.rs:24:10
+   |
+LL |     let [&mut mut x] = &[&mut 0];
+   |          ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     let [&mut x] = &[&mut 0];
+   |          ~
 
-For more information about this error, try `rustc --explain E0658`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0658.
+For more information about an error, try `rustc --explain E0308`.
