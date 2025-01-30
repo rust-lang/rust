@@ -1023,7 +1023,6 @@ contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
 users_on_vacation = [
     "jyn514",
     "nnethercote",
-    "spastorino",
     "workingjubilee",
     "kobzol",
     "jieyouxu",
