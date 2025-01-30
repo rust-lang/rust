@@ -27,7 +27,6 @@ use rustc_session::lint::builtin::UNINHABITED_STATIC;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
 use rustc_trait_selection::traits;
-use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_type_ir::fold::TypeFoldable;
 use tracing::{debug, instrument};
 use ty::TypingMode;
@@ -417,9 +416,7 @@ fn check_opaque_meets_bounds<'tcx>(
     }
 
     let wf_tys = ocx.assumed_wf_types_and_report_errors(param_env, defining_use_anchor)?;
-    let implied_bounds = infcx.implied_bounds_tys(param_env, def_id, &wf_tys);
-    let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
-    ocx.resolve_regions_and_report_errors(defining_use_anchor, &outlives_env)?;
+    ocx.resolve_regions_and_report_errors(defining_use_anchor, param_env, wf_tys)?;
 
     if infcx.next_trait_solver() {
         Ok(())
