@@ -118,6 +118,12 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// Therefore, this call mode is not appropriate for callers that want to
     /// ensure that the query is _never_ executed in the future.
+    ///
+    /// ## `return_result_from_ensure_ok`
+    /// If a query has the `return_result_from_ensure_ok` modifier, calls via
+    /// `ensure_ok` will instead return `Result<(), ErrorGuaranteed>`. If the
+    /// query needs to be executed, and execution returns an error, that error
+    /// is returned to the caller.
     #[inline(always)]
     pub fn ensure_ok(self) -> TyCtxtEnsureOk<'tcx> {
         TyCtxtEnsureOk { tcx: self }
@@ -223,7 +229,7 @@ macro_rules! query_ensure {
     ([]$($args:tt)*) => {
         query_ensure($($args)*)
     };
-    ([(ensure_forwards_result_if_red) $($rest:tt)*]$($args:tt)*) => {
+    ([(return_result_from_ensure_ok) $($rest:tt)*]$($args:tt)*) => {
         query_ensure_error_guaranteed($($args)*).map(|_| ())
     };
     ([$other:tt $($modifiers:tt)*]$($args:tt)*) => {
@@ -282,7 +288,7 @@ macro_rules! ensure_ok_result {
     ( [] ) => {
         ()
     };
-    ( [(ensure_forwards_result_if_red) $($rest:tt)*] ) => {
+    ( [(return_result_from_ensure_ok) $($rest:tt)*] ) => {
         Result<(), ErrorGuaranteed>
     };
     ( [$other:tt $($modifiers:tt)*] ) => {
