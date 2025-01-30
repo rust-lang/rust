@@ -55,7 +55,6 @@ fn main() {
             .map(|&(_, to)| to)
             .unwrap_or(llvm_target);
 
-
         // Run Clang's preprocessor for the relevant target, printing default macro definitions.
         let clang_output =
             clang().args(&["-E", "-dM", "-x", "c", "/dev/null", "-target", &target_to_use]).run();
