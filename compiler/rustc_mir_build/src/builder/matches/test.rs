@@ -17,10 +17,12 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
-use crate::builder::Builder;
+use crate::builder::matches::util::Range;
 use crate::builder::matches::{Candidate, MatchPairTree, Test, TestBranch, TestCase, TestKind};
+use crate::builder::{BlockAnd, BlockAndExtension, Builder, PlaceBuilder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
@@ -35,7 +37,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             TestCase::Constant { .. } if match_pair.pattern.ty.is_bool() => TestKind::If,
             TestCase::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => TestKind::SwitchInt,
-            TestCase::Constant { value } => TestKind::Eq { value, ty: match_pair.pattern.ty },
+            TestCase::Constant { value, range } => {
+                TestKind::Eq { value, ty: match_pair.pattern.ty, range }
+            }
 
             TestCase::Range(range) => {
                 assert_eq!(range.ty, match_pair.pattern.ty);
@@ -141,7 +145,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }
 
-            TestKind::Eq { value, mut ty } => {
+            TestKind::Eq { value, range, mut ty } => {
                 let tcx = self.tcx;
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
@@ -184,6 +188,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
 
                 if !ty.is_scalar() {
+                    if let Some(range) = range {
+                        place = unpack!(
+                            block = self.subslice(
+                                block,
+                                place,
+                                place_ty.ty,
+                                test.span,
+                                ty.sequence_element_type(tcx),
+                                range,
+                            )
+                        );
+                    }
+
                     // Use `PartialEq::eq` instead of `BinOp::Eq`
                     // (the binop can only handle primitives)
                     self.non_scalar_compare(
@@ -193,7 +210,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         source_info,
                         expect,
                         expect_ty,
-                        Operand::Copy(place),
+                        place,
                         ty,
                     );
                 } else {
@@ -294,6 +311,133 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    fn offset(
+        &mut self,
+        block: BasicBlock,
+        ptr: Place<'tcx>,
+        offset: Place<'tcx>,
+        span: Span,
+    ) -> BlockAnd<Place<'tcx>> {
+        let tcx = self.tcx;
+        let ptr_ty = ptr.ty(&self.local_decls, tcx).ty;
+        let offset_ty = offset.ty(&self.local_decls, tcx).ty;
+
+        let func = Operand::function_handle(
+            tcx,
+            tcx.require_lang_item(LangItem::Offset, Some(span)),
+            [ptr_ty.into(), offset_ty.into()],
+            span,
+        );
+
+        let out = self.temp(ptr_ty, span);
+        let next_block = self.cfg.start_new_block();
+
+        self.cfg.terminate(block, self.source_info(span), TerminatorKind::Call {
+            func,
+            args: [Spanned { node: Operand::Copy(ptr), span }, Spanned {
+                node: Operand::Copy(offset),
+                span,
+            }]
+            .into(),
+            destination: out,
+            target: Some(next_block),
+            unwind: UnwindAction::Continue,
+            call_source: CallSource::Misc,
+            fn_span: span,
+        });
+
+        next_block.and(out)
+    }
+
+    fn subslice(
+        &mut self,
+        mut block: BasicBlock,
+        input: Place<'tcx>,
+        input_ty: Ty<'tcx>,
+        span: Span,
+        elem_ty: Ty<'tcx>,
+        range: Range,
+    ) -> BlockAnd<Place<'tcx>> {
+        let tcx = self.tcx;
+        let source_info = self.source_info(span);
+
+        let (ptr_offset, slice_len) = {
+            if !range.from_end {
+                let start = self.push_usize(block, source_info, range.start);
+                let len = self.push_usize(block, source_info, range.len());
+                (start, len)
+            } else {
+                let source_len = self.temp(tcx.types.usize, span);
+                self.cfg.push_assign(block, source_info, source_len, Rvalue::Len(input));
+
+                let start = self.temp(tcx.types.usize, span);
+                let from_end = self.push_usize(block, source_info, range.start);
+
+                self.cfg.push_assign(
+                    block,
+                    source_info,
+                    start,
+                    Rvalue::BinaryOp(
+                        BinOp::Sub,
+                        Box::new((Operand::Copy(source_len), Operand::Copy(from_end))),
+                    ),
+                );
+                let len = self.push_usize(block, source_info, range.len());
+
+                (start, len)
+            }
+        };
+
+        let temp_source_ptr = self.temp(Ty::new_ptr(tcx, input_ty, Mutability::Not), span);
+        self.cfg.push_assign(
+            block,
+            source_info,
+            temp_source_ptr,
+            Rvalue::RawPtr(RawPtrKind::Const, input),
+        );
+
+        let elem_ptr_ty = Ty::new_ptr(tcx, elem_ty, Mutability::Not);
+        let slice_ptr_ty = Ty::new_ptr(tcx, Ty::new_slice(tcx, elem_ty), Mutability::Not);
+
+        let temp_elem_ptr = self.temp(elem_ptr_ty, span);
+        self.cfg.push_assign(
+            block,
+            source_info,
+            temp_elem_ptr,
+            Rvalue::Cast(CastKind::PtrToPtr, Operand::Copy(temp_source_ptr), elem_ptr_ty),
+        );
+
+        let updated_ptr = unpack!(block = self.offset(block, temp_elem_ptr, ptr_offset, span));
+
+        let aggregate_raw_ptr = Operand::function_handle(
+            tcx,
+            tcx.require_lang_item(LangItem::AggregateRawPtr, Some(span)),
+            [slice_ptr_ty.into(), elem_ptr_ty.into(), tcx.types.usize.into()],
+            span,
+        );
+
+        let subslice_ptr = self.temp(slice_ptr_ty, span);
+
+        let next_block = self.cfg.start_new_block();
+
+        self.cfg.terminate(block, source_info, TerminatorKind::Call {
+            func: aggregate_raw_ptr,
+            args: [Spanned { node: Operand::Move(updated_ptr), span }, Spanned {
+                node: Operand::Move(slice_len),
+                span,
+            }]
+            .into(),
+            destination: subslice_ptr,
+            target: Some(next_block),
+            unwind: UnwindAction::Continue,
+            call_source: CallSource::Misc,
+            fn_span: source_info.span,
+        });
+
+        let subslice = PlaceBuilder::from(subslice_ptr).deref().to_place(self);
+        next_block.and(subslice)
+    }
+
     /// Perform `let temp = <ty as Deref>::deref(&place)`.
     /// or `let temp = <ty as DerefMut>::deref_mut(&mut place)`.
     pub(super) fn call_deref(
@@ -367,7 +511,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
     }
 
-    /// Compare two values using `<T as std::compare::PartialEq>::eq`.
+    /// Compare two values using `<T as std::cmp::pattern::PatternConstEq>::eq`
+    /// or `<T as std::cmp::PartialEq>::eq` if they depending on exposed const-capability.
     /// If the values are already references, just call it directly, otherwise
     /// take a reference to the values first and then call it.
     fn non_scalar_compare(
@@ -376,89 +521,114 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         success_block: BasicBlock,
         fail_block: BasicBlock,
         source_info: SourceInfo,
-        mut expect: Operand<'tcx>,
-        expect_ty: Ty<'tcx>,
-        mut val: Operand<'tcx>,
+        expect_op: Operand<'tcx>,
+        mut expect_ty: Ty<'tcx>,
+        mut val: Place<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
-        // If we're using `b"..."` as a pattern, we need to insert an
-        // unsizing coercion, as the byte string has the type `&[u8; N]`.
-        //
-        // We want to do this even when the scrutinee is a reference to an
-        // array, so we can call `<[u8]>::eq` rather than having to find an
-        // `<[u8; N]>::eq`.
-        let unsize = |ty: Ty<'tcx>| match ty.kind() {
-            ty::Ref(region, rty, _) => match rty.kind() {
-                ty::Array(inner_ty, n) => Some((region, inner_ty, n)),
-                _ => None,
-            },
-            _ => None,
-        };
-        let opt_ref_ty = unsize(ty);
-        let opt_ref_test_ty = unsize(expect_ty);
-        match (opt_ref_ty, opt_ref_test_ty) {
-            // nothing to do, neither is an array
-            (None, None) => {}
-            (Some((region, elem_ty, _)), _) | (None, Some((region, elem_ty, _))) => {
-                let tcx = self.tcx;
-                // make both a slice
-                ty = Ty::new_imm_ref(tcx, *region, Ty::new_slice(tcx, *elem_ty));
-                if opt_ref_ty.is_some() {
-                    let temp = self.temp(ty, source_info.span);
-                    self.cfg.push_assign(
-                        block,
-                        source_info,
-                        temp,
-                        Rvalue::Cast(
-                            CastKind::PointerCoercion(
-                                PointerCoercion::Unsize,
-                                CoercionSource::Implicit,
-                            ),
-                            val,
-                            ty,
-                        ),
-                    );
-                    val = Operand::Copy(temp);
-                }
-                if opt_ref_test_ty.is_some() {
-                    let slice = self.temp(ty, source_info.span);
-                    self.cfg.push_assign(
-                        block,
-                        source_info,
-                        slice,
-                        Rvalue::Cast(
-                            CastKind::PointerCoercion(
-                                PointerCoercion::Unsize,
-                                CoercionSource::Implicit,
-                            ),
-                            expect,
-                            ty,
-                        ),
-                    );
-                    expect = Operand::Move(slice);
+        let mut expect = self.temp(expect_ty, source_info.span);
+        self.cfg.push_assign(block, source_info, expect, Rvalue::Use(expect_op));
+
+        let mut normalize_depth = |mut ty: Ty<'tcx>, mut val: Place<'tcx>| {
+            if !ty.is_ref() {
+                ty = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, ty);
+                let temp = self.temp(ty, source_info.span);
+                self.cfg.push_assign(
+                    block,
+                    source_info,
+                    temp,
+                    Rvalue::Ref(self.tcx.lifetimes.re_erased, BorrowKind::Shared, val),
+                );
+                val = temp;
+                return (ty, val);
+            }
+
+            loop {
+                match ty.kind() {
+                    ty::Ref(_, inner_ty @ _, _) if inner_ty.is_ref() => {
+                        ty = *inner_ty;
+                        let temp = self.temp(ty, source_info.span);
+                        self.cfg.push_assign(
+                            block,
+                            source_info,
+                            temp,
+                            Rvalue::Use(Operand::Copy(val)),
+                        );
+                        val = temp;
+                    }
+                    _ => break,
                 }
             }
+
+            (ty, val)
+        };
+
+        (ty, val) = normalize_depth(ty, val);
+        (expect_ty, expect) = normalize_depth(expect_ty, expect);
+
+        let mut coerce = |mut ty: Ty<'tcx>, mut place: Place<'tcx>, elem_ty: Ty<'tcx>| {
+            assert!(ty.is_ref() && ty.peel_refs().is_array());
+            let ref_ty = Ty::new_imm_ref(
+                self.tcx,
+                self.tcx.lifetimes.re_erased,
+                Ty::new_slice(self.tcx, elem_ty),
+            );
+
+            let ref_val = self.temp(ref_ty, source_info.span);
+            self.cfg.push_assign(
+                block,
+                source_info,
+                ref_val,
+                Rvalue::Cast(
+                    CastKind::PointerCoercion(PointerCoercion::Unsize, CoercionSource::Implicit),
+                    Operand::Copy(place),
+                    ref_ty,
+                ),
+            );
+
+            ty = ref_ty;
+            place = ref_val;
+            (ty, place)
+        };
+
+        if let ty::Array(elem_ty, _) = ty.peel_refs().kind() {
+            (ty, val) = coerce(ty, val, *elem_ty);
         }
 
-        // Figure out the type on which we are calling `PartialEq`. This involves an extra wrapping
+        if let ty::Array(elem_ty, _) = expect_ty.peel_refs().kind() {
+            (_, expect) = coerce(expect_ty, expect, *elem_ty);
+        }
+
+        // Figure out the type we are searching for trait impls against. This involves an extra wrapping
         // reference: we can only compare two `&T`, and then compare_ty will be `T`.
         // Make sure that we do *not* call any user-defined code here.
-        // The only types that can end up here are string and byte literals,
+        // The only types that can end up here are str and ScalarInt slices,
         // which have their comparison defined in `core`.
         // (Interestingly this means that exhaustiveness analysis relies, for soundness,
-        // on the `PartialEq` impls for `str` and `[u8]` to b correct!)
+        // on the `PatternConstEq` and `PartialEq` impls for `str` and `[T]` to be correct!)
         let compare_ty = match *ty.kind() {
-            ty::Ref(_, deref_ty, _)
-                if deref_ty == self.tcx.types.str_ || deref_ty != self.tcx.types.u8 =>
-            {
+            ty::Ref(_, deref_ty, _) if deref_ty == self.tcx.types.str_ || deref_ty.is_slice() => {
                 deref_ty
             }
             _ => span_bug!(source_info.span, "invalid type for non-scalar compare: {}", ty),
         };
 
-        let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, Some(source_info.span));
-        let method = trait_method(self.tcx, eq_def_id, sym::eq, [compare_ty, compare_ty]);
+        let const_cmp_trait_def =
+            self.tcx.require_lang_item(LangItem::PatternConstEq, Some(source_info.span));
+        let fallback_cmp_trait_def =
+            self.tcx.require_lang_item(LangItem::PartialEq, Some(source_info.span));
 
+        let cmp_trait_def = if self
+            .infcx
+            .type_implements_trait(const_cmp_trait_def, [compare_ty, compare_ty], self.param_env)
+            .must_apply_modulo_regions()
+        {
+            const_cmp_trait_def
+        } else {
+            fallback_cmp_trait_def
+        };
+
+        let method = trait_method(self.tcx, cmp_trait_def, sym::eq, [compare_ty, compare_ty]);
         let bool_ty = self.tcx.types.bool;
         let eq_result = self.temp(bool_ty, source_info.span);
         let eq_block = self.cfg.start_new_block();
@@ -474,8 +644,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 const_: method,
             })),
-            args: [Spanned { node: val, span: DUMMY_SP }, Spanned { node: expect, span: DUMMY_SP }]
-                .into(),
+            args: [Spanned { node: Operand::Copy(val), span: DUMMY_SP }, Spanned {
+                node: Operand::Copy(expect),
+                span: DUMMY_SP,
+            }]
+            .into(),
             destination: eq_result,
             target: Some(eq_block),
             unwind: UnwindAction::Continue,
@@ -557,7 +730,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             //
             // FIXME(#29623) we could use PatKind::Range to rule
             // things out here, in some cases.
-            (TestKind::SwitchInt, &TestCase::Constant { value })
+            (TestKind::SwitchInt, &TestCase::Constant { value, .. })
                 if is_switch_ty(match_pair.pattern.ty) =>
             {
                 // An important invariant of candidate sorting is that a candidate
@@ -611,7 +784,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 })
             }
 
-            (TestKind::If, TestCase::Constant { value }) => {
+            (TestKind::If, TestCase::Constant { value, .. }) => {
                 fully_matched = true;
                 let value = value.try_eval_bool(self.tcx, self.typing_env()).unwrap_or_else(|| {
                     span_bug!(test.span, "expected boolean value but got {value:?}")
@@ -700,7 +873,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                 }
             }
-            (TestKind::Range(range), &TestCase::Constant { value }) => {
+            (TestKind::Range(range), &TestCase::Constant { value, .. }) => {
                 fully_matched = false;
                 if !range.contains(value, self.tcx, self.typing_env())? {
                     // `value` is not contained in the testing range,
@@ -711,7 +884,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            (TestKind::Eq { value: test_val, .. }, TestCase::Constant { value: case_val }) => {
+            (TestKind::Eq { value: test_val, .. }, TestCase::Constant { value: case_val, .. }) => {
                 if test_val == case_val {
                     fully_matched = true;
                     Some(TestBranch::Success)

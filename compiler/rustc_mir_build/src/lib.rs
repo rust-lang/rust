@@ -1,11 +1,13 @@
 //! Construction of MIR from HIR.
 
 // tidy-alphabetical-start
+#![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
+#![feature(lang_items)]
 #![feature(let_chains)]
 #![feature(try_blocks)]
 #![warn(unreachable_pub)]

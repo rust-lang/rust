@@ -1,3 +1,5 @@
+use std::ops;
+
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::mir::*;
 use rustc_middle::ty::Ty;
@@ -227,5 +229,26 @@ pub(crate) fn ref_pat_borrow_kind(ref_mutability: Mutability) -> BorrowKind {
     match ref_mutability {
         Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
         Mutability::Not => BorrowKind::Shared,
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub(super) struct Range {
+    pub(crate) start: u64,
+    pub(crate) end: u64,
+    pub(crate) from_end: bool,
+}
+
+impl Range {
+    pub(crate) fn from_start(range: ops::Range<u64>) -> Self {
+        Range { start: range.start, end: range.end, from_end: false }
+    }
+
+    pub(crate) fn from_end(range: ops::Range<u64>) -> Self {
+        Range { start: range.end, end: range.start, from_end: true }
+    }
+
+    pub(crate) fn len(&self) -> u64 {
+        if !self.from_end { self.end - self.start } else { self.start - self.end }
     }
 }

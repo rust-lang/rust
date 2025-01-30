@@ -417,6 +417,11 @@ language_item_table! {
 
     String,                  sym::String,              string,                     Target::Struct,         GenericRequirement::None;
     CStr,                    sym::CStr,                c_str,                      Target::Struct,         GenericRequirement::None;
+
+    // FIXME(xacrimon): Used for lowering of match/if let statements. will made obsolete by const PartialEq.
+    PatternConstEq,          sym::PatternConstEq,      pattern_const_eq,           Target::Trait,          GenericRequirement::None;
+    AggregateRawPtr,         sym::aggregate_raw_ptr,   aggregate_raw_ptr,          Target::Fn,             GenericRequirement::None;
+    Offset,                  sym::offset,              offset,                     Target::Fn,             GenericRequirement::None;
 }
 
 pub enum GenericRequirement {

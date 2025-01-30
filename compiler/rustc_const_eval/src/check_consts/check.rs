@@ -809,6 +809,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // Otherwise, it's really misleading to call something "conditionally"
                     // const when it's very obviously not conditionally const.
                     if trait_is_const && has_const_conditions == Some(ConstConditionsHold::Yes) {
+                        if tcx.is_lang_item(trait_did, LangItem::PatternConstEq) {
+                            return;
+                        }
+
                         // Trait calls are always conditionally-const.
                         self.check_op(ops::ConditionallyConstCall {
                             callee,

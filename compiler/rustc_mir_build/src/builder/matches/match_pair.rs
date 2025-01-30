@@ -4,6 +4,7 @@ use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
 use crate::builder::Builder;
 use crate::builder::expr::as_place::{PlaceBase, PlaceBuilder};
+use crate::builder::matches::util::Range;
 use crate::builder::matches::{FlatPat, MatchPairTree, TestCase};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -33,6 +34,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Used internally by [`MatchPairTree::for_pattern`].
     fn prefix_slice_suffix<'pat>(
         &mut self,
+        src_path: &'pat Pat<'tcx>,
         match_pairs: &mut Vec<MatchPairTree<'pat, 'tcx>>,
         place: &PlaceBuilder<'tcx>,
         prefix: &'pat [Box<Pat<'tcx>>],
@@ -54,11 +56,29 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ((prefix.len() + suffix.len()).try_into().unwrap(), false)
         };
 
-        match_pairs.extend(prefix.iter().enumerate().map(|(idx, subpattern)| {
-            let elem =
-                ProjectionElem::ConstantIndex { offset: idx as u64, min_length, from_end: false };
-            MatchPairTree::for_pattern(place.clone_project(elem), subpattern, self)
-        }));
+        if self.should_optimize_subslice(prefix) {
+            let elem_ty = prefix[0].ty;
+            let prefix_valtree = self.simplify_const_pattern_slice_into_valtree(prefix);
+            let match_pair = self.valtree_to_match_pair(
+                src_path,
+                prefix_valtree,
+                place.clone(),
+                elem_ty,
+                Range::from_start(0..prefix.len() as u64),
+                opt_slice.is_some() || !suffix.is_empty(),
+            );
+
+            match_pairs.push(match_pair);
+        } else {
+            match_pairs.extend(prefix.iter().enumerate().map(|(idx, subpattern)| {
+                let elem = ProjectionElem::ConstantIndex {
+                    offset: idx as u64,
+                    min_length,
+                    from_end: false,
+                };
+                MatchPairTree::for_pattern(place.clone_project(elem), subpattern, self)
+            }));
+        }
 
         if let Some(subslice_pat) = opt_slice {
             let suffix_len = suffix.len() as u64;
@@ -70,16 +90,99 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             match_pairs.push(MatchPairTree::for_pattern(subslice, subslice_pat, self));
         }
 
-        match_pairs.extend(suffix.iter().rev().enumerate().map(|(idx, subpattern)| {
-            let end_offset = (idx + 1) as u64;
-            let elem = ProjectionElem::ConstantIndex {
-                offset: if exact_size { min_length - end_offset } else { end_offset },
-                min_length,
-                from_end: !exact_size,
-            };
-            let place = place.clone_project(elem);
-            MatchPairTree::for_pattern(place, subpattern, self)
-        }));
+        if self.should_optimize_subslice(suffix) {
+            let elem_ty = suffix[0].ty;
+            let suffix_valtree = self.simplify_const_pattern_slice_into_valtree(suffix);
+            let match_pair = self.valtree_to_match_pair(
+                src_path,
+                suffix_valtree,
+                place.clone(),
+                elem_ty,
+                Range::from_end(0..suffix.len() as u64),
+                true,
+            );
+
+            match_pairs.push(match_pair);
+        } else {
+            match_pairs.extend(suffix.iter().rev().enumerate().map(|(idx, subpattern)| {
+                let end_offset = (idx + 1) as u64;
+                let elem = ProjectionElem::ConstantIndex {
+                    offset: if exact_size { min_length - end_offset } else { end_offset },
+                    min_length,
+                    from_end: !exact_size,
+                };
+                let place = place.clone_project(elem);
+                MatchPairTree::for_pattern(place, subpattern, self)
+            }));
+        }
+    }
+
+    fn should_optimize_subslice(&self, subslice: &[Box<Pat<'tcx>>]) -> bool {
+        subslice.len() > 1 && subslice.iter().all(|p| self.is_constant_pattern(p))
+    }
+
+    fn is_constant_pattern(&self, pat: &Pat<'tcx>) -> bool {
+        if let PatKind::Constant { value } = pat.kind
+            && let Const::Ty(_, const_) = value
+            && let ty::ConstKind::Value(_, valtree) = const_.kind()
+            && let ty::ValTree::Leaf(_) = valtree
+        {
+            true
+        } else {
+            false
+        }
+    }
+
+    fn extract_leaf(&self, pat: &Pat<'tcx>) -> ty::ValTree<'tcx> {
+        if let PatKind::Constant { value } = pat.kind
+            && let Const::Ty(_, const_) = value
+            && let ty::ConstKind::Value(_, valtree) = const_.kind()
+            && matches!(valtree, ty::ValTree::Leaf(_))
+        {
+            valtree
+        } else {
+            unreachable!()
+        }
+    }
+
+    fn simplify_const_pattern_slice_into_valtree(
+        &self,
+        subslice: &[Box<Pat<'tcx>>],
+    ) -> ty::ValTree<'tcx> {
+        let leaves = subslice.iter().map(|p| self.extract_leaf(p));
+        let interned = self.tcx.arena.alloc_from_iter(leaves);
+        ty::ValTree::Branch(interned)
+    }
+
+    fn valtree_to_match_pair<'pat>(
+        &mut self,
+        source_pattern: &'pat Pat<'tcx>,
+        valtree: ty::ValTree<'tcx>,
+        place: PlaceBuilder<'tcx>,
+        elem_ty: Ty<'tcx>,
+        range: Range,
+        subsliced: bool,
+    ) -> MatchPairTree<'pat, 'tcx> {
+        let tcx = self.tcx;
+        let const_ty =
+            Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, Ty::new_array(tcx, elem_ty, range.len()));
+
+        let pat_ty = if subsliced { Ty::new_slice(tcx, elem_ty) } else { source_pattern.ty };
+        let ty_const = ty::Const::new(tcx, ty::ConstKind::Value(const_ty, valtree));
+        let value = Const::Ty(const_ty, ty_const);
+        let test_case = TestCase::Constant { value, range: subsliced.then_some(range) };
+        let pattern = tcx.arena.alloc(Pat {
+            ty: pat_ty,
+            span: source_pattern.span,
+            kind: PatKind::Constant { value },
+        });
+
+        MatchPairTree {
+            place: Some(place.to_place(self)),
+            test_case,
+            subpairs: Vec::new(),
+            pattern,
+        }
     }
 }
 
@@ -129,7 +232,7 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
                 }
             }
 
-            PatKind::Constant { value } => TestCase::Constant { value },
+            PatKind::Constant { value } => TestCase::Constant { value, range: None },
 
             PatKind::AscribeUserType {
                 ascription: thir::Ascription { ref annotation, variance },
@@ -192,11 +295,25 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
             }
 
             PatKind::Array { ref prefix, ref slice, ref suffix } => {
-                cx.prefix_slice_suffix(&mut subpairs, &place_builder, prefix, slice, suffix);
+                cx.prefix_slice_suffix(
+                    pattern,
+                    &mut subpairs,
+                    &place_builder,
+                    prefix,
+                    slice,
+                    suffix,
+                );
                 default_irrefutable()
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                cx.prefix_slice_suffix(&mut subpairs, &place_builder, prefix, slice, suffix);
+                cx.prefix_slice_suffix(
+                    pattern,
+                    &mut subpairs,
+                    &place_builder,
+                    prefix,
+                    slice,
+                    suffix,
+                );
 
                 if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
                     default_irrefutable()

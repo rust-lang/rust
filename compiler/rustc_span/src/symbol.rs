@@ -286,6 +286,7 @@ symbols! {
         PartialOrd,
         Path,
         PathBuf,
+        PatternConstEq,
         Pending,
         PinCoerceUnsized,
         Pointer,
