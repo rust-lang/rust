@@ -919,8 +919,7 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
         .unwrap_or_default();
     let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
 
-    let dwarf_version =
-        tcx.sess.opts.unstable_opts.dwarf_version.unwrap_or(tcx.sess.target.default_dwarf_version);
+    let dwarf_version = tcx.sess.dwarf_version();
     let is_dwarf_kind =
         matches!(tcx.sess.target.debuginfo_kind, DebuginfoKind::Dwarf | DebuginfoKind::DwarfDsym);
     // Don't emit `.debug_pubnames` and `.debug_pubtypes` on DWARFv4 or lower.

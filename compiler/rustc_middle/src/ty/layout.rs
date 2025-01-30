@@ -504,6 +504,9 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
+            // Pattern types are always the same size as their base.
+            ty::Pat(base, _) => SizeSkeleton::compute(base, tcx, typing_env),
+
             _ => Err(err),
         }
     }
