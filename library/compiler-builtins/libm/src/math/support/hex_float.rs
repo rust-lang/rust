@@ -245,47 +245,27 @@ fn fmt_any_hex<F: Float>(x: &F, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "0x{leading}{sig:0mwidth$x}p{exponent:+}")
 }
 
-#[cfg(f16_enabled)]
-impl fmt::LowerHex for Hexf<f16> {
+impl<F: Float> fmt::LowerHex for Hexf<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt_any_hex(&self.0, f)
     }
 }
 
-impl fmt::LowerHex for Hexf<f32> {
+impl<F: Float> fmt::LowerHex for Hexf<(F, F)> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_any_hex(&self.0, f)
+        write!(f, "({:x}, {:x})", Hexf(self.0.0), Hexf(self.0.1))
     }
 }
 
-impl fmt::LowerHex for Hexf<f64> {
+impl<F: Float> fmt::LowerHex for Hexf<(F, i32)> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_any_hex(&self.0, f)
-    }
-}
-
-#[cfg(f128_enabled)]
-impl fmt::LowerHex for Hexf<f128> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_any_hex(&self.0, f)
+        write!(f, "({:x}, {:x})", Hexf(self.0.0), Hexf(self.0.1))
     }
 }
 
 impl fmt::LowerHex for Hexf<i32> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::LowerHex::fmt(&self.0, f)
-    }
-}
-
-impl<T1, T2> fmt::LowerHex for Hexf<(T1, T2)>
-where
-    T1: Copy,
-    T2: Copy,
-    Hexf<T1>: fmt::LowerHex,
-    Hexf<T2>: fmt::LowerHex,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({:x}, {:x})", Hexf(self.0.0), Hexf(self.0.1))
     }
 }
 
