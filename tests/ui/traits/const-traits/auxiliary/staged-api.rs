@@ -9,6 +9,11 @@
 pub trait MyTrait {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn func();
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn default<T: ~const MyTrait>() {
+        T::func();
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -18,6 +23,10 @@ pub struct Unstable;
 #[rustc_const_unstable(feature = "unstable", issue = "none")]
 impl const MyTrait for Unstable {
     fn func() {}
+
+    fn default<T: ~const MyTrait>() {
+        T::func();
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
