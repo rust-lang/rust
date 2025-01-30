@@ -39,9 +39,9 @@
 //! 2) once that is done, variance data is transferred, and the NLL region liveness is converted to
 //!    the polonius shape. That's the main [PoloniusContext].
 //! 3) during region inference, that data and the NLL outlives constraints are used to create the
-//!    localized outlives constraints, as described above.
-//! 4) transfer these constraints back to the main borrowck procedure: it handles computing errors
-//!    and diagnostics, debugging and MIR dumping concerns.
+//!    localized outlives constraints, as described above. That's the [PoloniusDiagnosticsContext].
+//! 4) transfer this back to the main borrowck procedure: it handles computing errors and
+//!    diagnostics, debugging and MIR dumping concerns.
 
 mod constraints;
 mod dump;
@@ -87,6 +87,12 @@ pub(crate) struct PoloniusContext {
     /// The expected edge direction per live region: the kind of directed edge we'll create as
     /// liveness constraints depends on the variance of types with respect to each contained region.
     live_region_variances: BTreeMap<RegionVid, ConstraintDirection>,
+}
+
+/// This struct holds the data needed by the borrowck error computation and diagnostics. Its data is
+/// computed from the [PoloniusContext] when computing NLL regions.
+pub(crate) struct PoloniusDiagnosticsContext {
+    localized_outlives_constraints: LocalizedOutlivesConstraintSet,
 }
 
 /// The direction a constraint can flow into. Used to create liveness constraints according to
@@ -135,13 +141,15 @@ impl PoloniusContext {
     ///
     /// Then, this graph is traversed, and combined with kills, reachability is recorded as loan
     /// liveness, to be used by the loan scope and active loans computations.
+    ///
+    /// The constraint data will be used to compute errors and diagnostics.
     pub(crate) fn compute_loan_liveness<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
         regioncx: &mut RegionInferenceContext<'tcx>,
         body: &Body<'tcx>,
         borrow_set: &BorrowSet<'tcx>,
-    ) -> LocalizedOutlivesConstraintSet {
+    ) -> PoloniusDiagnosticsContext {
         let mut localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
         convert_typeck_constraints(
             tcx,
@@ -173,6 +181,6 @@ impl PoloniusContext {
         );
         regioncx.record_live_loans(live_loans);
 
-        localized_outlives_constraints
+        PoloniusDiagnosticsContext { localized_outlives_constraints }
     }
 }
