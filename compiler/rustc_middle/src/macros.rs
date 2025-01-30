@@ -41,7 +41,6 @@ macro_rules! span_bug {
 // When possible, use one of these (relatively) convenient macros to write
 // the impls for you.
 
-#[macro_export]
 macro_rules! TrivialLiftImpls {
     ($($ty:ty),+ $(,)?) => {
         $(
@@ -57,7 +56,6 @@ macro_rules! TrivialLiftImpls {
 
 /// Used for types that are `Copy` and which **do not care about arena
 /// allocated data** (i.e., don't need to be folded).
-#[macro_export]
 macro_rules! TrivialTypeTraversalImpls {
     ($($ty:ty),+ $(,)?) => {
         $(
@@ -92,7 +90,6 @@ macro_rules! TrivialTypeTraversalImpls {
     };
 }
 
-#[macro_export]
 macro_rules! TrivialTypeTraversalAndLiftImpls {
     ($($t:tt)*) => {
         TrivialTypeTraversalImpls! { $($t)* }

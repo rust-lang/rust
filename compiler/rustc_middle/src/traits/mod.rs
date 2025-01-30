@@ -428,7 +428,7 @@ pub enum IsConstable {
     Ctor,
 }
 
-crate::TrivialTypeTraversalAndLiftImpls! {
+TrivialTypeTraversalAndLiftImpls! {
     IsConstable,
 }
 
