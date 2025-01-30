@@ -1,5 +1,4 @@
 pub mod bug;
-pub mod common;
 
 #[derive(Default, Copy, Clone)]
 pub struct Providers {

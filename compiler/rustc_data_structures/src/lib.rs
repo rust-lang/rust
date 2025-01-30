@@ -76,6 +76,7 @@ pub mod sync;
 pub mod tagged_ptr;
 pub mod temp_dir;
 pub mod thinvec;
+pub mod thousands;
 pub mod transitive_relation;
 pub mod unhash;
 pub mod unord;
