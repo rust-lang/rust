@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# Free disk space on Linux GitHub action runners
+# Free disk space on Linux GitHub action runners.
 # Script inspired by https://github.com/jlumbroso/free-disk-space
 
 # When updating to a new ubuntu version (e.g. from ubuntu-24.04):
@@ -9,7 +9,7 @@ set -euo pipefail
 # - Check that there are no big packages preinstalled that we aren't using
 # - Check that all directores we are removing are still present (look at the warnings)
 
-# print a line of the specified character
+# Print a line of the specified character.
 printSeparationLine() {
     for ((i = 0; i < 80; i++)); do
         printf "%s" "$1"
@@ -17,19 +17,20 @@ printSeparationLine() {
     printf "\n"
 }
 
-# compute available space
+# Compute available space.
 # REF: https://unix.stackexchange.com/a/42049/60849
 # REF: https://stackoverflow.com/a/450821/408734
 getAvailableSpace() {
     df -a | awk 'NR > 1 {avail+=$4} END {print avail}'
 }
 
-# make Kb human readable (assume the input is Kb)
+# Make Kb human readable (assume the input is Kb).
 # REF: https://unix.stackexchange.com/a/44087/60849
 formatByteCount() {
     numfmt --to=iec-i --suffix=B --padding=7 "$1"'000'
 }
 
+# Check if the architecture is x86.
 isX86() {
     local arch
     arch=$(uname -m)
@@ -55,16 +56,19 @@ execAndMeasure() {
 
     local end
     end=$(date +%s)
+
     local after
     after=$(getAvailableSpace)
 
+    # How much space was saved.
     local saved=$((after - before))
+    # How long the task took.
     local seconds_taken=$((end - start))
 
     echo "==> ${task_name}: Saved $(formatByteCount "$saved") in $seconds_taken seconds"
 }
 
-# macro to print output of df with caption
+# Print output of df with caption. It shows information about disk space.
 printDF() {
     local caption=${1}
 
@@ -158,8 +162,7 @@ removeNodeModules() {
         "yarn"
 }
 
-# Remove large packages
-# REF: https://github.com/apache/flink/blob/master/tools/azure-pipelines/free_disk_space.sh
+# Remove unused packages.
 cleanPackages() {
     local packages=(
         '.*-icon-theme$'
