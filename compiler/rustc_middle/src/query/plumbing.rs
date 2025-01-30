@@ -88,11 +88,13 @@ impl<'tcx> Deref for TyCtxtAt<'tcx> {
 }
 
 #[derive(Copy, Clone)]
+#[must_use]
 pub struct TyCtxtEnsureOk<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
 
 #[derive(Copy, Clone)]
+#[must_use]
 pub struct TyCtxtEnsureDone<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
