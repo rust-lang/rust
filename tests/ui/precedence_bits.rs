@@ -1,5 +1,10 @@
-#![warn(clippy::precedence)]
-#![allow(unused_must_use, clippy::no_effect, clippy::unnecessary_operation)]
+#![warn(clippy::precedence_bits)]
+#![allow(
+    unused_must_use,
+    clippy::no_effect,
+    clippy::unnecessary_operation,
+    clippy::precedence
+)]
 #![allow(clippy::identity_op)]
 #![allow(clippy::eq_op)]
 
@@ -13,13 +18,13 @@ macro_rules! trip {
 }
 
 fn main() {
-    1 << (2 + 3);
-    (1 + 2) << 3;
-    4 >> (1 + 1);
-    (1 + 3) >> 2;
-    1 ^ (1 - 1);
-    3 | (2 - 1);
-    3 & (5 - 2);
+    1 << 2 + 3;
+    1 + 2 << 3;
+    4 >> 1 + 1;
+    1 + 3 >> 2;
+    1 ^ 1 - 1;
+    3 | 2 - 1;
+    3 & 5 - 2;
     0x0F00 & 0x00F0 << 4;
     0x0F00 & 0xF000 >> 4;
     0x0F00 << 1 ^ 3;
