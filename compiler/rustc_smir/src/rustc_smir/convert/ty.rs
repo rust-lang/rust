@@ -418,23 +418,16 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
     type T = stable_mir::ty::TyConst;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        let kind = match self.kind() {
-            ty::ConstKind::Value(ty, val) => {
-                let val = match val {
-                    ty::ValTree::Leaf(scalar) => ty::ValTree::Leaf(scalar),
-                    ty::ValTree::Branch(branch) => {
-                        ty::ValTree::Branch(tables.tcx.lift(branch).unwrap())
-                    }
-                };
-
-                let ty = tables.tcx.lift(ty).unwrap();
-                let const_val = tables.tcx.valtree_to_const_val((ty, val));
+        let ct = tables.tcx.lift(*self).unwrap();
+        let kind = match ct.kind() {
+            ty::ConstKind::Value(cv) => {
+                let const_val = tables.tcx.valtree_to_const_val(cv);
                 if matches!(const_val, mir::ConstValue::ZeroSized) {
-                    stable_mir::ty::TyConstKind::ZSTValue(ty.stable(tables))
+                    stable_mir::ty::TyConstKind::ZSTValue(cv.ty.stable(tables))
                 } else {
                     stable_mir::ty::TyConstKind::Value(
-                        ty.stable(tables),
-                        alloc::new_allocation(ty, const_val, tables),
+                        cv.ty.stable(tables),
+                        alloc::new_allocation(cv.ty, const_val, tables),
                     )
                 }
             }
@@ -449,7 +442,7 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
             ty::ConstKind::Placeholder(_) => unimplemented!(),
             ty::ConstKind::Expr(_) => unimplemented!(),
         };
-        let id = tables.intern_ty_const(tables.tcx.lift(*self).unwrap());
+        let id = tables.intern_ty_const(ct);
         stable_mir::ty::TyConst::new(kind, id)
     }
 }

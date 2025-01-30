@@ -1441,7 +1441,9 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                     ty::ConstKind::Unevaluated(uv) => {
                         format!("ty::Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.args,)
                     }
-                    ty::ConstKind::Value(_, val) => format!("ty::Valtree({})", fmt_valtree(&val)),
+                    ty::ConstKind::Value(cv) => {
+                        format!("ty::Valtree({})", fmt_valtree(&cv.valtree))
+                    }
                     // No `ty::` prefix since we also use this to represent errors from `mir::Unevaluated`.
                     ty::ConstKind::Error(_) => "Error".to_string(),
                     // These variants shouldn't exist in the MIR.

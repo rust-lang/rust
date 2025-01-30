@@ -112,8 +112,9 @@ pub trait Interner:
     type PlaceholderConst: PlaceholderLike;
     type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
     type BoundConst: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
-    type ValueConst: Copy + Debug + Hash + Eq;
+    type ValueConst: ValueConst<Self>;
     type ExprConst: ExprConst<Self>;
+    type ValTree: Copy + Debug + Hash + Eq;
 
     // Kinds of regions
     type Region: Region<Self>;

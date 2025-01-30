@@ -1,3 +1,18 @@
+Version 1.84.1 (2025-01-30)
+==========================
+
+<a id="1.84.1"></a>
+
+- [Fix ICE 132920 in duplicate-crate diagnostics.](https://github.com/rust-lang/rust/pull/133304/)
+- [Fix errors for overlapping impls in incremental rebuilds.](https://github.com/rust-lang/rust/pull/133828/)
+- [Fix slow compilation related to the next-generation trait solver.](https://github.com/rust-lang/rust/pull/135618/)
+- [Fix debuginfo when LLVM's location discriminator value limit is exceeded.](https://github.com/rust-lang/rust/pull/135643/)
+- Fixes for building Rust from source:
+  - [Only try to distribute `llvm-objcopy` if llvm tools are enabled.](https://github.com/rust-lang/rust/pull/134240/)
+  - [Add Profile Override for Non-Git Sources.](https://github.com/rust-lang/rust/pull/135433/)
+  - [Resolve symlinks of LLVM tool binaries before copying them.](https://github.com/rust-lang/rust/pull/135585/)
+  - [Make it possible to use ci-rustc on tarball sources.](https://github.com/rust-lang/rust/pull/135722/)
+
 Version 1.84.0 (2025-01-09)
 ==========================
 

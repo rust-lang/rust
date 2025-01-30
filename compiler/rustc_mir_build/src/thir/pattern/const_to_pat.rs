@@ -46,7 +46,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         match c.kind() {
             ty::ConstKind::Unevaluated(uv) => convert.unevaluated_to_pat(uv, ty),
-            ty::ConstKind::Value(_, val) => convert.valtree_to_pat(val, ty),
+            ty::ConstKind::Value(cv) => convert.valtree_to_pat(cv.valtree, cv.ty),
             _ => span_bug!(span, "Invalid `ConstKind` for `const_to_pat`: {:?}", c),
         }
     }
@@ -214,6 +214,7 @@ impl<'tcx> ConstToPat<'tcx> {
     }
 
     // Recursive helper for `to_pat`; invoke that (instead of calling this directly).
+    // FIXME(valtrees): Accept `ty::Value` instead of `Ty` and `ty::ValTree` separately.
     #[instrument(skip(self), level = "debug")]
     fn valtree_to_pat(&self, cv: ValTree<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         let span = self.span;

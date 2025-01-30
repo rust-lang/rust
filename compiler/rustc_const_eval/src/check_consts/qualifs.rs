@@ -345,7 +345,7 @@ where
         Const::Ty(_, ct)
             if matches!(
                 ct.kind(),
-                ty::ConstKind::Param(_) | ty::ConstKind::Error(_) | ty::ConstKind::Value(_, _)
+                ty::ConstKind::Param(_) | ty::ConstKind::Error(_) | ty::ConstKind::Value(_)
             ) =>
         {
             None

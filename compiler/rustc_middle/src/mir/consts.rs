@@ -250,7 +250,7 @@ impl<'tcx> Const<'tcx> {
                     // Dont use the outer ty as on invalid code we can wind up with them not being the same.
                     // this then results in allowing const eval to add `1_i64 + 1_usize` in cases where the mir
                     // was originally `({N: usize} + 1_usize)` under `generic_const_exprs`.
-                    ty::ConstKind::Value(ty, _) => ty,
+                    ty::ConstKind::Value(cv) => cv.ty,
                     _ => *ty,
                 }
             }
@@ -264,7 +264,7 @@ impl<'tcx> Const<'tcx> {
     pub fn is_required_const(&self) -> bool {
         match self {
             Const::Ty(_, c) => match c.kind() {
-                ty::ConstKind::Value(_, _) => false, // already a value, cannot error
+                ty::ConstKind::Value(_) => false, // already a value, cannot error
                 _ => true,
             },
             Const::Val(..) => false, // already a value, cannot error
@@ -276,11 +276,11 @@ impl<'tcx> Const<'tcx> {
     pub fn try_to_scalar(self) -> Option<Scalar> {
         match self {
             Const::Ty(_, c) => match c.kind() {
-                ty::ConstKind::Value(ty, valtree) if ty.is_primitive() => {
+                ty::ConstKind::Value(cv) if cv.ty.is_primitive() => {
                     // A valtree of a type where leaves directly represent the scalar const value.
                     // Just checking whether it is a leaf is insufficient as e.g. references are leafs
                     // but the leaf value is the value they point to, not the reference itself!
-                    Some(valtree.unwrap_leaf().into())
+                    Some(cv.valtree.unwrap_leaf().into())
                 }
                 _ => None,
             },
@@ -295,9 +295,7 @@ impl<'tcx> Const<'tcx> {
         match self {
             Const::Val(ConstValue::Scalar(Scalar::Int(x)), _) => Some(x),
             Const::Ty(_, c) => match c.kind() {
-                ty::ConstKind::Value(ty, valtree) if ty.is_primitive() => {
-                    Some(valtree.unwrap_leaf())
-                }
+                ty::ConstKind::Value(cv) if cv.ty.is_primitive() => Some(cv.valtree.unwrap_leaf()),
                 _ => None,
             },
             _ => None,
@@ -328,7 +326,7 @@ impl<'tcx> Const<'tcx> {
                 }
 
                 match c.kind() {
-                    ConstKind::Value(ty, val) => Ok(tcx.valtree_to_const_val((ty, val))),
+                    ConstKind::Value(cv) => Ok(tcx.valtree_to_const_val(cv)),
                     ConstKind::Expr(_) => {
                         bug!("Normalization of `ty::ConstKind::Expr` is unimplemented")
                     }
@@ -353,13 +351,13 @@ impl<'tcx> Const<'tcx> {
         typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<Scalar> {
         if let Const::Ty(_, c) = self
-            && let ty::ConstKind::Value(ty, val) = c.kind()
-            && ty.is_primitive()
+            && let ty::ConstKind::Value(cv) = c.kind()
+            && cv.ty.is_primitive()
         {
             // Avoid the `valtree_to_const_val` query. Can only be done on primitive types that
             // are valtree leaves, and *not* on references. (References should return the
             // pointer here, which valtrees don't represent.)
-            Some(val.unwrap_leaf().into())
+            Some(cv.valtree.unwrap_leaf().into())
         } else {
             self.eval(tcx, typing_env, DUMMY_SP).ok()?.try_to_scalar()
         }
@@ -473,7 +471,7 @@ impl<'tcx> Const<'tcx> {
                 // A valtree may be a reference. Valtree references correspond to a
                 // different allocation each time they are evaluated. Valtrees for primitive
                 // types are fine though.
-                ty::ConstKind::Value(ty, _) => ty.is_primitive(),
+                ty::ConstKind::Value(cv) => cv.ty.is_primitive(),
                 ty::ConstKind::Unevaluated(..) | ty::ConstKind::Expr(..) => false,
                 // This can happen if evaluation of a constant failed. The result does not matter
                 // much since compilation is doomed.
