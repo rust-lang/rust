@@ -25,7 +25,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
-    polonius_diagnostics: Option<PoloniusDiagnosticsContext>,
+    polonius_diagnostics: Option<&PoloniusDiagnosticsContext>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
 ) {
     let tcx = infcx.tcx;
@@ -37,7 +37,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
         return;
     }
 
-    let polonius_diagnostics_context =
+    let polonius_diagnostics =
         polonius_diagnostics.expect("missing diagnostics context with `-Zpolonius=next`");
 
     let _: io::Result<()> = try {
@@ -47,7 +47,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
             body,
             regioncx,
             borrow_set,
-            polonius_diagnostics_context.localized_outlives_constraints,
+            &polonius_diagnostics.localized_outlives_constraints,
             closure_region_requirements,
             &mut file,
         )?;
@@ -65,7 +65,7 @@ fn emit_polonius_dump<'tcx>(
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
-    localized_outlives_constraints: LocalizedOutlivesConstraintSet,
+    localized_outlives_constraints: &LocalizedOutlivesConstraintSet,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {

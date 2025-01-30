@@ -145,7 +145,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
 
     // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives constraints
     // and use them to compute loan liveness.
-    let polonius_diagnostics = polonius_context.as_ref().map(|polonius_context| {
+    let polonius_diagnostics = polonius_context.map(|polonius_context| {
         polonius_context.compute_loan_liveness(infcx.tcx, &mut regioncx, body, borrow_set)
     });
 
