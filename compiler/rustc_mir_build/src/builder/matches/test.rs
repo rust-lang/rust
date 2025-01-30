@@ -190,13 +190,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 if !ty.is_scalar() {
                     if let Some(range) = range {
                         place = unpack!(
-                            block = self.subslice(
+                            block = self.subslice_sized_range(
                                 block,
                                 place,
                                 place_ty.ty,
-                                test.span,
                                 ty.sequence_element_type(tcx),
                                 range,
+                                test.span,
                             )
                         );
                     }
@@ -311,34 +311,29 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    fn offset(
+    fn intrinsic_offset(
         &mut self,
         block: BasicBlock,
-        ptr: Place<'tcx>,
-        offset: Place<'tcx>,
+        ptr: Operand<'tcx>,
+        offset: Operand<'tcx>,
         span: Span,
     ) -> BlockAnd<Place<'tcx>> {
         let tcx = self.tcx;
-        let ptr_ty = ptr.ty(&self.local_decls, tcx).ty;
-        let offset_ty = offset.ty(&self.local_decls, tcx).ty;
-
+        let source_info = self.source_info(span);
+        let ptr_ty = ptr.ty(&self.local_decls, tcx);
+        let pointee_ty = ptr_ty.pointee();
         let func = Operand::function_handle(
             tcx,
             tcx.require_lang_item(LangItem::Offset, Some(span)),
-            [ptr_ty.into(), offset_ty.into()],
+            [pointee_ty.into()],
             span,
         );
 
         let out = self.temp(ptr_ty, span);
         let next_block = self.cfg.start_new_block();
-
-        self.cfg.terminate(block, self.source_info(span), TerminatorKind::Call {
+        self.cfg.terminate(block, source_info, TerminatorKind::Call {
             func,
-            args: [Spanned { node: Operand::Copy(ptr), span }, Spanned {
-                node: Operand::Copy(offset),
-                span,
-            }]
-            .into(),
+            args: [Spanned { node: ptr, span }, Spanned { node: offset, span }].into(),
             destination: out,
             target: Some(next_block),
             unwind: UnwindAction::Continue,
@@ -349,42 +344,72 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         next_block.and(out)
     }
 
-    fn subslice(
+    fn intrinsic_aggregate_raw_ptr(
+        &mut self,
+        block: BasicBlock,
+        ptr: Operand<'tcx>,
+        data: Operand<'tcx>,
+        span: Span,
+    ) -> BlockAnd<Place<'tcx>> {
+        let tcx = self.tcx;
+        let source_info = self.source_info(span);
+        let ptr_ty = ptr.ty(&self.local_decls, tcx);
+        let pointee_ty = ptr_ty.pointee();
+        let func = Operand::function_handle(
+            tcx,
+            tcx.require_lang_item(LangItem::AggregateRawPtr, Some(span)),
+            [pointee_ty.into()],
+            span,
+        );
+
+        let aggregate_ptr_ty = Ty::new_ptr(tcx, Ty::new_slice(tcx, pointee_ty), Mutability::Not);
+        let out = self.temp(aggregate_ptr_ty, span);
+        let next_block = self.cfg.start_new_block();
+        self.cfg.terminate(block, source_info, TerminatorKind::Call {
+            func,
+            args: [Spanned { node: ptr, span }, Spanned { node: data, span }].into(),
+            destination: out,
+            target: Some(next_block),
+            unwind: UnwindAction::Continue,
+            call_source: CallSource::Misc,
+            fn_span: span,
+        });
+
+        next_block.and(out)
+    }
+
+    fn subslice_sized_range(
         &mut self,
         mut block: BasicBlock,
         input: Place<'tcx>,
         input_ty: Ty<'tcx>,
-        span: Span,
         elem_ty: Ty<'tcx>,
         range: Range,
+        span: Span,
     ) -> BlockAnd<Place<'tcx>> {
         let tcx = self.tcx;
         let source_info = self.source_info(span);
 
         let (ptr_offset, slice_len) = {
             if !range.from_end {
-                let start = self.push_usize(block, source_info, range.start);
-                let len = self.push_usize(block, source_info, range.len());
+                let start = self.literal_operand(span, Const::from_usize(tcx, range.start));
+                let len = Const::from_usize(tcx, range.len());
                 (start, len)
             } else {
                 let source_len = self.temp(tcx.types.usize, span);
                 self.cfg.push_assign(block, source_info, source_len, Rvalue::Len(input));
-
                 let start = self.temp(tcx.types.usize, span);
-                let from_end = self.push_usize(block, source_info, range.start);
+                let neg_offset = self.literal_operand(span, Const::from_usize(tcx, range.start));
 
                 self.cfg.push_assign(
                     block,
                     source_info,
                     start,
-                    Rvalue::BinaryOp(
-                        BinOp::Sub,
-                        Box::new((Operand::Copy(source_len), Operand::Copy(from_end))),
-                    ),
+                    Rvalue::BinaryOp(BinOp::Sub, Box::new((Operand::Copy(source_len), neg_offset))),
                 );
-                let len = self.push_usize(block, source_info, range.len());
 
-                (start, len)
+                let len = Const::from_usize(tcx, range.len());
+                (Operand::Copy(start), len)
             }
         };
 
@@ -397,7 +422,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
 
         let elem_ptr_ty = Ty::new_ptr(tcx, elem_ty, Mutability::Not);
-        let slice_ptr_ty = Ty::new_ptr(tcx, Ty::new_slice(tcx, elem_ty), Mutability::Not);
 
         let temp_elem_ptr = self.temp(elem_ptr_ty, span);
         self.cfg.push_assign(
@@ -407,35 +431,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Rvalue::Cast(CastKind::PtrToPtr, Operand::Copy(temp_source_ptr), elem_ptr_ty),
         );
 
-        let updated_ptr = unpack!(block = self.offset(block, temp_elem_ptr, ptr_offset, span));
-
-        let aggregate_raw_ptr = Operand::function_handle(
-            tcx,
-            tcx.require_lang_item(LangItem::AggregateRawPtr, Some(span)),
-            [slice_ptr_ty.into(), elem_ptr_ty.into(), tcx.types.usize.into()],
-            span,
+        let updated_ptr = unpack!(
+            block = self.intrinsic_offset(block, Operand::Copy(temp_elem_ptr), ptr_offset, span)
         );
+        let slice_len = self.literal_operand(span, slice_len);
 
-        let subslice_ptr = self.temp(slice_ptr_ty, span);
+        let subslice_ptr = unpack!(
+            block = self.intrinsic_aggregate_raw_ptr(
+                block,
+                Operand::Copy(updated_ptr),
+                slice_len,
+                span
+            )
+        );
+        let out = PlaceBuilder::from(subslice_ptr).project(PlaceElem::Deref).to_place(self);
 
-        let next_block = self.cfg.start_new_block();
-
-        self.cfg.terminate(block, source_info, TerminatorKind::Call {
-            func: aggregate_raw_ptr,
-            args: [Spanned { node: Operand::Move(updated_ptr), span }, Spanned {
-                node: Operand::Move(slice_len),
-                span,
-            }]
-            .into(),
-            destination: subslice_ptr,
-            target: Some(next_block),
-            unwind: UnwindAction::Continue,
-            call_source: CallSource::Misc,
-            fn_span: source_info.span,
-        });
-
-        let subslice = PlaceBuilder::from(subslice_ptr).deref().to_place(self);
-        next_block.and(subslice)
+        block.and(out)
     }
 
     /// Perform `let temp = <ty as Deref>::deref(&place)`.
