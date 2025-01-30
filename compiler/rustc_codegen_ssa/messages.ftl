@@ -16,6 +16,8 @@ codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$erro
 
 codegen_ssa_atomic_compare_exchange = Atomic compare-exchange intrinsic missing failure memory ordering
 
+codegen_ssa_autodiff_without_lto = using the autodiff feature requires using fat-lto
+
 codegen_ssa_binary_output_to_tty = option `-o` or `--emit` is used to write binary output type `{$shorthand}` to stdout, but stdout is a tty
 
 codegen_ssa_cgu_not_recorded =
