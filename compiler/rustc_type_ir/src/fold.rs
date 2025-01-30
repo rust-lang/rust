@@ -51,7 +51,7 @@ use rustc_index::{Idx, IndexVec};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
-use crate::data_structures::Lrc;
+use crate::data_structures::{Lrc, ensure_sufficient_stack};
 use crate::inherent::*;
 use crate::visit::{TypeVisitable, TypeVisitableExt as _};
 use crate::{self as ty, Interner};
@@ -501,5 +501,65 @@ impl<'a, I: Interner> TypeFolder<I> for RegionFolder<'a, I> {
                 (self.fold_region_fn)(r, self.current_index)
             }
         }
+    }
+}
+
+/// Expand any [weak alias types][weak] contained within the given `value`.
+///
+/// This should be used over other normalization routines in situations where
+/// it's important not to normalize other alias types and where the predicates
+/// on the corresponding type alias shouldn't be taken into consideration.
+///
+/// Whenever possible **prefer not to use this function**! Instead, use standard
+/// normalization routines or if feasible don't normalize at all.
+///
+/// This function comes in handy if you want to mimic the behavior of eager
+/// type alias expansion in a localized manner.
+///
+/// <div class="warning">
+/// This delays a bug on overflow! Therefore you need to be certain that the
+/// contained types get fully normalized at a later stage. Note that even on
+/// overflow all well-behaved weak alias types get expanded correctly, so the
+/// result is still useful.
+/// </div>
+///
+/// [weak]: ty::Weak
+pub fn expand_weak_alias_tys<I: Interner, T: TypeFoldable<I>>(cx: I, value: T) -> T {
+    value.fold_with(&mut WeakAliasTypeExpander { cx, depth: 0 })
+}
+
+struct WeakAliasTypeExpander<I> {
+    cx: I,
+    depth: usize,
+}
+
+impl<I: Interner> TypeFolder<I> for WeakAliasTypeExpander<I> {
+    fn cx(&self) -> I {
+        self.cx
+    }
+
+    fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
+        if !ty.has_type_flags(ty::TypeFlags::HAS_TY_WEAK) {
+            return ty;
+        }
+        let ty::Alias(ty::Weak, alias) = ty.kind() else {
+            return ty.super_fold_with(self);
+        };
+        if !self.cx.recursion_limit().value_within_limit(self.depth) {
+            let guar = self.cx.delay_bug("overflow expanding weak alias type");
+            return Ty::new_error(self.cx, guar);
+        }
+
+        self.depth += 1;
+        ensure_sufficient_stack(|| {
+            self.cx.type_of(alias.def_id).instantiate(self.cx, alias.args).fold_with(self)
+        })
+    }
+
+    fn fold_const(&mut self, ct: I::Const) -> I::Const {
+        if !ct.has_type_flags(ty::TypeFlags::HAS_TY_WEAK) {
+            return ct;
+        }
+        ct.super_fold_with(self)
     }
 }

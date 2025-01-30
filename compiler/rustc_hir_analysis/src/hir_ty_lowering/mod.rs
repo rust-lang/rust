@@ -49,6 +49,9 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
+use rustc_type_ir::visit::{
+    collect_constrained_late_bound_regions, collect_referenced_late_bound_regions,
+};
 use tracing::{debug, instrument};
 
 use crate::bounds::Bounds;
@@ -2606,9 +2609,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         //     for<'a> fn(&'a String) -> &'a str <-- 'a is ok
         let inputs = bare_fn_ty.inputs();
         let late_bound_in_args =
-            tcx.collect_constrained_late_bound_regions(inputs.map_bound(|i| i.to_owned()));
+            collect_constrained_late_bound_regions(tcx, inputs.map_bound(|i| i.to_owned()));
         let output = bare_fn_ty.output();
-        let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(output);
+        let late_bound_in_ret = collect_referenced_late_bound_regions(tcx, output);
 
         self.validate_late_bound_regions(late_bound_in_args, late_bound_in_ret, |br_name| {
             struct_span_code_err!(
@@ -2665,12 +2668,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     #[instrument(level = "trace", skip(self, generate_err))]
     fn validate_late_bound_regions<'cx>(
         &'cx self,
-        constrained_regions: FxIndexSet<ty::BoundRegionKind>,
-        referenced_regions: FxIndexSet<ty::BoundRegionKind>,
+        constrained_regions: FxIndexSet<ty::BoundRegion>,
+        referenced_regions: FxIndexSet<ty::BoundRegion>,
         generate_err: impl Fn(&str) -> Diag<'cx>,
     ) {
         for br in referenced_regions.difference(&constrained_regions) {
-            let br_name = match *br {
+            let br_name = match br.kind {
                 ty::BoundRegionKind::Named(_, kw::UnderscoreLifetime)
                 | ty::BoundRegionKind::Anon
                 | ty::BoundRegionKind::ClosureEnv => "an anonymous lifetime".to_string(),
@@ -2680,7 +2683,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let mut err = generate_err(&br_name);
 
             if let ty::BoundRegionKind::Named(_, kw::UnderscoreLifetime)
-            | ty::BoundRegionKind::Anon = *br
+            | ty::BoundRegionKind::Anon = br.kind
             {
                 // The only way for an anonymous lifetime to wind up
                 // in the return type but **also** be unconstrained is

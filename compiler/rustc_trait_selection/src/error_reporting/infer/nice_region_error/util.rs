@@ -6,6 +6,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{self, Binder, Region, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
+use rustc_type_ir::visit::collect_referenced_late_bound_regions;
 use tracing::instrument;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
@@ -142,10 +143,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         ty: Binder<'tcx, impl TypeFoldable<TyCtxt<'tcx>>>,
         region_def_id: DefId,
     ) -> bool {
-        let late_bound_regions = self.tcx().collect_referenced_late_bound_regions(ty);
-        // We are only checking is any region meets the condition so order doesn't matter
-        #[allow(rustc::potential_query_instability)]
-        late_bound_regions.iter().any(|r| match *r {
+        collect_referenced_late_bound_regions(self.tcx(), ty).iter().any(|r| match r.kind {
             ty::BoundRegionKind::Named(def_id, _) => def_id == region_def_id,
             _ => false,
         })

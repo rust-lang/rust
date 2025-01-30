@@ -3,7 +3,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
-use rustc_type_ir::fold::TypeFoldable;
+use rustc_type_ir::fold::{TypeFoldable, expand_weak_alias_tys};
 use tracing::debug;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -51,7 +51,7 @@ pub(crate) fn parameters_for<'tcx>(
     include_nonconstraining: bool,
 ) -> Vec<Parameter> {
     let mut collector = ParameterCollector { parameters: vec![], include_nonconstraining };
-    let value = if !include_nonconstraining { tcx.expand_weak_alias_tys(value) } else { value };
+    let value = if !include_nonconstraining { expand_weak_alias_tys(tcx, value) } else { value };
     value.visit_with(&mut collector);
     collector.parameters
 }

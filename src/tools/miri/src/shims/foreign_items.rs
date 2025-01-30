@@ -509,7 +509,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         memory_kind.into(),
-                        AllocInit::Uninit
+                        AllocInit::Uninit,
                     )?;
 
                     ecx.write_pointer(ptr, dest)
@@ -538,7 +538,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         MiriMemoryKind::Rust.into(),
-                        AllocInit::Zero
+                        AllocInit::Zero,
                     )?;
                     this.write_pointer(ptr, dest)
                 });
@@ -599,7 +599,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         Size::from_bytes(new_size),
                         align,
                         MiriMemoryKind::Rust.into(),
-                        AllocInit::Uninit
+                        AllocInit::Uninit,
                     )?;
                     this.write_pointer(new_ptr, dest)
                 });

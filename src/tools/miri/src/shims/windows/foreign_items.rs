@@ -266,7 +266,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Size::from_bytes(size),
                     Align::from_bytes(align).unwrap(),
                     MiriMemoryKind::WinHeap.into(),
-                    init
+                    init,
                 )?;
                 this.write_pointer(ptr, dest)?;
             }
@@ -299,7 +299,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Size::from_bytes(size),
                     Align::from_bytes(align).unwrap(),
                     MiriMemoryKind::WinHeap.into(),
-                    AllocInit::Uninit
+                    AllocInit::Uninit,
                 )?;
                 this.write_pointer(new_ptr, dest)?;
             }
