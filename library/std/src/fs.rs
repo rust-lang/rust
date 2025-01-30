@@ -629,15 +629,18 @@ impl File {
     /// This acquires an exclusive advisory lock; no other file handle to this file may acquire
     /// another lock.
     ///
-    /// If this file handle, or a clone of it, already holds an advisory lock the exact behavior is
-    /// unspecified and platform dependent, including the possibility that it will deadlock.
-    /// However, if this method returns, then an exclusive lock is held.
+    /// If this file handle/descriptor, or a clone of it, already holds an advisory lock the exact
+    /// behavior is unspecified and platform dependent, including the possibility that it will
+    /// deadlock. However, if this method returns, then an exclusive lock is held.
     ///
     /// If the file not open for writing, it is unspecified whether this function returns an error.
     ///
     /// Note, this is an advisory lock meant to interact with [`lock_shared`], [`try_lock`],
     /// [`try_lock_shared`], and [`unlock`]. Its interactions with other methods, such as [`read`]
     /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    ///
+    /// The lock will be released when this file (along with any other file descriptors/handles
+    /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
     ///
     /// # Platform-specific behavior
     ///
@@ -671,18 +674,21 @@ impl File {
         self.inner.lock()
     }
 
-    /// Acquire a shared advisory lock on the file. Blocks until the lock can be acquired.
+    /// Acquire a shared (non-exclusive) advisory lock on the file. Blocks until the lock can be acquired.
     ///
     /// This acquires a shared advisory lock; more than one file handle may hold a shared lock, but
-    /// none may hold an exclusive lock.
+    /// none may hold an exclusive lock at the same time.
     ///
-    /// If this file handle, or a clone of it, already holds an advisory lock, the exact behavior is
-    /// unspecified and platform dependent, including the possibility that it will deadlock.
-    /// However, if this method returns, then a shared lock is held.
+    /// If this file handle/descriptor, or a clone of it, already holds an advisory lock, the exact
+    /// behavior is unspecified and platform dependent, including the possibility that it will
+    /// deadlock. However, if this method returns, then a shared lock is held.
     ///
     /// Note, this is an advisory lock meant to interact with [`lock`], [`try_lock`],
     /// [`try_lock_shared`], and [`unlock`]. Its interactions with other methods, such as [`read`]
     /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    ///
+    /// The lock will be released when this file (along with any other file descriptors/handles
+    /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
     ///
     /// # Platform-specific behavior
     ///
@@ -716,20 +722,27 @@ impl File {
         self.inner.lock_shared()
     }
 
-    /// Acquire an exclusive advisory lock on the file. Returns `Ok(false)` if the file is locked.
+    /// Try to acquire an exclusive advisory lock on the file.
+    ///
+    /// Returns `Ok(false)` if a different lock is already held on this file (via another
+    /// handle/descriptor).
     ///
     /// This acquires an exclusive advisory lock; no other file handle to this file may acquire
     /// another lock.
     ///
-    /// If this file handle, or a clone of it, already holds an advisory lock, the exact behavior is
-    /// unspecified and platform dependent, including the possibility that it will deadlock.
-    /// However, if this method returns, then an exclusive lock is held.
+    /// If this file handle/descriptor, or a clone of it, already holds an advisory lock, the exact
+    /// behavior is unspecified and platform dependent, including the possibility that it will
+    /// deadlock. However, if this method returns `Ok(true)`, then it has acquired an exclusive
+    /// lock.
     ///
     /// If the file not open for writing, it is unspecified whether this function returns an error.
     ///
     /// Note, this is an advisory lock meant to interact with [`lock`], [`lock_shared`],
     /// [`try_lock_shared`], and [`unlock`]. Its interactions with other methods, such as [`read`]
     /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    ///
+    /// The lock will be released when this file (along with any other file descriptors/handles
+    /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
     ///
     /// # Platform-specific behavior
     ///
@@ -764,19 +777,24 @@ impl File {
         self.inner.try_lock()
     }
 
-    /// Acquire a shared advisory lock on the file.
-    /// Returns `Ok(false)` if the file is exclusively locked.
+    /// Try to acquire a shared (non-exclusive) advisory lock on the file.
+    ///
+    /// Returns `Ok(false)` if an exclusive lock is already held on this file (via another
+    /// handle/descriptor).
     ///
     /// This acquires a shared advisory lock; more than one file handle may hold a shared lock, but
-    /// none may hold an exclusive lock.
+    /// none may hold an exclusive lock at the same time.
     ///
     /// If this file handle, or a clone of it, already holds an advisory lock, the exact behavior is
     /// unspecified and platform dependent, including the possibility that it will deadlock.
-    /// However, if this method returns, then a shared lock is held.
+    /// However, if this method returns `Ok(true)`, then it has acquired a shared lock.
     ///
     /// Note, this is an advisory lock meant to interact with [`lock`], [`try_lock`],
     /// [`try_lock`], and [`unlock`]. Its interactions with other methods, such as [`read`]
     /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    ///
+    /// The lock will be released when this file (along with any other file descriptors/handles
+    /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
     ///
     /// # Platform-specific behavior
     ///
@@ -813,7 +831,12 @@ impl File {
 
     /// Release all locks on the file.
     ///
-    /// All remaining locks are released when the file handle, and all clones of it, are dropped.
+    /// All locks are released when the file (along with any other file descriptors/handles
+    /// duplicated or inherited from it) is closed. This method allows releasing locks without
+    /// closing the file.
+    ///
+    /// If no lock is currently held via this file descriptor/handle, this method may return an
+    /// error, or may return successfully without taking any action.
     ///
     /// # Platform-specific behavior
     ///
