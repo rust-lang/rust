@@ -45,7 +45,7 @@ neon-stable-not-arm: &neon-stable-not-arm
 
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 neon-unstable-is-arm: &neon-unstable-is-arm
-  FnCall: [ cfg_attr, ['target_arch = "arm"', *neon-unstable]] 
+  FnCall: [ cfg_attr, ['target_arch = "arm"', *neon-unstable]]
 
 # #[cfg_attr(all(test, not(target_env = "msvc"))]
 msvc-disabled: &msvc-disabled
@@ -63,6 +63,13 @@ neon-aes: &neon-aes
 neon-i8mm: &neon-i8mm
   FnCall: [target_feature, ['enable = "neon,i8mm"']]
 
+# #[target_feature(enable = "neon,fp16")]
+neon-fp16: &neon-fp16
+  FnCall: [target_feature, ['enable = "neon,fp16"']]
+
+enable-fcma: &enable-fcma
+  FnCall: [cfg_attr, [{ FnCall: [not, ['target_arch = "arm"']]}, { FnCall: [target_feature, ['enable = "fcma"']] }]]
+
 #[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_i8mm", issue = "117223"))]
 neon-unstable-i8mm: &neon-unstable-i8mm
   FnCall: [cfg_attr, [{ FnCall: [not, ['target_arch = "arm"']] }, { FnCall: [unstable, ['feature = "stdarch_neon_i8mm"', 'issue = "117223"']] } ]]
@@ -76,6 +83,10 @@ arm-crc-unstable: &arm-crc-unstable
 
 aarch64-crc-stable: &aarch64-crc-stable
   FnCall: [cfg_attr, [{FnCall: [not, ['target_arch = "arm"']]}, {FnCall: [stable, ['feature = "stdarch_aarch64_crc32"', 'since = "1.80.0"']]}]]
+
+# #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+neon-unstable-f16: &neon-unstable-f16
+  FnCall: [unstable, ['feature = "stdarch_neon_f16"', 'issue = "136306"']]
 
 intrinsics:
   - name: "vand{neon_type.no}"
@@ -263,6 +274,30 @@ intrinsics:
             - link: "llvm.aarch64.neon.fabd.{neon_type}"
               arch: aarch64,arm64ec
 
+  - name: "vabd{neon_type.no}"
+    doc: Absolute difference between the arguments of Floating
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vabd.f16"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fabd]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "fabd.{neon_type}"
+          links:
+            - link: "llvm.arm.neon.vabds.{neon_type}"
+              arch: arm
+            - link: "llvm.aarch64.neon.fabd.{neon_type}"
+              arch: aarch64,arm64ec
+
   - name: "vabdl{neon_type[0].noq}"
     doc: Signed Absolute difference Long
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -379,6 +414,25 @@ intrinsics:
     compose:
       - FnCall: [simd_eq, [a, b]]
 
+
+  - name: "vceq{neon_type[0].no}"
+    doc: "Floating-point compare equal"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vceq.f16"']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fcmeq]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t]
+      - [float16x8_t, uint16x8_t]
+    compose:
+      - FnCall: [simd_eq, [a, b]]
+
   - name: "vtst{neon_type[0].no}"
     doc: "Signed compare bitwise Test bits nonzero"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -424,6 +478,46 @@ intrinsics:
       - float32x4_t
     compose:
       - FnCall: [simd_fabs, [a]]
+
+  - name: "vabs{neon_type.no}"
+    doc: "Floating-point absolute value"
+    arguments: ["a: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [vabs]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fabs]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - FnCall: [simd_fabs, [a]]
+
+  - name: "vabs{type[0]}"
+    doc: "Floating-point absolute value"
+    arguments: ["a: {type[1]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [vabs]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fabs]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ['h_f16', 'f16']
+    compose:
+      - FnCall:
+          - simd_extract!
+          - - FnCall:
+                - "vabs_{type[1]}"
+                - - FnCall: ["vdup_n_{type[1]}", [a]]
+            - 0
 
   - name: "vcgt{neon_type[0].no}"
     doc: "Compare signed greater than"
@@ -487,6 +581,45 @@ intrinsics:
     compose:
       - FnCall: [simd_gt, [a, b]]
 
+
+  - name: "vcgt{neon_type[0].no}"
+    doc: "Floating-point compare greater than"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vcgt.f16"']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fcmgt]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t]
+      - [float16x8_t, uint16x8_t]
+    compose:
+      - FnCall: [simd_gt, [a, b]]
+
+
+  - name: "vcgtz{neon_type[0].no}"
+    doc: "Floating-point compare greater than zero"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vcgt.f16"']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fcmgt]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t, f16x4, 'f16x4::new(0.0, 0.0, 0.0, 0.0)']
+      - [float16x8_t, uint16x8_t, f16x8, 'f16x8::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)']
+    compose:
+      - Let: [b, "{type[2]}", "{type[3]}"]
+      - FnCall: [simd_gt, [a, {FnCall: [transmute, [b]]}]]
+
   - name: "vclt{neon_type[0].no}"
     doc: "Compare signed less than"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -548,6 +681,47 @@ intrinsics:
       - [float32x4_t, uint32x4_t]
     compose:
       - FnCall: [simd_le, [a, b]]
+
+
+  - name: "vcle{neon_type[0].no}"
+    doc: "Floating-point compare less than or equal"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vcge.f16"']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fcmge]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t]
+      - [float16x8_t, uint16x8_t]
+    compose:
+      - FnCall: [simd_le, [a, b]]
+
+  - name: "vclez{neon_type[0].no}"
+    doc: "Floating-point compare less than or equal to zero"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vcle.f16"']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fcmle]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t, f16x4, 'f16x4::new(0.0, 0.0, 0.0, 0.0)']
+      - [float16x8_t, uint16x8_t, f16x8, 'f16x8::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)']
+    compose:
+      - Let: [b, "{type[2]}", "{type[3]}"]
+      - FnCall:
+          - simd_le
+          - - a
+            - FnCall: [transmute, [b]]
 
   - name: "vcge{neon_type[0].no}"
     doc: "Compare signed greater than or equal"
@@ -721,6 +895,31 @@ intrinsics:
             - link: "llvm.aarch64.neon.facgt.{neon_type[1]}.{neon_type[0]}"
               arch: aarch64,arm64ec
 
+
+  - name: "vcagt{neon_type[0].no}"
+    doc: "Floating-point absolute compare greater than"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vacgt.f16"']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [facgt]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t]
+      - [float16x8_t, uint16x8_t]
+    compose:
+      - LLVMLink:
+          name: "vcagt{neon_type[0].no}"
+          links:
+            - link: "llvm.arm.neon.vacgt.{neon_type[1]}.{neon_type[0]}"
+              arch: arm
+            - link: "llvm.aarch64.neon.facgt.{neon_type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
   - name: "vcage{neon_type[0].no}"
     doc: "Floating-point absolute compare greater than or equal"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -736,6 +935,30 @@ intrinsics:
     types:
       - [float32x2_t, uint32x2_t]
       - [float32x4_t, uint32x4_t]
+    compose:
+      - LLVMLink:
+          name: "vcage{neon_type[0].no}"
+          links:
+            - link: "llvm.arm.neon.vacge.{neon_type[1]}.{neon_type[0]}"
+              arch: arm
+            - link: "llvm.aarch64.neon.facge.{neon_type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vcage{neon_type[0].no}"
+    doc: "Floating-point absolute compare greater than or equal"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vacge.f16"']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [facge]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t]
+      - [float16x8_t, uint16x8_t]
     compose:
       - LLVMLink:
           name: "vcage{neon_type[0].no}"
@@ -763,6 +986,24 @@ intrinsics:
     compose:
       - FnCall: ["vcagt{neon_type[0].no}", [b, a]]
 
+  - name: "vcalt{neon_type[0].no}"
+    doc: "Floating-point absolute compare less than"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vacgt.f16"']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [facgt]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t]
+      - [float16x8_t, uint16x8_t]
+    compose:
+      - FnCall: ["vcagt{neon_type[0].no}", [b, a]]
+
   - name: "vcale{neon_type[0].no}"
     doc: "Floating-point absolute compare less than or equal"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -778,6 +1019,25 @@ intrinsics:
     types:
       - [float32x2_t, uint32x2_t]
       - [float32x4_t, uint32x4_t]
+    compose:
+      - FnCall: ["vcage{neon_type[0].no}", [b, a]]
+
+
+  - name: "vcale{neon_type[0].no}"
+    doc: "Floating-point absolute compare less than or equal"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vacge.f16"']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [facge]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t]
+      - [float16x8_t, uint16x8_t]
     compose:
       - FnCall: ["vcage{neon_type[0].no}", [b, a]]
 
@@ -804,6 +1064,24 @@ intrinsics:
     arguments: ["a: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [vcvt]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [scvtf]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [int16x4_t, float16x4_t]
+      - [int16x8_t, float16x8_t]
+    compose:
+      - FnCall: [simd_cast, [a]]
+
+  - name: "vcvt{neon_type[1].no}_{neon_type[0]}"
+    doc: "Fixed-point convert to floating-point"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
       - FnCall: [cfg_attr, [target_arch = "arm", {FnCall: [target_feature, ['enable = "v7"']]}]]
       - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [vcvt]]}]]
       - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [ucvtf]]}]]
@@ -814,6 +1092,24 @@ intrinsics:
     types:
       - [uint32x2_t, float32x2_t]
       - [uint32x4_t, float32x4_t]
+    compose:
+      - FnCall: [simd_cast, [a]]
+
+  - name: "vcvt{neon_type[1].no}_{neon_type[0]}"
+    doc: "Fixed-point convert to floating-point"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [vcvt]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [ucvtf]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint16x4_t, float16x4_t]
+      - [uint16x8_t, float16x8_t]
     compose:
       - FnCall: [simd_cast, [a]]
 
@@ -850,6 +1146,128 @@ intrinsics:
     arguments: ["a: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
+      - FnCall: [cfg, [{FnCall: [not, ['target_arch = "arm"']]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ucvtf, 'N = 2']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint32x2_t, float32x2_t]
+      - [uint32x4_t, float32x4_t]
+    compose:
+      - FnCall: [static_assert!, ['N >= 1 && N <= 32']]
+      - LLVMLink:
+          name: "vcvt{neon_type[1].N}_{neon_type[0]}"
+          arguments:
+            - "a: {neon_type[0]}"
+            - "n: i32"
+          links:
+            - link: "llvm.aarch64.neon.vcvtfxu2fp.{neon_type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+      - FnCall: ["_vcvt{neon_type[1].N}_{neon_type[0]}", ["a.as_signed()", N]]
+
+  - name: "vcvt{neon_type[1].N}_{neon_type[0]}"
+    doc: "Fixed-point convert to floating-point"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vcvt"', 'N = 1']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ucvtf, 'N = 1']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint16x4_t, float16x4_t]
+      - [uint16x8_t, float16x8_t]
+    compose:
+      - FnCall: [static_assert!, ['N >= 1 && N <= 16']]
+      - LLVMLink:
+          name: "vcvt{neon_type[1].N}_{neon_type[0]}"
+          arguments:
+            - "a: {neon_type[0]}"
+            - "n: i32"
+          links:
+            - link: "llvm.arm.neon.vcvtfxu2fp.{neon_type[1]}.{neon_type[0]}"
+              arch: arm
+            - link: "llvm.aarch64.neon.vcvtfxu2fp.{neon_type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+      - FnCall: ["_vcvt{neon_type[1].N}_{neon_type[0]}", ["a.as_signed()", N]]
+
+
+  - name: "vcvt{neon_type[1].N}_{neon_type[0]}"
+    doc: "Floating-point convert to signed fixed-point"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vcvt"', 'N = 1']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcvtzs, 'N = 1']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, int16x4_t]
+      - [float16x8_t, int16x8_t]
+    compose:
+      - FnCall: [static_assert!, ['N >= 1 && N <= 16']]
+      - LLVMLink:
+          name: "vcvt{neon_type[1].N}_{neon_type[0]}"
+          arguments:
+            - "a: {neon_type[0]}"
+            - "n: i32"
+          links:
+            - link: "llvm.arm.neon.vcvtfp2fxs.{neon_type[1]}.{neon_type[0]}"
+              arch: arm
+            - link: "llvm.aarch64.neon.vcvtfp2fxs.{neon_type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+      - FnCall: ["_vcvt{neon_type[1].N}_{neon_type[0]}", [a, N]]
+
+
+  - name: "vcvt{neon_type[1].N}_{neon_type[0]}"
+    doc: "Fixed-point convert to unsigned fixed-point, rounding toward zero"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vcvt"', 'N = 1']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcvtzu, 'N = 1']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t]
+      - [float16x8_t, uint16x8_t]
+    compose:
+      - FnCall: [static_assert!, ['N >= 1 && N <= 16']]
+      - LLVMLink:
+          name: "vcvt{neon_type[1].N}_{neon_type[0]}"
+          arguments:
+            - "a: {neon_type[0]}"
+            - "n: i32"
+          links:
+            - link: "llvm.arm.neon.vcvtfp2fxu.{neon_type[1]}.{neon_type[0]}"
+              arch: arm
+            - link: "llvm.aarch64.neon.vcvtfp2fxu.{neon_type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+      - FnCall: ["_vcvt{neon_type[1].N}_{neon_type[0]}", ["a", N]]
+
+  - name: "vcvt{neon_type[1].N}_{neon_type[0]}"
+    doc: "Fixed-point convert to floating-point"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
       - FnCall: [cfg, ['target_arch = "arm"']]
       - FnCall: [target_feature, ['enable = "neon,v7"']]
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vcvt, 'N = 2']]}]]
@@ -871,6 +1289,38 @@ intrinsics:
           links:
             - link: "llvm.arm.neon.vcvtfxs2fp.{neon_type[1]}.{neon_type[0]}"
               arch: arm
+      - FnCall: ["_vcvt{neon_type[1].N}_{neon_type[0]}", [a, N]]
+
+
+  - name: "vcvt{neon_type[1].N}_{neon_type[0]}"
+    doc: "Fixed-point convert to floating-point"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vcvt"', 'N = 1']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [scvtf, 'N = 1']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [int16x4_t, float16x4_t]
+      - [int16x8_t, float16x8_t]
+    compose:
+      - FnCall: [static_assert!, ['N >= 1 && N <= 16']]
+      - LLVMLink:
+          name: "vcvt{neon_type[1].N}_{neon_type[0]}"
+          arguments:
+            - "a: {neon_type[0]}"
+            - "n: i32"
+          links:
+            - link: "llvm.arm.neon.vcvtfxs2fp.{neon_type[1]}.{neon_type[0]}"
+              arch: arm
+            - link: "llvm.aarch64.neon.vcvtfxs2fp.{neon_type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
       - FnCall: ["_vcvt{neon_type[1].N}_{neon_type[0]}", [a, N]]
 
   - name: "vcvt{neon_type[1].N}_{neon_type[0]}"
@@ -899,33 +1349,6 @@ intrinsics:
             - link: "llvm.aarch64.neon.vcvtfxs2fp.{neon_type[1]}.{neon_type[0]}"
               arch: aarch64,arm64ec
       - FnCall: ["_vcvt{neon_type[1].N}_{neon_type[0]}", [a, N]]
-
-  - name: "vcvt{neon_type[1].N}_{neon_type[0]}"
-    doc: "Fixed-point convert to floating-point"
-    arguments: ["a: {neon_type[0]}"]
-    return_type: "{neon_type[1]}"
-    attr:
-      - FnCall: [cfg, [{FnCall: [not, ['target_arch = "arm"']]}]]
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ucvtf, 'N = 2']]}]]
-      - FnCall: [rustc_legacy_const_generics, ['1']]
-      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
-    static_defs: ['const N: i32']
-    safety:
-      unsafe: [neon]
-    types:
-      - [uint32x2_t, float32x2_t]
-      - [uint32x4_t, float32x4_t]
-    compose:
-      - FnCall: [static_assert!, ['N >= 1 && N <= 32']]
-      - LLVMLink:
-          name: "vcvt{neon_type[1].N}_{neon_type[0]}"
-          arguments:
-            - "a: {neon_type[0]}"
-            - "n: i32"
-          links:
-            - link: "llvm.aarch64.neon.vcvtfxu2fp.{neon_type[1]}.{neon_type[0]}"
-              arch: aarch64,arm64ec
-      - FnCall: ["_vcvt{neon_type[1].N}_{neon_type[0]}", ["a.as_signed()", N]]
 
   - name: "vcvt{type[2]}"
     doc: "Floating-point convert to fixed-point, rounding toward zero"
@@ -1130,6 +1553,68 @@ intrinsics:
     compose:
       - FnCall: [static_assert_uimm_bits!, [N, "{type[3]}"]]
       - FnCall: [simd_shuffle!, [a, a, "{type[4]}"]]
+
+
+  - name: "vdup{type[0]}"
+    doc: "Set all vector lanes to the same value"
+    arguments: ["a: {neon_type[1]}"]
+    return_type: "{neon_type[2]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vdup.16"', 'N = 4']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [dup, 'N = 4']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [q_laneq_f16, float16x8_t, float16x8_t, '3', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
+      - [_laneq_f16, float16x8_t, float16x4_t, '3', '[N as u32, N as u32, N as u32, N as u32]']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [N, "{type[3]}"]]
+      - FnCall: [simd_shuffle!, [a, a, "{type[4]}"]]
+
+  - name: "vdup{type[3]}{neon_type[0]}"
+    doc: "Create a new vector with all lanes set to a value"
+    arguments: ["a: {type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vdup.16"']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [dup]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, f16, 'float16x4', '_n_']
+      - [float16x8_t, f16, 'float16x8', 'q_n_']
+    compose:
+      - "{type[2]}_t::splat(a)"
+
+  - name: "vdup{type[0]}"
+    doc: "Set all vector lanes to the same value"
+    arguments: ["a: {neon_type[1]}"]
+    return_type: "{neon_type[2]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vdup.16"', 'N = 2']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [dup, 'N = 2']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [_lane_f16, float16x4_t, float16x4_t, '2', '[N as u32, N as u32, N as u32, N as u32]']
+      - [q_lane_f16, float16x4_t, float16x8_t, '2', '[N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32]']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [N, "{type[3]}"]]
+      - FnCall: [simd_shuffle!, [a, a, "{type[4]}"]]
+
 
   - name: "vdup{type[0]}"
     doc: "Set all vector lanes to the same value"
@@ -1338,6 +1823,47 @@ intrinsics:
     compose:
       - Identifier: ["{type[1]}", Symbol]
       - Identifier: ["{type[2]}", Symbol]
+
+
+  - name: "vext{neon_type[0].no}"
+    doc: "Extract vector from pair of vectors"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vext.8"', 'N = 3']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [ext, 'N = 3']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, ' static_assert_uimm_bits!(N, 2); match N & 0b11 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6]), _ => unreachable_unchecked(), }']
+    compose:
+      - Identifier: ["{type[1]}", Symbol]
+
+  - name: "vext{neon_type[0].no}"
+    doc: "Extract vector from pair of vectors"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vext.8"', 'N = 7']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [ext, 'N = 7']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x8_t, ' static_assert_uimm_bits!(N, 3); match N & 0b111 { 0 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]), 2 => simd_shuffle!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]), 3 => simd_shuffle!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]), 4 => simd_shuffle!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]), 5 => simd_shuffle!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]), 6 => simd_shuffle!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]), 7 => simd_shuffle!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]), _ => unreachable_unchecked(), }']
+    compose:
+      - Identifier: ["{type[1]}", Symbol]
+
+
 
   - name: "vext{neon_type[0].no}"
     doc: "Extract vector from pair of vectors"
@@ -1789,6 +2315,24 @@ intrinsics:
     compose:
       - FnCall: [simd_neg, [a]]
 
+  - name: "vneg{neon_type[0].no}"
+    doc: Negate
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vneg.{type[1]}"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fneg]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, 'f16']
+      - [float16x8_t, 'f16']
+    compose:
+      - FnCall: [simd_neg, [a]]
+
   - name: "vqneg{neon_type[0].no}"
     doc: Signed saturating negate
     arguments: ["a: {neon_type[0]}"]
@@ -2089,6 +2633,30 @@ intrinsics:
             - link: "llvm.arm.neon.vrintn.{neon_type}"
               arch: arm
 
+  - name: "vrndn{neon_type.no}"
+    doc: "Floating-point round to integral, to nearest with ties to even"
+    arguments: ["a: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - FnCall: [cfg_attr, ['target_arch = "arm"', {FnCall: [target_feature, ['enable = "fp-armv8,v8"']]}]]
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vrintn]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [frintn]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "llvm.frinn.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.frintn.{neon_type}"
+              arch: aarch64,arm64ec
+            - link: "llvm.arm.neon.vrintn.{neon_type}"
+              arch: arm
+
   - name: "vqadd{neon_type.no}"
     doc: Saturating add
     arguments: ["a: {neon_type}", "b: {neon_type}"]
@@ -2332,6 +2900,76 @@ intrinsics:
                 - - FnCall:
                       - transmute
                       - - a
+
+  - name: "vld1{neon_type[1].no}"
+    doc: "Load multiple single-element structures to one, two, three, or four registers"
+    arguments: ["a: {type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld1]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld1]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x2_t]
+      - ["*const f16", float16x8x2_t]
+      - ["*const f16", float16x4x3_t]
+      - ["*const f16", float16x8x3_t]
+      - ["*const f16", float16x4x4_t]
+      - ["*const f16", float16x8x4_t]
+    compose:
+      - LLVMLink:
+          name: "vld1x{neon_type[1].tuple}.{neon_type[1]}"
+          links:
+            - link: "llvm.aarch64.neon.ld1x{neon_type[1].tuple}.v{neon_type[1].lane}f{neon_type[1].base}.p0f{neon_type[1].base}"
+              arch: aarch64,arm64ec
+            - link: "llvm.arm.neon.vld1x{neon_type[1].tuple}.v{neon_type[1].lane}f{neon_type[1].base}.p0f{neon_type[1].base}"
+              arch: arm
+
+  - name: "vld1{type[2]}_{neon_type[1]}"
+    doc: "Load one single-element structure to one lane of one register"
+    arguments: ["ptr: {type[0]}", "src: {neon_type[1]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v7
+
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld1, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld1, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4_t, '_lane', '2']
+      - ["*const f16", float16x8_t, 'q_lane', '3']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
+      - FnCall: [simd_insert!, [src, "LANE as u32", "*ptr"]]
+
+  - name: "vld1{type[2]}_{neon_type[1]}"
+    doc: "Load one single-element structure and replicate to all lanes of one register"
+    arguments: ["ptr: {type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ["vld1"]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld1r]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4_t, '_dup', 'f16x4', "[0, 0, 0, 0]"]
+      - ["*const f16", float16x8_t, 'q_dup', 'f16x8', "[0, 0, 0, 0, 0, 0, 0, 0]"]
+    compose:
+      - Let: [x, "{neon_type[1]}", "vld1{neon_type[1].lane_nox}::<0>(ptr, transmute({type[3]}::splat(0.)))"]
+      - FnCall: [simd_shuffle!, [x, x, "{type[4]}"]]
+
 
   - name: "vld2{neon_type[1].nox}"
     doc: Load multiple 2-element structures to two registers
@@ -2904,6 +3542,399 @@ intrinsics:
       - FnCall:
           - "_vld2{neon_type[1].dup_nox}"
           - - "a as _"
+
+  - name: "vld2{neon_type[1].nox}"
+    doc: Load single 2-element structure and replicate to all lanes of two registers
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-v7
+      - *target-is-arm
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld2]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x2_t, f16]
+      - ["*const f16", float16x8x2_t, f16]
+    compose:
+      - LLVMLink:
+          name: "vld2.{neon_type[1]}"
+          arguments:
+            - "ptr: {type[0]}"
+            - "size: i32"
+          links:
+            - link: "llvm.arm.neon.vld2.v{neon_type[1].lane}{type[2]}.p0{type[2]}"
+              arch: arm
+      - FnCall:
+          - "_vld2{neon_type[1].nox}"
+          - - "a as _"
+            - "2"
+
+  - name: "vld2{neon_type[1].nox}"
+    doc: Load single 2-element structure and replicate to all lanes of two registers
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *target-not-arm
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld2]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x2_t, f16]
+      - ["*const f16", float16x8x2_t, f16]
+    compose:
+      - LLVMLink:
+          name: "vld2.{neon_type[1]}"
+          arguments:
+            - "ptr: {type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.ld2.v{neon_type[1].lane}{type[2]}.p0{type[2]}"
+              arch: aarch64,arm64ec
+      - FnCall:
+          - "_vld2{neon_type[1].nox}"
+          - - "a as _"
+
+  - name: "vld2{neon_type[1].dup_nox}"
+    doc: Load single 2-element structure and replicate to all lanes of two registers
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-v7
+      - *target-is-arm
+      - *neon-fp16
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld2]]}]]
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x2_t, f16]
+      - ["*const f16", float16x8x2_t, f16]
+    compose:
+      - LLVMLink:
+          name: "vld2dup.{neon_type[1]}"
+          arguments:
+            - "ptr: {type[0]}"
+            - "size: i32"
+          links:
+            - link: "llvm.arm.neon.vld2dup.v{neon_type[1].lane}{type[2]}.p0{type[2]}"
+              arch: arm
+      - FnCall:
+          - "_vld2{neon_type[1].dup_nox}"
+          - - "a as _"
+            - "2"
+
+
+  - name: "vld2{neon_type[1].dup_nox}"
+    doc: Load single 2-element structure and replicate to all lanes of two registers
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *target-not-arm
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld2r]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x2_t, f16]
+      - ["*const f16", float16x8x2_t, f16]
+    compose:
+      - LLVMLink:
+          name: "vld2dup.{neon_type[1]}"
+          arguments:
+            - "ptr: {type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.ld2r.v{neon_type[1].lane}{type[2]}.p0{type[2]}"
+              arch: aarch64,arm64ec
+      - FnCall:
+          - "_vld2{neon_type[1].dup_nox}"
+          - - "a as _"
+
+
+  - name: "vld2{neon_type[1].lane_nox}"
+    doc: Load multiple 2-element structures to two registers
+    arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *enable-v7
+      - *target-is-arm
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['vld2', 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs:
+      - "const LANE: i32"
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x2_t, f16, float16x4_t, "2"]
+      - ["*const f16", float16x8x2_t, f16, float16x8_t, "3"]
+    compose:
+      - FnCall:
+          - "static_assert_uimm_bits!"
+          - - LANE
+            - "{type[4]}"
+      - LLVMLink:
+          name: "vld2.{neon_type[1]}"
+          arguments:
+            - "ptr: *const f16"
+            - "a: {neon_type[3]}"
+            - "b: {neon_type[3]}"
+            - "n: i32"
+            - "size: i32"
+          links:
+            - link: "llvm.arm.neon.vld2lane.v{neon_type[1].lane}{type[2]}.p0"
+              arch: arm
+      - FnCall:
+          - "_vld2{neon_type[1].lane_nox}"
+          - - "a as _"
+            - "b.0"
+            - "b.1"
+            - "LANE"
+            - "2"
+
+
+  - name: "vld2{neon_type[1].lane_nox}"
+    doc: Load multiple 2-element structures to two registers
+    arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *target-not-arm
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld2, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs:
+      - "const LANE: i32"
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x2_t, f16, float16x4_t, "2"]
+      - ["*const f16", float16x8x2_t, f16, float16x8_t, "3"]
+    compose:
+      - FnCall:
+          - "static_assert_uimm_bits!"
+          - - LANE
+            - "{type[4]}"
+      - LLVMLink:
+          name: "vld2.{neon_type[1]}"
+          arguments:
+            - "a: {neon_type[3]}"
+            - "b: {neon_type[3]}"
+            - "n: i64"
+            - "ptr: *const f16"
+          links:
+            - link: "llvm.aarch64.neon.ld2lane.v{neon_type[1].lane}{type[2]}.p0"
+              arch: aarch64,arm64ec
+      - FnCall:
+          - "_vld2{neon_type[1].lane_nox}"
+          - - "b.0"
+            - "b.1"
+            - "LANE as i64"
+            - "a as _"
+
+
+  - name: "vld3{neon_type[1].nox}"
+    doc: Load single 3-element structure and replicate to all lanes of two registers
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-v7
+      - *target-is-arm
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld3]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x3_t, f16]
+      - ["*const f16", float16x8x3_t, f16]
+    compose:
+      - LLVMLink:
+          name: "vld3.{neon_type[1]}"
+          arguments:
+            - "ptr: {type[0]}"
+            - "size: i32"
+          links:
+            - link: "llvm.arm.neon.vld3.v{neon_type[1].lane}{type[2]}.p0{type[2]}"
+              arch: arm
+      - FnCall:
+          - "_vld3{neon_type[1].nox}"
+          - - "a as _"
+            - "2"
+
+  - name: "vld3{neon_type[1].nox}"
+    doc: Load single 3-element structure and replicate to all lanes of two registers
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *target-not-arm
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld3]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x3_t, f16]
+      - ["*const f16", float16x8x3_t, f16]
+    compose:
+      - LLVMLink:
+          name: "vld3.{neon_type[1]}"
+          arguments:
+            - "ptr: {type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.ld3.v{neon_type[1].lane}{type[2]}.p0{type[2]}"
+              arch: aarch64,arm64ec
+      - FnCall:
+          - "_vld3{neon_type[1].nox}"
+          - - "a as _"
+
+  - name: "vld3{neon_type[1].dup_nox}"
+    doc: Load single 3-element structure and replicate to all lanes of two registers
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-v7
+      - *target-is-arm
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld3]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x3_t, f16]
+      - ["*const f16", float16x8x3_t, f16]
+    compose:
+      - LLVMLink:
+          name: "vld3dup.{neon_type[1]}"
+          arguments:
+            - "ptr: {type[0]}"
+            - "size: i32"
+          links:
+            - link: "llvm.arm.neon.vld3dup.v{neon_type[1].lane}{type[2]}.p0{type[2]}"
+              arch: arm
+      - FnCall:
+          - "_vld3{neon_type[1].dup_nox}"
+          - - "a as _"
+            - "2"
+
+
+  - name: "vld3{neon_type[1].dup_nox}"
+    doc: Load single 3-element structure and replicate to all lanes of two registers
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *target-not-arm
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld3r]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x3_t, f16]
+      - ["*const f16", float16x8x3_t, f16]
+    compose:
+      - LLVMLink:
+          name: "vld3dup.{neon_type[1]}"
+          arguments:
+            - "ptr: {type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.ld3r.v{neon_type[1].lane}{type[2]}.p0{type[2]}"
+              arch: aarch64,arm64ec
+      - FnCall:
+          - "_vld3{neon_type[1].dup_nox}"
+          - - "a as _"
+
+
+  - name: "vld3{neon_type[1].lane_nox}"
+    doc: Load multiple 3-element structures to two registers
+    arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *enable-v7
+      - *target-is-arm
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['vld3', 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs:
+      - "const LANE: i32"
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x3_t, f16, float16x4_t, "2"]
+      - ["*const f16", float16x8x3_t, f16, float16x8_t, "3"]
+    compose:
+      - FnCall:
+          - "static_assert_uimm_bits!"
+          - - LANE
+            - "{type[4]}"
+      - LLVMLink:
+          name: "vld3.{neon_type[1]}"
+          arguments:
+            - "ptr: *const f16"
+            - "a: {neon_type[3]}"
+            - "b: {neon_type[3]}"
+            - "c: {neon_type[3]}"
+            - "n: i32"
+            - "size: i32"
+          links:
+            - link: "llvm.arm.neon.vld3lane.v{neon_type[1].lane}{type[2]}.p0"
+              arch: arm
+      - FnCall:
+          - "_vld3{neon_type[1].lane_nox}"
+          - - "a as _"
+            - "b.0"
+            - "b.1"
+            - "b.2"
+            - "LANE"
+            - "2"
+
+
+  - name: "vld3{neon_type[1].lane_nox}"
+    doc: Load multiple 3-element structures to two registers
+    arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *target-not-arm
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld3, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs:
+      - "const LANE: i32"
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x3_t, f16, float16x4_t, "2"]
+      - ["*const f16", float16x8x3_t, f16, float16x8_t, "3"]
+    compose:
+      - FnCall:
+          - "static_assert_uimm_bits!"
+          - - LANE
+            - "{type[4]}"
+      - LLVMLink:
+          name: "vld3.{neon_type[1]}"
+          arguments:
+            - "a: {neon_type[3]}"
+            - "b: {neon_type[3]}"
+            - "c: {neon_type[3]}"
+            - "n: i64"
+            - "ptr: *const f16"
+          links:
+            - link: "llvm.aarch64.neon.ld3lane.v{neon_type[1].lane}{type[2]}.p0"
+              arch: aarch64,arm64ec
+      - FnCall:
+          - "_vld3{neon_type[1].lane_nox}"
+          - - "b.0"
+            - "b.1"
+            - "b.2"
+            - "LANE as i64"
+            - "a as _"
 
   - name: "vld3{neon_type[1].lane_nox}"
     doc: "Load multiple 3-element structures to two registers"
@@ -3841,6 +4872,31 @@ intrinsics:
           - FnCall: [simd_extract!, [b, 'LANE as u32']]
       - Identifier: [';', Symbol]
 
+
+  - name: "vst1{neon_type[1].lane_nox}"
+    doc: "Store multiple single-element structures from one, two, three, or four registers"
+    arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
+    static_defs: ["const LANE: i32"]
+    safety:
+      unsafe: [neon]
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    types:
+      - ['*mut f16', float16x4_t, '2']
+      - ['*mut f16', float16x8_t, '3']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, "{type[2]}"]]
+      - Assign:
+          - "*a"
+          - FnCall: [simd_extract!, [b, 'LANE as u32']]
+      - Identifier: [';', Symbol]
+
+
   - name: 'vst1{neon_type[1].no}'
     doc: "Store multiple single-element structures from one, two, three, or four registers"
     arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
@@ -4057,6 +5113,34 @@ intrinsics:
               arch: arm
       - FnCall: ['_vst1{neon_type[1].no}', ['a', 'b.0', 'b.1', 'b.2', 'b.3']]
 
+  - name: 'vst1{neon_type[1].no}'
+    doc: "Store multiple single-element structures to one, two, three, or four registers"
+    arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
+    safety:
+      unsafe: [neon]
+    attr:
+      - *target-is-arm
+      - *neon-v7
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [vst1]
+    types:
+      - [f16, float16x4x4_t, float16x4_t]
+      - [f16, float16x8x4_t, float16x8_t]
+    compose:
+      - LLVMLink:
+          name: 'st1x4.{neon_type[1]}'
+          arguments:
+            - 'ptr: *mut {type[0]}'
+            - 'a: {type[2]}'
+            - 'b: {type[2]}'
+            - 'c: {type[2]}'
+            - 'd: {type[2]}'
+          links:
+            - link: 'llvm.arm.neon.vst1x4.p0{type[0]}.v{neon_type[1].lane}{type[0]}'
+              arch: arm
+      - FnCall: ['_vst1{neon_type[1].no}', ['a', 'b.0', 'b.1', 'b.2', 'b.3']]
+
   - name: "vst2{neon_type[1].nox}"
     doc: "Store multiple 2-element structures from two registers"
     arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
@@ -4174,6 +5258,33 @@ intrinsics:
               arch: aarch64,arm64ec
       - FnCall: ['_vst2{neon_type[1].nox}', ['b.0', 'b.1', 'a as _']]
 
+
+  - name: "vst2{neon_type[1].nox}"
+    doc: "Store multiple 2-element structures from two registers"
+    arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
+    attr:
+      - *target-not-arm
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [st2]
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, float16x4x2_t, float16x4_t]
+      - [f16, float16x8x2_t, float16x8_t]
+    compose:
+      - LLVMLink:
+          name: 'st2.{neon_type[1]}'
+          arguments:
+            - 'a: {type[2]}'
+            - 'b: {type[2]}'
+            - 'ptr: *mut i8'
+          links:
+            - link: 'llvm.aarch64.neon.st2.v{neon_type[1].lane}{type[0]}.p0i8'
+              arch: aarch64,arm64ec
+      - FnCall: ['_vst2{neon_type[1].nox}', ['b.0', 'b.1', 'a as _']]
+
+
   - name: "vst2{neon_type[1].nox}"
     doc: "Store multiple 2-element structures from two registers"
     arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
@@ -4234,6 +5345,37 @@ intrinsics:
             - link: 'llvm.aarch64.neon.st2lane.v{neon_type[1].lane}{type[0]}.p0i8'
               arch: aarch64,arm64ec
       - FnCall: ['_vst2{neon_type[1].lane_nox}', ['b.0', 'b.1', 'LANE as i64', 'a as _']]
+
+
+  - name: "vst2{neon_type[1].lane_nox}"
+    doc: "Store multiple 2-element structures from two registers"
+    arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
+    attr:
+      - *target-not-arm
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st2, 'LANE = 0']]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, float16x4x2_t, '2', float16x4_t]
+      - [f16, float16x8x2_t, '3', float16x8_t]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, "{type[2]}"]]
+      - LLVMLink:
+          name: 'vst2.{neon_type[1].lane_nox}'
+          arguments:
+            - 'a: {type[3]}'
+            - 'b: {type[3]}'
+            - 'n: i64'
+            - 'ptr: *mut i8'
+          links:
+            - link: 'llvm.aarch64.neon.st2lane.v{neon_type[1].lane}{type[0]}.p0i8'
+              arch: aarch64,arm64ec
+      - FnCall: ['_vst2{neon_type[1].lane_nox}', ['b.0', 'b.1', 'LANE as i64', 'a as _']]
+
 
   - name: "vst2{neon_type[1].lane_nox}"
     doc: "Store multiple 2-element structures from two registers"
@@ -4296,6 +5438,35 @@ intrinsics:
               arch: arm
       - FnCall: ['_vst2{neon_type[1].nox}', ['a as _', 'b.0', 'b.1', "{type[3]}"]]
 
+
+  - name: "vst2{neon_type[1].nox}"
+    doc: "Store multiple 2-element structures from two registers"
+    arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
+    attr:
+      - *target-is-arm
+      - *neon-v7
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [vst2]
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, float16x4x2_t, float16x4_t, '2']
+      - [f16, float16x8x2_t, float16x8_t, '2']
+    compose:
+      - LLVMLink:
+          name: 'vst2.{neon_type[1]}'
+          arguments:
+            - 'ptr: *mut i8'
+            - 'a: {type[2]}'
+            - 'b: {type[2]}'
+            - 'size: i32'
+          links:
+            - link: 'llvm.arm.neon.vst2.p0i8.v{neon_type[1].lane}{type[0]}'
+              arch: arm
+      - FnCall: ['_vst2{neon_type[1].nox}', ['a as _', 'b.0', 'b.1', "{type[3]}"]]
+
+
   - name: "vst2{neon_type[1].lane_nox}"
     doc: "Store multiple 2-element structures from two registers"
     arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
@@ -4330,6 +5501,39 @@ intrinsics:
             - link: 'llvm.arm.neon.vst2lane.v{neon_type[1].lane}{type[0]}.p0'
               arch: arm
       - FnCall: ['_vst2{neon_type[1].lane_nox}', ['a as _', 'b.0', 'b.1', 'LANE', "{type[4]}"]]
+
+
+  - name: "vst2{neon_type[1].lane_nox}"
+    doc: "Store multiple 2-element structures from two registers"
+    arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
+    attr:
+      - *target-is-arm
+      - *neon-v7
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vst2, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, float16x4x2_t, '2', float16x4_t, '2']
+      - [f16, float16x8x2_t, '1', float16x8_t, '2']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, "{type[2]}"]]
+      - LLVMLink:
+          name: 'vst2lane.{neon_type[1]}'
+          arguments:
+            - 'ptr: *mut i8'
+            - 'a: {type[3]}'
+            - 'b: {type[3]}'
+            - 'n: i32'
+            - 'size: i32'
+          links:
+            - link: 'llvm.arm.neon.vst2lane.p0i8.v{neon_type[1].lane}{type[0]}'
+              arch: arm
+      - FnCall: ['_vst2{neon_type[1].lane_nox}', ['a as _', 'b.0', 'b.1', 'LANE', "{type[4]}"]]
+
 
   - name: "vst3{neon_type[1].nox}"
     doc: "Store multiple 3-element structures from three registers"
@@ -4510,6 +5714,36 @@ intrinsics:
               arch: arm
       - FnCall: ['_vst3{neon_type[1].nox}', ['a as _', 'b.0', 'b.1', 'b.2', "{type[3]}"]]
 
+
+  - name: "vst3{neon_type[1].nox}"
+    doc: "Store multiple 3-element structures from three registers"
+    arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
+    attr:
+      - *target-is-arm
+      - *neon-v7
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [vst3]
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, float16x4x3_t, float16x4_t, '2']
+      - [f16, float16x8x3_t, float16x8_t, '2']
+    compose:
+      - LLVMLink:
+          name: 'vst3.{neon_type[1]}'
+          arguments:
+            - 'ptr: *mut i8'
+            - 'a: {type[2]}'
+            - 'b: {type[2]}'
+            - 'c: {type[2]}'
+            - 'size: i32'
+          links:
+            - link: 'llvm.arm.neon.vst3.p0i8.v{neon_type[1].lane}{type[0]}'
+              arch: arm
+      - FnCall: ['_vst3{neon_type[1].nox}', ['a as _', 'b.0', 'b.1', 'b.2', "{type[3]}"]]
+
+
   - name: "vst3{neon_type[1].lane_nox}"
     doc: "Store multiple 3-element structures from three registers"
     arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
@@ -4546,6 +5780,40 @@ intrinsics:
               arch: arm
       - FnCall: ['_vst3{neon_type[1].lane_nox}', ['a as _', 'b.0', 'b.1', 'b.2', 'LANE', "{type[4]}"]]
 
+
+  - name: "vst3{neon_type[1].lane_nox}"
+    doc: "Store multiple 3-element structures from three registers"
+    arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
+    attr:
+      - *target-is-arm
+      - *neon-v7
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vst3, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, float16x4x3_t, '2', float16x4_t, '4']
+      - [f16, float16x8x3_t, '3', float16x8_t, '4']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, "{type[2]}"]]
+      - LLVMLink:
+          name: 'vst3lane.{neon_type[1]}'
+          arguments:
+            - 'ptr: *mut i8'
+            - 'a: {type[3]}'
+            - 'b: {type[3]}'
+            - 'c: {type[3]}'
+            - 'n: i32'
+            - 'size: i32'
+          links:
+            - link: 'llvm.arm.neon.vst3lane.p0i8.v{neon_type[1].lane}{type[0]}'
+              arch: arm
+      - FnCall: ['_vst3{neon_type[1].lane_nox}', ['a as _', 'b.0', 'b.1', 'b.2', 'LANE', "{type[4]}"]]
+
+
   - name: "vst3{neon_type[1].nox}"
     doc: "Store multiple 3-element structures from three registers"
     arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
@@ -4574,6 +5842,34 @@ intrinsics:
             - link: 'llvm.aarch64.neon.st3.v{neon_type[1].lane}{type[0]}.p0i8'
               arch: aarch64,arm64ec
       - FnCall: ['_vst3{neon_type[1].nox}', ['b.0', 'b.1', 'b.2', 'a as _']]
+
+
+  - name: "vst3{neon_type[1].nox}"
+    doc: "Store multiple 3-element structures from three registers"
+    arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
+    attr:
+      - *target-not-arm
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [st3]
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, float16x4x3_t, float16x4_t]
+      - [f16, float16x8x3_t, float16x8_t]
+    compose:
+      - LLVMLink:
+          name: 'vst3.{neon_type[1]}'
+          arguments:
+            - 'a: {type[2]}'
+            - 'b: {type[2]}'
+            - 'c: {type[2]}'
+            - 'ptr: *mut i8'
+          links:
+            - link: 'llvm.aarch64.neon.st3.v{neon_type[1].lane}{type[0]}.p0i8'
+              arch: aarch64,arm64ec
+      - FnCall: ['_vst3{neon_type[1].nox}', ['b.0', 'b.1', 'b.2', 'a as _']]
+
 
   - name: "vst3{neon_type[1].lane_nox}"
     doc: "Store multiple 3-element structures from three registers"
@@ -4608,6 +5904,38 @@ intrinsics:
             - link: 'llvm.aarch64.neon.st3lane.v{neon_type[1].lane}{type[0]}.p0i8'
               arch: aarch64,arm64ec
       - FnCall: ['_vst3{neon_type[1].lane_nox}', ['b.0', 'b.1', 'b.2', 'LANE as i64', 'a as _']]
+
+
+  - name: "vst3{neon_type[1].lane_nox}"
+    doc: "Store multiple 3-element structures from three registers"
+    arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
+    attr:
+      - *target-not-arm
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st3, 'LANE = 0']]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, float16x4x3_t, '2', float16x4_t]
+      - [f16, float16x8x3_t, '3', float16x8_t]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, "{type[2]}"]]
+      - LLVMLink:
+          name: 'vst3.{neon_type[1].lane_nox}'
+          arguments:
+            - 'a: {type[3]}'
+            - 'b: {type[3]}'
+            - 'c: {type[3]}'
+            - 'n: i64'
+            - 'ptr: *mut i8'
+          links:
+            - link: 'llvm.aarch64.neon.st3lane.v{neon_type[1].lane}{type[0]}.p0i8'
+              arch: aarch64,arm64ec
+      - FnCall: ['_vst3{neon_type[1].lane_nox}', ['b.0', 'b.1', 'b.2', 'LANE as i64', 'a as _']]
+
 
   - name: "vst4{neon_type[1].nox}"
     doc: "Store multiple 4-element structures from four registers"
@@ -4791,6 +6119,37 @@ intrinsics:
               arch: arm
       - FnCall: ['_vst4{neon_type[1].nox}', ['a as _', 'b.0', 'b.1', 'b.2', 'b.3', "{type[3]}"]]
 
+
+  - name: "vst4{neon_type[1].nox}"
+    doc: "Store multiple 4-element structures from four registers"
+    arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
+    attr:
+      - *target-is-arm
+      - *neon-v7
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [vst4]
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, float16x4x4_t, float16x4_t, '2']
+      - [f16, float16x8x4_t, float16x8_t, '2']
+    compose:
+      - LLVMLink:
+          name: 'vst4.{neon_type[1]}'
+          arguments:
+            - 'ptr: *mut i8'
+            - 'a: {type[2]}'
+            - 'b: {type[2]}'
+            - 'c: {type[2]}'
+            - 'd: {type[2]}'
+            - 'size: i32'
+          links:
+            - link: 'llvm.arm.neon.vst4.p0i8.v{neon_type[1].lane}{type[0]}'
+              arch: arm
+      - FnCall: ['_vst4{neon_type[1].nox}', ['a as _', 'b.0', 'b.1', 'b.2', 'b.3', "{type[3]}"]]
+
+
   - name: "vst4{neon_type[1].lane_nox}"
     doc: "Store multiple 4-element structures from four registers"
     arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
@@ -4828,6 +6187,40 @@ intrinsics:
               arch: arm
       - FnCall: ['_vst4{neon_type[1].lane_nox}', ['a as _', 'b.0', 'b.1', 'b.2', 'b.3', 'LANE', "{type[4]}"]]
 
+  - name: "vst4{neon_type[1].lane_nox}"
+    doc: "Store multiple 4-element structures from four registers"
+    arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
+    attr:
+      - *target-is-arm
+      - *neon-v7
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vst4, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, float16x4x4_t, '2', float16x4_t, '2']
+      - [f16, float16x8x4_t, '3', float16x8_t, '2']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, "{type[2]}"]]
+      - LLVMLink:
+          name: 'vst4lane.{neon_type[1]}'
+          arguments:
+            - 'ptr: *mut i8'
+            - 'a: {type[3]}'
+            - 'b: {type[3]}'
+            - 'c: {type[3]}'
+            - 'd: {type[3]}'
+            - 'n: i32'
+            - 'size: i32'
+          links:
+            - link: 'llvm.arm.neon.vst4lane.p0i8.v{neon_type[1].lane}{type[0]}'
+              arch: arm
+      - FnCall: ['_vst4{neon_type[1].lane_nox}', ['a as _', 'b.0', 'b.1', 'b.2', 'b.3', 'LANE', "{type[4]}"]]
+
+
   - name: "vst4{neon_type[1].nox}"
     doc: "Store multiple 4-element structures from four registers"
     arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
@@ -4857,6 +6250,35 @@ intrinsics:
             - link: 'llvm.aarch64.neon.st4.v{neon_type[1].lane}{type[0]}.p0i8'
               arch: aarch64,arm64ec
       - FnCall: ['_vst4{neon_type[1].nox}', ['b.0', 'b.1', 'b.2', 'b.3', 'a as _']]
+
+
+  - name: "vst4{neon_type[1].nox}"
+    doc: "Store multiple 4-element structures from four registers"
+    arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
+    attr:
+      - *target-not-arm
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [st4]
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, float16x4x4_t, float16x4_t]
+      - [f16, float16x8x4_t, float16x8_t]
+    compose:
+      - LLVMLink:
+          name: 'vst4.{neon_type[1]}'
+          arguments:
+            - 'a: {type[2]}'
+            - 'b: {type[2]}'
+            - 'c: {type[2]}'
+            - 'd: {type[2]}'
+            - 'ptr: *mut i8'
+          links:
+            - link: 'llvm.aarch64.neon.st4.v{neon_type[1].lane}{type[0]}.p0i8'
+              arch: aarch64,arm64ec
+      - FnCall: ['_vst4{neon_type[1].nox}', ['b.0', 'b.1', 'b.2', 'b.3', 'a as _']]
+
 
   - name: "vst4{neon_type[1].lane_nox}"
     doc: "Store multiple 4-element structures from four registers"
@@ -4892,6 +6314,39 @@ intrinsics:
             - link: 'llvm.aarch64.neon.st4lane.v{neon_type[1].lane}{type[0]}.p0i8'
               arch: aarch64,arm64ec
       - FnCall: ['_vst4{neon_type[1].lane_nox}', ['b.0', 'b.1', 'b.2', 'b.3', 'LANE as i64', 'a as _']]
+
+
+  - name: "vst4{neon_type[1].lane_nox}"
+    doc: "Store multiple 4-element structures from four registers"
+    arguments: ["a: *mut {type[0]}", "b: {neon_type[1]}"]
+    attr:
+      - *target-not-arm
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st4, 'LANE = 0']]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, float16x4x4_t, '2', float16x4_t]
+      - [f16, float16x8x4_t, '3', float16x8_t]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, "{type[2]}"]]
+      - LLVMLink:
+          name: 'vst4.{neon_type[1].lane_nox}'
+          arguments:
+            - 'a: {type[3]}'
+            - 'b: {type[3]}'
+            - 'c: {type[3]}'
+            - 'd: {type[3]}'
+            - 'n: i64'
+            - 'ptr: *mut i8'
+          links:
+            - link: 'llvm.aarch64.neon.st4lane.v{neon_type[1].lane}{type[0]}.p0i8'
+              arch: aarch64,arm64ec
+      - FnCall: ['_vst4{neon_type[1].lane_nox}', ['b.0', 'b.1', 'b.2', 'b.3', 'LANE as i64', 'a as _']]
+
 
   - name: "vusdot{neon_type[0].no}"
     doc: "Dot product vector form with unsigned and signed integers"
@@ -5024,6 +6479,26 @@ intrinsics:
     compose:
       - FnCall: [simd_mul, [a, b]]
 
+
+  - name: "vmul{neon_type[1].no}"
+    doc: Multiply
+    arguments: ["a: {neon_type[1]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vmul.{type[0]}"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fmul]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, float16x4_t]
+      - [f16, float16x8_t]
+    compose:
+      - FnCall: [simd_mul, [a, b]]
+
+
   - name: "vmul{neon_type[0].lane_nox}"
     doc: Multiply
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
@@ -5053,6 +6528,32 @@ intrinsics:
           - simd_mul
           - - a
             - FnCall: ["simd_shuffle!", [b, b, "{type[3]}"]]
+
+
+  - name: "vmul{neon_type[0].lane_nox}"
+    doc: Multiply
+    arguments: ["a: {neon_type[0]}", "v: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vmul, 'LANE = 1']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fmul, 'LANE = 1']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ["const LANE: i32"]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [float16x8_t, float16x4_t, '2', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+    compose:
+      - FnCall: ["static_assert_uimm_bits!", [LANE, "{type[2]}"]]
+      - FnCall:
+          - simd_mul
+          - - a
+            - FnCall: ["simd_shuffle!", [v, v, "{type[3]}"]]
+
 
   - name: "vmul{neon_type[0].laneq_nox}"
     doc: Multiply
@@ -5261,6 +6762,33 @@ intrinsics:
               arch: arm
       - FnCall: ["_vfma{neon_type.no}", [b, c, a]]
 
+
+  - name: "vfma{neon_type.no}"
+    doc: Floating-point fused Multiply-Add to accumulator (vector)
+    arguments: ["a: {neon_type}", "b: {neon_type}", "c: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - FnCall: [cfg_attr, [target_arch = "arm", {FnCall: [target_feature, ['enable = "vfp4"']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [vfma]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fmla]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "fma.{neon_type}"
+          links:
+            - link: "llvm.fma.{neon_type}"
+              arch: aarch64
+            - link: "llvm.fma.{neon_type}"
+              arch: arm
+      - FnCall: ["_vfma{neon_type.no}", [b, c, a]]
+
+
   - name: "vfma{neon_type[0].N}"
     doc: Floating-point fused Multiply-Add to accumulator(vector)
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {type[1]}"]
@@ -5367,6 +6895,64 @@ intrinsics:
       - ['f32', float32x4_t]
     compose:
       - FnCall: [simd_sub, [a, b]]
+
+
+  - name: "vsub{neon_type[1].no}"
+    doc: "Subtract"
+    arguments: ["a: {neon_type[1]}", "b: {neon_type[1]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vsub.{type[0]}"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fsub]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ['f16', float16x4_t]
+      - ['f16', float16x8_t]
+    compose:
+      - FnCall: [simd_sub, [a, b]]
+
+
+  - name: "vadd{neon_type.no}"
+    doc: Floating-point Add (vector).
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vadd.f16"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fadd]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - FnCall:
+          - simd_add
+          - - a
+            - b
+
+  - name: "vadd{type[0]}"
+    doc: Add
+    arguments: ["a: {type[1]}", "b: {type[1]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vadd.f16"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fadd]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ['h_f16', 'f16']
+    compose:
+      - 'a + b'
 
   - name: "vadd{neon_type.no}"
     doc: Bitwise exclusive OR
@@ -5894,6 +7480,32 @@ intrinsics:
             - link: "llvm.aarch64.neon.fmax.{neon_type}"
               arch: aarch64,arm64ec
 
+
+  - name: "vmax{neon_type.no}"
+    doc: Maximum (vector)
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vmax]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fmax]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "vmax.{neon_type}"
+          links:
+            - link: "llvm.arm.neon.vmaxs.{neon_type}"
+              arch: arm
+            - link: "llvm.aarch64.neon.fmax.{neon_type}"
+              arch: aarch64,arm64ec
+
+
   - name: "vmaxnm{neon_type.no}"
     doc: Floating-point Maximum Number (vector)
     arguments: ["a: {neon_type}", "b: {neon_type}"]
@@ -5917,6 +7529,57 @@ intrinsics:
               arch: arm
             - link: "llvm.aarch64.neon.fmaxnm.{neon_type}"
               arch: aarch64,arm64ec
+
+
+  - name: "vmaxnm{neon_type.no}"
+    doc: Floating-point Maximum Number (vector)
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - FnCall: [cfg_attr, ['target_arch = "arm"', {FnCall: [target_feature, ['enable = "fp-armv8,v8"']]}]]
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vmaxnm]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fmaxnm]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "fmaxnm.{neon_type}"
+          links:
+            - link: "llvm.arm.neon.vmaxnm.{neon_type}"
+              arch: arm
+            - link: "llvm.aarch64.neon.fmaxnm.{neon_type}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vminnm{neon_type.no}"
+    doc: Floating-point Minimum Number (vector)
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - FnCall: [cfg_attr, ['target_arch = "arm"', {FnCall: [target_feature, ['enable = "fp-armv8,v8"']]}]]
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vminnm]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fminnm]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "fminnm.{neon_type}"
+          links:
+            - link: "llvm.arm.neon.vminnm.{neon_type}"
+              arch: arm
+            - link: "llvm.aarch64.neon.fminnm.{neon_type}"
+              arch: aarch64,arm64ec
+
 
   - name: "vmin{neon_type.no}"
     doc: "Minimum (vector)"
@@ -5998,6 +7661,33 @@ intrinsics:
             - link: "llvm.aarch64.neon.fmin.{neon_type}"
               arch: aarch64,arm64ec
 
+
+  - name: "vmin{neon_type.no}"
+    doc: Minimum (vector)
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vmin]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fmin]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "vmin.{neon_type}"
+          links:
+            - link: "llvm.arm.neon.vmins.{neon_type}"
+              arch: arm
+            - link: "llvm.aarch64.neon.fmin.{neon_type}"
+              arch: aarch64,arm64ec
+
+
+
   - name: "vminnm{neon_type.no}"
     doc: "Floating-point Minimum Number (vector)"
     arguments: ["a: {neon_type}", "b: {neon_type}"]
@@ -6044,6 +7734,30 @@ intrinsics:
               arch: arm
             - link: "llvm.aarch64.neon.faddp.{neon_type}"
               arch: aarch64,arm64ec
+
+  - name: "vpadd{neon_type.no}"
+    doc: Floating-point add pairwise
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vpadd]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [faddp]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+    compose:
+      - LLVMLink:
+          name: "faddp.{neon_type}"
+          links:
+            - link: "llvm.arm.neon.vpadd.{neon_type}"
+              arch: arm
+            - link: "llvm.aarch64.neon.faddp.{neon_type}"
+              arch: aarch64,arm64ec
+
 
   - name: "vqdmull{neon_type[0].noq}"
     doc: "Signed saturating doubling multiply long"
@@ -6896,6 +8610,32 @@ intrinsics:
             - link: "llvm.aarch64.neon.frsqrts.{neon_type}"
               arch: aarch64,arm64ec
 
+
+  - name: "vrsqrts{neon_type.no}"
+    doc: "Floating-point reciprocal square root step"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-v8
+      - *neon-fp16
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [vrsqrts]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [frsqrts]]}]]
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "vrsqrts{neon_type.no}"
+          links:
+            - link: "llvm.arm.neon.vrsqrts.{neon_type}"
+              arch: arm
+            - link: "llvm.aarch64.neon.frsqrts.{neon_type}"
+              arch: aarch64,arm64ec
+
+
   - name: "vrecpe{neon_type.no}"
     doc: "Reciprocal estimate."
     arguments: ["a: {neon_type}"]
@@ -6920,6 +8660,32 @@ intrinsics:
             - link: "llvm.aarch64.neon.frecpe.{neon_type}"
               arch: aarch64,arm64ec
 
+
+  - name: "vrecpe{neon_type.no}"
+    doc: "Reciprocal estimate."
+    arguments: ["a: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [vrecpe]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [frecpe]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "vrecpe{neon_type.no}"
+          links:
+            - link: "llvm.arm.neon.vrecpe.{neon_type}"
+              arch: arm
+            - link: "llvm.aarch64.neon.frecpe.{neon_type}"
+              arch: aarch64,arm64ec
+
+
   - name: "vrecps{neon_type.no}"
     doc: "Floating-point reciprocal step"
     arguments: ["a: {neon_type}", "b: {neon_type}"]
@@ -6943,6 +8709,32 @@ intrinsics:
               arch: arm
             - link: "llvm.aarch64.neon.frecps.{neon_type}"
               arch: aarch64,arm64ec
+
+
+  - name: "vrecps{neon_type.no}"
+    doc: "Floating-point reciprocal step"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [vrecps]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [frecps]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "vrecps{neon_type.no}"
+          links:
+            - link: "llvm.arm.neon.vrecps.{neon_type}"
+              arch: arm
+            - link: "llvm.aarch64.neon.frecps.{neon_type}"
+              arch: aarch64,arm64ec
+
 
   - name: "vreinterpret{neon_type[1].no}{neon_type[0].noq}"
     doc: Vector reinterpret cast operation
@@ -7253,6 +9045,111 @@ intrinsics:
     compose:
       - FnCall: [transmute, [a]]
 
+
+  - name: "vreinterpret{neon_type[1].no}{neon_type[0].noq}"
+    doc: Vector reinterpret cast operation
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      # non-q
+      - [float32x2_t, float16x4_t]
+      - [poly16x4_t, float16x4_t]
+      - [poly8x8_t, float16x4_t]
+      - [int8x8_t, float16x4_t]
+      - [int16x4_t, float16x4_t]
+      - [int32x2_t, float16x4_t]
+      - [int64x1_t, float16x4_t]
+      - [uint8x8_t, float16x4_t]
+      - [uint16x4_t, float16x4_t]
+      - [uint32x2_t, float16x4_t]
+      - [uint64x1_t, float16x4_t]
+      - [float16x4_t, float32x2_t]
+      - [float16x4_t, poly16x4_t]
+      - [float16x4_t, poly8x8_t]
+      - [float16x4_t, int8x8_t]
+      - [float16x4_t, int16x4_t]
+      - [float16x4_t, int32x2_t]
+      - [float16x4_t, int64x1_t]
+      - [float16x4_t, uint8x8_t]
+      - [float16x4_t, uint16x4_t]
+      - [float16x4_t, uint32x2_t]
+      - [float16x4_t, uint64x1_t]
+      # q
+      - [float32x4_t, float16x8_t]
+      - [poly16x8_t, float16x8_t]
+      - [poly8x16_t, float16x8_t]
+      - [int8x16_t, float16x8_t]
+      - [int16x8_t, float16x8_t]
+      - [int32x4_t, float16x8_t]
+      - [int64x2_t, float16x8_t]
+      - [uint8x16_t, float16x8_t]
+      - [uint16x8_t, float16x8_t]
+      - [uint32x4_t, float16x8_t]
+      - [uint64x2_t, float16x8_t]
+      - [float16x8_t, float32x4_t]
+      - [float16x8_t, poly16x8_t]
+      - [float16x8_t, poly8x16_t]
+      - [float16x8_t, int8x16_t]
+      - [float16x8_t, int16x8_t]
+      - [float16x8_t, int32x4_t]
+      - [float16x8_t, int64x2_t]
+      - [float16x8_t, uint8x16_t]
+      - [float16x8_t, uint16x8_t]
+      - [float16x8_t, uint32x4_t]
+      - [float16x8_t, uint64x2_t]
+    compose:
+      - FnCall: [transmute, [a]]
+
+
+  - name: "vreinterpret{neon_type[1].no}{neon_type[0].noq}"
+    doc: Vector reinterpret cast operation
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [poly64x1_t, float16x4_t]
+      - [float16x4_t, poly64x1_t]
+      # q
+      - [poly64x2_t, float16x8_t]
+      - [poly128_t, float16x8_t]
+      - [float16x8_t, poly128_t]
+      - [float16x8_t, poly64x2_t]
+    compose:
+      - FnCall: [transmute, [a]]
+
+  - name: "vrev64{neon_type[0].no}"
+    doc: Reverse elements in 64-bit doublewords
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vrev64]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [rev64]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, "[3, 2, 1, 0]"]
+      - [float16x8_t, "[3, 2, 1, 0, 7, 6, 5, 4]"]
+    compose:
+      - FnCall: [simd_shuffle!, [a, a, "{type[1]}"]]
+
   - name: "vrshl{neon_type.no}"
     doc: "Signed rounding shift left"
     arguments: ["a: {neon_type}", "b: {neon_type}"]
@@ -7562,6 +9459,23 @@ intrinsics:
     compose:
       - FnCall: [transmute, [a]]
 
+  - name: "vcreate_{neon_type[1]}"
+    doc: "Insert vector element from another vector element"
+    arguments: ["a: {type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [nop]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [nop]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["u64", float16x4_t]
+    compose:
+      - FnCall: [transmute, [a]]
+
   - name: "vcreate_p64"
     doc: "Insert vector element from another vector element"
     arguments: ["a: {type[0]}"]
@@ -7618,6 +9532,29 @@ intrinsics:
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, "{type[2]}"]]
       - FnCall: [simd_insert!, [b, 'LANE as u32', a]]
+
+
+  - name: "vset{neon_type[1].lane_nox}"
+    doc: "Insert vector element from another vector element"
+    arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [nop, LANE = 0]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", float16x4_t, '2']
+      - ["f16", float16x8_t, '3']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, "{type[2]}"]]
+      - FnCall: [simd_insert!, [b, 'LANE as u32', a]]
+
 
   - name: "vset_lane_{neon_type[0]}"
     doc: "Insert vector element from another vector element"
@@ -8043,6 +9980,36 @@ intrinsics:
           - transmute
           - - Identifier: ['(a1, b1)', Symbol]
 
+
+  - name: "vtrn{neon_type[0].no}"
+    doc: "Transpose elements"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [vtrn]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [trn]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float16x4x2_t, '[0, 4, 2, 6]', '[1, 5, 3, 7]']
+      - [float16x8_t, float16x8x2_t, '[0, 8, 2, 10, 4, 12, 6, 14]', '[1, 9, 3, 11, 5, 13, 7, 15]']
+    compose:
+      - Let:
+          - a1
+          - "{neon_type[0]}"
+          - FnCall: [simd_shuffle!, [a, b, "{type[2]}"]]
+      - Let:
+          - b1
+          - "{neon_type[0]}"
+          - FnCall: [simd_shuffle!, [a, b, "{type[3]}"]]
+      - FnCall:
+          - transmute
+          - - Identifier: ['(a1, b1)', Symbol]
+
+
   - name: "vtrn{neon_type[0].no}"
     doc: "Transpose elements"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -8168,6 +10135,35 @@ intrinsics:
           - transmute
           - - '(a0, b0)'
 
+
+  - name: "vzip{neon_type[0].no}"
+    doc: Zip vectors
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vzip.16"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float16x4x2_t, '[0, 4, 1, 5]', '[2, 6, 3, 7]']
+      - [float16x8_t, float16x8x2_t, '[0, 8, 1, 9, 2, 10, 3, 11]', '[4, 12, 5, 13, 6, 14, 7, 15]']
+    compose:
+      - Let:
+          - a0
+          - "{neon_type[0]}"
+          - FnCall: ["simd_shuffle!", [a, b, "{type[2]}"]]
+      - Let:
+          - b0
+          - "{neon_type[0]}"
+          - FnCall: ["simd_shuffle!", [a, b, "{type[3]}"]]
+      - FnCall:
+          - transmute
+          - - '(a0, b0)'
+
   - name: "vuzp{neon_type[0].no}"
     doc: Unzip vectors
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -8208,6 +10204,36 @@ intrinsics:
       - FnCall:
           - transmute
           - - '(a0, b0)'
+
+
+  - name: "vuzp{neon_type[0].no}"
+    doc: Unzip vectors
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vuzp]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [uzp]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float16x4x2_t, '[0, 2, 4, 6]', '[1, 3, 5, 7]']
+      - [float16x8_t, float16x8x2_t, '[0, 2, 4, 6, 8, 10, 12, 14]', '[1, 3, 5, 7, 9, 11, 13, 15]']
+    compose:
+      - Let:
+          - a0
+          - "{neon_type[0]}"
+          - FnCall: ["simd_shuffle!", [a, b, "{type[2]}"]]
+      - Let:
+          - b0
+          - "{neon_type[0]}"
+          - FnCall: ["simd_shuffle!", [a, b, "{type[3]}"]]
+      - FnCall:
+          - transmute
+          - - '(a0, b0)'
+
 
   - name: "vuzp{neon_type[0].no}"
     doc: Unzip vectors
@@ -8430,19 +10456,75 @@ intrinsics:
               arch: arm
       - FnCall: ["_vst1{neon_type[1].no}", ['a', 'b.0', 'b.1']]
 
+
+    # vst1_f16_x2 - arm
   - name: "vst1{neon_type[1].no}"
     doc: "Store multiple single-element structures to one, two, three, or four registers"
     arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
     attr:
       - FnCall: [cfg, ['target_arch = "arm"']]
-      - FnCall: [target_feature, ['enable = "neon,v7"']]
+      - *neon-v7
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vst1]]}]]
-      - FnCall: [unstable, ['feature = "stdarch_arm_neon_intrinsics"', 'issue = "111800"']]
+      - *neon-fp16
+      - *neon-unstable-f16
     safety:
       unsafe: [neon]
     types:
-      - ['*mut f32', float32x2x3_t, float32x2_t]
-      - ['*mut f32', float32x4x3_t, float32x4_t]
+      - ['*mut f16', float16x4x2_t, float16x4_t]
+      - ['*mut f16', float16x8x2_t, float16x8_t]
+    compose:
+      - LLVMLink:
+          name: "vst1{neon_type[1].no}"
+          arguments:
+            - "ptr: {type[0]}"
+            - "a: {neon_type[2]}"
+            - "b: {neon_type[2]}"
+          links:
+            - link: "llvm.arm.neon.vst1x{neon_type[1].tuple}.p0f16.{neon_type[2]}"
+              arch: arm
+      - FnCall: ["_vst1{neon_type[1].no}", ['a', 'b.0', 'b.1']]
+
+
+    # vst1_f16_x2 - aarch64
+  - name: "vst1{neon_type[1].no}"
+    doc: "Store multiple single-element structures to one, two, three, or four registers"
+    arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
+    attr:
+      - FnCall: [cfg, [{FnCall: [not, ['target_arch = "arm"']]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st1]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*mut f16", float16x4x2_t, float16x4_t]
+      - ["*mut f16", float16x8x2_t, float16x8_t]
+    compose:
+      - LLVMLink:
+          name: "vst1{neon_type[1].no}"
+          arguments:
+            - "a: {neon_type[2]}"
+            - "b: {neon_type[2]}"
+            - "ptr: {type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.st1x2.{neon_type[2]}.p0f16"
+              arch: aarch64,arm64ec
+      - FnCall: ["_vst1{neon_type[1].no}", ['b.0', 'b.1', a]]
+
+  - name: "vst1{neon_type[1].no}"
+    doc: "Store multiple single-element structures to one, two, three, or four registers"
+    arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
+    attr:
+      - FnCall: [cfg, ['target_arch = "arm"']]
+      - *neon-v7
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vst1]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ['*mut f16', float16x4x3_t, float16x4_t]
+      - ['*mut f16', float16x8x3_t, float16x8_t]
     compose:
       - LLVMLink:
           name: "vst1{neon_type[1].no}"
@@ -8452,7 +10534,7 @@ intrinsics:
             - "b: {neon_type[2]}"
             - "c: {neon_type[2]}"
           links:
-            - link: "llvm.arm.neon.vst1x{neon_type[1].tuple}.{neon_type[2]}.p0"
+            - link: "llvm.arm.neon.vst1x{neon_type[1].tuple}.p0f16.{neon_type[2]}"
               arch: arm
       - FnCall: ["_vst1{neon_type[1].no}", ['a', 'b.0', 'b.1', 'b.2']]
 
@@ -8505,6 +10587,34 @@ intrinsics:
               arch: aarch64,arm64ec
       - FnCall: ["_vst1{neon_type[1].no}", ['b.0', 'b.1', 'b.2', a]]
 
+
+  - name: "vst1{neon_type[1].no}"
+    doc: "Store multiple single-element structures to one, two, three, or four registers"
+    arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
+    attr:
+      - FnCall: [cfg, [{FnCall: [not, ['target_arch = "arm"']]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st1]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*mut f16", float16x4x3_t, float16x4_t]
+      - ["*mut f16", float16x8x3_t, float16x8_t]
+    compose:
+      - LLVMLink:
+          name: "vst1{neon_type[1].no}"
+          arguments:
+            - "a: {neon_type[2]}"
+            - "b: {neon_type[2]}"
+            - "c: {neon_type[2]}"
+            - "ptr: {type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.st1x3.{neon_type[2]}.p0f16"
+              arch: aarch64,arm64ec
+      - FnCall: ["_vst1{neon_type[1].no}", ['b.0', 'b.1', 'b.2', a]]
+
+
   - name: "vst1{neon_type[1].no}"
     doc: "Store multiple single-element structures to one, two, three, or four registers"
     arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
@@ -8530,6 +10640,52 @@ intrinsics:
             - link: "llvm.aarch64.neon.st1x4.{neon_type[2]}.p0f32"
               arch: aarch64,arm64ec
       - FnCall: ["_vst1{neon_type[1].no}", ['b.0', 'b.1', 'b.2', 'b.3', a]]
+
+
+  - name: "vst1{neon_type[1].no}"
+    doc: "Store multiple single-element structures to one, two, three, or four registers"
+    arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
+    attr:
+      - FnCall: [cfg, [{FnCall: [not, ['target_arch = "arm"']]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st1]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*mut f16", float16x4x4_t, float16x4_t]
+      - ["*mut f16", float16x8x4_t, float16x8_t]
+    compose:
+      - LLVMLink:
+          name: "vst1{neon_type[1].no}"
+          arguments:
+            - "a: {neon_type[2]}"
+            - "b: {neon_type[2]}"
+            - "c: {neon_type[2]}"
+            - "d: {neon_type[2]}"
+            - "ptr: {type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.st1x4.{neon_type[2]}.p0f16"
+              arch: aarch64,arm64ec
+      - FnCall: ["_vst1{neon_type[1].no}", ['b.0', 'b.1', 'b.2', 'b.3', a]]
+
+
+#  - name: "vst1{neon_type[1].no}"
+#    doc: "Store a single-element structures to one register."
+#    arguments: ["ptr: {type[0]}", "a: {neon_type[1]}"]
+#    attr:
+#      - *neon-v7
+#      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vst1]]}]]
+#      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [st1]]}]]
+#      - *neon-fp16
+#      - *neon-unstable-f16
+#    safety:
+#      unsafe: [neon]
+#    types:
+#      - ["*mut f16", float16x4_t]
+#      - ["*mut f16", float16x8_t]
+#    compose:
+#      - FnCall: [core::ptr::write_unaligned, ['ptr.cast()', a]]
 
   - name: "vfms{neon_type.no}"
     doc: "Floating-point fused multiply-subtract from accumulator"
@@ -8631,6 +10787,47 @@ intrinsics:
       - [float32x4_t, uint32x4_t]
     compose:
       - FnCall: [simd_ge, [a, b]]
+
+  - name: "vcge{neon_type[0].no}"
+    doc: "Floating-point compare greater than or equal"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vcge.f16"']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fcmge]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t]
+      - [float16x8_t, uint16x8_t]
+    compose:
+      - FnCall: [simd_ge, [a, b]]
+
+
+  - name: "vcgez{neon_type[0].no}"
+    doc: "Floating-point compare greater than or equal to zero"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vcge.f16"']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fcmge]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t, f16x4, 'f16x4::new(0.0, 0.0, 0.0, 0.0)']
+      - [float16x8_t, uint16x8_t, f16x8, 'f16x8::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)']
+    compose:
+      - Let: [b, "{type[2]}", "{type[3]}"]
+      - FnCall:
+          - simd_ge
+          - - a
+            - FnCall: [transmute, [b]]
 
   - name: "vclt{neon_type.no}"
     doc: "Compare unsigned less than"
@@ -8856,6 +11053,61 @@ intrinsics:
               arch: arm
             - link: "llvm.fptoui.sat.{neon_type[1]}.{neon_type[0]}"
               arch: aarch64,arm64ec
+
+
+  - name: "vcvt{neon_type[1].no}_{neon_type[0]}"
+    doc: "Floating-point convert to unsigned fixed-point, rounding toward zero"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [vcvt]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fcvtzu]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t]
+      - [float16x8_t, uint16x8_t]
+    compose:
+      - FnCall:
+          - simd_cast
+          - - a
+
+  - name: "vcvt_f16_{neon_type[0]}"
+    doc: "Floating-point convert to lower precision narrow"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [vcvt.f16.f32]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fcvtn]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float32x4_t, float16x4_t]
+    compose:
+      - FnCall: [simd_cast, [a]]
+
+  - name: "vcvt_f32_f16"
+    doc: "Floating-point convert to higher precision long"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [vcvt]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fcvtl]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float32x4_t]
+    compose:
+      - FnCall: [simd_cast, [a]]
 
   - name: "vmla{neon_type[0].N}"
     doc: "Vector multiply accumulate with scalar"
@@ -9215,6 +11467,29 @@ intrinsics:
           - - a
             - FnCall: ["vdup{neon_type[0].N}", [b]]
 
+
+  - name: "vmul{neon_type[0].N}"
+    doc: "Vector multiply by scalar"
+    arguments: ["a: {neon_type[0]}", "b: {type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [vmul]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fmul]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, "f16"]
+      - [float16x8_t, "f16"]
+    compose:
+      - FnCall:
+          - simd_mul
+          - - a
+            - FnCall: ["vdup{neon_type[0].N}", [b]]
+
+
   - name: "vmul{type[2]}"
     doc: "Floating-point multiply"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
@@ -9310,6 +11585,47 @@ intrinsics:
     compose:
       - FnCall: [simd_lt, [a, b]]
 
+  - name: "vclt{neon_type[0].no}"
+    doc: "Floating-point compare less than"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vcgt.f16"']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fcmgt]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t]
+      - [float16x8_t, uint16x8_t]
+    compose:
+      - FnCall: [simd_lt, [a, b]]
+
+
+  - name: "vcltz{neon_type[0].no}"
+    doc: "Floating-point compare less than"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vclt.f16"']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fcmlt]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t, f16x4, 'f16x4::new(0.0, 0.0, 0.0, 0.0)']
+      - [float16x8_t, uint16x8_t, f16x8, 'f16x8::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)']
+    compose:
+      - Let: [b, "{type[2]}", "{type[3]}"]
+      - FnCall:
+          - simd_lt
+          - - a
+            - FnCall: [transmute, [b]]
+
   - name: "vabdl_{neon_type[0]}"
     doc: "Unsigned Absolute difference Long"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -9402,6 +11718,27 @@ intrinsics:
           - - a
             - b
             - FnCall: ["vdup{neon_type[0].N}_vfp4", [c]]
+
+
+  - name: "vfms{neon_type.no}"
+    doc: "Floating-point fused multiply-subtract from accumulator"
+    arguments: ["a: {neon_type}", "b: {neon_type}", "c: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-v8
+      - FnCall: [cfg_attr, [target_arch = "arm", {FnCall: [target_feature, ['enable = "vfp4"']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [nop]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fmls]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - Let: [b, "{neon_type}", {FnCall: [simd_neg, [b]]}]
+      - FnCall: ["vfma{neon_type.no}", [a, b, c]]
 
   - name: "vqdmulh{neon_type[0].laneq_nox}"
     doc: "Vector saturating doubling multiply high by scalar"
@@ -9503,6 +11840,32 @@ intrinsics:
             - link: "llvm.aarch64.neon.frsqrte.{neon_type}"
               arch: aarch64,arm64ec
 
+
+  - name: "vrsqrte{neon_type.no}"
+    doc: "Reciprocal square-root estimate."
+    arguments: ["a: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-v8
+      - *neon-fp16
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [vrsqrte]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [frsqrte]]}]]
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "vrsqrte{neon_type.no}"
+          links:
+            - link: "llvm.arm.neon.vrsqrte.{neon_type}"
+              arch: arm
+            - link: "llvm.aarch64.neon.frsqrte.{neon_type}"
+              arch: aarch64,arm64ec
+
+
   - name: "vqshlu{neon_type[0].N}"
     doc: "Signed saturating shift left unsigned"
     arguments: ["a: {neon_type[0]}"]
@@ -9593,6 +11956,27 @@ intrinsics:
               arch: arm
             - link: "llvm.fptosi.sat.{neon_type[1]}.{neon_type[0]}"
               arch: aarch64,arm64ec
+
+
+  - name: "vcvt{neon_type[1].no}_{neon_type[0]}"
+    doc: "Floating-point convert to signed fixed-point, rounding toward zero"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [vcvt]]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [fcvtzs]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, int16x4_t]
+      - [float16x8_t, int16x8_t]
+    compose:
+      - FnCall:
+          - simd_cast
+          - - a
 
   - name: "vqmovn_{neon_type[0]}"
     doc: "Unsigned saturating extract narrow"
@@ -9794,7 +12178,7 @@ intrinsics:
           - - FnCall: ["vld4{neon_type[2].dup_nox}", [{FnCall: [transmute, [a]]}]]
 
   - name: "vld1{type[0]}"
-    visibility: private 
+    visibility: private
     doc: "Load multiple single-element structures to one, two, three, or four registers"
     arguments: ["a: {type[1]}", "b: {type[2]}"]
     return_type: "{neon_type[3]}"
@@ -9823,6 +12207,32 @@ intrinsics:
             - link: "llvm.arm.neon.vld1.{neon_type[3]}"
               arch: arm
       - FnCall: ["_vld1{type[0]}", [a, b]]
+
+
+  - name: "vld1{type[0]}"
+    visibility: private
+    doc: "Load multiple single-element structures to one, two, three, or four registers"
+    arguments: ["a: {type[1]}", "b: {type[2]}"]
+    return_type: "{neon_type[3]}"
+    attr:
+      - FnCall: [cfg, ['target_arch = "arm"']]
+      - FnCall: [target_feature, ['enable = "neon,v7"']]
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["_v4f16", "*const i8", "i32", "float16x4_t"]
+      - ["q_v8f16", "*const i8", "i32", "float16x8_t"]
+    compose:
+      - LLVMLink:
+          name: "vld1.{type[0]}"
+          links:
+            - link: "llvm.arm.neon.vld1.{neon_type[3]}"
+              arch: arm
+      - FnCall: ["_vld1{type[0]}", [a, b]]
+
 
   - name: "vld1{neon_type[1].no}"
     doc: "Load multiple single-element structures to one, two, three, or four registers."
@@ -9877,6 +12287,29 @@ intrinsics:
       - ['*const p64', poly64x2_t,  '"vld1.64"', 'neon,aes', 'crate::mem::align_of::<p64>() as i32', 'q_v2i64']
       - ['*const f32', float32x2_t, 'vldr', 'neon,v7', 'crate::mem::align_of::<f32>() as i32', '_v2f32']
       - ['*const f32', float32x4_t, '"vld1.32"', 'neon,v7', 'crate::mem::align_of::<f32>() as i32', 'q_v4f32']
+    compose:
+      - FnCall:
+        - transmute
+        - - FnCall:
+              - "vld1{type[5]}"
+              - - 'ptr as *const i8'
+                - '{type[4]}'
+
+  - name: "vld1{neon_type[1].no}"
+    doc: "Load multiple single-element structures to one, two, three, or four registers."
+    arguments: ["ptr: {type[0]}"]
+    return_type: "{neon_type[1]}"
+    safety:
+      unsafe: [neon]
+    attr:
+      - FnCall: [cfg, ['target_arch = "arm"']]
+      - FnCall: [target_feature, ['enable = "{type[3]}"']]
+      - *neon-fp16
+      - *neon-unstable-f16
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['{type[2]}']]}]]
+    types:
+      - ['*const f16', float16x4_t, '"vld1.16"', 'neon,v7', 'crate::mem::align_of::<f16>() as i32', '_v4f16']
+      - ['*const f16', float16x8_t, '"vld1.16"', 'neon,v7', 'crate::mem::align_of::<f16>() as i32', 'q_v8f16']
     compose:
       - FnCall:
         - transmute
@@ -10158,8 +12591,210 @@ intrinsics:
              - FnCall: [transmute, ["b.3"]]
              - c
 
+  - name: "vld4{neon_type[1].nox}"
+    doc: Load single 4-element structure and replicate to all lanes of two registers
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-v7
+      - *target-is-arm
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld4]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x4_t, f16]
+      - ["*const f16", float16x8x4_t, f16]
+    compose:
+      - LLVMLink:
+          name: "vld4.{neon_type[1]}"
+          arguments:
+            - "ptr: {type[0]}"
+            - "size: i32"
+          links:
+            - link: "llvm.arm.neon.vld4.v{neon_type[1].lane}{type[2]}.p0{type[2]}"
+              arch: arm
+      - FnCall:
+          - "_vld4{neon_type[1].nox}"
+          - - "a as _"
+            - "2"
+
+  - name: "vld4{neon_type[1].nox}"
+    doc: Load single 4-element structure and replicate to all lanes of two registers
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *target-not-arm
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld4]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x4_t, f16]
+      - ["*const f16", float16x8x4_t, f16]
+    compose:
+      - LLVMLink:
+          name: "vld4.{neon_type[1]}"
+          arguments:
+            - "ptr: {type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.ld4.v{neon_type[1].lane}{type[2]}.p0{type[2]}"
+              arch: aarch64,arm64ec
+      - FnCall:
+          - "_vld4{neon_type[1].nox}"
+          - - "a as _"
+
+  - name: "vld4{neon_type[1].dup_nox}"
+    doc: Load single 4-element structure and replicate to all lanes of two registers
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-v7
+      - *target-is-arm
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld4]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x4_t, f16]
+      - ["*const f16", float16x8x4_t, f16]
+    compose:
+      - LLVMLink:
+          name: "vld4dup.{neon_type[1]}"
+          arguments:
+            - "ptr: {type[0]}"
+            - "size: i32"
+          links:
+            - link: "llvm.arm.neon.vld4dup.v{neon_type[1].lane}{type[2]}.p0{type[2]}"
+              arch: arm
+      - FnCall:
+          - "_vld4{neon_type[1].dup_nox}"
+          - - "a as _"
+            - "2"
+
+
+  - name: "vld4{neon_type[1].dup_nox}"
+    doc: Load single 4-element structure and replicate to all lanes of two registers
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *target-not-arm
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld4r]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x4_t, f16]
+      - ["*const f16", float16x8x4_t, f16]
+    compose:
+      - LLVMLink:
+          name: "vld4dup.{neon_type[1]}"
+          arguments:
+            - "ptr: {type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.ld4r.v{neon_type[1].lane}{type[2]}.p0{type[2]}"
+              arch: aarch64,arm64ec
+      - FnCall:
+          - "_vld4{neon_type[1].dup_nox}"
+          - - "a as _"
+
+
+  - name: "vld4{neon_type[1].lane_nox}"
+    doc: Load multiple 4-element structures to two registers
+    arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *enable-v7
+      - *target-is-arm
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['vld4', 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs:
+      - "const LANE: i32"
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x4_t, f16, float16x4_t, "2"]
+      - ["*const f16", float16x8x4_t, f16, float16x8_t, "3"]
+    compose:
+      - FnCall:
+          - "static_assert_uimm_bits!"
+          - - LANE
+            - "{type[4]}"
+      - LLVMLink:
+          name: "vld4.{neon_type[1]}"
+          arguments:
+            - "ptr: *const f16"
+            - "a: {neon_type[3]}"
+            - "b: {neon_type[3]}"
+            - "c: {neon_type[3]}"
+            - "d: {neon_type[3]}"
+            - "n: i32"
+            - "size: i32"
+          links:
+            - link: "llvm.arm.neon.vld4lane.v{neon_type[1].lane}{type[2]}.p0"
+              arch: arm
+      - FnCall:
+          - "_vld4{neon_type[1].lane_nox}"
+          - - "a as _"
+            - "b.0"
+            - "b.1"
+            - "b.2"
+            - "b.3"
+            - "LANE"
+            - "2"
+
+
+  - name: "vld4{neon_type[1].lane_nox}"
+    doc: Load multiple 4-element structures to two registers
+    arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *target-not-arm
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld4, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ["2"]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs:
+      - "const LANE: i32"
+    safety:
+      unsafe: [neon]
+    types:
+      - ["*const f16", float16x4x4_t, f16, float16x4_t, "2"]
+      - ["*const f16", float16x8x4_t, f16, float16x8_t, "3"]
+    compose:
+      - FnCall:
+          - "static_assert_uimm_bits!"
+          - - LANE
+            - "{type[4]}"
+      - LLVMLink:
+          name: "vld4.{neon_type[1]}"
+          arguments:
+            - "a: {neon_type[3]}"
+            - "b: {neon_type[3]}"
+            - "c: {neon_type[3]}"
+            - "d: {neon_type[3]}"
+            - "n: i64"
+            - "ptr: *const f16"
+          links:
+            - link: "llvm.aarch64.neon.ld4lane.v{neon_type[1].lane}{type[2]}.p0"
+              arch: aarch64,arm64ec
+      - FnCall:
+          - "_vld4{neon_type[1].lane_nox}"
+          - - "b.0"
+            - "b.1"
+            - "b.2"
+            - "b.3"
+            - "LANE as i64"
+            - "a as _"
+
   - name: "vcombine{neon_type[0].noq}"
-    doc: "Vector combine"
+    doc: Join two smaller vectors into a single larger vector
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
@@ -10230,7 +12865,7 @@ intrinsics:
               arch: aarch64,arm64ec
             - link: "llvm.arm.neon.aesd"
               arch: arm
-    
+
   - name: "vaesmcq_u8"
     doc: "AES mix columns."
     arguments: ["data: {neon_type[0]}"]
@@ -11544,7 +14179,7 @@ intrinsics:
                   - FnCall: [transmute, ['a.2']]
                   - FnCall: [transmute, ['a.3']]
                   - FnCall: [transmute, [b]]
-    
+
   - name: "vst1{type[0]}"
     visibility: private
     doc: "Store multiple single-element structures from one, two, three, or four registers."
@@ -11567,6 +14202,28 @@ intrinsics:
       - ['q_v2i64', '* const i8', int64x2_t, i32, '64']
       - ['_v2f32', '* const i8', float32x2_t, i32, '32']
       - ['q_v4f32', '* const i8', float32x4_t, i32, '32']
+    compose:
+      - LLVMLink:
+          name: "_vst1{type[0]}"
+          links:
+            - link: "llvm.arm.neon.vst1.{neon_type[2]}.p0"
+              arch: arm
+
+  - name: "vst1{type[0]}"
+    visibility: private
+    doc: "Store multiple single-element structures from one, two, three, or four registers."
+    arguments: ["addr: {type[1]}", "val: {neon_type[2]}", "align: {type[3]}"]
+    safety:
+      unsafe: [neon]
+    attr:
+      - *target-is-arm
+      - *neon-v7
+      - *neon-fp16
+      - *neon-unstable-f16
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vst1.{type[4]}"']]}]]
+    types:
+      - ['_v4f16', '* const i8', float16x4_t, i32, '16']
+      - ['q_v8f16', '* const i8', float16x8_t, i32, '16']
     compose:
       - LLVMLink:
           name: "_vst1{type[0]}"
@@ -11615,6 +14272,29 @@ intrinsics:
           - - 'ptr as *const i8'
             - '{type[3]}'
             - '{type[4]}'
+
+
+  - name: "vst1{neon_type[1].no}"
+    doc: "Store multiple single-element structures from one, two, three, or four registers."
+    arguments: ["ptr: {type[0]}", "a: {neon_type[1]}"]
+    safety:
+      unsafe: [neon]
+    attr:
+      - *target-is-arm
+      - *neon-v7
+      - *neon-fp16
+      - *neon-unstable-f16
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vst1.{type[2]}"']]}]]
+    types:
+      - ['*mut f16', float16x4_t, '16', 'transmute(a)', 'crate::mem::align_of::<f16>() as i32', '_v4f16']
+      - ['*mut f16', float16x8_t, '16', 'transmute(a)', 'crate::mem::align_of::<f16>() as i32', 'q_v8f16']
+    compose:
+      - FnCall:
+          - "vst1{type[5]}"
+          - - 'ptr as *const i8'
+            - '{type[3]}'
+            - '{type[4]}'
+
 
   - name: "vshiftins{type[0]}"
     visibility: private
@@ -11780,3 +14460,75 @@ intrinsics:
           - - a
             - b
             - FnCall: ["{type[5]}", ["{type[6]}"]]
+
+  - name: "vcombine{neon_type[0].no}"
+    doc: Join two smaller vectors into a single larger vector
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-v7
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [nop]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float16x8_t]
+    compose:
+      - FnCall: [simd_shuffle!, [a, b, '[0, 1, 2, 3, 4, 5, 6, 7]']]
+
+  - name: "vget_{type[2]}_{neon_type[0]}"
+    doc: Duplicate vector element to vector
+    arguments: ["a: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-v7
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [nop]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float16x8_t, 'low', "[0, 1, 2, 3]"]
+      - [float16x4_t, float16x8_t, 'high', "[4, 5, 6, 7]"]
+    compose:
+      - FnCall: [simd_shuffle!, [a, a, "{type[3]}"]]
+
+  - name: "vget{type[2]}"
+    doc: Duplicate vector element to scalar
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-v7
+      - *neon-fp16
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ["1"]]
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, f16, '_lane_f16',  '2']
+      - [float16x8_t, f16, 'q_lane_f16', '3']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
+      - FnCall: [simd_extract!, [a, "LANE as u32"]]
+
+  - name: "vmov{neon_type[0].N}"
+    doc: "Duplicate element to vector"
+    arguments: ["a: {type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-v7
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, 'target_arch = "arm"']]}, {FnCall: [assert_instr, ['"vdup.16"']]}]]
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]}, {FnCall: [assert_instr, [dup]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, f16]
+      - [float16x8_t, f16]
+    compose:
+      - FnCall: ["vdup{neon_type[0].N}", [a]]

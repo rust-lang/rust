@@ -194,7 +194,7 @@ fn generate_rust_program(notices: &str, intrinsic: &Intrinsic, target: &str) -> 
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_sha3))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_sm4))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_ftts))]
-#![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_f16))]
+#![feature(stdarch_neon_f16)]
 #![allow(non_upper_case_globals)]
 use core_arch::arch::{target_arch}::*;
 

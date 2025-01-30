@@ -4785,6 +4785,24 @@ pub unsafe fn vbsl_u64(a: uint64x1_t, b: uint64x1_t, c: uint64x1_t) -> uint64x1_
 
 /// Bitwise Select.
 #[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vbsl_f16(a: uint16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t {
+    let not = int16x4_t::splat(-1);
+    transmute(simd_or(
+        simd_and(a, transmute(b)),
+        simd_and(simd_xor(a, transmute(not)), transmute(c)),
+    ))
+}
+
+/// Bitwise Select.
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
@@ -5089,6 +5107,24 @@ pub unsafe fn vbslq_p8(a: uint8x16_t, b: poly8x16_t, c: poly8x16_t) -> poly8x16_
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vbslq_p16(a: uint16x8_t, b: poly16x8_t, c: poly16x8_t) -> poly16x8_t {
+    let not = int16x8_t::splat(-1);
+    transmute(simd_or(
+        simd_and(a, transmute(b)),
+        simd_and(simd_xor(a, transmute(not)), transmute(c)),
+    ))
+}
+
+/// Bitwise Select.
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bsl)
+)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vbslq_f16(a: uint16x8_t, b: float16x8_t, c: float16x8_t) -> float16x8_t {
     let not = int16x8_t::splat(-1);
     transmute(simd_or(
         simd_and(a, transmute(b)),

@@ -195,6 +195,17 @@ pub unsafe fn vabdd_f64(a: f64, b: f64) -> f64 {
 pub unsafe fn vabds_f32(a: f32, b: f32) -> f32 {
     simd_extract!(vabd_f32(vdup_n_f32(a), vdup_n_f32(b)), 0)
 }
+#[doc = "Floating-point absolute difference"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fabd))]
+pub unsafe fn vabdh_f16(a: f16, b: f16) -> f16 {
+    simd_extract!(vabd_f16(vdup_n_f16(a), vdup_n_f16(b)), 0)
+}
 #[doc = "Signed Absolute difference Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdl_high_s16)"]
 #[doc = "## Safety"]
@@ -1041,6 +1052,44 @@ pub unsafe fn vbcaxq_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint64x
     _vbcaxq_u64(a.as_signed(), b.as_signed(), c.as_signed()).as_unsigned()
 }
 #[doc = "Floating-point complex add"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcadd_rot270_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fcma"))]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fcadd))]
+pub unsafe fn vcadd_rot270_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcadd.rot270.v4f16"
+        )]
+        fn _vcadd_rot270_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t;
+    }
+    _vcadd_rot270_f16(a, b)
+}
+#[doc = "Floating-point complex add"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcaddq_rot270_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fcma"))]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fcadd))]
+pub unsafe fn vcaddq_rot270_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcadd.rot270.v8f16"
+        )]
+        fn _vcaddq_rot270_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t;
+    }
+    _vcaddq_rot270_f16(a, b)
+}
+#[doc = "Floating-point complex add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcadd_rot270_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -1093,6 +1142,44 @@ pub unsafe fn vcaddq_rot270_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
         fn _vcaddq_rot270_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t;
     }
     _vcaddq_rot270_f64(a, b)
+}
+#[doc = "Floating-point complex add"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcadd_rot90_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fcma"))]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fcadd))]
+pub unsafe fn vcadd_rot90_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcadd.rot90.v4f16"
+        )]
+        fn _vcadd_rot90_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t;
+    }
+    _vcadd_rot90_f16(a, b)
+}
+#[doc = "Floating-point complex add"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcaddq_rot90_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fcma"))]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fcadd))]
+pub unsafe fn vcaddq_rot90_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcadd.rot90.v8f16"
+        )]
+        fn _vcaddq_rot90_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t;
+    }
+    _vcaddq_rot90_f16(a, b)
 }
 #[doc = "Floating-point complex add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcadd_rot90_f32)"]
@@ -1220,6 +1307,24 @@ pub unsafe fn vcages_f32(a: f32, b: f32) -> u32 {
     }
     _vcages_f32(a, b).as_unsigned()
 }
+#[doc = "Floating-point absolute compare greater than or equal"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcageh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(facge))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcageh_f16(a: f16, b: f16) -> u16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.facge.i32.f16"
+        )]
+        fn _vcageh_f16(a: f16, b: f16) -> i32;
+    }
+    _vcageh_f16(a, b).as_unsigned() as u16
+}
 #[doc = "Floating-point absolute compare greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcagt_f64)"]
 #[doc = "## Safety"]
@@ -1292,6 +1397,24 @@ pub unsafe fn vcagts_f32(a: f32, b: f32) -> u32 {
     }
     _vcagts_f32(a, b).as_unsigned()
 }
+#[doc = "Floating-point absolute compare greater than"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcagth_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(facgt))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcagth_f16(a: f16, b: f16) -> u16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.facgt.i32.f16"
+        )]
+        fn _vcagth_f16(a: f16, b: f16) -> i32;
+    }
+    _vcagth_f16(a, b).as_unsigned() as u16
+}
 #[doc = "Floating-point absolute compare less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcale_f64)"]
 #[doc = "## Safety"]
@@ -1336,6 +1459,17 @@ pub unsafe fn vcaled_f64(a: f64, b: f64) -> u64 {
 pub unsafe fn vcales_f32(a: f32, b: f32) -> u32 {
     vcages_f32(b, a)
 }
+#[doc = "Floating-point absolute compare less than or equal"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcaleh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(facge))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcaleh_f16(a: f16, b: f16) -> u16 {
+    vcageh_f16(b, a)
+}
 #[doc = "Floating-point absolute compare less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcalt_f64)"]
 #[doc = "## Safety"]
@@ -1379,6 +1513,17 @@ pub unsafe fn vcaltd_f64(a: f64, b: f64) -> u64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcalts_f32(a: f32, b: f32) -> u32 {
     vcagts_f32(b, a)
+}
+#[doc = "Floating-point absolute compare less than"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcalth_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(facgt))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcalth_f16(a: f16, b: f16) -> u16 {
+    vcagth_f16(b, a)
 }
 #[doc = "Floating-point compare equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceq_f64)"]
@@ -1511,6 +1656,41 @@ pub unsafe fn vceqd_s64(a: i64, b: i64) -> u64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vceqd_u64(a: u64, b: u64) -> u64 {
     transmute(vceq_u64(transmute(a), transmute(b)))
+}
+#[doc = "Floating-point compare equal"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcmp))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vceqh_f16(a: f16, b: f16) -> u16 {
+    simd_extract!(vceq_f16(vdup_n_f16(a), vdup_n_f16(b)), 0)
+}
+#[doc = "Floating-point compare bitwise equal to zero"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqz_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcmeq))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vceqz_f16(a: float16x4_t) -> uint16x4_t {
+    let b: f16x4 = f16x4::new(0.0, 0.0, 0.0, 0.0);
+    simd_eq(a, transmute(b))
+}
+#[doc = "Floating-point compare bitwise equal to zero"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqzq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcmeq))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vceqzq_f16(a: float16x8_t) -> uint16x8_t {
+    let b: f16x8 = f16x8::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    simd_eq(a, transmute(b))
 }
 #[doc = "Floating-point compare bitwise equal to zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqz_f32)"]
@@ -1823,6 +2003,17 @@ pub unsafe fn vceqzd_u64(a: u64) -> u64 {
     transmute(vceqz_u64(transmute(a)))
 }
 #[doc = "Floating-point compare bitwise equal to zero"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqzh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcmp))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vceqzh_f16(a: f16) -> u16 {
+    simd_extract!(vceqz_f16(vdup_n_f16(a)), 0)
+}
+#[doc = "Floating-point compare bitwise equal to zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqzs_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -1953,6 +2144,17 @@ pub unsafe fn vcged_s64(a: i64, b: i64) -> u64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcged_u64(a: u64, b: u64) -> u64 {
     transmute(vcge_u64(transmute(a), transmute(b)))
+}
+#[doc = "Floating-point compare greater than or equal"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgeh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcmp))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcgeh_f16(a: f16, b: f16) -> u16 {
+    simd_extract!(vcge_f16(vdup_n_f16(a), vdup_n_f16(b)), 0)
 }
 #[doc = "Floating-point compare greater than or equal to zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgez_f32)"]
@@ -2131,6 +2333,17 @@ pub unsafe fn vcgezs_f32(a: f32) -> u32 {
 pub unsafe fn vcgezd_s64(a: i64) -> u64 {
     transmute(vcgez_s64(transmute(a)))
 }
+#[doc = "Floating-point compare greater than or equal to zero"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgezh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcmp))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcgezh_f16(a: f16) -> u16 {
+    simd_extract!(vcgez_f16(vdup_n_f16(a)), 0)
+}
 #[doc = "Floating-point compare greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_f64)"]
 #[doc = "## Safety"]
@@ -2240,6 +2453,17 @@ pub unsafe fn vcgtd_s64(a: i64, b: i64) -> u64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcgtd_u64(a: u64, b: u64) -> u64 {
     transmute(vcgt_u64(transmute(a), transmute(b)))
+}
+#[doc = "Floating-point compare greater than"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgth_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcmp))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcgth_f16(a: f16, b: f16) -> u16 {
+    simd_extract!(vcgt_f16(vdup_n_f16(a), vdup_n_f16(b)), 0)
 }
 #[doc = "Floating-point compare greater than zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtz_f32)"]
@@ -2418,6 +2642,17 @@ pub unsafe fn vcgtzs_f32(a: f32) -> u32 {
 pub unsafe fn vcgtzd_s64(a: i64) -> u64 {
     transmute(vcgtz_s64(transmute(a)))
 }
+#[doc = "Floating-point compare greater than zero"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtzh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcmp))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcgtzh_f16(a: f16) -> u16 {
+    simd_extract!(vcgtz_f16(vdup_n_f16(a)), 0)
+}
 #[doc = "Floating-point compare less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcle_f64)"]
 #[doc = "## Safety"]
@@ -2527,6 +2762,17 @@ pub unsafe fn vcled_u64(a: u64, b: u64) -> u64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcled_s64(a: i64, b: i64) -> u64 {
     transmute(vcle_s64(transmute(a), transmute(b)))
+}
+#[doc = "Floating-point compare less than or equal"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcleh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcmp))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcleh_f16(a: f16, b: f16) -> u16 {
+    simd_extract!(vcle_f16(vdup_n_f16(a), vdup_n_f16(b)), 0)
 }
 #[doc = "Floating-point compare less than or equal to zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclez_f32)"]
@@ -2705,6 +2951,17 @@ pub unsafe fn vclezs_f32(a: f32) -> u32 {
 pub unsafe fn vclezd_s64(a: i64) -> u64 {
     transmute(vclez_s64(transmute(a)))
 }
+#[doc = "Floating-point compare less than or equal to zero"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclezh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcmp))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vclezh_f16(a: f16) -> u16 {
+    simd_extract!(vclez_f16(vdup_n_f16(a)), 0)
+}
 #[doc = "Floating-point compare less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclt_f64)"]
 #[doc = "## Safety"]
@@ -2792,6 +3049,17 @@ pub unsafe fn vcltd_u64(a: u64, b: u64) -> u64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcltd_s64(a: i64, b: i64) -> u64 {
     transmute(vclt_s64(transmute(a), transmute(b)))
+}
+#[doc = "Floating-point compare less than"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclth_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcmp))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vclth_f16(a: f16, b: f16) -> u16 {
+    simd_extract!(vclt_f16(vdup_n_f16(a), vdup_n_f16(b)), 0)
 }
 #[doc = "Floating-point compare less than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclts_f32)"]
@@ -2992,6 +3260,55 @@ pub unsafe fn vcltzs_f32(a: f32) -> u32 {
 pub unsafe fn vcltzd_s64(a: i64) -> u64 {
     transmute(vcltz_s64(transmute(a)))
 }
+#[doc = "Floating-point compare less than zero"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltzh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcmp))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcltzh_f16(a: f16) -> u16 {
+    simd_extract!(vcltz_f16(vdup_n_f16(a)), 0)
+}
+#[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fcmla))]
+pub unsafe fn vcmla_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcmla.rot0.v4f16"
+        )]
+        fn _vcmla_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t;
+    }
+    _vcmla_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fcmla))]
+pub unsafe fn vcmlaq_f16(a: float16x8_t, b: float16x8_t, c: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcmla.rot0.v8f16"
+        )]
+        fn _vcmlaq_f16(a: float16x8_t, b: float16x8_t, c: float16x8_t) -> float16x8_t;
+    }
+    _vcmlaq_f16(a, b, c)
+}
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_f32)"]
 #[doc = "## Safety"]
@@ -3047,6 +3364,66 @@ pub unsafe fn vcmlaq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> floa
     _vcmlaq_f64(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcmla_lane_f16<const LANE: i32>(
+    a: float16x4_t,
+    b: float16x4_t,
+    c: float16x4_t,
+) -> float16x4_t {
+    static_assert_uimm_bits!(LANE, 1);
+    let c: float16x4_t = simd_shuffle!(
+        c,
+        c,
+        [
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1
+        ]
+    );
+    vcmla_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcmlaq_lane_f16<const LANE: i32>(
+    a: float16x8_t,
+    b: float16x8_t,
+    c: float16x4_t,
+) -> float16x8_t {
+    static_assert_uimm_bits!(LANE, 1);
+    let c: float16x8_t = simd_shuffle!(
+        c,
+        c,
+        [
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1
+        ]
+    );
+    vcmlaq_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_lane_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -3092,6 +3469,66 @@ pub unsafe fn vcmlaq_lane_f32<const LANE: i32>(
     vcmlaq_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcmla_laneq_f16<const LANE: i32>(
+    a: float16x4_t,
+    b: float16x4_t,
+    c: float16x8_t,
+) -> float16x4_t {
+    static_assert_uimm_bits!(LANE, 2);
+    let c: float16x4_t = simd_shuffle!(
+        c,
+        c,
+        [
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1
+        ]
+    );
+    vcmla_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcmlaq_laneq_f16<const LANE: i32>(
+    a: float16x8_t,
+    b: float16x8_t,
+    c: float16x8_t,
+) -> float16x8_t {
+    static_assert_uimm_bits!(LANE, 2);
+    let c: float16x8_t = simd_shuffle!(
+        c,
+        c,
+        [
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1
+        ]
+    );
+    vcmlaq_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_laneq_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -3135,6 +3572,44 @@ pub unsafe fn vcmlaq_laneq_f32<const LANE: i32>(
         ]
     );
     vcmlaq_f32(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot180_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fcmla))]
+pub unsafe fn vcmla_rot180_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcmla.rot180.v4f16"
+        )]
+        fn _vcmla_rot180_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t;
+    }
+    _vcmla_rot180_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot180_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fcmla))]
+pub unsafe fn vcmlaq_rot180_f16(a: float16x8_t, b: float16x8_t, c: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcmla.rot180.v8f16"
+        )]
+        fn _vcmlaq_rot180_f16(a: float16x8_t, b: float16x8_t, c: float16x8_t) -> float16x8_t;
+    }
+    _vcmlaq_rot180_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot180_f32)"]
@@ -3191,6 +3666,66 @@ pub unsafe fn vcmlaq_rot180_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) 
     _vcmlaq_rot180_f64(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot180_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcmla_rot180_lane_f16<const LANE: i32>(
+    a: float16x4_t,
+    b: float16x4_t,
+    c: float16x4_t,
+) -> float16x4_t {
+    static_assert_uimm_bits!(LANE, 1);
+    let c: float16x4_t = simd_shuffle!(
+        c,
+        c,
+        [
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1
+        ]
+    );
+    vcmla_rot180_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot180_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcmlaq_rot180_lane_f16<const LANE: i32>(
+    a: float16x8_t,
+    b: float16x8_t,
+    c: float16x4_t,
+) -> float16x8_t {
+    static_assert_uimm_bits!(LANE, 1);
+    let c: float16x8_t = simd_shuffle!(
+        c,
+        c,
+        [
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1
+        ]
+    );
+    vcmlaq_rot180_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot180_lane_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -3236,6 +3771,66 @@ pub unsafe fn vcmlaq_rot180_lane_f32<const LANE: i32>(
     vcmlaq_rot180_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot180_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcmla_rot180_laneq_f16<const LANE: i32>(
+    a: float16x4_t,
+    b: float16x4_t,
+    c: float16x8_t,
+) -> float16x4_t {
+    static_assert_uimm_bits!(LANE, 2);
+    let c: float16x4_t = simd_shuffle!(
+        c,
+        c,
+        [
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1
+        ]
+    );
+    vcmla_rot180_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot180_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcmlaq_rot180_laneq_f16<const LANE: i32>(
+    a: float16x8_t,
+    b: float16x8_t,
+    c: float16x8_t,
+) -> float16x8_t {
+    static_assert_uimm_bits!(LANE, 2);
+    let c: float16x8_t = simd_shuffle!(
+        c,
+        c,
+        [
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1
+        ]
+    );
+    vcmlaq_rot180_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot180_laneq_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -3279,6 +3874,44 @@ pub unsafe fn vcmlaq_rot180_laneq_f32<const LANE: i32>(
         ]
     );
     vcmlaq_rot180_f32(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot270_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fcmla))]
+pub unsafe fn vcmla_rot270_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcmla.rot270.v4f16"
+        )]
+        fn _vcmla_rot270_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t;
+    }
+    _vcmla_rot270_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot270_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fcmla))]
+pub unsafe fn vcmlaq_rot270_f16(a: float16x8_t, b: float16x8_t, c: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcmla.rot270.v8f16"
+        )]
+        fn _vcmlaq_rot270_f16(a: float16x8_t, b: float16x8_t, c: float16x8_t) -> float16x8_t;
+    }
+    _vcmlaq_rot270_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot270_f32)"]
@@ -3335,6 +3968,66 @@ pub unsafe fn vcmlaq_rot270_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) 
     _vcmlaq_rot270_f64(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot270_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcmla_rot270_lane_f16<const LANE: i32>(
+    a: float16x4_t,
+    b: float16x4_t,
+    c: float16x4_t,
+) -> float16x4_t {
+    static_assert_uimm_bits!(LANE, 1);
+    let c: float16x4_t = simd_shuffle!(
+        c,
+        c,
+        [
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1
+        ]
+    );
+    vcmla_rot270_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot270_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcmlaq_rot270_lane_f16<const LANE: i32>(
+    a: float16x8_t,
+    b: float16x8_t,
+    c: float16x4_t,
+) -> float16x8_t {
+    static_assert_uimm_bits!(LANE, 1);
+    let c: float16x8_t = simd_shuffle!(
+        c,
+        c,
+        [
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1
+        ]
+    );
+    vcmlaq_rot270_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot270_lane_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -3380,6 +4073,66 @@ pub unsafe fn vcmlaq_rot270_lane_f32<const LANE: i32>(
     vcmlaq_rot270_f32(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot270_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcmla_rot270_laneq_f16<const LANE: i32>(
+    a: float16x4_t,
+    b: float16x4_t,
+    c: float16x8_t,
+) -> float16x4_t {
+    static_assert_uimm_bits!(LANE, 2);
+    let c: float16x4_t = simd_shuffle!(
+        c,
+        c,
+        [
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1
+        ]
+    );
+    vcmla_rot270_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot270_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcmlaq_rot270_laneq_f16<const LANE: i32>(
+    a: float16x8_t,
+    b: float16x8_t,
+    c: float16x8_t,
+) -> float16x8_t {
+    static_assert_uimm_bits!(LANE, 2);
+    let c: float16x8_t = simd_shuffle!(
+        c,
+        c,
+        [
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1
+        ]
+    );
+    vcmlaq_rot270_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot270_laneq_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -3423,6 +4176,44 @@ pub unsafe fn vcmlaq_rot270_laneq_f32<const LANE: i32>(
         ]
     );
     vcmlaq_rot270_f32(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot90_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fcmla))]
+pub unsafe fn vcmla_rot90_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcmla.rot90.v4f16"
+        )]
+        fn _vcmla_rot90_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t;
+    }
+    _vcmla_rot90_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot90_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fcmla))]
+pub unsafe fn vcmlaq_rot90_f16(a: float16x8_t, b: float16x8_t, c: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcmla.rot90.v8f16"
+        )]
+        fn _vcmlaq_rot90_f16(a: float16x8_t, b: float16x8_t, c: float16x8_t) -> float16x8_t;
+    }
+    _vcmlaq_rot90_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot90_f32)"]
@@ -3479,6 +4270,66 @@ pub unsafe fn vcmlaq_rot90_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -
     _vcmlaq_rot90_f64(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot90_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcmla_rot90_lane_f16<const LANE: i32>(
+    a: float16x4_t,
+    b: float16x4_t,
+    c: float16x4_t,
+) -> float16x4_t {
+    static_assert_uimm_bits!(LANE, 1);
+    let c: float16x4_t = simd_shuffle!(
+        c,
+        c,
+        [
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1
+        ]
+    );
+    vcmla_rot90_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot90_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcmlaq_rot90_lane_f16<const LANE: i32>(
+    a: float16x8_t,
+    b: float16x8_t,
+    c: float16x4_t,
+) -> float16x8_t {
+    static_assert_uimm_bits!(LANE, 1);
+    let c: float16x8_t = simd_shuffle!(
+        c,
+        c,
+        [
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1
+        ]
+    );
+    vcmlaq_rot90_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot90_lane_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -3522,6 +4373,66 @@ pub unsafe fn vcmlaq_rot90_lane_f32<const LANE: i32>(
         ]
     );
     vcmlaq_rot90_f32(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot90_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcmla_rot90_laneq_f16<const LANE: i32>(
+    a: float16x4_t,
+    b: float16x4_t,
+    c: float16x8_t,
+) -> float16x4_t {
+    static_assert_uimm_bits!(LANE, 2);
+    let c: float16x4_t = simd_shuffle!(
+        c,
+        c,
+        [
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1
+        ]
+    );
+    vcmla_rot90_f16(a, b, c)
+}
+#[doc = "Floating-point complex multiply accumulate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmlaq_rot90_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fcma")]
+#[cfg_attr(test, assert_instr(fcmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcmlaq_rot90_laneq_f16<const LANE: i32>(
+    a: float16x8_t,
+    b: float16x8_t,
+    c: float16x8_t,
+) -> float16x8_t {
+    static_assert_uimm_bits!(LANE, 2);
+    let c: float16x8_t = simd_shuffle!(
+        c,
+        c,
+        [
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1,
+            2 * LANE as u32,
+            2 * LANE as u32 + 1
+        ]
+    );
+    vcmlaq_rot90_f16(a, b, c)
 }
 #[doc = "Floating-point complex multiply accumulate"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcmla_rot90_laneq_f32)"]
@@ -6721,7 +7632,7 @@ pub unsafe fn vcopyq_laneq_p64<const LANE1: i32, const LANE2: i32>(
 pub unsafe fn vcreate_f64(a: u64) -> float64x1_t {
     transmute(a)
 }
-#[doc = "Floating-point convert to lower precision narrow"]
+#[doc = "Floating-point convert"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_f32_f64)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -6786,6 +7697,28 @@ pub unsafe fn vcvt_f64_u64(a: uint64x1_t) -> float64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcvtq_f64_u64(a: uint64x2_t) -> float64x2_t {
     simd_cast(a)
+}
+#[doc = "Floating-point convert to lower precision"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_high_f16_f32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtn2))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvt_high_f16_f32(a: float16x4_t, b: float32x4_t) -> float16x8_t {
+    vcombine_f16(a, vcvt_f16_f32(b))
+}
+#[doc = "Floating-point convert to higher precision"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_high_f32_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtl2))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvt_high_f32_f16(a: float16x8_t) -> float32x4_t {
+    vcvt_f32_f16(vget_high_f16(a))
 }
 #[doc = "Floating-point convert to lower precision narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_high_f32_f64)"]
@@ -7043,6 +7976,42 @@ pub unsafe fn vcvtq_u64_f64(a: float64x2_t) -> uint64x2_t {
     _vcvtq_u64_f64(a).as_unsigned()
 }
 #[doc = "Floating-point convert to signed integer, rounding to nearest with ties to away"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvta_s16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtas))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvta_s16_f16(a: float16x4_t) -> int16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtas.v4i16.v4f16"
+        )]
+        fn _vcvta_s16_f16(a: float16x4_t) -> int16x4_t;
+    }
+    _vcvta_s16_f16(a)
+}
+#[doc = "Floating-point convert to signed integer, rounding to nearest with ties to away"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtaq_s16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtas))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtaq_s16_f16(a: float16x8_t) -> int16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtas.v8i16.v8f16"
+        )]
+        fn _vcvtaq_s16_f16(a: float16x8_t) -> int16x8_t;
+    }
+    _vcvtaq_s16_f16(a)
+}
+#[doc = "Floating-point convert to signed integer, rounding to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvta_s32_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -7115,6 +8084,42 @@ pub unsafe fn vcvtaq_s64_f64(a: float64x2_t) -> int64x2_t {
     _vcvtaq_s64_f64(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to away"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvta_u16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtau))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvta_u16_f16(a: float16x4_t) -> uint16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtau.v4i16.v4f16"
+        )]
+        fn _vcvta_u16_f16(a: float16x4_t) -> int16x4_t;
+    }
+    _vcvta_u16_f16(a).as_unsigned()
+}
+#[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to away"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtaq_u16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtau))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtaq_u16_f16(a: float16x8_t) -> uint16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtau.v8i16.v8f16"
+        )]
+        fn _vcvtaq_u16_f16(a: float16x8_t) -> int16x8_t;
+    }
+    _vcvtaq_u16_f16(a).as_unsigned()
+}
+#[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvta_u32_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -7185,6 +8190,100 @@ pub unsafe fn vcvtaq_u64_f64(a: float64x2_t) -> uint64x2_t {
         fn _vcvtaq_u64_f64(a: float64x2_t) -> int64x2_t;
     }
     _vcvtaq_u64_f64(a).as_unsigned()
+}
+#[doc = "Floating-point convert to integer, rounding to nearest with ties to away"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtah_s16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtas))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtah_s16_f16(a: f16) -> i16 {
+    vcvtah_s32_f16(a) as i16
+}
+#[doc = "Floating-point convert to integer, rounding to nearest with ties to away"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtah_s32_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtas))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtah_s32_f16(a: f16) -> i32 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtas.i32.f16"
+        )]
+        fn _vcvtah_s32_f16(a: f16) -> i32;
+    }
+    _vcvtah_s32_f16(a)
+}
+#[doc = "Floating-point convert to integer, rounding to nearest with ties to away"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtah_s64_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtas))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtah_s64_f16(a: f16) -> i64 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtas.i64.f16"
+        )]
+        fn _vcvtah_s64_f16(a: f16) -> i64;
+    }
+    _vcvtah_s64_f16(a)
+}
+#[doc = "Floating-point convert to integer, rounding to nearest with ties to away"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtah_u16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtau))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtah_u16_f16(a: f16) -> u16 {
+    vcvtah_u32_f16(a) as u16
+}
+#[doc = "Floating-point convert to integer, rounding to nearest with ties to away"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtah_u32_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtau))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtah_u32_f16(a: f16) -> u32 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtau.i32.f16"
+        )]
+        fn _vcvtah_u32_f16(a: f16) -> i32;
+    }
+    _vcvtah_u32_f16(a).as_unsigned()
+}
+#[doc = "Floating-point convert to integer, rounding to nearest with ties to away"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtah_u64_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtau))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtah_u64_f16(a: f16) -> u64 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtau.i64.f16"
+        )]
+        fn _vcvtah_u64_f16(a: f16) -> i64;
+    }
+    _vcvtah_u64_f16(a).as_unsigned()
 }
 #[doc = "Floating-point convert to integer, rounding to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtas_s32_f32)"]
@@ -7280,6 +8379,386 @@ pub unsafe fn vcvtd_f64_s64(a: i64) -> f64 {
 pub unsafe fn vcvts_f32_s32(a: i32) -> f32 {
     a as f32
 }
+#[doc = "Fixed-point convert to floating-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_f16_s16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(scvtf))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_f16_s16(a: i16) -> f16 {
+    a as f16
+}
+#[doc = "Fixed-point convert to floating-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_f16_s32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(scvtf))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_f16_s32(a: i32) -> f16 {
+    a as f16
+}
+#[doc = "Fixed-point convert to floating-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_f16_s64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(scvtf))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_f16_s64(a: i64) -> f16 {
+    a as f16
+}
+#[doc = "Unsigned fixed-point convert to floating-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_f16_u16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(ucvtf))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_f16_u16(a: u16) -> f16 {
+    a as f16
+}
+#[doc = "Unsigned fixed-point convert to floating-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_f16_u32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(ucvtf))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_f16_u32(a: u32) -> f16 {
+    a as f16
+}
+#[doc = "Unsigned fixed-point convert to floating-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_f16_u64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(ucvtf))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_f16_u64(a: u64) -> f16 {
+    a as f16
+}
+#[doc = "Fixed-point convert to floating-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_f16_s16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(scvtf, N = 2))]
+#[rustc_legacy_const_generics(1)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_n_f16_s16<const N: i32>(a: i16) -> f16 {
+    static_assert!(N >= 1 && N <= 16);
+    vcvth_n_f16_s32::<N>(a as i32) as f16
+}
+#[doc = "Fixed-point convert to floating-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_f16_s32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(scvtf, N = 2))]
+#[rustc_legacy_const_generics(1)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_n_f16_s32<const N: i32>(a: i32) -> f16 {
+    static_assert!(N >= 1 && N <= 16);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcvtfxs2fp.f16.i32"
+        )]
+        fn _vcvth_n_f16_s32(a: i32, n: i32) -> f16;
+    }
+    _vcvth_n_f16_s32(a, N)
+}
+#[doc = "Fixed-point convert to floating-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_f16_s64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(scvtf, N = 2))]
+#[rustc_legacy_const_generics(1)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_n_f16_s64<const N: i32>(a: i64) -> f16 {
+    static_assert!(N >= 1 && N <= 16);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcvtfxs2fp.f16.i64"
+        )]
+        fn _vcvth_n_f16_s64(a: i64, n: i32) -> f16;
+    }
+    _vcvth_n_f16_s64(a, N)
+}
+#[doc = "Fixed-point convert to floating-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_f16_u16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(ucvtf, N = 2))]
+#[rustc_legacy_const_generics(1)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_n_f16_u16<const N: i32>(a: u16) -> f16 {
+    static_assert!(N >= 1 && N <= 16);
+    vcvth_n_f16_u32::<N>(a as u32) as f16
+}
+#[doc = "Fixed-point convert to floating-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_f16_u32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(ucvtf, N = 2))]
+#[rustc_legacy_const_generics(1)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_n_f16_u32<const N: i32>(a: u32) -> f16 {
+    static_assert!(N >= 1 && N <= 16);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcvtfxu2fp.f16.i32"
+        )]
+        fn _vcvth_n_f16_u32(a: i32, n: i32) -> f16;
+    }
+    _vcvth_n_f16_u32(a.as_signed(), N)
+}
+#[doc = "Fixed-point convert to floating-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_f16_u64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(ucvtf, N = 2))]
+#[rustc_legacy_const_generics(1)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_n_f16_u64<const N: i32>(a: u64) -> f16 {
+    static_assert!(N >= 1 && N <= 16);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcvtfxu2fp.f16.i64"
+        )]
+        fn _vcvth_n_f16_u64(a: i64, n: i32) -> f16;
+    }
+    _vcvth_n_f16_u64(a.as_signed(), N)
+}
+#[doc = "Floating-point convert to fixed-point, rounding toward zero"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_s16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtzs, N = 2))]
+#[rustc_legacy_const_generics(1)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_n_s16_f16<const N: i32>(a: f16) -> i16 {
+    static_assert!(N >= 1 && N <= 16);
+    vcvth_n_s32_f16::<N>(a) as i16
+}
+#[doc = "Floating-point convert to fixed-point, rounding toward zero"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_s32_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtzs, N = 2))]
+#[rustc_legacy_const_generics(1)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_n_s32_f16<const N: i32>(a: f16) -> i32 {
+    static_assert!(N >= 1 && N <= 16);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcvtfp2fxs.i32.f16"
+        )]
+        fn _vcvth_n_s32_f16(a: f16, n: i32) -> i32;
+    }
+    _vcvth_n_s32_f16(a, N)
+}
+#[doc = "Floating-point convert to fixed-point, rounding toward zero"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_s64_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtzs, N = 2))]
+#[rustc_legacy_const_generics(1)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_n_s64_f16<const N: i32>(a: f16) -> i64 {
+    static_assert!(N >= 1 && N <= 16);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcvtfp2fxs.i64.f16"
+        )]
+        fn _vcvth_n_s64_f16(a: f16, n: i32) -> i64;
+    }
+    _vcvth_n_s64_f16(a, N)
+}
+#[doc = "Floating-point convert to fixed-point, rounding toward zero"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_u16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtzu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_n_u16_f16<const N: i32>(a: f16) -> u16 {
+    static_assert!(N >= 1 && N <= 16);
+    vcvth_n_u32_f16::<N>(a) as u16
+}
+#[doc = "Floating-point convert to fixed-point, rounding toward zero"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_u32_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtzu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_n_u32_f16<const N: i32>(a: f16) -> u32 {
+    static_assert!(N >= 1 && N <= 16);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcvtfp2fxu.i32.f16"
+        )]
+        fn _vcvth_n_u32_f16(a: f16, n: i32) -> i32;
+    }
+    _vcvth_n_u32_f16(a, N).as_unsigned()
+}
+#[doc = "Floating-point convert to fixed-point, rounding toward zero"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_u64_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtzu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_n_u64_f16<const N: i32>(a: f16) -> u64 {
+    static_assert!(N >= 1 && N <= 16);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vcvtfp2fxu.i64.f16"
+        )]
+        fn _vcvth_n_u64_f16(a: f16, n: i32) -> i64;
+    }
+    _vcvth_n_u64_f16(a, N).as_unsigned()
+}
+#[doc = "Floating-point convert to signed fixed-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_s16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtzs))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_s16_f16(a: f16) -> i16 {
+    a as i16
+}
+#[doc = "Floating-point convert to signed fixed-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_s32_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtzs))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_s32_f16(a: f16) -> i32 {
+    a as i32
+}
+#[doc = "Floating-point convert to signed fixed-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_s64_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtzs))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_s64_f16(a: f16) -> i64 {
+    a as i64
+}
+#[doc = "Floating-point convert to unsigned fixed-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_u16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtzu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_u16_f16(a: f16) -> u16 {
+    a as u16
+}
+#[doc = "Floating-point convert to unsigned fixed-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_u32_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtzu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_u32_f16(a: f16) -> u32 {
+    a as u32
+}
+#[doc = "Floating-point convert to unsigned fixed-point"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_u64_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtzu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvth_u64_f16(a: f16) -> u64 {
+    a as u64
+}
+#[doc = "Floating-point convert to signed integer, rounding toward minus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtm_s16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtms))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtm_s16_f16(a: float16x4_t) -> int16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtms.v4i16.v4f16"
+        )]
+        fn _vcvtm_s16_f16(a: float16x4_t) -> int16x4_t;
+    }
+    _vcvtm_s16_f16(a)
+}
+#[doc = "Floating-point convert to signed integer, rounding toward minus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtmq_s16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtms))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtmq_s16_f16(a: float16x8_t) -> int16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtms.v8i16.v8f16"
+        )]
+        fn _vcvtmq_s16_f16(a: float16x8_t) -> int16x8_t;
+    }
+    _vcvtmq_s16_f16(a)
+}
 #[doc = "Floating-point convert to signed integer, rounding toward minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtm_s32_f32)"]
 #[doc = "## Safety"]
@@ -7353,6 +8832,42 @@ pub unsafe fn vcvtmq_s64_f64(a: float64x2_t) -> int64x2_t {
     _vcvtmq_s64_f64(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding toward minus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtm_u16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtmu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtm_u16_f16(a: float16x4_t) -> uint16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtmu.v4i16.v4f16"
+        )]
+        fn _vcvtm_u16_f16(a: float16x4_t) -> int16x4_t;
+    }
+    _vcvtm_u16_f16(a).as_unsigned()
+}
+#[doc = "Floating-point convert to unsigned integer, rounding toward minus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtmq_u16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtmu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtmq_u16_f16(a: float16x8_t) -> uint16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtmu.v8i16.v8f16"
+        )]
+        fn _vcvtmq_u16_f16(a: float16x8_t) -> int16x8_t;
+    }
+    _vcvtmq_u16_f16(a).as_unsigned()
+}
+#[doc = "Floating-point convert to unsigned integer, rounding toward minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtm_u32_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -7423,6 +8938,100 @@ pub unsafe fn vcvtmq_u64_f64(a: float64x2_t) -> uint64x2_t {
         fn _vcvtmq_u64_f64(a: float64x2_t) -> int64x2_t;
     }
     _vcvtmq_u64_f64(a).as_unsigned()
+}
+#[doc = "Floating-point convert to integer, rounding towards minus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtmh_s16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtms))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtmh_s16_f16(a: f16) -> i16 {
+    vcvtmh_s32_f16(a) as i16
+}
+#[doc = "Floating-point convert to integer, rounding towards minus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtmh_s32_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtms))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtmh_s32_f16(a: f16) -> i32 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtms.i32.f16"
+        )]
+        fn _vcvtmh_s32_f16(a: f16) -> i32;
+    }
+    _vcvtmh_s32_f16(a)
+}
+#[doc = "Floating-point convert to integer, rounding towards minus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtmh_s64_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtms))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtmh_s64_f16(a: f16) -> i64 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtms.i64.f16"
+        )]
+        fn _vcvtmh_s64_f16(a: f16) -> i64;
+    }
+    _vcvtmh_s64_f16(a)
+}
+#[doc = "Floating-point convert to integer, rounding towards minus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtmh_u16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtmu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtmh_u16_f16(a: f16) -> u16 {
+    vcvtmh_u32_f16(a) as u16
+}
+#[doc = "Floating-point convert to unsigned integer, rounding towards minus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtmh_u32_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtmu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtmh_u32_f16(a: f16) -> u32 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtmu.i32.f16"
+        )]
+        fn _vcvtmh_u32_f16(a: f16) -> i32;
+    }
+    _vcvtmh_u32_f16(a).as_unsigned()
+}
+#[doc = "Floating-point convert to unsigned integer, rounding towards minus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtmh_u64_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtmu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtmh_u64_f16(a: f16) -> u64 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtmu.i64.f16"
+        )]
+        fn _vcvtmh_u64_f16(a: f16) -> i64;
+    }
+    _vcvtmh_u64_f16(a).as_unsigned()
 }
 #[doc = "Floating-point convert to signed integer, rounding toward minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtms_s32_f32)"]
@@ -7497,6 +9106,42 @@ pub unsafe fn vcvtmd_u64_f64(a: f64) -> u64 {
     _vcvtmd_u64_f64(a).as_unsigned()
 }
 #[doc = "Floating-point convert to signed integer, rounding to nearest with ties to even"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtn_s16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtns))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtn_s16_f16(a: float16x4_t) -> int16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtns.v4i16.v4f16"
+        )]
+        fn _vcvtn_s16_f16(a: float16x4_t) -> int16x4_t;
+    }
+    _vcvtn_s16_f16(a)
+}
+#[doc = "Floating-point convert to signed integer, rounding to nearest with ties to even"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtnq_s16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtns))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtnq_s16_f16(a: float16x8_t) -> int16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtns.v8i16.v8f16"
+        )]
+        fn _vcvtnq_s16_f16(a: float16x8_t) -> int16x8_t;
+    }
+    _vcvtnq_s16_f16(a)
+}
+#[doc = "Floating-point convert to signed integer, rounding to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtn_s32_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -7567,6 +9212,42 @@ pub unsafe fn vcvtnq_s64_f64(a: float64x2_t) -> int64x2_t {
         fn _vcvtnq_s64_f64(a: float64x2_t) -> int64x2_t;
     }
     _vcvtnq_s64_f64(a)
+}
+#[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to even"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtn_u16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtnu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtn_u16_f16(a: float16x4_t) -> uint16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtnu.v4i16.v4f16"
+        )]
+        fn _vcvtn_u16_f16(a: float16x4_t) -> int16x4_t;
+    }
+    _vcvtn_u16_f16(a).as_unsigned()
+}
+#[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to even"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtnq_u16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtnu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtnq_u16_f16(a: float16x8_t) -> uint16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtnu.v8i16.v8f16"
+        )]
+        fn _vcvtnq_u16_f16(a: float16x8_t) -> int16x8_t;
+    }
+    _vcvtnq_u16_f16(a).as_unsigned()
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtn_u32_f32)"]
@@ -7640,6 +9321,100 @@ pub unsafe fn vcvtnq_u64_f64(a: float64x2_t) -> uint64x2_t {
     }
     _vcvtnq_u64_f64(a).as_unsigned()
 }
+#[doc = "Floating-point convert to integer, rounding to nearest with ties to even"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtnh_s16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtns))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtnh_s16_f16(a: f16) -> i16 {
+    vcvtnh_s32_f16(a) as i16
+}
+#[doc = "Floating-point convert to integer, rounding to nearest with ties to even"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtnh_s32_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtns))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtnh_s32_f16(a: f16) -> i32 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtns.i32.f16"
+        )]
+        fn _vcvtnh_s32_f16(a: f16) -> i32;
+    }
+    _vcvtnh_s32_f16(a)
+}
+#[doc = "Floating-point convert to integer, rounding to nearest with ties to even"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtnh_s64_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtns))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtnh_s64_f16(a: f16) -> i64 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtns.i64.f16"
+        )]
+        fn _vcvtnh_s64_f16(a: f16) -> i64;
+    }
+    _vcvtnh_s64_f16(a)
+}
+#[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to even"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtnh_u16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtnu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtnh_u16_f16(a: f16) -> u16 {
+    vcvtnh_u32_f16(a) as u16
+}
+#[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to even"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtnh_u32_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtnu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtnh_u32_f16(a: f16) -> u32 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtnu.i32.f16"
+        )]
+        fn _vcvtnh_u32_f16(a: f16) -> i32;
+    }
+    _vcvtnh_u32_f16(a).as_unsigned()
+}
+#[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to even"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtnh_u64_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtnu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtnh_u64_f16(a: f16) -> u64 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtnu.i64.f16"
+        )]
+        fn _vcvtnh_u64_f16(a: f16) -> i64;
+    }
+    _vcvtnh_u64_f16(a).as_unsigned()
+}
 #[doc = "Floating-point convert to signed integer, rounding to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtns_s32_f32)"]
 #[doc = "## Safety"]
@@ -7711,6 +9486,42 @@ pub unsafe fn vcvtnd_u64_f64(a: f64) -> u64 {
         fn _vcvtnd_u64_f64(a: f64) -> i64;
     }
     _vcvtnd_u64_f64(a).as_unsigned()
+}
+#[doc = "Floating-point convert to signed integer, rounding to plus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtp_s16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtps))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtp_s16_f16(a: float16x4_t) -> int16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtps.v4i16.v4f16"
+        )]
+        fn _vcvtp_s16_f16(a: float16x4_t) -> int16x4_t;
+    }
+    _vcvtp_s16_f16(a)
+}
+#[doc = "Floating-point convert to signed integer, rounding to plus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtpq_s16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtps))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtpq_s16_f16(a: float16x8_t) -> int16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtps.v8i16.v8f16"
+        )]
+        fn _vcvtpq_s16_f16(a: float16x8_t) -> int16x8_t;
+    }
+    _vcvtpq_s16_f16(a)
 }
 #[doc = "Floating-point convert to signed integer, rounding toward plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtp_s32_f32)"]
@@ -7784,6 +9595,42 @@ pub unsafe fn vcvtpq_s64_f64(a: float64x2_t) -> int64x2_t {
     }
     _vcvtpq_s64_f64(a)
 }
+#[doc = "Floating-point convert to unsigned integer, rounding to plus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtp_u16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtpu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtp_u16_f16(a: float16x4_t) -> uint16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtpu.v4i16.v4f16"
+        )]
+        fn _vcvtp_u16_f16(a: float16x4_t) -> int16x4_t;
+    }
+    _vcvtp_u16_f16(a).as_unsigned()
+}
+#[doc = "Floating-point convert to unsigned integer, rounding to plus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtpq_u16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtpu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtpq_u16_f16(a: float16x8_t) -> uint16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtpu.v8i16.v8f16"
+        )]
+        fn _vcvtpq_u16_f16(a: float16x8_t) -> int16x8_t;
+    }
+    _vcvtpq_u16_f16(a).as_unsigned()
+}
 #[doc = "Floating-point convert to unsigned integer, rounding toward plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtp_u32_f32)"]
 #[doc = "## Safety"]
@@ -7855,6 +9702,100 @@ pub unsafe fn vcvtpq_u64_f64(a: float64x2_t) -> uint64x2_t {
         fn _vcvtpq_u64_f64(a: float64x2_t) -> int64x2_t;
     }
     _vcvtpq_u64_f64(a).as_unsigned()
+}
+#[doc = "Floating-point convert to integer, rounding to plus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtph_s16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtps))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtph_s16_f16(a: f16) -> i16 {
+    vcvtph_s32_f16(a) as i16
+}
+#[doc = "Floating-point convert to integer, rounding to plus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtph_s32_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtps))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtph_s32_f16(a: f16) -> i32 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtps.i32.f16"
+        )]
+        fn _vcvtph_s32_f16(a: f16) -> i32;
+    }
+    _vcvtph_s32_f16(a)
+}
+#[doc = "Floating-point convert to integer, rounding to plus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtph_s64_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtps))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtph_s64_f16(a: f16) -> i64 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtps.i64.f16"
+        )]
+        fn _vcvtph_s64_f16(a: f16) -> i64;
+    }
+    _vcvtph_s64_f16(a)
+}
+#[doc = "Floating-point convert to unsigned integer, rounding to plus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtph_u16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtpu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtph_u16_f16(a: f16) -> u16 {
+    vcvtph_u32_f16(a) as u16
+}
+#[doc = "Floating-point convert to unsigned integer, rounding to plus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtph_u32_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtpu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtph_u32_f16(a: f16) -> u32 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtpu.i32.f16"
+        )]
+        fn _vcvtph_u32_f16(a: f16) -> i32;
+    }
+    _vcvtph_u32_f16(a).as_unsigned()
+}
+#[doc = "Floating-point convert to unsigned integer, rounding to plus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtph_u64_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fcvtpu))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vcvtph_u64_f16(a: f16) -> u64 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fcvtpu.i64.f16"
+        )]
+        fn _vcvtph_u64_f16(a: f16) -> i64;
+    }
+    _vcvtph_u64_f16(a).as_unsigned()
 }
 #[doc = "Floating-point convert to signed integer, rounding toward plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtps_s32_f32)"]
@@ -8195,6 +10136,28 @@ pub unsafe fn vcvtxd_f32_f64(a: f64) -> f32 {
     simd_extract!(vcvtx_f32_f64(vdupq_n_f64(a)), 0)
 }
 #[doc = "Divide"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdiv_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fdiv))]
+pub unsafe fn vdiv_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
+    simd_div(a, b)
+}
+#[doc = "Divide"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdivq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fdiv))]
+pub unsafe fn vdivq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    simd_div(a, b)
+}
+#[doc = "Divide"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdiv_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -8237,6 +10200,17 @@ pub unsafe fn vdiv_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(fdiv))]
 pub unsafe fn vdivq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     simd_div(a, b)
+}
+#[doc = "Divide"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdivh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(nop))]
+pub unsafe fn vdivh_f16(a: f16, b: f16) -> f16 {
+    a / b
 }
 #[doc = "Dot product arithmetic (indexed)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdot_laneq_s32)"]
@@ -8444,7 +10418,7 @@ pub unsafe fn vduph_laneq_p16<const N: i32>(a: poly16x8_t) -> p16 {
     static_assert_uimm_bits!(N, 3);
     simd_extract!(a, N as u32)
 }
-#[doc = "Set all vector lanes to the same value"]
+#[doc = "Extract an element from a vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupb_laneq_s8)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -8457,7 +10431,7 @@ pub unsafe fn vdupb_laneq_s8<const N: i32>(a: int8x16_t) -> i8 {
     static_assert_uimm_bits!(N, 4);
     simd_extract!(a, N as u32)
 }
-#[doc = "Set all vector lanes to the same value"]
+#[doc = "Extract an element from a vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupb_laneq_u8)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -8470,7 +10444,7 @@ pub unsafe fn vdupb_laneq_u8<const N: i32>(a: uint8x16_t) -> u8 {
     static_assert_uimm_bits!(N, 4);
     simd_extract!(a, N as u32)
 }
-#[doc = "Set all vector lanes to the same value"]
+#[doc = "Extract an element from a vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupb_laneq_p8)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -8520,6 +10494,32 @@ pub unsafe fn vdupd_lane_s64<const N: i32>(a: int64x1_t) -> i64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdupd_lane_u64<const N: i32>(a: uint64x1_t) -> u64 {
     static_assert!(N == 0);
+    simd_extract!(a, N as u32)
+}
+#[doc = "Set all vector lanes to the same value"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vduph_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(nop, N = 2))]
+#[rustc_legacy_const_generics(1)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vduph_lane_f16<const N: i32>(a: float16x4_t) -> f16 {
+    static_assert_uimm_bits!(N, 2);
+    simd_extract!(a, N as u32)
+}
+#[doc = "Extract an element from a vector"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vduph_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(nop, N = 4))]
+#[rustc_legacy_const_generics(1)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vduph_laneq_f16<const N: i32>(a: float16x8_t) -> f16 {
+    static_assert_uimm_bits!(N, 4);
     simd_extract!(a, N as u32)
 }
 #[doc = "Set all vector lanes to the same value"]
@@ -8927,6 +10927,74 @@ pub unsafe fn vfma_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float6
     _vfma_f64(b, c, a)
 }
 #[doc = "Floating-point fused multiply-add to accumulator"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfma_lane_f16<const LANE: i32>(
+    a: float16x4_t,
+    b: float16x4_t,
+    c: float16x4_t,
+) -> float16x4_t {
+    static_assert_uimm_bits!(LANE, 2);
+    vfma_f16(a, b, vdup_n_f16(simd_extract!(c, LANE as u32)))
+}
+#[doc = "Floating-point fused multiply-add to accumulator"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfma_laneq_f16<const LANE: i32>(
+    a: float16x4_t,
+    b: float16x4_t,
+    c: float16x8_t,
+) -> float16x4_t {
+    static_assert_uimm_bits!(LANE, 3);
+    vfma_f16(a, b, vdup_n_f16(simd_extract!(c, LANE as u32)))
+}
+#[doc = "Floating-point fused multiply-add to accumulator"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmaq_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmaq_lane_f16<const LANE: i32>(
+    a: float16x8_t,
+    b: float16x8_t,
+    c: float16x4_t,
+) -> float16x8_t {
+    static_assert_uimm_bits!(LANE, 2);
+    vfmaq_f16(a, b, vdupq_n_f16(simd_extract!(c, LANE as u32)))
+}
+#[doc = "Floating-point fused multiply-add to accumulator"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmaq_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmaq_laneq_f16<const LANE: i32>(
+    a: float16x8_t,
+    b: float16x8_t,
+    c: float16x8_t,
+) -> float16x8_t {
+    static_assert_uimm_bits!(LANE, 3);
+    vfmaq_f16(a, b, vdupq_n_f16(simd_extract!(c, LANE as u32)))
+}
+#[doc = "Floating-point fused multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_lane_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -9045,6 +11113,28 @@ pub unsafe fn vfma_laneq_f64<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 1);
     vfma_f64(a, b, vdup_n_f64(simd_extract!(c, LANE as u32)))
 }
+#[doc = "Floating-point fused Multiply-Subtract from accumulator."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_n_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmla))]
+pub unsafe fn vfma_n_f16(a: float16x4_t, b: float16x4_t, c: f16) -> float16x4_t {
+    vfma_f16(a, b, vdup_n_f16(c))
+}
+#[doc = "Floating-point fused Multiply-Subtract from accumulator."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmaq_n_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmla))]
+pub unsafe fn vfmaq_n_f16(a: float16x8_t, b: float16x8_t, c: f16) -> float16x8_t {
+    vfmaq_f16(a, b, vdupq_n_f16(c))
+}
 #[doc = "Floating-point fused Multiply-Add to accumulator(vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_n_f64)"]
 #[doc = "## Safety"]
@@ -9076,6 +11166,52 @@ pub unsafe fn vfmad_lane_f64<const LANE: i32>(a: f64, b: f64, c: float64x1_t) ->
     static_assert!(LANE == 0);
     let c: f64 = simd_extract!(c, LANE as u32);
     _vfmad_lane_f64(b, c, a)
+}
+#[doc = "Floating-point fused multiply-add to accumulator"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmah_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmadd))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmah_f16(a: f16, b: f16, c: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.fma.f16"
+        )]
+        fn _vfmah_f16(a: f16, b: f16, c: f16) -> f16;
+    }
+    _vfmah_f16(b, c, a)
+}
+#[doc = "Floating-point fused multiply-add to accumulator"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmah_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmadd, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmah_lane_f16<const LANE: i32>(a: f16, b: f16, v: float16x4_t) -> f16 {
+    static_assert_uimm_bits!(LANE, 2);
+    let c: f16 = simd_extract!(v, LANE as u32);
+    vfmah_f16(a, b, c)
+}
+#[doc = "Floating-point fused multiply-add to accumulator"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmah_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmadd, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmah_laneq_f16<const LANE: i32>(a: f16, b: f16, v: float16x8_t) -> f16 {
+    static_assert_uimm_bits!(LANE, 3);
+    let c: f16 = simd_extract!(v, LANE as u32);
+    vfmah_f16(a, b, c)
 }
 #[doc = "Floating-point fused Multiply-Add to accumulator(vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmaq_f64)"]
@@ -9186,6 +11322,446 @@ pub unsafe fn vfmad_laneq_f64<const LANE: i32>(a: f64, b: f64, c: float64x2_t) -
     let c: f64 = simd_extract!(c, LANE as u32);
     _vfmad_laneq_f64(b, c, a)
 }
+#[doc = "Floating-point fused Multiply-Add Long to accumulator (vector)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlal_high_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmlal2))]
+pub unsafe fn vfmlal_high_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32x2_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmlal2.v2f32.v4f16"
+        )]
+        fn _vfmlal_high_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32x2_t;
+    }
+    _vfmlal_high_f16(r, a, b)
+}
+#[doc = "Floating-point fused Multiply-Add Long to accumulator (vector)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlalq_high_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmlal2))]
+pub unsafe fn vfmlalq_high_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float32x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmlal2.v4f32.v8f16"
+        )]
+        fn _vfmlalq_high_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float32x4_t;
+    }
+    _vfmlalq_high_f16(r, a, b)
+}
+#[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlal_lane_high_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmlal2, LANE = 0))]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmlal_lane_high_f16<const LANE: i32>(
+    r: float32x2_t,
+    a: float16x4_t,
+    b: float16x4_t,
+) -> float32x2_t {
+    static_assert_uimm_bits!(LANE, 2);
+    vfmlal_high_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32)))
+}
+#[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlal_laneq_high_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmlal2, LANE = 0))]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmlal_laneq_high_f16<const LANE: i32>(
+    r: float32x2_t,
+    a: float16x4_t,
+    b: float16x8_t,
+) -> float32x2_t {
+    static_assert_uimm_bits!(LANE, 3);
+    vfmlal_high_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32)))
+}
+#[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlalq_lane_high_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmlal2, LANE = 0))]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmlalq_lane_high_f16<const LANE: i32>(
+    r: float32x4_t,
+    a: float16x8_t,
+    b: float16x4_t,
+) -> float32x4_t {
+    static_assert_uimm_bits!(LANE, 2);
+    vfmlalq_high_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32)))
+}
+#[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlalq_laneq_high_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmlal2, LANE = 0))]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmlalq_laneq_high_f16<const LANE: i32>(
+    r: float32x4_t,
+    a: float16x8_t,
+    b: float16x8_t,
+) -> float32x4_t {
+    static_assert_uimm_bits!(LANE, 3);
+    vfmlalq_high_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32)))
+}
+#[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlal_lane_low_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmlal, LANE = 0))]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmlal_lane_low_f16<const LANE: i32>(
+    r: float32x2_t,
+    a: float16x4_t,
+    b: float16x4_t,
+) -> float32x2_t {
+    static_assert_uimm_bits!(LANE, 2);
+    vfmlal_low_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32)))
+}
+#[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlal_laneq_low_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmlal, LANE = 0))]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmlal_laneq_low_f16<const LANE: i32>(
+    r: float32x2_t,
+    a: float16x4_t,
+    b: float16x8_t,
+) -> float32x2_t {
+    static_assert_uimm_bits!(LANE, 3);
+    vfmlal_low_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32)))
+}
+#[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlalq_lane_low_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmlal, LANE = 0))]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmlalq_lane_low_f16<const LANE: i32>(
+    r: float32x4_t,
+    a: float16x8_t,
+    b: float16x4_t,
+) -> float32x4_t {
+    static_assert_uimm_bits!(LANE, 2);
+    vfmlalq_low_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32)))
+}
+#[doc = "Floating-point fused Multiply-Add Long to accumulator (by element)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlalq_laneq_low_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmlal, LANE = 0))]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmlalq_laneq_low_f16<const LANE: i32>(
+    r: float32x4_t,
+    a: float16x8_t,
+    b: float16x8_t,
+) -> float32x4_t {
+    static_assert_uimm_bits!(LANE, 3);
+    vfmlalq_low_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32)))
+}
+#[doc = "Floating-point fused Multiply-Add Long to accumulator (vector)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlal_low_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmlal))]
+pub unsafe fn vfmlal_low_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32x2_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmlal.v2f32.v4f16"
+        )]
+        fn _vfmlal_low_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32x2_t;
+    }
+    _vfmlal_low_f16(r, a, b)
+}
+#[doc = "Floating-point fused Multiply-Add Long to accumulator (vector)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlalq_low_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmlal))]
+pub unsafe fn vfmlalq_low_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float32x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmlal.v4f32.v8f16"
+        )]
+        fn _vfmlalq_low_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float32x4_t;
+    }
+    _vfmlalq_low_f16(r, a, b)
+}
+#[doc = "Floating-point fused Multiply-Subtract Long from accumulator (vector)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlsl_high_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmlsl2))]
+pub unsafe fn vfmlsl_high_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32x2_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmlsl2.v2f32.v4f16"
+        )]
+        fn _vfmlsl_high_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32x2_t;
+    }
+    _vfmlsl_high_f16(r, a, b)
+}
+#[doc = "Floating-point fused Multiply-Subtract Long from accumulator (vector)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlslq_high_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmlsl2))]
+pub unsafe fn vfmlslq_high_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float32x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmlsl2.v4f32.v8f16"
+        )]
+        fn _vfmlslq_high_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float32x4_t;
+    }
+    _vfmlslq_high_f16(r, a, b)
+}
+#[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlsl_lane_high_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmlsl2, LANE = 0))]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmlsl_lane_high_f16<const LANE: i32>(
+    r: float32x2_t,
+    a: float16x4_t,
+    b: float16x4_t,
+) -> float32x2_t {
+    static_assert_uimm_bits!(LANE, 2);
+    vfmlsl_high_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32)))
+}
+#[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlsl_laneq_high_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmlsl2, LANE = 0))]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmlsl_laneq_high_f16<const LANE: i32>(
+    r: float32x2_t,
+    a: float16x4_t,
+    b: float16x8_t,
+) -> float32x2_t {
+    static_assert_uimm_bits!(LANE, 3);
+    vfmlsl_high_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32)))
+}
+#[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlslq_lane_high_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmlsl2, LANE = 0))]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmlslq_lane_high_f16<const LANE: i32>(
+    r: float32x4_t,
+    a: float16x8_t,
+    b: float16x4_t,
+) -> float32x4_t {
+    static_assert_uimm_bits!(LANE, 2);
+    vfmlslq_high_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32)))
+}
+#[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlslq_laneq_high_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmlsl2, LANE = 0))]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmlslq_laneq_high_f16<const LANE: i32>(
+    r: float32x4_t,
+    a: float16x8_t,
+    b: float16x8_t,
+) -> float32x4_t {
+    static_assert_uimm_bits!(LANE, 3);
+    vfmlslq_high_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32)))
+}
+#[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlsl_lane_low_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmlsl, LANE = 0))]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmlsl_lane_low_f16<const LANE: i32>(
+    r: float32x2_t,
+    a: float16x4_t,
+    b: float16x4_t,
+) -> float32x2_t {
+    static_assert_uimm_bits!(LANE, 2);
+    vfmlsl_low_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32)))
+}
+#[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlsl_laneq_low_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmlsl, LANE = 0))]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmlsl_laneq_low_f16<const LANE: i32>(
+    r: float32x2_t,
+    a: float16x4_t,
+    b: float16x8_t,
+) -> float32x2_t {
+    static_assert_uimm_bits!(LANE, 3);
+    vfmlsl_low_f16(r, a, vdup_n_f16(simd_extract!(b, LANE as u32)))
+}
+#[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlslq_lane_low_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmlsl, LANE = 0))]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmlslq_lane_low_f16<const LANE: i32>(
+    r: float32x4_t,
+    a: float16x8_t,
+    b: float16x4_t,
+) -> float32x4_t {
+    static_assert_uimm_bits!(LANE, 2);
+    vfmlslq_low_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32)))
+}
+#[doc = "Floating-point fused Multiply-Subtract Long from accumulator (by element)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlslq_laneq_low_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmlsl, LANE = 0))]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmlslq_laneq_low_f16<const LANE: i32>(
+    r: float32x4_t,
+    a: float16x8_t,
+    b: float16x8_t,
+) -> float32x4_t {
+    static_assert_uimm_bits!(LANE, 3);
+    vfmlslq_low_f16(r, a, vdupq_n_f16(simd_extract!(b, LANE as u32)))
+}
+#[doc = "Floating-point fused Multiply-Subtract Long from accumulator (vector)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlsl_low_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmlsl))]
+pub unsafe fn vfmlsl_low_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32x2_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmlsl.v2f32.v4f16"
+        )]
+        fn _vfmlsl_low_f16(r: float32x2_t, a: float16x4_t, b: float16x4_t) -> float32x2_t;
+    }
+    _vfmlsl_low_f16(r, a, b)
+}
+#[doc = "Floating-point fused Multiply-Subtract Long from accumulator (vector)."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmlslq_low_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmlsl))]
+pub unsafe fn vfmlslq_low_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float32x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmlsl.v4f32.v8f16"
+        )]
+        fn _vfmlslq_low_f16(r: float32x4_t, a: float16x8_t, b: float16x8_t) -> float32x4_t;
+    }
+    _vfmlslq_low_f16(r, a, b)
+}
 #[doc = "Floating-point fused multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfms_f64)"]
 #[doc = "## Safety"]
@@ -9197,6 +11773,74 @@ pub unsafe fn vfmad_laneq_f64<const LANE: i32>(a: f64, b: f64, c: float64x2_t) -
 pub unsafe fn vfms_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t {
     let b: float64x1_t = simd_neg(b);
     vfma_f64(a, b, c)
+}
+#[doc = "Floating-point fused multiply-subtract from accumulator"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfms_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfms_lane_f16<const LANE: i32>(
+    a: float16x4_t,
+    b: float16x4_t,
+    c: float16x4_t,
+) -> float16x4_t {
+    static_assert_uimm_bits!(LANE, 2);
+    vfms_f16(a, b, vdup_n_f16(simd_extract!(c, LANE as u32)))
+}
+#[doc = "Floating-point fused multiply-subtract from accumulator"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfms_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfms_laneq_f16<const LANE: i32>(
+    a: float16x4_t,
+    b: float16x4_t,
+    c: float16x8_t,
+) -> float16x4_t {
+    static_assert_uimm_bits!(LANE, 3);
+    vfms_f16(a, b, vdup_n_f16(simd_extract!(c, LANE as u32)))
+}
+#[doc = "Floating-point fused multiply-subtract from accumulator"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsq_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmsq_lane_f16<const LANE: i32>(
+    a: float16x8_t,
+    b: float16x8_t,
+    c: float16x4_t,
+) -> float16x8_t {
+    static_assert_uimm_bits!(LANE, 2);
+    vfmsq_f16(a, b, vdupq_n_f16(simd_extract!(c, LANE as u32)))
+}
+#[doc = "Floating-point fused multiply-subtract from accumulator"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsq_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmsq_laneq_f16<const LANE: i32>(
+    a: float16x8_t,
+    b: float16x8_t,
+    c: float16x8_t,
+) -> float16x8_t {
+    static_assert_uimm_bits!(LANE, 3);
+    vfmsq_f16(a, b, vdupq_n_f16(simd_extract!(c, LANE as u32)))
 }
 #[doc = "Floating-point fused multiply-subtract to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfms_lane_f32)"]
@@ -9317,6 +11961,28 @@ pub unsafe fn vfms_laneq_f64<const LANE: i32>(
     static_assert_uimm_bits!(LANE, 1);
     vfms_f64(a, b, vdup_n_f64(simd_extract!(c, LANE as u32)))
 }
+#[doc = "Floating-point fused Multiply-Subtract from accumulator."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfms_n_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmls))]
+pub unsafe fn vfms_n_f16(a: float16x4_t, b: float16x4_t, c: f16) -> float16x4_t {
+    vfms_f16(a, b, vdup_n_f16(c))
+}
+#[doc = "Floating-point fused Multiply-Subtract from accumulator."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsq_n_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmls))]
+pub unsafe fn vfmsq_n_f16(a: float16x8_t, b: float16x8_t, c: f16) -> float16x8_t {
+    vfmsq_f16(a, b, vdupq_n_f16(c))
+}
 #[doc = "Floating-point fused Multiply-subtract to accumulator(vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfms_n_f64)"]
 #[doc = "## Safety"]
@@ -9327,6 +11993,45 @@ pub unsafe fn vfms_laneq_f64<const LANE: i32>(
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfms_n_f64(a: float64x1_t, b: float64x1_t, c: f64) -> float64x1_t {
     vfms_f64(a, b, vdup_n_f64(c))
+}
+#[doc = "Floating-point fused multiply-subtract from accumulator"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmsub))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmsh_f16(a: f16, b: f16, c: f16) -> f16 {
+    vfmah_f16(a, -b, c)
+}
+#[doc = "Floating-point fused multiply-subtract from accumulator"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsh_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmsub, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmsh_lane_f16<const LANE: i32>(a: f16, b: f16, v: float16x4_t) -> f16 {
+    static_assert_uimm_bits!(LANE, 2);
+    let c: f16 = simd_extract!(v, LANE as u32);
+    vfmsh_f16(a, b, c)
+}
+#[doc = "Floating-point fused multiply-subtract from accumulator"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsh_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmsub, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vfmsh_laneq_f16<const LANE: i32>(a: f16, b: f16, v: float16x8_t) -> f16 {
+    static_assert_uimm_bits!(LANE, 3);
+    let c: f16 = simd_extract!(v, LANE as u32);
+    vfmsh_f16(a, b, c)
 }
 #[doc = "Floating-point fused multiply-subtract from accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsq_f64)"]
@@ -9415,6 +12120,28 @@ pub unsafe fn vfmsd_lane_f64<const LANE: i32>(a: f64, b: f64, c: float64x1_t) ->
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfmsd_laneq_f64<const LANE: i32>(a: f64, b: f64, c: float64x2_t) -> f64 {
     vfmad_laneq_f64::<LANE>(a, -b, c)
+}
+#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(test, assert_instr(ldr))]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vld1_f16(ptr: *const f16) -> float16x4_t {
+    crate::ptr::read_unaligned(ptr.cast())
+}
+#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(test, assert_instr(ldr))]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vld1q_f16(ptr: *const f16) -> float16x8_t {
+    crate::ptr::read_unaligned(ptr.cast())
 }
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f32)"]
@@ -11106,6 +13833,24 @@ pub unsafe fn vmaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     }
     _vmaxq_f64(a, b)
 }
+#[doc = "Maximum (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmax))]
+pub unsafe fn vmaxh_f16(a: f16, b: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmax.f16"
+        )]
+        fn _vmaxh_f16(a: f16, b: f16) -> f16;
+    }
+    _vmaxh_f16(a, b)
+}
 #[doc = "Floating-point Maximum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnm_f64)"]
 #[doc = "## Safety"]
@@ -11141,6 +13886,60 @@ pub unsafe fn vmaxnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
         fn _vmaxnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t;
     }
     _vmaxnmq_f64(a, b)
+}
+#[doc = "Floating-point Maximum Number"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmaxnm))]
+pub unsafe fn vmaxnmh_f16(a: f16, b: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnm.f16"
+        )]
+        fn _vmaxnmh_f16(a: f16, b: f16) -> f16;
+    }
+    _vmaxnmh_f16(a, b)
+}
+#[doc = "Floating-point maximum number across vector"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmv_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmaxnmv))]
+pub unsafe fn vmaxnmv_f16(a: float16x4_t) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnmv.f16.v4f16"
+        )]
+        fn _vmaxnmv_f16(a: float16x4_t) -> f16;
+    }
+    _vmaxnmv_f16(a)
+}
+#[doc = "Floating-point maximum number across vector"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmvq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmaxnmv))]
+pub unsafe fn vmaxnmvq_f16(a: float16x8_t) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnmv.f16.v8f16"
+        )]
+        fn _vmaxnmvq_f16(a: float16x8_t) -> f16;
+    }
+    _vmaxnmvq_f16(a)
 }
 #[doc = "Floating-point maximum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmv_f32)"]
@@ -11195,6 +13994,42 @@ pub unsafe fn vmaxnmvq_f32(a: float32x4_t) -> f32 {
         fn _vmaxnmvq_f32(a: float32x4_t) -> f32;
     }
     _vmaxnmvq_f32(a)
+}
+#[doc = "Floating-point maximum number across vector"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxv_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmaxv))]
+pub unsafe fn vmaxv_f16(a: float16x4_t) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxv.f16.v4f16"
+        )]
+        fn _vmaxv_f16(a: float16x4_t) -> f16;
+    }
+    _vmaxv_f16(a)
+}
+#[doc = "Floating-point maximum number across vector"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxvq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmaxv))]
+pub unsafe fn vmaxvq_f16(a: float16x8_t) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxv.f16.v8f16"
+        )]
+        fn _vmaxvq_f16(a: float16x8_t) -> f16;
+    }
+    _vmaxvq_f16(a)
 }
 #[doc = "Horizontal vector max."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxv_f32)"]
@@ -11502,6 +14337,24 @@ pub unsafe fn vminq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     }
     _vminq_f64(a, b)
 }
+#[doc = "Minimum (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmin))]
+pub unsafe fn vminh_f16(a: f16, b: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmin.f16"
+        )]
+        fn _vminh_f16(a: f16, b: f16) -> f16;
+    }
+    _vminh_f16(a, b)
+}
 #[doc = "Floating-point Minimum Number (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnm_f64)"]
 #[doc = "## Safety"]
@@ -11537,6 +14390,60 @@ pub unsafe fn vminnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
         fn _vminnmq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t;
     }
     _vminnmq_f64(a, b)
+}
+#[doc = "Floating-point Minimum Number"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fminnm))]
+pub unsafe fn vminnmh_f16(a: f16, b: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnm.f16"
+        )]
+        fn _vminnmh_f16(a: f16, b: f16) -> f16;
+    }
+    _vminnmh_f16(a, b)
+}
+#[doc = "Floating-point minimum number across vector"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmv_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fminnmv))]
+pub unsafe fn vminnmv_f16(a: float16x4_t) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnmv.f16.v4f16"
+        )]
+        fn _vminnmv_f16(a: float16x4_t) -> f16;
+    }
+    _vminnmv_f16(a)
+}
+#[doc = "Floating-point minimum number across vector"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmvq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fminnmv))]
+pub unsafe fn vminnmvq_f16(a: float16x8_t) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnmv.f16.v8f16"
+        )]
+        fn _vminnmvq_f16(a: float16x8_t) -> f16;
+    }
+    _vminnmvq_f16(a)
 }
 #[doc = "Floating-point minimum number across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmv_f32)"]
@@ -11591,6 +14498,42 @@ pub unsafe fn vminnmvq_f32(a: float32x4_t) -> f32 {
         fn _vminnmvq_f32(a: float32x4_t) -> f32;
     }
     _vminnmvq_f32(a)
+}
+#[doc = "Floating-point minimum number across vector"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminv_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fminv))]
+pub unsafe fn vminv_f16(a: float16x4_t) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminv.f16.v4f16"
+        )]
+        fn _vminv_f16(a: float16x4_t) -> f16;
+    }
+    _vminv_f16(a)
+}
+#[doc = "Floating-point minimum number across vector"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminvq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fminv))]
+pub unsafe fn vminvq_f16(a: float16x8_t) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminv.f16.v8f16"
+        )]
+        fn _vminvq_f16(a: float16x8_t) -> f16;
+    }
+    _vminvq_f16(a)
 }
 #[doc = "Horizontal vector min."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminv_f32)"]
@@ -12770,6 +15713,51 @@ pub unsafe fn vmul_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t) -> 
     simd_mul(a, transmute::<f64, _>(simd_extract!(b, LANE as u32)))
 }
 #[doc = "Floating-point multiply"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmul, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vmul_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float16x4_t {
+    static_assert_uimm_bits!(LANE, 3);
+    simd_mul(
+        a,
+        simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
+    )
+}
+#[doc = "Floating-point multiply"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmul, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vmulq_laneq_f16<const LANE: i32>(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    static_assert_uimm_bits!(LANE, 3);
+    simd_mul(
+        a,
+        simd_shuffle!(
+            b,
+            b,
+            [
+                LANE as u32,
+                LANE as u32,
+                LANE as u32,
+                LANE as u32,
+                LANE as u32,
+                LANE as u32,
+                LANE as u32,
+                LANE as u32
+            ]
+        ),
+    )
+}
+#[doc = "Floating-point multiply"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_laneq_f64)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -12816,6 +15804,45 @@ pub unsafe fn vmulq_n_f64(a: float64x2_t, b: f64) -> float64x2_t {
 pub unsafe fn vmuld_lane_f64<const LANE: i32>(a: f64, b: float64x1_t) -> f64 {
     static_assert!(LANE == 0);
     let b: f64 = simd_extract!(b, LANE as u32);
+    a * b
+}
+#[doc = "Add"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(nop))]
+pub unsafe fn vmulh_f16(a: f16, b: f16) -> f16 {
+    a * b
+}
+#[doc = "Floating-point multiply"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulh_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmul, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vmulh_lane_f16<const LANE: i32>(a: f16, b: float16x4_t) -> f16 {
+    static_assert_uimm_bits!(LANE, 2);
+    let b: f16 = simd_extract!(b, LANE as u32);
+    a * b
+}
+#[doc = "Floating-point multiply"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulh_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmul, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vmulh_laneq_f16<const LANE: i32>(a: f16, b: float16x8_t) -> f16 {
+    static_assert_uimm_bits!(LANE, 3);
+    let b: f16 = simd_extract!(b, LANE as u32);
     a * b
 }
 #[doc = "Multiply long"]
@@ -13231,6 +16258,42 @@ pub unsafe fn vmuld_laneq_f64<const LANE: i32>(a: f64, b: float64x2_t) -> f64 {
     a * b
 }
 #[doc = "Floating-point multiply extended"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmulx))]
+pub unsafe fn vmulx_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmulx.v4f16"
+        )]
+        fn _vmulx_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t;
+    }
+    _vmulx_f16(a, b)
+}
+#[doc = "Floating-point multiply extended"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmulx))]
+pub unsafe fn vmulxq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmulx.v8f16"
+        )]
+        fn _vmulxq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t;
+    }
+    _vmulxq_f16(a, b)
+}
+#[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -13301,6 +16364,96 @@ pub unsafe fn vmulxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
         fn _vmulxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t;
     }
     _vmulxq_f64(a, b)
+}
+#[doc = "Floating-point multiply extended"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmulx, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vmulx_lane_f16<const LANE: i32>(a: float16x4_t, b: float16x4_t) -> float16x4_t {
+    static_assert_uimm_bits!(LANE, 2);
+    vmulx_f16(
+        a,
+        simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
+    )
+}
+#[doc = "Floating-point multiply extended"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmulx, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vmulx_laneq_f16<const LANE: i32>(a: float16x4_t, b: float16x8_t) -> float16x4_t {
+    static_assert_uimm_bits!(LANE, 3);
+    vmulx_f16(
+        a,
+        simd_shuffle!(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]),
+    )
+}
+#[doc = "Floating-point multiply extended"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmulx, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vmulxq_lane_f16<const LANE: i32>(a: float16x8_t, b: float16x4_t) -> float16x8_t {
+    static_assert_uimm_bits!(LANE, 2);
+    vmulxq_f16(
+        a,
+        simd_shuffle!(
+            b,
+            b,
+            [
+                LANE as u32,
+                LANE as u32,
+                LANE as u32,
+                LANE as u32,
+                LANE as u32,
+                LANE as u32,
+                LANE as u32,
+                LANE as u32
+            ]
+        ),
+    )
+}
+#[doc = "Floating-point multiply extended"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmulx, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vmulxq_laneq_f16<const LANE: i32>(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    static_assert_uimm_bits!(LANE, 3);
+    vmulxq_f16(
+        a,
+        simd_shuffle!(
+            b,
+            b,
+            [
+                LANE as u32,
+                LANE as u32,
+                LANE as u32,
+                LANE as u32,
+                LANE as u32,
+                LANE as u32,
+                LANE as u32,
+                LANE as u32
+            ]
+        ),
+    )
 }
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_lane_f32)"]
@@ -13399,6 +16552,28 @@ pub unsafe fn vmulx_laneq_f64<const LANE: i32>(a: float64x1_t, b: float64x2_t) -
     static_assert_uimm_bits!(LANE, 1);
     vmulx_f64(a, transmute::<f64, _>(simd_extract!(b, LANE as u32)))
 }
+#[doc = "Vector multiply by scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulx_n_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmulx))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vmulx_n_f16(a: float16x4_t, b: f16) -> float16x4_t {
+    vmulx_f16(a, vdup_n_f16(b))
+}
+#[doc = "Vector multiply by scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_n_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmulx))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vmulxq_n_f16(a: float16x8_t, b: f16) -> float16x8_t {
+    vmulxq_f16(a, vdupq_n_f16(b))
+}
 #[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxd_f64)"]
 #[doc = "## Safety"]
@@ -13488,6 +16663,50 @@ pub unsafe fn vmulxs_laneq_f32<const LANE: i32>(a: f32, b: float32x4_t) -> f32 {
     vmulxs_f32(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Floating-point multiply extended"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmulx))]
+pub unsafe fn vmulxh_f16(a: f16, b: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmulx.f16"
+        )]
+        fn _vmulxh_f16(a: f16, b: f16) -> f16;
+    }
+    _vmulxh_f16(a, b)
+}
+#[doc = "Floating-point multiply extended"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxh_lane_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmulx, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vmulxh_lane_f16<const LANE: i32>(a: f16, b: float16x4_t) -> f16 {
+    static_assert_uimm_bits!(LANE, 2);
+    vmulxh_f16(a, simd_extract!(b, LANE as u32))
+}
+#[doc = "Floating-point multiply extended"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxh_laneq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fmulx, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vmulxh_laneq_f16<const LANE: i32>(a: f16, b: float16x8_t) -> f16 {
+    static_assert_uimm_bits!(LANE, 3);
+    vmulxh_f16(a, simd_extract!(b, LANE as u32))
+}
+#[doc = "Floating-point multiply extended"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulxq_lane_f64)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -13555,6 +16774,17 @@ pub unsafe fn vnegq_s64(a: int64x2_t) -> int64x2_t {
 pub unsafe fn vnegd_s64(a: i64) -> i64 {
     a.wrapping_neg()
 }
+#[doc = "Negate"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vnegh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fneg))]
+pub unsafe fn vnegh_f16(a: f16) -> f16 {
+    -a
+}
 #[doc = "Floating-point add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddd_f64)"]
 #[doc = "## Safety"]
@@ -13616,6 +16846,24 @@ pub unsafe fn vpaddd_s64(a: int64x2_t) -> i64 {
 #[cfg_attr(test, assert_instr(addp))]
 pub unsafe fn vpaddd_u64(a: uint64x2_t) -> u64 {
     vaddvq_u64(a)
+}
+#[doc = "Floating-point add pairwise"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(faddp))]
+pub unsafe fn vpaddq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.faddp.v8f16"
+        )]
+        fn _vpaddq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t;
+    }
+    _vpaddq_f16(a, b)
 }
 #[doc = "Floating-point add pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpaddq_f32)"]
@@ -13836,6 +17084,78 @@ pub unsafe fn vpaddq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     let b: uint64x2_t = simd_shuffle!(b, b, [1, 0]);
     let ret_val: uint64x2_t = transmute(vpaddq_s64(transmute(a), transmute(b)));
     simd_shuffle!(ret_val, ret_val, [1, 0])
+}
+#[doc = "Floating-point add pairwise"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmax_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmaxp))]
+pub unsafe fn vpmax_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxp.v4f16"
+        )]
+        fn _vpmax_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t;
+    }
+    _vpmax_f16(a, b)
+}
+#[doc = "Floating-point add pairwise"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmaxp))]
+pub unsafe fn vpmaxq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxp.v8f16"
+        )]
+        fn _vpmaxq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t;
+    }
+    _vpmaxq_f16(a, b)
+}
+#[doc = "Floating-point add pairwise"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxnm_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmaxnmp))]
+pub unsafe fn vpmaxnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnmp.v4f16"
+        )]
+        fn _vpmaxnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t;
+    }
+    _vpmaxnm_f16(a, b)
+}
+#[doc = "Floating-point add pairwise"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxnmq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fmaxnmp))]
+pub unsafe fn vpmaxnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fmaxnmp.v8f16"
+        )]
+        fn _vpmaxnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t;
+    }
+    _vpmaxnmq_f16(a, b)
 }
 #[doc = "Floating-point Maximum Number Pairwise (vector)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxnm_f32)"]
@@ -14106,6 +17426,78 @@ pub unsafe fn vpmaxs_f32(a: float32x2_t) -> f32 {
         fn _vpmaxs_f32(a: float32x2_t) -> f32;
     }
     _vpmaxs_f32(a)
+}
+#[doc = "Floating-point add pairwise"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmin_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fminp))]
+pub unsafe fn vpmin_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminp.v4f16"
+        )]
+        fn _vpmin_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t;
+    }
+    _vpmin_f16(a, b)
+}
+#[doc = "Floating-point add pairwise"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpminq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fminp))]
+pub unsafe fn vpminq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminp.v8f16"
+        )]
+        fn _vpminq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t;
+    }
+    _vpminq_f16(a, b)
+}
+#[doc = "Floating-point add pairwise"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpminnm_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fminnmp))]
+pub unsafe fn vpminnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnmp.v4f16"
+        )]
+        fn _vpminnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t;
+    }
+    _vpminnm_f16(a, b)
+}
+#[doc = "Floating-point add pairwise"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpminnmq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fminnmp))]
+pub unsafe fn vpminnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.fminnmp.v8f16"
+        )]
+        fn _vpminnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t;
+    }
+    _vpminnmq_f16(a, b)
 }
 #[doc = "Floating-point Minimum Number Pairwise (vector)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpminnm_f32)"]
@@ -19520,6 +22912,24 @@ pub unsafe fn vrecpes_f32(a: f32) -> f32 {
     }
     _vrecpes_f32(a)
 }
+#[doc = "Reciprocal estimate."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecpeh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(frecpe))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vrecpeh_f16(a: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.frecpe.f16"
+        )]
+        fn _vrecpeh_f16(a: f16) -> f16;
+    }
+    _vrecpeh_f16(a)
+}
 #[doc = "Floating-point reciprocal step"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecps_f64)"]
 #[doc = "## Safety"]
@@ -19592,6 +23002,24 @@ pub unsafe fn vrecpss_f32(a: f32, b: f32) -> f32 {
     }
     _vrecpss_f32(a, b)
 }
+#[doc = "Floating-point reciprocal step"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecpsh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(frecps))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vrecpsh_f16(a: f16, b: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.frecps.f16"
+        )]
+        fn _vrecpsh_f16(a: f16, b: f16) -> f16;
+    }
+    _vrecpsh_f16(a, b)
+}
 #[doc = "Floating-point reciprocal exponent"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecpxd_f64)"]
 #[doc = "## Safety"]
@@ -19627,6 +23055,126 @@ pub unsafe fn vrecpxs_f32(a: f32) -> f32 {
         fn _vrecpxs_f32(a: f32) -> f32;
     }
     _vrecpxs_f32(a)
+}
+#[doc = "Floating-point reciprocal exponent"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecpxh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(frecpx))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vrecpxh_f16(a: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.frecpx.f16"
+        )]
+        fn _vrecpxh_f16(a: f16) -> f16;
+    }
+    _vrecpxh_f16(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f64_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(nop))]
+pub unsafe fn vreinterpret_f64_f16(a: float16x4_t) -> float64x1_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f64_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(nop))]
+pub unsafe fn vreinterpret_f64_f16(a: float16x4_t) -> float64x1_t {
+    let a: float16x4_t = simd_shuffle!(a, a, [3, 2, 1, 0]);
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f64_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(nop))]
+pub unsafe fn vreinterpretq_f64_f16(a: float16x8_t) -> float64x2_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f64_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(nop))]
+pub unsafe fn vreinterpretq_f64_f16(a: float16x8_t) -> float64x2_t {
+    let a: float16x8_t = simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]);
+    let ret_val: float64x2_t = transmute(a);
+    simd_shuffle!(ret_val, ret_val, [1, 0])
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_f64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(nop))]
+pub unsafe fn vreinterpret_f16_f64(a: float64x1_t) -> float16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_f64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(nop))]
+pub unsafe fn vreinterpret_f16_f64(a: float64x1_t) -> float16x4_t {
+    let ret_val: float16x4_t = transmute(a);
+    simd_shuffle!(ret_val, ret_val, [3, 2, 1, 0])
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_f64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(nop))]
+pub unsafe fn vreinterpretq_f16_f64(a: float64x2_t) -> float16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_f64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(nop))]
+pub unsafe fn vreinterpretq_f16_f64(a: float64x2_t) -> float16x8_t {
+    let a: float64x2_t = simd_shuffle!(a, a, [1, 0]);
+    let ret_val: float16x8_t = transmute(a);
+    simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
 }
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f64_p128)"]
@@ -21369,6 +24917,42 @@ pub unsafe fn vrnd64z_f64(a: float64x1_t) -> float64x1_t {
     transmute(_vrnd64z_f64(simd_extract!(a, 0)))
 }
 #[doc = "Floating-point round to integral, toward zero"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frintz))]
+pub unsafe fn vrnd_f16(a: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.trunc.v4f16"
+        )]
+        fn _vrnd_f16(a: float16x4_t) -> float16x4_t;
+    }
+    _vrnd_f16(a)
+}
+#[doc = "Floating-point round to integral, toward zero"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frintz))]
+pub unsafe fn vrndq_f16(a: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.trunc.v8f16"
+        )]
+        fn _vrndq_f16(a: float16x8_t) -> float16x8_t;
+    }
+    _vrndq_f16(a)
+}
+#[doc = "Floating-point round to integral, toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnd_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -21439,6 +25023,42 @@ pub unsafe fn vrndq_f64(a: float64x2_t) -> float64x2_t {
         fn _vrndq_f64(a: float64x2_t) -> float64x2_t;
     }
     _vrndq_f64(a)
+}
+#[doc = "Floating-point round to integral, to nearest with ties to away"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnda_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frinta))]
+pub unsafe fn vrnda_f16(a: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.round.v4f16"
+        )]
+        fn _vrnda_f16(a: float16x4_t) -> float16x4_t;
+    }
+    _vrnda_f16(a)
+}
+#[doc = "Floating-point round to integral, to nearest with ties to away"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndaq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frinta))]
+pub unsafe fn vrndaq_f16(a: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.round.v8f16"
+        )]
+        fn _vrndaq_f16(a: float16x8_t) -> float16x8_t;
+    }
+    _vrndaq_f16(a)
 }
 #[doc = "Floating-point round to integral, to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrnda_f32)"]
@@ -21512,6 +25132,78 @@ pub unsafe fn vrndaq_f64(a: float64x2_t) -> float64x2_t {
     }
     _vrndaq_f64(a)
 }
+#[doc = "Floating-point round to integral, to nearest with ties to away"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndah_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frinta))]
+pub unsafe fn vrndah_f16(a: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.round.f16"
+        )]
+        fn _vrndah_f16(a: f16) -> f16;
+    }
+    _vrndah_f16(a)
+}
+#[doc = "Floating-point round to integral, to nearest with ties to away"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frintz))]
+pub unsafe fn vrndh_f16(a: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.trunc.f16"
+        )]
+        fn _vrndh_f16(a: f16) -> f16;
+    }
+    _vrndh_f16(a)
+}
+#[doc = "Floating-point round to integral, using current rounding mode"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndi_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frinti))]
+pub unsafe fn vrndi_f16(a: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.nearbyint.v4f16"
+        )]
+        fn _vrndi_f16(a: float16x4_t) -> float16x4_t;
+    }
+    _vrndi_f16(a)
+}
+#[doc = "Floating-point round to integral, using current rounding mode"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndiq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frinti))]
+pub unsafe fn vrndiq_f16(a: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.nearbyint.v8f16"
+        )]
+        fn _vrndiq_f16(a: float16x8_t) -> float16x8_t;
+    }
+    _vrndiq_f16(a)
+}
 #[doc = "Floating-point round to integral, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndi_f32)"]
 #[doc = "## Safety"]
@@ -21583,6 +25275,60 @@ pub unsafe fn vrndiq_f64(a: float64x2_t) -> float64x2_t {
         fn _vrndiq_f64(a: float64x2_t) -> float64x2_t;
     }
     _vrndiq_f64(a)
+}
+#[doc = "Floating-point round to integral, using current rounding mode"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndih_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frinti))]
+pub unsafe fn vrndih_f16(a: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.nearbyint.f16"
+        )]
+        fn _vrndih_f16(a: f16) -> f16;
+    }
+    _vrndih_f16(a)
+}
+#[doc = "Floating-point round to integral, toward minus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndm_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frintm))]
+pub unsafe fn vrndm_f16(a: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.floor.v4f16"
+        )]
+        fn _vrndm_f16(a: float16x4_t) -> float16x4_t;
+    }
+    _vrndm_f16(a)
+}
+#[doc = "Floating-point round to integral, toward minus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndmq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frintm))]
+pub unsafe fn vrndmq_f16(a: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.floor.v8f16"
+        )]
+        fn _vrndmq_f16(a: float16x8_t) -> float16x8_t;
+    }
+    _vrndmq_f16(a)
 }
 #[doc = "Floating-point round to integral, toward minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndm_f32)"]
@@ -21656,6 +25402,24 @@ pub unsafe fn vrndmq_f64(a: float64x2_t) -> float64x2_t {
     }
     _vrndmq_f64(a)
 }
+#[doc = "Floating-point round to integral, toward minus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndmh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frintm))]
+pub unsafe fn vrndmh_f16(a: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.floor.f16"
+        )]
+        fn _vrndmh_f16(a: f16) -> f16;
+    }
+    _vrndmh_f16(a)
+}
 #[doc = "Floating-point round to integral, to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndn_f64)"]
 #[doc = "## Safety"]
@@ -21692,6 +25456,24 @@ pub unsafe fn vrndnq_f64(a: float64x2_t) -> float64x2_t {
     }
     _vrndnq_f64(a)
 }
+#[doc = "Floating-point round to integral, toward minus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndnh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frintn))]
+pub unsafe fn vrndnh_f16(a: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.roundeven.f16"
+        )]
+        fn _vrndnh_f16(a: f16) -> f16;
+    }
+    _vrndnh_f16(a)
+}
 #[doc = "Floating-point round to integral, to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndns_f32)"]
 #[doc = "## Safety"]
@@ -21709,6 +25491,42 @@ pub unsafe fn vrndns_f32(a: f32) -> f32 {
         fn _vrndns_f32(a: f32) -> f32;
     }
     _vrndns_f32(a)
+}
+#[doc = "Floating-point round to integral, toward plus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndp_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frintp))]
+pub unsafe fn vrndp_f16(a: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.ceil.v4f16"
+        )]
+        fn _vrndp_f16(a: float16x4_t) -> float16x4_t;
+    }
+    _vrndp_f16(a)
+}
+#[doc = "Floating-point round to integral, toward plus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndpq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frintp))]
+pub unsafe fn vrndpq_f16(a: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.ceil.v8f16"
+        )]
+        fn _vrndpq_f16(a: float16x8_t) -> float16x8_t;
+    }
+    _vrndpq_f16(a)
 }
 #[doc = "Floating-point round to integral, toward plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndp_f32)"]
@@ -21782,6 +25600,60 @@ pub unsafe fn vrndpq_f64(a: float64x2_t) -> float64x2_t {
     }
     _vrndpq_f64(a)
 }
+#[doc = "Floating-point round to integral, toward plus infinity"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndph_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frintp))]
+pub unsafe fn vrndph_f16(a: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.ceil.f16"
+        )]
+        fn _vrndph_f16(a: f16) -> f16;
+    }
+    _vrndph_f16(a)
+}
+#[doc = "Floating-point round to integral exact, using current rounding mode"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndx_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frintx))]
+pub unsafe fn vrndx_f16(a: float16x4_t) -> float16x4_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.rint.v4f16"
+        )]
+        fn _vrndx_f16(a: float16x4_t) -> float16x4_t;
+    }
+    _vrndx_f16(a)
+}
+#[doc = "Floating-point round to integral exact, using current rounding mode"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndxq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frintx))]
+pub unsafe fn vrndxq_f16(a: float16x8_t) -> float16x8_t {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.rint.v8f16"
+        )]
+        fn _vrndxq_f16(a: float16x8_t) -> float16x8_t;
+    }
+    _vrndxq_f16(a)
+}
 #[doc = "Floating-point round to integral exact, using current rounding mode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndx_f32)"]
 #[doc = "## Safety"]
@@ -21853,6 +25725,24 @@ pub unsafe fn vrndxq_f64(a: float64x2_t) -> float64x2_t {
         fn _vrndxq_f64(a: float64x2_t) -> float64x2_t;
     }
     _vrndxq_f64(a)
+}
+#[doc = "Floating-point round to integral, using current rounding mode"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndxh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(frintx))]
+pub unsafe fn vrndxh_f16(a: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.rint.f16"
+        )]
+        fn _vrndxh_f16(a: f16) -> f16;
+    }
+    _vrndxh_f16(a)
 }
 #[doc = "Signed rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshld_s64)"]
@@ -22074,6 +25964,25 @@ pub unsafe fn vrsqrtes_f32(a: f32) -> f32 {
     }
     _vrsqrtes_f32(a)
 }
+#[doc = "Reciprocal square-root estimate."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrteh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(test, assert_instr(frsqrte))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vrsqrteh_f16(a: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.frsqrte.f16"
+        )]
+        fn _vrsqrteh_f16(a: f16) -> f16;
+    }
+    _vrsqrteh_f16(a)
+}
 #[doc = "Floating-point reciprocal square root step"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrts_f64)"]
 #[doc = "## Safety"]
@@ -22145,6 +26054,24 @@ pub unsafe fn vrsqrtss_f32(a: f32, b: f32) -> f32 {
         fn _vrsqrtss_f32(a: f32, b: f32) -> f32;
     }
     _vrsqrtss_f32(a, b)
+}
+#[doc = "Floating-point reciprocal square root step"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrtsh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(test, assert_instr(frsqrts))]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vrsqrtsh_f16(a: f16, b: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.frsqrts.f16"
+        )]
+        fn _vrsqrtsh_f16(a: f16, b: f16) -> f16;
+    }
+    _vrsqrtsh_f16(a, b)
 }
 #[doc = "Signed rounding shift right and accumulate."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsrad_n_s64)"]
@@ -23293,6 +27220,28 @@ pub unsafe fn vsqadds_u32(a: u32, b: i32) -> u32 {
     _vsqadds_u32(a.as_signed(), b).as_unsigned()
 }
 #[doc = "Calculates the square root of each lane."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsqrt_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fsqrt))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vsqrt_f16(a: float16x4_t) -> float16x4_t {
+    simd_fsqrt(a)
+}
+#[doc = "Calculates the square root of each lane."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsqrtq_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[cfg_attr(test, assert_instr(fsqrt))]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vsqrtq_f16(a: float16x8_t) -> float16x8_t {
+    simd_fsqrt(a)
+}
+#[doc = "Calculates the square root of each lane."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsqrt_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -23335,6 +27284,24 @@ pub unsafe fn vsqrt_f64(a: float64x1_t) -> float64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vsqrtq_f64(a: float64x2_t) -> float64x2_t {
     simd_fsqrt(a)
+}
+#[doc = "Floating-point round to integral, using current rounding mode"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsqrth_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(fsqrt))]
+pub unsafe fn vsqrth_f16(a: f16) -> f16 {
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.sqrt.f16"
+        )]
+        fn _vsqrth_f16(a: f16) -> f16;
+    }
+    _vsqrth_f16(a)
 }
 #[doc = "Shift Right and Insert (immediate)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_s8)"]
@@ -23703,6 +27670,30 @@ pub unsafe fn vsrid_n_s64<const N: i32>(a: i64, b: i64) -> i64 {
 pub unsafe fn vsrid_n_u64<const N: i32>(a: u64, b: u64) -> u64 {
     static_assert!(N >= 1 && N <= 64);
     transmute(vsri_n_u64::<N>(transmute(a), transmute(b)))
+}
+#[doc = "Store multiple single-element structures from one, two, three, or four registers."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(test, assert_instr(str))]
+#[allow(clippy::cast_ptr_alignment)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vst1_f16(ptr: *mut f16, a: float16x4_t) {
+    crate::ptr::write_unaligned(ptr.cast(), a)
+}
+#[doc = "Store multiple single-element structures from one, two, three, or four registers."]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[cfg_attr(test, assert_instr(str))]
+#[allow(clippy::cast_ptr_alignment)]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+pub unsafe fn vst1q_f16(ptr: *mut f16, a: float16x8_t) {
+    crate::ptr::write_unaligned(ptr.cast(), a)
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f32)"]
@@ -25003,6 +28994,17 @@ pub unsafe fn vsubd_s64(a: i64, b: i64) -> i64 {
 pub unsafe fn vsubd_u64(a: u64, b: u64) -> u64 {
     a.wrapping_sub(b)
 }
+#[doc = "Subtract"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubh_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(test, assert_instr(nop))]
+pub unsafe fn vsubh_f16(a: f16, b: f16) -> f16 {
+    a - b
+}
 #[doc = "Signed Subtract Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubl_high_s8)"]
 #[doc = "## Safety"]
@@ -25821,6 +29823,28 @@ pub unsafe fn vtbx4_p8(a: poly8x8_t, b: poly8x8x4_t, c: uint8x8_t) -> poly8x8_t 
     simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
 }
 #[doc = "Transpose vectors"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
+pub unsafe fn vtrn1_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
+    simd_shuffle!(a, b, [0, 4, 2, 6])
+}
+#[doc = "Transpose vectors"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1q_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
+pub unsafe fn vtrn1q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
+}
+#[doc = "Transpose vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn1_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -26073,6 +30097,28 @@ pub unsafe fn vtrn1_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn1))]
 pub unsafe fn vtrn1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
+}
+#[doc = "Transpose vectors"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
+pub unsafe fn vtrn2_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
+    simd_shuffle!(a, b, [1, 5, 3, 7])
+}
+#[doc = "Transpose vectors"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2q_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(trn2))]
+pub unsafe fn vtrn2q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    simd_shuffle!(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
 }
 #[doc = "Transpose vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn2_f32)"]
@@ -26669,6 +30715,28 @@ pub unsafe fn vusdotq_laneq_s32<const LANE: i32>(
     vusdotq_s32(a, b, transmute(c))
 }
 #[doc = "Unzip vectors"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
+pub unsafe fn vuzp1_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
+    simd_shuffle!(a, b, [0, 2, 4, 6])
+}
+#[doc = "Unzip vectors"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1q_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
+pub unsafe fn vuzp1q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
+}
+#[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp1_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -26921,6 +30989,28 @@ pub unsafe fn vuzp1_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp1))]
 pub unsafe fn vuzp1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
+}
+#[doc = "Unzip vectors"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
+pub unsafe fn vuzp2_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
+    simd_shuffle!(a, b, [1, 3, 5, 7])
+}
+#[doc = "Unzip vectors"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2q_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(uzp2))]
+pub unsafe fn vuzp2q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    simd_shuffle!(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
 }
 #[doc = "Unzip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp2_f32)"]
@@ -27197,6 +31287,28 @@ pub unsafe fn vxarq_u64<const IMM6: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64
     _vxarq_u64(a.as_signed(), b.as_signed(), IMM6 as i64).as_unsigned()
 }
 #[doc = "Zip vectors"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
+pub unsafe fn vzip1_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
+    simd_shuffle!(a, b, [0, 4, 1, 5])
+}
+#[doc = "Zip vectors"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1q_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
+pub unsafe fn vzip1q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
+}
+#[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1_f32)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon instrinsic unsafe"]
@@ -27449,6 +31561,28 @@ pub unsafe fn vzip1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 #[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip1))]
 pub unsafe fn vzip1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
     simd_shuffle!(a, b, [0, 2])
+}
+#[doc = "Zip vectors"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
+pub unsafe fn vzip2_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
+    simd_shuffle!(a, b, [2, 6, 3, 7])
+}
+#[doc = "Zip vectors"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2q_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,fp16")]
+#[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(zip2))]
+pub unsafe fn vzip2q_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
+    simd_shuffle!(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
 }
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip2_f32)"]

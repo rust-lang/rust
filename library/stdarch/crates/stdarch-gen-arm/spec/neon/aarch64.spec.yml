@@ -5,7 +5,7 @@ arch_cfgs:
 # Generate big endian shuffles
 auto_big_endian: true
 
-# Repeatedly used anchors 
+# Repeatedly used anchors
 # #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 neon-stable: &neon-stable
   FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
@@ -60,6 +60,17 @@ neon-aes: &neon-aes
 neon-i8mm: &neon-i8mm
   FnCall: [target_feature, ['enable = "neon,i8mm"']]
 
+# #[target_feature(enable = "neon,fp16")]
+neon-fp16: &neon-fp16
+  FnCall: [target_feature, ['enable = "neon,fp16"']]
+
+# #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "fhm"))]
+enable-fhm: &enable-fhm
+  FnCall: [cfg_attr, [{ FnCall: [not, ['target_arch = "arm"']]}, { FnCall: [target_feature, ['enable = "fhm"']] }]]
+
+enable-fcma: &enable-fcma
+  FnCall: [cfg_attr, [{ FnCall: [not, ['target_arch = "arm"']]}, { FnCall: [target_feature, ['enable = "fcma"']] }]]
+
 #[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_i8mm", issue = "117223"))]
 neon-unstable-i8mm: &neon-unstable-i8mm
   FnCall: [cfg_attr, [{ FnCall: [not, ['target_arch = "arm"']] }, { FnCall: [unstable, ['feature = "stdarch_neon_i8mm"', 'issue = "117223"']] } ]]
@@ -70,6 +81,10 @@ neon-unstable-fcma: &neon-unstable-fcma
 
 aarch64-crc-stable: &aarch64-crc-stable
   FnCall: [stable, ['feature = "stdarch_aarch64_crc32"', 'since = "1.80.0"']]
+
+# #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+neon-unstable-f16: &neon-unstable-f16
+  FnCall: [unstable, ['feature = "stdarch_neon_f16"', 'issue = "136306"']]
 
 intrinsics:
   - name: "vaddd_{type}"
@@ -162,6 +177,27 @@ intrinsics:
     types:
       - ['s_f32', 'f32']
       - ['d_f64', 'f64']
+    compose:
+      - FnCall:
+          - simd_extract!
+          - - FnCall:
+                - "vabd_{type[1]}"
+                - - FnCall: ["vdup_n_{type[1]}", [a]]
+                  - FnCall: ["vdup_n_{type[1]}", [b]]
+            - 0
+
+  - name: "vabd{type[0]}"
+    doc: "Floating-point absolute difference"
+    arguments: ["a: {type[1]}", "b: {type[1]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fabd]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['h_f16', 'f16']
     compose:
       - FnCall:
           - simd_extract!
@@ -354,6 +390,28 @@ intrinsics:
                   - FnCall: ["vdup_n_{type[1]}", [b]]
             - '0'
 
+
+  - name: "vceq{type[0]}"
+    doc: "Floating-point compare equal"
+    arguments: ["a: {type[1]}", "b: {type[1]}"]
+    return_type: "{type[2]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["h_f16", "f16", "u16"]
+    compose:
+      - FnCall:
+          - simd_extract!
+          - - FnCall:
+                - "vceq_{type[1]}"
+                - - FnCall: ["vdup_n_{type[1]}", [a]]
+                  - FnCall: ["vdup_n_{type[1]}", [b]]
+            - '0'
+
   - name: "vceqd_{type[0]}"
     doc: "Compare bitwise equal"
     arguments: ["a: {type[0]}", "b: {type[0]}"]
@@ -534,6 +592,28 @@ intrinsics:
                   - FnCall: ["vdup_n_{type[1]}", [b]]
             - '0'
 
+
+  - name: "vcgt{type[0]}"
+    doc: "Floating-point compare greater than"
+    arguments: ["a: {type[1]}", "b: {type[1]}"]
+    return_type: "{type[2]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["h_f16", "f16", "u16"]
+    compose:
+      - FnCall:
+          - 'simd_extract!'
+          - - FnCall:
+                - "vcgt_{type[1]}"
+                - - FnCall: ["vdup_n_{type[1]}", [a]]
+                  - FnCall: ["vdup_n_{type[1]}", [b]]
+            - '0'
+
   - name: "vclt{neon_type[0].no}"
     doc: "Compare signed less than"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -591,6 +671,28 @@ intrinsics:
     types:
       - ["s_f32", "f32", "u32"]
       - ["d_f64", "f64", "u64"]
+    compose:
+      - FnCall:
+          - simd_extract!
+          - - FnCall:
+                - "vcle_{type[1]}"
+                - - FnCall: ["vdup_n_{type[1]}", [a]]
+                  - FnCall: ["vdup_n_{type[1]}", [b]]
+            - '0'
+
+
+  - name: "vcle{type[0]}"
+    doc: "Floating-point compare less than or equal"
+    arguments: ["a: {type[1]}", "b: {type[1]}"]
+    return_type: "{type[2]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["h_f16", "f16", "u16"]
     compose:
       - FnCall:
           - simd_extract!
@@ -721,6 +823,26 @@ intrinsics:
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
             - '0'
 
+  - name: "vclez{type[0]}"
+    doc: "Floating-point compare less than or equal to zero"
+    arguments: ["a: {type[1]}"]
+    return_type: "{type[2]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["h_f16", "f16", "u16"]
+    compose:
+      - FnCall:
+          - simd_extract!
+          - - FnCall:
+                - "vclez_{type[1]}"
+                - - FnCall: ["vdup_n_{type[1]}", [a]]
+            - '0'
+
   - name: "vcltz{neon_type[0].no}"
     doc: "Compare signed less than zero"
     arguments: ["a: {neon_type[0]}"]
@@ -787,6 +909,26 @@ intrinsics:
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
             - '0'
 
+  - name: "vcltz{type[0]}"
+    doc: "Floating-point compare less than zero"
+    arguments: ["a: {type[1]}"]
+    return_type: "{type[2]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["h_f16", "f16", "u16"]
+    compose:
+      - FnCall:
+          - simd_extract!
+          - - FnCall:
+                - "vcltz_{type[1]}"
+                - - FnCall: ["vdup_n_{type[1]}", [a]]
+            - '0'
+
   - name: "vcltzd_s64"
     doc: "Compare less than zero"
     arguments: ["a: {type[0]}"]
@@ -843,6 +985,27 @@ intrinsics:
             - link: "llvm.aarch64.neon.facgt.{type[3]}.{type[1]}"
               arch: aarch64,arm64ec
 
+  - name: "vcagt{type[0]}"
+    doc: "Floating-point absolute compare greater than"
+    arguments: ["a: {type[1]}", "b: {type[1]}"]
+    return_type: "{type[2]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [facgt]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["h_f16", "f16", "u16", i32]
+    compose:
+      - LLVMLink:
+          name: "vcagt{type[0]}"
+          return_type: "{type[3]}"
+          links:
+            - link: "llvm.aarch64.neon.facgt.{type[3]}.{type[1]}"
+              arch: aarch64,arm64ec
+      - '_vcagth_f16(a, b).as_unsigned() as u16'
+
   - name: "vcage{neon_type[0].no}"
     doc: "Floating-point absolute compare greater than or equal"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -881,6 +1044,28 @@ intrinsics:
             - link: "llvm.aarch64.neon.facge.{type[3]}.{type[1]}"
               arch: aarch64,arm64ec
 
+
+  - name: "vcage{type[0]}"
+    doc: "Floating-point absolute compare greater than or equal"
+    arguments: ["a: {type[1]}", "b: {type[1]}"]
+    return_type: "{type[2]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [facge]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["h_f16", "f16", "u16", i32]
+    compose:
+      - LLVMLink:
+          name: "vcage{type[0]}"
+          return_type: "{type[3]}"
+          links:
+            - link: "llvm.aarch64.neon.facge.{type[3]}.{type[1]}"
+              arch: aarch64,arm64ec
+      - "_vcageh_f16(a, b).as_unsigned() as u16"
+
   - name: "vcalt{neon_type[0].no}"
     doc: "Floating-point absolute compare less than"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -911,6 +1096,21 @@ intrinsics:
     compose:
       - FnCall: ["vcagt{type[0]}", [b, a]]
 
+  - name: "vcalt{type[0]}"
+    doc: "Floating-point absolute compare less than"
+    arguments: ["a: {type[1]}", "b: {type[1]}"]
+    return_type: "{type[2]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [facgt]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["h_f16", "f16", "u16"]
+    compose:
+      - FnCall: ["vcagt{type[0]}", [b, a]]
+
   - name: "vcale{neon_type[0].no}"
     doc: "Floating-point absolute compare less than or equal"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -938,6 +1138,21 @@ intrinsics:
     types:
       - ["s_f32", "f32", "u32"]
       - ["d_f64", "f64", "u64"]
+    compose:
+      - FnCall: ["vcage{type[0]}", [b, a]]
+
+  - name: "vcale{type[0]}"
+    doc: "Floating-point absolute compare less than or equal"
+    arguments: ["a: {type[1]}", "b: {type[1]}"]
+    return_type: "{type[2]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [facge]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["h_f16", "f16", "u16"]
     compose:
       - FnCall: ["vcage{type[0]}", [b, a]]
 
@@ -1027,6 +1242,119 @@ intrinsics:
               arch: aarch64,arm64ec
       - FnCall: ["_vcvt{neon_type[1].N}_{neon_type[0]}", [a, N]]
 
+
+  - name: "vcvt{type[2]}_n_{type[1]}_{type[0]}"
+    doc: "Fixed-point convert to floating-point"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [scvtf, 'N = 2']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [i32, f16, 'h']
+      - [i64, f16, 'h']
+    compose:
+      - FnCall: [static_assert!, ['N >= 1 && N <= 16']]
+      - LLVMLink:
+          name: "vcvt{type[2]}_n_{type[1]}_{type[0]}"
+          arguments:
+            - "a: {type[0]}"
+            - "n: i32"
+          links:
+            - link: "llvm.aarch64.neon.vcvtfxs2fp.{type[1]}.{type[0]}"
+              arch: aarch64,arm64ec
+      - FnCall: ["_vcvt{type[2]}_n_{type[1]}_{type[0]}", [a, N]]
+
+
+  - name: "vcvt{type[2]}_n_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to fixed-point, rounding toward zero"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[4]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtzs, 'N = 2']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, s16, 'h', i32, i16]
+    compose:
+      - FnCall: [static_assert!, ['N >= 1 && N <= 16']]
+      - "vcvt{type[2]}_n_{type[3]}_{type[0]}::<N>(a) as i16"
+
+  - name: "vcvt{type[2]}_n_{type[1]}_{type[0]}"
+    doc: "Fixed-point convert to floating-point"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ucvtf, 'N = 2']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [u32, f16, 'h']
+      - [u64, f16, 'h']
+    compose:
+      - FnCall: [static_assert!, ['N >= 1 && N <= 16']]
+      - LLVMLink:
+          name: "vcvt{type[2]}_n_{type[1]}_{type[0]}"
+          arguments:
+            - "a: {type[0]}"
+            - "n: i32"
+          links:
+            - link: "llvm.aarch64.neon.vcvtfxu2fp.{type[1]}.{type[0]}"
+              arch: aarch64,arm64ec
+      - FnCall: ["_vcvt{type[2]}_n_{type[1]}_{type[0]}", [a.as_signed(), N]]
+
+
+  - name: "vcvt{type[2]}_n_{type[1]}_{type[0]}"
+    doc: "Fixed-point convert to floating-point"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [scvtf, 'N = 2']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [i16, f16, 'h', 'i32', 'as i32']
+    compose:
+      - FnCall: [static_assert!, ['N >= 1 && N <= 16']]
+      - "vcvt{type[2]}_n_{type[1]}_{type[3]}::<N>(a {type[4]}) as {type[1]}"
+
+
+  - name: "vcvt{type[2]}_n_{type[1]}_{type[0]}"
+    doc: "Fixed-point convert to floating-point"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ucvtf, 'N = 2']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [u16, f16, 'h', u32]
+    compose:
+      - FnCall: [static_assert!, ['N >= 1 && N <= 16']]
+      - "vcvt{type[2]}_n_{type[1]}_{type[3]}::<N>(a as {type[3]}) as {type[1]}"
+
+
   - name: "vcvt{type[2]}"
     doc: "Fixed-point convert to floating-point"
     arguments: ["a: {type[0]}"]
@@ -1052,6 +1380,7 @@ intrinsics:
             - link: "llvm.aarch64.neon.vcvtfxs2fp.{type[1]}.{type[0]}"
               arch: aarch64,arm64ec
       - FnCall: ["_vcvt{type[2]}", [a, N]]
+
 
   - name: "vcvt{neon_type[1].N}_{neon_type[0]}"
     doc: "Fixed-point convert to floating-point"
@@ -1135,6 +1464,77 @@ intrinsics:
     compose:
       - Identifier: ["a as {type[1]}", Symbol]
 
+
+  - name: "vcvt{type[2]}"
+    doc: "Fixed-point convert to floating-point"
+    arguments: ["a: {type[3]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [scvtf]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["s16", "f16", "h_f16_s16", i16]
+      - ["s32", "f16", "h_f16_s32", i32]
+      - ["s64", "f16", "h_f16_s64", i64]
+    compose:
+      - Identifier: ["a as {type[1]}", Symbol]
+
+  - name: "vcvt{type[2]}_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to signed fixed-point"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[3]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtzs]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "s16", "h", i16, 'a as i16']
+      - ["f16", "s32", "h", i32, 'a as i32']
+      - ["f16", "s64", "h", i64, 'a as i64']
+    compose:
+      - Identifier: ["{type[4]}", Symbol]
+
+  - name: "vcvt{type[2]}_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to unsigned fixed-point"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtzu]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "u16", "h", 'a as u16']
+      - ["f16", "u32", "h", 'a as u32']
+      - ["f16", "u64", "h", 'a as u64']
+    compose:
+      - Identifier: ["{type[3]}", Symbol]
+
+
+  - name: "vcvt{type[2]}"
+    doc: "Unsigned fixed-point convert to floating-point"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ucvtf]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["u16", "f16", "h_f16_u16"]
+      - ["u32", "f16", "h_f16_u32"]
+      - ["u64", "f16", "h_f16_u64"]
+    compose:
+      - Identifier: ["a as {type[1]}", Symbol]
+
+
   - name: "vcvt_f64_f32"
     doc: "Floating-point convert to higher precision long"
     arguments: ["a: {neon_type[0]}"]
@@ -1171,8 +1571,44 @@ intrinsics:
                 - '[2, 3]'
       - FnCall: [simd_cast, [b]]
 
+  - name: "vcvt_high_f16_f32"
+    doc: "Floating-point convert to lower precision"
+    arguments: ["a: {neon_type[1]}", "b: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtn2]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x8_t, float16x4_t, float32x4_t]
+    compose:
+      - FnCall:
+          - vcombine_f16
+          - - a
+            - FnCall: [vcvt_f16_f32, [b]]
+
+  - name: "vcvt_high_f32_f16"
+    doc: "Floating-point convert to higher precision"
+    arguments: ["a: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtl2]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float32x4_t, float16x8_t]
+    compose:
+      - FnCall:
+          - vcvt_f32_f16
+          - - FnCall: [vget_high_f16, [a]]
+
+
   - name: "vcvt_f32_f64"
-    doc: "Floating-point convert to lower precision narrow"
+    doc: "Floating-point convert"
     arguments: ["a: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
@@ -1306,6 +1742,77 @@ intrinsics:
               arch: aarch64,arm64ec
       - FnCall: ["_vcvt{type[2]}", [a, N]]
 
+
+  - name: "vcvt{type[2]}_n_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to fixed-point, rounding toward zero"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtzs, 'N = 2']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "i32", 'h', '16']
+      - ["f16", "i64", 'h', '16']
+    compose:
+      - FnCall: [static_assert!, ['N >= 1 && N <= {type[3]}']]
+      - LLVMLink:
+          name: "vcvt{type[2]}_n_{type[1]}_{type[0]}"
+          arguments: ["a: {type[0]}", "n: i32"]
+          links:
+            - link: "llvm.aarch64.neon.vcvtfp2fxs.{type[1]}.{type[0]}"
+              arch: aarch64,arm64ec
+      - FnCall: ["_vcvt{type[2]}_n_{type[1]}_{type[0]}", [a, N]]
+
+
+  - name: "vcvt{type[2]}_n_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to fixed-point, rounding toward zero"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtzu, 'N = 2']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, u16, 'h', u32]
+    compose:
+      - FnCall: [static_assert!, ['N >= 1 && N <= 16']]
+      - "vcvt{type[2]}_n_{type[3]}_{type[0]}::<N>(a) as {type[1]}"
+
+
+  - name: "vcvt{type[2]}_n_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to fixed-point, rounding toward zero"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtzu, 'N = 2']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "u32", 'h', '16']
+      - ["f16", "u64", 'h', '16']
+    compose:
+      - FnCall: [static_assert!, ['N >= 1 && N <= {type[3]}']]
+      - LLVMLink:
+          name: "vcvt{type[2]}_n_{type[1]}_{type[0]}"
+          arguments: ["a: {type[0]}", "n: i32"]
+          links:
+            - link: "llvm.aarch64.neon.vcvtfp2fxu.{type[1]}.{type[0]}"
+              arch: aarch64,arm64ec
+      - FnCall: ["_vcvt{type[2]}_n_{type[1]}_{type[0]}", [a, N]]
+
   - name: "vcvt{type[2]}"
     doc: "Floating-point convert to fixed-point, rounding toward zero"
     arguments: ["a: {neon_type[0]}"]
@@ -1375,6 +1882,27 @@ intrinsics:
             - link: "llvm.aarch64.neon.fcvtas.{neon_type[1]}.{neon_type[0]}"
               arch: aarch64,arm64ec
 
+
+  - name: "vcvta{neon_type[1].no}_{neon_type[0]}"
+    doc: "Floating-point convert to signed integer, rounding to nearest with ties to away"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtas]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, int16x4_t]
+      - [float16x8_t, int16x8_t]
+    compose:
+      - LLVMLink:
+          name: "vcvta_{neon_type[1]}_{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fcvtas.{neon_type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
   - name: "vcvta{type[2]}"
     doc: "Floating-point convert to integer, rounding to nearest with ties to away"
     arguments: ["a: {type[0]}"]
@@ -1393,6 +1921,81 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.fcvtas.{type[1]}.{type[0]}"
               arch: aarch64,arm64ec
+
+
+  - name: "vcvta{type[2]}"
+    doc: "Floating-point convert to integer, rounding to nearest with ties to away"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtau]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "u32", 'h_u32_f16']
+      - ["f16", "u64", 'h_u64_f16']
+
+    compose:
+      - LLVMLink:
+          name: "vcvta{type[2]}"
+          links:
+            - link: "llvm.aarch64.neon.fcvtau.{type[1]}.{type[0]}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vcvta{type[2]}"
+    doc: "Floating-point convert to integer, rounding to nearest with ties to away"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtas]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "i32", 'h_s32_f16']
+      - ["f16", "i64", 'h_s64_f16']
+    compose:
+      - LLVMLink:
+          name: "vcvta{type[2]}"
+          return_type: "{type[1]}"
+          links:
+            - link: "llvm.aarch64.neon.fcvtas.{type[1]}.{type[0]}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vcvta{type[2]}"
+    doc: "Floating-point convert to integer, rounding to nearest with ties to away"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtas]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "i16", 'h_s16_f16', 's32']
+    compose:
+      - 'vcvtah_{type[3]}_f16(a) as i16'
+
+  - name: "vcvta{type[2]}"
+    doc: "Floating-point convert to integer, rounding to nearest with ties to away"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtau]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "u16", 'h_u16_f16', 'u32']
+    compose:
+      - 'vcvtah_{type[3]}_f16(a) as u16'
 
   - name: "vcvta{type[2]}"
     doc: "Floating-point convert to integer, rounding to nearest with ties to away"
@@ -1453,6 +2056,121 @@ intrinsics:
             - link: "llvm.aarch64.neon.fcvtns.{type[1]}.{type[0]}"
               arch: aarch64,arm64ec
 
+
+  - name: "vcvtn{neon_type[1].no}_{neon_type[0]}"
+    doc: "Floating-point convert to signed integer, rounding to nearest with ties to even"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtns]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, int16x4_t]
+      - [float16x8_t, int16x8_t]
+    compose:
+      - LLVMLink:
+          name: "vcvtn{neon_type[1].no}_{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fcvtns.{neon_type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vcvtn{neon_type[1].no}_{neon_type[0]}"
+    doc: "Floating-point convert to unsigned integer, rounding to nearest with ties to even"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtnu]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t]
+      - [float16x8_t, uint16x8_t]
+    compose:
+      - LLVMLink:
+          name: "vcvtn{neon_type[1].no}_{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fcvtnu.{neon_type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vcvtn{type[2]}_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to integer, rounding to nearest with ties to even"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtns]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "i32", 'h']
+      - ["f16", "i64", 'h']
+    compose:
+      - LLVMLink:
+          name: "vcvtm{type[2]}_{type[1]}_{type[0]}"
+          return_type: "{type[1]}"
+          links:
+            - link: "llvm.aarch64.neon.fcvtns.{type[1]}.{type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vcvtn{type[2]}_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to integer, rounding to nearest with ties to even"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtns]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "i16", 'h', 'i32']
+    compose:
+      - 'vcvtnh_{type[3]}_f16(a) as i16'
+
+
+  - name: "vcvtn{type[2]}_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to unsigned integer, rounding to nearest with ties to even"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtnu]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "u32", 'h']
+      - ["f16", "u64", 'h']
+    compose:
+      - LLVMLink:
+          name: "vcvtm{type[2]}_{type[1]}_{type[0]}"
+          return_type: "{type[1]}"
+          links:
+            - link: "llvm.aarch64.neon.fcvtnu.{type[1]}.{type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vcvtn{type[2]}_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to unsigned integer, rounding to nearest with ties to even"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtnu]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "u16", 'h', 'u32']
+    compose:
+      - 'vcvtnh_{type[3]}_f16(a) as u16'
+
   - name: "vcvtm{neon_type[1].no}_{neon_type[0]}"
     doc: "Floating-point convert to signed integer, rounding toward minus infinity"
     arguments: ["a: {neon_type[0]}"]
@@ -1473,6 +2191,49 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.fcvtms.{neon_type[1]}.{neon_type[0]}"
               arch: aarch64,arm64ec
+
+
+  - name: "vcvtm{neon_type[1].no}_{neon_type[0]}"
+    doc: "Floating-point convert to signed integer, rounding toward minus infinity"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtms]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, int16x4_t]
+      - [float16x8_t, int16x8_t]
+    compose:
+      - LLVMLink:
+          name: "vcvtm{neon_type[1].no}_{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fcvtms.{neon_type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vcvtm{neon_type[1].no}_{neon_type[0]}"
+    doc: "Floating-point convert to unsigned integer, rounding toward minus infinity"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtmu]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t]
+      - [float16x8_t, uint16x8_t]
+    compose:
+      - LLVMLink:
+          name: "vcvtm{neon_type[1].no}_{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fcvtmu.{neon_type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
 
   - name: "vcvtm{type[2]}"
     doc: "Floating-point convert to signed integer, rounding toward minus infinity"
@@ -1656,6 +2417,121 @@ intrinsics:
             - link: "llvm.aarch64.neon.fcvtpu.{type[3]}.{type[0]}"
               arch: aarch64,arm64ec
 
+
+  - name: "vcvtp{neon_type[1].no}_{neon_type[0]}"
+    doc: "Floating-point convert to signed integer, rounding to plus infinity"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtps]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, int16x4_t]
+      - [float16x8_t, int16x8_t]
+    compose:
+      - LLVMLink:
+          name: "vcvtp{neon_type[1].no}_{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fcvtps.{neon_type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vcvtp{neon_type[1].no}_{neon_type[0]}"
+    doc: "Floating-point convert to unsigned integer, rounding to plus infinity"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtpu]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t]
+      - [float16x8_t, uint16x8_t]
+    compose:
+      - LLVMLink:
+          name: "vcvtp{neon_type[1].no}_{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fcvtpu.{neon_type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vcvtp{type[2]}_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to integer, rounding to plus infinity"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtps]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "i32", 'h']
+      - ["f16", "i64", 'h']
+    compose:
+      - LLVMLink:
+          name: "vcvtp{type[2]}_{type[1]}_{type[0]}"
+          return_type: "{type[1]}"
+          links:
+            - link: "llvm.aarch64.neon.fcvtps.{type[1]}.{type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vcvtp{type[2]}_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to integer, rounding to plus infinity"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtps]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "i16", 'h', 'i32']
+    compose:
+      - 'vcvtph_{type[3]}_f16(a) as i16'
+
+  - name: "vcvtp{type[2]}_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to unsigned integer, rounding to plus infinity"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtpu]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "u32", 'h']
+      - ["f16", "u64", 'h']
+    compose:
+      - LLVMLink:
+          name: "vcvtp{type[2]}_{type[1]}_{type[0]}"
+          return_type: "{type[1]}"
+          links:
+            - link: "llvm.aarch64.neon.fcvtpu.{type[1]}.{type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vcvtp{type[2]}_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to unsigned integer, rounding to plus infinity"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtpu]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "u16", 'h', 'u32']
+    compose:
+      - 'vcvtph_{type[3]}_f16(a) as u16'
+
   - name: "vdup{neon_type.laneq_nox}"
     doc: "Set all vector lanes to the same value"
     arguments: ["a: {neon_type}"]
@@ -1793,8 +2669,47 @@ intrinsics:
       - FnCall: [static_assert_uimm_bits!, [N, 3]]
       - FnCall: [simd_extract!, [a, 'N as u32']]
 
+
   - name: "vdup{type[2]}"
     doc: "Set all vector lanes to the same value"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'N = 2']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, "f16", h_lane_f16]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [N, 2]]
+      - FnCall: [simd_extract!, [a, 'N as u32']]
+
+
+  - name: "vdup{type[2]}"
+    doc: "Extract an element from a vector"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop, 'N = 4']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x8_t, "f16", h_laneq_f16]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [N, 4]]
+      - FnCall: [simd_extract!, [a, 'N as u32']]
+
+
+  - name: "vdup{type[2]}"
+    doc: "Extract an element from a vector"
     arguments: ["a: {neon_type[0]}"]
     return_type: "{type[1]}"
     attr:
@@ -2007,6 +2922,22 @@ intrinsics:
       - i64
     compose:
       - MethodCall: [a, wrapping_neg, []]
+
+
+  - name: "vnegh_{type}"
+    doc: Negate
+    arguments: ["a: {type}"]
+    return_type: "{type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fneg]
+    safety:
+      unsafe: [neon]
+    types:
+      - f16
+    compose:
+      - '-a'
 
   - name: "vneg{neon_type.no}"
     doc: Negate
@@ -2225,6 +3156,48 @@ intrinsics:
             - link: "llvm.rint.{neon_type}"
               arch: aarch64,arm64ec
 
+
+  - name: "vrndx{neon_type.no}"
+    doc: "Floating-point round to integral exact, using current rounding mode"
+    arguments: ["a: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [frintx]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "llvm.rint.{neon_type}"
+          links:
+            - link: "llvm.rint.{neon_type}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vrndx{type[1]}{type[0]}"
+    doc: "Floating-point round to integral, using current rounding mode"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[0]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [frintx]
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, 'h_']
+    compose:
+      - LLVMLink:
+          name: "llvm.rint.{type[0]}"
+          links:
+            - link: "llvm.rint.{type[0]}"
+              arch: aarch64,arm64ec
+
+
   - name: "vrnda{neon_type.no}"
     doc: "Floating-point round to integral, to nearest with ties to away"
     arguments: ["a: {neon_type}"]
@@ -2243,6 +3216,47 @@ intrinsics:
           name: "llvm.round.{neon_type}"
           links:
             - link: "llvm.round.{neon_type}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vrnda{neon_type.no}"
+    doc: "Floating-point round to integral, to nearest with ties to away"
+    arguments: ["a: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [frinta]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "llvm.round.{neon_type}"
+          links:
+            - link: "llvm.round.{neon_type}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vrnda{type[1]}{type[0]}"
+    doc: "Floating-point round to integral, to nearest with ties to away"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[0]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [frinta]
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, 'h_']
+    compose:
+      - LLVMLink:
+          name: "llvm.round.{type[0]}"
+          links:
+            - link: "llvm.round.{type[0]}"
               arch: aarch64,arm64ec
 
   - name: "vrndn{neon_type.no}"
@@ -2280,6 +3294,25 @@ intrinsics:
             - link: "llvm.roundeven.{type}"
               arch: aarch64,arm64ec
 
+  - name: "vrndn{type[1]}{type[0]}"
+    doc: "Floating-point round to integral, toward minus infinity"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[0]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [frintn]
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, 'h_']
+    compose:
+      - LLVMLink:
+          name: "llvm.roundeven.{type[0]}"
+          links:
+            - link: "llvm.roundeven.{type[0]}"
+              arch: aarch64,arm64ec
+
   - name: "vrndm{neon_type.no}"
     doc: "Floating-point round to integral, toward minus infinity"
     arguments: ["a: {neon_type}"]
@@ -2300,6 +3333,49 @@ intrinsics:
             - link: "llvm.floor.{neon_type}"
               arch: aarch64,arm64ec
 
+
+  - name: "vrndm{neon_type.no}"
+    doc: "Floating-point round to integral, toward minus infinity"
+    arguments: ["a: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [frintm]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "llvm.floor.{neon_type}"
+          links:
+            - link: "llvm.floor.{neon_type}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vrndm{type[1]}{type[0]}"
+    doc: "Floating-point round to integral, toward minus infinity"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[0]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [frintm]
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, 'h_']
+    compose:
+      - LLVMLink:
+          name: "llvm.floor.{type[0]}"
+          links:
+            - link: "llvm.floor.{type[0]}"
+              arch: aarch64,arm64ec
+
+
+
   - name: "vrndp{neon_type.no}"
     doc: "Floating-point round to integral, toward plus infinity"
     arguments: ["a: {neon_type}"]
@@ -2318,6 +3394,46 @@ intrinsics:
           name: "llvm.ceil.{neon_type}"
           links:
             - link: "llvm.ceil.{neon_type}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vrndp{neon_type.no}"
+    doc: "Floating-point round to integral, toward plus infinity"
+    arguments: ["a: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [frintp]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "llvm.ceil.{neon_type}"
+          links:
+            - link: "llvm.ceil.{neon_type}"
+              arch: aarch64,arm64ec
+
+  - name: "vrndp{type[1]}{type[0]}"
+    doc: "Floating-point round to integral, toward plus infinity"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[0]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [frintp]
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, 'h_']
+    compose:
+      - LLVMLink:
+          name: "llvm.ceil.{type[0]}"
+          links:
+            - link: "llvm.ceil.{type[0]}"
               arch: aarch64,arm64ec
 
   - name: "vrnd{neon_type.no}"
@@ -2340,6 +3456,47 @@ intrinsics:
             - link: "llvm.trunc.{neon_type}"
               arch: aarch64,arm64ec
 
+  - name: "vrnd{neon_type.no}"
+    doc: "Floating-point round to integral, toward zero"
+    arguments: ["a: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [frintz]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "llvm.trunc.{neon_type}"
+          links:
+            - link: "llvm.trunc.{neon_type}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vrnd{type[1]}{type[0]}"
+    doc: "Floating-point round to integral, to nearest with ties to away"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[0]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [frintz]
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, 'h_']
+    compose:
+      - LLVMLink:
+          name: "llvm.trunc.{type[0]}"
+          links:
+            - link: "llvm.trunc.{type[0]}"
+              arch: aarch64,arm64ec
+
+
   - name: "vrndi{neon_type.no}"
     doc: "Floating-point round to integral, using current rounding mode"
     arguments: ["a: {neon_type}"]
@@ -2358,6 +3515,48 @@ intrinsics:
           name: "llvm.nearbyint.{neon_type}"
           links:
             - link: "llvm.nearbyint.{neon_type}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vrndi{neon_type.no}"
+    doc: "Floating-point round to integral, using current rounding mode"
+    arguments: ["a: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [frinti]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "llvm.nearbyint.{neon_type}"
+          links:
+            - link: "llvm.nearbyint.{neon_type}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vrndi{type[1]}{type[0]}"
+    doc: "Floating-point round to integral, using current rounding mode"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[0]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    # TODO: double check me
+    assert_instr: [frinti]
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, 'h_']
+    compose:
+      - LLVMLink:
+          name: "llvm.nearbyint.{type[0]}"
+          links:
+            - link: "llvm.nearbyint.{type[0]}"
               arch: aarch64,arm64ec
 
   - name: "vqadd{type[1]}"
@@ -4265,6 +5464,28 @@ intrinsics:
             - link: "llvm.aarch64.neon.fmulx.{neon_type}"
               arch: aarch64,arm64ec
 
+
+  - name: "vmulx{neon_type.no}"
+    doc: Floating-point multiply extended
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fmulx]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "fmulx.{neon_type.no}"
+          links:
+            - link: "llvm.aarch64.neon.fmulx.{neon_type}"
+              arch: aarch64,arm64ec
+
+
   - name: "vmulx{type[0]}"
     doc: Floating-point multiply extended
     arguments: ["a: {type[1]}", "b: {type[1]}"]
@@ -4282,6 +5503,27 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.fmulx.{type[1]}"
               arch: aarch64,arm64ec
+
+
+  - name: "vmulx{type[0]}"
+    doc: Floating-point multiply extended
+    arguments: ["a: {type[1]}", "b: {type[1]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fmulx]
+    safety:
+      unsafe: [neon]
+    types:
+      - ["h_f16", "f16"]
+    compose:
+      - LLVMLink:
+          name: "fmulx.{type[1]}"
+          links:
+            - link: "llvm.aarch64.neon.fmulx.{type[1]}"
+              arch: aarch64,arm64ec
+
 
   - name: "vmulx_lane_f64"
     doc: Floating-point multiply extended
@@ -4408,6 +5650,36 @@ intrinsics:
                   - b
                   - "{type[5]}"
 
+
+  - name: "vmulx{type[0]}"
+    doc: Floating-point multiply extended
+    arguments: ["a: {type[1]}", "b: {neon_type[2]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmulx, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - *neon-fp16 
+      - *neon-unstable-f16
+    static_defs: ["const LANE: i32"]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['_lane_f16', float16x4_t, float16x4_t, '2', '_f16', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - ['_laneq_f16', float16x4_t, float16x8_t, '3', '_f16', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - ['q_lane_f16', float16x8_t, float16x4_t, '2', 'q_f16', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - ['q_laneq_f16', float16x8_t, float16x8_t, '3', 'q_f16', '[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, ['LANE', "{type[3]}"]]
+      - FnCall:
+          - "vmulx{type[4]}"
+          - - a
+            - FnCall:
+                - "simd_shuffle!"
+                - - b
+                  - b
+                  - "{type[5]}"
+
+
   - name: "vmulx{type[0]}"
     doc: Floating-point multiply extended
     arguments: ["a: {type[1]}", "b: {neon_type[2]}"]
@@ -4432,6 +5704,52 @@ intrinsics:
                 - "simd_extract!"
                 - - b
                   - "{type[5]}"
+
+
+  - name: "vmulx{type[0]}"
+    doc: Floating-point multiply extended
+    arguments: ["a: {type[1]}", "b: {neon_type[2]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmulx, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - *neon-fp16 
+      - *neon-unstable-f16
+    static_defs: ["const LANE: i32"]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['h_lane_f16', f16, float16x4_t, '2', 'h_f16', "LANE as u32"]
+      - ['h_laneq_f16', f16, float16x8_t, '3', 'h_f16', "LANE as u32"]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, ['LANE', "{type[3]}"]]
+      - FnCall:
+          - "vmulx{type[4]}"
+          - - a
+            - FnCall:
+                - "simd_extract!"
+                - - b
+                  - "{type[5]}"
+
+
+  - name: "vmulx{neon_type[0].N}"
+    doc: "Vector multiply by scalar"
+    arguments: ["a: {neon_type[0]}", "b: {type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmulx]]}]]
+      - *neon-fp16 
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, "f16"]
+      - [float16x8_t, "f16"]
+    compose:
+      - FnCall:
+          - vmulx{neon_type[0].no}
+          - - a
+            - FnCall: ["vdup{neon_type[0].N}", [b]]
 
   - name: "vfma{neon_type.no}"
     doc: Floating-point fused Multiply-Add to accumulator(vector)
@@ -4516,6 +5834,28 @@ intrinsics:
                 - "vdupq_n_f64"
                 - - c
 
+  - name: "vfma{neon_type[0].N}"
+    doc: Floating-point fused Multiply-Subtract from accumulator.
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-fp16 
+      - *neon-unstable-f16
+    assert_instr: [fmla]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, f16]
+      - [float16x8_t, f16]
+    compose:
+      - FnCall:
+          - "vfma{neon_type[0].no}"
+          - - a
+            - b
+            - FnCall:
+                - "vdup{neon_type[0].N}"
+                - - c
+
   - name: "vdiv{neon_type.no}"
     doc: "Divide"
     arguments: ["a: {neon_type}", "b: {neon_type}"]
@@ -4531,6 +5871,37 @@ intrinsics:
       - float64x2_t
     compose:
       - FnCall: [simd_div, [a, b]]
+
+  - name: "vdiv{neon_type.no}"
+    doc: "Divide"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fdiv]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - FnCall: [simd_div, [a, b]]
+
+  - name: "vdiv{type[1]}_{type[0]}"
+    doc: Divide
+    arguments: ["a: {type[0]}", "b: {type[0]}"]
+    return_type: "{type[0]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [nop]
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, 'h']
+    compose:
+      - 'a / b'
 
   - name: "vsub{neon_type.no}"
     doc: "Subtract"
@@ -4559,6 +5930,21 @@ intrinsics:
       - ['d_u64', 'u64']
     compose:
       - MethodCall: [a, wrapping_sub, [b]]
+
+  - name: "vsub{type[0]}"
+    doc: "Subtract"
+    arguments: ["a: {type[1]}", "b: {type[1]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [nop]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['h_f16', 'f16']
+    compose:
+      - 'a - b'
 
   - name: "vaddv{neon_type[0].no}"
     doc: Floating-point add across vector
@@ -4849,6 +6235,48 @@ intrinsics:
             - link: "llvm.aarch64.neon.vcadd.rot90.{neon_type}"
               arch: aarch64,arm64ec
 
+  - name: "vcadd{neon_type.rot270}"
+    doc: "Floating-point complex add"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-fp16
+      - *enable-fcma
+      - *neon-unstable-f16
+    assert_instr: [fcadd]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "vcadd.rot270.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.vcadd.rot270.{neon_type}"
+              arch: aarch64,arm64ec
+
+  - name: "vcadd{neon_type.rot90}"
+    doc: "Floating-point complex add"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-fp16
+      - *enable-fcma
+      - *neon-unstable-f16
+    assert_instr: [fcadd]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "vcadd.rot90.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.vcadd.rot90.{neon_type}"
+              arch: aarch64,arm64ec
+
   - name: "vcmla{neon_type.no}"
     doc: Floating-point complex multiply accumulate
     arguments: ["a: {neon_type}", "b: {neon_type}", "c: {neon_type}"]
@@ -4863,6 +6291,27 @@ intrinsics:
       - float32x2_t
       - float32x4_t
       - float64x2_t
+    compose:
+      - LLVMLink:
+          name: "llvm.aarch64.neon.vcmla.rot0.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.vcmla.rot0.{neon_type}"
+              arch: aarch64,arm64ec
+
+  - name: "vcmla{neon_type.no}"
+    doc: Floating-point complex multiply accumulate
+    arguments: ["a: {neon_type}", "b: {neon_type}", "c: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,fcma"']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fcmla]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
     compose:
       - LLVMLink:
           name: "llvm.aarch64.neon.vcmla.rot0.{neon_type}"
@@ -4891,6 +6340,27 @@ intrinsics:
             - link: "llvm.aarch64.neon.vcmla.rot90.{neon_type}"
               arch: aarch64,arm64ec
 
+  - name: "vcmla{neon_type.rot90}"
+    doc: Floating-point complex multiply accumulate
+    arguments: ["a: {neon_type}", "b: {neon_type}", "c: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,fcma"']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fcmla]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "llvm.aarch64.neon.vcmla.rot90.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.vcmla.rot90.{neon_type}"
+              arch: aarch64,arm64ec
+
   - name: "vcmla{neon_type.rot270}"
     doc: Floating-point complex multiply accumulate
     arguments: ["a: {neon_type}", "b: {neon_type}", "c: {neon_type}"]
@@ -4905,6 +6375,28 @@ intrinsics:
       - float32x2_t
       - float32x4_t
       - float64x2_t
+    compose:
+      - LLVMLink:
+          name: "llvm.aarch64.neon.vcmla.rot270.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.vcmla.rot270.{neon_type}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vcmla{neon_type.rot270}"
+    doc: Floating-point complex multiply accumulate
+    arguments: ["a: {neon_type}", "b: {neon_type}", "c: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,fcma"']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fcmla]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
     compose:
       - LLVMLink:
           name: "llvm.aarch64.neon.vcmla.rot270.{neon_type}"
@@ -4935,6 +6427,30 @@ intrinsics:
           - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
       - FnCall: ["vcmla{neon_type[0].no}", [a, b, c]]
 
+  - name: "vcmla{neon_type[0].laneq_nox}"
+    doc: Floating-point complex multiply accumulate
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,fcma"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmla, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ["const LANE: i32"]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float16x8_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float16x8_t, float16x8_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, 2]]
+      - Let:
+          - c
+          - "{neon_type[0]}"
+          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - FnCall: ["vcmla{neon_type[0].no}", [a, b, c]]
+
   - name: "vcmla{neon_type[0].rot90_laneq}"
     doc: Floating-point complex multiply accumulate
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
@@ -4952,6 +6468,30 @@ intrinsics:
       - [float32x4_t, float32x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, 1]]
+      - Let:
+          - c
+          - "{neon_type[0]}"
+          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - FnCall: ["vcmla{neon_type[0].rot90}", [a, b, c]]
+
+  - name: "vcmla{neon_type[0].rot90_laneq}"
+    doc: Floating-point complex multiply accumulate
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,fcma"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmla, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ["const LANE: i32"]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float16x8_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float16x8_t, float16x8_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, 2]]
       - Let:
           - c
           - "{neon_type[0]}"
@@ -4981,6 +6521,30 @@ intrinsics:
           - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
       - FnCall: ["vcmla{neon_type[0].rot90}", [a, b, c]]
 
+  - name: "vcmla{neon_type[0].rot90_lane}"
+    doc: Floating-point complex multiply accumulate
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,fcma"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmla, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ["const LANE: i32"]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float16x8_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, 1]]
+      - Let:
+          - c
+          - "{neon_type[0]}"
+          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - FnCall: ["vcmla{neon_type[0].rot90}", [a, b, c]]
+
   - name: "vcmla{neon_type.rot180}"
     doc: Floating-point complex multiply accumulate
     arguments: ["a: {neon_type}", "b: {neon_type}", "c: {neon_type}"]
@@ -5002,6 +6566,29 @@ intrinsics:
             - link: "llvm.aarch64.neon.vcmla.rot180.{neon_type}"
               arch: aarch64,arm64ec
 
+
+  - name: "vcmla{neon_type.rot180}"
+    doc: Floating-point complex multiply accumulate
+    arguments: ["a: {neon_type}", "b: {neon_type}", "c: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,fcma"']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fcmla]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "llvm.aarch64.neon.vcmla.rot180.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.vcmla.rot180.{neon_type}"
+              arch: aarch64,arm64ec
+
+
   - name: "vcmla{neon_type[0].rot180_laneq}"
     doc: Floating-point complex multiply accumulate
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
@@ -5019,6 +6606,32 @@ intrinsics:
       - [float32x4_t, float32x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, 1]]
+      - Let:
+          - c
+          - "{neon_type[0]}"
+          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - FnCall: ["vcmla{neon_type[0].rot180}", [a, b, c]]
+
+  - name: "vcmla{neon_type[0].rot180_laneq}"
+    doc: Floating-point complex multiply accumulate
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,fcma"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmla, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ["const LANE: i32"]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float16x8_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float16x8_t, float16x8_t,
+        '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]'
+        ]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, 2]]
       - Let:
           - c
           - "{neon_type[0]}"
@@ -5048,6 +6661,32 @@ intrinsics:
           - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
       - FnCall: ["vcmla{neon_type[0].rot180}", [a, b, c]]
 
+  - name: "vcmla{type[3]}"
+    doc: Floating-point complex multiply accumulate
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,fcma"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmla, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ["const LANE: i32"]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]', '_rot180_lane_f16']
+      - [float16x8_t, float16x4_t,
+          '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]', 'q_rot180_lane_f16'
+        ]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, 1]]
+      - Let:
+          - c
+          - "{neon_type[0]}"
+          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - FnCall: ["vcmla{neon_type[0].rot180}", [a, b, c]]
+
   - name: "vcmla{neon_type[0].rot270_laneq}"
     doc: Floating-point complex multiply accumulate
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
@@ -5065,6 +6704,30 @@ intrinsics:
       - [float32x4_t, float32x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, 1]]
+      - Let:
+          - c
+          - "{neon_type[0]}"
+          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - FnCall: ["vcmla{neon_type[0].rot270}", [a, b, c]]
+
+  - name: "vcmla{neon_type[0].rot270_laneq}"
+    doc: Floating-point complex multiply accumulate
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,fcma"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmla, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ["const LANE: i32"]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float16x8_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float16x8_t, float16x8_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, 2]]
       - Let:
           - c
           - "{neon_type[0]}"
@@ -5094,6 +6757,31 @@ intrinsics:
           - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
       - FnCall: ["vcmla{neon_type[0].no}", [a, b, c]]
 
+
+  - name: "vcmla{neon_type[0].lane_nox}"
+    doc: Floating-point complex multiply accumulate
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,fcma"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmla, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ["const LANE: i32"]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float16x8_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, 1]]
+      - Let:
+          - c
+          - "{neon_type[0]}"
+          - FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]
+      - FnCall: ["vcmla{neon_type[0].no}", [a, b, c]]
+
   - name: "vcmla{neon_type[0].rot270_lane}"
     doc: Floating-point complex multiply accumulate
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
@@ -5111,6 +6799,28 @@ intrinsics:
       - [float32x4_t, float32x2_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
     compose:
       - FnCall: [static_assert!, ['LANE == 0']]
+      - Let: [c, "{neon_type[0]}", {FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]}]
+      - FnCall: ["vcmla{neon_type[0].rot270}", [a, b, c]]
+
+
+  - name: "vcmla{neon_type[0].rot270_lane}"
+    doc: Floating-point complex multiply accumulate
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,fcma"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmla, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ["const LANE: i32"]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+      - [float16x8_t, float16x4_t, '[2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1, 2 * LANE as u32, 2 * LANE as u32 + 1]']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, 1]]
       - Let: [c, "{neon_type[0]}", {FnCall: [simd_shuffle!, [c, c, "{type[2]}"]]}]
       - FnCall: ["vcmla{neon_type[0].rot270}", [a, b, c]]
 
@@ -5194,6 +6904,28 @@ intrinsics:
             - link: "llvm.aarch64.neon.fmax.{neon_type}"
               arch: aarch64,arm64ec
 
+
+  - name: "vmaxh_{type}"
+    doc: Maximum (vector)
+    arguments: ["a: {type}", "b: {type}"]
+    return_type: "{type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fmax]
+    safety:
+      unsafe: [neon]
+    types:
+      - f16
+    compose:
+      - LLVMLink:
+          name: "vmaxh.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.fmax.{type}"
+              arch: aarch64,arm64ec
+
+
+
   - name: "vmaxnm{neon_type.no}"
     doc: Floating-point Maximum Number (vector)
     arguments: ["a: {neon_type}", "b: {neon_type}"]
@@ -5211,6 +6943,47 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.fmaxnm.{neon_type}"
               arch: aarch64,arm64ec
+
+
+  - name: "vmaxnmh_{type}"
+    doc: Floating-point Maximum Number
+    arguments: ["a: {type}", "b: {type}"]
+    return_type: "{type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fmaxnm]
+    safety:
+      unsafe: [neon]
+    types:
+      - f16
+    compose:
+      - LLVMLink:
+          name: "vmaxh.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.fmaxnm.{type}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vminnmh_{type}"
+    doc: Floating-point Minimum Number
+    arguments: ["a: {type}", "b: {type}"]
+    return_type: "{type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fminnm]
+    safety:
+      unsafe: [neon]
+    types:
+      - f16
+    compose:
+      - LLVMLink:
+          name: "vminh.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.fminnm.{type}"
+              arch: aarch64,arm64ec
+
 
   - name: "vmaxnmv{neon_type[0].no}"
     doc: Floating-point maximum number across vector
@@ -5245,6 +7018,89 @@ intrinsics:
           name: "fmaxnmv.{neon_type[0]}"
           links:
             - link: "llvm.aarch64.neon.fmaxnmv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vmaxnmv{neon_type[0].no}"
+    doc: Floating-point maximum number across vector
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fmaxnmv]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, f16]
+      - [float16x8_t, f16]
+    compose:
+      - LLVMLink:
+          name: "fmaxnmv.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fmaxnmv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vminnmv{neon_type[0].no}"
+    doc: Floating-point minimum number across vector
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fminnmv]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, f16]
+      - [float16x8_t, f16]
+    compose:
+      - LLVMLink:
+          name: "fminnmv.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fminnmv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vmaxv{neon_type[0].no}"
+    doc: Floating-point maximum number across vector
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fmaxv]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, f16]
+      - [float16x8_t, f16]
+    compose:
+      - LLVMLink:
+          name: "fmaxv.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fmaxv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vminv{neon_type[0].no}"
+    doc: Floating-point minimum number across vector
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fminv]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, f16]
+      - [float16x8_t, f16]
+    compose:
+      - LLVMLink:
+          name: "fminv.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fminv.{type[1]}.{neon_type[0]}"
               arch: aarch64,arm64ec
 
   - name: "vpmax{type[0]}"
@@ -5282,6 +7138,27 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.fmin.{neon_type}"
               arch: aarch64,arm64ec
+
+
+  - name: "vminh_{type}"
+    doc: Minimum (vector)
+    arguments: ["a: {type}", "b: {type}"]
+    return_type: "{type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fmin]
+    safety:
+      unsafe: [neon]
+    types:
+      - f16
+    compose:
+      - LLVMLink:
+          name: "vminh.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.fmin.{type}"
+              arch: aarch64,arm64ec
+
 
   - name: "vminnm{neon_type.no}"
     doc: "Floating-point Minimum Number (vector)"
@@ -5393,6 +7270,111 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.faddp.{neon_type}"
               arch: aarch64,arm64ec
+
+
+  - name: "vpadd{neon_type.no}"
+    doc: Floating-point add pairwise
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [faddp]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "faddp.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.faddp.{neon_type}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vpmax{neon_type.no}"
+    doc: Floating-point add pairwise
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fmaxp]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "fmaxp.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.fmaxp.{neon_type}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vpmaxnm{neon_type.no}"
+    doc: Floating-point add pairwise
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fmaxnmp]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "fmaxnmp.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.fmaxnmp.{neon_type}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vpmin{neon_type.no}"
+    doc: Floating-point add pairwise
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fminp]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "fminp.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.fminp.{neon_type}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vpminnm{neon_type.no}"
+    doc: Floating-point add pairwise
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{type}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fminnmp]
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - LLVMLink:
+          name: "fminnmp.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.fminnmp.{neon_type}"
+              arch: aarch64,arm64ec
+
 
   - name: "vpadd{type[0]}"
     doc: "Floating-point add pairwise"
@@ -6874,6 +8856,41 @@ intrinsics:
     compose:
       - FnCall: [simd_fsqrt, [a]]
 
+  - name: "vsqrt{neon_type.no}"
+    doc: "Calculates the square root of each lane."
+    arguments: ["a: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fsqrt]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - float16x4_t
+      - float16x8_t
+    compose:
+      - FnCall: [simd_fsqrt, [a]]
+
+  - name: "vsqrt{type[1]}{type[0]}"
+    doc: "Floating-point round to integral, using current rounding mode"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[0]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fsqrt]
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, 'h_']
+    compose:
+      - LLVMLink:
+          name: "llvm.sqrt.{type[0]}"
+          links:
+            - link: "llvm.sqrt.{type[0]}"
+              arch: aarch64,arm64ec
+
   - name: "vrsqrts{type[0]}"
     doc: "Floating-point reciprocal square root step"
     arguments: ["a: {neon_type[1]}", "b: {neon_type[1]}"]
@@ -6911,6 +8928,27 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.frsqrts.{type[1]}"
               arch: aarch64,arm64ec
+
+
+  - name: "vrsqrts{type[0]}"
+    doc: "Floating-point reciprocal square root step"
+    arguments: ["a: {type[1]}", "b: {type[1]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-fp16
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [frsqrts]]}]]
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [h_f16, "f16"]
+    compose:
+      - LLVMLink:
+          name: "vrsqrts{type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.frsqrts.{type[1]}"
+              arch: aarch64,arm64ec
+
 
   - name: "vrecpe{type[0]}"
     doc: "Reciprocal estimate."
@@ -6950,6 +8988,27 @@ intrinsics:
             - link: "llvm.aarch64.neon.frecpe.{type[1]}"
               arch: aarch64,arm64ec
 
+
+  - name: "vrecpe{type[0]}"
+    doc: "Reciprocal estimate."
+    arguments: ["a: {type[1]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [frecpe]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [h_f16, "f16"]
+    compose:
+      - LLVMLink:
+          name: "vrecpe{type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.frecpe.{type[1]}"
+              arch: aarch64,arm64ec
+
+
   - name: "vrecps{type[0]}"
     doc: "Floating-point reciprocal step"
     arguments: ["a: {neon_type[1]}", "b: {neon_type[1]}"]
@@ -6988,6 +9047,27 @@ intrinsics:
             - link: "llvm.aarch64.neon.frecps.{type[1]}"
               arch: aarch64,arm64ec
 
+
+  - name: "vrecps{type[0]}"
+    doc: "Floating-point reciprocal step"
+    arguments: ["a: {type[1]}", "b: {type[1]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [frecps]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [h_f16, "f16"]
+    compose:
+      - LLVMLink:
+          name: "vrecps{type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.frecps.{type[1]}"
+              arch: aarch64,arm64ec
+
+
   - name: "vrecpx{type[0]}"
     doc: "Floating-point reciprocal exponent"
     arguments: ["a: {type[1]}"]
@@ -7006,6 +9086,27 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.frecpx.{type[1]}"
               arch: aarch64,arm64ec
+
+
+  - name: "vrecpx{type[0]}"
+    doc: "Floating-point reciprocal exponent"
+    arguments: ["a: {type[1]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [frecpx]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [h_f16, "f16"]
+    compose:
+      - LLVMLink:
+          name: "vrecpxs{type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.frecpx.{type[1]}"
+              arch: aarch64,arm64ec
+
 
   - name: "vreinterpret{neon_type[1].no}{neon_type[0].noq}"
     doc: Vector reinterpret cast operation
@@ -7080,6 +9181,27 @@ intrinsics:
       - [float64x2_t, float32x4_t]
     compose:
       - FnCall: [transmute, [a]]
+
+
+  - name: "vreinterpret{neon_type[1].no}{neon_type[0].noq}"
+    doc: Vector reinterpret cast operation
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [nop]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float64x1_t, float16x4_t]
+      - [float16x4_t, float64x1_t]
+      # q
+      - [float64x2_t, float16x8_t]
+      - [float16x8_t, float64x2_t]
+    compose:
+      - FnCall: [transmute, [a]]
+
 
   - name: "vrshld_s64"
     doc: "Signed rounding shift left"
@@ -7973,6 +10095,23 @@ intrinsics:
     compose:
       - FnCall: ["simd_shuffle!", [a, b, "{type[1]}"]]
 
+
+  - name: "vtrn1{neon_type[0].no}"
+    doc: Transpose vectors
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [trn1]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, '[0, 4, 2, 6]']
+      - [float16x8_t, '[0, 8, 2, 10, 4, 12, 6, 14]']
+    compose:
+      - FnCall: ["simd_shuffle!", [a, b, "{type[1]}"]]
+
   - name: "vtrn1{neon_type[0].no}"
     doc: Transpose vectors
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -8018,6 +10157,22 @@ intrinsics:
       - [poly16x4_t, '[1, 5, 3, 7]']
       - [poly16x8_t, '[1, 9, 3, 11, 5, 13, 7, 15]']
       - [float32x4_t, '[1, 5, 3, 7]']
+    compose:
+      - FnCall: ["simd_shuffle!", [a, b, "{type[1]}"]]
+
+  - name: "vtrn2{neon_type[0].no}"
+    doc: Transpose vectors
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [trn2]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, '[1, 5, 3, 7]']
+      - [float16x8_t, '[1, 9, 3, 11, 5, 13, 7, 15]']
     compose:
       - FnCall: ["simd_shuffle!", [a, b, "{type[1]}"]]
 
@@ -8076,6 +10231,22 @@ intrinsics:
     compose:
       - FnCall: ["simd_shuffle!", [a, b, "{type[1]}"]]
 
+  - name: "vzip2{neon_type[0].no}"
+    doc: Zip vectors
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [zip2]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, '[2, 6, 3, 7]']
+      - [float16x8_t, '[4, 12, 5, 13, 6, 14, 7, 15]']
+    compose:
+      - FnCall: ["simd_shuffle!", [a, b, "{type[1]}"]]
+
   - name: "vzip1{neon_type[0].no}"
     doc: Zip vectors
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -8108,6 +10279,23 @@ intrinsics:
       - [float32x2_t, '[0, 2]']
       - [float32x4_t, '[0, 4, 1, 5]']
       - [float64x2_t, '[0, 2]']
+    compose:
+      - FnCall: ["simd_shuffle!", [a, b, "{type[1]}"]]
+
+
+  - name: "vzip1{neon_type[0].no}"
+    doc: Zip vectors
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [zip1]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, '[0, 4, 1, 5]']
+      - [float16x8_t, '[0, 8, 1, 9, 2, 10, 3, 11]']
     compose:
       - FnCall: ["simd_shuffle!", [a, b, "{type[1]}"]]
 
@@ -8159,6 +10347,22 @@ intrinsics:
     compose:
       - FnCall: ["simd_shuffle!", [a, b, "{type[1]}"]]
 
+  - name: "vuzp1{neon_type[0].no}"
+    doc: Unzip vectors
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [uzp1]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, '[0, 2, 4, 6]']
+      - [float16x8_t, '[0, 2, 4, 6, 8, 10, 12, 14]']
+    compose:
+      - FnCall: ["simd_shuffle!", [a, b, "{type[1]}"]]
+
   - name: "vuzp2{neon_type[0].no}"
     doc: Unzip vectors
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -8204,6 +10408,26 @@ intrinsics:
       - [poly16x4_t, '[1, 3, 5, 7]']
       - [poly16x8_t, '[1, 3, 5, 7, 9, 11, 13, 15]']
       - [float32x4_t, '[1, 3, 5, 7]']
+    compose:
+      - FnCall:
+          - "simd_shuffle!"
+          - - a
+            - b
+            - "{type[1]}"
+
+  - name: "vuzp2{neon_type[0].no}"
+    doc: Unzip vectors
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+      - FnCall: [cfg_attr, [{FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]}, {FnCall: [assert_instr, [uzp2]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, '[1, 3, 5, 7]']
+      - [float16x8_t, '[1, 3, 5, 7, 9, 11, 13, 15]']
     compose:
       - FnCall:
           - "simd_shuffle!"
@@ -8485,6 +10709,76 @@ intrinsics:
             - b
             - FnCall: ["vdup{neon_type[0].N}", [{FnCall: [simd_extract!, [c, 'LANE as u32']]}]]
 
+
+  - name: "vfma{type[3]}"
+    doc: "Floating-point fused multiply-add to accumulator"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmla, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float16x4_t, '2', '_lane_f16']
+      - [float16x4_t, float16x8_t, '3', '_laneq_f16']
+      - [float16x8_t, float16x4_t, '2', 'q_lane_f16']
+      - [float16x8_t, float16x8_t, '3', 'q_laneq_f16']
+    compose:
+      - FnCall: ["static_assert_uimm_bits!", [LANE, "{type[2]}"]]
+      - FnCall:
+          - "vfma{neon_type[0].no}"
+          - - a
+            - b
+            - FnCall: ["vdup{neon_type[0].N}", [{FnCall: [simd_extract!, [c, 'LANE as u32']]}]]
+
+
+  # vfms lane f16
+  - name: "vfms{type[3]}"
+    doc: "Floating-point fused multiply-subtract from accumulator"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmls, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float16x4_t, '2', '_lane_f16']
+      - [float16x4_t, float16x8_t, '3', '_laneq_f16']
+      - [float16x8_t, float16x4_t, '2', 'q_lane_f16']
+      - [float16x8_t, float16x8_t, '3', 'q_laneq_f16']
+    compose:
+      - FnCall: ["static_assert_uimm_bits!", [LANE, "{type[2]}"]]
+      - FnCall:
+          - "vfms{neon_type[0].no}"
+          - - a
+            - b
+            - FnCall: ["vdup{neon_type[0].N}", [{FnCall: [simd_extract!, [c, 'LANE as u32']]}]]
+
+
+  - name: "vfms{type[1]}"
+    doc: "Floating-point fused multiply-subtract from accumulator"
+    arguments: ["a: {type[0]}", "b: {type[0]}", "c: {type[0]}"]
+    return_type: "{type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmsub]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "h_f16"]
+    compose:
+      - FnCall: ["vfma{type[1]}", [a, -b, c]]
+
+
   - name: "vfma_lane_f64"
     doc: "Floating-point fused multiply-add to accumulator"
     arguments: ["a: {neon_type}", "b: {neon_type}", "c: {neon_type}"]
@@ -8597,6 +10891,68 @@ intrinsics:
       - FnCall: [static_assert!, ['LANE == 0']]
       - Let: [c, "{type[0]}", {FnCall: [simd_extract!, [c, 'LANE as u32']]}]
       - FnCall: ["_vfmad_lane_f64", [b, c, a]]
+
+
+  - name: "vfma{type[1]}"
+    doc: "Floating-point fused multiply-add to accumulator"
+    arguments: ["a: {type[0]}", "b: {type[0]}", "c: {type[0]}"]
+    return_type: "{type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmadd]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "h_f16"]
+    compose:
+      - LLVMLink:
+          name: "_vfma_{type[1]}"
+          links:
+            - link: "llvm.fma.{type[0]}"
+              arch: aarch64,arm64ec
+      - FnCall: ["_vfma{type[1]}", [b, c, a]]
+
+
+  - name: "vfmah_lane{type[2]}"
+    doc: "Floating-point fused multiply-add to accumulator"
+    arguments: ["a: {type[0]}", "b: {type[0]}", "v: {neon_type[1]}"]
+    return_type: "{type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmadd, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", float16x4_t, '_f16', '2']
+      - ["f16", float16x8_t, 'q_f16', '3']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
+      - Let: [c, "{type[0]}", {FnCall: [simd_extract!, [v, 'LANE as u32']]}]
+      - FnCall: ["vfmah_{type[0]}", [a, b, c]]
+
+  - name: "vfmsh_lane{type[2]}"
+    doc: "Floating-point fused multiply-subtract from accumulator"
+    arguments: ["a: {type[0]}", "b: {type[0]}", "v: {neon_type[1]}"]
+    return_type: "{type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmsub, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", float16x4_t, '_f16', '2']
+      - ["f16", float16x8_t, 'q_f16', '3']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
+      - Let: [c, "{type[0]}", {FnCall: [simd_extract!, [v, 'LANE as u32']]}]
+      - FnCall: ["vfmsh_{type[0]}", [a, b, c]]
 
   - name: "vfms_f64"
     doc: "Floating-point fused multiply-subtract from accumulator"
@@ -8734,6 +11090,7 @@ intrinsics:
     compose:
       - FnCall: ["vfma{type[2]}::<LANE>", ['a', '-b', 'c']]
 
+
   - name: "vceqz{neon_type[0].no}"
     doc: "Floating-point compare bitwise equal to zero"
     arguments: ["a: {neon_type[0]}"]
@@ -8752,6 +11109,23 @@ intrinsics:
       - Let: [b, '{type[2]}', '{type[3]}']
       - FnCall: [simd_eq, [a, {FnCall: [transmute, [b]]}]]
 
+  - name: "vceqz{neon_type[0].no}"
+    doc: "Floating-point compare bitwise equal to zero"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmeq]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t, 'f16x4', 'f16x4::new(0.0, 0.0, 0.0, 0.0)']
+      - [float16x8_t, uint16x8_t, 'f16x8', 'f16x8::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)']
+    compose:
+      - Let: [b, '{type[2]}', '{type[3]}']
+      - FnCall: [simd_eq, [a, {FnCall: [transmute, [b]]}]]
+
   - name: "vceqz{type[2]}"
     doc: "Floating-point compare bitwise equal to zero"
     arguments: ["a: {type[0]}"]
@@ -8764,6 +11138,26 @@ intrinsics:
     types:
       - ["f32", "u32", "s_f32"]
       - ["f64", "u64", "d_f64"]
+    compose:
+      - FnCall:
+          - simd_extract!
+          - - FnCall:
+                - "vceqz_{type[0]}"
+                - - FnCall: ["vdup_n_{type[0]}", [a]]
+            - '0'
+
+  - name: "vceqz{type[2]}"
+    doc: "Floating-point compare bitwise equal to zero"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "u16", "h_f16"]
     compose:
       - FnCall:
           - simd_extract!
@@ -8872,6 +11266,28 @@ intrinsics:
     types:
       - ["s_f32", "f32", "u32"]
       - ["d_f64", "f64", "u64"]
+    compose:
+      - FnCall:
+          - simd_extract!
+          - - FnCall:
+                - "vcge_{type[1]}"
+                - - FnCall: ["vdup_n_{type[1]}", [a]]
+                  - FnCall: ["vdup_n_{type[1]}", [b]]
+            - '0'
+
+
+  - name: "vcge{type[0]}"
+    doc: "Floating-point compare greater than or equal"
+    arguments: ["a: {type[1]}", "b: {type[1]}"]
+    return_type: "{type[2]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["h_f16", "f16", "u16"]
     compose:
       - FnCall:
           - simd_extract!
@@ -9009,6 +11425,27 @@ intrinsics:
                 - - FnCall: ["vdup_n_{type[1]}", [a]]
             - '0'
 
+
+  - name: "vcgez{type[0]}"
+    doc: "Floating-point compare greater than or equal to zero"
+    arguments: ["a: {type[1]}"]
+    return_type: "{type[2]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["h_f16", "f16", "u16"]
+    compose:
+      - FnCall:
+          - simd_extract!
+          - - FnCall:
+                - "vcgez_{type[1]}"
+                - - FnCall: ["vdup_n_{type[1]}", [a]]
+            - '0'
+
   - name: "vclezd_s64"
     doc: "Compare less than or equal to zero"
     arguments: ["a: {type[0]}"]
@@ -9118,6 +11555,26 @@ intrinsics:
     types:
       - ["s_f32", "f32", "u32"]
       - ["d_f64", "f64", "u64"]
+    compose:
+      - FnCall:
+          - "simd_extract!"
+          - - FnCall:
+                - "vcgtz_{type[1]}"
+                - - FnCall: ["vdup_n_{type[1]}", [a]]
+            - '0'
+
+  - name: "vcgtz{type[0]}"
+    doc: "Floating-point compare greater than zero"
+    arguments: ["a: {type[1]}"]
+    return_type: "{type[2]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["h_f16", "f16", "u16"]
     compose:
       - FnCall:
           - "simd_extract!"
@@ -9265,6 +11722,47 @@ intrinsics:
           - - a
             - FnCall: [simd_shuffle!, [b, b, '[LANE as u32, LANE as u32]']]
 
+
+  # vmulq_laneq_f16
+  - name: "vmul{type[2]}{neon_type[1].no}"
+    doc: "Floating-point multiply"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmul, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, float16x8_t, '_lane', "[LANE as u32, LANE as u32, LANE as u32, LANE as u32]"]
+      - [float16x8_t, float16x8_t, 'q_lane', "[LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]"]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, '3']]
+      - FnCall:
+          - simd_mul
+          - - a
+            - FnCall: [simd_shuffle!, [b, b, "{type[3]}"]]
+
+
+  - name: "vmul{type[1]}_{type[0]}"
+    doc: Add
+    arguments: ["a: {type[0]}", "b: {type[0]}"]
+    return_type: "{type[0]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [nop]
+    safety:
+      unsafe: [neon]
+    types:
+      - [f16, 'h']
+    compose:
+      - 'a * b'
+
+
   - name: "vmul{type[2]}"
     doc: "Floating-point multiply"
     arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
@@ -9284,6 +11782,28 @@ intrinsics:
       - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
       - Let: [b, '{type[0]}', {FnCall: [simd_extract!, [b, 'LANE as u32']]}]
       - Identifier: ['a * b', Symbol]
+
+
+  - name: "vmul{type[2]}"
+    doc: "Floating-point multiply"
+    arguments: ["a: {type[0]}", "b: {neon_type[1]}"]
+    return_type: "{type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmul, 'LANE = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - *neon-fp16
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", float16x4_t, "h_lane_f16", '2']
+      - ["f16", float16x8_t, "h_laneq_f16", '3']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
+      - Let: [b, '{type[0]}', {FnCall: [simd_extract!, [b, 'LANE as u32']]}]
+      - Identifier: ['a * b', Symbol]
+
 
   - name: "vrsrad_n_s64"
     doc: "Signed rounding shift right and accumulate."
@@ -9417,6 +11937,28 @@ intrinsics:
                   - FnCall: ["vdup_n_{type[0]}", [b]]
             - '0'
 
+
+  - name: "vclt{type[2]}"
+    doc: "Floating-point compare less than"
+    arguments: ["a: {type[0]}", "b: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcmp]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "u16", 'h_f16']
+    compose:
+      - FnCall:
+          - simd_extract!
+          - - FnCall:
+                - "vclt_{type[0]}"
+                - - FnCall: ["vdup_n_{type[0]}", [a]]
+                  - FnCall: ["vdup_n_{type[0]}", [b]]
+            - '0'
+
   - name: "vabdl_high_{neon_type[0]}"
     doc: "Unsigned Absolute difference Long"
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
@@ -9470,6 +12012,30 @@ intrinsics:
           - - a
             - b
             - FnCall: ["vdup{neon_type[1].N}", [c]]
+
+
+  - name: "vfms{neon_type[0].N}"
+    doc: Floating-point fused Multiply-Subtract from accumulator.
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-fp16
+      - *neon-unstable-f16
+    assert_instr: [fmls]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, f16]
+      - [float16x8_t, f16]
+    compose:
+      - FnCall:
+          - "vfms{neon_type[0].no}"
+          - - a
+            - b
+            - FnCall:
+                - "vdup{neon_type[0].N}"
+                - - c
+
 
   - name: "vpminnm{type[0]}"
     doc: "Floating-point minimum number pairwise"
@@ -9711,6 +12277,28 @@ intrinsics:
             - link: "llvm.aarch64.neon.frsqrte.{type[1]}"
               arch: aarch64,arm64ec
 
+
+  - name: "vrsqrte{type[0]}"
+    doc: "Reciprocal square-root estimate."
+    arguments: ["a: {type[1]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-fp16
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [frsqrte]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["h_f16", "f16"]
+    compose:
+      - LLVMLink:
+          name: "vrsqrte{neon_type[1].no}"
+          links:
+            - link: "llvm.aarch64.neon.frsqrte.{type[1]}"
+              arch: aarch64,arm64ec
+
+
   - name: "vpminnm{neon_type.no}"
     doc: "Floating-point Minimum Number Pairwise (vector)."
     arguments: ["a: {neon_type}", "b: {neon_type}"]
@@ -9777,6 +12365,28 @@ intrinsics:
             - link: "llvm.aarch64.neon.fcvtau.{neon_type[1]}.{neon_type[0]}"
               arch: aarch64,arm64ec
 
+
+  - name: "vcvta{neon_type[1].no}_{neon_type[0]}"
+    doc: "Floating-point convert to unsigned integer, rounding to nearest with ties to away"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtau]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - [float16x4_t, uint16x4_t]
+      - [float16x8_t, uint16x8_t]
+    compose:
+      - LLVMLink:
+          name: "vcvta{neon_type[1].no}_{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.fcvtau.{neon_type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+
   - name: "vcvt{neon_type[1].no}_{neon_type[0]}"
     doc: "Floating-point convert to signed fixed-point, rounding toward zero"
     arguments: ["a: {neon_type[0]}"]
@@ -9795,6 +12405,79 @@ intrinsics:
           links:
             - link: "llvm.fptosi.sat.{neon_type[1]}.{neon_type[0]}"
               arch: aarch64,arm64ec
+
+  - name: "vcvtm{type[2]}_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to integer, rounding towards minus infinity"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtms]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "i32", 'h']
+      - ["f16", "i64", 'h']
+    compose:
+      - LLVMLink:
+          name: "vcvtm{type[2]}_{type[1]}_{type[0]}"
+          return_type: "{type[1]}"
+          links:
+            - link: "llvm.aarch64.neon.fcvtms.{type[1]}.{type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vcvtm{type[2]}_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to integer, rounding towards minus infinity"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtms]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "i16", 'h', 'i32']
+    compose:
+      - 'vcvtmh_{type[3]}_f16(a) as i16'
+
+
+  - name: "vcvtm{type[2]}_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to unsigned integer, rounding towards minus infinity"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtmu]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "u32", 'h']
+      - ["f16", "u64", 'h']
+    compose:
+      - LLVMLink:
+          name: "vcvtm{type[2]}_{type[1]}_{type[0]}"
+          return_type: "{type[1]}"
+          links:
+            - link: "llvm.aarch64.neon.fcvtmu.{type[1]}.{type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vcvtm{type[2]}_{type[1]}_{type[0]}"
+    doc: "Floating-point convert to integer, rounding towards minus infinity"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtmu]]}]]
+      - *neon-fp16
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ["f16", "u16", 'h', 'u32']
+    compose:
+      - 'vcvtmh_{type[3]}_f16(a) as u16'
 
   - name: "vmlal_high_n_{neon_type[1]}"
     doc: "Multiply-add long"
@@ -10860,6 +13543,27 @@ intrinsics:
                 - cast
                 - []
 
+  - name: "vld1{neon_type[1].no}"
+    doc: "Load multiple single-element structures to one, two, three, or four registers"
+    arguments: ["ptr: {type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [target_feature, ['enable = "{type[2]}"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ldr]]}]]
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ['*const f16', float16x4_t, "neon,fp16"]
+      - ['*const f16', float16x8_t, "neon,fp16"]
+    compose:
+      - FnCall:
+          - 'crate::ptr::read_unaligned'
+          - - MethodCall:
+                - ptr
+                - cast
+                - []
+
   - name: "vst1{neon_type[1].no}"
     doc: "Store multiple single-element structures from one, two, three, or four registers."
     arguments: ["ptr: {type[0]}", "a: {neon_type[1]}"]
@@ -10897,6 +13601,28 @@ intrinsics:
       - ['*mut f32', float32x4_t, "neon"]
       - ['*mut f64', float64x1_t, "neon"]
       - ['*mut f64', float64x2_t, "neon"]
+    compose:
+      - FnCall:
+          - 'crate::ptr::write_unaligned'
+          - - MethodCall:
+                - ptr
+                - cast
+                - []
+            - a
+
+  - name: "vst1{neon_type[1].no}"
+    doc: "Store multiple single-element structures from one, two, three, or four registers."
+    arguments: ["ptr: {type[0]}", "a: {neon_type[1]}"]
+    attr:
+      - FnCall: [target_feature, ['enable = "{type[2]}"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [str]]}]]
+      - FnCall: [allow, ['clippy::cast_ptr_alignment']]
+      - *neon-unstable-f16
+    safety:
+      unsafe: [neon]
+    types:
+      - ['*mut f16', float16x4_t, "neon,fp16"]
+      - ['*mut f16', float16x8_t, "neon,fp16"]
     compose:
       - FnCall:
           - 'crate::ptr::write_unaligned'
@@ -11650,3 +14376,196 @@ intrinsics:
                   - FnCall:
                       - transmute
                       - - b
+
+  - name: "vfmlal{type[2]}{neon_type[1]}"
+    doc: "Floating-point fused Multiply-Add Long to accumulator (vector)."
+    arguments: ["r: {neon_type[0]}", "a: {neon_type[1]}",  "b: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-fp16
+      - *enable-fhm
+      - *neon-unstable-f16
+    assert_instr: [fmlal2]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float32x2_t, float16x4_t, '_high_']
+      - [float32x4_t, float16x8_t, 'q_high_']
+    compose:
+      - LLVMLink:
+          name: "vfmlal{type[2]}.{neon_type[0]}.{neon_type[1]}"
+          links:
+            - link: "llvm.aarch64.neon.fmlal2.{neon_type[0]}.{neon_type[1]}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vfmlal{type[3]}{neon_type[1]}"
+    doc: "Floating-point fused Multiply-Add Long to accumulator (by element)."
+    arguments: ["r: {neon_type[0]}", "a: {neon_type[1]}",  "b: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmlal2, 'LANE = 0']]}]]
+      - *neon-fp16
+      - *enable-fhm
+      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [float32x2_t, float16x4_t, float16x4_t, '_lane_high_', '_high_', '2']
+      - [float32x2_t, float16x4_t, float16x8_t, '_laneq_high_', '_high_', '3']
+      - [float32x4_t, float16x8_t, float16x4_t, 'q_lane_high_', 'q_high_', '2']
+      - [float32x4_t, float16x8_t, float16x8_t, 'q_laneq_high_', 'q_high_', '3']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, "{type[5]}"]]
+      - FnCall:
+          - "vfmlal{type[4]}{neon_type[1]}"
+          - - r
+            - a
+            - FnCall: ["vdup{neon_type[1].N}", [{FnCall: [simd_extract!, [b, 'LANE as u32']]}]]
+
+
+  - name: "vfmlal{type[2]}{neon_type[1]}"
+    doc: "Floating-point fused Multiply-Add Long to accumulator (vector)."
+    arguments: ["r: {neon_type[0]}", "a: {neon_type[1]}",  "b: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-fp16
+      - *enable-fhm
+      - *neon-unstable-f16
+    assert_instr: [fmlal]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float32x2_t, float16x4_t, '_low_']
+      - [float32x4_t, float16x8_t, 'q_low_']
+    compose:
+      - LLVMLink:
+          name: "vfmlal{type[2]}.{neon_type[0]}.{neon_type[1]}"
+          links:
+            - link: "llvm.aarch64.neon.fmlal.{neon_type[0]}.{neon_type[1]}"
+              arch: aarch64,arm64ec
+
+
+  - name: "vfmlal{type[3]}{neon_type[1]}"
+    doc: "Floating-point fused Multiply-Add Long to accumulator (by element)."
+    arguments: ["r: {neon_type[0]}", "a: {neon_type[1]}",  "b: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmlal, 'LANE = 0']]}]]
+      - *neon-fp16
+      - *enable-fhm
+      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [float32x2_t, float16x4_t, float16x4_t, '_lane_low_', '_low_', '2']
+      - [float32x2_t, float16x4_t, float16x8_t, '_laneq_low_', '_low_', '3']
+      - [float32x4_t, float16x8_t, float16x4_t, 'q_lane_low_', 'q_low_', '2']
+      - [float32x4_t, float16x8_t, float16x8_t, 'q_laneq_low_', 'q_low_', '3']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, "{type[5]}"]]
+      - FnCall:
+          - "vfmlal{type[4]}{neon_type[1]}"
+          - - r
+            - a
+            - FnCall: ["vdup{neon_type[1].N}", [{FnCall: [simd_extract!, [b, 'LANE as u32']]}]]
+
+
+  - name: "vfmlsl{type[2]}{neon_type[1]}"
+    doc: "Floating-point fused Multiply-Subtract Long from accumulator (vector)."
+    arguments: ["r: {neon_type[0]}", "a: {neon_type[1]}",  "b: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-fp16
+      - *enable-fhm
+      - *neon-unstable-f16
+    assert_instr: [fmlsl2]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float32x2_t, float16x4_t, '_high_']
+      - [float32x4_t, float16x8_t, 'q_high_']
+    compose:
+      - LLVMLink:
+          name: "vfmlsl{type[2]}.{neon_type[0]}.{neon_type[1]}"
+          links:
+            - link: "llvm.aarch64.neon.fmlsl2.{neon_type[0]}.{neon_type[1]}"
+              arch: aarch64,arm64ec
+
+  - name: "vfmlsl{type[3]}{neon_type[1]}"
+    doc: "Floating-point fused Multiply-Subtract Long from accumulator (by element)."
+    arguments: ["r: {neon_type[0]}", "a: {neon_type[1]}",  "b: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmlsl2, 'LANE = 0']]}]]
+      - *neon-fp16
+      - *enable-fhm
+      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [float32x2_t, float16x4_t, float16x4_t, '_lane_high_', '_high_', '2']
+      - [float32x2_t, float16x4_t, float16x8_t, '_laneq_high_', '_high_', '3']
+      - [float32x4_t, float16x8_t, float16x4_t, 'q_lane_high_', 'q_high_', '2']
+      - [float32x4_t, float16x8_t, float16x8_t, 'q_laneq_high_', 'q_high_', '3']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, "{type[5]}"]]
+      - FnCall:
+          - "vfmlsl{type[4]}{neon_type[1]}"
+          - - r
+            - a
+            - FnCall: ["vdup{neon_type[1].N}", [{FnCall: [simd_extract!, [b, 'LANE as u32']]}]]
+
+
+  - name: "vfmlsl{type[2]}{neon_type[1]}"
+    doc: "Floating-point fused Multiply-Subtract Long from accumulator (vector)."
+    arguments: ["r: {neon_type[0]}", "a: {neon_type[1]}",  "b: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-fp16
+      - *enable-fhm
+      - *neon-unstable-f16
+    assert_instr: [fmlsl]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float32x2_t, float16x4_t, '_low_']
+      - [float32x4_t, float16x8_t, 'q_low_']
+    compose:
+      - LLVMLink:
+          name: "vfmlsl{type[2]}.{neon_type[0]}.{neon_type[1]}"
+          links:
+            - link: "llvm.aarch64.neon.fmlsl.{neon_type[0]}.{neon_type[1]}"
+              arch: aarch64,arm64ec
+
+  - name: "vfmlsl{type[3]}{neon_type[1]}"
+    doc: "Floating-point fused Multiply-Subtract Long from accumulator (by element)."
+    arguments: ["r: {neon_type[0]}", "a: {neon_type[1]}",  "b: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fmlsl, 'LANE = 0']]}]]
+      - *neon-fp16
+      - *enable-fhm
+      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - *neon-unstable-f16
+    static_defs: ['const LANE: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [float32x2_t, float16x4_t, float16x4_t, '_lane_low_', '_low_', '2']
+      - [float32x2_t, float16x4_t, float16x8_t, '_laneq_low_', '_low_', '3']
+      - [float32x4_t, float16x8_t, float16x4_t, 'q_lane_low_', 'q_low_', '2']
+      - [float32x4_t, float16x8_t, float16x8_t, 'q_laneq_low_', 'q_low_', '3']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, "{type[5]}"]]
+      - FnCall:
+          - "vfmlsl{type[4]}{neon_type[1]}"
+          - - r
+            - a
+            - FnCall: ["vdup{neon_type[1].N}", [{FnCall: [simd_extract!, [b, 'LANE as u32']]}]]
