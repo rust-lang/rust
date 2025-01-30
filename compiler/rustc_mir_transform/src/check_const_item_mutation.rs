@@ -133,7 +133,7 @@ impl<'tcx> Visitor<'tcx> for ConstMutationChecker<'_, 'tcx> {
                 // the `self` parameter of a method call (as the terminator of our current
                 // BasicBlock). If so, we emit a more specific lint.
                 let method_did = self.target_local.and_then(|target_local| {
-                    rustc_middle::util::find_self_call(self.tcx, self.body, target_local, loc.block)
+                    find_self_call(self.tcx, self.body, target_local, loc.block)
                 });
                 let lint_loc =
                     if method_did.is_some() { self.body.terminator_loc(loc.block) } else { loc };
