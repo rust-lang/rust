@@ -46,6 +46,11 @@ pub(crate) struct LintcheckConfig {
     /// Run clippy on the dependencies of crates specified in crates-toml
     #[clap(long, conflicts_with("max_jobs"))]
     pub recursive: bool,
+    /// Also produce a `perf.data` file, implies --jobs=1,
+    /// the `perf.data` file can be found at
+    /// `target/lintcheck/sources/<package>-<version>/perf.data`
+    #[clap(long)]
+    pub perf: bool,
     #[command(subcommand)]
     pub subcommand: Option<Commands>,
 }
