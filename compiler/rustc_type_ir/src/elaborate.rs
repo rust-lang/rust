@@ -5,6 +5,7 @@ use smallvec::smallvec;
 use crate::data_structures::HashSet;
 use crate::inherent::*;
 use crate::outlives::{Component, push_outlives_components};
+use crate::visit::{collect_constrained_late_bound_regions, collect_referenced_late_bound_regions};
 use crate::{self as ty, Interner, Upcast as _};
 
 /// "Elaboration" is the process of identifying all the predicates that
@@ -86,6 +87,18 @@ pub fn elaborate<I: Interner, O: Elaboratable<I>>(
     elaborator
 }
 
+fn projection_has_unconstrained_vars<I: Interner>(cx: I, predicate: I::Predicate) -> bool {
+    let Some(pred) = predicate.as_clause().and_then(|c| c.as_projection_clause()) else {
+        return false;
+    };
+
+    let constrained_regions =
+        collect_constrained_late_bound_regions(cx, pred.map_bound(|pred| pred.projection_term));
+    let referenced_regions =
+        collect_referenced_late_bound_regions(cx, pred.map_bound(|pred| pred.term));
+    referenced_regions.difference(&constrained_regions).next().is_some()
+}
+
 impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
     fn extend_deduped(&mut self, obligations: impl IntoIterator<Item = O>) {
         // Only keep those bounds that we haven't already seen.
@@ -93,9 +106,12 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
         // cases. One common case is when people define
         // `trait Sized: Sized { }` rather than `trait Sized { }`.
         self.stack.extend(
-            obligations.into_iter().filter(|o| {
-                self.visited.insert(self.cx.anonymize_bound_vars(o.predicate().kind()))
-            }),
+            obligations
+                .into_iter()
+                .filter(|o| !projection_has_unconstrained_vars(self.cx, o.predicate()))
+                .filter(|o| {
+                    self.visited.insert(self.cx.anonymize_bound_vars(o.predicate().kind()))
+                }),
         );
     }
 
