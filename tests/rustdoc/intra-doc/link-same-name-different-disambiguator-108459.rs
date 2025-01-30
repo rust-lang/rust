@@ -1,4 +1,4 @@
-// https://github.com/rust-lang/rust/issues/108459
+// https://github.com/rust-lang/rust/pull/108459
 #![crate_name="foobar"]
 
 #![deny(rustdoc::broken_intra_doc_links)]
