@@ -21,8 +21,7 @@ pub trait ThriftService<Bug: NotFoo>:
 }
 
 fn with_factory<H>(factory: dyn ThriftService<()>) {}
-//~^ ERROR the trait bound `(): Foo` is not satisfied
+//~^ ERROR cannot be known at compilation time
 //~| ERROR the trait bound `(): Foo` is not satisfied
-//~| ERROR cannot be known at compilation time
 
 fn main() {}

@@ -1,0 +1,13 @@
+warning: associated type bound for `Out` in `dyn Foo` is redundant
+  --> $DIR/redundant.rs:8:18
+   |
+LL | trait Foo: Bar<Out = ()> {}
+   |                -------- redundant due to this supertrait bound
+...
+LL | fn w(x: &dyn Foo<Out = ()>) {
+   |                  ^^^^^^^^
+   |
+   = note: `#[warn(dyn_assoc_redundant)]` on by default
+
+warning: 1 warning emitted
+

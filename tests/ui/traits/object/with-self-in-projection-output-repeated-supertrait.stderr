@@ -1,0 +1,13 @@
+warning: associated type bound for `Output` in `dyn NormalizingHelper` is redundant
+  --> $DIR/with-self-in-projection-output-repeated-supertrait.rs:50:51
+   |
+LL | trait NormalizingHelper: Base<Output=<Self as ConstI32>::Out> + Base<Output=i32> {
+   |                                                                      ---------- redundant due to this supertrait bound
+...
+LL |     let _y: Box<dyn NormalizingHelper<Target=i32, Output=i32>> = Box::new(2u32);
+   |                                                   ^^^^^^^^^^
+   |
+   = note: `#[warn(dyn_assoc_redundant)]` on by default
+
+warning: 1 warning emitted
+

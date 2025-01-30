@@ -1,0 +1,25 @@
+error: associated type bound for `S` in `dyn HttpService` differs from associated type bound from supertrait
+  --> $DIR/issue-59326.rs:15:43
+   |
+LL | trait HttpService<F: Framing>: Service<S = F::F> {}
+   |                                        -------- shadowed due to this supertrait bound
+LL |
+LL | type BoxService = Box<dyn HttpService<(), S = ()>>;
+   |                                           ^^^^^^ this bound has no effect and will be ignored
+   |
+   = note: `S = <() as Framing>::F` was implied by a supertrait and shadows any user-written bounds, so `S = ()` will be ignored
+   = note: `#[deny(dyn_assoc_shadowed)]` on by default
+
+warning: associated type bound for `S` in `dyn HttpService` is redundant
+  --> $DIR/issue-59326.rs:20:56
+   |
+LL | trait HttpService<F: Framing>: Service<S = F::F> {}
+   |                                        -------- redundant due to this supertrait bound
+...
+LL | fn make_server<F: Framing>() -> Box<dyn HttpService<F, S = F::F>> {
+   |                                                        ^^^^^^^^
+   |
+   = note: `#[warn(dyn_assoc_redundant)]` on by default
+
+error: aborting due to 1 previous error; 1 warning emitted
+

@@ -3,7 +3,7 @@
 
 use derive_where::derive_where;
 use rustc_ast_ir::{Movability, Mutability};
-use rustc_type_ir::data_structures::HashMap;
+use rustc_type_ir::data_structures::{HashMap, HashSet};
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
@@ -856,12 +856,25 @@ where
             .map(|(pred, _)| pred),
     ));
 
+    // It's sufficient to just keep track of the def ids of the explicitly specified
+    // associated types since when users write `dyn Trait<Assoc = T>`, that associated
+    // type must resolve to *one* bound from all of the supertraits. So the fact that
+    // there is a user-provided projection is enough proof that it's unique and we don't
+    // need to care about substitutions or anything like that.
+    let specified_associated_projections: HashSet<_> =
+        object_bounds.projection_bounds().into_iter().map(|proj| proj.item_def_id()).collect();
+
     // FIXME(associated_const_equality): Also add associated consts to
     // the requirements here.
     for associated_type_def_id in cx.associated_type_def_ids(trait_ref.def_id) {
         // associated types that require `Self: Sized` do not show up in the built-in
         // implementation of `Trait for dyn Trait`, and can be dropped here.
         if cx.generics_require_sized_self(associated_type_def_id) {
+            continue;
+        }
+
+        // We don't require these bounds to hold for supertrait implied projection bounds.
+        if !specified_associated_projections.contains(&associated_type_def_id) {
             continue;
         }
 

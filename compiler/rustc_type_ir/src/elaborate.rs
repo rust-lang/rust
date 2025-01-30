@@ -1,11 +1,13 @@
 use std::marker::PhantomData;
+use std::ops::ControlFlow;
 
 use smallvec::smallvec;
 
 use crate::data_structures::HashSet;
 use crate::inherent::*;
 use crate::outlives::{Component, push_outlives_components};
-use crate::{self as ty, Interner, Upcast as _};
+use crate::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
+use crate::{self as ty, Interner, TypeFlags, Upcast as _};
 
 /// "Elaboration" is the process of identifying all the predicates that
 /// are implied by a source predicate. Currently, this basically means
@@ -335,5 +337,50 @@ impl<I: Interner, It: Iterator<Item = I::Clause>> Iterator for FilterToTraits<I,
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (_, upper) = self.base_iterator.size_hint();
         (0, upper)
+    }
+}
+
+pub fn implied_supertrait_projections<I: Interner>(
+    cx: I,
+    principal: ty::Binder<I, ty::ExistentialTraitRef<I>>,
+) -> impl Iterator<Item = ty::Binder<I, ty::ExistentialProjection<I>>> {
+    // We check that the predicates don't mention self, so we
+    // don't care about what self type we substitute here,
+    // since we immediately erase it anyways.
+    let principal = principal.with_self_ty(cx, Ty::new_unit(cx));
+
+    // Make sure we only elaborate one copy of every projection (modulo bound vars)
+    let mut seen = HashSet::default();
+
+    let clause: I::Clause = ty::TraitRef::identity(cx, principal.def_id()).upcast(cx);
+    elaborate(cx, [clause])
+        .filter_only_self()
+        .filter(move |clause| {
+            clause.as_projection_clause().is_some_and(|proj_pred| {
+                proj_pred.term().visit_with(&mut MentionsSelf).is_continue()
+            })
+        })
+        .map(move |clause| clause.instantiate_supertrait(cx, principal))
+        .map(move |clause| {
+            clause
+                .as_projection_clause()
+                .unwrap()
+                .map_bound(|proj| ty::ExistentialProjection::erase_self_ty(cx, proj))
+        })
+        .filter(move |proj_pred| seen.insert(cx.anonymize_bound_vars(*proj_pred)))
+}
+
+struct MentionsSelf;
+impl<I: Interner> TypeVisitor<I> for MentionsSelf {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, ty: I::Ty) -> Self::Result {
+        if ty.is_self_param() {
+            ControlFlow::Break(())
+        } else if ty.has_type_flags(TypeFlags::HAS_TY_PARAM) {
+            ty.super_visit_with(self)
+        } else {
+            ControlFlow::Continue(())
+        }
     }
 }

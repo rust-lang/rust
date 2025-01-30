@@ -1,0 +1,21 @@
+error: associated type bound for `Inner` in `dyn Database` differs from associated type bound from supertrait
+  --> $DIR/infer-shadows-implied-projection.rs:18:26
+   |
+LL | trait Database: Restriction<Inner = u32> {}
+   |                             ----------- shadowed due to this supertrait bound
+...
+LL |     let x: &dyn Database<Inner = _> = &t;
+   |                          ^^^^^^^^^ this bound has no effect and will be ignored
+   |
+   = note: `Inner = u32` was implied by a supertrait and shadows any user-written bounds, so `Inner = _` will be ignored
+   = note: `#[deny(dyn_assoc_shadowed)]` on by default
+
+error[E0282]: type annotations needed
+  --> $DIR/infer-shadows-implied-projection.rs:18:34
+   |
+LL |     let x: &dyn Database<Inner = _> = &t;
+   |                                  ^ cannot infer type
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

@@ -26,6 +26,7 @@ fn dyn_super(x: &dyn Super<Assoc = u8>) { x } //~ERROR mismatched types
 fn dyn_any(x: &dyn Any<Assoc = u8>) { x } //~ERROR mismatched types
 fn dyn_fixed(x: &dyn Fixed) { x } //~ERROR mismatched types
 fn dyn_fixed_multi(x: &dyn Fixed<Assoc = u16>) { x } //~ERROR mismatched types
+//~^ ERROR associated type bound for `Assoc` in `dyn Fixed` differs from associated type bound from supertrait
 fn dyn_fixed_sub(x: &dyn FixedSub) { x } //~ERROR mismatched types
 fn dyn_fixed_static(x: &dyn FixedStatic) { x } //~ERROR mismatched types
 
@@ -34,6 +35,7 @@ fn dyn_any_generic(x: &dyn for<'a> AnyGeneric<'a, Assoc2 = &'a u8>) { x } //~ERR
 fn dyn_fixed_generic1(x: &dyn for<'a> FixedGeneric1<'a>) { x } //~ERROR mismatched types
 // fn dyn_fixed_generic2(x: &dyn for<'a> FixedGeneric2<'a>) { x } // Unsound!
 fn dyn_fixed_generic_multi(x: &dyn for<'a> FixedGeneric1<'a, Assoc2 = &u8>) { x } //~ERROR mismatched types
+//~^ ERROR associated type bound for `Assoc2` in `dyn FixedGeneric1` differs from associated type bound from supertrait
 fn dyn_fixed_hrtb(x: &dyn FixedHrtb) { x } //~ERROR mismatched types
 fn dyn_any_different_binders(x: &dyn AnyDifferentBinders<Assoc = u8>) { x } //~ERROR mismatched types
 fn dyn_fixed_different_binders(x: &dyn FixedDifferentBinders) { x } //~ERROR mismatched types

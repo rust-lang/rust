@@ -8,4 +8,5 @@ trait U32Iterator = I32Iterator<Item = u32>; //~ ERROR type annotations needed
 
 fn main() {
     let _: &dyn I32Iterator<Item = u32>;
+    //~^ ERROR conflicting associated type bounds
 }

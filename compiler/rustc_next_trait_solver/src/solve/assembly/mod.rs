@@ -725,6 +725,15 @@ where
                     assumption.upcast(cx),
                 ));
             }
+
+            for assumption in elaborate::implied_supertrait_projections(cx, principal) {
+                candidates.extend(G::probe_and_consider_object_bound_candidate(
+                    self,
+                    CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
+                    goal,
+                    assumption.with_self_ty(cx, self_ty).upcast(cx),
+                ));
+            }
         }
     }
 

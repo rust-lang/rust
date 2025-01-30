@@ -64,26 +64,13 @@ help: consider further restricting type parameter `Bug` with trait `Foo`
 LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++
 
-error[E0277]: the trait bound `(): Foo` is not satisfied
-  --> $DIR/issue-59324.rs:23:29
-   |
-LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
-   |                             ^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `()`
-   |
-help: this trait has no implementations, consider adding one
-  --> $DIR/issue-59324.rs:3:1
-   |
-LL | pub trait Foo: NotFoo {
-   | ^^^^^^^^^^^^^^^^^^^^^
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0277]: the size for values of type `(dyn ThriftService<(), AssocType = _> + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `(dyn ThriftService<()> + 'static)` cannot be known at compilation time
   --> $DIR/issue-59324.rs:23:29
    |
 LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
    |                             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `(dyn ThriftService<(), AssocType = _> + 'static)`
+   = help: the trait `Sized` is not implemented for `(dyn ThriftService<()> + 'static)`
    = help: unsized fn params are gated as an unstable feature
 help: you can use `impl Trait` as the argument type
    |
@@ -94,6 +81,6 @@ help: function arguments must have a statically known size, borrowed types alway
 LL | fn with_factory<H>(factory: &dyn ThriftService<()>) {}
    |                             +
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
