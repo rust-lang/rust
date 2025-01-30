@@ -6,6 +6,7 @@
 
 use std::fmt::Debug;
 
+use rustc_ast_ir::Limit;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def::DefKind;
@@ -350,8 +351,10 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
         // a very low recursion depth and bail if any of them don't
         // hold.
         if !obligations.iter().all(|o| {
-            <&SolverDelegate<'tcx>>::from(infcx)
-                .root_goal_may_hold_with_depth(8, Goal::new(infcx.tcx, o.param_env, o.predicate))
+            <&SolverDelegate<'tcx>>::from(infcx).root_goal_may_hold_with_depth(
+                Limit(8),
+                Goal::new(infcx.tcx, o.param_env, o.predicate),
+            )
         }) {
             return IntersectionHasImpossibleObligations::Yes;
         }

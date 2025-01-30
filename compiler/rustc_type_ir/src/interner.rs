@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Deref;
 
-use rustc_ast_ir::Movability;
+use rustc_ast_ir::{Limit, Movability};
 use rustc_index::bit_set::DenseBitSet;
 use smallvec::SmallVec;
 
@@ -177,7 +177,7 @@ pub trait Interner:
 
     fn parent(self, def_id: Self::DefId) -> Self::DefId;
 
-    fn recursion_limit(self) -> usize;
+    fn recursion_limit(self) -> Limit;
 
     type Features: Features<Self>;
     fn features(self) -> Self::Features;

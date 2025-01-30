@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
 use rustc_abi::TargetDataLayoutErrors;
+use rustc_ast::Limit;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast_pretty::pprust;
 use rustc_macros::Subdiagnostic;
@@ -187,6 +188,12 @@ impl<'a> IntoDiagArg for &'a Path {
 impl IntoDiagArg for PathBuf {
     fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Owned(self.display().to_string()))
+    }
+}
+
+impl IntoDiagArg for Limit {
+    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+        self.to_string().into_diag_arg()
     }
 }
 

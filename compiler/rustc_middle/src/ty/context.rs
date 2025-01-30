@@ -305,8 +305,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.parent(def_id)
     }
 
-    fn recursion_limit(self) -> usize {
-        self.recursion_limit().0
+    fn recursion_limit(self) -> Limit {
+        self.recursion_limit()
     }
 
     type Features = &'tcx rustc_feature::Features;
