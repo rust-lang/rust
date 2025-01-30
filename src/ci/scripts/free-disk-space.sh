@@ -40,7 +40,7 @@ isX86() {
     fi
 }
 
-# Measure saved space and how long it took to run the task
+# Execute a task, printing how much space was saved and how long it took to run the task
 execAndMeasure() {
     local task_name=${1}
 
@@ -75,6 +75,7 @@ printDF() {
     echo ""
     df -h
     printSeparationLine "="
+    echo ""
 }
 
 removeUnusedDirsAndFiles() {
@@ -231,7 +232,6 @@ removePythonPackages() {
 
 main() {
     printDF "BEFORE CLEAN-UP:"
-    echo ""
 
     execAndMeasure "Unused packages" cleanPackages
     execAndMeasure "Swap storage" cleanSwap
@@ -241,7 +241,6 @@ main() {
     removeUnusedDirsAndFiles
 
     printDF "AFTER CLEAN-UP:"
-    echo ""
 }
 
 execAndMeasure "Total" main
