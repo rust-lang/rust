@@ -18,6 +18,7 @@ use rustc_middle::ty::{
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeckResults,
 };
 use rustc_span::{BytePos, DUMMY_SP, FileName, Ident, Span, sym};
+use rustc_type_ir::inherent::*;
 use rustc_type_ir::visit::TypeVisitableExt;
 use tracing::{debug, instrument, warn};
 
@@ -158,11 +159,6 @@ impl UnderspecifiedArgKind {
 
 struct ClosureEraser<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
-    // When recursing into types, if an ADT has type parameters with a default type we do *not*
-    // want to replace that type parameter with `_`, as it will cause the normally hidden type
-    // parameter to be rendered. The best example of this is `Vec<T, Alloc>`, which we want to
-    // render as `Vec<T>` and not `Vec<T, _>` when `T` is unknown.
-    do_not_hide_nested_type: bool,
 }
 
 impl<'a, 'tcx> ClosureEraser<'a, 'tcx> {
@@ -177,8 +173,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let prev = self.do_not_hide_nested_type;
-        let ty = match ty.kind() {
+        match ty.kind() {
             ty::Closure(_, args) => {
                 // For a closure type, we turn it into a function pointer so that it gets rendered
                 // as `fn(args) -> Ret`.
@@ -188,52 +183,64 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'a, 'tcx> {
                     self.cx().signature_unclosure(closure_sig, hir::Safety::Safe),
                 )
             }
-            ty::Adt(def, _) => {
-                let generics = self.cx().generics_of(def.did());
-                if generics.own_params.iter().any(|param| param.default_value(self.cx()).is_some())
-                {
-                    // We have a type that has default types, like the allocator in Vec. We decided
-                    // to show `Vec` itself, because it hasn't yet been replaced by an `_` `Infer`,
-                    // but we want to ensure that the type parameter with default types does *not*
-                    // get replaced with `_` because then we'd end up with `Vec<_, _>`, instead of
-                    // `Vec<_>`.
-                    self.do_not_hide_nested_type = true;
-                    ty.super_fold_with(self)
-                } else if ty.has_infer() || self.do_not_hide_nested_type {
-                    // This type has an unsubstituted type variable, meaning that this type has a
-                    // (potentially deeply nested) type parameter from the corresponding type's
-                    // definition. We have explicitly asked this type to not be hidden. In either
-                    // case, we keep the type and don't substitute with `_` just yet.
-                    ty.super_fold_with(self)
-                } else {
-                    // When we have a type that doesn't have any inference variables, so we replace
-                    // the whole thing with `_`. The type system already knows about this type in
-                    // its entirety and it is redundant to specify it for the user. The user only
-                    // needs to specify the type parameters that we *couldn't* figure out.
-                    self.new_infer()
-                }
+            ty::Adt(_, args) if !args.iter().any(|a| a.has_infer()) => {
+                // We have a type that doesn't have any inference variables, so we replace
+                // the whole thing with `_`. The type system already knows about this type in
+                // its entirety and it is redundant to specify it for the user. The user only
+                // needs to specify the type parameters that we *couldn't* figure out.
+                self.new_infer()
             }
-            _ if ty.has_infer() || self.do_not_hide_nested_type => {
+            ty::Adt(def, args) => {
+                let generics = self.cx().generics_of(def.did());
+                let generics: Vec<bool> = generics
+                    .own_params
+                    .iter()
+                    .map(|param| param.default_value(self.cx()).is_some())
+                    .collect();
+                let ty = Ty::new_adt(
+                    self.cx(),
+                    *def,
+                    self.cx().mk_args_from_iter(generics.into_iter().zip(args.iter()).map(
+                        |(has_default, arg)| {
+                            if arg.has_infer() {
+                                // This param has an unsubstituted type variable, meaning that this
+                                // type has a (potentially deeply nested) type parameter from the
+                                // corresponding type's definition. We have explicitly asked this
+                                // type to not be hidden. In either case, we keep the type and don't
+                                // substitute with `_` just yet.
+                                arg.fold_with(self)
+                            } else if has_default {
+                                // We have a type param that has a default type, like the allocator
+                                // in Vec. We decided to show `Vec` itself, because it hasn't yet
+                                // been replaced by an `_` `Infer`, but we want to ensure that the
+                                // type parameter with default types does *not* get replaced with
+                                // `_` because then we'd end up with `Vec<_, _>`, instead of
+                                // `Vec<_>`.
+                                arg
+                            } else if let GenericArgKind::Type(_) = arg.kind() {
+                                // We don't replace lifetime or const params, only type params.
+                                self.new_infer().into()
+                            } else {
+                                arg.fold_with(self)
+                            }
+                        },
+                    )),
+                );
+                ty
+            }
+            _ if ty.has_infer() => {
                 // This type has a (potentially nested) type parameter that we couldn't figure out.
                 // We will print this depth of type, so at least the type name and at least one of
-                // its type parameters. We unset `do_not_hide_nested_type` because this type can't
-                // have type parameter defaults until next type we hit an ADT.
-                self.do_not_hide_nested_type = false;
+                // its type parameters.
                 ty.super_fold_with(self)
             }
             // We don't have an unknown type parameter anywhere, replace with `_`.
             _ => self.new_infer(),
-        };
-        self.do_not_hide_nested_type = prev;
-        ty
+        }
     }
 
     fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        let prev = self.do_not_hide_nested_type;
         // Avoid accidentally erasing the type of the const.
-        self.do_not_hide_nested_type = true;
-        let c = c.super_fold_with(self);
-        self.do_not_hide_nested_type = prev;
         c
     }
 }
@@ -281,7 +288,7 @@ fn ty_to_string<'tcx>(
     let ty = infcx.resolve_vars_if_possible(ty);
     // We use `fn` ptr syntax for closures, but this only works when the closure does not capture
     // anything. We also remove all type parameters that are fully known to the type system.
-    let ty = ty.fold_with(&mut ClosureEraser { infcx, do_not_hide_nested_type: false });
+    let ty = ty.fold_with(&mut ClosureEraser { infcx });
 
     match (ty.kind(), called_method_def_id) {
         // We don't want the regular output for `fn`s because it includes its path in
