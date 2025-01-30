@@ -825,8 +825,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // These shims are enabled only when the caller is in the standard library.
             "pthread_attr_getguardsize" if this.frame_in_std() => {
                 let [_attr, guard_size] = this.check_shim(abi, Conv::C, link_name, args)?;
-                let guard_size = this.deref_pointer(guard_size)?;
                 let guard_size_layout = this.libc_ty_layout("size_t");
+                let guard_size = this.deref_pointer_as(guard_size, guard_size_layout)?;
                 this.write_scalar(
                     Scalar::from_uint(this.machine.page_size, guard_size_layout.size),
                     &guard_size,
@@ -852,8 +852,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.check_shim(abi, Conv::C, link_name, args)?;
                 let _attr_place =
                     this.deref_pointer_as(attr_place, this.libc_ty_layout("pthread_attr_t"))?;
-                let addr_place = this.deref_pointer(addr_place)?;
-                let size_place = this.deref_pointer(size_place)?;
+                let addr_place = this.deref_pointer_as(addr_place, this.machine.layouts.usize)?;
+                let size_place = this.deref_pointer_as(size_place, this.machine.layouts.usize)?;
 
                 this.write_scalar(
                     Scalar::from_uint(this.machine.stack_addr, this.pointer_size()),
@@ -887,7 +887,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let pwd = this.deref_pointer_as(pwd, this.libc_ty_layout("passwd"))?;
                 let buf = this.read_pointer(buf)?;
                 let buflen = this.read_target_usize(buflen)?;
-                let result = this.deref_pointer(result)?;
+                let result = this.deref_pointer_as(result, this.machine.layouts.mut_raw_ptr)?;
 
                 // Must be for "us".
                 if uid != UID {

@@ -89,9 +89,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             1 => {
                 let [_flags, buf] = this.check_shim(abi, Conv::Rust, link_name, args)?;
 
-                let buf_place = this.deref_pointer(buf)?;
-
                 let ptr_layout = this.layout_of(ptr_ty)?;
+                let buf_place = this.deref_pointer_as(buf, ptr_layout)?;
 
                 for (i, ptr) in ptrs.into_iter().enumerate() {
                     let offset = ptr_layout.size.checked_mul(i.try_into().unwrap(), this).unwrap();

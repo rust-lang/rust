@@ -362,7 +362,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let domain = this.read_scalar(domain)?.to_i32()?;
         let mut flags = this.read_scalar(type_)?.to_i32()?;
         let protocol = this.read_scalar(protocol)?.to_i32()?;
-        let sv = this.deref_pointer(sv)?;
+        // This is really a pointer to `[i32; 2]` but we use a ptr-to-first-element representation.
+        let sv = this.deref_pointer_as(sv, this.machine.layouts.i32)?;
 
         let mut is_sock_nonblock = false;
 

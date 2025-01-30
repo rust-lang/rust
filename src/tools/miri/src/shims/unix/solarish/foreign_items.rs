@@ -163,7 +163,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     throw_unsup_format!("pset_info is only supported with list==NULL");
                 }
 
-                let cpus = this.deref_pointer(cpus)?;
+                let cpus = this.deref_pointer_as(cpus, this.machine.layouts.u32)?;
                 this.write_scalar(Scalar::from_u32(this.machine.num_cpus), &cpus)?;
                 this.write_null(dest)?;
             }

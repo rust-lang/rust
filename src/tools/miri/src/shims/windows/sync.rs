@@ -29,7 +29,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     {
         let this = self.eval_context_mut();
 
-        let init_once = this.deref_pointer(init_once_ptr)?;
+        let init_once =
+            this.deref_pointer_as(init_once_ptr, this.windows_ty_layout("INIT_ONCE"))?;
         let init_offset = Size::ZERO;
 
         this.lazy_sync_get_data(
@@ -85,7 +86,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let id = this.init_once_get_data(init_once_op)?.id;
         let flags = this.read_scalar(flags_op)?.to_u32()?;
-        let pending_place = this.deref_pointer(pending_op)?;
+        // PBOOL is int*
+        let pending_place = this.deref_pointer_as(pending_op, this.machine.layouts.i32)?;
         let context = this.read_pointer(context_op)?;
 
         if flags != 0 {
