@@ -267,9 +267,9 @@ trait Sealed {}
     reason = "implementation detail which may disappear or be replaced at any time",
     issue = "none"
 )]
-#[allow(private_bounds)]
+#[expect(private_bounds)]
 pub unsafe trait AtomicPrimitive: Sized + Copy + Sealed {
-    #[doc(hidden)]
+    /// Temporary implementation detail.
     type AtomicInner: Sized;
 }
 
