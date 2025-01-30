@@ -15,6 +15,7 @@ macro_rules ! impl_for_primitive {
     ($($t:ty),*) => {
         $(
             impl const PatternConstEq for $t {
+                #[inline(always)]
                 fn eq(&self, other: &Self) -> bool {
                     *self == *other
                 }
@@ -34,6 +35,7 @@ impl<T> const PatternConstEq for [T]
 where
     T: ~const PatternConstEq,
 {
+    #[inline(always)]
     default fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
             return false;
@@ -58,6 +60,7 @@ impl<T> const PatternConstEq for [T]
 where
     T: ~const PatternConstEq + BytewiseEq<T>,
 {
+    #[inline(always)]
     fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
             return false;
