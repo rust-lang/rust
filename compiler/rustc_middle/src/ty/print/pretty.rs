@@ -1785,6 +1785,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         Ok(())
     }
 
+    // FIXME(valtrees): Accept `ty::Value` instead of `Ty` and `ty::ValTree` separately.
     fn pretty_print_const_valtree(
         &mut self,
         valtree: ty::ValTree<'tcx>,

@@ -214,6 +214,7 @@ impl<'tcx> ConstToPat<'tcx> {
     }
 
     // Recursive helper for `to_pat`; invoke that (instead of calling this directly).
+    // FIXME(valtrees): Accept `ty::Value` instead of `Ty` and `ty::ValTree` separately.
     #[instrument(skip(self), level = "debug")]
     fn valtree_to_pat(&self, cv: ValTree<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         let span = self.span;

@@ -222,6 +222,8 @@ impl<'tcx> Const<'tcx> {
     }
 
     /// Attempts to convert to a value.
+    ///
+    /// Note that this does not evaluate the constant.
     pub fn try_to_value(self) -> Option<ty::Value<'tcx>> {
         match self.kind() {
             ty::ConstKind::Value(cv) => Some(cv),
@@ -229,6 +231,10 @@ impl<'tcx> Const<'tcx> {
         }
     }
 
+    /// Convenience method to extract the value of a usize constant,
+    /// useful to get the length of an array type.
+    ///
+    /// Note that this does not evaluate the constant.
     #[inline]
     pub fn try_to_target_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
         self.try_to_value()?.try_to_target_usize(tcx)
