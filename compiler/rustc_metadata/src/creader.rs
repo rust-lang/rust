@@ -8,7 +8,7 @@ use std::time::Duration;
 use std::{cmp, env, iter};
 
 use proc_macro::bridge::client::ProcMacro;
-use rustc_ast::expand::allocator::{AllocatorKind, alloc_error_handler_name, global_fn_name};
+use rustc_ast::expand::allocator::{AllocatorKind, global_fn_name};
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::owned_slice::OwnedSlice;
@@ -23,7 +23,7 @@ use rustc_hir::definitions::Definitions;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
-use rustc_session::config::{self, CrateType, ExternLocation};
+use rustc_session::config::{self, CrateType, ExternLocation, OomStrategy};
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
 use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::validate_crate_name;
@@ -262,10 +262,6 @@ impl CStore {
 
     pub(crate) fn allocator_kind(&self) -> Option<AllocatorKind> {
         self.allocator_kind
-    }
-
-    pub(crate) fn alloc_error_handler_kind(&self) -> Option<AllocatorKind> {
-        self.alloc_error_handler_kind
     }
 
     pub(crate) fn has_global_allocator(&self) -> bool {
@@ -1160,6 +1156,8 @@ fn global_allocator_spans(krate: &ast::Crate) -> Vec<Span> {
         fn visit_item(&mut self, item: &'ast ast::Item) {
             if item.ident.name == self.name
                 && attr::contains_name(&item.attrs, sym::rustc_std_internal_symbol)
+                // Ignore the default allocator in libstd with weak linkage
+                && attr::find_by_name(&item.attrs, sym::linkage).is_none()
             {
                 self.spans.push(item.span);
             }
@@ -1182,6 +1180,8 @@ fn alloc_error_handler_spans(krate: &ast::Crate) -> Vec<Span> {
         fn visit_item(&mut self, item: &'ast ast::Item) {
             if item.ident.name == self.name
                 && attr::contains_name(&item.attrs, sym::rustc_std_internal_symbol)
+                // Ignore the default alloc error handler in libstd with weak linkage
+                && attr::find_by_name(&item.attrs, sym::linkage).is_none()
             {
                 self.spans.push(item.span);
             }
@@ -1189,7 +1189,7 @@ fn alloc_error_handler_spans(krate: &ast::Crate) -> Vec<Span> {
         }
     }
 
-    let name = Symbol::intern(alloc_error_handler_name(AllocatorKind::Global));
+    let name = Symbol::intern(OomStrategy::SYMBOL);
     let mut f = Finder { name, spans: Vec::new() };
     visit::walk_crate(&mut f, krate);
     f.spans
