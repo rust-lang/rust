@@ -135,24 +135,24 @@ and follow the same instructions as above.
 ### Emacs
 
 Emacs provides support for rust-analyzer with project-local configuration
-through [Eglot](https://www.gnu.org/software/emacs/manual/html_node/eglot/).  
+through [Eglot](https://www.gnu.org/software/emacs/manual/html_node/eglot/).
 Steps for setting up Eglot with rust-analyzer can be [found
-here](https://rust-analyzer.github.io/manual.html#eglot).  
+here](https://rust-analyzer.github.io/manual.html#eglot).
 Having set up Emacs & Eglot for Rust development in general, you can run
 `./x setup editor` and select `emacs`, which will prompt you to create
 `.dir-locals.el` with the recommended configuration for Eglot.
-The recommended settings live at [`src/etc/rust_analyzer_eglot.el`].  
+The recommended settings live at [`src/etc/rust_analyzer_eglot.el`].
 For more information on project-specific Eglot configuration, consult [the
 manual](https://www.gnu.org/software/emacs/manual/html_node/eglot/Project_002dspecific-configuration.html).
 
 ### Helix
 
-Helix comes with built-in LSP and rust-analyzer support.  
+Helix comes with built-in LSP and rust-analyzer support.
 It can be configured through `languages.toml`, as described
-[here](https://docs.helix-editor.com/languages.html).  
+[here](https://docs.helix-editor.com/languages.html).
 You can run `./x setup editor` and select `helix`, which will prompt you to
 create `languages.toml` with the recommended configuration for Helix. The
-recommended settings live at [`src/etc/rust_analyzer_helix.toml`].  
+recommended settings live at [`src/etc/rust_analyzer_helix.toml`].
 
 ## Check, check, and check again
 
@@ -181,7 +181,7 @@ example, running `tidy` and `linkchecker` is useful when editing Markdown files,
 whereas UI tests are much less likely to be helpful. While `x suggest` is a
 useful tool, it does not guarantee perfect coverage (just as PR CI isn't a
 substitute for bors). See the [dedicated chapter](../tests/suggest-tests.md) for
-more information and contribution instructions. 
+more information and contribution instructions.
 
 Please note that `x suggest` is in a beta state currently and the tests that it
 will suggest are limited.
