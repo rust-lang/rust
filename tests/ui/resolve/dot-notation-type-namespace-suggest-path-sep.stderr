@@ -1,5 +1,5 @@
 error[E0423]: expected value, found struct `String`
-  --> $DIR/issue-22692.rs:2:13
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:10:13
    |
 LL |     let _ = String.new();
    |             ^^^^^^
@@ -11,7 +11,7 @@ LL +     let _ = String::new();
    |
 
 error[E0423]: expected value, found struct `String`
-  --> $DIR/issue-22692.rs:6:13
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:14:13
    |
 LL |     let _ = String.default;
    |             ^^^^^^
@@ -23,7 +23,7 @@ LL +     let _ = String::default;
    |
 
 error[E0423]: expected value, found struct `Vec`
-  --> $DIR/issue-22692.rs:10:13
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:18:13
    |
 LL |     let _ = Vec::<()>.with_capacity(1);
    |             ^^^^^^^^^
@@ -34,8 +34,41 @@ LL -     let _ = Vec::<()>.with_capacity(1);
 LL +     let _ = Vec::<()>::with_capacity(1);
    |
 
+error[E0423]: expected value, found type alias `Alias`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:22:13
+   |
+LL |     let _ = Alias.new();
+   |             ^^^^^
+   |
+help: use the path separator to refer to an item
+   |
+LL |     let _ = Alias::new();
+   |                  ~~
+
+error[E0423]: expected value, found type alias `Alias`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:26:13
+   |
+LL |     let _ = Alias.default;
+   |             ^^^^^
+   |
+help: use the path separator to refer to an item
+   |
+LL |     let _ = Alias::default;
+   |                  ~~
+
+error[E0423]: expected value, found module `foo`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:30:13
+   |
+LL |     let _ = foo.bar;
+   |             ^^^
+   |
+help: use the path separator to refer to an item
+   |
+LL |     let _ = foo::bar;
+   |                ~~
+
 error[E0423]: expected value, found struct `std::cell::Cell`
-  --> $DIR/issue-22692.rs:17:9
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:37:9
    |
 LL |         ::std::cell::Cell
    |         ^^^^^^^^^^^^^^^^^
@@ -51,7 +84,7 @@ LL +     <Type!()>::get();
    |
 
 error[E0423]: expected value, found struct `std::cell::Cell`
-  --> $DIR/issue-22692.rs:17:9
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:37:9
    |
 LL |         ::std::cell::Cell
    |         ^^^^^^^^^^^^^^^^^
@@ -67,7 +100,7 @@ LL +     <Type! {}>::get;
    |
 
 error[E0423]: expected value, found struct `Vec`
-  --> $DIR/issue-22692.rs:26:9
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:46:9
    |
 LL |         Vec.new()
    |         ^^^
@@ -83,7 +116,7 @@ LL +         Vec::new()
    |
 
 error[E0423]: expected value, found struct `Vec`
-  --> $DIR/issue-22692.rs:31:9
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:51:9
    |
 LL |         Vec.new
    |         ^^^
@@ -99,7 +132,7 @@ LL +         Vec::new
    |
 
 error[E0423]: expected value, found struct `std::cell::Cell`
-  --> $DIR/issue-22692.rs:17:9
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:37:9
    |
 LL |         ::std::cell::Cell
    |         ^^^^^^^^^^^^^^^^^
@@ -114,6 +147,6 @@ LL -         Type!().new(0)
 LL +         <Type!()>::new(0)
    |
 
-error: aborting due to 8 previous errors
+error: aborting due to 11 previous errors
 
 For more information about this error, try `rustc --explain E0423`.
