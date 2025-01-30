@@ -64,7 +64,7 @@ impl<'tcx> TyCtxt<'tcx> {
         args: ty::GenericArgsRef<'tcx>,
     ) -> &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
         let mut bounds: Vec<_> = self
-            .item_super_predicates(def_id)
+            .item_self_bounds(def_id)
             .iter_instantiated(self, args)
             .filter_map(|clause| {
                 clause

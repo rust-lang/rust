@@ -106,8 +106,8 @@ use rustc_hir::{
     self as hir, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, ConstContext,
     Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind,
     ImplItemRef, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat,
-    PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef,
-    TyKind, UnOp, def,
+    PatExpr, PatExprKind, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind,
+    TraitItemRef, TraitRef, TyKind, UnOp, def,
 };
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -560,7 +560,20 @@ macro_rules! maybe_path {
     };
 }
 maybe_path!(Expr, ExprKind);
-maybe_path!(Pat, PatKind);
+impl<'hir> MaybePath<'hir> for Pat<'hir> {
+    fn hir_id(&self) -> HirId {
+        self.hir_id
+    }
+    fn qpath_opt(&self) -> Option<&QPath<'hir>> {
+        match &self.kind {
+            PatKind::Expr(PatExpr {
+                kind: PatExprKind::Path(qpath),
+                ..
+            }) => Some(qpath),
+            _ => None,
+        }
+    }
+}
 maybe_path!(Ty, TyKind);
 
 /// If `maybe_path` is a path node, resolves it, otherwise returns `Res::Err`
@@ -1753,7 +1766,11 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
         PatKind::Wild | PatKind::Never => false, // If `!` typechecked then the type is empty, so not refutable.
         PatKind::Binding(_, _, _, pat) => pat.is_some_and(|pat| is_refutable(cx, pat)),
         PatKind::Box(pat) | PatKind::Ref(pat, _) => is_refutable(cx, pat),
-        PatKind::Path(ref qpath) => is_enum_variant(cx, qpath, pat.hir_id),
+        PatKind::Expr(PatExpr {
+            kind: PatExprKind::Path(qpath),
+            hir_id,
+            ..
+        }) => is_enum_variant(cx, qpath, *hir_id),
         PatKind::Or(pats) => {
             // TODO: should be the honest check, that pats is exhaustive set
             are_refutable(cx, pats)

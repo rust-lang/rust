@@ -1087,28 +1087,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         sig_parts.map_bound(|sig| sig.tupled_inputs_ty.tuple_fields().as_slice()),
                     ))
                 }
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => self
-                    .tcx
-                    .item_super_predicates(def_id)
-                    .instantiate(self.tcx, args)
-                    .iter()
-                    .find_map(|pred| {
-                        if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
+                    self.tcx.item_self_bounds(def_id).instantiate(self.tcx, args).iter().find_map(
+                        |pred| {
+                            if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
                             && self
                                 .tcx
                                 .is_lang_item(proj.projection_term.def_id, LangItem::FnOnceOutput)
                             // args tuple will always be args[1]
                             && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
-                        {
-                            Some((
-                                DefIdOrName::DefId(def_id),
-                                pred.kind().rebind(proj.term.expect_type()),
-                                pred.kind().rebind(args.as_slice()),
-                            ))
-                        } else {
-                            None
-                        }
-                    }),
+                            {
+                                Some((
+                                    DefIdOrName::DefId(def_id),
+                                    pred.kind().rebind(proj.term.expect_type()),
+                                    pred.kind().rebind(args.as_slice()),
+                                ))
+                            } else {
+                                None
+                            }
+                        },
+                    )
+                }
                 ty::Dynamic(data, _, ty::Dyn) => data.iter().find_map(|pred| {
                     if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
                         && self.tcx.is_lang_item(proj.def_id, LangItem::FnOnceOutput)
@@ -2769,6 +2768,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
+            }
+            ObligationCauseCode::ArrayLen(array_ty) => {
+                err.note(format!("the length of array `{array_ty}` must be type `usize`"));
             }
             ObligationCauseCode::TupleElem => {
                 err.note("only the last element of a tuple may have a dynamically sized type");

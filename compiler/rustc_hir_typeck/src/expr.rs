@@ -480,7 +480,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::PatKind::Binding(_, _, _, _)
             | hir::PatKind::Struct(_, _, _)
             | hir::PatKind::TupleStruct(_, _, _)
-            | hir::PatKind::Path(_)
             | hir::PatKind::Tuple(_, _)
             | hir::PatKind::Box(_)
             | hir::PatKind::Ref(_, _)

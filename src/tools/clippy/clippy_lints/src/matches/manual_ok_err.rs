@@ -6,7 +6,7 @@ use rustc_ast::BindingMode;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Arm, Expr, ExprKind, Pat, PatKind, Path, QPath};
+use rustc_hir::{Arm, Expr, ExprKind, Pat, PatExpr, PatExprKind, PatKind, Path, QPath};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::Ty;
 use rustc_span::symbol::Ident;
@@ -60,7 +60,16 @@ pub(crate) fn check_match(cx: &LateContext<'_>, expr: &Expr<'_>, scrutinee: &Exp
 /// accepted.
 fn is_variant_or_wildcard(cx: &LateContext<'_>, pat: &Pat<'_>, can_be_wild: bool, must_match_err: bool) -> bool {
     match pat.kind {
-        PatKind::Wild | PatKind::Path(..) | PatKind::Binding(_, _, _, None) if can_be_wild => true,
+        PatKind::Wild
+        | PatKind::Expr(PatExpr {
+            kind: PatExprKind::Path(_),
+            ..
+        })
+        | PatKind::Binding(_, _, _, None)
+            if can_be_wild =>
+        {
+            true
+        },
         PatKind::TupleStruct(qpath, ..) => {
             is_res_lang_ctor(cx, cx.qpath_res(&qpath, pat.hir_id), ResultErr) == must_match_err
         },

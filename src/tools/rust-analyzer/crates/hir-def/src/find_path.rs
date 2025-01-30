@@ -445,6 +445,10 @@ fn find_in_dep(
         };
         cov_mark::hit!(partially_imported);
         if info.is_unstable {
+            if !ctx.cfg.allow_unstable {
+                // the item is unstable and we are not allowed to use unstable items
+                continue;
+            }
             choice.stability = Unstable;
         }
 
@@ -670,6 +674,7 @@ mod tests {
         prefer_prelude: bool,
         prefer_absolute: bool,
         prefer_no_std: bool,
+        allow_unstable: bool,
         expect: Expect,
     ) {
         let (db, pos) = TestDB::with_position(ra_fixture);
@@ -711,7 +716,7 @@ mod tests {
                 module,
                 prefix,
                 ignore_local_imports,
-                ImportPathConfig { prefer_no_std, prefer_prelude, prefer_absolute },
+                ImportPathConfig { prefer_no_std, prefer_prelude, prefer_absolute, allow_unstable },
             );
             format_to!(
                 res,
@@ -732,7 +737,7 @@ mod tests {
         path: &str,
         expect: Expect,
     ) {
-        check_found_path_(ra_fixture, path, false, false, false, expect);
+        check_found_path_(ra_fixture, path, false, false, false, false, expect);
     }
 
     fn check_found_path_prelude(
@@ -740,7 +745,7 @@ mod tests {
         path: &str,
         expect: Expect,
     ) {
-        check_found_path_(ra_fixture, path, true, false, false, expect);
+        check_found_path_(ra_fixture, path, true, false, false, false, expect);
     }
 
     fn check_found_path_absolute(
@@ -748,7 +753,7 @@ mod tests {
         path: &str,
         expect: Expect,
     ) {
-        check_found_path_(ra_fixture, path, false, true, false, expect);
+        check_found_path_(ra_fixture, path, false, true, false, false, expect);
     }
 
     fn check_found_path_prefer_no_std(
@@ -756,7 +761,15 @@ mod tests {
         path: &str,
         expect: Expect,
     ) {
-        check_found_path_(ra_fixture, path, false, false, true, expect);
+        check_found_path_(ra_fixture, path, false, false, true, false, expect);
+    }
+
+    fn check_found_path_prefer_no_std_allow_unstable(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        path: &str,
+        expect: Expect,
+    ) {
+        check_found_path_(ra_fixture, path, false, false, true, true, expect);
     }
 
     #[test]
@@ -1951,7 +1964,7 @@ pub mod ops {
 
     #[test]
     fn respect_unstable_modules() {
-        check_found_path_prefer_no_std(
+        check_found_path_prefer_no_std_allow_unstable(
             r#"
 //- /main.rs crate:main deps:std,core
 extern crate std;

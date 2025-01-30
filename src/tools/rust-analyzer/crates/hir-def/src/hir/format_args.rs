@@ -287,7 +287,7 @@ pub(crate) fn parse(
 
     for piece in pieces {
         match piece {
-            parse::Piece::String(s) => {
+            parse::Piece::Lit(s) => {
                 unfinished_literal.push_str(s);
             }
             parse::Piece::NextArgument(arg) => {

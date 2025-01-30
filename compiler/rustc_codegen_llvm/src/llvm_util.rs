@@ -319,7 +319,6 @@ pub fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<Symbol> 
         sess.target
             .rust_target_features()
             .iter()
-            .filter(|(_, gate, _)| gate.in_cfg())
             .filter(|(feature, _, _)| {
                 // skip checking special features, as LLVM may not understand them
                 if RUSTC_SPECIAL_FEATURES.contains(feature) {
@@ -388,9 +387,13 @@ pub fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<Symbol> 
     sess.target
         .rust_target_features()
         .iter()
-        .filter(|(_, gate, _)| gate.in_cfg())
         .filter_map(|(feature, gate, _)| {
-            if sess.is_nightly_build() || allow_unstable || gate.requires_nightly().is_none() {
+            // The `allow_unstable` set is used by rustc internally to determined which target
+            // features are truly available, so we want to return even perma-unstable "forbidden"
+            // features.
+            if allow_unstable
+                || (gate.in_cfg() && (sess.is_nightly_build() || gate.requires_nightly().is_none()))
+            {
                 Some(*feature)
             } else {
                 None
@@ -670,12 +673,6 @@ pub(crate) fn global_llvm_features(
         // Will only be filled when `diagnostics` is set!
         let mut featsmap = FxHashMap::default();
 
-        // Ensure that all ABI-required features are enabled, and the ABI-forbidden ones
-        // are disabled.
-        let abi_feature_constraints = sess.target.abi_required_features();
-        let abi_incompatible_set =
-            FxHashSet::from_iter(abi_feature_constraints.incompatible.iter().copied());
-
         // Compute implied features
         let mut all_rust_features = vec![];
         for feature in sess.opts.cg.target_feature.split(',') {
@@ -746,51 +743,10 @@ pub(crate) fn global_llvm_features(
                     }
                 }
 
-                // Ensure that the features we enable/disable are compatible with the ABI.
-                if enable {
-                    if abi_incompatible_set.contains(feature) {
-                        sess.dcx().emit_warn(ForbiddenCTargetFeature {
-                            feature,
-                            enabled: "enabled",
-                            reason: "this feature is incompatible with the target ABI",
-                        });
-                    }
-                } else {
-                    // FIXME: we have to request implied features here since
-                    // negative features do not handle implied features above.
-                    for &required in abi_feature_constraints.required.iter() {
-                        let implied =
-                            sess.target.implied_target_features(std::iter::once(required));
-                        if implied.contains(feature) {
-                            sess.dcx().emit_warn(ForbiddenCTargetFeature {
-                                feature,
-                                enabled: "disabled",
-                                reason: "this feature is required by the target ABI",
-                            });
-                        }
-                    }
-                }
-
                 // FIXME(nagisa): figure out how to not allocate a full hashset here.
                 featsmap.insert(feature, enable);
             }
         }
-
-        // To be sure the ABI-relevant features are all in the right state, we explicitly
-        // (un)set them here. This means if the target spec sets those features wrong,
-        // we will silently correct them rather than silently producing wrong code.
-        // (The target sanity check tries to catch this, but we can't know which features are
-        // enabled in LLVM by default so we can't be fully sure about that check.)
-        // We add these at the beginning of the list so that `-Ctarget-features` can
-        // still override it... that's unsound, but more compatible with past behavior.
-        all_rust_features.splice(
-            0..0,
-            abi_feature_constraints
-                .required
-                .iter()
-                .map(|&f| (true, f))
-                .chain(abi_feature_constraints.incompatible.iter().map(|&f| (false, f))),
-        );
 
         // Translate this into LLVM features.
         let feats = all_rust_features

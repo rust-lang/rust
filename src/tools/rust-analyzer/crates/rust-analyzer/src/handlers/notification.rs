@@ -291,9 +291,15 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
     let file_id = state.vfs.read().0.file_id(&vfs_path);
     if let Some(file_id) = file_id {
         let world = state.snapshot();
+        let invocation_strategy_once = state.config.flycheck(None).invocation_strategy_once();
         let may_flycheck_workspace = state.config.flycheck_workspace(None);
         let mut updated = false;
         let task = move || -> std::result::Result<(), ide::Cancelled> {
+            if invocation_strategy_once {
+                let saved_file = vfs_path.as_path().map(|p| p.to_owned());
+                world.flycheck[0].restart_workspace(saved_file.clone());
+            }
+
             let target = TargetSpec::for_file(&world, file_id)?.and_then(|it| {
                 let tgt_kind = it.target_kind();
                 let (tgt_name, root, package) = match it {
@@ -320,16 +326,15 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                 // the user opted into package checks then
                 let package_check_allowed = target.is_some() || !may_flycheck_workspace;
                 if package_check_allowed {
-                    let workspace =
-                        world.workspaces.iter().enumerate().find(|(_, ws)| match &ws.kind {
-                            project_model::ProjectWorkspaceKind::Cargo { cargo, .. }
-                            | project_model::ProjectWorkspaceKind::DetachedFile {
-                                cargo: Some((cargo, _, _)),
-                                ..
-                            } => *cargo.workspace_root() == root,
-                            _ => false,
-                        });
-                    if let Some((idx, _)) = workspace {
+                    let workspace = world.workspaces.iter().position(|ws| match &ws.kind {
+                        project_model::ProjectWorkspaceKind::Cargo { cargo, .. }
+                        | project_model::ProjectWorkspaceKind::DetachedFile {
+                            cargo: Some((cargo, _, _)),
+                            ..
+                        } => *cargo.workspace_root() == root,
+                        _ => false,
+                    });
+                    if let Some(idx) = workspace {
                         world.flycheck[idx].restart_for_package(package, target);
                     }
                 }

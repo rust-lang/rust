@@ -492,6 +492,8 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             }
             sess.lint_store = Some(Lrc::new(lint_store));
 
+            util::check_abi_required_features(&sess);
+
             let compiler = Compiler {
                 sess,
                 codegen_backend,

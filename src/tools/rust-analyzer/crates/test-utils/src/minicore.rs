@@ -53,6 +53,7 @@
 //!     pin:
 //!     pointee: copy, send, sync, ord, hash, unpin
 //!     range:
+//!     receiver: deref
 //!     result:
 //!     send: sized
 //!     size_of: sized
@@ -513,10 +514,26 @@ pub mod ops {
             fn deref_mut(&mut self) -> &mut Self::Target;
         }
         // endregion:deref_mut
+
+        // region:receiver
+        #[lang = "receiver"]
+        pub trait Receiver {
+            #[lang = "receiver_target"]
+            type Target: ?Sized;
+        }
+
+        impl<P: ?Sized, T: ?Sized> Receiver for P
+        where
+            P: Deref<Target = T>,
+        {
+            type Target = T;
+        }
+        // endregion:receiver
     }
     pub use self::deref::{
         Deref,
         DerefMut, // :deref_mut
+        Receiver, // :receiver
     };
     // endregion:deref
 

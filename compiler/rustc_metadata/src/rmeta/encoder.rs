@@ -1554,7 +1554,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::OpaqueTy = def_kind {
                 self.encode_explicit_item_bounds(def_id);
-                self.encode_explicit_item_super_predicates(def_id);
+                self.encode_explicit_item_self_bounds(def_id);
                 record!(self.tables.opaque_ty_origin[def_id] <- self.tcx.opaque_ty_origin(def_id));
                 self.encode_precise_capturing_args(def_id);
                 if tcx.is_conditionally_const(def_id) {
@@ -1667,10 +1667,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         record_defaulted_array!(self.tables.explicit_item_bounds[def_id] <- bounds);
     }
 
-    fn encode_explicit_item_super_predicates(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_explicit_item_super_predicates({:?})", def_id);
-        let bounds = self.tcx.explicit_item_super_predicates(def_id).skip_binder();
-        record_defaulted_array!(self.tables.explicit_item_super_predicates[def_id] <- bounds);
+    fn encode_explicit_item_self_bounds(&mut self, def_id: DefId) {
+        debug!("EncodeContext::encode_explicit_item_self_bounds({:?})", def_id);
+        let bounds = self.tcx.explicit_item_self_bounds(def_id).skip_binder();
+        record_defaulted_array!(self.tables.explicit_item_self_bounds[def_id] <- bounds);
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1685,7 +1685,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             AssocItemContainer::Trait => {
                 if let ty::AssocKind::Type = item.kind {
                     self.encode_explicit_item_bounds(def_id);
-                    self.encode_explicit_item_super_predicates(def_id);
+                    self.encode_explicit_item_self_bounds(def_id);
                     if tcx.is_conditionally_const(def_id) {
                         record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
                             <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());

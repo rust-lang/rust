@@ -1,5 +1,3 @@
-use std::iter;
-
 use rustc_abi::{Align, Size};
 use rustc_ast::expand::allocator::AllocatorKind;
 
@@ -80,18 +78,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn malloc(&mut self, size: u64, zero_init: bool) -> InterpResult<'tcx, Pointer> {
+    fn malloc(&mut self, size: u64, init: AllocInit) -> InterpResult<'tcx, Pointer> {
         let this = self.eval_context_mut();
         let align = this.malloc_align(size);
-        let ptr = this.allocate_ptr(Size::from_bytes(size), align, MiriMemoryKind::C.into())?;
-        if zero_init {
-            // We just allocated this, the access is definitely in-bounds and fits into our address space.
-            this.write_bytes_ptr(
-                ptr.into(),
-                iter::repeat(0u8).take(usize::try_from(size).unwrap()),
-            )
-            .unwrap();
-        }
+        let ptr = this.allocate_ptr(Size::from_bytes(size), align, MiriMemoryKind::C.into(), init)?;
         interp_ok(ptr.into())
     }
 
@@ -115,6 +105,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 Size::from_bytes(size),
                 Align::from_bytes(align).unwrap(),
                 MiriMemoryKind::C.into(),
+                AllocInit::Uninit
             )?;
             this.write_pointer(ptr, &memptr)?;
             interp_ok(Scalar::from_i32(0))
@@ -134,7 +125,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let new_align = this.malloc_align(new_size);
         if this.ptr_is_null(old_ptr)? {
             // Here we must behave like `malloc`.
-            self.malloc(new_size, /*zero_init*/ false)
+            self.malloc(new_size, AllocInit::Uninit)
         } else {
             if new_size == 0 {
                 // C, in their infinite wisdom, made this UB.
@@ -147,6 +138,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Size::from_bytes(new_size),
                     new_align,
                     MiriMemoryKind::C.into(),
+                    AllocInit::Uninit
                 )?;
                 interp_ok(new_ptr.into())
             }
@@ -187,6 +179,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Size::from_bytes(size),
                     Align::from_bytes(align).unwrap(),
                     MiriMemoryKind::C.into(),
+                    AllocInit::Uninit
                 )?;
                 interp_ok(ptr.into())
             }

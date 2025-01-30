@@ -298,7 +298,6 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
             TupleStruct,
             Or,
             Never,
-            Path,
             Tuple,
             Box,
             Deref,
