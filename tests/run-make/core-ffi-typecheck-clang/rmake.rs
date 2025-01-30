@@ -21,6 +21,15 @@ const SKIPPED_TARGETS: &[&str] = &[
     "csky-unknown-linux-gnuabiv2hf",
 ];
 
+const MAPPED_TARGETS: &[(&str, &str)] = &[
+    ("armv5te-unknown-linux-uclibcgnueabi", "armv5te-unknown-linux"),
+    ("mips-unknown-linux-uclibc", "mips-unknown-linux"),
+    ("mipsel-unknown-linux-uclibc", "mips-unknown-linux"),
+    ("powerpc-unknown-linux-gnuspe", "powerpc-unknown-linux-gnu"),
+    ("powerpc-unknown-linux-muslspe", "powerpc-unknown-linux-musl"),
+    ("x86_64-unknown-l4re-uclibc", "x86_64-unknown-l4re"),
+];
+
 fn main() {
     let minicore_path = run_make_support::source_root().join("tests/auxiliary/minicore.rs");
 
@@ -39,9 +48,17 @@ fn main() {
             continue;
         }
 
+        // Create a new variable to hold either the mapped target or original llvm_target
+        let target_to_use = MAPPED_TARGETS
+            .iter()
+            .find(|&&(from, _)| from == *llvm_target)
+            .map(|&(_, to)| to)
+            .unwrap_or(llvm_target);
+
+
         // Run Clang's preprocessor for the relevant target, printing default macro definitions.
         let clang_output =
-            clang().args(&["-E", "-dM", "-x", "c", "/dev/null", "-target", &llvm_target]).run();
+            clang().args(&["-E", "-dM", "-x", "c", "/dev/null", "-target", &target_to_use]).run();
 
         let defines = String::from_utf8(clang_output.stdout()).expect("Invalid UTF-8");
 
