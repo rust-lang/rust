@@ -12,11 +12,13 @@ type SignedChar = pattern_type!(char is -'A'..);
 fn main() {
     match 42_u8 {
         -10..253 => {}
+        //~^ ERROR `u8: Neg` is not satisfied
         _ => {}
     }
 
     match 'A' {
         -'\0'..'a' => {}
+        //~^ ERROR `char: Neg` is not satisfied
         _ => {}
     }
 }
