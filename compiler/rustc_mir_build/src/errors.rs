@@ -1104,8 +1104,14 @@ pub(crate) struct Rust2024IncompatiblePat {
 
 pub(crate) struct Rust2024IncompatiblePatSugg {
     pub(crate) suggestion: Vec<(Span, String)>,
+    pub(crate) kind: Rust2024IncompatiblePatSuggKind,
     pub(crate) ref_pattern_count: usize,
     pub(crate) binding_mode_count: usize,
+}
+
+pub(crate) enum Rust2024IncompatiblePatSuggKind {
+    Subtractive,
+    Additive,
 }
 
 impl Subdiagnostic for Rust2024IncompatiblePatSugg {
@@ -1120,14 +1126,23 @@ impl Subdiagnostic for Rust2024IncompatiblePatSugg {
             } else {
                 Applicability::MaybeIncorrect
             };
-        let plural_derefs = pluralize!(self.ref_pattern_count);
-        let and_modes = if self.binding_mode_count > 0 {
-            format!(" and variable binding mode{}", pluralize!(self.binding_mode_count))
+        let derefs = if self.ref_pattern_count > 0 {
+            format!("reference pattern{}", pluralize!(self.ref_pattern_count))
         } else {
             String::new()
         };
+        let modes = if self.binding_mode_count > 0 {
+            format!("variable binding mode{}", pluralize!(self.binding_mode_count))
+        } else {
+            String::new()
+        };
+        let and = if !derefs.is_empty() && !modes.is_empty() { " and " } else { "" };
+        let (old_visibility, new_visibility) = match self.kind {
+            Rust2024IncompatiblePatSuggKind::Subtractive => ("", "implicit"),
+            Rust2024IncompatiblePatSuggKind::Additive => ("implied ", "explicit"),
+        };
         diag.multipart_suggestion_verbose(
-            format!("make the implied reference pattern{plural_derefs}{and_modes} explicit"),
+            format!("make the {old_visibility}{derefs}{and}{modes} {new_visibility}"),
             self.suggestion,
             applicability,
         );

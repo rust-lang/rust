@@ -55,13 +55,22 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
     let result = pcx.lower_pattern(pat);
     debug!("pat_from_hir({:?}) = {:?}", pat, result);
     if let Some(m) = pcx.rust_2024_migration {
-        m.emit(tcx, pat.hir_id);
+        m.emit(tcx, typeck_results, pat.hir_id);
     }
     result
 }
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
+        let adjustments: &[Ty<'tcx>] =
+            self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
+
+        if let Some(m) = &mut self.rust_2024_migration
+            && !adjustments.is_empty()
+        {
+            m.visit_implicit_derefs(pat, adjustments);
+        }
+
         // When implicit dereferences have been inserted in this pattern, the unadjusted lowered
         // pattern has the type that results *after* dereferencing. For example, in this code:
         //
@@ -90,8 +99,6 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => self.lower_pattern_unadjusted(pat),
         };
 
-        let adjustments: &[Ty<'tcx>] =
-            self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
         let adjusted_pat = adjustments.iter().rev().fold(unadjusted_pat, |thir_pat, ref_ty| {
             debug!("{:?}: wrapping pattern with type {:?}", thir_pat, ref_ty);
             Box::new(Pat {
@@ -104,7 +111,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         if let Some(m) = &mut self.rust_2024_migration
             && !adjustments.is_empty()
         {
-            m.visit_implicit_derefs(pat.span, adjustments);
+            m.leave_ref();
         }
 
         adjusted_pat
@@ -295,7 +302,15 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
                 PatKind::DerefPattern { subpattern: self.lower_pattern(subpattern), mutability }
             }
-            hir::PatKind::Ref(subpattern, _) | hir::PatKind::Box(subpattern) => {
+            hir::PatKind::Ref(subpattern, mutbl) => {
+                if let Some(m) = &mut self.rust_2024_migration {
+                    m.visit_explicit_deref(pat.span, mutbl, subpattern)
+                }
+                let subpattern = self.lower_pattern(subpattern);
+                self.rust_2024_migration.as_mut().map(|m| m.leave_ref());
+                PatKind::Deref { subpattern }
+            }
+            hir::PatKind::Box(subpattern) => {
                 PatKind::Deref { subpattern: self.lower_pattern(subpattern) }
             }
 

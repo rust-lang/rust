@@ -32,7 +32,7 @@ fn main() {
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, 0u8);
 
-    let &Foo(ref x) = &Foo(0);
+    let Foo(x) = &Foo(0);
     //~^ ERROR: this pattern relies on behavior which may change in edition 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, &0u8);
@@ -96,7 +96,7 @@ fn main() {
         assert_type_eq(x, 0u8);
     }
 
-    if let &mut Some(&mut Some(&mut Some(ref mut x))) = &mut Some(&mut Some(&mut Some(0u8))) {
+    if let Some(Some(Some(x))) = &mut Some(&mut Some(&mut Some(0u8))) {
         //~^ ERROR: this pattern relies on behavior which may change in edition 2024
         //~| WARN: this changes meaning in Rust 2024
         assert_type_eq(x, &mut 0u8);
@@ -143,7 +143,7 @@ fn main() {
     }
 
     // Test removing multiple binding modifiers.
-    let &Struct { ref a, ref b, ref c } = &Struct { a: 0, b: 0, c: 0 };
+    let Struct { a, b, c } = &Struct { a: 0, b: 0, c: 0 };
     //~^ ERROR: this pattern relies on behavior which may change in edition 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(a, &0u32);
@@ -158,7 +158,7 @@ fn main() {
     assert_type_eq(c, &mut 0u32);
 
     // Test removing multiple reference patterns of various mutabilities, plus a binding modifier.
-    let &mut &Struct { a: &[ref a], b: &mut [&[ref b]], ref c } = &mut &Struct { a: &[0], b: &mut [&[0]], c: 0 };
+    let Struct { a: [a], b: [[b]], c } = &mut &Struct { a: &[0], b: &mut [&[0]], c: 0 };
     //~^ ERROR: this pattern relies on behavior which may change in edition 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(a, &0u32);
