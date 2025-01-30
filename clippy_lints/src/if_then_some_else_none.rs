@@ -95,7 +95,7 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
                 expr.span,
                 format!("this could be simplified with `bool::{method_name}`"),
                 |diag| {
-                    let mut app = Applicability::Unspecified;
+                    let mut app = Applicability::MachineApplicable;
                     let cond_snip = Sugg::hir_with_context(cx, cond, expr.span.ctxt(), "[condition]", &mut app)
                         .maybe_par()
                         .to_string();
