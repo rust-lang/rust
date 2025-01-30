@@ -329,6 +329,16 @@ impl PartialEq for str {
     }
 }
 
+#[lang = "PatternConstEq"]
+#[const_trait]
+trait PatternConstEq<Rhs = Self>
+where
+    Rhs: ?Sized,
+{
+    #[allow(dead_code)]
+    fn eq(&self, other: &Rhs) -> bool;
+}
+
 #[lang = "not"]
 #[const_trait]
 pub trait Not {
