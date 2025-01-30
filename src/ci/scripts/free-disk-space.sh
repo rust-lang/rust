@@ -30,25 +30,38 @@ formatByteCount() {
     numfmt --to=iec-i --suffix=B --padding=7 "$1"'000'
 }
 
-# macro to output saved space
-printSavedSpace() {
-    # Disk space before the operation
-    local before=${1}
-    local title=${2:-}
+isX86() {
+    local arch
+    arch=$(uname -m)
+    if [ "$arch" = "x86_64" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
 
+# Measure saved space and how long it took to run the task
+execAndMeasure() {
+    local task_name=${1}
+
+    local start
+    start=$(date +%s)
+
+    local before
+    before=$(getAvailableSpace)
+
+    # Run the task. Skip the first argument because it's the task name.
+    "${@:2}"
+
+    local end
+    end=$(date +%s)
     local after
     after=$(getAvailableSpace)
-    local saved=$((after - before))
 
-    echo ""
-    printSeparationLine "*"
-    if [ -n "${title}" ]; then
-        echo "=> ${title}: Saved $(formatByteCount "$saved")"
-    else
-        echo "=> Saved $(formatByteCount "$saved")"
-    fi
-    printSeparationLine "*"
-    echo ""
+    local saved=$((after - before))
+    local seconds_taken=$((end - start))
+
+    echo "==> ${task_name}: Saved $(formatByteCount "$saved") in $seconds_taken seconds"
 }
 
 # macro to print output of df with caption
@@ -62,19 +75,6 @@ printDF() {
     echo ""
     df -h
     printSeparationLine "="
-}
-
-removeRecursive() {
-    element=${1}
-
-    local before
-    if [ ! -e "$element" ]; then
-        echo "::warning::Directory or file $element does not exist, skipping."
-    else
-        before=$(getAvailableSpace)
-        sudo rm -rf "$element"
-        printSavedSpace "$before" "Removed $element"
-    fi
 }
 
 removeUnusedDirsAndFiles() {
@@ -133,11 +133,17 @@ removeUnusedDirsAndFiles() {
     )
 
     for element in "${to_remove[@]}"; do
-        removeRecursive "$element"
+        if [ ! -e "$element" ]; then
+            echo "::warning::Directory or file $element does not exist, skipping."
+        else
+            execAndMeasure "Removed $element" sudo rm -rf "$element"
+        fi
     done
 }
 
 removeNodeModules() {
+    npm list -g --depth=0
+
     sudo npm uninstall -g \
         "@bazel/bazelisk" \
         "bazel"           \
@@ -153,53 +159,50 @@ removeNodeModules() {
         "yarn"
 }
 
-execAndMeasureSpaceChange() {
-    local operation=${1} # Function to execute
-    local title=${2}
-
-    local before
-    before=$(getAvailableSpace)
-    $operation
-
-    printSavedSpace "$before" "$title"
-}
-
 # Remove large packages
 # REF: https://github.com/apache/flink/blob/master/tools/azure-pipelines/free_disk_space.sh
 cleanPackages() {
-    sudo apt-get purge -y --autoremove --fix-missing \
-        '.*-icon-theme$'         \
-        '^aspnetcore-.*'        \
-        '^dotnet-.*'            \
-        '^java-*'               \
-        '^libllvm.*'            \
-        '^llvm-.*'              \
-        '^mercurial.*'          \
-        '^mysql-.*'             \
-        '^vim.*'                \
-        '^fonts-.*'             \
-        'azure-cli'             \
-        'buildah'               \
-        'cpp-13'                \
-        'firefox'               \
-        'gcc-12'                \
-        'gcc-13'                \
-        'gcc-14'                \
-        'gcc'                   \
-        'g++-14'                \
-        'gfortran-14'           \
-        'google-chrome-stable'  \
-        'google-cloud-cli'      \
-        'groff-base'            \
-        'kubectl'               \
-        'libgl1-mesa-dri'       \
-        'microsoft-edge-stable' \
-        'php.*'                 \
-        'podman'                \
-        'powershell'            \
-        'skopeo'                \
-        'snapd'                 \
+    local packages=(
+        '.*-icon-theme$'
+        '^aspnetcore-.*'
+        '^dotnet-.*'
+        '^java-*'
+        '^libllvm.*'
+        '^llvm-.*'
+        '^mercurial.*'
+        '^mysql-.*'
+        '^vim.*'
+        '^fonts-.*'
+        'azure-cli'
+        'buildah'
+        'cpp-13'
+        'firefox'
+        'gcc-12'
+        'gcc-13'
+        'gcc-14'
+        'gcc'
+        'g++-14'
+        'gfortran-14'
+        'groff-base'
+        'kubectl'
+        'libgl1-mesa-dri'
+        'microsoft-edge-stable'
+        'php.*'
+        'podman'
+        'powershell'
+        'skopeo'
+        'snapd'
         'tmux'
+    )
+
+    if isX86; then
+        packages+=(
+            'google-chrome-stable'
+            'google-cloud-cli'
+        )
+    fi
+
+    sudo apt-get purge -y --autoremove --fix-missing "${packages[@]}"
 
     echo "=> apt-get autoremove"
     sudo apt-get autoremove -y || echo "::warning::The command [sudo apt-get autoremove -y] failed"
@@ -215,28 +218,33 @@ cleanSwap() {
 }
 
 removePythonPackages() {
-    sudo pipx uninstall ansible-core
+    local packages=(
+    )
+
+    if isX86; then
+        packages+=(
+            'ansible-core'
+        )
+    fi
+
+    for p in "${packages[@]}"; do
+        sudo pipx uninstall "$p"
+    done
 }
 
-# Display initial disk space stats
+main() {
+    printDF "BEFORE CLEAN-UP:"
+    echo ""
 
-AVAILABLE_INITIAL=$(getAvailableSpace)
+    execAndMeasure "Unused packages" cleanPackages
+    execAndMeasure "Swap storage" cleanSwap
+    execAndMeasure "Node modules" removeNodeModules
+    execAndMeasure "Python Packages" removePythonPackages
 
-printDF "BEFORE CLEAN-UP:"
-echo ""
+    removeUnusedDirsAndFiles
 
-execAndMeasureSpaceChange cleanPackages "Unused packages"
-execAndMeasureSpaceChange cleanSwap "Swap storage"
-execAndMeasureSpaceChange removeNodeModules "Node modules"
-execAndMeasureSpaceChange removePythonPackages "Python Packages"
+    printDF "AFTER CLEAN-UP:"
+    echo ""
+}
 
-removeUnusedDirsAndFiles
-
-# Output saved space statistic
-echo ""
-printDF "AFTER CLEAN-UP:"
-
-echo ""
-echo ""
-
-printSavedSpace "$AVAILABLE_INITIAL" "Total saved"
+execAndMeasure "Total" main
