@@ -1,16 +1,6 @@
 use crate::cmp::BytewiseEq;
 use crate::{intrinsics, mem};
 
-#[lang = "aggregate_raw_ptr"]
-const fn aggregate_raw_ptr<T>(data: *const T, meta: usize) -> *const [T] {
-    intrinsics::aggregate_raw_ptr(data, meta)
-}
-
-#[lang = "offset"]
-const fn offset<T>(ptr: *const T, offset: usize) -> *const T {
-    unsafe { intrinsics::offset(ptr, offset) }
-}
-
 #[lang = "PatternConstEq"]
 #[const_trait]
 trait PatternConstEq<Rhs = Self>

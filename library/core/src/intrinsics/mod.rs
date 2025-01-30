@@ -1965,6 +1965,7 @@ pub const fn needs_drop<T: ?Sized>() -> bool {
 /// of bounds or arithmetic overflow occurs then this operation is undefined behavior.
 ///
 /// The stabilized version of this intrinsic is [`pointer::offset`].
+#[cfg_attr(not(bootstrap), lang = "offset")]
 #[must_use = "returns a new pointer rather than modifying its argument"]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
@@ -4202,6 +4203,7 @@ pub const fn type_id<T: ?Sized + 'static>() -> u128 {
 /// This is used to implement functions like `slice::from_raw_parts_mut` and
 /// `ptr::from_raw_parts` in a way compatible with the compiler being able to
 /// change the possible layouts of pointers.
+#[cfg_attr(not(bootstrap), lang = "aggregate_raw_ptr")]
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]

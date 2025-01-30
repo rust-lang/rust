@@ -372,7 +372,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block,
                 span,
                 LangItem::Offset,
-                &[elem_ty],
+                &[elem_ptr_ty, tcx.types.usize],
                 span.args([Operand::Copy(temp_elem_ptr), ptr_offset]),
                 updated_ptr
             )
@@ -387,7 +387,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block,
                 span,
                 LangItem::AggregateRawPtr,
-                &[elem_ty],
+                &[slice_ptr_ty, elem_ptr_ty, tcx.types.usize],
                 span.args([Operand::Copy(updated_ptr), slice_len]),
                 subslice_ptr
             )
