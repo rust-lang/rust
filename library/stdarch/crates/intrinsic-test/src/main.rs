@@ -185,6 +185,7 @@ fn generate_rust_program(notices: &str, intrinsic: &Intrinsic, target: &str) -> 
     format!(
         r#"{notices}#![feature(simd_ffi)]
 #![feature(link_llvm_intrinsics)]
+#![feature(f16)]
 #![cfg_attr(target_arch = "arm", feature(stdarch_arm_neon_intrinsics))]
 #![cfg_attr(target_arch = "arm", feature(stdarch_aarch32_crc32))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_fcma))]
@@ -193,6 +194,7 @@ fn generate_rust_program(notices: &str, intrinsic: &Intrinsic, target: &str) -> 
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_sha3))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_sm4))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_ftts))]
+#![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_f16))]
 #![allow(non_upper_case_globals)]
 use core_arch::arch::{target_arch}::*;
 
@@ -227,9 +229,9 @@ fn compile_c(
 ) -> bool {
     let flags = std::env::var("CPPFLAGS").unwrap_or("".into());
     let arch_flags = if target.contains("v7") {
-        "-march=armv8.6-a+crypto+crc+dotprod"
+        "-march=armv8.6-a+crypto+crc+dotprod+fp16"
     } else {
-        "-march=armv8.6-a+crypto+sha3+crc+dotprod"
+        "-march=armv8.6-a+crypto+sha3+crc+dotprod+fp16"
     };
 
     let intrinsic_name = &intrinsic.name;
@@ -324,7 +326,12 @@ fn build_c(
             let c_filename = format!(r#"c_programs/{}.cpp"#, i.name);
             let mut file = File::create(&c_filename).unwrap();
 
-            let c_code = generate_c_program(notices, &["arm_neon.h", "arm_acle.h"], i, target);
+            let c_code = generate_c_program(
+                notices,
+                &["arm_neon.h", "arm_acle.h", "arm_fp16.h"],
+                i,
+                target,
+            );
             file.write_all(c_code.into_bytes().as_slice()).unwrap();
             match compiler {
                 None => true,
@@ -512,13 +519,7 @@ fn main() {
         // Not sure how we would compare intrinsic that returns void.
         .filter(|i| i.results.kind() != TypeKind::Void)
         .filter(|i| i.results.kind() != TypeKind::BFloat)
-        .filter(|i| !(i.results.kind() == TypeKind::Float && i.results.inner_size() == 16))
         .filter(|i| !i.arguments.iter().any(|a| a.ty.kind() == TypeKind::BFloat))
-        .filter(|i| {
-            !i.arguments
-                .iter()
-                .any(|a| a.ty.kind() == TypeKind::Float && a.ty.inner_size() == 16)
-        })
         // Skip pointers for now, we would probably need to look at the return
         // type to work out how many elements we need to point to.
         .filter(|i| !i.arguments.iter().any(|a| a.is_ptr()))

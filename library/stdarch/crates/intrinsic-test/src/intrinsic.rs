@@ -62,6 +62,7 @@ impl Intrinsic {
             format!(
                 "{promote}cast<{cast}>(__return_value)",
                 cast = match self.results.kind() {
+                    TypeKind::Float if self.results.inner_size() == 16 => "float16_t".to_string(),
                     TypeKind::Float if self.results.inner_size() == 32 => "float".to_string(),
                     TypeKind::Float if self.results.inner_size() == 64 => "double".to_string(),
                     TypeKind::Int => format!("int{}_t", self.results.inner_size()),

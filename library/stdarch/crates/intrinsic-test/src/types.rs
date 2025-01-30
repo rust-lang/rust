@@ -348,14 +348,16 @@ impl IntrinsicType {
             }
             IntrinsicType::Type {
                 kind: TypeKind::Float,
-                bit_len: Some(bit_len @ (32 | 64)),
+                bit_len: Some(bit_len @ (16 | 32 | 64)),
                 simd_len,
                 vec_len,
                 ..
             } => {
                 let (prefix, cast_prefix, cast_suffix, suffix) = match (language, bit_len) {
+                    (&Language::Rust, 16) => ("[", "f16::from_bits(", ")", "]"),
                     (&Language::Rust, 32) => ("[", "f32::from_bits(", ")", "]"),
                     (&Language::Rust, 64) => ("[", "f64::from_bits(", ")", "]"),
+                    (&Language::C, 16) => ("{", "cast<float16_t, uint16_t>(", ")", "}"),
                     (&Language::C, 32) => ("{", "cast<float, uint32_t>(", ")", "}"),
                     (&Language::C, 64) => ("{", "cast<double, uint64_t>(", ")", "}"),
                     _ => unreachable!(),
