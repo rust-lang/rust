@@ -1566,7 +1566,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             }
         };
 
-        let mut bad_struct_syntax_suggestion = |this: &mut Self, def_id: DefId| {
+        let bad_struct_syntax_suggestion = |this: &mut Self, err: &mut Diag<'_>, def_id: DefId| {
             let (followed_by_brace, closing_brace) = this.followed_by_brace(span);
 
             match source {
@@ -1740,12 +1740,10 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
             }
             (
-                Res::Def(kind @ (DefKind::Mod | DefKind::Trait), _),
+                Res::Def(kind @ (DefKind::Mod | DefKind::Trait | DefKind::TyAlias), _),
                 PathSource::Expr(Some(parent)),
-            ) => {
-                if !path_sep(self, err, parent, kind) {
-                    return false;
-                }
+            ) if path_sep(self, err, parent, kind) => {
+                return true;
             }
             (
                 Res::Def(DefKind::Enum, def_id),
@@ -1777,13 +1775,13 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 let (ctor_def, ctor_vis, fields) = if let Some(struct_ctor) = struct_ctor {
                     if let PathSource::Expr(Some(parent)) = source {
                         if let ExprKind::Field(..) | ExprKind::MethodCall(..) = parent.kind {
-                            bad_struct_syntax_suggestion(self, def_id);
+                            bad_struct_syntax_suggestion(self, err, def_id);
                             return true;
                         }
                     }
                     struct_ctor
                 } else {
-                    bad_struct_syntax_suggestion(self, def_id);
+                    bad_struct_syntax_suggestion(self, err, def_id);
                     return true;
                 };
 
@@ -1861,7 +1859,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 err.span_label(span, "constructor is not visible here due to private fields");
             }
             (Res::Def(DefKind::Union | DefKind::Variant, def_id), _) if ns == ValueNS => {
-                bad_struct_syntax_suggestion(self, def_id);
+                bad_struct_syntax_suggestion(self, err, def_id);
             }
             (Res::Def(DefKind::Ctor(_, CtorKind::Const), def_id), _) if ns == ValueNS => {
                 match source {
