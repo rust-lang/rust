@@ -22,6 +22,7 @@ use tracing::{debug, instrument};
 
 use crate::builder::matches::util::Range;
 use crate::builder::matches::{Candidate, MatchPairTree, Test, TestBranch, TestCase, TestKind};
+use crate::builder::misc::SpannedCallOperandsExt;
 use crate::builder::{BlockAnd, BlockAndExtension, Builder, PlaceBuilder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -311,73 +312,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    fn intrinsic_offset(
-        &mut self,
-        block: BasicBlock,
-        ptr: Operand<'tcx>,
-        offset: Operand<'tcx>,
-        span: Span,
-    ) -> BlockAnd<Place<'tcx>> {
-        let tcx = self.tcx;
-        let source_info = self.source_info(span);
-        let ptr_ty = ptr.ty(&self.local_decls, tcx);
-        let pointee_ty = ptr_ty.pointee();
-        let func = Operand::function_handle(
-            tcx,
-            tcx.require_lang_item(LangItem::Offset, Some(span)),
-            [pointee_ty.into()],
-            span,
-        );
-
-        let out = self.temp(ptr_ty, span);
-        let next_block = self.cfg.start_new_block();
-        self.cfg.terminate(block, source_info, TerminatorKind::Call {
-            func,
-            args: [Spanned { node: ptr, span }, Spanned { node: offset, span }].into(),
-            destination: out,
-            target: Some(next_block),
-            unwind: UnwindAction::Continue,
-            call_source: CallSource::Misc,
-            fn_span: span,
-        });
-
-        next_block.and(out)
-    }
-
-    fn intrinsic_aggregate_raw_ptr(
-        &mut self,
-        block: BasicBlock,
-        ptr: Operand<'tcx>,
-        data: Operand<'tcx>,
-        span: Span,
-    ) -> BlockAnd<Place<'tcx>> {
-        let tcx = self.tcx;
-        let source_info = self.source_info(span);
-        let ptr_ty = ptr.ty(&self.local_decls, tcx);
-        let pointee_ty = ptr_ty.pointee();
-        let func = Operand::function_handle(
-            tcx,
-            tcx.require_lang_item(LangItem::AggregateRawPtr, Some(span)),
-            [pointee_ty.into()],
-            span,
-        );
-
-        let aggregate_ptr_ty = Ty::new_ptr(tcx, Ty::new_slice(tcx, pointee_ty), Mutability::Not);
-        let out = self.temp(aggregate_ptr_ty, span);
-        let next_block = self.cfg.start_new_block();
-        self.cfg.terminate(block, source_info, TerminatorKind::Call {
-            func,
-            args: [Spanned { node: ptr, span }, Spanned { node: data, span }].into(),
-            destination: out,
-            target: Some(next_block),
-            unwind: UnwindAction::Continue,
-            call_source: CallSource::Misc,
-            fn_span: span,
-        });
-
-        next_block.and(out)
-    }
-
     fn subslice_sized_range(
         &mut self,
         mut block: BasicBlock,
@@ -431,21 +365,35 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Rvalue::Cast(CastKind::PtrToPtr, Operand::Copy(temp_source_ptr), elem_ptr_ty),
         );
 
-        let updated_ptr = unpack!(
-            block = self.intrinsic_offset(block, Operand::Copy(temp_elem_ptr), ptr_offset, span)
-        );
-        let slice_len = self.literal_operand(span, slice_len);
+        let updated_ptr = self.temp(elem_ptr_ty, span);
 
-        let subslice_ptr = unpack!(
-            block = self.intrinsic_aggregate_raw_ptr(
+        unpack!(
+            block = self.call_intrinsic(
                 block,
-                Operand::Copy(updated_ptr),
-                slice_len,
-                span
+                span,
+                LangItem::Offset,
+                &[elem_ty],
+                span.args([Operand::Copy(temp_elem_ptr), ptr_offset]),
+                updated_ptr
             )
         );
-        let out = PlaceBuilder::from(subslice_ptr).project(PlaceElem::Deref).to_place(self);
 
+        let slice_len = self.literal_operand(span, slice_len);
+        let slice_ptr_ty = Ty::new_imm_ptr(tcx, Ty::new_slice(tcx, elem_ty));
+        let subslice_ptr = self.temp(slice_ptr_ty, span);
+
+        unpack!(
+            block = self.call_intrinsic(
+                block,
+                span,
+                LangItem::AggregateRawPtr,
+                &[elem_ty],
+                span.args([Operand::Copy(updated_ptr), slice_len]),
+                subslice_ptr
+            )
+        );
+
+        let out = PlaceBuilder::from(subslice_ptr).project(PlaceElem::Deref).to_place(self);
         block.and(out)
     }
 
