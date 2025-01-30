@@ -778,13 +778,13 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     match tcx.def_kind(def_id) {
         DefKind::Static { .. } => {
-            tcx.ensure().typeck(def_id);
+            tcx.ensure_ok().typeck(def_id);
             maybe_check_static_with_link_section(tcx, def_id);
             check_static_inhabited(tcx, def_id);
             check_static_linkage(tcx, def_id);
         }
         DefKind::Const => {
-            tcx.ensure().typeck(def_id);
+            tcx.ensure_ok().typeck(def_id);
         }
         DefKind::Enum => {
             check_enum(tcx, def_id);
@@ -804,7 +804,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         DefKind::Impl { of_trait } => {
             if of_trait && let Some(impl_trait_header) = tcx.impl_trait_header(def_id) {
                 if tcx
-                    .ensure()
+                    .ensure_ok()
                     .coherent_trait(impl_trait_header.trait_ref.instantiate_identity().def_id)
                     .is_ok()
                 {
@@ -1042,7 +1042,7 @@ fn check_impl_items_against_trait<'tcx>(
             continue;
         };
 
-        let res = tcx.ensure().compare_impl_item(impl_item.expect_local());
+        let res = tcx.ensure_ok().compare_impl_item(impl_item.expect_local());
 
         if res.is_ok() {
             match ty_impl_item.kind {
@@ -1488,7 +1488,7 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     for v in def.variants() {
         if let ty::VariantDiscr::Explicit(discr_def_id) = v.discr {
-            tcx.ensure().typeck(discr_def_id.expect_local());
+            tcx.ensure_ok().typeck(discr_def_id.expect_local());
         }
     }
 

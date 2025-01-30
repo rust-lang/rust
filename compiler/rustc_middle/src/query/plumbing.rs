@@ -88,7 +88,7 @@ impl<'tcx> Deref for TyCtxtAt<'tcx> {
 }
 
 #[derive(Copy, Clone)]
-pub struct TyCtxtEnsure<'tcx> {
+pub struct TyCtxtEnsureOk<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
 
@@ -98,11 +98,29 @@ pub struct TyCtxtEnsureWithValue<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// Returns a transparent wrapper for `TyCtxt`, which ensures queries
-    /// are executed instead of just returning their results.
+    /// Wrapper that calls queries in a special "ensure OK" mode, for callers
+    /// that don't need the return value and just want to invoke a query for
+    /// its potential side-effect of emitting fatal errors.
+    ///
+    /// This can be more efficient than a normal query call, because if the
+    /// query's inputs are all green, the call can return immediately without
+    /// needing to obtain a value (by decoding one from disk or by executing
+    /// the query).
+    ///
+    /// (As with all query calls, execution is also skipped if the query result
+    /// is already cached in memory.)
+    ///
+    /// ## WARNING
+    /// A subsequent normal call to the same query might still cause it to be
+    /// executed! This can occur when the inputs are all green, but the query's
+    /// result is not cached on disk, so the query must be executed to obtain a
+    /// return value.
+    ///
+    /// Therefore, this call mode is not appropriate for callers that want to
+    /// ensure that the query is _never_ executed in the future.
     #[inline(always)]
-    pub fn ensure(self) -> TyCtxtEnsure<'tcx> {
-        TyCtxtEnsure { tcx: self }
+    pub fn ensure_ok(self) -> TyCtxtEnsureOk<'tcx> {
+        TyCtxtEnsureOk { tcx: self }
     }
 
     /// Returns a transparent wrapper for `TyCtxt`, which ensures queries
@@ -248,15 +266,15 @@ macro_rules! separate_provide_extern_decl {
     };
 }
 
-macro_rules! ensure_result {
-    ([][$ty:ty]) => {
+macro_rules! ensure_ok_result {
+    ( [] ) => {
         ()
     };
-    ([(ensure_forwards_result_if_red) $($rest:tt)*][$ty:ty]) => {
+    ( [(ensure_forwards_result_if_red) $($rest:tt)*] ) => {
         Result<(), ErrorGuaranteed>
     };
-    ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
-        ensure_result!([$($modifiers)*][$($args)*])
+    ( [$other:tt $($modifiers:tt)*] ) => {
+        ensure_ok_result!( [$($modifiers)*] )
     };
 }
 
@@ -383,10 +401,13 @@ macro_rules! define_callbacks {
             $($(#[$attr])* pub $name: queries::$name::Storage<'tcx>,)*
         }
 
-        impl<'tcx> TyCtxtEnsure<'tcx> {
+        impl<'tcx> TyCtxtEnsureOk<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> ensure_result!([$($modifiers)*][$V]) {
+            pub fn $name(
+                self,
+                key: query_helper_param_ty!($($K)*),
+            ) -> ensure_ok_result!([$($modifiers)*]) {
                 query_ensure!(
                     [$($modifiers)*]
                     self.tcx,

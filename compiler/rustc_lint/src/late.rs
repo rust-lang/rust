@@ -458,7 +458,7 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) {
         || {
             tcx.sess.time("module_lints", || {
                 // Run per-module lints
-                tcx.hir().par_for_each_module(|module| tcx.ensure().lint_mod(module));
+                tcx.hir().par_for_each_module(|module| tcx.ensure_ok().lint_mod(module));
             });
         },
     );

@@ -68,7 +68,7 @@ pub fn build_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
             // "not all control paths return a value" is reported here.
             //
             // maybe move the check to a MIR pass?
-            tcx.ensure().check_liveness(def);
+            tcx.ensure_ok().check_liveness(def);
 
             // Don't steal here, instead steal in unsafeck. This is so that
             // pattern inline constants can be evaluated as part of building the
