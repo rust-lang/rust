@@ -11,6 +11,19 @@ const JOSH_FILTER: &str = ":/src/doc/rustc-dev-guide";
 const JOSH_PORT: u16 = 42042;
 const UPSTREAM_REPO: &str = "rust-lang/rust";
 
+pub enum RustcPullError {
+    /// No changes are available to be pulled.
+    NothingToPull,
+    /// A rustc-pull has failed, probably a git operation error has occurred.
+    PullFailed(anyhow::Error)
+}
+
+impl<E> From<E> for RustcPullError where E: Into<anyhow::Error> {
+    fn from(error: E) -> Self {
+        Self::PullFailed(error.into())
+    }
+}
+
 pub struct GitSync {
     dir: PathBuf,
 }
@@ -24,7 +37,7 @@ impl GitSync {
         })
     }
 
-    pub fn rustc_pull(&self, commit: Option<String>) -> anyhow::Result<()> {
+    pub fn rustc_pull(&self, commit: Option<String>) -> Result<(), RustcPullError> {
         let sh = Shell::new()?;
         sh.change_dir(&self.dir);
         let commit = commit.map(Ok).unwrap_or_else(|| {
@@ -38,7 +51,7 @@ impl GitSync {
         })?;
         // Make sure the repo is clean.
         if cmd!(sh, "git status --untracked-files=no --porcelain").read()?.is_empty().not() {
-            bail!("working directory must be clean before performing rustc pull");
+            return Err(anyhow::anyhow!("working directory must be clean before performing rustc pull").into());
         }
         // Make sure josh is running.
         let josh = Self::start_josh()?;
@@ -47,7 +60,7 @@ impl GitSync {
 
         let previous_base_commit = sh.read_file("rust-version")?.trim().to_string();
         if previous_base_commit == commit {
-            return Err(anyhow::anyhow!("No changes since last pull"));
+            return Err(RustcPullError::NothingToPull);
         }
 
         // Update rust-version file. As a separate commit, since making it part of
@@ -94,12 +107,13 @@ impl GitSync {
             cmd!(sh, "git reset --hard HEAD^")
                 .run()
                 .expect("FAILED to clean up after creating the preparation commit");
-            return Err(anyhow::anyhow!("No merge was performed, nothing to pull. Rolled back the preparation commit."));
+            eprintln!("No merge was performed, no changes to pull were found. Rolled back the preparation commit.");
+            return Err(RustcPullError::NothingToPull);
         }
 
         // Check that the number of roots did not increase.
         if num_roots()? != num_roots_before {
-            bail!("Josh created a new root commit. This is probably not the history you want.");
+            return Err(anyhow::anyhow!("Josh created a new root commit. This is probably not the history you want.").into());
         }
 
         drop(josh);
