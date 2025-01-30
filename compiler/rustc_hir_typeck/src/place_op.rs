@@ -1,6 +1,7 @@
 use rustc_errors::Applicability;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::InferOk;
+use rustc_infer::traits::{Obligation, ObligationCauseCode};
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, OverloadedDeref,
@@ -136,8 +137,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut self_ty = adjusted_ty;
             if unsize {
                 // We only unsize arrays here.
-                if let ty::Array(element_ty, _) = adjusted_ty.kind() {
-                    self_ty = Ty::new_slice(self.tcx, *element_ty);
+                if let ty::Array(element_ty, ct) = *adjusted_ty.kind() {
+                    self.register_predicate(Obligation::new(
+                        self.tcx,
+                        self.cause(base_expr.span, ObligationCauseCode::ArrayLen(adjusted_ty)),
+                        self.param_env,
+                        ty::ClauseKind::ConstArgHasType(ct, self.tcx.types.usize),
+                    ));
+                    self_ty = Ty::new_slice(self.tcx, element_ty);
                 } else {
                     continue;
                 }

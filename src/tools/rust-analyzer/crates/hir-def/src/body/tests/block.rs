@@ -475,7 +475,7 @@ fn outer() {
 
             block scope::tests
             name: _
-            outer: v
+            outer: vg
 
             crate
             outer: v

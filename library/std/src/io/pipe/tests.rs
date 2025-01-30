@@ -1,7 +1,7 @@
 use crate::io::{Read, Write, pipe};
 
 #[test]
-#[cfg(all(windows, unix, not(miri)))]
+#[cfg(all(any(unix, windows), not(miri)))]
 fn pipe_creation_clone_and_rw() {
     let (rx, tx) = pipe().unwrap();
 

@@ -493,9 +493,10 @@ fn target_features_cfg(
     sess.target
         .rust_target_features()
         .iter()
-        .filter(|&&(_, gate, _)| gate.in_cfg())
         .filter_map(|&(feature, gate, _)| {
-            if sess.is_nightly_build() || allow_unstable || gate.requires_nightly().is_none() {
+            if allow_unstable
+                || (gate.in_cfg() && (sess.is_nightly_build() || gate.requires_nightly().is_none()))
+            {
                 Some(feature)
             } else {
                 None

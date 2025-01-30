@@ -11,8 +11,8 @@ use rustc_errors::{
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{
-    self as hir, BindingMode, ByRef, ExprKind, HirId, LangItem, Mutability, Pat, PatKind,
-    expr_needs_parens,
+    self as hir, BindingMode, ByRef, ExprKind, HirId, LangItem, Mutability, Pat, PatExpr,
+    PatExprKind, PatKind, expr_needs_parens,
 };
 use rustc_infer::infer;
 use rustc_middle::traits::PatternOriginExpr;
@@ -312,9 +312,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'_, 'tcx>) {
         let PatInfo { binding_mode, max_ref_mutbl, top_info: ti, current_depth, .. } = pat_info;
 
-        let path_res = match &pat.kind {
-            PatKind::Path(qpath) => {
-                Some(self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span))
+        let path_res = match pat.kind {
+            PatKind::Expr(PatExpr { kind: PatExprKind::Path(ref qpath), hir_id, span }) => {
+                Some(self.resolve_ty_and_res_fully_qualified_call(qpath, *hir_id, *span))
             }
             _ => None,
         };
@@ -333,6 +333,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Wild | PatKind::Err(_) => expected,
             // We allow any type here; we ensure that the type is uninhabited during match checking.
             PatKind::Never => expected,
+            PatKind::Expr(PatExpr { kind: PatExprKind::Path(ref qpath), hir_id, span }) => {
+                let ty = self.check_pat_path(
+                    *hir_id,
+                    pat.hir_id,
+                    *span,
+                    qpath,
+                    path_res.unwrap(),
+                    expected,
+                    ti,
+                );
+                self.write_ty(*hir_id, ty);
+                ty
+            }
             PatKind::Expr(lt) => self.check_pat_lit(pat.span, lt, expected, ti),
             PatKind::Range(lhs, rhs, _) => self.check_pat_range(pat.span, lhs, rhs, expected, ti),
             PatKind::Binding(ba, var_id, ident, sub) => {
@@ -340,9 +353,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             PatKind::TupleStruct(ref qpath, subpats, ddpos) => {
                 self.check_pat_tuple_struct(pat, qpath, subpats, ddpos, expected, pat_info)
-            }
-            PatKind::Path(ref qpath) => {
-                self.check_pat_path(pat.hir_id, pat.span, qpath, path_res.unwrap(), expected, ti)
             }
             PatKind::Struct(ref qpath, fields, has_rest_pat) => {
                 self.check_pat_struct(pat, qpath, fields, has_rest_pat, expected, pat_info)
@@ -456,16 +466,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | PatKind::Slice(..) => AdjustMode::Peel,
             // A never pattern behaves somewhat like a literal or unit variant.
             PatKind::Never => AdjustMode::Peel,
-            // String and byte-string literals result in types `&str` and `&[u8]` respectively.
-            // All other literals result in non-reference types.
-            // As a result, we allow `if let 0 = &&0 {}` but not `if let "foo" = &&"foo" {}`.
-            //
-            // Call `resolve_vars_if_possible` here for inline const blocks.
-            PatKind::Expr(lt) => match self.resolve_vars_if_possible(self.check_pat_expr_unadjusted(lt)).kind() {
-                ty::Ref(..) => AdjustMode::Pass,
-                _ => AdjustMode::Peel,
-            },
-            PatKind::Path(_) => match opt_path_res.unwrap() {
+            PatKind::Expr(PatExpr { kind: PatExprKind::Path(_), .. }) => match opt_path_res.unwrap() {
                 // These constants can be of a reference type, e.g. `const X: &u8 = &0;`.
                 // Peeling the reference types too early will cause type checking failures.
                 // Although it would be possible to *also* peel the types of the constants too.
@@ -476,6 +477,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // a reference type wherefore peeling doesn't give up any expressiveness.
                 _ => AdjustMode::Peel,
             },
+
+            // String and byte-string literals result in types `&str` and `&[u8]` respectively.
+            // All other literals result in non-reference types.
+            // As a result, we allow `if let 0 = &&0 {}` but not `if let "foo" = &&"foo" {}`.
+            //
+            // Call `resolve_vars_if_possible` here for inline const blocks.
+            PatKind::Expr(lt) => match self.resolve_vars_if_possible(self.check_pat_expr_unadjusted(lt)).kind() {
+                ty::Ref(..) => AdjustMode::Pass,
+                _ => AdjustMode::Peel,
+            },
+
             // Ref patterns are complicated, we handle them in `check_pat_ref`.
             PatKind::Ref(..) => AdjustMode::Pass,
             // A `_` pattern works with any expected type, so there's no need to do anything.
@@ -1001,7 +1013,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         PatKind::Wild
                         | PatKind::Never
                         | PatKind::Binding(..)
-                        | PatKind::Path(..)
                         | PatKind::Box(..)
                         | PatKind::Deref(_)
                         | PatKind::Ref(..)
@@ -1139,7 +1150,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_pat_path(
         &self,
-        hir_id: HirId,
+        path_id: HirId,
+        pat_id_for_diag: HirId,
         span: Span,
         qpath: &hir::QPath<'_>,
         path_resolution: (Res, Option<LoweredTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]),
@@ -1193,11 +1205,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check the path.
         let (pat_ty, pat_res) =
-            self.instantiate_value_path(segments, opt_ty, res, span, span, hir_id);
+            self.instantiate_value_path(segments, opt_ty, res, span, span, path_id);
         if let Err(err) =
             self.demand_suptype_with_origin(&self.pattern_cause(ti, span), expected, pat_ty)
         {
-            self.emit_bad_pat_path(err, hir_id, span, res, pat_res, pat_ty, segments);
+            self.emit_bad_pat_path(err, pat_id_for_diag, span, res, pat_res, pat_ty, segments);
         }
         pat_ty
     }

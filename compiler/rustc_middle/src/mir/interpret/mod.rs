@@ -30,8 +30,8 @@ pub use {
 };
 
 pub use self::allocation::{
-    AllocBytes, AllocError, AllocRange, AllocResult, Allocation, ConstAllocation, InitChunk,
-    InitChunkIter, alloc_range,
+    AllocBytes, AllocError, AllocInit, AllocRange, AllocResult, Allocation, ConstAllocation,
+    InitChunk, InitChunkIter, alloc_range,
 };
 pub use self::error::{
     BadBytesAccess, CheckAlignMsg, CheckInAllocMsg, ErrorHandled, EvalStaticInitializerRawResult,

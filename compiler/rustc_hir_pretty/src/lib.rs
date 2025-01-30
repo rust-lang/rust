@@ -1906,9 +1906,6 @@ impl<'a> State<'a> {
                 }
                 self.pclose();
             }
-            PatKind::Path(ref qpath) => {
-                self.print_qpath(qpath, true);
-            }
             PatKind::Struct(ref qpath, fields, etc) => {
                 self.print_qpath(qpath, true);
                 self.nbsp();

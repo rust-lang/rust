@@ -1381,6 +1381,9 @@ impl ExprCollector<'_> {
                 }
             }
             ast::Stmt::Item(ast::Item::MacroDef(macro_)) => {
+                if self.check_cfg(&macro_).is_none() {
+                    return;
+                }
                 let Some(name) = macro_.name() else {
                     statements.push(Statement::Item(Item::Other));
                     return;
@@ -1390,6 +1393,9 @@ impl ExprCollector<'_> {
                 self.collect_macro_def(statements, macro_id);
             }
             ast::Stmt::Item(ast::Item::MacroRules(macro_)) => {
+                if self.check_cfg(&macro_).is_none() {
+                    return;
+                }
                 let Some(name) = macro_.name() else {
                     statements.push(Statement::Item(Item::Other));
                     return;

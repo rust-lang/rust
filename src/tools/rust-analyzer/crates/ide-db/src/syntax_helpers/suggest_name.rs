@@ -31,6 +31,12 @@ const USELESS_NAME_PREFIXES: &[&str] = &["from_", "with_", "into_"];
 /// `Result<User, Error>` -> `User`
 const WRAPPER_TYPES: &[&str] = &["Box", "Arc", "Rc", "Option", "Result"];
 
+/// Generic types replaced by a plural of their first argument.
+///
+/// # Examples
+/// `Vec<Name>` -> "names"
+const SEQUENCE_TYPES: &[&str] = &["Vec", "VecDeque", "LinkedList"];
+
 /// Prefixes to strip from methods names
 ///
 /// # Examples
@@ -378,6 +384,11 @@ fn name_of_type(ty: &hir::Type, db: &RootDatabase, edition: Edition) -> Option<S
             return name_of_type(&inner_ty, db, edition);
         }
 
+        if SEQUENCE_TYPES.contains(&name.as_str()) {
+            let inner_ty = ty.type_arguments().next();
+            return Some(sequence_name(inner_ty.as_ref(), db, edition));
+        }
+
         name
     } else if let Some(trait_) = ty.as_dyn_trait() {
         trait_name(&trait_, db, edition)?
@@ -390,10 +401,30 @@ fn name_of_type(ty: &hir::Type, db: &RootDatabase, edition: Edition) -> Option<S
         name
     } else if let Some(inner_ty) = ty.remove_ref() {
         return name_of_type(&inner_ty, db, edition);
+    } else if let Some(inner_ty) = ty.as_slice() {
+        return Some(sequence_name(Some(&inner_ty), db, edition));
     } else {
         return None;
     };
     normalize(&name)
+}
+
+fn sequence_name(inner_ty: Option<&hir::Type>, db: &RootDatabase, edition: Edition) -> SmolStr {
+    let items_str = SmolStr::new_static("items");
+    let Some(inner_ty) = inner_ty else {
+        return items_str;
+    };
+    let Some(name) = name_of_type(inner_ty, db, edition) else {
+        return items_str;
+    };
+
+    if name.ends_with(['s', 'x', 'y']) {
+        // Given a type called e.g. "Boss", "Fox" or "Story", don't try to
+        // create a plural.
+        items_str
+    } else {
+        SmolStr::new(format!("{name}s"))
+    }
 }
 
 fn trait_name(trait_: &hir::Trait, db: &RootDatabase, edition: Edition) -> Option<String> {
@@ -894,6 +925,58 @@ fn bar() -> Rc<Seed> {}
 fn foo() { $0(bar())$0; }
 "#,
             "seed",
+        );
+    }
+
+    #[test]
+    fn vec_value() {
+        check(
+            r#"
+struct Vec<T> {};
+struct Seed;
+fn bar() -> Vec<Seed> {}
+fn foo() { $0(bar())$0; }
+"#,
+            "seeds",
+        );
+    }
+
+    #[test]
+    fn vec_value_ends_with_s() {
+        check(
+            r#"
+struct Vec<T> {};
+struct Boss;
+fn bar() -> Vec<Boss> {}
+fn foo() { $0(bar())$0; }
+"#,
+            "items",
+        );
+    }
+
+    #[test]
+    fn vecdeque_value() {
+        check(
+            r#"
+struct VecDeque<T> {};
+struct Seed;
+fn bar() -> VecDeque<Seed> {}
+fn foo() { $0(bar())$0; }
+"#,
+            "seeds",
+        );
+    }
+
+    #[test]
+    fn slice_value() {
+        check(
+            r#"
+struct Vec<T> {};
+struct Seed;
+fn bar() -> &[Seed] {}
+fn foo() { $0(bar())$0; }
+"#,
+            "seeds",
         );
     }
 

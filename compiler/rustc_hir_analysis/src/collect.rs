@@ -65,9 +65,9 @@ pub fn provide(providers: &mut Providers) {
         type_alias_is_lazy: type_of::type_alias_is_lazy,
         item_bounds: item_bounds::item_bounds,
         explicit_item_bounds: item_bounds::explicit_item_bounds,
-        item_super_predicates: item_bounds::item_super_predicates,
-        explicit_item_super_predicates: item_bounds::explicit_item_super_predicates,
-        item_non_self_assumptions: item_bounds::item_non_self_assumptions,
+        item_self_bounds: item_bounds::item_self_bounds,
+        explicit_item_self_bounds: item_bounds::explicit_item_self_bounds,
+        item_non_self_bounds: item_bounds::item_non_self_bounds,
         impl_super_outlives: item_bounds::impl_super_outlives,
         generics_of: generics_of::generics_of,
         predicates_of: predicates_of::predicates_of,
@@ -328,9 +328,9 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         self.tcx.ensure().generics_of(def_id);
         self.tcx.ensure().predicates_of(def_id);
         self.tcx.ensure().explicit_item_bounds(def_id);
-        self.tcx.ensure().explicit_item_super_predicates(def_id);
+        self.tcx.ensure().explicit_item_self_bounds(def_id);
         self.tcx.ensure().item_bounds(def_id);
-        self.tcx.ensure().item_super_predicates(def_id);
+        self.tcx.ensure().item_self_bounds(def_id);
         if self.tcx.is_conditionally_const(def_id) {
             self.tcx.ensure().explicit_implied_const_bounds(def_id);
             self.tcx.ensure().const_conditions(def_id);
@@ -822,7 +822,7 @@ fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
 
         hir::TraitItemKind::Type(_, Some(_)) => {
             tcx.ensure().item_bounds(def_id);
-            tcx.ensure().item_super_predicates(def_id);
+            tcx.ensure().item_self_bounds(def_id);
             tcx.ensure().type_of(def_id);
             // Account for `type T = _;`.
             let mut visitor = HirPlaceholderCollector::default();
@@ -839,7 +839,7 @@ fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
 
         hir::TraitItemKind::Type(_, None) => {
             tcx.ensure().item_bounds(def_id);
-            tcx.ensure().item_super_predicates(def_id);
+            tcx.ensure().item_self_bounds(def_id);
             // #74612: Visit and try to find bad placeholders
             // even if there is no concrete type.
             let mut visitor = HirPlaceholderCollector::default();

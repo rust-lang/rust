@@ -142,9 +142,8 @@ fn completion_item_hash(item: &CompletionItem, is_ref_completion: bool) -> [u8; 
         hasher.update(prefix);
         hasher.update(u32::from(*text_size).to_le_bytes());
     }
-    for (import_path, import_name) in &item.import_to_add {
+    for import_path in &item.import_to_add {
         hasher.update(import_path);
-        hasher.update(import_name);
     }
     hasher.finalize()
 }

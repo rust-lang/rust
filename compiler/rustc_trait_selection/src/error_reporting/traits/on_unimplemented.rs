@@ -799,7 +799,7 @@ impl<'tcx> OnUnimplementedFormatString {
         let mut result = Ok(());
         for token in &mut parser {
             match token {
-                Piece::String(_) => (), // Normal string, no need to check it
+                Piece::Lit(_) => (), // Normal string, no need to check it
                 Piece::NextArgument(a) => {
                     let format_spec = a.format;
                     if self.is_diagnostic_namespace_variant
@@ -950,7 +950,7 @@ impl<'tcx> OnUnimplementedFormatString {
         let item_context = (options.get(&sym::ItemContext)).unwrap_or(&empty_string);
         let constructed_message = (&mut parser)
             .map(|p| match p {
-                Piece::String(s) => s.to_owned(),
+                Piece::Lit(s) => s.to_owned(),
                 Piece::NextArgument(a) => match a.position {
                     Position::ArgumentNamed(arg) => {
                         let s = Symbol::intern(arg);

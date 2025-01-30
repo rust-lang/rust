@@ -5,15 +5,28 @@
 // the page, so we don't see major layout changes during the load of the page.
 "use strict";
 
+/**
+ * @import * as rustdoc from "./rustdoc.d.ts";
+ */
+
 const builtinThemes = ["light", "dark", "ayu"];
 const darkThemes = ["dark", "ayu"];
-window.currentTheme = document.getElementById("themeStyle");
+window.currentTheme = (function() {
+    const currentTheme = document.getElementById("themeStyle");
+    return currentTheme instanceof HTMLLinkElement ? currentTheme : null;
+})();
 
 const settingsDataset = (function() {
     const settingsElement = document.getElementById("default-settings");
     return settingsElement && settingsElement.dataset ? settingsElement.dataset : null;
 })();
 
+/**
+ * Get a configuration value. If it's not set, get the default.
+ *
+ * @param {string} settingName
+ * @returns
+ */
 function getSettingValue(settingName) {
     const current = getCurrentValue(settingName);
     if (current === null && settingsDataset !== null) {
@@ -29,17 +42,39 @@ function getSettingValue(settingName) {
 
 const localStoredTheme = getSettingValue("theme");
 
+/**
+ * Check if a DOM Element has the given class set.
+ * If `elem` is null, returns false.
+ *
+ * @param {HTMLElement|null} elem
+ * @param {string} className
+ * @returns {boolean}
+ */
 // eslint-disable-next-line no-unused-vars
 function hasClass(elem, className) {
-    return elem && elem.classList && elem.classList.contains(className);
+    return !!elem && !!elem.classList && elem.classList.contains(className);
 }
 
+/**
+ * Add a class to a DOM Element. If `elem` is null,
+ * does nothing. This function is idempotent.
+ *
+ * @param {HTMLElement|null} elem
+ * @param {string} className
+ */
 function addClass(elem, className) {
     if (elem && elem.classList) {
         elem.classList.add(className);
     }
 }
 
+/**
+ * Remove a class from a DOM Element. If `elem` is null,
+ * does nothing. This function is idempotent.
+ *
+ * @param {HTMLElement|null} elem
+ * @param {string} className
+ */
 // eslint-disable-next-line no-unused-vars
 function removeClass(elem, className) {
     if (elem && elem.classList) {
@@ -49,8 +84,8 @@ function removeClass(elem, className) {
 
 /**
  * Run a callback for every element of an Array.
- * @param {Array<?>}    arr        - The array to iterate over
- * @param {function(?)} func       - The callback
+ * @param {Array<?>}                       arr  - The array to iterate over
+ * @param {function(?): boolean|undefined} func - The callback
  */
 function onEach(arr, func) {
     for (const elem of arr) {
@@ -67,8 +102,8 @@ function onEach(arr, func) {
  * or a "live" NodeList while modifying it can be very slow.
  * https://developer.mozilla.org/en-US/docs/Web/API/HTMLCollection
  * https://developer.mozilla.org/en-US/docs/Web/API/NodeList
- * @param {NodeList<?>|HTMLCollection<?>} lazyArray  - An array to iterate over
- * @param {function(?)}                   func       - The callback
+ * @param {NodeList|HTMLCollection} lazyArray  - An array to iterate over
+ * @param {function(?): boolean}    func       - The callback
  */
 // eslint-disable-next-line no-unused-vars
 function onEachLazy(lazyArray, func) {
@@ -77,6 +112,15 @@ function onEachLazy(lazyArray, func) {
         func);
 }
 
+/**
+ * Set a configuration value. This uses localstorage,
+ * with a `rustdoc-` prefix, to avoid clashing with other
+ * web apps that may be running in the same domain (for example, mdBook).
+ * If localStorage is disabled, this function does nothing.
+ *
+ * @param {string} name
+ * @param {string} value
+ */
 function updateLocalStorage(name, value) {
     try {
         window.localStorage.setItem("rustdoc-" + name, value);
@@ -85,6 +129,15 @@ function updateLocalStorage(name, value) {
     }
 }
 
+/**
+ * Get a configuration value. If localStorage is disabled,
+ * this function returns null. If the setting was never
+ * changed by the user, it also returns null; if you want to
+ * be able to use a default value, call `getSettingValue` instead.
+ *
+ * @param {string} name
+ * @returns {string|null}
+ */
 function getCurrentValue(name) {
     try {
         return window.localStorage.getItem("rustdoc-" + name);
@@ -93,19 +146,29 @@ function getCurrentValue(name) {
     }
 }
 
-// Get a value from the rustdoc-vars div, which is used to convey data from
-// Rust to the JS. If there is no such element, return null.
-const getVar = (function getVar(name) {
+/**
+ * Get a value from the rustdoc-vars div, which is used to convey data from
+ * Rust to the JS. If there is no such element, return null.
+ *
+ * @param {string} name
+ * @returns {string|null}
+ */
+function getVar(name) {
     const el = document.querySelector("head > meta[name='rustdoc-vars']");
-    return el ? el.attributes["data-" + name].value : null;
-});
+    return el ? el.getAttribute("data-" + name) : null;
+}
 
+/**
+ * Change the current theme.
+ * @param {string|null} newThemeName
+ * @param {boolean} saveTheme
+ */
 function switchTheme(newThemeName, saveTheme) {
-    const themeNames = getVar("themes").split(",").filter(t => t);
+    const themeNames = (getVar("themes") || "").split(",").filter(t => t);
     themeNames.push(...builtinThemes);
 
     // Ensure that the new theme name is among the defined themes
-    if (themeNames.indexOf(newThemeName) === -1) {
+    if (newThemeName === null || themeNames.indexOf(newThemeName) === -1) {
         return;
     }
 
@@ -118,7 +181,7 @@ function switchTheme(newThemeName, saveTheme) {
     document.documentElement.setAttribute("data-theme", newThemeName);
 
     if (builtinThemes.indexOf(newThemeName) !== -1) {
-        if (window.currentTheme) {
+        if (window.currentTheme && window.currentTheme.parentNode) {
             window.currentTheme.parentNode.removeChild(window.currentTheme);
             window.currentTheme = null;
         }
@@ -130,7 +193,10 @@ function switchTheme(newThemeName, saveTheme) {
             // rendering, but if we are done, it would blank the page.
             if (document.readyState === "loading") {
                 document.write(`<link rel="stylesheet" id="themeStyle" href="${newHref}">`);
-                window.currentTheme = document.getElementById("themeStyle");
+                window.currentTheme = (function() {
+                    const currentTheme = document.getElementById("themeStyle");
+                    return currentTheme instanceof HTMLLinkElement ? currentTheme : null;
+                })();
             } else {
                 window.currentTheme = document.createElement("link");
                 window.currentTheme.rel = "stylesheet";
@@ -179,11 +245,13 @@ const updateTheme = (function() {
     return updateTheme;
 })();
 
+// @ts-ignore
 if (getSettingValue("use-system-theme") !== "false" && window.matchMedia) {
     // update the preferred dark theme if the user is already using a dark theme
     // See https://github.com/rust-lang/rust/pull/77809#issuecomment-707875732
     if (getSettingValue("use-system-theme") === null
         && getSettingValue("preferred-dark-theme") === null
+        && localStoredTheme !== null
         && darkThemes.indexOf(localStoredTheme) >= 0) {
         updateLocalStorage("preferred-dark-theme", localStoredTheme);
     }

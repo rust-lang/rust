@@ -11,7 +11,10 @@ use syntax::{
     match_ast, SyntaxKind, SyntaxNode, T,
 };
 
-use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
+use crate::{
+    inlay_hints::LazyProperty, InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig,
+    InlayKind,
+};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -141,7 +144,7 @@ pub(super) fn hints(
     acc.push(InlayHint {
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBrace,
-        label: InlayHintLabel::simple(label, None, linked_location),
+        label: InlayHintLabel::simple(label, None, linked_location.map(LazyProperty::Computed)),
         text_edit: None,
         position: InlayHintPosition::After,
         pad_left: true,

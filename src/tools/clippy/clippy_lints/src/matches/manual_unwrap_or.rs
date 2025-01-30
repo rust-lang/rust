@@ -7,7 +7,7 @@ use clippy_utils::{is_res_lang_ctor, path_to_local_id, peel_blocks, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, ResultErr};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Arm, Expr, Pat, PatKind};
+use rustc_hir::{Arm, Expr, Pat, PatExpr, PatExprKind, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
 use rustc_span::sym;
@@ -89,7 +89,11 @@ fn applicable_or_arm<'a>(cx: &LateContext<'_>, arms: &'a [Arm<'a>]) -> Option<(&
     if arms.len() == 2
         && arms.iter().all(|arm| arm.guard.is_none())
         && let Some((idx, or_arm)) = arms.iter().enumerate().find(|(_, arm)| match arm.pat.kind {
-            PatKind::Path(ref qpath) => is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), OptionNone),
+            PatKind::Expr(PatExpr {
+                hir_id,
+                kind: PatExprKind::Path(qpath),
+                ..
+            }) => is_res_lang_ctor(cx, cx.qpath_res(qpath, *hir_id), OptionNone),
             PatKind::TupleStruct(ref qpath, [pat], _) => {
                 matches!(pat.kind, PatKind::Wild)
                     && is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), ResultErr)

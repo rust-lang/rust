@@ -708,11 +708,6 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.qpath(qpath);
                 self.slice(fields, |pat| self.pat(pat));
             },
-            PatKind::Path(ref qpath) => {
-                bind!(self, qpath);
-                kind!("Path(ref {qpath})");
-                self.qpath(qpath);
-            },
             PatKind::Tuple(fields, skip_pos) => {
                 bind!(self, fields);
                 kind!("Tuple({fields}, {skip_pos:?})");

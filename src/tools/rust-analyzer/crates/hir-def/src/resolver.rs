@@ -19,7 +19,7 @@ use crate::{
     db::DefDatabase,
     generics::{GenericParams, TypeOrConstParamData},
     hir::{BindingId, ExprId, LabelId},
-    item_scope::{BuiltinShadowMode, ImportId, ImportOrExternCrate, BUILTIN_SCOPE},
+    item_scope::{BuiltinShadowMode, ImportOrExternCrate, ImportOrGlob, BUILTIN_SCOPE},
     lang_item::LangItemTarget,
     nameres::{DefMap, MacroSubNs, ResolvePathResultPrefixInfo},
     path::{ModPath, Path, PathKind},
@@ -107,7 +107,7 @@ pub enum TypeNs {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ResolveValueResult {
-    ValueNs(ValueNs, Option<ImportId>),
+    ValueNs(ValueNs, Option<ImportOrGlob>),
     Partial(TypeNs, usize, Option<ImportOrExternCrate>),
 }
 
@@ -485,7 +485,7 @@ impl Resolver {
         db: &dyn DefDatabase,
         path: &ModPath,
         expected_macro_kind: Option<MacroSubNs>,
-    ) -> Option<(MacroId, Option<ImportId>)> {
+    ) -> Option<(MacroId, Option<ImportOrGlob>)> {
         let (item_map, module) = self.item_scope();
         item_map
             .resolve_path(db, module, path, BuiltinShadowMode::Other, expected_macro_kind)
@@ -1014,7 +1014,7 @@ impl ModuleItemMap {
     }
 }
 
-fn to_value_ns(per_ns: PerNs) -> Option<(ValueNs, Option<ImportId>)> {
+fn to_value_ns(per_ns: PerNs) -> Option<(ValueNs, Option<ImportOrGlob>)> {
     let (def, import) = per_ns.take_values_import()?;
     let res = match def {
         ModuleDefId::FunctionId(it) => ValueNs::FunctionId(it),

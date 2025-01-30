@@ -709,9 +709,6 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) -> V:
             try_visit!(visitor.visit_qpath(qpath, pattern.hir_id, pattern.span));
             walk_list!(visitor, visit_pat, children);
         }
-        PatKind::Path(ref qpath) => {
-            try_visit!(visitor.visit_qpath(qpath, pattern.hir_id, pattern.span));
-        }
         PatKind::Struct(ref qpath, fields, _) => {
             try_visit!(visitor.visit_qpath(qpath, pattern.hir_id, pattern.span));
             walk_list!(visitor, visit_pat_field, fields);
