@@ -332,28 +332,21 @@ git worktree add -b my-feature ../rust2 master
 You can then use that rust2 folder as a separate workspace for modifying and
 building `rustc`!
 
-## Using nix-shell
+## Working with nix
 
-If you're using nix, you can use the following nix-shell to work on Rust:
+Several nix configurations are defined in `src/tools/nix-dev-shell`.
 
-```nix
-{ pkgs ? import <nixpkgs> {} }:
-pkgs.mkShell {
-  name = "rustc";
-  nativeBuildInputs = with pkgs; [
-    binutils cmake ninja pkg-config python3 git curl cacert patchelf nix
-  ];
-  buildInputs = with pkgs; [
-    openssl glibc.out glibc.static
-  ];
-  # Avoid creating text files for ICEs.
-  RUSTC_ICE = "0";
-  # Provide `libstdc++.so.6` for the self-contained lld.
-  LD_LIBRARY_PATH = "${with pkgs; lib.makeLibraryPath [
-    stdenv.cc.cc.lib
-  ]}";
-}
+If you're using direnv, you can create a symbol link to `src/tools/nix-dev-shell/envrc-flake` or `src/tools/nix-dev-shell/envrc-shell`
+
+```bash
+ln -s ./src/tools/nix-dev-shell/envrc-flake ./.envrc # Use flake
 ```
+or
+```bash
+ln -s ./src/tools/nix-dev-shell/envrc-shell ./.envrc # Use nix-shell
+```
+
+### Note
 
 Note that when using nix on a not-NixOS distribution, it may be necessary to set
 **`patch-binaries-for-nix = true` in `config.toml`**. Bootstrap tries to detect
