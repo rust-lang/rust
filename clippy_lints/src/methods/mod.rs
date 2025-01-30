@@ -4367,7 +4367,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for string slices immediantly followed by `as_bytes`.
+    /// Checks for string slices immediately followed by `as_bytes`.
     ///
     /// ### Why is this bad?
     /// It involves doing an unnecessary UTF-8 alignment check which is less efficient, and can cause a panic.
