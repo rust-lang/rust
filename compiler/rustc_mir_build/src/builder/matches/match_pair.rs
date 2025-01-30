@@ -1,3 +1,4 @@
+use either::Either;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
@@ -117,6 +118,81 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    fn build_slice_branch<'pat>(
+        &'pat mut self,
+        place: &'pat PlaceBuilder<'tcx>,
+        top_pattern: &'pat Pat<'tcx>,
+        pattern: &'pat [Box<Pat<'tcx>>],
+    ) -> impl Iterator<Item = MatchPairTree<'pat, 'tcx>> + use<'pat, 'tcx, 'a> {
+        self.find_const_groups(pattern).into_iter().map(move |entry| {
+            let pattern_len = pattern.len() as u64;
+            let mut build_single = |idx| {
+                let subpattern = &pattern[idx as usize];
+                let place = place.clone_project(ProjectionElem::ConstantIndex {
+                    offset: idx,
+                    min_length: pattern_len,
+                    from_end: false,
+                });
+
+                MatchPairTree::for_pattern(place, subpattern, self)
+            };
+
+            match entry {
+                Either::Right(range) if range.len() > 1 => {
+                    assert!(
+                        (range.start..range.end)
+                            .all(|idx| self.is_constant_pattern(&pattern[idx as usize]))
+                    );
+
+                    let subpattern = &pattern[range.start as usize..range.end as usize];
+                    let elem_ty = subpattern[0].ty;
+
+                    let place = place.clone_project(PlaceElem::Subslice {
+                        from: range.start,
+                        to: pattern.len() as u64 - range.end,
+                        from_end: true,
+                    });
+
+                    let valtree = self.simplify_const_pattern_slice_into_valtree(subpattern);
+                    self.valtree_to_match_pair(top_pattern, valtree, place, elem_ty, range, false)
+                }
+                Either::Right(range) => {
+                    let tree = build_single(range.start);
+                    assert!(self.is_constant_pattern(&pattern[range.start as usize]));
+                    tree
+                }
+                Either::Left(idx) => build_single(idx),
+            }
+        })
+    }
+
+    fn find_const_groups(&self, pattern: &[Box<Pat<'tcx>>]) -> Vec<Either<u64, Range>> {
+        let mut entries = Vec::new();
+        let mut current_seq_start = None;
+
+        let mut apply = |state: &mut _, idx| {
+            if let Some(start) = *state {
+                *state = None;
+                entries.push(Either::Right(Range::from_start(start..idx)));
+            } else {
+                entries.push(Either::Left(idx));
+            }
+        };
+
+        for (idx, pat) in pattern.iter().enumerate() {
+            if self.is_constant_pattern(pat) {
+                if current_seq_start.is_none() {
+                    current_seq_start = Some(idx as u64);
+                }
+            } else {
+                apply(&mut current_seq_start, idx as u64);
+            }
+        }
+
+        apply(&mut current_seq_start, pattern.len() as u64);
+        entries
+    }
+
     fn should_optimize_subslice(&self, subslice: &[Box<Pat<'tcx>>]) -> bool {
         subslice.len() > 1 && subslice.iter().all(|p| self.is_constant_pattern(p))
     }
@@ -161,16 +237,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         place: PlaceBuilder<'tcx>,
         elem_ty: Ty<'tcx>,
         range: Range,
-        subsliced: bool,
+        do_own_slice: bool,
     ) -> MatchPairTree<'pat, 'tcx> {
         let tcx = self.tcx;
         let const_ty =
             Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, Ty::new_array(tcx, elem_ty, range.len()));
 
-        let pat_ty = if subsliced { Ty::new_slice(tcx, elem_ty) } else { source_pattern.ty };
+        let pat_ty = if do_own_slice { Ty::new_slice(tcx, elem_ty) } else { source_pattern.ty };
         let ty_const = ty::Const::new(tcx, ty::ConstKind::Value(const_ty, valtree));
         let value = Const::Ty(const_ty, ty_const);
-        let test_case = TestCase::Constant { value, range: subsliced.then_some(range) };
+        let test_case = TestCase::Constant { value, range: do_own_slice.then_some(range) };
         let pattern = tcx.arena.alloc(Pat {
             ty: pat_ty,
             span: source_pattern.span,
