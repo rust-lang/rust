@@ -38,6 +38,13 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	--code-block-border-radius: 6px;
 	--impl-items-indent: 0.3em;
 	--docblock-indent: 24px;
+	--font-family: "Source Serif 4", NanumBarunGothic, serif;
+	--font-family-code: "Source Code Pro", monospace;
+}
+
+:root.sans-serif {
+	--font-family: "Fira Sans", sans-serif;
+	--font-family-code: "Fira Mono", monospace;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -51,10 +58,42 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 }
 @font-face {
 	font-family: 'Fira Sans';
+	font-style: italic;
+	font-weight: 400;
+	src: local('Fira Sans Italic'),
+		url("FiraSans-Italic-81dc35de.woff2") format("woff2");
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Fira Sans';
 	font-style: normal;
 	font-weight: 500;
 	src: local('Fira Sans Medium'),
 		url("FiraSans-Medium-e1aa3f0a.woff2") format("woff2");
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Fira Sans';
+	font-style: italic;
+	font-weight: 500;
+	src: local('Fira Sans Medium Italic'),
+		url("FiraSans-MediumItalic-ccf7e434.woff2") format("woff2");
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Fira Mono';
+	font-style: normal;
+	font-weight: 400;
+	src: local('Fira Mono'),
+		url("FiraMono-Regular-87c26294.woff2") format("woff2");
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Fira Mono';
+	font-style: normal;
+	font-weight: 500;
+	src: local('Fira Mono Medium'),
+		url("FiraMono-Medium-86f75c8c.woff2") format("woff2");
 	font-display: swap;
 }
 
@@ -73,6 +112,14 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-weight: 400;
 	src: local('Source Serif 4 Italic'),
 		url("SourceSerif4-It-ca3b17ed.ttf.woff2") format("woff2");
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Source Serif 4';
+	font-style: normal;
+	font-weight: 500;
+	src: local('Source Serif 4 Semibold'),
+		url("SourceSerif4-Semibold-457a13ac.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -126,7 +173,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 body {
 	/* Line spacing at least 1.5 per Web Content Accessibility Guidelines
 	   https://www.w3.org/WAI/WCAG21/Understanding/visual-presentation.html */
-	font: 1rem/1.5 "Source Serif 4", NanumBarunGothic, serif;
+	font: 1rem/1.5 var(--font-family);
 	margin: 0;
 	position: relative;
 	/* We use overflow-wrap: break-word for Safari, which doesn't recognize
@@ -380,7 +427,7 @@ details:not(.toggle) summary {
 }
 
 code, pre, .code-header, .type-signature {
-	font-family: "Source Code Pro", monospace;
+	font-family: var(--font-family-code);
 }
 .docblock code, .item-table dd code {
 	border-radius: 3px;
