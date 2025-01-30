@@ -19,14 +19,14 @@ type A = Option<std::num::NonZeroU32>; //~ ERROR layout_of
 struct NonZeroU32New(pattern_type!(u32 is 1..)); //~ ERROR layout_of
 
 #[rustc_layout(debug)]
-type EMPTY = pattern_type!(u32 is 1..1); //~ ERROR layout_of
+type EMPTY = pattern_type!(u32 is 1..1); //~ ERROR unknown layout
 
 #[rustc_layout(debug)]
 type WRAP = pattern_type!(u32 is 1..0); //~ ERROR unknown layout
 //~^ ERROR: evaluation of constant value failed
 
 #[rustc_layout(debug)]
-type WRAP2 = pattern_type!(u32 is 5..2); //~ ERROR layout_of
+type WRAP2 = pattern_type!(u32 is 5..2); //~ ERROR unknown layout
 
 #[rustc_layout(debug)]
 type SIGN = pattern_type!(i8 is -10..=10); //~ ERROR layout_of
@@ -35,7 +35,7 @@ type SIGN = pattern_type!(i8 is -10..=10); //~ ERROR layout_of
 type MIN = pattern_type!(i8 is -128..=0); //~ ERROR layout_of
 
 #[rustc_layout(debug)]
-type SignedWrap = pattern_type!(i8 is 120..=-120); //~ ERROR layout_of
+type SignedWrap = pattern_type!(i8 is 120..=-120); //~ ERROR unknown layout
 
 fn main() {
     let x: pattern_type!(u32 is 1..) = unsafe { std::mem::transmute(42_u32) };
