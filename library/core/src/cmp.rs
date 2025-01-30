@@ -999,7 +999,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     where
         Self: Sized,
     {
-        max_by(self, other, Ord::cmp)
+        if other < self { self } else { other }
     }
 
     /// Compares and returns the minimum of two values.
@@ -1038,7 +1038,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     where
         Self: Sized,
     {
-        min_by(self, other, Ord::cmp)
+        if other < self { other } else { self }
     }
 
     /// Restrict a value to a certain interval.
@@ -1500,10 +1500,7 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
 pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
-    match compare(&v1, &v2) {
-        Ordering::Less | Ordering::Equal => v1,
-        Ordering::Greater => v2,
-    }
+    if compare(&v2, &v1).is_lt() { v2 } else { v1 }
 }
 
 /// Returns the element that gives the minimum value from the specified function.
@@ -1528,7 +1525,7 @@ pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
 pub fn min_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
-    min_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
+    if f(&v2) < f(&v1) { v2 } else { v1 }
 }
 
 /// Compares and returns the maximum of two values.
@@ -1595,10 +1592,7 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
 pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
-    match compare(&v1, &v2) {
-        Ordering::Less | Ordering::Equal => v2,
-        Ordering::Greater => v1,
-    }
+    if compare(&v2, &v1).is_lt() { v1 } else { v2 }
 }
 
 /// Returns the element that gives the maximum value from the specified function.
@@ -1623,7 +1617,7 @@ pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
 pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
-    max_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
+    if f(&v2) < f(&v1) { v1 } else { v2 }
 }
 
 /// Compares and sorts two values, returning minimum and maximum.
@@ -1670,7 +1664,7 @@ pub fn minmax<T>(v1: T, v2: T) -> [T; 2]
 where
     T: Ord,
 {
-    if v1 <= v2 { [v1, v2] } else { [v2, v1] }
+    if v2 < v1 { [v2, v1] } else { [v1, v2] }
 }
 
 /// Returns minimum and maximum values with respect to the specified comparison function.
@@ -1701,7 +1695,7 @@ pub fn minmax_by<T, F>(v1: T, v2: T, compare: F) -> [T; 2]
 where
     F: FnOnce(&T, &T) -> Ordering,
 {
-    if compare(&v1, &v2).is_le() { [v1, v2] } else { [v2, v1] }
+    if compare(&v2, &v1).is_lt() { [v2, v1] } else { [v1, v2] }
 }
 
 /// Returns minimum and maximum values with respect to the specified key function.
@@ -1730,7 +1724,7 @@ where
     F: FnMut(&T) -> K,
     K: Ord,
 {
-    minmax_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
+    if f(&v2) < f(&v1) { [v2, v1] } else { [v1, v2] }
 }
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types
