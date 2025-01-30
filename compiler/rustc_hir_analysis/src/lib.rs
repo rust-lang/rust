@@ -100,7 +100,7 @@ use rustc_middle::middle;
 use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
-use rustc_span::Span;
+use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits;
 
 pub use crate::collect::suggest_impl_trait;
@@ -139,16 +139,20 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
     tcx.sess.time("coherence_checking", || {
+        // When discarding query call results, use an explicit type to indicate
+        // what we are intending to discard, to help future type-based refactoring.
+        type R = Result<(), ErrorGuaranteed>;
+
         tcx.hir().par_for_each_module(|module| {
-            let _ = tcx.ensure_ok().check_mod_type_wf(module);
+            let _: R = tcx.ensure_ok().check_mod_type_wf(module);
         });
 
         for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
-            let _ = tcx.ensure_ok().coherent_trait(trait_def_id);
+            let _: R = tcx.ensure_ok().coherent_trait(trait_def_id);
         }
         // these queries are executed for side-effects (error reporting):
-        let _ = tcx.ensure_ok().crate_inherent_impls_validity_check(());
-        let _ = tcx.ensure_ok().crate_inherent_impls_overlap_check(());
+        let _: R = tcx.ensure_ok().crate_inherent_impls_validity_check(());
+        let _: R = tcx.ensure_ok().crate_inherent_impls_overlap_check(());
     });
 
     if tcx.features().rustc_attrs() {
