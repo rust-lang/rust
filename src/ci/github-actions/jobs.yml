@@ -10,11 +10,6 @@ runners:
     free_disk: true
     <<: *base-job
 
-  # Large runner used mainly for its bigger disk capacity
-  - &job-linux-4c-largedisk
-    os: ubuntu-22.04-4core-16gb
-    <<: *base-job
-
   - &job-linux-8c
     os: ubuntu-22.04-8core-32gb
     <<: *base-job
