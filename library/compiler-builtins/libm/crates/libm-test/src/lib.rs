@@ -20,7 +20,7 @@ use std::path::PathBuf;
 use std::sync::LazyLock;
 use std::time::SystemTime;
 
-pub use f8_impl::f8;
+pub use f8_impl::{f8, hf8};
 pub use libm::support::{Float, Int, IntTy, MinInt};
 pub use num::{FloatExt, linear_ints, logspace};
 pub use op::{

@@ -3,6 +3,8 @@
 use std::cmp::{self, Ordering};
 use std::{fmt, ops};
 
+use libm::support::hex_float::parse_any;
+
 use crate::Float;
 
 /// Sometimes verifying float logic is easiest when all values can quickly be checked exhaustively
@@ -489,4 +491,8 @@ impl fmt::LowerHex for f8 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
+}
+
+pub const fn hf8(s: &str) -> f8 {
+    f8(parse_any(s, 8, 3) as u8)
 }
