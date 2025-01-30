@@ -32,6 +32,16 @@
 //! - <https://smallcultfollowing.com/babysteps/blog/2023/09/22/polonius-part-1/>
 //! - <https://smallcultfollowing.com/babysteps/blog/2023/09/29/polonius-part-2/>
 //!
+//!
+//! Data flows like this:
+//! 1) during MIR typeck, record liveness data needed later: live region variances, as well as the
+//!    usual NLL liveness data (just computed on more locals). That's the [PoloniusLivenessContext].
+//! 2) once that is done, variance data is transferred, and the NLL region liveness is converted to
+//!    the polonius shape. That's the main [PoloniusContext].
+//! 3) during region inference, that data and the NLL outlives constraints are used to create the
+//!    localized outlives constraints, as described above.
+//! 4) transfer these constraints back to the main borrowck procedure: it handles computing errors
+//!    and diagnostics, debugging and MIR dumping concerns.
 
 mod constraints;
 mod dump;
@@ -43,6 +53,7 @@ mod typeck_constraints;
 use std::collections::BTreeMap;
 
 use rustc_index::bit_set::SparseBitMatrix;
+use rustc_index::interval::SparseIntervalMatrix;
 use rustc_middle::mir::Body;
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::points::PointIndex;
@@ -57,11 +68,21 @@ use crate::{BorrowSet, RegionInferenceContext};
 
 pub(crate) type LiveLoans = SparseBitMatrix<PointIndex, BorrowIndex>;
 
-/// This struct holds the data needed to create the Polonius localized constraints.
+/// This struct holds the liveness data created during MIR typeck, and which will be used later in
+/// the process, to compute the polonius localized constraints.
+#[derive(Default)]
+pub(crate) struct PoloniusLivenessContext {
+    /// The expected edge direction per live region: the kind of directed edge we'll create as
+    /// liveness constraints depends on the variance of types with respect to each contained region.
+    live_region_variances: BTreeMap<RegionVid, ConstraintDirection>,
+}
+
+/// This struct holds the data needed to create the Polonius localized constraints. Its data is
+/// transferred and converted from the [PoloniusLivenessContext] at the end of MIR typeck.
 pub(crate) struct PoloniusContext {
     /// The set of regions that are live at a given point in the CFG, used to create localized
     /// outlives constraints between regions that are live at connected points in the CFG.
-    live_regions: Option<SparseBitMatrix<PointIndex, RegionVid>>,
+    live_regions: SparseBitMatrix<PointIndex, RegionVid>,
 
     /// The expected edge direction per live region: the kind of directed edge we'll create as
     /// liveness constraints depends on the variance of types with respect to each contained region.
@@ -83,8 +104,27 @@ enum ConstraintDirection {
 }
 
 impl PoloniusContext {
-    pub(crate) fn new() -> PoloniusContext {
-        Self { live_region_variances: BTreeMap::new(), live_regions: None }
+    /// Unlike NLLs, in polonius we traverse the cfg to look for regions live across an edge, so we
+    /// need to transpose the "points where each region is live" matrix to a "live regions per point"
+    /// matrix.
+    // FIXME: avoid this conversion by always storing liveness data in this shape in the rest of
+    // borrowck.
+    pub(crate) fn create_from_liveness(
+        liveness_context: PoloniusLivenessContext,
+        num_regions: usize,
+        points_per_live_region: &SparseIntervalMatrix<RegionVid, PointIndex>,
+    ) -> PoloniusContext {
+        let mut live_regions_per_point = SparseBitMatrix::new(num_regions);
+        for region in points_per_live_region.rows() {
+            for point in points_per_live_region.row(region).unwrap().iter() {
+                live_regions_per_point.insert(point, region);
+            }
+        }
+
+        PoloniusContext {
+            live_regions: live_regions_per_point,
+            live_region_variances: liveness_context.live_region_variances,
+        }
     }
 
     /// Computes live loans using the set of loans model for `-Zpolonius=next`.
@@ -112,13 +152,10 @@ impl PoloniusContext {
             &mut localized_outlives_constraints,
         );
 
-        let live_regions = self.live_regions.as_ref().expect(
-            "live regions per-point data should have been created at the end of MIR typeck",
-        );
         create_liveness_constraints(
             body,
             regioncx.liveness_constraints(),
-            live_regions,
+            &self.live_regions,
             &self.live_region_variances,
             regioncx.universal_regions(),
             &mut localized_outlives_constraints,
