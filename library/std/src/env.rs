@@ -333,7 +333,7 @@ impl Error for VarError {
 ///
 /// Discussion of this unsafety on Unix may be found in:
 ///
-///  - [Austin Group Bugzilla](https://austingroupbugs.net/view.php?id=188)
+///  - [Austin Group Bugzilla (for POSIX)](https://austingroupbugs.net/view.php?id=188)
 ///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
 ///
 /// To pass an environment variable to a child process, you can instead use [`Command::env`].
