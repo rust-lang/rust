@@ -124,11 +124,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         top_pattern: &'pat Pat<'tcx>,
         pattern: &'pat [Box<Pat<'tcx>>],
     ) -> impl Iterator<Item = MatchPairTree<'pat, 'tcx>> + use<'pat, 'tcx, 'a> {
-        self.find_const_groups(pattern).into_iter().map(move |entry| {
+        let entries = self.find_const_groups(pattern);
+        let solo = entries.len() == 1;
+
+        let maybe_project = move |base: &PlaceBuilder<'tcx>, elem| {
+            if solo { base.clone_project(elem) } else { base.clone() }
+        };
+
+        entries.into_iter().map(move |entry| {
             let pattern_len = pattern.len() as u64;
             let mut build_single = |idx| {
                 let subpattern = &pattern[idx as usize];
-                let place = place.clone_project(ProjectionElem::ConstantIndex {
+                let place = maybe_project(place, ProjectionElem::ConstantIndex {
                     offset: idx,
                     min_length: pattern_len,
                     from_end: false,
@@ -147,7 +154,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let subpattern = &pattern[range.start as usize..range.end as usize];
                     let elem_ty = subpattern[0].ty;
 
-                    let place = place.clone_project(PlaceElem::Subslice {
+                    let place = maybe_project(place, PlaceElem::Subslice {
                         from: range.start,
                         to: pattern.len() as u64 - range.end,
                         from_end: true,
