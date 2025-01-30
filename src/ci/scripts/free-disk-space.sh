@@ -4,9 +4,10 @@ set -euo pipefail
 # Free disk space on Linux GitHub action runners
 # Script inspired by https://github.com/jlumbroso/free-disk-space
 
-# When updating to a new ubuntu version:
+# When updating to a new ubuntu version (e.g. from ubuntu-24.04):
 # - Check that there are no docker images preinstalled with `docker image ls`
 # - Check that there are no big packages preinstalled that we aren't using
+# - Check that all directores we are removing are still present (look at the warnings)
 
 # print a line of the specified character
 printSeparationLine() {
@@ -63,24 +64,62 @@ printDF() {
     printSeparationLine "="
 }
 
-removeDir() {
-    dir=${1}
+removeRecursive() {
+    element=${1}
 
     local before
-    if [ ! -d "$dir" ]; then
-        echo "::warning::Directory $dir does not exist, skipping."
+    if [ ! -e "$element" ]; then
+        echo "::warning::Directory or file $element does not exist, skipping."
     else
         before=$(getAvailableSpace)
-        sudo rm -rf "$dir"
-        printSavedSpace "$before" "Removed $dir"
+        sudo rm -rf "$element"
+        printSavedSpace "$before" "Removed $element"
     fi
 }
 
-removeUnusedDirectories() {
-    local dirs_to_remove=(
-        "/usr/local/lib/android"
+removeUnusedDirsAndFiles() {
+    local to_remove=(
         "/etc/mysql"
+        "/usr/local/aws-sam-cli"
+        "/usr/local/doc/cmake"
+        "/usr/local/julia"*
+        "/usr/local/lib/android"
+        "/usr/local/share/chromedriver-"*
+        "/usr/local/share/chromium"
+        "/usr/local/share/cmake-"*
+        "/usr/local/share/edge_driver"
+        "/usr/local/share/gecko_driver"
+        "/usr/local/share/icons"
+        "/usr/local/share/vim"
+        "/usr/local/share/emacs"
+        "/usr/local/share/powershell"
+        "/usr/local/share/vcpkg"
+        "/usr/share/apache-maven-"*
+        "/usr/share/gradle-"*
+        "/usr/share/java"
+        "/usr/share/kotlinc"
+        "/usr/share/miniconda"
         "/usr/share/php"
+        "/usr/share/ri"
+        "/usr/share/swift"
+
+        # binaries
+        "/usr/local/bin/azcopy"
+        "/usr/local/bin/bicep"
+        "/usr/local/bin/ccmake"
+        "/usr/local/bin/cmake-"*
+        "/usr/local/bin/cmake"
+        "/usr/local/bin/cpack"
+        "/usr/local/bin/ctest"
+        "/usr/local/bin/helm"
+        "/usr/local/bin/kind"
+        "/usr/local/bin/kustomize"
+        "/usr/local/bin/minikube"
+        "/usr/local/bin/packer"
+        "/usr/local/bin/phpunit"
+        "/usr/local/bin/pulumi-"*
+        "/usr/local/bin/pulumi"
+        "/usr/local/bin/stack"
 
         # Haskell runtime
         "/usr/local/.ghcup"
@@ -93,9 +132,25 @@ removeUnusedDirectories() {
         "$AGENT_TOOLSDIRECTORY"
     )
 
-    for dir in "${dirs_to_remove[@]}"; do
-        removeDir "$dir"
+    for element in "${to_remove[@]}"; do
+        removeRecursive "$element"
     done
+}
+
+removeNodeModules() {
+    sudo npm uninstall -g \
+        "@bazel/bazelisk" \
+        "bazel"           \
+        "grunt"           \
+        "gulp"            \
+        "lerna"           \
+        "n"               \
+        "newman"          \
+        "parcel"          \
+        "typescript"      \
+        "webpack-cli"     \
+        "webpack"         \
+        "yarn"
 }
 
 execAndMeasureSpaceChange() {
@@ -159,6 +214,10 @@ cleanSwap() {
     free -h
 }
 
+removePythonPackages() {
+    sudo pipx uninstall ansible-core
+}
+
 # Display initial disk space stats
 
 AVAILABLE_INITIAL=$(getAvailableSpace)
@@ -168,8 +227,10 @@ echo ""
 
 execAndMeasureSpaceChange cleanPackages "Unused packages"
 execAndMeasureSpaceChange cleanSwap "Swap storage"
+execAndMeasureSpaceChange removeNodeModules "Node modules"
+execAndMeasureSpaceChange removePythonPackages "Python Packages"
 
-removeUnusedDirectories
+removeUnusedDirsAndFiles
 
 # Output saved space statistic
 echo ""
