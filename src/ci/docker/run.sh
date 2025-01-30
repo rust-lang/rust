@@ -27,6 +27,10 @@ do
   shift
 done
 
+if [[ $image == dist* ]]; then
+    DEPLOY=1
+fi
+
 # MacOS reports "arm64" while Linux reports "aarch64". Commonize this.
 machine="$(uname -m | sed 's/arm64/aarch64/')"
 
@@ -343,7 +347,7 @@ docker \
   $extra_env \
   $args \
   --env CARGO_HOME=/cargo \
-  --env DEPLOY \
+  --env DEPLOY=$DEPLOY \
   --env DEPLOY_ALT \
   --env CI \
   --env GITHUB_ACTIONS \
