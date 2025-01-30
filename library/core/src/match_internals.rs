@@ -1,6 +1,15 @@
 use crate::cmp::BytewiseEq;
-use crate::intrinsics::compare_bytes;
-use crate::mem;
+use crate::{intrinsics, mem};
+
+#[lang = "aggregate_raw_ptr"]
+const fn aggregate_raw_ptr<T>(data: *const T, meta: usize) -> *const [T] {
+    intrinsics::aggregate_raw_ptr(data, meta)
+}
+
+#[lang = "offset"]
+const fn offset<T>(ptr: *const T, offset: usize) -> *const T {
+    unsafe { intrinsics::offset(ptr, offset) }
+}
 
 #[lang = "PatternConstEq"]
 #[const_trait]
@@ -68,7 +77,8 @@ where
         // The two slices have been checked to have the same size above.
         unsafe {
             let size = mem::size_of_val(self);
-            compare_bytes(self.as_ptr() as *const u8, other.as_ptr() as *const u8, size) == 0
+            intrinsics::compare_bytes(self.as_ptr() as *const u8, other.as_ptr() as *const u8, size)
+                == 0
         }
     }
 }

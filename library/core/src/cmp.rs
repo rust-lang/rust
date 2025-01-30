@@ -26,8 +26,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 mod bytewise;
-#[cfg(not(bootstrap))]
-mod pattern;
 pub(crate) use bytewise::BytewiseEq;
 
 use self::Ordering::*;

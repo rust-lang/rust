@@ -252,6 +252,9 @@ pub use crate::macros::cfg_match;
 #[macro_use]
 mod internal_macros;
 
+#[cfg(not(bootstrap))]
+mod match_internals;
+
 #[path = "num/shells/int_macros.rs"]
 #[macro_use]
 mod int_macros;
