@@ -3,9 +3,6 @@
 // This test is the same as native-link-modifier-rustc, but without rlibs.
 // See https://github.com/rust-lang/rust/issues/99425
 
-//@ ignore-apple
-// Reason: linking fails due to the unusual ".ext" staticlib name.
-
 use run_make_support::rustc;
 
 fn main() {
