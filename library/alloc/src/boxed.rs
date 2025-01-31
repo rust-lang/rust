@@ -1093,7 +1093,6 @@ impl<T: ?Sized> Box<T> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
-    /// [`Layout`]: crate::Layout
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     #[must_use = "call `drop(Box::from_raw(ptr))` if you intend to drop the `Box`"]
@@ -1148,7 +1147,6 @@ impl<T: ?Sized> Box<T> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
-    /// [`Layout`]: crate::Layout
     #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
     #[inline]
     #[must_use = "call `drop(Box::from_non_null(ptr))` if you intend to drop the `Box`"]
@@ -1205,7 +1203,6 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
-    /// [`Layout`]: crate::Layout
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
@@ -1259,7 +1256,6 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
-    /// [`Layout`]: crate::Layout
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
