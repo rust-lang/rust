@@ -634,7 +634,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::RawPtr(RawPtrKind::FakeForPtrMetadata, place) => {
                 // These are only inserted for slice length, so the place must already be indirect.
                 // This implies we do not have to worry about whether the borrow escapes.
-                assert!(place.is_indirect(), "fake borrows are always indirect");
+                if !place.is_indirect() {
+                    self.tcx.dcx().span_delayed_bug(
+                        self.body.source_info(location).span,
+                        "fake borrows are always indirect",
+                    );
+                }
             }
 
             Rvalue::Cast(
