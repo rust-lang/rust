@@ -4,6 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::panic;
+use std::path::PathBuf;
 use std::thread::panicking;
 
 use rustc_data_structures::fx::FxIndexMap;
@@ -301,6 +302,7 @@ pub struct DiagInner {
 
     pub is_lint: Option<IsLint>,
 
+    pub long_ty_path: Option<PathBuf>,
     /// With `-Ztrack_diagnostics` enabled,
     /// we print where in rustc this error was emitted.
     pub(crate) emitted_at: DiagLocation,
@@ -324,6 +326,7 @@ impl DiagInner {
             args: Default::default(),
             sort_span: DUMMY_SP,
             is_lint: None,
+            long_ty_path: None,
             emitted_at: DiagLocation::caller(),
         }
     }
@@ -1293,7 +1296,35 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// `cancel`, etc. Afterwards, `drop` is the only code that will be run on
     /// `self`.
     fn take_diag(&mut self) -> DiagInner {
+        if let Some(path) = &self.long_ty_path {
+            self.note(format!(
+                "the full name for the type has been written to '{}'",
+                path.display()
+            ));
+            self.note("consider using `--verbose` to print the full type name to the console");
+        }
         Box::into_inner(self.diag.take().unwrap())
+    }
+
+    /// This method allows us to access the path of the file where "long types" are written to.
+    ///
+    /// When calling `Diag::emit`, as part of that we will check if a `long_ty_path` has been set,
+    /// and if it has been then we add a note mentioning the file where the "long types" were
+    /// written to.
+    ///
+    /// When calling `tcx.short_string()` after a `Diag` is constructed, the preferred way of doing
+    /// so is `tcx.short_string(ty, diag.long_ty_path())`. The diagnostic itself is the one that
+    /// keeps the existence of a "long type" anywhere in the diagnostic, so the note telling the
+    /// user where we wrote the file to is only printed once at most, *and* it makes it much harder
+    /// to forget to set it.
+    ///
+    /// If the diagnostic hasn't been created before a "short ty string" is created, then you should
+    /// ensure that this method is called to set it `*diag.long_ty_path() = path`.
+    ///
+    /// As a rule of thumb, if you see or add at least one `tcx.short_string()` call anywhere, in a
+    /// scope, `diag.long_ty_path()` should be called once somewhere close by.
+    pub fn long_ty_path(&mut self) -> &mut Option<PathBuf> {
+        &mut self.long_ty_path
     }
 
     /// Most `emit_producing_guarantee` functions use this as a starting point.
