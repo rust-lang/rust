@@ -1,6 +1,7 @@
 #![feature(pattern)]
 
 mod assert_instr;
+mod big_endian;
 mod context;
 mod expression;
 mod fn_suffix;

@@ -9,6 +9,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use crate::intrinsic::Intrinsic;
+use crate::wildstring::WildStringPart;
 use crate::{
     context::{self, Context, VariableType},
     intrinsic::{Argument, LLVMLink, StaticDefinition},
@@ -29,6 +30,7 @@ pub enum IdentifierType {
 pub enum LetVariant {
     Basic(WildString, Box<Expression>),
     WithType(WildString, TypeKind, Box<Expression>),
+    MutWithType(WildString, TypeKind, Box<Expression>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,9 +157,11 @@ impl Expression {
                 cl_ptr_ex.pre_build(ctx)?;
                 arg_exs.iter_mut().try_for_each(|ex| ex.pre_build(ctx))
             }
-            Self::Let(LetVariant::Basic(_, ex) | LetVariant::WithType(_, _, ex)) => {
-                ex.pre_build(ctx)
-            }
+            Self::Let(
+                LetVariant::Basic(_, ex)
+                | LetVariant::WithType(_, _, ex)
+                | LetVariant::MutWithType(_, _, ex),
+            ) => ex.pre_build(ctx),
             Self::CastAs(ex, _) => ex.pre_build(ctx),
             Self::Multiply(lhs, rhs) | Self::Xor(lhs, rhs) => {
                 lhs.pre_build(ctx)?;
@@ -214,7 +218,8 @@ impl Expression {
             Self::Let(variant) => {
                 let (var_name, ex, ty) = match variant {
                     LetVariant::Basic(var_name, ex) => (var_name, ex, None),
-                    LetVariant::WithType(var_name, ty, ex) => {
+                    LetVariant::WithType(var_name, ty, ex)
+                    | LetVariant::MutWithType(var_name, ty, ex) => {
                         if let Some(w) = ty.wildcard() {
                             ty.populate_wildcard(ctx.local.provide_type_wildcard(w)?)?;
                         }
@@ -285,9 +290,11 @@ impl Expression {
             // Nested structures that aren't inherently unsafe, but could contain other expressions
             // that might be.
             Self::Assign(_var, exp) => exp.requires_unsafe_wrapper(ctx_fn),
-            Self::Let(LetVariant::Basic(_, exp) | LetVariant::WithType(_, _, exp)) => {
-                exp.requires_unsafe_wrapper(ctx_fn)
-            }
+            Self::Let(
+                LetVariant::Basic(_, exp)
+                | LetVariant::WithType(_, _, exp)
+                | LetVariant::MutWithType(_, _, exp),
+            ) => exp.requires_unsafe_wrapper(ctx_fn),
             Self::Array(exps) => exps.iter().any(|exp| exp.requires_unsafe_wrapper(ctx_fn)),
             Self::Multiply(lhs, rhs) | Self::Xor(lhs, rhs) => {
                 lhs.requires_unsafe_wrapper(ctx_fn) || rhs.requires_unsafe_wrapper(ctx_fn)
@@ -328,6 +335,32 @@ impl Expression {
             Self::MatchSize(..) => {
                 unimplemented!("The unsafety of {self:?} cannot be determined in '{ctx_fn}'.")
             }
+        }
+    }
+
+    /// Determine if an expression is a `static_assert<...>` function call.
+    pub fn is_static_assert(&self) -> bool {
+        match self {
+            Expression::FnCall(fn_call) => match fn_call.0.as_ref() {
+                Expression::Identifier(wild_string, _) => {
+                    if let WildStringPart::String(function_name) = &wild_string.0[0] {
+                        function_name.starts_with("static_assert")
+                    } else {
+                        false
+                    }
+                }
+                _ => panic!("Badly defined function call: {:?}", fn_call),
+            },
+            _ => false,
+        }
+    }
+
+    /// Determine if an espression is a LLVM binding
+    pub fn is_llvm_link(&self) -> bool {
+        if let Expression::LLVMLink(_) = self {
+            true
+        } else {
+            false
         }
     }
 }
@@ -421,6 +454,10 @@ impl ToTokens for Expression {
             Self::Let(LetVariant::WithType(var_name, ty, exp)) => {
                 let var_ident = format_ident!("{}", var_name.to_string());
                 tokens.append_all(quote! { let #var_ident: #ty = #exp })
+            }
+            Self::Let(LetVariant::MutWithType(var_name, ty, exp)) => {
+                let var_ident = format_ident!("{}", var_name.to_string());
+                tokens.append_all(quote! { let mut #var_ident: #ty = #exp })
             }
             Self::Assign(var_name, exp) => {
                 /* If we are dereferencing a variable to assign a value \

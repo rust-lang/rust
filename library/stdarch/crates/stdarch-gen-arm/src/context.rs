@@ -35,6 +35,10 @@ pub struct GlobalContext {
     pub arch_cfgs: Vec<ArchitectureSettings>,
     #[serde(default)]
     pub uses_neon_types: bool,
+
+    /// Should the yaml file automagically generate big endian shuffling
+    #[serde(default)]
+    pub auto_big_endian: Option<bool>,
 }
 
 /// Context of an intrinsic group

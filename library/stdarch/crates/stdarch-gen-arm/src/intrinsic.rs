@@ -10,6 +10,10 @@ use std::ops::RangeInclusive;
 use std::str::FromStr;
 
 use crate::assert_instr::InstructionAssertionsForBaseType;
+use crate::big_endian::{
+    create_assigned_shuffle_call, create_let_variable, create_mut_let_variable,
+    create_shuffle_call, create_symbol_identifier, make_variable_mutable, type_has_tuple,
+};
 use crate::context::{GlobalContext, GroupContext};
 use crate::input::{InputSet, InputSetEntry};
 use crate::predicate_forms::{DontCareMethod, PredicateForm, PredicationMask, ZeroingMethod};
@@ -284,6 +288,7 @@ pub struct Signature {
     pub name: WildString,
     /// List of function arguments, leave unset or empty for no arguments
     pub arguments: Vec<Argument>,
+
     /// Function return type, leave unset for void
     pub return_type: Option<TypeKind>,
 
@@ -493,12 +498,14 @@ impl LLVMLink {
         let mut sig_name = ctx.local.signature.name.clone();
         sig_name.prepend_str("_");
 
+        let argv = self
+            .arguments
+            .clone()
+            .unwrap_or_else(|| ctx.local.signature.arguments.clone());
+
         let mut sig = Signature {
             name: sig_name,
-            arguments: self
-                .arguments
-                .clone()
-                .unwrap_or_else(|| ctx.local.signature.arguments.clone()),
+            arguments: argv,
             return_type: self
                 .return_type
                 .clone()
@@ -905,6 +912,13 @@ pub struct Intrinsic {
     pub base_type: Option<BaseType>,
     /// Attributes for the function
     pub attr: Option<Vec<Expression>>,
+    /// Big endian variant for composing, this gets populated internally
+    #[serde(skip)]
+    pub big_endian_compose: Vec<Expression>,
+    /// Big endian sometimes needs the bits inverted from the default reverse
+    /// to work correctly
+    #[serde(default)]
+    pub big_endian_inverse: Option<bool>,
 }
 
 impl Intrinsic {
@@ -1014,10 +1028,156 @@ impl Intrinsic {
 
         variant.post_build(&mut ctx)?;
 
+        /* If we should generate big endian we shall do so. It's possible
+         * we may not want to in some instances */
+        if ctx.global.auto_big_endian.unwrap_or(false) {
+            self.generate_big_endian(&mut variant);
+        }
+
         if let Some(n_variant_op) = ctx.local.n_variant_op().cloned() {
             variant.generate_n_variant(n_variant_op, &mut ctx)
         } else {
             Ok(variant)
+        }
+    }
+
+    /// Add a big endian implementation
+    fn generate_big_endian(&self, variant: &mut Intrinsic) {
+        /* We can't always blindly reverse the bits we sometimes need a
+         * different order - thus this allows us to have the ability to do so
+         * without having to play codegolf witht the yaml AST */
+        let should_reverse = {
+            if let Some(should_reverse) = variant.big_endian_inverse {
+                should_reverse
+            } else if variant.compose.len() == 1 {
+                match &variant.compose[0] {
+                    Expression::FnCall(fn_call) => fn_call.0.to_string() == "transmute",
+                    _ => false,
+                }
+            } else {
+                false
+            }
+        };
+
+        let mut big_endian_expressions: Vec<Expression> = Vec::new();
+
+        /* We cannot assign `a.0 = ` directly to a function parameter so
+         * need to make them mutable */
+        for function_parameter in &variant.signature.arguments {
+            if type_has_tuple(&function_parameter.kind) {
+                /* We do not want to be creating a `mut` variant if the type
+                 * has one lane. If it has one lane that means it does not need
+                 * shuffling */
+                if let TypeKind::Vector(vector_type) = &function_parameter.kind {
+                    if vector_type.lanes() == 1 {
+                        continue;
+                    }
+                }
+
+                let mutable_variable = make_variable_mutable(
+                    &function_parameter.name.to_string(),
+                    &function_parameter.kind,
+                );
+                big_endian_expressions.push(mutable_variable);
+            }
+        }
+
+        /* Possibly shuffle the vectors */
+        for function_parameter in &variant.signature.arguments {
+            if let Some(shuffle_call) = create_assigned_shuffle_call(
+                &function_parameter.name.to_string(),
+                &function_parameter.kind,
+                should_reverse,
+            ) {
+                big_endian_expressions.push(shuffle_call);
+            }
+        }
+
+        if !big_endian_expressions.is_empty() {
+            Vec::reserve(
+                &mut variant.big_endian_compose,
+                big_endian_expressions.len() + variant.compose.len(),
+            );
+            let mut expression = &variant.compose[0];
+            let needs_reordering = expression.is_static_assert() || expression.is_llvm_link();
+
+            /* We want to keep the asserts and llvm links at the start of
+             * the new big_endian_compose vector that we are creating */
+            if needs_reordering {
+                let mut expression_idx = 0;
+                while expression.is_static_assert() || expression.is_llvm_link() {
+                    /* Add static asserts and llvm links to the start of the
+                     * vector */
+                    variant.big_endian_compose.push(expression.clone());
+                    expression_idx += 1;
+                    expression = &variant.compose[expression_idx];
+                }
+
+                /* Add the big endian specific expressions */
+                variant.big_endian_compose.extend(big_endian_expressions);
+
+                /* Add the rest of the expressions */
+                for i in expression_idx..variant.compose.len() {
+                    variant.big_endian_compose.push(variant.compose[i].clone());
+                }
+            } else {
+                /* If we do not need to reorder anything then immediately add
+                 * the expressions from the big_endian_expressions and
+                 * concatinate the compose vector */
+                variant.big_endian_compose.extend(big_endian_expressions);
+                variant
+                    .big_endian_compose
+                    .extend(variant.compose.iter().cloned());
+            }
+        }
+
+        /* If we have a return type, there is a possibility we want to generate
+         * a shuffle call */
+        if let Some(return_type) = &variant.signature.return_type {
+            let return_value = variant
+                .compose
+                .last()
+                .expect("Cannot define a return type with an empty function body");
+
+            /* If we do not create a shuffle call we do not need modify the
+             * return value and append to the big endian ast array. A bit confusing
+             * as in code we are making the final call before caputuring the return
+             * value of the intrinsic that has been called.*/
+            let ret_val_name = "ret_val".to_string();
+            if let Some(simd_shuffle_call) =
+                create_shuffle_call(&ret_val_name, return_type, should_reverse)
+            {
+                /* There is a possibility that the funcion arguments did not
+                 * require big endian treatment, thus we need to now add the
+                 * original function body before appending the return value.*/
+                if variant.big_endian_compose.is_empty() {
+                    variant
+                        .big_endian_compose
+                        .extend(variant.compose.iter().cloned());
+                }
+
+                /* Now we shuffle the return value - we are creating a new
+                 * return value for the intrinsic. */
+                let return_value_variable = if type_has_tuple(&return_type) {
+                    create_mut_let_variable(&ret_val_name, return_type, return_value.clone())
+                } else {
+                    create_let_variable(&ret_val_name, return_type, return_value.clone())
+                };
+
+                /* Remove the last item which will be the return value */
+                variant.big_endian_compose.pop();
+                variant.big_endian_compose.push(return_value_variable);
+                variant.big_endian_compose.push(simd_shuffle_call);
+                if type_has_tuple(return_type) {
+                    /* We generated `tuple_count` number of calls to shuffle
+                     * re-assigning each tuple however those generated calls do
+                     * not make the parent function return. So we add the return
+                     * value here */
+                    variant
+                        .big_endian_compose
+                        .push(create_symbol_identifier(&ret_val_name));
+                }
+            }
         }
     }
 
@@ -1505,120 +1665,157 @@ impl Intrinsic {
     }
 }
 
-impl ToTokens for Intrinsic {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let signature = &self.signature;
-        let fn_name = signature.fn_name().to_string();
-        let target_feature = self.target_features.join(",");
-        let safety = self
-            .safety
-            .as_ref()
-            .expect("safety should be determined during `pre_build`");
+/// Some intrinsics require a little endian and big endian implementation, others
+/// do not
+enum Endianness {
+    Little,
+    Big,
+    NA,
+}
 
-        if let Some(doc) = &self.doc {
-            let mut doc = vec![doc.to_string()];
+/// Based on the endianess will create the appropriate intrinsic, or simply
+/// create the desired intrinsic without any endianess
+fn create_tokens(intrinsic: &Intrinsic, endianness: Endianness, tokens: &mut TokenStream) {
+    let signature = &intrinsic.signature;
+    let fn_name = signature.fn_name().to_string();
+    let target_feature = intrinsic.target_features.join(",");
+    let safety = intrinsic
+        .safety
+        .as_ref()
+        .expect("safety should be determined during `pre_build`");
 
-            doc.push(format!("[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/{})", &signature.doc_name()));
+    if let Some(doc) = &intrinsic.doc {
+        let mut doc = vec![doc.to_string()];
 
-            if safety.has_doc_comments() {
-                doc.push("## Safety".to_string());
-                for comment in safety.doc_comments() {
-                    doc.push(format!("  * {comment}"));
-                }
-            } else {
-                assert!(
-                    safety.is_safe(),
-                    "{fn_name} is both public and unsafe, and so needs safety documentation"
-                );
+        doc.push(format!("[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/{})", &signature.doc_name()));
+
+        if safety.has_doc_comments() {
+            doc.push("## Safety".to_string());
+            for comment in safety.doc_comments() {
+                doc.push(format!("  * {comment}"));
             }
-
-            tokens.append_all(quote! { #(#[doc = #doc])* });
         } else {
             assert!(
-                matches!(self.visibility, FunctionVisibility::Private),
-                "{fn_name} needs to be private, or to have documentation."
-            );
-            assert!(
-                !safety.has_doc_comments(),
-                "{fn_name} needs a documentation section for its safety comments."
+                safety.is_safe(),
+                "{fn_name} is both public and unsafe, and so needs safety documentation"
             );
         }
 
-        tokens.append_all(quote! { #[inline] });
+        tokens.append_all(quote! { #(#[doc = #doc])* });
+    } else {
+        assert!(
+            matches!(intrinsic.visibility, FunctionVisibility::Private),
+            "{fn_name} needs to be private, or to have documentation."
+        );
+        assert!(
+            !safety.has_doc_comments(),
+            "{fn_name} needs a documentation section for its safety comments."
+        );
+    }
 
-        /* If we have manually defined attributes on the block of yaml with
-         * 'attr:' we want to add them */
-        if let Some(attr) = &self.attr {
-            /* Scan to see if we have defined `FnCall: [target_feature, ['<bespoke>']]`*/
-            if !has_target_feature_attr(attr) {
-                /* If not add the default one that is defined at the top of
-                 * the yaml file. This does mean we scan the attributes vector
-                 * twice, once to see if the `target_feature` exists and again
-                 * to actually append the tokens. We could impose that the
-                 * `target_feature` call has to be the first argument of the
-                 * `attr` block */
-                tokens.append_all(quote! {
-                    #[target_feature(enable = #target_feature)]
-                });
-            }
+    tokens.append_all(quote! { #[inline] });
 
-            /* Target feature will get added here */
-            let attr_expressions = &mut attr.iter().peekable();
-            while let Some(ex) = attr_expressions.next() {
-                let mut inner = TokenStream::new();
-                ex.to_tokens(&mut inner);
-                tokens.append(Punct::new('#', Spacing::Alone));
-                tokens.append(Group::new(Delimiter::Bracket, inner));
-            }
-        } else {
+    match endianness {
+        Endianness::Little => tokens.append_all(quote! { #[cfg(target_endian = "little")] }),
+        Endianness::Big => tokens.append_all(quote! { #[cfg(target_endian = "big")] }),
+        Endianness::NA => {}
+    };
+
+    /* If we have manually defined attributes on the block of yaml with
+     * 'attr:' we want to add them */
+    if let Some(attr) = &intrinsic.attr {
+        /* Scan to see if we have defined `FnCall: [target_feature, ['<bespoke>']]`*/
+        if !has_target_feature_attr(attr) {
+            /* If not add the default one that is defined at the top of
+             * the yaml file. This does mean we scan the attributes vector
+             * twice, once to see if the `target_feature` exists and again
+             * to actually append the tokens. We could impose that the
+             * `target_feature` call has to be the first argument of the
+             * `attr` block */
             tokens.append_all(quote! {
                 #[target_feature(enable = #target_feature)]
             });
         }
 
-        if let Some(assert_instr) = &self.assert_instr {
-            if !assert_instr.is_empty() {
-                InstructionAssertionsForBaseType(&assert_instr, &self.base_type.as_ref())
-                    .to_tokens(tokens)
-            }
+        /* Target feature will get added here */
+        let attr_expressions = &mut attr.iter().peekable();
+        while let Some(ex) = attr_expressions.next() {
+            let mut inner = TokenStream::new();
+            ex.to_tokens(&mut inner);
+            tokens.append(Punct::new('#', Spacing::Alone));
+            tokens.append(Group::new(Delimiter::Bracket, inner));
         }
+    } else {
+        tokens.append_all(quote! {
+            #[target_feature(enable = #target_feature)]
+        });
+    }
 
-        match &self.visibility {
-            FunctionVisibility::Public => tokens.append_all(quote! { pub }),
-            FunctionVisibility::Private => {}
+    if let Some(assert_instr) = &intrinsic.assert_instr {
+        if !assert_instr.is_empty() {
+            InstructionAssertionsForBaseType(&assert_instr, &intrinsic.base_type.as_ref())
+                .to_tokens(tokens)
         }
-        if safety.is_unsafe() {
-            tokens.append_all(quote! { unsafe });
-        }
-        tokens.append_all(quote! { #signature });
+    }
 
-        // If the intrinsic function is explicitly unsafe, we populate `body_default_safety` with
-        // the implementation. No explicit unsafe blocks are required.
-        //
-        // If the intrinsic is safe, we fill `body_default_safety` until we encounter an expression
-        // that requires an unsafe wrapper, then switch to `body_unsafe`. Since the unsafe
-        // operation (e.g. memory access) is typically the last step, this tends to minimises the
-        // amount of unsafe code required.
-        let mut body_default_safety = TokenStream::new();
-        let mut body_unsafe = TokenStream::new();
-        let mut body_current = &mut body_default_safety;
-        for (pos, ex) in self.compose.iter().with_position() {
-            if safety.is_safe() && ex.requires_unsafe_wrapper(&fn_name) {
-                body_current = &mut body_unsafe;
-            }
-            ex.to_tokens(body_current);
-            let is_last = matches!(pos, itertools::Position::Last | itertools::Position::Only);
-            let is_llvm_link = matches!(ex, Expression::LLVMLink(_));
-            if !is_last && !is_llvm_link {
-                body_current.append(Punct::new(';', Spacing::Alone));
-            }
-        }
-        let mut body = body_default_safety;
-        if !body_unsafe.is_empty() {
-            body.append_all(quote! { unsafe { #body_unsafe } });
-        }
+    match &intrinsic.visibility {
+        FunctionVisibility::Public => tokens.append_all(quote! { pub }),
+        FunctionVisibility::Private => {}
+    }
+    if safety.is_unsafe() {
+        tokens.append_all(quote! { unsafe });
+    }
+    tokens.append_all(quote! { #signature });
 
-        tokens.append(Group::new(Delimiter::Brace, body));
+    let expressions = match endianness {
+        Endianness::Little | Endianness::NA => &intrinsic.compose,
+        Endianness::Big => &intrinsic.big_endian_compose,
+    };
+
+    tokens.append_all(quote! { #signature });
+
+    // If the intrinsic function is explicitly unsafe, we populate `body_default_safety` with
+    // the implementation. No explicit unsafe blocks are required.
+    //
+    // If the intrinsic is safe, we fill `body_default_safety` until we encounter an expression
+    // that requires an unsafe wrapper, then switch to `body_unsafe`. Since the unsafe
+    // operation (e.g. memory access) is typically the last step, this tends to minimises the
+    // amount of unsafe code required.
+    let mut body_default_safety = TokenStream::new();
+    let mut body_unsafe = TokenStream::new();
+    let mut body_current = &mut body_default_safety;
+    for (pos, ex) in expressions.iter().with_position() {
+        if safety.is_safe() && ex.requires_unsafe_wrapper(&fn_name) {
+            body_current = &mut body_unsafe;
+        }
+        ex.to_tokens(body_current);
+        let is_last = matches!(pos, itertools::Position::Last | itertools::Position::Only);
+        let is_llvm_link = matches!(ex, Expression::LLVMLink(_));
+        if !is_last && !is_llvm_link {
+            body_current.append(Punct::new(';', Spacing::Alone));
+        }
+    }
+    let mut body = body_default_safety;
+    if !body_unsafe.is_empty() {
+        body.append_all(quote! { unsafe { #body_unsafe } });
+    }
+
+    tokens.append(Group::new(Delimiter::Brace, body));
+}
+
+impl ToTokens for Intrinsic {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        if self.big_endian_compose.len() >= 1 {
+            for i in 0..2 {
+                match i {
+                    0 => create_tokens(self, Endianness::Little, tokens),
+                    1 => create_tokens(self, Endianness::Big, tokens),
+                    _ => panic!("Currently only little and big endian exist"),
+                }
+            }
+        } else {
+            create_tokens(self, Endianness::NA, tokens);
+        }
     }
 }
 
