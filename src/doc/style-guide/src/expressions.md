@@ -818,11 +818,11 @@ E.g., `&&Some(foo)` matches, `Foo(4, Bar)` does not.
 
 ## Combinable expressions
 
-When the last argument in a function call is formatted across
-multiple-lines, format the outer call as if it were a single-line call,
+Where a function call has a single argument, and that argument is formatted
+across multiple-lines, format the outer call as if it were a single-line call,
 if the result fits. Apply the same combining behaviour to any similar
 expressions which have multi-line, block-indented lists of sub-expressions
-delimited by parentheses, brackets, or braces. E.g.,
+delimited by parentheses (e.g., macros or tuple struct literals). E.g.,
 
 ```rust
 foo(bar(
@@ -848,61 +848,20 @@ let arr = [combinable(
     an_expr,
     another_expr,
 )];
-
-let x = Thing(an_expr, another_expr, match cond {
-    A => 1,
-    B => 2,
-});
-
-let x = format!("Stuff: {}", [
-    an_expr,
-    another_expr,
-]);
-
-let x = func(an_expr, another_expr, SomeStruct {
-    field: this_is_long,
-    another_field: 123,
-});
 ```
 
 Apply this behavior recursively.
 
-If the last argument is a multi-line closure with an explicit block,
-only apply the combining behavior if there are no other closure arguments.
+For a function with multiple arguments, if the last argument is a multi-line
+closure with an explicit block, there are no other closure arguments, and all
+the arguments and the first line of the closure fit on the first line, use the
+same combining behavior:
 
 ```rust
-// Combinable
 foo(first_arg, x, |param| {
     action();
     foo(param)
 })
-// Not combinable, because the closure is not the last argument
-foo(
-    first_arg,
-    |param| {
-        action();
-        foo(param)
-    },
-    whatever,
-)
-// Not combinable, because the first line of the closure does not fit
-foo(
-    first_arg,
-    x,
-    move |very_long_param_causing_line_to_overflow| -> Bar {
-        action();
-        foo(param)
-    },
-)
-// Not combinable, because there is more than one closure argument
-foo(
-    first_arg,
-    |x| x.bar(),
-    |param| {
-        action();
-        foo(param)
-    },
-)
 ```
 
 ## Ranges
