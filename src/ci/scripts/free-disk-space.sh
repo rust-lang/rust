@@ -9,6 +9,7 @@ set -euo pipefail
 # - Check that there are no big packages preinstalled that we aren't using
 # - Check that all directores we are removing are still present (look at the warnings)
 
+# Print a line of the specified character.
 printSeparationLine() {
     for ((i = 0; i < 80; i++)); do
         printf "%s" "$1"
@@ -231,8 +232,11 @@ main() {
     printDF "BEFORE CLEAN-UP:"
 
     execAndMeasure "Unused packages" cleanPackages
-    execAndMeasure "Node modules" removeNodeModules
-    execAndMeasure "Python Packages" removePythonPackages
+    execAndMeasure "Unused Python Packages" removePythonPackages
+    if isX86; then
+        # On ARM, `npm uninstall` fails with a segmentation fault.
+        execAndMeasure "Unused Node modules" removeNodeModules
+    fi
     removeUnusedDirsAndFiles
 
     # Output saved space statistic
