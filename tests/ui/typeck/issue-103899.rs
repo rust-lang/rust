@@ -1,9 +1,5 @@
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
-//@ check-fail
-//@ failure-status: 101
-//@ dont-check-compiler-stderr
-//@ known-bug: #103899
 
 trait BaseWithAssoc {
     type Assoc;
@@ -26,6 +22,7 @@ struct DoubleProject<L: WrapperWithAssoc> {
 }
 
 fn trigger<L: WrapperWithAssoc<BaseAssoc = ()>>() -> DoubleProject<L> {
+    //~^ ERROR the trait bound `(): BaseWithAssoc` is not satisfied [E0277]
     loop {}
 }
 
