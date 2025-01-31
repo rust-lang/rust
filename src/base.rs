@@ -915,6 +915,10 @@ fn codegen_stmt<'tcx>(
                     }
                     crate::discriminant::codegen_set_discriminant(fx, lval, variant_index);
                 }
+                Rvalue::WrapUnsafeBinder(ref operand, _to_ty) => {
+                    let operand = codegen_operand(fx, operand);
+                    lval.write_cvalue_transmute(fx, operand);
+                }
             }
         }
         StatementKind::StorageLive(_)
