@@ -128,6 +128,19 @@ impl Target {
                     Some(Ok(()))
                 })).unwrap_or(Ok(()))
             } );
+            ($key_name:ident, RustcAbi) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
+                    match s.parse::<super::RustcAbi>() {
+                        Ok(rustc_abi) => base.$key_name = Some(rustc_abi),
+                        _ => return Some(Err(format!(
+                            "'{s}' is not a valid value for rustc-abi. \
+                            Use 'x86-softfloat' or leave the field unset."
+                        ))),
+                    }
+                    Some(Ok(()))
+                })).unwrap_or(Ok(()))
+            } );
             ($key_name:ident, RelocModel) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
@@ -612,6 +625,7 @@ impl Target {
         key!(llvm_mcount_intrinsic, optional);
         key!(llvm_abiname);
         key!(llvm_floatabi, FloatAbi)?;
+        key!(rustc_abi, RustcAbi)?;
         key!(relax_elf_relocations, bool);
         key!(llvm_args, list);
         key!(use_ctors_section, bool);
@@ -788,6 +802,7 @@ impl ToJson for Target {
         target_option_val!(llvm_mcount_intrinsic);
         target_option_val!(llvm_abiname);
         target_option_val!(llvm_floatabi);
+        target_option_val!(rustc_abi);
         target_option_val!(relax_elf_relocations);
         target_option_val!(llvm_args);
         target_option_val!(use_ctors_section);
