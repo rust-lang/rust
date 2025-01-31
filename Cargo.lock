@@ -2152,6 +2152,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ee93343901ab17bd981295f2cf0026d4ad018c7c31ba84549a4ddbb47a45104"
 
 [[package]]
+name = "literal-escaper"
+version = "0.0.1"
+
+[[package]]
 name = "lld-wrapper"
 version = "0.1.0"
 
@@ -3366,6 +3370,7 @@ name = "rustc_ast"
 version = "0.0.0"
 dependencies = [
  "bitflags",
+ "literal-escaper",
  "memchr",
  "rustc_ast_ir",
  "rustc_data_structures",
@@ -4325,6 +4330,7 @@ name = "rustc_parse"
 version = "0.0.0"
 dependencies = [
  "bitflags",
+ "literal-escaper",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
@@ -4347,6 +4353,7 @@ dependencies = [
 name = "rustc_parse_format"
 version = "0.0.0"
 dependencies = [
+ "literal-escaper",
  "rustc_index",
  "rustc_lexer",
 ]
