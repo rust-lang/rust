@@ -3,7 +3,7 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, pluralize, struct_span_code_err,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, listify, pluralize, struct_span_code_err,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -808,14 +808,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .map(|(trait_, mut assocs)| {
                 assocs.sort();
                 let trait_ = trait_.print_trait_sugared();
-                format!("{} in `{trait_}`", match &assocs[..] {
-                    [] => String::new(),
-                    [only] => format!("`{only}`"),
-                    [assocs @ .., last] => format!(
-                        "{} and `{last}`",
-                        assocs.iter().map(|a| format!("`{a}`")).collect::<Vec<_>>().join(", ")
-                    ),
-                })
+                format!(
+                    "{} in `{trait_}`",
+                    listify(&assocs[..], |a| format!("`{a}`")).unwrap_or_default()
+                )
             })
             .collect::<Vec<String>>();
         names.sort();
@@ -1075,18 +1071,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             })
             .collect();
-        let this_type = match &types_and_spans[..] {
-            [.., _, (last, _)] => format!(
-                "{} and {last}",
-                types_and_spans[..types_and_spans.len() - 1]
-                    .iter()
-                    .map(|(x, _)| x.as_str())
-                    .intersperse(", ")
-                    .collect::<String>()
-            ),
-            [(only, _)] => only.to_string(),
-            [] => bug!("expected one segment to deny"),
-        };
+        let this_type = listify(&types_and_spans, |(t, _)| t.to_string())
+            .expect("expected one segment to deny");
 
         let arg_spans: Vec<Span> = segments
             .clone()
@@ -1102,21 +1088,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ProhibitGenericsArg::Infer => kinds.push("generic"),
         });
 
-        let (kind, s) = match kinds[..] {
-            [.., _, last] => (
-                format!(
-                    "{} and {last}",
-                    kinds[..kinds.len() - 1]
-                        .iter()
-                        .map(|&x| x)
-                        .intersperse(", ")
-                        .collect::<String>()
-                ),
-                "s",
-            ),
-            [only] => (only.to_string(), ""),
-            [] => bug!("expected at least one generic to prohibit"),
-        };
+        let s = pluralize!(kinds.len());
+        let kind =
+            listify(&kinds, |k| k.to_string()).expect("expected at least one generic to prohibit");
         let last_span = *arg_spans.last().unwrap();
         let span: MultiSpan = arg_spans.into();
         let mut err = struct_span_code_err!(
