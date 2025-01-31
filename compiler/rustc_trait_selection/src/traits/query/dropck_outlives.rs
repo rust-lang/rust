@@ -2,12 +2,13 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_infer::traits::query::type_op::DropckOutlives;
 use rustc_middle::traits::query::{DropckConstraint, DropckOutlivesResult};
 use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, Ty, TyCtxt};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::Span;
 use tracing::{debug, instrument};
 
+use crate::solve::NextSolverError;
 use crate::traits::query::NoSolution;
 use crate::traits::query::normalize::QueryNormalizeExt;
-use crate::traits::{Normalized, ObligationCause, ObligationCtxt};
+use crate::traits::{FromSolverError, Normalized, ObligationCause, ObligationCtxt};
 
 /// This returns true if the type `ty` is "trivial" for
 /// dropck-outlives -- that is, if it doesn't require any types to
@@ -93,6 +94,21 @@ pub fn compute_dropck_outlives_inner<'tcx>(
     goal: ParamEnvAnd<'tcx, DropckOutlives<'tcx>>,
     span: Span,
 ) -> Result<DropckOutlivesResult<'tcx>, NoSolution> {
+    match compute_dropck_outlives_with_errors(ocx, goal, span, false) {
+        Ok(r) => Ok(r),
+        Err(_) => Err(NoSolution),
+    }
+}
+
+pub fn compute_dropck_outlives_with_errors<'tcx, E>(
+    ocx: &ObligationCtxt<'_, 'tcx, E>,
+    goal: ParamEnvAnd<'tcx, DropckOutlives<'tcx>>,
+    span: Span,
+    report_errors: bool,
+) -> Result<DropckOutlivesResult<'tcx>, Vec<E>>
+where
+    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
+{
     let tcx = ocx.infcx.tcx;
     let ParamEnvAnd { param_env, value: DropckOutlives { dropped_ty } } = goal;
 
@@ -146,14 +162,17 @@ pub fn compute_dropck_outlives_inner<'tcx>(
             result.overflows.len(),
             ty_stack.len()
         );
-        dtorck_constraint_for_ty_inner(
+        match dtorck_constraint_for_ty_inner(
             tcx,
             ocx.infcx.typing_env(param_env),
-            DUMMY_SP,
+            span,
             depth,
             ty,
             &mut constraints,
-        )?;
+        ) {
+            Err(_) => return Err(Vec::new()),
+            _ => (),
+        };
 
         // "outlives" represent types/regions that may be touched
         // by a destructor.
@@ -173,11 +192,25 @@ pub fn compute_dropck_outlives_inner<'tcx>(
         // do not themselves define a destructor", more or less. We have
         // to push them onto the stack to be expanded.
         for ty in constraints.dtorck_types.drain(..) {
-            let Normalized { value: ty, obligations } =
-                ocx.infcx.at(&cause, param_env).query_normalize(ty)?;
-            ocx.register_obligations(obligations);
+            let ty = if report_errors {
+                let normalized_ty = ocx.deeply_normalize(&cause, param_env, ty)?;
 
-            debug!("dropck_outlives: ty from dtorck_types = {:?}", ty);
+                let errors = ocx.select_where_possible();
+                if !errors.is_empty() {
+                    debug!("failed to normalize dtorck type: {ty} ~> {errors:#?}");
+                    return Err(errors);
+                }
+                normalized_ty
+            } else if let Ok(Normalized { value: ty, obligations }) =
+                ocx.infcx.at(&cause, param_env).query_normalize(ty)
+            {
+                ocx.register_obligations(obligations);
+
+                debug!("dropck_outlives: ty from dtorck_types = {:?}", ty);
+                ty
+            } else {
+                return Err(Vec::new());
+            };
 
             match ty.kind() {
                 // All parameters live for the duration of the
