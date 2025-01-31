@@ -1,4 +1,4 @@
-// These functions are used by macro expansion for bug! and span_bug!
+// These functions are used by macro expansion for `bug!` and `span_bug!`.
 
 use std::fmt;
 use std::panic::{Location, panic_any};
@@ -8,15 +8,15 @@ use rustc_span::Span;
 
 use crate::ty::{TyCtxt, tls};
 
+// This wrapper makes for more compact code at callsites than calling `opt_span_buf_fmt` directly.
 #[cold]
 #[inline(never)]
 #[track_caller]
 pub fn bug_fmt(args: fmt::Arguments<'_>) -> ! {
-    // this wrapper mostly exists so I don't have to write a fully
-    // qualified path of None::<Span> inside the bug!() macro definition
     opt_span_bug_fmt(None::<Span>, args, Location::caller());
 }
 
+// This wrapper makes for more compact code at callsites than calling `opt_span_buf_fmt` directly.
 #[cold]
 #[inline(never)]
 #[track_caller]
