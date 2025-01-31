@@ -2384,6 +2384,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // NB: This assumes that `&` patterns can match against mutable
                             // references (RFC 3627, Rule 5). If we implement a pattern typing
                             // ruleset with Rule 4 but not Rule 5, we'll need to check that here.
+                            // FIXME(ref_pat_eat_one_layer_2024_structural): If we already tried
+                            // matching the real reference, the error message should explain that
+                            // falling back to the inherited reference didn't work. This should be
+                            // the same error as the old-Edition version below.
                             debug_assert!(ref_pat_matches_mut_ref);
                             self.error_inherited_ref_mutability_mismatch(pat, pat_prefix_span);
                         }
@@ -2418,6 +2422,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             // Otherwise, use the common logic below for matching the inner
                             // reference type.
+                            // FIXME(ref_pat_eat_one_layer_2024_structural): If this results in a
+                            // mutability mismatch, the error message should explain that falling
+                            // back to the inherited reference didn't work. This should be the same
+                            // error as the Edition 2024 version above.
                         }
                     } else {
                         // The expected type isn't a reference type, so only match against the
