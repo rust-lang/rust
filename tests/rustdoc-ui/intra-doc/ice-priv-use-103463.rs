@@ -1,3 +1,6 @@
+// https://github.com/rust-lang/rust/issues/103463
+//@ check-pass
+
 // The `Trait` is not pulled into the crate resulting in doc links in its methods being resolved.
 
 //@ aux-build:issue-103463-aux.rs

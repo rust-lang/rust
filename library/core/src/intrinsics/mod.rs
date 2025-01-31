@@ -3725,6 +3725,7 @@ pub const unsafe fn compare_bytes(_left: *const u8, _right: *const u8, _bytes: u
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
+#[rustc_intrinsic_const_stable_indirect]
 pub const fn black_box<T>(_dummy: T) -> T {
     unimplemented!()
 }

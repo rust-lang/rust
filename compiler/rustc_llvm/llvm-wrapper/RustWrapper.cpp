@@ -319,7 +319,11 @@ static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
   case LLVMRustAttributeKind::NoAlias:
     return Attribute::NoAlias;
   case LLVMRustAttributeKind::NoCapture:
+#if LLVM_VERSION_GE(21, 0)
+    report_fatal_error("NoCapture doesn't exist in LLVM 21");
+#else
     return Attribute::NoCapture;
+#endif
   case LLVMRustAttributeKind::NoCfCheck:
     return Attribute::NoCfCheck;
   case LLVMRustAttributeKind::NoInline:
@@ -431,6 +435,12 @@ extern "C" void LLVMRustEraseInstFromParent(LLVMValueRef Instr) {
 
 extern "C" LLVMAttributeRef
 LLVMRustCreateAttrNoValue(LLVMContextRef C, LLVMRustAttributeKind RustAttr) {
+#if LLVM_VERSION_GE(21, 0)
+  // LLVM 21 replaced the NoCapture attribute with Captures(none).
+  if (RustAttr == LLVMRustAttributeKind::NoCapture) {
+    return wrap(Attribute::getWithCaptureInfo(*unwrap(C), CaptureInfo::none()));
+  }
+#endif
   return wrap(Attribute::get(*unwrap(C), fromRust(RustAttr)));
 }
 
