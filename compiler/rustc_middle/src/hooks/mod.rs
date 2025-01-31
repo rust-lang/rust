@@ -1,7 +1,7 @@
-//! "Hooks" provide a way for `tcx` functionality to be provided by some downstream crate without
-//! everything in rustc having to depend on that crate. This is somewhat similar to queries, but
-//! queries come with a lot of machinery for caching and incremental compilation, whereas hooks are
-//! just plain function pointers without any of the query magic.
+//! "Hooks" let you write `tcx` methods in downstream crates and call them in this crate, reducing
+//! the amount of code that needs to be in this crate (which is already very big). This is somewhat
+//! similar to queries, but queries come with a lot of machinery for caching and incremental
+//! compilation, whereas hooks are just plain function pointers without any of the query magic.
 
 use rustc_hir::def_id::{DefId, DefPathHash};
 use rustc_session::StableCrateId;
@@ -75,12 +75,6 @@ declare_hooks! {
     /// (Eligible functions might nevertheless be skipped for other reasons.)
     hook is_eligible_for_coverage(key: LocalDefId) -> bool;
 
-    /// Create the MIR for a given `DefId` - this includes
-    /// unreachable code.
-    /// You do not want to call this yourself, instead use the cached version
-    /// via `mir_built`
-    hook build_mir(key: LocalDefId) -> mir::Body<'tcx>;
-
     /// Imports all `SourceFile`s from the given crate into the current session.
     /// This normally happens automatically when we decode a `Span` from
     /// that crate's metadata - however, the incr comp cache needs
@@ -99,14 +93,11 @@ declare_hooks! {
     /// Will fetch a DefId from a DefPathHash for a foreign crate.
     hook def_path_hash_to_def_id_extern(hash: DefPathHash, stable_crate_id: StableCrateId) -> DefId;
 
-    /// Create a THIR tree for debugging.
-    hook thir_tree(key: LocalDefId) -> String;
-
-    /// Create a list-like THIR representation for debugging.
-    hook thir_flat(key: LocalDefId) -> String;
-
     /// Returns `true` if we should codegen an instance in the local crate, or returns `false` if we
     /// can just link to the upstream crate and therefore don't need a mono item.
+    ///
+    /// Note: this hook isn't called within `rustc_middle` but #127779 suggests it's a hook instead
+    /// of a normal function because external tools might want to override it.
     hook should_codegen_locally(instance: crate::ty::Instance<'tcx>) -> bool;
 
     hook alloc_self_profile_query_strings() -> ();
