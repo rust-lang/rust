@@ -1,4 +1,5 @@
 use rustc_abi::ExternAbi;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
@@ -344,12 +345,14 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for TailCallCkVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'a Expr<'tcx>) {
-        if let ExprKind::Become { value } = expr.kind {
-            let call = &self.thir[value];
-            self.check_tail_call(call, expr);
-        }
+        ensure_sufficient_stack(|| {
+            if let ExprKind::Become { value } = expr.kind {
+                let call = &self.thir[value];
+                self.check_tail_call(call, expr);
+            }
 
-        visit::walk_expr(self, expr);
+            visit::walk_expr(self, expr);
+        });
     }
 }
 
