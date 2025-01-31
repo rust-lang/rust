@@ -1681,7 +1681,7 @@ impl<T, const N: usize> *const [T; N] {
     }
 }
 
-// Equality for pointers
+/// Pointer equality is by address, as produced by the [`<*const T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialEq for *const T {
     #[inline]
@@ -1691,10 +1691,11 @@ impl<T: ?Sized> PartialEq for *const T {
     }
 }
 
+/// Pointer equality is an equivalence relation.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Eq for *const T {}
 
-// Comparison for pointers
+/// Pointer comparison is by address, as produced by the `[`<*const T>::addr`](pointer::addr)` method.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Ord for *const T {
     #[inline]
@@ -1710,6 +1711,7 @@ impl<T: ?Sized> Ord for *const T {
     }
 }
 
+/// Pointer comparison is by address, as produced by the `[`<*const T>::addr`](pointer::addr)` method.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialOrd for *const T {
     #[inline]
