@@ -6,27 +6,27 @@ use std::ptr;
 fn main() {
     let x = 0;
     let p: *const usize = &x;
-    if p == ptr::null() {
+    if p.is_null() {
         //~^ ERROR: comparing with null is better expressed by the `.is_null()` method
         //~| NOTE: `-D clippy::cmp-null` implied by `-D warnings`
         println!("This is surprising!");
     }
-    if ptr::null() == p {
+    if p.is_null() {
         //~^ ERROR: comparing with null is better expressed by the `.is_null()` method
         println!("This is surprising!");
     }
 
     let mut y = 0;
     let mut m: *mut usize = &mut y;
-    if m == ptr::null_mut() {
+    if m.is_null() {
         //~^ ERROR: comparing with null is better expressed by the `.is_null()` method
         println!("This is surprising, too!");
     }
-    if ptr::null_mut() == m {
+    if m.is_null() {
         //~^ ERROR: comparing with null is better expressed by the `.is_null()` method
         println!("This is surprising, too!");
     }
 
-    let _ = x as *const () == ptr::null();
+    let _ = (x as *const ()).is_null();
     //~^ ERROR: comparing with null is better expressed by the `.is_null()` method
 }
