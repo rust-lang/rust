@@ -1,5 +1,6 @@
 //@ build-fail
-//@ normalize-stderr: ".nll/" -> "/"
+// The regex below normalizes the long type file name to make it suitable for compare-modes.
+//@ normalize-stderr: "'\$TEST_BUILD_DIR/.*\.long-type.txt'" -> "'$$TEST_BUILD_DIR/$$FILE.long-type.txt'"
 
 trait Mirror {
     type Image;

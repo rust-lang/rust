@@ -965,7 +965,8 @@ extern "C" LLVMValueRef LLVMRustGetLastInstruction(LLVMBasicBlockRef BB) {
   return nullptr;
 }
 
-extern "C" void LLVMRustEraseInstBefore(LLVMBasicBlockRef bb, LLVMValueRef I) {
+extern "C" void LLVMRustEraseInstUntilInclusive(LLVMBasicBlockRef bb,
+                                                LLVMValueRef I) {
   auto &BB = *unwrap(bb);
   auto &Inst = *unwrap<Instruction>(I);
   auto It = BB.begin();
@@ -973,8 +974,6 @@ extern "C" void LLVMRustEraseInstBefore(LLVMBasicBlockRef bb, LLVMValueRef I) {
     ++It;
   // Make sure we found the Instruction.
   assert(It != BB.end());
-  // We don't want to erase the instruction itself.
-  It--;
   // Delete in rev order to ensure no dangling references.
   while (It != BB.begin()) {
     auto Prev = std::prev(It);
