@@ -12,8 +12,8 @@ use rustc_hir::{
     GenericBound, HirId, Node, PatExpr, PatExprKind, Path, QPath, Stmt, StmtKind, TyKind,
     WherePredicateKind, expr_needs_parens,
 };
-use rustc_hir_analysis::collect::suggest_impl_trait;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
+use rustc_hir_analysis::suggest_impl_trait;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;

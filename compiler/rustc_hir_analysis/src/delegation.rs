@@ -100,213 +100,156 @@ enum InheritanceKind {
     Own,
 }
 
-struct GenericsBuilder<'tcx> {
+fn build_generics<'tcx>(
     tcx: TyCtxt<'tcx>,
     sig_id: DefId,
     parent: Option<DefId>,
     inh_kind: InheritanceKind,
-}
+) -> ty::Generics {
+    let mut own_params = vec![];
 
-impl<'tcx> GenericsBuilder<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, sig_id: DefId) -> GenericsBuilder<'tcx> {
-        GenericsBuilder { tcx, sig_id, parent: None, inh_kind: InheritanceKind::WithParent(false) }
+    let sig_generics = tcx.generics_of(sig_id);
+    if let InheritanceKind::WithParent(has_self) = inh_kind
+        && let Some(parent_def_id) = sig_generics.parent
+    {
+        let sig_parent_generics = tcx.generics_of(parent_def_id);
+        own_params.append(&mut sig_parent_generics.own_params.clone());
+        if !has_self {
+            own_params.remove(0);
+        }
     }
+    own_params.append(&mut sig_generics.own_params.clone());
 
-    fn with_parent(mut self, parent: DefId) -> Self {
-        self.parent = Some(parent);
-        self
-    }
+    // Lifetime parameters must be declared before type and const parameters.
+    // Therefore, When delegating from a free function to a associated function,
+    // generic parameters need to be reordered:
+    //
+    // trait Trait<'a, A> {
+    //     fn foo<'b, B>(...) {...}
+    // }
+    //
+    // reuse Trait::foo;
+    // desugaring:
+    // fn foo<'a, 'b, This: Trait<'a, A>, A, B>(...) {
+    //     Trait::foo(...)
+    // }
+    own_params.sort_by_key(|key| key.kind.is_ty_or_const());
 
-    fn with_inheritance_kind(mut self, inh_kind: InheritanceKind) -> Self {
-        self.inh_kind = inh_kind;
-        self
-    }
+    let param_def_id_to_index =
+        own_params.iter().map(|param| (param.def_id, param.index)).collect();
 
-    fn build(self) -> ty::Generics {
-        let mut own_params = vec![];
+    let (parent_count, has_self) = if let Some(def_id) = parent {
+        let parent_generics = tcx.generics_of(def_id);
+        let parent_kind = tcx.def_kind(def_id);
+        (parent_generics.count(), parent_kind == DefKind::Trait)
+    } else {
+        (0, false)
+    };
 
-        let sig_generics = self.tcx.generics_of(self.sig_id);
-        if let InheritanceKind::WithParent(has_self) = self.inh_kind
-            && let Some(parent_def_id) = sig_generics.parent
+    for (idx, param) in own_params.iter_mut().enumerate() {
+        param.index = (idx + parent_count) as u32;
+        // FIXME(fn_delegation): Default parameters are not inherited, because they are
+        // not permitted in functions. Therefore, there are 2 options here:
+        //
+        // - We can create non-default generic parameters.
+        // - We can substitute default parameters into the signature.
+        //
+        // At the moment, first option has been selected as the most general.
+        if let ty::GenericParamDefKind::Type { has_default, .. }
+        | ty::GenericParamDefKind::Const { has_default, .. } = &mut param.kind
         {
-            let sig_parent_generics = self.tcx.generics_of(parent_def_id);
-            own_params.append(&mut sig_parent_generics.own_params.clone());
-            if !has_self {
-                own_params.remove(0);
-            }
+            *has_default = false;
         }
-        own_params.append(&mut sig_generics.own_params.clone());
+    }
 
-        // Lifetime parameters must be declared before type and const parameters.
-        // Therefore, When delegating from a free function to a associated function,
-        // generic parameters need to be reordered:
-        //
-        // trait Trait<'a, A> {
-        //     fn foo<'b, B>(...) {...}
-        // }
-        //
-        // reuse Trait::foo;
-        // desugaring:
-        // fn foo<'a, 'b, This: Trait<'a, A>, A, B>(...) {
-        //     Trait::foo(...)
-        // }
-        own_params.sort_by_key(|key| key.kind.is_ty_or_const());
-
-        let param_def_id_to_index =
-            own_params.iter().map(|param| (param.def_id, param.index)).collect();
-
-        let (parent_count, has_self) = if let Some(def_id) = self.parent {
-            let parent_generics = self.tcx.generics_of(def_id);
-            let parent_kind = self.tcx.def_kind(def_id);
-            (parent_generics.count(), parent_kind == DefKind::Trait)
-        } else {
-            (0, false)
-        };
-
-        for (idx, param) in own_params.iter_mut().enumerate() {
-            param.index = (idx + parent_count) as u32;
-            // FIXME(fn_delegation): Default parameters are not inherited, because they are
-            // not permitted in functions. Therefore, there are 2 options here:
-            //
-            // - We can create non-default generic parameters.
-            // - We can substitute default parameters into the signature.
-            //
-            // At the moment, first option has been selected as the most general.
-            if let ty::GenericParamDefKind::Type { has_default, .. }
-            | ty::GenericParamDefKind::Const { has_default, .. } = &mut param.kind
-            {
-                *has_default = false;
-            }
-        }
-
-        ty::Generics {
-            parent: self.parent,
-            parent_count,
-            own_params,
-            param_def_id_to_index,
-            has_self,
-            has_late_bound_regions: sig_generics.has_late_bound_regions,
-        }
+    ty::Generics {
+        parent,
+        parent_count,
+        own_params,
+        param_def_id_to_index,
+        has_self,
+        has_late_bound_regions: sig_generics.has_late_bound_regions,
     }
 }
 
-struct PredicatesBuilder<'tcx> {
+fn build_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     sig_id: DefId,
     parent: Option<DefId>,
     inh_kind: InheritanceKind,
     args: ty::GenericArgsRef<'tcx>,
-}
-
-impl<'tcx> PredicatesBuilder<'tcx> {
-    fn new(
+) -> ty::GenericPredicates<'tcx> {
+    struct PredicatesCollector<'tcx> {
         tcx: TyCtxt<'tcx>,
+        preds: Vec<(ty::Clause<'tcx>, Span)>,
         args: ty::GenericArgsRef<'tcx>,
-        sig_id: DefId,
-    ) -> PredicatesBuilder<'tcx> {
-        PredicatesBuilder {
-            tcx,
-            sig_id,
-            parent: None,
-            inh_kind: InheritanceKind::WithParent(false),
-            args,
-        }
     }
 
-    fn with_parent(mut self, parent: DefId) -> Self {
-        self.parent = Some(parent);
-        self
-    }
-
-    fn with_inheritance_kind(mut self, inh_kind: InheritanceKind) -> Self {
-        self.inh_kind = inh_kind;
-        self
-    }
-
-    fn build(self) -> ty::GenericPredicates<'tcx> {
-        struct PredicatesCollector<'tcx> {
-            tcx: TyCtxt<'tcx>,
-            preds: Vec<(ty::Clause<'tcx>, Span)>,
-            args: ty::GenericArgsRef<'tcx>,
+    impl<'tcx> PredicatesCollector<'tcx> {
+        fn new(tcx: TyCtxt<'tcx>, args: ty::GenericArgsRef<'tcx>) -> PredicatesCollector<'tcx> {
+            PredicatesCollector { tcx, preds: vec![], args }
         }
 
-        impl<'tcx> PredicatesCollector<'tcx> {
-            fn new(tcx: TyCtxt<'tcx>, args: ty::GenericArgsRef<'tcx>) -> PredicatesCollector<'tcx> {
-                PredicatesCollector { tcx, preds: vec![], args }
-            }
-
-            fn with_own_preds(
-                mut self,
-                f: impl Fn(DefId) -> ty::GenericPredicates<'tcx>,
-                def_id: DefId,
-            ) -> Self {
-                let preds = f(def_id).instantiate_own(self.tcx, self.args);
-                self.preds.extend(preds);
-                self
-            }
-
-            fn with_preds(
-                mut self,
-                f: impl Fn(DefId) -> ty::GenericPredicates<'tcx> + Copy,
-                def_id: DefId,
-            ) -> Self {
-                let preds = f(def_id);
-                if let Some(parent_def_id) = preds.parent {
-                    self = self.with_own_preds(f, parent_def_id);
-                }
-                self.with_own_preds(f, def_id)
-            }
+        fn with_own_preds(
+            mut self,
+            f: impl Fn(DefId) -> ty::GenericPredicates<'tcx>,
+            def_id: DefId,
+        ) -> Self {
+            let preds = f(def_id).instantiate_own(self.tcx, self.args);
+            self.preds.extend(preds);
+            self
         }
-        let collector = PredicatesCollector::new(self.tcx, self.args);
 
-        // `explicit_predicates_of` is used here to avoid copying `Self: Trait` predicate.
-        // Note: `predicates_of` query can also add inferred outlives predicates, but that
-        // is not the case here as `sig_id` is either a trait or a function.
-        let preds = match self.inh_kind {
-            InheritanceKind::WithParent(false) => {
-                collector.with_preds(|def_id| self.tcx.explicit_predicates_of(def_id), self.sig_id)
+        fn with_preds(
+            mut self,
+            f: impl Fn(DefId) -> ty::GenericPredicates<'tcx> + Copy,
+            def_id: DefId,
+        ) -> Self {
+            let preds = f(def_id);
+            if let Some(parent_def_id) = preds.parent {
+                self = self.with_own_preds(f, parent_def_id);
             }
-            InheritanceKind::WithParent(true) => {
-                collector.with_preds(|def_id| self.tcx.predicates_of(def_id), self.sig_id)
-            }
-            InheritanceKind::Own => {
-                collector.with_own_preds(|def_id| self.tcx.predicates_of(def_id), self.sig_id)
-            }
-        }
-        .preds;
-
-        ty::GenericPredicates {
-            parent: self.parent,
-            predicates: self.tcx.arena.alloc_from_iter(preds),
+            self.with_own_preds(f, def_id)
         }
     }
+    let collector = PredicatesCollector::new(tcx, args);
+
+    // `explicit_predicates_of` is used here to avoid copying `Self: Trait` predicate.
+    // Note: `predicates_of` query can also add inferred outlives predicates, but that
+    // is not the case here as `sig_id` is either a trait or a function.
+    let preds = match inh_kind {
+        InheritanceKind::WithParent(false) => {
+            collector.with_preds(|def_id| tcx.explicit_predicates_of(def_id), sig_id)
+        }
+        InheritanceKind::WithParent(true) => {
+            collector.with_preds(|def_id| tcx.predicates_of(def_id), sig_id)
+        }
+        InheritanceKind::Own => {
+            collector.with_own_preds(|def_id| tcx.predicates_of(def_id), sig_id)
+        }
+    }
+    .preds;
+
+    ty::GenericPredicates { parent, predicates: tcx.arena.alloc_from_iter(preds) }
 }
 
-struct GenericArgsBuilder<'tcx> {
+fn build_generic_args<'tcx>(
     tcx: TyCtxt<'tcx>,
-    remap_table: RemapTable,
     sig_id: DefId,
     def_id: LocalDefId,
-}
+    args: ty::GenericArgsRef<'tcx>,
+) -> ty::GenericArgsRef<'tcx> {
+    let caller_generics = tcx.generics_of(def_id);
+    let callee_generics = tcx.generics_of(sig_id);
 
-impl<'tcx> GenericArgsBuilder<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, sig_id: DefId, def_id: LocalDefId) -> GenericArgsBuilder<'tcx> {
-        GenericArgsBuilder { tcx, remap_table: FxHashMap::default(), sig_id, def_id }
+    let mut remap_table = FxHashMap::default();
+    for caller_param in &caller_generics.own_params {
+        let callee_index = callee_generics.param_def_id_to_index(tcx, caller_param.def_id).unwrap();
+        remap_table.insert(callee_index, caller_param.index);
     }
 
-    fn build_from_args(mut self, args: ty::GenericArgsRef<'tcx>) -> ty::GenericArgsRef<'tcx> {
-        let caller_generics = self.tcx.generics_of(self.def_id);
-        let callee_generics = self.tcx.generics_of(self.sig_id);
-
-        for caller_param in &caller_generics.own_params {
-            let callee_index =
-                callee_generics.param_def_id_to_index(self.tcx, caller_param.def_id).unwrap();
-            self.remap_table.insert(callee_index, caller_param.index);
-        }
-
-        let mut folder = ParamIndexRemapper { tcx: self.tcx, remap_table: self.remap_table };
-        args.fold_with(&mut folder)
-    }
+    let mut folder = ParamIndexRemapper { tcx, remap_table };
+    args.fold_with(&mut folder)
 }
 
 fn create_generic_args<'tcx>(
@@ -314,8 +257,6 @@ fn create_generic_args<'tcx>(
     def_id: LocalDefId,
     sig_id: DefId,
 ) -> ty::GenericArgsRef<'tcx> {
-    let builder = GenericArgsBuilder::new(tcx, sig_id, def_id);
-
     let caller_kind = fn_kind(tcx, def_id.into());
     let callee_kind = fn_kind(tcx, sig_id);
     match (caller_kind, callee_kind) {
@@ -325,7 +266,7 @@ fn create_generic_args<'tcx>(
         | (FnKind::AssocTrait, FnKind::Free)
         | (FnKind::AssocTrait, FnKind::AssocTrait) => {
             let args = ty::GenericArgs::identity_for_item(tcx, sig_id);
-            builder.build_from_args(args)
+            build_generic_args(tcx, sig_id, def_id, args)
         }
 
         (FnKind::AssocTraitImpl, FnKind::AssocTrait) => {
@@ -335,8 +276,9 @@ fn create_generic_args<'tcx>(
                 tcx.impl_trait_header(parent).unwrap().trait_ref.instantiate_identity().args;
 
             let trait_args = ty::GenericArgs::identity_for_item(tcx, sig_id);
-            let method_args = tcx.mk_args_from_iter(trait_args.iter().skip(callee_generics.parent_count));
-            let method_args = builder.build_from_args(method_args);
+            let method_args =
+                tcx.mk_args_from_iter(trait_args.iter().skip(callee_generics.parent_count));
+            let method_args = build_generic_args(tcx, sig_id, def_id, method_args);
 
             tcx.mk_args_from_iter(parent_args.iter().chain(method_args))
         }
@@ -347,16 +289,16 @@ fn create_generic_args<'tcx>(
             let generic_self_ty = ty::GenericArg::from(self_ty);
 
             let trait_args = ty::GenericArgs::identity_for_item(tcx, sig_id);
-            let trait_args = builder.build_from_args(trait_args);
+            let trait_args = build_generic_args(tcx, sig_id, def_id, trait_args);
 
             let args = std::iter::once(generic_self_ty).chain(trait_args.iter().skip(1));
             tcx.mk_args_from_iter(args)
         }
 
         // For trait impl's `sig_id` is always equal to the corresponding trait method.
+        // For inherent methods delegation is not yet supported.
         (FnKind::AssocTraitImpl, _)
         | (_, FnKind::AssocTraitImpl)
-        // Delegation to inherent methods is not yet supported.
         | (_, FnKind::AssocInherentImpl) => unreachable!(),
     }
 }
@@ -377,39 +319,31 @@ pub(crate) fn inherit_generics_for_delegation_item<'tcx>(
     def_id: LocalDefId,
     sig_id: DefId,
 ) -> ty::Generics {
-    let builder = GenericsBuilder::new(tcx, sig_id);
-
     let caller_kind = fn_kind(tcx, def_id.into());
     let callee_kind = fn_kind(tcx, sig_id);
     match (caller_kind, callee_kind) {
-        (FnKind::Free, FnKind::Free)
-        | (FnKind::Free, FnKind::AssocTrait) => builder.with_inheritance_kind(InheritanceKind::WithParent(true)).build(),
+        (FnKind::Free, FnKind::Free) | (FnKind::Free, FnKind::AssocTrait) => {
+            build_generics(tcx, sig_id, None, InheritanceKind::WithParent(true))
+        }
 
         (FnKind::AssocTraitImpl, FnKind::AssocTrait) => {
-            builder
-            .with_parent(tcx.parent(def_id.into()))
-            .with_inheritance_kind(InheritanceKind::Own)
-            .build()
+            build_generics(tcx, sig_id, Some(tcx.parent(def_id.into())), InheritanceKind::Own)
         }
 
         (FnKind::AssocInherentImpl, FnKind::AssocTrait)
-        | (FnKind::AssocTrait, FnKind::AssocTrait) => {
-            builder
-            .with_parent(tcx.parent(def_id.into()))
-            .build()
-        }
-
-        (FnKind::AssocInherentImpl, FnKind::Free)
-        | (FnKind::AssocTrait, FnKind::Free) => {
-            builder
-            .with_parent(tcx.parent(def_id.into()))
-            .build()
-        }
+        | (FnKind::AssocTrait, FnKind::AssocTrait)
+        | (FnKind::AssocInherentImpl, FnKind::Free)
+        | (FnKind::AssocTrait, FnKind::Free) => build_generics(
+            tcx,
+            sig_id,
+            Some(tcx.parent(def_id.into())),
+            InheritanceKind::WithParent(false),
+        ),
 
         // For trait impl's `sig_id` is always equal to the corresponding trait method.
+        // For inherent methods delegation is not yet supported.
         (FnKind::AssocTraitImpl, _)
         | (_, FnKind::AssocTraitImpl)
-        // Delegation to inherent methods is not yet supported.
         | (_, FnKind::AssocInherentImpl) => unreachable!(),
     }
 }
@@ -420,36 +354,36 @@ pub(crate) fn inherit_predicates_for_delegation_item<'tcx>(
     sig_id: DefId,
 ) -> ty::GenericPredicates<'tcx> {
     let args = create_generic_args(tcx, def_id, sig_id);
-    let builder = PredicatesBuilder::new(tcx, args, sig_id);
-
     let caller_kind = fn_kind(tcx, def_id.into());
     let callee_kind = fn_kind(tcx, sig_id);
     match (caller_kind, callee_kind) {
-        (FnKind::Free, FnKind::Free)
-        | (FnKind::Free, FnKind::AssocTrait) => {
-            builder.with_inheritance_kind(InheritanceKind::WithParent(true)).build()
+        (FnKind::Free, FnKind::Free) | (FnKind::Free, FnKind::AssocTrait) => {
+            build_predicates(tcx, sig_id, None, InheritanceKind::WithParent(true), args)
         }
 
-        (FnKind::AssocTraitImpl, FnKind::AssocTrait) => {
-            builder
-            .with_parent(tcx.parent(def_id.into()))
-            .with_inheritance_kind(InheritanceKind::Own)
-            .build()
-        }
+        (FnKind::AssocTraitImpl, FnKind::AssocTrait) => build_predicates(
+            tcx,
+            sig_id,
+            Some(tcx.parent(def_id.into())),
+            InheritanceKind::Own,
+            args,
+        ),
 
         (FnKind::AssocInherentImpl, FnKind::AssocTrait)
         | (FnKind::AssocTrait, FnKind::AssocTrait)
         | (FnKind::AssocInherentImpl, FnKind::Free)
-        | (FnKind::AssocTrait, FnKind::Free) => {
-            builder
-                .with_parent(tcx.parent(def_id.into()))
-                .build()
-        }
+        | (FnKind::AssocTrait, FnKind::Free) => build_predicates(
+            tcx,
+            sig_id,
+            Some(tcx.parent(def_id.into())),
+            InheritanceKind::WithParent(false),
+            args,
+        ),
 
         // For trait impl's `sig_id` is always equal to the corresponding trait method.
+        // For inherent methods delegation is not yet supported.
         (FnKind::AssocTraitImpl, _)
         | (_, FnKind::AssocTraitImpl)
-        // Delegation to inherent methods is not yet supported.
         | (_, FnKind::AssocInherentImpl) => unreachable!(),
     }
 }
