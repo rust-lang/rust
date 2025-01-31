@@ -213,13 +213,6 @@ cleanPackages() {
     sudo apt-get clean || echo "::warning::The command [sudo apt-get clean] failed failed"
 }
 
-# Remove Swap storage
-cleanSwap() {
-    sudo swapoff -a || true
-    sudo rm -rf /mnt/swapfile || true
-    free -h
-}
-
 removePythonPackages() {
     local packages=(
     )
@@ -242,7 +235,6 @@ main() {
     execAndMeasure "Node modules" removeNodeModules
     execAndMeasure "Python Packages" removePythonPackages
     removeUnusedDirsAndFiles
-    execAndMeasure "Swap storage" cleanSwap
 
     printDF "AFTER CLEAN-UP:"
 }
