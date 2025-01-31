@@ -39,6 +39,12 @@ macro_rules! Type {
         //~| ERROR expected value, found struct `std::cell::Cell`
         //~| ERROR expected value, found struct `std::cell::Cell`
     };
+    (alias) => {
+        Alias
+        //~^ ERROR expected value, found type alias `Alias`
+        //~| ERROR expected value, found type alias `Alias`
+        //~| ERROR expected value, found type alias `Alias`
+    };
 }
 
 macro_rules! create {
@@ -56,6 +62,32 @@ macro_rules! create {
         Type!().new(0)
         //~^ HELP use the path separator
     };
+    (macro method alias) => {
+        Type!(alias).new(0)
+        //~^ HELP use the path separator
+    };
+}
+
+macro_rules! check_ty {
+    ($Ty:ident) => {
+        $Ty.foo
+        //~^ ERROR expected value, found type alias `Alias`
+        //~| HELP use the path separator
+    };
+}
+macro_rules! check_ident {
+    ($Ident:ident) => {
+        Alias.$Ident
+        //~^ ERROR expected value, found type alias `Alias`
+        //~| HELP use the path separator
+    };
+}
+macro_rules! check_ty_ident {
+    ($Ty:ident, $Ident:ident) => {
+        $Ty.$Ident
+        //~^ ERROR expected value, found type alias `Alias`
+        //~| HELP use the path separator
+    };
 }
 
 fn interaction_with_macros() {
@@ -70,6 +102,12 @@ fn interaction_with_macros() {
     Type! {}.get;
     //~^ HELP use the path separator
 
+    Type!(alias).get();
+    //~^ HELP use the path separator
+
+    Type! {alias}.get;
+    //~^ HELP use the path separator
+
     //
     // Ensure that the suggestion is shown for expressions inside of macro definitions.
     //
@@ -77,4 +115,9 @@ fn interaction_with_macros() {
     let _ = create!(type method);
     let _ = create!(type field);
     let _ = create!(macro method);
+    let _ = create!(macro method alias);
+
+    let _ = check_ty!(Alias);
+    let _ = check_ident!(foo);
+    let _ = check_ty_ident!(Alias, foo);
 }

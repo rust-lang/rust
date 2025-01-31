@@ -1529,7 +1529,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     Applicability::MaybeIncorrect,
                 );
                 true
-            } else if kind == DefKind::Struct
+            } else if matches!(kind, DefKind::Struct | DefKind::TyAlias)
                 && let Some(lhs_source_span) = lhs_span.find_ancestor_inside(expr.span)
                 && let Ok(snippet) = this.r.tcx.sess.source_map().span_to_snippet(lhs_source_span)
             {

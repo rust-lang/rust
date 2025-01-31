@@ -99,8 +99,38 @@ LL -     Type! {}.get;
 LL +     <Type! {}>::get;
    |
 
+error[E0423]: expected value, found type alias `Alias`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:43:9
+   |
+LL |         Alias
+   |         ^^^^^
+...
+LL |     Type!(alias).get();
+   |     ------------ in this macro invocation
+   |
+   = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL |     <Type!(alias)>::get();
+   |     ~~~~~~~~~~~~~~~~
+
+error[E0423]: expected value, found type alias `Alias`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:43:9
+   |
+LL |         Alias
+   |         ^^^^^
+...
+LL |     Type! {alias}.get;
+   |     ------------- in this macro invocation
+   |
+   = note: this error originates in the macro `Type` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL |     <Type! {alias}>::get;
+   |     ~~~~~~~~~~~~~~~~~
+
 error[E0423]: expected value, found struct `Vec`
-  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:46:9
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:52:9
    |
 LL |         Vec.new()
    |         ^^^
@@ -116,7 +146,7 @@ LL +         Vec::new()
    |
 
 error[E0423]: expected value, found struct `Vec`
-  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:51:9
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:57:9
    |
 LL |         Vec.new
    |         ^^^
@@ -147,6 +177,66 @@ LL -         Type!().new(0)
 LL +         <Type!()>::new(0)
    |
 
-error: aborting due to 11 previous errors
+error[E0423]: expected value, found type alias `Alias`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:43:9
+   |
+LL |         Alias
+   |         ^^^^^
+...
+LL |     let _ = create!(macro method alias);
+   |             --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `Type` which comes from the expansion of the macro `create` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL |         <Type!(alias)>::new(0)
+   |         ~~~~~~~~~~~~~~~~
+
+error[E0423]: expected value, found type alias `Alias`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:73:9
+   |
+LL |         $Ty.foo
+   |         ^^^
+...
+LL |     let _ = check_ty!(Alias);
+   |             ---------------- in this macro invocation
+   |
+   = note: this error originates in the macro `check_ty` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL |         $Ty::foo
+   |            ~~
+
+error[E0423]: expected value, found type alias `Alias`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:80:9
+   |
+LL |         Alias.$Ident
+   |         ^^^^^
+...
+LL |     let _ = check_ident!(foo);
+   |             ----------------- in this macro invocation
+   |
+   = note: this error originates in the macro `check_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL |         <Alias>::$Ident
+   |         ~~~~~~~~~
+
+error[E0423]: expected value, found type alias `Alias`
+  --> $DIR/dot-notation-type-namespace-suggest-path-sep.rs:87:9
+   |
+LL |         $Ty.$Ident
+   |         ^^^
+...
+LL |     let _ = check_ty_ident!(Alias, foo);
+   |             --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `check_ty_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the path separator to refer to an item
+   |
+LL |         <$Ty>::$Ident
+   |         ~~~~~~~
+
+error: aborting due to 17 previous errors
 
 For more information about this error, try `rustc --explain E0423`.
