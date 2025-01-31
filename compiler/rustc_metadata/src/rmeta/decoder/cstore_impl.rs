@@ -689,7 +689,7 @@ fn provide_cstore_hooks(providers: &mut Providers) {
     providers.hooks.def_path_hash_to_def_id_extern = |tcx, hash, stable_crate_id| {
         // If this is a DefPathHash from an upstream crate, let the CrateStore map
         // it to a DefId.
-        let cstore = CStore::from_tcx(tcx.tcx);
+        let cstore = CStore::from_tcx(tcx);
         let cnum = *tcx
             .untracked()
             .stable_crate_ids
@@ -702,11 +702,11 @@ fn provide_cstore_hooks(providers: &mut Providers) {
     };
 
     providers.hooks.expn_hash_to_expn_id = |tcx, cnum, index_guess, hash| {
-        let cstore = CStore::from_tcx(tcx.tcx);
+        let cstore = CStore::from_tcx(tcx);
         cstore.get_crate_data(cnum).expn_hash_to_expn_id(tcx.sess, index_guess, hash)
     };
     providers.hooks.import_source_files = |tcx, cnum| {
-        let cstore = CStore::from_tcx(tcx.tcx);
+        let cstore = CStore::from_tcx(tcx);
         let cdata = cstore.get_crate_data(cnum);
         for file_index in 0..cdata.root.source_map.size() {
             cdata.imported_source_file(file_index as u32, tcx.sess);
