@@ -363,6 +363,7 @@ define_symbols! {
     panic_location,
     panic_misaligned_pointer_dereference,
     panic_nounwind,
+    panic_null_pointer_dereference,
     panic,
     Param,
     parse,

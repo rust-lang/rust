@@ -713,6 +713,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // and `#[track_caller]` adds an implicit third argument.
                 (LangItem::PanicMisalignedPointerDereference, vec![required, found, location])
             }
+            AssertKind::NullPointerDereference => {
+                // It's `fn panic_null_pointer_dereference()`,
+                // `#[track_caller]` adds an implicit argument.
+                (LangItem::PanicNullPointerDereference, vec![location])
+            }
             _ => {
                 // It's `pub fn panic_...()` and `#[track_caller]` adds an implicit argument.
                 (msg.panic_function(), vec![location])

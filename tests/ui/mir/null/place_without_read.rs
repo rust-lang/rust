@@ -1,0 +1,10 @@
+// Make sure that we don't insert a check for places that do not read.
+//@ run-pass
+//@ compile-flags: -C debug-assertions
+
+fn main() {
+    let ptr: *const u16 = std::ptr::null();
+    unsafe {
+        let _ = *ptr;
+    }
+}
