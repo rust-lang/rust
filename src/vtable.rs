@@ -90,7 +90,7 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
 pub(crate) fn get_vtable<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     ty: Ty<'tcx>,
-    trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
 ) -> Value {
     let data_id = data_id_for_vtable(fx.tcx, &mut fx.constants_cx, fx.module, ty, trait_ref);
     let local_data_id = fx.module.declare_data_in_func(data_id, fx.bcx.func);
