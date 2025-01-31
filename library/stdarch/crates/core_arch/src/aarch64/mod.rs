@@ -10,10 +10,7 @@ mod mte;
 #[unstable(feature = "stdarch_aarch64_mte", issue = "129010")]
 pub use self::mte::*;
 
-// NEON intrinsics are currently broken on big-endian, so don't expose them. (#1484)
-#[cfg(target_endian = "little")]
 mod neon;
-#[cfg(target_endian = "little")]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub use self::neon::*;
 

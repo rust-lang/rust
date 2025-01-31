@@ -64,12 +64,3 @@ pub use crate::core_arch::arm_shared::*;
 
 #[cfg(test)]
 use stdarch_test::assert_instr;
-
-// NEON intrinsics are currently broken on big-endian, so don't expose them. (#1484)
-#[cfg(target_endian = "little")]
-#[cfg(any(target_feature = "v7", doc))]
-pub(crate) mod neon;
-#[cfg(target_endian = "little")]
-#[cfg(any(target_feature = "v7", doc))]
-#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-pub use neon::*;
