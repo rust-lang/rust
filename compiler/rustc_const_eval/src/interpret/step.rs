@@ -279,6 +279,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
 
             WrapUnsafeBinder(ref op, _ty) => {
+                // Constructing an unsafe binder acts like a transmute
+                // since the operand's layout does not change.
                 let op = self.eval_operand(op, None)?;
                 self.copy_op_allow_transmute(&op, &dest)?;
             }
