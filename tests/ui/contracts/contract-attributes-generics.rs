@@ -16,7 +16,8 @@
 //@ [chk_fail_post] compile-flags: -Zcontract-checks=yes
 //@ [chk_const_fail] compile-flags: -Zcontract-checks=yes
 
-#![feature(rustc_contracts)]
+#![feature(contracts)]
+//~^ WARN the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]
 
 use std::ops::Sub;
 

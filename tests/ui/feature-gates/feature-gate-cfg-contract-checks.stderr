@@ -4,7 +4,7 @@ error[E0658]: `cfg(contract_checks)` is experimental and subject to change
 LL |     cfg!(contract_checks)
    |          ^^^^^^^^^^^^^^^
    |
-   = note: see issue #133866 <https://github.com/rust-lang/rust/issues/133866> for more information
+   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
    = help: add `#![feature(cfg_contract_checks)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 

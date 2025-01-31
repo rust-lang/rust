@@ -123,7 +123,7 @@ fn expand_contract_clause(
 
     // Record the span as a contract attribute expansion.
     // This is used later to stop users from using the extended syntax directly
-    // which is gated via `rustc_contracts_internals`.
+    // which is gated via `contracts_internals`.
     ecx.psess().contract_attribute_spans.push(attr_span);
 
     Ok(new_tts)
@@ -137,7 +137,7 @@ fn expand_requires_tts(
 ) -> Result<TokenStream, ErrorGuaranteed> {
     expand_contract_clause(_ecx, attr_span, annotated, |new_tts| {
         new_tts.push_tree(TokenTree::Token(
-            token::Token::from_ast_ident(Ident::new(kw::RustcContractRequires, attr_span)),
+            token::Token::from_ast_ident(Ident::new(kw::ContractRequires, attr_span)),
             Spacing::Joint,
         ));
         new_tts.push_tree(TokenTree::Token(
@@ -162,7 +162,7 @@ fn expand_ensures_tts(
 ) -> Result<TokenStream, ErrorGuaranteed> {
     expand_contract_clause(_ecx, attr_span, annotated, |new_tts| {
         new_tts.push_tree(TokenTree::Token(
-            token::Token::from_ast_ident(Ident::new(kw::RustcContractEnsures, attr_span)),
+            token::Token::from_ast_ident(Ident::new(kw::ContractEnsures, attr_span)),
             Spacing::Joint,
         ));
         new_tts.push_tree(TokenTree::Delimited(

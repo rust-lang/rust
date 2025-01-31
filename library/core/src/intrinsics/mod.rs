@@ -4051,8 +4051,8 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
 /// checking is turned on, so that we can specify contracts in libstd
 /// and let an end user opt into turning them on.
 #[cfg(not(bootstrap))]
-#[rustc_const_unstable(feature = "rustc_contracts_internals", issue = "133866" /* compiler-team#759 */)]
-#[unstable(feature = "rustc_contracts_internals", issue = "133866" /* compiler-team#759 */)]
+#[rustc_const_unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
+#[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
 #[inline(always)]
 #[rustc_intrinsic]
 pub const fn contract_checks() -> bool {
@@ -4067,7 +4067,7 @@ pub const fn contract_checks() -> bool {
 /// By default, if `contract_checks` is enabled, this will panic with no unwind if the condition
 /// returns false.
 #[cfg(not(bootstrap))]
-#[unstable(feature = "rustc_contracts_internals", issue = "133866" /* compiler-team#759 */)]
+#[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
 #[lang = "contract_check_requires"]
 #[rustc_intrinsic]
 pub fn contract_check_requires<C: Fn() -> bool>(cond: C) {
@@ -4082,7 +4082,7 @@ pub fn contract_check_requires<C: Fn() -> bool>(cond: C) {
 /// By default, if `contract_checks` is enabled, this will panic with no unwind if the condition
 /// returns false.
 #[cfg(not(bootstrap))]
-#[unstable(feature = "rustc_contracts_internals", issue = "133866" /* compiler-team#759 */)]
+#[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
 #[rustc_intrinsic]
 pub fn contract_check_ensures<'a, Ret, C: Fn(&'a Ret) -> bool>(ret: &'a Ret, cond: C) {
     if contract_checks() && !cond(ret) {

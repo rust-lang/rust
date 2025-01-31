@@ -1,6 +1,7 @@
 //! Checks for compilation errors related to adding contracts to non-function items.
 
-#![feature(rustc_contracts)]
+#![feature(contracts)]
+//~^ WARN the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]
 #![allow(dead_code)]
 
 #[core::contracts::requires(true)]

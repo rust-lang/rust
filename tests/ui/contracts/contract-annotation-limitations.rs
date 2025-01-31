@@ -1,7 +1,8 @@
 //! Test for some of the existing limitations and the current error messages.
 //! Some of these limitations may be removed in the future.
 
-#![feature(rustc_contracts)]
+#![feature(contracts)]
+//~^ WARN the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]
 #![allow(dead_code)]
 
 /// Represent a 5-star system.

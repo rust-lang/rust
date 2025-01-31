@@ -404,7 +404,7 @@ declare_features! (
     /// Allows the use of `#[cfg(<true/false>)]`.
     (unstable, cfg_boolean_literals, "1.83.0", Some(131204)),
     /// Allows the use of `#[cfg(contract_checks)` to check if contract checks are enabled.
-    (unstable, cfg_contract_checks, "CURRENT_RUSTC_VERSION", Some(133866)),
+    (unstable, cfg_contract_checks, "CURRENT_RUSTC_VERSION", Some(128044)),
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
     (unstable, cfg_overflow_checks, "1.71.0", Some(111466)),
     /// Provides the relocation model information as cfg entry
@@ -447,6 +447,10 @@ declare_features! (
     (unstable, const_trait_impl, "1.42.0", Some(67792)),
     /// Allows the `?` operator in const contexts.
     (unstable, const_try, "1.56.0", Some(74935)),
+    /// Allows use of contracts attributes.
+    (incomplete, contracts, "CURRENT_RUSTC_VERSION", Some(128044)),
+    /// Allows access to internal machinery used to implement contracts.
+    (internal, contracts_internals, "CURRENT_RUSTC_VERSION", Some(128044)),
     /// Allows coroutines to be cloned.
     (unstable, coroutine_clone, "1.65.0", Some(95360)),
     /// Allows defining coroutines.
@@ -608,10 +612,6 @@ declare_features! (
     (unstable, return_type_notation, "1.70.0", Some(109417)),
     /// Allows `extern "rust-cold"`.
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
-    /// Allows use of contracts attributes.
-    (unstable, rustc_contracts, "CURRENT_RUSTC_VERSION", Some(133866)),
-    /// Allows access to internal machinery used to implement contracts.
-    (unstable, rustc_contracts_internals, "CURRENT_RUSTC_VERSION", Some(133866)),
     /// Allows use of x86 SHA512, SM3 and SM4 target-features and intrinsics
     (unstable, sha512_sm_x86, "1.82.0", Some(126624)),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.

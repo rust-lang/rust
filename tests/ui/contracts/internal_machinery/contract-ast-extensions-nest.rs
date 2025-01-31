@@ -16,11 +16,11 @@
 //@ [chk_fail_pre] compile-flags: -Zcontract-checks=yes
 //@ [chk_fail_post] compile-flags: -Zcontract-checks=yes
 
-#![feature(rustc_contracts_internals)]
+#![feature(contracts_internals)]
 
 fn nest(x: Baz) -> i32
-    rustc_contract_requires(|| x.baz > 0)
-    rustc_contract_ensures(|ret| *ret > 100)
+    contract_requires(|| x.baz > 0)
+    contract_ensures(|ret| *ret > 100)
 {
     loop {
         return x.baz + 50;

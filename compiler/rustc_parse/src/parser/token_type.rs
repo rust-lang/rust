@@ -83,6 +83,8 @@ pub enum TokenType {
     KwCatch,
     KwConst,
     KwContinue,
+    KwContractEnsures,
+    KwContractRequires,
     KwCrate,
     KwDefault,
     KwDyn,
@@ -108,8 +110,6 @@ pub enum TokenType {
     KwRef,
     KwReturn,
     KwReuse,
-    KwRustcContractEnsures,
-    KwRustcContractRequires,
     KwSafe,
     KwSelfUpper,
     KwStatic,
@@ -219,6 +219,8 @@ impl TokenType {
             KwCatch,
             KwConst,
             KwContinue,
+            KwContractEnsures,
+            KwContractRequires,
             KwCrate,
             KwDefault,
             KwDyn,
@@ -244,8 +246,6 @@ impl TokenType {
             KwRef,
             KwReturn,
             KwReuse,
-            KwRustcContractEnsures,
-            KwRustcContractRequires,
             KwSafe,
             KwSelfUpper,
             KwStatic,
@@ -293,6 +293,8 @@ impl TokenType {
             TokenType::KwCatch => Some(kw::Catch),
             TokenType::KwConst => Some(kw::Const),
             TokenType::KwContinue => Some(kw::Continue),
+            TokenType::KwContractEnsures => Some(kw::ContractEnsures),
+            TokenType::KwContractRequires => Some(kw::ContractRequires),
             TokenType::KwCrate => Some(kw::Crate),
             TokenType::KwDefault => Some(kw::Default),
             TokenType::KwDyn => Some(kw::Dyn),
@@ -318,8 +320,6 @@ impl TokenType {
             TokenType::KwRef => Some(kw::Ref),
             TokenType::KwReturn => Some(kw::Return),
             TokenType::KwReuse => Some(kw::Reuse),
-            TokenType::KwRustcContractEnsures => Some(kw::RustcContractEnsures),
-            TokenType::KwRustcContractRequires => Some(kw::RustcContractRequires),
             TokenType::KwSafe => Some(kw::Safe),
             TokenType::KwSelfUpper => Some(kw::SelfUpper),
             TokenType::KwStatic => Some(kw::Static),
@@ -525,6 +525,8 @@ macro_rules! exp {
     (Catch)          => { exp!(@kw, Catch,      KwCatch) };
     (Const)          => { exp!(@kw, Const,      KwConst) };
     (Continue)       => { exp!(@kw, Continue,   KwContinue) };
+    (ContractEnsures)  => { exp!(@kw, ContractEnsures, KwContractEnsures) };
+    (ContractRequires) => { exp!(@kw, ContractRequires, KwContractRequires) };
     (Crate)          => { exp!(@kw, Crate,      KwCrate) };
     (Default)        => { exp!(@kw, Default,    KwDefault) };
     (Dyn)            => { exp!(@kw, Dyn,        KwDyn) };
@@ -550,8 +552,6 @@ macro_rules! exp {
     (Ref)            => { exp!(@kw, Ref,        KwRef) };
     (Return)         => { exp!(@kw, Return,     KwReturn) };
     (Reuse)          => { exp!(@kw, Reuse,      KwReuse) };
-    (RustcContractEnsures)  => { exp!(@kw, RustcContractEnsures, KwRustcContractEnsures) };
-    (RustcContractRequires) => { exp!(@kw, RustcContractRequires, KwRustcContractRequires) };
     (Safe)           => { exp!(@kw, Safe,       KwSafe) };
     (SelfUpper)      => { exp!(@kw, SelfUpper,  KwSelfUpper) };
     (Static)         => { exp!(@kw, Static,     KwStatic) };

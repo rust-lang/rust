@@ -1,11 +1,11 @@
 //@ run-pass
 //@ compile-flags: -Zcontract-checks=yes
-#![feature(rustc_contracts_internals)]
+#![feature(contracts_internals)]
 
 struct Outer { outer: std::cell::Cell<i32> }
 
 fn outer(x: Outer)
-    rustc_contract_requires(|| x.outer.get() > 0)
+    contract_requires(|| x.outer.get() > 0)
 {
     let inner_closure = || { };
     x.outer.set(0);

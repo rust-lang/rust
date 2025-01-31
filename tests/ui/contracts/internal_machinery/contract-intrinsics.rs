@@ -10,7 +10,7 @@
 //@ [chk_pass] compile-flags: -Zcontract-checks=yes
 //@ [chk_fail_requires] compile-flags: -Zcontract-checks=yes
 //@ [chk_fail_ensures] compile-flags: -Zcontract-checks=yes
-#![feature(cfg_contract_checks, rustc_contracts_internals, core_intrinsics)]
+#![feature(cfg_contract_checks, contracts_internals, core_intrinsics)]
 
 fn main() {
     #[cfg(any(default, unchk_pass))] // default: disabled

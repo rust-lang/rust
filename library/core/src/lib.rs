@@ -248,7 +248,7 @@ pub mod autodiff {
 }
 
 #[cfg(not(bootstrap))]
-#[unstable(feature = "rustc_contracts", issue = "133866")]
+#[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
 
 #[unstable(feature = "cfg_match", issue = "115585")]

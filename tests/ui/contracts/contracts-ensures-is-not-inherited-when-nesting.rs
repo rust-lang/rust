@@ -1,6 +1,7 @@
 //@ run-pass
 //@ compile-flags: -Zcontract-checks=yes
-#![feature(rustc_contracts)]
+#![feature(contracts)]
+//~^ WARN the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]
 
 #[core::contracts::ensures(|ret| *ret > 0)]
 fn outer() -> i32 {
