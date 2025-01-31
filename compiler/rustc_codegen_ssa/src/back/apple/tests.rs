@@ -1,4 +1,4 @@
-use super::{add_version_to_llvm_target, parse_version};
+use super::{add_version_to_llvm_target, cc_os_version_min_flag, parse_version};
 
 #[test]
 fn test_add_version_to_llvm_target() {
@@ -18,4 +18,14 @@ fn test_parse_version() {
     assert_eq!(parse_version("10.12"), Ok((10, 12, 0)));
     assert_eq!(parse_version("10.12.6"), Ok((10, 12, 6)));
     assert_eq!(parse_version("9999.99.99"), Ok((9999, 99, 99)));
+}
+
+#[test]
+fn test_cc_os_version_min_flag() {
+    assert_eq!(cc_os_version_min_flag("macos", "", (10, 14, 1)), "-mmacosx-version-min=10.14.1");
+    assert_eq!(cc_os_version_min_flag("ios", "macabi", (13, 1, 0)), "-mtargetos=ios13.1.0-macabi");
+    assert_eq!(
+        cc_os_version_min_flag("visionos", "sim", (1, 0, 0)),
+        "-mtargetos=xros1.0.0-simulator"
+    );
 }
