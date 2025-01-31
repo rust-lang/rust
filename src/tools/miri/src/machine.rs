@@ -11,6 +11,7 @@ use std::{fmt, process};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rustc_abi::{Align, ExternAbi, Size};
+use rustc_apfloat::{Float, FloatConvert};
 use rustc_attr_parsing::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
@@ -1129,20 +1130,24 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     }
 
     #[inline(always)]
-    fn generate_nan<
-        F1: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F2>,
-        F2: rustc_apfloat::Float,
-    >(
+    fn generate_nan<F1: Float + FloatConvert<F2>, F2: Float>(
         ecx: &InterpCx<'tcx, Self>,
         inputs: &[F1],
     ) -> F2 {
         ecx.generate_nan(inputs)
     }
 
+    #[inline(always)]
+    fn equal_float_min_max<F: Float>(ecx: &MiriInterpCx<'tcx>, a: F, b: F) -> F {
+        ecx.equal_float_min_max(a, b)
+    }
+
+    #[inline(always)]
     fn ub_checks(ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool> {
         interp_ok(ecx.tcx.sess.ub_checks())
     }
 
+    #[inline(always)]
     fn thread_local_static_pointer(
         ecx: &mut MiriInterpCx<'tcx>,
         def_id: DefId,
