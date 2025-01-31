@@ -137,7 +137,7 @@ fn symbol_name_provider<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty
         // to differentiate between local copies.
         if is_generic(instance) {
             // For generics we might find re-usable upstream instances. If there
-            // is one, we rely on the symbol being instantiated locally.
+            // is not one, we rely on the symbol being instantiated locally.
             instance.upstream_monomorphization(tcx).unwrap_or(LOCAL_CRATE)
         } else {
             // For non-generic things that need to avoid naming conflicts, we
