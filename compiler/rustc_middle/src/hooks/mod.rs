@@ -75,12 +75,6 @@ declare_hooks! {
     /// (Eligible functions might nevertheless be skipped for other reasons.)
     hook is_eligible_for_coverage(key: LocalDefId) -> bool;
 
-    /// Create the MIR for a given `DefId` - this includes
-    /// unreachable code.
-    /// You do not want to call this yourself, instead use the cached version
-    /// via `mir_built`
-    hook build_mir(key: LocalDefId) -> mir::Body<'tcx>;
-
     /// Imports all `SourceFile`s from the given crate into the current session.
     /// This normally happens automatically when we decode a `Span` from
     /// that crate's metadata - however, the incr comp cache needs
