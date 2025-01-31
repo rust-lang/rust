@@ -781,6 +781,11 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(operand, location);
                         self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     }
+
+                    Rvalue::WrapUnsafeBinder(op, ty) => {
+                        self.visit_operand(op, location);
+                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
+                    }
                 }
             }
 
@@ -1151,6 +1156,11 @@ macro_rules! visit_place_fns {
                     self.visit_ty(&mut new_ty, TyContext::Location(location));
                     if ty != new_ty { Some(PlaceElem::Subtype(new_ty)) } else { None }
                 }
+                PlaceElem::UnwrapUnsafeBinder(ty) => {
+                    let mut new_ty = ty;
+                    self.visit_ty(&mut new_ty, TyContext::Location(location));
+                    if ty != new_ty { Some(PlaceElem::UnwrapUnsafeBinder(new_ty)) } else { None }
+                }
                 PlaceElem::Deref
                 | PlaceElem::ConstantIndex { .. }
                 | PlaceElem::Subslice { .. }
@@ -1219,7 +1229,8 @@ macro_rules! visit_place_fns {
             match elem {
                 ProjectionElem::OpaqueCast(ty)
                 | ProjectionElem::Subtype(ty)
-                | ProjectionElem::Field(_, ty) => {
+                | ProjectionElem::Field(_, ty)
+                | ProjectionElem::UnwrapUnsafeBinder(ty) => {
                     self.visit_ty(ty, TyContext::Location(location));
                 }
                 ProjectionElem::Index(local) => {

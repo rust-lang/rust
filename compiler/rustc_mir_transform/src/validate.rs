@@ -1361,7 +1361,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::RawPtr(_, _)
             | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::UbChecks, _)
-            | Rvalue::Discriminant(_) => {}
+            | Rvalue::Discriminant(_)
+            | Rvalue::WrapUnsafeBinder(..) => {}
         }
         self.super_rvalue(rvalue, location);
     }
