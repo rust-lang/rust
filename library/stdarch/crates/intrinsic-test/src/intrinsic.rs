@@ -91,7 +91,7 @@ impl Intrinsic {
         indentation: Indentation,
         additional: &str,
         passes: u32,
-        p64_armv7_workaround: bool,
+        target: &str,
     ) -> String {
         let body_indentation = indentation.nested();
         format!(
@@ -100,9 +100,7 @@ impl Intrinsic {
                 {body_indentation}auto __return_value = {intrinsic_call}({args});\n\
                 {print_result}\n\
             {indentation}}}",
-            loaded_args = self
-                .arguments
-                .load_values_c(body_indentation, p64_armv7_workaround),
+            loaded_args = self.arguments.load_values_c(body_indentation, target),
             intrinsic_call = self.name,
             args = self.arguments.as_call_param_c(),
             print_result = self.print_result_c(body_indentation, additional)

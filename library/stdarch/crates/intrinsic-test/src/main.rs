@@ -37,7 +37,7 @@ fn gen_code_c(
     intrinsic: &Intrinsic,
     constraints: &[&Argument],
     name: String,
-    p64_armv7_workaround: bool,
+    target: &str,
 ) -> String {
     if let Some((current, constraints)) = constraints.split_last() {
         let range = current
@@ -62,13 +62,13 @@ fn gen_code_c(
                         intrinsic,
                         constraints,
                         format!("{name}-{i}"),
-                        p64_armv7_workaround
+                        target,
                     )
                 )
             })
             .join("\n")
     } else {
-        intrinsic.generate_loop_c(indentation, &name, PASSES, p64_armv7_workaround)
+        intrinsic.generate_loop_c(indentation, &name, PASSES, target)
     }
 }
 
@@ -76,7 +76,7 @@ fn generate_c_program(
     notices: &str,
     header_files: &[&str],
     intrinsic: &Intrinsic,
-    p64_armv7_workaround: bool,
+    target: &str,
 ) -> String {
     let constraints = intrinsic
         .arguments
@@ -131,7 +131,7 @@ int main(int argc, char **argv) {{
             intrinsic,
             constraints.as_slice(),
             Default::default(),
-            p64_armv7_workaround
+            target,
         ),
     )
 }
@@ -174,7 +174,7 @@ fn gen_code_rust(
     }
 }
 
-fn generate_rust_program(notices: &str, intrinsic: &Intrinsic, a32: bool) -> String {
+fn generate_rust_program(notices: &str, intrinsic: &Intrinsic, target: &str) -> String {
     let constraints = intrinsic
         .arguments
         .iter()
@@ -201,7 +201,11 @@ fn main() {{
 {passes}
 }}
 "#,
-        target_arch = if a32 { "arm" } else { "aarch64" },
+        target_arch = if target.starts_with("aarch64") {
+            "aarch64"
+        } else {
+            "arm"
+        },
         arglists = intrinsic
             .arguments
             .gen_arglists_rust(indentation.nested(), PASSES),
@@ -214,22 +218,68 @@ fn main() {{
     )
 }
 
-fn compile_c(c_filename: &str, intrinsic: &Intrinsic, compiler: &str, a32: bool) -> bool {
+fn compile_c(
+    c_filename: &str,
+    intrinsic: &Intrinsic,
+    compiler: &str,
+    target: &str,
+    cxx_toolchain_dir: Option<&str>,
+) -> bool {
     let flags = std::env::var("CPPFLAGS").unwrap_or("".into());
+    let arch_flags = if target.starts_with("aarch64") {
+        "-march=armv8.6-a+crypto+sha3+crc+dotprod"
+    } else {
+        "-march=armv8.6-a+crypto+crc+dotprod"
+    };
 
-    let output = Command::new("sh")
-        .arg("-c")
-        .arg(format!(
-            // -ffp-contract=off emulates Rust's approach of not fusing separate mul-add operations
-            "{cpp} {cppflags} {arch_flags} -ffp-contract=off -Wno-narrowing -O2 -target {target} -o c_programs/{intrinsic} {filename}",
-            target = if a32 { "armv7-unknown-linux-gnueabihf" } else { "aarch64-unknown-linux-gnu" },
-            arch_flags = if a32 { "-march=armv8.6-a+crypto+crc+dotprod" } else { "-march=armv8.6-a+crypto+sha3+crc+dotprod" },
-            filename = c_filename,
-            intrinsic = intrinsic.name,
-            cpp = compiler,
-            cppflags = flags,
-        ))
-        .output();
+    let intrinsic_name = &intrinsic.name;
+
+    let compiler_command = if target == "aarch64_be-unknown-linux-gnu" {
+        let Some(cxx_toolchain_dir) = cxx_toolchain_dir else {
+            panic!("When setting `--target aarch64_be-unknown-linux-gnu` the C++ compilers toolchain directory must be set with `--cxx-toolchain-dir <dest>`");
+        };
+
+        /* clang++ cannot link an aarch64_be object file, so we invoke
+         * aarch64_be-unknown-linux-gnu's C++ linker. This ensures that we
+         * are testing the intrinsics against LLVM.
+         *
+         * Note: setting `--sysroot=<...>` which is the obvious thing to do
+         * does not work as it gets caught up with `#include_next <stdlib.h>`
+         * not existing... */
+        format!(
+            "{compiler} {flags} {arch_flags} \
+            -ffp-contract=off \
+            -Wno-narrowing \
+            -O2 \
+            --target=aarch64_be-unknown-linux-gnu \
+            -I{cxx_toolchain_dir}/include \
+            -I{cxx_toolchain_dir}/aarch64_be-none-linux-gnu/include \
+            -I{cxx_toolchain_dir}/aarch64_be-none-linux-gnu/include/c++/14.2.1 \
+            -I{cxx_toolchain_dir}/aarch64_be-none-linux-gnu/include/c++/14.2.1/aarch64_be-none-linux-gnu \
+            -I{cxx_toolchain_dir}/aarch64_be-none-linux-gnu/include/c++/14.2.1/backward \
+            -I{cxx_toolchain_dir}/aarch64_be-none-linux-gnu/libc/usr/include \
+            -c {c_filename} \
+            -o c_programs/{intrinsic_name}.o && \
+            {cxx_toolchain_dir}/bin/aarch64_be-none-linux-gnu-g++ c_programs/{intrinsic_name}.o -o c_programs/{intrinsic_name} && \
+            rm c_programs/{intrinsic_name}.o",
+        )
+    } else {
+        // -ffp-contract=off emulates Rust's approach of not fusing separate mul-add operations
+        let base_compiler_command = format!(
+            "{compiler} {flags} {arch_flags} -o c_programs/{intrinsic_name} {c_filename} -ffp-contract=off -Wno-narrowing -O2"
+        );
+
+        /* `-target` can be passed to some c++ compilers, however if we want to
+         *   use a c++ compiler does not support this flag we do not want to pass
+         *   the flag. */
+        if compiler.contains("clang") {
+            format!("{base_compiler_command} -target {target}")
+        } else {
+            format!("{base_compiler_command} -flax-vector-conversions")
+        }
+    };
+
+    let output = Command::new("sh").arg("-c").arg(compiler_command).output();
     if let Ok(output) = output {
         if output.status.success() {
             true
@@ -258,7 +308,13 @@ fn build_notices(line_prefix: &str) -> String {
     )
 }
 
-fn build_c(notices: &str, intrinsics: &Vec<Intrinsic>, compiler: Option<&str>, a32: bool) -> bool {
+fn build_c(
+    notices: &str,
+    intrinsics: &Vec<Intrinsic>,
+    compiler: Option<&str>,
+    target: &str,
+    cxx_toolchain_dir: Option<&str>,
+) -> bool {
     let _ = std::fs::create_dir("c_programs");
     intrinsics
         .par_iter()
@@ -266,25 +322,31 @@ fn build_c(notices: &str, intrinsics: &Vec<Intrinsic>, compiler: Option<&str>, a
             let c_filename = format!(r#"c_programs/{}.cpp"#, i.name);
             let mut file = File::create(&c_filename).unwrap();
 
-            let c_code = generate_c_program(notices, &["arm_neon.h", "arm_acle.h"], i, a32);
+            let c_code = generate_c_program(notices, &["arm_neon.h", "arm_acle.h"], i, target);
             file.write_all(c_code.into_bytes().as_slice()).unwrap();
             match compiler {
                 None => true,
-                Some(compiler) => compile_c(&c_filename, i, compiler, a32),
+                Some(compiler) => compile_c(&c_filename, i, compiler, target, cxx_toolchain_dir),
             }
         })
         .find_any(|x| !x)
         .is_none()
 }
 
-fn build_rust(notices: &str, intrinsics: &[Intrinsic], toolchain: Option<&str>, a32: bool) -> bool {
+fn build_rust(
+    notices: &str,
+    intrinsics: &[Intrinsic],
+    toolchain: Option<&str>,
+    target: &str,
+    linker: Option<&str>,
+) -> bool {
     intrinsics.iter().for_each(|i| {
         let rust_dir = format!(r#"rust_programs/{}"#, i.name);
         let _ = std::fs::create_dir_all(&rust_dir);
         let rust_filename = format!(r#"{rust_dir}/main.rs"#);
         let mut file = File::create(&rust_filename).unwrap();
 
-        let c_code = generate_rust_program(notices, i, a32);
+        let c_code = generate_rust_program(notices, i, target);
         file.write_all(c_code.into_bytes().as_slice()).unwrap();
     });
 
@@ -330,26 +392,33 @@ path = "{intrinsic}/main.rs""#,
         Some(t) => t,
     };
 
+    /* If there has been a linker explicitly set from the command line then
+     * we want to set it via setting it in the RUSTFLAGS*/
+    let mut rust_flags = "-Cdebuginfo=0".to_string();
+    if let Some(linker) = linker {
+        rust_flags.push_str(" -Clinker=");
+        rust_flags.push_str(linker);
+        rust_flags.push_str(" -Clink-args=-static");
+    }
+
+    let cargo_command = format!(
+        "cargo {toolchain} build --target {target} --release",
+        toolchain = toolchain,
+        target = target
+    );
+
     let output = Command::new("sh")
         .current_dir("rust_programs")
         .arg("-c")
-        .arg(format!(
-            "cargo {toolchain} build --target {target} --release",
-            toolchain = toolchain,
-            target = if a32 {
-                "armv7-unknown-linux-gnueabihf"
-            } else {
-                "aarch64-unknown-linux-gnu"
-            },
-        ))
-        .env("RUSTFLAGS", "-Cdebuginfo=0")
+        .arg(cargo_command)
+        .env("RUSTFLAGS", rust_flags)
         .output();
     if let Ok(output) = output {
         if output.status.success() {
             true
         } else {
             error!(
-                "Failed to compile code for intrinsics\n\nstdout:\n{}\n\nstderr:\n{}",
+                "Failed to compile code for rust intrinsics\n\nstdout:\n{}\n\nstderr:\n{}",
                 std::str::from_utf8(&output.stdout).unwrap_or(""),
                 std::str::from_utf8(&output.stderr).unwrap_or("")
             );
@@ -387,13 +456,21 @@ struct Cli {
     #[arg(long)]
     skip: Option<PathBuf>,
 
-    /// Run tests for A32 instrinsics instead of A64
-    #[arg(long)]
-    a32: bool,
-
     /// Regenerate test programs, but don't build or run them
     #[arg(long)]
     generate_only: bool,
+
+    /// Pass a target the test suite
+    #[arg(long, default_value_t = String::from("aarch64-unknown-linux-gnu"))]
+    target: String,
+
+    /// Set the linker
+    #[arg(long)]
+    linker: Option<String>,
+
+    /// Set the sysroot for the C++ compiler
+    #[arg(long)]
+    cxx_toolchain_dir: Option<String>,
 }
 
 fn main() {
@@ -403,6 +480,10 @@ fn main() {
 
     let filename = args.input;
     let c_runner = args.runner.unwrap_or_default();
+    let target: &str = args.target.as_str();
+    let linker = args.linker.as_deref();
+    let cxx_toolchain_dir = args.cxx_toolchain_dir;
+
     let skip = if let Some(filename) = args.skip {
         let data = std::fs::read_to_string(&filename).expect("Failed to open file");
         data.lines()
@@ -413,7 +494,7 @@ fn main() {
     } else {
         Default::default()
     };
-    let a32 = args.a32;
+    let a32 = target.contains("v7");
     let mut intrinsics = get_neon_intrinsics(&filename).expect("Error parsing input file");
 
     intrinsics.sort_by(|a, b| a.name.cmp(&b.name));
@@ -450,16 +531,22 @@ fn main() {
 
     let notices = build_notices("// ");
 
-    if !build_c(&notices, &intrinsics, cpp_compiler.as_deref(), a32) {
+    if !build_c(
+        &notices,
+        &intrinsics,
+        cpp_compiler.as_deref(),
+        target,
+        cxx_toolchain_dir.as_deref(),
+    ) {
         std::process::exit(2);
     }
 
-    if !build_rust(&notices, &intrinsics, toolchain.as_deref(), a32) {
+    if !build_rust(&notices, &intrinsics, toolchain.as_deref(), target, linker) {
         std::process::exit(3);
     }
 
-    if let Some(ref toolchain) = toolchain {
-        if !compare_outputs(&intrinsics, toolchain, &c_runner, a32) {
+    if let Some(ref _toolchain) = toolchain {
+        if !compare_outputs(&intrinsics, &c_runner, target) {
             std::process::exit(1)
         }
     }
@@ -471,7 +558,7 @@ enum FailureReason {
     Difference(String, String, String),
 }
 
-fn compare_outputs(intrinsics: &Vec<Intrinsic>, toolchain: &str, runner: &str, a32: bool) -> bool {
+fn compare_outputs(intrinsics: &Vec<Intrinsic>, runner: &str, target: &str) -> bool {
     let intrinsics = intrinsics
         .par_iter()
         .filter_map(|intrinsic| {
@@ -483,20 +570,15 @@ fn compare_outputs(intrinsics: &Vec<Intrinsic>, toolchain: &str, runner: &str, a
                     intrinsic = intrinsic.name,
                 ))
                 .output();
+
             let rust = Command::new("sh")
-                .current_dir("rust_programs")
                 .arg("-c")
                 .arg(format!(
-                    "cargo {toolchain} run --target {target} --bin {intrinsic} --release",
+                    "{runner} ./rust_programs/target/{target}/release/{intrinsic}",
+                    runner = runner,
+                    target = target,
                     intrinsic = intrinsic.name,
-                    toolchain = toolchain,
-                    target = if a32 {
-                        "armv7-unknown-linux-gnueabihf"
-                    } else {
-                        "aarch64-unknown-linux-gnu"
-                    },
                 ))
-                .env("RUSTFLAGS", "-Cdebuginfo=0")
                 .output();
 
             let (c, rust) = match (c, rust) {

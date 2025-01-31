@@ -375,9 +375,9 @@ impl IntrinsicType {
     }
 
     /// Determines the load function for this type.
-    pub fn get_load_function(&self, armv7_p64_workaround: bool) -> String {
+    pub fn get_load_function(&self, target: &str) -> String {
         match self {
-            IntrinsicType::Ptr { child, .. } => child.get_load_function(armv7_p64_workaround),
+            IntrinsicType::Ptr { child, .. } => child.get_load_function(target),
             IntrinsicType::Type {
                 kind: k,
                 bit_len: Some(bl),
@@ -397,7 +397,7 @@ impl IntrinsicType {
                         TypeKind::Int => "s",
                         TypeKind::Float => "f",
                         // The ACLE doesn't support 64-bit polynomial loads on Armv7
-                        TypeKind::Poly => if armv7_p64_workaround && *bl == 64 {"s"} else {"p"},
+                        TypeKind::Poly => if target.starts_with("armv7") && *bl == 64 {"s"} else {"p"},
                         x => todo!("get_load_function TypeKind: {:#?}", x),
                     },
                     size = bl,
