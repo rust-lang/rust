@@ -15,7 +15,7 @@ LL | struct Foo<T>(dyn SendEqAlias<T>);
    |                   ^^^^^^^^^^^^^^ `SendEqAlias` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/generic-default-in-dyn.rs:1:24
    |
 LL | trait SendEqAlias<T> = PartialEq;
@@ -30,7 +30,7 @@ LL | struct Bar<T>(dyn SendEqAlias<T>, T);
    |                   ^^^^^^^^^^^^^^ `SendEqAlias` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/generic-default-in-dyn.rs:1:24
    |
 LL | trait SendEqAlias<T> = PartialEq;

@@ -25,7 +25,7 @@ use tracing::debug;
 /// trait Bar {}
 /// trait Foo = Bar + Bar;
 ///
-/// let not_object_safe: dyn Foo; // bad, two `Bar` principals.
+/// let dyn_incompatible: dyn Foo; // bad, two `Bar` principals.
 /// ```
 pub fn expand_trait_aliases<'tcx>(
     tcx: TyCtxt<'tcx>,

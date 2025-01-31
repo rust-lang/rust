@@ -130,7 +130,7 @@ LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
    |                     ^^^^^^^^^^^^^^^^^^^^^ `X` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/gat-trait-path-parenthesised-args.rs:2:8
    |
 LL | trait X {
@@ -196,7 +196,7 @@ LL | fn bar<'a>(arg: Box<dyn X<Y() = ()>>) {}
    |                     ^^^^^^^^^^^^^^^ `X` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/gat-trait-path-parenthesised-args.rs:2:8
    |
 LL | trait X {
