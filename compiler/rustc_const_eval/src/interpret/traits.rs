@@ -54,7 +54,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> &'tcx [VtblEntry<'tcx>] {
         if let Some(trait_) = trait_ {
             let trait_ref = trait_.with_self_ty(*self.tcx, dyn_ty);
-            let trait_ref = self.tcx.erase_regions(trait_ref);
+            let trait_ref =
+                self.tcx.erase_regions(self.tcx.instantiate_bound_regions_with_erased(trait_ref));
             self.tcx.vtable_entries(trait_ref)
         } else {
             TyCtxt::COMMON_VTABLE_ENTRIES

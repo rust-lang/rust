@@ -25,7 +25,6 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
 use rustc_span::{DUMMY_SP, Symbol, sym};
-use rustc_trait_selection::infer::at::ToTrace;
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
@@ -129,14 +128,9 @@ pub fn validate_trivial_unsize<'tcx>(
                     BoundRegionConversionTime::HigherRankedType,
                     hr_source_principal,
                 );
-                let Ok(()) = ocx.eq_trace(
+                let Ok(()) = ocx.eq(
                     &ObligationCause::dummy(),
                     param_env,
-                    ToTrace::to_trace(
-                        &ObligationCause::dummy(),
-                        hr_target_principal,
-                        hr_source_principal,
-                    ),
                     target_principal,
                     source_principal,
                 ) else {
@@ -211,7 +205,12 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 old_info
             }
         }
-        (_, ty::Dynamic(data, _, _)) => meth::get_vtable(cx, source, data.principal()),
+        (_, ty::Dynamic(data, _, _)) => meth::get_vtable(
+            cx,
+            source,
+            data.principal()
+                .map(|principal| bx.tcx().instantiate_bound_regions_with_erased(principal)),
+        ),
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}", source, target),
     }
 }
