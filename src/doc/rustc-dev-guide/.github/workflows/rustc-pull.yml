@@ -61,6 +61,8 @@ jobs:
       - name: Create pull request
         id: update-pr
         if: ${{ steps.rustc-pull.outputs.pull_result == 'pull-finished' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Check if an open pull request for an rustc pull update already exists
           # If it does, the previous push has just updated it
@@ -75,8 +77,6 @@ jobs:
             echo "Updating pull request ${PR_URL}"
             echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   send-zulip-message:
     needs: [pull]
     if: ${{ !cancelled() }}
@@ -84,6 +84,8 @@ jobs:
     steps:
       - name: Compute message
         id: create-message
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "${{ needs.pull.result }}" == "failure" ]; then
             WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
