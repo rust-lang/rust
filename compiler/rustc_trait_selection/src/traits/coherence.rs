@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::bug;
@@ -27,7 +27,6 @@ use tracing::{debug, instrument, warn};
 use super::ObligationCtxt;
 use crate::error_reporting::traits::suggest_new_overflow_limit;
 use crate::infer::InferOk;
-use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
 use crate::solve::{SolverDelegate, deeply_normalize_for_diagnostics, inspect};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
@@ -596,8 +595,7 @@ fn try_prove_negated_where_clause<'tcx>(
     // FIXME: We could use the assumed_wf_types from both impls, I think,
     // if that wasn't implemented just for LocalDefId, and we'd need to do
     // the normalization ourselves since this is totally fallible...
-    let outlives_env = OutlivesEnvironment::new(param_env);
-    let errors = ocx.resolve_regions(&outlives_env);
+    let errors = ocx.resolve_regions(CRATE_DEF_ID, param_env, []);
     if !errors.is_empty() {
         return false;
     }

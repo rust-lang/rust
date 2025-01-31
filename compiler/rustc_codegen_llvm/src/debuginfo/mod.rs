@@ -22,6 +22,7 @@ use rustc_session::config::{self, DebugInfo};
 use rustc_span::{
     BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span, StableSourceFileId, Symbol,
 };
+use rustc_target::spec::DebuginfoKind;
 use smallvec::SmallVec;
 use tracing::debug;
 
@@ -93,29 +94,31 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
 
     pub(crate) fn finalize(&self, sess: &Session) {
         unsafe { llvm::LLVMRustDIBuilderFinalize(self.builder) };
-        if !sess.target.is_like_msvc {
-            // Debuginfo generation in LLVM by default uses a higher
-            // version of dwarf than macOS currently understands. We can
-            // instruct LLVM to emit an older version of dwarf, however,
-            // for macOS to understand. For more info see #11352
-            // This can be overridden using --llvm-opts -dwarf-version,N.
-            // Android has the same issue (#22398)
-            let dwarf_version =
-                sess.opts.unstable_opts.dwarf_version.unwrap_or(sess.target.default_dwarf_version);
-            llvm::add_module_flag_u32(
-                self.llmod,
-                llvm::ModuleFlagMergeBehavior::Warning,
-                "Dwarf Version",
-                dwarf_version,
-            );
-        } else {
-            // Indicate that we want CodeView debug information on MSVC
-            llvm::add_module_flag_u32(
-                self.llmod,
-                llvm::ModuleFlagMergeBehavior::Warning,
-                "CodeView",
-                1,
-            );
+
+        match sess.target.debuginfo_kind {
+            DebuginfoKind::Dwarf | DebuginfoKind::DwarfDsym => {
+                // Debuginfo generation in LLVM by default uses a higher
+                // version of dwarf than macOS currently understands. We can
+                // instruct LLVM to emit an older version of dwarf, however,
+                // for macOS to understand. For more info see #11352
+                // This can be overridden using --llvm-opts -dwarf-version,N.
+                // Android has the same issue (#22398)
+                llvm::add_module_flag_u32(
+                    self.llmod,
+                    llvm::ModuleFlagMergeBehavior::Warning,
+                    "Dwarf Version",
+                    sess.dwarf_version(),
+                );
+            }
+            DebuginfoKind::Pdb => {
+                // Indicate that we want CodeView debug information
+                llvm::add_module_flag_u32(
+                    self.llmod,
+                    llvm::ModuleFlagMergeBehavior::Warning,
+                    "CodeView",
+                    1,
+                );
+            }
         }
 
         // Prevent bitcode readers from deleting the debug info.

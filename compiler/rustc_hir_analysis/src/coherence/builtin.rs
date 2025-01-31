@@ -10,7 +10,6 @@ use rustc_hir as hir;
 use rustc_hir::ItemKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
@@ -346,8 +345,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                 }
 
                 // Finally, resolve all regions.
-                let outlives_env = OutlivesEnvironment::new(param_env);
-                res = res.and(ocx.resolve_regions_and_report_errors(impl_did, &outlives_env));
+                res = res.and(ocx.resolve_regions_and_report_errors(impl_did, param_env, []));
             }
             res
         }
@@ -564,8 +562,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
     }
 
     // Finally, resolve all regions.
-    let outlives_env = OutlivesEnvironment::new(param_env);
-    let _ = ocx.resolve_regions_and_report_errors(impl_did, &outlives_env);
+    let _ = ocx.resolve_regions_and_report_errors(impl_did, param_env, []);
 
     Ok(CoerceUnsizedInfo { custom_kind: kind })
 }

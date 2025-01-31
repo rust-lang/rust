@@ -128,16 +128,16 @@ mod rustc {
         pub fn from_const<'tcx>(
             tcx: TyCtxt<'tcx>,
             param_env: ParamEnv<'tcx>,
-            c: Const<'tcx>,
+            ct: Const<'tcx>,
         ) -> Option<Self> {
             use rustc_middle::ty::ScalarInt;
             use rustc_span::sym;
 
-            let Some((cv, ty)) = c.try_to_valtree() else {
+            let Some(cv) = ct.try_to_value() else {
                 return None;
             };
 
-            let adt_def = ty.ty_adt_def()?;
+            let adt_def = cv.ty.ty_adt_def()?;
 
             assert_eq!(
                 tcx.require_lang_item(LangItem::TransmuteOpts, None),
@@ -147,7 +147,7 @@ mod rustc {
             );
 
             let variant = adt_def.non_enum_variant();
-            let fields = match cv {
+            let fields = match cv.valtree {
                 ValTree::Branch(branch) => branch,
                 _ => {
                     return Some(Self {

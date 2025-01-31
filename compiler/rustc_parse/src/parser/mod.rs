@@ -924,10 +924,8 @@ impl<'a> Parser<'a> {
 
                                 _ => {
                                     // Attempt to keep parsing if it was a similar separator.
-                                    if let Some(tokens) = exp.tok.similar_tokens() {
-                                        if tokens.contains(&self.token.kind) {
-                                            self.bump();
-                                        }
+                                    if exp.tok.similar_tokens().contains(&self.token.kind) {
+                                        self.bump();
                                     }
                                 }
                             }

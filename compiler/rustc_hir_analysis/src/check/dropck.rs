@@ -5,7 +5,6 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
-use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::util::CheckRegions;
@@ -192,7 +191,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         return Err(guar.unwrap());
     }
 
-    let errors = ocx.infcx.resolve_regions(&OutlivesEnvironment::new(adt_env));
+    let errors = ocx.infcx.resolve_regions(adt_def_id, adt_env, []);
     if !errors.is_empty() {
         let mut guar = None;
         for error in errors {

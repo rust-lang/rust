@@ -590,8 +590,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 
     fn print_const(&mut self, ct: ty::Const<'tcx>) -> Result<(), PrintError> {
         // We only mangle a typed value if the const can be evaluated.
-        let (ct_ty, valtree) = match ct.kind() {
-            ty::ConstKind::Value(ty, val) => (ty, val),
+        let cv = match ct.kind() {
+            ty::ConstKind::Value(cv) => cv,
 
             // Should only be encountered within the identity-substituted
             // impl header of an item nested within an impl item.
@@ -619,13 +619,14 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             return Ok(());
         }
 
+        let ty::Value { ty: ct_ty, valtree } = cv;
         let start = self.out.len();
 
         match ct_ty.kind() {
             ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => {
                 ct_ty.print(self)?;
 
-                let mut bits = ct
+                let mut bits = cv
                     .try_to_bits(self.tcx, ty::TypingEnv::fully_monomorphized())
                     .expect("expected const to be monomorphic");
 

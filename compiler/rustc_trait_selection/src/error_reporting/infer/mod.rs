@@ -2023,14 +2023,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             _ => None,
         };
         if let Some(tykind) = tykind
-            && let hir::TyKind::Array(_, length) = tykind
-            && let Some((scalar, ty)) = sz.found.try_to_scalar()
-            && ty == self.tcx.types.usize
+            && let hir::TyKind::Array(_, length_arg) = tykind
+            && let Some(length_val) = sz.found.try_to_target_usize(self.tcx)
         {
-            let span = length.span();
             Some(TypeErrorAdditionalDiags::ConsiderSpecifyingLength {
-                span,
-                length: scalar.to_target_usize(&self.tcx).unwrap(),
+                span: length_arg.span(),
+                length: length_val,
             })
         } else {
             None
