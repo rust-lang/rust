@@ -13,7 +13,7 @@ pub fn fmod<F: Float>(x: F, y: F) -> F {
     let mut ey = y.exp().signed();
     let sx = ix & F::SIGN_MASK;
 
-    if iy << 1 == zero || y.is_nan() || ex == F::EXP_MAX as i32 {
+    if iy << 1 == zero || y.is_nan() || ex == F::EXP_SAT as i32 {
         return (x * y) / (x * y);
     }
 

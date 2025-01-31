@@ -68,7 +68,7 @@ where
         (Exp::NoShift(()), special_case)
     } else {
         let top = u32::cast_from(ix >> F::SIG_BITS);
-        let special_case = top.wrapping_sub(1) >= F::EXP_MAX - 1;
+        let special_case = top.wrapping_sub(1) >= F::EXP_SAT - 1;
         (Exp::Shifted(top), special_case)
     };
 
@@ -119,7 +119,7 @@ where
             if even {
                 m_u2 >>= 1;
             }
-            e = (e.wrapping_add(F::EXP_MAX >> 1)) >> 1;
+            e = (e.wrapping_add(F::EXP_SAT >> 1)) >> 1;
             (m_u2, Exp::Shifted(e))
         }
         Exp::NoShift(()) => {

@@ -48,11 +48,14 @@ pub trait Float:
     /// The bitwidth of the exponent
     const EXP_BITS: u32 = Self::BITS - Self::SIG_BITS - 1;
 
-    /// The saturated value of the exponent (infinite representation), in the rightmost postiion.
-    const EXP_MAX: u32 = (1 << Self::EXP_BITS) - 1;
+    /// The saturated (maximum bitpattern) value of the exponent, i.e. the infinite
+    /// representation.
+    ///
+    /// This shifted fully right, use `EXP_MASK` for the shifted value.
+    const EXP_SAT: u32 = (1 << Self::EXP_BITS) - 1;
 
     /// The exponent bias value
-    const EXP_BIAS: u32 = Self::EXP_MAX >> 1;
+    const EXP_BIAS: u32 = Self::EXP_SAT >> 1;
 
     /// A mask for the sign bit
     const SIGN_MASK: Self::Int;
@@ -109,7 +112,7 @@ pub trait Float:
 
     /// Returns the exponent, not adjusting for bias, not accounting for subnormals or zero.
     fn exp(self) -> u32 {
-        u32::cast_from(self.to_bits() >> Self::SIG_BITS) & Self::EXP_MAX
+        u32::cast_from(self.to_bits() >> Self::SIG_BITS) & Self::EXP_SAT
     }
 
     /// Extract the exponent and adjust it for bias, not accounting for subnormals or zero.
@@ -135,7 +138,7 @@ pub trait Float:
         let sign = if negative { Self::Int::ONE } else { Self::Int::ZERO };
         Self::from_bits(
             (sign << (Self::BITS - 1))
-                | (Self::Int::cast_from(exponent & Self::EXP_MAX) << Self::SIG_BITS)
+                | (Self::Int::cast_from(exponent & Self::EXP_SAT) << Self::SIG_BITS)
                 | (significand & Self::SIG_MASK),
         )
     }
@@ -267,7 +270,7 @@ mod tests {
     #[cfg(f16_enabled)]
     fn check_f16() {
         // Constants
-        assert_eq!(f16::EXP_MAX, 0b11111);
+        assert_eq!(f16::EXP_SAT, 0b11111);
         assert_eq!(f16::EXP_BIAS, 15);
 
         // `exp_unbiased`
@@ -289,7 +292,7 @@ mod tests {
     #[test]
     fn check_f32() {
         // Constants
-        assert_eq!(f32::EXP_MAX, 0b11111111);
+        assert_eq!(f32::EXP_SAT, 0b11111111);
         assert_eq!(f32::EXP_BIAS, 127);
 
         // `exp_unbiased`
@@ -312,7 +315,7 @@ mod tests {
     #[test]
     fn check_f64() {
         // Constants
-        assert_eq!(f64::EXP_MAX, 0b11111111111);
+        assert_eq!(f64::EXP_SAT, 0b11111111111);
         assert_eq!(f64::EXP_BIAS, 1023);
 
         // `exp_unbiased`
@@ -336,7 +339,7 @@ mod tests {
     #[cfg(f128_enabled)]
     fn check_f128() {
         // Constants
-        assert_eq!(f128::EXP_MAX, 0b111111111111111);
+        assert_eq!(f128::EXP_SAT, 0b111111111111111);
         assert_eq!(f128::EXP_BIAS, 16383);
 
         // `exp_unbiased`
