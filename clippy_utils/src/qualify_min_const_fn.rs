@@ -116,6 +116,7 @@ fn check_rvalue<'tcx>(
         Rvalue::CopyForDeref(place) => check_place(tcx, *place, span, body, msrv),
         Rvalue::Repeat(operand, _)
         | Rvalue::Use(operand)
+        | Rvalue::WrapUnsafeBinder(operand, _)
         | Rvalue::Cast(
             CastKind::PointerWithExposedProvenance
             | CastKind::IntToInt
