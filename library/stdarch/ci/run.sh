@@ -108,6 +108,7 @@ if [ "$NOSTD" != "1" ]; then
     cargo_test "${STDARCH_EXAMPLES} ${PROFILE}"
 fi
 
+
 # Test targets compiled with extra features.
 case ${TARGET} in
     x86*)
@@ -138,26 +139,75 @@ case ${TARGET} in
         export RUSTFLAGS="${OLD_RUSTFLAGS} -C target-feature=+vsx"
         cargo_test "${PROFILE}"
         ;;
+
+    # Setup aarch64 & armv7 specific variables, the runner, along with some 
+    # tests to skip
+    aarch64-unknown-linux-gnu*)
+        TEST_CPPFLAGS="-fuse-ld=lld -I/usr/aarch64-linux-gnu/include/ -I/usr/aarch64-linux-gnu/include/c++/9/aarch64-linux-gnu/"
+        TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_aarch64.txt
+        TEST_CXX_COMPILER="clang++-15"
+        TEST_RUNNER="${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER}"
+        ;;
+    armv7-unknown-linux-gnueabihf*)
+        TEST_CPPFLAGS="-fuse-ld=lld -I/usr/arm-linux-gnueabihf/include/ -I/usr/arm-linux-gnueabihf/include/c++/9/arm-linux-gnueabihf/"
+        TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_arm.txt
+        TEST_CXX_COMPILER="clang++-15"
+        TEST_RUNNER="${CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_RUNNER}"
+        ;;
     *)
         ;;
 
 esac
 
-if [ "${TARGET}" = "aarch64-unknown-linux-gnu" ]; then
-    (
-        CPPFLAGS="-fuse-ld=lld -I/usr/aarch64-linux-gnu/include/ -I/usr/aarch64-linux-gnu/include/c++/9/aarch64-linux-gnu/" \
-            RUSTFLAGS="$HOST_RUSTFLAGS" \
-            RUST_LOG=warn \
-            cargo run ${INTRINSIC_TEST} "${PROFILE}" --bin intrinsic-test -- intrinsics_data/arm_intrinsics.json --runner "${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER}" --cppcompiler "clang++-15" --skip crates/intrinsic-test/missing_aarch64.txt
-    )
-elif [ "${TARGET}" = "armv7-unknown-linux-gnueabihf" ]; then
-    (
-        CPPFLAGS="-fuse-ld=lld -I/usr/arm-linux-gnueabihf/include/ -I/usr/arm-linux-gnueabihf/include/c++/9/arm-linux-gnueabihf/" \
-            RUSTFLAGS="$HOST_RUSTFLAGS" \
-            RUST_LOG=warn \
-            cargo run ${INTRINSIC_TEST} "${PROFILE}" --bin intrinsic-test -- intrinsics_data/arm_intrinsics.json --runner "${CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_RUNNER}" --cppcompiler "clang++-15" --skip crates/intrinsic-test/missing_arm.txt --a32
-    )
-fi
+# Arm specific
+case "${TARGET}" in
+    aarch64-unknown-linux-gnu*|armv7-unknown-linux-gnueabihf*)
+        CPPFLAGS="${TEST_CPPFLAGS}" RUSTFLAGS="${HOST_RUSTFLAGS}" RUST_LOG=warn \
+            cargo run "${INTRINSIC_TEST}" "${PROFILE}" \
+            --bin intrinsic-test -- intrinsics_data/arm_intrinsics.json \
+            --runner "${TEST_RUNNER}" \
+            --cppcompiler "${TEST_CXX_COMPILER}" \
+            --skip "${TEST_SKIP_INTRINSICS}" \
+            --target "${TARGET}"
+        ;;
+
+    aarch64_be-unknown-linux-gnu)
+        # get the aarch64_be toolchain
+        TOOLCHAIN="arm-gnu-toolchain-14.2.rel1-x86_64-aarch64_be-none-linux-gnu"
+
+        # Download the aarch64_be gcc toolchain
+        curl -L "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/${TOOLCHAIN}.tar.xz" \
+            -o "${TOOLCHAIN}.tar.xz" && \
+            tar -xzvf "./${TOOLCHAIN}".tar.xz && \
+            mdkir /toolchains &&
+            mv "./${TOOLCHAIN}" /toolchains
+
+        # Build the test suite
+        AARCH64_BE_TOOLCHAIN="/toolchains/${TOOLCHAIN}"
+        AARCH64_BE_LIBC="${AARCH64_BE_TOOLCHAIN}/aarch64_be-none-linux-gnu/libc"
+        CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER="${AARCH64_BE_TOOLCHAIN}/bin/aarch64_be-none-linux-gnu-gcc" \
+        CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER="qemu-aarch64_be -L ${AARCH64_BE_LIBC}" \
+        CPPFLAGS="-fuse-ld=lld" \
+        RUSTFLAGS="-C linker=${AARCH64_BE}/bin/aarch64_be-none-linux-gnu-gcc -C link-args=-static" \
+        cargo build \
+            --target="${TARGET}" \
+            --manifest-path=crates/intrinsic-test/Cargo.toml \
+            --profile=release
+
+        # Now run it
+        qemu-aarch64_be -L "${AARCH64_BE_LIBC}" \
+            "./target/${TARGET}/release/intrinsic-test" \
+            "./intrinsics_data/arm_intrinsics.json" \
+            --target "${TARGET}" \
+            --cppcompiler "clang++-18" \
+            --skip crates/intrinsic-test/missing_aarch64.txt \
+            --runner "${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER}" \
+            --linker "${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER}" \
+            --cxx-toolchain-dir "${AARCH64_BE_TOOLCHAIN}"
+        ;;
+    *)
+        ;;
+esac
 
 if [ "$NORUN" != "1" ] && [ "$NOSTD" != 1 ]; then
     # Test examples
