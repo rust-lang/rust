@@ -1,7 +1,7 @@
-//! "Hooks" provide a way for `tcx` functionality to be provided by some downstream crate without
-//! everything in rustc having to depend on that crate. This is somewhat similar to queries, but
-//! queries come with a lot of machinery for caching and incremental compilation, whereas hooks are
-//! just plain function pointers without any of the query magic.
+//! "Hooks" let you write `tcx` methods in downstream crates and call them in this crate, reducing
+//! the amount of code that needs to be in this crate (which is already very big). This is somewhat
+//! similar to queries, but queries come with a lot of machinery for caching and incremental
+//! compilation, whereas hooks are just plain function pointers without any of the query magic.
 
 use rustc_hir::def_id::{DefId, DefPathHash};
 use rustc_session::StableCrateId;
@@ -107,6 +107,9 @@ declare_hooks! {
 
     /// Returns `true` if we should codegen an instance in the local crate, or returns `false` if we
     /// can just link to the upstream crate and therefore don't need a mono item.
+    ///
+    /// Note: this hook isn't called within `rustc_middle` but #127779 suggests it's a hook instead
+    /// of a normal function because external tools might want to override it.
     hook should_codegen_locally(instance: crate::ty::Instance<'tcx>) -> bool;
 
     hook alloc_self_profile_query_strings() -> ();
