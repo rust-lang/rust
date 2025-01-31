@@ -344,8 +344,7 @@ where
 ///
 /// Parameters:
 /// - `fbits`: `abg(f)` bitcasted to an integer.
-/// - `map_inbounds`: apply this transformation to integers that are within range (add the sign
-///    back).
+/// - `map_inbounds`: apply this transformation to integers that are within range (add the sign back).
 /// - `out_of_bounds`: return value when out of range for `I`.
 fn float_to_int_inner<F, I, FnFoo, FnOob>(
     fbits: F::Int,
