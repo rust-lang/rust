@@ -131,7 +131,6 @@ impl Crate {
                 "--",
                 "cargo",
             ]);
-            cmd.env("CARGO_PROFILE_RELEASE_DEBUG", "true");
         } else {
             cmd = Command::new("cargo");
         }
@@ -254,17 +253,21 @@ fn normalize_diag(
 
 /// Builds clippy inside the repo to make sure we have a clippy executable we can use.
 fn build_clippy(release_build: bool) -> String {
-    let output = Command::new("cargo")
-        .args([
-            "run",
-            "--bin=clippy-driver",
-            if release_build { "-r" } else { "" },
-            "--",
-            "--version",
-        ])
-        .stderr(Stdio::inherit())
-        .output()
-        .unwrap();
+    let mut build_cmd = Command::new("cargo");
+    build_cmd.args([
+        "run",
+        "--bin=clippy-driver",
+        if release_build { "-r" } else { "" },
+        "--",
+        "--version",
+    ]);
+
+    if release_build {
+        build_cmd.env("CARGO_PROFILE_RELEASE_DEBUG", "true");
+    }
+
+    let output = build_cmd.stderr(Stdio::inherit()).output().unwrap();
+
     if !output.status.success() {
         eprintln!("Error: Failed to compile Clippy!");
         std::process::exit(1);
@@ -285,13 +288,6 @@ fn main() {
     }
 
     let config = LintcheckConfig::new();
-
-    if config.perf && config.max_jobs != 1 {
-        eprintln!(
-            "Lintcheck's --perf flag must be triggered only with 1 job,\nremove either the --jobs/-j flag or the --perf flag"
-        );
-        return;
-    }
 
     match config.subcommand {
         Some(Commands::Diff { old, new, truncate }) => json::diff(&old, &new, truncate),
