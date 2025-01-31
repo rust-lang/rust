@@ -789,12 +789,50 @@ pub type DiagnosticHandlerTy = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void
 pub type InlineAsmDiagHandlerTy = unsafe extern "C" fn(&SMDiagnostic, *const c_void, c_uint);
 
 pub mod debuginfo {
+    use std::ptr;
+
     use bitflags::bitflags;
 
     use super::{InvariantOpaque, Metadata};
+    use crate::llvm::{self, Module};
 
+    /// Opaque target type for references to an LLVM debuginfo builder.
+    ///
+    /// `&'_ DIBuilder<'ll>` corresponds to `LLVMDIBuilderRef`, which is the
+    /// LLVM-C wrapper for `DIBuilder *`.
+    ///
+    /// Debuginfo builders are created and destroyed during codegen, so the
+    /// builder reference typically has a shorter lifetime than the LLVM
+    /// session (`'ll`) that it participates in.
     #[repr(C)]
-    pub struct DIBuilder<'a>(InvariantOpaque<'a>);
+    pub struct DIBuilder<'ll>(InvariantOpaque<'ll>);
+
+    /// Owning pointer to a `DIBuilder<'ll>` that will dispose of the builder
+    /// when dropped. Use `.as_ref()` to get the underlying `&DIBuilder`
+    /// needed for debuginfo FFI calls.
+    pub(crate) struct DIBuilderBox<'ll> {
+        raw: ptr::NonNull<DIBuilder<'ll>>,
+    }
+
+    impl<'ll> DIBuilderBox<'ll> {
+        pub(crate) fn new(llmod: &'ll Module) -> Self {
+            let raw = unsafe { llvm::LLVMCreateDIBuilder(llmod) };
+            let raw = ptr::NonNull::new(raw).unwrap();
+            Self { raw }
+        }
+
+        pub(crate) fn as_ref(&self) -> &DIBuilder<'ll> {
+            // SAFETY: This is an owning pointer, so `&DIBuilder` is valid
+            // for as long as `&self` is.
+            unsafe { self.raw.as_ref() }
+        }
+    }
+
+    impl<'ll> Drop for DIBuilderBox<'ll> {
+        fn drop(&mut self) {
+            unsafe { llvm::LLVMDisposeDIBuilder(self.raw) };
+        }
+    }
 
     pub type DIDescriptor = Metadata;
     pub type DILocation = Metadata;
@@ -1672,6 +1710,13 @@ unsafe extern "C" {
     ) -> &'a Value;
 }
 
+// FFI bindings for `DIBuilder` functions in the LLVM-C API.
+// Try to keep these in the same order as in `llvm/include/llvm-c/DebugInfo.h`.
+unsafe extern "C" {
+    pub(crate) fn LLVMCreateDIBuilder<'ll>(M: &'ll Module) -> *mut DIBuilder<'ll>;
+    pub(crate) fn LLVMDisposeDIBuilder<'ll>(Builder: ptr::NonNull<DIBuilder<'ll>>);
+}
+
 #[link(name = "llvm-wrapper", kind = "static")]
 unsafe extern "C" {
     pub fn LLVMRustInstallErrorHandlers();
@@ -1938,10 +1983,6 @@ unsafe extern "C" {
         Value: *const c_char,
         ValueLen: size_t,
     );
-
-    pub fn LLVMRustDIBuilderCreate(M: &Module) -> &mut DIBuilder<'_>;
-
-    pub fn LLVMRustDIBuilderDispose<'a>(Builder: &'a mut DIBuilder<'a>);
 
     pub fn LLVMRustDIBuilderFinalize(Builder: &DIBuilder<'_>);
 
