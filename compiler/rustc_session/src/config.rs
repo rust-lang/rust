@@ -189,6 +189,39 @@ pub enum CoverageLevel {
     Mcdc,
 }
 
+/// The different settings that the `-Z autodiff` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum AutoDiff {
+    /// Print TypeAnalysis information
+    PrintTA,
+    /// Print ActivityAnalysis Information
+    PrintAA,
+    /// Print Performance Warnings from Enzyme
+    PrintPerf,
+    /// Combines the three print flags above.
+    Print,
+    /// Print the whole module, before running opts.
+    PrintModBefore,
+    /// Print the whole module just before we pass it to Enzyme.
+    /// For Debug purpose, prefer the OPT flag below
+    PrintModAfterOpts,
+    /// Print the module after Enzyme differentiated everything.
+    PrintModAfterEnzyme,
+
+    /// Enzyme's loose type debug helper (can cause incorrect gradients)
+    LooseTypes,
+
+    /// More flags
+    NoModOptAfter,
+    /// Tell Enzyme to run LLVM Opts on each function it generated. By default off,
+    /// since we already optimize the whole module after Enzyme is done.
+    EnableFncOpt,
+    NoVecUnroll,
+    RuntimeActivity,
+    /// Runs Enzyme specific Inlining
+    Inline,
+}
+
 /// Settings for `-Z instrument-xray` flag.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct InstrumentXRay {
@@ -2902,7 +2935,7 @@ pub(crate) mod dep_tracking {
     };
 
     use super::{
-        BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
+        AutoDiff, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
         CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
         InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
         LtoCli, MirStripDebugInfo, NextSolverConfig, OomStrategy, OptLevel, OutFileName,
@@ -2950,6 +2983,7 @@ pub(crate) mod dep_tracking {
     }
 
     impl_dep_tracking_hash_via_hash!(
+        AutoDiff,
         bool,
         usize,
         NonZero<usize>,
