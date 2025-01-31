@@ -91,6 +91,11 @@ no_mangle! {
     fn fmod(x: f64, y: f64) -> f64;
     // `f32 % f32`
     fn fmodf(x: f32, y: f32) -> f32;
+
+    fn erf(x: f64) -> f64;
+    fn erff(x: f32) -> f32;
+    fn erfc(x: f64) -> f64;
+    fn erfcf(x: f32) -> f32;
 }
 
 // allow for windows (and other targets)
