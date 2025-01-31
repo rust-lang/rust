@@ -1,3 +1,4 @@
+#![allow(unused)]
 use std::fmt::Debug;
 use std::iter;
 
@@ -31,6 +32,7 @@ use crate::errors::{
     MultipleArrayFieldsSimdType, NonPrimitiveSimdType, OversizedSimdType, ZeroLengthSimdType,
 };
 
+mod coroutine;
 mod invariant;
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -424,7 +426,13 @@ fn layout_of_uncached<'tcx>(
             tcx.mk_layout(unit)
         }
 
-        ty::Coroutine(def_id, args) => coroutine_layout(cx, ty, def_id, args)?,
+        ty::Coroutine(def_id, args) => {
+            // if tcx.features().coroutine_new_layout() {
+            coroutine::coroutine_layout(cx, ty, def_id, args)?
+            // } else {
+            //     coroutine_layout(cx, ty, def_id, args)?
+            // }
+        }
 
         ty::Closure(_, args) => {
             let tys = args.as_closure().upvar_tys();
@@ -872,7 +880,7 @@ fn coroutine_layout<'tcx>(
     // Build a prefix layout, including "promoting" all ineligible
     // locals as part of the prefix. We compute the layout of all of
     // these fields at once to get optimal packing.
-    let tag_index = args.as_coroutine().prefix_tys().len();
+    let tag_index = 0;
 
     // `info.variant_fields` already accounts for the reserved variants, so no need to add them.
     let max_discr = (info.variant_fields.len() - 1) as u128;
@@ -891,14 +899,8 @@ fn coroutine_layout<'tcx>(
         let uninit_ty = Ty::new_maybe_uninit(tcx, field_ty);
         cx.spanned_layout_of(uninit_ty, info.field_tys[local].source_info.span)
     });
-    let prefix_layouts = args
-        .as_coroutine()
-        .prefix_tys()
-        .iter()
-        .map(|ty| cx.layout_of(ty))
-        .chain(iter::once(Ok(tag_layout)))
-        .chain(promoted_layouts)
-        .try_collect::<IndexVec<_, _>>()?;
+    let prefix_layouts: IndexVec<_, _> =
+        [Ok(tag_layout)].into_iter().chain(promoted_layouts).try_collect()?;
     let prefix = univariant_uninterned(
         cx,
         ty,
@@ -909,10 +911,10 @@ fn coroutine_layout<'tcx>(
 
     let (prefix_size, prefix_align) = (prefix.size, prefix.align);
 
-    // Split the prefix layout into the "outer" fields (upvars and
-    // discriminant) and the "promoted" fields. Promoted fields will
-    // get included in each variant that requested them in
-    // CoroutineLayout.
+    // Split the prefix layout into the discriminant and
+    // the "promoted" fields.
+    // Promoted fields will get included in each variant
+    // that requested them in CoroutineLayout.
     debug!("prefix = {:#?}", prefix);
     let (outer_fields, promoted_offsets, promoted_memory_index) = match prefix.fields {
         FieldsShape::Arbitrary { mut offsets, memory_index } => {
@@ -1210,8 +1212,10 @@ fn variant_info_for_coroutine<'tcx>(
         .zip_eq(upvar_names)
         .enumerate()
         .map(|(field_idx, (_, name))| {
-            let field_layout = layout.field(cx, field_idx);
-            let offset = layout.fields.offset(field_idx);
+            // Upvars occupies the Unresumed variant at index zero
+            let variant_layout = layout.for_variant(cx, VariantIdx::ZERO);
+            let field_layout = variant_layout.field(cx, field_idx);
+            let offset = variant_layout.fields.offset(field_idx);
             upvars_size = upvars_size.max(offset + field_layout.size);
             FieldInfo {
                 kind: FieldKind::Upvar,
@@ -1231,12 +1235,11 @@ fn variant_info_for_coroutine<'tcx>(
             let variant_layout = layout.for_variant(cx, variant_idx);
             let mut variant_size = Size::ZERO;
             let fields = variant_def
-                .iter()
-                .enumerate()
+                .iter_enumerated()
                 .map(|(field_idx, local)| {
                     let field_name = coroutine.field_names[*local];
-                    let field_layout = variant_layout.field(cx, field_idx);
-                    let offset = variant_layout.fields.offset(field_idx);
+                    let field_layout = variant_layout.field(cx, field_idx.index());
+                    let offset = variant_layout.fields.offset(field_idx.index());
                     // The struct is as large as the last field's end
                     variant_size = variant_size.max(offset + field_layout.size);
                     FieldInfo {
@@ -1254,7 +1257,11 @@ fn variant_info_for_coroutine<'tcx>(
                             .then(|| Symbol::intern(&field_layout.ty.to_string())),
                     }
                 })
-                .chain(upvar_fields.iter().copied())
+                .chain(
+                    if variant_idx.as_usize() == 0 { &upvar_fields[..] } else { &[] }
+                        .iter()
+                        .copied(),
+                )
                 .collect();
 
             // If the variant has no state-specific fields, then it's the size of the upvars.

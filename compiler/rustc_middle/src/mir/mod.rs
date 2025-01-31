@@ -371,6 +371,9 @@ pub struct Body<'tcx> {
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
     pub function_coverage_info: Option<Box<coverage::FunctionCoverageInfo>>,
+
+    /// Coroutine local-upvar map
+    pub local_upvar_map: IndexVec<FieldIdx, Option<Local>>,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -414,6 +417,7 @@ impl<'tcx> Body<'tcx> {
             tainted_by_errors,
             coverage_info_hi: None,
             function_coverage_info: None,
+            local_upvar_map: IndexVec::new(),
         };
         body.is_polymorphic = body.has_non_region_param();
         body
@@ -445,6 +449,7 @@ impl<'tcx> Body<'tcx> {
             tainted_by_errors: None,
             coverage_info_hi: None,
             function_coverage_info: None,
+            local_upvar_map: IndexVec::new(),
         };
         body.is_polymorphic = body.has_non_region_param();
         body

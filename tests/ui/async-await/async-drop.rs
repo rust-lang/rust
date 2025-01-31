@@ -11,10 +11,10 @@
 //@ edition: 2021
 
 // FIXME(zetanumbers): consider AsyncDestruct::async_drop cleanup tests
-use core::future::{async_drop_in_place, AsyncDrop, Future};
+use core::future::{AsyncDrop, Future, async_drop_in_place};
 use core::hint::black_box;
 use core::mem::{self, ManuallyDrop};
-use core::pin::{pin, Pin};
+use core::pin::{Pin, pin};
 use core::task::{Context, Poll, Waker};
 
 async fn test_async_drop<T>(x: T, _size: usize) {
@@ -26,8 +26,8 @@ async fn test_async_drop<T>(x: T, _size: usize) {
     // async functions.
     #[cfg(target_pointer_width = "64")]
     assert_eq!(
-        mem::size_of_val(&*dtor),
         _size,
+        mem::size_of_val(&*dtor),
         "sizes did not match for async destructor of type {}",
         core::any::type_name::<T>(),
     );
@@ -53,20 +53,18 @@ fn main() {
     let i = 13;
     let fut = pin!(async {
         test_async_drop(Int(0), 0).await;
-        // FIXME(#63818): niches in coroutines are disabled.
-        // Some of these sizes should be smaller, as indicated in comments.
-        test_async_drop(AsyncInt(0), /*104*/ 112).await;
-        test_async_drop([AsyncInt(1), AsyncInt(2)], /*152*/ 168).await;
-        test_async_drop((AsyncInt(3), AsyncInt(4)), /*488*/ 528).await;
+        test_async_drop(AsyncInt(0), 56).await;
+        test_async_drop([AsyncInt(1), AsyncInt(2)], 96).await;
+        test_async_drop((AsyncInt(3), AsyncInt(4)), 144).await;
         test_async_drop(5, 0).await;
         let j = 42;
         test_async_drop(&i, 0).await;
         test_async_drop(&j, 0).await;
-        test_async_drop(AsyncStruct { b: AsyncInt(8), a: AsyncInt(7), i: 6 }, /*1688*/ 1792).await;
+        test_async_drop(AsyncStruct { b: AsyncInt(8), a: AsyncInt(7), i: 6 }, 200).await;
         test_async_drop(ManuallyDrop::new(AsyncInt(9)), 0).await;
 
         let foo = AsyncInt(10);
-        test_async_drop(AsyncReference { foo: &foo }, /*104*/ 112).await;
+        test_async_drop(AsyncReference { foo: &foo }, 56).await;
 
         let foo = AsyncInt(11);
         test_async_drop(
@@ -75,17 +73,17 @@ fn main() {
                 let foo = AsyncInt(10);
                 foo
             },
-            /*120*/ 136,
+            72,
         )
         .await;
 
-        test_async_drop(AsyncEnum::A(AsyncInt(12)), /*680*/ 736).await;
-        test_async_drop(AsyncEnum::B(SyncInt(13)), /*680*/ 736).await;
+        test_async_drop(AsyncEnum::A(AsyncInt(12)), 168).await;
+        test_async_drop(AsyncEnum::B(SyncInt(13)), 168).await;
 
         test_async_drop(SyncInt(14), /*16*/ 24).await;
         test_async_drop(
             SyncThenAsync { i: 15, a: AsyncInt(16), b: SyncInt(17), c: AsyncInt(18) },
-            /*3064*/ 3296,
+            232,
         )
         .await;
 
@@ -101,11 +99,11 @@ fn main() {
                 black_box(core::future::ready(())).await;
                 foo
             },
-            /*120*/ 136,
+            72,
         )
         .await;
 
-        test_async_drop(AsyncUnion { signed: 21 }, /*32*/ 40).await;
+        test_async_drop(AsyncUnion { signed: 21 }, 32).await;
     });
     let res = fut.poll(&mut cx);
     assert_eq!(res, Poll::Ready(()));
@@ -149,7 +147,10 @@ struct AsyncReference<'a> {
 }
 
 impl AsyncDrop for AsyncReference<'_> {
-    type Dropper<'a> = impl Future<Output = ()> where Self: 'a;
+    type Dropper<'a>
+        = impl Future<Output = ()>
+    where
+        Self: 'a;
 
     fn async_drop(self: Pin<&mut Self>) -> Self::Dropper<'_> {
         async move {
@@ -212,11 +213,9 @@ impl AsyncDrop for AsyncUnion {
 
     fn async_drop(self: Pin<&mut Self>) -> Self::Dropper<'_> {
         async move {
-            println!(
-                "AsyncUnion::Dropper::poll: {}, {}",
-                unsafe { self.signed },
-                unsafe { self.unsigned },
-            );
+            println!("AsyncUnion::Dropper::poll: {}, {}", unsafe { self.signed }, unsafe {
+                self.unsigned
+            },);
         }
     }
 }
