@@ -502,9 +502,34 @@ impl<T> Rc<T> {
     #[stable(feature = "new_uninit", since = "1.82.0")]
     #[must_use]
     pub fn new_uninit() -> Rc<mem::MaybeUninit<T>> {
+        new_uninit_from_layout(Layout::new::<T>())
+    }
+
+    /// Constructs a new `Rc` with uninitialized contents using a given layout.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let mut array = Rc::<[u32]>::new_uninit_from_layout(Layout::array::<u32>(1));
+    ///
+    /// // Deferred initialization:
+    /// Rc::get_mut(&mut array).unwrap()[0] = 5;
+    ///
+    /// let array = unsafe { array.assume_init() };
+    ///
+    /// assert_eq!(five[0], 5)
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[stable(feature = "new_uninit", since = "1.82.0")]
+    #[must_use]
+    pub fn new_uninit_from_layout(layout: Layout) -> Rc<mem::MaybeUninit<T>> {
         unsafe {
             Rc::from_ptr(Rc::allocate_for_layout(
-                Layout::new::<T>(),
+                layout,
                 |layout| Global.allocate(layout),
                 <*mut u8>::cast,
             ))
