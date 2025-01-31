@@ -248,7 +248,29 @@ impl Range {
         Range { start: range.end, end: range.start, from_end: true }
     }
 
-    pub(crate) fn len(&self) -> u64 {
+    pub(crate) fn len(self) -> u64 {
         if !self.from_end { self.end - self.start } else { self.start - self.end }
+    }
+
+    pub(crate) fn apply<T>(self, slice: &[T]) -> &[T] {
+        if !self.from_end {
+            &slice[self.start as usize..self.end as usize]
+        } else {
+            &slice[..self.start as usize - self.end as usize]
+        }
+    }
+
+    pub(crate) fn shift_idx(self, idx: u64) -> u64 {
+        if !self.from_end { self.start + idx } else { self.start - idx }
+    }
+
+    pub(crate) fn shift_range(self, range_within: ops::Range<u64>) -> Self {
+        if !self.from_end {
+            Self::from_start(self.start+range_within.start..self.start+range_within.end)
+        } else {
+            let range_within_start = range_within.end;
+            let range_within_end = range_within.start;
+            Self::from_end(self.start-range_within_start..self.start-range_within_end)
+        }
     }
 }
