@@ -1420,7 +1420,8 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
             && old.outer_transparency == ctxt_data.outer_transparency
             && old.parent == ctxt_data.parent
         {
-            ctxt_data = old.clone();
+            ctxt_data.opaque = old.opaque;
+            ctxt_data.opaque_and_semitransparent = old.opaque_and_semitransparent;
         }
 
         hygiene_data.syntax_context_data[ctxt.as_u32() as usize] = ctxt_data;
