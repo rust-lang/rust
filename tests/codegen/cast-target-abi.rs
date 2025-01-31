@@ -392,7 +392,7 @@ pub fn call_fiveu16s() {
 }
 
 // CHECK-LABEL: @return_fiveu16s
-// CHECK-SAME: (ptr {{.+}} sret([10 x i8]) align [[RUST_ALIGN:2]] dereferenceable(10) [[RET_PTR:%.+]])
+// CHECK-SAME: (ptr {{.+}} sret([10 x i8]) align [[RUST_ALIGN:2]] {{.*}}dereferenceable(10) [[RET_PTR:%.+]])
 #[no_mangle]
 pub fn return_fiveu16s() -> FiveU16s {
     // powerpc returns this struct via sret pointer, it doesn't use the cast ABI.
