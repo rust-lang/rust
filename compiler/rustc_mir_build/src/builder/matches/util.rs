@@ -266,11 +266,11 @@ impl Range {
 
     pub(crate) fn shift_range(self, range_within: ops::Range<u64>) -> Self {
         if !self.from_end {
-            Self::from_start(self.start+range_within.start..self.start+range_within.end)
+            Self::from_start(self.start + range_within.start..self.start + range_within.end)
         } else {
             let range_within_start = range_within.end;
             let range_within_end = range_within.start;
-            Self::from_end(self.start-range_within_start..self.start-range_within_end)
+            Self::from_end(self.start - range_within_start..self.start - range_within_end)
         }
     }
 }

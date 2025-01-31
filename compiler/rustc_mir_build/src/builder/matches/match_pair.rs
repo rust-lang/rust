@@ -1,8 +1,9 @@
+use std::ops;
+
 use either::Either;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
-use std::ops;
 
 use crate::builder::Builder;
 use crate::builder::expr::as_place::{PlaceBase, PlaceBuilder};
@@ -58,9 +59,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ((prefix.len() + suffix.len()).try_into().unwrap(), false)
         };
 
-        tracing::warn!("Builder::prefix_slice_suffix: min_length: {}, exact_size: {} -> {:?}", min_length, exact_size, top_pattern);
-        tracing::warn!("prefix: {:?}, suffix: {:?}", prefix.len(), suffix.len());
-
         if !prefix.is_empty() {
             let bounds = Range::from_start(0..prefix.len() as u64);
             let subpattern = bounds.apply(prefix);
@@ -110,7 +108,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             };
 
             match entry {
-                Either::Right(range) if range.end-range.start > 1 => {
+                Either::Right(range) if range.end - range.start > 1 => {
                     assert!(
                         (range.start..range.end)
                             .all(|idx| self.is_constant_pattern(&pattern[idx as usize]))
@@ -126,7 +124,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         place.clone(),
                         elem_ty,
                         bounds.shift_range(range),
-                        true,  // TODO: set false if only branch and only entry
+                        true, // TODO: set false if only branch and only entry
                     )
                 }
                 Either::Right(range) => {
@@ -143,26 +141,26 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let mut entries = Vec::new();
         let mut current_seq_start = None;
 
-        let mut apply = |state: &mut _, idx, b: bool| {
-            if let Some(start) = *state {
-                *state = None;
-                entries.push(Either::Right(start..idx));
-            } else if !b {
-                entries.push(Either::Left(idx));
-            }
-        };
-
         for (idx, pat) in pattern.iter().enumerate() {
             if self.is_constant_pattern(pat) {
                 if current_seq_start.is_none() {
                     current_seq_start = Some(idx as u64);
+                } else {
+                    continue;
                 }
             } else {
-                apply(&mut current_seq_start, idx as u64, false);
+                if let Some(start) = current_seq_start {
+                    entries.push(Either::Right(start..idx as u64));
+                    current_seq_start = None;
+                }
+                entries.push(Either::Left(idx as u64));
             }
         }
 
-        apply(&mut current_seq_start, pattern.len() as u64, true);
+        if let Some(start) = current_seq_start {
+            entries.push(Either::Right(start..pattern.len() as u64));
+        }
+
         entries
     }
 
