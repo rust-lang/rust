@@ -1,7 +1,6 @@
-//@ known-bug: #135039
-//@ edition:2021
-
-pub type UserId<Backend> = <<Backend as AuthnBackend>::User as AuthUser>::Id;
+// Test that we don't ICE for a typeck error that only shows up in dropck
+// issue #135039
+//@ edition:2018
 
 pub trait AuthUser {
     type Id;
@@ -13,7 +12,7 @@ pub trait AuthnBackend {
 
 pub struct AuthSession<Backend: AuthnBackend> {
     user: Option<Backend::User>,
-    data: Option<UserId<Backend>>,
+    data: Option<<<Backend as AuthnBackend>::User as AuthUser>::Id>,
 }
 
 pub trait Authz: Sized {
@@ -27,8 +26,12 @@ pub trait Query<User: Authz> {
 
 pub async fn run_query<User: Authz, Q: Query<User> + 'static>(
     auth: AuthSession<User::AuthnBackend>,
+    //~^ ERROR the trait bound `User: AuthUser` is not satisfied [E0277]
+    //~| ERROR the trait bound `User: AuthUser` is not satisfied [E0277]
     query: Q,
 ) -> Result<Q::Output, ()> {
     let user = auth.user;
     query.run().await
 }
+
+fn main() {}
