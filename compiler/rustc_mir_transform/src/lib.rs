@@ -33,6 +33,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, query, span_bug};
+use rustc_mir_build::builder::build_mir;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, sym};
 use tracing::debug;
@@ -370,7 +371,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
 }
 
 fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
-    let mut body = tcx.build_mir(def);
+    let mut body = build_mir(tcx, def);
 
     pass_manager::dump_mir_for_phase_change(tcx, &body);
 

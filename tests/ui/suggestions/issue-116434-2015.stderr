@@ -47,7 +47,7 @@ LL |     fn foo() -> Clone;
    |
    = note: the trait is not dyn compatible because it requires `Self: Sized`
    = note: for a trait to be dyn compatible it needs to allow building a vtable
-           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
 help: there is an associated type with the same name
    |
 LL |     fn foo() -> Self::Clone;
@@ -74,7 +74,7 @@ LL |     fn handle() -> DbHandle;
    |                    ^^^^^^^^ `DbHandle` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/issue-116434-2015.rs:14:17
    |
 LL | trait DbHandle: Sized {}

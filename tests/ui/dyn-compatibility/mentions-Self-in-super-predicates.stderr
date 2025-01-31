@@ -5,7 +5,7 @@ LL |     elements: Vec<Box<dyn Expr + 'x>>,
    |                           ^^^^ `Expr` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/mentions-Self-in-super-predicates.rs:5:21
    |
 LL | trait Expr: Debug + PartialEq {
@@ -20,7 +20,7 @@ LL |     let a: Box<dyn Expr> = Box::new(SExpr::new());
    |                    ^^^^ `Expr` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/mentions-Self-in-super-predicates.rs:5:21
    |
 LL | trait Expr: Debug + PartialEq {
@@ -35,7 +35,7 @@ LL |     let b: Box<dyn Expr> = Box::new(SExpr::new());
    |                    ^^^^ `Expr` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/mentions-Self-in-super-predicates.rs:5:21
    |
 LL | trait Expr: Debug + PartialEq {

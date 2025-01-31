@@ -12,7 +12,7 @@ LL |     m!(dyn Copy + Send + 'static);
    |
    = note: the trait is not dyn compatible because it requires `Self: Sized`
    = note: for a trait to be dyn compatible it needs to allow building a vtable
-           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
 
 error: aborting due to 2 previous errors
 

@@ -1,3 +1,4 @@
+mod extracted;
 mod make;
 mod markdown;
 mod runner;
@@ -30,7 +31,7 @@ use tempfile::{Builder as TempFileBuilder, TempDir};
 use tracing::debug;
 
 use self::rust::HirCollector;
-use crate::config::Options as RustdocOptions;
+use crate::config::{Options as RustdocOptions, OutputFormat};
 use crate::html::markdown::{ErrorCodes, Ignore, LangString, MdRelLine};
 use crate::lint::init_lints;
 
@@ -209,15 +210,8 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
     let args_path = temp_dir.path().join("rustdoc-cfgs");
     crate::wrap_return(dcx, generate_args_file(&args_path, &options));
 
-    let CreateRunnableDocTests {
-        standalone_tests,
-        mergeable_tests,
-        rustdoc_options,
-        opts,
-        unused_extern_reports,
-        compiling_test_count,
-        ..
-    } = interface::run_compiler(config, |compiler| {
+    let extract_doctests = options.output_format == OutputFormat::Doctest;
+    let result = interface::run_compiler(config, |compiler| {
         let krate = rustc_interface::passes::parse(&compiler.sess);
 
         let collector = rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
@@ -226,21 +220,52 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
             let opts = scrape_test_config(crate_name, crate_attrs, args_path);
             let enable_per_target_ignores = options.enable_per_target_ignores;
 
-            let mut collector = CreateRunnableDocTests::new(options, opts);
             let hir_collector = HirCollector::new(
                 ErrorCodes::from(compiler.sess.opts.unstable_features.is_nightly_build()),
                 enable_per_target_ignores,
                 tcx,
             );
             let tests = hir_collector.collect_crate();
-            tests.into_iter().for_each(|t| collector.add_test(t));
+            if extract_doctests {
+                let mut collector = extracted::ExtractedDocTests::new();
+                tests.into_iter().for_each(|t| collector.add_test(t, &opts, &options));
 
-            collector
+                let stdout = std::io::stdout();
+                let mut stdout = stdout.lock();
+                if let Err(error) = serde_json::ser::to_writer(&mut stdout, &collector) {
+                    eprintln!();
+                    Err(format!("Failed to generate JSON output for doctests: {error:?}"))
+                } else {
+                    Ok(None)
+                }
+            } else {
+                let mut collector = CreateRunnableDocTests::new(options, opts);
+                tests.into_iter().for_each(|t| collector.add_test(t));
+
+                Ok(Some(collector))
+            }
         });
         compiler.sess.dcx().abort_if_errors();
 
         collector
     });
+
+    let CreateRunnableDocTests {
+        standalone_tests,
+        mergeable_tests,
+        rustdoc_options,
+        opts,
+        unused_extern_reports,
+        compiling_test_count,
+        ..
+    } = match result {
+        Ok(Some(collector)) => collector,
+        Ok(None) => return,
+        Err(error) => {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
+    };
 
     run_tests(opts, &rustdoc_options, &unused_extern_reports, standalone_tests, mergeable_tests);
 

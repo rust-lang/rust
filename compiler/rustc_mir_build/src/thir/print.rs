@@ -1,12 +1,13 @@
 use std::fmt::{self, Write};
 
-use rustc_middle::query::TyCtxtAt;
 use rustc_middle::thir::*;
 use rustc_middle::ty;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
 
-pub(crate) fn thir_tree(tcx: TyCtxtAt<'_>, owner_def: LocalDefId) -> String {
-    match super::cx::thir_body(*tcx, owner_def) {
+/// Create a THIR tree for debugging.
+pub fn thir_tree(tcx: TyCtxt<'_>, owner_def: LocalDefId) -> String {
+    match super::cx::thir_body(tcx, owner_def) {
         Ok((thir, _)) => {
             let thir = thir.steal();
             let mut printer = ThirPrinter::new(&thir);
@@ -17,8 +18,9 @@ pub(crate) fn thir_tree(tcx: TyCtxtAt<'_>, owner_def: LocalDefId) -> String {
     }
 }
 
-pub(crate) fn thir_flat(tcx: TyCtxtAt<'_>, owner_def: LocalDefId) -> String {
-    match super::cx::thir_body(*tcx, owner_def) {
+/// Create a list-like THIR representation for debugging.
+pub fn thir_flat(tcx: TyCtxt<'_>, owner_def: LocalDefId) -> String {
+    match super::cx::thir_body(tcx, owner_def) {
         Ok((thir, _)) => format!("{:#?}", thir.steal()),
         Err(_) => "error".into(),
     }
