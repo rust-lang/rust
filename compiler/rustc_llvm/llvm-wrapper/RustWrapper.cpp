@@ -675,12 +675,6 @@ template <typename DIT> DIT *unwrapDIPtr(LLVMMetadataRef Ref) {
 #define DIArray DINodeArray
 #define unwrapDI unwrapDIPtr
 
-// FIXME(Zalathar): This is a temporary typedef to avoid churning dozens of
-// bindings that are going to be deleted and replaced with their LLVM-C
-// equivalents, as part of #134009. After that happens, the remaining bindings
-// can be adjusted to use `LLVMDIFlags` instead of relying on this typedef.
-typedef LLVMDIFlags LLVMRustDIFlags;
-
 // Statically assert that `LLVMDIFlags` (C) and `DIFlags` (C++) have the same
 // layout, at least for the flags we know about. This isn't guaranteed, but is
 // likely to remain true, and as long as it is true it makes conversions easy.
@@ -1048,7 +1042,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, const char *LinkageName, size_t LinkageNameLen,
     LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Ty,
-    unsigned ScopeLine, LLVMRustDIFlags Flags, LLVMRustDISPFlags SPFlags,
+    unsigned ScopeLine, LLVMDIFlags Flags, LLVMRustDISPFlags SPFlags,
     LLVMValueRef MaybeFn, LLVMMetadataRef TParam, LLVMMetadataRef Decl) {
   DITemplateParameterArray TParams =
       DITemplateParameterArray(unwrap<MDTuple>(TParam));
@@ -1068,7 +1062,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMethod(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, const char *LinkageName, size_t LinkageNameLen,
     LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Ty,
-    LLVMRustDIFlags Flags, LLVMRustDISPFlags SPFlags, LLVMMetadataRef TParam) {
+    LLVMDIFlags Flags, LLVMRustDISPFlags SPFlags, LLVMMetadataRef TParam) {
   DITemplateParameterArray TParams =
       DITemplateParameterArray(unwrap<MDTuple>(TParam));
   DISubprogram::DISPFlags llvmSPFlags = fromRust(SPFlags);
@@ -1112,7 +1106,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreatePointerType(
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStructType(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
-    uint64_t SizeInBits, uint32_t AlignInBits, LLVMRustDIFlags Flags,
+    uint64_t SizeInBits, uint32_t AlignInBits, LLVMDIFlags Flags,
     LLVMMetadataRef DerivedFrom, LLVMMetadataRef Elements, unsigned RunTimeLang,
     LLVMMetadataRef VTableHolder, const char *UniqueId, size_t UniqueIdLen) {
   return wrap(unwrap(Builder)->createStructType(
@@ -1126,7 +1120,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStructType(
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantPart(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
-    uint64_t SizeInBits, uint32_t AlignInBits, LLVMRustDIFlags Flags,
+    uint64_t SizeInBits, uint32_t AlignInBits, LLVMDIFlags Flags,
     LLVMMetadataRef Discriminator, LLVMMetadataRef Elements,
     const char *UniqueId, size_t UniqueIdLen) {
   return wrap(unwrap(Builder)->createVariantPart(
@@ -1140,7 +1134,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantPart(
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMemberType(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, LLVMMetadataRef File, unsigned LineNo, uint64_t SizeInBits,
-    uint32_t AlignInBits, uint64_t OffsetInBits, LLVMRustDIFlags Flags,
+    uint32_t AlignInBits, uint64_t OffsetInBits, LLVMDIFlags Flags,
     LLVMMetadataRef Ty) {
   return wrap(unwrap(Builder)->createMemberType(
       unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
@@ -1152,7 +1146,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, LLVMMetadataRef File, unsigned LineNo, uint64_t SizeInBits,
     uint32_t AlignInBits, uint64_t OffsetInBits, LLVMValueRef Discriminant,
-    LLVMRustDIFlags Flags, LLVMMetadataRef Ty) {
+    LLVMDIFlags Flags, LLVMMetadataRef Ty) {
   llvm::ConstantInt *D = nullptr;
   if (Discriminant) {
     D = unwrap<llvm::ConstantInt>(Discriminant);
@@ -1166,7 +1160,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticMemberType(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Ty,
-    LLVMRustDIFlags Flags, LLVMValueRef val, uint32_t AlignInBits) {
+    LLVMDIFlags Flags, LLVMValueRef val, uint32_t AlignInBits) {
   return wrap(unwrap(Builder)->createStaticMemberType(
       unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
       unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), fromRust(Flags),
@@ -1228,8 +1222,8 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariable(
     LLVMDIBuilderRef Builder, unsigned Tag, LLVMMetadataRef Scope,
     const char *Name, size_t NameLen, LLVMMetadataRef File, unsigned LineNo,
-    LLVMMetadataRef Ty, bool AlwaysPreserve, LLVMRustDIFlags Flags,
-    unsigned ArgNo, uint32_t AlignInBits) {
+    LLVMMetadataRef Ty, bool AlwaysPreserve, LLVMDIFlags Flags, unsigned ArgNo,
+    uint32_t AlignInBits) {
   if (Tag == 0x100) { // DW_TAG_auto_variable
     return wrap(unwrap(Builder)->createAutoVariable(
         unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
@@ -1303,7 +1297,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerationType(
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateUnionType(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
-    uint64_t SizeInBits, uint32_t AlignInBits, LLVMRustDIFlags Flags,
+    uint64_t SizeInBits, uint32_t AlignInBits, LLVMDIFlags Flags,
     LLVMMetadataRef Elements, unsigned RunTimeLang, const char *UniqueId,
     size_t UniqueIdLen) {
   return wrap(unwrap(Builder)->createUnionType(
