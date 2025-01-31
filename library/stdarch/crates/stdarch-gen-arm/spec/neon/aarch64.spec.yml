@@ -2,6 +2,8 @@ arch_cfgs:
   - arch_name: aarch64
     target_feature: [neon]
     llvm_prefix: llvm.aarch64.neon
+# Generate big endian shuffles
+auto_big_endian: true
 
 # Repeatedly used anchors 
 # #[stable(feature = "neon_intrinsics", since = "1.59.0")]
@@ -65,6 +67,9 @@ neon-unstable-i8mm: &neon-unstable-i8mm
 # #[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 neon-unstable-fcma: &neon-unstable-fcma
   FnCall: [unstable, ['feature = "stdarch_neon_fcma"', 'issue = "117222"']]
+
+aarch64-crc-stable: &aarch64-crc-stable
+  FnCall: [stable, ['feature = "stdarch_aarch64_crc32"', 'since = "1.80.0"']]
 
 intrinsics:
   - name: "vaddd_{type}"
@@ -1841,10 +1846,11 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - [poly64x2_t, ' static_assert_uimm_bits!(N, 1); match N & 0b1 { 0 => simd_shuffle!(a, b, [0, 1]), 1 => simd_shuffle!(a, b, [1, 2]), _ => unreachable_unchecked(), }']
-      - [float64x2_t, ' static_assert_uimm_bits!(N, 1); match N & 0b1 { 0 => simd_shuffle!(a, b, [0, 1]), 1 => simd_shuffle!(a, b, [1, 2]), _ => unreachable_unchecked(), }']
+      - [poly64x2_t, ' static_assert_uimm_bits!(N, 1);', 'match N & 0b1 { 0 => simd_shuffle!(a, b, [0, 1]), 1 => simd_shuffle!(a, b, [1, 2]), _ => unreachable_unchecked(), }']
+      - [float64x2_t, ' static_assert_uimm_bits!(N, 1);', 'match N & 0b1 { 0 => simd_shuffle!(a, b, [0, 1]), 1 => simd_shuffle!(a, b, [1, 2]), _ => unreachable_unchecked(), }']
     compose:
       - Identifier: ["{type[1]}", Symbol]
+      - Identifier: ["{type[2]}", Symbol]
 
   - name: "vmla{neon_type.no}"
     doc: "Floating-point multiply-add to accumulator"
@@ -4631,6 +4637,7 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.uaddlv.{type[2]}.{neon_type[0]}"
               arch: aarch64,arm64ec
+      - FnCall: ['_vaddlv{neon_type[0].no}', ['a.as_signed()']]
 
   - name: "vaddlv{neon_type[0].no}"
     doc: Unsigned Add Long across Vector
@@ -4648,6 +4655,7 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.uaddlv.{type[2]}.{neon_type[0]}"
               arch: aarch64,arm64ec
+      - FnCall: ['_vaddlv{neon_type[0].no}', ['a.as_signed()']]
 
   - name: "vsubw_high{neon_type[1].noq}"
     doc: Signed Subtract Wide
@@ -7213,18 +7221,36 @@ intrinsics:
       - [poly8x8_t, poly8x8_t, poly8x8_t, '3', '3', ' match LANE1 & 0b111 { 0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]), 2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]), 3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]), _ => unreachable_unchecked(), }']
       - [poly16x4_t, poly16x4_t, poly16x4_t, '2', '2', ' match LANE1 & 0b11 { 0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1, 2, 3]), 1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32, 2, 3]), 2 => simd_shuffle!(a, b, [0, 1, 4 + LANE2 as u32, 3]), 3 => simd_shuffle!(a, b, [0, 1, 2, 4 + LANE2 as u32]), _ => unreachable_unchecked(), }']
       - [float32x2_t, float32x2_t, float32x2_t, '1', '1', ' match LANE1 & 0b1 { 0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]), 1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [int8x16_t, int8x8_t, int8x16_t, '4', '3', ' let b: int8x16_t = simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]); match LANE1 & 0b1111 { 0 => simd_shuffle!(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 1 => simd_shuffle!(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 2 => simd_shuffle!(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 3 => simd_shuffle!(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]), 8 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]), 9 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]), 10 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]), 11 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]), 12 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]), 13 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]), 14 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]), 15 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [int16x8_t, int16x4_t, int16x8_t, '3', '2', ' let b: int16x8_t = simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7]); match LANE1 & 0b111 { 0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]), 2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]), 3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [int32x4_t, int32x2_t, int32x4_t, '2', '1', ' let b: int32x4_t = simd_shuffle!(b, b, [0, 1, 2, 3]); match LANE1 & 0b11 { 0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1, 2, 3]), 1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32, 2, 3]), 2 => simd_shuffle!(a, b, [0, 1, 4 + LANE2 as u32, 3]), 3 => simd_shuffle!(a, b, [0, 1, 2, 4 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [uint8x16_t, uint8x8_t, uint8x16_t, '4', '3', ' let b: uint8x16_t = simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]); match LANE1 & 0b1111 { 0 => simd_shuffle!(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 1 => simd_shuffle!(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 2 => simd_shuffle!(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 3 => simd_shuffle!(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]), 8 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]), 9 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]), 10 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]), 11 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]), 12 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]), 13 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]), 14 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]), 15 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [uint16x8_t, uint16x4_t, uint16x8_t, '3', '2', ' let b: uint16x8_t = simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7]); match LANE1 & 0b111 { 0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]), 2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]), 3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [uint32x4_t, uint32x2_t, uint32x4_t, '2', '1', ' let b: uint32x4_t = simd_shuffle!(b, b, [0, 1, 2, 3]); match LANE1 & 0b11 { 0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1, 2, 3]), 1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32, 2, 3]), 2 => simd_shuffle!(a, b, [0, 1, 4 + LANE2 as u32, 3]), 3 => simd_shuffle!(a, b, [0, 1, 2, 4 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [poly8x16_t, poly8x8_t, poly8x16_t, '4', '3', ' let b: poly8x16_t = simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]); match LANE1 & 0b1111 { 0 => simd_shuffle!(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 1 => simd_shuffle!(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 2 => simd_shuffle!(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 3 => simd_shuffle!(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]), 8 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]), 9 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]), 10 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]), 11 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]), 12 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]), 13 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]), 14 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]), 15 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [poly16x8_t, poly16x4_t, poly16x8_t, '3', '2', ' let b: poly16x8_t = simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7]); match LANE1 & 0b111 { 0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]), 2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]), 3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]), _ => unreachable_unchecked(), }']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE1, '{type[3]}']]
       - FnCall: [static_assert_uimm_bits!, [LANE2, '{type[4]}']]
       - Identifier: ["{type[5]}", Symbol]
+
+  - name: "vcopy{neon_type[0].lane_nox}"
+    doc: "Insert vector element from another vector element"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[2]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 1']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1', '3']]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    static_defs: ['const LANE1: i32, const LANE2: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x16_t, int8x8_t, int8x16_t, '4', '3', ' let b: int8x16_t = simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);', 'match LANE1 & 0b1111 { 0 => simd_shuffle!(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 1 => simd_shuffle!(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 2 => simd_shuffle!(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 3 => simd_shuffle!(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]), 8 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]), 9 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]), 10 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]), 11 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]), 12 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]), 13 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]), 14 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]), 15 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [int16x8_t, int16x4_t, int16x8_t, '3', '2', ' let b: int16x8_t = simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7]);', 'match LANE1 & 0b111 { 0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]), 2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]), 3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [int32x4_t, int32x2_t, int32x4_t, '2', '1', ' let b: int32x4_t = simd_shuffle!(b, b, [0, 1, 2, 3]);', 'match LANE1 & 0b11 { 0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1, 2, 3]), 1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32, 2, 3]), 2 => simd_shuffle!(a, b, [0, 1, 4 + LANE2 as u32, 3]), 3 => simd_shuffle!(a, b, [0, 1, 2, 4 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [uint8x16_t, uint8x8_t, uint8x16_t, '4', '3', ' let b: uint8x16_t = simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);', 'match LANE1 & 0b1111 { 0 => simd_shuffle!(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 1 => simd_shuffle!(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 2 => simd_shuffle!(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 3 => simd_shuffle!(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]), 8 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]), 9 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]), 10 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]), 11 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]), 12 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]), 13 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]), 14 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]), 15 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [uint16x8_t, uint16x4_t, uint16x8_t, '3', '2', ' let b: uint16x8_t = simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7]);', 'match LANE1 & 0b111 { 0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]), 2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]), 3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [uint32x4_t, uint32x2_t, uint32x4_t, '2', '1', ' let b: uint32x4_t = simd_shuffle!(b, b, [0, 1, 2, 3]);', 'match LANE1 & 0b11 { 0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1, 2, 3]), 1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32, 2, 3]), 2 => simd_shuffle!(a, b, [0, 1, 4 + LANE2 as u32, 3]), 3 => simd_shuffle!(a, b, [0, 1, 2, 4 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [poly8x16_t, poly8x8_t, poly8x16_t, '4', '3', ' let b: poly8x16_t = simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);', 'match LANE1 & 0b1111 { 0 => simd_shuffle!(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 1 => simd_shuffle!(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 2 => simd_shuffle!(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 3 => simd_shuffle!(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]), 8 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]), 9 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]), 10 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]), 11 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]), 12 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]), 13 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]), 14 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]), 15 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [poly16x8_t, poly16x4_t, poly16x8_t, '3', '2', ' let b: poly16x8_t = simd_shuffle!(b, b, [0, 1, 2, 3, 4, 5, 6, 7]);', 'match LANE1 & 0b111 { 0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]), 2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]), 3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE1, '{type[3]}']]
+      - FnCall: [static_assert_uimm_bits!, [LANE2, '{type[4]}']]
+      - Identifier: ["{type[5]}", Symbol]
+      - Identifier: ["{type[6]}", Symbol]
 
   - name: "vcopy{neon_type[0].laneq_nox}"
     doc: "Insert vector element from another vector element"
@@ -7251,19 +7277,37 @@ intrinsics:
       - [poly64x2_t, poly64x2_t, poly64x2_t, '1', '1', ' match LANE1 & 0b1 { 0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]), 1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]), _ => unreachable_unchecked(), }']
       - [float32x4_t, float32x4_t, float32x4_t, '2', '2', ' match LANE1 & 0b11 { 0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1, 2, 3]), 1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32, 2, 3]), 2 => simd_shuffle!(a, b, [0, 1, 4 + LANE2 as u32, 3]), 3 => simd_shuffle!(a, b, [0, 1, 2, 4 + LANE2 as u32]), _ => unreachable_unchecked(), }']
       - [float64x2_t, float64x2_t, float64x2_t, '1', '1', ' match LANE1 & 0b1 { 0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]), 1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [int8x8_t, int8x16_t, int8x8_t, '3', '4', ' let a: int8x16_t = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]); match LANE1 & 0b111 { 0 => simd_shuffle!(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]), 2 => simd_shuffle!(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]), 3 => simd_shuffle!(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [int16x4_t, int16x8_t, int16x4_t, '2', '3', ' let a: int16x8_t = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]); match LANE1 & 0b11 { 0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3]), 1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3]), 2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3]), 3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [int32x2_t, int32x4_t, int32x2_t, '1', '2', ' let a: int32x4_t = simd_shuffle!(a, a, [0, 1, 2, 3]); match LANE1 & 0b1 { 0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1]), 1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [uint8x8_t, uint8x16_t, uint8x8_t, '3', '4', ' let a: uint8x16_t = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]); match LANE1 & 0b111 { 0 => simd_shuffle!(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]), 2 => simd_shuffle!(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]), 3 => simd_shuffle!(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [uint16x4_t, uint16x8_t, uint16x4_t, '2', '3', ' let a: uint16x8_t = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]); match LANE1 & 0b11 { 0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3]), 1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3]), 2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3]), 3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [uint32x2_t, uint32x4_t, uint32x2_t, '1', '2', 'let a: uint32x4_t = simd_shuffle!(a, a, [0, 1, 2, 3]); match LANE1 & 0b1 { 0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1]), 1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [poly8x8_t, poly8x16_t, poly8x8_t, '3', '4', ' let a: poly8x16_t = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]); match LANE1 & 0b111 { 0 => simd_shuffle!(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]), 2 => simd_shuffle!(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]), 3 => simd_shuffle!(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [poly16x4_t, poly16x8_t, poly16x4_t, '2', '3', ' let a: poly16x8_t = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]); match LANE1 & 0b11 { 0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3]), 1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3]), 2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3]), 3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [float32x2_t, float32x4_t, float32x2_t, '1', '2', ' let a: float32x4_t = simd_shuffle!(a, a, [0, 1, 2, 3]); match LANE1 & 0b1 { 0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1]), 1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32]), _ => unreachable_unchecked(), }']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE1, '{type[3]}']]
       - FnCall: [static_assert_uimm_bits!, [LANE2, '{type[4]}']]
       - Identifier: ["{type[5]}", Symbol]
+
+  - name: "vcopy{neon_type[0].laneq_nox}"
+    doc: "Insert vector element from another vector element"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[2]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [mov, 'LANE1 = 0', 'LANE2 = 1']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['1', '3']]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    static_defs: ['const LANE1: i32, const LANE2: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t, int8x16_t, int8x8_t, '3', '4', ' let a: int8x16_t = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);', 'match LANE1 & 0b111 { 0 => simd_shuffle!(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]), 2 => simd_shuffle!(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]), 3 => simd_shuffle!(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [int16x4_t, int16x8_t, int16x4_t, '2', '3', ' let a: int16x8_t = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);', 'match LANE1 & 0b11 { 0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3]), 1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3]), 2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3]), 3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [int32x2_t, int32x4_t, int32x2_t, '1', '2', ' let a: int32x4_t = simd_shuffle!(a, a, [0, 1, 2, 3]);', 'match LANE1 & 0b1 { 0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1]), 1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [uint8x8_t, uint8x16_t, uint8x8_t, '3', '4', ' let a: uint8x16_t = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);', 'match LANE1 & 0b111 { 0 => simd_shuffle!(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]), 2 => simd_shuffle!(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]), 3 => simd_shuffle!(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [uint16x4_t, uint16x8_t, uint16x4_t, '2', '3', ' let a: uint16x8_t = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);', 'match LANE1 & 0b11 { 0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3]), 1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3]), 2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3]), 3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [uint32x2_t, uint32x4_t, uint32x2_t, '1', '2', 'let a: uint32x4_t = simd_shuffle!(a, a, [0, 1, 2, 3]);', 'match LANE1 & 0b1 { 0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1]), 1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [poly8x8_t, poly8x16_t, poly8x8_t, '3', '4', ' let a: poly8x16_t = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);', 'match LANE1 & 0b111 { 0 => simd_shuffle!(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]), 1 => simd_shuffle!(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]), 2 => simd_shuffle!(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]), 3 => simd_shuffle!(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]), 4 => simd_shuffle!(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]), 5 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]), 6 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]), 7 => simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [poly16x4_t, poly16x8_t, poly16x4_t, '2', '3', ' let a: poly16x8_t = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);', 'match LANE1 & 0b11 { 0 => simd_shuffle!(a, b, [8 + LANE2 as u32, 1, 2, 3]), 1 => simd_shuffle!(a, b, [0, 8 + LANE2 as u32, 2, 3]), 2 => simd_shuffle!(a, b, [0, 1, 8 + LANE2 as u32, 3]), 3 => simd_shuffle!(a, b, [0, 1, 2, 8 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [float32x2_t, float32x4_t, float32x2_t, '1', '2', ' let a: float32x4_t = simd_shuffle!(a, a, [0, 1, 2, 3]);', 'match LANE1 & 0b1 { 0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1]), 1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE1, '{type[3]}']]
+      - FnCall: [static_assert_uimm_bits!, [LANE2, '{type[4]}']]
+      - Identifier: ["{type[5]}", Symbol]
+      - Identifier: ["{type[6]}", Symbol]
 
   - name: "vcopyq_lane_{neon_type[0]}"
     doc: "Insert vector element from another vector element"
@@ -7277,14 +7321,15 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - [int64x2_t, int64x1_t, 'let b: int64x2_t = simd_shuffle!(b, b, [0, 1]); match LANE1 & 0b1 { 0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]), 1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [uint64x2_t, uint64x1_t, 'let b: uint64x2_t = simd_shuffle!(b, b, [0, 1]); match LANE1 & 0b1 { 0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]), 1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [poly64x2_t, poly64x1_t, 'let b: poly64x2_t = simd_shuffle!(b, b, [0, 1]); match LANE1 & 0b1 { 0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]), 1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]), _ => unreachable_unchecked(), }']
-      - [float64x2_t, float64x1_t, ' let b: float64x2_t = simd_shuffle!(b, b, [0, 1]); match LANE1 & 0b1 { 0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]), 1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [int64x2_t, int64x1_t, 'let b: int64x2_t = simd_shuffle!(b, b, [0, 1]);', 'match LANE1 & 0b1 { 0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]), 1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [uint64x2_t, uint64x1_t, 'let b: uint64x2_t = simd_shuffle!(b, b, [0, 1]);', 'match LANE1 & 0b1 { 0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]), 1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [poly64x2_t, poly64x1_t, 'let b: poly64x2_t = simd_shuffle!(b, b, [0, 1]);', 'match LANE1 & 0b1 { 0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]), 1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [float64x2_t, float64x1_t, ' let b: float64x2_t = simd_shuffle!(b, b, [0, 1]);', 'match LANE1 & 0b1 { 0 => simd_shuffle!(a, b, [2 + LANE2 as u32, 1]), 1 => simd_shuffle!(a, b, [0, 2 + LANE2 as u32]), _ => unreachable_unchecked(), }']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE1, '1']]
       - FnCall: [static_assert!, ['LANE2 == 0']]
       - Identifier: ['{type[2]}', Symbol]
+      - Identifier: ['{type[3]}', Symbol]
 
   - name: "vcopyq_lane_f32"
     doc: "Insert vector element from another vector element"
@@ -7298,11 +7343,12 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - [float32x4_t, float32x2_t, ' let b: float32x4_t = simd_shuffle!(b, b, [0, 1, 2, 3]); match LANE1 & 0b11 { 0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1, 2, 3]), 1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32, 2, 3]), 2 => simd_shuffle!(a, b, [0, 1, 4 + LANE2 as u32, 3]), 3 => simd_shuffle!(a, b, [0, 1, 2, 4 + LANE2 as u32]), _ => unreachable_unchecked(), }']
+      - [float32x4_t, float32x2_t, ' let b: float32x4_t = simd_shuffle!(b, b, [0, 1, 2, 3]);', 'match LANE1 & 0b11 { 0 => simd_shuffle!(a, b, [4 + LANE2 as u32, 1, 2, 3]), 1 => simd_shuffle!(a, b, [0, 4 + LANE2 as u32, 2, 3]), 2 => simd_shuffle!(a, b, [0, 1, 4 + LANE2 as u32, 3]), 3 => simd_shuffle!(a, b, [0, 1, 2, 4 + LANE2 as u32]), _ => unreachable_unchecked(), }']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE1, 2]]
       - FnCall: [static_assert_uimm_bits!, [LANE2, 1]]
       - Identifier: ["{type[2]}", Symbol]
+      - Identifier: ["{type[3]}", Symbol]
 
   - name: "vcreate_f64"
     doc: "Insert vector element from another vector element"
@@ -7645,6 +7691,73 @@ intrinsics:
           links:
             - link: "llvm.aarch64.crypto.sha512su1"
               arch: aarch64,arm64ec
+
+  - name: "vsm3tt{type[0]}"
+    doc: "{type[3]}"
+    arguments: ["a: {neon_type[1]}", "b: {neon_type[1]}", "c: {neon_type[1]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,sm4"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, ['{type[2]}', 'IMM2 = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['3']]
+      - FnCall: [unstable, ['feature = "stdarch_neon_sm4"', 'issue = "117226"']]
+    static_defs: ["const IMM2: i32"]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['1aq_u32', uint32x4_t, 'sm3tt1a', 'SM3TT1A']
+      - ['1bq_u32', uint32x4_t, 'sm3tt1b', 'SM3TT1B']
+      - ['2aq_u32', uint32x4_t, 'sm3tt2a', 'SM3TT2A']
+      - ['2bq_u32', uint32x4_t, 'sm3tt2b', 'SM3TT2B']
+    compose:
+      - FnCall: ["static_assert_uimm_bits!", [IMM2, "2"]]
+      - LLVMLink:
+          name: "_vsm3tt{type[0]}"
+          arguments:
+            - "a: {neon_type[1]}"
+            - "b: {neon_type[1]}"
+            - "c: {neon_type[1]}"
+            - "n: i64"
+          links:
+            - link: "llvm.aarch64.crypto.{type[2]}"
+              arch: aarch64,arm64ec
+      - FnCall:
+          - "_vsm3tt{type[0]}"
+          - - "a.as_signed()"
+            - "b.as_signed()"
+            - "c.as_signed()"
+            - "IMM2 as i64"
+
+  - name: "vxarq_u64"
+    doc: "Exclusive OR and rotate"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - FnCall: [target_feature, ['enable = "neon,sha3"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, ['xar', 'IMM6 = 0']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - FnCall: [stable, ['feature = "stdarch_neon_sha3"', 'since = "1.79.0"']]
+    static_defs: ["const IMM6: i32"]
+    safety:
+      unsafe: [neon]
+    types:
+      - uint64x2_t
+    compose:
+      - FnCall: ["static_assert_uimm_bits!", [IMM6, "6"]]
+      - LLVMLink:
+          name: "_vxarq_u64"
+          arguments:
+            - "a: {neon_type}"
+            - "b: {neon_type}"
+            - "n: i64"
+          links:
+            - link: "llvm.aarch64.crypto.xar"
+              arch: aarch64,arm64ec
+      - FnCall:
+          - "_vxarq_u64"
+          - - "a.as_signed()"
+            - "b.as_signed()"
+            - "IMM6 as i64"
 
   - name: "vrnd32x{neon_type.no}"
     doc: "Floating-point round to 32-bit integer, using current rounding mode"
@@ -9850,3 +9963,1690 @@ intrinsics:
           - transmute
           - - FnCall: ["vld4{type[2]}", [{FnCall: [transmute, [a]]}]]
 
+  - name: "vtbx4{neon_type[0].no}"
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t, int8x8x4_t]
+    compose:
+      - FnCall:
+          - "vqtbx2"
+          - - FnCall: [transmute, [a]]
+            - FnCall:
+                - transmute
+                - - FnCall: ["vcombine{neon_type[0].noq}", ["b.0", "b.1"]]
+            - FnCall:
+                - transmute
+                - - FnCall: ["vcombine{neon_type[0].noq}", ["b.2", "b.3"]]
+            - FnCall: [transmute, [c]]
+
+  - name: "vtbx4{neon_type[0].no}"
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8_t, uint8x8x4_t, uint8x8_t]
+      - [poly8x8_t, poly8x8x4_t, uint8x8_t]
+    compose:
+      - FnCall:
+          - transmute
+          - - FnCall:
+                - "vqtbx2"
+                - - FnCall: [transmute, [a]]
+                  - FnCall:
+                      - transmute
+                      - - FnCall: ["vcombine{neon_type[0].noq}", ["b.0", "b.1"]]
+                  - FnCall:
+                      - transmute
+                      - - FnCall: ["vcombine{neon_type[0].noq}", ["b.2", "b.3"]]
+                  - c
+
+  - name: "vtbl1{neon_type[0].no}"
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t, 'int8x8_t', 'transmute(b)']
+      - [uint8x8_t, 'uint8x8_t', 'b']
+      - [poly8x8_t, 'uint8x8_t', 'b']
+    compose:
+      - FnCall: 
+          - 'vqtbl1{neon_type[0].no}'
+          - - FnCall:
+                - 'vcombine{neon_type[0].no}'
+                - - a
+                  - 'crate::mem::zeroed()'
+            - Identifier: ['{type[2]}', Symbol]
+
+  - name: "vtbl2{neon_type[1].noq}"
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8x2_t, 'int8x8_t']
+    compose:
+      - FnCall:
+          - vqtbl1
+          - - FnCall:
+                - transmute
+                - - FnCall:
+                      - 'vcombine{neon_type[1].noq}'
+                      - - 'a.0'
+                        - 'a.1'
+            - FnCall: [transmute, [b]]
+
+  - name: "vtbl2{neon_type[2].no}"
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[2]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8x2_t, 'uint8x8_t', 'uint8x8_t']
+      - [poly8x8x2_t, 'uint8x8_t', 'poly8x8_t']
+    compose:
+      - FnCall:
+          - transmute
+          - - FnCall:
+                - vqtbl1
+                - - FnCall:
+                      - transmute
+                      - - FnCall:
+                            - 'vcombine{neon_type[2].noq}'
+                            - - 'a.0'
+                              - 'a.1'
+                  - b
+
+  - name: "vtbl3{neon_type[1].no}"
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8x3_t, 'int8x8_t', 'int8x16x2']
+    compose:
+      - Let:
+          - x
+          - FnCall:
+              - '{type[2]}_t'
+              - - FnCall: ['vcombine{neon_type[1].no}', ['a.0', 'a.1']]
+                - FnCall: ['vcombine{neon_type[1].no}', ['a.2', 'crate::mem::zeroed()']]
+      - FnCall: 
+          - transmute
+          - - FnCall:
+                - vqtbl2
+                - - FnCall: [transmute, ['x.0']]
+                  - FnCall: [transmute, ['x.1']]
+                  - FnCall: [transmute, [b]]
+
+  - name: "vtbl3{neon_type[3].no}"
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[3]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8x3_t, 'uint8x8_t', 'uint8x16x2', 'uint8x8_t']
+      - [poly8x8x3_t, 'uint8x8_t', 'poly8x16x2', 'poly8x8_t']
+    big_endian_inverse: true 
+    compose:
+      - Let:
+          - x
+          - FnCall:
+              - '{type[2]}_t'
+              - - FnCall: ['vcombine{neon_type[3].no}', ['a.0', 'a.1']]
+                - FnCall: ['vcombine{neon_type[3].no}', ['a.2', 'crate::mem::zeroed()']]
+      - FnCall: 
+          - transmute
+          - - FnCall:
+                - vqtbl2
+                - - FnCall: [transmute, ['x.0']]
+                  - FnCall: [transmute, ['x.1']]
+                  - b
+
+  - name: "vtbl4{neon_type[1].no}"
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8x4_t, 'int8x8_t', 'int8x16x2']
+    compose:
+      - Let:
+          - x
+          - FnCall:
+              - '{type[2]}_t'
+              - - FnCall: ['vcombine{neon_type[1].no}', ['a.0', 'a.1']]
+                - FnCall: ['vcombine{neon_type[1].no}', ['a.2', 'a.3']]
+      - FnCall:
+          - transmute
+          - - FnCall:
+                - 'vqtbl2'
+                - - FnCall: [transmute, ['x.0']]
+                  - FnCall: [transmute, ['x.1']]
+                  - FnCall: [transmute, [b]]
+
+  - name: "vtbl4{neon_type[3].no}"
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[3]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8x4_t, 'uint8x8_t', 'uint8x16x2', 'uint8x8_t']
+      - [poly8x8x4_t, 'uint8x8_t', 'poly8x16x2', 'poly8x8_t']
+    big_endian_inverse: true
+    compose:
+      - Let:
+          - x
+          - FnCall:
+              - '{type[2]}_t'
+              - - FnCall: ['vcombine{neon_type[3].no}', ['a.0', 'a.1']]
+                - FnCall: ['vcombine{neon_type[3].no}', ['a.2', 'a.3']]
+      - FnCall:
+          - transmute
+          - - FnCall:
+                - 'vqtbl2'
+                - - FnCall: [transmute, ['x.0']]
+                  - FnCall: [transmute, ['x.1']]
+                  - b
+
+  - name: "vqtbx1{neon_type[0].no}"
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t, int8x16_t, uint8x8_t, vqtbx1]
+      - [int8x16_t, int8x16_t, uint8x16_t, vqtbx1q]
+    compose:
+      - FnCall: ['{type[3]}', [a, b, c]]
+
+  - name: "vqtbx1{type[4]}"
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8_t, "uint8x16_t", uint8x8_t, "vqtbx1", "_u8"]
+      - [poly8x8_t, "poly8x16_t", uint8x8_t, "vqtbx1", "_p8"]
+      - [uint8x16_t, "uint8x16_t", uint8x16_t, "vqtbx1q", "q_u8"]
+      - [poly8x16_t, "poly8x16_t", uint8x16_t, "vqtbx1q", "q_p8"]
+    compose:
+      - Let:
+        - x
+        - FnCall:
+            - transmute
+            - - FnCall:
+                  - "{type[3]}"
+                  - - FnCall: [transmute, [a]]
+                    - FnCall: [transmute, [b]]
+                    - c
+      - Identifier: [x, Symbol]
+  
+  - name: "vtbx1{neon_type[0].no}"
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}", "c: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t, "int8x8_t", "transmute(c)", "i8x8::splat(8)", "int8x8"]
+      - [uint8x8_t, "uint8x8_t", "c", "u8x8::splat(8)", "uint8x8"]
+      - [poly8x8_t, "uint8x8_t", "c", "u8x8::splat(8)", "uint8x8"]
+    compose:
+      - FnCall:
+          - simd_select
+          - - FnCall: 
+                - "simd_lt::<{type[4]}_t, int8x8_t>"
+                - - c
+                  - FnCall: [transmute, ["{type[3]}"]]
+            - FnCall:
+                - transmute
+                - - FnCall: 
+                      - "vqtbx1"
+                      - - "transmute(a)"
+                        - FnCall:
+                            - transmute
+                            - - FnCall: ["vcombine{neon_type[0].no}", [b, "crate::mem::zeroed()"]]
+                        - "{type[2]}"
+            - a
+
+  - name: "vtbx2{neon_type[0].no}"
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t, 'int8x8x2_t']
+    compose:
+      - FnCall:
+          - vqtbx1
+          - - FnCall: [transmute, [a]]
+            - FnCall:
+                - transmute
+                - - FnCall: ["vcombine{neon_type[0].no}", ['b.0', 'b.1']]
+            - FnCall: [transmute, [c]]
+
+  - name: "vtbx2{neon_type[0].no}"
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8_t, 'uint8x8x2_t', uint8x8_t]
+      - [poly8x8_t, 'poly8x8x2_t', uint8x8_t]
+    compose:
+      - FnCall:
+          - transmute
+          - - FnCall:
+                - vqtbx1
+                - - FnCall: [transmute, [a]]
+                  - FnCall:
+                      - transmute
+                      - - FnCall: ["vcombine{neon_type[0].no}", ['b.0', 'b.1']]
+                  - c
+
+  - name: "vtbx3{neon_type[0].no}"
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t, 'int8x8x3_t', 'int8x16x2', 'i8x8::splat(24)', 'int8x8']
+    compose:
+      - Let:
+         - x
+         - FnCall:
+             - '{type[2]}_t'
+             - - FnCall: ['vcombine{neon_type[0].no}', ['b.0', 'b.1']]
+               - FnCall: ['vcombine{neon_type[0].no}', ['b.2', 'crate::mem::zeroed()']]
+      - FnCall:
+          - transmute
+          - - FnCall:
+                - simd_select
+                - - FnCall:
+                      - 'simd_lt::<{type[4]}_t, int8x8_t>'
+                      - - FnCall: [transmute, [c]]
+                        - FnCall: [transmute, ['{type[3]}']]
+                  - FnCall:
+                      - transmute
+                      - - FnCall:
+                            - 'vqtbx2'
+                            - - FnCall: [transmute, [a]]
+                              - FnCall: [transmute, ['x.0']]
+                              - FnCall: [transmute, ['x.1']]
+                              - FnCall: [transmute, [c]]
+                  - a
+
+  - name: "vtbx3{neon_type[0].no}"
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: uint8x8_t"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8_t, 'uint8x8x3_t', 'uint8x16x2', 'u8x8::splat(24)', 'uint8x8']
+      - [poly8x8_t, 'poly8x8x3_t', 'poly8x16x2', 'u8x8::splat(24)', 'poly8x8']
+    big_endian_inverse: true
+    compose:
+      - Let:
+         - x
+         - FnCall:
+             - '{type[2]}_t'
+             - - FnCall: ['vcombine{neon_type[0].no}', ['b.0', 'b.1']]
+               - FnCall: ['vcombine{neon_type[0].no}', ['b.2', 'crate::mem::zeroed()']]
+      - FnCall:
+          - transmute
+          - - FnCall:
+                - simd_select
+                - - FnCall:
+                      - 'simd_lt::<{type[4]}_t, int8x8_t>'
+                      - - FnCall: [transmute, [c]]
+                        - FnCall: [transmute, ['{type[3]}']]
+                  - FnCall:
+                      - transmute
+                      - - FnCall:
+                            - 'vqtbx2'
+                            - - FnCall: [transmute, [a]]
+                              - FnCall: [transmute, ['x.0']]
+                              - FnCall: [transmute, ['x.1']]
+                              - c
+                  - a
+
+  - name: "vqtbl1{neon_type[3].no}"
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[3]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['int8x16_t', uint8x8_t, 'vqtbl1', 'int8x8_t']
+      - ['int8x16_t', uint8x16_t, 'vqtbl1q', 'int8x16_t']
+    compose:
+      - FnCall: ['{type[2]}', ['a', b]]
+
+  - name: "vqtbl1{neon_type[3].no}"
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[3]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['uint8x16_t', uint8x8_t, 'vqtbl1', 'uint8x8_t']
+      - ['poly8x16_t', uint8x8_t, 'vqtbl1', 'poly8x8_t']
+      - ['uint8x16_t', uint8x16_t, 'vqtbl1q', 'uint8x16_t']
+      - ['poly8x16_t', uint8x16_t, 'vqtbl1q', 'poly8x16_t']
+    compose:
+      - Let:
+          - x
+          - FnCall:
+              - transmute
+              - - FnCall: 
+                    - '{type[2]}'
+                    - - FnCall: [transmute, ['a']]
+                      - b
+      - Identifier: [x, Symbol]
+
+  - name: "vqtbl2{neon_type[3].no}"
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[3]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['int8x16x2_t', uint8x8_t, 'vqtbl2', 'int8x8_t']
+      - ['int8x16x2_t', uint8x16_t, 'vqtbl2q', 'int8x16_t']
+    compose:
+      - FnCall: ['{type[2]}', ['a.0', 'a.1', b]]
+
+  - name: "vqtbl2{neon_type[3].no}"
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[3]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['uint8x16x2_t', uint8x8_t, 'vqtbl2', 'uint8x8_t']
+      - ['uint8x16x2_t', uint8x16_t, 'vqtbl2q', 'uint8x16_t']
+      - ['poly8x16x2_t', uint8x8_t, 'vqtbl2', 'poly8x8_t']
+      - ['poly8x16x2_t', uint8x16_t, 'vqtbl2q', 'poly8x16_t']
+    compose:
+      - FnCall:
+          - transmute
+          - - FnCall: 
+                - '{type[2]}'
+                - - FnCall: [transmute, ['a.0']]
+                  - FnCall: [transmute, ['a.1']]
+                  - b
+
+  - name: "vqtbx2{neon_type[0].no}"
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t, 'int8x16x2_t', uint8x8_t, 'vqtbx2']
+      - [int8x16_t, 'int8x16x2_t', uint8x16_t, 'vqtbx2q']
+    compose:
+      - FnCall: ['{type[3]}', [a, 'b.0', 'b.1', c]]
+
+  - name: "vqtbx2{neon_type[0].no}"
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8_t, 'uint8x16x2_t', uint8x8_t, 'vqtbx2']
+      - [uint8x16_t, 'uint8x16x2_t', uint8x16_t, 'vqtbx2q']
+      - [poly8x8_t, 'poly8x16x2_t', uint8x8_t, 'vqtbx2']
+      - [poly8x16_t, 'poly8x16x2_t', uint8x16_t, 'vqtbx2q']
+    compose:
+      - FnCall:
+          - transmute
+          - - FnCall: 
+                - '{type[3]}'
+                - - FnCall: [transmute, [a]]
+                  - FnCall: [transmute, ['b.0']]
+                  - FnCall: [transmute, ['b.1']]
+                  - c
+
+  - name: "vqtbl3{neon_type[0].no}"
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[1]}", "b: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['int8x8_t', 'int8x16x3_t', uint8x8_t, 'vqtbl3']
+      - ['int8x16_t', 'int8x16x3_t', uint8x16_t, 'vqtbl3q']
+    compose:
+      - FnCall: ['{type[3]}', ['a.0', 'a.1', 'a.2', b]]
+
+  - name: "vqtbl3{neon_type[0].no}"
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[1]}", "b: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['uint8x8_t', 'uint8x16x3_t', uint8x8_t, 'vqtbl3']
+      - ['uint8x16_t','uint8x16x3_t', uint8x16_t, 'vqtbl3q']
+      - ['poly8x8_t', 'poly8x16x3_t', uint8x8_t, 'vqtbl3']
+      - ['poly8x16_t','poly8x16x3_t', uint8x16_t, 'vqtbl3q']
+    compose:
+      - FnCall:
+          - transmute
+          - - FnCall: 
+                - '{type[3]}'
+                - - FnCall: [transmute, ['a.0']]
+                  - FnCall: [transmute, ['a.1']]
+                  - FnCall: [transmute, ['a.2']]
+                  - b
+
+  - name: "vqtbx3{neon_type[0].no}"
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t, 'int8x16x3_t', uint8x8_t, 'vqtbx3']
+      - [int8x16_t, 'int8x16x3_t', uint8x16_t, 'vqtbx3q']
+    compose:
+      - FnCall: ['{type[3]}', [a, 'b.0', 'b.1', 'b.2', c]]
+
+  - name: "vqtbx3{neon_type[0].no}"
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8_t, 'uint8x16x3_t', uint8x8_t, 'vqtbx3']
+      - [uint8x16_t, 'uint8x16x3_t', uint8x16_t, 'vqtbx3q']
+      - [poly8x8_t, 'poly8x16x3_t', uint8x8_t, 'vqtbx3']
+      - [poly8x16_t, 'poly8x16x3_t', uint8x16_t, 'vqtbx3q']
+    compose:
+      - FnCall:
+          - transmute
+          - - FnCall: 
+                - '{type[3]}'
+                - - FnCall: [transmute, [a]]
+                  - FnCall: [transmute, ['b.0']]
+                  - FnCall: [transmute, ['b.1']]
+                  - FnCall: [transmute, ['b.2']]
+                  - c
+
+  - name: "vqtbl4{neon_type[3].no}"
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[3]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['int8x16x4_t', uint8x8_t, 'vqtbl4', 'int8x8_t']
+      - ['int8x16x4_t', uint8x16_t, 'vqtbl4q', 'int8x16_t']
+    compose:
+      - FnCall: ['{type[2]}', ['a.0', 'a.1', 'a.2', 'a.3', b]]
+
+  - name: "vqtbl4{neon_type[3].no}"
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[3]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['uint8x16x4_t', uint8x8_t, 'vqtbl4', 'uint8x8_t']
+      - ['uint8x16x4_t', uint8x16_t, 'vqtbl4q', 'uint8x16_t']
+      - ['poly8x16x4_t', uint8x8_t, 'vqtbl4', 'poly8x8_t']
+      - ['poly8x16x4_t', uint8x16_t, 'vqtbl4q', 'poly8x16_t']
+    compose:
+      - FnCall:
+          - transmute
+          - - FnCall: 
+                - '{type[2]}'
+                - - FnCall: [transmute, ['a.0']]
+                  - FnCall: [transmute, ['a.1']]
+                  - FnCall: [transmute, ['a.2']]
+                  - FnCall: [transmute, ['a.3']]
+                  - b
+
+  - name: "vqtbx4{neon_type[0].no}"
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t, 'int8x16x4_t', uint8x8_t, 'vqtbx4']
+      - [int8x16_t, 'int8x16x4_t', uint8x16_t, 'vqtbx4q']
+    compose:
+      - FnCall: ['{type[3]}', [a, 'b.0', 'b.1', 'b.2', 'b.3', c]]
+
+  - name: "vqtbx4{neon_type[0].no}"
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8_t, 'uint8x16x4_t', uint8x8_t, 'vqtbx4']
+      - [uint8x16_t, 'uint8x16x4_t', uint8x16_t, 'vqtbx4q']
+      - [poly8x8_t, 'poly8x16x4_t', uint8x8_t, 'vqtbx4']
+      - [poly8x16_t, 'poly8x16x4_t', uint8x16_t, 'vqtbx4q']
+    compose:
+      - FnCall:
+          - transmute
+          - - FnCall: 
+                - '{type[3]}'
+                - - FnCall: [transmute, [a]]
+                  - FnCall: [transmute, ['b.0']]
+                  - FnCall: [transmute, ['b.1']]
+                  - FnCall: [transmute, ['b.2']]
+                  - FnCall: [transmute, ['b.3']]
+                  - c
+
+  - name: "{type[0]}"
+    visibility: private
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[1]}", "b: {neon_type[2]}"]
+    return_type: "{neon_type[3]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - ["vqtbl1", "int8x16_t", "uint8x8_t", "int8x8_t"]
+      - ["vqtbl1q", "int8x16_t", "uint8x16_t", "int8x16_t"]
+    compose:
+      - LLVMLink:
+          name: "_{type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.tbl1.{neon_type[3]}"
+              arch: aarch64,arm64ec
+
+  - name: "{type[0]}"
+    visibility: private
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[1]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[3]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - ["vqtbl2", "int8x16_t", "uint8x8_t", "int8x8_t"]
+      - ["vqtbl2q", "int8x16_t", "uint8x16_t", "int8x16_t"]
+    compose:
+      - LLVMLink:
+          name: "_{type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.tbl2.{neon_type[3]}"
+              arch: aarch64,arm64ec
+
+  - name: "{type[0]}"
+    visibility: private
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[1]}", "b: {neon_type[1]}", "c: {neon_type[1]}", "d: {neon_type[2]}"]
+    return_type: "{neon_type[3]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - ["vqtbl3", int8x16_t, uint8x8_t, int8x8_t]
+      - ["vqtbl3q", int8x16_t, uint8x16_t, int8x16_t]
+    compose:
+      - LLVMLink:
+          name: "_{type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.tbl3.{neon_type[3]}"
+              arch: aarch64,arm64ec
+
+  - name: "{type[0]}"
+    visibility: private
+    doc: "Table look-up"
+    arguments: ["a: {neon_type[1]}", "b: {neon_type[1]}", "c: {neon_type[1]}", "d: {neon_type[1]}", "e: {neon_type[2]}"]
+    return_type: "{neon_type[3]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbl]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - ["vqtbl4", int8x16_t, uint8x8_t, int8x8_t]
+      - ["vqtbl4q", int8x16_t, uint8x16_t, int8x16_t]
+    compose:
+      - LLVMLink:
+          name: "_{type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.tbl4.{neon_type[3]}"
+              arch: aarch64,arm64ec
+
+  - name: "{type[0]}"
+    visibility: private
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[1]}", "b: {neon_type[2]}", "c: {neon_type[3]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [vqtbx1, "int8x8_t", "int8x16_t", "uint8x8_t"]
+      - [vqtbx1q, "int8x16_t", "int8x16_t", "uint8x16_t"]
+    compose:
+      - LLVMLink:
+          name: "_{type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.tbx1.{neon_type[1]}"
+              arch: aarch64,arm64ec
+
+  - name: "{type[0]}"
+    visibility: private
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[1]}", "b: {neon_type[2]}",  "c: {neon_type[2]}", "d: {neon_type[3]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [vqtbx2, "int8x8_t", "int8x16_t", "uint8x8_t"]
+      - [vqtbx2q, "int8x16_t", "int8x16_t", "uint8x16_t"]
+    compose:
+      - LLVMLink:
+          name: "_{type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.tbx2.{neon_type[1]}"
+              arch: aarch64,arm64ec
+
+  - name: "{type[0]}"
+    visibility: private
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[1]}", "b: {neon_type[2]}",  "c: {neon_type[2]}", "d: {neon_type[2]}", "e: {neon_type[3]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [vqtbx3, "int8x8_t", "int8x16_t", "uint8x8_t"]
+      - [vqtbx3q, "int8x16_t", "int8x16_t", "uint8x16_t"]
+    compose:
+      - LLVMLink:
+          name: "_{type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.tbx3.{neon_type[1]}"
+              arch: aarch64,arm64ec
+
+  - name: "{type[0]}"
+    visibility: private
+    doc: "Extended table look-up"
+    arguments: ["a: {neon_type[1]}", "b: {neon_type[2]}", "c: {neon_type[2]}", "d: {neon_type[2]}", "e: {neon_type[2]}", "f: {neon_type[3]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [tbx]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - [vqtbx4, "int8x8_t", "int8x16_t", "uint8x8_t"]
+      - [vqtbx4q, "int8x16_t", "int8x16_t", "uint8x16_t"]
+    compose:
+      - LLVMLink:
+          name: "_{type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.tbx4.{neon_type[1]}"
+              arch: aarch64,arm64ec
+
+  - name: "vld1{neon_type[1].no}"
+    doc: "Load multiple single-element structures to one, two, three, or four registers"
+    arguments: ["ptr: {type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - FnCall: [target_feature, ['enable = "{type[2]}"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [ldr]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['*const i8', int8x8_t, "neon"]
+      - ['*const i8', int8x16_t, "neon"]
+      - ['*const i16', int16x4_t, "neon"]
+      - ['*const i16', int16x8_t, "neon"]
+      - ['*const i32', int32x2_t, "neon"]
+      - ['*const i32', int32x4_t, "neon"]
+      - ['*const i64', int64x1_t, "neon"]
+      - ['*const i64', int64x2_t, "neon"]
+      - ['*const u8', uint8x8_t, "neon"]
+      - ['*const u8', uint8x16_t, "neon"]
+      - ['*const u16', uint16x4_t, "neon"]
+      - ['*const u16', uint16x8_t, "neon"]
+      - ['*const u32', uint32x2_t, "neon"]
+      - ['*const u32', uint32x4_t, "neon"]
+      - ['*const u64', uint64x1_t, "neon"]
+      - ['*const u64', uint64x2_t, "neon"]
+      - ['*const p8', poly8x8_t, "neon"]
+      - ['*const p8', poly8x16_t, "neon"]
+      - ['*const p16', poly16x4_t, "neon"]
+      - ['*const p16', poly16x8_t, "neon"]
+      - ['*const p64', poly64x1_t, "neon,aes"]
+      - ['*const p64', poly64x2_t, "neon,aes"]
+      - ['*const f32', float32x2_t, "neon"]
+      - ['*const f32', float32x4_t, "neon"]
+      - ['*const f64', float64x1_t, "neon"]
+      - ['*const f64', float64x2_t, "neon"]
+    compose:
+      - FnCall:
+          - 'crate::ptr::read_unaligned'
+          - - MethodCall:
+                - ptr
+                - cast
+                - []
+
+  - name: "vst1{neon_type[1].no}"
+    doc: "Store multiple single-element structures from one, two, three, or four registers."
+    arguments: ["ptr: {type[0]}", "a: {neon_type[1]}"]
+    attr:
+      - FnCall: [target_feature, ['enable = "{type[2]}"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [str]]}]]
+      - FnCall: [allow, ['clippy::cast_ptr_alignment']]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['*mut i8', int8x8_t, "neon"]
+      - ['*mut i8', int8x16_t, "neon"]
+      - ['*mut i16', int16x4_t, "neon"]
+      - ['*mut i16', int16x8_t, "neon"]
+      - ['*mut i32', int32x2_t, "neon"]
+      - ['*mut i32', int32x4_t, "neon"]
+      - ['*mut i64', int64x1_t, "neon"]
+      - ['*mut i64', int64x2_t, "neon"]
+      - ['*mut u8', uint8x8_t, "neon"]
+      - ['*mut u8', uint8x16_t, "neon"]
+      - ['*mut u16', uint16x4_t, "neon"]
+      - ['*mut u16', uint16x8_t, "neon"]
+      - ['*mut u32', uint32x2_t, "neon"]
+      - ['*mut u32', uint32x4_t, "neon"]
+      - ['*mut u64', uint64x1_t, "neon"]
+      - ['*mut u64', uint64x2_t, "neon"]
+      - ['*mut p8', poly8x8_t, "neon"]
+      - ['*mut p8', poly8x16_t, "neon"]
+      - ['*mut p16', poly16x4_t, "neon"]
+      - ['*mut p16', poly16x8_t, "neon"]
+      - ['*mut p64', poly64x1_t, "neon,aes"]
+      - ['*mut p64', poly64x2_t, "neon,aes"]
+      - ['*mut f32', float32x2_t, "neon"]
+      - ['*mut f32', float32x4_t, "neon"]
+      - ['*mut f64', float64x1_t, "neon"]
+      - ['*mut f64', float64x2_t, "neon"]
+    compose:
+      - FnCall:
+          - 'crate::ptr::write_unaligned'
+          - - MethodCall:
+                - ptr
+                - cast
+                - []
+            - a
+
+  - name: "__crc32d"
+    doc: "CRC32 single round checksum for quad words (64 bits)."
+    arguments: ["crc: {type[0]}", "data: {type[1]}"]
+    return_type: "{type[0]}"
+    attr:
+      - FnCall: [target_feature, ['enable = "crc"']]
+      - *target-not-arm
+      - FnCall: [cfg_attr, [test, { FnCall: [assert_instr, ["crc32x"]] }]]
+      - *aarch64-crc-stable
+    safety:
+      unsafe: [neon]
+    types:
+      - [u32, u64]
+    compose:
+      - LLVMLink:
+          name: "crc32x"
+          arguments:
+            - "crc: u32"
+            - "data: u64"
+          links:
+            - link: "llvm.aarch64.crc32x"
+              arch: aarch64,arm64ec
+
+  - name: "__crc32cd"
+    doc: "CRC32-C single round checksum for quad words (64 bits)."
+    arguments: ["crc: {type[0]}", "data: {type[1]}"]
+    return_type: "{type[0]}"
+    attr:
+      - FnCall: [target_feature, ['enable = "crc"']]
+      - *target-not-arm
+      - FnCall: [cfg_attr, [test, { FnCall: [assert_instr, ["crc32cx"]] }]]
+      - *aarch64-crc-stable
+    safety:
+      unsafe: [neon]
+    types:
+      - [u32, u64]
+    compose:
+      - LLVMLink:
+          name: "crc32cx"
+          arguments:
+            - "crc: u32"
+            - "data: u64"
+          links:
+            - link: "llvm.aarch64.crc32cx"
+              arch: aarch64,arm64ec
+
+  - name: "{type[0]}"
+    doc: "Absolute Value (wrapping)."
+    arguments: ["a: {type[1]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: [abs]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vabsd_s64', i64, i64]
+      - ['vabs_s64', int64x1_t, v1i64]
+      - ['vabsq_s64', int64x2_t, v2i64]
+    compose:
+      - LLVMLink:
+          name: "{type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.abs.{type[2]}"
+              arch: aarch64,arm64ec
+
+  - name: "vuqadd{neon_type[0].no}"
+    doc: "Signed saturating Accumulate of Unsigned value."
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-stable
+    assert_instr: [suqadd]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t, uint8x8_t]
+      - [int8x16_t, uint8x16_t]
+      - [int16x4_t, uint16x4_t]
+      - [int16x8_t, uint16x8_t]
+      - [int32x2_t, uint32x2_t]
+      - [int32x4_t, uint32x4_t]
+      - [int64x1_t, uint64x1_t]
+      - [int64x2_t, uint64x2_t]
+    compose:
+      - LLVMLink:
+          name: "vuqadd{neon_type[0].no}"
+          links:
+            - link: "llvm.aarch64.neon.suqadd.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vsqadd{neon_type[0].no}"
+    doc: "Unsigned saturating Accumulate of Signed value."
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-stable
+    assert_instr: [usqadd]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8_t, int8x8_t]
+      - [uint8x16_t, int8x16_t]
+      - [uint16x4_t, int16x4_t]
+      - [uint16x8_t, int16x8_t]
+      - [uint32x2_t, int32x2_t]
+      - [uint32x4_t, int32x4_t]
+      - [uint64x1_t, int64x1_t]
+      - [uint64x2_t, int64x2_t]
+    compose:
+      - LLVMLink:
+          name: "vsqadd{neon_type[0].no}"
+          links:
+            - link: "llvm.aarch64.neon.usqadd.{neon_type[1]}"
+              arch: aarch64,arm64ec
+
+  - name: "vpadd{neon_type.no}"
+    doc: "Add Pairwise"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-stable
+    assert_instr: [addp]
+    safety:
+      unsafe: [neon]
+    types:
+      - int8x16_t
+      - int16x8_t
+      - int32x4_t
+      - int64x2_t
+    compose:
+      - LLVMLink:
+          name: "vpadd{neon_type.no}"
+          links:
+            - link: "llvm.aarch64.neon.addp.{neon_type}"
+              arch: aarch64,arm64ec
+
+  - name: "vpadd{neon_type[0].no}"
+    doc: "Add Pairwise"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *neon-stable
+    assert_instr: [addp]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x16_t, int8x16_t]
+      - [uint16x8_t, int16x8_t]
+      - [uint32x4_t, int32x4_t]
+      - [uint64x2_t, int64x2_t]
+    compose:
+      - FnCall:
+          - transmute
+          - - FnCall:
+                - 'vpadd{neon_type[1].no}'
+                - - FnCall: [transmute, [a]]
+                  - FnCall: [transmute, [b]]
+
+  - name: "vpaddd_s64"
+    doc: "Add pairwise"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: [addp]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int64x2_t, i64]
+    compose:
+      - FnCall:
+          - transmute
+          - - FnCall:
+                - "vaddvq_u64"
+                - - FnCall: [transmute, [a]]
+
+  - name: "vpaddd_u64"
+    doc: "Add pairwise"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: [addp]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint64x2_t, u64]
+    compose:
+      - FnCall: [vaddvq_u64, [a]]
+
+  - name: "vaddv{neon_type[0].no}"
+    doc: "Add across vector"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: [addv]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t, i8, i32]
+      - [int16x4_t, i16, i32]
+      - [int8x16_t, i8, i32]
+      - [int16x8_t, i16, i32]
+      - [int32x4_t, i32, i32]
+    compose:
+      - LLVMLink:
+          name: "vaddv{neon_type[0].no}"
+          links:
+            - link: "llvm.aarch64.neon.saddv.{type[2]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vaddv{neon_type[0].no}"
+    doc: "Add across vector"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: [addp]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int32x2_t, i32] 
+    compose:
+      - LLVMLink:
+          name: "vaddv{neon_type[0].no}"
+          links:
+            - link: "llvm.aarch64.neon.saddv.i32.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vaddv{neon_type[0].no}"
+    doc: "Add across vector"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: [addp]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int64x2_t, i64]
+    compose:
+      - LLVMLink:
+          name: "vaddv{neon_type[0].no}"
+          links:
+            - link: "llvm.aarch64.neon.saddv.i64.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vaddv{neon_type[0].no}"
+    doc: "Add across vector"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: [addv]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8_t,  u8, i32]
+      - [uint16x4_t, u16, i32]
+      - [uint8x16_t, u8, i32]
+      - [uint16x8_t, u16, i32]
+      - [uint32x4_t, u32, i32]
+    compose:
+      - LLVMLink:
+          name: "vaddv{neon_type[0].no}"
+          links:
+            - link: "llvm.aarch64.neon.uaddv.{type[2]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vaddv{neon_type[0].no}"
+    doc: "Add across vector"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: [addp]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint32x2_t, u32, i32] 
+    compose:
+      - LLVMLink:
+          name: "vaddv{neon_type[0].no}"
+          links:
+            - link: "llvm.aarch64.neon.uaddv.{type[2]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vaddv{neon_type[0].no}"
+    doc: "Add across vector"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: [addp]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint64x2_t, u64, i64]
+    compose:
+      - LLVMLink:
+          name: "vaddv{neon_type[0].no}"
+          links:
+            - link: "llvm.aarch64.neon.uaddv.{type[2]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vaddlv{neon_type[0].no}"
+    doc: "Signed Add Long across Vector"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: [saddlv]
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t, i16]
+      - [int8x16_t, i16]
+    compose:
+      - LLVMLink:
+          name: "vaddlv{neon_type[0].no}"
+          return_type: "i32"
+          links:
+            - link: "llvm.aarch64.neon.saddlv.i32.{neon_type[0]}"
+              arch: aarch64,arm64ec
+      - Identifier: ["_vaddlv{neon_type[0].no}(a) as i16", Symbol]
+
+  - name: "vaddlv{neon_type[0].no}"
+    doc: "Unsigned Add Long across Vector"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: [uaddlv]
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8_t, u16]
+      - [uint8x16_t, u16]
+    compose:
+      - LLVMLink:
+          name: "vaddlv{neon_type[0].no}"
+          return_type: "i32"
+          links:
+            - link: "llvm.aarch64.neon.uaddlv.i32.{neon_type[0]}"
+              arch: aarch64,arm64ec
+      - Identifier: ["_vaddlv{neon_type[0].no}(a.as_signed()).as_unsigned() as u16", Symbol]
+
+  - name: "vmaxv{neon_type[0].no}"
+    doc: "Horizontal vector max."
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: ['{type[2]}']
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t, i8, 'smaxv']
+      - [int16x4_t, i16, 'smaxv']
+      - [int32x2_t, i32, 'smaxp'] 
+      - [int8x16_t, i8, 'smaxv']
+      - [int16x8_t, i16, 'smaxv']
+      - [int32x4_t, i32, 'smaxv']
+    compose:
+      - LLVMLink:
+          name: "vmaxv{neon_type[0].no}"
+          links:
+            - link: "llvm.aarch64.neon.smaxv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vmaxv{neon_type[0].no}"
+    doc: "Horizontal vector max."
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: ['{type[2]}']
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8_t, u8, 'umaxv']
+      - [uint16x4_t, u16, 'umaxv']
+      - [uint32x2_t, u32, 'umaxp'] 
+      - [uint8x16_t, u8, 'umaxv']
+      - [uint16x8_t, u16, 'umaxv']
+      - [uint32x4_t, u32, 'umaxv']
+    compose:
+      - LLVMLink:
+          name: "vmaxv{neon_type[0].no}"
+          links:
+            - link: "llvm.aarch64.neon.umaxv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vmaxv{neon_type[0].no}"
+    doc: "Horizontal vector max."
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: ['{type[2]}']
+    safety:
+      unsafe: [neon]
+    types:
+      - [float32x2_t, f32, 'fmaxp']
+      - [float32x4_t, f32, 'fmaxv']
+      - [float64x2_t, f64, 'fmaxp'] 
+    compose:
+      - LLVMLink:
+          name: "vmaxv{neon_type[0].no}"
+          links:
+            - link: "llvm.aarch64.neon.fmaxv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vminv{neon_type[0].no}"
+    doc: "Horizontal vector min."
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: ['{type[2]}']
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t, i8, 'sminv']
+      - [int16x4_t, i16, 'sminv']
+      - [int32x2_t, i32, 'sminp'] 
+      - [int8x16_t, i8, 'sminv']
+      - [int16x8_t, i16, 'sminv']
+      - [int32x4_t, i32, 'sminv']
+    compose:
+      - LLVMLink:
+          name: "vminv{neon_type[0].no}"
+          links:
+            - link: "llvm.aarch64.neon.sminv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vminv{neon_type[0].no}"
+    doc: "Horizontal vector min."
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: ['{type[2]}']
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8_t, u8, 'uminv']
+      - [uint16x4_t, u16, 'uminv']
+      - [uint32x2_t, u32, 'uminp'] 
+      - [uint8x16_t, u8, 'uminv']
+      - [uint16x8_t, u16, 'uminv']
+      - [uint32x4_t, u32, 'uminv']
+    compose:
+      - LLVMLink:
+          name: "vminv{neon_type[0].no}"
+          links:
+            - link: "llvm.aarch64.neon.uminv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vminv{neon_type[0].no}"
+    doc: "Horizontal vector min."
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *neon-stable
+    assert_instr: ['{type[2]}']
+    safety:
+      unsafe: [neon]
+    types:
+      - [float32x2_t, f32, 'fminp']
+      - [float32x4_t, f32, 'fminv']
+      - [float64x2_t, f64, 'fminp'] 
+    compose:
+      - LLVMLink:
+          name: "vminv{neon_type[0].no}"
+          links:
+            - link: "llvm.aarch64.neon.fminv.{type[1]}.{neon_type[0]}"
+              arch: aarch64,arm64ec
+
+  - name: "vpmin{neon_type.no}"
+    doc: "Folding minimum of adjacent pairs"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-stable
+    assert_instr: ['sminp']
+    safety:
+      unsafe: [neon]
+    types:
+      - int8x16_t
+      - int16x8_t
+      - int32x4_t
+    compose:
+      - LLVMLink:
+          name: "vpmin{neon_type.no}"
+          links:
+            - link: "llvm.aarch64.neon.sminp.{neon_type}"
+              arch: aarch64,arm64ec
+
+  - name: "vpmin{neon_type.no}"
+    doc: "Folding minimum of adjacent pairs"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-stable
+    assert_instr: ['uminp']
+    safety:
+      unsafe: [neon]
+    types:
+      - uint8x16_t
+      - uint16x8_t
+      - uint32x4_t
+    compose:
+      - LLVMLink:
+          name: "vpmin{neon_type.no}"
+          links:
+            - link: "llvm.aarch64.neon.uminp.{neon_type}"
+              arch: aarch64,arm64ec
+
+  - name: "vpmin{neon_type.no}"
+    doc: "Folding minimum of adjacent pairs"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-stable
+    assert_instr: ['fminp']
+    safety:
+      unsafe: [neon]
+    types:
+      - float32x4_t
+      - float64x2_t 
+    compose:
+      - LLVMLink:
+          name: "vpmin{neon_type.no}"
+          links:
+            - link: "llvm.aarch64.neon.fminp.{neon_type}"
+              arch: aarch64,arm64ec
+
+  - name: "vpmax{neon_type.no}"
+    doc: "Folding maximum of adjacent pairs"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-stable
+    assert_instr: ['smaxp']
+    safety:
+      unsafe: [neon]
+    types:
+      - int8x16_t
+      - int16x8_t
+      - int32x4_t
+    compose:
+      - LLVMLink:
+          name: "vpmax{neon_type.no}"
+          links:
+            - link: "llvm.aarch64.neon.smaxp.{neon_type}"
+              arch: aarch64,arm64ec
+
+  - name: "vpmax{neon_type.no}"
+    doc: "Folding maximum of adjacent pairs"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-stable
+    assert_instr: ['umaxp']
+    safety:
+      unsafe: [neon]
+    types:
+      - uint8x16_t
+      - uint16x8_t
+      - uint32x4_t
+    compose:
+      - LLVMLink:
+          name: "vpmax{neon_type.no}"
+          links:
+            - link: "llvm.aarch64.neon.umaxp.{neon_type}"
+              arch: aarch64,arm64ec
+
+  - name: "vpmax{neon_type.no}"
+    doc: "Folding maximum of adjacent pairs"
+    arguments: ["a: {neon_type}", "b: {neon_type}"]
+    return_type: "{neon_type}"
+    attr:
+      - *neon-stable
+    assert_instr: ['fmaxp']
+    safety:
+      unsafe: [neon]
+    types:
+      - float32x4_t
+      - float64x2_t 
+    compose:
+      - LLVMLink:
+          name: "vpmax{neon_type.no}"
+          links:
+            - link: "llvm.aarch64.neon.fmaxp.{neon_type}"
+              arch: aarch64,arm64ec
+
+  - name: "vsli{neon_type[0].N}"
+    doc: "Shift Left and Insert (immediate)"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sli, 'N = 1']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - *neon-stable
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t,  'static_assert_uimm_bits!', 'N, 3']
+      - [int8x16_t, 'static_assert_uimm_bits!', 'N, 3']
+      - [int16x4_t, 'static_assert_uimm_bits!', 'N, 4']
+      - [int16x8_t, 'static_assert_uimm_bits!', 'N, 4']
+      - [int32x2_t, 'static_assert!', 'N >= 0 && N <= 31']
+      - [int32x4_t, 'static_assert!', 'N >= 0 && N <= 31']
+      - [int64x1_t, 'static_assert!', 'N >= 0 && N <= 63']
+      - [int64x2_t, 'static_assert!', 'N >= 0 && N <= 63']
+    compose:
+      - FnCall: ['{type[1]}', ['{type[2]}']]
+      - LLVMLink:
+          name: "vsli{neon_type[0].N}"
+          arguments:
+            - "a: {neon_type[0]}"
+            - "b: {neon_type[0]}"
+            - "n: i32"
+          links:
+            - link: "llvm.aarch64.neon.vsli.{neon_type[0]}"
+              arch: aarch64,arm64ec
+      - FnCall: ["_vsli{neon_type[0].N}", [a, b, N]]
+
+  - name: "vsli{neon_type[0].N}"
+    doc: "Shift Left and Insert (immediate)"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [target_feature, ['enable = "{type[4]}"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sli, 'N = 1']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - *neon-stable
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8_t,  int8x8_t,  'static_assert_uimm_bits!', 'N, 3', "neon"]
+      - [uint8x16_t, int8x16_t, 'static_assert_uimm_bits!', 'N, 3', "neon"]
+      - [uint16x4_t, int16x4_t, 'static_assert_uimm_bits!', 'N, 4', "neon"]
+      - [uint16x8_t, int16x8_t, 'static_assert_uimm_bits!', 'N, 4', "neon"]
+      - [uint32x2_t, int32x2_t, 'static_assert!', 'N >= 0 && N <= 31', "neon"]
+      - [uint32x4_t, int32x4_t, 'static_assert!', 'N >= 0 && N <= 31', "neon"]
+      - [uint64x1_t, int64x1_t, 'static_assert!', 'N >= 0 && N <= 63', "neon"]
+      - [uint64x2_t, int64x2_t, 'static_assert!', 'N >= 0 && N <= 63', "neon"]
+      - [poly8x8_t,  int8x8_t,  'static_assert_uimm_bits!', 'N, 3', "neon"]
+      - [poly8x16_t, int8x16_t, 'static_assert_uimm_bits!', 'N, 3', "neon"]
+      - [poly16x4_t, int16x4_t, 'static_assert_uimm_bits!', 'N, 4', "neon"]
+      - [poly16x8_t, int16x8_t, 'static_assert_uimm_bits!', 'N, 4', "neon"]
+      - [poly64x1_t, int64x1_t, 'static_assert!', 'N >= 0 && N <= 63', "neon,aes"]
+      - [poly64x2_t, int64x2_t, 'static_assert!', 'N >= 0 && N <= 63', "neon,aes"]
+    compose:
+      - FnCall: ['{type[2]}', ['{type[3]}']]
+      - FnCall:
+          - transmute
+          - - FnCall:
+                - 'vsli{neon_type[1].N}::<N>'
+                - - FnCall:
+                      - transmute
+                      - - a
+                  - FnCall:
+                      - transmute
+                      - - b
+
+  - name: "vsri{neon_type[0].N}"
+    doc: "Shift Right and Insert (immediate)"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sri, 'N = 1']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - *neon-stable
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [int8x8_t,  'N >= 1 && N <= 8']
+      - [int8x16_t, 'N >= 1 && N <= 8']
+      - [int16x4_t, 'N >= 1 && N <= 16']
+      - [int16x8_t, 'N >= 1 && N <= 16']
+      - [int32x2_t, 'N >= 1 && N <= 32']
+      - [int32x4_t, 'N >= 1 && N <= 32']
+      - [int64x1_t, 'N >= 1 && N <= 64']
+      - [int64x2_t, 'N >= 1 && N <= 64']
+    compose:
+      - FnCall: ['static_assert!', ['{type[1]}']]
+      - LLVMLink:
+          name: "vsri{neon_type[0].N}"
+          arguments:
+            - "a: {neon_type[0]}"
+            - "b: {neon_type[0]}"
+            - "n: i32"
+          links:
+            - link: "llvm.aarch64.neon.vsri.{neon_type[0]}"
+              arch: aarch64,arm64ec
+      - FnCall: ["_vsri{neon_type[0].N}", [a, b, N]]
+
+  - name: "vsri{neon_type[0].N}"
+    doc: "Shift Right and Insert (immediate)"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - FnCall: [target_feature, ['enable = "{type[3]}"']]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [sri, 'N = 1']]}]]
+      - FnCall: [rustc_legacy_const_generics, ['2']]
+      - *neon-stable
+    static_defs: ['const N: i32']
+    safety:
+      unsafe: [neon]
+    types:
+      - [uint8x8_t,  int8x8_t,  'N >= 1 && N <= 8', "neon"]
+      - [uint8x16_t, int8x16_t, 'N >= 1 && N <= 8', "neon"]
+      - [uint16x4_t, int16x4_t, 'N >= 1 && N <= 16', "neon"]
+      - [uint16x8_t, int16x8_t, 'N >= 1 && N <= 16', "neon"]
+      - [uint32x2_t, int32x2_t, 'N >= 1 && N <= 32', "neon"]
+      - [uint32x4_t, int32x4_t, 'N >= 1 && N <= 32', "neon"]
+      - [uint64x1_t, int64x1_t, 'N >= 1 && N <= 64', "neon"]
+      - [uint64x2_t, int64x2_t, 'N >= 1 && N <= 64', "neon"]
+      - [poly8x8_t,  int8x8_t,  'N >= 1 && N <= 8', "neon"]
+      - [poly8x16_t, int8x16_t, 'N >= 1 && N <= 8', "neon"]
+      - [poly16x4_t, int16x4_t, 'N >= 1 && N <= 16', "neon"]
+      - [poly16x8_t, int16x8_t, 'N >= 1 && N <= 16', "neon"]
+      - [poly64x1_t, int64x1_t, 'N >= 1 && N <= 64', "neon,aes"]
+      - [poly64x2_t, int64x2_t, 'N >= 1 && N <= 64', "neon,aes"]
+    compose:
+      - FnCall: ['static_assert!', ['{type[2]}']]
+      - FnCall:
+          - transmute
+          - - FnCall:
+                - 'vsri{neon_type[1].N}::<N>'
+                - - FnCall:
+                      - transmute
+                      - - a
+                  - FnCall:
+                      - transmute
+                      - - b
