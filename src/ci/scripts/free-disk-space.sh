@@ -137,19 +137,21 @@ removeUnusedDirsAndFiles() {
         "$AGENT_TOOLSDIRECTORY"
     )
 
+    local existing=()
     for element in "${to_remove[@]}"; do
         if [ ! -e "$element" ]; then
             echo "::warning::Directory or file $element does not exist, skipping."
         else
-            execAndMeasure "Removed $element" sudo rm -rf "$element"
+            existing+=("$element")
         fi
     done
+
+    execAndMeasure "Removed unused directories" sudo rm -rf "${existing[@]}"
 }
 
 removeNodeModules() {
     sudo npm uninstall -g \
         "@bazel/bazelisk" \
-        "bazel"           \
         "grunt"           \
         "gulp"            \
         "lerna"           \
@@ -237,11 +239,10 @@ main() {
     printDF "BEFORE CLEAN-UP:"
 
     execAndMeasure "Unused packages" cleanPackages
-    execAndMeasure "Swap storage" cleanSwap
     execAndMeasure "Node modules" removeNodeModules
     execAndMeasure "Python Packages" removePythonPackages
-
     removeUnusedDirsAndFiles
+    execAndMeasure "Swap storage" cleanSwap
 
     printDF "AFTER CLEAN-UP:"
 }
