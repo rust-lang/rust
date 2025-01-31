@@ -1,7 +1,7 @@
 // Tests inlining of diverging calls.
 //
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-//@ compile-flags: -Zinline-mir-hint-threshold=1000 -C debuginfo=full
+//@ compile-flags: -Zinline-mir-hint-threshold=1000 -C debuginfo=full --edition=2021
 #![crate_type = "lib"]
 
 // EMIT_MIR inline_diverging.f.Inline.diff
@@ -17,8 +17,8 @@ pub fn g(i: i32) -> u32 {
         i as u32
     } else {
         // CHECK-LABEL: fn g(
-        // CHECK: (inlined panic)
-        panic();
+        // CHECK: (inlined calls_panic)
+        calls_panic();
     }
 }
 
@@ -38,7 +38,7 @@ pub fn call_twice<R, F: Fn() -> R>(f: F) -> (R, R) {
 }
 
 #[inline(always)]
-fn panic() -> ! {
+fn calls_panic() -> ! {
     panic!();
 }
 
