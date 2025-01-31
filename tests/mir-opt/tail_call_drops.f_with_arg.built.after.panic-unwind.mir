@@ -5,20 +5,20 @@ fn f_with_arg(_1: String, _2: String) -> () {
     debug _arg2 => _2;
     let mut _0: ();
     let mut _3: !;
-    let _4: std::string::String;
+    let _4: std::string::string::String;
     let _8: ();
-    let mut _9: std::string::String;
-    let mut _10: std::string::String;
-    let mut _11: std::string::String;
+    let mut _9: std::string::string::String;
+    let mut _10: std::string::string::String;
+    let mut _11: std::string::string::String;
     scope 1 {
         debug _a => _4;
         let _5: i32;
         scope 2 {
             debug _b => _5;
-            let _6: std::string::String;
+            let _6: std::string::string::String;
             scope 3 {
                 debug _c => _6;
-                let _7: std::string::String;
+                let _7: std::string::string::String;
                 scope 4 {
                     debug _d => _7;
                 }
