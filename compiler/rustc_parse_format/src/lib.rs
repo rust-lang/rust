@@ -363,12 +363,7 @@ impl<'a> Parser<'a> {
     /// Notifies of an error. The message doesn't actually need to be of type
     /// String, but I think it does when this eventually uses conditions so it
     /// might as well start using it now.
-    fn err<S1: Into<String>, S2: Into<String>>(
-        &mut self,
-        description: S1,
-        label: S2,
-        span: InnerSpan,
-    ) {
+    fn err(&mut self, description: impl Into<String>, label: impl Into<String>, span: InnerSpan) {
         self.errors.push(ParseError {
             description: description.into(),
             note: None,
@@ -382,11 +377,11 @@ impl<'a> Parser<'a> {
     /// Notifies of an error. The message doesn't actually need to be of type
     /// String, but I think it does when this eventually uses conditions so it
     /// might as well start using it now.
-    fn err_with_note<S1: Into<String>, S2: Into<String>, S3: Into<String>>(
+    fn err_with_note(
         &mut self,
-        description: S1,
-        label: S2,
-        note: S3,
+        description: impl Into<String>,
+        label: impl Into<String>,
+        note: impl Into<String>,
         span: InnerSpan,
     ) {
         self.errors.push(ParseError {

@@ -524,6 +524,10 @@ pub(crate) struct CheckInstalledVisualStudio;
 pub(crate) struct InsufficientVSCodeProduct;
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_cpu_required)]
+pub(crate) struct CpuRequired;
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_processing_dymutil_failed)]
 #[note]
 pub(crate) struct ProcessingDymutilFailed {

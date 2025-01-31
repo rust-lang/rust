@@ -615,6 +615,11 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         return ongoing_codegen;
     }
 
+    if tcx.sess.target.need_explicit_cpu && tcx.sess.opts.cg.target_cpu.is_none() {
+        // The target has no default cpu, but none is set explicitly
+        tcx.dcx().emit_fatal(errors::CpuRequired);
+    }
+
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
 
     // Run the monomorphization collector and partition the collected items into

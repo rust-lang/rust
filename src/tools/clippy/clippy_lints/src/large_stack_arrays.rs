@@ -8,7 +8,7 @@ use clippy_utils::source::snippet;
 use rustc_hir::{Expr, ExprKind, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, ConstKind};
+use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, sym};
 
@@ -81,8 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackArrays {
             && let ExprKind::Repeat(_, _) | ExprKind::Array(_) = expr.kind
             && !self.is_from_vec_macro(cx, expr.span)
             && let ty::Array(element_type, cst) = cx.typeck_results().expr_ty(expr).kind()
-            && let ConstKind::Value(_, ty::ValTree::Leaf(element_count)) = cst.kind()
-            && let element_count = element_count.to_target_usize(cx.tcx)
+            && let Some(element_count) = cst.try_to_target_usize(cx.tcx)
             && let Ok(element_size) = cx.layout_of(*element_type).map(|l| l.size.bytes())
             && !cx.tcx.hir().parent_iter(expr.hir_id).any(|(_, node)| {
                 matches!(

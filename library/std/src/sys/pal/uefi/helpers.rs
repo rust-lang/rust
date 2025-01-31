@@ -14,10 +14,12 @@ use r_efi::protocols::{device_path, device_path_to_text, shell};
 
 use crate::ffi::{OsStr, OsString};
 use crate::io::{self, const_error};
+use crate::marker::PhantomData;
 use crate::mem::{MaybeUninit, size_of};
 use crate::os::uefi::env::boot_services;
 use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
 use crate::os::uefi::{self};
+use crate::path::Path;
 use crate::ptr::NonNull;
 use crate::slice;
 use crate::sync::atomic::{AtomicPtr, Ordering};
@@ -278,6 +280,10 @@ impl OwnedDevicePath {
     pub(crate) const fn as_ptr(&self) -> *mut r_efi::protocols::device_path::Protocol {
         self.0.as_ptr()
     }
+
+    pub(crate) const fn borrow<'a>(&'a self) -> BorrowedDevicePath<'a> {
+        BorrowedDevicePath::new(self.0)
+    }
 }
 
 impl Drop for OwnedDevicePath {
@@ -293,9 +299,33 @@ impl Drop for OwnedDevicePath {
 
 impl crate::fmt::Debug for OwnedDevicePath {
     fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
-        match device_path_to_text(self.0) {
+        match self.borrow().to_text() {
             Ok(p) => p.fmt(f),
             Err(_) => f.debug_struct("OwnedDevicePath").finish_non_exhaustive(),
+        }
+    }
+}
+
+pub(crate) struct BorrowedDevicePath<'a> {
+    protocol: NonNull<r_efi::protocols::device_path::Protocol>,
+    phantom: PhantomData<&'a r_efi::protocols::device_path::Protocol>,
+}
+
+impl<'a> BorrowedDevicePath<'a> {
+    pub(crate) const fn new(protocol: NonNull<r_efi::protocols::device_path::Protocol>) -> Self {
+        Self { protocol, phantom: PhantomData }
+    }
+
+    pub(crate) fn to_text(&self) -> io::Result<OsString> {
+        device_path_to_text(self.protocol)
+    }
+}
+
+impl<'a> crate::fmt::Debug for BorrowedDevicePath<'a> {
+    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+        match self.to_text() {
+            Ok(p) => p.fmt(f),
+            Err(_) => f.debug_struct("BorrowedDevicePath").finish_non_exhaustive(),
         }
     }
 }
@@ -451,4 +481,22 @@ pub(crate) fn open_shell() -> Option<NonNull<shell::Protocol>> {
     }
 
     None
+}
+
+/// Get device path protocol associated with shell mapping.
+///
+/// returns None in case no such mapping is exists
+pub(crate) fn get_device_path_from_map(map: &Path) -> io::Result<BorrowedDevicePath<'static>> {
+    let shell =
+        open_shell().ok_or(io::const_error!(io::ErrorKind::NotFound, "UEFI Shell not found"))?;
+    let mut path = os_string_to_raw(map.as_os_str())
+        .ok_or(io::const_error!(io::ErrorKind::InvalidFilename, "Invalid UEFI shell mapping"))?;
+
+    // The Device Path Protocol pointer returned by UEFI shell is owned by the shell and is not
+    // freed throughout it's lifetime. So it has a 'static lifetime.
+    let protocol = unsafe { ((*shell.as_ptr()).get_device_path_from_map)(path.as_mut_ptr()) };
+    let protocol = NonNull::new(protocol)
+        .ok_or(io::const_error!(io::ErrorKind::NotFound, "UEFI Shell mapping not found"))?;
+
+    Ok(BorrowedDevicePath::new(protocol))
 }

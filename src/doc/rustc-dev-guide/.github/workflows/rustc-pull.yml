@@ -50,10 +50,10 @@ jobs:
           RESULT=`gh pr list --author github-actions[bot] --state open -q 'map(select(.title=="Rustc pull update")) | length' --json title`
           if [[ "$RESULT" -eq 0 ]]; then
             echo "Creating new pull request"
-            PR_URL=gh pr create -B master --title 'Rustc pull update' --body 'Latest update from rustc.'
+            PR_URL=`gh pr create -B master --title 'Rustc pull update' --body 'Latest update from rustc.'`
             echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
           else
-            PR_URL=gh pr list --author github-actions[bot] --state open -q 'map(select(.title=="Rustc pull update")) | .[0].url' --json url,title
+            PR_URL=`gh pr list --author github-actions[bot] --state open -q 'map(select(.title=="Rustc pull update")) | .[0].url' --json url,title`
             echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
           fi
         env:

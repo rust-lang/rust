@@ -1329,7 +1329,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_shuffle_generic {
-        let idx = fn_args[2].expect_const().try_to_valtree().unwrap().0.unwrap_branch();
+        let idx = fn_args[2].expect_const().to_value().valtree.unwrap_branch();
         let n = idx.len() as u64;
 
         let (out_len, out_ty) = require_simd!(ret_ty, SimdReturn);

@@ -243,8 +243,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn downgrade_mut_inside_shared(&self) -> bool {
         // NB: RFC 3627 proposes stabilizing Rule 3 in all editions. If we adopt the same behavior
         // across all editions, this may be removed.
-        self.tcx.features().ref_pat_eat_one_layer_2024()
-            || self.tcx.features().ref_pat_eat_one_layer_2024_structural()
+        self.tcx.features().ref_pat_eat_one_layer_2024_structural()
     }
 
     /// Experimental pattern feature: when do reference patterns match against inherited references?
@@ -435,7 +434,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         max_ref_mutbl: MutblCap,
     ) -> (Ty<'tcx>, ByRef, MutblCap) {
         #[cfg(debug_assertions)]
-        if def_br == ByRef::Yes(Mutability::Mut) && max_ref_mutbl != MutblCap::Mut {
+        if def_br == ByRef::Yes(Mutability::Mut)
+            && max_ref_mutbl != MutblCap::Mut
+            && self.downgrade_mut_inside_shared()
+        {
             span_bug!(pat.span, "Pattern mutability cap violated!");
         }
         match adjust_mode {
@@ -2328,22 +2330,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // (RFC 3627, Rule 5). If we implement a pattern typing ruleset with Rule 4E
                         // but not Rule 5, we'll need to check that here.
                         debug_assert!(ref_pat_matches_mut_ref);
-                        let err_msg = "mismatched types";
-                        let err = if let Some(span) = pat_prefix_span {
-                            let mut err = self.dcx().struct_span_err(span, err_msg);
-                            err.code(E0308);
-                            err.note("cannot match inherited `&` with `&mut` pattern");
-                            err.span_suggestion_verbose(
-                                span,
-                                "replace this `&mut` pattern with `&`",
-                                "&",
-                                Applicability::MachineApplicable,
-                            );
-                            err
-                        } else {
-                            self.dcx().struct_span_err(pat.span, err_msg)
-                        };
-                        err.emit();
+                        self.error_inherited_ref_mutability_mismatch(pat, pat_prefix_span);
                     }
 
                     pat_info.binding_mode = ByRef::No;
@@ -2352,28 +2339,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return expected;
                 }
                 InheritedRefMatchRule::EatInner => {
-                    if let ty::Ref(_, _, r_mutbl) = *expected.kind() {
+                    if let ty::Ref(_, _, r_mutbl) = *expected.kind()
+                        && pat_mutbl <= r_mutbl
+                    {
                         // Match against the reference type; don't consume the inherited ref.
-                        pat_info.binding_mode = pat_info.binding_mode.cap_ref_mutability(r_mutbl);
+                        // NB: The check for compatible pattern and ref type mutability assumes that
+                        // `&` patterns can match against mutable references (RFC 3627, Rule 5). If
+                        // we implement a pattern typing ruleset with Rule 4 (including the fallback
+                        // to matching the inherited ref when the inner ref can't match) but not
+                        // Rule 5, we'll need to check that here.
+                        debug_assert!(ref_pat_matches_mut_ref);
+                        // NB: For RFC 3627's Rule 3, we limit the default binding mode's ref
+                        // mutability to `pat_info.max_ref_mutbl`. If we implement a pattern typing
+                        // ruleset with Rule 4 but not Rule 3, we'll need to check that here.
+                        debug_assert!(self.downgrade_mut_inside_shared());
+                        let mutbl_cap = cmp::min(r_mutbl, pat_info.max_ref_mutbl.as_mutbl());
+                        pat_info.binding_mode = pat_info.binding_mode.cap_ref_mutability(mutbl_cap);
                     } else {
-                        // The expected type isn't a reference, so match against the inherited ref.
+                        // The reference pattern can't match against the expected type, so try
+                        // matching against the inherited ref instead.
                         if pat_mutbl > inh_mut {
-                            // We can't match an inherited shared reference with `&mut`. This will
-                            // be a type error later, since we're matching a reference pattern
-                            // against a non-reference type.
+                            // We can't match an inherited shared reference with `&mut`.
                             // NB: This assumes that `&` patterns can match against mutable
                             // references (RFC 3627, Rule 5). If we implement a pattern typing
                             // ruleset with Rule 4 but not Rule 5, we'll need to check that here.
                             debug_assert!(ref_pat_matches_mut_ref);
-                        } else {
-                            pat_info.binding_mode = ByRef::No;
-                            self.typeck_results
-                                .borrow_mut()
-                                .skipped_ref_pats_mut()
-                                .insert(pat.hir_id);
-                            self.check_pat(inner, expected, pat_info);
-                            return expected;
+                            self.error_inherited_ref_mutability_mismatch(pat, pat_prefix_span);
                         }
+
+                        pat_info.binding_mode = ByRef::No;
+                        self.typeck_results.borrow_mut().skipped_ref_pats_mut().insert(pat.hir_id);
+                        self.check_pat(inner, expected, pat_info);
+                        return expected;
                     }
                 }
                 InheritedRefMatchRule::EatBoth => {
@@ -2445,6 +2442,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn new_ref_ty(&self, span: Span, mutbl: Mutability, ty: Ty<'tcx>) -> Ty<'tcx> {
         let region = self.next_region_var(infer::PatternRegion(span));
         Ty::new_ref(self.tcx, region, ty, mutbl)
+    }
+
+    fn error_inherited_ref_mutability_mismatch(
+        &self,
+        pat: &'tcx Pat<'tcx>,
+        pat_prefix_span: Option<Span>,
+    ) -> ErrorGuaranteed {
+        let err_msg = "mismatched types";
+        let err = if let Some(span) = pat_prefix_span {
+            let mut err = self.dcx().struct_span_err(span, err_msg);
+            err.code(E0308);
+            err.note("cannot match inherited `&` with `&mut` pattern");
+            err.span_suggestion_verbose(
+                span,
+                "replace this `&mut` pattern with `&`",
+                "&",
+                Applicability::MachineApplicable,
+            );
+            err
+        } else {
+            self.dcx().struct_span_err(pat.span, err_msg)
+        };
+        err.emit()
     }
 
     fn try_resolve_slice_ty_to_array_ty(

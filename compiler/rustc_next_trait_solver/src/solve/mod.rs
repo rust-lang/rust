@@ -160,9 +160,7 @@ where
             ty::ConstKind::Infer(_) => {
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
-            ty::ConstKind::Placeholder(_)
-            | ty::ConstKind::Value(_, _)
-            | ty::ConstKind::Error(_) => {
+            ty::ConstKind::Placeholder(_) | ty::ConstKind::Value(_) | ty::ConstKind::Error(_) => {
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             // We can freely ICE here as:
@@ -199,7 +197,7 @@ where
                 unreachable!("`ConstKind::Param` should have been canonicalized to `Placeholder`")
             }
             ty::ConstKind::Bound(_, _) => panic!("escaping bound vars in {:?}", ct),
-            ty::ConstKind::Value(ty, _) => ty,
+            ty::ConstKind::Value(cv) => cv.ty(),
             ty::ConstKind::Placeholder(placeholder) => {
                 self.cx().find_const_ty_from_env(goal.param_env, placeholder)
             }

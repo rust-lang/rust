@@ -1484,8 +1484,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 _ => write!(self, "_")?,
             },
             ty::ConstKind::Param(ParamConst { name, .. }) => p!(write("{}", name)),
-            ty::ConstKind::Value(ty, value) => {
-                return self.pretty_print_const_valtree(value, ty, print_ty);
+            ty::ConstKind::Value(cv) => {
+                return self.pretty_print_const_valtree(cv.valtree, cv.ty, print_ty);
             }
 
             ty::ConstKind::Bound(debruijn, bound_var) => {
@@ -1637,33 +1637,32 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         match ty.kind() {
             // Byte strings (&[u8; N])
             ty::Ref(_, inner, _) => {
-                if let ty::Array(elem, len) = inner.kind() {
-                    if let ty::Uint(ty::UintTy::U8) = elem.kind() {
-                        if let ty::ConstKind::Value(_, ty::ValTree::Leaf(int)) = len.kind() {
-                            match self.tcx().try_get_global_alloc(prov.alloc_id()) {
-                                Some(GlobalAlloc::Memory(alloc)) => {
-                                    let len = int.to_bits(self.tcx().data_layout.pointer_size);
-                                    let range =
-                                        AllocRange { start: offset, size: Size::from_bytes(len) };
-                                    if let Ok(byte_str) =
-                                        alloc.inner().get_bytes_strip_provenance(&self.tcx(), range)
-                                    {
-                                        p!(pretty_print_byte_str(byte_str))
-                                    } else {
-                                        p!("<too short allocation>")
-                                    }
-                                }
-                                // FIXME: for statics, vtables, and functions, we could in principle print more detail.
-                                Some(GlobalAlloc::Static(def_id)) => {
-                                    p!(write("<static({:?})>", def_id))
-                                }
-                                Some(GlobalAlloc::Function { .. }) => p!("<function>"),
-                                Some(GlobalAlloc::VTable(..)) => p!("<vtable>"),
-                                None => p!("<dangling pointer>"),
+                if let ty::Array(elem, len) = inner.kind()
+                    && let ty::Uint(ty::UintTy::U8) = elem.kind()
+                    && let ty::ConstKind::Value(cv) = len.kind()
+                    && let ty::ValTree::Leaf(int) = cv.valtree
+                {
+                    match self.tcx().try_get_global_alloc(prov.alloc_id()) {
+                        Some(GlobalAlloc::Memory(alloc)) => {
+                            let len = int.to_bits(self.tcx().data_layout.pointer_size);
+                            let range = AllocRange { start: offset, size: Size::from_bytes(len) };
+                            if let Ok(byte_str) =
+                                alloc.inner().get_bytes_strip_provenance(&self.tcx(), range)
+                            {
+                                p!(pretty_print_byte_str(byte_str))
+                            } else {
+                                p!("<too short allocation>")
                             }
-                            return Ok(());
                         }
+                        // FIXME: for statics, vtables, and functions, we could in principle print more detail.
+                        Some(GlobalAlloc::Static(def_id)) => {
+                            p!(write("<static({:?})>", def_id))
+                        }
+                        Some(GlobalAlloc::Function { .. }) => p!("<function>"),
+                        Some(GlobalAlloc::VTable(..)) => p!("<vtable>"),
+                        None => p!("<dangling pointer>"),
                     }
+                    return Ok(());
                 }
             }
             ty::FnPtr(..) => {
@@ -1786,6 +1785,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         Ok(())
     }
 
+    // FIXME(valtrees): Accept `ty::Value` instead of `Ty` and `ty::ValTree` separately.
     fn pretty_print_const_valtree(
         &mut self,
         valtree: ty::ValTree<'tcx>,

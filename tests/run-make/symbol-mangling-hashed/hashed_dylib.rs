@@ -1,4 +1,4 @@
 #![crate_type = "dylib"]
-pub fn hello() {
+pub fn hdhello() {
     println!("hello dylib");
 }
