@@ -747,7 +747,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     {
         let a: F = self.read_scalar(&args[0])?.to_float()?;
         let b: F = self.read_scalar(&args[1])?.to_float()?;
-        let res = self.adjust_nan(a.min(b), &[a, b]);
+        let res = if a == b {
+            // They are definitely not NaN (those are never equal), but they could be `+0` and `-0`.
+            // Let the machine decide which one to return.
+            M::equal_float_min_max(self, a, b)
+        } else {
+            self.adjust_nan(a.min(b), &[a, b])
+        };
         self.write_scalar(res, dest)?;
         interp_ok(())
     }
@@ -762,7 +768,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     {
         let a: F = self.read_scalar(&args[0])?.to_float()?;
         let b: F = self.read_scalar(&args[1])?.to_float()?;
-        let res = self.adjust_nan(a.max(b), &[a, b]);
+        let res = if a == b {
+            // They are definitely not NaN (those are never equal), but they could be `+0` and `-0`.
+            // Let the machine decide which one to return.
+            M::equal_float_min_max(self, a, b)
+        } else {
+            self.adjust_nan(a.max(b), &[a, b])
+        };
         self.write_scalar(res, dest)?;
         interp_ok(())
     }

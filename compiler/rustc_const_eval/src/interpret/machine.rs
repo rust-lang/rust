@@ -278,6 +278,12 @@ pub trait Machine<'tcx>: Sized {
         F2::NAN
     }
 
+    /// Determines the result of `min`/`max` on floats when the arguments are equal.
+    fn equal_float_min_max<F: Float>(_ecx: &InterpCx<'tcx, Self>, a: F, _b: F) -> F {
+        // By default, we pick the left argument.
+        a
+    }
+
     /// Called before a basic block terminator is executed.
     #[inline]
     fn before_terminator(_ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
