@@ -22,3 +22,29 @@ fn main() {
     if true { () } else { a += 2 };
     //~^ ERROR: this method chain can be written more clearly with `if .. else ..`
 }
+
+fn issue11141() {
+    // Parentheses are required around the left side of a binary expression
+    let _ = (if true { 40 } else { 17 }) | 2;
+    //~^ ERROR: this method chain can be written more clearly with `if .. else ..`
+
+    // Parentheses are required only for the leftmost expression
+    let _ = (if true { 30 } else { 17 }) | if true { 2 } else { 3 } | if true { 10 } else { 1 };
+    //~^ ERROR: this method chain can be written more clearly with `if .. else ..`
+
+    // Parentheses are not required around the right side of a binary expression
+    let _ = 2 | if true { 40 } else { 17 };
+    //~^ ERROR: this method chain can be written more clearly with `if .. else ..`
+
+    // Parentheses are not required for a cast
+    let _ = if true { 42 } else { 17 } as u8;
+    //~^ ERROR: this method chain can be written more clearly with `if .. else ..`
+
+    // Parentheses are not required for a deref
+    let _ = *if true { &42 } else { &17 };
+    //~^ ERROR: this method chain can be written more clearly with `if .. else ..`
+
+    // Parentheses are not required for a deref followed by a cast
+    let _ = *if true { &42 } else { &17 } as u8;
+    //~^ ERROR: this method chain can be written more clearly with `if .. else ..`
+}

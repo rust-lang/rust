@@ -1,6 +1,7 @@
 use super::OBFUSCATED_IF_ELSE;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
+use clippy_utils::get_parent_expr;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
@@ -40,6 +41,17 @@ pub(super) fn check<'tcx>(
             if_then,
             snippet_with_applicability(cx, unwrap_arg.span, "..", &mut applicability)
         );
+
+        // To be parsed as an expression, the `if { … } else { … }` as the left operand of a binary operator
+        // requires parentheses.
+        let sugg = if let Some(parent_expr) = get_parent_expr(cx, expr)
+            && let ExprKind::Binary(_, left, _) = parent_expr.kind
+            && left.hir_id == expr.hir_id
+        {
+            format!("({sugg})")
+        } else {
+            sugg
+        };
 
         span_lint_and_sugg(
             cx,
