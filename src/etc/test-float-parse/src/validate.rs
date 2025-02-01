@@ -279,7 +279,7 @@ fn decode<F: Float>(f: F) -> FloatRes<F> {
 
     let mut exponent = i32::try_from(exponent_biased).unwrap();
 
-    // Adjust for bias and the rnage of the mantissa
+    // Adjust for bias and the range of the mantissa
     exponent -= i32::try_from(F::EXP_BIAS + F::MAN_BITS).unwrap();
 
     if f.is_sign_negative() {
