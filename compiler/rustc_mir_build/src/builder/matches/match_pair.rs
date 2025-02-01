@@ -233,6 +233,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let data = leaves[first_idx..first_idx + len]
                     .iter()
+                    .rev()
                     .copied()
                     .map(leaf_bits)
                     .fold(0u32, |acc, x| (acc << 8) | u32::from(x));
@@ -243,7 +244,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     _ => unreachable!(),
                 };
 
-                let valtree = ty::ValTree::Leaf(ty::ScalarInt::from(data));
+                let scalar = match len {
+                    2 => ty::ScalarInt::from(data as u16),
+                    3 | 4 => ty::ScalarInt::from(data),
+                    _ => unreachable!(),
+                };
+
+                let valtree = ty::ValTree::Leaf(scalar);
                 let ty_const =
                     ty::Const::new(tcx, ty::ConstKind::Value(ty::Value { ty: fused_ty, valtree }));
                 let value = Const::Ty(fused_ty, ty_const);
@@ -271,20 +278,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 });
             };
 
-            let x4 = (0..usize::MAX).take_while(|i| i * 4 + 1 < leaves.len());
-            let x3 = (0..usize::MAX).take_while(|i| i * 3 + 1 < leaves.len());
-            let x2 = (0..usize::MAX).take_while(|i| i * 2 + 1 < leaves.len());
+            let indices = |group_size, skip| {
+                (skip..usize::MAX)
+                    .take_while(move |i| i * group_size + (group_size - 1) < leaves.len())
+            };
 
-            for i in x4 {
-                fuse_group(i * 4, 4);
-            }
-
-            for i in x3 {
-                fuse_group(i * 3, 3);
-            }
-
-            for i in x2 {
-                fuse_group(i * 2, 2);
+            let mut skip = 0;
+            for i in (2..=4).rev() {
+                for idx in indices(i, skip) {
+                    fuse_group(idx * i, i);
+                    skip += i;
+                }
             }
         }
 
