@@ -12,6 +12,10 @@ pub use crate::marker::{Copy, Send, Sized, Sync, Unpin};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use crate::ops::{Drop, Fn, FnMut, FnOnce};
+#[cfg_attr(bootstrap, unstable(feature = "async_closure", issue = "62290"))]
+#[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "1.85.0"))]
+#[doc(no_inline)]
+pub use crate::ops::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 
 // Re-exported functions
 #[stable(feature = "core_prelude", since = "1.4.0")]
