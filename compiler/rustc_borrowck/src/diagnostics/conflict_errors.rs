@@ -289,8 +289,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 None => "value".to_owned(),
             };
             if needs_note {
-                let mut path = None;
-                let ty = self.infcx.tcx.short_ty_string(ty, &mut path);
+                let ty = self.infcx.tcx.short_string(ty, err.long_ty_path());
                 if let Some(local) = place.as_local() {
                     let span = self.body.local_decls[local].source_info.span;
                     err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
@@ -306,11 +305,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         place: &note_msg,
                     });
                 };
-                if let Some(path) = path {
-                    err.subdiagnostic(crate::session_diagnostics::LongTypePath {
-                        path: path.display().to_string(),
-                    });
-                }
             }
 
             if let UseSpans::FnSelfUse {
