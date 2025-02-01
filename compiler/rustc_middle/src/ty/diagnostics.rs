@@ -5,7 +5,7 @@ use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, IntoDiagArg, into_diag_arg_using_display, pluralize,
+    Applicability, Diag, DiagArgValue, IntoDiagArg, into_diag_arg_using_display, listify, pluralize,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -362,11 +362,8 @@ pub fn suggest_constraining_type_params<'a>(
             let n = trait_names.len();
             let stable = if all_stable { "" } else { "unstable " };
             let trait_ = if all_known { format!("trait{}", pluralize!(n)) } else { String::new() };
-            format!("{stable}{trait_}{}", match &trait_names[..] {
-                [t] => format!(" {t}"),
-                [ts @ .., last] => format!(" {} and {last}", ts.join(", ")),
-                [] => return false,
-            },)
+            let Some(trait_names) = listify(&trait_names, |n| n.to_string()) else { return false };
+            format!("{stable}{trait_} {trait_names}")
         } else {
             // We're more explicit when there's a mix of stable and unstable traits.
             let mut trait_names = constraints
@@ -378,10 +375,9 @@ pub fn suggest_constraining_type_params<'a>(
                 .collect::<Vec<_>>();
             trait_names.sort();
             trait_names.dedup();
-            match &trait_names[..] {
-                [t] => t.to_string(),
-                [ts @ .., last] => format!("{} and {last}", ts.join(", ")),
-                [] => return false,
+            match listify(&trait_names, |t| t.to_string()) {
+                Some(names) => names,
+                None => return false,
             }
         };
         let constraint = constraint.join(" + ");
