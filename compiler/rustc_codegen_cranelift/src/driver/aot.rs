@@ -692,7 +692,7 @@ pub(crate) fn run_aot(
 
     if tcx.dep_graph.is_fully_enabled() {
         for cgu in cgus {
-            tcx.ensure().codegen_unit(cgu.name());
+            tcx.ensure_ok().codegen_unit(cgu.name());
         }
     }
 

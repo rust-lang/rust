@@ -317,7 +317,7 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         if let Some(pp_mode) = sess.opts.pretty {
             if pp_mode.needs_ast_map() {
                 create_and_enter_global_ctxt(compiler, krate, |tcx| {
-                    tcx.ensure().early_lint_checks(());
+                    tcx.ensure_ok().early_lint_checks(());
                     pretty::print(sess, pp_mode, pretty::PrintExtra::NeedsAstMap { tcx });
                     passes::write_dep_info(tcx);
                 });
@@ -365,7 +365,7 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
                 return early_exit();
             }
 
-            tcx.ensure().analysis(());
+            tcx.ensure_ok().analysis(());
 
             if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
                 return early_exit();

@@ -292,16 +292,16 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
             match param.kind {
                 hir::GenericParamKind::Lifetime { .. } => {}
                 hir::GenericParamKind::Type { default: Some(_), .. } => {
-                    self.tcx.ensure().type_of(param.def_id);
+                    self.tcx.ensure_ok().type_of(param.def_id);
                 }
                 hir::GenericParamKind::Type { .. } => {}
                 hir::GenericParamKind::Const { default, .. } => {
-                    self.tcx.ensure().type_of(param.def_id);
+                    self.tcx.ensure_ok().type_of(param.def_id);
                     if let Some(default) = default {
                         // need to store default and type of default
-                        self.tcx.ensure().const_param_default(param.def_id);
+                        self.tcx.ensure_ok().const_param_default(param.def_id);
                         if let hir::ConstArgKind::Anon(ac) = default.kind {
-                            self.tcx.ensure().type_of(ac.def_id);
+                            self.tcx.ensure_ok().type_of(ac.def_id);
                         }
                     }
                 }
@@ -312,8 +312,8 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Closure(closure) = expr.kind {
-            self.tcx.ensure().generics_of(closure.def_id);
-            self.tcx.ensure().codegen_fn_attrs(closure.def_id);
+            self.tcx.ensure_ok().generics_of(closure.def_id);
+            self.tcx.ensure_ok().codegen_fn_attrs(closure.def_id);
             // We do not call `type_of` for closures here as that
             // depends on typecheck and would therefore hide
             // any further errors in case one typeck fails.
@@ -325,15 +325,15 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     /// `check_item_type` ensures that it's called instead.
     fn visit_opaque_ty(&mut self, opaque: &'tcx hir::OpaqueTy<'tcx>) {
         let def_id = opaque.def_id;
-        self.tcx.ensure().generics_of(def_id);
-        self.tcx.ensure().predicates_of(def_id);
-        self.tcx.ensure().explicit_item_bounds(def_id);
-        self.tcx.ensure().explicit_item_self_bounds(def_id);
-        self.tcx.ensure().item_bounds(def_id);
-        self.tcx.ensure().item_self_bounds(def_id);
+        self.tcx.ensure_ok().generics_of(def_id);
+        self.tcx.ensure_ok().predicates_of(def_id);
+        self.tcx.ensure_ok().explicit_item_bounds(def_id);
+        self.tcx.ensure_ok().explicit_item_self_bounds(def_id);
+        self.tcx.ensure_ok().item_bounds(def_id);
+        self.tcx.ensure_ok().item_self_bounds(def_id);
         if self.tcx.is_conditionally_const(def_id) {
-            self.tcx.ensure().explicit_implied_const_bounds(def_id);
-            self.tcx.ensure().const_conditions(def_id);
+            self.tcx.ensure_ok().explicit_implied_const_bounds(def_id);
+            self.tcx.ensure_ok().const_conditions(def_id);
         }
         intravisit::walk_opaque_ty(self, opaque);
     }
@@ -683,20 +683,20 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         hir::ItemKind::ForeignMod { items, .. } => {
             for item in *items {
                 let item = tcx.hir().foreign_item(item.id);
-                tcx.ensure().generics_of(item.owner_id);
-                tcx.ensure().type_of(item.owner_id);
-                tcx.ensure().predicates_of(item.owner_id);
+                tcx.ensure_ok().generics_of(item.owner_id);
+                tcx.ensure_ok().type_of(item.owner_id);
+                tcx.ensure_ok().predicates_of(item.owner_id);
                 if tcx.is_conditionally_const(def_id) {
-                    tcx.ensure().explicit_implied_const_bounds(def_id);
-                    tcx.ensure().const_conditions(def_id);
+                    tcx.ensure_ok().explicit_implied_const_bounds(def_id);
+                    tcx.ensure_ok().const_conditions(def_id);
                 }
                 match item.kind {
                     hir::ForeignItemKind::Fn(..) => {
-                        tcx.ensure().codegen_fn_attrs(item.owner_id);
-                        tcx.ensure().fn_sig(item.owner_id)
+                        tcx.ensure_ok().codegen_fn_attrs(item.owner_id);
+                        tcx.ensure_ok().fn_sig(item.owner_id)
                     }
                     hir::ForeignItemKind::Static(..) => {
-                        tcx.ensure().codegen_fn_attrs(item.owner_id);
+                        tcx.ensure_ok().codegen_fn_attrs(item.owner_id);
                         let mut visitor = HirPlaceholderCollector::default();
                         visitor.visit_foreign_item(item);
                         placeholder_type_error(
@@ -713,40 +713,40 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             }
         }
         hir::ItemKind::Enum(..) => {
-            tcx.ensure().generics_of(def_id);
-            tcx.ensure().type_of(def_id);
-            tcx.ensure().predicates_of(def_id);
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().type_of(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
             lower_enum_variant_types(tcx, def_id.to_def_id());
         }
         hir::ItemKind::Impl { .. } => {
-            tcx.ensure().generics_of(def_id);
-            tcx.ensure().type_of(def_id);
-            tcx.ensure().impl_trait_header(def_id);
-            tcx.ensure().predicates_of(def_id);
-            tcx.ensure().associated_items(def_id);
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().type_of(def_id);
+            tcx.ensure_ok().impl_trait_header(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
+            tcx.ensure_ok().associated_items(def_id);
         }
         hir::ItemKind::Trait(..) => {
-            tcx.ensure().generics_of(def_id);
-            tcx.ensure().trait_def(def_id);
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().trait_def(def_id);
             tcx.at(it.span).explicit_super_predicates_of(def_id);
-            tcx.ensure().predicates_of(def_id);
-            tcx.ensure().associated_items(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
+            tcx.ensure_ok().associated_items(def_id);
         }
         hir::ItemKind::TraitAlias(..) => {
-            tcx.ensure().generics_of(def_id);
+            tcx.ensure_ok().generics_of(def_id);
             tcx.at(it.span).explicit_implied_predicates_of(def_id);
             tcx.at(it.span).explicit_super_predicates_of(def_id);
-            tcx.ensure().predicates_of(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
         }
         hir::ItemKind::Struct(struct_def, _) | hir::ItemKind::Union(struct_def, _) => {
-            tcx.ensure().generics_of(def_id);
-            tcx.ensure().type_of(def_id);
-            tcx.ensure().predicates_of(def_id);
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().type_of(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
 
             for f in struct_def.fields() {
-                tcx.ensure().generics_of(f.def_id);
-                tcx.ensure().type_of(f.def_id);
-                tcx.ensure().predicates_of(f.def_id);
+                tcx.ensure_ok().generics_of(f.def_id);
+                tcx.ensure_ok().type_of(f.def_id);
+                tcx.ensure_ok().predicates_of(f.def_id);
             }
 
             if let Some(ctor_def_id) = struct_def.ctor_def_id() {
@@ -755,15 +755,15 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         }
 
         hir::ItemKind::TyAlias(..) => {
-            tcx.ensure().generics_of(def_id);
-            tcx.ensure().type_of(def_id);
-            tcx.ensure().predicates_of(def_id);
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().type_of(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
         }
 
         hir::ItemKind::Static(ty, ..) | hir::ItemKind::Const(ty, ..) => {
-            tcx.ensure().generics_of(def_id);
-            tcx.ensure().type_of(def_id);
-            tcx.ensure().predicates_of(def_id);
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().type_of(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
             if !ty.is_suggestable_infer_ty() {
                 let mut visitor = HirPlaceholderCollector::default();
                 visitor.visit_item(it);
@@ -779,11 +779,11 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         }
 
         hir::ItemKind::Fn { .. } => {
-            tcx.ensure().generics_of(def_id);
-            tcx.ensure().type_of(def_id);
-            tcx.ensure().predicates_of(def_id);
-            tcx.ensure().fn_sig(def_id);
-            tcx.ensure().codegen_fn_attrs(def_id);
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().type_of(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
+            tcx.ensure_ok().fn_sig(def_id);
+            tcx.ensure_ok().codegen_fn_attrs(def_id);
         }
     }
 }
@@ -791,18 +791,18 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
 fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
     let trait_item = tcx.hir().trait_item(trait_item_id);
     let def_id = trait_item_id.owner_id;
-    tcx.ensure().generics_of(def_id);
+    tcx.ensure_ok().generics_of(def_id);
     let icx = ItemCtxt::new(tcx, def_id.def_id);
 
     match trait_item.kind {
         hir::TraitItemKind::Fn(..) => {
-            tcx.ensure().codegen_fn_attrs(def_id);
-            tcx.ensure().type_of(def_id);
-            tcx.ensure().fn_sig(def_id);
+            tcx.ensure_ok().codegen_fn_attrs(def_id);
+            tcx.ensure_ok().type_of(def_id);
+            tcx.ensure_ok().fn_sig(def_id);
         }
 
         hir::TraitItemKind::Const(ty, body_id) => {
-            tcx.ensure().type_of(def_id);
+            tcx.ensure_ok().type_of(def_id);
             if !tcx.dcx().has_stashed_diagnostic(ty.span, StashKey::ItemNoType)
                 && !(ty.is_suggestable_infer_ty() && body_id.is_some())
             {
@@ -821,9 +821,9 @@ fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
         }
 
         hir::TraitItemKind::Type(_, Some(_)) => {
-            tcx.ensure().item_bounds(def_id);
-            tcx.ensure().item_self_bounds(def_id);
-            tcx.ensure().type_of(def_id);
+            tcx.ensure_ok().item_bounds(def_id);
+            tcx.ensure_ok().item_self_bounds(def_id);
+            tcx.ensure_ok().type_of(def_id);
             // Account for `type T = _;`.
             let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_trait_item(trait_item);
@@ -838,8 +838,8 @@ fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
         }
 
         hir::TraitItemKind::Type(_, None) => {
-            tcx.ensure().item_bounds(def_id);
-            tcx.ensure().item_self_bounds(def_id);
+            tcx.ensure_ok().item_bounds(def_id);
+            tcx.ensure_ok().item_self_bounds(def_id);
             // #74612: Visit and try to find bad placeholders
             // even if there is no concrete type.
             let mut visitor = HirPlaceholderCollector::default();
@@ -856,20 +856,20 @@ fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
         }
     };
 
-    tcx.ensure().predicates_of(def_id);
+    tcx.ensure_ok().predicates_of(def_id);
 }
 
 fn lower_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
     let def_id = impl_item_id.owner_id;
-    tcx.ensure().generics_of(def_id);
-    tcx.ensure().type_of(def_id);
-    tcx.ensure().predicates_of(def_id);
+    tcx.ensure_ok().generics_of(def_id);
+    tcx.ensure_ok().type_of(def_id);
+    tcx.ensure_ok().predicates_of(def_id);
     let impl_item = tcx.hir().impl_item(impl_item_id);
     let icx = ItemCtxt::new(tcx, def_id.def_id);
     match impl_item.kind {
         hir::ImplItemKind::Fn(..) => {
-            tcx.ensure().codegen_fn_attrs(def_id);
-            tcx.ensure().fn_sig(def_id);
+            tcx.ensure_ok().codegen_fn_attrs(def_id);
+            tcx.ensure_ok().fn_sig(def_id);
         }
         hir::ImplItemKind::Type(_) => {
             // Account for `type T = _;`
@@ -904,9 +904,9 @@ fn lower_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
 }
 
 fn lower_variant_ctor(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    tcx.ensure().generics_of(def_id);
-    tcx.ensure().type_of(def_id);
-    tcx.ensure().predicates_of(def_id);
+    tcx.ensure_ok().generics_of(def_id);
+    tcx.ensure_ok().type_of(def_id);
+    tcx.ensure_ok().predicates_of(def_id);
 }
 
 fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
@@ -937,9 +937,9 @@ fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
         );
 
         for f in &variant.fields {
-            tcx.ensure().generics_of(f.did);
-            tcx.ensure().type_of(f.did);
-            tcx.ensure().predicates_of(f.did);
+            tcx.ensure_ok().generics_of(f.did);
+            tcx.ensure_ok().type_of(f.did);
+            tcx.ensure_ok().predicates_of(f.did);
         }
 
         // Lower the ctor, if any. This also registers the variant as an item.
