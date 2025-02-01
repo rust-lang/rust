@@ -501,7 +501,7 @@ pub fn span_of_fragments(fragments: &[DocFragment]) -> Option<Span> {
 /// `markdown` is typically the entire documentation for an item,
 /// after combining fragments.
 ///
-/// This method will return `Some` only if:
+/// This method will return `Some` only if one of the following is true:
 ///
 /// - The doc is made entirely from sugared doc comments, which cannot contain escapes
 /// - The doc is entirely from a single doc fragment, with a string literal, exactly equal
