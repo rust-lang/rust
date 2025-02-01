@@ -10,7 +10,7 @@ use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::{fmt, time};
 
-use rand::distributions::{Distribution, Standard};
+use rand::distr::{Distribution, StandardUniform};
 use rayon::prelude::*;
 use time::{Duration, Instant};
 use traits::{Float, Generator, Int};
@@ -132,7 +132,7 @@ fn register_float<F: Float>(tests: &mut Vec<TestInfo>, cfg: &Config)
 where
     RangeInclusive<F::Int>: Iterator<Item = F::Int>,
     <F::Int as TryFrom<u128>>::Error: std::fmt::Debug,
-    Standard: Distribution<<F as traits::Float>::Int>,
+    StandardUniform: Distribution<<F as traits::Float>::Int>,
 {
     if F::BITS <= MAX_BITS_FOR_EXHAUUSTIVE {
         // Only run exhaustive tests if there is a chance of completion.
