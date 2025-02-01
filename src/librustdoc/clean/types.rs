@@ -318,7 +318,7 @@ pub(crate) struct Item {
 // lots of wasted space in the unused parts of a `Vec<Item>`. With the split,
 // `Item` is just 8 bytes, and the wasted space is avoided, at the cost of an
 // extra allocation per item. This is a performance win.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct ItemInner {
     /// The name of this item.
     /// Optional because not every item has a name, e.g. impls.
@@ -630,6 +630,11 @@ impl Item {
     }
 
     pub(crate) fn stable_since(&self, tcx: TyCtxt<'_>) -> Option<StableSince> {
+        if let ItemKind::MacroItem(_m) = &self.inner.kind {
+            if self.inner.name.as_ref().map(|x| x.as_str()) == Some("option_env") {
+                dbg!(&self.inner);
+            }
+        }
         self.stability(tcx).and_then(|stability| stability.stable_since())
     }
 
