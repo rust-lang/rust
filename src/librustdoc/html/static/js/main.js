@@ -103,7 +103,11 @@ const ALTERNATIVE_DISPLAY_ID = "alternative-display";
 const NOT_DISPLAYED_ID = "not-displayed";
 const HELP_BUTTON_ID = "help-button";
 
+/**
+ * @returns {HTMLElement}
+ */
 function getSettingsButton() {
+    // @ts-expect-error
     return document.getElementById(SETTINGS_BUTTON_ID);
 }
 
@@ -236,7 +240,6 @@ function preLoadCss(cssUrl) {
     }
 
     if (getSettingsButton()) {
-        // @ts-expect-error
         getSettingsButton().onclick = event => {
             if (event.ctrlKey || event.altKey || event.metaKey) {
                 return;
@@ -470,7 +473,6 @@ function preLoadCss(cssUrl) {
                     }
                     return onEachLazy(implElem.parentElement.parentElement.querySelectorAll(
                         `[id^="${assocId}"]`),
-                        // @ts-expect-error
                         item => {
                             const numbered = /^(.+?)-([0-9]+)$/.exec(item.id);
                             if (item.id === assocId || (numbered && numbered[1] === assocId)) {
@@ -687,7 +689,6 @@ function preLoadCss(cssUrl) {
             //
             // By the way, this is only used by and useful for traits implemented automatically
             // (like "Send" and "Sync").
-            // @ts-expect-error
             onEachLazy(synthetic_implementors.getElementsByClassName("impl"), el => {
                 const aliases = el.getAttribute("data-aliases");
                 if (!aliases) {
@@ -740,7 +741,6 @@ function preLoadCss(cssUrl) {
                 code.innerHTML = struct[TEXT_IDX];
                 addClass(code, "code-header");
 
-                // @ts-expect-error
                 onEachLazy(code.getElementsByTagName("a"), elem => {
                     const href = elem.getAttribute("href");
 
@@ -886,7 +886,6 @@ function preLoadCss(cssUrl) {
             const template = document.createElement("template");
             template.innerHTML = text;
 
-            // @ts-expect-error
             onEachLazy(template.content.querySelectorAll("a"), elem => {
                 const href = elem.getAttribute("href");
 
@@ -894,7 +893,6 @@ function preLoadCss(cssUrl) {
                     elem.setAttribute("href", window.rootPath + href);
                 }
             });
-            // @ts-expect-error
             onEachLazy(template.content.querySelectorAll("[id]"), el => {
                 let i = 0;
                 if (idMap.has(el.id)) {
@@ -912,7 +910,6 @@ function preLoadCss(cssUrl) {
                     const oldHref = `#${el.id}`;
                     const newHref = `#${el.id}-${i}`;
                     el.id = `${el.id}-${i}`;
-                    // @ts-expect-error
                     onEachLazy(template.content.querySelectorAll("a[href]"), link => {
                         if (link.getAttribute("href") === oldHref) {
                             link.href = newHref;
@@ -933,7 +930,6 @@ function preLoadCss(cssUrl) {
                 // @ts-expect-error
                 sidebarTraitList.append(li);
             } else {
-                // @ts-expect-error
                 onEachLazy(templateAssocItems, item => {
                     let block = hasClass(item, "associatedtype") ? associatedTypes : (
                         hasClass(item, "associatedconstant") ? associatedConstants : (
@@ -1040,7 +1036,6 @@ function preLoadCss(cssUrl) {
     function expandAllDocs() {
         const innerToggle = document.getElementById(toggleAllDocsId);
         removeClass(innerToggle, "will-expand");
-        // @ts-expect-error
         onEachLazy(document.getElementsByClassName("toggle"), e => {
             if (!hasClass(e, "type-contents-toggle") && !hasClass(e, "more-examples-toggle")) {
                 e.open = true;
@@ -1053,7 +1048,6 @@ function preLoadCss(cssUrl) {
     function collapseAllDocs() {
         const innerToggle = document.getElementById(toggleAllDocsId);
         addClass(innerToggle, "will-expand");
-        // @ts-expect-error
         onEachLazy(document.getElementsByClassName("toggle"), e => {
             if (e.parentNode.id !== "implementations-list" ||
                 (!hasClass(e, "implementors-toggle") &&
@@ -1092,7 +1086,6 @@ function preLoadCss(cssUrl) {
         function setImplementorsTogglesOpen(id, open) {
             const list = document.getElementById(id);
             if (list !== null) {
-                // @ts-expect-error
                 onEachLazy(list.getElementsByClassName("implementors-toggle"), e => {
                     e.open = open;
                 });
@@ -1104,7 +1097,6 @@ function preLoadCss(cssUrl) {
             setImplementorsTogglesOpen("blanket-implementations-list", false);
         }
 
-        // @ts-expect-error
         onEachLazy(document.getElementsByClassName("toggle"), e => {
             if (!hideLargeItemContents && hasClass(e, "type-contents-toggle")) {
                 e.open = true;
@@ -1124,7 +1116,6 @@ function preLoadCss(cssUrl) {
         }
         onEachLazy(document.querySelectorAll(
             ":not(.scraped-example) > .example-wrap > pre:not(.example-line-numbers)",
-        // @ts-expect-error
         ), x => {
             const parent = x.parentNode;
             const line_numbers = parent.querySelectorAll(".example-line-numbers");
@@ -1145,7 +1136,6 @@ function preLoadCss(cssUrl) {
 
     // @ts-expect-error
     window.rustdoc_remove_line_numbers_from_examples = () => {
-        // @ts-expect-error
         onEachLazy(document.querySelectorAll(".example-wrap > .example-line-numbers"), x => {
             x.parentNode.removeChild(x);
         });
@@ -1193,7 +1183,6 @@ function preLoadCss(cssUrl) {
         mainElem.addEventListener("click", hideSidebar);
     }
 
-    // @ts-expect-error
     onEachLazy(document.querySelectorAll("a[href^='#']"), el => {
         // For clicks on internal links (<A> tags with a hash property), we expand the section we're
         // jumping to *before* jumping there. We can't do this in onHashChange, because it changes
@@ -1204,7 +1193,6 @@ function preLoadCss(cssUrl) {
         });
     });
 
-    // @ts-expect-error
     onEachLazy(document.querySelectorAll(".toggle > summary:not(.hideme)"), el => {
         // @ts-expect-error
         el.addEventListener("click", e => {
@@ -1422,7 +1410,6 @@ function preLoadCss(cssUrl) {
         }
     }
 
-    // @ts-expect-error
     onEachLazy(document.getElementsByClassName("tooltip"), e => {
         e.onclick = () => {
             e.TOOLTIP_FORCE_VISIBLE = e.TOOLTIP_FORCE_VISIBLE ? false : true;
@@ -1522,9 +1509,7 @@ function preLoadCss(cssUrl) {
         if (!getHelpButton().contains(document.activeElement) &&
             // @ts-expect-error
             !getHelpButton().contains(event.relatedTarget) &&
-            // @ts-expect-error
             !getSettingsButton().contains(document.activeElement) &&
-            // @ts-expect-error
             !getSettingsButton().contains(event.relatedTarget)
         ) {
             // @ts-expect-error
@@ -1639,7 +1624,6 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
      */
     // @ts-expect-error
     window.hidePopoverMenus = () => {
-        // @ts-expect-error
         onEachLazy(document.querySelectorAll("rustdoc-toolbar .popover"), elem => {
             elem.style.display = "none";
         });
@@ -2159,7 +2143,6 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         buttons.classList.toggle("keep-visible");
     }
 
-    // @ts-expect-error
     onEachLazy(document.querySelectorAll(".docblock .example-wrap"), elem => {
         elem.addEventListener("mouseover", addCopyButton);
         elem.addEventListener("click", showHideCodeExampleButtons);

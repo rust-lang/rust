@@ -85,7 +85,7 @@ function removeClass(elem, className) {
 /**
  * Run a callback for every element of an Array.
  * @param {Array<?>}                       arr  - The array to iterate over
- * @param {function(?): boolean|undefined} func - The callback
+ * @param {function(?): boolean|void} func - The callback
  */
 function onEach(arr, func) {
     for (const elem of arr) {
@@ -103,7 +103,7 @@ function onEach(arr, func) {
  * https://developer.mozilla.org/en-US/docs/Web/API/HTMLCollection
  * https://developer.mozilla.org/en-US/docs/Web/API/NodeList
  * @param {NodeList|HTMLCollection} lazyArray  - An array to iterate over
- * @param {function(?): boolean}    func       - The callback
+ * @param {function(?): boolean|void}    func       - The callback
  */
 // eslint-disable-next-line no-unused-vars
 function onEachLazy(lazyArray, func) {

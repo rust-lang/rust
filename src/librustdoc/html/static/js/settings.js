@@ -11,6 +11,10 @@
 (function() {
     const isSettingsPage = window.location.pathname.endsWith("/settings.html");
 
+    /**
+     * @param {string} settingName
+     * @param {bool} value
+     */
     function changeSetting(settingName, value) {
         if (settingName === "theme") {
             const useSystem = value === "system preference" ? "true" : "false";
@@ -171,7 +175,7 @@
     /**
      * This function builds the "settings page" and returns the generated HTML element.
      *
-     * @return {HTMLElement}
+     * @returns {HTMLElement}
      */
     function buildSettingsPage() {
         const theme_names = getVar("themes").split(",").filter(t => t);
@@ -293,7 +297,8 @@
     if (!isSettingsPage) {
         // We replace the existing "onclick" callback.
         const settingsButton = getSettingsButton();
-        const settingsMenu = document.getElementById("settings");
+        // tell typescript this can never be null
+        const settingsMenu = /** @type {HTMLElement} */ (document.getElementById("settings"));
         settingsButton.onclick = event => {
             if (settingsMenu.contains(event.target)) {
                 return;
