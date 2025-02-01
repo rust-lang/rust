@@ -28,7 +28,7 @@ fn main() {
     let string = String::new();
     std::mem::forget(string);
     //~^ ERROR: usage of `mem::forget` on type with `Drop` fields
-    //~| NOTE: argument has type `std::string::String`
+    //~| NOTE: argument has type `std::string::string::String`
 
     std::mem::forget(7);
 }

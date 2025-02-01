@@ -40,7 +40,7 @@ where
 fn use_op(s: String) -> String
 where
     String: ::std::ops::Neg<Output = String>,
-    //~^ ERROR: trait bound std::string::String: std::ops::Neg does not depend on any type
+    //~^ ERROR: trait bound std::string::string::String: std::ops::Neg does not depend on any type
 {
     -s
 }
