@@ -3155,17 +3155,17 @@ declare_lint! {
     /// ```
     ///
     /// ```rust,ignore (needs command line option)
-    /// #[cfg(widnows)]
+    /// #[cfg(windows)]
     /// fn foo() {}
     /// ```
     ///
     /// This will produce:
     ///
     /// ```text
-    /// warning: unexpected `cfg` condition name: `widnows`
+    /// warning: unexpected `cfg` condition name: `windows`
     ///  --> lint_example.rs:1:7
     ///   |
-    /// 1 | #[cfg(widnows)]
+    /// 1 | #[cfg(windows)]
     ///   |       ^^^^^^^
     ///   |
     ///   = note: `#[warn(unexpected_cfgs)]` on by default
