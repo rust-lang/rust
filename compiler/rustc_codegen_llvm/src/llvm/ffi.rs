@@ -5,17 +5,19 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ptr;
 
-use libc::{c_char, c_int, c_uint, c_ulonglong, c_void, size_t};
+use bitflags::bitflags;
+use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, c_void, size_t};
 use rustc_macros::TryFromU32;
 use rustc_target::spec::SymbolVisibility;
 
 use super::RustString;
 use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
-    DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DILocation, DINameSpace,
-    DISPFlags, DIScope, DISubprogram, DISubrange, DITemplateTypeParameter, DIType, DIVariable,
-    DebugEmissionKind, DebugNameTableKind,
+    DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DILocation, DISPFlags, DIScope,
+    DISubprogram, DISubrange, DITemplateTypeParameter, DIType, DIVariable, DebugEmissionKind,
+    DebugNameTableKind,
 };
+use crate::llvm;
 
 /// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
 /// which has a different ABI from Rust or C++ `bool`.
@@ -952,7 +954,6 @@ pub mod debuginfo {
     }
 }
 
-use bitflags::bitflags;
 // These values **must** match with LLVMRustAllocKindFlags
 bitflags! {
     #[repr(transparent)]
@@ -1717,6 +1718,14 @@ unsafe extern "C" {
     pub(crate) fn LLVMDisposeDIBuilder<'ll>(Builder: ptr::NonNull<DIBuilder<'ll>>);
 
     pub(crate) fn LLVMDIBuilderFinalize<'ll>(Builder: &DIBuilder<'ll>);
+
+    pub(crate) fn LLVMDIBuilderCreateNameSpace<'ll>(
+        Builder: &DIBuilder<'ll>,
+        ParentScope: Option<&'ll Metadata>,
+        Name: *const c_uchar,
+        NameLen: size_t,
+        ExportSymbols: llvm::Bool,
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2285,14 +2294,6 @@ unsafe extern "C" {
         NameLen: size_t,
         Ty: &'a DIType,
     ) -> &'a DITemplateTypeParameter;
-
-    pub fn LLVMRustDIBuilderCreateNameSpace<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: Option<&'a DIScope>,
-        Name: *const c_char,
-        NameLen: size_t,
-        ExportSymbols: bool,
-    ) -> &'a DINameSpace;
 
     pub fn LLVMRustDICompositeTypeReplaceArrays<'a>(
         Builder: &DIBuilder<'a>,

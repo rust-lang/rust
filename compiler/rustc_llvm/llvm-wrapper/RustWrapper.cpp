@@ -1321,14 +1321,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateTemplateTypeParameter(
       unwrapDI<DIType>(Ty), IsDefault));
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateNameSpace(LLVMDIBuilderRef Builder,
-                                 LLVMMetadataRef Scope, const char *Name,
-                                 size_t NameLen, bool ExportSymbols) {
-  return wrap(unwrap(Builder)->createNameSpace(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen), ExportSymbols));
-}
-
 extern "C" void LLVMRustDICompositeTypeReplaceArrays(
     LLVMDIBuilderRef Builder, LLVMMetadataRef CompositeTy,
     LLVMMetadataRef Elements, LLVMMetadataRef Params) {
