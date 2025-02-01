@@ -1550,7 +1550,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
     fn mkstemp(&mut self, template_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        use rand::seq::SliceRandom;
+        use rand::seq::IndexedRandom;
 
         // POSIX defines the template string.
         const TEMPFILE_TEMPLATE_STR: &str = "XXXXXX";

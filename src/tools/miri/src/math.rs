@@ -1,5 +1,4 @@
 use rand::Rng as _;
-use rand::distributions::Distribution as _;
 use rustc_apfloat::Float as _;
 use rustc_apfloat::ieee::IeeeFloat;
 
@@ -18,13 +17,12 @@ pub(crate) fn apply_random_float_error<F: rustc_apfloat::Float>(
     // (When read as binary, the position of the first `1` determines the exponent,
     // and the remaining bits fill the mantissa. `PREC` is one plus the size of the mantissa,
     // so this all works out.)
-    let dist = rand::distributions::Uniform::new(0, 1 << F::PRECISION);
-    let r = F::from_u128(dist.sample(rng)).value;
+    let r = F::from_u128(rng.random_range(0..(1 << F::PRECISION))).value;
     // Multiply this with 2^(scale - PREC). The result is between 0 and
     // 2^PREC * 2^(scale - PREC) = 2^scale.
     let err = r.scalbn(err_scale.strict_sub(F::PRECISION.try_into().unwrap()));
     // give it a random sign
-    let err = if rng.gen::<bool>() { -err } else { err };
+    let err = if rng.random() { -err } else { err };
     // multiple the value with (1+err)
     (val * (F::from_u128(1).value + err).value).value
 }
