@@ -557,7 +557,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                     }
                 }
             }
-            hir::ExprKind::Lit(lit) => lint_literal(cx, self, e, lit),
+            hir::ExprKind::Lit(lit) => lint_literal(cx, self, e.hir_id, e.span, lit),
             hir::ExprKind::Call(path, [l, r])
                 if let ExprKind::Path(ref qpath) = path.kind
                     && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
