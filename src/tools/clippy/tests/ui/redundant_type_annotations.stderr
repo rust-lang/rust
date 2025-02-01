@@ -20,12 +20,6 @@ LL |         let v: &Slice = self.return_a_ref_to_struct();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
-  --> tests/ui/redundant_type_annotations.rs:159:5
-   |
-LL |     let _return: String = return_a_string();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: redundant type annotation
   --> tests/ui/redundant_type_annotations.rs:162:5
    |
 LL |     let _return: Pie = return_a_struct();
@@ -44,12 +38,6 @@ LL |     let _return: u32 = return_an_int();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
-  --> tests/ui/redundant_type_annotations.rs:171:5
-   |
-LL |     let _return: String = String::new();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: redundant type annotation
   --> tests/ui/redundant_type_annotations.rs:174:5
    |
 LL |     let new_pie: Pie = Pie::new();
@@ -66,12 +54,6 @@ error: redundant type annotation
    |
 LL |     let _return: u32 = Pie::associated_return_an_int();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: redundant type annotation
-  --> tests/ui/redundant_type_annotations.rs:183:5
-   |
-LL |     let _return: String = Pie::associated_return_a_string();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
   --> tests/ui/redundant_type_annotations.rs:190:5
@@ -103,5 +85,5 @@ error: redundant type annotation
 LL |     let _var: bool = false;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 17 previous errors
+error: aborting due to 14 previous errors
 
