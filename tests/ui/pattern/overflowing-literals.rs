@@ -15,6 +15,7 @@ type TooBigSigned = pattern_type!(i8 is 200..);
 fn main() {
     match 5_u8 {
         500 => {}
+        //~^ ERROR literal out of range for `u8`
         _ => {}
     }
 }
