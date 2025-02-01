@@ -222,7 +222,7 @@ impl<'tcx> PrintExtra<'tcx> {
 
 pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
     if ppm.needs_analysis() {
-        ex.tcx().ensure().analysis(());
+        ex.tcx().ensure_ok().analysis(());
     }
 
     let (src, src_name) = get_source(sess);

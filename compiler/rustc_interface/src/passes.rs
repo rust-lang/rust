@@ -832,20 +832,20 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     sess.time("misc_checking_1", || {
         parallel!(
             {
-                sess.time("looking_for_entry_point", || tcx.ensure().entry_fn(()));
+                sess.time("looking_for_entry_point", || tcx.ensure_ok().entry_fn(()));
 
                 sess.time("looking_for_derive_registrar", || {
-                    tcx.ensure().proc_macro_decls_static(())
+                    tcx.ensure_ok().proc_macro_decls_static(())
                 });
 
                 CStore::from_tcx(tcx).report_unused_deps(tcx);
             },
             {
                 tcx.hir().par_for_each_module(|module| {
-                    tcx.ensure().check_mod_loops(module);
-                    tcx.ensure().check_mod_attrs(module);
-                    tcx.ensure().check_mod_naked_functions(module);
-                    tcx.ensure().check_mod_unstable_api_usage(module);
+                    tcx.ensure_ok().check_mod_loops(module);
+                    tcx.ensure_ok().check_mod_attrs(module);
+                    tcx.ensure_ok().check_mod_naked_functions(module);
+                    tcx.ensure_ok().check_mod_unstable_api_usage(module);
                 });
             },
             {
@@ -858,8 +858,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 // since they might not otherwise get called.
                 // This marks the corresponding crate-level attributes
                 // as used, and ensures that their values are valid.
-                tcx.ensure().limits(());
-                tcx.ensure().stability_index(());
+                tcx.ensure_ok().limits(());
+                tcx.ensure_ok().stability_index(());
             }
         );
     });
@@ -868,7 +868,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     sess.time("MIR_coroutine_by_move_body", || {
         tcx.hir().par_body_owners(|def_id| {
             if tcx.needs_coroutine_by_move_body_def_id(def_id.to_def_id()) {
-                tcx.ensure_with_value().coroutine_by_move_body_def_id(def_id);
+                tcx.ensure_done().coroutine_by_move_body_def_id(def_id);
             }
         });
     });
@@ -883,13 +883,13 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
         tcx.hir().par_body_owners(|def_id| {
             // Run unsafety check because it's responsible for stealing and
             // deallocating THIR.
-            tcx.ensure().check_unsafety(def_id);
-            tcx.ensure().mir_borrowck(def_id)
+            tcx.ensure_ok().check_unsafety(def_id);
+            tcx.ensure_ok().mir_borrowck(def_id)
         });
     });
     sess.time("MIR_effect_checking", || {
         tcx.hir().par_body_owners(|def_id| {
-            tcx.ensure().has_ffi_unwind_calls(def_id);
+            tcx.ensure_ok().has_ffi_unwind_calls(def_id);
 
             // If we need to codegen, ensure that we emit all errors from
             // `mir_drops_elaborated_and_const_checked` now, to avoid discovering
@@ -897,15 +897,15 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             if tcx.sess.opts.output_types.should_codegen()
                 || tcx.hir().body_const_context(def_id).is_some()
             {
-                tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
+                tcx.ensure_ok().mir_drops_elaborated_and_const_checked(def_id);
             }
         });
     });
     sess.time("coroutine_obligations", || {
         tcx.hir().par_body_owners(|def_id| {
             if tcx.is_coroutine(def_id.to_def_id()) {
-                tcx.ensure().mir_coroutine_witnesses(def_id);
-                tcx.ensure().check_coroutine_obligations(
+                tcx.ensure_ok().mir_coroutine_witnesses(def_id);
+                tcx.ensure_ok().check_coroutine_obligations(
                     tcx.typeck_root_def_id(def_id.to_def_id()).expect_local(),
                 );
             }
@@ -950,15 +950,16 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
     sess.time("misc_checking_3", || {
         parallel!(
             {
-                tcx.ensure().effective_visibilities(());
+                tcx.ensure_ok().effective_visibilities(());
 
                 parallel!(
                     {
-                        tcx.ensure().check_private_in_public(());
+                        tcx.ensure_ok().check_private_in_public(());
                     },
                     {
-                        tcx.hir()
-                            .par_for_each_module(|module| tcx.ensure().check_mod_deathness(module));
+                        tcx.hir().par_for_each_module(|module| {
+                            tcx.ensure_ok().check_mod_deathness(module)
+                        });
                     },
                     {
                         sess.time("lint_checking", || {
@@ -966,14 +967,14 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
                         });
                     },
                     {
-                        tcx.ensure().clashing_extern_declarations(());
+                        tcx.ensure_ok().clashing_extern_declarations(());
                     }
                 );
             },
             {
                 sess.time("privacy_checking_modules", || {
                     tcx.hir().par_for_each_module(|module| {
-                        tcx.ensure().check_mod_privacy(module);
+                        tcx.ensure_ok().check_mod_privacy(module);
                     });
                 });
             }
@@ -981,7 +982,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
 
         // This check has to be run after all lints are done processing. We don't
         // define a lint filter, as all lint checks should have finished at this point.
-        sess.time("check_lint_expectations", || tcx.ensure().check_expectations(None));
+        sess.time("check_lint_expectations", || tcx.ensure_ok().check_expectations(None));
 
         // This query is only invoked normally if a diagnostic is emitted that needs any
         // diagnostic item. If the crate compiles without checking any diagnostic items,
@@ -1006,7 +1007,7 @@ fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
                     )
                 }) =>
             {
-                tcx.ensure().trigger_delayed_bug(def_id);
+                tcx.ensure_ok().trigger_delayed_bug(def_id);
             }
 
             // Bare `#[rustc_error]`.

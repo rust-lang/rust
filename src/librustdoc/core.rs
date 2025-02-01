@@ -336,14 +336,14 @@ pub(crate) fn run_global_ctxt(
 
     // NOTE: These are copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
     let _ = tcx.sess.time("wf_checking", || {
-        tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
+        tcx.hir().try_par_for_each_module(|module| tcx.ensure_ok().check_mod_type_wf(module))
     });
 
     tcx.dcx().abort_if_errors();
 
     tcx.sess.time("missing_docs", || rustc_lint::check_crate(tcx));
     tcx.sess.time("check_mod_attrs", || {
-        tcx.hir().for_each_module(|module| tcx.ensure().check_mod_attrs(module))
+        tcx.hir().for_each_module(|module| tcx.ensure_ok().check_mod_attrs(module))
     });
     rustc_passes::stability::check_unused_or_stable_features(tcx);
 
