@@ -15,7 +15,7 @@ const SMALL_VALUES: RangeInclusive<i32> = {
 /// Large values only get tested around powers of two
 const LARGE_POWERS: Range<u32> = SMALL_MAX_POW2..128;
 
-/// We perturbe each large value around these ranges
+/// We perturb each large value around these ranges
 const LARGE_PERTURBATIONS: RangeInclusive<i128> = -256..=256;
 
 /// Test all integers up to `2 ^ MAX_POW2`
