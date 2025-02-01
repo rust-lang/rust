@@ -122,7 +122,6 @@ jobs:
           cd build_system
           cargo test
 
-
   # Summary job for the merge queue.
   # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
   success:
