@@ -118,11 +118,17 @@ struct QueryModifiers {
     /// Generate a `feed` method to set the query's value from another query.
     feedable: Option<Ident>,
 
-    /// Forward the result on ensure if the query gets recomputed, and
-    /// return `Ok(())` otherwise. Only applicable to queries returning
-    /// `Result<T, ErrorGuaranteed>`. The `T` is not returned from `ensure`
-    /// invocations.
-    ensure_forwards_result_if_red: Option<Ident>,
+    /// When this query is called via `tcx.ensure_ok()`, it returns
+    /// `Result<(), ErrorGuaranteed>` instead of `()`. If the query needs to
+    /// be executed, and that execution returns an error, the error result is
+    /// returned to the caller.
+    ///
+    /// If execution is skipped, a synthetic `Ok(())` is returned, on the
+    /// assumption that a query with all-green inputs must have succeeded.
+    ///
+    /// Can only be applied to queries with a return value of
+    /// `Result<_, ErrorGuaranteed>`.
+    return_result_from_ensure_ok: Option<Ident>,
 }
 
 fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
@@ -138,7 +144,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut depth_limit = None;
     let mut separate_provide_extern = None;
     let mut feedable = None;
-    let mut ensure_forwards_result_if_red = None;
+    let mut return_result_from_ensure_ok = None;
 
     while !input.is_empty() {
         let modifier: Ident = input.parse()?;
@@ -200,8 +206,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(separate_provide_extern = modifier);
         } else if modifier == "feedable" {
             try_insert!(feedable = modifier);
-        } else if modifier == "ensure_forwards_result_if_red" {
-            try_insert!(ensure_forwards_result_if_red = modifier);
+        } else if modifier == "return_result_from_ensure_ok" {
+            try_insert!(return_result_from_ensure_ok = modifier);
         } else {
             return Err(Error::new(modifier.span(), "unknown query modifier"));
         }
@@ -222,7 +228,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         depth_limit,
         separate_provide_extern,
         feedable,
-        ensure_forwards_result_if_red,
+        return_result_from_ensure_ok,
     })
 }
 
@@ -354,7 +360,7 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
             eval_always,
             depth_limit,
             separate_provide_extern,
-            ensure_forwards_result_if_red,
+            return_result_from_ensure_ok,
         );
 
         if modifiers.cache.is_some() {
