@@ -495,6 +495,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                         .iter()
                         .any(|constraint| constraint.ident.name == item.name)
                 })
+                .filter(|item| !item.is_impl_trait_in_trait())
                 .map(|item| self.tcx.item_ident(item.def_id).to_string())
                 .collect()
         } else {

@@ -158,12 +158,12 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Result<(), ErrorGuaranteed>
         let trait_ref = trait_header.trait_ref.instantiate_identity();
         let trait_def = tcx.trait_def(trait_ref.def_id);
 
-        res = res.and(check_impl(tcx, impl_def_id, trait_ref, trait_def));
-        res = res.and(check_object_overlap(tcx, impl_def_id, trait_ref));
-
-        res = res.and(unsafety::check_item(tcx, impl_def_id, trait_header, trait_def));
-        res = res.and(tcx.ensure().orphan_check_impl(impl_def_id));
-        res = res.and(builtin::check_trait(tcx, def_id, impl_def_id, trait_header));
+        res = res
+            .and(check_impl(tcx, impl_def_id, trait_ref, trait_def))
+            .and(check_object_overlap(tcx, impl_def_id, trait_ref))
+            .and(unsafety::check_item(tcx, impl_def_id, trait_header, trait_def))
+            .and(tcx.ensure().orphan_check_impl(impl_def_id))
+            .and(builtin::check_trait(tcx, def_id, impl_def_id, trait_header));
     }
 
     res
@@ -199,10 +199,9 @@ fn check_object_overlap<'tcx>(
 
         for component_def_id in component_def_ids {
             if !tcx.is_dyn_compatible(component_def_id) {
-                // FIXME(dyn_compat_renaming): Rename test and update comment.
                 // Without the 'dyn_compatible_for_dispatch' feature this is an error
                 // which will be reported by wfcheck. Ignore it here.
-                // This is tested by `coherence-impl-trait-for-trait-object-safe.rs`.
+                // This is tested by `coherence-impl-trait-for-trait-dyn-compatible.rs`.
                 // With the feature enabled, the trait is not implemented automatically,
                 // so this is valid.
             } else {

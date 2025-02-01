@@ -482,11 +482,10 @@ pub fn report_dyn_incompatibility<'tcx>(
     for (span, msg) in iter::zip(multi_span, messages) {
         note_span.push_span_label(span, msg);
     }
-    // FIXME(dyn_compat_renaming): Update the URL.
     err.span_note(
         note_span,
         "for a trait to be dyn compatible it needs to allow building a vtable\n\
-        for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>",
+        for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>",
     );
 
     // Only provide the help if its a local trait, otherwise it's not actionable.

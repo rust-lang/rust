@@ -1,6 +1,7 @@
 use std::fmt;
 use std::hash::Hash;
 
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_attr_parsing::InlineAttr;
 use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -246,6 +247,7 @@ impl ToStableHashKey<StableHashingContext<'_>> for MonoItem<'_> {
 pub struct MonoItemPartitions<'tcx> {
     pub codegen_units: &'tcx [CodegenUnit<'tcx>],
     pub all_mono_items: &'tcx DefIdSet,
+    pub autodiff_items: &'tcx [AutoDiffItem],
 }
 
 #[derive(Debug, HashStable)]

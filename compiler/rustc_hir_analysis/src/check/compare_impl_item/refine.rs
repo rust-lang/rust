@@ -299,8 +299,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
     })
     .collect();
 
-    let mut return_ty =
-        trait_m_sig.output().fold_with(&mut super::RemapLateParam { tcx, mapping: &mapping });
+    let mut return_ty = trait_m_sig.output().fold_with(&mut super::RemapLateParam { tcx, mapping });
 
     if tcx.asyncness(impl_m_def_id).is_async() && tcx.asyncness(trait_m_def_id).is_async() {
         let ty::Alias(ty::Projection, future_ty) = return_ty.kind() else {

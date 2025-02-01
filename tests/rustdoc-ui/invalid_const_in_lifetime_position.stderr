@@ -99,7 +99,7 @@ LL | fn f<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
    |                    ^^^^^^^^^^^^^^^^^^^^ `X` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/invalid_const_in_lifetime_position.rs:2:10
    |
 LL | trait X {

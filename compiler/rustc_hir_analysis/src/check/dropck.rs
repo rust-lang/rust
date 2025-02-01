@@ -1,7 +1,3 @@
-// FIXME(@lcnr): Move this module out of `rustc_hir_analysis`.
-//
-// We don't do any drop checking during hir typeck.
-
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
@@ -32,7 +28,10 @@ use crate::hir::def_id::{DefId, LocalDefId};
 ///    struct/enum definition for the nominal type itself (i.e.
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
-pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn check_drop_impl(
+    tcx: TyCtxt<'_>,
+    drop_impl_did: DefId,
+) -> Result<(), ErrorGuaranteed> {
     match tcx.impl_polarity(drop_impl_did) {
         ty::ImplPolarity::Positive => {}
         ty::ImplPolarity::Negative => {

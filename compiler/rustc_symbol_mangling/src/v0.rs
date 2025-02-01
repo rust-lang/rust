@@ -72,7 +72,7 @@ pub(super) fn mangle<'tcx>(
 
 pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
     tcx: TyCtxt<'tcx>,
-    trait_ref: ty::PolyExistentialTraitRef<'tcx>,
+    trait_ref: ty::ExistentialTraitRef<'tcx>,
 ) -> String {
     // FIXME(flip1995): See comment in `mangle_typeid_for_fnabi`.
     let mut cx = SymbolMangler {
@@ -84,7 +84,7 @@ pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
         binders: vec![],
         out: String::new(),
     };
-    cx.print_def_path(trait_ref.def_id(), &[]).unwrap();
+    cx.print_def_path(trait_ref.def_id, &[]).unwrap();
     std::mem::take(&mut cx.out)
 }
 

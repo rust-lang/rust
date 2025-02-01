@@ -12,7 +12,7 @@ use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
 use rustc_hir::{self as hir, AmbigArg, FnRetTy, GenericParamKind, Node};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, TraitRefPrintOnlyTraitPath};
-use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, PolyTraitRef, Region, Ty, TyCtxt};
+use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, Region, Ty, TyCtxt};
 use rustc_span::{BytePos, Ident, Span, Symbol, kw};
 
 use crate::error_reporting::infer::ObligationCauseAsDiagArg;
@@ -21,15 +21,6 @@ use crate::error_reporting::infer::nice_region_error::placeholder_error::Highlig
 use crate::fluent_generated as fluent;
 
 pub mod note_and_explain;
-
-#[derive(Diagnostic)]
-#[diag(trait_selection_dump_vtable_entries)]
-pub struct DumpVTableEntries<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub trait_ref: PolyTraitRef<'a>,
-    pub entries: String,
-}
 
 #[derive(Diagnostic)]
 #[diag(trait_selection_unable_to_construct_constant_value)]

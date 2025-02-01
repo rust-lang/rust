@@ -7,7 +7,7 @@ use rustc_type_ir::elaborate;
 use crate::mir::interpret::{
     AllocId, AllocInit, Allocation, CTFE_ALLOC_SALT, Pointer, Scalar, alloc_range,
 };
-use crate::ty::{self, Instance, PolyTraitRef, Ty, TyCtxt};
+use crate::ty::{self, Instance, TraitRef, Ty, TyCtxt};
 
 #[derive(Clone, Copy, PartialEq, HashStable)]
 pub enum VtblEntry<'tcx> {
@@ -22,7 +22,7 @@ pub enum VtblEntry<'tcx> {
     /// dispatchable associated function
     Method(Instance<'tcx>),
     /// pointer to a separate supertrait vtable, can be used by trait upcasting coercion
-    TraitVPtr(PolyTraitRef<'tcx>),
+    TraitVPtr(TraitRef<'tcx>),
 }
 
 impl<'tcx> fmt::Debug for VtblEntry<'tcx> {
@@ -59,7 +59,7 @@ pub const COMMON_VTABLE_ENTRIES_ALIGN: usize = 2;
 // function is an accurate approximation. We verify this when actually computing the vtable below.
 pub(crate) fn vtable_min_entries<'tcx>(
     tcx: TyCtxt<'tcx>,
-    trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
 ) -> usize {
     let mut count = TyCtxt::COMMON_VTABLE_ENTRIES.len();
     let Some(trait_ref) = trait_ref else {
@@ -67,7 +67,7 @@ pub(crate) fn vtable_min_entries<'tcx>(
     };
 
     // This includes self in supertraits.
-    for def_id in elaborate::supertrait_def_ids(tcx, trait_ref.def_id()) {
+    for def_id in elaborate::supertrait_def_ids(tcx, trait_ref.def_id) {
         count += tcx.own_existential_vtable_entries(def_id).len();
     }
 
@@ -83,7 +83,7 @@ pub(crate) fn vtable_min_entries<'tcx>(
 /// initial contents.)
 pub(super) fn vtable_allocation_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>),
+    key: (Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>),
 ) -> AllocId {
     let (ty, poly_trait_ref) = key;
 
@@ -118,7 +118,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
 
     for (idx, entry) in vtable_entries.iter().enumerate() {
         let idx: u64 = u64::try_from(idx).unwrap();
-        let scalar = match entry {
+        let scalar = match *entry {
             VtblEntry::MetadataDropInPlace => {
                 if ty.needs_drop(tcx, ty::TypingEnv::fully_monomorphized()) {
                     let instance = ty::Instance::resolve_drop_in_place(tcx, ty);
@@ -134,13 +134,12 @@ pub(super) fn vtable_allocation_provider<'tcx>(
             VtblEntry::Vacant => continue,
             VtblEntry::Method(instance) => {
                 // Prepare the fn ptr we write into the vtable.
-                let fn_alloc_id = tcx.reserve_and_set_fn_alloc(*instance, CTFE_ALLOC_SALT);
+                let fn_alloc_id = tcx.reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT);
                 let fn_ptr = Pointer::from(fn_alloc_id);
                 Scalar::from_pointer(fn_ptr, &tcx)
             }
             VtblEntry::TraitVPtr(trait_ref) => {
-                let super_trait_ref = trait_ref
-                    .map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
+                let super_trait_ref = ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref);
                 let supertrait_alloc_id = tcx.vtable_allocation((ty, Some(super_trait_ref)));
                 let vptr = Pointer::from(supertrait_alloc_id);
                 Scalar::from_pointer(vptr, &tcx)

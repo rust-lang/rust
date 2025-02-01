@@ -13,7 +13,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{
-    self, AdtKind, CoroutineArgsExt, Instance, PolyExistentialTraitRef, Ty, TyCtxt, Visibility,
+    self, AdtKind, CoroutineArgsExt, ExistentialTraitRef, Instance, Ty, TyCtxt, Visibility,
 };
 use rustc_session::config::{self, DebugInfo, Lto};
 use rustc_span::{DUMMY_SP, FileName, FileNameDisplayPreference, SourceFile, Symbol, hygiene};
@@ -1399,7 +1399,7 @@ pub(crate) fn build_global_var_di_node<'ll>(
 fn build_vtable_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
-    poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    poly_trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
 ) -> &'ll DIType {
     let tcx = cx.tcx;
 
@@ -1510,7 +1510,7 @@ fn find_vtable_behind_cast<'ll>(vtable: &'ll Value) -> &'ll Value {
 pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
-    trait_ref: Option<PolyExistentialTraitRef<'tcx>>,
+    trait_ref: Option<ExistentialTraitRef<'tcx>>,
     vtable: &'ll Value,
 ) {
     // FIXME(flip1995): The virtual function elimination optimization only works with full LTO in
@@ -1531,7 +1531,7 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     let vtable = find_vtable_behind_cast(vtable);
     let trait_ref_self = trait_ref.with_self_ty(cx.tcx, ty);
     let trait_ref_self = cx.tcx.erase_regions(trait_ref_self);
-    let trait_def_id = trait_ref_self.def_id();
+    let trait_def_id = trait_ref_self.def_id;
     let trait_vis = cx.tcx.visibility(trait_def_id);
 
     let cgus = cx.sess().codegen_units().as_usize();
@@ -1590,7 +1590,7 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
 pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
-    poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    poly_trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
     vtable: &'ll Value,
 ) {
     if cx.dbg_cx.is_none() {

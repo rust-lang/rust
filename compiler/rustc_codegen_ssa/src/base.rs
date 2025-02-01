@@ -18,14 +18,13 @@ use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, Debugger
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_middle::middle::{exported_symbols, lang_items};
 use rustc_middle::mir::BinOp;
-use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
+use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItemPartitions};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
 use rustc_span::{DUMMY_SP, Symbol, sym};
-use rustc_trait_selection::infer::at::ToTrace;
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
@@ -129,14 +128,9 @@ pub fn validate_trivial_unsize<'tcx>(
                     BoundRegionConversionTime::HigherRankedType,
                     hr_source_principal,
                 );
-                let Ok(()) = ocx.eq_trace(
+                let Ok(()) = ocx.eq(
                     &ObligationCause::dummy(),
                     param_env,
-                    ToTrace::to_trace(
-                        &ObligationCause::dummy(),
-                        hr_target_principal,
-                        hr_source_principal,
-                    ),
                     target_principal,
                     source_principal,
                 ) else {
@@ -211,7 +205,12 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 old_info
             }
         }
-        (_, ty::Dynamic(data, _, _)) => meth::get_vtable(cx, source, data.principal()),
+        (_, ty::Dynamic(data, _, _)) => meth::get_vtable(
+            cx,
+            source,
+            data.principal()
+                .map(|principal| bx.tcx().instantiate_bound_regions_with_erased(principal)),
+        ),
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}", source, target),
     }
 }
@@ -624,7 +623,9 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Run the monomorphization collector and partition the collected items into
     // codegen units.
-    let codegen_units = tcx.collect_and_partition_mono_items(()).codegen_units;
+    let MonoItemPartitions { codegen_units, autodiff_items, .. } =
+        tcx.collect_and_partition_mono_items(());
+    let autodiff_fncs = autodiff_items.to_vec();
 
     // Force all codegen_unit queries so they are already either red or green
     // when compile_codegen_unit accesses them. We are not able to re-execute
@@ -693,6 +694,10 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator },
             cost,
         );
+    }
+
+    if !autodiff_fncs.is_empty() {
+        ongoing_codegen.submit_autodiff_items(autodiff_fncs);
     }
 
     // For better throughput during parallel processing by LLVM, we used to sort
