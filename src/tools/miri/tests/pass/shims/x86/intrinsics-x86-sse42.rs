@@ -375,7 +375,7 @@ unsafe fn test_str() {
     }
     test_ranges();
 
-    // Confirm that the polarity bits work as indended.
+    // Confirm that the polarity bits work as intended.
     #[target_feature(enable = "sse4.2")]
     unsafe fn test_polarity() {
         let a = str_to_m128i(b"Hello!");
