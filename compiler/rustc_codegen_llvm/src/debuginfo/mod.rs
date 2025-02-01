@@ -85,7 +85,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
     }
 
     pub(crate) fn finalize(&self, sess: &Session) {
-        unsafe { llvm::LLVMRustDIBuilderFinalize(self.builder.as_ref()) };
+        unsafe { llvm::LLVMDIBuilderFinalize(self.builder.as_ref()) };
 
         match sess.target.debuginfo_kind {
             DebuginfoKind::Dwarf | DebuginfoKind::DwarfDsym => {

@@ -1715,6 +1715,8 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub(crate) fn LLVMCreateDIBuilder<'ll>(M: &'ll Module) -> *mut DIBuilder<'ll>;
     pub(crate) fn LLVMDisposeDIBuilder<'ll>(Builder: ptr::NonNull<DIBuilder<'ll>>);
+
+    pub(crate) fn LLVMDIBuilderFinalize<'ll>(Builder: &DIBuilder<'ll>);
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -1983,8 +1985,6 @@ unsafe extern "C" {
         Value: *const c_char,
         ValueLen: size_t,
     );
-
-    pub fn LLVMRustDIBuilderFinalize(Builder: &DIBuilder<'_>);
 
     pub fn LLVMRustDIBuilderCreateCompileUnit<'a>(
         Builder: &DIBuilder<'a>,

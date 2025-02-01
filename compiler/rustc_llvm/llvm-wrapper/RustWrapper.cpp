@@ -1003,10 +1003,6 @@ extern "C" void LLVMRustDIBuilderDispose(LLVMDIBuilderRef Builder) {
   delete unwrap(Builder);
 }
 
-extern "C" void LLVMRustDIBuilderFinalize(LLVMDIBuilderRef Builder) {
-  unwrap(Builder)->finalize();
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateCompileUnit(
     LLVMDIBuilderRef Builder, unsigned Lang, LLVMMetadataRef FileRef,
     const char *Producer, size_t ProducerLen, bool isOptimized,
