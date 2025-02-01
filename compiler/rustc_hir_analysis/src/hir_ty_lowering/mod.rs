@@ -2107,6 +2107,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         match const_arg.kind {
             hir::ConstArgKind::Path(hir::QPath::Resolved(maybe_qself, path)) => {
                 debug!(?maybe_qself, ?path);
+
+                // Check if the resolved path is a function
+                if let Res::Def(DefKind::Fn, _) = path.res {
+                    let guar = tcx.dcx().span_err(
+                        const_arg.span(),
+                        "function items cannot be used as const arguments",
+                    );
+                    return ty::Const::new_error(tcx, guar);
+                }
+
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
                 self.lower_const_path_resolved(opt_self_ty, path, hir_id)
             }
