@@ -9,7 +9,6 @@ use std::cmp::Ordering;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::{LangItem, RangeEnd};
-use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::IntTypeExt;
@@ -156,19 +155,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     let temp = self.temp(fused_ty, DUMMY_SP);
                     let acc = self.temp(fused_ty, DUMMY_SP);
-                    let zero = || {
-                        Operand::const_from_scalar(
-                            tcx,
-                            fused_ty,
-                            Scalar::from_uint(0u32, fused_ty.primitive_size(tcx)),
-                            DUMMY_SP,
-                        )
-                    };
 
-                    for i in 0..fused {
+                    self.cfg.push_assign(
+                        block,
+                        source_info,
+                        acc,
+                        Rvalue::Cast(CastKind::IntToInt, Operand::Copy(place), fused_ty),
+                    );
+
+                    for i in 1..fused {
                         let place = place_for(self, i);
                         let shift = self.literal_operand(DUMMY_SP, Const::from_usize(tcx, i * 8));
-                        let or_lhs = if i == 0 { zero() } else { Operand::Copy(acc) };
 
                         self.cfg.push_assign(
                             block,
@@ -182,12 +179,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             temp,
                             Rvalue::BinaryOp(BinOp::Shl, Box::new((Operand::Copy(temp), shift))),
                         );
-
                         self.cfg.push_assign(
                             block,
                             source_info,
                             acc,
-                            Rvalue::BinaryOp(BinOp::BitOr, Box::new((or_lhs, Operand::Copy(temp)))),
+                            Rvalue::BinaryOp(
+                                BinOp::BitOr,
+                                Box::new((Operand::Copy(acc), Operand::Copy(temp))),
+                            ),
                         );
                     }
 
