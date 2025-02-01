@@ -650,7 +650,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Also collect the obligations that were uninstalled by this unification.
             obligations
-                .extend(self.fulfillment_cx.borrow_mut().drain_unstalled_obligations(&self.infcx));
+                .extend(self.fulfillment_cx.borrow_mut().drain_uninstalled_obligations(&self.infcx));
 
             let obligations = obligations.into_iter().map(|o| (o.predicate, o.cause));
             self.typeck_results.borrow_mut().coroutine_stalled_predicates.extend(obligations);
