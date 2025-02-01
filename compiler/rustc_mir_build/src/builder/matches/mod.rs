@@ -1012,7 +1012,7 @@ impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
             span: pattern.span,
             bindings: Vec::new(),
             ascriptions: Vec::new(),
-            is_never: pattern.is_never_pattern(),
+            is_never: cx.thir.is_never_pattern(pattern),
         };
         // Recursively remove irrefutable match pairs, while recording their
         // bindings/ascriptions, and sort or-patterns after other match pairs.

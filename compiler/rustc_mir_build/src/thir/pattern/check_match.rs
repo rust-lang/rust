@@ -278,14 +278,14 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         cx: &PatCtxt<'p, 'tcx>,
         pat: &'p Pat<'tcx>,
     ) -> Result<&'p DeconstructedPat<'p, 'tcx>, ErrorGuaranteed> {
-        if let Err(err) = pat.pat_error_reported() {
+        if let Err(err) = cx.thir.pat_error_reported(pat) {
             self.error = Err(err);
             Err(err)
         } else {
             // Check the pattern for some things unrelated to exhaustiveness.
             let refutable = if cx.refutable { Refutable } else { Irrefutable };
             let mut err = Ok(());
-            pat.walk_always(|pat| {
+            cx.thir.walk_pat_always(pat, |pat| {
                 check_borrow_conflicts_in_at_patterns(self, pat);
                 check_for_bindings_named_same_as_variants(self, pat, refutable);
                 err = err.and(check_never_pattern(cx, pat));
@@ -386,6 +386,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             scrutinee.map(|scrut| self.is_known_valid_scrutinee(scrut)).unwrap_or(true);
         PatCtxt {
             tcx: self.tcx,
+            thir: self.thir,
             typeck_results: self.typeck_results,
             typing_env: self.typing_env,
             module: self.tcx.parent_module(self.lint_level).to_def_id(),
@@ -714,7 +715,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             && scrut.is_some()
         {
             let mut bindings = vec![];
-            pat.each_binding(|name, _, _, _| bindings.push(name));
+            self.thir.each_pat_binding(pat, |name, _, _, _| bindings.push(name));
 
             let semi_span = span.shrink_to_hi();
             let start_span = span.shrink_to_lo();
@@ -790,7 +791,7 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat:
         ByRef::No if is_binding_by_move(ty) => {
             // We have `x @ pat` where `x` is by-move. Reject all borrows in `pat`.
             let mut conflicts_ref = Vec::new();
-            sub.each_binding(|_, mode, _, span| {
+            cx.thir.each_pat_binding(sub, |_, mode, _, span| {
                 if matches!(mode, ByRef::Yes(_)) {
                     conflicts_ref.push(span)
                 }
@@ -819,7 +820,7 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat:
     let mut conflicts_move = Vec::new();
     let mut conflicts_mut_mut = Vec::new();
     let mut conflicts_mut_ref = Vec::new();
-    sub.each_binding(|name, mode, ty, span| {
+    cx.thir.each_pat_binding(sub, |name, mode, ty, span| {
         match mode {
             ByRef::Yes(mut_inner) => match (mut_outer, mut_inner) {
                 // Both sides are `ref`.

@@ -8,7 +8,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::mir::{self, Const};
-use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
+use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary, Thir};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, VariantDef,
@@ -76,8 +76,9 @@ impl<'tcx> RevealedTy<'tcx> {
 }
 
 #[derive(Clone)]
-pub struct RustcPatCtxt<'p, 'tcx: 'p> {
+pub struct RustcPatCtxt<'p, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
+    pub thir: &'p Thir<'tcx>,
     pub typeck_results: &'tcx ty::TypeckResults<'tcx>,
     /// The module in which the match occurs. This is necessary for
     /// checking inhabited-ness of types because whether a type is (visibly)
