@@ -82,6 +82,7 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Compute message
         id: create-message
         env:
