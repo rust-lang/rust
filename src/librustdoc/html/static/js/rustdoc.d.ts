@@ -211,7 +211,7 @@ declare namespace rustdoc {
      *
      *     fn something() -> Result<usize, usize>
      *
-     * If output was allowed to be any RawFunctionType, it would look like thi
+     * If output was allowed to be any RawFunctionType, it would look like this
      *
      *     [[], [50, [3, 3]]]
      *
@@ -221,7 +221,7 @@ declare namespace rustdoc {
      * in favor of the pair of types interpretation. This is why the `(number|Array<RawFunctionType>)`
      * is used instead of `(RawFunctionType|Array<RawFunctionType>)`.
      *
-     * The output can be skipped if it's actually unit and there's no type constraints. If thi
+     * The output can be skipped if it's actually unit and there's no type constraints. If this
      * function accepts constrained generics, then the output will be unconditionally emitted, and
      * after it will come a list of trait constraints. The position of the item in the list will
      * determine which type parameter it is. For example:
