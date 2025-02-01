@@ -525,8 +525,7 @@ auto:
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
       SCRIPT: make ci-mingw
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
+      # There is no dist-i686-mingw-alt, so there is no prebuilt LLVM with assertions
       NO_DOWNLOAD_CI_LLVM: 1
     <<: *job-windows-25-8c
 
@@ -535,8 +534,7 @@ auto:
     env:
       SCRIPT: make ci-mingw-x
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
+      # There is no dist-x86_64-mingw-alt, so there is no prebuilt LLVM with assertions
       NO_DOWNLOAD_CI_LLVM: 1
     <<: *job-windows
 
@@ -544,8 +542,7 @@ auto:
     env:
       SCRIPT: make ci-mingw-bootstrap
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
+      # There is no dist-x86_64-mingw-alt, so there is no prebuilt LLVM with assertions
       NO_DOWNLOAD_CI_LLVM: 1
     <<: *job-windows
 
@@ -593,9 +590,6 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --build=i686-pc-windows-gnu
         --enable-full-tools
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
-      NO_DOWNLOAD_CI_LLVM: 1
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
@@ -607,9 +601,6 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --build=x86_64-pc-windows-gnu
         --enable-full-tools
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
-      NO_DOWNLOAD_CI_LLVM: 1
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-windows
