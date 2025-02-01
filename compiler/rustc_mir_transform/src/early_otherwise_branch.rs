@@ -288,7 +288,7 @@ fn evaluate_candidate<'tcx>(
         return None;
     }
 
-    // When thie BB has exactly one statement, this statement should be discriminant.
+    // When this BB has exactly one statement, this statement should be discriminant.
     let need_hoist_discriminant = bbs[child].statements.len() == 1;
     let child_place = if need_hoist_discriminant {
         if !bbs[targets.otherwise()].is_empty_unreachable() {
