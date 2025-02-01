@@ -123,16 +123,10 @@ impl<'tcx> MonoItem<'tcx> {
             return InstantiationMode::GloballyShared { may_conflict: false };
         }
 
-        // FIXME: The logic for which functions are permitted to get LocalCopy is actually spread
-        // across 4 functions:
-        // * cross_crate_inlinable(def_id)
-        // * InstanceKind::requires_inline
-        // * InstanceKind::generate_cgu_internal_copy
-        // * MonoItem::instantiation_mode
-        // Since reachable_non_generics calls InstanceKind::generates_cgu_internal_copy to decide
-        // which symbols this crate exports, we are obligated to only generate LocalCopy when
-        // generates_cgu_internal_copy returns true.
-        if !instance.def.generates_cgu_internal_copy(tcx) {
+        // We need to ensure that we do not decide the InstantiationMode of an exported symbol is
+        // LocalCopy. Since exported symbols are computed based on the output of
+        // cross_crate_inlinable, we are beholden to our previous decisions.
+        if !tcx.cross_crate_inlinable(instance.def_id()) {
             return InstantiationMode::GloballyShared { may_conflict: false };
         }
 
