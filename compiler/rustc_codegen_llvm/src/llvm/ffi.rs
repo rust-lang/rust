@@ -1740,6 +1740,14 @@ unsafe extern "C" {
         File: &'ll Metadata,
         Discriminator: c_uint, // (optional "DWARF path discriminator"; default is 0)
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateDebugLocation<'ll>(
+        Ctx: &'ll Context,
+        Line: c_uint,
+        Column: c_uint,
+        Scope: &'ll Metadata,
+        InlinedAt: Option<&'ll Metadata>,
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2302,12 +2310,6 @@ unsafe extern "C" {
         Params: Option<&'a DIArray>,
     );
 
-    pub fn LLVMRustDIBuilderCreateDebugLocation<'a>(
-        Line: c_uint,
-        Column: c_uint,
-        Scope: &'a DIScope,
-        InlinedAt: Option<&'a DILocation>,
-    ) -> &'a DILocation;
     pub fn LLVMRustDILocationCloneWithBaseDiscriminator<'a>(
         Location: &'a DILocation,
         BD: c_uint,

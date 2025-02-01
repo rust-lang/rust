@@ -1316,16 +1316,6 @@ extern "C" void LLVMRustDICompositeTypeReplaceArrays(
 }
 
 extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateDebugLocation(unsigned Line, unsigned Column,
-                                     LLVMMetadataRef ScopeRef,
-                                     LLVMMetadataRef InlinedAt) {
-  MDNode *Scope = unwrapDIPtr<MDNode>(ScopeRef);
-  DILocation *Loc = DILocation::get(Scope->getContext(), Line, Column, Scope,
-                                    unwrapDIPtr<MDNode>(InlinedAt));
-  return wrap(Loc);
-}
-
-extern "C" LLVMMetadataRef
 LLVMRustDILocationCloneWithBaseDiscriminator(LLVMMetadataRef Location,
                                              unsigned BD) {
   DILocation *Loc = unwrapDIPtr<DILocation>(Location);
