@@ -145,8 +145,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let place_for = move |b: &mut Self, idx| {
                         let mut builder = builder.clone();
                         match builder.projection_mut() {
-                            [.., ProjectionElem::ConstantIndex { offset, .. }] => {
-                                *offset += idx;
+                            [.., ProjectionElem::ConstantIndex { offset, ref from_end, .. }] => {
+                                if !from_end {
+                                    *offset += idx;
+                                } else {
+                                    *offset -= idx;
+                                }
                             }
                             _ => todo!(),
                         }

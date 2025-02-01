@@ -215,10 +215,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ty::ValTree::Branch(leaves) => leaves,
         };
 
-        if range.from_end {
-            todo!();
-        }
-
         assert!(range.len() == leaves.len() as u64);
         let mut subpairs = Vec::new();
 
@@ -253,6 +249,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let valtree = ty::ValTree::Leaf(scalar);
                 let ty_const =
                     ty::Const::new(tcx, ty::ConstKind::Value(ty::Value { ty: fused_ty, valtree }));
+
                 let value = Const::Ty(fused_ty, ty_const);
                 let test_case = TestCase::FusedConstant { value, fused: len as u64 };
 
@@ -264,7 +261,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let place = place
                     .clone_project(ProjectionElem::ConstantIndex {
-                        offset: range.start + first_idx as u64,
+                        offset: range.shift_idx(first_idx as u64),
                         min_length,
                         from_end: range.from_end,
                     })
