@@ -3,7 +3,6 @@
 name: m68k CI
 
 on:
-  - push
   - pull_request
 
 permissions:

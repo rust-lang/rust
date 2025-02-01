@@ -1,7 +1,6 @@
 name: stdarch tests with sysroot compiled in release mode
 
 on:
-  - push
   - pull_request
 
 permissions:

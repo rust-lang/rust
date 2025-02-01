@@ -1,7 +1,6 @@
 name: CI libgccjit 12
 
 on:
-  - push
   - pull_request
 
 permissions:

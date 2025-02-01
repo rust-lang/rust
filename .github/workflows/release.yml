@@ -1,7 +1,6 @@
 name: CI with sysroot compiled in release mode
 
 on:
-  - push
   - pull_request
 
 permissions:
