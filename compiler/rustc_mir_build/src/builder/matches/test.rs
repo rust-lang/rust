@@ -154,48 +154,52 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         builder.to_place(b)
                     };
 
-                    let mut acc = Operand::const_from_scalar(
-                        tcx,
-                        fused_ty,
-                        Scalar::from_uint(0u32, fused_ty.primitive_size(tcx)),
-                        DUMMY_SP,
-                    );
+                    let temp = self.temp(fused_ty, DUMMY_SP);
+                    let acc = self.temp(fused_ty, DUMMY_SP);
+                    let zero = || {
+                        Operand::const_from_scalar(
+                            tcx,
+                            fused_ty,
+                            Scalar::from_uint(0u32, fused_ty.primitive_size(tcx)),
+                            DUMMY_SP,
+                        )
+                    };
 
                     for i in 0..fused {
-                        let new_acc = self.temp(fused_ty, DUMMY_SP);
-                        let temp1 = self.temp(fused_ty, DUMMY_SP);
-                        let temp2 = self.temp(fused_ty, DUMMY_SP);
                         let place = place_for(self, i);
                         let shift = self.literal_operand(DUMMY_SP, Const::from_usize(tcx, i * 8));
+                        let or_lhs = if i == 0 { zero() } else { Operand::Copy(acc) };
 
                         self.cfg.push_assign(
                             block,
                             source_info,
-                            temp1,
+                            temp,
                             Rvalue::Cast(CastKind::IntToInt, Operand::Copy(place), fused_ty),
                         );
                         self.cfg.push_assign(
                             block,
                             source_info,
-                            temp2,
-                            Rvalue::BinaryOp(BinOp::Shl, Box::new((Operand::Copy(temp1), shift))),
+                            temp,
+                            Rvalue::BinaryOp(BinOp::Shl, Box::new((Operand::Copy(temp), shift))),
                         );
+
                         self.cfg.push_assign(
                             block,
                             source_info,
-                            new_acc,
-                            Rvalue::BinaryOp(BinOp::BitOr, Box::new((acc, Operand::Copy(temp2)))),
+                            acc,
+                            Rvalue::BinaryOp(BinOp::BitOr, Box::new((or_lhs, Operand::Copy(temp)))),
                         );
-
-                        acc = Operand::Copy(new_acc);
                     }
 
                     acc
                 } else {
-                    Operand::Copy(place)
+                    place
                 };
 
-                let terminator = TerminatorKind::SwitchInt { discr, targets: switch_targets };
+                let terminator = TerminatorKind::SwitchInt {
+                    discr: Operand::Copy(discr),
+                    targets: switch_targets,
+                };
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }
 
