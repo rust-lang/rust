@@ -3671,6 +3671,7 @@ dependencies = [
  "either",
  "elsa",
  "ena",
+ "hashbrown 0.15.2",
  "indexmap",
  "jobserver",
  "libc",
@@ -4568,6 +4569,7 @@ version = "0.0.0"
 dependencies = [
  "blake3",
  "derive-where",
+ "hashbrown 0.15.2",
  "indexmap",
  "itoa",
  "md-5",

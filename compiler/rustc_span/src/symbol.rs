@@ -2,11 +2,13 @@
 //! allows bidirectional lookup; i.e., given a value, one can easily find the
 //! type, and vice versa.
 
-use std::hash::{Hash, Hasher};
+use std::cell::SyncUnsafeCell;
+use std::hash::{BuildHasher, BuildHasherDefault, Hash, Hasher};
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{LazyLock, Mutex};
 use std::{fmt, str};
 
-use rustc_arena::DroplessArena;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::FxHasher;
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
@@ -2475,18 +2477,9 @@ impl Symbol {
         with_session_globals(|session_globals| session_globals.symbol_interner.intern(string))
     }
 
-    /// Access the underlying string. This is a slowish operation because it
-    /// requires locking the symbol interner.
-    ///
-    /// Note that the lifetime of the return value is a lie. It's not the same
-    /// as `&self`, but actually tied to the lifetime of the underlying
-    /// interner. Interners are long-lived, and there are very few of them, and
-    /// this function is typically used for short-lived things, so in practice
-    /// it works out ok.
+    /// Access the underlying string.
     pub fn as_str(&self) -> &str {
-        with_session_globals(|session_globals| unsafe {
-            std::mem::transmute::<&str, &str>(session_globals.symbol_interner.get(*self))
-        })
+        with_session_globals(|session_globals| session_globals.symbol_interner.get(*self))
     }
 
     pub fn as_u32(self) -> u32 {
@@ -2541,53 +2534,212 @@ impl StableCompare for Symbol {
     }
 }
 
-pub(crate) struct Interner(Lock<InternerInner>);
+// This is never de-initialized and stores interned &str in static storage.
+// Each str is stored length-prefixed (u32), and we allow for random-access indexing with a u32
+// index by direct lookup in the arena. Indices <2^16 are stored in a separate structure (they are
+// pre-allocated at dense addresses so we can't use the same lockless O(1) hack for them).
+static GLOBAL_ARENA: LazyLock<StringArena> = LazyLock::new(|| StringArena::new());
 
-// The `&'static str`s in this type actually point into the arena.
-//
-// This type is private to prevent accidentally constructing more than one
-// `Interner` on the same thread, which makes it easy to mix up `Symbol`s
-// between `Interner`s.
+const CHUNK_SIZE: usize = 4 * 1024 * 1024;
+const CHUNKS: usize = (u32::MAX as usize).div_ceil(CHUNK_SIZE);
+
+struct StringChunk {
+    array: LazyLock<Box<[SyncUnsafeCell<u8>; CHUNK_SIZE]>>,
+}
+
+impl Default for StringChunk {
+    fn default() -> Self {
+        Self {
+            array: LazyLock::new(|| unsafe {
+                // SAFETY: Zero-init'd UnsafeCell<u8> is initialized and has no other invariants to
+                // worry about.
+                Box::new_zeroed().assume_init()
+            }),
+        }
+    }
+}
+
+struct StringArena {
+    chunks: [StringChunk; CHUNKS],
+    // this guards writes to `write_at`, but not reads, which proceed lock-free. write_at is only moved
+    // forward so this ends up being safe.
+    writer: std::sync::Mutex<()>,
+    write_at: AtomicU32,
+}
+
+impl StringArena {
+    fn new() -> Self {
+        StringArena {
+            chunks: std::array::from_fn(|_| StringChunk::default()),
+            // Reserve 2^16 u32 indices -- these will be used for pre-filled interning where we
+            // have a dense SymbolIndex space. We could make this exact but it doesn't really
+            // matter for this initial test anyway.
+            write_at: AtomicU32::new(u32::from(u16::MAX)),
+            writer: Mutex::new(()),
+        }
+    }
+
+    /// Copy the passed &str into this buffer. Returns an index that can be passed to `get` to
+    /// retrieve the &str back.
+    ///
+    /// u32 is guaranteed to be at least u16::MAX (for the first call).
+    #[allow(clippy::erasing_op)]
+    fn alloc(&self, s: &str) -> u32 {
+        let _guard = self.writer.lock().unwrap();
+        // Allocate a chunk of the region, and fill it with the &str's length and bytes.
+        let start = self.write_at.load(Ordering::Acquire) as usize;
+
+        // If we have too large a string it won't fit into a single chunk, and we currently
+        // can't support storing it. 4MB+ Symbols feel unlikely, but if we hit issues in
+        // practice we can adjust the data structure to allow variable-sized chunks which would
+        // let us grow near-arbitrarily large for individual symbols.
+        assert!(s.len() <= CHUNK_SIZE);
+
+        // Assert we're in-bounds. Summing across chunks we have exactly u32::MAX bytes, so this
+        // implicitly checks we haven't exceeded our capacity overall.
+        //
+        // This is possible because if it crosses a chunk boundary we'll skip to that next chunk
+        // entirely.
+        let possible_end = start.checked_add(4).unwrap().checked_add(s.len()).unwrap();
+
+        // We fit into the current chunk.
+        let len = s.len();
+
+        // Make sure we can fit in our "utf-8 encoded" length.
+        //
+        // If all bytes we write are utf-8, we can treat the whole region of memory as just
+        // &str, which avoids needing to check that it's still utf-8 when indexing arbitrarily.
+        assert!(len < (1 << 28));
+        let encoded_len: u32 = ((len as u32 & (0x7f << (7 * 3))) << 3)
+            | ((len as u32 & (0x7f << (7 * 2))) << 2)
+            | ((len as u32 & (0x7f << (7 * 1))) << 1)
+            | (len as u32 & (0x7f << (7 * 0)));
+
+        // We're either in our initial chunk or the next one.
+        let (chunk, start_absolute, offset, end) =
+            if start / CHUNK_SIZE != possible_end / CHUNK_SIZE {
+                let chunk_idx = start / CHUNK_SIZE + 1;
+                (
+                    &self.chunks[chunk_idx].array,
+                    chunk_idx * CHUNK_SIZE,
+                    0usize,
+                    chunk_idx * CHUNK_SIZE + 4 + s.len(),
+                )
+            } else {
+                (&self.chunks[start / CHUNK_SIZE].array, start, start % CHUNK_SIZE, possible_end)
+            };
+        let chunk = LazyLock::force(&chunk);
+
+        // SAFETY:
+        //
+        // * _guard above protects against concurrent alloc's (so single writer for write_at)
+        // * write_at only increases, and shared access is only provided to memory < write_at.
+        // * all chunks are zero-init'd at allocation: no uninitialized memory here.
+        let chunk_tail = unsafe {
+            std::slice::from_raw_parts_mut(
+                chunk.as_ptr().cast::<u8>().add(offset).cast_mut(),
+                CHUNK_SIZE - offset,
+            )
+        };
+        // encoded_len is utf-8-compatible
+        chunk_tail[..4].copy_from_slice(&encoded_len.to_ne_bytes());
+        // `s` is &str, so this is trivially correct.
+        chunk_tail[4..][..s.len()].copy_from_slice(s.as_bytes());
+
+        // Semantically this releases the memory for readers.
+        self.write_at.store(end as u32, Ordering::Release);
+
+        start_absolute as u32
+    }
+
+    /// Get the allocated string at the passed index.
+    ///
+    /// Note that this **does not** check that the passed index is actually an index returned by
+    /// `alloc`.
+    #[allow(clippy::erasing_op)]
+    fn get(&self, idx: u32) -> &str {
+        let end = self.write_at.load(Ordering::Acquire);
+
+        assert!(idx < end);
+
+        let chunk = &self.chunks[idx as usize / CHUNK_SIZE].array;
+        let chunk = LazyLock::force(&chunk);
+
+        let chunk_str_len = if idx as usize / CHUNK_SIZE == end as usize / CHUNK_SIZE {
+            end as usize % CHUNK_SIZE
+        } else {
+            // Note that zero-initialized bytes are valid UTF-8, so even if we don't fill a full
+            // chunk it remains valid for our purposes.
+            CHUNK_SIZE
+        };
+
+        // SAFETY: write_at only increases, and guarantees &str contents behind it. We checked above that
+        // we are < write_at.
+        let chunk_head =
+            unsafe { std::str::from_raw_parts(chunk.as_ptr().cast::<u8>(), chunk_str_len) };
+        let idx = idx as usize % CHUNK_SIZE;
+
+        let len = u32::from_ne_bytes(chunk_head[idx..idx + 4].as_bytes().try_into().unwrap());
+        let len = ((len & (0x7f << (8 * 3))) >> 3)
+            | ((len & (0x7f << (8 * 2))) >> 2)
+            | ((len & (0x7f << (8 * 1))) >> 1)
+            | ((len & (0x7f << (8 * 0))) >> 0);
+        &chunk_head[idx + 4..idx + 4 + len as usize]
+    }
+}
+
+pub(crate) struct Interner(&'static [&'static str], Lock<InternerInner>);
+
 struct InternerInner {
-    arena: DroplessArena,
-    strings: FxIndexSet<&'static str>,
+    strings: hashbrown::HashTable<Symbol>,
 }
 
 impl Interner {
-    fn prefill(init: &[&'static str]) -> Self {
-        Interner(Lock::new(InternerInner {
-            arena: Default::default(),
-            strings: init.iter().copied().collect(),
-        }))
+    fn prefill(init: &'static [&'static str]) -> Self {
+        assert!(init.len() < u16::MAX as usize);
+        let mut strings = hashbrown::HashTable::new();
+
+        for (idx, s) in init.iter().copied().enumerate() {
+            let mut hasher = FxHasher::default();
+            s.hash(&mut hasher);
+            let hash = hasher.finish();
+            strings.insert_unique(hash, Symbol::new(idx as u32), |val| {
+                // has to be from `init` because we haven't yet inserted anything except those.
+                BuildHasherDefault::<FxHasher>::default().hash_one(init[val.0.index()])
+            });
+        }
+
+        Interner(init, Lock::new(InternerInner { strings }))
     }
 
     #[inline]
     fn intern(&self, string: &str) -> Symbol {
-        let mut inner = self.0.lock();
-        if let Some(idx) = inner.strings.get_index_of(string) {
-            return Symbol::new(idx as u32);
+        let hash = BuildHasherDefault::<FxHasher>::default().hash_one(string);
+        let mut inner = self.1.lock();
+        match inner.strings.find_entry(hash, |v| self.get(*v) == string) {
+            Ok(e) => return *e.get(),
+            Err(e) => {
+                let idx = GLOBAL_ARENA.alloc(string);
+                let res = Symbol::new(idx as u32);
+
+                e.into_table().insert_unique(hash, res, |val| {
+                    BuildHasherDefault::<FxHasher>::default().hash_one(self.get(*val))
+                });
+
+                res
+            }
         }
-
-        let string: &str = inner.arena.alloc_str(string);
-
-        // SAFETY: we can extend the arena allocation to `'static` because we
-        // only access these while the arena is still alive.
-        let string: &'static str = unsafe { &*(string as *const str) };
-
-        // This second hash table lookup can be avoided by using `RawEntryMut`,
-        // but this code path isn't hot enough for it to be worth it. See
-        // #91445 for details.
-        let (idx, is_new) = inner.strings.insert_full(string);
-        debug_assert!(is_new); // due to the get_index_of check above
-
-        Symbol::new(idx as u32)
     }
 
     /// Get the symbol as a string.
     ///
     /// [`Symbol::as_str()`] should be used in preference to this function.
-    fn get(&self, symbol: Symbol) -> &str {
-        self.0.lock().strings.get_index(symbol.0.as_usize()).unwrap()
+    fn get(&self, symbol: Symbol) -> &'static str {
+        if symbol.0.index() < u16::MAX as usize {
+            self.0[symbol.0.index()]
+        } else {
+            GLOBAL_ARENA.get(symbol.0.as_u32())
+        }
     }
 }
 
