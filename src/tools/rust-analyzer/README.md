@@ -1,6 +1,6 @@
 <p align="center">
   <img
-    src="https://raw.githubusercontent.com/rust-analyzer/rust-analyzer/master/assets/logo-wide.svg"
+    src="https://raw.githubusercontent.com/rust-lang/rust-analyzer/master/assets/logo-wide.svg"
     alt="rust-analyzer logo">
 </p>
 
