@@ -1,3 +1,7 @@
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 0..43
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com\nhttps://somewhere.com/a\nhttps://www.somewhere.com\nhttps://www.somewhere.com/a\nhttps://subdomain.example.com\nhttps://somewhere.com?\nhttps://somewhere.com/a?\nhttps://somewhere.com?hello=12\nhttps://somewhere.com/a?hello=12\nhttps://example.com?hello=12#xyz\nhttps://example.com/a?hello=12#xyz\nhttps://example.com#xyz\nhttps://example.com/a#xyz\nhttps://somewhere.com?hello=12&bye=11\nhttps://somewhere.com/a?hello=12&bye=11\nhttps://somewhere.com?hello=12&bye=11#xyz\nhey! https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 0..21
 error: this URL is not a hyperlink
   --> $DIR/bare-urls.rs:5:5
    |
@@ -15,6 +19,8 @@ help: use an automatic link instead
 LL | /// <https://somewhere.com>
    |     +                     +
 
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com\nhttps://somewhere.com/a\nhttps://www.somewhere.com\nhttps://www.somewhere.com/a\nhttps://subdomain.example.com\nhttps://somewhere.com?\nhttps://somewhere.com/a?\nhttps://somewhere.com?hello=12\nhttps://somewhere.com/a?hello=12\nhttps://example.com?hello=12#xyz\nhttps://example.com/a?hello=12#xyz\nhttps://example.com#xyz\nhttps://example.com/a#xyz\nhttps://somewhere.com?hello=12&bye=11\nhttps://somewhere.com/a?hello=12&bye=11\nhttps://somewhere.com?hello=12&bye=11#xyz\nhey! https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 22..45
 error: this URL is not a hyperlink
   --> $DIR/bare-urls.rs:7:5
    |
@@ -27,6 +33,8 @@ help: use an automatic link instead
 LL | /// <https://somewhere.com/a>
    |     +                       +
 
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com\nhttps://somewhere.com/a\nhttps://www.somewhere.com\nhttps://www.somewhere.com/a\nhttps://subdomain.example.com\nhttps://somewhere.com?\nhttps://somewhere.com/a?\nhttps://somewhere.com?hello=12\nhttps://somewhere.com/a?hello=12\nhttps://example.com?hello=12#xyz\nhttps://example.com/a?hello=12#xyz\nhttps://example.com#xyz\nhttps://example.com/a#xyz\nhttps://somewhere.com?hello=12&bye=11\nhttps://somewhere.com/a?hello=12&bye=11\nhttps://somewhere.com?hello=12&bye=11#xyz\nhey! https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 46..71
 error: this URL is not a hyperlink
   --> $DIR/bare-urls.rs:9:5
    |
@@ -39,6 +47,8 @@ help: use an automatic link instead
 LL | /// <https://www.somewhere.com>
    |     +                         +
 
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com\nhttps://somewhere.com/a\nhttps://www.somewhere.com\nhttps://www.somewhere.com/a\nhttps://subdomain.example.com\nhttps://somewhere.com?\nhttps://somewhere.com/a?\nhttps://somewhere.com?hello=12\nhttps://somewhere.com/a?hello=12\nhttps://example.com?hello=12#xyz\nhttps://example.com/a?hello=12#xyz\nhttps://example.com#xyz\nhttps://example.com/a#xyz\nhttps://somewhere.com?hello=12&bye=11\nhttps://somewhere.com/a?hello=12&bye=11\nhttps://somewhere.com?hello=12&bye=11#xyz\nhey! https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 72..99
 error: this URL is not a hyperlink
   --> $DIR/bare-urls.rs:11:5
    |
@@ -51,6 +61,8 @@ help: use an automatic link instead
 LL | /// <https://www.somewhere.com/a>
    |     +                           +
 
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com\nhttps://somewhere.com/a\nhttps://www.somewhere.com\nhttps://www.somewhere.com/a\nhttps://subdomain.example.com\nhttps://somewhere.com?\nhttps://somewhere.com/a?\nhttps://somewhere.com?hello=12\nhttps://somewhere.com/a?hello=12\nhttps://example.com?hello=12#xyz\nhttps://example.com/a?hello=12#xyz\nhttps://example.com#xyz\nhttps://example.com/a#xyz\nhttps://somewhere.com?hello=12&bye=11\nhttps://somewhere.com/a?hello=12&bye=11\nhttps://somewhere.com?hello=12&bye=11#xyz\nhey! https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 100..129
 error: this URL is not a hyperlink
   --> $DIR/bare-urls.rs:13:5
    |
@@ -63,6 +75,8 @@ help: use an automatic link instead
 LL | /// <https://subdomain.example.com>
    |     +                             +
 
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com\nhttps://somewhere.com/a\nhttps://www.somewhere.com\nhttps://www.somewhere.com/a\nhttps://subdomain.example.com\nhttps://somewhere.com?\nhttps://somewhere.com/a?\nhttps://somewhere.com?hello=12\nhttps://somewhere.com/a?hello=12\nhttps://example.com?hello=12#xyz\nhttps://example.com/a?hello=12#xyz\nhttps://example.com#xyz\nhttps://example.com/a#xyz\nhttps://somewhere.com?hello=12&bye=11\nhttps://somewhere.com/a?hello=12&bye=11\nhttps://somewhere.com?hello=12&bye=11#xyz\nhey! https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 130..152
 error: this URL is not a hyperlink
   --> $DIR/bare-urls.rs:15:5
    |
@@ -75,6 +89,8 @@ help: use an automatic link instead
 LL | /// <https://somewhere.com?>
    |     +                      +
 
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com\nhttps://somewhere.com/a\nhttps://www.somewhere.com\nhttps://www.somewhere.com/a\nhttps://subdomain.example.com\nhttps://somewhere.com?\nhttps://somewhere.com/a?\nhttps://somewhere.com?hello=12\nhttps://somewhere.com/a?hello=12\nhttps://example.com?hello=12#xyz\nhttps://example.com/a?hello=12#xyz\nhttps://example.com#xyz\nhttps://example.com/a#xyz\nhttps://somewhere.com?hello=12&bye=11\nhttps://somewhere.com/a?hello=12&bye=11\nhttps://somewhere.com?hello=12&bye=11#xyz\nhey! https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 153..177
 error: this URL is not a hyperlink
   --> $DIR/bare-urls.rs:17:5
    |
@@ -87,6 +103,8 @@ help: use an automatic link instead
 LL | /// <https://somewhere.com/a?>
    |     +                        +
 
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com\nhttps://somewhere.com/a\nhttps://www.somewhere.com\nhttps://www.somewhere.com/a\nhttps://subdomain.example.com\nhttps://somewhere.com?\nhttps://somewhere.com/a?\nhttps://somewhere.com?hello=12\nhttps://somewhere.com/a?hello=12\nhttps://example.com?hello=12#xyz\nhttps://example.com/a?hello=12#xyz\nhttps://example.com#xyz\nhttps://example.com/a#xyz\nhttps://somewhere.com?hello=12&bye=11\nhttps://somewhere.com/a?hello=12&bye=11\nhttps://somewhere.com?hello=12&bye=11#xyz\nhey! https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 178..208
 error: this URL is not a hyperlink
   --> $DIR/bare-urls.rs:19:5
    |
@@ -99,6 +117,8 @@ help: use an automatic link instead
 LL | /// <https://somewhere.com?hello=12>
    |     +                              +
 
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com\nhttps://somewhere.com/a\nhttps://www.somewhere.com\nhttps://www.somewhere.com/a\nhttps://subdomain.example.com\nhttps://somewhere.com?\nhttps://somewhere.com/a?\nhttps://somewhere.com?hello=12\nhttps://somewhere.com/a?hello=12\nhttps://example.com?hello=12#xyz\nhttps://example.com/a?hello=12#xyz\nhttps://example.com#xyz\nhttps://example.com/a#xyz\nhttps://somewhere.com?hello=12&bye=11\nhttps://somewhere.com/a?hello=12&bye=11\nhttps://somewhere.com?hello=12&bye=11#xyz\nhey! https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 209..241
 error: this URL is not a hyperlink
   --> $DIR/bare-urls.rs:21:5
    |
@@ -111,6 +131,8 @@ help: use an automatic link instead
 LL | /// <https://somewhere.com/a?hello=12>
    |     +                                +
 
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com\nhttps://somewhere.com/a\nhttps://www.somewhere.com\nhttps://www.somewhere.com/a\nhttps://subdomain.example.com\nhttps://somewhere.com?\nhttps://somewhere.com/a?\nhttps://somewhere.com?hello=12\nhttps://somewhere.com/a?hello=12\nhttps://example.com?hello=12#xyz\nhttps://example.com/a?hello=12#xyz\nhttps://example.com#xyz\nhttps://example.com/a#xyz\nhttps://somewhere.com?hello=12&bye=11\nhttps://somewhere.com/a?hello=12&bye=11\nhttps://somewhere.com?hello=12&bye=11#xyz\nhey! https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 242..274
 error: this URL is not a hyperlink
   --> $DIR/bare-urls.rs:23:5
    |
@@ -123,6 +145,8 @@ help: use an automatic link instead
 LL | /// <https://example.com?hello=12#xyz>
    |     +                                +
 
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com\nhttps://somewhere.com/a\nhttps://www.somewhere.com\nhttps://www.somewhere.com/a\nhttps://subdomain.example.com\nhttps://somewhere.com?\nhttps://somewhere.com/a?\nhttps://somewhere.com?hello=12\nhttps://somewhere.com/a?hello=12\nhttps://example.com?hello=12#xyz\nhttps://example.com/a?hello=12#xyz\nhttps://example.com#xyz\nhttps://example.com/a#xyz\nhttps://somewhere.com?hello=12&bye=11\nhttps://somewhere.com/a?hello=12&bye=11\nhttps://somewhere.com?hello=12&bye=11#xyz\nhey! https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 275..309
 error: this URL is not a hyperlink
   --> $DIR/bare-urls.rs:25:5
    |
@@ -135,6 +159,8 @@ help: use an automatic link instead
 LL | /// <https://example.com/a?hello=12#xyz>
    |     +                                  +
 
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com\nhttps://somewhere.com/a\nhttps://www.somewhere.com\nhttps://www.somewhere.com/a\nhttps://subdomain.example.com\nhttps://somewhere.com?\nhttps://somewhere.com/a?\nhttps://somewhere.com?hello=12\nhttps://somewhere.com/a?hello=12\nhttps://example.com?hello=12#xyz\nhttps://example.com/a?hello=12#xyz\nhttps://example.com#xyz\nhttps://example.com/a#xyz\nhttps://somewhere.com?hello=12&bye=11\nhttps://somewhere.com/a?hello=12&bye=11\nhttps://somewhere.com?hello=12&bye=11#xyz\nhey! https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 310..333
 error: this URL is not a hyperlink
   --> $DIR/bare-urls.rs:27:5
    |
@@ -147,6 +173,8 @@ help: use an automatic link instead
 LL | /// <https://example.com#xyz>
    |     +                       +
 
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com\nhttps://somewhere.com/a\nhttps://www.somewhere.com\nhttps://www.somewhere.com/a\nhttps://subdomain.example.com\nhttps://somewhere.com?\nhttps://somewhere.com/a?\nhttps://somewhere.com?hello=12\nhttps://somewhere.com/a?hello=12\nhttps://example.com?hello=12#xyz\nhttps://example.com/a?hello=12#xyz\nhttps://example.com#xyz\nhttps://example.com/a#xyz\nhttps://somewhere.com?hello=12&bye=11\nhttps://somewhere.com/a?hello=12&bye=11\nhttps://somewhere.com?hello=12&bye=11#xyz\nhey! https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 334..359
 error: this URL is not a hyperlink
   --> $DIR/bare-urls.rs:29:5
    |
@@ -159,6 +187,8 @@ help: use an automatic link instead
 LL | /// <https://example.com/a#xyz>
    |     +                         +
 
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com\nhttps://somewhere.com/a\nhttps://www.somewhere.com\nhttps://www.somewhere.com/a\nhttps://subdomain.example.com\nhttps://somewhere.com?\nhttps://somewhere.com/a?\nhttps://somewhere.com?hello=12\nhttps://somewhere.com/a?hello=12\nhttps://example.com?hello=12#xyz\nhttps://example.com/a?hello=12#xyz\nhttps://example.com#xyz\nhttps://example.com/a#xyz\nhttps://somewhere.com?hello=12&bye=11\nhttps://somewhere.com/a?hello=12&bye=11\nhttps://somewhere.com?hello=12&bye=11#xyz\nhey! https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 360..397
 error: this URL is not a hyperlink
   --> $DIR/bare-urls.rs:31:5
    |
@@ -171,6 +201,8 @@ help: use an automatic link instead
 LL | /// <https://somewhere.com?hello=12&bye=11>
    |     +                                     +
 
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com\nhttps://somewhere.com/a\nhttps://www.somewhere.com\nhttps://www.somewhere.com/a\nhttps://subdomain.example.com\nhttps://somewhere.com?\nhttps://somewhere.com/a?\nhttps://somewhere.com?hello=12\nhttps://somewhere.com/a?hello=12\nhttps://example.com?hello=12#xyz\nhttps://example.com/a?hello=12#xyz\nhttps://example.com#xyz\nhttps://example.com/a#xyz\nhttps://somewhere.com?hello=12&bye=11\nhttps://somewhere.com/a?hello=12&bye=11\nhttps://somewhere.com?hello=12&bye=11#xyz\nhey! https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 398..437
 error: this URL is not a hyperlink
   --> $DIR/bare-urls.rs:33:5
    |
@@ -183,6 +215,8 @@ help: use an automatic link instead
 LL | /// <https://somewhere.com/a?hello=12&bye=11>
    |     +                                       +
 
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com\nhttps://somewhere.com/a\nhttps://www.somewhere.com\nhttps://www.somewhere.com/a\nhttps://subdomain.example.com\nhttps://somewhere.com?\nhttps://somewhere.com/a?\nhttps://somewhere.com?hello=12\nhttps://somewhere.com/a?hello=12\nhttps://example.com?hello=12#xyz\nhttps://example.com/a?hello=12#xyz\nhttps://example.com#xyz\nhttps://example.com/a#xyz\nhttps://somewhere.com?hello=12&bye=11\nhttps://somewhere.com/a?hello=12&bye=11\nhttps://somewhere.com?hello=12&bye=11#xyz\nhey! https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 438..479
 error: this URL is not a hyperlink
   --> $DIR/bare-urls.rs:35:5
    |
@@ -195,6 +229,8 @@ help: use an automatic link instead
 LL | /// <https://somewhere.com?hello=12&bye=11#xyz>
    |     +                                         +
 
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://somewhere.com\nhttps://somewhere.com/a\nhttps://www.somewhere.com\nhttps://www.somewhere.com/a\nhttps://subdomain.example.com\nhttps://somewhere.com?\nhttps://somewhere.com/a?\nhttps://somewhere.com?hello=12\nhttps://somewhere.com/a?hello=12\nhttps://example.com?hello=12#xyz\nhttps://example.com/a?hello=12#xyz\nhttps://example.com#xyz\nhttps://example.com/a#xyz\nhttps://somewhere.com?hello=12&bye=11\nhttps://somewhere.com/a?hello=12&bye=11\nhttps://somewhere.com?hello=12&bye=11#xyz\nhey! https://somewhere.com/a?hello=12&bye=11#xyz"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 485..528
 error: this URL is not a hyperlink
   --> $DIR/bare-urls.rs:37:10
    |
@@ -207,5 +243,47 @@ help: use an automatic link instead
 LL | /// hey! <https://somewhere.com/a?hello=12&bye=11#xyz>
    |          +                                           +
 
-error: aborting due to 17 previous errors
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "here's a thing: https://example.com/"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 16..36
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:41:26
+   |
+LL | #[doc = "here's a thing: https://example.com/"]
+   |                          ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | #[doc = "here's a thing: <https://example.com/>"]
+   |                          +                    +
+
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://example.com/sugar\nhttps://example.com/raw"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 0..25
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:45:5
+   |
+LL | /// https://example.com/sugar
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | /// <https://example.com/sugar>
+   |     +                         +
+
+[src/librustdoc/passes/lint/bare_urls.rs:21:63] dox = "https://example.com/sugar\nhttps://example.com/raw"
+[src/librustdoc/passes/lint/bare_urls.rs:21:74] &range = 26..49
+error: this URL is not a hyperlink
+  --> $DIR/bare-urls.rs:47:10
+   |
+LL | #[doc = "https://example.com/raw"]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: bare URLs are not automatically turned into clickable links
+help: use an automatic link instead
+   |
+LL | #[doc = "<https://example.com/raw>"]
+   |          +                       +
+
+error: aborting due to 20 previous errors
 
