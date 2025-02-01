@@ -245,11 +245,12 @@ fn lint_int_literal<'tcx>(
     lit: &hir::Lit,
     t: ty::IntTy,
     v: u128,
+    negated: bool,
 ) {
     let int_type = t.normalize(cx.sess().target.pointer_width);
     let (min, max) = int_ty_range(int_type);
     let max = max as u128;
-    let negative = type_limits.negated_expr_id == Some(hir_id);
+    let negative = negated ^ (type_limits.negated_expr_id == Some(hir_id));
 
     // Detect literal value out of range [min, max] inclusive
     // avoiding use of -min to prevent overflow/panic
@@ -359,17 +360,21 @@ pub(crate) fn lint_literal<'tcx>(
     hir_id: HirId,
     span: Span,
     lit: &hir::Lit,
+    negated: bool,
 ) {
     match *cx.typeck_results().node_type(hir_id).kind() {
         ty::Int(t) => {
             match lit.node {
                 ast::LitKind::Int(v, ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed) => {
-                    lint_int_literal(cx, type_limits, hir_id, span, lit, t, v.get())
+                    lint_int_literal(cx, type_limits, hir_id, span, lit, t, v.get(), negated)
                 }
                 _ => bug!(),
             };
         }
-        ty::Uint(t) => lint_uint_literal(cx, hir_id, span, lit, t),
+        ty::Uint(t) => {
+            assert!(!negated);
+            lint_uint_literal(cx, hir_id, span, lit, t)
+        }
         ty::Float(t) => {
             let (is_infinite, sym) = match lit.node {
                 ast::LitKind::Float(v, _) => match t {
