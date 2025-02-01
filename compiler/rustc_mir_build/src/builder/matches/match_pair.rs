@@ -1,12 +1,13 @@
+use std::ops;
+
+use either::Either;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
-use std::ops;
-use either::Either;
-use crate::builder::matches::util::Range;
 
 use crate::builder::Builder;
 use crate::builder::expr::as_place::{PlaceBase, PlaceBuilder};
+use crate::builder::matches::util::Range;
 use crate::builder::matches::{FlatPat, MatchPairTree, TestCase};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -61,7 +62,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if !prefix.is_empty() {
             let bounds = Range::from_start(0..prefix.len() as u64);
             let subpattern = bounds.apply(prefix);
-            for pair in self.build_slice_branch(bounds, place, top_pattern, subpattern) {
+            for pair in self.build_slice_branch(bounds, place, top_pattern, subpattern, min_length)
+            {
                 match_pairs.push(pair);
             }
         }
@@ -79,7 +81,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if !suffix.is_empty() {
             let bounds = Range::from_end(0..suffix.len() as u64);
             let subpattern = bounds.apply(suffix);
-            for pair in self.build_slice_branch(bounds, place, top_pattern, subpattern) {
+            for pair in self.build_slice_branch(bounds, place, top_pattern, subpattern, min_length)
+            {
                 match_pairs.push(pair);
             }
         }
@@ -91,6 +94,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         place: &'b PlaceBuilder<'tcx>,
         top_pattern: &'pat Pat<'tcx>,
         pattern: &'pat [Box<Pat<'tcx>>],
+        min_length: u64,
     ) -> impl Iterator<Item = MatchPairTree<'pat, 'tcx>> + use<'a, 'tcx, 'pat, 'b> {
         let entries = self.find_const_groups(pattern);
 
@@ -123,6 +127,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         place.clone(),
                         elem_ty,
                         bounds.shift_range(range),
+                        min_length,
                     )
                 }
                 Either::Right(range) => {
@@ -202,26 +207,101 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         place: PlaceBuilder<'tcx>,
         elem_ty: Ty<'tcx>,
         range: Range,
+        min_length: u64,
     ) -> MatchPairTree<'pat, 'tcx> {
         let tcx = self.tcx;
-        let const_ty =
-            Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, Ty::new_array(tcx, elem_ty, range.len()));
+        let leaves = match valtree {
+            ty::ValTree::Leaf(_) => unreachable!(),
+            ty::ValTree::Branch(leaves) => leaves,
+        };
 
-        let pat_ty = if do_slice { Ty::new_slice(tcx, elem_ty) } else { source_pattern.ty };
-        let ty_const = ty::Const::new(tcx, ty::ConstKind::Value(ty::Value { ty: elem_ty, valtree }));
-        let value = Const::Ty(const_ty, ty_const);
-        let test_case = TestCase::Constant { value };
-        let pattern = tcx.arena.alloc(Pat {
-            ty: pat_ty,
-            span: source_pattern.span,
-            kind: PatKind::Constant { value },
-        });
+        if range.from_end {
+            todo!();
+        }
+
+        assert!(range.len() == leaves.len() as u64);
+        let mut subpairs = Vec::new();
+
+        let mut were_merged = 0;
+        if elem_ty == tcx.types.u8 {
+            let groups = (0..usize::MAX).take_while(|i| i * 2 + 1 <= leaves.len());
+
+            let leaf_bits = |leaf: ty::ValTree<'tcx>| {
+                if let ty::ValTree::Leaf(scalar) = leaf { scalar.to_u8() } else { todo!() }
+            };
+
+            for g_idx in groups {
+                were_merged += 2;
+
+                let lo = leaf_bits(leaves[g_idx]);
+                let hi = leaf_bits(leaves[g_idx + 1]);
+                let data = u16::from_le_bytes([lo, hi]);
+                let valtree = ty::ValTree::Leaf(ty::ScalarInt::from(data));
+
+                let elem_ty = tcx.types.u16;
+                let ty_const =
+                    ty::Const::new(tcx, ty::ConstKind::Value(ty::Value { ty: elem_ty, valtree }));
+                let value = Const::Ty(elem_ty, ty_const);
+                let test_case = TestCase::Constant { value };
+
+                let pattern = tcx.arena.alloc(Pat {
+                    ty: elem_ty,
+                    span: source_pattern.span,
+                    kind: PatKind::Constant { value },
+                });
+
+                let place = place
+                    .clone_project(ProjectionElem::ConstantIndex {
+                        offset: range.start + g_idx as u64,
+                        min_length,
+                        from_end: range.from_end,
+                    })
+                    .to_place(self);
+
+                subpairs.push(MatchPairTree {
+                    place: Some(place),
+                    test_case,
+                    subpairs: Vec::new(),
+                    pattern,
+                });
+            }
+        }
+
+        for (idx, leaf) in leaves.iter().enumerate().skip(were_merged) {
+            let ty_const = ty::Const::new(
+                tcx,
+                ty::ConstKind::Value(ty::Value { ty: elem_ty, valtree: *leaf }),
+            );
+            let value = Const::Ty(elem_ty, ty_const);
+            let test_case = TestCase::Constant { value };
+
+            let pattern = tcx.arena.alloc(Pat {
+                ty: elem_ty,
+                span: source_pattern.span,
+                kind: PatKind::Constant { value },
+            });
+
+            let place = place
+                .clone_project(ProjectionElem::ConstantIndex {
+                    offset: range.start + idx as u64,
+                    min_length,
+                    from_end: range.from_end,
+                })
+                .to_place(self);
+
+            subpairs.push(MatchPairTree {
+                place: Some(place),
+                test_case,
+                subpairs: Vec::new(),
+                pattern,
+            });
+        }
 
         MatchPairTree {
-            place: Some(place.to_place(self)),
-            test_case,
-            subpairs: Vec::new(),
-            pattern,
+            place: None,
+            test_case: TestCase::Irrefutable { binding: None, ascription: None },
+            subpairs,
+            pattern: source_pattern,
         }
     }
 }
@@ -335,15 +415,30 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
             }
 
             PatKind::Array { ref prefix, ref slice, ref suffix } => {
-                cx.prefix_slice_suffix(pattern, &mut subpairs, &place_builder, prefix, slice, suffix);
+                cx.prefix_slice_suffix(
+                    pattern,
+                    &mut subpairs,
+                    &place_builder,
+                    prefix,
+                    slice,
+                    suffix,
+                );
                 default_irrefutable()
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                cx.prefix_slice_suffix(pattern, &mut subpairs, &place_builder, prefix, slice, suffix);
+                cx.prefix_slice_suffix(
+                    pattern,
+                    &mut subpairs,
+                    &place_builder,
+                    prefix,
+                    slice,
+                    suffix,
+                );
 
                 if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
                     default_irrefutable()
                 } else {
+                    // TODO: do we always need this?
                     TestCase::Slice {
                         len: prefix.len() + suffix.len(),
                         variable_length: slice.is_some(),
