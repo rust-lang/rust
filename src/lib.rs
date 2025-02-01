@@ -183,8 +183,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
     ) -> Vec<rustc_span::Symbol> {
         // FIXME return the actually used target features. this is necessary for #[cfg(target_feature)]
         if sess.target.arch == "x86_64" && sess.target.os != "none" {
-            // x86_64 mandates SSE2 support
-            vec![sym::fsxr, sym::sse, sym::sse2]
+            // x86_64 mandates SSE2 support and rustc requires the x87 feature to be enabled
+            vec![sym::fsxr, sym::sse, sym::sse2, Symbol::intern("x87")]
         } else if sess.target.arch == "aarch64" {
             match &*sess.target.os {
                 "none" => vec![],
