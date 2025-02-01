@@ -86,7 +86,7 @@ impl<'tcx> ObligationStorage<'tcx> {
             self.overflowed.extend(ExtractIf::new(&mut self.pending, |o| {
                 let goal = o.clone().into();
                 let result = <&SolverDelegate<'tcx>>::from(infcx)
-                    .evaluate_root_goal(goal, GenerateProofTree::No)
+                    .evaluate_root_goal(goal, GenerateProofTree::No, o.cause.span)
                     .0;
                 matches!(result, Ok((HasChanged::Yes, _)))
             }));
@@ -167,7 +167,7 @@ where
             for obligation in self.obligations.unstalled_for_select() {
                 let goal = obligation.clone().into();
                 let result = <&SolverDelegate<'tcx>>::from(infcx)
-                    .evaluate_root_goal(goal, GenerateProofTree::No)
+                    .evaluate_root_goal(goal, GenerateProofTree::No, obligation.cause.span)
                     .0;
                 self.inspect_evaluated_obligation(infcx, &obligation, &result);
                 let (changed, certainty) = match result {
@@ -315,7 +315,11 @@ fn fulfillment_error_for_stalled<'tcx>(
 ) -> FulfillmentError<'tcx> {
     let (code, refine_obligation) = infcx.probe(|_| {
         match <&SolverDelegate<'tcx>>::from(infcx)
-            .evaluate_root_goal(root_obligation.clone().into(), GenerateProofTree::No)
+            .evaluate_root_goal(
+                root_obligation.clone().into(),
+                GenerateProofTree::No,
+                root_obligation.cause.span,
+            )
             .0
         {
             Ok((_, Certainty::Maybe(MaybeCause::Ambiguity))) => {

@@ -134,6 +134,7 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         generate_proof_tree: GenerateProofTree,
+        span: <Self::Interner as Interner>::Span,
     ) -> (
         Result<(HasChanged, Certainty), NoSolution>,
         Option<inspect::GoalEvaluation<Self::Interner>>,
@@ -174,9 +175,10 @@ where
         &self,
         goal: Goal<I, I::Predicate>,
         generate_proof_tree: GenerateProofTree,
+        span: I::Span,
     ) -> (Result<(HasChanged, Certainty), NoSolution>, Option<inspect::GoalEvaluation<I>>) {
         EvalCtxt::enter_root(self, self.cx().recursion_limit(), generate_proof_tree, |ecx| {
-            ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal)
+            ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal, span)
         })
     }
 
@@ -187,7 +189,12 @@ where
     ) -> bool {
         self.probe(|| {
             EvalCtxt::enter_root(self, root_depth, GenerateProofTree::No, |ecx| {
-                ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal)
+                ecx.evaluate_goal(
+                    GoalEvaluationKind::Root,
+                    GoalSource::Misc,
+                    goal,
+                    I::Span::dummy(),
+                )
             })
             .0
         })
@@ -204,7 +211,12 @@ where
         Option<inspect::GoalEvaluation<I>>,
     ) {
         EvalCtxt::enter_root(self, self.cx().recursion_limit(), generate_proof_tree, |ecx| {
-            ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal)
+            ecx.evaluate_goal_raw(
+                GoalEvaluationKind::Root,
+                GoalSource::Misc,
+                goal,
+                I::Span::dummy(),
+            )
         })
     }
 }
@@ -294,7 +306,7 @@ where
         };
 
         for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
-            ecx.delegate.inject_new_hidden_type_unchecked(key, ty);
+            ecx.delegate.inject_new_hidden_type_unchecked(key, ty, I::Span::dummy());
         }
 
         if !ecx.nested_goals.is_empty() {
@@ -370,9 +382,10 @@ where
         goal_evaluation_kind: GoalEvaluationKind,
         source: GoalSource,
         goal: Goal<I, I::Predicate>,
+        span: I::Span,
     ) -> Result<(HasChanged, Certainty), NoSolution> {
         let (normalization_nested_goals, has_changed, certainty) =
-            self.evaluate_goal_raw(goal_evaluation_kind, source, goal)?;
+            self.evaluate_goal_raw(goal_evaluation_kind, source, goal, span)?;
         assert!(normalization_nested_goals.is_empty());
         Ok((has_changed, certainty))
     }
@@ -391,6 +404,7 @@ where
         goal_evaluation_kind: GoalEvaluationKind,
         _source: GoalSource,
         goal: Goal<I, I::Predicate>,
+        span: I::Span,
     ) -> Result<(NestedNormalizationGoals<I>, HasChanged, Certainty), NoSolution> {
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
         let mut goal_evaluation =
@@ -418,7 +432,7 @@ where
         };
 
         let (normalization_nested_goals, certainty) =
-            self.instantiate_and_apply_query_response(goal.param_env, orig_values, response);
+            self.instantiate_and_apply_query_response(goal.param_env, orig_values, response, span);
         self.inspect.goal_evaluation(goal_evaluation);
 
         // FIXME: We previously had an assert here that checked that recomputing
@@ -546,6 +560,7 @@ where
                 GoalEvaluationKind::Nested,
                 GoalSource::Misc,
                 unconstrained_goal,
+                I::Span::dummy(),
             )?;
             // Add the nested goals from normalization to our own nested goals.
             trace!(?nested_goals);
@@ -591,7 +606,7 @@ where
 
         for (source, goal) in goals.goals {
             let (has_changed, certainty) =
-                self.evaluate_goal(GoalEvaluationKind::Nested, source, goal)?;
+                self.evaluate_goal(GoalEvaluationKind::Nested, source, goal, I::Span::dummy())?;
             if has_changed == HasChanged::Yes {
                 unchanged_certainty = None;
             }
@@ -822,8 +837,12 @@ where
             let identity_args = self.fresh_args_for_item(alias.def_id);
             let rigid_ctor = ty::AliasTerm::new_from_args(cx, alias.def_id, identity_args);
             let ctor_term = rigid_ctor.to_term(cx);
-            let obligations =
-                self.delegate.eq_structurally_relating_aliases(param_env, term, ctor_term)?;
+            let obligations = self.delegate.eq_structurally_relating_aliases(
+                param_env,
+                term,
+                ctor_term,
+                I::Span::dummy(),
+            )?;
             debug_assert!(obligations.is_empty());
             self.relate(param_env, alias, variance, rigid_ctor)
         } else {
@@ -841,7 +860,12 @@ where
         lhs: T,
         rhs: T,
     ) -> Result<(), NoSolution> {
-        let result = self.delegate.eq_structurally_relating_aliases(param_env, lhs, rhs)?;
+        let result = self.delegate.eq_structurally_relating_aliases(
+            param_env,
+            lhs,
+            rhs,
+            I::Span::dummy(),
+        )?;
         assert_eq!(result, vec![]);
         Ok(())
     }
@@ -864,7 +888,7 @@ where
         variance: ty::Variance,
         rhs: T,
     ) -> Result<(), NoSolution> {
-        let goals = self.delegate.relate(param_env, lhs, variance, rhs)?;
+        let goals = self.delegate.relate(param_env, lhs, variance, rhs, I::Span::dummy())?;
         self.add_goals(GoalSource::Misc, goals);
         Ok(())
     }
@@ -881,7 +905,7 @@ where
         lhs: T,
         rhs: T,
     ) -> Result<Vec<Goal<I, I::Predicate>>, NoSolution> {
-        Ok(self.delegate.relate(param_env, lhs, ty::Variance::Invariant, rhs)?)
+        Ok(self.delegate.relate(param_env, lhs, ty::Variance::Invariant, rhs, I::Span::dummy())?)
     }
 
     pub(super) fn instantiate_binder_with_infer<T: TypeFoldable<I> + Copy>(
@@ -917,12 +941,12 @@ where
     }
 
     pub(super) fn register_ty_outlives(&self, ty: I::Ty, lt: I::Region) {
-        self.delegate.register_ty_outlives(ty, lt);
+        self.delegate.register_ty_outlives(ty, lt, I::Span::dummy());
     }
 
     pub(super) fn register_region_outlives(&self, a: I::Region, b: I::Region) {
         // `b : a` ==> `a <= b`
-        self.delegate.sub_regions(b, a);
+        self.delegate.sub_regions(b, a, I::Span::dummy());
     }
 
     /// Computes the list of goals required for `arg` to be well-formed

@@ -5,7 +5,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::relate::combine::PredicateEmittingRelation;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
 use super::{BoundRegionConversionTime, InferCtxt, RegionVariableOrigin, SubregionOrigin};
 
@@ -203,23 +203,23 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.probe(|_| probe())
     }
 
-    fn sub_regions(&self, sub: ty::Region<'tcx>, sup: ty::Region<'tcx>) {
+    fn sub_regions(&self, sub: ty::Region<'tcx>, sup: ty::Region<'tcx>, span: Span) {
         self.inner.borrow_mut().unwrap_region_constraints().make_subregion(
-            SubregionOrigin::RelateRegionParamBound(DUMMY_SP, None),
+            SubregionOrigin::RelateRegionParamBound(span, None),
             sub,
             sup,
         );
     }
 
-    fn equate_regions(&self, a: ty::Region<'tcx>, b: ty::Region<'tcx>) {
+    fn equate_regions(&self, a: ty::Region<'tcx>, b: ty::Region<'tcx>, span: Span) {
         self.inner.borrow_mut().unwrap_region_constraints().make_eqregion(
-            SubregionOrigin::RelateRegionParamBound(DUMMY_SP, None),
+            SubregionOrigin::RelateRegionParamBound(span, None),
             a,
             b,
         );
     }
 
-    fn register_ty_outlives(&self, ty: Ty<'tcx>, r: ty::Region<'tcx>) {
-        self.register_region_obligation_with_cause(ty, r, &ObligationCause::dummy());
+    fn register_ty_outlives(&self, ty: Ty<'tcx>, r: ty::Region<'tcx>, span: Span) {
+        self.register_region_obligation_with_cause(ty, r, &ObligationCause::dummy_with_span(span));
     }
 }
