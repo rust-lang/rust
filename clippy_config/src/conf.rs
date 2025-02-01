@@ -609,6 +609,7 @@ define_Conf! {
         index_refutable_slice,
         iter_kv_map,
         legacy_numeric_constants,
+        lines_filter_map_ok,
         manual_bits,
         manual_c_str_literals,
         manual_clamp,

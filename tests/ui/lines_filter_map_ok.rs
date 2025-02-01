@@ -31,3 +31,10 @@ fn main() -> io::Result<()> {
     io::stdin().lines().filter_map(|x| x.err()).for_each(|_| ());
     Ok(())
 }
+
+#[clippy::msrv = "1.56"]
+fn msrv_check() {
+    let _lines = BufReader::new(std::fs::File::open("some-path").unwrap())
+        .lines()
+        .filter_map(Result::ok);
+}
