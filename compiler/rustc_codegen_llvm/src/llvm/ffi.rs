@@ -13,9 +13,8 @@ use rustc_target::spec::SymbolVisibility;
 use super::RustString;
 use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
-    DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DILocation, DISPFlags, DIScope,
-    DISubprogram, DISubrange, DITemplateTypeParameter, DIType, DIVariable, DebugEmissionKind,
-    DebugNameTableKind,
+    DIFile, DIFlags, DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram,
+    DISubrange, DITemplateTypeParameter, DIType, DIVariable, DebugEmissionKind, DebugNameTableKind,
 };
 use crate::llvm;
 
@@ -1734,6 +1733,13 @@ unsafe extern "C" {
         Line: c_uint,
         Column: c_uint,
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateLexicalBlockFile<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: &'ll Metadata,
+        File: &'ll Metadata,
+        Discriminator: c_uint, // (optional "DWARF path discriminator"; default is 0)
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2164,12 +2170,6 @@ unsafe extern "C" {
         Tag: c_uint,
         Type: &'a DIType,
     ) -> &'a DIDerivedType;
-
-    pub fn LLVMRustDIBuilderCreateLexicalBlockFile<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: &'a DIScope,
-        File: &'a DIFile,
-    ) -> &'a DILexicalBlock;
 
     pub fn LLVMRustDIBuilderCreateStaticVariable<'a>(
         Builder: &DIBuilder<'a>,
