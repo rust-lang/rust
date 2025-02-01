@@ -38,7 +38,7 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Footnotes<'a, I> {
         let key = key.to_owned();
         let FootnoteDef { content, id } =
             self.footnotes.entry(key).or_insert(FootnoteDef { content: Vec::new(), id: new_id });
-        // Don't allow changing the ID of existing entrys, but allow changing the contents.
+        // Don't allow changing the ID of existing entries, but allow changing the contents.
         (content, *id)
     }
 
