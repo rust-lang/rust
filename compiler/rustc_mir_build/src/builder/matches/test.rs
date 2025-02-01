@@ -131,57 +131,69 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     otherwise_block,
                 );
 
-                let mut place = place;
-
-                if fused == 2 {
+                let discr = if fused > 1 {
+                    assert!(fused <= 4 && place_ty.ty == self.tcx.types.u8);
                     let tcx = self.tcx;
                     let source_info = self.source_info(match_start_span);
 
-                    let mut builder = PlaceBuilder::from(place);
-                    match builder.projection_mut() {
-                        [.., ProjectionElem::ConstantIndex { offset, .. }] => {
-                            *offset += 1;
+                    let fused_ty = match fused {
+                        2 => tcx.types.u16,
+                        3 | 4 => tcx.types.u32,
+                        _ => unreachable!(),
+                    };
+
+                    let builder = PlaceBuilder::from(place);
+
+                    let place_for = move |b: &mut Self, idx| {
+                        let mut builder = builder.clone();
+                        match builder.projection_mut() {
+                            [.., ProjectionElem::ConstantIndex { offset, .. }] => {
+                                *offset += idx;
+                            }
+                            _ => todo!(),
                         }
-                        _ => todo!(),
+                        builder.to_place(b)
+                    };
+
+                    let mut acc = self.literal_operand(DUMMY_SP, Const::from_usize(tcx, 0));
+
+                    for i in 0..fused {
+                        let new_acc = self.temp(fused_ty, DUMMY_SP);
+                        let temp1 = self.temp(fused_ty, DUMMY_SP);
+                        let temp2 = self.temp(fused_ty, DUMMY_SP);
+                        let place = place_for(self, i);
+                        let shift = self.literal_operand(DUMMY_SP, Const::from_usize(tcx, i * 8));
+
+                        self.cfg.push_assign(
+                            block,
+                            source_info,
+                            temp1,
+                            Rvalue::Cast(CastKind::IntToInt, Operand::Copy(place), fused_ty),
+                        );
+                        self.cfg.push_assign(
+                            block,
+                            source_info,
+                            temp2,
+                            Rvalue::BinaryOp(BinOp::Shr, Box::new((Operand::Copy(temp1), shift))),
+                        );
+                        self.cfg.push_assign(
+                            block,
+                            source_info,
+                            new_acc,
+                            Rvalue::BinaryOp(
+                                BinOp::BitOr,
+                                Box::new((acc, Operand::Copy(temp2))),
+                            ),
+                        );
+
+                        acc = Operand::Copy(new_acc);
                     }
-                    let place_2 = builder.to_place(&self);
-                    let shift = self.literal_operand(DUMMY_SP, Const::from_usize(tcx, 8));
-                    let fused_temp = self.temp(tcx.types.u16, DUMMY_SP);
-                    let fused_temp2 = self.temp(tcx.types.u16, DUMMY_SP);
-                    let fused_temp3 = self.temp(tcx.types.u16, DUMMY_SP);
-                    let fused_final = self.temp(tcx.types.u16, DUMMY_SP);
-                    self.cfg.push_assign(
-                        block,
-                        source_info,
-                        fused_temp,
-                        Rvalue::Cast(CastKind::IntToInt, Operand::Copy(place_2), tcx.types.u16),
-                    );
-                    self.cfg.push_assign(
-                        block,
-                        source_info,
-                        fused_temp2,
-                        Rvalue::BinaryOp(BinOp::Shr, Box::new((Operand::Copy(fused_temp), shift))),
-                    );
-                    self.cfg.push_assign(
-                        block,
-                        source_info,
-                        fused_temp3,
-                        Rvalue::Cast(CastKind::IntToInt, Operand::Copy(place), tcx.types.u16),
-                    );
-                    self.cfg.push_assign(
-                        block,
-                        source_info,
-                        fused_final,
-                        Rvalue::BinaryOp(
-                            BinOp::BitOr,
-                            Box::new((Operand::Copy(fused_temp2), Operand::Copy(fused_temp3))),
-                        ),
-                    );
-                    place = Place::from(fused_final);
-                }
+
+                    acc
+                } else { Operand::Copy(place)};
 
                 let terminator = TerminatorKind::SwitchInt {
-                    discr: Operand::Copy(place),
+                    discr,
                     targets: switch_targets,
                 };
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
