@@ -199,7 +199,8 @@ pub fn check_intrinsic_type(
         let split: Vec<&str> = name_str.split('_').collect();
         assert!(split.len() >= 2, "Atomic intrinsic in an incorrect format");
 
-        //We only care about the operation here
+        // Each atomic op has variants with different suffixes (`_seq_cst`, `_acquire`, etc.). Use
+        // string ops to strip the suffixes, because the variants all get the same treatment here.
         let (n_tps, inputs, output) = match split[1] {
             "cxchg" | "cxchgweak" => (
                 1,

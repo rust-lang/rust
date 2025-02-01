@@ -14,7 +14,6 @@
 #![feature(bstr)]
 #![feature(cell_update)]
 #![feature(clone_to_uninit)]
-#![feature(const_black_box)]
 #![feature(const_eval_select)]
 #![feature(const_swap_nonoverlapping)]
 #![feature(const_trait_impl)]

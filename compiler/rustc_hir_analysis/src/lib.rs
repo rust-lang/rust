@@ -83,12 +83,11 @@ pub mod autoderef;
 mod bounds;
 mod check_unused;
 mod coherence;
-mod delegation;
-pub mod hir_ty_lowering;
-// FIXME: This module shouldn't be public.
-pub mod collect;
+mod collect;
 mod constrained_generic_params;
+mod delegation;
 mod errors;
+pub mod hir_ty_lowering;
 pub mod hir_wf_check;
 mod impl_wf_check;
 mod outlives;
@@ -104,7 +103,8 @@ use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 
-use self::hir_ty_lowering::{FeedConstTy, HirTyLowerer};
+pub use crate::collect::suggest_impl_trait;
+use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -152,11 +152,14 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     });
 
     if tcx.features().rustc_attrs() {
-        tcx.sess.time("outlives_dumping", || outlives::dump::inferred_outlives(tcx));
-        tcx.sess.time("variance_dumping", || variance::dump::variances(tcx));
-        collect::dump::opaque_hidden_types(tcx);
-        collect::dump::predicates_and_item_bounds(tcx);
-        collect::dump::def_parents(tcx);
+        tcx.sess.time("dumping_rustc_attr_data", || {
+            outlives::dump::inferred_outlives(tcx);
+            variance::dump::variances(tcx);
+            collect::dump::opaque_hidden_types(tcx);
+            collect::dump::predicates_and_item_bounds(tcx);
+            collect::dump::def_parents(tcx);
+            collect::dump::vtables(tcx);
+        });
     }
 
     // Make sure we evaluate all static and (non-associated) const items, even if unused.

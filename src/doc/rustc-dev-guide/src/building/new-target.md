@@ -4,7 +4,12 @@ These are a set of steps to add support for a new target. There are
 numerous end states and paths to get there, so not all sections may be
 relevant to your desired goal.
 
+See also the associated documentation in the
+[target tier policy][target_tier_policy_add].
+
 <!-- toc -->
+
+[target_tier_policy_add]: https://doc.rust-lang.org/rustc/target-tier-policy.html#adding-a-new-target
 
 ## Specifying a new LLVM
 

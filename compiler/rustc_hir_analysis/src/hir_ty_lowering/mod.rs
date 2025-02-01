@@ -296,7 +296,6 @@ pub trait GenericArgsLowerer<'a, 'tcx> {
 
     fn provided_kind(
         &mut self,
-        preceding_args: &[ty::GenericArg<'tcx>],
         param: &ty::GenericParamDef,
         arg: &GenericArg<'tcx>,
     ) -> ty::GenericArg<'tcx>;
@@ -480,7 +479,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             fn provided_kind(
                 &mut self,
-                _preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {

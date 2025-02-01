@@ -301,7 +301,7 @@ LL | pub fn next<'a, T>(s: &'a mut dyn SVec<Item = T, Output = T>) {
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ `SVec` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/ice-generic-type-alias-105742.rs:15:17
    |
 LL |    pub trait SVec: Index<

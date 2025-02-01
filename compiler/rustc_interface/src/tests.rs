@@ -8,12 +8,12 @@ use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, registry};
 use rustc_session::config::{
-    BranchProtection, CFGuard, Cfg, CollapseMacroDebuginfo, CoverageLevel, CoverageOptions,
-    DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation, Externs,
-    FmtDebug, FunctionReturn, InliningThreshold, Input, InstrumentCoverage, InstrumentXRay,
-    LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli, MirIncludeSpans, NextSolverConfig,
-    OomStrategy, Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes,
-    PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath,
+    AutoDiff, BranchProtection, CFGuard, Cfg, CollapseMacroDebuginfo, CoverageLevel,
+    CoverageOptions, DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation,
+    Externs, FmtDebug, FunctionReturn, InliningThreshold, Input, InstrumentCoverage,
+    InstrumentXRay, LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli, MirIncludeSpans,
+    NextSolverConfig, OomStrategy, Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet,
+    Passes, PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath,
     SymbolManglingVersion, WasiExecModel, build_configuration, build_session_options,
     rustc_optgroups,
 };
@@ -760,6 +760,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(allow_features, Some(vec![String::from("lang_items")]));
     tracked!(always_encode_mir, true);
     tracked!(assume_incomplete_release, true);
+    tracked!(autodiff, vec![AutoDiff::Print]);
     tracked!(binary_dep_depinfo, true);
     tracked!(box_noalias, false);
     tracked!(

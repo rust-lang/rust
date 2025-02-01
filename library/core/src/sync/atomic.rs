@@ -716,6 +716,12 @@ impl AtomicBool {
     /// AcqRel   | AcqRel  | Acquire
     /// SeqCst   | SeqCst  | SeqCst
     ///
+    /// `compare_and_swap` and `compare_exchange` also differ in their return type. You can use
+    /// `compare_exchange(...).unwrap_or_else(|x| x)` to recover the behavior of `compare_and_swap`,
+    /// but in most cases it is more idiomatic to check whether the return value is `Ok` or `Err`
+    /// rather than to infer success vs failure based on the value that was read.
+    ///
+    /// During migration, consider whether it makes sense to use `compare_exchange_weak` instead.
     /// `compare_exchange_weak` is allowed to fail spuriously even when the comparison succeeds,
     /// which allows the compiler to generate better assembly code when the compare and swap
     /// is used in a loop.
@@ -1651,6 +1657,12 @@ impl<T> AtomicPtr<T> {
     /// AcqRel   | AcqRel  | Acquire
     /// SeqCst   | SeqCst  | SeqCst
     ///
+    /// `compare_and_swap` and `compare_exchange` also differ in their return type. You can use
+    /// `compare_exchange(...).unwrap_or_else(|x| x)` to recover the behavior of `compare_and_swap`,
+    /// but in most cases it is more idiomatic to check whether the return value is `Ok` or `Err`
+    /// rather than to infer success vs failure based on the value that was read.
+    ///
+    /// During migration, consider whether it makes sense to use `compare_exchange_weak` instead.
     /// `compare_exchange_weak` is allowed to fail spuriously even when the comparison succeeds,
     /// which allows the compiler to generate better assembly code when the compare and swap
     /// is used in a loop.
@@ -2771,6 +2783,12 @@ macro_rules! atomic_int {
             /// AcqRel   | AcqRel  | Acquire
             /// SeqCst   | SeqCst  | SeqCst
             ///
+            /// `compare_and_swap` and `compare_exchange` also differ in their return type. You can use
+            /// `compare_exchange(...).unwrap_or_else(|x| x)` to recover the behavior of `compare_and_swap`,
+            /// but in most cases it is more idiomatic to check whether the return value is `Ok` or `Err`
+            /// rather than to infer success vs failure based on the value that was read.
+            ///
+            /// During migration, consider whether it makes sense to use `compare_exchange_weak` instead.
             /// `compare_exchange_weak` is allowed to fail spuriously even when the comparison succeeds,
             /// which allows the compiler to generate better assembly code when the compare and swap
             /// is used in a loop.

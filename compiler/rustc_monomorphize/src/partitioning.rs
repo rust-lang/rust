@@ -92,6 +92,8 @@
 //! source-level module, functions from the same module will be available for
 //! inlining, even when they are not marked `#[inline]`.
 
+mod autodiff;
+
 use std::cmp;
 use std::collections::hash_map::Entry;
 use std::fs::{self, File};
@@ -251,7 +253,17 @@ where
             can_export_generics,
             always_export_generics,
         );
-        if visibility == Visibility::Hidden && can_be_internalized {
+
+        // We can't differentiate something that got inlined.
+        let autodiff_active = cfg!(llvm_enzyme)
+            && cx
+                .tcx
+                .codegen_fn_attrs(mono_item.def_id())
+                .autodiff_item
+                .as_ref()
+                .is_some_and(|ad| ad.is_active());
+
+        if !autodiff_active && visibility == Visibility::Hidden && can_be_internalized {
             internalization_candidates.insert(mono_item);
         }
         let size_estimate = mono_item.size_estimate(cx.tcx);
@@ -1176,6 +1188,18 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
         })
         .collect();
 
+    let autodiff_mono_items: Vec<_> = items
+        .iter()
+        .filter_map(|item| match *item {
+            MonoItem::Fn(ref instance) => Some((item, instance)),
+            _ => None,
+        })
+        .collect();
+
+    let autodiff_items =
+        autodiff::find_autodiff_source_functions(tcx, &usage_map, autodiff_mono_items);
+    let autodiff_items = tcx.arena.alloc_from_iter(autodiff_items);
+
     // Output monomorphization stats per def_id
     if let SwitchWithOptPath::Enabled(ref path) = tcx.sess.opts.unstable_opts.dump_mono_stats {
         if let Err(err) =
@@ -1236,7 +1260,11 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
         }
     }
 
-    MonoItemPartitions { all_mono_items: tcx.arena.alloc(mono_items), codegen_units }
+    MonoItemPartitions {
+        all_mono_items: tcx.arena.alloc(mono_items),
+        codegen_units,
+        autodiff_items,
+    }
 }
 
 /// Outputs stats about instantiation counts and estimated size, per `MonoItem`'s

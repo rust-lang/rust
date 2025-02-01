@@ -64,7 +64,7 @@ fn is_dyn_compatible(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
 }
 
 /// We say a method is *vtable safe* if it can be invoked on a trait
-/// object. Note that object-safe traits can have some
+/// object. Note that dyn-compatible traits can have some
 /// non-vtable-safe methods, so long as they require `Self: Sized` or
 /// otherwise ensure that they cannot be used when `Self = Trait`.
 pub fn is_vtable_safe_method(tcx: TyCtxt<'_>, trait_def_id: DefId, method: ty::AssocItem) -> bool {
@@ -421,7 +421,7 @@ fn virtual_call_violations_for_method<'tcx>(
     let receiver_ty = tcx.liberate_late_bound_regions(method.def_id, sig.input(0));
 
     // Until `unsized_locals` is fully implemented, `self: Self` can't be dispatched on.
-    // However, this is already considered object-safe. We allow it as a special case here.
+    // However, this is already considered dyn compatible. We allow it as a special case here.
     // FIXME(mikeyhew) get rid of this `if` statement once `receiver_is_dispatchable` allows
     // `Receiver: Unsize<Receiver[Self => dyn Trait]>`.
     if receiver_ty != tcx.types.self_param {
@@ -631,7 +631,7 @@ fn object_ty_for_trait<'tcx>(
 /// - `self: Pin<Box<Self>>` requires `Pin<Box<Self>>: DispatchFromDyn<Pin<Box<dyn Trait>>>`.
 ///
 /// The only case where the receiver is not dispatchable, but is still a valid receiver
-/// type (just not object-safe), is when there is more than one level of pointer indirection.
+/// type (just not dyn compatible), is when there is more than one level of pointer indirection.
 /// E.g., `self: &&Self`, `self: &Rc<Self>`, `self: Box<Box<Self>>`. In these cases, there
 /// is no way, or at least no inexpensive way, to coerce the receiver from the version where
 /// `Self = dyn Trait` to the version where `Self = T`, where `T` is the unknown erased type

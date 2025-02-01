@@ -747,7 +747,9 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tcx = tables.tcx;
         let alloc_id = tables.tcx.vtable_allocation((
             ty.internal(&mut *tables, tcx),
-            trait_ref.internal(&mut *tables, tcx),
+            trait_ref
+                .internal(&mut *tables, tcx)
+                .map(|principal| tcx.instantiate_bound_regions_with_erased(principal)),
         ));
         Some(alloc_id.stable(&mut *tables))
     }

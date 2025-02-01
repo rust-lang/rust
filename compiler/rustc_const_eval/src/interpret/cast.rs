@@ -414,36 +414,33 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 // Sanity-check that `supertrait_vtable_slot` in this type's vtable indeed produces
                 // our destination trait.
-                if cfg!(debug_assertions) {
-                    let vptr_entry_idx =
-                        self.tcx.supertrait_vtable_slot((src_pointee_ty, dest_pointee_ty));
-                    let vtable_entries = self.vtable_entries(data_a.principal(), ty);
-                    if let Some(entry_idx) = vptr_entry_idx {
-                        let Some(&ty::VtblEntry::TraitVPtr(upcast_trait_ref)) =
-                            vtable_entries.get(entry_idx)
-                        else {
-                            span_bug!(
-                                self.cur_span(),
-                                "invalid vtable entry index in {} -> {} upcast",
-                                src_pointee_ty,
-                                dest_pointee_ty
-                            );
-                        };
-                        let erased_trait_ref = upcast_trait_ref
-                            .map_bound(|r| ty::ExistentialTraitRef::erase_self_ty(*self.tcx, r));
-                        assert!(
-                            data_b
-                                .principal()
-                                .is_some_and(|b| self.eq_in_param_env(erased_trait_ref, b))
+                let vptr_entry_idx =
+                    self.tcx.supertrait_vtable_slot((src_pointee_ty, dest_pointee_ty));
+                let vtable_entries = self.vtable_entries(data_a.principal(), ty);
+                if let Some(entry_idx) = vptr_entry_idx {
+                    let Some(&ty::VtblEntry::TraitVPtr(upcast_trait_ref)) =
+                        vtable_entries.get(entry_idx)
+                    else {
+                        span_bug!(
+                            self.cur_span(),
+                            "invalid vtable entry index in {} -> {} upcast",
+                            src_pointee_ty,
+                            dest_pointee_ty
                         );
-                    } else {
-                        // In this case codegen would keep using the old vtable. We don't want to do
-                        // that as it has the wrong trait. The reason codegen can do this is that
-                        // one vtable is a prefix of the other, so we double-check that.
-                        let vtable_entries_b = self.vtable_entries(data_b.principal(), ty);
-                        assert!(&vtable_entries[..vtable_entries_b.len()] == vtable_entries_b);
                     };
-                }
+                    let erased_trait_ref =
+                        ty::ExistentialTraitRef::erase_self_ty(*self.tcx, upcast_trait_ref);
+                    assert!(data_b.principal().is_some_and(|b| self.eq_in_param_env(
+                        erased_trait_ref,
+                        self.tcx.instantiate_bound_regions_with_erased(b)
+                    )));
+                } else {
+                    // In this case codegen would keep using the old vtable. We don't want to do
+                    // that as it has the wrong trait. The reason codegen can do this is that
+                    // one vtable is a prefix of the other, so we double-check that.
+                    let vtable_entries_b = self.vtable_entries(data_b.principal(), ty);
+                    assert!(&vtable_entries[..vtable_entries_b.len()] == vtable_entries_b);
+                };
 
                 // Get the destination trait vtable and return that.
                 let new_vptr = self.get_vtable_ptr(ty, data_b)?;

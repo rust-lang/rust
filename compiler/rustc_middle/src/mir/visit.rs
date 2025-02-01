@@ -636,7 +636,7 @@ macro_rules! make_mir_visitor {
                     OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) => {
                         self.visit_operand(op, location);
                     }
-                    ResumedAfterReturn(_) | ResumedAfterPanic(_) => {
+                    ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference => {
                         // Nothing to visit
                     }
                     MisalignedPointerDereference { required, found } => {

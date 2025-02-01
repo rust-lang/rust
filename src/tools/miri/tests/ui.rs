@@ -129,22 +129,25 @@ fn miri_config(
     config.comment_defaults.base().add_custom("edition", Edition("2021".into()));
 
     if let Some(WithDependencies { bless }) = with_dependencies {
-        config.comment_defaults.base().set_custom("dependencies", DependencyBuilder {
-            program: CommandBuilder {
-                // Set the `cargo-miri` binary, which we expect to be in the same folder as the `miri` binary.
-                // (It's a separate crate, so we don't get an env var from cargo.)
-                program: miri_path()
-                    .with_file_name(format!("cargo-miri{}", env::consts::EXE_SUFFIX)),
-                // There is no `cargo miri build` so we just use `cargo miri run`.
-                args: ["miri", "run"].into_iter().map(Into::into).collect(),
-                // Reset `RUSTFLAGS` to work around <https://github.com/rust-lang/rust/pull/119574#issuecomment-1876878344>.
-                envs: vec![("RUSTFLAGS".into(), None)],
-                ..CommandBuilder::cargo()
+        config.comment_defaults.base().set_custom(
+            "dependencies",
+            DependencyBuilder {
+                program: CommandBuilder {
+                    // Set the `cargo-miri` binary, which we expect to be in the same folder as the `miri` binary.
+                    // (It's a separate crate, so we don't get an env var from cargo.)
+                    program: miri_path()
+                        .with_file_name(format!("cargo-miri{}", env::consts::EXE_SUFFIX)),
+                    // There is no `cargo miri build` so we just use `cargo miri run`.
+                    args: ["miri", "run"].into_iter().map(Into::into).collect(),
+                    // Reset `RUSTFLAGS` to work around <https://github.com/rust-lang/rust/pull/119574#issuecomment-1876878344>.
+                    envs: vec![("RUSTFLAGS".into(), None)],
+                    ..CommandBuilder::cargo()
+                },
+                crate_manifest_path: Path::new("test_dependencies").join("Cargo.toml"),
+                build_std: None,
+                bless_lockfile: bless,
             },
-            crate_manifest_path: Path::new("test_dependencies").join("Cargo.toml"),
-            build_std: None,
-            bless_lockfile: bless,
-        });
+        );
     }
     config
 }

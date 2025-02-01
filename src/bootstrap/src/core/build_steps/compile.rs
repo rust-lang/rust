@@ -1049,9 +1049,12 @@ pub fn rustc_cargo(
     // <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Internal.20lint.20for.20raw.20.60print!.60.20and.20.60println!.60.3F>.
     cargo.rustflag("-Zon-broken-pipe=kill");
 
-    if builder.config.llvm_enzyme {
-        cargo.rustflag("-l").rustflag("Enzyme-19");
-    }
+    // We temporarily disable linking here as part of some refactoring.
+    // This way, people can manually use -Z llvm-plugins and -C passes=enzyme for now.
+    // In a follow-up PR, we will re-enable linking here and load the pass for them.
+    //if builder.config.llvm_enzyme {
+    //    cargo.rustflag("-l").rustflag("Enzyme-19");
+    //}
 
     // Building with protected visibility reduces the number of dynamic relocations needed, giving
     // us a faster startup time. However GNU ld < 2.40 will error if we try to link a shared object

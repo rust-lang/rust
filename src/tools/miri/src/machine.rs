@@ -1111,10 +1111,13 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         // Call the lang item.
         let panic = ecx.tcx.lang_items().get(reason.lang_item()).unwrap();
         let panic = ty::Instance::mono(ecx.tcx.tcx, panic);
-        ecx.call_function(panic, ExternAbi::Rust, &[], None, StackPopCleanup::Goto {
-            ret: None,
-            unwind: mir::UnwindAction::Unreachable,
-        })?;
+        ecx.call_function(
+            panic,
+            ExternAbi::Rust,
+            &[],
+            None,
+            StackPopCleanup::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
+        )?;
         interp_ok(())
     }
 

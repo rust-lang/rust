@@ -14,7 +14,7 @@ LL |     async fn foo(self: &dyn Foo) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/inference_var_self_argument.rs:5:14
    |
 LL | trait Foo {
