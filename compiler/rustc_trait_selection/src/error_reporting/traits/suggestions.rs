@@ -3,7 +3,6 @@
 use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::iter;
-use std::path::PathBuf;
 
 use itertools::{EitherOrBoth, Itertools};
 use rustc_abi::ExternAbi;
@@ -1297,30 +1296,24 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // Because of this, we modify the error to refer to the original obligation and
                     // return early in the caller.
 
-                    let msg = format!("the trait bound `{old_pred}` is not satisfied");
+                    let msg = format!(
+                        "the trait bound `{}` is not satisfied",
+                        self.tcx.short_string(old_pred, err.long_ty_path()),
+                    );
+                    let self_ty_str =
+                        self.tcx.short_string(old_pred.self_ty().skip_binder(), err.long_ty_path());
                     if has_custom_message {
                         err.note(msg);
                     } else {
                         err.messages = vec![(rustc_errors::DiagMessage::from(msg), Style::NoStyle)];
                     }
-                    let mut file = None;
                     err.span_label(
                         span,
                         format!(
-                            "the trait `{}` is not implemented for `{}`",
-                            old_pred.print_modifiers_and_trait_path(),
-                            self.tcx.short_ty_string(old_pred.self_ty().skip_binder(), &mut file),
+                            "the trait `{}` is not implemented for `{self_ty_str}`",
+                            old_pred.print_modifiers_and_trait_path()
                         ),
                     );
-                    if let Some(file) = file {
-                        err.note(format!(
-                            "the full type name has been written to '{}'",
-                            file.display()
-                        ));
-                        err.note(
-                            "consider using `--verbose` to print full type name to the console",
-                        );
-                    }
 
                     if imm_ref_self_ty_satisfies_pred && mut_ref_self_ty_satisfies_pred {
                         err.span_suggestions(
@@ -2689,7 +2682,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // Add a note for the item obligation that remains - normally a note pointing to the
         // bound that introduced the obligation (e.g. `T: Send`).
         debug!(?next_code);
-        let mut long_ty_file = None;
         self.note_obligation_cause_code(
             obligation.cause.body_id,
             err,
@@ -2698,7 +2690,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             next_code.unwrap(),
             &mut Vec::new(),
             &mut Default::default(),
-            &mut long_ty_file,
         );
     }
 
@@ -2711,7 +2702,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         cause_code: &ObligationCauseCode<'tcx>,
         obligated_types: &mut Vec<Ty<'tcx>>,
         seen_requirements: &mut FxHashSet<DefId>,
-        long_ty_file: &mut Option<PathBuf>,
     ) where
         T: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>,
     {
@@ -2965,9 +2955,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::Coercion { source, target } => {
                 let source =
-                    tcx.short_ty_string(self.resolve_vars_if_possible(source), long_ty_file);
+                    tcx.short_string(self.resolve_vars_if_possible(source), err.long_ty_path());
                 let target =
-                    tcx.short_ty_string(self.resolve_vars_if_possible(target), long_ty_file);
+                    tcx.short_string(self.resolve_vars_if_possible(target), err.long_ty_path());
                 err.note(with_forced_trimmed_paths!(format!(
                     "required for the cast from `{source}` to `{target}`",
                 )));
@@ -3252,7 +3242,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 };
 
                 if !is_upvar_tys_infer_tuple {
-                    let ty_str = tcx.short_ty_string(ty, long_ty_file);
+                    let ty_str = tcx.short_string(ty, err.long_ty_path());
                     let msg = format!("required because it appears within the type `{ty_str}`");
                     match ty.kind() {
                         ty::Adt(def, _) => match tcx.opt_item_ident(def.did()) {
@@ -3330,7 +3320,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             &data.parent_code,
                             obligated_types,
                             seen_requirements,
-                            long_ty_file,
                         )
                     });
                 } else {
@@ -3343,7 +3332,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             cause_code.peel_derives(),
                             obligated_types,
                             seen_requirements,
-                            long_ty_file,
                         )
                     });
                 }
@@ -3353,7 +3341,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     self.resolve_vars_if_possible(data.derived.parent_trait_pred);
                 let parent_def_id = parent_trait_pred.def_id();
                 let self_ty_str =
-                    tcx.short_ty_string(parent_trait_pred.skip_binder().self_ty(), long_ty_file);
+                    tcx.short_string(parent_trait_pred.skip_binder().self_ty(), err.long_ty_path());
                 let trait_name = parent_trait_pred.print_modifiers_and_trait_path().to_string();
                 let msg = format!("required for `{self_ty_str}` to implement `{trait_name}`");
                 let mut is_auto_trait = false;
@@ -3449,8 +3437,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         count,
                         pluralize!(count)
                     ));
-                    let self_ty = tcx
-                        .short_ty_string(parent_trait_pred.skip_binder().self_ty(), long_ty_file);
+                    let self_ty = tcx.short_string(
+                        parent_trait_pred.skip_binder().self_ty(),
+                        err.long_ty_path(),
+                    );
                     err.note(format!(
                         "required for `{self_ty}` to implement `{}`",
                         parent_trait_pred.print_modifiers_and_trait_path()
@@ -3466,7 +3456,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         &data.parent_code,
                         obligated_types,
                         seen_requirements,
-                        long_ty_file,
                     )
                 });
             }
@@ -3505,7 +3494,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         &data.derived.parent_code,
                         obligated_types,
                         seen_requirements,
-                        long_ty_file,
                     )
                 });
             }
@@ -3519,7 +3507,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         &data.parent_code,
                         obligated_types,
                         seen_requirements,
-                        long_ty_file,
                     )
                 });
             }
@@ -3536,7 +3523,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         &data.parent_code,
                         obligated_types,
                         seen_requirements,
-                        long_ty_file,
                     )
                 });
             }
@@ -3551,7 +3537,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         nested,
                         obligated_types,
                         seen_requirements,
-                        long_ty_file,
                     )
                 });
                 let mut multispan = MultiSpan::from(span);
@@ -3582,7 +3567,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         parent_code,
                         obligated_types,
                         seen_requirements,
-                        long_ty_file,
                     )
                 });
             }
@@ -3622,7 +3606,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::OpaqueReturnType(expr_info) => {
                 let (expr_ty, expr) = if let Some((expr_ty, hir_id)) = expr_info {
-                    let expr_ty = tcx.short_ty_string(expr_ty, long_ty_file);
+                    let expr_ty = tcx.short_string(expr_ty, err.long_ty_path());
                     let expr = tcx.hir().expect_expr(hir_id);
                     (expr_ty, expr)
                 } else if let Some(body_id) = tcx.hir_node_by_def_id(body_id).body_id()
@@ -3637,7 +3621,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && let ty::ClauseKind::Trait(pred) = pred.kind().skip_binder()
                     && self.can_eq(param_env, pred.self_ty(), expr_ty)
                 {
-                    let expr_ty = tcx.short_ty_string(expr_ty, long_ty_file);
+                    let expr_ty = tcx.short_string(expr_ty, err.long_ty_path());
                     (expr_ty, expr)
                 } else {
                     return;
@@ -5231,7 +5215,7 @@ pub(super) fn get_explanation_based_on_obligation<'tcx>(
             format!(
                 "{pre_message}the trait `{}` is not implemented for{desc} `{}`",
                 trait_predicate.print_modifiers_and_trait_path(),
-                tcx.short_ty_string(trait_predicate.self_ty().skip_binder(), &mut None),
+                tcx.short_string(trait_predicate.self_ty().skip_binder(), &mut None),
             )
         } else {
             // "the trait bound `T: !Send` is not satisfied" reads better than "`!Send` is

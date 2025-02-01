@@ -596,19 +596,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         self.suggest_cloning(err, place_ty, expr, None);
                     }
 
-                    let mut path = None;
-                    let ty = self.infcx.tcx.short_ty_string(place_ty, &mut path);
+                    let ty = self.infcx.tcx.short_string(place_ty, err.long_ty_path());
                     err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
                         is_partial_move: false,
                         ty,
                         place: &place_desc,
                         span,
                     });
-                    if let Some(path) = path {
-                        err.subdiagnostic(crate::session_diagnostics::LongTypePath {
-                            path: path.display().to_string(),
-                        });
-                    }
                 } else {
                     binds_to.sort();
                     binds_to.dedup();
@@ -635,19 +629,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     self.suggest_cloning(err, place_ty, expr, Some(use_spans));
                 }
 
-                let mut path = None;
-                let ty = self.infcx.tcx.short_ty_string(place_ty, &mut path);
+                let ty = self.infcx.tcx.short_string(place_ty, err.long_ty_path());
                 err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
                     is_partial_move: false,
                     ty,
                     place: &place_desc,
                     span: use_span,
                 });
-                if let Some(path) = path {
-                    err.subdiagnostic(crate::session_diagnostics::LongTypePath {
-                        path: path.display().to_string(),
-                    });
-                }
 
                 use_spans.args_subdiag(err, |args_span| {
                     crate::session_diagnostics::CaptureArgLabel::MoveOutPlace {
@@ -845,19 +833,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     self.suggest_cloning(err, bind_to.ty, expr, None);
                 }
 
-                let mut path = None;
-                let ty = self.infcx.tcx.short_ty_string(bind_to.ty, &mut path);
+                let ty = self.infcx.tcx.short_string(bind_to.ty, err.long_ty_path());
                 err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
                     is_partial_move: false,
                     ty,
                     place: place_desc,
                     span: binding_span,
                 });
-                if let Some(path) = path {
-                    err.subdiagnostic(crate::session_diagnostics::LongTypePath {
-                        path: path.display().to_string(),
-                    });
-                }
             }
         }
 

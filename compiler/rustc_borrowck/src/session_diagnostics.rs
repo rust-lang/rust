@@ -459,13 +459,6 @@ pub(crate) enum OnClosureNote<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[note(borrowck_long_type_full_path)]
-#[note(borrowck_long_type_consider_verbose)]
-pub(crate) struct LongTypePath {
-    pub(crate) path: String,
-}
-
-#[derive(Subdiagnostic)]
 pub(crate) enum TypeNoCopy<'a> {
     #[label(borrowck_ty_no_impl_copy)]
     Label {
