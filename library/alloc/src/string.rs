@@ -343,6 +343,7 @@ pub mod string;
 /// [`Deref`]: core::ops::Deref "ops::Deref"
 /// [`as_str()`]: String::as_str
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "String")]
 pub type String = string::String<Global>;
 
 /// A possible error value when converting a `String` from a UTF-8 byte vector.

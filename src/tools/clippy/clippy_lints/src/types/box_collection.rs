@@ -47,6 +47,7 @@ fn get_std_collection(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<Symbol>
                     | sym::BTreeMap
                     | sym::BTreeSet
                     | sym::BinaryHeap
+                    | sym::String
             )
         })
         .or_else(|| {

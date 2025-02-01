@@ -3,7 +3,8 @@ use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item, same_type_and_consts};
 use clippy_utils::{
-    get_parent_expr, is_inherent_method_call, is_trait_item, is_trait_method, is_ty_alias, path_to_local,
+    get_parent_expr, is_inherent_method_call, is_string_ty_alias, is_trait_item, is_trait_method, is_ty_alias,
+    path_to_local,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -333,7 +334,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
             ExprKind::Call(path, [arg]) => {
                 if let ExprKind::Path(ref qpath) = path.kind
                     && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
-                    && !is_ty_alias(qpath)
+                    && (!is_ty_alias(qpath) || is_string_ty_alias(cx, qpath))
                 {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(arg);
