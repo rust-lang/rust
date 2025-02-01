@@ -1499,7 +1499,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             catch_unwind: None,
             timing,
             is_user_relevant: ecx.machine.is_user_relevant(&frame),
-            salt: ecx.machine.rng.borrow_mut().gen::<usize>() % ADDRS_PER_ANON_GLOBAL,
+            salt: ecx.machine.rng.borrow_mut().random_range(0..ADDRS_PER_ANON_GLOBAL),
             data_race: ecx.machine.data_race.as_ref().map(|_| data_race::FrameState::default()),
         };
 
@@ -1714,7 +1714,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if unique {
             CTFE_ALLOC_SALT
         } else {
-            ecx.machine.rng.borrow_mut().gen::<usize>() % ADDRS_PER_ANON_GLOBAL
+            ecx.machine.rng.borrow_mut().random_range(0..ADDRS_PER_ANON_GLOBAL)
         }
     }
 

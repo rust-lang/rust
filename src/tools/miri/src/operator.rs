@@ -108,7 +108,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Pick one of the NaNs.
         let nan = nans.choose(&mut *rand).unwrap();
         // Non-deterministically flip the sign.
-        if rand.gen() {
+        if rand.random() {
             // This will properly flip even for NaN.
             -nan
         } else {
