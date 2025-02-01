@@ -195,6 +195,20 @@ index e7ae773ffa1d3..04bc2d7787da7 100644
              // Provide necessary library search paths for rustc.
              .env(dylib_env_var(), &env::join_paths(host_dylib_search_paths).unwrap());
 
+diff --git a/tests/run-make/linker-warning/rmake.rs b/tests/run-make/linker-warning/rmake.rs
+index 30387af428c..f7895b12961 100644
+--- a/tests/run-make/linker-warning/rmake.rs
++++ b/tests/run-make/linker-warning/rmake.rs
+@@ -57,7 +57,8 @@ fn main() {
+             .actual_text("(linker error)", out.stderr())
+-            .normalize(r#"/rustc[^/]*/"#, "/rustc/")
++            .normalize(r#"/tmp/rustc[^/]*/"#, "/tmp/rustc/")
++            .normalize("libpanic_abort", "libpanic_unwind")
+             .normalize(
+                 regex::escape(run_make_support::build_root().to_str().unwrap()),
+                 "/build-root",
+             )
+             .run();
 EOF
 
 echo "[TEST] rustc test suite"
