@@ -19,7 +19,7 @@ RUN sh /scripts/rustbuild-setup.sh
 WORKDIR /tmp
 
 COPY scripts/crosstool-ng-build.sh /scripts/
-COPY host-x86_64/dist-arm-linux/arm-linux-gnueabi.defconfig /tmp/crosstool.defconfig
+COPY host-aarch64/dist-arm-linux/arm-linux-gnueabi.defconfig /tmp/crosstool.defconfig
 RUN /scripts/crosstool-ng-build.sh
 
 COPY scripts/sccache.sh /scripts/
