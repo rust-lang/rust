@@ -317,7 +317,7 @@ impl Rational {
             return Rational::NegInf;
         }
 
-        // Fast path; no decimals or exponents ot parse
+        // Fast path; no decimals or exponents to parse
         if s.bytes().all(|b| b.is_ascii_digit() || b == b'-') {
             return Rational::Finite(BigRational::from_str(s).unwrap());
         }
