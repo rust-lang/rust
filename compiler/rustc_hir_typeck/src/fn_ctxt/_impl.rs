@@ -648,7 +648,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .expect("Failed to unify coroutine interior type");
             let mut obligations = ok.obligations;
 
-            // Also collect the obligations that were unstalled by this unification.
+            // Also collect the obligations that were uninstalled by this unification.
             obligations
                 .extend(self.fulfillment_cx.borrow_mut().drain_unstalled_obligations(&self.infcx));
 
