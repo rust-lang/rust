@@ -1658,8 +1658,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         hir_ty: Option<&'tcx hir::Ty<'tcx>>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        self.dcx().span_err(inner_expr.span, "unsafe binder casts are not fully implemented");
-
         match kind {
             hir::UnsafeBinderCastKind::Wrap => {
                 let ascribed_ty =

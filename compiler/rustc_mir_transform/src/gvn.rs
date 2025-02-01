@@ -476,6 +476,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     }
                     ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
                     ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(ty),
+                    ProjectionElem::UnwrapUnsafeBinder(ty) => {
+                        ProjectionElem::UnwrapUnsafeBinder(ty)
+                    }
                     // This should have been replaced by a `ConstantIndex` earlier.
                     ProjectionElem::Index(_) => return None,
                 };
@@ -713,6 +716,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
             ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(ty),
+            ProjectionElem::UnwrapUnsafeBinder(ty) => ProjectionElem::UnwrapUnsafeBinder(ty),
         };
 
         Some(self.insert(Value::Projection(value, proj)))
@@ -867,6 +871,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Address(mutbl));
             }
+            Rvalue::WrapUnsafeBinder(ref mut op, _) => {
+                return self.simplify_operand(op, location);
+            }
 
             // Operations.
             Rvalue::Len(ref mut place) => return self.simplify_len(place, location),
@@ -931,6 +938,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             ProjectionElem::Downcast(symbol, idx) => ProjectionElem::Downcast(symbol, idx),
             ProjectionElem::OpaqueCast(idx) => ProjectionElem::OpaqueCast(idx),
             ProjectionElem::Subtype(idx) => ProjectionElem::Subtype(idx),
+            ProjectionElem::UnwrapUnsafeBinder(ty) => ProjectionElem::UnwrapUnsafeBinder(ty),
         })
     }
 

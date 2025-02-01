@@ -925,6 +925,10 @@ fn codegen_stmt<'tcx>(
                     }
                     crate::discriminant::codegen_set_discriminant(fx, lval, variant_index);
                 }
+                Rvalue::WrapUnsafeBinder(ref operand, _to_ty) => {
+                    let operand = codegen_operand(fx, operand);
+                    lval.write_cvalue_transmute(fx, operand);
+                }
             }
         }
         StatementKind::StorageLive(_)
@@ -993,7 +997,9 @@ pub(crate) fn codegen_place<'tcx>(
                 cplace = cplace.place_deref(fx);
             }
             PlaceElem::OpaqueCast(ty) => bug!("encountered OpaqueCast({ty}) in codegen"),
-            PlaceElem::Subtype(ty) => cplace = cplace.place_transmute_type(fx, fx.monomorphize(ty)),
+            PlaceElem::Subtype(ty) | PlaceElem::UnwrapUnsafeBinder(ty) => {
+                cplace = cplace.place_transmute_type(fx, fx.monomorphize(ty));
+            }
             PlaceElem::Field(field, _ty) => {
                 cplace = cplace.place_field(fx, field);
             }
