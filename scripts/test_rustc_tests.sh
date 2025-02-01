@@ -91,9 +91,6 @@ rm tests/ui/statics/const_generics.rs # same
 # ======================
 rm tests/incremental/thinlto/cgu_invalidated_when_import_{added,removed}.rs # requires LLVM
 rm -r tests/run-make/cross-lang-lto # same
-rm -r tests/run-make/sepcomp-inlining # same
-rm -r tests/run-make/sepcomp-separate # same
-rm -r tests/run-make/sepcomp-cci-copies # same
 rm -r tests/run-make/volatile-intrinsics # same
 rm -r tests/run-make/llvm-ident # same
 rm -r tests/run-make/no-builtins-attribute # same
@@ -131,6 +128,7 @@ rm tests/ui/abi/large-byval-align.rs # exceeds implementation limit of Cranelift
 rm -r tests/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
 rm -r tests/run-make/strip # same
 rm -r tests/run-make/compiler-builtins # Expects lib/rustlib/src/rust to contains the standard library source
+rm -r tests/run-make/translation # same
 rm -r tests/run-make/missing-unstable-trait-bound # This disables support for unstable features, but running cg_clif needs some unstable features
 rm -r tests/run-make/const-trait-stable-toolchain # same
 rm -r tests/run-make/incr-add-rust-src-component
