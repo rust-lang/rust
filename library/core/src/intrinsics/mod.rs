@@ -3247,7 +3247,7 @@ pub const fn three_way_compare<T: Copy>(_lhs: T, _rhss: T) -> crate::cmp::Orderi
 /// Combine two values which have no bits in common.
 ///
 /// This allows the backend to implement it as `a + b` *or* `a | b`,
-/// depending which us easier to implement on a specific target.
+/// depending which is easier to implement on a specific target.
 ///
 /// # Safety
 ///

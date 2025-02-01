@@ -1187,13 +1187,11 @@ macro_rules! uint_impl {
             self % rhs
         }
 
-        /// Same value as
-        #[doc = concat!("`<", stringify!($SelfT), " as BitOr>::bitor(self, other)`")]
-        /// but UB if any bit position is set in both inputs.
+        /// Same value as `self | other`, but UB if any bit position is set in both inputs.
         ///
-        /// This is a situational μoptimization for places where you'd rather use
-        /// addition on some platforms and bitwise or on other platforms, based on
-        /// exactly which instructions combine better with whatever else you're
+        /// This is a situational micro-optimization for places where you'd rather
+        /// use addition on some platforms and bitwise or on other platforms, based
+        /// on exactly which instructions combine better with whatever else you're
         /// doing.  Note that there's no reason to bother using this for places
         /// where it's clear from the operations involved that they can't overlap.
         /// For example, if you're combining `u16`s into a `u32` with
