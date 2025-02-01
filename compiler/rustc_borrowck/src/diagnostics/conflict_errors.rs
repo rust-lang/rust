@@ -3915,7 +3915,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         ProjectionElem::ConstantIndex { .. }
                         | ProjectionElem::Subslice { .. }
                         | ProjectionElem::Subtype(_)
-                        | ProjectionElem::Index(_) => kind,
+                        | ProjectionElem::Index(_)
+                        | ProjectionElem::UnwrapUnsafeBinder(_) => kind,
                     },
                     place_ty.projection_ty(tcx, elem),
                 )

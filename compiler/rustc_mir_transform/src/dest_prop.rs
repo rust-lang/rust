@@ -575,6 +575,9 @@ impl WriteInfo {
                             self.add_operand(op);
                         }
                     }
+                    Rvalue::WrapUnsafeBinder(op, _) => {
+                        self.add_operand(op);
+                    }
                     Rvalue::ThreadLocalRef(_)
                     | Rvalue::NullaryOp(_, _)
                     | Rvalue::Ref(_, _, _)

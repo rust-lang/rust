@@ -1,5 +1,6 @@
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
+use rustc_ast::UnsafeBinderCastKind;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -910,8 +911,19 @@ impl<'tcx> Cx<'tcx> {
                 }
             }
 
-            hir::ExprKind::UnsafeBinderCast(_kind, _source, _ty) => {
-                unreachable!("unsafe binders are not yet implemented")
+            hir::ExprKind::UnsafeBinderCast(UnsafeBinderCastKind::Unwrap, source, _ty) => {
+                // FIXME(unsafe_binders): Take into account the ascribed type, too.
+                let mirrored = self.mirror_expr(source);
+                if source.is_syntactic_place_expr() {
+                    ExprKind::PlaceUnwrapUnsafeBinder { source: mirrored }
+                } else {
+                    ExprKind::ValueUnwrapUnsafeBinder { source: mirrored }
+                }
+            }
+            hir::ExprKind::UnsafeBinderCast(UnsafeBinderCastKind::Wrap, source, _ty) => {
+                // FIXME(unsafe_binders): Take into account the ascribed type, too.
+                let mirrored = self.mirror_expr(source);
+                ExprKind::WrapUnsafeBinder { source: mirrored }
             }
 
             hir::ExprKind::DropTemps(source) => ExprKind::Use { source: self.mirror_expr(source) },
