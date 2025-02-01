@@ -4,8 +4,7 @@ use itertools::Itertools;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, a_or_an,
-    display_list_with_comma_and, pluralize,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, a_or_an, listify, pluralize,
 };
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -2462,7 +2461,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 param.span,
                                 format!(
                                     "{} need{} to match the {} type of this parameter",
-                                    display_list_with_comma_and(&other_param_matched_names),
+                                    listify(&other_param_matched_names, |n| n.to_string())
+                                        .unwrap_or_default(),
                                     pluralize!(if other_param_matched_names.len() == 1 {
                                         0
                                     } else {
@@ -2477,7 +2477,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 format!(
                                     "this parameter needs to match the {} type of {}",
                                     matched_ty,
-                                    display_list_with_comma_and(&other_param_matched_names),
+                                    listify(&other_param_matched_names, |n| n.to_string())
+                                        .unwrap_or_default(),
                                 ),
                             );
                         }
@@ -2523,7 +2524,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             generic_param.span,
                             format!(
                                 "{} {} reference this parameter `{}`",
-                                display_list_with_comma_and(&param_idents_matching),
+                                listify(&param_idents_matching, |n| n.to_string())
+                                    .unwrap_or_default(),
                                 if param_idents_matching.len() == 2 { "both" } else { "all" },
                                 generic_param.name.ident().name,
                             ),
