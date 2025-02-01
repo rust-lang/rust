@@ -489,6 +489,19 @@ pub enum ExprKind<'tcx> {
         user_ty: UserTy<'tcx>,
         user_ty_span: Span,
     },
+    /// An unsafe binder cast on a place, e.g. `unwrap_binder!(*ptr)`.
+    PlaceUnwrapUnsafeBinder {
+        source: ExprId,
+    },
+    /// An unsafe binder cast on a value, e.g. `unwrap_binder!(rvalue())`,
+    /// which makes a temporary.
+    ValueUnwrapUnsafeBinder {
+        source: ExprId,
+    },
+    /// Construct an unsafe binder, e.g. `wrap_binder(&ref)`.
+    WrapUnsafeBinder {
+        source: ExprId,
+    },
     /// A closure definition.
     Closure(Box<ClosureExpr<'tcx>>),
     /// A literal.

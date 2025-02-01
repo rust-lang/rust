@@ -1,5 +1,5 @@
 warning: the feature `unsafe_binders` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/expr.rs:1:12
+  --> $DIR/expr.rs:3:12
    |
 LL | #![feature(unsafe_binders)]
    |            ^^^^^^^^^^^^^^
@@ -7,17 +7,5 @@ LL | #![feature(unsafe_binders)]
    = note: see issue #130516 <https://github.com/rust-lang/rust/issues/130516> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error: unsafe binder casts are not fully implemented
-  --> $DIR/expr.rs:9:55
-   |
-LL |         let binder: unsafe<'a> &'a i32 = wrap_binder!(&x);
-   |                                                       ^^
-
-error: unsafe binder casts are not fully implemented
-  --> $DIR/expr.rs:11:34
-   |
-LL |         let rx = *unwrap_binder!(binder);
-   |                                  ^^^^^^
-
-error: aborting due to 2 previous errors; 1 warning emitted
+warning: 1 warning emitted
 

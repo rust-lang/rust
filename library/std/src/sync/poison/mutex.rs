@@ -181,10 +181,29 @@ pub struct Mutex<T: ?Sized> {
     data: UnsafeCell<T>,
 }
 
-// these are the only places where `T: Send` matters; all other
-// functionality works fine on a single thread.
+/// `T` must be `Send` for a [`Mutex`] to be `Send` because it is possible to acquire
+/// the owned `T` from the `Mutex` via [`into_inner`].
+///
+/// [`into_inner`]: Mutex::into_inner
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Send> Send for Mutex<T> {}
+
+/// `T` must be `Send` for [`Mutex`] to be `Sync`.
+/// This ensures that the protected data can be accessed safely from multiple threads
+/// without causing data races or other unsafe behavior.
+///
+/// [`Mutex<T>`] provides mutable access to `T` to one thread at a time. However, it's essential
+/// for `T` to be `Send` because it's not safe for non-`Send` structures to be accessed in
+/// this manner. For instance, consider [`Rc`], a non-atomic reference counted smart pointer,
+/// which is not `Send`. With `Rc`, we can have multiple copies pointing to the same heap
+/// allocation with a non-atomic reference count. If we were to use `Mutex<Rc<_>>`, it would
+/// only protect one instance of `Rc` from shared access, leaving other copies vulnerable
+/// to potential data races.
+///
+/// Also note that it is not necessary for `T` to be `Sync` as `&T` is only made available
+/// to one thread at a time if `T` is not `Sync`.
+///
+/// [`Rc`]: crate::rc::Rc
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
 
@@ -211,8 +230,17 @@ pub struct MutexGuard<'a, T: ?Sized + 'a> {
     poison: poison::Guard,
 }
 
+/// A [`MutexGuard`] is not `Send` to maximize platform portablity.
+///
+/// On platforms that use POSIX threads (commonly referred to as pthreads) there is a requirement to
+/// release mutex locks on the same thread they were acquired.
+/// For this reason, [`MutexGuard`] must not implement `Send` to prevent it being dropped from
+/// another thread.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !Send for MutexGuard<'_, T> {}
+
+/// `T` must be `Sync` for a [`MutexGuard<T>`] to be `Sync`
+/// because it is possible to get a `&T` from `&MutexGuard` (via `Deref`).
 #[stable(feature = "mutexguard", since = "1.19.0")]
 unsafe impl<T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
 

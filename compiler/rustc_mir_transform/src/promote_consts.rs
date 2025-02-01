@@ -293,7 +293,8 @@ impl<'tcx> Validator<'_, 'tcx> {
             // Recurse directly.
             ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subtype(_)
-            | ProjectionElem::Subslice { .. } => {}
+            | ProjectionElem::Subslice { .. }
+            | ProjectionElem::UnwrapUnsafeBinder(_) => {}
 
             // Never recurse.
             ProjectionElem::OpaqueCast(..) | ProjectionElem::Downcast(..) => {
@@ -426,7 +427,9 @@ impl<'tcx> Validator<'_, 'tcx> {
 
     fn validate_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Result<(), Unpromotable> {
         match rvalue {
-            Rvalue::Use(operand) | Rvalue::Repeat(operand, _) => {
+            Rvalue::Use(operand)
+            | Rvalue::Repeat(operand, _)
+            | Rvalue::WrapUnsafeBinder(operand, _) => {
                 self.validate_operand(operand)?;
             }
             Rvalue::CopyForDeref(place) => {

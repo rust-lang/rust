@@ -361,6 +361,18 @@ mir_build_unreachable_pattern = unreachable pattern
     .unreachable_pattern_let_binding = there is a binding of the same name; if you meant to pattern match against the value of that binding, that is a feature of constants that is not available for `let` bindings
     .suggestion = remove the match arm
 
+mir_build_unsafe_binder_cast_requires_unsafe =
+    unsafe binder cast is unsafe and requires unsafe block
+    .label = unsafe binder cast
+    .note = casting to or from an `unsafe<...>` binder type is unsafe since it erases lifetime
+        information that may be required to uphold safety guarantees of a type
+
+mir_build_unsafe_binder_cast_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
+    unsafe binder cast is unsafe and requires unsafe block or unsafe fn
+    .label = unsafe binder cast
+    .note = casting to or from an `unsafe<...>` binder type is unsafe since it erases lifetime
+        information that may be required to uphold safety guarantees of a type
+
 mir_build_unsafe_field_requires_unsafe =
     use of unsafe field is unsafe and requires unsafe block
     .note = unsafe fields may carry library invariants

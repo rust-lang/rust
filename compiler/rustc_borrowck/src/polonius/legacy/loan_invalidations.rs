@@ -325,6 +325,10 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                     self.consume_operand(location, operand);
                 }
             }
+
+            Rvalue::WrapUnsafeBinder(op, _) => {
+                self.consume_operand(location, op);
+            }
         }
     }
 
