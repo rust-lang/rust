@@ -224,35 +224,40 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let mut were_merged = 0;
         if elem_ty == tcx.types.u8 {
-            let groups = (0..usize::MAX).take_while(|i| i * 2 + 1 < leaves.len());
-
             let leaf_bits = |leaf: ty::ValTree<'tcx>| {
                 if let ty::ValTree::Leaf(scalar) = leaf { scalar.to_u8() } else { todo!() }
             };
 
-            for g_idx in groups {
-                were_merged += 2;
+            let mut fuse_group = |first_idx, len| {
+                were_merged += len;
 
-                let lo = leaf_bits(leaves[g_idx]);
-                let hi = leaf_bits(leaves[g_idx + 1]);
-                let data = u16::from_le_bytes([lo, hi]);
+                let data = leaves[first_idx..first_idx + len]
+                    .iter()
+                    .copied()
+                    .map(leaf_bits)
+                    .fold(0u32, |acc, x| (acc << 8) | u32::from(x));
+
+                let fused_ty = match len {
+                    2 => tcx.types.u16,
+                    3 | 4 => tcx.types.u32,
+                    _ => unreachable!(),
+                };
+
                 let valtree = ty::ValTree::Leaf(ty::ScalarInt::from(data));
-
-                let elem_ty = tcx.types.u16;
                 let ty_const =
-                    ty::Const::new(tcx, ty::ConstKind::Value(ty::Value { ty: elem_ty, valtree }));
-                let value = Const::Ty(elem_ty, ty_const);
-                let test_case = TestCase::FusedConstant { _value: value };
+                    ty::Const::new(tcx, ty::ConstKind::Value(ty::Value { ty: fused_ty, valtree }));
+                let value = Const::Ty(fused_ty, ty_const);
+                let test_case = TestCase::FusedConstant { value, fused: len as u64 };
 
                 let pattern = tcx.arena.alloc(Pat {
-                    ty: elem_ty,
+                    ty: fused_ty,
                     span: source_pattern.span,
                     kind: PatKind::Constant { value },
                 });
 
                 let place = place
                     .clone_project(ProjectionElem::ConstantIndex {
-                        offset: range.start + g_idx as u64,
+                        offset: range.start + first_idx as u64,
                         min_length,
                         from_end: range.from_end,
                     })
@@ -264,6 +269,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     subpairs: Vec::new(),
                     pattern,
                 });
+            };
+
+            let x4 = (0..usize::MAX).take_while(|i| i * 4 + 1 < leaves.len());
+            let x3 = (0..usize::MAX).take_while(|i| i * 3 + 1 < leaves.len());
+            let x2 = (0..usize::MAX).take_while(|i| i * 2 + 1 < leaves.len());
+
+            for i in x4 {
+                fuse_group(i * 4, 4);
+            }
+
+            for i in x3 {
+                fuse_group(i * 3, 3);
+            }
+
+            for i in x2 {
+                fuse_group(i * 2, 2);
             }
         }
 
