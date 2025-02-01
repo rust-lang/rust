@@ -4,7 +4,7 @@ use std::iter;
 use std::ops::{Range, RangeFrom};
 
 use rustc_abi::{ExternAbi, FieldIdx};
-use rustc_attr_parsing::InlineAttr;
+use rustc_attr_parsing::{InlineAttr, OptimizeAttr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
@@ -768,6 +768,10 @@ fn check_codegen_attributes<'tcx, I: Inliner<'tcx>>(
     let tcx = inliner.tcx();
     if let InlineAttr::Never = callee_attrs.inline {
         return Err("never inline attribute");
+    }
+
+    if let OptimizeAttr::DoNotOptimize = callee_attrs.optimize {
+        return Err("has DoNotOptimize attribute");
     }
 
     // Reachability pass defines which functions are eligible for inlining. Generally inlining
