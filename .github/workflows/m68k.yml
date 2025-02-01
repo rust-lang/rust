@@ -16,7 +16,7 @@ env:
   OVERWRITE_TARGET_TRIPLE: m68k-unknown-linux-gnu
 
 jobs:
-  build:
+  success:
     runs-on: ubuntu-24.04
 
     strategy:
