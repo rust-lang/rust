@@ -90,7 +90,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, codegen_mode: CodegenMode, jit_args: Vec<
         create_jit_module(tcx, matches!(codegen_mode, CodegenMode::JitLazy));
     let mut cached_context = Context::new();
 
-    let (_, cgus) = tcx.collect_and_partition_mono_items(());
+    let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;
     let mono_items = cgus
         .iter()
         .map(|cgu| cgu.items_in_deterministic_order(tcx).into_iter())
