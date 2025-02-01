@@ -65,7 +65,7 @@ pub use rustc_error_messages::{
     SubdiagMessage, fallback_fluent_bundle, fluent_bundle,
 };
 use rustc_lint_defs::LintExpectationId;
-pub use rustc_lint_defs::{Applicability, pluralize};
+pub use rustc_lint_defs::{Applicability, listify, pluralize};
 use rustc_macros::{Decodable, Encodable};
 pub use rustc_span::ErrorGuaranteed;
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
@@ -1996,18 +1996,6 @@ pub fn a_or_an(s: &str) -> &'static str {
         "an"
     } else {
         "a"
-    }
-}
-
-/// Grammatical tool for displaying messages to end users in a nice form.
-///
-/// Take a list ["a", "b", "c"] and output a display friendly version "a, b and c"
-pub fn display_list_with_comma_and<T: std::fmt::Display>(v: &[T]) -> String {
-    match v {
-        [] => "".to_string(),
-        [a] => a.to_string(),
-        [a, b] => format!("{a} and {b}"),
-        [a, v @ ..] => format!("{a}, {}", display_list_with_comma_and(v)),
     }
 }
 

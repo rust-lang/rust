@@ -4,7 +4,7 @@ use core::iter;
 use hir::def_id::LocalDefId;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::packed::Pu128;
-use rustc_errors::{Applicability, Diag, MultiSpan};
+use rustc_errors::{Applicability, Diag, MultiSpan, listify};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
@@ -1836,16 +1836,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 error.obligation.predicate,
                             ));
                         }
-                        [errors @ .., last] => {
+                        _ => {
                             diag.help(format!(
                                 "`Clone` is not implemented because the following trait bounds \
-                                 could not be satisfied: {} and `{}`",
-                                errors
-                                    .iter()
-                                    .map(|e| format!("`{}`", e.obligation.predicate))
-                                    .collect::<Vec<_>>()
-                                    .join(", "),
-                                last.obligation.predicate,
+                                 could not be satisfied: {}",
+                                listify(&errors, |e| format!("`{}`", e.obligation.predicate))
+                                    .unwrap(),
                             ));
                         }
                     }
