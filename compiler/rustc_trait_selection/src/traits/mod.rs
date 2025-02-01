@@ -76,6 +76,7 @@ use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::regions::InferCtxtRegionExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 
+#[derive(Debug)]
 pub struct FulfillmentError<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
     pub code: FulfillmentErrorCode<'tcx>,
@@ -104,12 +105,6 @@ impl<'tcx> FulfillmentError<'tcx> {
                 false
             }
         }
-    }
-}
-
-impl<'tcx> Debug for FulfillmentError<'tcx> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "FulfillmentError({:?},{:?})", self.obligation, self.code)
     }
 }
 

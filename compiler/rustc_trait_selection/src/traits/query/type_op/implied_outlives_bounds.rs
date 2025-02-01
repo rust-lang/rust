@@ -5,8 +5,8 @@ use rustc_infer::traits::query::type_op::ImpliedOutlivesBounds;
 use rustc_middle::infer::canonical::CanonicalQueryResponse;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeFolder, TypeVisitableExt};
-use rustc_span::Span;
 use rustc_span::def_id::CRATE_DEF_ID;
+use rustc_span::{DUMMY_SP, Span};
 use rustc_type_ir::outlives::{Component, push_outlives_components};
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
@@ -92,7 +92,9 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
 
         // From the full set of obligations, just filter down to the region relationships.
         for obligation in
-            wf::unnormalized_obligations(ocx.infcx, param_env, arg).into_iter().flatten()
+            wf::unnormalized_obligations(ocx.infcx, param_env, arg, DUMMY_SP, CRATE_DEF_ID)
+                .into_iter()
+                .flatten()
         {
             assert!(!obligation.has_escaping_bound_vars());
             let Some(pred) = obligation.predicate.kind().no_bound_vars() else {
