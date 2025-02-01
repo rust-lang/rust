@@ -2686,10 +2686,12 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                                 Indel {
                                     insert: "(",
                                     delete: 107..107,
+                                    annotation: None,
                                 },
                                 Indel {
                                     insert: "qux)()",
                                     delete: 109..110,
+                                    annotation: None,
                                 },
                             ],
                         },

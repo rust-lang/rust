@@ -12,8 +12,8 @@ use std::{
 
 use either::Either;
 use hir_def::{
-    expr_store::ExprOrPatSource,
-    hir::{Expr, ExprOrPatId},
+    expr_store::{Body, ExprOrPatSource},
+    hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
     lower::LowerCtx,
     nameres::{MacroSubNs, ModuleOrigin},
     path::ModPath,
@@ -627,6 +627,31 @@ impl<'db> SemanticsImpl<'db> {
             speculative_args.syntax(),
             token_to_map,
         )
+    }
+
+    /// Checks if renaming `renamed` to `new_name` may introduce conflicts with other locals,
+    /// and returns the conflicting locals.
+    pub fn rename_conflicts(&self, to_be_renamed: &Local, new_name: &str) -> Vec<Local> {
+        let body = self.db.body(to_be_renamed.parent);
+        let resolver = to_be_renamed.parent.resolver(self.db.upcast());
+        let starting_expr =
+            body.binding_owners.get(&to_be_renamed.binding_id).copied().unwrap_or(body.body_expr);
+        let mut visitor = RenameConflictsVisitor {
+            body: &body,
+            conflicts: FxHashSet::default(),
+            db: self.db,
+            new_name: Symbol::intern(new_name),
+            old_name: to_be_renamed.name(self.db).symbol().clone(),
+            owner: to_be_renamed.parent,
+            to_be_renamed: to_be_renamed.binding_id,
+            resolver,
+        };
+        visitor.rename_conflicts(starting_expr);
+        visitor
+            .conflicts
+            .into_iter()
+            .map(|binding_id| Local { parent: to_be_renamed.parent, binding_id })
+            .collect()
     }
 
     /// Retrieves all the formatting parts of the format_args! (or `asm!`) template string.
@@ -2092,5 +2117,71 @@ impl ops::Deref for VisibleTraits {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+struct RenameConflictsVisitor<'a> {
+    db: &'a dyn HirDatabase,
+    owner: DefWithBodyId,
+    resolver: Resolver,
+    body: &'a Body,
+    to_be_renamed: BindingId,
+    new_name: Symbol,
+    old_name: Symbol,
+    conflicts: FxHashSet<BindingId>,
+}
+
+impl RenameConflictsVisitor<'_> {
+    fn resolve_path(&mut self, node: ExprOrPatId, path: &Path) {
+        if let Path::BarePath(path) = path {
+            if let Some(name) = path.as_ident() {
+                if *name.symbol() == self.new_name {
+                    if let Some(conflicting) = self.resolver.rename_will_conflict_with_renamed(
+                        self.db.upcast(),
+                        name,
+                        path,
+                        self.body.expr_or_pat_path_hygiene(node),
+                        self.to_be_renamed,
+                    ) {
+                        self.conflicts.insert(conflicting);
+                    }
+                } else if *name.symbol() == self.old_name {
+                    if let Some(conflicting) =
+                        self.resolver.rename_will_conflict_with_another_variable(
+                            self.db.upcast(),
+                            name,
+                            path,
+                            self.body.expr_or_pat_path_hygiene(node),
+                            &self.new_name,
+                            self.to_be_renamed,
+                        )
+                    {
+                        self.conflicts.insert(conflicting);
+                    }
+                }
+            }
+        }
+    }
+
+    fn rename_conflicts(&mut self, expr: ExprId) {
+        match &self.body[expr] {
+            Expr::Path(path) => {
+                let guard = self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, expr);
+                self.resolve_path(expr.into(), path);
+                self.resolver.reset_to_guard(guard);
+            }
+            &Expr::Assignment { target, .. } => {
+                let guard = self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, expr);
+                self.body.walk_pats(target, &mut |pat| {
+                    if let Pat::Path(path) = &self.body[pat] {
+                        self.resolve_path(pat.into(), path);
+                    }
+                });
+                self.resolver.reset_to_guard(guard);
+            }
+            _ => {}
+        }
+
+        self.body.walk_child_exprs(expr, |expr| self.rename_conflicts(expr));
     }
 }

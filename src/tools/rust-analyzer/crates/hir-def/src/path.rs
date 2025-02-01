@@ -57,7 +57,7 @@ pub enum Path {
     /// or type anchor, it is `Path::Normal` with the generics filled with `None` even if there are none (practically
     /// this is not a problem since many more paths have generics than a type anchor).
     BarePath(Interned<ModPath>),
-    /// `Path::Normal` may have empty generics and type anchor (but generic args will be filled with `None`).
+    /// `Path::Normal` will always have either generics or type anchor.
     Normal(NormalPath),
     /// A link to a lang item. It is used in desugaring of things like `it?`. We can show these
     /// links via a normal path since they might be private and not accessible in the usage place.
@@ -208,11 +208,15 @@ impl Path {
                     mod_path.segments()[..mod_path.segments().len() - 1].iter().cloned(),
                 ));
                 let qualifier_generic_args = &generic_args[..generic_args.len() - 1];
-                Some(Path::Normal(NormalPath::new(
-                    type_anchor,
-                    qualifier_mod_path,
-                    qualifier_generic_args.iter().cloned(),
-                )))
+                if type_anchor.is_none() && qualifier_generic_args.iter().all(|it| it.is_none()) {
+                    Some(Path::BarePath(qualifier_mod_path))
+                } else {
+                    Some(Path::Normal(NormalPath::new(
+                        type_anchor,
+                        qualifier_mod_path,
+                        qualifier_generic_args.iter().cloned(),
+                    )))
+                }
             }
             Path::LangItem(..) => None,
         }
