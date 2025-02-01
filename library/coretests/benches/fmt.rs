@@ -122,6 +122,7 @@ fn write_str_macro_debug_ascii(bh: &mut Bencher) {
 }
 
 #[bench]
+#[cfg(not(no_iu128_fmt))]
 fn write_u128_max(bh: &mut Bencher) {
     bh.iter(|| {
         test::black_box(format!("{}", u128::MAX));

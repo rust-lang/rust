@@ -546,6 +546,7 @@ mod imp {
     impl_Exp!(i8, u8, i16, u16, i32, u32, isize, usize as u32 via to_u32 named exp_u32);
     impl_Exp!(i64, u64 as u64 via to_u64 named exp_u64);
 }
+#[cfg(not(no_iu128_fmt))]
 impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);
 
 /// Helper function for writing a u64 into `buf` going from last to first, with `curr`.
@@ -638,21 +639,29 @@ fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], cu
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for u128 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_u128(*self, true, f)
+        if cfg!(no_iu128_fmt) {
+            panic!("u128 formatting support is turned off")
+        } else {
+            fmt_u128(*self, true, f)
+        }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for i128 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let is_nonnegative = *self >= 0;
-        let n = if is_nonnegative {
-            self.to_u128()
+        if cfg!(no_iu128_fmt) {
+            panic!("u128 formatting support is turned off")
         } else {
-            // convert the negative num to positive by summing 1 to its 2s complement
-            (!self.to_u128()).wrapping_add(1)
-        };
-        fmt_u128(n, is_nonnegative, f)
+            let is_nonnegative = *self >= 0;
+            let n = if is_nonnegative {
+                self.to_u128()
+            } else {
+                // convert the negative num to positive by summing 1 to its 2s complement
+                (!self.to_u128()).wrapping_add(1)
+            };
+            fmt_u128(n, is_nonnegative, f)
+        }
     }
 }
 
