@@ -224,7 +224,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let mut were_merged = 0;
         if elem_ty == tcx.types.u8 {
-            let groups = (0..usize::MAX).take_while(|i| i * 2 + 1 <= leaves.len());
+            let groups = (0..usize::MAX).take_while(|i| i * 2 + 1 < leaves.len());
 
             let leaf_bits = |leaf: ty::ValTree<'tcx>| {
                 if let ty::ValTree::Leaf(scalar) = leaf { scalar.to_u8() } else { todo!() }
@@ -242,7 +242,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let ty_const =
                     ty::Const::new(tcx, ty::ConstKind::Value(ty::Value { ty: elem_ty, valtree }));
                 let value = Const::Ty(elem_ty, ty_const);
-                let test_case = TestCase::Constant { value };
+                let test_case = TestCase::FusedConstant { _value: value };
 
                 let pattern = tcx.arena.alloc(Pat {
                     ty: elem_ty,

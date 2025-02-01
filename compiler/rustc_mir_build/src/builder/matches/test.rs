@@ -19,7 +19,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
-use crate::builder::Builder;
+use crate::builder::{Builder, PlaceBuilder};
 use crate::builder::matches::{Candidate, MatchPairTree, Test, TestBranch, TestCase, TestKind};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -34,8 +34,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestCase::Variant { adt_def, variant_index: _ } => TestKind::Switch { adt_def },
 
             TestCase::Constant { .. } if match_pair.pattern.ty.is_bool() => TestKind::If,
-            TestCase::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => TestKind::SwitchInt,
+            TestCase::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => TestKind::SwitchInt { fused: false },
             TestCase::Constant { value } => TestKind::Eq { value, ty: match_pair.pattern.ty },
+
+            TestCase::FusedConstant { .. } => TestKind::SwitchInt { fused: true },
 
             TestCase::Range(range) => {
                 assert_eq!(range.ty, match_pair.pattern.ty);
@@ -113,7 +115,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
             }
 
-            TestKind::SwitchInt => {
+            TestKind::SwitchInt { fused } => {
                 // The switch may be inexhaustive so we have a catch-all block
                 let otherwise_block = target_block(TestBranch::Failure);
                 let switch_targets = SwitchTargets::new(
@@ -126,6 +128,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }),
                     otherwise_block,
                 );
+
+                let mut place = place;
+
+                if fused {
+                    let tcx = self.tcx;
+                    let source_info = self.source_info(match_start_span);
+
+                    let mut builder = PlaceBuilder::from(place);
+                    match builder.projection_mut() {
+                        [.., ProjectionElem::ConstantIndex { offset, ..}] => {
+                            *offset += 1;
+                        }
+                        _ => todo!(),
+                    }
+                    let place_2 = builder.to_place(&self);
+                    let shift = self.literal_operand(DUMMY_SP, Const::from_usize(tcx, 8));
+                    let fused_temp = self.temp(tcx.types.u16, DUMMY_SP);
+                    let fused_temp2 = self.temp(tcx.types.u16, DUMMY_SP);
+                    let fused_temp3 = self.temp(tcx.types.u16, DUMMY_SP);
+                    let fused_final = self.temp(tcx.types.u16, DUMMY_SP);
+                    self.cfg.push_assign(block, source_info, fused_temp, Rvalue::Cast(CastKind::IntToInt, Operand::Copy(place_2), tcx.types.u16));
+                    self.cfg.push_assign(block, source_info, fused_temp2, Rvalue::BinaryOp(BinOp::Shr, Box::new((Operand::Copy(fused_temp), shift))));
+                    self.cfg.push_assign(block, source_info, fused_temp3, Rvalue::Cast(CastKind::IntToInt, Operand::Copy(place), tcx.types.u16));
+                    self.cfg.push_assign(block, source_info, fused_final, Rvalue::BinaryOp(BinOp::BitOr, Box::new((Operand::Copy(fused_temp2), Operand::Copy(fused_temp3)))));
+                    place = Place::from(fused_final);
+                }
+
                 let terminator = TerminatorKind::SwitchInt {
                     discr: Operand::Copy(place),
                     targets: switch_targets,
@@ -557,7 +586,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             //
             // FIXME(#29623) we could use PatKind::Range to rule
             // things out here, in some cases.
-            (TestKind::SwitchInt, &TestCase::Constant { value })
+            (TestKind::SwitchInt { .. }, &TestCase::Constant { value } | &TestCase::FusedConstant { _value: value })
                 if is_switch_ty(match_pair.pattern.ty) =>
             {
                 // An important invariant of candidate sorting is that a candidate
@@ -591,7 +620,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Some(TestBranch::Constant(value, bits))
                 }
             }
-            (TestKind::SwitchInt, TestCase::Range(range)) => {
+            (TestKind::SwitchInt { fused: _fused}, TestCase::Range(range)) => {
                 // When performing a `SwitchInt` test, a range pattern can be
                 // sorted into the failure arm if it doesn't contain _any_ of
                 // the values being tested. (This restricts what values can be

@@ -301,6 +301,10 @@ impl<'tcx> PlaceBuilder<'tcx> {
         &self.projection
     }
 
+    pub(crate) fn projection_mut(&mut self) -> &mut [PlaceElem<'tcx>] {
+        &mut self.projection
+    }
+
     pub(crate) fn field(self, f: FieldIdx, ty: Ty<'tcx>) -> Self {
         self.project(PlaceElem::Field(f, ty))
     }
