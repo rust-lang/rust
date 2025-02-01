@@ -1726,6 +1726,14 @@ unsafe extern "C" {
         NameLen: size_t,
         ExportSymbols: llvm::Bool,
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateLexicalBlock<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: &'ll Metadata,
+        File: &'ll Metadata,
+        Line: c_uint,
+        Column: c_uint,
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2156,14 +2164,6 @@ unsafe extern "C" {
         Tag: c_uint,
         Type: &'a DIType,
     ) -> &'a DIDerivedType;
-
-    pub fn LLVMRustDIBuilderCreateLexicalBlock<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: &'a DIScope,
-        File: &'a DIFile,
-        Line: c_uint,
-        Col: c_uint,
-    ) -> &'a DILexicalBlock;
 
     pub fn LLVMRustDIBuilderCreateLexicalBlockFile<'a>(
         Builder: &DIBuilder<'a>,

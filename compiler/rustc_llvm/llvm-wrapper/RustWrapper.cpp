@@ -1179,14 +1179,6 @@ LLVMRustDIBuilderCreateQualifiedType(LLVMDIBuilderRef Builder, unsigned Tag,
       unwrap(Builder)->createQualifiedType(Tag, unwrapDI<DIType>(Type)));
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateLexicalBlock(LLVMDIBuilderRef Builder,
-                                    LLVMMetadataRef Scope, LLVMMetadataRef File,
-                                    unsigned Line, unsigned Col) {
-  return wrap(unwrap(Builder)->createLexicalBlock(
-      unwrapDI<DIDescriptor>(Scope), unwrapDI<DIFile>(File), Line, Col));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateLexicalBlockFile(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, LLVMMetadataRef File) {
   return wrap(unwrap(Builder)->createLexicalBlockFile(
