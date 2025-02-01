@@ -638,6 +638,7 @@ define_Conf! {
         ptr_as_ptr,
         redundant_field_names,
         redundant_static_lifetimes,
+        repeat_vec_with_capacity,
         same_item_push,
         seek_from_current,
         seek_rewind,

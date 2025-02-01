@@ -1,14 +1,28 @@
+use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::macros::matching_root_macro_call;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
 use clippy_utils::{expr_or_init, fn_def_id, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 use rustc_span::{Span, sym};
+
+pub struct RepeatVecWithCapacity {
+    msrv: Msrv,
+}
+
+impl RepeatVecWithCapacity {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            msrv: conf.msrv.clone(),
+        }
+    }
+}
 
 declare_clippy_lint! {
     /// ### What it does
@@ -48,7 +62,7 @@ declare_clippy_lint! {
     "repeating a `Vec::with_capacity` expression which does not retain capacity"
 }
 
-declare_lint_pass!(RepeatVecWithCapacity => [REPEAT_VEC_WITH_CAPACITY]);
+impl_lint_pass!(RepeatVecWithCapacity => [REPEAT_VEC_WITH_CAPACITY]);
 
 fn emit_lint(cx: &LateContext<'_>, span: Span, kind: &str, note: &'static str, sugg_msg: &'static str, sugg: String) {
     span_lint_and_then(
@@ -112,6 +126,10 @@ fn check_repeat_fn(cx: &LateContext<'_>, expr: &Expr<'_>) {
 impl LateLintPass<'_> for RepeatVecWithCapacity {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         check_vec_macro(cx, expr);
-        check_repeat_fn(cx, expr);
+        if self.msrv.meets(msrvs::REPEAT_WITH) {
+            check_repeat_fn(cx, expr);
+        }
     }
+
+    extract_msrv_attr!(LateContext);
 }

@@ -769,6 +769,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`ptr_as_ptr`](https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr)
 * [`redundant_field_names`](https://rust-lang.github.io/rust-clippy/master/index.html#redundant_field_names)
 * [`redundant_static_lifetimes`](https://rust-lang.github.io/rust-clippy/master/index.html#redundant_static_lifetimes)
+* [`repeat_vec_with_capacity`](https://rust-lang.github.io/rust-clippy/master/index.html#repeat_vec_with_capacity)
 * [`same_item_push`](https://rust-lang.github.io/rust-clippy/master/index.html#same_item_push)
 * [`seek_from_current`](https://rust-lang.github.io/rust-clippy/master/index.html#seek_from_current)
 * [`seek_rewind`](https://rust-lang.github.io/rust-clippy/master/index.html#seek_rewind)

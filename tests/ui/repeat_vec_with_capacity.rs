@@ -37,3 +37,8 @@ fn main() {
         from_macro!(Vec::<()>::with_capacity(42));
     }
 }
+
+#[clippy::msrv = "1.27.0"]
+fn msrv_check() {
+    std::iter::repeat(Vec::<()>::with_capacity(42));
+}
