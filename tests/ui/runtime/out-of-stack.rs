@@ -110,7 +110,11 @@ fn main() {
                 assert!(error.contains("has overflowed its stack"),
                         "missing overflow message: {}", error);
 
-                check_status(silent.status);
+                // Stack overflows in TLS destructors do not result in the error
+                // code being changed on Windows.
+                if !(cfg!(target_os = "windows") && mode.contains("tls")) {
+                    check_status(silent.status);
+                }
             }
         }
     }
