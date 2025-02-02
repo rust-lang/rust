@@ -16,10 +16,10 @@ pub mod stb1 {
 #[unstable(feature = "uns", issue = "135003")]
 pub mod uns {
     #[stable(since = "1.0", feature = "stb1")]
-    #[rustc_allowed_through_unstable_modules]
+    #[rustc_allowed_through_unstable_modules = "use stable path instead"]
     pub struct Inside1;
     #[stable(since = "1.0", feature = "stb2")]
-    #[rustc_allowed_through_unstable_modules]
+    #[rustc_allowed_through_unstable_modules = "use stable path instead"]
     pub struct Inside2;
 }
 
