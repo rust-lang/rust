@@ -66,7 +66,7 @@ impl TestCx<'_> {
                 && !self.props.run_rustfix
                 && !self.props.rustfix_only_machine_applicable
             {
-                let mut coverage_file_path = self.config.build_base.clone();
+                let mut coverage_file_path = self.config.build_test_suite_root.clone();
                 coverage_file_path.push("rustfix_missing_coverage.txt");
                 debug!("coverage_file_path: {}", coverage_file_path.display());
 

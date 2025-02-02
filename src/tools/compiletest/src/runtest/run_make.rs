@@ -21,8 +21,6 @@ impl TestCx<'_> {
 
     fn run_rmake_legacy_test(&self) {
         let cwd = env::current_dir().unwrap();
-        let src_root = self.config.src_base.parent().unwrap().parent().unwrap();
-        let src_root = cwd.join(&src_root);
 
         // FIXME(Zalathar): This should probably be `output_base_dir` to avoid
         // an unnecessary extra subdirectory, but since legacy Makefile tests
@@ -51,7 +49,7 @@ impl TestCx<'_> {
             .stderr(Stdio::piped())
             .env("TARGET", &self.config.target)
             .env("PYTHON", &self.config.python)
-            .env("S", src_root)
+            .env("S", &self.config.src_root)
             .env("RUST_BUILD_STAGE", &self.config.stage_id)
             .env("RUSTC", cwd.join(&self.config.rustc_path))
             .env("TMPDIR", &tmpdir)
@@ -197,14 +195,7 @@ impl TestCx<'_> {
         // ```
 
         // `source_root` is the top-level directory containing the rust-lang/rust checkout.
-        let source_root =
-            self.config.find_rust_src_root().expect("could not determine rust source root");
-        // `self.config.build_base` is actually the build base folder + "test" + test suite name, it
-        // looks like `build/<host_triple>/test/run-make`. But we want `build/<host_triple>/`. Note
-        // that the `build` directory does not need to be called `build`, nor does it need to be
-        // under `source_root`, so we must compute it based off of `self.config.build_base`.
-        let build_root =
-            self.config.build_base.parent().and_then(Path::parent).unwrap().to_path_buf();
+        let host_build_root = self.config.build_root.join(&self.config.host);
 
         // We construct the following directory tree for each rmake.rs test:
         // ```
@@ -239,30 +230,6 @@ impl TestCx<'_> {
             }
         }
 
-        // `self.config.stage_id` looks like `stage1-<target_triple>`, but we only want
-        // the `stage1` part as that is what the output directories of bootstrap are prefixed with.
-        // Note that this *assumes* build layout from bootstrap is produced as:
-        //
-        // ```
-        // build/<target_triple>/          // <- this is `build_root`
-        // ├── stage0
-        // ├── stage0-bootstrap-tools
-        // ├── stage0-codegen
-        // ├── stage0-rustc
-        // ├── stage0-std
-        // ├── stage0-sysroot
-        // ├── stage0-tools
-        // ├── stage0-tools-bin
-        // ├── stage1
-        // ├── stage1-std
-        // ├── stage1-tools
-        // ├── stage1-tools-bin
-        // └── test
-        // ```
-        // FIXME(jieyouxu): improve the communication between bootstrap and compiletest here so
-        // we don't have to hack out a `stageN`.
-        let stage = self.config.stage_id.split('-').next().unwrap();
-
         // In order to link in the support library as a rlib when compiling recipes, we need three
         // paths:
         // 1. Path of the built support library rlib itself.
@@ -284,10 +251,12 @@ impl TestCx<'_> {
         // support lib and its deps are organized, can't we copy them to the tools-bin dir as
         // well?), but this seems to work for now.
 
-        let stage_tools_bin = build_root.join(format!("{stage}-tools-bin"));
+        let stage = self.config.stage;
+
+        let stage_tools_bin = host_build_root.join(format!("stage{stage}-tools-bin"));
         let support_lib_path = stage_tools_bin.join("librun_make_support.rlib");
 
-        let stage_tools = build_root.join(format!("{stage}-tools"));
+        let stage_tools = host_build_root.join(format!("stage{stage}-tools"));
         let support_lib_deps = stage_tools.join(&self.config.host).join("release").join("deps");
         let support_lib_deps_deps = stage_tools.join("release").join("deps");
 
@@ -353,7 +322,7 @@ impl TestCx<'_> {
         // to work correctly.
         //
         // See <https://github.com/rust-lang/rust/pull/122248> for more background.
-        let stage0_sysroot = build_root.join("stage0-sysroot");
+        let stage0_sysroot = host_build_root.join("stage0-sysroot");
         if std::env::var_os("COMPILETEST_FORCE_STAGE0").is_some() {
             rustc.arg("--sysroot").arg(&stage0_sysroot);
         }
@@ -368,7 +337,7 @@ impl TestCx<'_> {
         // provided through env vars.
 
         // Compute stage-specific standard library paths.
-        let stage_std_path = build_root.join(&stage).join("lib");
+        let stage_std_path = host_build_root.join(format!("stage{stage}")).join("lib");
 
         // Compute dynamic library search paths for recipes.
         let recipe_dylib_search_paths = {
@@ -413,9 +382,9 @@ impl TestCx<'_> {
             .env("PYTHON", &self.config.python)
             // Provide path to checkout root. This is the top-level directory containing
             // rust-lang/rust checkout.
-            .env("SOURCE_ROOT", &source_root)
-            // Path to the build directory. This is usually the same as `source_root.join("build").join("host")`.
-            .env("BUILD_ROOT", &build_root)
+            .env("SOURCE_ROOT", &self.config.src_root)
+            // Path to `$build_dir/$host_triple/`.
+            .env("BUILD_ROOT", &host_build_root)
             // Provide path to stage-corresponding rustc.
             .env("RUSTC", &self.config.rustc_path)
             // Provide the directory to libraries that are needed to run the *compiler*. This is not
@@ -430,11 +399,11 @@ impl TestCx<'_> {
             .env("LLVM_COMPONENTS", &self.config.llvm_components);
 
         if let Some(ref cargo) = self.config.cargo_path {
-            cmd.env("CARGO", source_root.join(cargo));
+            cmd.env("CARGO", cargo);
         }
 
         if let Some(ref rustdoc) = self.config.rustdoc_path {
-            cmd.env("RUSTDOC", source_root.join(rustdoc));
+            cmd.env("RUSTDOC", rustdoc);
         }
 
         if let Some(ref node) = self.config.nodejs {

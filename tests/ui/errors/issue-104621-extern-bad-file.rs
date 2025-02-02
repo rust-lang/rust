@@ -1,4 +1,4 @@
-//@ compile-flags: --extern foo={{src-base}}/errors/issue-104621-extern-bad-file.rs
+//@ compile-flags: --extern foo={{test-suite-src-base}}/errors/issue-104621-extern-bad-file.rs
 //@ only-linux
 
 extern crate foo;

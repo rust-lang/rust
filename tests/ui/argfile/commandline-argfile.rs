@@ -2,7 +2,7 @@
 //
 //@ build-pass
 //@ compile-flags: --cfg cmdline_set --check-cfg=cfg(cmdline_set,unbroken)
-//@ compile-flags: @{{src-base}}/argfile/commandline-argfile.args
+//@ compile-flags: @{{test-suite-src-base}}/argfile/commandline-argfile.args
 
 #[cfg(not(cmdline_set))]
 compile_error!("cmdline_set not set");

@@ -6,7 +6,7 @@
 // windows.
 //
 //@ ignore-windows
-//@ compile-flags: --cfg cmdline_set -Z shell-argfiles @shell:{{src-base}}/shell-argfiles/shell-argfiles-badquotes.args
+//@ compile-flags: --cfg cmdline_set -Z shell-argfiles @shell:{{test-suite-src-base}}/shell-argfiles/shell-argfiles-badquotes.args
 
 fn main() {
 }

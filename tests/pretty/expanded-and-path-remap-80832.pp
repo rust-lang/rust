@@ -8,6 +8,6 @@ extern crate std;
 //
 //@ pretty-mode:expanded
 //@ pp-exact:expanded-and-path-remap-80832.pp
-//@ compile-flags: --remap-path-prefix {{src-base}}=the/src
+//@ compile-flags: --remap-path-prefix {{test-suite-src-base}}=the/src
 
 fn main() {}

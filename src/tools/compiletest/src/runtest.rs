@@ -535,7 +535,7 @@ impl<'test> TestCx<'test> {
             .arg(&out_dir)
             .arg(&format!("--target={}", target))
             .arg("-L")
-            .arg(&self.config.build_base)
+            .arg(&self.config.build_test_suite_root)
             .arg("-L")
             .arg(aux_dir)
             .arg("-A")
@@ -1365,8 +1365,8 @@ impl<'test> TestCx<'test> {
         //
         // Note: avoid adding a subdirectory of an already filtered directory here, otherwise the
         // same slice of text will be double counted and the truncation might not happen.
-        add_path(&self.config.src_base);
-        add_path(&self.config.build_base);
+        add_path(&self.config.src_test_suite_root);
+        add_path(&self.config.build_test_suite_root);
 
         read2_abbreviated(child, &filter_paths_from_len).expect("failed to read output")
     }
@@ -1417,13 +1417,11 @@ impl<'test> TestCx<'test> {
     }
 
     fn is_rustdoc(&self) -> bool {
-        self.config.src_base.ends_with("rustdoc-ui")
-            || self.config.src_base.ends_with("rustdoc-js")
-            || self.config.src_base.ends_with("rustdoc-json")
+        matches!(self.config.suite.as_str(), "rustdoc-ui" | "rustdoc-js" | "rustdoc-json")
     }
 
     fn get_mir_dump_dir(&self) -> PathBuf {
-        let mut mir_dump_dir = PathBuf::from(self.config.build_base.as_path());
+        let mut mir_dump_dir = self.config.build_test_suite_root.clone();
         debug!("input_file: {:?}", self.testpaths.file);
         mir_dump_dir.push(&self.testpaths.relative_dir);
         mir_dump_dir.push(self.testpaths.file.file_stem().unwrap());
@@ -1473,7 +1471,7 @@ impl<'test> TestCx<'test> {
         // Similarly, vendored sources shouldn't be shown when running from a dist tarball.
         rustc.arg("-Z").arg(format!(
             "ignore-directory-in-diagnostics-source-blocks={}",
-            self.config.find_rust_src_root().unwrap().join("vendor").display(),
+            self.config.src_root.join("vendor").to_str().unwrap(),
         ));
 
         // Optionally prevent default --sysroot if specified in test compile-flags.
@@ -1481,7 +1479,7 @@ impl<'test> TestCx<'test> {
             && !self.config.host_rustcflags.iter().any(|flag| flag == "--sysroot")
         {
             // In stage 0, make sure we use `stage0-sysroot` instead of the bootstrap sysroot.
-            rustc.arg("--sysroot").arg(&self.config.sysroot_base);
+            rustc.arg("--sysroot").arg(&self.config.sysroot);
         }
 
         // Optionally prevent default --target if specified in test compile-flags.
@@ -1497,7 +1495,7 @@ impl<'test> TestCx<'test> {
 
         if !is_rustdoc {
             if let Some(ref incremental_dir) = self.props.incremental_dir {
-                rustc.args(&["-C", &format!("incremental={}", incremental_dir.display())]);
+                rustc.args(&["-C", &format!("incremental={}", incremental_dir.to_str().unwrap())]);
                 rustc.args(&["-Z", "incremental-verify-ich"]);
             }
 
@@ -1634,7 +1632,7 @@ impl<'test> TestCx<'test> {
         if self.props.remap_src_base {
             rustc.arg(format!(
                 "--remap-path-prefix={}={}",
-                self.config.src_base.display(),
+                self.config.src_test_suite_root.to_str().unwrap(),
                 FAKE_SRC_BASE,
             ));
         }
@@ -2407,19 +2405,18 @@ impl<'test> TestCx<'test> {
         normalize_path(&base_dir.join("compiler"), "$COMPILER_DIR");
 
         // Real paths into the libstd/libcore
-        let rust_src_dir = &self.config.sysroot_base.join("lib/rustlib/src/rust");
+        let rust_src_dir = &self.config.sysroot.join("lib/rustlib/src/rust");
         rust_src_dir.try_exists().expect(&*format!("{} should exists", rust_src_dir.display()));
         let rust_src_dir = rust_src_dir.read_link().unwrap_or(rust_src_dir.to_path_buf());
         normalize_path(&rust_src_dir.join("library"), "$SRC_DIR_REAL");
 
-        // Paths into the build directory
-        let test_build_dir = &self.config.build_base;
-        let parent_build_dir = test_build_dir.parent().unwrap().parent().unwrap().parent().unwrap();
-
         // eg. /home/user/rust/build/x86_64-unknown-linux-gnu/test/ui
-        normalize_path(test_build_dir, "$TEST_BUILD_DIR");
+        normalize_path(&self.config.build_test_suite_root, "$TEST_BUILD_DIR");
+        eprintln!("build_test_suite_root = {:?}", self.config.build_test_suite_root.display());
+
         // eg. /home/user/rust/build
-        normalize_path(parent_build_dir, "$BUILD_DIR");
+        normalize_path(&self.config.build_root, "$BUILD_DIR");
+        eprintln!("build_root = {:?}", self.config.build_root.display());
 
         if json {
             // escaped newlines in json strings should be readable

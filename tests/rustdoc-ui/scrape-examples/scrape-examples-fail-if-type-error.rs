@@ -1,5 +1,5 @@
 //@ check-fail
-//@ compile-flags: -Z unstable-options --scrape-examples-output-path {{build-base}}/t.calls --scrape-examples-target-crate foobar
+//@ compile-flags: -Z unstable-options --scrape-examples-output-path {{test-suite-build-base}}/t.calls --scrape-examples-target-crate foobar
 
 pub fn foo() {
   INVALID_FUNC();

@@ -1034,19 +1034,6 @@ impl Config {
         }
     }
 
-    pub fn find_rust_src_root(&self) -> Option<PathBuf> {
-        let mut path = self.src_base.clone();
-        let path_postfix = Path::new("src/etc/lldb_batchmode.py");
-
-        while path.pop() {
-            if path.join(&path_postfix).is_file() {
-                return Some(path);
-            }
-        }
-
-        None
-    }
-
     fn parse_edition(&self, line: &str) -> Option<String> {
         self.parse_name_value_directive(line, "edition")
     }
@@ -1093,9 +1080,9 @@ impl Config {
 
 fn expand_variables(mut value: String, config: &Config) -> String {
     const CWD: &str = "{{cwd}}";
-    const SRC_BASE: &str = "{{src-base}}";
-    const BUILD_BASE: &str = "{{build-base}}";
-    const RUST_SRC_BASE: &str = "{{rust-src-base}}";
+    const TEST_SUITE_SRC_BASE: &str = "{{test-suite-src-base}}";
+    const TEST_SUITE_BUILD_BASE: &str = "{{test-suite-build-base}}";
+    const SYSROOT_RUST_SRC_BASE: &str = "{{sysroot-rust-src-base}}";
     const SYSROOT_BASE: &str = "{{sysroot-base}}";
     const TARGET_LINKER: &str = "{{target-linker}}";
     const TARGET: &str = "{{target}}";
@@ -1105,16 +1092,17 @@ fn expand_variables(mut value: String, config: &Config) -> String {
         value = value.replace(CWD, &cwd.to_string_lossy());
     }
 
-    if value.contains(SRC_BASE) {
-        value = value.replace(SRC_BASE, &config.src_base.to_string_lossy());
+    if value.contains(TEST_SUITE_SRC_BASE) {
+        value = value.replace(TEST_SUITE_SRC_BASE, &config.src_test_suite_root.to_string_lossy());
     }
 
-    if value.contains(BUILD_BASE) {
-        value = value.replace(BUILD_BASE, &config.build_base.to_string_lossy());
+    if value.contains(TEST_SUITE_BUILD_BASE) {
+        value =
+            value.replace(TEST_SUITE_BUILD_BASE, &config.build_test_suite_root.to_string_lossy());
     }
 
     if value.contains(SYSROOT_BASE) {
-        value = value.replace(SYSROOT_BASE, &config.sysroot_base.to_string_lossy());
+        value = value.replace(SYSROOT_BASE, &config.sysroot.to_string_lossy());
     }
 
     if value.contains(TARGET_LINKER) {
@@ -1125,11 +1113,13 @@ fn expand_variables(mut value: String, config: &Config) -> String {
         value = value.replace(TARGET, &config.target);
     }
 
-    if value.contains(RUST_SRC_BASE) {
-        let src_base = config.sysroot_base.join("lib/rustlib/src/rust");
-        src_base.try_exists().expect(&*format!("{} should exists", src_base.display()));
-        let src_base = src_base.read_link().unwrap_or(src_base);
-        value = value.replace(RUST_SRC_BASE, &src_base.to_string_lossy());
+    if value.contains(SYSROOT_RUST_SRC_BASE) {
+        let sysroot_rust_src_base = config.sysroot.join("lib/rustlib/src/rust");
+        sysroot_rust_src_base
+            .try_exists()
+            .expect(&*format!("{} should exists", sysroot_rust_src_base.display()));
+        let src_base = sysroot_rust_src_base.read_link().unwrap_or(sysroot_rust_src_base);
+        value = value.replace(SYSROOT_RUST_SRC_BASE, &src_base.to_string_lossy());
     }
 
     value

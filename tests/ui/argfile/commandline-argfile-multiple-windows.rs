@@ -8,7 +8,7 @@
 //@ normalize-stderr: "os error \d+" -> "os error $$ERR"
 //@ normalize-stderr: "commandline-argfile-missing.args:[^(]*" -> "commandline-argfile-missing.args: $$FILE_MISSING "
 //@ normalize-stderr: "commandline-argfile-missing2.args:[^(]*" -> "commandline-argfile-missing2.args: $$FILE_MISSING "
-//@ compile-flags: --cfg cmdline_set @{{src-base}}\argfile\commandline-argfile-missing.args @{{src-base}}\argfile\commandline-argfile-badutf8.args @{{src-base}}\argfile\commandline-argfile-missing2.args
+//@ compile-flags: --cfg cmdline_set @{{test-suite-src-base}}\argfile\commandline-argfile-missing.args @{{test-suite-src-base}}\argfile\commandline-argfile-badutf8.args @{{test-suite-src-base}}\argfile\commandline-argfile-missing2.args
 
 #[cfg(not(cmdline_set))]
 compile_error!("cmdline_set not set");

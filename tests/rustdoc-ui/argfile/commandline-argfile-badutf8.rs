@@ -6,7 +6,7 @@
 // windows.
 //
 //@ ignore-windows
-//@ compile-flags: --cfg cmdline_set @{{src-base}}/argfile/commandline-argfile-badutf8.args
+//@ compile-flags: --cfg cmdline_set @{{test-suite-src-base}}/argfile/commandline-argfile-badutf8.args
 
 #[cfg(not(cmdline_set))]
 compile_error!("cmdline_set not set");

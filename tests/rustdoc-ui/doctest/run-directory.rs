@@ -2,8 +2,8 @@
 
 //@ revisions: correct incorrect
 //@ check-pass
-//@ [correct]compile-flags:--test --test-run-directory={{src-base}}
-//@ [incorrect]compile-flags:--test --test-run-directory={{src-base}}/coverage
+//@ [correct]compile-flags:--test --test-run-directory={{test-suite-src-base}}
+//@ [incorrect]compile-flags:--test --test-run-directory={{test-suite-src-base}}/coverage
 //@ normalize-stdout: "tests/rustdoc-ui/doctest" -> "$$DIR"
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 

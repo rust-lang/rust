@@ -1646,18 +1646,22 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // part test the *API* of the compiler, not how it compiles a given file. As a result, we
         // can run them against the stage 1 sources as long as we build them with the stage 0
         // bootstrap compiler.
-        // NOTE: Only stage 1 is special cased because we need the rustc_private artifacts to match the
-        // running compiler in stage 2 when plugins run.
-        let stage_id = if suite == "ui-fulldeps" && compiler.stage == 1 {
-            // At stage 0 (stage - 1) we are using the beta compiler. Using `self.target` can lead finding
-            // an incorrect compiler path on cross-targets, as the stage 0 beta compiler is always equal
-            // to `build.build` in the configuration.
+        //
+        // NOTE: Only stage 1 is special cased because we need the `rustc_private` artifacts to
+        // match the running compiler in stage 2 when plugins run.
+        let (stage_id, test_stage) = if suite == "ui-fulldeps" && compiler.stage == 1 {
+            // At stage 0 (stage - 1) we are using the beta compiler. Using `self.target` can lead
+            // finding an incorrect compiler path on cross-targets, as the stage 0 beta compiler is
+            // always equal to `build.build` in the configuration.
             let build = builder.build.build;
 
             compiler = builder.compiler(compiler.stage - 1, build);
-            format!("stage{}-{}", compiler.stage + 1, build)
+
+            let test_stage = compiler.stage + 1;
+
+            (format!("stage{}-{}", test_stage, build), test_stage)
         } else {
-            format!("stage{}-{}", compiler.stage, target)
+            (format!("stage{}-{}", compiler.stage, target), compiler.stage)
         };
 
         if suite.ends_with("fulldeps") {
@@ -1757,22 +1761,30 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--coverage-dump-path").arg(coverage_dump);
         }
 
-        cmd.arg("--src-base").arg(builder.src.join("tests").join(suite));
-        cmd.arg("--build-base").arg(testdir(builder, compiler.host).join(suite));
+        cmd.arg("--src-root").arg(&builder.src);
+        cmd.arg("--src-test-suite-root").arg(builder.src.join("tests").join(suite));
+        // Note: this is the *root* build directory, does not include target triple!
+        cmd.arg("--build-root").arg(&builder.out);
+        cmd.arg("--build-test-suite-root").arg(testdir(builder, compiler.host).join(suite));
 
         // When top stage is 0, that means that we're testing an externally provided compiler.
         // In that case we need to use its specific sysroot for tests to pass.
         let sysroot = if builder.top_stage == 0 {
             builder.initial_sysroot.clone()
         } else {
-            builder.sysroot(compiler).to_path_buf()
+            builder.sysroot(compiler)
         };
-        cmd.arg("--sysroot-base").arg(sysroot);
+        cmd.arg("--sysroot").arg(sysroot);
+
         cmd.arg("--stage-id").arg(stage_id);
+        cmd.arg("--stage").arg(test_stage.to_string());
+
+        cmd.arg("--host").arg(&*compiler.host.triple);
+        cmd.arg("--target").arg(target.rustc_target_arg());
+
         cmd.arg("--suite").arg(suite);
         cmd.arg("--mode").arg(mode);
-        cmd.arg("--target").arg(target.rustc_target_arg());
-        cmd.arg("--host").arg(&*compiler.host.triple);
+
         cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.build));
 
         if builder.build.config.llvm_enzyme {

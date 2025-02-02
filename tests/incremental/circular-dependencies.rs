@@ -3,7 +3,7 @@
 //@ edition: 2021
 //@ [cpass1] compile-flags: --crate-type lib --emit dep-info,metadata
 //@ [cfail2] aux-build: circular-dependencies-aux.rs
-//@ [cfail2] compile-flags: --test --extern aux={{build-base}}/circular-dependencies/auxiliary/libcircular_dependencies_aux.rmeta -L dependency={{build-base}}/circular-dependencies
+//@ [cfail2] compile-flags: --test --extern aux={{test-suite-build-base}}/circular-dependencies/auxiliary/libcircular_dependencies_aux.rmeta -L dependency={{test-suite-build-base}}/circular-dependencies
 
 pub struct Foo;
 //[cfail2]~^ NOTE the crate `circular_dependencies` is compiled multiple times, possibly with different configurations

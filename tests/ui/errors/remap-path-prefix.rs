@@ -1,5 +1,5 @@
 //@ revisions: normal with-diagnostic-scope without-diagnostic-scope
-//@ compile-flags: --remap-path-prefix={{src-base}}=remapped
+//@ compile-flags: --remap-path-prefix={{test-suite-src-base}}=remapped
 //@ [with-diagnostic-scope]compile-flags: -Zremap-path-scope=diagnostics
 //@ [without-diagnostic-scope]compile-flags: -Zremap-path-scope=object
 // no-remap-src-base: Manually remap, so the remapped path remains in .stderr file.

@@ -215,15 +215,22 @@ pub struct Config {
     /// `None` then these tests will be ignored.
     pub run_clang_based_tests_with: Option<String>,
 
-    /// The directory containing the tests to run
-    pub src_base: PathBuf,
+    /// Path to directory containing rust-lang/rust sources.
+    pub src_root: PathBuf,
+    /// Path to the directory containg the test suite sources. Expected to be a subdirectory of
+    /// `src_root`.
+    pub src_test_suite_root: PathBuf,
 
-    /// The directory where programs should be built
-    pub build_base: PathBuf,
+    /// Bootstrap build directory.
+    pub build_root: PathBuf,
+    /// Bootstrap test suite build directory. Expected to be a subdirectory of `build_root`.
+    pub build_test_suite_root: PathBuf,
 
-    /// The directory containing the compiler sysroot
-    pub sysroot_base: PathBuf,
+    /// The directory containing the compiler sysroot.
+    pub sysroot: PathBuf,
 
+    /// Stage number.
+    pub stage: u32,
     /// The name of the stage being built (stage1, etc)
     pub stage_id: String,
 
@@ -802,7 +809,7 @@ pub const UI_COVERAGE_MAP: &str = "cov-map";
 ///   /path/to/build/host-tuple/test/ui/relative/
 /// This is created early when tests are collected to avoid race conditions.
 pub fn output_relative_path(config: &Config, relative_dir: &Path) -> PathBuf {
-    config.build_base.join(relative_dir)
+    config.build_test_suite_root.join(relative_dir)
 }
 
 /// Generates a unique name for the test, such as `testname.revision.mode`.
