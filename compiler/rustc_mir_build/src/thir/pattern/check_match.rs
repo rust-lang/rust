@@ -326,9 +326,10 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | Use { source }
             | PointerCoercion { source, .. }
             | PlaceTypeAscription { source, .. }
-            | ValueTypeAscription { source, .. } => {
-                self.is_known_valid_scrutinee(&self.thir()[*source])
-            }
+            | ValueTypeAscription { source, .. }
+            | PlaceUnwrapUnsafeBinder { source }
+            | ValueUnwrapUnsafeBinder { source }
+            | WrapUnsafeBinder { source } => self.is_known_valid_scrutinee(&self.thir()[*source]),
 
             // These diverge.
             Become { .. } | Break { .. } | Continue { .. } | Return { .. } => true,

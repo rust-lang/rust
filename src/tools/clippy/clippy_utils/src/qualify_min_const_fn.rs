@@ -116,6 +116,7 @@ fn check_rvalue<'tcx>(
         Rvalue::CopyForDeref(place) => check_place(tcx, *place, span, body, msrv),
         Rvalue::Repeat(operand, _)
         | Rvalue::Use(operand)
+        | Rvalue::WrapUnsafeBinder(operand, _)
         | Rvalue::Cast(
             CastKind::PointerWithExposedProvenance
             | CastKind::IntToInt
@@ -289,7 +290,8 @@ fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &B
             | ProjectionElem::Downcast(..)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Subtype(_)
-            | ProjectionElem::Index(_) => {},
+            | ProjectionElem::Index(_)
+            | ProjectionElem::UnwrapUnsafeBinder(_) => {},
         }
     }
 

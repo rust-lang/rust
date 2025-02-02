@@ -1248,6 +1248,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             ShallowInitBox(ref place, ref ty) => {
                 with_no_trimmed_paths!(write!(fmt, "ShallowInitBox({place:?}, {ty})"))
             }
+
+            WrapUnsafeBinder(ref op, ty) => {
+                with_no_trimmed_paths!(write!(fmt, "wrap_binder!({op:?}; {ty})"))
+            }
         }
     }
 }
@@ -1308,6 +1312,9 @@ fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> 
             ProjectionElem::Index(_)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. } => {}
+            ProjectionElem::UnwrapUnsafeBinder(_) => {
+                write!(fmt, "unwrap_binder!(")?;
+            }
         }
     }
 
@@ -1355,6 +1362,9 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
             }
             ProjectionElem::Subslice { from, to, from_end: false } => {
                 write!(fmt, "[{from:?}..{to:?}]")?;
+            }
+            ProjectionElem::UnwrapUnsafeBinder(ty) => {
+                write!(fmt, "; {ty})")?;
             }
         }
     }

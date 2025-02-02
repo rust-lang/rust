@@ -302,6 +302,25 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     )
                     .unwrap();
             }
+            ProjectionElem::UnwrapUnsafeBinder(ty) => {
+                let ty::UnsafeBinder(binder_ty) = *base_ty.ty.kind() else {
+                    unreachable!();
+                };
+                let found_ty = self.typeck.infcx.instantiate_binder_with_fresh_vars(
+                    self.body().source_info(location).span,
+                    BoundRegionConversionTime::HigherRankedType,
+                    binder_ty.into(),
+                );
+                self.typeck
+                    .relate_types(
+                        ty,
+                        context.ambient_variance(),
+                        found_ty,
+                        location.to_locations(),
+                        ConstraintCategory::Boring,
+                    )
+                    .unwrap();
+            }
             ProjectionElem::Subtype(_) => {
                 bug!("ProjectionElem::Subtype shouldn't exist in borrowck")
             }
@@ -2233,6 +2252,27 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_operand(right, location);
             }
 
+            Rvalue::WrapUnsafeBinder(op, ty) => {
+                self.check_operand(op, location);
+                let operand_ty = op.ty(self.body, self.tcx());
+
+                let ty::UnsafeBinder(binder_ty) = *ty.kind() else {
+                    unreachable!();
+                };
+                let expected_ty = self.infcx.instantiate_binder_with_fresh_vars(
+                    self.body().source_info(location).span,
+                    BoundRegionConversionTime::HigherRankedType,
+                    binder_ty.into(),
+                );
+                self.sub_types(
+                    operand_ty,
+                    expected_ty,
+                    location.to_locations(),
+                    ConstraintCategory::Boring,
+                )
+                .unwrap();
+            }
+
             Rvalue::RawPtr(..)
             | Rvalue::ThreadLocalRef(..)
             | Rvalue::Len(..)
@@ -2258,7 +2298,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::NullaryOp(..)
             | Rvalue::CopyForDeref(..)
             | Rvalue::UnaryOp(..)
-            | Rvalue::Discriminant(..) => None,
+            | Rvalue::Discriminant(..)
+            | Rvalue::WrapUnsafeBinder(..) => None,
 
             Rvalue::Aggregate(aggregate, _) => match **aggregate {
                 AggregateKind::Adt(_, _, _, user_ty, _) => user_ty,
@@ -2450,7 +2491,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 | ProjectionElem::OpaqueCast(..)
                 | ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Subslice { .. } => {
+                | ProjectionElem::Subslice { .. }
+                | ProjectionElem::UnwrapUnsafeBinder(_) => {
                     // other field access
                 }
                 ProjectionElem::Subtype(_) => {
