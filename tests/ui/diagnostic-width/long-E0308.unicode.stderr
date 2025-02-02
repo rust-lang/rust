@@ -16,11 +16,11 @@ LL │  ┃         Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(O…
 LL │  ┃             Ok("")
 LL │  ┃         ))))))))))))))))))))))))))))))
 LL │  ┃     ))))))))))))))))))))))))))))));
-   │  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛ expected `Atype<Btype<..., ...>, ...>`, found `Result<Result<..., ...>, ...>`
+   │  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛ expected `Atype<Btype<Ctype<..., i32>, i32>, i32>`, found `Result<Result<Result<..., _>, _>, _>`
    │
-   ├ note: expected struct `Atype<Btype<..., ...>, ...>`
-   │            found enum `Result<Result<..., ...>, ...>`
-   ├ note: the full type name has been written to '$TEST_BUILD_DIR/$FILE.long-type-hash.txt'
+   ├ note: expected struct `Atype<Btype<..., i32>, i32>`
+   │            found enum `Result<Result<..., _>, _>`
+   ├ note: the full name for the type has been written to '$TEST_BUILD_DIR/$FILE.long-type-hash.txt'
    ╰ note: consider using `--verbose` to print the full type name to the console
 
 error[E0308]: mismatched types
@@ -32,11 +32,11 @@ LL │ ┃         Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok…
 LL │ ┃             Ok(Ok(Ok(Ok(Ok(Ok(Ok("")))))))
 LL │ ┃         ))))))))))))))))))))))))))))))
 LL │ ┃     ))))))))))))))))))))))));
-   │ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛ expected `Option<Result<..., ...>>`, found `Result<Result<..., ...>, ...>`
+   │ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛ expected `Option<Result<Option<Option<...>>, _>>`, found `Result<Result<Result<..., _>, _>, _>`
    │
-   ├ note: expected enum `Option<Result<..., ...>>`
-   │          found enum `Result<Result<..., ...>, ...>`
-   ├ note: the full type name has been written to '$TEST_BUILD_DIR/$FILE.long-type-hash.txt'
+   ├ note: expected enum `Option<Result<Option<...>, _>>`
+   │          found enum `Result<Result<..., _>, _>`
+   ├ note: the full name for the type has been written to '$TEST_BUILD_DIR/$FILE.long-type-hash.txt'
    ╰ note: consider using `--verbose` to print the full type name to the console
 
 error[E0308]: mismatched types
@@ -50,13 +50,13 @@ LL │ │           Atype<
    ‡ │
 LL │ │       i32
 LL │ │     > = ();
-   │ │     │   ━━ expected `Atype<Btype<..., ...>, ...>`, found `()`
+   │ │     │   ━━ expected `Atype<Btype<Ctype<..., i32>, i32>, i32>`, found `()`
    │ └─────┤
    │       expected due to this
    │
-   ├ note: expected struct `Atype<Btype<..., ...>, ...>`
+   ├ note: expected struct `Atype<Btype<..., i32>, i32>`
    │       found unit type `()`
-   ├ note: the full type name has been written to '$TEST_BUILD_DIR/$FILE.long-type-hash.txt'
+   ├ note: the full name for the type has been written to '$TEST_BUILD_DIR/$FILE.long-type-hash.txt'
    ╰ note: consider using `--verbose` to print the full type name to the console
 
 error[E0308]: mismatched types
@@ -70,11 +70,11 @@ LL │ ┃         Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok…
 LL │ ┃             Ok(Ok(Ok(Ok(Ok(Ok(Ok("")))))))
 LL │ ┃         ))))))))))))))))))))))))))))))
 LL │ ┃     ))))))))))))))))))))))));
-   │ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛ expected `()`, found `Result<Result<..., ...>, ...>`
+   │ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛ expected `()`, found `Result<Result<Result<..., _>, _>, _>`
    │
    ├ note: expected unit type `()`
-   │               found enum `Result<Result<..., ...>, ...>`
-   ├ note: the full type name has been written to '$TEST_BUILD_DIR/$FILE.long-type-hash.txt'
+   │               found enum `Result<Result<..., _>, _>`
+   ├ note: the full name for the type has been written to '$TEST_BUILD_DIR/$FILE.long-type-hash.txt'
    ╰ note: consider using `--verbose` to print the full type name to the console
 
 error: aborting due to 4 previous errors

@@ -25,8 +25,6 @@ mir_build_borrow_of_moved_value = borrow of moved value
     .occurs_because_label = move occurs because `{$name}` has type `{$ty}`, which does not implement the `Copy` trait
     .value_borrowed_label = value borrowed here after move
     .suggestion = borrow this binding in the pattern to avoid moving the value
-    .full_type_name = the full type name has been written to '{$path}'
-    .consider_verbose = consider using `--verbose` to print the full type name to the console
 
 mir_build_call_to_deprecated_safe_fn_requires_unsafe =
     call to deprecated safe function `{$function}` is unsafe and requires unsafe block

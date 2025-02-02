@@ -67,7 +67,7 @@ LL |     let d: &fn(u32) -> u32 = foo;
 help: consider using a reference
    |
 LL |     let d: &fn(u32) -> u32 = &foo;
-   |                              ~~~~
+   |                              +
 
 error[E0308]: mismatched types
   --> $DIR/fn-pointer-mismatch.rs:48:30

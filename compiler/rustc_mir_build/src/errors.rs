@@ -839,10 +839,6 @@ pub(crate) struct BorrowOfMovedValue {
     pub(crate) ty: String,
     #[suggestion(code = "ref ", applicability = "machine-applicable")]
     pub(crate) suggest_borrowing: Option<Span>,
-    #[note(mir_build_full_type_name)]
-    #[note(mir_build_consider_verbose)]
-    pub(crate) has_path: bool,
-    pub(crate) path: String,
 }
 
 #[derive(Diagnostic)]

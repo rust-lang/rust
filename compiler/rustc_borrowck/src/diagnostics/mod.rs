@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{Applicability, Diag, EmissionGuarantee, MultiSpan};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, MultiSpan, listify};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::{self as hir, CoroutineKind, LangItem};
 use rustc_index::IndexSlice;
@@ -29,7 +29,7 @@ use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::call_kind::{CallDesugaringKind, call_kind};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{
-    FulfillmentErrorCode, type_known_to_meet_bound_modulo_regions,
+    FulfillmentError, FulfillmentErrorCode, type_known_to_meet_bound_modulo_regions,
 };
 use tracing::debug;
 
@@ -1434,17 +1434,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                             error.obligation.predicate,
                                         )
                                     }
-                                    [errors @ .., last] => {
+                                    _ => {
                                         format!(
                                             "you could `clone` the value and consume it, if the \
-                                             following trait bounds could be satisfied: \
-                                             {} and `{}`",
-                                            errors
-                                                .iter()
-                                                .map(|e| format!("`{}`", e.obligation.predicate))
-                                                .collect::<Vec<_>>()
-                                                .join(", "),
-                                            last.obligation.predicate,
+                                             following trait bounds could be satisfied: {}",
+                                            listify(&errors, |e: &FulfillmentError<'tcx>| format!(
+                                                "`{}`",
+                                                e.obligation.predicate
+                                            ))
+                                            .unwrap(),
                                         )
                                     }
                                 };
