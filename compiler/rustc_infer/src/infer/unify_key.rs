@@ -2,23 +2,18 @@ use std::cmp;
 use std::marker::PhantomData;
 
 use rustc_data_structures::unify::{NoError, UnifyKey, UnifyValue};
+use rustc_middle::{bug, ty};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 
-use crate::ty::{self, Ty, TyCtxt};
-
-pub trait ToType {
-    fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
-}
-
 #[derive(Copy, Clone, Debug)]
-pub enum RegionVariableValue<'tcx> {
+pub(crate) enum RegionVariableValue<'tcx> {
     Known { value: ty::Region<'tcx> },
     Unknown { universe: ty::UniverseIndex },
 }
 
 #[derive(PartialEq, Copy, Clone, Debug)]
-pub struct RegionVidKey<'tcx> {
+pub(crate) struct RegionVidKey<'tcx> {
     pub vid: ty::RegionVid,
     pub phantom: PhantomData<RegionVariableValue<'tcx>>,
 }
@@ -44,7 +39,8 @@ impl<'tcx> UnifyKey for RegionVidKey<'tcx> {
     }
 }
 
-pub struct RegionUnificationError;
+pub(crate) struct RegionUnificationError;
+
 impl<'tcx> UnifyValue for RegionVariableValue<'tcx> {
     type Error = RegionUnificationError;
 
@@ -100,7 +96,7 @@ pub struct ConstVariableOrigin {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum ConstVariableValue<'tcx> {
+pub(crate) enum ConstVariableValue<'tcx> {
     Known { value: ty::Const<'tcx> },
     Unknown { origin: ConstVariableOrigin, universe: ty::UniverseIndex },
 }
@@ -108,7 +104,7 @@ pub enum ConstVariableValue<'tcx> {
 impl<'tcx> ConstVariableValue<'tcx> {
     /// If this value is known, returns the const it is known to be.
     /// Otherwise, `None`.
-    pub fn known(&self) -> Option<ty::Const<'tcx>> {
+    pub(crate) fn known(&self) -> Option<ty::Const<'tcx>> {
         match *self {
             ConstVariableValue::Unknown { .. } => None,
             ConstVariableValue::Known { value } => Some(value),
@@ -117,7 +113,7 @@ impl<'tcx> ConstVariableValue<'tcx> {
 }
 
 #[derive(PartialEq, Copy, Clone, Debug)]
-pub struct ConstVidKey<'tcx> {
+pub(crate) struct ConstVidKey<'tcx> {
     pub vid: ty::ConstVid,
     pub phantom: PhantomData<ty::Const<'tcx>>,
 }

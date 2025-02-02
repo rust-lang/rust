@@ -26,7 +26,6 @@ use rustc_macros::extension;
 pub use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::bug;
 use rustc_middle::infer::canonical::{CanonicalQueryInput, CanonicalVarValues};
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::select;
 pub use rustc_middle::ty::IntVarValue;
@@ -46,6 +45,7 @@ use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
 
 use crate::infer::region_constraints::UndoLog;
+use crate::infer::unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 use crate::traits::{
     self, ObligationCause, ObligationInspector, PredicateObligations, TraitEngine,
 };
@@ -64,6 +64,7 @@ pub mod relate;
 pub mod resolve;
 pub(crate) mod snapshot;
 mod type_variable;
+mod unify_key;
 
 /// `InferOk<'tcx, ()>` is used a lot. It may seem like a useless wrapper
 /// around `PredicateObligations<'tcx>`, but it has one important property:
