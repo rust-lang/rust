@@ -213,8 +213,8 @@ impl<'tcx> LateLintPass<'tcx> for MissingFieldsInDebug {
             && !item.span.from_expansion()
             // find `Debug::fmt` function
             && let Some(fmt_item) = items.iter().find(|i| i.ident.name == sym::fmt)
-            && let ImplItem { kind: ImplItemKind::Fn(_, body_id), .. } = cx.tcx.hir().impl_item(fmt_item.id)
-            && let body = cx.tcx.hir().body(*body_id)
+            && let ImplItem { kind: ImplItemKind::Fn(_, body_id), .. } = cx.tcx.hir_impl_item(fmt_item.id)
+            && let body = cx.tcx.hir_body(*body_id)
             && let ExprKind::Block(block, _) = body.value.kind
             // inspect `self`
             && let self_ty = cx.tcx.type_of(self_path_did).skip_binder().peel_refs()

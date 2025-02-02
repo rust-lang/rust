@@ -452,7 +452,7 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: &Msrv, expr: &Expr<'_>) -> Opti
                 })
         },
         ExprKind::Closure(closure) => {
-            let body = cx.tcx.hir().body(closure.body);
+            let body = cx.tcx.hir_body(closure.body);
             let params = body
                 .params
                 .iter()

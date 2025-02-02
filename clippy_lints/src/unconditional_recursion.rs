@@ -326,9 +326,9 @@ impl UnconditionalRecursion {
                             .find(|item| {
                                 item.kind == AssocKind::Fn && item.def_id.is_local() && item.name == kw::Default
                             })
-                        && let Some(body_node) = cx.tcx.hir().get_if_local(assoc_item.def_id)
+                        && let Some(body_node) = cx.tcx.hir_get_if_local(assoc_item.def_id)
                         && let Some(body_id) = body_node.body_id()
-                        && let body = cx.tcx.hir().body(body_id)
+                        && let body = cx.tcx.hir_body(body_id)
                         // We don't want to keep it if it has conditional return.
                         && let [return_expr] = get_return_calls_in_body(body).as_slice()
                         && let ExprKind::Call(call_expr, _) = return_expr.kind

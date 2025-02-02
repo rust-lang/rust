@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(
 
         let if_then = match then_method_name {
             "then" if let ExprKind::Closure(closure) = then_arg.kind => {
-                let body = cx.tcx.hir().body(closure.body);
+                let body = cx.tcx.hir_body(closure.body);
                 snippet_with_applicability(cx, body.value.span, "..", &mut applicability)
             },
             "then_some" => snippet_with_applicability(cx, then_arg.span, "..", &mut applicability),
