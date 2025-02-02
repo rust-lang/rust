@@ -15,6 +15,8 @@
 #![feature(unqualified_local_imports)]
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
+#![feature(unsigned_is_multiple_of)]
+#![feature(extract_if)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,

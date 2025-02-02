@@ -158,14 +158,24 @@ pub fn futex<'tcx>(
                     .futex
                     .clone();
 
+                let dest = dest.clone();
                 ecx.futex_wait(
                     futex_ref,
                     bitset,
                     timeout,
-                    Scalar::from_target_isize(0, ecx), // retval_succ
-                    Scalar::from_target_isize(-1, ecx), // retval_timeout
-                    dest.clone(),
-                    LibcError("ETIMEDOUT"), // errno_timeout
+                    callback!(
+                        @capture<'tcx> {
+                            dest: MPlaceTy<'tcx>,
+                        }
+                        |ecx, unblock: UnblockKind| match unblock {
+                            UnblockKind::Ready => {
+                                ecx.write_int(0, &dest)
+                            }
+                            UnblockKind::TimedOut => {
+                                ecx.set_last_error_and_return(LibcError("ETIMEDOUT"), &dest)
+                            }
+                        }
+                    ),
                 );
             } else {
                 // The futex value doesn't match the expected value, so we return failure
@@ -209,16 +219,8 @@ pub fn futex<'tcx>(
             // will see the latest value on addr which could be changed by our caller
             // before doing the syscall.
             ecx.atomic_fence(AtomicFenceOrd::SeqCst)?;
-            let mut n = 0;
-            #[expect(clippy::arithmetic_side_effects)]
-            for _ in 0..val {
-                if ecx.futex_wake(&futex_ref, bitset)? {
-                    n += 1;
-                } else {
-                    break;
-                }
-            }
-            ecx.write_scalar(Scalar::from_target_isize(n, ecx), dest)?;
+            let woken = ecx.futex_wake(&futex_ref, bitset, val.try_into().unwrap())?;
+            ecx.write_scalar(Scalar::from_target_isize(woken.try_into().unwrap(), ecx), dest)?;
         }
         op => throw_unsup_format!("Miri does not support `futex` syscall with op={}", op),
     }
