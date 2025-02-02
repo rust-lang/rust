@@ -2,6 +2,8 @@
 //! structures into the THIR. The `builder` is generally ignorant of the tcx,
 //! etc., and instead goes through the `Cx` for most of its work.
 
+use std::sync::Arc;
+
 use rustc_data_structures::steal::Steal;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -112,7 +114,7 @@ impl<'tcx> Cx<'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn pattern_from_hir(&mut self, p: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
+    fn pattern_from_hir(&mut self, p: &'tcx hir::Pat<'tcx>) -> Arc<Pat<'tcx>> {
         pat_from_hir(self.tcx, self.typing_env, self.typeck_results(), p)
     }
 

@@ -6,6 +6,7 @@
 // the candidates based on the result.
 
 use std::cmp::Ordering;
+use std::sync::Arc;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::{LangItem, RangeEnd};
@@ -26,9 +27,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
     ///
     /// It is a bug to call this with a not-fully-simplified pattern.
-    pub(super) fn pick_test_for_match_pair<'pat>(
+    pub(super) fn pick_test_for_match_pair(
         &mut self,
-        match_pair: &MatchPairTree<'pat, 'tcx>,
+        match_pair: &MatchPairTree<'tcx>,
     ) -> Test<'tcx> {
         let kind = match match_pair.test_case {
             TestCase::Variant { adt_def, variant_index: _ } => TestKind::Switch { adt_def },
@@ -37,9 +38,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestCase::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => TestKind::SwitchInt,
             TestCase::Constant { value } => TestKind::Eq { value, ty: match_pair.pattern.ty },
 
-            TestCase::Range(range) => {
+            TestCase::Range(ref range) => {
                 assert_eq!(range.ty, match_pair.pattern.ty);
-                TestKind::Range(Box::new(range.clone()))
+                TestKind::Range(Arc::clone(range))
             }
 
             TestCase::Slice { len, variable_length } => {
@@ -521,8 +522,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         test_place: Place<'tcx>,
         test: &Test<'tcx>,
-        candidate: &mut Candidate<'_, 'tcx>,
-        sorted_candidates: &FxIndexMap<TestBranch<'tcx>, Vec<&mut Candidate<'_, 'tcx>>>,
+        candidate: &mut Candidate<'tcx>,
+        sorted_candidates: &FxIndexMap<TestBranch<'tcx>, Vec<&mut Candidate<'tcx>>>,
     ) -> Option<TestBranch<'tcx>> {
         // Find the match_pair for this place (if any). At present,
         // afaik, there can be at most one. (In the future, if we
@@ -565,7 +566,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // a new value might invalidate that property for range patterns that
                 // have already been sorted into the failure arm, so we must take care
                 // not to add such values here.
-                let is_covering_range = |test_case: &TestCase<'_, 'tcx>| {
+                let is_covering_range = |test_case: &TestCase<'tcx>| {
                     test_case.as_range().is_some_and(|range| {
                         matches!(
                             range.contains(value, self.tcx, self.typing_env()),
@@ -573,7 +574,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         )
                     })
                 };
-                let is_conflicting_candidate = |candidate: &&mut Candidate<'_, 'tcx>| {
+                let is_conflicting_candidate = |candidate: &&mut Candidate<'tcx>| {
                     candidate
                         .match_pairs
                         .iter()
@@ -685,8 +686,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            (TestKind::Range(test), &TestCase::Range(pat)) => {
-                if test.as_ref() == pat {
+            (TestKind::Range(test), TestCase::Range(pat)) => {
+                if test == pat {
                     fully_matched = true;
                     Some(TestBranch::Success)
                 } else {

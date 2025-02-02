@@ -11,6 +11,7 @@
 use std::cmp::Ordering;
 use std::fmt;
 use std::ops::Index;
+use std::sync::Arc;
 
 use rustc_abi::{FieldIdx, Integer, Size, VariantIdx};
 use rustc_ast::{AsmMacro, InlineAsmOptions, InlineAsmTemplatePiece};
@@ -108,7 +109,7 @@ pub enum BodyTy<'tcx> {
 #[derive(Clone, Debug, HashStable)]
 pub struct Param<'tcx> {
     /// The pattern that appears in the parameter list, or None for implicit parameters.
-    pub pat: Option<Box<Pat<'tcx>>>,
+    pub pat: Option<Arc<Pat<'tcx>>>,
     /// The possibly inferred type.
     pub ty: Ty<'tcx>,
     /// Span of the explicitly provided type, or None if inferred for closures.
@@ -231,7 +232,7 @@ pub enum StmtKind<'tcx> {
         /// `let <PAT> = ...`
         ///
         /// If a type annotation is included, it is added as an ascription pattern.
-        pattern: Box<Pat<'tcx>>,
+        pattern: Arc<Pat<'tcx>>,
 
         /// `let pat: ty = <INIT>`
         initializer: Option<ExprId>,
@@ -379,7 +380,7 @@ pub enum ExprKind<'tcx> {
     /// (Not to be confused with [`StmtKind::Let`], which is a normal `let` statement.)
     Let {
         expr: ExprId,
-        pat: Box<Pat<'tcx>>,
+        pat: Arc<Pat<'tcx>>,
     },
     /// A `match` expression.
     Match {
@@ -571,7 +572,7 @@ pub struct FruInfo<'tcx> {
 /// A `match` arm.
 #[derive(Clone, Debug, HashStable)]
 pub struct Arm<'tcx> {
-    pub pattern: Box<Pat<'tcx>>,
+    pub pattern: Arc<Pat<'tcx>>,
     pub guard: Option<ExprId>,
     pub body: ExprId,
     pub lint_level: LintLevel,
@@ -628,7 +629,7 @@ pub enum InlineAsmOperand<'tcx> {
 #[derive(Clone, Debug, HashStable, TypeVisitable)]
 pub struct FieldPat<'tcx> {
     pub field: FieldIdx,
-    pub pattern: Box<Pat<'tcx>>,
+    pub pattern: Arc<Pat<'tcx>>,
 }
 
 #[derive(Clone, Debug, HashStable, TypeVisitable)]
@@ -778,7 +779,7 @@ pub enum PatKind<'tcx> {
 
     AscribeUserType {
         ascription: Ascription<'tcx>,
-        subpattern: Box<Pat<'tcx>>,
+        subpattern: Arc<Pat<'tcx>>,
     },
 
     /// `x`, `ref x`, `x @ P`, etc.
@@ -789,7 +790,7 @@ pub enum PatKind<'tcx> {
         #[type_visitable(ignore)]
         var: LocalVarId,
         ty: Ty<'tcx>,
-        subpattern: Option<Box<Pat<'tcx>>>,
+        subpattern: Option<Arc<Pat<'tcx>>>,
         /// Is this the leftmost occurrence of the binding, i.e., is `var` the
         /// `HirId` of this pattern?
         is_primary: bool,
@@ -812,12 +813,12 @@ pub enum PatKind<'tcx> {
 
     /// `box P`, `&P`, `&mut P`, etc.
     Deref {
-        subpattern: Box<Pat<'tcx>>,
+        subpattern: Arc<Pat<'tcx>>,
     },
 
     /// Deref pattern, written `box P` for now.
     DerefPattern {
-        subpattern: Box<Pat<'tcx>>,
+        subpattern: Arc<Pat<'tcx>>,
         mutability: hir::Mutability,
     },
 
@@ -851,31 +852,31 @@ pub enum PatKind<'tcx> {
         /// Otherwise, the actual pattern that the constant lowered to. As with
         /// other constants, inline constants are matched structurally where
         /// possible.
-        subpattern: Box<Pat<'tcx>>,
+        subpattern: Arc<Pat<'tcx>>,
     },
 
-    Range(Box<PatRange<'tcx>>),
+    Range(Arc<PatRange<'tcx>>),
 
     /// Matches against a slice, checking the length and extracting elements.
     /// irrefutable when there is a slice pattern and both `prefix` and `suffix` are empty.
     /// e.g., `&[ref xs @ ..]`.
     Slice {
-        prefix: Box<[Box<Pat<'tcx>>]>,
-        slice: Option<Box<Pat<'tcx>>>,
-        suffix: Box<[Box<Pat<'tcx>>]>,
+        prefix: Box<[Arc<Pat<'tcx>>]>,
+        slice: Option<Arc<Pat<'tcx>>>,
+        suffix: Box<[Arc<Pat<'tcx>>]>,
     },
 
     /// Fixed match against an array; irrefutable.
     Array {
-        prefix: Box<[Box<Pat<'tcx>>]>,
-        slice: Option<Box<Pat<'tcx>>>,
-        suffix: Box<[Box<Pat<'tcx>>]>,
+        prefix: Box<[Arc<Pat<'tcx>>]>,
+        slice: Option<Arc<Pat<'tcx>>>,
+        suffix: Box<[Arc<Pat<'tcx>>]>,
     },
 
     /// An or-pattern, e.g. `p | q`.
     /// Invariant: `pats.len() >= 2`.
     Or {
-        pats: Box<[Box<Pat<'tcx>>]>,
+        pats: Box<[Arc<Pat<'tcx>>]>,
     },
 
     /// A never pattern `!`.

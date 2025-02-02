@@ -62,7 +62,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
     };
 
     for param in thir.params.iter() {
-        if let Some(box ref pattern) = param.pat {
+        if let Some(ref pattern) = param.pat {
             visitor.check_binding_is_irrefutable(pattern, origin, None, None);
         }
     }
@@ -155,7 +155,7 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
             ExprKind::Match { scrutinee, scrutinee_hir_id: _, box ref arms, match_source } => {
                 self.check_match(scrutinee, arms, match_source, ex.span);
             }
-            ExprKind::Let { box ref pat, expr } => {
+            ExprKind::Let { ref pat, expr } => {
                 self.check_let(pat, Some(expr), ex.span);
             }
             ExprKind::LogicalOp { op: LogicalOp::And, .. }
@@ -176,9 +176,7 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
 
     fn visit_stmt(&mut self, stmt: &'p Stmt<'tcx>) {
         match stmt.kind {
-            StmtKind::Let {
-                box ref pattern, initializer, else_block, lint_level, span, ..
-            } => {
+            StmtKind::Let { ref pattern, initializer, else_block, lint_level, span, .. } => {
                 self.with_lint_level(lint_level, |this| {
                     let let_source =
                         if else_block.is_some() { LetSource::LetElse } else { LetSource::PlainLet };
@@ -257,7 +255,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             ExprKind::Scope { value, lint_level, .. } => {
                 self.with_lint_level(lint_level, |this| this.visit_land_rhs(&this.thir[value]))
             }
-            ExprKind::Let { box ref pat, expr } => {
+            ExprKind::Let { ref pat, expr } => {
                 let expr = &self.thir()[expr];
                 self.with_let_source(LetSource::None, |this| {
                     this.visit_expr(expr);
@@ -774,7 +772,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
 /// This analysis is *not* subsumed by NLL.
 fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat: &Pat<'tcx>) {
     // Extract `sub` in `binding @ sub`.
-    let PatKind::Binding { name, mode, ty, subpattern: Some(box ref sub), .. } = pat.kind else {
+    let PatKind::Binding { name, mode, ty, subpattern: Some(ref sub), .. } = pat.kind else {
         return;
     };
 

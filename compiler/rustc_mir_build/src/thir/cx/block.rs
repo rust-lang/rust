@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use rustc_hir as hir;
 use rustc_index::Idx;
 use rustc_middle::middle::region;
@@ -86,7 +88,7 @@ impl<'tcx> Cx<'tcx> {
                                     span: ty.span,
                                     inferred_ty: self.typeck_results.node_type(ty.hir_id),
                                 };
-                                pattern = Box::new(Pat {
+                                pattern = Arc::new(Pat {
                                     ty: pattern.ty,
                                     span: pattern.span,
                                     kind: PatKind::AscribeUserType {

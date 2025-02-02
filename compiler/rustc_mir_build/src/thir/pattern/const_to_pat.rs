@@ -1,4 +1,5 @@
 use core::ops::ControlFlow;
+use std::sync::Arc;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_apfloat::Float;
@@ -41,7 +42,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         id: hir::HirId,
         span: Span,
-    ) -> Box<Pat<'tcx>> {
+    ) -> Arc<Pat<'tcx>> {
         let mut convert = ConstToPat::new(self, id, span, c);
 
         match c.kind() {
@@ -84,7 +85,7 @@ impl<'tcx> ConstToPat<'tcx> {
     }
 
     /// We errored. Signal that in the pattern, so that follow up errors can be silenced.
-    fn mk_err(&self, mut err: Diag<'_>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
+    fn mk_err(&self, mut err: Diag<'_>, ty: Ty<'tcx>) -> Arc<Pat<'tcx>> {
         if let ty::ConstKind::Unevaluated(uv) = self.c.kind() {
             let def_kind = self.tcx.def_kind(uv.def);
             if let hir::def::DefKind::AssocConst = def_kind
@@ -100,14 +101,14 @@ impl<'tcx> ConstToPat<'tcx> {
                 );
             }
         }
-        Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()) })
+        Arc::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()) })
     }
 
     fn unevaluated_to_pat(
         &mut self,
         uv: ty::UnevaluatedConst<'tcx>,
         ty: Ty<'tcx>,
-    ) -> Box<Pat<'tcx>> {
+    ) -> Arc<Pat<'tcx>> {
         trace!(self.treat_byte_string_as_slice);
 
         // It's not *technically* correct to be revealing opaque types here as borrowcheck has
@@ -216,7 +217,7 @@ impl<'tcx> ConstToPat<'tcx> {
     // Recursive helper for `to_pat`; invoke that (instead of calling this directly).
     // FIXME(valtrees): Accept `ty::Value` instead of `Ty` and `ty::ValTree` separately.
     #[instrument(skip(self), level = "debug")]
-    fn valtree_to_pat(&self, cv: ValTree<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
+    fn valtree_to_pat(&self, cv: ValTree<'tcx>, ty: Ty<'tcx>) -> Arc<Pat<'tcx>> {
         let span = self.span;
         let tcx = self.tcx;
         let kind = match ty.kind() {
@@ -363,7 +364,7 @@ impl<'tcx> ConstToPat<'tcx> {
             }
         };
 
-        Box::new(Pat { span, ty, kind })
+        Arc::new(Pat { span, ty, kind })
     }
 }
 
