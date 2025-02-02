@@ -121,7 +121,7 @@ fn default_dcx(
     let emitter: Box<DynEmitter> = if !show_parse_errors {
         Box::new(SilentEmitter {
             fallback_bundle,
-            fatal_dcx: DiagCtxt::new(emitter),
+            fatal_emitter: emitter,
             fatal_note: None,
             emit_fatal_diagnostic: false,
         })

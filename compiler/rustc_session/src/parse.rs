@@ -277,14 +277,13 @@ impl ParseSess {
     ) -> Self {
         let fallback_bundle = fallback_fluent_bundle(locale_resources, false);
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-        let emitter = Box::new(HumanEmitter::new(
+        let fatal_emitter = Box::new(HumanEmitter::new(
             stderr_destination(ColorConfig::Auto),
             Lrc::clone(&fallback_bundle),
         ));
-        let fatal_dcx = DiagCtxt::new(emitter);
         let dcx = DiagCtxt::new(Box::new(SilentEmitter {
             fallback_bundle,
-            fatal_dcx,
+            fatal_emitter,
             fatal_note: Some(fatal_note),
             emit_fatal_diagnostic,
         }))
