@@ -89,6 +89,8 @@ ENV RUST_CONFIGURE_ARGS \
       --set target.x86_64-unknown-linux-gnu.ar=/rustroot/bin/llvm-ar \
       --set target.x86_64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
       --set llvm.thin-lto=true \
+      --set llvm.plugins=true \
+      --set llvm.enzyme=true \
       --set llvm.ninja=false \
       --set llvm.libzstd=true \
       --set rust.jemalloc \
