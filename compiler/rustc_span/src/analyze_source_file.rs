@@ -110,25 +110,19 @@ cfg_match! {
                     if control_char_mask != 0 {
                         // Check for newlines in the chunk
                         let newlines_test = unsafe { _mm_cmpeq_epi8(chunk, _mm_set1_epi8(b'\n' as i8)) };
-                        let newlines_mask = unsafe { _mm_movemask_epi8(newlines_test) };
+                        let mut newlines_mask = unsafe { _mm_movemask_epi8(newlines_test) };
 
                         if control_char_mask == newlines_mask {
                             // All control characters are newlines, record them
-                            let mut newlines_mask = 0xFFFF0000 | newlines_mask as u32;
                             let output_offset = RelativeBytePos::from_usize(chunk_index * CHUNK_SIZE + 1);
 
-                            loop {
+                            while newlines_mask != 0 {
                                 let index = newlines_mask.trailing_zeros();
-
-                                if index >= CHUNK_SIZE as u32 {
-                                    // We have arrived at the end of the chunk.
-                                    break;
-                                }
 
                                 lines.push(RelativeBytePos(index) + output_offset);
 
                                 // Clear the bit, so we can find the next one.
-                                newlines_mask &= (!1) << index;
+                                newlines_mask &= newlines_mask - 1;
                             }
 
                             // We are done for this chunk. All control characters were
@@ -268,25 +262,19 @@ cfg_match! {
                     if control_char_mask != 0 {
                         // Check for newlines in the chunk
                         let newlines_test = unsafe { _mm_cmpeq_epi8(chunk, _mm_set1_epi8(b'\n' as i8)) };
-                        let newlines_mask = unsafe { _mm_movemask_epi8(newlines_test) };
+                        let mut newlines_mask = unsafe { _mm_movemask_epi8(newlines_test) };
 
                         if control_char_mask == newlines_mask {
                             // All control characters are newlines, record them
-                            let mut newlines_mask = 0xFFFF0000 | newlines_mask as u32;
                             let output_offset = RelativeBytePos::from_usize(chunk_index * CHUNK_SIZE + 1);
 
-                            loop {
+                            while newlines_mask != 0 {
                                 let index = newlines_mask.trailing_zeros();
-
-                                if index >= CHUNK_SIZE as u32 {
-                                    // We have arrived at the end of the chunk.
-                                    break;
-                                }
 
                                 lines.push(RelativeBytePos(index) + output_offset);
 
                                 // Clear the bit, so we can find the next one.
-                                newlines_mask &= (!1) << index;
+                                newlines_mask &= newlines_mask - 1;
                             }
 
                             // We are done for this chunk. All control characters were
