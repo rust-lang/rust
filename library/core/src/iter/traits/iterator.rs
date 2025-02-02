@@ -1029,6 +1029,7 @@ pub trait Iterator {
     fn peekable(self) -> Peekable<Self>
     where
         Self: Sized,
+        Self::Item: Sized,
     {
         Peekable::new(self)
     }
