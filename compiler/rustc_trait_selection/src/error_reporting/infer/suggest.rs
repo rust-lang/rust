@@ -418,7 +418,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 };
 
                 let sugg = match (expected.is_ref(), found.is_ref()) {
-                    (true, false) => FunctionPointerSuggestion::UseRef { span, fn_name },
+                    (true, false) => {
+                        FunctionPointerSuggestion::UseRef { span: span.shrink_to_lo() }
+                    }
                     (false, true) => FunctionPointerSuggestion::RemoveRef { span, fn_name },
                     (true, true) => {
                         diag.subdiagnostic(FnItemsAreDistinct);
@@ -426,7 +428,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                     (false, false) => {
                         diag.subdiagnostic(FnItemsAreDistinct);
-                        FunctionPointerSuggestion::Cast { span, fn_name, sig }
+                        FunctionPointerSuggestion::Cast { span: span.shrink_to_hi(), sig }
                     }
                 };
                 diag.subdiagnostic(sugg);
@@ -466,8 +468,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                 } else {
                     FunctionPointerSuggestion::CastBoth {
-                        span,
-                        fn_name,
+                        span: span.shrink_to_hi(),
                         found_sig: *found_sig,
                         expected_sig: *expected_sig,
                     }
