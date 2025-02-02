@@ -6,7 +6,6 @@ use clippy_utils::{SpanlessEq, is_in_const_context, is_integer_literal};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -64,7 +63,7 @@ impl LateLintPass<'_> for CheckedConversions {
                 },
                 _ => return,
             }
-            && !in_external_macro(cx.sess(), item.span)
+            && !item.span.in_external_macro(cx.sess().source_map())
             && !is_in_const_context(cx)
             && self.msrv.meets(msrvs::TRY_FROM)
             && let Some(cv) = match op2 {

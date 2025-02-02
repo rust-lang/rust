@@ -6,7 +6,6 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::HirIdSet;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 
@@ -69,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
             for assoc_item in *items {
                 if assoc_item.kind == (hir::AssocItemKind::Fn { has_self: false }) {
                     let impl_item = cx.tcx.hir().impl_item(assoc_item.id);
-                    if in_external_macro(cx.sess(), impl_item.span) {
+                    if impl_item.span.in_external_macro(cx.sess().source_map()) {
                         return;
                     }
                     if let hir::ImplItemKind::Fn(ref sig, _) = impl_item.kind {
