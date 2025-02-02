@@ -328,16 +328,20 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         hir::ItemKind::TraitAlias(..) => check_trait(tcx, item),
         // `ForeignItem`s are handled separately.
         hir::ItemKind::ForeignMod { .. } => Ok(()),
-        hir::ItemKind::TyAlias(hir_ty, hir_generics) => {
-            if tcx.type_alias_is_lazy(item.owner_id) {
-                // Bounds of lazy type aliases and of eager ones that contain opaque types are respected.
-                // E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`.
-                let res = check_item_type(tcx, def_id, hir_ty.span, UnsizedHandling::Allow);
-                check_variances_for_type_defn(tcx, item, hir_generics);
-                res
-            } else {
+        hir::ItemKind::TyAlias(hir_ty, hir_generics) if tcx.type_alias_is_lazy(item.owner_id) => {
+            let res = enter_wf_checking_ctxt(tcx, item.span, def_id, |wfcx| {
+                let ty = tcx.type_of(def_id).instantiate_identity();
+                let item_ty = wfcx.normalize(hir_ty.span, Some(WellFormedLoc::Ty(def_id)), ty);
+                wfcx.register_wf_obligation(
+                    hir_ty.span,
+                    Some(WellFormedLoc::Ty(def_id)),
+                    item_ty.into(),
+                );
+                check_where_clauses(wfcx, item.span, def_id);
                 Ok(())
-            }
+            });
+            check_variances_for_type_defn(tcx, item, hir_generics);
+            res
         }
         _ => Ok(()),
     };
@@ -1276,7 +1280,6 @@ fn check_item_fn(
 
 enum UnsizedHandling {
     Forbid,
-    Allow,
     AllowIfForeignTail,
 }
 
@@ -1294,7 +1297,6 @@ fn check_item_type(
 
         let forbid_unsized = match unsized_handling {
             UnsizedHandling::Forbid => true,
-            UnsizedHandling::Allow => false,
             UnsizedHandling::AllowIfForeignTail => {
                 let tail =
                     tcx.struct_tail_for_codegen(item_ty, wfcx.infcx.typing_env(wfcx.param_env));
