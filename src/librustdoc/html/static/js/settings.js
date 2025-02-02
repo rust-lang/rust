@@ -3,6 +3,9 @@
 /* global addClass, removeClass, onEach, onEachLazy */
 /* global MAIN_ID, getVar, getSettingsButton, getHelpButton */
 
+// Eventually fix this.
+// @ts-nocheck
+
 "use strict";
 
 (function() {
@@ -50,6 +53,12 @@
                     removeClass(document.documentElement, "hide-modnav");
                 }
                 break;
+            case "sans-serif-fonts":
+                if (value === true) {
+                    addClass(document.documentElement, "sans-serif");
+                } else {
+                    removeClass(document.documentElement, "sans-serif");
+                }
         }
     }
 
@@ -230,6 +239,11 @@
             {
                 "name": "Disable keyboard shortcuts",
                 "js_name": "disable-shortcuts",
+                "default": false,
+            },
+            {
+                "name": "Use sans serif fonts",
+                "js_name": "sans-serif-fonts",
                 "default": false,
             },
         ];

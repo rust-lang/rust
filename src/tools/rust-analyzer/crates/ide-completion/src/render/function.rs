@@ -59,13 +59,10 @@ fn render(
 
     let (call, escaped_call) = match &func_kind {
         FuncKind::Method(_, Some(receiver)) => (
-            format_smolstr!("{}.{}", receiver, name.unescaped().display(ctx.db())),
+            format_smolstr!("{}.{}", receiver, name.as_str()),
             format_smolstr!("{}.{}", receiver, name.display(ctx.db(), completion.edition)),
         ),
-        _ => (
-            name.unescaped().display(db).to_smolstr(),
-            name.display(db, completion.edition).to_smolstr(),
-        ),
+        _ => (name.as_str().to_smolstr(), name.display(db, completion.edition).to_smolstr()),
     };
     let has_self_param = func.self_param(db).is_some();
     let mut item = CompletionItem::new(
@@ -126,6 +123,7 @@ fn render(
         exact_name_match: compute_exact_name_match(completion, &call),
         function,
         trait_: trait_info,
+        is_skipping_completion: matches!(func_kind, FuncKind::Method(_, Some(_))),
         ..ctx.completion_relevance()
     });
 
@@ -151,7 +149,7 @@ fn render(
     item.set_documentation(ctx.docs(func))
         .set_deprecated(ctx.is_deprecated(func) || ctx.is_deprecated_assoc_item(func))
         .detail(detail)
-        .lookup_by(name.unescaped().display(db).to_smolstr());
+        .lookup_by(name.as_str().to_smolstr());
 
     if let Some((cap, (self_param, params))) = complete_call_parens {
         add_call_parens(

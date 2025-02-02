@@ -8,7 +8,7 @@ use clippy_utils::{
 };
 use rustc_errors::MultiSpan;
 use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, Expr, HirId, Pat, PatKind};
+use rustc_hir::{Arm, Expr, HirId, Pat, PatExpr, PatExprKind, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
@@ -119,7 +119,11 @@ fn arm_is_wild_like(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     }
     match arm.pat.kind {
         PatKind::Binding(..) | PatKind::Wild => true,
-        PatKind::Path(ref qpath) => is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), OptionNone),
+        PatKind::Expr(PatExpr {
+            kind: PatExprKind::Path(qpath),
+            hir_id,
+            ..
+        }) => is_res_lang_ctor(cx, cx.qpath_res(qpath, *hir_id), OptionNone),
         _ => false,
     }
 }

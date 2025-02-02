@@ -1,10 +1,9 @@
 use std::cmp;
 
 use rustc_abi::{Align, Size};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lock;
 use rustc_span::Symbol;
-use rustc_span::def_id::DefId;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct VariantInfo {
@@ -71,29 +70,9 @@ pub struct TypeSizeInfo {
     pub variants: Vec<VariantInfo>,
 }
 
-pub struct VTableSizeInfo {
-    pub trait_name: String,
-
-    /// Number of entries in a vtable with the current algorithm
-    /// (i.e. with upcasting).
-    pub entries: usize,
-
-    /// Number of entries in a vtable, as-if we did not have trait upcasting.
-    pub entries_ignoring_upcasting: usize,
-
-    /// Number of entries in a vtable needed solely for upcasting
-    /// (i.e. `entries - entries_ignoring_upcasting`).
-    pub entries_for_upcasting: usize,
-
-    /// Cost of having upcasting in % relative to the number of entries without
-    /// upcasting (i.e. `entries_for_upcasting / entries_ignoring_upcasting * 100%`).
-    pub upcasting_cost_percent: f64,
-}
-
 #[derive(Default)]
 pub struct CodeStats {
     type_sizes: Lock<FxHashSet<TypeSizeInfo>>,
-    vtable_sizes: Lock<FxHashMap<DefId, VTableSizeInfo>>,
 }
 
 impl CodeStats {
@@ -125,14 +104,6 @@ impl CodeStats {
             variants,
         };
         self.type_sizes.borrow_mut().insert(info);
-    }
-
-    pub fn record_vtable_size(&self, trait_did: DefId, trait_name: &str, info: VTableSizeInfo) {
-        let prev = self.vtable_sizes.lock().insert(trait_did, info);
-        assert!(
-            prev.is_none(),
-            "size of vtable for `{trait_name}` ({trait_did:?}) is already recorded"
-        );
     }
 
     pub fn print_type_sizes(&self) {
@@ -236,35 +207,6 @@ impl CodeStats {
                 Some(diff @ 1..) => println!("print-type-size {indent}end padding: {diff} bytes"),
                 Some(0) => {}
             }
-        }
-    }
-
-    pub fn print_vtable_sizes(&self, crate_name: Symbol) {
-        // We will soon sort, so the initial order does not matter.
-        #[allow(rustc::potential_query_instability)]
-        let mut infos =
-            std::mem::take(&mut *self.vtable_sizes.lock()).into_values().collect::<Vec<_>>();
-
-        // Primary sort: cost % in reverse order (from largest to smallest)
-        // Secondary sort: trait_name
-        infos.sort_by(|a, b| {
-            a.upcasting_cost_percent
-                .total_cmp(&b.upcasting_cost_percent)
-                .reverse()
-                .then_with(|| a.trait_name.cmp(&b.trait_name))
-        });
-
-        for VTableSizeInfo {
-            trait_name,
-            entries,
-            entries_ignoring_upcasting,
-            entries_for_upcasting,
-            upcasting_cost_percent,
-        } in infos
-        {
-            println!(
-                r#"print-vtable-sizes {{ "crate_name": "{crate_name}", "trait_name": "{trait_name}", "entries": "{entries}", "entries_ignoring_upcasting": "{entries_ignoring_upcasting}", "entries_for_upcasting": "{entries_for_upcasting}", "upcasting_cost_percent": "{upcasting_cost_percent}" }}"#
-            );
         }
     }
 }

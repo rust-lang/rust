@@ -450,8 +450,9 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tcx = tables.tcx;
         let ty = ty::Ty::new_static_str(tcx);
         let bytes = value.as_bytes();
-        let val_tree = ty::ValTree::from_raw_bytes(tcx, bytes);
-        let val = tcx.valtree_to_const_val((ty, val_tree));
+        let valtree = ty::ValTree::from_raw_bytes(tcx, bytes);
+        let cv = ty::Value { ty, valtree };
+        let val = tcx.valtree_to_const_val(cv);
         mir::Const::from_value(val, ty).stable(&mut tables)
     }
 
@@ -746,7 +747,9 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tcx = tables.tcx;
         let alloc_id = tables.tcx.vtable_allocation((
             ty.internal(&mut *tables, tcx),
-            trait_ref.internal(&mut *tables, tcx),
+            trait_ref
+                .internal(&mut *tables, tcx)
+                .map(|principal| tcx.instantiate_bound_regions_with_erased(principal)),
         ));
         Some(alloc_id.stable(&mut *tables))
     }

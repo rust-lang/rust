@@ -411,6 +411,11 @@ pub fn path_from_text(text: &str) -> ast::Path {
     ast_from_text(&format!("fn main() {{ let test: {text}; }}"))
 }
 
+// FIXME: should not be pub
+pub fn path_from_text_with_edition(text: &str, edition: Edition) -> ast::Path {
+    ast_from_text_with_edition(&format!("fn main() {{ let test: {text}; }}"), edition)
+}
+
 pub fn use_tree_glob() -> ast::UseTree {
     ast_from_text("use *;")
 }
@@ -1230,7 +1235,12 @@ pub fn token_tree(
 
 #[track_caller]
 fn ast_from_text<N: AstNode>(text: &str) -> N {
-    let parse = SourceFile::parse(text, Edition::CURRENT);
+    ast_from_text_with_edition(text, Edition::CURRENT)
+}
+
+#[track_caller]
+fn ast_from_text_with_edition<N: AstNode>(text: &str, edition: Edition) -> N {
+    let parse = SourceFile::parse(text, edition);
     let node = match parse.tree().syntax().descendants().find_map(N::cast) {
         Some(it) => it,
         None => {

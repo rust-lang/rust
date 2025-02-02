@@ -143,7 +143,7 @@ fn library_symbols(db: &dyn SymbolsDatabase, source_root_id: SourceRootId) -> Ar
 fn module_symbols(db: &dyn SymbolsDatabase, module: Module) -> Arc<SymbolIndex> {
     let _p = tracing::info_span!("module_symbols").entered();
 
-    Arc::new(SymbolIndex::new(SymbolCollector::collect_module(db.upcast(), module)))
+    Arc::new(SymbolIndex::new(SymbolCollector::new_module(db.upcast(), module)))
 }
 
 pub fn crate_symbols(db: &dyn SymbolsDatabase, krate: Crate) -> Box<[Arc<SymbolIndex>]> {
@@ -284,13 +284,15 @@ impl SymbolIndex {
             builder.insert(key, value).unwrap();
         }
 
-        // FIXME: fst::Map should ideally have a way to shrink the backing buffer without the unwrap dance
-        let map = fst::Map::new({
-            let mut buf = builder.into_inner().unwrap();
-            buf.shrink_to_fit();
-            buf
-        })
-        .unwrap();
+        let map = builder
+            .into_inner()
+            .and_then(|mut buf| {
+                fst::Map::new({
+                    buf.shrink_to_fit();
+                    buf
+                })
+            })
+            .unwrap();
         SymbolIndex { symbols, map }
     }
 
@@ -491,7 +493,7 @@ pub(self) use crate::Trait as IsThisJustATrait;
             .modules(&db)
             .into_iter()
             .map(|module_id| {
-                let mut symbols = SymbolCollector::collect_module(&db, module_id);
+                let mut symbols = SymbolCollector::new_module(&db, module_id);
                 symbols.sort_by_key(|it| it.name.as_str().to_owned());
                 (module_id, symbols)
             })
@@ -518,7 +520,7 @@ struct Duplicate;
             .modules(&db)
             .into_iter()
             .map(|module_id| {
-                let mut symbols = SymbolCollector::collect_module(&db, module_id);
+                let mut symbols = SymbolCollector::new_module(&db, module_id);
                 symbols.sort_by_key(|it| it.name.as_str().to_owned());
                 (module_id, symbols)
             })

@@ -40,6 +40,10 @@ pub(crate) struct CguNotRecorded<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_autodiff_without_lto)]
+pub struct AutodiffWithoutLto;
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_unknown_reuse_kind)]
 pub(crate) struct UnknownReuseKind {
     #[primary_span]
@@ -522,6 +526,10 @@ pub(crate) struct CheckInstalledVisualStudio;
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_insufficient_vs_code_product)]
 pub(crate) struct InsufficientVSCodeProduct;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_cpu_required)]
+pub(crate) struct CpuRequired;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_processing_dymutil_failed)]

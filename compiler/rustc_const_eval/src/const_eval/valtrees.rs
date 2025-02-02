@@ -272,7 +272,8 @@ pub(crate) fn eval_to_valtree<'tcx>(
 
 /// Converts a `ValTree` to a `ConstValue`, which is needed after mir
 /// construction has finished.
-// FIXME Merge `valtree_to_const_value` and `valtree_into_mplace` into one function
+// FIXME(valtrees): Merge `valtree_to_const_value` and `valtree_into_mplace` into one function
+// FIXME(valtrees): Accept `ty::Value` instead of `Ty` and `ty::ValTree` separately.
 #[instrument(skip(tcx), level = "debug", ret)]
 pub fn valtree_to_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,

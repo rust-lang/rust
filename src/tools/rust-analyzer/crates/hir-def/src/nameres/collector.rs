@@ -28,7 +28,7 @@ use triomphe::Arc;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    item_scope::{ImportId, ImportOrExternCrate, ImportType, PerNsGlobImports},
+    item_scope::{GlobId, ImportId, ImportOrExternCrate, PerNsGlobImports},
     item_tree::{
         self, AttrOwner, FieldsShape, FileItemTreeId, ImportKind, ItemTree, ItemTreeId,
         ItemTreeNode, Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId, UseTreeKind,
@@ -208,7 +208,7 @@ struct DefCollector<'a> {
     def_map: DefMap,
     // The dependencies of the current crate, including optional deps like `test`.
     deps: FxHashMap<Name, Dependency>,
-    glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility, UseId)>>,
+    glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility, GlobId)>>,
     unresolved_imports: Vec<ImportDirective>,
     indeterminate_imports: Vec<(ImportDirective, PerNs)>,
     unresolved_macros: Vec<MacroDirective>,
@@ -524,11 +524,7 @@ impl DefCollector<'_> {
 
         match per_ns.types {
             Some(Item { def: ModuleDefId::ModuleId(m), import, .. }) => {
-                // FIXME: This should specifically look for a glob import somehow and record that here
-                self.def_map.prelude = Some((
-                    m,
-                    import.and_then(ImportOrExternCrate::into_import).map(|it| it.import),
-                ));
+                self.def_map.prelude = Some((m, import.and_then(ImportOrExternCrate::use_)));
             }
             types => {
                 tracing::debug!(
@@ -845,13 +841,14 @@ impl DefCollector<'_> {
                     def.values = None;
                     def.macros = None;
                 }
-                let imp = ImportType::Import(ImportId { import: id, idx: use_tree });
+                let imp = ImportOrExternCrate::Import(ImportId { use_: id, idx: use_tree });
                 tracing::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
 
                 self.update(module_id, &[(name.cloned(), def)], vis, Some(imp));
             }
-            ImportSource { kind: ImportKind::Glob, id, is_prelude, .. } => {
+            ImportSource { kind: ImportKind::Glob, id, is_prelude, use_tree } => {
                 tracing::debug!("glob import: {:?}", import);
+                let glob = GlobId { use_: id, idx: use_tree };
                 match def.take_types() {
                     Some(ModuleDefId::ModuleId(m)) => {
                         if is_prelude {
@@ -875,7 +872,12 @@ impl DefCollector<'_> {
                                 .filter(|(_, res)| !res.is_none())
                                 .collect::<Vec<_>>();
 
-                            self.update(module_id, &items, vis, Some(ImportType::Glob(id)));
+                            self.update(
+                                module_id,
+                                &items,
+                                vis,
+                                Some(ImportOrExternCrate::Glob(glob)),
+                            );
                         } else {
                             // glob import from same crate => we do an initial
                             // import, and then need to propagate any further
@@ -907,11 +909,16 @@ impl DefCollector<'_> {
                                 .filter(|(_, res)| !res.is_none())
                                 .collect::<Vec<_>>();
 
-                            self.update(module_id, &items, vis, Some(ImportType::Glob(id)));
+                            self.update(
+                                module_id,
+                                &items,
+                                vis,
+                                Some(ImportOrExternCrate::Glob(glob)),
+                            );
                             // record the glob import in case we add further items
-                            let glob = self.glob_imports.entry(m.local_id).or_default();
-                            match glob.iter_mut().find(|(mid, _, _)| *mid == module_id) {
-                                None => glob.push((module_id, vis, id)),
+                            let glob_imports = self.glob_imports.entry(m.local_id).or_default();
+                            match glob_imports.iter_mut().find(|(mid, _, _)| *mid == module_id) {
+                                None => glob_imports.push((module_id, vis, glob)),
                                 Some((_, old_vis, _)) => {
                                     if let Some(new_vis) = old_vis.max(vis, &self.def_map) {
                                         *old_vis = new_vis;
@@ -944,7 +951,12 @@ impl DefCollector<'_> {
                             (Some(name), res)
                         })
                         .collect::<Vec<_>>();
-                        self.update(module_id, &resolutions, vis, Some(ImportType::Glob(id)));
+                        self.update(
+                            module_id,
+                            &resolutions,
+                            vis,
+                            Some(ImportOrExternCrate::Glob(glob)),
+                        );
                     }
                     Some(d) => {
                         tracing::debug!("glob import {:?} from non-module/enum {:?}", import, d);
@@ -964,7 +976,7 @@ impl DefCollector<'_> {
         resolutions: &[(Option<Name>, PerNs)],
         // Visibility this import will have
         vis: Visibility,
-        import: Option<ImportType>,
+        import: Option<ImportOrExternCrate>,
     ) {
         self.db.unwind_if_cancelled();
         self.update_recursive(module_id, resolutions, vis, import, 0)
@@ -978,7 +990,7 @@ impl DefCollector<'_> {
         // All resolutions are imported with this visibility; the visibilities in
         // the `PerNs` values are ignored and overwritten
         vis: Visibility,
-        import: Option<ImportType>,
+        import: Option<ImportOrExternCrate>,
         depth: usize,
     ) {
         if GLOB_RECURSION_LIMIT.check(depth).is_err() {
@@ -994,8 +1006,10 @@ impl DefCollector<'_> {
                         self.push_res_and_update_glob_vis(module_id, name, *res, vis, import);
                 }
                 None => {
-                    let tr = match res.take_types() {
-                        Some(ModuleDefId::TraitId(tr)) => tr,
+                    let (tr, import) = match res.take_types_full() {
+                        Some(Item { def: ModuleDefId::TraitId(tr), vis: _, import }) => {
+                            (tr, import)
+                        }
                         Some(other) => {
                             tracing::debug!("non-trait `_` import of {:?}", other);
                             continue;
@@ -1021,7 +1035,11 @@ impl DefCollector<'_> {
 
                     if should_update {
                         changed = true;
-                        self.def_map.modules[module_id].scope.push_unnamed_trait(tr, vis);
+                        self.def_map.modules[module_id].scope.push_unnamed_trait(
+                            tr,
+                            vis,
+                            import.and_then(ImportOrExternCrate::import),
+                        );
                     }
                 }
             }
@@ -1043,13 +1061,13 @@ impl DefCollector<'_> {
             .cloned()
             .collect::<Vec<_>>();
 
-        for (glob_importing_module, glob_import_vis, use_) in glob_imports {
+        for (glob_importing_module, glob_import_vis, glob) in glob_imports {
             let vis = glob_import_vis.min(vis, &self.def_map).unwrap_or(glob_import_vis);
             self.update_recursive(
                 glob_importing_module,
                 resolutions,
                 vis,
-                Some(ImportType::Glob(use_)),
+                Some(ImportOrExternCrate::Glob(glob)),
                 depth + 1,
             );
         }
@@ -1061,7 +1079,7 @@ impl DefCollector<'_> {
         name: &Name,
         mut defs: PerNs,
         vis: Visibility,
-        def_import_type: Option<ImportType>,
+        def_import_type: Option<ImportOrExternCrate>,
     ) -> bool {
         // `extern crate crate_name` things can be re-exported as `pub use crate_name`.
         // But they cannot be re-exported as `pub use self::crate_name`, `pub use crate::crate_name`
@@ -1074,10 +1092,10 @@ impl DefCollector<'_> {
                 let Some(ImportOrExternCrate::ExternCrate(_)) = def.import else {
                     return false;
                 };
-                let Some(ImportType::Import(id)) = def_import_type else {
+                let Some(ImportOrExternCrate::Import(id)) = def_import_type else {
                     return false;
                 };
-                let use_id = id.import.lookup(self.db).id;
+                let use_id = id.use_.lookup(self.db).id;
                 let item_tree = use_id.item_tree(self.db);
                 let use_kind = item_tree[use_id.value].use_tree.kind();
                 let UseTreeKind::Single { path, .. } = use_kind else {
@@ -1100,7 +1118,7 @@ impl DefCollector<'_> {
 
         let mut changed = false;
 
-        if let Some(ImportType::Glob(_)) = def_import_type {
+        if let Some(ImportOrExternCrate::Glob(_)) = def_import_type {
             let prev_defs = self.def_map[module_id].scope.get(name);
 
             // Multiple globs may import the same item and they may override visibility from
@@ -1727,7 +1745,7 @@ impl ModCollector<'_, '_> {
                                 ),
                             )],
                             vis,
-                            Some(ImportType::ExternCrate(id)),
+                            Some(ImportOrExternCrate::ExternCrate(id)),
                         );
                     } else {
                         if let Some(name) = name {

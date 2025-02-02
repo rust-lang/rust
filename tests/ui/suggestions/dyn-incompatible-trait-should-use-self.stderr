@@ -18,7 +18,7 @@ LL |     fn f(a: A) -> A;
    |             ^ `A` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/dyn-incompatible-trait-should-use-self.rs:2:10
    |
 LL | trait A: Sized {
@@ -46,7 +46,7 @@ LL |     fn f(a: B) -> B;
    |             ^ `B` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/dyn-incompatible-trait-should-use-self.rs:8:8
    |
 LL | trait B {

@@ -732,6 +732,11 @@ impl Session {
         self.opts.cg.split_debuginfo.unwrap_or(self.target.split_debuginfo)
     }
 
+    /// Returns the DWARF version passed on the CLI or the default for the target.
+    pub fn dwarf_version(&self) -> u32 {
+        self.opts.unstable_opts.dwarf_version.unwrap_or(self.target.default_dwarf_version)
+    }
+
     pub fn stack_protector(&self) -> StackProtector {
         if self.target.options.supports_stack_protector {
             self.opts.unstable_opts.stack_protector
@@ -1263,8 +1268,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     if sess.opts.unstable_opts.embed_source {
-        let dwarf_version =
-            sess.opts.unstable_opts.dwarf_version.unwrap_or(sess.target.default_dwarf_version);
+        let dwarf_version = sess.dwarf_version();
 
         if dwarf_version < 5 {
             sess.dcx().emit_warn(errors::EmbedSourceInsufficientDwarfVersion { dwarf_version });

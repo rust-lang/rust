@@ -43,7 +43,7 @@ environment.
 
 ## Formatting and linting Python code
 
-The Rust repository contains quite a lof of Python code. We try to keep
+The Rust repository contains quite a lot of Python code. We try to keep
 it both linted and formatted by the [ruff][ruff] tool.
 
 When modifying Python code, use this command to format it:

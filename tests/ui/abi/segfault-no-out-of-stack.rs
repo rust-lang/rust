@@ -1,5 +1,6 @@
 //@ run-pass
 //@ needs-subprocess
+//@ compile-flags: -Zub-checks=no -Zmir-enable-passes=-CheckNull
 //@ ignore-fuchsia must translate zircon signal to SIGSEGV/SIGBUS, FIXME (#58590)
 
 #![feature(rustc_private)]

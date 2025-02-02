@@ -27,7 +27,7 @@ extern "rust-intrinsic" {
 // CHECK-LABEL: @reduce_any_32x2
 #[no_mangle]
 pub unsafe fn reduce_any_32x2(x: mask32x2) -> bool {
-    // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> %{{x|1}}, <i32 31, i32 31>
+    // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> %{{x|1}}, {{<i32 31, i32 31>|splat \(i32 31\)}}
     // CHECK: [[B:%[0-9]+]] = trunc <2 x i32> [[A]] to <2 x i1>
     // CHECK: [[C:%[0-9]+]] = call i1 @llvm.vector.reduce.or.v2i1(<2 x i1> [[B]])
     // CHECK: %{{[0-9]+}} = zext i1 [[C]] to i8
@@ -37,7 +37,7 @@ pub unsafe fn reduce_any_32x2(x: mask32x2) -> bool {
 // CHECK-LABEL: @reduce_all_32x2
 #[no_mangle]
 pub unsafe fn reduce_all_32x2(x: mask32x2) -> bool {
-    // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> %{{x|1}}, <i32 31, i32 31>
+    // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> %{{x|1}}, {{<i32 31, i32 31>|splat \(i32 31\)}}
     // CHECK: [[B:%[0-9]+]] = trunc <2 x i32> [[A]] to <2 x i1>
     // CHECK: [[C:%[0-9]+]] = call i1 @llvm.vector.reduce.and.v2i1(<2 x i1> [[B]])
     // CHECK: %{{[0-9]+}} = zext i1 [[C]] to i8
@@ -47,7 +47,7 @@ pub unsafe fn reduce_all_32x2(x: mask32x2) -> bool {
 // CHECK-LABEL: @reduce_any_8x16
 #[no_mangle]
 pub unsafe fn reduce_any_8x16(x: mask8x16) -> bool {
-    // CHECK: [[A:%[0-9]+]] = lshr <16 x i8> %{{x|1}}, <i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7>
+    // CHECK: [[A:%[0-9]+]] = lshr <16 x i8> %{{x|1}}, {{<i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7>|splat \(i8 7\)}}
     // CHECK: [[B:%[0-9]+]] = trunc <16 x i8> [[A]] to <16 x i1>
     // CHECK: [[C:%[0-9]+]] = call i1 @llvm.vector.reduce.or.v16i1(<16 x i1> [[B]])
     // CHECK: %{{[0-9]+}} = zext i1 [[C]] to i8
@@ -57,7 +57,7 @@ pub unsafe fn reduce_any_8x16(x: mask8x16) -> bool {
 // CHECK-LABEL: @reduce_all_8x16
 #[no_mangle]
 pub unsafe fn reduce_all_8x16(x: mask8x16) -> bool {
-    // CHECK: [[A:%[0-9]+]] = lshr <16 x i8> %{{x|1}}, <i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7>
+    // CHECK: [[A:%[0-9]+]] = lshr <16 x i8> %{{x|1}}, {{<i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7>|splat \(i8 7\)}}
     // CHECK: [[B:%[0-9]+]] = trunc <16 x i8> [[A]] to <16 x i1>
     // CHECK: [[C:%[0-9]+]] = call i1 @llvm.vector.reduce.and.v16i1(<16 x i1> [[B]])
     // CHECK: %{{[0-9]+}} = zext i1 [[C]] to i8

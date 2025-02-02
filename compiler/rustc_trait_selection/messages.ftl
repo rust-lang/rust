@@ -148,8 +148,6 @@ trait_selection_dtcs_has_req_note = the used `impl` has a `'static` requirement
 trait_selection_dtcs_introduces_requirement = calling this method introduces the `impl`'s `'static` requirement
 trait_selection_dtcs_suggestion = consider relaxing the implicit `'static` requirement
 
-trait_selection_dump_vtable_entries = vtable entries for `{$trait_ref}`: {$entries}
-
 trait_selection_empty_on_clause_in_rustc_on_unimplemented = empty `on`-clause in `#[rustc_on_unimplemented]`
     .label = empty on-clause here
 
@@ -164,6 +162,8 @@ trait_selection_explicit_lifetime_required_with_param_type = explicit lifetime r
     .label = lifetime `{$named}` required
 
 trait_selection_fn_consider_casting = consider casting the fn item to a fn pointer: `{$casting}`
+
+trait_selection_fn_consider_casting_both = consider casting both fn items to fn pointers using `as {$sig}`
 
 trait_selection_fn_uniq_types = different fn items have unique types, even if their signatures are the same
 trait_selection_fps_cast = consider casting to a fn pointer

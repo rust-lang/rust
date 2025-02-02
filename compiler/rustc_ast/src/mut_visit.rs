@@ -954,8 +954,14 @@ fn walk_coroutine_kind<T: MutVisitor>(vis: &mut T, coroutine_kind: &mut Coroutin
 
 fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
     match kind {
-        FnKind::Fn(_ctxt, _ident, FnSig { header, decl, span }, _visibility, generics, body) => {
+        FnKind::Fn(
+            _ctxt,
+            _ident,
+            _vis,
+            Fn { defaultness, generics, body, sig: FnSig { header, decl, span } },
+        ) => {
             // Identifier and visibility are visited as a part of the item.
+            visit_defaultness(vis, defaultness);
             vis.visit_fn_header(header);
             vis.visit_generics(generics);
             vis.visit_fn_decl(decl);
@@ -1205,13 +1211,8 @@ impl WalkItemKind for ItemKind {
             ItemKind::Const(item) => {
                 visit_const_item(item, vis);
             }
-            ItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
-                visit_defaultness(vis, defaultness);
-                vis.visit_fn(
-                    FnKind::Fn(FnCtxt::Free, ident, sig, visibility, generics, body),
-                    span,
-                    id,
-                );
+            ItemKind::Fn(func) => {
+                vis.visit_fn(FnKind::Fn(FnCtxt::Free, ident, visibility, &mut *func), span, id);
             }
             ItemKind::Mod(safety, mod_kind) => {
                 visit_safety(vis, safety);
@@ -1329,10 +1330,9 @@ impl WalkItemKind for AssocItemKind {
             AssocItemKind::Const(item) => {
                 visit_const_item(item, visitor);
             }
-            AssocItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
-                visit_defaultness(visitor, defaultness);
+            AssocItemKind::Fn(func) => {
                 visitor.visit_fn(
-                    FnKind::Fn(FnCtxt::Assoc(ctxt), ident, sig, visibility, generics, body),
+                    FnKind::Fn(FnCtxt::Assoc(ctxt), ident, visibility, &mut *func),
                     span,
                     id,
                 );
@@ -1476,10 +1476,9 @@ impl WalkItemKind for ForeignItemKind {
                 visitor.visit_ty(ty);
                 visit_opt(expr, |expr| visitor.visit_expr(expr));
             }
-            ForeignItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
-                visit_defaultness(visitor, defaultness);
+            ForeignItemKind::Fn(func) => {
                 visitor.visit_fn(
-                    FnKind::Fn(FnCtxt::Foreign, ident, sig, visibility, generics, body),
+                    FnKind::Fn(FnCtxt::Foreign, ident, visibility, &mut *func),
                     span,
                     id,
                 );
@@ -1965,14 +1964,7 @@ impl<N: DummyAstNode, T: DummyAstNode> DummyAstNode for crate::ast_traits::AstNo
 #[derive(Debug)]
 pub enum FnKind<'a> {
     /// E.g., `fn foo()`, `fn foo(&self)`, or `extern "Abi" fn foo()`.
-    Fn(
-        FnCtxt,
-        &'a mut Ident,
-        &'a mut FnSig,
-        &'a mut Visibility,
-        &'a mut Generics,
-        &'a mut Option<P<Block>>,
-    ),
+    Fn(FnCtxt, &'a mut Ident, &'a mut Visibility, &'a mut Fn),
 
     /// E.g., `|x, y| body`.
     Closure(

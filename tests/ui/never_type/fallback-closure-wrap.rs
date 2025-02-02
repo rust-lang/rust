@@ -16,8 +16,8 @@ use std::marker::PhantomData;
 
 fn main() {
     let error = Closure::wrap(Box::new(move || {
-        //[fallback]~^ to be a closure that returns `()`, but it returns `!`
         panic!("Can't connect to server.");
+        //[fallback]~^ to be a closure that returns `()`, but it returns `!`
     }) as Box<dyn FnMut()>);
 }
 

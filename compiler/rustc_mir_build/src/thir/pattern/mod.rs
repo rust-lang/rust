@@ -332,10 +332,6 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     .unwrap_or_else(PatKind::Error)
             }
 
-            hir::PatKind::Path(ref qpath) => {
-                return self.lower_path(qpath, pat.hir_id, pat.span);
-            }
-
             hir::PatKind::Deref(subpattern) => {
                 let mutable = self.typeck_results.pat_has_ref_mut_binding(subpattern);
                 let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };

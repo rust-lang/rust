@@ -1,6 +1,7 @@
 use std::fmt;
 use std::hash::Hash;
 
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_attr_parsing::InlineAttr;
 use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -91,13 +92,8 @@ impl<'tcx> MonoItem<'tcx> {
     }
 
     pub fn instantiation_mode(&self, tcx: TyCtxt<'tcx>) -> InstantiationMode {
-        let generate_cgu_internal_copies = tcx
-            .sess
-            .opts
-            .unstable_opts
-            .inline_in_all_cgus
-            .unwrap_or_else(|| tcx.sess.opts.optimize != OptLevel::No)
-            && !tcx.sess.link_dead_code();
+        let generate_cgu_internal_copies =
+            (tcx.sess.opts.optimize != OptLevel::No) && !tcx.sess.link_dead_code();
 
         match *self {
             MonoItem::Fn(ref instance) => {
@@ -121,8 +117,8 @@ impl<'tcx> MonoItem<'tcx> {
                 }
 
                 // At this point we don't have explicit linkage and we're an
-                // inlined function. If we're inlining into all CGUs then we'll
-                // be creating a local copy per CGU.
+                // inlined function. If this crate's build settings permit,
+                // we'll be creating a local copy per CGU.
                 if generate_cgu_internal_copies {
                     return InstantiationMode::LocalCopy;
                 }
@@ -251,6 +247,7 @@ impl ToStableHashKey<StableHashingContext<'_>> for MonoItem<'_> {
 pub struct MonoItemPartitions<'tcx> {
     pub codegen_units: &'tcx [CodegenUnit<'tcx>],
     pub all_mono_items: &'tcx DefIdSet,
+    pub autodiff_items: &'tcx [AutoDiffItem],
 }
 
 #[derive(Debug, HashStable)]

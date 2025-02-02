@@ -69,7 +69,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                             None,
                         );
-                        break hir::PatKind::Path(qpath);
+                        let kind = hir::PatExprKind::Path(qpath);
+                        let span = self.lower_span(pattern.span);
+                        let expr = hir::PatExpr { hir_id: pat_hir_id, span, kind };
+                        let expr = self.arena.alloc(expr);
+                        return hir::Pat {
+                            hir_id: self.next_id(),
+                            kind: hir::PatKind::Expr(expr),
+                            span,
+                            default_binding_modes: true,
+                        };
                     }
                     PatKind::Struct(qself, path, fields, etc) => {
                         let qpath = self.lower_qpath(
@@ -304,16 +313,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 )
             }
             Some(res) => {
-                let hir_id = self.next_id();
                 let res = self.lower_res(res);
-                hir::PatKind::Path(hir::QPath::Resolved(
-                    None,
-                    self.arena.alloc(hir::Path {
-                        span: self.lower_span(ident.span),
-                        res,
-                        segments: arena_vec![self; hir::PathSegment::new(self.lower_ident(ident), hir_id, res)],
-                    }),
-            ))
+                let span = self.lower_span(ident.span);
+                hir::PatKind::Expr(self.arena.alloc(hir::PatExpr {
+                    kind: hir::PatExprKind::Path(hir::QPath::Resolved(
+                        None,
+                        self.arena.alloc(hir::Path {
+                            span,
+                            res,
+                            segments: arena_vec![self; hir::PathSegment::new(self.lower_ident(ident), self.next_id(), res)],
+                        }),
+                    )),
+                    hir_id: self.next_id(),
+                    span,
+                }))
             }
         }
     }

@@ -3777,7 +3777,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let tcx = self.infcx.tcx;
         if let Some(Terminator { kind: TerminatorKind::Call { call_source, fn_span, .. }, .. }) =
             &self.body[loan.reserve_location.block].terminator
-            && let Some((method_did, method_args)) = rustc_middle::util::find_self_call(
+            && let Some((method_did, method_args)) = mir::find_self_call(
                 tcx,
                 self.body,
                 loan.assigned_place.local,

@@ -310,7 +310,7 @@ impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
         let (infcx, key, _) =
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
         let ocx = ObligationCtxt::new(&infcx);
-        type_op_ascribe_user_type_with_span(&ocx, key, Some(cause.span)).ok()?;
+        type_op_ascribe_user_type_with_span(&ocx, key, cause.span).ok()?;
         let diag = try_extract_error_from_fulfill_cx(
             &ocx,
             mbcx.mir_def_id(),

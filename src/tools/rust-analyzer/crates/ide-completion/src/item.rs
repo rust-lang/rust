@@ -82,8 +82,7 @@ pub struct CompletionItem {
     pub ref_match: Option<(CompletionItemRefMode, TextSize)>,
 
     /// The import data to add to completion's edits.
-    /// (ImportPath, LastSegment)
-    pub import_to_add: SmallVec<[(String, String); 1]>,
+    pub import_to_add: SmallVec<[String; 1]>,
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -181,6 +180,8 @@ pub struct CompletionRelevance {
     pub postfix_match: Option<CompletionRelevancePostfixMatch>,
     /// This is set for items that are function (associated or method)
     pub function: Option<CompletionRelevanceFn>,
+    /// true when there is an `await.method()` or `iter().method()` completion.
+    pub is_skipping_completion: bool,
 }
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CompletionRelevanceTraitInfo {
@@ -269,6 +270,7 @@ impl CompletionRelevance {
             postfix_match,
             trait_,
             function,
+            is_skipping_completion,
         } = self;
 
         // only applicable for completions within use items
@@ -296,6 +298,12 @@ impl CompletionRelevance {
                 score -= 5;
             }
         }
+
+        // Lower rank for completions that skip `await` and `iter()`.
+        if is_skipping_completion {
+            score -= 7;
+        }
+
         // lower rank for items that need an import
         if requires_import {
             score -= 1;
@@ -561,12 +569,7 @@ impl Builder {
         let import_to_add = self
             .imports_to_add
             .into_iter()
-            .filter_map(|import| {
-                Some((
-                    import.import_path.display(db, self.edition).to_string(),
-                    import.import_path.segments().last()?.display(db, self.edition).to_string(),
-                ))
-            })
+            .map(|import| import.import_path.display(db, self.edition).to_string())
             .collect();
 
         CompletionItem {

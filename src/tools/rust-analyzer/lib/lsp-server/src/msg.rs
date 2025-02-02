@@ -80,9 +80,9 @@ pub struct Request {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Response {
-    // JSON RPC allows this to be null if it was impossible
-    // to decode the request's id. Ignore this special case
-    // and just die horribly.
+    // JSON-RPC allows this to be null if we can't find or parse the
+    // request id. We fail deserialization in that case, so we just
+    // make this field mandatory.
     pub id: RequestId,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<serde_json::Value>,

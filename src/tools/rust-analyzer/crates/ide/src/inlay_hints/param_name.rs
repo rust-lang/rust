@@ -3,7 +3,6 @@
 //! fn max(x: i32, y: i32) -> i32 { x + y }
 //! _ = max(/*x*/4, /*y*/4);
 //! ```
-use std::fmt::Display;
 
 use either::Either;
 use hir::{Callable, Semantics};
@@ -20,7 +19,7 @@ use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, Inla
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
-    FamousDefs(sema, _): &FamousDefs<'_, '_>,
+    FamousDefs(sema, krate): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     _file_id: EditionedFileId,
     expr: ast::Expr,
@@ -37,23 +36,29 @@ pub(super) fn hints(
         .filter_map(|(p, arg)| {
             // Only annotate hints for expressions that exist in the original file
             let range = sema.original_range_opt(arg.syntax())?;
-            let source = sema.source(p)?;
-            let (param_name, name_syntax) = match source.value.as_ref() {
-                Either::Left(pat) => (pat.name()?, pat.name()),
-                Either::Right(param) => match param.pat()? {
-                    ast::Pat::IdentPat(it) => (it.name()?, it.name()),
-                    _ => return None,
-                },
-            };
-            Some((name_syntax, param_name, arg, range))
+            let param_name = p.name(sema.db)?;
+            Some((p, param_name, arg, range))
         })
         .filter(|(_, param_name, arg, _)| {
-            !should_hide_param_name_hint(sema, &callable, &param_name.text(), arg)
+            !should_hide_param_name_hint(sema, &callable, param_name.as_str(), arg)
         })
         .map(|(param, param_name, _, hir::FileRange { range, .. })| {
-            let linked_location = param.and_then(|name| sema.original_range_opt(name.syntax()));
-
-            let label = render_label(&param_name, config, linked_location);
+            let colon = if config.render_colons { ":" } else { "" };
+            let label = InlayHintLabel::simple(
+                format!("{}{colon}", param_name.display(sema.db, krate.edition(sema.db))),
+                None,
+                config.lazy_location_opt(|| {
+                    let source = sema.source(param)?;
+                    let name_syntax = match source.value.as_ref() {
+                        Either::Left(pat) => pat.name(),
+                        Either::Right(param) => match param.pat()? {
+                            ast::Pat::IdentPat(it) => it.name(),
+                            _ => None,
+                        },
+                    }?;
+                    sema.original_range_opt(name_syntax.syntax()).map(Into::into)
+                }),
+            );
             InlayHint {
                 range,
                 kind: InlayKind::Parameter,
@@ -68,16 +73,6 @@ pub(super) fn hints(
 
     acc.extend(hints);
     Some(())
-}
-
-pub(super) fn render_label(
-    param_name: impl Display,
-    config: &InlayHintsConfig,
-    linked_location: Option<hir::FileRange>,
-) -> InlayHintLabel {
-    let colon = if config.render_colons { ":" } else { "" };
-
-    InlayHintLabel::simple(format!("{param_name}{colon}"), None, linked_location.map(Into::into))
 }
 
 fn get_callable(
@@ -124,9 +119,7 @@ fn should_hide_param_name_hint(
     }
 
     let fn_name = match callable.kind() {
-        hir::CallableKind::Function(it) => {
-            Some(it.name(sema.db).unescaped().display_no_db().to_smolstr())
-        }
+        hir::CallableKind::Function(it) => Some(it.name(sema.db).as_str().to_smolstr()),
         _ => None,
     };
     let fn_name = fn_name.as_deref();

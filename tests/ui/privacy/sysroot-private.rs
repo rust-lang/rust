@@ -7,6 +7,7 @@
 //! of `std`'s dependencies, but may not be robust against dependency upgrades/changes.
 
 //@ only-unix Windows sysroots seem to not expose this dependency
+//@ ignore-emscripten neither does Emscripten
 //@ revisions: default rustc_private_enabled
 
 // Enabling `rustc_private` should `std`'s dependencies accessible, so they should show up

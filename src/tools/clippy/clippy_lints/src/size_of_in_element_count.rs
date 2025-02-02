@@ -97,7 +97,7 @@ fn get_pointee_ty_and_count_expr<'tcx>(
         && let Some(pointee_ty) = cx.typeck_results().node_args(func.hir_id).types().next()
     {
         return Some((pointee_ty, count));
-    };
+    }
     if let ExprKind::MethodCall(method_path, ptr_self, [.., count], _) = expr.kind
         // Find calls to copy_{from,to}{,_nonoverlapping} and write_bytes methods
         && let method_ident = method_path.ident.as_str()
@@ -108,7 +108,7 @@ fn get_pointee_ty_and_count_expr<'tcx>(
             cx.typeck_results().expr_ty(ptr_self).kind()
     {
         return Some((*pointee_ty, count));
-    };
+    }
     None
 }
 
@@ -130,6 +130,6 @@ impl<'tcx> LateLintPass<'tcx> for SizeOfInElementCount {
             && pointee_ty == ty_used_for_size_of
         {
             span_lint_and_help(cx, SIZE_OF_IN_ELEMENT_COUNT, count_expr.span, LINT_MSG, None, HELP_MSG);
-        };
+        }
     }
 }

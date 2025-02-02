@@ -259,11 +259,11 @@ pub struct IntDoubleInt {
     c: i32,
 }
 
-// CHECK: define void @f_int_double_int_s_arg(ptr noalias nocapture noundef align 8 dereferenceable(24) %a)
+// CHECK: define void @f_int_double_int_s_arg(ptr noalias{{( nocapture)?}} noundef align 8{{( captures\(none\))?}} dereferenceable(24) %a)
 #[no_mangle]
 pub extern "C" fn f_int_double_int_s_arg(a: IntDoubleInt) {}
 
-// CHECK: define void @f_ret_int_double_int_s(ptr{{( dead_on_unwind)?}} noalias nocapture noundef{{( writable)?}} sret([24 x i8]) align 8 dereferenceable(24) %_0)
+// CHECK: define void @f_ret_int_double_int_s(ptr{{( dead_on_unwind)?}} noalias{{( nocapture)?}} noundef{{( writable)?}} sret([24 x i8]) align 8{{( captures\(none\))?}} dereferenceable(24) %_0)
 #[no_mangle]
 pub extern "C" fn f_ret_int_double_int_s() -> IntDoubleInt {
     IntDoubleInt { a: 1, b: 2., c: 3 }

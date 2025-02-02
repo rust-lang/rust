@@ -76,6 +76,7 @@ use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::regions::InferCtxtRegionExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 
+#[derive(Debug)]
 pub struct FulfillmentError<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
     pub code: FulfillmentErrorCode<'tcx>,
@@ -104,12 +105,6 @@ impl<'tcx> FulfillmentError<'tcx> {
                 false
             }
         }
-    }
-}
-
-impl<'tcx> Debug for FulfillmentError<'tcx> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "FulfillmentError({:?},{:?})", self.obligation, self.code)
     }
 }
 
@@ -290,12 +285,10 @@ fn do_normalize_predicates<'tcx>(
 
     // We can use the `elaborated_env` here; the region code only
     // cares about declarations like `'a: 'b`.
-    let outlives_env = OutlivesEnvironment::new(elaborated_env);
-
     // FIXME: It's very weird that we ignore region obligations but apparently
     // still need to use `resolve_regions` as we need the resolved regions in
     // the normalized predicates.
-    let errors = infcx.resolve_regions(&outlives_env);
+    let errors = infcx.resolve_regions(cause.body_id, elaborated_env, []);
     if !errors.is_empty() {
         tcx.dcx().span_delayed_bug(
             span,

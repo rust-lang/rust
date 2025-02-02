@@ -340,4 +340,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Change the compiler profile to default to rust.debug-assertions = true",
     },
+    ChangeInfo {
+        change_id: 135832,
+        severity: ChangeSeverity::Info,
+        summary: "Rustdoc now respects the value of rust.lto.",
+    },
 ];

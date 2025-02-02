@@ -111,15 +111,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(this.eval_libc("MAP_FAILED"));
         }
 
-        let ptr =
-            this.allocate_ptr(Size::from_bytes(map_length), align, MiriMemoryKind::Mmap.into())?;
-        // We just allocated this, the access is definitely in-bounds and fits into our address space.
-        // mmap guarantees new mappings are zero-init.
-        this.write_bytes_ptr(
-            ptr.into(),
-            std::iter::repeat(0u8).take(usize::try_from(map_length).unwrap()),
-        )
-        .unwrap();
+        let ptr = this.allocate_ptr(
+            Size::from_bytes(map_length),
+            align,
+            MiriMemoryKind::Mmap.into(),
+            // mmap guarantees new mappings are zero-init.
+            AllocInit::Zero
+        )?;
 
         interp_ok(Scalar::from_pointer(ptr, this))
     }

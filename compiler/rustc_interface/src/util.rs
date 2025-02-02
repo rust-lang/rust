@@ -18,21 +18,25 @@ use rustc_session::{EarlyDiagCtxt, Session, filesearch};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
-use rustc_span::sym;
+use rustc_span::{Symbol, sym};
 use rustc_target::spec::Target;
 use tracing::info;
 
 use crate::errors;
 
 /// Function pointer type that constructs a new CodegenBackend.
-pub type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
+type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
 
 /// Adds `target_feature = "..."` cfgs for a variety of platform
 /// specific features (SSE, NEON etc.).
 ///
 /// This is performed by checking whether a set of permitted features
 /// is available on the target machine, by querying the codegen backend.
-pub fn add_configuration(cfg: &mut Cfg, sess: &mut Session, codegen_backend: &dyn CodegenBackend) {
+pub(crate) fn add_configuration(
+    cfg: &mut Cfg,
+    sess: &mut Session,
+    codegen_backend: &dyn CodegenBackend,
+) {
     let tf = sym::target_feature;
 
     let unstable_target_features = codegen_backend.target_features_cfg(sess, true);
@@ -45,6 +49,34 @@ pub fn add_configuration(cfg: &mut Cfg, sess: &mut Session, codegen_backend: &dy
 
     if sess.crt_static(None) {
         cfg.insert((tf, Some(sym::crt_dash_static)));
+    }
+}
+
+/// Ensures that all target features required by the ABI are present.
+/// Must be called after `unstable_target_features` has been populated!
+pub(crate) fn check_abi_required_features(sess: &Session) {
+    let abi_feature_constraints = sess.target.abi_required_features();
+    // We check this against `unstable_target_features` as that is conveniently already
+    // back-translated to rustc feature names, taking into account `-Ctarget-cpu` and `-Ctarget-feature`.
+    // Just double-check that the features we care about are actually on our list.
+    for feature in
+        abi_feature_constraints.required.iter().chain(abi_feature_constraints.incompatible.iter())
+    {
+        assert!(
+            sess.target.rust_target_features().iter().any(|(name, ..)| feature == name),
+            "target feature {feature} is required/incompatible for the current ABI but not a recognized feature for this target"
+        );
+    }
+
+    for feature in abi_feature_constraints.required {
+        if !sess.unstable_target_features.contains(&Symbol::intern(feature)) {
+            sess.dcx().emit_warn(errors::AbiRequiredTargetFeature { feature, enabled: "enabled" });
+        }
+    }
+    for feature in abi_feature_constraints.incompatible {
+        if sess.unstable_target_features.contains(&Symbol::intern(feature)) {
+            sess.dcx().emit_warn(errors::AbiRequiredTargetFeature { feature, enabled: "disabled" });
+        }
     }
 }
 

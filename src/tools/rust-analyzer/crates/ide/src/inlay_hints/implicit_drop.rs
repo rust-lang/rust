@@ -49,7 +49,7 @@ pub(super) fn hints(
             if mir.locals[place.local].ty.adt_id(ChalkTyInterner).is_none() {
                 continue; // Arguably only ADTs have significant drop impls
             }
-            let Some(binding) = local_to_binding.get(place.local) else {
+            let Some(&binding_idx) = local_to_binding.get(place.local) else {
                 continue; // Ignore temporary values
             };
             let range = match terminator.span {
@@ -91,25 +91,26 @@ pub(super) fn hints(
                 },
                 MirSpan::Unknown => continue,
             };
-            let binding_source = source_map
-                .patterns_for_binding(*binding)
-                .first()
-                .and_then(|d| source_map.pat_syntax(*d).ok())
-                .and_then(|d| {
-                    Some(FileRange {
-                        file_id: d.file_id.file_id()?.into(),
-                        range: d.value.text_range(),
-                    })
-                });
-            let binding = &hir.bindings[*binding];
+            let binding = &hir.bindings[binding_idx];
             let name = binding.name.display_no_db(file_id.edition()).to_smolstr();
             if name.starts_with("<ra@") {
                 continue; // Ignore desugared variables
             }
             let mut label = InlayHintLabel::simple(
                 name,
-                Some(config.lazy_tooltip(|| crate::InlayTooltip::String("moz".into()))),
-                binding_source,
+                None,
+                config.lazy_location_opt(|| {
+                    source_map
+                        .patterns_for_binding(binding_idx)
+                        .first()
+                        .and_then(|d| source_map.pat_syntax(*d).ok())
+                        .and_then(|d| {
+                            Some(FileRange {
+                                file_id: d.file_id.file_id()?.into(),
+                                range: d.value.text_range(),
+                            })
+                        })
+                }),
             );
             label.prepend_str("drop(");
             label.append_str(")");

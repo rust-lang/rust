@@ -361,7 +361,14 @@ export class Ctx implements RustAnalyzerExtensionApi {
             }
         });
 
-        vscode.workspace.onDidChangeTextDocument(async () => {
+        vscode.workspace.onDidChangeTextDocument(async (e) => {
+            if (
+                vscode.window.activeTextEditor?.document !== e.document ||
+                e.contentChanges.length === 0
+            ) {
+                return;
+            }
+
             if (this.syntaxTreeView?.visible) {
                 await this.syntaxTreeProvider?.refresh();
             }

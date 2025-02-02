@@ -303,6 +303,7 @@ m!(ab$0c);
             ---
 
             Outer
+
             ---
 
             ```rust
@@ -1357,7 +1358,7 @@ fn hover_enum_limit() {
 
             ---
 
-            size = 12 (0xC), align = 4, niches = 4294967288
+            size = 12 (0xC), align = 4, niches = a lot
         "#]],
     );
 }
@@ -4401,6 +4402,7 @@ fn main() {
             ---
 
             size = 8, align = 8, niches = 1
+
             ---
 
             ```rust
@@ -10094,6 +10096,7 @@ fn bar() {
             ```rust
             let field: i32
             ```
+
             ---
 
             ```rust
@@ -10128,6 +10131,7 @@ fn bar() {
             ---
 
             size = 4, align = 4
+
             ---
 
             ```rust

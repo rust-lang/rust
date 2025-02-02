@@ -612,9 +612,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::CopyForDeref(place) => {
                 self.codegen_operand(bx, &mir::Operand::Copy(place))
             }
-            mir::Rvalue::RawPtr(mutability, place) => {
-                let mk_ptr =
-                    move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| Ty::new_ptr(tcx, ty, mutability);
+            mir::Rvalue::RawPtr(kind, place) => {
+                let mk_ptr = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
+                    Ty::new_ptr(tcx, ty, kind.to_mutbl_lossy())
+                };
                 self.codegen_place_to_pointer(bx, place, mk_ptr)
             }
 

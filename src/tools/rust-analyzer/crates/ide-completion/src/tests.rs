@@ -87,6 +87,8 @@ pub(crate) const TEST_CONFIG: CompletionConfig<'_> = CompletionConfig {
     fields_to_resolve: CompletionFieldsToResolve::empty(),
     exclude_flyimport: vec![],
     exclude_traits: &[],
+    enable_auto_await: true,
+    enable_auto_iter: true,
 };
 
 pub(crate) fn completion_list(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {

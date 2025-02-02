@@ -291,11 +291,11 @@ impl server::Span for TokenIdServer {
     }
 
     fn line(&mut self, _span: Self::Span) -> usize {
-        0
+        1
     }
 
     fn column(&mut self, _span: Self::Span) -> usize {
-        0
+        1
     }
 }
 

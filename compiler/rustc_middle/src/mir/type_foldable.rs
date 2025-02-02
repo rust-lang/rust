@@ -15,6 +15,7 @@ TrivialTypeTraversalImpls! {
     SourceScopeLocalData,
     UserTypeAnnotationIndex,
     BorrowKind,
+    RawPtrKind,
     CastKind,
     BasicBlock,
     SwitchTargets,

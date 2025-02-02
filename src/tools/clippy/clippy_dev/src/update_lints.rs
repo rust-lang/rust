@@ -842,7 +842,7 @@ fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
         Ok(file) => drop(file),
         Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
         Err(e) => panic_file(e, new_name, "create"),
-    };
+    }
     match fs::rename(old_name, new_name) {
         Ok(()) => true,
         Err(e) => {

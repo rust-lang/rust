@@ -62,8 +62,8 @@ fn generate_enzyme_call<'ll>(
     // add outer_fn name to ad_name to make it unique, in case users apply autodiff to multiple
     // functions. Unwrap will only panic, if LLVM gave us an invalid string.
     let name = llvm::get_value_name(outer_fn);
-    let outer_fn_name = std::ffi::CStr::from_bytes_with_nul(name).unwrap().to_str().unwrap();
-    ad_name.push_str(outer_fn_name.to_string().as_str());
+    let outer_fn_name = std::str::from_utf8(name).unwrap();
+    ad_name.push_str(outer_fn_name);
 
     // Let us assume the user wrote the following function square:
     //
@@ -255,14 +255,14 @@ fn generate_enzyme_call<'ll>(
             // have no debug info to copy, which would then be ok.
             trace!("no dbg info");
         }
-        // Now that we copied the metadata, get rid of dummy code.
-        llvm::LLVMRustEraseInstBefore(entry, last_inst);
-        llvm::LLVMRustEraseInstFromParent(last_inst);
 
-        if cx.val_ty(outer_fn) != cx.type_void() {
-            builder.ret(call);
-        } else {
+        // Now that we copied the metadata, get rid of dummy code.
+        llvm::LLVMRustEraseInstUntilInclusive(entry, last_inst);
+
+        if cx.val_ty(call) == cx.type_void() {
             builder.ret_void();
+        } else {
+            builder.ret(call);
         }
 
         // Let's crash in case that we messed something up above and generated invalid IR.

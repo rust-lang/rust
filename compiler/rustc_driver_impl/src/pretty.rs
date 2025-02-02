@@ -7,6 +7,7 @@ use rustc_ast_pretty::pprust as pprust_ast;
 use rustc_middle::bug;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_mir_build::thir::print::{thir_flat, thir_tree};
 use rustc_session::Session;
 use rustc_session::config::{OutFileName, PpHirMode, PpMode, PpSourceMode};
 use rustc_smir::rustc_internal::pretty::write_smir_pretty;
@@ -313,7 +314,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
             tcx.dcx().abort_if_errors();
             debug!("pretty printing THIR tree");
             for did in tcx.hir().body_owners() {
-                let _ = writeln!(out, "{:?}:\n{}\n", did, tcx.thir_tree(did));
+                let _ = writeln!(out, "{:?}:\n{}\n", did, thir_tree(tcx, did));
             }
             out
         }
@@ -324,7 +325,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
             tcx.dcx().abort_if_errors();
             debug!("pretty printing THIR flat");
             for did in tcx.hir().body_owners() {
-                let _ = writeln!(out, "{:?}:\n{}\n", did, tcx.thir_flat(did));
+                let _ = writeln!(out, "{:?}:\n{}\n", did, thir_flat(tcx, did));
             }
             out
         }
