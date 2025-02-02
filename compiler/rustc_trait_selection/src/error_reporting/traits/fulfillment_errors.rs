@@ -1504,7 +1504,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         with_forced_trimmed_paths! {
             if self.tcx.is_lang_item(projection_term.def_id, LangItem::FnOnceOutput) {
-                let fn_kind = self_ty.prefix_string(self.tcx);
                 let (span, closure_span) = if let ty::Closure(def_id, _) = self_ty.kind() {
                     let def_span = self.tcx.def_span(def_id);
                     if let Some(local_def_id) = def_id.as_local()
@@ -1541,8 +1540,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     _ => self.tcx.short_string(self_ty, file),
                 };
                 Some((format!(
-                    "expected `{item}` to be a {fn_kind} that returns `{expected_ty}`, but it \
-                     returns `{normalized_ty}`",
+                    "expected `{item}` to return `{expected_ty}`, but it returns `{normalized_ty}`",
                 ), span, closure_span))
             } else if self.tcx.is_lang_item(trait_def_id, LangItem::Future) {
                 Some((format!(
