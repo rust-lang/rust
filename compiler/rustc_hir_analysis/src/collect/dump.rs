@@ -52,7 +52,7 @@ pub(crate) fn predicates_and_item_bounds(tcx: TyCtxt<'_>) {
 }
 
 pub(crate) fn def_parents(tcx: TyCtxt<'_>) {
-    for iid in tcx.hir().items() {
+    for iid in tcx.hir_free_items() {
         let did = iid.owner_id.def_id;
         if tcx.has_attr(did, sym::rustc_dump_def_parents) {
             struct AnonConstFinder<'tcx> {
@@ -77,7 +77,7 @@ pub(crate) fn def_parents(tcx: TyCtxt<'_>) {
             // the `rustc_dump_def_parents` attribute to the anon const so it would not be possible
             // to see what its def parent is.
             let mut anon_ct_finder = AnonConstFinder { tcx, anon_consts: vec![] };
-            intravisit::walk_item(&mut anon_ct_finder, tcx.hir().item(iid));
+            intravisit::walk_item(&mut anon_ct_finder, tcx.hir_item(iid));
 
             for did in [did].into_iter().chain(anon_ct_finder.anon_consts) {
                 let span = tcx.def_span(did);
@@ -99,14 +99,14 @@ pub(crate) fn def_parents(tcx: TyCtxt<'_>) {
 }
 
 pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
-    for id in tcx.hir().items() {
+    for id in tcx.hir_free_items() {
         let def_id = id.owner_id.def_id;
 
         let Some(attr) = tcx.get_attr(def_id, sym::rustc_dump_vtable) else {
             continue;
         };
 
-        let vtable_entries = match tcx.hir().item(id).kind {
+        let vtable_entries = match tcx.hir_item(id).kind {
             hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) => {
                 let trait_ref = tcx.impl_trait_ref(def_id).unwrap().instantiate_identity();
                 if trait_ref.has_non_region_param() {

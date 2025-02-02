@@ -124,7 +124,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, codegen_mode: CodegenMode, jit_args: Vec<
                     crate::constant::codegen_static(tcx, &mut jit_module, def_id);
                 }
                 MonoItem::GlobalAsm(item_id) => {
-                    let item = tcx.hir().item(item_id);
+                    let item = tcx.hir_item(item_id);
                     tcx.dcx().span_fatal(item.span, "Global asm is not supported in JIT mode");
                 }
             }

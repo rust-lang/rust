@@ -1163,7 +1163,7 @@ fn check_type_defn<'tcx>(
                     // be refactored to check the instantiate-ability of the code better.
                     if let Some(def_id) = def_id.as_local()
                         && let hir::Node::AnonConst(anon) = tcx.hir_node_by_def_id(def_id)
-                        && let expr = &tcx.hir().body(anon.body).value
+                        && let expr = &tcx.hir_body(anon.body).value
                         && let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
                         && let Res::Def(DefKind::ConstParam, _def_id) = path.res
                     {

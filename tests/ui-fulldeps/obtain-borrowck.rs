@@ -67,7 +67,6 @@ impl rustc_driver::Callbacks for CompilerCalls {
     fn after_analysis<'tcx>(&mut self, _compiler: &Compiler, tcx: TyCtxt<'tcx>) -> Compilation {
         tcx.sess.dcx().abort_if_errors();
         // Collect definition ids of MIR bodies.
-        let hir = tcx.hir();
         let mut bodies = Vec::new();
 
         let crate_items = tcx.hir_crate_items(());
@@ -79,7 +78,7 @@ impl rustc_driver::Callbacks for CompilerCalls {
 
         for id in crate_items.trait_items() {
             if matches!(tcx.def_kind(id.owner_id), DefKind::AssocFn) {
-                let trait_item = hir.trait_item(id);
+                let trait_item = tcx.hir_trait_item(id);
                 if let rustc_hir::TraitItemKind::Fn(_, trait_fn) = &trait_item.kind {
                     if let rustc_hir::TraitFn::Provided(_) = trait_fn {
                         bodies.push(trait_item.owner_id);

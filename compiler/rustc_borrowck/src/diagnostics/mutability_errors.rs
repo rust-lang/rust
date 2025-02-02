@@ -936,11 +936,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     fn expected_fn_found_fn_mut_call(&self, err: &mut Diag<'_>, sp: Span, act: &str) {
         err.span_label(sp, format!("cannot {act}"));
 
-        let hir = self.infcx.tcx.hir();
+        let tcx = self.infcx.tcx;
+        let hir = tcx.hir();
         let closure_id = self.mir_hir_id();
-        let closure_span = self.infcx.tcx.def_span(self.mir_def_id());
-        let fn_call_id = self.infcx.tcx.parent_hir_id(closure_id);
-        let node = self.infcx.tcx.hir_node(fn_call_id);
+        let closure_span = tcx.def_span(self.mir_def_id());
+        let fn_call_id = tcx.parent_hir_id(closure_id);
+        let node = tcx.hir_node(fn_call_id);
         let def_id = hir.enclosing_body_owner(fn_call_id);
         let mut look_at_return = true;
 
@@ -951,7 +952,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 return None;
             };
 
-            let typeck_results = self.infcx.tcx.typeck(def_id);
+            let typeck_results = tcx.typeck(def_id);
 
             match kind {
                 hir::ExprKind::Call(expr, args) => {
@@ -980,7 +981,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 .map(|(pos, _)| pos)
                 .next();
 
-            let arg = match hir.get_if_local(callee_def_id) {
+            let arg = match tcx.hir_get_if_local(callee_def_id) {
                 Some(
                     hir::Node::Item(hir::Item {
                         ident, kind: hir::ItemKind::Fn { sig, .. }, ..
@@ -1022,7 +1023,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if look_at_return && hir.get_fn_id_for_return_block(closure_id).is_some() {
             // ...otherwise we are probably in the tail expression of the function, point at the
             // return type.
-            match self.infcx.tcx.hir_node_by_def_id(hir.get_parent_item(fn_call_id).def_id) {
+            match tcx.hir_node_by_def_id(hir.get_parent_item(fn_call_id).def_id) {
                 hir::Node::Item(hir::Item {
                     ident, kind: hir::ItemKind::Fn { sig, .. }, ..
                 })
@@ -1050,9 +1051,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
     fn suggest_using_iter_mut(&self, err: &mut Diag<'_>) {
         let source = self.body.source;
-        let hir = self.infcx.tcx.hir();
         if let InstanceKind::Item(def_id) = source.instance
-            && let Some(Node::Expr(hir::Expr { hir_id, kind, .. })) = hir.get_if_local(def_id)
+            && let Some(Node::Expr(hir::Expr { hir_id, kind, .. })) =
+                self.infcx.tcx.hir_get_if_local(def_id)
             && let ExprKind::Closure(hir::Closure { kind: hir::ClosureKind::Closure, .. }) = kind
             && let Node::Expr(expr) = self.infcx.tcx.parent_hir_node(*hir_id)
         {

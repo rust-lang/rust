@@ -296,7 +296,7 @@ where
 
 /// Checks if the given resolved path is used in the given body.
 pub fn is_res_used(cx: &LateContext<'_>, res: Res, body: BodyId) -> bool {
-    for_each_expr(cx, cx.tcx.hir().body(body).value, |e| {
+    for_each_expr(cx, cx.tcx.hir_body(body).value, |e| {
         if let ExprKind::Path(p) = &e.kind {
             if cx.qpath_res(p, e.hir_id) == res {
                 return ControlFlow::Break(());
@@ -456,7 +456,7 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
             }
         }
         fn visit_nested_item(&mut self, id: ItemId) -> Self::Result {
-            if let ItemKind::Impl(i) = &self.cx.tcx.hir().item(id).kind
+            if let ItemKind::Impl(i) = &self.cx.tcx.hir_item(id).kind
                 && i.safety.is_unsafe()
             {
                 ControlFlow::Break(())

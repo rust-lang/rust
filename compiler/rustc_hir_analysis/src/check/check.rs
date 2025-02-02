@@ -124,7 +124,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
 
     for field in &def.non_enum_variant().fields {
         if !allowed_union_or_unsafe_field(tcx, field.ty(tcx, args), typing_env, span) {
-            let (field_span, ty_span) = match tcx.hir().get_if_local(field.did) {
+            let (field_span, ty_span) = match tcx.hir_get_if_local(field.did) {
                 // We are currently checking the type this field came from, so it must be local.
                 Some(Node::Field(field)) => (field.span, field.ty.span),
                 _ => unreachable!("mir field has to correspond to hir field"),
@@ -880,7 +880,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                             .emit();
                         }
 
-                        let item = tcx.hir().foreign_item(item.id);
+                        let item = tcx.hir_foreign_item(item.id);
                         match &item.kind {
                             hir::ForeignItemKind::Fn(sig, _, _) => {
                                 require_c_abi_if_c_variadic(tcx, sig.decl, abi, item.span);
@@ -1494,7 +1494,7 @@ fn detect_discriminant_duplicate<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>)
                 // In the case the discriminant is both a duplicate and overflowed, let the user know
                 if let hir::Node::AnonConst(expr) =
                     tcx.hir_node_by_def_id(discr_def_id.expect_local())
-                    && let hir::ExprKind::Lit(lit) = &tcx.hir().body(expr.body).value.kind
+                    && let hir::ExprKind::Lit(lit) = &tcx.hir_body(expr.body).value.kind
                     && let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node
                     && *lit_value != dis.val
                 {

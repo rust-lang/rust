@@ -84,7 +84,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, local: &'tcx LetStmt<'_>) {
                     if let PatKind::Binding(_, binding_hir_id, ..) = local.pat.kind
                         && let Some(body_id) = cx.enclosing_body.as_ref()
                     {
-                        let body = cx.tcx.hir().body(*body_id);
+                        let body = cx.tcx.hir_body(*body_id);
 
                         // Collect variable usages
                         let mut visitor = UnitVariableCollector::new(binding_hir_id);

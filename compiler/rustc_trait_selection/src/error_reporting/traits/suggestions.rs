@@ -790,8 +790,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         // Get the name of the callable and the arguments to be used in the suggestion.
-        let hir = self.tcx.hir();
-
         let msg = match def_id_or_name {
             DefIdOrName::DefId(def_id) => match self.tcx.def_kind(def_id) {
                 DefKind::Ctor(CtorOf::Struct, _) => {
@@ -834,7 +832,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 Applicability::HasPlaceholders,
             );
         } else if let DefIdOrName::DefId(def_id) = def_id_or_name {
-            let name = match hir.get_if_local(def_id) {
+            let name = match self.tcx.hir_get_if_local(def_id) {
                 Some(hir::Node::Expr(hir::Expr {
                     kind: hir::ExprKind::Closure(hir::Closure { fn_decl_span, .. }),
                     ..
@@ -950,7 +948,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> bool {
         let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
         self.enter_forall(self_ty, |ty: Ty<'_>| {
-            let Some(generics) = self.tcx.hir().get_generics(obligation.cause.body_id) else {
+            let Some(generics) = self.tcx.hir_get_generics(obligation.cause.body_id) else {
                 return false;
             };
             let ty::Ref(_, inner_ty, hir::Mutability::Not) = ty.kind() else { return false };
@@ -1595,7 +1593,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && let ty = typeck_results.expr_ty_adjusted(base)
                     && let ty::FnDef(def_id, _args) = ty.kind()
                     && let Some(hir::Node::Item(hir::Item { ident, span, vis_span, .. })) =
-                        hir.get_if_local(*def_id)
+                        self.tcx.hir_get_if_local(*def_id)
                 {
                     let msg = format!("alternatively, consider making `fn {ident}` asynchronous");
                     if vis_span.is_empty() {
@@ -1703,10 +1701,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         span: Span,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
-        let hir = self.tcx.hir();
         let node = self.tcx.hir_node_by_def_id(obligation.cause.body_id);
         if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn {sig, body: body_id, .. }, .. }) = node
-            && let hir::ExprKind::Block(blk, _) = &hir.body(*body_id).value.kind
+            && let hir::ExprKind::Block(blk, _) = &self.tcx.hir_body(*body_id).value.kind
             && sig.decl.output.span().overlaps(span)
             && blk.expr.is_none()
             && trait_pred.self_ty().skip_binder().is_unit()
@@ -2790,7 +2787,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     generics,
                                     kind: hir::TraitItemKind::Type(bounds, None),
                                     ..
-                                })) = tcx.hir().get_if_local(item_def_id)
+                                })) = tcx.hir_get_if_local(item_def_id)
                                     // Do not suggest relaxing if there is an explicit `Sized` obligation.
                                     && !bounds.iter()
                                         .filter_map(|bound| bound.trait_ref())
@@ -3298,7 +3295,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let trait_name = parent_trait_pred.print_modifiers_and_trait_path().to_string();
                 let msg = format!("required for `{self_ty_str}` to implement `{trait_name}`");
                 let mut is_auto_trait = false;
-                match tcx.hir().get_if_local(data.impl_or_alias_def_id) {
+                match tcx.hir_get_if_local(data.impl_or_alias_def_id) {
                     Some(Node::Item(hir::Item {
                         kind: hir::ItemKind::Trait(is_auto, ..),
                         ident,
@@ -3423,7 +3420,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         .map_bound(|pred| pred.trait_ref)
                         .print_only_trait_path(),
                 );
-                match tcx.hir().get_if_local(data.impl_def_id) {
+                match tcx.hir_get_if_local(data.impl_def_id) {
                     Some(Node::Item(hir::Item {
                         kind: hir::ItemKind::Impl(hir::Impl { of_trait, self_ty, .. }),
                         ..
@@ -3564,7 +3561,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let expr = tcx.hir().expect_expr(hir_id);
                     (expr_ty, expr)
                 } else if let Some(body_id) = tcx.hir_node_by_def_id(body_id).body_id()
-                    && let body = tcx.hir().body(body_id)
+                    && let body = tcx.hir_body(body_id)
                     && let hir::ExprKind::Block(block, _) = body.value.kind
                     && let Some(expr) = block.expr
                     && let Some(expr_ty) = self
@@ -3841,7 +3838,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             && let hir::ExprKind::Closure(hir::Closure {
                                 body, fn_decl_span, ..
                             }) = value.kind
-                            && let body = tcx.hir().body(*body)
+                            && let body = tcx.hir_body(*body)
                             && !matches!(body.value.kind, hir::ExprKind::Block(..))
                         {
                             // Check if the failed predicate was an expectation of a closure type
@@ -4068,7 +4065,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && let [arg] = args
                     && let hir::ExprKind::Closure(closure) = arg.kind
                 {
-                    let body = tcx.hir().body(closure.body);
+                    let body = tcx.hir_body(closure.body);
                     if let hir::ExprKind::Block(block, None) = body.value.kind
                         && let None = block.expr
                         && let [.., stmt] = block.stmts
@@ -4761,7 +4758,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         {
             let mut sugg_spans =
                 vec![(ret_span, " -> Result<(), Box<dyn std::error::Error>>".to_string())];
-            let body = self.tcx.hir().body(body_id);
+            let body = self.tcx.hir_body(body_id);
             if let hir::ExprKind::Block(b, _) = body.value.kind
                 && b.expr.is_none()
             {
@@ -4807,7 +4804,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         debug!(?pred, ?item_def_id, ?span);
 
         let (Some(node), true) = (
-            self.tcx.hir().get_if_local(item_def_id),
+            self.tcx.hir_get_if_local(item_def_id),
             self.tcx.is_lang_item(pred.def_id(), LangItem::Sized),
         ) else {
             return;
@@ -5248,7 +5245,7 @@ pub fn suggest_desugaring_async_fn_to_impl_future_in_trait<'tcx>(
 
     // If there's a body, we also need to wrap it in `async {}`
     if let hir::TraitFn::Provided(body) = body {
-        let body = tcx.hir().body(body);
+        let body = tcx.hir_body(body);
         let body_span = body.value.span;
         let body_span_without_braces =
             body_span.with_lo(body_span.lo() + BytePos(1)).with_hi(body_span.hi() - BytePos(1));

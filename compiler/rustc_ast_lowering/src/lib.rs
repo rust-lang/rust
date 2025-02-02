@@ -407,7 +407,7 @@ fn compute_hir_hash(
         .iter_enumerated()
         .filter_map(|(def_id, info)| {
             let info = info.as_owner()?;
-            let def_path_hash = tcx.hir().def_path_hash(def_id);
+            let def_path_hash = tcx.hir_def_path_hash(def_id);
             Some((def_path_hash, info))
         })
         .collect();
@@ -497,7 +497,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             "adding a def'n for node-id {:?} and def kind {:?} but a previous def'n exists: {:?}",
             node_id,
             def_kind,
-            self.tcx.hir().def_key(self.local_def_id(node_id)),
+            self.tcx.hir_def_key(self.local_def_id(node_id)),
         );
 
         let def_id = self.tcx.at(span).create_def(parent, name, def_kind).def_id();

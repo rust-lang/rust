@@ -601,8 +601,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNo
             let def_span = self
                 .cx
                 .tcx
-                .hir()
-                .get_if_local(def.did())
+                .hir_get_if_local(def.did())
                 .and_then(|node| node.ident())
                 .map(|ident| ident.span)
                 .unwrap_or_else(|| self.cx.tcx.def_span(def.did()));

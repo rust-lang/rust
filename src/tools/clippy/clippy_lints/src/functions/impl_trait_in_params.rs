@@ -56,7 +56,7 @@ pub(super) fn check_impl_item(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
         && let hir::ItemKind::Impl(impl_) = item.kind
         && let hir::Impl { of_trait, .. } = *impl_
         && of_trait.is_none()
-        && let body = cx.tcx.hir().body(body_id)
+        && let body = cx.tcx.hir_body(body_id)
         && cx.tcx.visibility(cx.tcx.hir().body_owner_def_id(body.id())).is_public()
         && !is_in_test(cx.tcx, impl_item.hir_id())
     {

@@ -418,7 +418,7 @@ pub fn report_dyn_incompatibility<'tcx>(
     violations: &[DynCompatibilityViolation],
 ) -> Diag<'tcx> {
     let trait_str = tcx.def_path_str(trait_def_id);
-    let trait_span = tcx.hir().get_if_local(trait_def_id).and_then(|node| match node {
+    let trait_span = tcx.hir_get_if_local(trait_def_id).and_then(|node| match node {
         hir::Node::Item(item) => Some(item.ident.span),
         _ => None,
     });

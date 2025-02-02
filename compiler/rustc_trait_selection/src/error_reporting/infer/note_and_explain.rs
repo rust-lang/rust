@@ -543,7 +543,7 @@ impl<T> Trait<T> for X {
         let tcx = self.tcx;
         let assoc = tcx.associated_item(proj_ty.def_id);
         let (trait_ref, assoc_args) = proj_ty.trait_ref_and_own_args(tcx);
-        let Some(item) = tcx.hir().get_if_local(body_owner_def_id) else {
+        let Some(item) = tcx.hir_get_if_local(body_owner_def_id) else {
             return false;
         };
         let Some(hir_generics) = item.generics() else {
@@ -625,7 +625,7 @@ impl<T> Trait<T> for X {
             )
         };
 
-        let body_owner = tcx.hir().get_if_local(body_owner_def_id);
+        let body_owner = tcx.hir_get_if_local(body_owner_def_id);
         let current_method_ident = body_owner.and_then(|n| n.ident()).map(|i| i.name);
 
         // We don't want to suggest calling an assoc fn in a scope where that isn't feasible.

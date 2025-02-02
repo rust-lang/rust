@@ -291,7 +291,7 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
 
     let hir_node = tcx.hir_node_by_def_id(def_id);
     let fn_body_id = hir_node.body_id().expect("HIR node is a function with body");
-    let hir_body = tcx.hir().body(fn_body_id);
+    let hir_body = tcx.hir_body(fn_body_id);
 
     let maybe_fn_sig = hir_node.fn_sig();
     let is_async_fn = maybe_fn_sig.is_some_and(|fn_sig| fn_sig.header.is_async());

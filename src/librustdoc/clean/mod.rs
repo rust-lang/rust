@@ -1145,7 +1145,7 @@ fn clean_args_from_types_and_body_id<'tcx>(
     types: &[hir::Ty<'tcx>],
     body_id: hir::BodyId,
 ) -> Arguments {
-    let body = cx.tcx.hir().body(body_id);
+    let body = cx.tcx.hir_body(body_id);
 
     Arguments {
         values: types
@@ -2845,7 +2845,7 @@ fn clean_maybe_renamed_item<'tcx>(
             ItemKind::Trait(_, _, generics, bounds, item_ids) => {
                 let items = item_ids
                     .iter()
-                    .map(|ti| clean_trait_item(cx.tcx.hir().trait_item(ti.id), cx))
+                    .map(|ti| clean_trait_item(cx.tcx.hir_trait_item(ti.id), cx))
                     .collect();
 
                 TraitItem(Box::new(Trait {
@@ -2891,7 +2891,7 @@ fn clean_impl<'tcx>(
     let items = impl_
         .items
         .iter()
-        .map(|ii| clean_impl_item(tcx.hir().impl_item(ii.id), cx))
+        .map(|ii| clean_impl_item(tcx.hir_impl_item(ii.id), cx))
         .collect::<Vec<_>>();
 
     // If this impl block is an implementation of the Deref trait, then we

@@ -67,7 +67,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
         {
             for assoc_item in *items {
                 if assoc_item.kind == (hir::AssocItemKind::Fn { has_self: false }) {
-                    let impl_item = cx.tcx.hir().impl_item(assoc_item.id);
+                    let impl_item = cx.tcx.hir_impl_item(assoc_item.id);
                     if impl_item.span.in_external_macro(cx.sess().source_map()) {
                         return;
                     }

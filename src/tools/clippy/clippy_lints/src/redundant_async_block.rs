@@ -75,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantAsyncBlock {
 /// any variable by ref.
 fn desugar_async_block<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if let ExprKind::Closure(Closure { body, def_id, kind, .. }) = expr.kind
-        && let body = cx.tcx.hir().body(*body)
+        && let body = cx.tcx.hir_body(*body)
         && matches!(
             kind,
             ClosureKind::Coroutine(CoroutineKind::Desugared(
