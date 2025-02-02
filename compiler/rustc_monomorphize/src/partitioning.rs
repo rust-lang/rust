@@ -1179,11 +1179,15 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
         }
     }
 
+    #[cfg(not(llvm_enzyme))]
+    let autodiff_mono_items: Vec<_> = vec![];
+    #[cfg(llvm_enzyme)]
     let mut autodiff_mono_items: Vec<_> = vec![];
     let mono_items: DefIdSet = items
         .iter()
         .filter_map(|mono_item| match *mono_item {
             MonoItem::Fn(ref instance) => {
+                #[cfg(llvm_enzyme)]
                 autodiff_mono_items.push((mono_item, instance));
                 Some(instance.def_id())
             }
