@@ -6,12 +6,12 @@ use rustc_ast::MetaItem;
 use rustc_ast::attr::AttributeExt;
 use rustc_ast_pretty::pprust;
 use rustc_attr_data_structures::{
-    AllowedThroughUnstableModules, ConstStability, DefaultBodyStability, Stability, StabilityLevel,
-    StableSince, UnstableReason, VERSION_PLACEHOLDER,
+    ConstStability, DefaultBodyStability, Stability, StabilityLevel, StableSince, UnstableReason,
+    VERSION_PLACEHOLDER,
 };
 use rustc_errors::ErrorGuaranteed;
 use rustc_session::Session;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol, kw, sym};
 
 use crate::attributes::util::UnsupportedLiteralReason;
 use crate::{parse_version, session_diagnostics};
@@ -29,10 +29,14 @@ pub fn find_stability(
     for attr in attrs {
         match attr.name_or_empty() {
             sym::rustc_allowed_through_unstable_modules => {
-                allowed_through_unstable_modules = Some(match attr.value_str() {
-                    Some(msg) => AllowedThroughUnstableModules::WithDeprecation(msg),
-                    None => AllowedThroughUnstableModules::WithoutDeprecation,
-                })
+                // The value is mandatory, but avoid ICEs in case such code reaches this function.
+                allowed_through_unstable_modules = Some(attr.value_str().unwrap_or_else(|| {
+                    sess.dcx().span_delayed_bug(
+                        item_sp,
+                        "`#[rustc_allowed_through_unstable_modules]` without deprecation message",
+                    );
+                    kw::Empty
+                }))
             }
             sym::unstable => {
                 if stab.is_some() {
