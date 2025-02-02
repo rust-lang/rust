@@ -1,4 +1,4 @@
-use rustc_errors::{Applicability, Diag, MultiSpan};
+use rustc_errors::{Applicability, Diag, MultiSpan, listify};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::Visitor;
@@ -1016,18 +1016,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 },
                 self.tcx.def_path_str(candidate.item.container_id(self.tcx))
             ),
-            [.., last] if other_methods_in_scope.len() < 5 => {
+            _ if other_methods_in_scope.len() < 5 => {
                 format!(
-                    "the methods of the same name on {} and `{}`",
-                    other_methods_in_scope[..other_methods_in_scope.len() - 1]
-                        .iter()
-                        .map(|c| format!(
-                            "`{}`",
-                            self.tcx.def_path_str(c.item.container_id(self.tcx))
-                        ))
-                        .collect::<Vec<String>>()
-                        .join(", "),
-                    self.tcx.def_path_str(last.item.container_id(self.tcx))
+                    "the methods of the same name on {}",
+                    listify(
+                        &other_methods_in_scope[..other_methods_in_scope.len() - 1],
+                        |c| format!("`{}`", self.tcx.def_path_str(c.item.container_id(self.tcx)))
+                    )
+                    .unwrap_or_default(),
                 )
             }
             _ => format!(
