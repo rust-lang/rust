@@ -4,7 +4,7 @@
 // EMIT_MIR dont_reset_cast_kind_without_updating_operand.test.GVN.diff
 
 fn test() {
-    let vp_ctx: &Box<()>= &Box::new(());
+    let vp_ctx: &Box<()> = &Box::new(());
     let slf: *const () = &raw const **vp_ctx;
     let bytes = std::ptr::slice_from_raw_parts(slf, 1);
     let _x = foo(bytes);

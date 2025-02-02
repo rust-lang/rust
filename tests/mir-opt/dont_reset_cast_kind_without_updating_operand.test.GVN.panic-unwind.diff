@@ -66,7 +66,7 @@
           StorageLive(_8);
           _8 = copy _5;
 -         _7 = copy _8 as *mut () (PtrToPtr);
-+         _7 = copy _5 as *mut () (Transmute);
++         _7 = copy _5 as *mut () (PtrToPtr);
           StorageDead(_8);
           StorageDead(_7);
 -         StorageDead(_5);
