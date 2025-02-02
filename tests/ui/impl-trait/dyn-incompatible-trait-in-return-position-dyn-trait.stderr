@@ -26,7 +26,7 @@ help: alternatively, consider constraining `foo` so it does not apply to trait o
 LL |     fn foo() -> Self where Self: Sized;
    |                      +++++++++++++++++
 
-error[E0746]: return type cannot have an unboxed trait object
+error[E0746]: return type cannot be a trait object without pointer indirection
   --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:22:13
    |
 LL | fn car() -> dyn DynIncompatible {

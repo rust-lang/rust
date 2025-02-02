@@ -1,4 +1,4 @@
-error[E0746]: return type cannot have an unboxed trait object
+error[E0746]: return type cannot be a trait object without pointer indirection
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:66:13
    |
 LL | fn hat() -> dyn std::fmt::Display {
@@ -19,7 +19,7 @@ LL |         _ => {
 LL ~             Box::new(1u32)
    |
 
-error[E0746]: return type cannot have an unboxed trait object
+error[E0746]: return type cannot be a trait object without pointer indirection
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:77:13
    |
 LL | fn pug() -> dyn std::fmt::Display {
@@ -38,7 +38,7 @@ LL ~         1 => Box::new(1u32),
 LL ~         _ => Box::new(2u32),
    |
 
-error[E0746]: return type cannot have an unboxed trait object
+error[E0746]: return type cannot be a trait object without pointer indirection
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:85:13
    |
 LL | fn man() -> dyn std::fmt::Display {

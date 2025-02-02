@@ -1765,7 +1765,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         err.code(E0746);
-        err.primary_message("return type cannot have an unboxed trait object");
+        err.primary_message("return type cannot be a trait object without pointer indirection");
         err.children.clear();
 
         let span = obligation.cause.span;
