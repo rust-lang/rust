@@ -14,7 +14,6 @@ use rustc_hir::{
 };
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::suggest_impl_trait;
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -770,7 +769,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // If the expression is from an external macro, then do not suggest
                         // adding a semicolon, because there's nowhere to put it.
                         // See issue #81943.
-                        && !in_external_macro(self.tcx.sess, expression.span) =>
+                        && !expression.span.in_external_macro(self.tcx.sess.source_map()) =>
                 {
                     if needs_block {
                         err.multipart_suggestion(
@@ -2265,7 +2264,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         expr_ty: Ty<'tcx>,
     ) -> bool {
-        if in_external_macro(self.tcx.sess, expr.span) {
+        if expr.span.in_external_macro(self.tcx.sess.source_map()) {
             return false;
         }
         if let ty::Adt(expected_adt, args) = expected.kind() {
@@ -2593,13 +2592,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     )> {
         let sess = self.sess();
         let sp = expr.span;
+        let sm = sess.source_map();
 
         // If the span is from an external macro, there's no suggestion we can make.
-        if in_external_macro(sess, sp) {
+        if sp.in_external_macro(sm) {
             return None;
         }
-
-        let sm = sess.source_map();
 
         let replace_prefix = |s: &str, old: &str, new: &str| {
             s.strip_prefix(old).map(|stripped| new.to_string() + stripped)

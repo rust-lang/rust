@@ -2,7 +2,6 @@ use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::{bug, ty};
 use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_session::lint::FutureIncompatibilityReason;
@@ -100,7 +99,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
 
     let (span, panic, symbol) = panic_call(cx, f);
 
-    if in_external_macro(cx.sess(), span) {
+    if span.in_external_macro(cx.sess().source_map()) {
         // Nothing that can be done about it in the current crate.
         return;
     }
@@ -229,14 +228,15 @@ fn check_panic_str<'tcx>(
 
     let (span, _, _) = panic_call(cx, f);
 
-    if in_external_macro(cx.sess(), span) && in_external_macro(cx.sess(), arg.span) {
+    let sm = cx.sess().source_map();
+    if span.in_external_macro(sm) && arg.span.in_external_macro(sm) {
         // Nothing that can be done about it in the current crate.
         return;
     }
 
     let fmt_span = arg.span.source_callsite();
 
-    let (snippet, style) = match cx.sess().psess.source_map().span_to_snippet(fmt_span) {
+    let (snippet, style) = match sm.span_to_snippet(fmt_span) {
         Ok(snippet) => {
             // Count the number of `#`s between the `r` and `"`.
             let style = snippet.strip_prefix('r').and_then(|s| s.find('"'));
@@ -283,7 +283,7 @@ fn check_panic_str<'tcx>(
 /// Given the span of `some_macro!(args);`, gives the span of `(` and `)`,
 /// and the type of (opening) delimiter used.
 fn find_delimiters(cx: &LateContext<'_>, span: Span) -> Option<(Span, Span, char)> {
-    let snippet = cx.sess().psess.source_map().span_to_snippet(span).ok()?;
+    let snippet = cx.sess().source_map().span_to_snippet(span).ok()?;
     let (open, open_ch) = snippet.char_indices().find(|&(_, c)| "([{".contains(c))?;
     let close = snippet.rfind(|c| ")]}".contains(c))?;
     Some((
