@@ -3,7 +3,8 @@
 use std::{borrow::Cow, num::ParseIntError};
 
 use rustc_lexer::unescape::{
-    unescape_byte, unescape_char, unescape_mixed, unescape_unicode, EscapeError, MixedUnit, Mode,
+    unescape_byte, unescape_byte_str, unescape_char, unescape_cstr, unescape_str, unescape_unicode,
+    EscapeError, MixedUnit, Mode,
 };
 use stdx::always;
 
@@ -218,7 +219,7 @@ impl ast::String {
         let mut buf = String::new();
         let mut prev_end = 0;
         let mut has_error = None;
-        unescape_unicode(text, Self::MODE, &mut |char_range, unescaped_char| match (
+        unescape_str(text, &mut |char_range, unescaped_char| match (
             unescaped_char,
             buf.capacity() == 0,
         ) {
@@ -259,18 +260,18 @@ impl ast::ByteString {
         let mut buf: Vec<u8> = Vec::new();
         let mut prev_end = 0;
         let mut has_error = None;
-        unescape_unicode(text, Self::MODE, &mut |char_range, unescaped_char| match (
-            unescaped_char,
+        unescape_byte_str(text, &mut |char_range, unescaped_byte| match (
+            unescaped_byte,
             buf.capacity() == 0,
         ) {
-            (Ok(c), false) => buf.push(c as u8),
+            (Ok(b), false) => buf.push(b),
             (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
                 prev_end = char_range.end
             }
-            (Ok(c), true) => {
+            (Ok(b), true) => {
                 buf.reserve_exact(text.len());
                 buf.extend_from_slice(text[..prev_end].as_bytes());
-                buf.push(c as u8);
+                buf.push(b);
             }
             (Err(e), _) => has_error = Some(e),
         });
@@ -297,7 +298,7 @@ impl IsString for ast::CString {
         let text = &self.text()[text_range_no_quotes - start];
         let offset = text_range_no_quotes.start() - start;
 
-        unescape_mixed(text, Self::MODE, &mut |range, unescaped_char| {
+        unescape_cstr(text, &mut |range, unescaped_char| {
             let text_range =
                 TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap());
             // XXX: This method should only be used for highlighting ranges. The unescaped
@@ -323,10 +324,7 @@ impl ast::CString {
             MixedUnit::Char(c) => buf.extend(c.encode_utf8(&mut [0; 4]).as_bytes()),
             MixedUnit::HighByte(b) => buf.push(b),
         };
-        unescape_mixed(text, Self::MODE, &mut |char_range, unescaped| match (
-            unescaped,
-            buf.capacity() == 0,
-        ) {
+        unescape_cstr(text, &mut |char_range, unescaped| match (unescaped, buf.capacity() == 0) {
             (Ok(u), false) => extend_unit(&mut buf, u),
             (Ok(_), true) if char_range.len() == 1 && char_range.start == prev_end => {
                 prev_end = char_range.end

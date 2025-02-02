@@ -10,7 +10,9 @@
 
 use std::ops;
 
-use rustc_lexer::unescape::{EscapeError, Mode};
+use rustc_lexer::unescape::{
+    unescape_byte, unescape_byte_str, unescape_char, unescape_cstr, unescape_str, EscapeError, Mode,
+};
 
 use crate::{
     Edition,
@@ -149,11 +151,11 @@ impl<'a> Converter<'a> {
         self.res
     }
 
-    fn push(&mut self, kind: SyntaxKind, len: usize, err: Option<&str>) {
+    fn push(&mut self, kind: SyntaxKind, len: usize, err: &str) {
         self.res.push(kind, self.offset);
         self.offset += len;
 
-        if let Some(err) = err {
+        if !err.is_empty() {
             let token = self.res.len() as u32;
             let msg = err.to_owned();
             self.res.error.push(LexError { msg, token });
@@ -255,112 +257,98 @@ impl<'a> Converter<'a> {
             }
         };
 
-        let err = if err.is_empty() { None } else { Some(err) };
         self.push(syntax_kind, token_text.len(), err);
     }
 
     fn extend_literal(&mut self, len: usize, kind: &rustc_lexer::LiteralKind) {
-        let mut err = "";
+        let invalid_raw_msg = "Invalid raw string literal";
+        let no_end_quote = |c: char, kind: &str| -> &str {
+            format!("Missing trailing `{c}` symbol to terminate the {kind} literal")
+        };
 
-        let syntax_kind = match *kind {
+        let (syntax_kind, err) = match *kind {
             rustc_lexer::LiteralKind::Int { empty_int, base: _ } => {
                 if empty_int {
                     err = "Missing digits after the integer base prefix";
                 }
                 INT_NUMBER
             }
-            rustc_lexer::LiteralKind::Float { empty_exponent, base: _ } => {
-                if empty_exponent {
-                    err = "Missing digits after the exponent symbol";
-                }
-                FLOAT_NUMBER
-            }
-            rustc_lexer::LiteralKind::Char { terminated } => {
+            rustc_lexer::LiteralKind::Float { empty_exponent, base: _ } => (
+                FLOAT_NUMBER,
+                if empty_exponent { "Missing digits after the exponent symbol" } else { "" },
+            ),
+            rustc_lexer::LiteralKind::Char { terminated } => (
+                CHAR,
                 if !terminated {
-                    err = "Missing trailing `'` symbol to terminate the character literal";
+                    no_end_quote('\'', "character")
                 } else {
                     let text = &self.res.text[self.offset + 1..][..len - 1];
-                    let i = text.rfind('\'').unwrap();
-                    let text = &text[..i];
-                    if let Err(e) = rustc_lexer::unescape::unescape_char(text) {
-                        err = error_to_diagnostic_message(e, Mode::Char);
-                    }
-                }
-                CHAR
-            }
-            rustc_lexer::LiteralKind::Byte { terminated } => {
+                    let text = &text[..text.rfind('\'').unwrap()];
+                    unescape_char(text).map_or_else(|_| "", |e| err_to_msg(e, Mode::Char))
+                },
+            ),
+            rustc_lexer::LiteralKind::Byte { terminated } => (
+                BYTE,
                 if !terminated {
-                    err = "Missing trailing `'` symbol to terminate the byte literal";
+                    no_end_quote('\'', "byte")
                 } else {
                     let text = &self.res.text[self.offset + 2..][..len - 2];
-                    let i = text.rfind('\'').unwrap();
-                    let text = &text[..i];
-                    if let Err(e) = rustc_lexer::unescape::unescape_byte(text) {
-                        err = error_to_diagnostic_message(e, Mode::Byte);
-                    }
-                }
-
-                BYTE
-            }
-            rustc_lexer::LiteralKind::Str { terminated } => {
+                    let text = &text[..text.rfind('\'').unwrap()];
+                    unescape_byte(text).map_or_else(|_| "", |e| err_to_msg(e, Mode::Byte))
+                },
+            ),
+            rustc_lexer::LiteralKind::Str { terminated } => (
+                STRING,
                 if !terminated {
-                    err = "Missing trailing `\"` symbol to terminate the string literal";
+                    no_end_quote('"', "string")
                 } else {
                     let text = &self.res.text[self.offset + 1..][..len - 1];
-                    let i = text.rfind('"').unwrap();
-                    let text = &text[..i];
-                    err = unescape_string_error_message(text, Mode::Str);
-                }
-                STRING
-            }
-            rustc_lexer::LiteralKind::ByteStr { terminated } => {
+                    let text = &text[..text.rfind('"').unwrap()];
+                    unescape_str(text, &mut |_, res| {
+                        res.map_or_else(|_| "", |e| err_to_msg(e, Mode::Str))
+                    })
+                },
+            ),
+            rustc_lexer::LiteralKind::ByteStr { terminated } => (
+                BYTE_STRING,
                 if !terminated {
-                    err = "Missing trailing `\"` symbol to terminate the byte string literal";
+                    no_end_quote('"', "byte string")
                 } else {
                     let text = &self.res.text[self.offset + 2..][..len - 2];
-                    let i = text.rfind('"').unwrap();
-                    let text = &text[..i];
-                    err = unescape_string_error_message(text, Mode::ByteStr);
-                }
-                BYTE_STRING
-            }
-            rustc_lexer::LiteralKind::CStr { terminated } => {
+                    let text = &text[..text.rfind('"').unwrap()];
+                    unescape_byte_str(text, &mut |_, res| {
+                        res.map_or_else(|_| "", |e| err_to_msg(e, Mode::ByteStr))
+                    })
+                },
+            ),
+            rustc_lexer::LiteralKind::CStr { terminated } => (
+                C_STRING,
                 if !terminated {
-                    err = "Missing trailing `\"` symbol to terminate the string literal";
+                    no_end_quote('"', "C string")
                 } else {
                     let text = &self.res.text[self.offset + 2..][..len - 2];
-                    let i = text.rfind('"').unwrap();
-                    let text = &text[..i];
-                    err = unescape_string_error_message(text, Mode::CStr);
-                }
-                C_STRING
-            }
+                    let text = &text[..text.rfind('"').unwrap()];
+                    unescape_cstr(text, &mut |_, res| {
+                        res.map_or_else(|_| "", |e| err_to_msg(e, Mode::CStr))
+                    })
+                },
+            ),
             rustc_lexer::LiteralKind::RawStr { n_hashes } => {
-                if n_hashes.is_none() {
-                    err = "Invalid raw string literal";
-                }
-                STRING
+                (STRING, if n_hashes.is_none() { invalid_raw_msg } else { "" })
             }
             rustc_lexer::LiteralKind::RawByteStr { n_hashes } => {
-                if n_hashes.is_none() {
-                    err = "Invalid raw string literal";
-                }
-                BYTE_STRING
+                (BYTE_STRING, if n_hashes.is_none() { invalid_raw_msg } else { "" })
             }
             rustc_lexer::LiteralKind::RawCStr { n_hashes } => {
-                if n_hashes.is_none() {
-                    err = "Invalid raw string literal";
-                }
-                C_STRING
+                (C_STRING, if n_hashes.is_none() { invalid_raw_msg } else { "" })
             }
         };
 
-        let err = if err.is_empty() { None } else { Some(err) };
         self.push(syntax_kind, len, err);
     }
 }
 
-fn error_to_diagnostic_message(error: EscapeError, mode: Mode) -> &'static str {
+fn err_to_msg(error: EscapeError, mode: Mode) -> &'static str {
     match error {
         EscapeError::ZeroChars => "empty character literal",
         EscapeError::MoreThanOneChar => "character literal may only contain one codepoint",
@@ -396,28 +384,4 @@ fn error_to_diagnostic_message(error: EscapeError, mode: Mode) -> &'static str {
         EscapeError::UnskippedWhitespaceWarning => "",
         EscapeError::MultipleSkippedLinesWarning => "",
     }
-}
-
-fn unescape_string_error_message(text: &str, mode: Mode) -> &'static str {
-    let mut error_message = "";
-    match mode {
-        Mode::CStr => {
-            rustc_lexer::unescape::unescape_mixed(text, mode, &mut |_, res| {
-                if let Err(e) = res {
-                    error_message = error_to_diagnostic_message(e, mode);
-                }
-            });
-        }
-        Mode::ByteStr | Mode::Str => {
-            rustc_lexer::unescape::unescape_unicode(text, mode, &mut |_, res| {
-                if let Err(e) = res {
-                    error_message = error_to_diagnostic_message(e, mode);
-                }
-            });
-        }
-        _ => {
-            // Other Modes are not supported yet or do not apply
-        }
-    }
-    error_message
 }
