@@ -5,11 +5,7 @@ use rustc_data_structures::unify::{NoError, UnifyKey, UnifyValue};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 
-use crate::ty::{self, Ty, TyCtxt};
-
-pub trait ToType {
-    fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
-}
+use crate::ty;
 
 #[derive(Copy, Clone, Debug)]
 pub enum RegionVariableValue<'tcx> {
