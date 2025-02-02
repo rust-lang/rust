@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_copy;
-use clippy_utils::{get_parent_expr, path_to_local};
-use rustc_hir::{BindingMode, Expr, ExprField, ExprKind, Node, PatKind, Path, QPath, StructTailExpr, UnOp};
+use clippy_utils::{get_parent_expr, is_mutable, path_to_local};
+use rustc_hir::{Expr, ExprField, ExprKind, Path, QPath, StructTailExpr, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 
@@ -154,16 +154,6 @@ fn same_path_in_all_fields<'tcx>(
         Some(src_path)
     } else {
         None
-    }
-}
-
-fn is_mutable(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if let Some(hir_id) = path_to_local(expr)
-        && let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
-    {
-        matches!(pat.kind, PatKind::Binding(BindingMode::MUT, ..))
-    } else {
-        true
     }
 }
 
