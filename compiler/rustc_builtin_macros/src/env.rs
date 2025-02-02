@@ -51,7 +51,7 @@ pub(crate) fn expand_option_env<'cx>(
 
     let sp = cx.with_def_site_ctxt(sp);
     let value = lookup_env(cx, var);
-    cx.sess.psess.env_depinfo.borrow_mut().insert((var, value.as_ref().ok().copied()));
+    cx.sess.env_depinfo.borrow_mut().insert((var, value.as_ref().ok().copied()));
     let e = match value {
         Err(VarError::NotPresent) => {
             let lt = cx.lifetime(sp, Ident::new(kw::StaticLifetime, sp));
@@ -130,7 +130,7 @@ pub(crate) fn expand_env<'cx>(
 
     let span = cx.with_def_site_ctxt(sp);
     let value = lookup_env(cx, var);
-    cx.sess.psess.env_depinfo.borrow_mut().insert((var, value.as_ref().ok().copied()));
+    cx.sess.env_depinfo.borrow_mut().insert((var, value.as_ref().ok().copied()));
     let e = match value {
         Err(err) => {
             let ExprKind::Lit(token::Lit {

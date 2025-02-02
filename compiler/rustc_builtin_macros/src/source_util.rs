@@ -277,7 +277,6 @@ fn load_binary_file(
     match cx.source_map().load_binary_file(&resolved_path) {
         Ok(data) => {
             cx.sess
-                .psess
                 .file_depinfo
                 .borrow_mut()
                 .insert(Symbol::intern(&resolved_path.to_string_lossy()));

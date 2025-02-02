@@ -66,7 +66,7 @@ fn compile(code: String, output: PathBuf, sysroot: Sysroot, linker: Option<&Path
         file_loader: None,
         lint_caps: Default::default(),
         psess_created: None,
-        hash_untracked_state: None,
+        track_state: None,
         register_lints: None,
         override_queries: None,
         extra_symbols: Vec::new(),

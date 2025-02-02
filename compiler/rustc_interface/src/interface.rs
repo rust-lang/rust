@@ -336,11 +336,14 @@ pub struct Config {
     /// This is a callback from the driver that is called when [`ParseSess`] is created.
     pub psess_created: Option<Box<dyn FnOnce(&mut ParseSess) + Send>>,
 
-    /// This is a callback to hash otherwise untracked state used by the caller, if the
-    /// hash changes between runs the incremental cache will be cleared.
+    /// This is a callback to track otherwise untracked state used by the caller.
     ///
-    /// e.g. used by Clippy to hash its config file
-    pub hash_untracked_state: Option<Box<dyn FnOnce(&Session, &mut StableHasher) + Send>>,
+    /// You can write to `sess.env_depinfo` and `sess.file_depinfo` to track env vars and files.
+    /// To track any other state you can write to the given hasher. If the hash changes between
+    /// runs the incremental cache will be cleared.
+    ///
+    /// The hashing functionality has no known user. FIXME should this be removed?
+    pub track_state: Option<Box<dyn FnOnce(&Session, &mut StableHasher) + Send>>,
 
     /// This is a callback from the driver that is called when we're registering lints;
     /// it is called during lint loading when we have the LintStore in a non-shared state.
@@ -464,9 +467,9 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 psess_created(&mut sess.psess);
             }
 
-            if let Some(hash_untracked_state) = config.hash_untracked_state {
+            if let Some(track_state) = config.track_state {
                 let mut hasher = StableHasher::new();
-                hash_untracked_state(&sess, &mut hasher);
+                track_state(&sess, &mut hasher);
                 sess.opts.untracked_state_hash = hasher.finish()
             }
 
