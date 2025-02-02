@@ -342,6 +342,7 @@ symbols! {
         ToString,
         TokenStream,
         Trait,
+        TrivialClone,
         Try,
         TryCaptureGeneric,
         TryCapturePrintable,

@@ -85,7 +85,7 @@
 //! }
 //! ```
 
-use rustc_ast::{AttrVec, ExprKind, MetaItem, Mutability};
+use rustc_ast::{AttrVec, ExprKind, MetaItem, Mutability, Safety};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -142,6 +142,7 @@ pub(crate) fn expand_deriving_rustc_encodable(
         }],
         associated_types: Vec::new(),
         is_const,
+        safety: Safety::Default,
     };
 
     trait_def.expand(cx, mitem, item, push)
