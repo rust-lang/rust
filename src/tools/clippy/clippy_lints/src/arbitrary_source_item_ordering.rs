@@ -9,7 +9,6 @@ use rustc_hir::{
     Variant, VariantData,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -248,7 +247,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
             ItemKind::Enum(enum_def, _generics) if self.enable_ordering_for_enum => {
                 let mut cur_v: Option<&Variant<'_>> = None;
                 for variant in enum_def.variants {
-                    if in_external_macro(cx.sess(), variant.span) {
+                    if variant.span.in_external_macro(cx.sess().source_map()) {
                         continue;
                     }
 
@@ -263,7 +262,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
             ItemKind::Struct(VariantData::Struct { fields, .. }, _generics) if self.enable_ordering_for_struct => {
                 let mut cur_f: Option<&FieldDef<'_>> = None;
                 for field in *fields {
-                    if in_external_macro(cx.sess(), field.span) {
+                    if field.span.in_external_macro(cx.sess().source_map()) {
                         continue;
                     }
 
@@ -281,7 +280,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                 let mut cur_t: Option<&TraitItemRef> = None;
 
                 for item in *item_ref {
-                    if in_external_macro(cx.sess(), item.span) {
+                    if item.span.in_external_macro(cx.sess().source_map()) {
                         continue;
                     }
 
@@ -304,7 +303,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                 let mut cur_t: Option<&ImplItemRef> = None;
 
                 for item in trait_impl.items {
-                    if in_external_macro(cx.sess(), item.span) {
+                    if item.span.in_external_macro(cx.sess().source_map()) {
                         continue;
                     }
 
@@ -348,7 +347,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
         // as no sorting by source map/line of code has to be applied.
         //
         for item in items {
-            if in_external_macro(cx.sess(), item.span) {
+            if item.span.in_external_macro(cx.sess().source_map()) {
                 continue;
             }
 

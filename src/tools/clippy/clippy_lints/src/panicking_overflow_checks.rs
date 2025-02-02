@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::eq_expr_value;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 
@@ -72,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for PanickingOverflowChecks {
             && matches!(ty.kind(), ty::Uint(_))
             && ty == typeck.expr_ty(op_rhs)
             && ty == typeck.expr_ty(other)
-            && !in_external_macro(cx.tcx.sess, expr.span)
+            && !expr.span.in_external_macro(cx.tcx.sess.source_map())
             && (eq_expr_value(cx, op_lhs, other) || (commutative && eq_expr_value(cx, op_rhs, other)))
         {
             span_lint(

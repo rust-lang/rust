@@ -3,7 +3,6 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_lint_allowed;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::Ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::Symbol;
@@ -119,7 +118,7 @@ impl LateLintPass<'_> for EndianBytes {
             },
             _ => return,
         };
-        if !in_external_macro(cx.sess(), expr.span)
+        if !expr.span.in_external_macro(cx.sess().source_map())
             && let ty = cx.typeck_results().expr_ty(ty_expr)
             && ty.is_primitive_ty()
         {

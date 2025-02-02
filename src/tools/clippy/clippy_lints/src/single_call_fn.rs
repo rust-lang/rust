@@ -6,7 +6,6 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{Expr, ExprKind, HirId, Node};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
@@ -88,7 +87,7 @@ impl SingleCallFn {
         fn_span: Span,
     ) -> bool {
         (self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(fn_def_id))
-            || in_external_macro(cx.sess(), fn_span)
+            || fn_span.in_external_macro(cx.sess().source_map())
             || cx
                 .tcx
                 .hir()
