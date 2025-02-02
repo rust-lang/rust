@@ -1211,22 +1211,6 @@ where
     throw_ub_format!("incorrect number of arguments: got {}, expected {}", args.len(), N)
 }
 
-/// Check that the number of args is at least the minimum what we expect.
-/// FIXME: Remove this function, use varargs and `check_min_vararg_count` instead.
-pub fn check_min_arg_count<'a, 'tcx, const N: usize>(
-    name: &'a str,
-    args: &'a [OpTy<'tcx>],
-) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
-    if let Some((ops, _)) = args.split_first_chunk() {
-        return interp_ok(ops);
-    }
-    throw_ub_format!(
-        "incorrect number of arguments for `{name}`: got {}, expected at least {}",
-        args.len(),
-        N
-    )
-}
-
 /// Check that the number of varargs is at least the minimum what we expect.
 /// Fixed args should not be included.
 /// Use `check_vararg_fixed_arg_count` to extract the varargs slice from full function arguments.
