@@ -5,10 +5,14 @@ use crate::{
     navigation_target::{self, ToNav},
     FilePosition, NavigationTarget, RangeInfo, TryToNav, UpmappingResult,
 };
-use hir::{AsAssocItem, AssocItem, FileRange, InFile, MacroFileIdExt, ModuleDef, Semantics};
+use hir::{
+    sym, AsAssocItem, AssocItem, CallableKind, FileRange, HasCrate, InFile, MacroFileIdExt,
+    ModuleDef, Semantics,
+};
 use ide_db::{
     base_db::{AnchoredPath, FileLoader, SourceDatabase},
     defs::{Definition, IdentClass},
+    famous_defs::FamousDefs,
     helpers::pick_best_token,
     RootDatabase, SymbolKind,
 };
@@ -129,15 +133,74 @@ pub(crate) fn goto_definition(
     Some(RangeInfo::new(original_token.text_range(), navs))
 }
 
-// If the token is into(), try_into(), parse(), search the definition of From, TryFrom, FromStr.
+// If the token is into(), try_into(), search the definition of From, TryFrom.
 fn find_definition_for_known_blanket_dual_impls(
     sema: &Semantics<'_, RootDatabase>,
     original_token: &SyntaxToken,
 ) -> Option<Vec<NavigationTarget>> {
     let method_call = ast::MethodCallExpr::cast(original_token.parent()?.parent()?)?;
-    let target_method = sema.resolve_known_blanket_dual_impls(&method_call)?;
+    let callable = sema.resolve_method_call_as_callable(&method_call)?;
+    let CallableKind::Function(f) = callable.kind() else { return None };
+    let assoc = f.as_assoc_item(sema.db)?;
 
-    let def = Definition::from(target_method);
+    let return_type = callable.return_type();
+    let fd = FamousDefs(sema, return_type.krate(sema.db));
+
+    let t = match assoc.container(sema.db) {
+        hir::AssocItemContainer::Trait(t) => t,
+        hir::AssocItemContainer::Impl(impl_)
+            if impl_.self_ty(sema.db).is_str() && f.name(sema.db) == sym::parse =>
+        {
+            let t = fd.core_convert_FromStr()?;
+            let t_f = t.function(sema.db, &sym::from_str)?;
+            return sema
+                .resolve_trait_impl_method(
+                    return_type.clone(),
+                    t,
+                    t_f,
+                    [return_type.type_arguments().next()?],
+                )
+                .map(|f| def_to_nav(sema.db, f.into()));
+        }
+        hir::AssocItemContainer::Impl(_) => return None,
+    };
+
+    let fn_name = f.name(sema.db);
+    let f = if fn_name == sym::into && fd.core_convert_Into() == Some(t) {
+        let dual = fd.core_convert_From()?;
+        let dual_f = dual.function(sema.db, &sym::from)?;
+        sema.resolve_trait_impl_method(
+            return_type.clone(),
+            dual,
+            dual_f,
+            [return_type, callable.receiver_param(sema.db)?.1],
+        )?
+    } else if fn_name == sym::try_into && fd.core_convert_TryInto() == Some(t) {
+        let dual = fd.core_convert_TryFrom()?;
+        let dual_f = dual.function(sema.db, &sym::try_from)?;
+        sema.resolve_trait_impl_method(
+            return_type.clone(),
+            dual,
+            dual_f,
+            // Extract the `T` from `Result<T, ..>`
+            [return_type.type_arguments().next()?, callable.receiver_param(sema.db)?.1],
+        )?
+    } else if fn_name == sym::to_string && fd.alloc_string_ToString() == Some(t) {
+        let dual = fd.core_fmt_Display()?;
+        let dual_f = dual.function(sema.db, &sym::fmt)?;
+        sema.resolve_trait_impl_method(
+            return_type.clone(),
+            dual,
+            dual_f,
+            [callable.receiver_param(sema.db)?.1.strip_reference()],
+        )?
+    } else {
+        return None;
+    };
+    // Assert that we got a trait impl function, if we are back in a trait definition we didn't
+    // succeed
+    let _t = f.as_assoc_item(sema.db)?.implemented_trait(sema.db)?;
+    let def = Definition::from(f);
     Some(def_to_nav(sema.db, def))
 }
 
@@ -3168,18 +3231,45 @@ fn f() {
             r#"
 //- minicore: from, str
 struct A;
-
 impl FromStr for A {
     type Error = String;
-
     fn from_str(value: &str) -> Result<Self, Self::Error> {
      //^^^^^^^^
         Ok(A)
     }
 }
-
 fn f() {
     let a: Result<A, _> = "aaaaaa".parse$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn to_string_call_to_display_definition() {
+        check(
+            r#"
+//- minicore:fmt
+//- /alloc.rs crate:alloc
+pub mod string {
+    pub struct String;
+    pub trait ToString {
+        fn to_string(&self) -> String;
+    }
+
+    impl<T: core::fmt::Display> ToString for T {
+        fn to_string(&self) -> String { String }
+    }
+}
+//- /lib.rs crate:lib deps:alloc
+use alloc::string::ToString;
+struct A;
+impl core::fmt::Display for A {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {}
+    // ^^^
+}
+fn f() {
+    A.to_string$0();
 }
         "#,
         );

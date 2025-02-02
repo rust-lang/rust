@@ -4,7 +4,7 @@ use core::iter::FusedIterator;
 
 /// Core of an iterator that merges the output of two strictly ascending iterators,
 /// for instance a union or a symmetric difference.
-pub struct MergeIterInner<I: Iterator> {
+pub(super) struct MergeIterInner<I: Iterator> {
     a: I,
     b: I,
     peeked: Option<Peeked<I>>,
@@ -40,7 +40,7 @@ where
 
 impl<I: Iterator> MergeIterInner<I> {
     /// Creates a new core for an iterator merging a pair of sources.
-    pub fn new(a: I, b: I) -> Self {
+    pub(super) fn new(a: I, b: I) -> Self {
         MergeIterInner { a, b, peeked: None }
     }
 
@@ -51,7 +51,7 @@ impl<I: Iterator> MergeIterInner<I> {
     /// the sources are not strictly ascending). If neither returned option
     /// contains a value, iteration has finished and subsequent calls will
     /// return the same empty pair.
-    pub fn nexts<Cmp: Fn(&I::Item, &I::Item) -> Ordering>(
+    pub(super) fn nexts<Cmp: Fn(&I::Item, &I::Item) -> Ordering>(
         &mut self,
         cmp: Cmp,
     ) -> (Option<I::Item>, Option<I::Item>)
@@ -85,7 +85,7 @@ impl<I: Iterator> MergeIterInner<I> {
     }
 
     /// Returns a pair of upper bounds for the `size_hint` of the final iterator.
-    pub fn lens(&self) -> (usize, usize)
+    pub(super) fn lens(&self) -> (usize, usize)
     where
         I: ExactSizeIterator,
     {

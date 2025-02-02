@@ -60,7 +60,7 @@ pub(crate) fn complete_postfix(
         None => return,
     };
 
-    let cfg = ctx.config.import_path_config();
+    let cfg = ctx.config.import_path_config(ctx.is_nightly);
 
     if let Some(drop_trait) = ctx.famous_defs().core_ops_Drop() {
         if receiver_ty.impls_trait(ctx.db, drop_trait, &[]) {

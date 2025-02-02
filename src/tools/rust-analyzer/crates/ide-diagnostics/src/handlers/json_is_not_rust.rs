@@ -147,6 +147,7 @@ pub(crate) fn json_in_items(
                             prefer_no_std: config.prefer_no_std,
                             prefer_prelude: config.prefer_prelude,
                             prefer_absolute: config.prefer_absolute,
+                            allow_unstable: true,
                         };
 
                         if !scope_has("Serialize") {

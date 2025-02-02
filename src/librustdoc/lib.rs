@@ -814,7 +814,12 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
         }
     };
 
-    match (options.should_test, config::markdown_input(&input)) {
+    let output_format = options.output_format;
+
+    match (
+        options.should_test || output_format == config::OutputFormat::Doctest,
+        config::markdown_input(&input),
+    ) {
         (true, Some(_)) => return wrap_return(dcx, doctest::test_markdown(&input, options)),
         (true, None) => return doctest::run(dcx, input, options),
         (false, Some(md_input)) => {
@@ -849,7 +854,6 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
     // plug/cleaning passes.
     let crate_version = options.crate_version.clone();
 
-    let output_format = options.output_format;
     let scrape_examples_options = options.scrape_examples_options.clone();
     let bin_crate = options.bin_crate;
 
@@ -899,6 +903,8 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 config::OutputFormat::Json => sess.time("render_json", || {
                     run_renderer::<json::JsonRenderer<'_>>(krate, render_opts, cache, tcx)
                 }),
+                // Already handled above with doctest runners.
+                config::OutputFormat::Doctest => unreachable!(),
             }
         })
     })

@@ -9,7 +9,7 @@ LL | type T0 = const fn();
 help: remove the `const` qualifier
    |
 LL - type T0 = const fn();
-LL + type T0 =  fn();
+LL + type T0 = fn();
    |
 
 error: an `fn` pointer type cannot be `const`
@@ -23,7 +23,7 @@ LL | type T1 = const extern "C" fn();
 help: remove the `const` qualifier
    |
 LL - type T1 = const extern "C" fn();
-LL + type T1 =  extern "C" fn();
+LL + type T1 = extern "C" fn();
    |
 
 error: an `fn` pointer type cannot be `const`
@@ -37,7 +37,7 @@ LL | type T2 = const unsafe extern "C" fn();
 help: remove the `const` qualifier
    |
 LL - type T2 = const unsafe extern "C" fn();
-LL + type T2 =  unsafe extern "C" fn();
+LL + type T2 = unsafe extern "C" fn();
    |
 
 error: an `fn` pointer type cannot be `async`
@@ -51,7 +51,7 @@ LL | type T3 = async fn();
 help: remove the `async` qualifier
    |
 LL - type T3 = async fn();
-LL + type T3 =  fn();
+LL + type T3 = fn();
    |
 
 error: an `fn` pointer type cannot be `async`
@@ -65,7 +65,7 @@ LL | type T4 = async extern "C" fn();
 help: remove the `async` qualifier
    |
 LL - type T4 = async extern "C" fn();
-LL + type T4 =  extern "C" fn();
+LL + type T4 = extern "C" fn();
    |
 
 error: an `fn` pointer type cannot be `async`
@@ -79,7 +79,7 @@ LL | type T5 = async unsafe extern "C" fn();
 help: remove the `async` qualifier
    |
 LL - type T5 = async unsafe extern "C" fn();
-LL + type T5 =  unsafe extern "C" fn();
+LL + type T5 = unsafe extern "C" fn();
    |
 
 error: an `fn` pointer type cannot be `const`
@@ -93,7 +93,7 @@ LL | type T6 = const async unsafe extern "C" fn();
 help: remove the `const` qualifier
    |
 LL - type T6 = const async unsafe extern "C" fn();
-LL + type T6 =  async unsafe extern "C" fn();
+LL + type T6 = async unsafe extern "C" fn();
    |
 
 error: an `fn` pointer type cannot be `async`
@@ -107,7 +107,7 @@ LL | type T6 = const async unsafe extern "C" fn();
 help: remove the `async` qualifier
    |
 LL - type T6 = const async unsafe extern "C" fn();
-LL + type T6 = const  unsafe extern "C" fn();
+LL + type T6 = const unsafe extern "C" fn();
    |
 
 error: an `fn` pointer type cannot be `const`
@@ -121,7 +121,7 @@ LL | type FT0 = for<'a> const fn();
 help: remove the `const` qualifier
    |
 LL - type FT0 = for<'a> const fn();
-LL + type FT0 = for<'a>  fn();
+LL + type FT0 = for<'a> fn();
    |
 
 error: an `fn` pointer type cannot be `const`
@@ -135,7 +135,7 @@ LL | type FT1 = for<'a> const extern "C" fn();
 help: remove the `const` qualifier
    |
 LL - type FT1 = for<'a> const extern "C" fn();
-LL + type FT1 = for<'a>  extern "C" fn();
+LL + type FT1 = for<'a> extern "C" fn();
    |
 
 error: an `fn` pointer type cannot be `const`
@@ -149,7 +149,7 @@ LL | type FT2 = for<'a> const unsafe extern "C" fn();
 help: remove the `const` qualifier
    |
 LL - type FT2 = for<'a> const unsafe extern "C" fn();
-LL + type FT2 = for<'a>  unsafe extern "C" fn();
+LL + type FT2 = for<'a> unsafe extern "C" fn();
    |
 
 error: an `fn` pointer type cannot be `async`
@@ -163,7 +163,7 @@ LL | type FT3 = for<'a> async fn();
 help: remove the `async` qualifier
    |
 LL - type FT3 = for<'a> async fn();
-LL + type FT3 = for<'a>  fn();
+LL + type FT3 = for<'a> fn();
    |
 
 error: an `fn` pointer type cannot be `async`
@@ -177,7 +177,7 @@ LL | type FT4 = for<'a> async extern "C" fn();
 help: remove the `async` qualifier
    |
 LL - type FT4 = for<'a> async extern "C" fn();
-LL + type FT4 = for<'a>  extern "C" fn();
+LL + type FT4 = for<'a> extern "C" fn();
    |
 
 error: an `fn` pointer type cannot be `async`
@@ -191,7 +191,7 @@ LL | type FT5 = for<'a> async unsafe extern "C" fn();
 help: remove the `async` qualifier
    |
 LL - type FT5 = for<'a> async unsafe extern "C" fn();
-LL + type FT5 = for<'a>  unsafe extern "C" fn();
+LL + type FT5 = for<'a> unsafe extern "C" fn();
    |
 
 error: an `fn` pointer type cannot be `const`
@@ -205,7 +205,7 @@ LL | type FT6 = for<'a> const async unsafe extern "C" fn();
 help: remove the `const` qualifier
    |
 LL - type FT6 = for<'a> const async unsafe extern "C" fn();
-LL + type FT6 = for<'a>  async unsafe extern "C" fn();
+LL + type FT6 = for<'a> async unsafe extern "C" fn();
    |
 
 error: an `fn` pointer type cannot be `async`
@@ -219,7 +219,7 @@ LL | type FT6 = for<'a> const async unsafe extern "C" fn();
 help: remove the `async` qualifier
    |
 LL - type FT6 = for<'a> const async unsafe extern "C" fn();
-LL + type FT6 = for<'a> const  unsafe extern "C" fn();
+LL + type FT6 = for<'a> const unsafe extern "C" fn();
    |
 
 error[E0308]: mismatched types

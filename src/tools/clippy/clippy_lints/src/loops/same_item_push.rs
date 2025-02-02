@@ -1,8 +1,9 @@
 use super::SAME_ITEM_PUSH;
-use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::path_to_local;
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
+use clippy_utils::{msrvs, path_to_local, std_or_core};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -19,19 +20,30 @@ pub(super) fn check<'tcx>(
     _: &'tcx Expr<'_>,
     body: &'tcx Expr<'_>,
     _: &'tcx Expr<'_>,
+    msrv: &Msrv,
 ) {
-    fn emit_lint(cx: &LateContext<'_>, vec: &Expr<'_>, pushed_item: &Expr<'_>, ctxt: SyntaxContext) {
+    fn emit_lint(cx: &LateContext<'_>, vec: &Expr<'_>, pushed_item: &Expr<'_>, ctxt: SyntaxContext, msrv: &Msrv) {
         let mut app = Applicability::Unspecified;
         let vec_str = snippet_with_context(cx, vec.span, ctxt, "", &mut app).0;
         let item_str = snippet_with_context(cx, pushed_item.span, ctxt, "", &mut app).0;
 
-        span_lint_and_help(
+        let secondary_help = if msrv.meets(msrvs::REPEAT_N)
+            && let Some(std_or_core) = std_or_core(cx)
+        {
+            format!("or `{vec_str}.extend({std_or_core}::iter::repeat_n({item_str}, SIZE))`")
+        } else {
+            format!("or `{vec_str}.resize(NEW_SIZE, {item_str})`")
+        };
+
+        span_lint_and_then(
             cx,
             SAME_ITEM_PUSH,
             vec.span,
-            "it looks like the same item is being pushed into this Vec",
-            None,
-            format!("consider using vec![{item_str};SIZE] or {vec_str}.resize(NEW_SIZE, {item_str})"),
+            "it looks like the same item is being pushed into this `Vec`",
+            |diag| {
+                diag.help(format!("consider using `vec![{item_str};SIZE]`"))
+                    .help(secondary_help);
+            },
         );
     }
 
@@ -67,11 +79,11 @@ pub(super) fn check<'tcx>(
                         {
                             match init.kind {
                                 // immutable bindings that are initialized with literal
-                                ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item, ctxt),
+                                ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item, ctxt, msrv),
                                 // immutable bindings that are initialized with constant
                                 ExprKind::Path(ref path) => {
                                     if let Res::Def(DefKind::Const, ..) = cx.qpath_res(path, init.hir_id) {
-                                        emit_lint(cx, vec, pushed_item, ctxt);
+                                        emit_lint(cx, vec, pushed_item, ctxt, msrv);
                                     }
                                 },
                                 _ => {},
@@ -79,11 +91,11 @@ pub(super) fn check<'tcx>(
                         }
                     },
                     // constant
-                    Res::Def(DefKind::Const, ..) => emit_lint(cx, vec, pushed_item, ctxt),
+                    Res::Def(DefKind::Const, ..) => emit_lint(cx, vec, pushed_item, ctxt, msrv),
                     _ => {},
                 }
             },
-            ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item, ctxt),
+            ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item, ctxt, msrv),
             _ => {},
         }
     }

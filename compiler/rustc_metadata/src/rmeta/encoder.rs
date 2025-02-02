@@ -9,6 +9,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::sync::{Lrc, join, par_for_each_in};
 use rustc_data_structures::temp_dir::MaybeTempDir;
+use rustc_data_structures::thousands::format_with_underscores;
 use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
@@ -22,7 +23,6 @@ use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::{AssocItemContainer, SymbolName};
-use rustc_middle::util::common::to_readable_str;
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::{CrateType, OptLevel};
@@ -782,7 +782,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     "{} {:<23}{:>10} ({:4.1}%)",
                     prefix,
                     label,
-                    to_readable_str(size),
+                    format_with_underscores(size),
                     perc(size)
                 );
             }
@@ -791,7 +791,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 "{} {:<23}{:>10} (of which {:.1}% are zero bytes)",
                 prefix,
                 "Total",
-                to_readable_str(total_bytes),
+                format_with_underscores(total_bytes),
                 perc(zero_bytes)
             );
             eprintln!("{prefix}");
@@ -1554,7 +1554,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::OpaqueTy = def_kind {
                 self.encode_explicit_item_bounds(def_id);
-                self.encode_explicit_item_super_predicates(def_id);
+                self.encode_explicit_item_self_bounds(def_id);
                 record!(self.tables.opaque_ty_origin[def_id] <- self.tcx.opaque_ty_origin(def_id));
                 self.encode_precise_capturing_args(def_id);
                 if tcx.is_conditionally_const(def_id) {
@@ -1667,10 +1667,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         record_defaulted_array!(self.tables.explicit_item_bounds[def_id] <- bounds);
     }
 
-    fn encode_explicit_item_super_predicates(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_explicit_item_super_predicates({:?})", def_id);
-        let bounds = self.tcx.explicit_item_super_predicates(def_id).skip_binder();
-        record_defaulted_array!(self.tables.explicit_item_super_predicates[def_id] <- bounds);
+    fn encode_explicit_item_self_bounds(&mut self, def_id: DefId) {
+        debug!("EncodeContext::encode_explicit_item_self_bounds({:?})", def_id);
+        let bounds = self.tcx.explicit_item_self_bounds(def_id).skip_binder();
+        record_defaulted_array!(self.tables.explicit_item_self_bounds[def_id] <- bounds);
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1685,7 +1685,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             AssocItemContainer::Trait => {
                 if let ty::AssocKind::Type = item.kind {
                     self.encode_explicit_item_bounds(def_id);
-                    self.encode_explicit_item_super_predicates(def_id);
+                    self.encode_explicit_item_self_bounds(def_id);
                     if tcx.is_conditionally_const(def_id) {
                         record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
                             <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());

@@ -142,10 +142,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type ParamConst = ty::ParamConst;
     type BoundConst = ty::BoundVar;
-    type ValueConst = ty::ValTree<'tcx>;
+    type ValueConst = ty::Value<'tcx>;
     type ExprConst = ty::Expr<'tcx>;
-    type Region = Region<'tcx>;
+    type ValTree = ty::ValTree<'tcx>;
 
+    type Region = Region<'tcx>;
     type EarlyParamRegion = ty::EarlyParamRegion;
     type LateParamRegion = ty::LateParamRegion;
     type BoundRegion = ty::BoundRegion;
@@ -343,6 +344,20 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
         self.item_bounds(def_id).map_bound(IntoIterator::into_iter)
+    }
+
+    fn item_self_bounds(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
+        self.item_self_bounds(def_id).map_bound(IntoIterator::into_iter)
+    }
+
+    fn item_non_self_bounds(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
+        self.item_non_self_bounds(def_id).map_bound(IntoIterator::into_iter)
     }
 
     fn predicates_of(
@@ -1104,15 +1119,18 @@ impl<'tcx> CommonConsts<'tcx> {
         };
 
         CommonConsts {
-            unit: mk_const(ty::ConstKind::Value(types.unit, ty::ValTree::zst())),
-            true_: mk_const(ty::ConstKind::Value(
-                types.bool,
-                ty::ValTree::Leaf(ty::ScalarInt::TRUE),
-            )),
-            false_: mk_const(ty::ConstKind::Value(
-                types.bool,
-                ty::ValTree::Leaf(ty::ScalarInt::FALSE),
-            )),
+            unit: mk_const(ty::ConstKind::Value(ty::Value {
+                ty: types.unit,
+                valtree: ty::ValTree::zst(),
+            })),
+            true_: mk_const(ty::ConstKind::Value(ty::Value {
+                ty: types.bool,
+                valtree: ty::ValTree::Leaf(ty::ScalarInt::TRUE),
+            })),
+            false_: mk_const(ty::ConstKind::Value(ty::Value {
+                ty: types.bool,
+                valtree: ty::ValTree::Leaf(ty::ScalarInt::FALSE),
+            })),
         }
     }
 }
@@ -2577,7 +2595,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = ty.kind() else { return false };
         let future_trait = self.require_lang_item(LangItem::Future, None);
 
-        self.explicit_item_super_predicates(def_id).skip_binder().iter().any(|&(predicate, _)| {
+        self.explicit_item_self_bounds(def_id).skip_binder().iter().any(|&(predicate, _)| {
             let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder() else {
                 return false;
             };

@@ -1522,6 +1522,14 @@ impl<'tcx> Liveness<'_, 'tcx> {
     }
 
     fn warn_about_unused_args(&self, body: &hir::Body<'_>, entry_ln: LiveNode) {
+        if let Some(intrinsic) =
+            self.ir.tcx.intrinsic(self.ir.tcx.hir().body_owner_def_id(body.id()))
+        {
+            if intrinsic.must_be_overridden {
+                return;
+            }
+        }
+
         for p in body.params {
             self.check_unused_vars_in_pat(
                 p.pat,

@@ -55,7 +55,7 @@ fn expr_type_certainty(cx: &LateContext<'_>, expr: &Expr<'_>) -> Certainty {
                 && let Some(self_ty_def_id) = adt_def_id(self_ty(cx, method_def_id))
             {
                 receiver_type_certainty = receiver_type_certainty.with_def_id(self_ty_def_id);
-            };
+            }
             let lhs = path_segment_certainty(cx, receiver_type_certainty, method, false);
             let rhs = if type_is_inferable_from_arguments(cx, expr) {
                 meet(

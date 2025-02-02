@@ -214,11 +214,12 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
                     );
                 },
             );
-        };
+        }
         if let StmtKind::Semi(expr) = stmt.kind
-            && let ExprKind::Binary(ref binop, a, b) = expr.kind
-            && (binop.node == BinOpKind::And || binop.node == BinOpKind::Or)
-            && let Some(sugg) = Sugg::hir_opt(cx, a)
+            && let ExprKind::Binary(binop, a, b) = &expr.kind
+            && matches!(binop.node, BinOpKind::And | BinOpKind::Or)
+            && !stmt.span.from_expansion()
+            && expr.span.eq_ctxt(stmt.span)
         {
             span_lint_hir_and_then(
                 cx,
@@ -227,16 +228,14 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
                 stmt.span,
                 "boolean short circuit operator in statement may be clearer using an explicit test",
                 |diag| {
-                    let sugg = if binop.node == BinOpKind::Or { !sugg } else { sugg };
-                    diag.span_suggestion(
-                        stmt.span,
-                        "replace it with",
-                        format!("if {sugg} {{ {}; }}", &snippet(cx, b.span, ".."),),
-                        Applicability::MachineApplicable, // snippet
-                    );
+                    let mut app = Applicability::MachineApplicable;
+                    let test = Sugg::hir_with_context(cx, a, expr.span.ctxt(), "_", &mut app);
+                    let test = if binop.node == BinOpKind::Or { !test } else { test };
+                    let then = Sugg::hir_with_context(cx, b, expr.span.ctxt(), "_", &mut app);
+                    diag.span_suggestion(stmt.span, "replace it with", format!("if {test} {{ {then}; }}"), app);
                 },
             );
-        };
+        }
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

@@ -49,16 +49,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Size::from_bytes(new_size),
             align,
             MiriMemoryKind::Mmap.into(),
+            AllocInit::Zero
         )?;
-        if let Some(increase) = new_size.checked_sub(old_size) {
-            // We just allocated this, the access is definitely in-bounds and fits into our address space.
-            // mmap guarantees new mappings are zero-init.
-            this.write_bytes_ptr(
-                ptr.wrapping_offset(Size::from_bytes(old_size), this).into(),
-                std::iter::repeat(0u8).take(usize::try_from(increase).unwrap()),
-            )
-            .unwrap();
-        }
 
         interp_ok(Scalar::from_pointer(ptr, this))
     }

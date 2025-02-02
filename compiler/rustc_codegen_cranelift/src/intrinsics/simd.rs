@@ -129,12 +129,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 return;
             }
 
-            let idx = generic_args[2]
-                .expect_const()
-                .try_to_valtree()
-                .expect("expected monomorphic const in codegen")
-                .0
-                .unwrap_branch();
+            let idx = generic_args[2].expect_const().to_value().valtree.unwrap_branch();
 
             assert_eq!(x.layout(), y.layout());
             let layout = x.layout();

@@ -5,7 +5,7 @@ use ide_db::imports::{
     insert_use::ImportScope,
 };
 use itertools::Itertools;
-use syntax::{ast, AstNode, SyntaxNode, ToSmolStr};
+use syntax::{ast, AstNode, SyntaxNode};
 
 use crate::{
     config::AutoImportExclusionType,
@@ -257,7 +257,7 @@ fn import_on_the_fly(
     };
     let user_input_lowercased = potential_import_name.to_lowercase();
 
-    let import_cfg = ctx.config.import_path_config();
+    let import_cfg = ctx.config.import_path_config(ctx.is_nightly);
 
     import_assets
         .search_for_imports(&ctx.sema, import_cfg, ctx.config.insert_use.prefix_kind)
@@ -316,7 +316,7 @@ fn import_on_the_fly_pat_(
         ItemInNs::Values(def) => matches!(def, hir::ModuleDef::Const(_)),
     };
     let user_input_lowercased = potential_import_name.to_lowercase();
-    let cfg = ctx.config.import_path_config();
+    let cfg = ctx.config.import_path_config(ctx.is_nightly);
 
     import_assets
         .search_for_imports(&ctx.sema, cfg, ctx.config.insert_use.prefix_kind)
@@ -358,7 +358,7 @@ fn import_on_the_fly_method(
 
     let user_input_lowercased = potential_import_name.to_lowercase();
 
-    let cfg = ctx.config.import_path_config();
+    let cfg = ctx.config.import_path_config(ctx.is_nightly);
 
     import_assets
         .search_for_imports(&ctx.sema, cfg, ctx.config.insert_use.prefix_kind)
@@ -444,7 +444,7 @@ fn compute_fuzzy_completion_order_key(
     cov_mark::hit!(certain_fuzzy_order_test);
     let import_name = match proposed_mod_path.segments().last() {
         // FIXME: nasty alloc, this is a hot path!
-        Some(name) => name.unescaped().display_no_db().to_smolstr().to_ascii_lowercase(),
+        Some(name) => name.as_str().to_ascii_lowercase(),
         None => return usize::MAX,
     };
     match import_name.match_indices(user_input_lowercased).next() {

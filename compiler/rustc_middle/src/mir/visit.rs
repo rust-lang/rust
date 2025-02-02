@@ -636,7 +636,7 @@ macro_rules! make_mir_visitor {
                     OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) => {
                         self.visit_operand(op, location);
                     }
-                    ResumedAfterReturn(_) | ResumedAfterPanic(_) => {
+                    ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference => {
                         // Nothing to visit
                     }
                     MisalignedPointerDereference { required, found } => {
@@ -685,11 +685,14 @@ macro_rules! make_mir_visitor {
 
                     Rvalue::RawPtr(m, path) => {
                         let ctx = match m {
-                            Mutability::Mut => PlaceContext::MutatingUse(
+                            RawPtrKind::Mut => PlaceContext::MutatingUse(
                                 MutatingUseContext::RawBorrow
                             ),
-                            Mutability::Not => PlaceContext::NonMutatingUse(
+                            RawPtrKind::Const => PlaceContext::NonMutatingUse(
                                 NonMutatingUseContext::RawBorrow
+                            ),
+                            RawPtrKind::FakeForPtrMetadata => PlaceContext::NonMutatingUse(
+                                NonMutatingUseContext::Inspect
                             ),
                         };
                         self.visit_place(path, ctx, location);

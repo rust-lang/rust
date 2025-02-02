@@ -1,0 +1,283 @@
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:18:27
+   |
+LL |     if let Some(&mut Some(&x)) = &Some(&mut Some(0)) {
+   |                           ^^     ------------------- this expression has type `&Option<&mut Option<{integer}>>`
+   |                           |
+   |                           expected integer, found `&_`
+   |
+   = note:   expected type `{integer}`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL |     if let Some(&mut Some(x)) = &Some(&mut Some(0)) {
+   |                           ~
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:31:17
+   |
+LL |     if let Some(&mut Some(&_)) = &Some(&Some(0)) {
+   |                 ^^^^^^^^^^^^^    --------------- this expression has type `&Option<&Option<{integer}>>`
+   |                 |
+   |                 types differ in mutability
+   |
+   = note:      expected reference `&Option<{integer}>`
+           found mutable reference `&mut _`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:36:17
+   |
+LL |     if let Some(&Some(&mut _)) = &Some(&mut Some(0)) {
+   |                 ^^^^^^^^^^^^^    ------------------- this expression has type `&Option<&mut Option<{integer}>>`
+   |                 |
+   |                 types differ in mutability
+   |
+   = note: expected mutable reference `&mut Option<{integer}>`
+                      found reference `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:41:23
+   |
+LL |     if let Some(&Some(&mut _)) = &mut Some(&Some(0)) {
+   |                       ^^^^^^     ------------------- this expression has type `&mut Option<&Option<{integer}>>`
+   |                       |
+   |                       expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:46:17
+   |
+LL |     if let Some(&Some(Some(&mut _))) = &Some(Some(&mut Some(0))) {
+   |                 ^^^^^^^^^^^^^^^^^^^    ------------------------- this expression has type `&Option<Option<&mut Option<{integer}>>>`
+   |                 |
+   |                 expected `Option<&mut Option<{integer}>>`, found `&_`
+   |
+   = note:   expected enum `Option<&mut Option<{integer}>>`
+           found reference `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:51:17
+   |
+LL |     if let Some(&mut Some(x)) = &Some(Some(0)) {
+   |                 ^^^^^^^^^^^^    -------------- this expression has type `&Option<Option<{integer}>>`
+   |                 |
+   |                 expected `Option<{integer}>`, found `&mut _`
+   |
+   = note:           expected enum `Option<{integer}>`
+           found mutable reference `&mut _`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:59:11
+   |
+LL |     let &[&mut x] = &&mut [0];
+   |           ^^^^^^    --------- this expression has type `&&mut [{integer}; 1]`
+   |           |
+   |           expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut x`
+  --> $DIR/pattern-errors.rs:59:11
+   |
+LL |     let &[&mut x] = &&mut [0];
+   |           ^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -     let &[&mut x] = &&mut [0];
+LL +     let &[x] = &&mut [0];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:65:9
+   |
+LL |     let &[&mut x] = &mut &mut [0];
+   |         ^^^^^^^^^   ------------- this expression has type `&mut &mut [{integer}; 1]`
+   |         |
+   |         types differ in mutability
+   |
+   = note: expected mutable reference `&mut &mut [{integer}; 1]`
+                      found reference `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:71:11
+   |
+LL |     let &[&mut ref x] = &&mut [0];
+   |           ^^^^^^^^^^    --------- this expression has type `&&mut [{integer}; 1]`
+   |           |
+   |           expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut x`
+  --> $DIR/pattern-errors.rs:71:11
+   |
+LL |     let &[&mut ref x] = &&mut [0];
+   |           ^^^^^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -     let &[&mut ref x] = &&mut [0];
+LL +     let &[ref x] = &&mut [0];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:77:9
+   |
+LL |     let &[&mut ref x] = &mut &mut [0];
+   |         ^^^^^^^^^^^^^   ------------- this expression has type `&mut &mut [{integer}; 1]`
+   |         |
+   |         types differ in mutability
+   |
+   = note: expected mutable reference `&mut &mut [{integer}; 1]`
+                      found reference `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:83:11
+   |
+LL |     let &[&mut mut x] = &&mut [0];
+   |           ^^^^^^^^^^    --------- this expression has type `&&mut [{integer}; 1]`
+   |           |
+   |           expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut x`
+  --> $DIR/pattern-errors.rs:83:11
+   |
+LL |     let &[&mut mut x] = &&mut [0];
+   |           ^^^^^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -     let &[&mut mut x] = &&mut [0];
+LL +     let &[mut x] = &&mut [0];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:89:9
+   |
+LL |     let &[&mut mut x] = &mut &mut [0];
+   |         ^^^^^^^^^^^^^   ------------- this expression has type `&mut &mut [{integer}; 1]`
+   |         |
+   |         types differ in mutability
+   |
+   = note: expected mutable reference `&mut &mut [{integer}; 1]`
+                      found reference `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:109:10
+   |
+LL |     let [&&mut x] = &[&mut 0];
+   |          ^^^^^^^    --------- this expression has type `&[&mut {integer}; 1]`
+   |          |
+   |          types differ in mutability
+   |
+   = note: expected mutable reference `&mut {integer}`
+                      found reference `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:115:10
+   |
+LL |     let [&&mut x] = &mut [&mut 0];
+   |          ^^^^^^^    ------------- this expression has type `&mut [&mut {integer}; 1]`
+   |          |
+   |          types differ in mutability
+   |
+   = note: expected mutable reference `&mut {integer}`
+                      found reference `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:121:10
+   |
+LL |     let [&&mut ref x] = &[&mut 0];
+   |          ^^^^^^^^^^^    --------- this expression has type `&[&mut {integer}; 1]`
+   |          |
+   |          types differ in mutability
+   |
+   = note: expected mutable reference `&mut {integer}`
+                      found reference `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:127:10
+   |
+LL |     let [&&mut ref x] = &mut [&mut 0];
+   |          ^^^^^^^^^^^    ------------- this expression has type `&mut [&mut {integer}; 1]`
+   |          |
+   |          types differ in mutability
+   |
+   = note: expected mutable reference `&mut {integer}`
+                      found reference `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:133:10
+   |
+LL |     let [&&mut mut x] = &[&mut 0];
+   |          ^^^^^^^^^^^    --------- this expression has type `&[&mut {integer}; 1]`
+   |          |
+   |          types differ in mutability
+   |
+   = note: expected mutable reference `&mut {integer}`
+                      found reference `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:139:10
+   |
+LL |     let [&&mut mut x] = &mut [&mut 0];
+   |          ^^^^^^^^^^^    ------------- this expression has type `&mut [&mut {integer}; 1]`
+   |          |
+   |          types differ in mutability
+   |
+   = note: expected mutable reference `&mut {integer}`
+                      found reference `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:153:15
+   |
+LL |     let [&mut &x] = &[&mut 0];
+   |               ^^    --------- this expression has type `&[&mut {integer}; 1]`
+   |               |
+   |               expected integer, found `&_`
+   |
+   = note:   expected type `{integer}`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -     let [&mut &x] = &[&mut 0];
+LL +     let [&mut x] = &[&mut 0];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:159:15
+   |
+LL |     let [&mut &ref x] = &[&mut 0];
+   |               ^^^^^^    --------- this expression has type `&[&mut {integer}; 1]`
+   |               |
+   |               expected integer, found `&_`
+   |
+   = note:   expected type `{integer}`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -     let [&mut &ref x] = &[&mut 0];
+LL +     let [&mut ref x] = &[&mut 0];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:165:15
+   |
+LL |     let [&mut &(mut x)] = &[&mut 0];
+   |               ^^^^^^^^    --------- this expression has type `&[&mut {integer}; 1]`
+   |               |
+   |               expected integer, found `&_`
+   |
+   = note:   expected type `{integer}`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -     let [&mut &(mut x)] = &[&mut 0];
+LL +     let [&mut mut x)] = &[&mut 0];
+   |
+
+error: aborting due to 21 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

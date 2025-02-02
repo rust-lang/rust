@@ -263,7 +263,7 @@ fn find_definitions(
                         .and_then(|def| {
                             // if the name differs from the definitions name it has to be an alias
                             if def
-                                .name(sema.db).is_some_and(|it| !it.eq_ident(name_ref.text().as_str()))
+                                .name(sema.db).is_some_and(|it| it.as_str() != name_ref.text().trim_start_matches("r#"))
                             {
                                 Err(format_err!("Renaming aliases is currently unsupported"))
                             } else {

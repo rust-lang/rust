@@ -19,8 +19,10 @@ pub struct ScalarPair {
 #[no_mangle]
 pub fn load(x: &ScalarPair) -> ScalarPair {
     // CHECK-LABEL: @load(
-    // CHECK-SAME: sret([32 x i8]) align 16 dereferenceable(32) %_0,
-    // CHECK-SAME: align 16 dereferenceable(32) %x
+    // CHECK-SAME: sret([32 x i8]) align 16
+    // CHECK-SAME: dereferenceable(32) %_0,
+    // CHECK-SAME: align 16
+    // CHECK-SAME: dereferenceable(32) %x
     // CHECK:      [[A:%.*]] = load i32, ptr %x, align 16
     // CHECK-NEXT: [[GEP:%.*]] = getelementptr inbounds i8, ptr %x, i64 16
     // CHECK-NEXT: [[B:%.*]] = load i128, ptr [[GEP]], align 16
@@ -34,7 +36,8 @@ pub fn load(x: &ScalarPair) -> ScalarPair {
 #[no_mangle]
 pub fn store(x: &mut ScalarPair) {
     // CHECK-LABEL: @store(
-    // CHECK-SAME: align 16 dereferenceable(32) %x
+    // CHECK-SAME: align 16
+    // CHECK-SAME: dereferenceable(32) %x
     // CHECK:      store i32 1, ptr %x, align 16
     // CHECK-NEXT: [[GEP:%.*]] = getelementptr inbounds i8, ptr %x, i64 16
     // CHECK-NEXT: store i128 2, ptr [[GEP]], align 16
@@ -55,8 +58,10 @@ pub fn alloca() {
 #[no_mangle]
 pub fn load_volatile(x: &ScalarPair) -> ScalarPair {
     // CHECK-LABEL: @load_volatile(
-    // CHECK-SAME: sret([32 x i8]) align 16 dereferenceable(32) %_0,
-    // CHECK-SAME: align 16 dereferenceable(32) %x
+    // CHECK-SAME: sret([32 x i8]) align 16
+    // CHECK-SAME: dereferenceable(32) %_0,
+    // CHECK-SAME: align 16
+    // CHECK-SAME: dereferenceable(32) %x
     // CHECK:      [[LOAD:%.*]] = load volatile %ScalarPair, ptr %x, align 16
     // CHECK-NEXT: store %ScalarPair [[LOAD]], ptr %_0, align 16
     // CHECK-NEXT: ret void
@@ -66,7 +71,8 @@ pub fn load_volatile(x: &ScalarPair) -> ScalarPair {
 #[no_mangle]
 pub fn transmute(x: ScalarPair) -> (std::mem::MaybeUninit<i128>, i128) {
     // CHECK-LABEL: @transmute(
-    // CHECK-SAME:  sret([32 x i8]) align 16 dereferenceable(32) %_0,
+    // CHECK-SAME:  sret([32 x i8]) align 16
+    // CHECK-SAME:  dereferenceable(32) %_0,
     // CHECK-SAME:  i32 noundef %x.0, i128 noundef %x.1
     // CHECK:       store i32 %x.0, ptr %_0, align 16
     // CHECK-NEXT:  [[GEP:%.*]] = getelementptr inbounds i8, ptr %_0, i64 16
@@ -86,7 +92,8 @@ pub struct Struct {
 #[no_mangle]
 pub fn store_struct(x: &mut Struct) {
     // CHECK-LABEL: @store_struct(
-    // CHECK-SAME: align 16 dereferenceable(32) %x
+    // CHECK-SAME: align 16
+    // CHECK-SAME: dereferenceable(32) %x
     // CHECK:      [[TMP:%.*]] = alloca [32 x i8], align 16
     // CHECK:      store i32 1, ptr [[TMP]], align 16
     // CHECK-NEXT: [[GEP1:%.*]] = getelementptr inbounds i8, ptr [[TMP]], i64 4

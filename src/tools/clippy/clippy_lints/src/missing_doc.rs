@@ -220,7 +220,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             | hir::ItemKind::GlobalAsm(..)
             | hir::ItemKind::Impl { .. }
             | hir::ItemKind::Use(..) => note_prev_span_then_ret!(self.prev_span, it.span),
-        };
+        }
 
         let (article, desc) = cx.tcx.article_and_description(it.owner_id.to_def_id());
 

@@ -171,7 +171,7 @@ fn collect_unsafe_exprs<'tcx>(
             },
 
             _ => {},
-        };
+        }
 
         Continue::<(), _>(Descend::Yes)
     });

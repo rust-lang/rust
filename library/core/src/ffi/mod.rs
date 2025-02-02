@@ -116,7 +116,6 @@ mod c_char_definition {
         //   Section 2.1 "Basic Types" in MSP430 Embedded Application Binary
         //   Interface says "The char type is unsigned by default".
         //   https://www.ti.com/lit/an/slaa534a/slaa534a.pdf
-        //   Note: this doesn't seem to match Clang's default (https://github.com/rust-lang/rust/issues/129945).
         // powerpc/powerpc64:
         //   - PPC32 SysV: "Table 3-1 Scalar Types" in System V Application Binary Interface PowerPC
         //     Processor Supplement says ANSI C char is unsigned byte
@@ -139,8 +138,10 @@ mod c_char_definition {
         //     https://github.com/IBM/s390x-abi/releases/tag/v1.6.1
         //   - z/OS: XL C/C++ Language Reference says: "By default, char behaves like an unsigned char."
         //     https://www.ibm.com/docs/en/zos/3.1.0?topic=specifiers-character-types
-        // Xtensa:
-        //   - "The char type is unsigned by default for Xtensa processors."
+        // xtensa:
+        //   Section 2.17.1 "Data Types and Alignment" of Xtensa LX Microprocessor Overview handbook
+        //   says "`char` type is unsigned by default".
+        //   https://loboris.eu/ESP32/Xtensa_lx%20Overview%20handbook.pdf
         //
         // On the following operating systems, c_char is signed by default, regardless of architecture.
         // Darwin (macOS, iOS, etc.):
@@ -150,11 +151,12 @@ mod c_char_definition {
         //   Windows MSVC C++ Language Reference says "Microsoft-specific: Variables of type char
         //   are promoted to int as if from type signed char by default, unless the /J compilation
         //   option is used."
-        //   https://learn.microsoft.com/en-us/cpp/cpp/fundamental-types-cpp?view=msvc-170#character-types)
-        // L4RE:
+        //   https://learn.microsoft.com/en-us/cpp/cpp/fundamental-types-cpp?view=msvc-170#character-types
+        // L4Re:
         //   The kernel builds with -funsigned-char on all targets (but useserspace follows the
         //   architecture defaults). As we only have a target for userspace apps so there are no
-        //   special cases for L4RE below.
+        //   special cases for L4Re below.
+        //   https://github.com/rust-lang/rust/pull/132975#issuecomment-2484645240
         if #[cfg(all(
             not(windows),
             not(target_vendor = "apple"),
@@ -166,8 +168,8 @@ mod c_char_definition {
                 target_arch = "msp430",
                 target_arch = "powerpc",
                 target_arch = "powerpc64",
-                target_arch = "riscv64",
                 target_arch = "riscv32",
+                target_arch = "riscv64",
                 target_arch = "s390x",
                 target_arch = "xtensa",
             )

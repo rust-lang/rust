@@ -69,7 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
         };
         if self.allow_in_test && is_in_test(cx.tcx, expr.hir_id) {
             return;
-        };
+        }
         // the parent callsite of this `vec!` expression, or span to the borrowed one such as `&vec!`
         let callsite = expr.span.parent_callsite().unwrap_or(expr.span);
 

@@ -1,7 +1,7 @@
 use rustc_abi::ExternAbi;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{AttrArgs, AttrItem, AttrKind, GenericParamKind, PatKind};
+use rustc_hir::{AttrArgs, AttrItem, AttrKind, GenericParamKind, PatExprKind, PatKind};
 use rustc_middle::ty;
 use rustc_session::config::CrateType;
 use rustc_session::{declare_lint, declare_lint_pass};
@@ -527,7 +527,11 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
 
     fn check_pat(&mut self, cx: &LateContext<'_>, p: &hir::Pat<'_>) {
         // Lint for constants that look like binding identifiers (#7526)
-        if let PatKind::Path(hir::QPath::Resolved(None, path)) = p.kind {
+        if let PatKind::Expr(hir::PatExpr {
+            kind: PatExprKind::Path(hir::QPath::Resolved(None, path)),
+            ..
+        }) = p.kind
+        {
             if let Res::Def(DefKind::Const, _) = path.res {
                 if let [segment] = path.segments {
                     NonUpperCaseGlobals::check_upper_case(

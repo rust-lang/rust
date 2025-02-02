@@ -504,6 +504,9 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
+            // Pattern types are always the same size as their base.
+            ty::Pat(base, _) => SizeSkeleton::compute(base, tcx, typing_env),
+
             _ => Err(err),
         }
     }
@@ -855,7 +858,12 @@ where
                     }
 
                     let mk_dyn_vtable = |principal: Option<ty::PolyExistentialTraitRef<'tcx>>| {
-                        let min_count = ty::vtable_min_entries(tcx, principal);
+                        let min_count = ty::vtable_min_entries(
+                            tcx,
+                            principal.map(|principal| {
+                                tcx.instantiate_bound_regions_with_erased(principal)
+                            }),
+                        );
                         Ty::new_imm_ref(
                             tcx,
                             tcx.lifetimes.re_static,

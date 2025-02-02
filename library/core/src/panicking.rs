@@ -291,6 +291,22 @@ fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
     )
 }
 
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[track_caller]
+#[cfg_attr(not(bootstrap), lang = "panic_null_pointer_dereference")] // needed by codegen for panic on null pointer deref
+#[rustc_nounwind] // `CheckNull` MIR pass requires this function to never unwind
+fn panic_null_pointer_dereference() -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        super::intrinsics::abort()
+    }
+
+    panic_nounwind_fmt(
+        format_args!("null pointer dereference occured"),
+        /* force_no_backtrace */ false,
+    )
+}
+
 /// Panics because we cannot unwind out of a function.
 ///
 /// This is a separate function to avoid the codesize impact of each crate containing the string to

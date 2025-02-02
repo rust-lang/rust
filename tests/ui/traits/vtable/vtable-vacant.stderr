@@ -1,4 +1,16 @@
-error: vtable entries for `<S as B>`: [
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as A>::foo_a1),
+           Vacant,
+       ]
+  --> $DIR/vtable-vacant.rs:20:1
+   |
+LL | impl A for S {}
+   | ^^^^^^^^^^^^
+
+error: vtable entries: [
            MetadataDropInPlace,
            MetadataSize,
            MetadataAlign,
@@ -7,10 +19,10 @@ error: vtable entries for `<S as B>`: [
            Method(<S as B>::foo_b1),
            Vacant,
        ]
-  --> $DIR/vtable-vacant.rs:14:1
+  --> $DIR/vtable-vacant.rs:24:1
    |
-LL | trait B: A {
-   | ^^^^^^^^^^
+LL | impl B for S {}
+   | ^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 

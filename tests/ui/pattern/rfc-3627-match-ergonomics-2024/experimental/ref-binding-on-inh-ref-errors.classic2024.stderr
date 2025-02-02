@@ -1,0 +1,70 @@
+error[E0308]: mismatched types
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:60:10
+   |
+LL |     let [&mut ref x] = &[&mut 0];
+   |          ^^^^^
+   |
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
+   |
+LL |     let [&ref x] = &[&mut 0];
+   |          ~
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:74:10
+   |
+LL |     let [ref mut x] = &[0];
+   |          ^^^^^^^ cannot override to bind by-reference when that is the implicit default
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL |     let &[ref mut x] = &[0];
+   |         +
+
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:74:10
+   |
+LL |     let [ref mut x] = &[0];
+   |          ^^^^^^^^^ cannot borrow as mutable
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:83:10
+   |
+LL |     let [ref x] = &[0];
+   |          ^^^ cannot override to bind by-reference when that is the implicit default
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL |     let &[ref x] = &[0];
+   |         +
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:88:10
+   |
+LL |     let [ref x] = &mut [0];
+   |          ^^^ cannot override to bind by-reference when that is the implicit default
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL |     let &mut [ref x] = &mut [0];
+   |         ++++
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:93:10
+   |
+LL |     let [ref mut x] = &mut [0];
+   |          ^^^^^^^ cannot override to bind by-reference when that is the implicit default
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL |     let &mut [ref mut x] = &mut [0];
+   |         ++++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0308, E0596.
+For more information about an error, try `rustc --explain E0308`.

@@ -403,7 +403,7 @@ const_eval_uninhabited_enum_variant_read =
 const_eval_uninhabited_enum_variant_written =
     writing discriminant of an uninhabited enum variant
 
-const_eval_unmarked_const_fn_exposed = `{$def_path}` cannot be (indirectly) exposed to stable
+const_eval_unmarked_const_item_exposed = `{$def_path}` cannot be (indirectly) exposed to stable
     .help = either mark the callee as `#[rustc_const_stable_indirect]`, or the caller as `#[rustc_const_unstable]`
 const_eval_unmarked_intrinsic_exposed = intrinsic `{$def_path}` cannot be (indirectly) exposed to stable
     .help = mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_intrinsic_const_stable_indirect]` (but this requires team approval)
@@ -414,6 +414,7 @@ const_eval_unreachable_unwind =
 
 const_eval_unsized_local = unsized locals are not supported
 const_eval_unstable_const_fn = `{$def_path}` is not yet stable as a const fn
+const_eval_unstable_const_trait = `{$def_path}` is not yet stable as a const trait
 const_eval_unstable_in_stable_exposed =
     const function that might be (indirectly) exposed to stable cannot use `#[feature({$gate})]`
     .is_function_call = mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features

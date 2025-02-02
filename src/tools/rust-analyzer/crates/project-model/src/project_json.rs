@@ -63,7 +63,7 @@ use crate::{ManifestPath, TargetKind};
 pub struct ProjectJson {
     /// e.g. `path/to/sysroot`
     pub(crate) sysroot: Option<AbsPathBuf>,
-    /// e.g. `path/to/sysroot/lib/rustlib/src/rust`
+    /// e.g. `path/to/sysroot/lib/rustlib/src/rust/library`
     pub(crate) sysroot_src: Option<AbsPathBuf>,
     project_root: AbsPathBuf,
     /// The path to the rust-project.json file. May be None if this

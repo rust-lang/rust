@@ -274,6 +274,16 @@ Whether to automatically add a semicolon when completing unit-returning function
 
 In `match` arms it completes a comma instead.
 --
+[[rust-analyzer.completion.autoAwait.enable]]rust-analyzer.completion.autoAwait.enable (default: `true`)::
++
+--
+Toggles the additional completions that automatically show method calls and field accesses with `await` prefixed to them when completing on a future.
+--
+[[rust-analyzer.completion.autoIter.enable]]rust-analyzer.completion.autoIter.enable (default: `true`)::
++
+--
+Toggles the additional completions that automatically show method calls with `iter()` or `into_iter()` prefixed to them when completing on a type that has them.
+--
 [[rust-analyzer.completion.autoimport.enable]]rust-analyzer.completion.autoimport.enable (default: `true`)::
 +
 --

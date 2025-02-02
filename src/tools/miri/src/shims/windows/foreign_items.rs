@@ -253,8 +253,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.read_target_isize(handle)?;
                 let flags = this.read_scalar(flags)?.to_u32()?;
                 let size = this.read_target_usize(size)?;
-                let heap_zero_memory = 0x00000008; // HEAP_ZERO_MEMORY
-                let zero_init = (flags & heap_zero_memory) == heap_zero_memory;
+                const HEAP_ZERO_MEMORY: u32 = 0x00000008;
+                let init = if (flags & HEAP_ZERO_MEMORY) == HEAP_ZERO_MEMORY {
+                    AllocInit::Zero
+                } else {
+                    AllocInit::Uninit
+                };
                 // Alignment is twice the pointer size.
                 // Source: <https://learn.microsoft.com/en-us/windows/win32/api/heapapi/nf-heapapi-heapalloc>
                 let align = this.tcx.pointer_size().bytes().strict_mul(2);
@@ -262,13 +266,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Size::from_bytes(size),
                     Align::from_bytes(align).unwrap(),
                     MiriMemoryKind::WinHeap.into(),
+                    init
                 )?;
-                if zero_init {
-                    this.write_bytes_ptr(
-                        ptr.into(),
-                        iter::repeat(0u8).take(usize::try_from(size).unwrap()),
-                    )?;
-                }
                 this.write_pointer(ptr, dest)?;
             }
             "HeapFree" => {
@@ -300,6 +299,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Size::from_bytes(size),
                     Align::from_bytes(align).unwrap(),
                     MiriMemoryKind::WinHeap.into(),
+                    AllocInit::Uninit
                 )?;
                 this.write_pointer(new_ptr, dest)?;
             }

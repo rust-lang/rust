@@ -67,7 +67,6 @@ use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesPredicate, Region, Ty, TyCtxt,
     TypeFoldable as _, TypeVisitableExt,
 };
-use rustc_span::DUMMY_SP;
 use rustc_type_ir::outlives::{Component, push_outlives_components};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
@@ -142,25 +141,6 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> Result<(), (PolyTypeOutlivesPredicate<'tcx>, SubregionOrigin<'tcx>)> {
         assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
 
-        let normalized_caller_bounds: Vec<_> = outlives_env
-            .param_env
-            .caller_bounds()
-            .iter()
-            .filter_map(|clause| {
-                let outlives = clause.as_type_outlives_clause()?;
-                Some(
-                    deeply_normalize_ty(
-                        outlives,
-                        SubregionOrigin::AscribeUserTypeProvePredicate(DUMMY_SP),
-                    )
-                    // FIXME(-Znext-solver): How do we accurately report an error span here :(
-                    .map_err(|NoSolution| {
-                        (outlives, SubregionOrigin::AscribeUserTypeProvePredicate(DUMMY_SP))
-                    }),
-                )
-            })
-            .try_collect()?;
-
         // Must loop since the process of normalizing may itself register region obligations.
         for iteration in 0.. {
             let my_region_obligations = self.take_registered_region_obligations();
@@ -194,7 +174,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     self.tcx,
                     outlives_env.region_bound_pairs(),
                     None,
-                    &normalized_caller_bounds,
+                    outlives_env.known_type_outlives(),
                 );
                 let category = origin.to_constraint_category();
                 outlives.type_must_outlive(origin, sup_type, sub_region, category);

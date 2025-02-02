@@ -130,10 +130,8 @@ pub(crate) fn render_field(
     let db = ctx.db();
     let is_deprecated = ctx.is_deprecated(field);
     let name = field.name(db);
-    let (name, escaped_name) = (
-        name.unescaped().display(db).to_smolstr(),
-        name.display_no_db(ctx.completion.edition).to_smolstr(),
-    );
+    let (name, escaped_name) =
+        (name.as_str().to_smolstr(), name.display_no_db(ctx.completion.edition).to_smolstr());
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
@@ -142,7 +140,8 @@ pub(crate) fn render_field(
     );
     item.set_relevance(CompletionRelevance {
         type_match: compute_type_match(ctx.completion, ty),
-        exact_name_match: compute_exact_name_match(ctx.completion, name.as_str()),
+        exact_name_match: compute_exact_name_match(ctx.completion, &name),
+        is_skipping_completion: receiver.is_some(),
         ..CompletionRelevance::default()
     });
     item.detail(ty.display(db, ctx.completion.edition).to_string())
@@ -215,6 +214,10 @@ pub(crate) fn render_tuple_field(
     );
     item.detail(ty.display(ctx.db(), ctx.completion.edition).to_string())
         .lookup_by(field.to_string());
+    item.set_relevance(CompletionRelevance {
+        is_skipping_completion: receiver.is_some(),
+        ..ctx.completion_relevance()
+    });
     item.build(ctx.db())
 }
 
@@ -298,7 +301,7 @@ pub(crate) fn render_expr(
             .unwrap_or_else(|| String::from("..."))
     };
 
-    let cfg = ctx.config.import_path_config();
+    let cfg = ctx.config.import_path_config(ctx.is_nightly);
 
     let label = expr.gen_source_code(&ctx.scope, &mut label_formatter, cfg, ctx.edition).ok()?;
 
@@ -512,7 +515,7 @@ fn render_resolution_simple_(
     let mut item = CompletionItem::new(
         kind,
         ctx.source_range(),
-        local_name.unescaped().display(db).to_smolstr(),
+        local_name.as_str().to_smolstr(),
         ctx.completion.edition,
     );
     item.set_relevance(ctx.completion_relevance())
@@ -1335,6 +1338,7 @@ fn main() { let _: m::Spam = S$0 }
                             is_private_editable: false,
                             postfix_match: None,
                             function: None,
+                            is_skipping_completion: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1364,6 +1368,7 @@ fn main() { let _: m::Spam = S$0 }
                             is_private_editable: false,
                             postfix_match: None,
                             function: None,
+                            is_skipping_completion: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1453,6 +1458,7 @@ fn foo() { A { the$0 } }
                             is_private_editable: false,
                             postfix_match: None,
                             function: None,
+                            is_skipping_completion: false,
                         },
                     },
                 ]
@@ -1511,6 +1517,7 @@ impl S {
                                     return_type: Other,
                                 },
                             ),
+                            is_skipping_completion: false,
                         },
                     },
                     CompletionItem {
@@ -1653,6 +1660,7 @@ fn foo(s: S) { s.$0 }
                                     return_type: Other,
                                 },
                             ),
+                            is_skipping_completion: false,
                         },
                     },
                 ]
@@ -1864,6 +1872,7 @@ fn f() -> i32 {
                             is_private_editable: false,
                             postfix_match: None,
                             function: None,
+                            is_skipping_completion: false,
                         },
                     },
                 ]
@@ -2624,6 +2633,7 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                                     return_type: Other,
                                 },
                             ),
+                            is_skipping_completion: false,
                         },
                         ref_match: "&@107",
                     },
@@ -2709,6 +2719,7 @@ fn foo() {
                             is_private_editable: false,
                             postfix_match: None,
                             function: None,
+                            is_skipping_completion: false,
                         },
                     },
                 ]
@@ -2766,6 +2777,7 @@ fn main() {
                                     return_type: Other,
                                 },
                             ),
+                            is_skipping_completion: false,
                         },
                         ref_match: "&@92",
                     },
@@ -3140,6 +3152,7 @@ fn main() {
                             is_private_editable: false,
                             postfix_match: None,
                             function: None,
+                            is_skipping_completion: false,
                         },
                     },
                     CompletionItem {
@@ -3173,6 +3186,7 @@ fn main() {
                             is_private_editable: false,
                             postfix_match: None,
                             function: None,
+                            is_skipping_completion: false,
                         },
                     },
                 ]

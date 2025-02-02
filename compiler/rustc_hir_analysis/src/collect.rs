@@ -57,7 +57,7 @@ mod type_of;
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     resolve_bound_vars::provide(providers);
     *providers = Providers {
         type_of: type_of::type_of,
@@ -65,9 +65,9 @@ pub fn provide(providers: &mut Providers) {
         type_alias_is_lazy: type_of::type_alias_is_lazy,
         item_bounds: item_bounds::item_bounds,
         explicit_item_bounds: item_bounds::explicit_item_bounds,
-        item_super_predicates: item_bounds::item_super_predicates,
-        explicit_item_super_predicates: item_bounds::explicit_item_super_predicates,
-        item_non_self_assumptions: item_bounds::item_non_self_assumptions,
+        item_self_bounds: item_bounds::item_self_bounds,
+        explicit_item_self_bounds: item_bounds::explicit_item_self_bounds,
+        item_non_self_bounds: item_bounds::item_non_self_bounds,
         impl_super_outlives: item_bounds::impl_super_outlives,
         generics_of: generics_of::generics_of,
         predicates_of: predicates_of::predicates_of,
@@ -122,7 +122,7 @@ pub fn provide(providers: &mut Providers) {
 /// `ItemCtxt` is parameterized by a `DefId` that it uses to satisfy
 /// `probe_ty_param_bounds` requests, drawing the information from
 /// the HIR (`hir::Generics`), recursively.
-pub struct ItemCtxt<'tcx> {
+pub(crate) struct ItemCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     item_def_id: LocalDefId,
     tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
@@ -148,7 +148,7 @@ impl<'v> Visitor<'v> for HirPlaceholderCollector {
     }
 }
 
-pub struct CollectItemTypesVisitor<'tcx> {
+pub(crate) struct CollectItemTypesVisitor<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
 
@@ -328,9 +328,9 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         self.tcx.ensure().generics_of(def_id);
         self.tcx.ensure().predicates_of(def_id);
         self.tcx.ensure().explicit_item_bounds(def_id);
-        self.tcx.ensure().explicit_item_super_predicates(def_id);
+        self.tcx.ensure().explicit_item_self_bounds(def_id);
         self.tcx.ensure().item_bounds(def_id);
-        self.tcx.ensure().item_super_predicates(def_id);
+        self.tcx.ensure().item_self_bounds(def_id);
         if self.tcx.is_conditionally_const(def_id) {
             self.tcx.ensure().explicit_implied_const_bounds(def_id);
             self.tcx.ensure().const_conditions(def_id);
@@ -364,19 +364,19 @@ fn bad_placeholder<'cx, 'tcx>(
 }
 
 impl<'tcx> ItemCtxt<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId) -> ItemCtxt<'tcx> {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId) -> ItemCtxt<'tcx> {
         ItemCtxt { tcx, item_def_id, tainted_by_errors: Cell::new(None) }
     }
 
-    pub fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
+    pub(crate) fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
         self.lowerer().lower_ty(hir_ty)
     }
 
-    pub fn hir_id(&self) -> hir::HirId {
+    pub(crate) fn hir_id(&self) -> hir::HirId {
         self.tcx.local_def_id_to_hir_id(self.item_def_id)
     }
 
-    pub fn node(&self) -> hir::Node<'tcx> {
+    pub(crate) fn node(&self) -> hir::Node<'tcx> {
         self.tcx.hir_node(self.hir_id())
     }
 
@@ -822,7 +822,7 @@ fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
 
         hir::TraitItemKind::Type(_, Some(_)) => {
             tcx.ensure().item_bounds(def_id);
-            tcx.ensure().item_super_predicates(def_id);
+            tcx.ensure().item_self_bounds(def_id);
             tcx.ensure().type_of(def_id);
             // Account for `type T = _;`.
             let mut visitor = HirPlaceholderCollector::default();
@@ -839,7 +839,7 @@ fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
 
         hir::TraitItemKind::Type(_, None) => {
             tcx.ensure().item_bounds(def_id);
-            tcx.ensure().item_super_predicates(def_id);
+            tcx.ensure().item_self_bounds(def_id);
             // #74612: Visit and try to find bad placeholders
             // even if there is no concrete type.
             let mut visitor = HirPlaceholderCollector::default();

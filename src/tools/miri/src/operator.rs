@@ -115,4 +115,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             nan
         }
     }
+
+    fn equal_float_min_max<F: Float>(&self, a: F, b: F) -> F {
+        let this = self.eval_context_ref();
+        // Return one side non-deterministically.
+        let mut rand = this.machine.rng.borrow_mut();
+        if rand.gen() { a } else { b }
+    }
 }

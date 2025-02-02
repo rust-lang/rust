@@ -50,10 +50,7 @@ pub(super) fn check<'tcx>(
     }
     let args = last.args;
     let missing_generic = match args {
-        Some(args) if !args.args.is_empty() => args.args.iter().any(|arg| match arg {
-            GenericArg::Infer(_) => true,
-            _ => false,
-        }),
+        Some(args) if !args.args.is_empty() => args.args.iter().any(|arg| matches!(arg, GenericArg::Infer(_))),
         _ => true,
     };
     if !missing_generic {

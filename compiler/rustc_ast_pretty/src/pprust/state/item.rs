@@ -34,8 +34,8 @@ impl<'a> State<'a> {
         self.maybe_print_comment(span.lo());
         self.print_outer_attributes(attrs);
         match kind {
-            ast::ForeignItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
-                self.print_fn_full(sig, ident, generics, vis, *defaultness, body.as_deref(), attrs);
+            ast::ForeignItemKind::Fn(func) => {
+                self.print_fn_full(ident, vis, attrs, &*func);
             }
             ast::ForeignItemKind::Static(box ast::StaticItem { ty, mutability, expr, safety }) => {
                 self.print_item_const(
@@ -199,16 +199,8 @@ impl<'a> State<'a> {
                     *defaultness,
                 );
             }
-            ast::ItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
-                self.print_fn_full(
-                    sig,
-                    item.ident,
-                    generics,
-                    &item.vis,
-                    *defaultness,
-                    body.as_deref(),
-                    &item.attrs,
-                );
+            ast::ItemKind::Fn(func) => {
+                self.print_fn_full(item.ident, &item.vis, &item.attrs, &*func);
             }
             ast::ItemKind::Mod(safety, mod_kind) => {
                 self.head(Self::to_string(|s| {
@@ -542,8 +534,8 @@ impl<'a> State<'a> {
         self.maybe_print_comment(span.lo());
         self.print_outer_attributes(attrs);
         match kind {
-            ast::AssocItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
-                self.print_fn_full(sig, ident, generics, vis, *defaultness, body.as_deref(), attrs);
+            ast::AssocItemKind::Fn(func) => {
+                self.print_fn_full(ident, vis, attrs, &*func);
             }
             ast::AssocItemKind::Const(box ast::ConstItem { defaultness, generics, ty, expr }) => {
                 self.print_item_const(
@@ -653,19 +645,17 @@ impl<'a> State<'a> {
 
     fn print_fn_full(
         &mut self,
-        sig: &ast::FnSig,
         name: Ident,
-        generics: &ast::Generics,
         vis: &ast::Visibility,
-        defaultness: ast::Defaultness,
-        body: Option<&ast::Block>,
         attrs: &[ast::Attribute],
+        func: &ast::Fn,
     ) {
+        let ast::Fn { defaultness, generics, sig, body } = func;
         if body.is_some() {
             self.head("");
         }
         self.print_visibility(vis);
-        self.print_defaultness(defaultness);
+        self.print_defaultness(*defaultness);
         self.print_fn(&sig.decl, sig.header, Some(name), generics);
         if let Some(body) = body {
             self.nbsp();

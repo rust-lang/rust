@@ -1325,7 +1325,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 impl<'ll> StaticBuilderMethods for Builder<'_, 'll, '_> {
     fn get_static(&mut self, def_id: DefId) -> &'ll Value {
         // Forward to the `get_static` method of `CodegenCx`
-        self.cx().get_static(def_id)
+        let s = self.cx().get_static(def_id);
+        // Cast to default address space if globals are in a different addrspace
+        self.cx().const_pointercast(s, self.type_ptr())
     }
 }
 

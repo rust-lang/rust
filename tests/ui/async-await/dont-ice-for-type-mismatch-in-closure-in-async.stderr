@@ -21,18 +21,14 @@ LL |         true
               found type `bool`
 
 error[E0271]: expected `{closure@dont-ice-for-type-mismatch-in-closure-in-async.rs:6:10}` to be a closure that returns `bool`, but it returns `Option<()>`
-  --> $DIR/dont-ice-for-type-mismatch-in-closure-in-async.rs:6:10
+  --> $DIR/dont-ice-for-type-mismatch-in-closure-in-async.rs:6:16
    |
-LL |       call(|| -> Option<()> {
-   |  _____----_^
-   | |     |
-   | |     required by a bound introduced by this call
-LL | |
-LL | |         if true {
-LL | |             false
-...  |
-LL | |     })
-   | |_____^ expected `bool`, found `Option<()>`
+LL |     call(|| -> Option<()> {
+   |     ---- ------^^^^^^^^^^
+   |     |    |     |
+   |     |    |     expected `bool`, found `Option<()>`
+   |     |    this closure
+   |     required by a bound introduced by this call
    |
    = note: expected type `bool`
               found enum `Option<()>`

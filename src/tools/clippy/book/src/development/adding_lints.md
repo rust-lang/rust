@@ -299,10 +299,11 @@ This is good, because it makes writing this particular lint less complicated.
 We have to make this decision with every new Clippy lint. It boils down to using
 either [`EarlyLintPass`][early_lint_pass] or [`LateLintPass`][late_lint_pass].
 
-In short, the `EarlyLintPass` runs before type checking and
-[HIR](https://rustc-dev-guide.rust-lang.org/hir.html) lowering and the `LateLintPass`
-has access to type information. Consider using the `LateLintPass` unless you need
-something specific from the `EarlyLintPass`.
+`EarlyLintPass` runs before type checking and
+[HIR](https://rustc-dev-guide.rust-lang.org/hir.html) lowering, while `LateLintPass`
+runs after these stages, providing access to type information. The `cargo dev new_lint` command
+defaults to the recommended `LateLintPass`, but you can specify `--pass=early` if your lint
+only needs AST level analysis.
 
 Since we don't need type information for checking the function name, we used
 `--pass=early` when running the new lint automation and all the imports were
@@ -537,7 +538,7 @@ via `Tools -> Clippy` and you should see the generated code in the output below.
 If the command was executed successfully, you can copy the code over to where
 you are implementing your lint.
 
-[author_example]: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2018&gist=9a12cb60e5c6ad4e3003ac6d5e63cf55
+[author_example]: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2024&gist=9a12cb60e5c6ad4e3003ac6d5e63cf55
 
 ## Print HIR lint
 
@@ -552,7 +553,7 @@ attribute to expressions you often need to enable
 _Clippy_.
 
 [_High-Level Intermediate Representation (HIR)_]: https://rustc-dev-guide.rust-lang.org/hir.html
-[print_hir_example]: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2021&gist=daf14db3a7f39ca467cd1b86c34b9afb
+[print_hir_example]: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2024&gist=daf14db3a7f39ca467cd1b86c34b9afb
 
 ## Documentation
 

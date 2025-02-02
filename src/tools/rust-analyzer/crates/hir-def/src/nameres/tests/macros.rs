@@ -97,9 +97,9 @@ macro_rules! structs {
             bar: t
 
             crate::bar
-            Bar: t
-            Foo: t
-            bar: t
+            Bar: tg
+            Foo: tg
+            bar: tg
         "#]],
     );
 }
@@ -130,9 +130,9 @@ macro_rules! structs {
             bar: t
 
             crate::bar
-            Bar: t
-            Foo: t
-            bar: t
+            Bar: tg
+            Foo: tg
+            bar: tg
         "#]],
     );
 }
@@ -169,9 +169,9 @@ macro_rules! inner {
             bar: t
 
             crate::bar
-            Bar: t
-            Foo: t
-            bar: t
+            Bar: tg
+            Foo: tg
+            bar: tg
         "#]],
     );
 }
@@ -794,7 +794,7 @@ pub trait Clone {}
 "#,
         expect![[r#"
             crate
-            Clone: t m
+            Clone: tg mg
         "#]],
     );
 }
@@ -1075,9 +1075,9 @@ macro_rules! mbe {
 "#,
         expect![[r#"
             crate
-            DummyTrait: m
-            attribute_macro: m
-            function_like_macro: m
+            DummyTrait: mg
+            attribute_macro: mg
+            function_like_macro: mg
         "#]],
     );
 }

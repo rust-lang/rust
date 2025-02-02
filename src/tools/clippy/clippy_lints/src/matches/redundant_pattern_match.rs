@@ -9,7 +9,7 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Arm, Expr, ExprKind, Node, Pat, PatExprKind, PatKind, QPath, UnOp};
+use rustc_hir::{Arm, Expr, ExprKind, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_span::{Span, Symbol, sym};
@@ -149,8 +149,12 @@ fn find_method_and_type<'tcx>(
                 None
             }
         },
-        PatKind::Path(ref path) => {
-            if let Res::Def(DefKind::Ctor(..), ctor_id) = cx.qpath_res(path, check_pat.hir_id)
+        PatKind::Expr(PatExpr {
+            kind: PatExprKind::Path(path),
+            hir_id,
+            ..
+        }) => {
+            if let Res::Def(DefKind::Ctor(..), ctor_id) = cx.qpath_res(path, *hir_id)
                 && let Some(variant_id) = cx.tcx.opt_parent(ctor_id)
             {
                 let method = if cx.tcx.lang_items().option_none_variant() == Some(variant_id) {
@@ -351,10 +355,20 @@ fn found_good_method<'tcx>(
                 None
             }
         },
-        (PatKind::TupleStruct(path_left, patterns, _), PatKind::Path(path_right))
-        | (PatKind::Path(path_left), PatKind::TupleStruct(path_right, patterns, _))
-            if patterns.len() == 1 =>
-        {
+        (
+            PatKind::TupleStruct(path_left, patterns, _),
+            PatKind::Expr(PatExpr {
+                kind: PatExprKind::Path(path_right),
+                ..
+            }),
+        )
+        | (
+            PatKind::Expr(PatExpr {
+                kind: PatExprKind::Path(path_left),
+                ..
+            }),
+            PatKind::TupleStruct(path_right, patterns, _),
+        ) if patterns.len() == 1 => {
             if let PatKind::Wild = patterns[0].kind {
                 find_good_method_for_match(
                     cx,
@@ -389,7 +403,13 @@ fn found_good_method<'tcx>(
                 None
             }
         },
-        (PatKind::Path(path_left), PatKind::Wild) => get_good_method(cx, arms, path_left),
+        (
+            PatKind::Expr(PatExpr {
+                kind: PatExprKind::Path(path_left),
+                ..
+            }),
+            PatKind::Wild,
+        ) => get_good_method(cx, arms, path_left),
         _ => None,
     }
 }

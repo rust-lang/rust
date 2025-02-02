@@ -7,7 +7,7 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{is_lint_allowed, is_never_expr, msrvs, pat_and_expr_can_be_question_mark, peel_blocks};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, MatchSource, Pat, PatKind, QPath, Stmt, StmtKind};
+use rustc_hir::{Expr, ExprKind, MatchSource, Pat, PatExpr, PatExprKind, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
 
@@ -106,7 +106,7 @@ impl<'tcx> QuestionMark {
                     emit_manual_let_else(cx, stmt.span, match_expr, &ident_map, pat_arm.pat, diverging_arm.body);
                 },
             }
-        };
+        }
     }
 }
 
@@ -292,10 +292,15 @@ fn pat_allowed_for_else(cx: &LateContext<'_>, pat: &'_ Pat<'_>, check_types: boo
         // Only do the check if the type is "spelled out" in the pattern
         if !matches!(
             pat.kind,
-            PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..)
+            PatKind::Struct(..)
+                | PatKind::TupleStruct(..)
+                | PatKind::Expr(PatExpr {
+                    kind: PatExprKind::Path(..),
+                    ..
+                },)
         ) {
             return;
-        };
+        }
         let ty = typeck_results.pat_ty(pat);
         // Option and Result are allowed, everything else isn't.
         if !(is_type_diagnostic_item(cx, ty, sym::Option) || is_type_diagnostic_item(cx, ty, sym::Result)) {

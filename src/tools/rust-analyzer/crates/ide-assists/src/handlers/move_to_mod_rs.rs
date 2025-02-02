@@ -2,7 +2,7 @@ use ide_db::{
     assists::{AssistId, AssistKind},
     base_db::AnchoredPathBuf,
 };
-use syntax::{ast, AstNode};
+use syntax::{ast, AstNode, ToSmolStr};
 
 use crate::{
     assist_context::{AssistContext, Assists},
@@ -39,7 +39,7 @@ pub(crate) fn move_to_mod_rs(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
     }
 
     let target = source_file.syntax().text_range();
-    let module_name = module.name(ctx.db())?.unescaped().display(ctx.db()).to_string();
+    let module_name = module.name(ctx.db())?.as_str().to_smolstr();
     let path = format!("./{module_name}/mod.rs");
     let dst = AnchoredPathBuf { anchor: ctx.file_id().into(), path };
     acc.add(

@@ -524,7 +524,6 @@ impl HirEqInterExpr<'_, '_, '_> {
                 }
                 eq
             },
-            (PatKind::Path(l), PatKind::Path(r)) => self.eq_qpath(l, r),
             (&PatKind::Expr(l), &PatKind::Expr(r)) => self.eq_pat_expr(l, r),
             (&PatKind::Tuple(l, ls), &PatKind::Tuple(r, rs)) => ls == rs && over(l, r, |l, r| self.eq_pat(l, r)),
             (&PatKind::Range(ref ls, ref le, li), &PatKind::Range(ref rs, ref re, ri)) => {
@@ -1120,7 +1119,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_pat(pat);
                 }
             },
-            PatKind::Path(ref qpath) => self.hash_qpath(qpath),
             PatKind::Range(s, e, i) => {
                 if let Some(s) = s {
                     self.hash_pat_expr(s);

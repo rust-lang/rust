@@ -673,6 +673,7 @@ impl Match {
                     prefer_no_std: false,
                     prefer_prelude: true,
                     prefer_absolute: false,
+                    allow_unstable: true,
                 };
                 let mod_path = module.find_path(sema.db, module_def, cfg).ok_or_else(|| {
                     match_error!("Failed to render template path `{}` at match location")

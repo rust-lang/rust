@@ -45,7 +45,7 @@ use hir_def::{
     body::BodyDiagnostic,
     data::{adt::VariantData, TraitFlags},
     generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
-    hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, Pat},
+    hir::{BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, LabelId, Pat},
     item_tree::{AttrOwner, FieldParent, ItemTreeFieldId, ItemTreeNode},
     lang_item::LangItemTarget,
     layout::{self, ReprOptions, TargetDataLayout},
@@ -2470,20 +2470,31 @@ impl Param {
     }
 
     pub fn as_local(&self, db: &dyn HirDatabase) -> Option<Local> {
-        let parent = match self.func {
-            Callee::Def(CallableDefId::FunctionId(it)) => DefWithBodyId::FunctionId(it),
-            Callee::Closure(closure, _) => db.lookup_intern_closure(closure.into()).0,
-            _ => return None,
-        };
-        let body = db.body(parent);
-        if let Some(self_param) = body.self_param.filter(|_| self.idx == 0) {
-            Some(Local { parent, binding_id: self_param })
-        } else if let Pat::Bind { id, .. } =
-            &body[body.params[self.idx - body.self_param.is_some() as usize]]
-        {
-            Some(Local { parent, binding_id: *id })
-        } else {
-            None
+        match self.func {
+            Callee::Def(CallableDefId::FunctionId(it)) => {
+                let parent = DefWithBodyId::FunctionId(it);
+                let body = db.body(parent);
+                if let Some(self_param) = body.self_param.filter(|_| self.idx == 0) {
+                    Some(Local { parent, binding_id: self_param })
+                } else if let Pat::Bind { id, .. } =
+                    &body[body.params[self.idx - body.self_param.is_some() as usize]]
+                {
+                    Some(Local { parent, binding_id: *id })
+                } else {
+                    None
+                }
+            }
+            Callee::Closure(closure, _) => {
+                let c = db.lookup_intern_closure(closure.into());
+                let body = db.body(c.0);
+                if let Expr::Closure { args, .. } = &body[c.1] {
+                    if let Pat::Bind { id, .. } = &body[args[self.idx]] {
+                        return Some(Local { parent: c.0, binding_id: *id });
+                    }
+                }
+                None
+            }
+            _ => None,
         }
     }
 
@@ -2754,6 +2765,15 @@ impl Trait {
     pub fn all_supertraits(self, db: &dyn HirDatabase) -> Vec<Trait> {
         let traits = all_super_traits(db.upcast(), self.into());
         traits.iter().map(|tr| Trait::from(*tr)).collect()
+    }
+
+    pub fn function(self, db: &dyn HirDatabase, name: impl PartialEq<Name>) -> Option<Function> {
+        db.trait_data(self.id).items.iter().find(|(n, _)| name == *n).and_then(
+            |&(_, it)| match it {
+                AssocItemId::FunctionId(id) => Some(Function { id }),
+                _ => None,
+            },
+        )
     }
 
     pub fn items(self, db: &dyn HirDatabase) -> Vec<AssocItem> {
@@ -4671,6 +4691,10 @@ impl Type {
 
     pub fn is_bool(&self) -> bool {
         matches!(self.ty.kind(Interner), TyKind::Scalar(Scalar::Bool))
+    }
+
+    pub fn is_str(&self) -> bool {
+        matches!(self.ty.kind(Interner), TyKind::Str)
     }
 
     pub fn is_never(&self) -> bool {

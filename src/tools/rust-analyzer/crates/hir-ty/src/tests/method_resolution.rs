@@ -1343,7 +1343,7 @@ fn foo<T: Trait>(a: &T) {
 fn autoderef_visibility_field() {
     check(
         r#"
-//- minicore: deref
+//- minicore: receiver
 mod a {
     pub struct Foo(pub char);
     pub struct Bar(i32);
@@ -1375,7 +1375,7 @@ fn autoderef_visibility_method() {
     cov_mark::check!(autoderef_candidate_not_visible);
     check(
         r#"
-//- minicore: deref
+//- minicore: receiver
 mod a {
     pub struct Foo(pub char);
     impl Foo {
@@ -1741,7 +1741,7 @@ fn main() {
 fn deref_fun_1() {
     check_types(
         r#"
-//- minicore: deref
+//- minicore: receiver
 
 struct A<T, U>(T, U);
 struct B<T>(T);
@@ -1782,7 +1782,7 @@ fn test() {
 fn deref_fun_2() {
     check_types(
         r#"
-//- minicore: deref
+//- minicore: receiver
 
 struct A<T, U>(T, U);
 struct B<T>(T);
@@ -1903,7 +1903,7 @@ pub fn test(generic_args: impl Into<Foo>) {
 fn bad_inferred_reference_2() {
     check_no_mismatches(
         r#"
-//- minicore: deref
+//- minicore: receiver
 trait ExactSizeIterator {
     fn len(&self) -> usize;
 }
@@ -2054,7 +2054,7 @@ fn foo() {
 fn box_deref_is_builtin() {
     check(
         r#"
-//- minicore: deref
+//- minicore: receiver
 use core::ops::Deref;
 
 #[lang = "owned_box"]
@@ -2087,7 +2087,7 @@ fn test() {
 fn manually_drop_deref_is_not_builtin() {
     check(
         r#"
-//- minicore: manually_drop, deref
+//- minicore: manually_drop, receiver
 struct Foo;
 impl Foo {
     fn foo(&self) {}
@@ -2105,7 +2105,7 @@ fn test() {
 fn mismatched_args_due_to_supertraits_with_deref() {
     check_no_mismatches(
         r#"
-//- minicore: deref
+//- minicore: receiver
 use core::ops::Deref;
 
 trait Trait1 {
@@ -2135,6 +2135,37 @@ impl Deref for Foo {
 fn problem_method<T: Trait3>() {
     let mut foo = Foo;
     foo.bar("hello"); // Rustc ok, RA errors (mismatched args)
+}
+"#,
+    );
+}
+
+#[test]
+fn receiver_without_deref_impl() {
+    check(
+        r#"
+//- minicore: receiver
+use core::ops::Receiver;
+
+struct Foo;
+
+impl Foo {
+    fn foo1(self: &Bar) -> i32 { 42 }
+    fn foo2(self: Bar) -> bool { true }
+}
+
+struct Bar;
+
+impl Receiver for Bar {
+    type Target = Foo;
+}
+
+fn main() {
+    let bar = Bar;
+    let _v1 = bar.foo1();
+      //^^^ type: i32
+    let _v2 = bar.foo2();
+      //^^^ type: bool
 }
 "#,
     );

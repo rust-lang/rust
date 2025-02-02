@@ -5,7 +5,7 @@ LL | struct S(Box<dyn B>);
    |              ^^^^^ `B` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/auxiliary/dyn-incompatible.rs:4:8
    |
 LL |     fn f();

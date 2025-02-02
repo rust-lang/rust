@@ -75,7 +75,7 @@ fn render(
         None => (name.clone().into(), name.into(), false),
     };
     let (qualified_name, escaped_qualified_name) = (
-        qualified_name.unescaped().display(ctx.db()).to_string(),
+        qualified_name.display_verbatim(ctx.db()).to_string(),
         qualified_name.display(ctx.db(), completion.edition).to_string(),
     );
     let snippet_cap = ctx.snippet_cap();

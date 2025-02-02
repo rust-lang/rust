@@ -160,7 +160,7 @@ pub trait Callbacks {
     fn after_crate_root_parsing(
         &mut self,
         _compiler: &interface::Compiler,
-        _queries: &ast::Crate,
+        _krate: &mut ast::Crate,
     ) -> Compilation {
         Compilation::Continue
     }
@@ -311,7 +311,7 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
 
         // Parse the crate root source code (doesn't parse submodules yet)
         // Everything else is parsed during macro expansion.
-        let krate = passes::parse(sess);
+        let mut krate = passes::parse(sess);
 
         // If pretty printing is requested: Figure out the representation, print it and exit
         if let Some(pp_mode) = sess.opts.pretty {
@@ -328,7 +328,7 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             return early_exit();
         }
 
-        if callbacks.after_crate_root_parsing(compiler, &krate) == Compilation::Stop {
+        if callbacks.after_crate_root_parsing(compiler, &mut krate) == Compilation::Stop {
             return early_exit();
         }
 

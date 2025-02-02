@@ -700,7 +700,7 @@ where
             statements: vec![
                 self.assign(
                     ptr,
-                    Rvalue::RawPtr(Mutability::Mut, tcx.mk_place_index(self.place, cur)),
+                    Rvalue::RawPtr(RawPtrKind::Mut, tcx.mk_place_index(self.place, cur)),
                 ),
                 self.assign(
                     cur.into(),
@@ -816,7 +816,7 @@ where
 
         let mut delegate_block = BasicBlockData {
             statements: vec![
-                self.assign(Place::from(array_ptr), Rvalue::RawPtr(Mutability::Mut, self.place)),
+                self.assign(Place::from(array_ptr), Rvalue::RawPtr(RawPtrKind::Mut, self.place)),
                 self.assign(
                     Place::from(slice_ptr),
                     Rvalue::Cast(

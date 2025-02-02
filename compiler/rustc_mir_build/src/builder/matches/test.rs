@@ -141,43 +141,49 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }
 
-            TestKind::Eq { value, ty } => {
+            TestKind::Eq { value, mut ty } => {
                 let tcx = self.tcx;
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
-                if let ty::Adt(def, _) = ty.kind()
-                    && tcx.is_lang_item(def.did(), LangItem::String)
-                {
-                    if !tcx.features().string_deref_patterns() {
-                        span_bug!(
+
+                let expect_ty = value.ty();
+                let expect = self.literal_operand(test.span, value);
+
+                let mut place = place;
+                let mut block = block;
+                match ty.kind() {
+                    ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::String) => {
+                        if !tcx.features().string_deref_patterns() {
+                            span_bug!(
+                                test.span,
+                                "matching on `String` went through without enabling string_deref_patterns"
+                            );
+                        }
+                        let re_erased = tcx.lifetimes.re_erased;
+                        let ref_str_ty = Ty::new_imm_ref(tcx, re_erased, tcx.types.str_);
+                        let ref_str = self.temp(ref_str_ty, test.span);
+                        let eq_block = self.cfg.start_new_block();
+                        // `let ref_str: &str = <String as Deref>::deref(&place);`
+                        self.call_deref(
+                            block,
+                            eq_block,
+                            place,
+                            Mutability::Not,
+                            ty,
+                            ref_str,
                             test.span,
-                            "matching on `String` went through without enabling string_deref_patterns"
                         );
+                        // Since we generated a `ref_str = <String as Deref>::deref(&place) -> eq_block` terminator,
+                        // we need to add all further statements to `eq_block`.
+                        // Similarly, the normal test code should be generated for the `&str`, instead of the `String`.
+                        block = eq_block;
+                        place = ref_str;
+                        ty = ref_str_ty;
                     }
-                    let re_erased = tcx.lifetimes.re_erased;
-                    let ref_str_ty = Ty::new_imm_ref(tcx, re_erased, tcx.types.str_);
-                    let ref_str = self.temp(ref_str_ty, test.span);
-                    let eq_block = self.cfg.start_new_block();
-                    // `let ref_str: &str = <String as Deref>::deref(&place);`
-                    self.call_deref(
-                        block,
-                        eq_block,
-                        place,
-                        Mutability::Not,
-                        ty,
-                        ref_str,
-                        test.span,
-                    );
-                    self.non_scalar_compare(
-                        eq_block,
-                        success_block,
-                        fail_block,
-                        source_info,
-                        value,
-                        ref_str,
-                        ref_str_ty,
-                    );
-                } else if !ty.is_scalar() {
+                    _ => {}
+                }
+
+                if !ty.is_scalar() {
                     // Use `PartialEq::eq` instead of `BinOp::Eq`
                     // (the binop can only handle primitives)
                     self.non_scalar_compare(
@@ -185,14 +191,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         success_block,
                         fail_block,
                         source_info,
-                        value,
-                        place,
+                        expect,
+                        expect_ty,
+                        Operand::Copy(place),
                         ty,
                     );
                 } else {
-                    assert_eq!(value.ty(), ty);
-                    let expect = self.literal_operand(test.span, value);
-                    let val = Operand::Copy(place);
+                    assert_eq!(expect_ty, ty);
                     self.compare(
                         block,
                         success_block,
@@ -200,7 +205,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         source_info,
                         BinOp::Eq,
                         expect,
-                        val,
+                        Operand::Copy(place),
                     );
                 }
             }
@@ -371,12 +376,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         success_block: BasicBlock,
         fail_block: BasicBlock,
         source_info: SourceInfo,
-        value: Const<'tcx>,
-        mut val: Place<'tcx>,
+        mut expect: Operand<'tcx>,
+        expect_ty: Ty<'tcx>,
+        mut val: Operand<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
-        let mut expect = self.literal_operand(source_info.span, value);
-
         // If we're using `b"..."` as a pattern, we need to insert an
         // unsizing coercion, as the byte string has the type `&[u8; N]`.
         //
@@ -391,7 +395,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ => None,
         };
         let opt_ref_ty = unsize(ty);
-        let opt_ref_test_ty = unsize(value.ty());
+        let opt_ref_test_ty = unsize(expect_ty);
         match (opt_ref_ty, opt_ref_test_ty) {
             // nothing to do, neither is an array
             (None, None) => {}
@@ -410,11 +414,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 PointerCoercion::Unsize,
                                 CoercionSource::Implicit,
                             ),
-                            Operand::Copy(val),
+                            val,
                             ty,
                         ),
                     );
-                    val = temp;
+                    val = Operand::Copy(temp);
                 }
                 if opt_ref_test_ty.is_some() {
                     let slice = self.temp(ty, source_info.span);
@@ -470,11 +474,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 const_: method,
             })),
-            args: [Spanned { node: Operand::Copy(val), span: DUMMY_SP }, Spanned {
-                node: expect,
-                span: DUMMY_SP,
-            }]
-            .into(),
+            args: [Spanned { node: val, span: DUMMY_SP }, Spanned { node: expect, span: DUMMY_SP }]
+                .into(),
             destination: eq_result,
             target: Some(eq_block),
             unwind: UnwindAction::Continue,

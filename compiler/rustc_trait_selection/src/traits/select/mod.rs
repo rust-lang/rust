@@ -962,7 +962,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             return Ok(EvaluatedToAmbig);
                         }
                         ty::ConstKind::Error(_) => return Ok(EvaluatedToOk),
-                        ty::ConstKind::Value(ty, _) => ty,
+                        ty::ConstKind::Value(cv) => cv.ty,
                         ty::ConstKind::Unevaluated(uv) => {
                             self.tcx().type_of(uv.def).instantiate(self.tcx(), uv.args)
                         }
@@ -1620,9 +1620,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // projections, we will never be able to equate, e.g. `<T as Tr>::A`
             // with `<<T as Tr>::A as Tr>::A`.
             let relevant_bounds = if in_parent_alias_type {
-                self.tcx().item_non_self_assumptions(alias_ty.def_id)
+                self.tcx().item_non_self_bounds(alias_ty.def_id)
             } else {
-                self.tcx().item_super_predicates(alias_ty.def_id)
+                self.tcx().item_self_bounds(alias_ty.def_id)
             };
 
             for bound in relevant_bounds.instantiate(self.tcx(), alias_ty.args) {
