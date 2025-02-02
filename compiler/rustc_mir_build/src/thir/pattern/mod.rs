@@ -4,6 +4,7 @@ mod check_match;
 mod const_to_pat;
 
 use std::cmp::Ordering;
+use std::sync::Arc;
 
 use rustc_abi::{FieldIdx, Integer};
 use rustc_errors::MultiSpan;
@@ -260,7 +261,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let hi = hi.unwrap_or(PatRangeBoundary::PosInfinity);
 
         let cmp = lo.compare_with(hi, ty, self.tcx, self.typing_env);
-        let mut kind = PatKind::Range(Box::new(PatRange { lo, hi, end, ty }));
+        let mut kind = PatKind::Range(Arc::new(PatRange { lo, hi, end, ty }));
         match (end, cmp) {
             // `x..y` where `x < y`.
             (RangeEnd::Excluded, Some(Ordering::Less)) => {}

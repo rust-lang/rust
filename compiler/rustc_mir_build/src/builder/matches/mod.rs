@@ -33,6 +33,7 @@ mod util;
 use std::assert_matches::assert_matches;
 use std::borrow::Borrow;
 use std::mem;
+use std::sync::Arc;
 
 /// Arguments to [`Builder::then_else_break_inner`] that are usually forwarded
 /// to recursive invocations.
@@ -989,23 +990,19 @@ impl<'tcx> PatternExtraData<'tcx> {
 ///
 /// Will typically be incorporated into a [`Candidate`].
 #[derive(Debug, Clone)]
-struct FlatPat<'pat, 'tcx> {
+struct FlatPat<'tcx> {
     /// To match the pattern, all of these must be satisfied...
     // Invariant: all the match pairs are recursively simplified.
     // Invariant: or-patterns must be sorted to the end.
-    match_pairs: Vec<MatchPairTree<'pat, 'tcx>>,
+    match_pairs: Vec<MatchPairTree<'tcx>>,
 
     extra_data: PatternExtraData<'tcx>,
 }
 
-impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
+impl<'tcx> FlatPat<'tcx> {
     /// Creates a `FlatPat` containing a simplified [`MatchPairTree`] list/forest
     /// for the given pattern.
-    fn new(
-        place: PlaceBuilder<'tcx>,
-        pattern: &'pat Pat<'tcx>,
-        cx: &mut Builder<'_, 'tcx>,
-    ) -> Self {
+    fn new(place: PlaceBuilder<'tcx>, pattern: &Pat<'tcx>, cx: &mut Builder<'_, 'tcx>) -> Self {
         // First, recursively build a tree of match pairs for the given pattern.
         let mut match_pairs = vec![MatchPairTree::for_pattern(place, pattern, cx)];
         let mut extra_data = PatternExtraData {
@@ -1033,7 +1030,7 @@ impl<'tcx, 'pat> FlatPat<'pat, 'tcx> {
 /// of candidates, where each "leaf" candidate represents one of the ways for
 /// the arm pattern to successfully match.
 #[derive(Debug)]
-struct Candidate<'pat, 'tcx> {
+struct Candidate<'tcx> {
     /// For the candidate to match, all of these must be satisfied...
     ///
     /// ---
@@ -1055,7 +1052,7 @@ struct Candidate<'pat, 'tcx> {
     /// Invariants:
     /// - All [`TestCase::Irrefutable`] patterns have been removed by simplification.
     /// - All or-patterns ([`TestCase::Or`]) have been sorted to the end.
-    match_pairs: Vec<MatchPairTree<'pat, 'tcx>>,
+    match_pairs: Vec<MatchPairTree<'tcx>>,
 
     /// ...and if this is non-empty, one of these subcandidates also has to match...
     ///
@@ -1072,7 +1069,7 @@ struct Candidate<'pat, 'tcx> {
     /// Invariant: at the end of match tree lowering, this must not contain an
     /// `is_never` candidate, because that would break binding consistency.
     /// - See [`Builder::remove_never_subcandidates`].
-    subcandidates: Vec<Candidate<'pat, 'tcx>>,
+    subcandidates: Vec<Candidate<'tcx>>,
 
     /// ...and if there is a guard it must be evaluated; if it's `false` then branch to `otherwise_block`.
     ///
@@ -1107,10 +1104,10 @@ struct Candidate<'pat, 'tcx> {
     false_edge_start_block: Option<BasicBlock>,
 }
 
-impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
+impl<'tcx> Candidate<'tcx> {
     fn new(
         place: PlaceBuilder<'tcx>,
-        pattern: &'pat Pat<'tcx>,
+        pattern: &Pat<'tcx>,
         has_guard: HasMatchGuard,
         cx: &mut Builder<'_, 'tcx>,
     ) -> Self {
@@ -1123,7 +1120,7 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
     }
 
     /// Incorporates an already-simplified [`FlatPat`] into a new candidate.
-    fn from_flat_pat(flat_pat: FlatPat<'pat, 'tcx>, has_guard: bool) -> Self {
+    fn from_flat_pat(flat_pat: FlatPat<'tcx>, has_guard: bool) -> Self {
         Candidate {
             match_pairs: flat_pat.match_pairs,
             extra_data: flat_pat.extra_data,
@@ -1172,7 +1169,7 @@ impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
 /// reference or by value, and to allow a mutable "context" to be shared by the
 /// traversal callbacks. Most traversals can use the simpler
 /// [`Candidate::visit_leaves`] wrapper instead.
-fn traverse_candidate<'pat, 'tcx: 'pat, C, T, I>(
+fn traverse_candidate<'tcx, C, T, I>(
     candidate: C,
     context: &mut T,
     // Called when visiting a "leaf" candidate (with no subcandidates).
@@ -1184,7 +1181,7 @@ fn traverse_candidate<'pat, 'tcx: 'pat, C, T, I>(
     // Called after visiting a "node" candidate's children.
     complete_children: impl Copy + Fn(&mut T),
 ) where
-    C: Borrow<Candidate<'pat, 'tcx>>, // Typically `Candidate` or `&mut Candidate`
+    C: Borrow<Candidate<'tcx>>, // Typically `Candidate` or `&mut Candidate`
     I: Iterator<Item = C>,
 {
     if candidate.borrow().subcandidates.is_empty() {
@@ -1234,20 +1231,20 @@ struct Ascription<'tcx> {
 ///   participate in or-pattern expansion, where they are transformed into subcandidates.
 ///   - See [`Builder::expand_and_match_or_candidates`].
 #[derive(Debug, Clone)]
-enum TestCase<'pat, 'tcx> {
+enum TestCase<'tcx> {
     Irrefutable { binding: Option<Binding<'tcx>>, ascription: Option<Ascription<'tcx>> },
     Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
     Constant { value: mir::Const<'tcx> },
-    Range(&'pat PatRange<'tcx>),
+    Range(Arc<PatRange<'tcx>>),
     Slice { len: usize, variable_length: bool },
     Deref { temp: Place<'tcx>, mutability: Mutability },
     Never,
-    Or { pats: Box<[FlatPat<'pat, 'tcx>]> },
+    Or { pats: Box<[FlatPat<'tcx>]> },
 }
 
-impl<'pat, 'tcx> TestCase<'pat, 'tcx> {
-    fn as_range(&self) -> Option<&'pat PatRange<'tcx>> {
-        if let Self::Range(v) = self { Some(*v) } else { None }
+impl<'tcx> TestCase<'tcx> {
+    fn as_range(&self) -> Option<&PatRange<'tcx>> {
+        if let Self::Range(v) = self { Some(v.as_ref()) } else { None }
     }
 }
 
@@ -1257,7 +1254,7 @@ impl<'pat, 'tcx> TestCase<'pat, 'tcx> {
 /// Each node also has a list of subpairs (possibly empty) that must also match,
 /// and a reference to the THIR pattern it represents.
 #[derive(Debug, Clone)]
-pub(crate) struct MatchPairTree<'pat, 'tcx> {
+pub(crate) struct MatchPairTree<'tcx> {
     /// This place...
     ///
     /// ---
@@ -1272,7 +1269,7 @@ pub(crate) struct MatchPairTree<'pat, 'tcx> {
     /// ---
     /// Invariant: after creation and simplification in [`FlatPat::new`],
     /// this must not be [`TestCase::Irrefutable`].
-    test_case: TestCase<'pat, 'tcx>,
+    test_case: TestCase<'tcx>,
 
     /// ... and these subpairs must match.
     ///
@@ -1283,8 +1280,10 @@ pub(crate) struct MatchPairTree<'pat, 'tcx> {
     /// that tests its field for the value `3`.
     subpairs: Vec<Self>,
 
-    /// The pattern this was created from.
-    pattern: &'pat Pat<'tcx>,
+    /// Type field of the pattern this node was created from.
+    pattern_ty: Ty<'tcx>,
+    /// Span field of the pattern this node was created from.
+    pattern_span: Span,
 }
 
 /// See [`Test`] for more.
@@ -1320,7 +1319,7 @@ enum TestKind<'tcx> {
     },
 
     /// Test whether the value falls within an inclusive or exclusive range.
-    Range(Box<PatRange<'tcx>>),
+    Range(Arc<PatRange<'tcx>>),
 
     /// Test that the length of the slice is `== len` or `>= len`.
     Len { len: u64, op: BinOp },
@@ -1423,7 +1422,7 @@ struct BuiltMatchTree<'tcx> {
 
 impl<'tcx> MatchTreeSubBranch<'tcx> {
     fn from_sub_candidate(
-        candidate: Candidate<'_, 'tcx>,
+        candidate: Candidate<'tcx>,
         parent_data: &Vec<PatternExtraData<'tcx>>,
     ) -> Self {
         debug_assert!(candidate.match_pairs.is_empty());
@@ -1449,12 +1448,12 @@ impl<'tcx> MatchTreeSubBranch<'tcx> {
 }
 
 impl<'tcx> MatchTreeBranch<'tcx> {
-    fn from_candidate(candidate: Candidate<'_, 'tcx>) -> Self {
+    fn from_candidate(candidate: Candidate<'tcx>) -> Self {
         let mut sub_branches = Vec::new();
         traverse_candidate(
             candidate,
             &mut Vec::new(),
-            &mut |candidate: Candidate<'_, '_>, parent_data: &mut Vec<PatternExtraData<'_>>| {
+            &mut |candidate: Candidate<'_>, parent_data: &mut Vec<PatternExtraData<'_>>| {
                 sub_branches.push(MatchTreeSubBranch::from_sub_candidate(candidate, parent_data));
             },
             |inner_candidate, parent_data| {
@@ -1485,23 +1484,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// `refutable` indicates whether the candidate list is refutable (for `if let` and `let else`)
     /// or not (for `let` and `match`). In the refutable case we return the block to which we branch
     /// on failure.
-    fn lower_match_tree<'pat>(
+    fn lower_match_tree(
         &mut self,
         block: BasicBlock,
         scrutinee_span: Span,
         scrutinee_place_builder: &PlaceBuilder<'tcx>,
         match_start_span: Span,
-        patterns: Vec<(&'pat Pat<'tcx>, HasMatchGuard)>,
+        patterns: Vec<(&Pat<'tcx>, HasMatchGuard)>,
         refutable: bool,
-    ) -> BuiltMatchTree<'tcx>
-    where
-        'tcx: 'pat,
-    {
+    ) -> BuiltMatchTree<'tcx> {
         // Assemble the initial list of candidates. These top-level candidates are 1:1 with the
         // input patterns, but other parts of match lowering also introduce subcandidates (for
         // sub-or-patterns). So inside the algorithm, the candidates list may not correspond to
         // match arms directly.
-        let mut candidates: Vec<Candidate<'_, '_>> = patterns
+        let mut candidates: Vec<Candidate<'_>> = patterns
             .into_iter()
             .map(|(pat, has_guard)| {
                 Candidate::new(scrutinee_place_builder.clone(), pat, has_guard, self)
@@ -1664,7 +1660,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         scrutinee_span: Span,
         start_block: BasicBlock,
-        candidates: &mut [&mut Candidate<'_, 'tcx>],
+        candidates: &mut [&mut Candidate<'tcx>],
     ) -> BasicBlock {
         ensure_sufficient_stack(|| {
             self.match_candidates_inner(span, scrutinee_span, start_block, candidates)
@@ -1678,7 +1674,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         scrutinee_span: Span,
         mut start_block: BasicBlock,
-        candidates: &mut [&mut Candidate<'_, 'tcx>],
+        candidates: &mut [&mut Candidate<'tcx>],
     ) -> BasicBlock {
         if let [first, ..] = candidates {
             if first.false_edge_start_block.is_none() {
@@ -1747,7 +1743,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// [otherwise block]: Candidate::otherwise_block
     fn select_matched_candidate(
         &mut self,
-        candidate: &mut Candidate<'_, 'tcx>,
+        candidate: &mut Candidate<'tcx>,
         start_block: BasicBlock,
     ) -> BasicBlock {
         assert!(candidate.otherwise_block.is_none());
@@ -1765,13 +1761,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Takes a list of candidates such that some of the candidates' first match pairs are
     /// or-patterns. This expands as many or-patterns as possible and processes the resulting
     /// candidates. Returns the unprocessed candidates if any.
-    fn expand_and_match_or_candidates<'pat, 'b, 'c>(
+    fn expand_and_match_or_candidates<'b, 'c>(
         &mut self,
         span: Span,
         scrutinee_span: Span,
         start_block: BasicBlock,
-        candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
-    ) -> BlockAnd<&'b mut [&'c mut Candidate<'pat, 'tcx>]> {
+        candidates: &'b mut [&'c mut Candidate<'tcx>],
+    ) -> BlockAnd<&'b mut [&'c mut Candidate<'tcx>]> {
         // We can't expand or-patterns freely. The rule is:
         // - If a candidate doesn't start with an or-pattern, we include it in
         //   the expansion list as-is (i.e. it "expands" to itself).
@@ -1865,14 +1861,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Given a match-pair that corresponds to an or-pattern, expand each subpattern into a new
     /// subcandidate. Any candidate that has been expanded this way should also be postprocessed
     /// at the end of [`Self::expand_and_match_or_candidates`].
-    fn create_or_subcandidates<'pat>(
+    fn create_or_subcandidates(
         &mut self,
-        candidate: &mut Candidate<'pat, 'tcx>,
-        match_pair: MatchPairTree<'pat, 'tcx>,
+        candidate: &mut Candidate<'tcx>,
+        match_pair: MatchPairTree<'tcx>,
     ) {
         let TestCase::Or { pats } = match_pair.test_case else { bug!() };
         debug!("expanding or-pattern: candidate={:#?}\npats={:#?}", candidate, pats);
-        candidate.or_span = Some(match_pair.pattern.span);
+        candidate.or_span = Some(match_pair.pattern_span);
         candidate.subcandidates = pats
             .into_vec()
             .into_iter()
@@ -1938,7 +1934,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// Note that this takes place _after_ the subcandidates have participated
     /// in match tree lowering.
-    fn merge_trivial_subcandidates(&mut self, candidate: &mut Candidate<'_, 'tcx>) {
+    fn merge_trivial_subcandidates(&mut self, candidate: &mut Candidate<'tcx>) {
         assert!(!candidate.subcandidates.is_empty());
         if candidate.has_guard {
             // FIXME(or_patterns; matthewjasper) Don't give up if we have a guard.
@@ -1981,7 +1977,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Never subcandidates may have a set of bindings inconsistent with their siblings,
     /// which would break later code. So we filter them out. Note that we can't filter out
     /// top-level candidates this way.
-    fn remove_never_subcandidates(&mut self, candidate: &mut Candidate<'_, 'tcx>) {
+    fn remove_never_subcandidates(&mut self, candidate: &mut Candidate<'tcx>) {
         if candidate.subcandidates.is_empty() {
             return;
         }
@@ -2020,7 +2016,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         span: Span,
         scrutinee_span: Span,
-        candidate: &mut Candidate<'_, 'tcx>,
+        candidate: &mut Candidate<'tcx>,
     ) {
         if candidate.match_pairs.is_empty() {
             return;
@@ -2086,7 +2082,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// [`Switch`]: TestKind::Switch
     /// [`SwitchInt`]: TestKind::SwitchInt
     /// [`Range`]: TestKind::Range
-    fn pick_test(&mut self, candidates: &[&mut Candidate<'_, 'tcx>]) -> (Place<'tcx>, Test<'tcx>) {
+    fn pick_test(&mut self, candidates: &[&mut Candidate<'tcx>]) -> (Place<'tcx>, Test<'tcx>) {
         // Extract the match-pair from the highest priority candidate
         let match_pair = &candidates[0].match_pairs[0];
         let test = self.pick_test_for_match_pair(match_pair);
@@ -2137,18 +2133,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// The sorted candidates are mutated to remove entailed match pairs:
     /// - candidate 0 becomes `[z @ true]` since we know that `x` was `true`;
     /// - candidate 1 becomes `[y @ false]` since we know that `x` was `false`.
-    fn sort_candidates<'b, 'c, 'pat>(
+    fn sort_candidates<'b, 'c>(
         &mut self,
         match_place: Place<'tcx>,
         test: &Test<'tcx>,
-        mut candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
+        mut candidates: &'b mut [&'c mut Candidate<'tcx>],
     ) -> (
-        &'b mut [&'c mut Candidate<'pat, 'tcx>],
-        FxIndexMap<TestBranch<'tcx>, Vec<&'b mut Candidate<'pat, 'tcx>>>,
+        &'b mut [&'c mut Candidate<'tcx>],
+        FxIndexMap<TestBranch<'tcx>, Vec<&'b mut Candidate<'tcx>>>,
     ) {
         // For each of the possible outcomes, collect vector of candidates that apply if the test
         // has that particular outcome.
-        let mut target_candidates: FxIndexMap<_, Vec<&mut Candidate<'_, '_>>> = Default::default();
+        let mut target_candidates: FxIndexMap<_, Vec<&mut Candidate<'_>>> = Default::default();
 
         let total_candidate_count = candidates.len();
 
@@ -2274,13 +2270,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// ```
     ///
     /// We return the unprocessed candidates.
-    fn test_candidates<'pat, 'b, 'c>(
+    fn test_candidates<'b, 'c>(
         &mut self,
         span: Span,
         scrutinee_span: Span,
-        candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
+        candidates: &'b mut [&'c mut Candidate<'tcx>],
         start_block: BasicBlock,
-    ) -> BlockAnd<&'b mut [&'c mut Candidate<'pat, 'tcx>]> {
+    ) -> BlockAnd<&'b mut [&'c mut Candidate<'tcx>]> {
         // Choose a match pair from the first candidate, and use it to determine a
         // test to perform that will confirm or refute that match pair.
         let (match_place, test) = self.pick_test(candidates);
