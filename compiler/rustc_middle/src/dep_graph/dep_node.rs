@@ -100,26 +100,14 @@ pub(crate) fn make_compile_mono_item<'tcx>(
 }
 
 pub trait DepNodeExt: Sized {
-    /// Extracts the DefId corresponding to this DepNode. This will work
-    /// if two conditions are met:
-    ///
-    /// 1. The Fingerprint of the DepNode actually is a DefPathHash, and
-    /// 2. the item that the DefPath refers to exists in the current tcx.
-    ///
-    /// Condition (1) is determined by the DepKind variant of the
-    /// DepNode. Condition (2) might not be fulfilled if a DepNode
-    /// refers to something from the previous compilation session that
-    /// has been removed.
     fn extract_def_id(&self, tcx: TyCtxt<'_>) -> Option<DefId>;
 
-    /// Used in testing
     fn from_label_string(
         tcx: TyCtxt<'_>,
         label: &str,
         def_path_hash: DefPathHash,
     ) -> Result<Self, ()>;
 
-    /// Used in testing
     fn has_label_string(label: &str) -> bool;
 }
 
