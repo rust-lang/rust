@@ -151,7 +151,7 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Result<(), ErrorGuaranteed>
     let Some(impls) = tcx.all_local_trait_impls(()).get(&def_id) else { return Ok(()) };
     // Trigger building the specialization graph for the trait. This will detect and report any
     // overlap errors.
-    let mut res = tcx.ensure().specialization_graph_of(def_id);
+    let mut res = tcx.ensure_ok().specialization_graph_of(def_id);
 
     for &impl_def_id in impls {
         let trait_header = tcx.impl_trait_header(impl_def_id).unwrap();
@@ -162,7 +162,7 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Result<(), ErrorGuaranteed>
             .and(check_impl(tcx, impl_def_id, trait_ref, trait_def))
             .and(check_object_overlap(tcx, impl_def_id, trait_ref))
             .and(unsafety::check_item(tcx, impl_def_id, trait_header, trait_def))
-            .and(tcx.ensure().orphan_check_impl(impl_def_id))
+            .and(tcx.ensure_ok().orphan_check_impl(impl_def_id))
             .and(builtin::check_trait(tcx, def_id, impl_def_id, trait_header));
     }
 

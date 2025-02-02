@@ -192,7 +192,7 @@ fn visit_implementation_of_coerce_unsized(checker: &Checker<'_>) -> Result<(), E
     // errors; other parts of the code may demand it for the info of
     // course.
     let span = tcx.def_span(impl_did);
-    tcx.at(span).ensure().coerce_unsized_info(impl_did)
+    tcx.at(span).ensure_ok().coerce_unsized_info(impl_did)
 }
 
 fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
