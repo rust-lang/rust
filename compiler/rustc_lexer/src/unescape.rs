@@ -1,8 +1,9 @@
 //! Utilities for validating string and char literals and turning them into
 //! values they represent.
 
+use std::iter::{Peekable, from_fn};
 use std::ops::Range;
-use std::str::Chars;
+use std::str::{CharIndices, Chars};
 
 use Mode::*;
 
@@ -80,35 +81,9 @@ impl EscapeError {
     }
 }
 
-/// Takes the contents of a unicode-only (non-mixed-utf8) literal (without
-/// quotes) and produces a sequence of escaped characters or errors.
-///
-/// Values are returned by invoking `callback`. For `Char` and `Byte` modes,
-/// the callback will be called exactly once.
-pub fn unescape_unicode<F>(src: &str, mode: Mode, callback: &mut F)
-where
-    F: FnMut(Range<usize>, Result<char, EscapeError>),
-{
-    match mode {
-        Char | Byte => {
-            let mut chars = src.chars();
-            let res = unescape_char_or_byte(&mut chars, mode);
-            callback(0..(src.len() - chars.as_str().len()), res);
-        }
-        Str | ByteStr => unescape_non_raw_common(src, mode, callback),
-        RawStr | RawByteStr => check_raw_common(src, mode, callback),
-        RawCStr => check_raw_common(src, mode, &mut |r, mut result| {
-            if let Ok('\0') = result {
-                result = Err(EscapeError::NulInCStr);
-            }
-            callback(r, result)
-        }),
-        CStr => unreachable!(),
-    }
-}
-
 /// Used for mixed utf8 string literals, i.e. those that allow both unicode
 /// chars and high bytes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MixedUnit {
     /// Used for ASCII chars (written directly or via `\x00`..`\x7f` escapes)
     /// and Unicode chars (written directly or via `\u` escapes).
@@ -126,47 +101,393 @@ pub enum MixedUnit {
     HighByte(u8),
 }
 
-impl From<char> for MixedUnit {
-    fn from(c: char) -> Self {
-        MixedUnit::Char(c)
+impl TryFrom<char> for MixedUnit {
+    type Error = EscapeError;
+
+    fn try_from(c: char) -> Result<Self, EscapeError> {
+        match c {
+            '\0' => Err(EscapeError::NulInCStr),
+            _ => Ok(MixedUnit::Char(c)),
+        }
     }
 }
 
-impl From<u8> for MixedUnit {
-    fn from(n: u8) -> Self {
-        if n.is_ascii() { MixedUnit::Char(n as char) } else { MixedUnit::HighByte(n) }
+impl TryFrom<u8> for MixedUnit {
+    type Error = EscapeError;
+
+    fn try_from(byte: u8) -> Result<Self, EscapeError> {
+        match byte {
+            0 => Err(EscapeError::NulInCStr),
+            _ if byte.is_ascii() => Ok(MixedUnit::Char(byte as char)),
+            _ => Ok(MixedUnit::HighByte(byte)),
+        }
     }
 }
 
-/// Takes the contents of a mixed-utf8 literal (without quotes) and produces
-/// a sequence of escaped characters or errors.
-///
-/// Values are returned by invoking `callback`.
-pub fn unescape_mixed<F>(src: &str, mode: Mode, callback: &mut F)
+/// Takes the contents of a raw string literal (without quotes) and produces a
+/// sequence of characters or errors, which are returned by invoking `callback`.
+/// NOTE: Raw strings don't do any unescaping, but do produce errors on bare CR.
+fn check_raw_str<F>(src: &str, callback: &mut F)
+where
+    F: FnMut(Range<usize>, Result<char, EscapeError>),
+{
+    src.char_indices().for_each(|(pos, c)| {
+        callback(
+            pos..pos + c.len_utf8(),
+            if c == '\r' { Err(EscapeError::BareCarriageReturnInRawString) } else { Ok(c) },
+        );
+    });
+}
+
+/// Takes the contents of a raw byte string literal (without quotes) and produces a
+/// sequence of characters or errors, which are returned by invoking `callback`.
+/// NOTE: Raw strings don't do any unescaping, but do produce errors on bare CR.
+fn check_raw_byte_str<F>(src: &str, callback: &mut F)
+where
+    F: FnMut(Range<usize>, Result<u8, EscapeError>),
+{
+    src.char_indices().for_each(|(pos, c)| {
+        callback(
+            pos..pos + c.len_utf8(),
+            if c == '\r' {
+                Err(EscapeError::BareCarriageReturnInRawString)
+            } else {
+                ascii_char_to_byte(c)
+            },
+        );
+    });
+}
+
+/// Takes the contents of a raw C string literal (without quotes) and produces a
+/// sequence of characters or errors, which are returned by invoking `callback`.
+/// NOTE: Raw strings don't do any unescaping, but do produce errors on bare CR.
+fn check_raw_cstr<F>(src: &str, callback: &mut F)
+where
+    F: FnMut(Range<usize>, Result<char, EscapeError>),
+{
+    src.char_indices().for_each(|(pos, c)| {
+        callback(pos..pos + c.len_utf8(), match c {
+            '\r' => Err(EscapeError::BareCarriageReturnInRawString),
+            '\0' => Err(EscapeError::NulInCStr),
+            _ => Ok(c),
+        });
+    });
+}
+
+/// Take the contents of a string literal (without quotes)
+/// and produce a sequence of escaped characters or errors,
+/// which are returned by invoking `callback`.
+pub fn unescape_str<F>(src: &str, callback: &mut F)
+where
+    F: FnMut(Range<usize>, Result<char, EscapeError>),
+{
+    let mut chars = src.char_indices().peekable();
+    while let Some((start, c)) = chars.next() {
+        let res = match c {
+            // skip whitespace for backslash newline, see [Rust language reference]
+            // (https://doc.rust-lang.org/reference/tokens.html#string-literals).
+            '\\' if chars.next_if(|&(_, c)| c == '\n').is_some() => {
+                let mut callback_err = |range, err| callback(range, Err(err));
+                skip_ascii_whitespace(&mut chars, start, &mut callback_err);
+                continue;
+            }
+            '\\' => scan_escape_for_char(&mut from_fn(|| chars.next().map(|i| i.1))),
+            '"' => Err(EscapeError::EscapeOnlyChar),
+            '\r' => Err(EscapeError::BareCarriageReturn),
+            c => Ok(c),
+        };
+        let end = chars.peek().map(|&(end, _)| end).unwrap_or(src.len());
+        callback(start..end, res);
+    }
+}
+
+/// Take the contents of a byte string literal (without quotes)
+/// and produce a sequence of unescaped bytes or errors,
+/// which are returned by invoking `callback`.
+pub fn unescape_byte_str<F>(src: &str, callback: &mut F)
+where
+    F: FnMut(Range<usize>, Result<u8, EscapeError>),
+{
+    let mut chars = src.char_indices().peekable();
+    while let Some((start, c)) = chars.next() {
+        let res = match c {
+            // skip whitespace for backslash newline, see [Rust language reference]
+            // (https://doc.rust-lang.org/reference/tokens.html#string-literals).
+            '\\' if chars.next_if(|&(_, c)| c == '\n').is_some() => {
+                let mut callback_err = |range, err| callback(range, Err(err));
+                skip_ascii_whitespace(&mut chars, start, &mut callback_err);
+                continue;
+            }
+            '\\' => scan_escape_for_byte(&mut from_fn(|| chars.next().map(|i| i.1))),
+            '"' => Err(EscapeError::EscapeOnlyChar),
+            '\r' => Err(EscapeError::BareCarriageReturn),
+            c => ascii_char_to_byte(c),
+        };
+        let end = chars.peek().map(|&(end, _)| end).unwrap_or(src.len());
+        callback(start..end, res);
+    }
+}
+
+/// Take the contents of a C string literal (without quotes)
+/// and produce a sequence of unescaped characters or errors,
+/// which are returned by invoking `callback`.
+pub fn unescape_cstr<F>(src: &str, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<MixedUnit, EscapeError>),
 {
-    match mode {
-        CStr => unescape_non_raw_common(src, mode, &mut |r, mut result| {
-            if let Ok(MixedUnit::Char('\0')) = result {
-                result = Err(EscapeError::NulInCStr);
+    let mut chars = src.char_indices().peekable();
+    while let Some((start, c)) = chars.next() {
+        let res = match c {
+            // skip whitespace for backslash newline, see [Rust language reference]
+            // (https://doc.rust-lang.org/reference/tokens.html#string-literals).
+            '\\' if chars.next_if(|&(_, c)| c == '\n').is_some() => {
+                let mut callback_err = |range, err| callback(range, Err(err));
+                skip_ascii_whitespace(&mut chars, start, &mut callback_err);
+                continue;
             }
-            callback(r, result)
-        }),
-        Char | Byte | Str | RawStr | ByteStr | RawByteStr | RawCStr => unreachable!(),
+            '\\' => scan_escape_for_cstr(&mut from_fn(|| chars.next().map(|i| i.1))),
+            '"' => Err(EscapeError::EscapeOnlyChar),
+            '\r' => Err(EscapeError::BareCarriageReturn),
+            c => c.try_into(),
+        };
+        let end = chars.peek().map(|&(end, _)| end).unwrap_or(src.len());
+        callback(start..end, res);
     }
 }
 
-/// Takes a contents of a char literal (without quotes), and returns an
-/// unescaped char or an error.
-pub fn unescape_char(src: &str) -> Result<char, EscapeError> {
-    unescape_char_or_byte(&mut src.chars(), Char)
+/// Skip ASCII whitespace, except for the formfeed character
+/// (see [this issue](https://github.com/rust-lang/rust/issues/136600)).
+/// Warns on unescaped newline and following non-ASCII whitespace.
+fn skip_ascii_whitespace<F>(chars: &mut Peekable<CharIndices<'_>>, start: usize, callback: &mut F)
+where
+    F: FnMut(Range<usize>, EscapeError),
+{
+    // the escaping slash and newline characters add 2 bytes
+    let mut end = start + 2;
+    let mut contains_nl = false;
+    while let Some((_, c)) = chars.next_if(|(_, c)| c.is_ascii_whitespace() && *c != '\x0c') {
+        end += 1;
+        contains_nl = contains_nl || c == '\n';
+    }
+
+    if contains_nl {
+        callback(start..end, EscapeError::MultipleSkippedLinesWarning);
+    }
+    if let Some((_, c)) = chars.peek() {
+        if c.is_whitespace() {
+            // for error reporting, include the character that was not skipped in the span
+            callback(start..end + c.len_utf8(), EscapeError::UnskippedWhitespaceWarning);
+        }
+    }
 }
 
-/// Takes a contents of a byte literal (without quotes), and returns an
-/// unescaped byte or an error.
+/// Takes the contents of a char literal (without quotes),
+/// and returns an unescaped char or an error.
+pub fn unescape_char(src: &str) -> Result<char, EscapeError> {
+    unescape_char_iter(&mut src.chars())
+}
+
+fn unescape_char_iter(chars: &mut Chars<'_>) -> Result<char, EscapeError> {
+    let res = match chars.next().ok_or(EscapeError::ZeroChars)? {
+        '\\' => scan_escape_for_char(chars),
+        '\n' | '\t' | '\'' => Err(EscapeError::EscapeOnlyChar),
+        '\r' => Err(EscapeError::BareCarriageReturn),
+        c => Ok(c),
+    }?;
+    if chars.next().is_some() {
+        return Err(EscapeError::MoreThanOneChar);
+    }
+    Ok(res)
+}
+
+/// Takes the contents of a byte literal (without quotes),
+/// and returns an unescaped byte or an error.
 pub fn unescape_byte(src: &str) -> Result<u8, EscapeError> {
-    unescape_char_or_byte(&mut src.chars(), Byte).map(byte_from_char)
+    unescape_byte_iter(&mut src.chars())
+}
+
+fn unescape_byte_iter(chars: &mut Chars<'_>) -> Result<u8, EscapeError> {
+    let res = match chars.next().ok_or(EscapeError::ZeroChars)? {
+        '\\' => scan_escape_for_byte(chars),
+        '\n' | '\t' | '\'' => Err(EscapeError::EscapeOnlyChar),
+        '\r' => Err(EscapeError::BareCarriageReturn),
+        c => ascii_char_to_byte(c),
+    }?;
+    if chars.next().is_some() {
+        return Err(EscapeError::MoreThanOneChar);
+    }
+    Ok(res)
+}
+
+/// Scan an escape sequence for a char
+fn scan_escape_for_char(chars: &mut impl Iterator<Item = char>) -> Result<char, EscapeError> {
+    // Previous character was '\\', unescape what follows.
+    let c = chars.next().ok_or(EscapeError::LoneSlash)?;
+    nul_escape(c).map(char::from).or_else(|c| {
+        simple_escape(c).map(char::from).or_else(|c| match c {
+            'x' => {
+                let byte = hex_escape(chars)?;
+                if byte.is_ascii() {
+                    Ok(byte as char)
+                } else {
+                    Err(EscapeError::OutOfRangeHexEscape)
+                }
+            }
+            'u' => {
+                let value = unicode_escape(chars)?;
+                if value > char::MAX as u32 {
+                    Err(EscapeError::OutOfRangeUnicodeEscape)
+                } else {
+                    char::from_u32(value).ok_or(EscapeError::LoneSurrogateUnicodeEscape)
+                }
+            }
+            _ => Err(EscapeError::InvalidEscape),
+        })
+    })
+}
+
+/// Scan an escape sequence for a byte
+fn scan_escape_for_byte(chars: &mut impl Iterator<Item = char>) -> Result<u8, EscapeError> {
+    // Previous character was '\\', unescape what follows.
+    let c = chars.next().ok_or(EscapeError::LoneSlash)?;
+    nul_escape(c).or_else(|c| {
+        simple_escape(c).or_else(|c| match c {
+            'x' => hex_escape(chars),
+            'u' => {
+                let _ = unicode_escape(chars)?;
+                Err(EscapeError::UnicodeEscapeInByte)
+            }
+            _ => Err(EscapeError::InvalidEscape),
+        })
+    })
+}
+
+fn scan_escape_for_cstr(chars: &mut impl Iterator<Item = char>) -> Result<MixedUnit, EscapeError> {
+    // Previous character was '\\', unescape what follows.
+    let c = chars.next().ok_or(EscapeError::LoneSlash)?;
+    simple_escape(nul_escape_cstr(c)?).map(|b| MixedUnit::Char(b as char)).or_else(|c| match c {
+        'x' => hex_escape(chars)?.try_into(),
+        'u' => {
+            let value = unicode_escape(chars)?;
+            match value {
+                0 => Err(EscapeError::NulInCStr),
+                _ if value > char::MAX as u32 => Err(EscapeError::OutOfRangeUnicodeEscape),
+                _ => char::from_u32(value)
+                    .map(MixedUnit::Char)
+                    .ok_or(EscapeError::LoneSurrogateUnicodeEscape),
+            }
+        }
+        _ => Err(EscapeError::InvalidEscape),
+    })
+}
+
+/// Parse a nul character without the leading backslash.
+fn nul_escape(c: char) -> Result<u8, char> {
+    if c == '0' { Ok(b'\0') } else { Err(c) }
+}
+
+/// Parse a nul character without the leading backslash for a C string.
+fn nul_escape_cstr(c: char) -> Result<char, EscapeError> {
+    if c == '0' { Err(EscapeError::NulInCStr) } else { Ok(c) }
+}
+
+/// Parse the character of an ASCII escape (except nul) without the leading backslash.
+fn simple_escape(c: char) -> Result<u8, char> {
+    // Previous character was '\\', unescape what follows.
+    Ok(match c {
+        '"' => b'"',
+        'n' => b'\n',
+        'r' => b'\r',
+        't' => b'\t',
+        '\\' => b'\\',
+        '\'' => b'\'',
+        _ => Err(c)?,
+    })
+}
+
+/// Parse the two hexadecimal characters of a hexadecimal escape without the leading r"\x".
+fn hex_escape(chars: &mut impl Iterator<Item = char>) -> Result<u8, EscapeError> {
+    let hi = chars.next().ok_or(EscapeError::TooShortHexEscape)?;
+    let hi = hi.to_digit(16).ok_or(EscapeError::InvalidCharInHexEscape)?;
+
+    let lo = chars.next().ok_or(EscapeError::TooShortHexEscape)?;
+    let lo = lo.to_digit(16).ok_or(EscapeError::InvalidCharInHexEscape)?;
+
+    Ok((hi * 16 + lo) as u8)
+}
+
+/// Parse the braces with hexadecimal characters (and underscores) part of a unicode escape.
+/// This r"{...}" normally comes after r"\u" and cannot start with an underscore.
+fn unicode_escape(chars: &mut impl Iterator<Item = char>) -> Result<u32, EscapeError> {
+    if chars.next() != Some('{') {
+        return Err(EscapeError::NoBraceInUnicodeEscape);
+    }
+
+    // First character must be a hexadecimal digit.
+    let mut n_digits = 1;
+    let mut value: u32 = match chars.next().ok_or(EscapeError::UnclosedUnicodeEscape)? {
+        '_' => return Err(EscapeError::LeadingUnderscoreUnicodeEscape),
+        '}' => return Err(EscapeError::EmptyUnicodeEscape),
+        c => c.to_digit(16).ok_or(EscapeError::InvalidCharInUnicodeEscape)?,
+    };
+
+    // First character is valid, now parse the rest of the number
+    // and closing brace.
+    loop {
+        match chars.next() {
+            None => return Err(EscapeError::UnclosedUnicodeEscape),
+            Some('_') => continue,
+            Some('}') => {
+                // Incorrect syntax has higher priority for error reporting
+                // than unallowed value for a literal.
+                return if n_digits > 6 {
+                    Err(EscapeError::OverlongUnicodeEscape)
+                } else {
+                    Ok(value)
+                };
+            }
+            Some(c) => {
+                let digit: u32 = c.to_digit(16).ok_or(EscapeError::InvalidCharInUnicodeEscape)?;
+                n_digits += 1;
+                if n_digits > 6 {
+                    // Stop updating value since we're sure that it's incorrect already.
+                    continue;
+                }
+                value = value * 16 + digit;
+            }
+        };
+    }
+}
+
+/// Takes the contents of a unicode-only (non-mixed-utf8) literal (without quotes)
+/// and produces a sequence of unescaped characters or errors,
+/// which are returned by invoking `callback`.
+///
+/// For `Char` and `Byte` modes, the callback will be called exactly once.
+pub fn unescape_unicode<F>(src: &str, mode: Mode, callback: &mut F)
+where
+    F: FnMut(Range<usize>, Result<char, EscapeError>),
+{
+    let mut byte_callback =
+        |range, res: Result<u8, EscapeError>| callback(range, res.map(char::from));
+    match mode {
+        Char => {
+            let mut chars = src.chars();
+            let res = unescape_char_iter(&mut chars);
+            callback(0..(src.len() - chars.as_str().len()), res);
+        }
+        Byte => {
+            let mut chars = src.chars();
+            let res = unescape_byte_iter(&mut chars).map(char::from);
+            callback(0..(src.len() - chars.as_str().len()), res);
+        }
+        Str => unescape_str(src, callback),
+        ByteStr => unescape_byte_str(src, &mut byte_callback),
+        RawStr => check_raw_str(src, callback),
+        RawByteStr => check_raw_byte_str(src, &mut byte_callback),
+        RawCStr => check_raw_cstr(src, callback),
+        CStr => unreachable!(),
+    }
 }
 
 /// What kind of literal do we parse.
@@ -194,33 +515,6 @@ impl Mode {
         }
     }
 
-    /// Are `\x80`..`\xff` allowed?
-    fn allow_high_bytes(self) -> bool {
-        match self {
-            Char | Str => false,
-            Byte | ByteStr | CStr => true,
-            RawStr | RawByteStr | RawCStr => unreachable!(),
-        }
-    }
-
-    /// Are unicode (non-ASCII) chars allowed?
-    #[inline]
-    fn allow_unicode_chars(self) -> bool {
-        match self {
-            Byte | ByteStr | RawByteStr => false,
-            Char | Str | RawStr | CStr | RawCStr => true,
-        }
-    }
-
-    /// Are unicode escapes (`\u`) allowed?
-    fn allow_unicode_escapes(self) -> bool {
-        match self {
-            Byte | ByteStr => false,
-            Char | Str | CStr => true,
-            RawByteStr | RawStr | RawCStr => unreachable!(),
-        }
-    }
-
     pub fn prefix_noraw(self) -> &'static str {
         match self {
             Char | Str | RawStr => "",
@@ -230,209 +524,7 @@ impl Mode {
     }
 }
 
-fn scan_escape<T: From<char> + From<u8>>(
-    chars: &mut Chars<'_>,
-    mode: Mode,
-) -> Result<T, EscapeError> {
-    // Previous character was '\\', unescape what follows.
-    let res: char = match chars.next().ok_or(EscapeError::LoneSlash)? {
-        '"' => '"',
-        'n' => '\n',
-        'r' => '\r',
-        't' => '\t',
-        '\\' => '\\',
-        '\'' => '\'',
-        '0' => '\0',
-        'x' => {
-            // Parse hexadecimal character code.
-
-            let hi = chars.next().ok_or(EscapeError::TooShortHexEscape)?;
-            let hi = hi.to_digit(16).ok_or(EscapeError::InvalidCharInHexEscape)?;
-
-            let lo = chars.next().ok_or(EscapeError::TooShortHexEscape)?;
-            let lo = lo.to_digit(16).ok_or(EscapeError::InvalidCharInHexEscape)?;
-
-            let value = (hi * 16 + lo) as u8;
-
-            return if !mode.allow_high_bytes() && !value.is_ascii() {
-                Err(EscapeError::OutOfRangeHexEscape)
-            } else {
-                // This may be a high byte, but that will only happen if `T` is
-                // `MixedUnit`, because of the `allow_high_bytes` check above.
-                Ok(T::from(value))
-            };
-        }
-        'u' => return scan_unicode(chars, mode.allow_unicode_escapes()).map(T::from),
-        _ => return Err(EscapeError::InvalidEscape),
-    };
-    Ok(T::from(res))
-}
-
-fn scan_unicode(chars: &mut Chars<'_>, allow_unicode_escapes: bool) -> Result<char, EscapeError> {
-    // We've parsed '\u', now we have to parse '{..}'.
-
-    if chars.next() != Some('{') {
-        return Err(EscapeError::NoBraceInUnicodeEscape);
-    }
-
-    // First character must be a hexadecimal digit.
-    let mut n_digits = 1;
-    let mut value: u32 = match chars.next().ok_or(EscapeError::UnclosedUnicodeEscape)? {
-        '_' => return Err(EscapeError::LeadingUnderscoreUnicodeEscape),
-        '}' => return Err(EscapeError::EmptyUnicodeEscape),
-        c => c.to_digit(16).ok_or(EscapeError::InvalidCharInUnicodeEscape)?,
-    };
-
-    // First character is valid, now parse the rest of the number
-    // and closing brace.
-    loop {
-        match chars.next() {
-            None => return Err(EscapeError::UnclosedUnicodeEscape),
-            Some('_') => continue,
-            Some('}') => {
-                if n_digits > 6 {
-                    return Err(EscapeError::OverlongUnicodeEscape);
-                }
-
-                // Incorrect syntax has higher priority for error reporting
-                // than unallowed value for a literal.
-                if !allow_unicode_escapes {
-                    return Err(EscapeError::UnicodeEscapeInByte);
-                }
-
-                break std::char::from_u32(value).ok_or({
-                    if value > 0x10FFFF {
-                        EscapeError::OutOfRangeUnicodeEscape
-                    } else {
-                        EscapeError::LoneSurrogateUnicodeEscape
-                    }
-                });
-            }
-            Some(c) => {
-                let digit: u32 = c.to_digit(16).ok_or(EscapeError::InvalidCharInUnicodeEscape)?;
-                n_digits += 1;
-                if n_digits > 6 {
-                    // Stop updating value since we're sure that it's incorrect already.
-                    continue;
-                }
-                value = value * 16 + digit;
-            }
-        };
-    }
-}
-
-#[inline]
-fn ascii_check(c: char, allow_unicode_chars: bool) -> Result<char, EscapeError> {
-    if allow_unicode_chars || c.is_ascii() { Ok(c) } else { Err(EscapeError::NonAsciiCharInByte) }
-}
-
-fn unescape_char_or_byte(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
-    let c = chars.next().ok_or(EscapeError::ZeroChars)?;
-    let res = match c {
-        '\\' => scan_escape(chars, mode),
-        '\n' | '\t' | '\'' => Err(EscapeError::EscapeOnlyChar),
-        '\r' => Err(EscapeError::BareCarriageReturn),
-        _ => ascii_check(c, mode.allow_unicode_chars()),
-    }?;
-    if chars.next().is_some() {
-        return Err(EscapeError::MoreThanOneChar);
-    }
-    Ok(res)
-}
-
-/// Takes a contents of a string literal (without quotes) and produces a
-/// sequence of escaped characters or errors.
-fn unescape_non_raw_common<F, T: From<char> + From<u8>>(src: &str, mode: Mode, callback: &mut F)
-where
-    F: FnMut(Range<usize>, Result<T, EscapeError>),
-{
-    let mut chars = src.chars();
-    let allow_unicode_chars = mode.allow_unicode_chars(); // get this outside the loop
-
-    // The `start` and `end` computation here is complicated because
-    // `skip_ascii_whitespace` makes us to skip over chars without counting
-    // them in the range computation.
-    while let Some(c) = chars.next() {
-        let start = src.len() - chars.as_str().len() - c.len_utf8();
-        let res = match c {
-            '\\' => {
-                match chars.clone().next() {
-                    Some('\n') => {
-                        // Rust language specification requires us to skip whitespaces
-                        // if unescaped '\' character is followed by '\n'.
-                        // For details see [Rust language reference]
-                        // (https://doc.rust-lang.org/reference/tokens.html#string-literals).
-                        skip_ascii_whitespace(&mut chars, start, &mut |range, err| {
-                            callback(range, Err(err))
-                        });
-                        continue;
-                    }
-                    _ => scan_escape::<T>(&mut chars, mode),
-                }
-            }
-            '"' => Err(EscapeError::EscapeOnlyChar),
-            '\r' => Err(EscapeError::BareCarriageReturn),
-            _ => ascii_check(c, allow_unicode_chars).map(T::from),
-        };
-        let end = src.len() - chars.as_str().len();
-        callback(start..end, res);
-    }
-}
-
-fn skip_ascii_whitespace<F>(chars: &mut Chars<'_>, start: usize, callback: &mut F)
-where
-    F: FnMut(Range<usize>, EscapeError),
-{
-    let tail = chars.as_str();
-    let first_non_space = tail
-        .bytes()
-        .position(|b| b != b' ' && b != b'\t' && b != b'\n' && b != b'\r')
-        .unwrap_or(tail.len());
-    if tail[1..first_non_space].contains('\n') {
-        // The +1 accounts for the escaping slash.
-        let end = start + first_non_space + 1;
-        callback(start..end, EscapeError::MultipleSkippedLinesWarning);
-    }
-    let tail = &tail[first_non_space..];
-    if let Some(c) = tail.chars().next() {
-        if c.is_whitespace() {
-            // For error reporting, we would like the span to contain the character that was not
-            // skipped. The +1 is necessary to account for the leading \ that started the escape.
-            let end = start + first_non_space + c.len_utf8() + 1;
-            callback(start..end, EscapeError::UnskippedWhitespaceWarning);
-        }
-    }
-    *chars = tail.chars();
-}
-
-/// Takes a contents of a string literal (without quotes) and produces a
-/// sequence of characters or errors.
-/// NOTE: Raw strings do not perform any explicit character escaping, here we
-/// only produce errors on bare CR.
-fn check_raw_common<F>(src: &str, mode: Mode, callback: &mut F)
-where
-    F: FnMut(Range<usize>, Result<char, EscapeError>),
-{
-    let mut chars = src.chars();
-    let allow_unicode_chars = mode.allow_unicode_chars(); // get this outside the loop
-
-    // The `start` and `end` computation here matches the one in
-    // `unescape_non_raw_common` for consistency, even though this function
-    // doesn't have to worry about skipping any chars.
-    while let Some(c) = chars.next() {
-        let start = src.len() - chars.as_str().len() - c.len_utf8();
-        let res = match c {
-            '\r' => Err(EscapeError::BareCarriageReturnInRawString),
-            _ => ascii_check(c, allow_unicode_chars),
-        };
-        let end = src.len() - chars.as_str().len();
-        callback(start..end, res);
-    }
-}
-
-#[inline]
-pub fn byte_from_char(c: char) -> u8 {
-    let res = c as u32;
-    debug_assert!(res <= u8::MAX as u32, "guaranteed because of ByteStr");
-    res as u8
+fn ascii_char_to_byte(c: char) -> Result<u8, EscapeError> {
+    // do NOT do: c.try_into().ok_or(EscapeError::NonAsciiCharInByte)
+    if c.is_ascii() { Ok(c as u8) } else { Err(EscapeError::NonAsciiCharInByte) }
 }

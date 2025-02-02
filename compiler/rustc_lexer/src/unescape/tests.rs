@@ -241,7 +241,7 @@ fn test_unescape_byte_str_good() {
         unescape_unicode(literal_text, Mode::ByteStr, &mut |range, c| {
             if let Ok(b) = &mut buf {
                 match c {
-                    Ok(c) => b.push(byte_from_char(c)),
+                    Ok(c) => b.push(c as u8),
                     Err(e) => buf = Err((range, e)),
                 }
             }
