@@ -51,20 +51,20 @@ impl FileDescription for EventFd {
         _communicate_allowed: bool,
         ptr: Pointer,
         len: usize,
-        dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         // We're treating the buffer as a `u64`.
         let ty = ecx.machine.layouts.u64;
         // Check the size of slice, and return error only if the size of the slice < 8.
         if len < ty.size.bytes_usize() {
-            return ecx.set_last_error_and_return(ErrorKind::InvalidInput, dest);
+            return finish.call(ecx, Err(ErrorKind::InvalidInput.into()));
         }
 
         // Turn the pointer into a place at the right type.
         let buf_place = ecx.ptr_to_mplace_unaligned(ptr, ty);
 
-        eventfd_read(buf_place, dest, self, ecx)
+        eventfd_read(buf_place, self, ecx, finish)
     }
 
     /// A write call adds the 8-byte integer value supplied in
@@ -260,9 +260,9 @@ fn eventfd_write<'tcx>(
 /// else just return the current counter value to the caller and set the counter to 0.
 fn eventfd_read<'tcx>(
     buf_place: MPlaceTy<'tcx>,
-    dest: &MPlaceTy<'tcx>,
     eventfd: FileDescriptionRef<EventFd>,
     ecx: &mut MiriInterpCx<'tcx>,
+    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
 ) -> InterpResult<'tcx> {
     // Set counter to 0, get old value.
     let counter = eventfd.counter.replace(0);
@@ -270,9 +270,8 @@ fn eventfd_read<'tcx>(
     // Block when counter == 0.
     if counter == 0 {
         if eventfd.is_nonblock {
-            return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
+            return finish.call(ecx, Err(ErrorKind::WouldBlock.into()));
         }
-        let dest = dest.clone();
 
         eventfd.blocked_read_tid.borrow_mut().push(ecx.active_thread());
 
@@ -283,7 +282,7 @@ fn eventfd_read<'tcx>(
             callback!(
                 @capture<'tcx> {
                     buf_place: MPlaceTy<'tcx>,
-                    dest: MPlaceTy<'tcx>,
+                    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
                     weak_eventfd: WeakFileDescriptionRef<EventFd>,
                 }
                 |this, unblock: UnblockKind| {
@@ -291,7 +290,7 @@ fn eventfd_read<'tcx>(
                     // When we get unblocked, try again. We know the ref is still valid,
                     // otherwise there couldn't be a `write` that unblocks us.
                     let eventfd_ref = weak_eventfd.upgrade().unwrap();
-                    eventfd_read(buf_place, &dest, eventfd_ref, this)
+                    eventfd_read(buf_place, eventfd_ref, this, finish)
                 }
             ),
         );
@@ -317,7 +316,7 @@ fn eventfd_read<'tcx>(
         ecx.check_and_update_readiness(eventfd)?;
 
         // Tell userspace how many bytes we put into the buffer.
-        return ecx.write_int(buf_place.layout.size.bytes(), dest);
+        return finish.call(ecx, Ok(buf_place.layout.size.bytes_usize()));
     }
     interp_ok(())
 }

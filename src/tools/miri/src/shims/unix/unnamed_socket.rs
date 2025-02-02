@@ -5,7 +5,7 @@
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::VecDeque;
 use std::io;
-use std::io::{ErrorKind, Read};
+use std::io::ErrorKind;
 
 use rustc_abi::Size;
 
@@ -92,10 +92,10 @@ impl FileDescription for AnonSocket {
         _communicate_allowed: bool,
         ptr: Pointer,
         len: usize,
-        dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        anonsocket_read(self, len, ptr, dest, ecx)
+        anonsocket_read(self, ptr, len, ecx, finish)
     }
 
     fn write<'tcx>(
@@ -205,14 +205,14 @@ fn anonsocket_write<'tcx>(
 /// Read from AnonSocket and return the number of bytes read.
 fn anonsocket_read<'tcx>(
     self_ref: FileDescriptionRef<AnonSocket>,
-    len: usize,
     ptr: Pointer,
-    dest: &MPlaceTy<'tcx>,
+    len: usize,
     ecx: &mut MiriInterpCx<'tcx>,
+    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
 ) -> InterpResult<'tcx> {
     // Always succeed on read size 0.
     if len == 0 {
-        return ecx.return_read_success(ptr, &[], 0, dest);
+        return finish.call(ecx, Ok(0));
     }
 
     let Some(readbuf) = &self_ref.readbuf else {
@@ -225,43 +225,41 @@ fn anonsocket_read<'tcx>(
         if self_ref.peer_fd().upgrade().is_none() {
             // Socketpair with no peer and empty buffer.
             // 0 bytes successfully read indicates end-of-file.
-            return ecx.return_read_success(ptr, &[], 0, dest);
+            return finish.call(ecx, Ok(0));
         } else if self_ref.is_nonblock {
             // Non-blocking socketpair with writer and empty buffer.
             // https://linux.die.net/man/2/read
             // EAGAIN or EWOULDBLOCK can be returned for socket,
             // POSIX.1-2001 allows either error to be returned for this case.
             // Since there is no ErrorKind for EAGAIN, WouldBlock is used.
-            return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
+            return finish.call(ecx, Err(ErrorKind::WouldBlock.into()));
         } else {
             self_ref.blocked_read_tid.borrow_mut().push(ecx.active_thread());
             // Blocking socketpair with writer and empty buffer.
             // Block the current thread; only keep a weak ref for this.
             let weak_self_ref = FileDescriptionRef::downgrade(&self_ref);
-            let dest = dest.clone();
             ecx.block_thread(
                 BlockReason::UnnamedSocket,
                 None,
                 callback!(
                     @capture<'tcx> {
                         weak_self_ref: WeakFileDescriptionRef<AnonSocket>,
-                        len: usize,
                         ptr: Pointer,
-                        dest: MPlaceTy<'tcx>,
+                        len: usize,
+                        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
                     }
                     |this, unblock: UnblockKind| {
                         assert_eq!(unblock, UnblockKind::Ready);
                         // If we got unblocked, then our peer successfully upgraded its weak
                         // ref to us. That means we can also upgrade our weak ref.
                         let self_ref = weak_self_ref.upgrade().unwrap();
-                        anonsocket_read(self_ref, len, ptr, &dest, this)
+                        anonsocket_read(self_ref, ptr, len, this, finish)
                     }
                 ),
             );
         }
     } else {
         // There's data to be read!
-        let mut bytes = vec![0; len];
         let mut readbuf = readbuf.borrow_mut();
         // Synchronize with all previous writes to this buffer.
         // FIXME: this over-synchronizes; a more precise approach would be to
@@ -270,7 +268,7 @@ fn anonsocket_read<'tcx>(
 
         // Do full read / partial read based on the space available.
         // Conveniently, `read` exists on `VecDeque` and has exactly the desired behavior.
-        let actual_read_size = readbuf.buf.read(&mut bytes[..]).unwrap();
+        let read_size = ecx.read_from_host(&mut readbuf.buf, len, ptr)?.unwrap();
 
         // Need to drop before others can access the readbuf again.
         drop(readbuf);
@@ -293,7 +291,7 @@ fn anonsocket_read<'tcx>(
             ecx.check_and_update_readiness(peer_fd)?;
         };
 
-        return ecx.return_read_success(ptr, &bytes, actual_read_size, dest);
+        return finish.call(ecx, Ok(read_size));
     }
     interp_ok(())
 }

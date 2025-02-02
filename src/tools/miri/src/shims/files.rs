@@ -1,6 +1,6 @@
 use std::any::Any;
 use std::collections::BTreeMap;
-use std::io::{IsTerminal, Read, SeekFrom, Write};
+use std::io::{IsTerminal, SeekFrom, Write};
 use std::marker::CoercePointee;
 use std::ops::Deref;
 use std::rc::{Rc, Weak};
@@ -140,8 +140,8 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         _communicate_allowed: bool,
         _ptr: Pointer,
         _len: usize,
-        _dest: &MPlaceTy<'tcx>,
         _ecx: &mut MiriInterpCx<'tcx>,
+        _finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("cannot read from {}", self.name());
     }
@@ -207,19 +207,16 @@ impl FileDescription for io::Stdin {
         communicate_allowed: bool,
         ptr: Pointer,
         len: usize,
-        dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        let mut bytes = vec![0; len];
         if !communicate_allowed {
             // We want isolation mode to be deterministic, so we have to disallow all reads, even stdin.
             helpers::isolation_abort_error("`read` from stdin")?;
         }
-        let result = Read::read(&mut &*self, &mut bytes);
-        match result {
-            Ok(read_size) => ecx.return_read_success(ptr, &bytes, read_size, dest),
-            Err(e) => ecx.set_last_error_and_return(e, dest),
-        }
+
+        let result = ecx.read_from_host(&*self, len, ptr)?;
+        finish.call(ecx, result)
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
@@ -405,28 +402,28 @@ impl FdTable {
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    /// Helper to implement `FileDescription::read`:
-    /// This is only used when `read` is successful.
-    /// `actual_read_size` should be the return value of some underlying `read` call that used
-    /// `bytes` as its output buffer.
-    /// The length of `bytes` must not exceed either the host's or the target's `isize`.
-    /// `bytes` is written to `buf` and the size is written to `dest`.
-    fn return_read_success(
+    /// Read data from a host `Read` type, store the result into machine memory,
+    /// and return whether that worked.
+    fn read_from_host(
         &mut self,
-        buf: Pointer,
-        bytes: &[u8],
-        actual_read_size: usize,
-        dest: &MPlaceTy<'tcx>,
-    ) -> InterpResult<'tcx> {
+        mut file: impl io::Read,
+        len: usize,
+        ptr: Pointer,
+    ) -> InterpResult<'tcx, Result<usize, IoError>> {
         let this = self.eval_context_mut();
-        // If reading to `bytes` did not fail, we write those bytes to the buffer.
-        // Crucially, if fewer than `bytes.len()` bytes were read, only write
-        // that much into the output buffer!
-        this.write_bytes_ptr(buf, bytes[..actual_read_size].iter().copied())?;
 
-        // The actual read size is always less than what got originally requested so this cannot fail.
-        this.write_int(u64::try_from(actual_read_size).unwrap(), dest)?;
-        interp_ok(())
+        let mut bytes = vec![0; len];
+        let result = file.read(&mut bytes);
+        match result {
+            Ok(read_size) => {
+                // If reading to `bytes` did not fail, we write those bytes to the buffer.
+                // Crucially, if fewer than `bytes.len()` bytes were read, only write
+                // that much into the output buffer!
+                this.write_bytes_ptr(ptr, bytes[..read_size].iter().copied())?;
+                interp_ok(Ok(read_size))
+            }
+            Err(e) => interp_ok(Err(IoError::HostError(e))),
+        }
     }
 
     /// Helper to implement `FileDescription::write`:

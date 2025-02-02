@@ -30,8 +30,8 @@ pub trait UnixFileDescription: FileDescription {
         _offset: u64,
         _ptr: Pointer,
         _len: usize,
-        _dest: &MPlaceTy<'tcx>,
         _ecx: &mut MiriInterpCx<'tcx>,
+        _finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("cannot pread from {}", self.name());
     }
@@ -236,7 +236,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let count = usize::try_from(count).unwrap(); // now it fits in a `usize`
         let communicate = this.machine.communicate();
 
-        // We temporarily dup the FD to be able to retain mutable access to `this`.
+        // Get the FD.
         let Some(fd) = this.machine.fds.get(fd_num) else {
             trace!("read: FD not found");
             return this.set_last_error_and_return(LibcError("EBADF"), dest);
@@ -247,13 +247,33 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // because it was a target's `usize`. Also we are sure that its smaller than
         // `usize::MAX` because it is bounded by the host's `isize`.
 
+        let finish = {
+            let dest = dest.clone();
+            callback!(
+                @capture<'tcx> {
+                    count: usize,
+                    dest: MPlaceTy<'tcx>,
+                }
+                |this, result: Result<usize, IoError>| {
+                    match result {
+                        Ok(read_size) => {
+                            assert!(read_size <= count);
+                            // This must fit since `count` fits.
+                            this.write_int(u64::try_from(read_size).unwrap(), &dest)
+                        }
+                        Err(e) => {
+                            this.set_last_error_and_return(e, &dest)
+                        }
+                }}
+            )
+        };
         match offset {
-            None => fd.read(communicate, buf, count, dest, this)?,
+            None => fd.read(communicate, buf, count, this, finish)?,
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
                     return this.set_last_error_and_return(LibcError("EINVAL"), dest);
                 };
-                fd.as_unix().pread(communicate, offset, buf, count, dest, this)?
+                fd.as_unix().pread(communicate, offset, buf, count, this, finish)?
             }
         };
         interp_ok(())
