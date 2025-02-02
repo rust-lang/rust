@@ -92,51 +92,88 @@ impl<'tcx> MonoItem<'tcx> {
     }
 
     pub fn instantiation_mode(&self, tcx: TyCtxt<'tcx>) -> InstantiationMode {
-        let generate_cgu_internal_copies =
-            (tcx.sess.opts.optimize != OptLevel::No) && !tcx.sess.link_dead_code();
+        // The case handling here is written in the same style as cross_crate_inlinable, we first
+        // handle the cases where we must use a particular instantiation mode, then cascade down
+        // through a sequence of heuristics.
 
-        match *self {
-            MonoItem::Fn(ref instance) => {
-                let entry_def_id = tcx.entry_fn(()).map(|(id, _)| id);
-                // If this function isn't inlined or otherwise has an extern
-                // indicator, then we'll be creating a globally shared version.
-                let codegen_fn_attrs = tcx.codegen_fn_attrs(instance.def_id());
-                if codegen_fn_attrs.contains_extern_indicator()
-                    || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED)
-                    || !instance.def.generates_cgu_internal_copy(tcx)
-                    || Some(instance.def_id()) == entry_def_id
-                {
-                    return InstantiationMode::GloballyShared { may_conflict: false };
-                }
+        // The first thing we do is detect MonoItems which we must instantiate exactly once in the
+        // whole program.
 
-                if let InlineAttr::Never = tcx.codegen_fn_attrs(instance.def_id()).inline
-                    && self.is_generic_fn()
-                {
-                    // Upgrade inline(never) to a globally shared instance.
-                    return InstantiationMode::GloballyShared { may_conflict: true };
-                }
-
-                // At this point we don't have explicit linkage and we're an
-                // inlined function. If this crate's build settings permit,
-                // we'll be creating a local copy per CGU.
-                if generate_cgu_internal_copies {
-                    return InstantiationMode::LocalCopy;
-                }
-
-                // Finally, if this is `#[inline(always)]` we're sure to respect
-                // that with an inline copy per CGU, but otherwise we'll be
-                // creating one copy of this `#[inline]` function which may
-                // conflict with upstream crates as it could be an exported
-                // symbol.
-                if tcx.codegen_fn_attrs(instance.def_id()).inline.always() {
-                    InstantiationMode::LocalCopy
-                } else {
-                    InstantiationMode::GloballyShared { may_conflict: true }
-                }
-            }
+        // Statics and global_asm! must be instantiated exactly once.
+        let instance = match *self {
+            MonoItem::Fn(instance) => instance,
             MonoItem::Static(..) | MonoItem::GlobalAsm(..) => {
-                InstantiationMode::GloballyShared { may_conflict: false }
+                return InstantiationMode::GloballyShared { may_conflict: false };
             }
+        };
+
+        // Similarly, the executable entrypoint must be instantiated exactly once.
+        if let Some((entry_def_id, _)) = tcx.entry_fn(()) {
+            if instance.def_id() == entry_def_id {
+                return InstantiationMode::GloballyShared { may_conflict: false };
+            }
+        }
+
+        // If the function is #[naked] or contains any other attribute that requires exactly-once
+        // instantiation:
+        let codegen_fn_attrs = tcx.codegen_fn_attrs(instance.def_id());
+        if codegen_fn_attrs.contains_extern_indicator()
+            || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED)
+        {
+            return InstantiationMode::GloballyShared { may_conflict: false };
+        }
+
+        // FIXME: The logic for which functions are permitted to get LocalCopy is actually spread
+        // across 4 functions:
+        // * cross_crate_inlinable(def_id)
+        // * InstanceKind::requires_inline
+        // * InstanceKind::generate_cgu_internal_copy
+        // * MonoItem::instantiation_mode
+        // Since reachable_non_generics calls InstanceKind::generates_cgu_internal_copy to decide
+        // which symbols this crate exports, we are obligated to only generate LocalCopy when
+        // generates_cgu_internal_copy returns true.
+        if !instance.def.generates_cgu_internal_copy(tcx) {
+            return InstantiationMode::GloballyShared { may_conflict: false };
+        }
+
+        // Beginning of heuristics. The handling of link-dead-code and inline(always) are QoL only,
+        // the compiler should not crash and linkage should work, but codegen may be undesirable.
+
+        // -Clink-dead-code was given an unfortunate name; the point of the flag is to assist
+        // coverage tools which rely on having every function in the program appear in the
+        // generated code. If we select LocalCopy, functions which are not used because they are
+        // missing test coverage will disappear from such coverage reports, defeating the point.
+        // Note that -Cinstrument-coverage does not require such assistance from us, only coverage
+        // tools implemented without compiler support ironically require a special compiler flag.
+        if tcx.sess.link_dead_code() {
+            return InstantiationMode::GloballyShared { may_conflict: true };
+        }
+
+        // To ensure that #[inline(always)] can be inlined as much as possible, especially in unoptimized
+        // builds, we always select LocalCopy.
+        if codegen_fn_attrs.inline.always() {
+            return InstantiationMode::LocalCopy;
+        }
+
+        // #[inline(never)] functions in general are poor candidates for inlining and thus since
+        // LocalCopy generally increases code size for the benefit of optimizations from inlining,
+        // we want to give them GloballyShared codegen.
+        // The slight problem is that generic functions need to always support cross-crate
+        // compilation, so all previous stages of the compiler are obligated to treat generic
+        // functions the same as those that unconditionally get LocalCopy codegen. It's only when
+        // we get here that we can at least not codegen a #[inline(never)] generic function in all
+        // of our CGUs.
+        if let InlineAttr::Never = tcx.codegen_fn_attrs(instance.def_id()).inline
+            && self.is_generic_fn()
+        {
+            return InstantiationMode::GloballyShared { may_conflict: true };
+        }
+
+        // The fallthrough case is to generate LocalCopy for all optimized builds, and
+        // GloballyShared with conflict prevention when optimizations are disabled.
+        match tcx.sess.opts.optimize {
+            OptLevel::No => InstantiationMode::GloballyShared { may_conflict: true },
+            _ => InstantiationMode::LocalCopy,
         }
     }
 
