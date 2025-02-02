@@ -677,12 +677,12 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         let mut interpreted_as_const = None;
         let mut interpreted_as_const_sugg = None;
 
-        if let PatKind::ExpandedConstant { def_id, is_inline: false, .. }
-        | PatKind::AscribeUserType {
-            subpattern:
-                box Pat { kind: PatKind::ExpandedConstant { def_id, is_inline: false, .. }, .. },
-            ..
-        } = pat.kind
+        let mut subpat = pat;
+        while let PatKind::AscribeUserType { ref subpattern, .. } = subpat.kind {
+            subpat = subpattern;
+        }
+
+        if let PatKind::ExpandedConstant { def_id, is_inline: false, .. } = subpat.kind
             && let DefKind::Const = self.tcx.def_kind(def_id)
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
             // We filter out paths with multiple path::segments.
@@ -693,11 +693,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             // When we encounter a constant as the binding name, point at the `const` definition.
             interpreted_as_const = Some(span);
             interpreted_as_const_sugg = Some(InterpretedAsConst { span: pat.span, variable });
-        } else if let PatKind::Constant { .. }
-        | PatKind::AscribeUserType {
-            subpattern: box Pat { kind: PatKind::Constant { .. }, .. },
-            ..
-        } = pat.kind
+        } else if let PatKind::Constant { .. } = subpat.kind
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
         {
             // If the pattern to match is an integer literal:
