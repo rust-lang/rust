@@ -314,8 +314,6 @@ symbols! {
         Right,
         Rust,
         RustaceansAreAwesome,
-        RustcDecodable,
-        RustcEncodable,
         RwLock,
         RwLockReadGuard,
         RwLockWriteGuard,
