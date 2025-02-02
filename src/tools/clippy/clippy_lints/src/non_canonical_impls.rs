@@ -121,10 +121,10 @@ impl LateLintPass<'_> for NonCanonicalImpls {
         if cx.tcx.is_automatically_derived(item.owner_id.to_def_id()) {
             return;
         }
-        let ImplItemKind::Fn(_, impl_item_id) = cx.tcx.hir().impl_item(impl_item.impl_item_id()).kind else {
+        let ImplItemKind::Fn(_, impl_item_id) = cx.tcx.hir_impl_item(impl_item.impl_item_id()).kind else {
             return;
         };
-        let body = cx.tcx.hir().body(impl_item_id);
+        let body = cx.tcx.hir_body(impl_item_id);
         let ExprKind::Block(block, ..) = body.value.kind else {
             return;
         };

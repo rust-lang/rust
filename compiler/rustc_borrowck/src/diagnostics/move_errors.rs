@@ -347,7 +347,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // Find the closure that captured the binding.
         let mut expr_finder = FindExprBySpan::new(args_span, tcx);
         expr_finder.include_closures = true;
-        expr_finder.visit_expr(tcx.hir().body(body_id).value);
+        expr_finder.visit_expr(tcx.hir_body(body_id).value);
         let Some(closure_expr) = expr_finder.result else { return };
         let ExprKind::Closure(closure) = closure_expr.kind else { return };
         // We'll only suggest cloning the binding if it's a `move` closure.
@@ -357,7 +357,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let use_span = use_spans.var_or_use();
         let mut expr_finder = FindExprBySpan::new(use_span, tcx);
         expr_finder.include_closures = true;
-        expr_finder.visit_expr(tcx.hir().body(body_id).value);
+        expr_finder.visit_expr(tcx.hir_body(body_id).value);
         let Some(use_expr) = expr_finder.result else { return };
         let parent = tcx.parent_hir_node(use_expr.hir_id);
         if let Node::Expr(expr) = parent

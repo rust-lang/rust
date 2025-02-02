@@ -68,7 +68,7 @@ pub(super) fn check(
     let mut applicability = Applicability::MaybeIncorrect;
     if let Some(range) = higher::Range::hir(receiver)
         && let ExprKind::Closure(Closure { body, .. }) = arg.kind
-        && let body_hir = cx.tcx.hir().body(*body)
+        && let body_hir = cx.tcx.hir_body(*body)
         && let Body {
             params: [param],
             value: body_expr,

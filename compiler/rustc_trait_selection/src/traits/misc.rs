@@ -208,7 +208,7 @@ pub fn all_fields_implement_trait<'tcx>(
             }
 
             let field_span = tcx.def_span(field.did);
-            let field_ty_span = match tcx.hir().get_if_local(field.did) {
+            let field_ty_span = match tcx.hir_get_if_local(field.did) {
                 Some(hir::Node::Field(field_def)) => field_def.ty.span,
                 _ => field_span,
             };

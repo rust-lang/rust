@@ -63,7 +63,7 @@ pub(super) fn check<'a>(
     let ext_def_span = def.span.until(map.span);
 
     let (sugg, method, applicability) = if let ExprKind::Closure(map_closure) = map.kind
-            && let closure_body = cx.tcx.hir().body(map_closure.body)
+            && let closure_body = cx.tcx.hir_body(map_closure.body)
             && let closure_body_value = closure_body.value.peel_blocks()
             && let ExprKind::Binary(op, l, r) = closure_body_value.kind
             && let Some(param) = closure_body.params.first()

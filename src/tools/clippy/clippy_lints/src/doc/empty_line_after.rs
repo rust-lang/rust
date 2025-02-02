@@ -177,7 +177,7 @@ fn suggest_inner(cx: &LateContext<'_>, diag: &mut Diag<'_, ()>, kind: StopKind, 
             if let Some(first) = crate_mod
                 .item_ids
                 .iter()
-                .map(|&id| cx.tcx.hir().item(id))
+                .map(|&id| cx.tcx.hir_item(id))
                 // skip prelude imports
                 .find(|item| !matches!(item.span.ctxt().outer_expn_data().kind, ExpnKind::AstPass(_)))
                 && first.owner_id == owner =>

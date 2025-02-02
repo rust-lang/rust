@@ -128,8 +128,7 @@ fn sized_trait_bound_spans<'tcx>(
 }
 
 fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]> {
-    tcx.hir()
-        .get_if_local(trait_def_id)
+    tcx.hir_get_if_local(trait_def_id)
         .and_then(|node| match node {
             hir::Node::Item(hir::Item {
                 kind: hir::ItemKind::Trait(.., generics, bounds, _),
@@ -301,7 +300,7 @@ pub fn dyn_compatibility_violations_for_assoc_item(
         ty::AssocKind::Fn => virtual_call_violations_for_method(tcx, trait_def_id, item)
             .into_iter()
             .map(|v| {
-                let node = tcx.hir().get_if_local(item.def_id);
+                let node = tcx.hir_get_if_local(item.def_id);
                 // Get an accurate span depending on the violation.
                 let span = match (&v, node) {
                     (MethodViolationCode::ReferencesSelfInput(Some(span)), _) => *span,
@@ -346,7 +345,7 @@ fn virtual_call_violations_for_method<'tcx>(
             generics,
             kind: hir::TraitItemKind::Fn(sig, _),
             ..
-        })) = tcx.hir().get_if_local(method.def_id).as_ref()
+        })) = tcx.hir_get_if_local(method.def_id).as_ref()
         {
             let sm = tcx.sess.source_map();
             Some((
@@ -380,7 +379,7 @@ fn virtual_call_violations_for_method<'tcx>(
             let span = if let Some(hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(sig, _),
                 ..
-            })) = tcx.hir().get_if_local(method.def_id).as_ref()
+            })) = tcx.hir_get_if_local(method.def_id).as_ref()
             {
                 Some(sig.decl.inputs[i].span)
             } else {
@@ -418,7 +417,7 @@ fn virtual_call_violations_for_method<'tcx>(
             let span = if let Some(hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(sig, _),
                 ..
-            })) = tcx.hir().get_if_local(method.def_id).as_ref()
+            })) = tcx.hir_get_if_local(method.def_id).as_ref()
             {
                 Some(sig.decl.inputs[0].span)
             } else {

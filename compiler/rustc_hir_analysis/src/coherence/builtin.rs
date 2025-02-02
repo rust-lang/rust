@@ -674,7 +674,7 @@ fn infringing_fields_error<'tcx>(
 
     suggest_constraining_type_params(
         tcx,
-        tcx.hir().get_generics(impl_did).expect("impls always have generics"),
+        tcx.hir_get_generics(impl_did).expect("impls always have generics"),
         &mut err,
         bounds
             .iter()

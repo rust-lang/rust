@@ -113,7 +113,7 @@ fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
     match arg.kind {
         hir::ExprKind::Closure(&hir::Closure { body, .. })
             // If it's a closure, we need to check what is called.
-            if let closure_body = cx.tcx.hir().body(body)
+            if let closure_body = cx.tcx.hir_body(body)
                 && let [param] = closure_body.params
                 && let hir::PatKind::Binding(_, local_id, ..) = strip_pat_refs(param.pat).kind =>
         {

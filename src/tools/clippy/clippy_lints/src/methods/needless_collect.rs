@@ -498,7 +498,7 @@ fn get_captured_ids(cx: &LateContext<'_>, ty: Ty<'_>) -> HirIdSet {
                 }
             },
             ty::Closure(def_id, _) => {
-                let closure_hir_node = cx.tcx.hir().get_if_local(*def_id).unwrap();
+                let closure_hir_node = cx.tcx.hir_get_if_local(*def_id).unwrap();
                 if let Node::Expr(closure_expr) = closure_hir_node {
                     can_move_expr_to_closure(cx, closure_expr)
                         .unwrap()

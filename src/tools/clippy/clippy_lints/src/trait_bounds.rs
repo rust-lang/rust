@@ -135,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                 && let Some(Node::Item(Item {
                     kind: ItemKind::Trait(_, _, _, self_bounds, _),
                     ..
-                })) = cx.tcx.hir().get_if_local(*def_id)
+                })) = cx.tcx.hir_get_if_local(*def_id)
             {
                 if self_bounds_map.is_empty() {
                     for bound in *self_bounds {

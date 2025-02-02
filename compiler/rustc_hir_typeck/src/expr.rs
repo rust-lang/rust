@@ -1799,7 +1799,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         block: &'tcx hir::ConstBlock,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let body = self.tcx.hir().body(block.body);
+        let body = self.tcx.hir_body(block.body);
 
         // Create a new function context.
         let def_id = block.def_id;

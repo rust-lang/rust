@@ -275,7 +275,7 @@ fn could_use_elision<'tcx>(
     }
 
     if let Some(body_id) = body {
-        let body = cx.tcx.hir().body(body_id);
+        let body = cx.tcx.hir_body(body_id);
 
         let first_ident = body.params.first().and_then(|param| param.pat.simple_ident());
         if non_elidable_self_type(cx, func, first_ident, msrv) {

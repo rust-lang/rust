@@ -123,7 +123,7 @@ fn typeck_with_inspect<'tcx>(
     let body_id = node.body_id().unwrap_or_else(|| {
         span_bug!(span, "can't type-check body of {:?}", def_id);
     });
-    let body = tcx.hir().body(body_id);
+    let body = tcx.hir_body(body_id);
 
     let param_env = tcx.param_env(def_id);
 

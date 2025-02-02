@@ -103,7 +103,6 @@ fn check_closures<'tcx>(
     checked_closures: &mut FxHashSet<LocalDefId>,
     closures: FxIndexSet<LocalDefId>,
 ) {
-    let hir = cx.tcx.hir();
     for closure in closures {
         if !checked_closures.insert(closure) {
             continue;
@@ -114,7 +113,7 @@ fn check_closures<'tcx>(
             .tcx
             .hir_node_by_def_id(closure)
             .associated_body()
-            .map(|(_, body_id)| hir.body(body_id))
+            .map(|(_, body_id)| cx.tcx.hir_body(body_id))
         {
             euv::ExprUseVisitor::for_clippy(cx, closure, &mut *ctx)
                 .consume_body(body)

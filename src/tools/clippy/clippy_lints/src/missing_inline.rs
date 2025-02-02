@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
                 // note: we need to check if the trait is exported so we can't use
                 // `LateLintPass::check_trait_item` here.
                 for tit in trait_items {
-                    let tit_ = cx.tcx.hir().trait_item(tit.id);
+                    let tit_ = cx.tcx.hir_trait_item(tit.id);
                     match tit_.kind {
                         hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => {},
                         hir::TraitItemKind::Fn(..) => {
@@ -113,7 +113,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
                                 // trait method with default body needs inline in case
                                 // an impl is not provided
                                 let desc = "a default trait method";
-                                let item = cx.tcx.hir().trait_item(tit.id);
+                                let item = cx.tcx.hir_trait_item(tit.id);
                                 let attrs = cx.tcx.hir().attrs(item.hir_id());
                                 check_missing_inline_attrs(cx, attrs, item.span, desc);
                             }
