@@ -177,9 +177,8 @@ pub fn main() {
     rustc_driver::init_logger(&early_dcx, rustc_log::LoggerConfig::from_env("RUSTDOC_LOG"));
 
     let exit_code = rustc_driver::catch_with_exit_code(|| {
-        let at_args = rustc_driver::args::raw_args(&early_dcx)?;
+        let at_args = rustc_driver::args::raw_args(&early_dcx);
         main_args(&mut early_dcx, &at_args);
-        Ok(())
     });
     process::exit(exit_code);
 }
