@@ -11,7 +11,6 @@ use rustc_hir as hir;
 use rustc_hir::{Block, BlockCheckMode, ItemKind, Node, UnsafeSource};
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Pos, RelativeBytePos, Span, SyntaxContext};
 
@@ -111,7 +110,7 @@ impl_lint_pass!(UndocumentedUnsafeBlocks => [UNDOCUMENTED_UNSAFE_BLOCKS, UNNECES
 impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
-            && !in_external_macro(cx.tcx.sess, block.span)
+            && !block.span.in_external_macro(cx.tcx.sess.source_map())
             && !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, block.hir_id)
             && !is_unsafe_from_proc_macro(cx, block.span)
             && !block_has_safety_comment(cx, block.span)
@@ -143,7 +142,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
 
         if let Some(tail) = block.expr
             && !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, tail.hir_id)
-            && !in_external_macro(cx.tcx.sess, tail.span)
+            && !tail.span.in_external_macro(cx.tcx.sess.source_map())
             && let HasSafetyComment::Yes(pos) = stmt_has_safety_comment(cx, tail.span, tail.hir_id)
             && let Some(help_span) = expr_has_unnecessary_safety_comment(cx, tail, pos)
         {
@@ -167,7 +166,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
             return;
         };
         if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, stmt.hir_id)
-            && !in_external_macro(cx.tcx.sess, stmt.span)
+            && !stmt.span.in_external_macro(cx.tcx.sess.source_map())
             && let HasSafetyComment::Yes(pos) = stmt_has_safety_comment(cx, stmt.span, stmt.hir_id)
             && let Some(help_span) = expr_has_unnecessary_safety_comment(cx, expr, pos)
         {
@@ -184,7 +183,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if in_external_macro(cx.tcx.sess, item.span) {
+        if item.span.in_external_macro(cx.tcx.sess.source_map()) {
             return;
         }
 

@@ -6,7 +6,6 @@ use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir::{FnRetTy, ImplItemKind, ImplicitSelfKind, ItemKind, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
@@ -131,7 +130,7 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
             && trait_ref
                 .trait_def_id()
                 .is_some_and(|did| cx.tcx.is_diagnostic_item(sym::IntoIterator, did))
-            && !in_external_macro(cx.sess(), item.span)
+            && !item.span.in_external_macro(cx.sess().source_map())
             && let &ty::Ref(_, ty, mtbl) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind()
             && let expected_method_name = match mtbl {
                 Mutability::Mut => sym::iter_mut,
@@ -193,7 +192,7 @@ impl {self_ty_without_ref} {{
             _ => return,
         };
 
-        if !in_external_macro(cx.sess(), item.span)
+        if !item.span.in_external_macro(cx.sess().source_map())
             && let ImplItemKind::Fn(sig, _) = item.kind
             && let FnRetTy::Return(ret) = sig.decl.output
             && is_nameable_in_impl_trait(ret)

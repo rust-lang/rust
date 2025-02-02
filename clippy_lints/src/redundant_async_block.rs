@@ -10,7 +10,6 @@ use rustc_hir::{
     Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, MatchSource,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::UpvarCapture;
 use rustc_session::declare_lint_pass;
 
@@ -47,7 +46,7 @@ declare_lint_pass!(RedundantAsyncBlock => [REDUNDANT_ASYNC_BLOCK]);
 impl<'tcx> LateLintPass<'tcx> for RedundantAsyncBlock {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let span = expr.span;
-        if !in_external_macro(cx.tcx.sess, span) &&
+        if !span.in_external_macro(cx.tcx.sess.source_map()) &&
             let Some(body_expr) = desugar_async_block(cx, expr) &&
             let Some(expr) = desugar_await(peel_blocks(body_expr)) &&
             // The await prefix must not come from a macro as its content could change in the future.

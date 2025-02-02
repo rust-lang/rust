@@ -17,7 +17,6 @@ use rustc_hir::{
     StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass, Level, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_session::declare_lint_pass;
@@ -191,7 +190,7 @@ fn stmt_needs_never_type(cx: &LateContext<'_>, stmt_hir_id: HirId) -> bool {
 
 impl<'tcx> LateLintPass<'tcx> for Return {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
-        if !in_external_macro(cx.sess(), stmt.span)
+        if !stmt.span.in_external_macro(cx.sess().source_map())
             && let StmtKind::Semi(expr) = stmt.kind
             && let ExprKind::Ret(Some(ret)) = expr.kind
             // return Err(...)? desugars to a match
@@ -237,8 +236,8 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             && let PatKind::Binding(_, local_id, _, _) = local.pat.kind
             && path_to_local_id(retexpr, local_id)
             && !last_statement_borrows(cx, initexpr)
-            && !in_external_macro(cx.sess(), initexpr.span)
-            && !in_external_macro(cx.sess(), retexpr.span)
+            && !initexpr.span.in_external_macro(cx.sess().source_map())
+            && !retexpr.span.in_external_macro(cx.sess().source_map())
             && !local.span.from_expansion()
             && !span_contains_cfg(cx, stmt.span.between(retexpr.span))
         {
