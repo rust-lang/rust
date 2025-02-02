@@ -1,6 +1,7 @@
 use std::ops;
 
 use either::Either;
+use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
@@ -62,10 +63,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if !prefix.is_empty() {
             let bounds = Range::from_start(0..prefix.len() as u64);
             let subpattern = bounds.apply(prefix);
-            for pair in self.build_slice_branch(bounds, place, top_pattern, subpattern, min_length)
-            {
-                match_pairs.push(pair);
-            }
+            self.build_slice_branch(bounds, place, top_pattern, subpattern, min_length)
+                .for_each(|pair| match_pairs.push(pair));
         }
 
         if let Some(subslice_pat) = opt_slice {
@@ -81,13 +80,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if !suffix.is_empty() {
             let bounds = Range::from_end(0..suffix.len() as u64);
             let subpattern = bounds.apply(suffix);
-            for pair in self.build_slice_branch(bounds, place, top_pattern, subpattern, min_length)
-            {
-                match_pairs.push(pair);
-            }
+            self.build_slice_branch(bounds, place, top_pattern, subpattern, min_length)
+                .for_each(|pair| match_pairs.push(pair));
         }
     }
 
+    // Traverses either side of a slice pattern (prefix/suffix) and yields an iterator of `MatchPairTree`s
+    // to cover all it's constant and non-constant subpatterns.
     fn build_slice_branch<'pat, 'b>(
         &'b mut self,
         bounds: Range,
@@ -99,6 +98,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let entries = self.find_const_groups(pattern);
 
         entries.into_iter().map(move |entry| {
+            // Common case handler for both non-constant and constant subpatterns not in a range.
             let mut build_single = |idx| {
                 let subpattern = &pattern[idx as usize];
                 let place = place.clone_project(ProjectionElem::ConstantIndex {
@@ -112,14 +112,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             match entry {
                 Either::Right(range) if range.end - range.start > 1 => {
-                    assert!(
-                        (range.start..range.end)
-                            .all(|idx| self.is_constant_pattern(&pattern[idx as usize]))
-                    );
-
+                    // Figure out which subslice of our already sliced pattern we're looking at.
                     let subpattern = &pattern[range.start as usize..range.end as usize];
                     let elem_ty = subpattern[0].ty;
 
+                    // Right, we 've found a group of constant patterns worth grouping for later.
+                    // We'll collect all the leaves we can find and create a single `ValTree` out of them.
                     let valtree = self.simplify_const_pattern_slice_into_valtree(subpattern);
                     self.valtree_to_match_pair(
                         top_pattern,
@@ -130,16 +128,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         min_length,
                     )
                 }
-                Either::Right(range) => {
-                    let tree = build_single(range.start);
-                    assert!(self.is_constant_pattern(&pattern[range.start as usize]));
-                    tree
-                }
+                Either::Right(range) => build_single(range.start),
                 Either::Left(idx) => build_single(idx),
             }
         })
     }
 
+    // Given a partial view of the elements in a slice pattern, returns a list
+    // with left denoting non-constant element indices and right denoting ranges of constant elements.
     fn find_const_groups(&self, pattern: &[Box<Pat<'tcx>>]) -> Vec<Either<u64, ops::Range<u64>>> {
         let mut entries = Vec::new();
         let mut current_seq_start = None;
@@ -167,6 +163,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         entries
     }
 
+    // Checks if a pattern is constant and represented by a single scalar leaf.
     fn is_constant_pattern(&self, pat: &Pat<'tcx>) -> bool {
         if let PatKind::Constant { value } = pat.kind
             && let Const::Ty(_, const_) = value
@@ -179,6 +176,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    // Extract the `ValTree` from a constant pattern.
+    // You must ensure that the pattern is a constant pattern before calling this function or it will panic.
     fn extract_leaf(&self, pat: &Pat<'tcx>) -> ty::ValTree<'tcx> {
         if let PatKind::Constant { value } = pat.kind
             && let Const::Ty(_, const_) = value
@@ -187,10 +186,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         {
             cv.valtree
         } else {
-            unreachable!()
+            bug!("expected constant pattern, got {:?}", pat)
         }
     }
 
+    // Simplifies a slice of constant patterns into a single flattened `ValTree`.
     fn simplify_const_pattern_slice_into_valtree(
         &self,
         subslice: &[Box<Pat<'tcx>>],
@@ -200,6 +200,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         ty::ValTree::Branch(interned)
     }
 
+    // Given a `ValTree` representing a slice of constant patterns, returns a `MatchPairTree`
+    // representing the slice pattern, providing as much info about subsequences in the slice as possible
+    // to later lowering stages.
     fn valtree_to_match_pair<'pat>(
         &mut self,
         source_pattern: &'pat Pat<'tcx>,
@@ -211,17 +214,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> MatchPairTree<'pat, 'tcx> {
         let tcx = self.tcx;
         let leaves = match valtree {
-            ty::ValTree::Leaf(_) => unreachable!(),
+            ty::ValTree::Leaf(_) => bug!("expected branch, got leaf"),
             ty::ValTree::Branch(leaves) => leaves,
         };
 
         assert!(range.len() == leaves.len() as u64);
         let mut subpairs = Vec::new();
-
         let mut were_merged = 0;
+
         if elem_ty == tcx.types.u8 {
-            let leaf_bits = |leaf: ty::ValTree<'tcx>| {
-                if let ty::ValTree::Leaf(scalar) = leaf { scalar.to_u8() } else { todo!() }
+            let leaf_bits = |leaf: ty::ValTree<'tcx>| match leaf {
+                ty::ValTree::Leaf(scalar) => scalar.to_u8(),
+                _ => bug!("found unflatted valtree"),
             };
 
             let mut fuse_group = |first_idx, len| {
@@ -460,7 +464,6 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
                 if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
                     default_irrefutable()
                 } else {
-                    // TODO: do we always need this?
                     TestCase::Slice {
                         len: prefix.len() + suffix.len(),
                         variable_length: slice.is_some(),

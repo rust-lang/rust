@@ -131,78 +131,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     otherwise_block,
                 );
 
-                let discr = if fused > 1 {
-                    assert!(fused <= 4 && place_ty.ty == self.tcx.types.u8);
-                    let tcx = self.tcx;
-                    let source_info = self.source_info(match_start_span);
-                    let fused_ty = match fused {
-                        2 => tcx.types.u16,
-                        3 | 4 => tcx.types.u32,
-                        _ => unreachable!(),
-                    };
-
-                    let builder = PlaceBuilder::from(place);
-                    let place_for = move |b: &mut Self, idx| {
-                        let mut builder = builder.clone();
-                        match builder.projection_mut() {
-                            [.., ProjectionElem::ConstantIndex { offset, ref from_end, .. }] => {
-                                if !from_end {
-                                    *offset += idx;
-                                } else {
-                                    *offset -= idx;
-                                }
-                            }
-                            _ => todo!(),
-                        }
-                        builder.to_place(b)
-                    };
-
-                    let temp = self.temp(fused_ty, DUMMY_SP);
-                    let acc = self.temp(fused_ty, DUMMY_SP);
-
-                    self.cfg.push_assign(
-                        block,
-                        source_info,
-                        acc,
-                        Rvalue::Cast(CastKind::IntToInt, Operand::Copy(place), fused_ty),
-                    );
-
-                    for i in 1..fused {
-                        let place = place_for(self, i);
-                        let shift = self.literal_operand(DUMMY_SP, Const::from_usize(tcx, i * 8));
-
-                        self.cfg.push_assign(
-                            block,
-                            source_info,
-                            temp,
-                            Rvalue::Cast(CastKind::IntToInt, Operand::Copy(place), fused_ty),
-                        );
-                        self.cfg.push_assign(
-                            block,
-                            source_info,
-                            temp,
-                            Rvalue::BinaryOp(BinOp::Shl, Box::new((Operand::Copy(temp), shift))),
-                        );
-                        self.cfg.push_assign(
-                            block,
-                            source_info,
-                            acc,
-                            Rvalue::BinaryOp(
-                                BinOp::BitOr,
-                                Box::new((Operand::Copy(acc), Operand::Copy(temp))),
-                            ),
-                        );
+                let discr = match fused {
+                    0 => span_bug!(test.span, "there must be at least one constant"),
+                    1 => Operand::Copy(place),
+                    2.. => {
+                        self.fuse_switch_discriminant(block, place, place_ty.ty, fused, test.span)
                     }
-
-                    acc
-                } else {
-                    place
                 };
 
-                let terminator = TerminatorKind::SwitchInt {
-                    discr: Operand::Copy(discr),
-                    targets: switch_targets,
-                };
+                let terminator = TerminatorKind::SwitchInt { discr, targets: switch_targets };
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }
 
@@ -408,6 +345,91 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             call_source: CallSource::Misc,
             fn_span: source_info.span,
         });
+    }
+
+    /// "Fuse" multiple small integer constants in a sequence into a single integer, possibly
+    /// removing unecessary branches from the lowered match tree.
+    fn fuse_switch_discriminant(
+        &mut self,
+        block: BasicBlock,
+        place: Place<'tcx>,
+        elem_ty: Ty<'tcx>,
+        count: u64,
+        test_span: Span,
+    ) -> Operand<'tcx> {
+        let tcx = self.tcx;
+        let source_info = self.source_info(test_span);
+        match (count, elem_ty) {
+            (2..=4, ty) if ty == tcx.types.u8 || ty == tcx.types.i8 => (),
+            (2..=2, ty) if ty == tcx.types.u16 || ty == tcx.types.i16 => (),
+            (fused, ty) => span_bug!(
+                test_span,
+                "unsupported constant fusion combination of count {} and type {}",
+                ty,
+                fused
+            ),
+        };
+
+        let fused_ty = match count * elem_ty.primitive_size(tcx).bits() {
+            8..=16 => tcx.types.u16,
+            ..=32 => tcx.types.u32,
+            _ => unreachable!(),
+        };
+
+        let builder = PlaceBuilder::from(place);
+        let place_for = move |b: &mut Self, idx| {
+            let mut builder = builder.clone();
+            match builder.projection_mut() {
+                [.., ProjectionElem::ConstantIndex { offset, ref from_end, .. }] => {
+                    if !from_end {
+                        *offset += idx;
+                    } else {
+                        *offset -= idx;
+                    }
+                }
+                _ => span_bug!(test_span, "found unexpected projections"),
+            }
+            builder.to_place(b)
+        };
+
+        let temp = self.temp(fused_ty, DUMMY_SP);
+        let acc = self.temp(fused_ty, DUMMY_SP);
+
+        // Since we can freely cast up integers + the required shift is zero on the first
+        // iteration, we skip both the shift and OR operations the first time.
+        self.cfg.push_assign(
+            block,
+            source_info,
+            acc,
+            Rvalue::Cast(CastKind::IntToInt, Operand::Copy(place), fused_ty),
+        );
+
+        // Handle all but the first iterations, iteratively building up the fused integer.
+        for i in 1..count {
+            let place = place_for(self, i);
+            let shift = self.literal_operand(DUMMY_SP, Const::from_usize(tcx, i * 8));
+
+            self.cfg.push_assign(
+                block,
+                source_info,
+                temp,
+                Rvalue::Cast(CastKind::IntToInt, Operand::Copy(place), fused_ty),
+            );
+            self.cfg.push_assign(
+                block,
+                source_info,
+                temp,
+                Rvalue::BinaryOp(BinOp::Shl, Box::new((Operand::Copy(temp), shift))),
+            );
+            self.cfg.push_assign(
+                block,
+                source_info,
+                acc,
+                Rvalue::BinaryOp(BinOp::BitOr, Box::new((Operand::Copy(acc), Operand::Copy(temp)))),
+            );
+        }
+
+        Operand::Copy(acc)
     }
 
     /// Compare using the provided built-in comparison operator
