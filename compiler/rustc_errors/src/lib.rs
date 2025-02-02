@@ -712,6 +712,10 @@ impl DiagCtxt {
         inner.emitter = new_emitter;
     }
 
+    pub fn set_emitter(&self, emitter: Box<dyn Emitter + DynSend>) {
+        self.inner.borrow_mut().emitter = emitter;
+    }
+
     /// Translate `message` eagerly with `args` to `SubdiagMessage::Eager`.
     pub fn eagerly_translate<'a>(
         &self,
