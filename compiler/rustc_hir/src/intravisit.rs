@@ -110,7 +110,6 @@ impl<'a> FnKind<'a> {
 pub trait Map<'hir> {
     /// Retrieves the `Node` corresponding to `id`.
     fn hir_node(&self, hir_id: HirId) -> Node<'hir>;
-    fn hir_node_by_def_id(&self, def_id: LocalDefId) -> Node<'hir>;
     fn body(&self, id: BodyId) -> &'hir Body<'hir>;
     fn item(&self, id: ItemId) -> &'hir Item<'hir>;
     fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
@@ -122,9 +121,6 @@ pub trait Map<'hir> {
 impl<'hir> Map<'hir> for ! {
     fn hir_node(&self, _: HirId) -> Node<'hir> {
         unreachable!();
-    }
-    fn hir_node_by_def_id(&self, _: LocalDefId) -> Node<'hir> {
-        *self;
     }
     fn body(&self, _: BodyId) -> &'hir Body<'hir> {
         unreachable!();

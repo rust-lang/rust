@@ -1019,10 +1019,6 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
         self.tcx.hir_node(hir_id)
     }
 
-    fn hir_node_by_def_id(&self, def_id: LocalDefId) -> Node<'hir> {
-        self.tcx.hir_node_by_def_id(def_id)
-    }
-
     fn body(&self, id: BodyId) -> &'hir Body<'hir> {
         (*self).body(id)
     }
