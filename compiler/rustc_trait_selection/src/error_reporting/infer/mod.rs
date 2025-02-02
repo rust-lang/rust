@@ -1722,32 +1722,42 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }
                 TypeError::Sorts(values) => {
-                    let extra = expected == found;
+                    let extra = expected == found
+                        // Ensure that we don't ever say something like
+                        // expected `impl Trait` (opaque type `impl Trait`)
+                        //    found `impl Trait` (opaque type `impl Trait`)
+                        && values.expected.sort_string(self.tcx)
+                            != values.found.sort_string(self.tcx);
                     let sort_string = |ty: Ty<'tcx>| match (extra, ty.kind()) {
                         (true, ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })) => {
                             let sm = self.tcx.sess.source_map();
                             let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
-                            format!(
+                            DiagStyledString::normal(format!(
                                 " (opaque type at <{}:{}:{}>)",
                                 sm.filename_for_diagnostics(&pos.file.name),
                                 pos.line,
                                 pos.col.to_usize() + 1,
-                            )
+                            ))
                         }
                         (true, ty::Alias(ty::Projection, proj))
                             if self.tcx.is_impl_trait_in_trait(proj.def_id) =>
                         {
                             let sm = self.tcx.sess.source_map();
                             let pos = sm.lookup_char_pos(self.tcx.def_span(proj.def_id).lo());
-                            format!(
+                            DiagStyledString::normal(format!(
                                 " (trait associated opaque type at <{}:{}:{}>)",
                                 sm.filename_for_diagnostics(&pos.file.name),
                                 pos.line,
                                 pos.col.to_usize() + 1,
-                            )
+                            ))
                         }
-                        (true, _) => format!(" ({})", ty.sort_string(self.tcx)),
-                        (false, _) => "".to_string(),
+                        (true, _) => {
+                            let mut s = DiagStyledString::normal(" (");
+                            s.push_highlighted(ty.sort_string(self.tcx));
+                            s.push_normal(")");
+                            s
+                        }
+                        (false, _) => DiagStyledString::normal(""),
                     };
                     if !(values.expected.is_simple_text() && values.found.is_simple_text())
                         || (exp_found.is_some_and(|ef| {
@@ -1764,23 +1774,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             }
                         }))
                     {
-                        if let Some(ExpectedFound { found: found_ty, .. }) = exp_found {
+                        if let Some(ExpectedFound { found: found_ty, .. }) = exp_found
+                            && !self.tcx.ty_is_opaque_future(found_ty)
+                        {
                             // `Future` is a special opaque type that the compiler
                             // will try to hide in some case such as `async fn`, so
                             // to make an error more use friendly we will
                             // avoid to suggest a mismatch type with a
                             // type that the user usually are not using
                             // directly such as `impl Future<Output = u8>`.
-                            if !self.tcx.ty_is_opaque_future(found_ty) {
-                                diag.note_expected_found_extra(
-                                    &expected_label,
-                                    expected,
-                                    &found_label,
-                                    found,
-                                    &sort_string(values.expected),
-                                    &sort_string(values.found),
-                                );
-                            }
+                            diag.note_expected_found_extra(
+                                &expected_label,
+                                expected,
+                                &found_label,
+                                found,
+                                sort_string(values.expected),
+                                sort_string(values.found),
+                            );
                         }
                     }
                 }
