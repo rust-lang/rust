@@ -244,22 +244,17 @@ pub fn each_linked_rlib(
 
         fmts
     } else {
-        for combination in info.dependency_formats.iter().combinations(2) {
-            let (ty1, list1) = &combination[0];
-            let (ty2, list2) = &combination[1];
-            if list1 != list2 {
-                return Err(errors::LinkRlibError::IncompatibleDependencyFormats {
-                    ty1: format!("{ty1:?}"),
-                    ty2: format!("{ty2:?}"),
-                    list1: format!("{list1:?}"),
-                    list2: format!("{list2:?}"),
-                });
-            }
+        let mut dep_formats = info.dependency_formats.iter();
+        let (ty1, list1) = dep_formats.next().ok_or(errors::LinkRlibError::MissingFormat)?;
+        if let Some((ty2, list2)) = dep_formats.find(|(_, list2)| list1 != *list2) {
+            return Err(errors::LinkRlibError::IncompatibleDependencyFormats {
+                ty1: format!("{ty1:?}"),
+                ty2: format!("{ty2:?}"),
+                list1: format!("{list1:?}"),
+                list2: format!("{list2:?}"),
+            });
         }
-        if info.dependency_formats.is_empty() {
-            return Err(errors::LinkRlibError::MissingFormat);
-        }
-        info.dependency_formats.first().unwrap().1
+        list1
     };
 
     let used_dep_crates = info.used_crates.iter();
