@@ -605,19 +605,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Optimize the case of `let x: T = ...` to write directly
             // into `x` and then require that `T == typeof(x)`.
             PatKind::AscribeUserType {
-                subpattern:
-                    box Pat {
-                        kind:
-                            PatKind::Binding {
-                                mode: BindingMode(ByRef::No, _),
-                                var,
-                                subpattern: None,
-                                ..
-                            },
-                        ..
-                    },
+                ref subpattern,
                 ascription: thir::Ascription { ref annotation, variance: _ },
-            } => {
+            } if let PatKind::Binding {
+                mode: BindingMode(ByRef::No, _),
+                var,
+                subpattern: None,
+                ..
+            } = subpattern.kind =>
+            {
                 let place = self.storage_live_binding(
                     block,
                     var,
