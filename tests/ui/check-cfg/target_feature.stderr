@@ -112,6 +112,8 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `hard-float`
 `hard-float-abi`
 `hard-tp`
+`harden-sls-ijmp`
+`harden-sls-ret`
 `hbc`
 `high-registers`
 `hvx`

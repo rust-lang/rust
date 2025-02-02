@@ -421,6 +421,22 @@ const X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("fma", Stable, &["avx"]),
     ("fxsr", Stable, &[]),
     ("gfni", Unstable(sym::avx512_target_feature), &["sse2"]),
+    (
+        "harden-sls-ijmp",
+        Stability::EnabledByTargetModifierFlag {
+            reason: "use `harden-sls` target modifier flag instead",
+            flag: "harden-sls",
+        },
+        &[],
+    ),
+    (
+        "harden-sls-ret",
+        Stability::EnabledByTargetModifierFlag {
+            reason: "use `harden-sls` target modifier flag instead",
+            flag: "harden-sls",
+        },
+        &[],
+    ),
     ("kl", Unstable(sym::keylocker_x86), &["sse2"]),
     ("lahfsahf", Unstable(sym::lahfsahf_target_feature), &[]),
     ("lzcnt", Stable, &[]),

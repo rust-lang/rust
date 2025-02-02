@@ -290,6 +290,7 @@ macro_rules! top_level_options {
             pub fn target_feature_flag_enabled(&self, flag: &str) -> bool {
                 match flag {
                     "x86-retpoline" => self.unstable_opts.x86_retpoline,
+                    "harden-sls" => !matches!(self.unstable_opts.harden_sls, HardenSls::None),
                     _ => false,
                 }
             }
@@ -306,6 +307,17 @@ macro_rules! top_level_options {
                         +retpoline-indirect-branches,\
                         +retpoline-indirect-calls"
                     );
+                }
+                if let Some(features) = match unstable_opts.harden_sls {
+                    HardenSls::None => None,
+                    HardenSls::All => Some("+harden-sls-ijmp,+harden-sls-ret"),
+                    HardenSls::Return => Some("+harden-sls-ret"),
+                    HardenSls::IndirectJmp => Some("+harden-sls-ijmp"),
+                } {
+                    if !cg.target_feature.is_empty() {
+                        cg.target_feature.push(',');
+                    }
+                    cg.target_feature.push_str(features);
                 }
             }
         }
@@ -812,6 +824,7 @@ mod desc {
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or a non-negative number";
     pub(crate) const parse_llvm_module_flag: &str = "<key>:<type>:<value>:<behavior>. Type must currently be `u32`. Behavior should be one of (`error`, `warning`, `require`, `override`, `append`, `appendunique`, `max`, `min`)";
     pub(crate) const parse_function_return: &str = "`keep` or `thunk-extern`";
+    pub(crate) const parse_harden_sls: &str = "`none`, `all`, `return` or `indirect-jmp`";
     pub(crate) const parse_wasm_c_abi: &str = "`legacy` or `spec`";
     pub(crate) const parse_mir_include_spans: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
@@ -1908,6 +1921,17 @@ pub mod parse {
         true
     }
 
+    pub(crate) fn parse_harden_sls(slot: &mut HardenSls, v: Option<&str>) -> bool {
+        match v {
+            Some("none") => *slot = HardenSls::None,
+            Some("all") => *slot = HardenSls::All,
+            Some("return") => *slot = HardenSls::Return,
+            Some("indirect-jmp") => *slot = HardenSls::IndirectJmp,
+            _ => return false,
+        }
+        true
+    }
+
     pub(crate) fn parse_wasm_c_abi(slot: &mut WasmCAbi, v: Option<&str>) -> bool {
         match v {
             Some("spec") => *slot = WasmCAbi::Spec,
@@ -2238,6 +2262,9 @@ options! {
     graphviz_font: String = ("Courier, monospace".to_string(), parse_string, [UNTRACKED],
         "use the given `fontname` in graphviz output; can be overridden by setting \
         environment variable `RUSTC_GRAPHVIZ_FONT` (default: `Courier, monospace`)"),
+    harden_sls: HardenSls = (HardenSls::None, parse_harden_sls, [TRACKED TARGET_MODIFIER],
+        "flag to mitigate against straight line speculation (SLS) [none|all|return|indirect-jmp] \
+        (default: none)"),
     has_thread_local: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the `cfg(target_thread_local)` directive"),
     human_readable_cgu_names: bool = (false, parse_bool, [TRACKED],
