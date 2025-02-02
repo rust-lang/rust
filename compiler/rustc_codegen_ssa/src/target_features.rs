@@ -7,6 +7,7 @@ use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
+use rustc_session::config::HardenSls;
 use rustc_session::lint::builtin::AARCH64_SOFTFLOAT_NEON;
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
@@ -452,6 +453,18 @@ pub fn retpoline_features_by_flags(sess: &Session, features: &mut Vec<String>) {
         features.push("+retpoline-external-thunk".into());
         features.push("+retpoline-indirect-branches".into());
         features.push("+retpoline-indirect-calls".into());
+    }
+}
+
+pub fn sls_features_by_flags(sess: &Session, features: &mut Vec<String>) {
+    match &sess.opts.unstable_opts.harden_sls {
+        HardenSls::None => (),
+        HardenSls::All => {
+            features.push("+harden-sls-ijmp".into());
+            features.push("+harden-sls-ret".into());
+        }
+        HardenSls::Return => features.push("+harden-sls-ret".into()),
+        HardenSls::IndirectJmp => features.push("+harden-sls-ijmp".into()),
     }
 }
 
