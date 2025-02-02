@@ -15,6 +15,8 @@
 #![feature(unqualified_local_imports)]
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
+#![feature(unsigned_is_multiple_of)]
+#![feature(extract_if)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -36,6 +38,7 @@
     clippy::needless_question_mark,
     clippy::needless_lifetimes,
     clippy::too_long_first_doc_paragraph,
+    // We don't use translatable diagnostics
     rustc::diagnostic_outside_of_impl,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability,

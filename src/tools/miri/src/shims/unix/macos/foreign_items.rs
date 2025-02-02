@@ -2,13 +2,20 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::{Conv, FnAbi};
 
-use super::sync::EvalContextExt as _;
-use crate::helpers::check_min_arg_count;
+use super::sync::{EvalContextExt as _, MacOsFutexTimeout};
 use crate::shims::unix::*;
 use crate::*;
 
-pub fn is_dyn_sym(_name: &str) -> bool {
-    false
+pub fn is_dyn_sym(name: &str) -> bool {
+    match name {
+        // These only became available with macOS 11.0, so std looks them up dynamically.
+        "os_sync_wait_on_address"
+        | "os_sync_wait_on_address_with_deadline"
+        | "os_sync_wait_on_address_with_timeout"
+        | "os_sync_wake_by_address_any"
+        | "os_sync_wake_by_address_all" => true,
+        _ => false,
+    }
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -40,17 +47,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "stat" | "stat64" | "stat$INODE64" => {
                 let [path, buf] = this.check_shim(abi, Conv::C, link_name, args)?;
-                let result = this.macos_fbsd_solaris_stat(path, buf)?;
+                let result = this.macos_fbsd_solarish_stat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "lstat" | "lstat64" | "lstat$INODE64" => {
                 let [path, buf] = this.check_shim(abi, Conv::C, link_name, args)?;
-                let result = this.macos_fbsd_solaris_lstat(path, buf)?;
+                let result = this.macos_fbsd_solarish_lstat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "fstat" | "fstat64" | "fstat$INODE64" => {
                 let [fd, buf] = this.check_shim(abi, Conv::C, link_name, args)?;
-                let result = this.macos_fbsd_solaris_fstat(fd, buf)?;
+                let result = this.macos_fbsd_solarish_fstat(fd, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "opendir$INODE64" => {
@@ -69,10 +76,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "ioctl" => {
-                // `ioctl` is variadic. The argument count is checked based on the first argument
-                // in `this.ioctl()`, so we do not use `check_shim` here.
-                this.check_abi_and_shim_symbol_clash(abi, Conv::C, link_name)?;
-                let result = this.ioctl(args)?;
+                let ([fd_num, cmd], varargs) =
+                    this.check_shim_variadic(abi, Conv::C, link_name, args)?;
+                let result = this.ioctl(fd_num, cmd, varargs)?;
                 this.write_scalar(result, dest)?;
             }
 
@@ -216,6 +222,58 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
 
+            // Futex primitives
+            "os_sync_wait_on_address" => {
+                let [addr_op, value_op, size_op, flags_op] =
+                    this.check_shim(abi, Conv::C, link_name, args)?;
+                this.os_sync_wait_on_address(
+                    addr_op,
+                    value_op,
+                    size_op,
+                    flags_op,
+                    MacOsFutexTimeout::None,
+                    dest,
+                )?;
+            }
+            "os_sync_wait_on_address_with_deadline" => {
+                let [addr_op, value_op, size_op, flags_op, clock_op, timeout_op] =
+                    this.check_shim(abi, Conv::C, link_name, args)?;
+                this.os_sync_wait_on_address(
+                    addr_op,
+                    value_op,
+                    size_op,
+                    flags_op,
+                    MacOsFutexTimeout::Absolute { clock_op, timeout_op },
+                    dest,
+                )?;
+            }
+            "os_sync_wait_on_address_with_timeout" => {
+                let [addr_op, value_op, size_op, flags_op, clock_op, timeout_op] =
+                    this.check_shim(abi, Conv::C, link_name, args)?;
+                this.os_sync_wait_on_address(
+                    addr_op,
+                    value_op,
+                    size_op,
+                    flags_op,
+                    MacOsFutexTimeout::Relative { clock_op, timeout_op },
+                    dest,
+                )?;
+            }
+            "os_sync_wake_by_address_any" => {
+                let [addr_op, size_op, flags_op] =
+                    this.check_shim(abi, Conv::C, link_name, args)?;
+                this.os_sync_wake_by_address(
+                    addr_op, size_op, flags_op, /* all */ false, dest,
+                )?;
+            }
+            "os_sync_wake_by_address_all" => {
+                let [addr_op, size_op, flags_op] =
+                    this.check_shim(abi, Conv::C, link_name, args)?;
+                this.os_sync_wake_by_address(
+                    addr_op, size_op, flags_op, /* all */ true, dest,
+                )?;
+            }
+
             "os_unfair_lock_lock" => {
                 let [lock_op] = this.check_shim(abi, Conv::C, link_name, args)?;
                 this.os_unfair_lock_lock(lock_op)?;
@@ -243,12 +301,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(EmulateItemResult::NeedsReturn)
     }
 
-    fn ioctl(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, Scalar> {
+    fn ioctl(
+        &mut self,
+        fd_num: &OpTy<'tcx>,
+        cmd: &OpTy<'tcx>,
+        _varargs: &[OpTy<'tcx>],
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         let fioclex = this.eval_libc_u64("FIOCLEX");
 
-        let [fd_num, cmd] = check_min_arg_count("ioctl", args)?;
         let fd_num = this.read_scalar(fd_num)?.to_i32()?;
         let cmd = this.read_scalar(cmd)?.to_u64()?;
 

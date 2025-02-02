@@ -421,7 +421,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if this.machine.communicate() {
             // Fill the buffer using the host's rng.
-            getrandom::getrandom(&mut data)
+            getrandom::fill(&mut data)
                 .map_err(|err| err_unsup_format!("host getrandom failed: {}", err))?;
         } else {
             let rng = this.machine.rng.get_mut();
@@ -676,6 +676,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             target_os,
             "`{name}` is only available on the `{target_os}` target OS",
         )
+    }
+
+    /// Helper function used inside shims of foreign functions to check that the target OS
+    /// is one of `target_oses`. It returns an error containing the `name` of the foreign function
+    /// in a message if this is not the case.
+    fn check_target_os(&self, target_oses: &[&str], name: Symbol) -> InterpResult<'tcx> {
+        let target_os = self.eval_context_ref().tcx.sess.target.os.as_ref();
+        if !target_oses.contains(&target_os) {
+            throw_unsup_format!("`{name}` is not supported on {target_os}");
+        }
+        interp_ok(())
     }
 
     /// Helper function used inside the shims of foreign functions to assert that the target OS
@@ -991,6 +1002,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         check_arg_count(args)
     }
 
+    /// Check shim for variadic function.
+    /// Returns a tuple that consisting of an array of fixed args, and a slice of varargs.
+    fn check_shim_variadic<'a, const N: usize>(
+        &mut self,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        exp_abi: Conv,
+        link_name: Symbol,
+        args: &'a [OpTy<'tcx>],
+    ) -> InterpResult<'tcx, (&'a [OpTy<'tcx>; N], &'a [OpTy<'tcx>])>
+    where
+        &'a [OpTy<'tcx>; N]: TryFrom<&'a [OpTy<'tcx>]>,
+    {
+        self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
+        check_vargarg_fixed_arg_count(link_name, abi, args)
+    }
+
     /// Mark a machine allocation that was just created as immutable.
     fn mark_immutable(&mut self, mplace: &MPlaceTy<'tcx>) {
         let this = self.eval_context_mut();
@@ -1184,8 +1211,10 @@ where
     throw_ub_format!("incorrect number of arguments: got {}, expected {}", args.len(), N)
 }
 
-/// Check that the number of args is at least the minumim what we expect.
-pub fn check_min_arg_count<'a, 'tcx, const N: usize>(
+/// Check that the number of varargs is at least the minimum what we expect.
+/// Fixed args should not be included.
+/// Use `check_vararg_fixed_arg_count` to extract the varargs slice from full function arguments.
+pub fn check_min_vararg_count<'a, 'tcx, const N: usize>(
     name: &'a str,
     args: &'a [OpTy<'tcx>],
 ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
@@ -1193,7 +1222,35 @@ pub fn check_min_arg_count<'a, 'tcx, const N: usize>(
         return interp_ok(ops);
     }
     throw_ub_format!(
-        "incorrect number of arguments for `{name}`: got {}, expected at least {}",
+        "not enough variadic arguments for `{name}`: got {}, expected at least {}",
+        args.len(),
+        N
+    )
+}
+
+/// Check the number of fixed args of a vararg function.
+/// Returns a tuple that consisting of an array of fixed args, and a slice of varargs.
+fn check_vargarg_fixed_arg_count<'a, 'tcx, const N: usize>(
+    link_name: Symbol,
+    abi: &FnAbi<'tcx, Ty<'tcx>>,
+    args: &'a [OpTy<'tcx>],
+) -> InterpResult<'tcx, (&'a [OpTy<'tcx>; N], &'a [OpTy<'tcx>])> {
+    if !abi.c_variadic {
+        throw_ub_format!("calling a variadic function with a non-variadic caller-side signature");
+    }
+    if abi.fixed_count != u32::try_from(N).unwrap() {
+        throw_ub_format!(
+            "incorrect number of fixed arguments for variadic function `{}`: got {}, expected {N}",
+            link_name.as_str(),
+            abi.fixed_count
+        )
+    }
+    if let Some(args) = args.split_first_chunk() {
+        return interp_ok(args);
+    }
+    throw_ub_format!(
+        "incorrect number of arguments for `{}`: got {}, expected at least {}",
+        link_name.as_str(),
         args.len(),
         N
     )
