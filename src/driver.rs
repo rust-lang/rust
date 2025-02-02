@@ -197,7 +197,7 @@ pub fn main() {
     });
 
     exit(rustc_driver::catch_with_exit_code(move || {
-        let mut orig_args = rustc_driver::args::raw_args(&early_dcx)?;
+        let mut orig_args = rustc_driver::args::raw_args(&early_dcx);
 
         let has_sysroot_arg = |args: &mut [String]| -> bool {
             if has_arg(args, "--sysroot") {
@@ -239,7 +239,7 @@ pub fn main() {
             pass_sysroot_env_if_given(&mut args, sys_root_env);
 
             rustc_driver::run_compiler(&args, &mut DefaultCallbacks);
-            return Ok(());
+            return;
         }
 
         if orig_args.iter().any(|a| a == "--version" || a == "-V") {
@@ -301,7 +301,6 @@ pub fn main() {
         } else {
             rustc_driver::run_compiler(&args, &mut RustcCallbacks { clippy_args_var });
         }
-        Ok(())
     }))
 }
 
