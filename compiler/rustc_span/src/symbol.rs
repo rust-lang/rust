@@ -2591,11 +2591,8 @@ impl StringArena {
         let len = u32::from_ne_bytes(region[idx as usize..idx as usize + 4].try_into().unwrap());
         let data = &region[idx as usize + 4..][..len as usize];
 
-        // SAFETY: We (in theory) could be passed a random `idx` into the memory region, so we need
-        // to re-check that the region is actually UTF-8 before returning. If it is, then it is safe
-        // to return &str, though it might not be a *useful* &str due to having near-random
-        // contents.
-        std::str::from_utf8(data).unwrap()
+        // FIXME: hopefully we got passed an accurate index.
+        unsafe { std::str::from_utf8_unchecked(data) }
     }
 }
 
