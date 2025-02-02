@@ -29,7 +29,7 @@ LL |     where
 LL |         F: for<'r> T0<'r, (<Self as Ty<'r>>::V,), O = <B as Ty<'r>>::V>,
    |                                                   ^^^^^^^^^^^^^^^^^^^^ required by this bound in `T1::m`
 
-error[E0271]: expected `{closure@issue-62203-hrtb-ice.rs:40:16}` to be a closure that returns `Unit3`, but it returns `Unit4`
+error[E0271]: expected `{closure@issue-62203-hrtb-ice.rs:40:16}` to return `Unit3`, but it returns `Unit4`
   --> $DIR/issue-62203-hrtb-ice.rs:42:17
    |
 LL |     let v = Unit2.m(

@@ -20,7 +20,7 @@ LL |         true
    = note: expected enum `Option<()>`
               found type `bool`
 
-error[E0271]: expected `{closure@dont-ice-for-type-mismatch-in-closure-in-async.rs:6:10}` to be a closure that returns `bool`, but it returns `Option<()>`
+error[E0271]: expected `{closure@dont-ice-for-type-mismatch-in-closure-in-async.rs:6:10}` to return `bool`, but it returns `Option<()>`
   --> $DIR/dont-ice-for-type-mismatch-in-closure-in-async.rs:6:16
    |
 LL |     call(|| -> Option<()> {

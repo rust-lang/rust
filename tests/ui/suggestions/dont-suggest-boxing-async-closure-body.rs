@@ -7,6 +7,6 @@ fn bar<X>(x: Box<dyn FnOnce() -> X>) {}
 
 fn main() {
     foo(async move || {});
-    //~^ ERROR expected `{async closure@dont-suggest-boxing-async-closure-body.rs:9:9}` to be a closure that returns `Box<_>`
+    //~^ ERROR expected `{async closure@dont-suggest-boxing-async-closure-body.rs:9:9}` to return `Box<_>`
     bar(async move || {}); //~ ERROR mismatched types
 }
