@@ -676,12 +676,7 @@ impl DiagCtxt {
         Self { inner: Lock::new(DiagCtxtInner::new(emitter)) }
     }
 
-    pub fn make_silent(
-        &self,
-        fallback_bundle: LazyFallbackBundle,
-        fatal_note: Option<String>,
-        emit_fatal_diagnostic: bool,
-    ) {
+    pub fn make_silent(&self, fatal_note: Option<String>, emit_fatal_diagnostic: bool) {
         // An empty type that implements `Emitter` to temporarily swap in place of the real one,
         // which will be used in constructing its replacement.
         struct FalseEmitter;
@@ -710,7 +705,6 @@ impl DiagCtxt {
         let mut prev_emitter = Box::new(FalseEmitter) as Box<dyn Emitter + DynSend>;
         std::mem::swap(&mut inner.emitter, &mut prev_emitter);
         let new_emitter = Box::new(emitter::SilentEmitter {
-            fallback_bundle,
             fatal_emitter: prev_emitter,
             fatal_note,
             emit_fatal_diagnostic,
