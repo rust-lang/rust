@@ -7,7 +7,6 @@ use rustc_hir::def::Res;
 use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
 use rustc_hir::{AmbigArg, Block, Expr, ExprKind, HirId, LetStmt, Node, QPath, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
 use rustc_span::{Span, sym};
 
@@ -50,7 +49,7 @@ impl LateLintPass<'_> for BoxDefault {
             // This is the `T::default()` (or default equivalent) of `Box::new(T::default())`
             && let ExprKind::Call(arg_path, _) = arg.kind
             // And we are not in a foreign crate's macro
-            && !in_external_macro(cx.sess(), expr.span)
+            && !expr.span.in_external_macro(cx.sess().source_map())
             // And the argument expression has the same context as the outer call expression
             // or that we are inside a `vec!` macro expansion
             && (expr.span.eq_ctxt(arg.span) || is_local_vec_expn(cx, arg, expr))

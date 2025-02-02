@@ -6,7 +6,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_item, walk_trait_item};
 use rustc_hir::{GenericParamKind, HirId, Item, ItemKind, ItemLocalId, Node, Pat, PatKind, TraitItem, UsePath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use std::borrow::Cow;
@@ -55,7 +54,7 @@ impl MinIdentChars {
 
     #[expect(clippy::cast_possible_truncation)]
     fn is_ident_too_short(&self, cx: &LateContext<'_>, str: &str, span: Span) -> bool {
-        !in_external_macro(cx.sess(), span)
+        !span.in_external_macro(cx.sess().source_map())
             && str.len() <= self.min_ident_chars_threshold as usize
             && !str.starts_with('_')
             && !str.is_empty()

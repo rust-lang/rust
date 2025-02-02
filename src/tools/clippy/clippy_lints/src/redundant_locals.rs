@@ -6,7 +6,6 @@ use rustc_hir::def::Res;
 use rustc_hir::{BindingMode, ByRef, ExprKind, HirId, LetStmt, Node, Pat, PatKind, QPath};
 use rustc_hir_typeck::expr_use_visitor::PlaceBase;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::UpvarCapture;
 use rustc_session::declare_lint_pass;
 use rustc_span::DesugaringKind;
@@ -69,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
             // the local does not affect the code's drop behavior
             && !needs_ordered_drop(cx, cx.typeck_results().expr_ty(expr))
             // the local is user-controlled
-            && !in_external_macro(cx.sess(), local.span)
+            && !local.span.in_external_macro(cx.sess().source_map())
             && !is_from_proc_macro(cx, expr)
             && !is_by_value_closure_capture(cx, local.hir_id, binding_id)
         {

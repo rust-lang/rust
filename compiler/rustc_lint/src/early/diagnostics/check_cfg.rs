@@ -135,7 +135,7 @@ pub(super) fn unexpected_cfg_name(
     };
 
     let is_from_cargo = rustc_session::utils::was_invoked_from_cargo();
-    let is_from_external_macro = rustc_middle::lint::in_external_macro(sess, name_span);
+    let is_from_external_macro = name_span.in_external_macro(sess.source_map());
     let mut is_feature_cfg = name == sym::feature;
 
     let code_sugg = if is_feature_cfg && is_from_cargo {
@@ -281,7 +281,7 @@ pub(super) fn unexpected_cfg_value(
         .collect();
 
     let is_from_cargo = rustc_session::utils::was_invoked_from_cargo();
-    let is_from_external_macro = rustc_middle::lint::in_external_macro(sess, name_span);
+    let is_from_external_macro = name_span.in_external_macro(sess.source_map());
 
     // Show the full list if all possible values for a given name, but don't do it
     // for names as the possibilities could be very long

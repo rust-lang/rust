@@ -10,7 +10,6 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -261,7 +260,7 @@ impl<'tcx> LateLintPass<'tcx> for ExtraUnusedTypeParameters {
             && !generics.params.is_empty()
             && !is_empty_body(cx, body_id)
             && (!self.avoid_breaking_exported_api || !cx.effective_visibilities.is_exported(item.owner_id.def_id))
-            && !in_external_macro(cx.sess(), item.span)
+            && !item.span.in_external_macro(cx.sess().source_map())
             && !is_from_proc_macro(cx, item)
         {
             let mut walker = TypeWalker::new(cx, generics);
@@ -277,7 +276,7 @@ impl<'tcx> LateLintPass<'tcx> for ExtraUnusedTypeParameters {
             && trait_ref_of_method(cx, item.owner_id.def_id).is_none()
             && !is_empty_body(cx, body_id)
             && (!self.avoid_breaking_exported_api || !cx.effective_visibilities.is_exported(item.owner_id.def_id))
-            && !in_external_macro(cx.sess(), item.span)
+            && !item.span.in_external_macro(cx.sess().source_map())
             && !is_from_proc_macro(cx, item)
         {
             let mut walker = TypeWalker::new(cx, item.generics);

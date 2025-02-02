@@ -9,7 +9,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, MatchSource, Pat, PatExpr, PatExprKind, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::lint::in_external_macro;
 
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
@@ -55,7 +54,7 @@ impl<'tcx> QuestionMark {
             && init.span.eq_ctxt(stmt.span)
             && let Some(if_let_or_match) = IfLetOrMatch::parse(cx, init)
             && self.msrv.meets(msrvs::LET_ELSE)
-            && !in_external_macro(cx.sess(), stmt.span)
+            && !stmt.span.in_external_macro(cx.sess().source_map())
         {
             match if_let_or_match {
                 IfLetOrMatch::IfLet(if_let_expr, let_pat, if_then, if_else, ..) => {

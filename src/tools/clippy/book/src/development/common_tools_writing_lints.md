@@ -218,7 +218,7 @@ functions to deal with macros:
   > context. And so just using `span.from_expansion()` is often good enough.
 
 
-- `in_external_macro(span)`: detect if the given span is from a macro defined in
+- `span.in_external_macro(sm)`: detect if the given span is from a macro defined in
   a foreign crate. If you want the lint to work with macro-generated code, this
   is the next line of defense to avoid macros not defined in the current crate.
   It doesn't make sense to lint code that the coder can't change.
@@ -227,15 +227,13 @@ functions to deal with macros:
   crates
 
   ```rust
-  use rustc_middle::lint::in_external_macro;
-
   use a_crate_with_macros::foo;
 
   // `foo` is defined in `a_crate_with_macros`
   foo!("bar");
 
   // if we lint the `match` of `foo` call and test its span
-  assert_eq!(in_external_macro(cx.sess(), match_span), true);
+  assert_eq!(match_span.in_external_macro(cx.sess().source_map()), true);
   ```
 
 - `span.ctxt()`: the span's context represents whether it is from expansion, and

@@ -12,7 +12,6 @@ use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
@@ -212,7 +211,7 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
         if let Some((lhs0, rhs0)) = parse(first)
             && let Some((lhs1, rhs1)) = parse(second)
             && first.span.eq_ctxt(second.span)
-			&& !in_external_macro(cx.sess(), first.span)
+			&& !first.span.in_external_macro(cx.sess().source_map())
             && is_same(cx, lhs0, rhs1)
             && is_same(cx, lhs1, rhs0)
 			&& !is_same(cx, lhs1, rhs1) // Ignore a = b; a = a (#10421)
