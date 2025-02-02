@@ -3675,3 +3675,24 @@ pub fn expr_requires_coercion<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -
         _ => false,
     }
 }
+
+/// Returns `true` if `expr` designates a mutable static, a mutable local binding, or an expression
+/// that can be owned.
+pub fn is_mutable(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    if let Some(hir_id) = path_to_local(expr)
+        && let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
+    {
+        matches!(pat.kind, PatKind::Binding(BindingMode::MUT, ..))
+    } else if let ExprKind::Path(p) = &expr.kind
+        && let Some(mutability) = cx
+            .qpath_res(p, expr.hir_id)
+            .opt_def_id()
+            .and_then(|id| cx.tcx.static_mutability(id))
+    {
+        mutability == Mutability::Mut
+    } else if let ExprKind::Field(parent, _) = expr.kind {
+        is_mutable(cx, parent)
+    } else {
+        true
+    }
+}
