@@ -35,8 +35,8 @@ use crate::snippet::{
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{Translate, to_fluent_args};
 use crate::{
-    CodeSuggestion, DiagCtxt, DiagInner, DiagMessage, ErrCode, FluentBundle, LazyFallbackBundle,
-    Level, MultiSpan, Subdiag, SubstitutionHighlight, SuggestionStyle, TerminalUrl,
+    CodeSuggestion, DiagInner, DiagMessage, ErrCode, FluentBundle, LazyFallbackBundle, Level,
+    MultiSpan, Subdiag, SubstitutionHighlight, SuggestionStyle, TerminalUrl,
 };
 
 /// Default column width, used in tests and when terminal dimensions cannot be determined.
@@ -537,11 +537,10 @@ impl Emitter for HumanEmitter {
 }
 
 /// An emitter that does nothing when emitting a non-fatal diagnostic.
-/// Fatal diagnostics are forwarded to `fatal_dcx` to avoid silent
+/// Fatal diagnostics are forwarded to `fatal_emitter` to avoid silent
 /// failures of rustc, as witnessed e.g. in issue #89358.
 pub struct SilentEmitter {
-    pub fallback_bundle: LazyFallbackBundle,
-    pub fatal_dcx: DiagCtxt,
+    pub fatal_emitter: Box<dyn Emitter + DynSend>,
     pub fatal_note: Option<String>,
     pub emit_fatal_diagnostic: bool,
 }
@@ -552,9 +551,7 @@ impl Translate for SilentEmitter {
     }
 
     fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        // Ideally this field wouldn't be necessary and the fallback bundle in `fatal_dcx` would be
-        // used but the lock prevents this.
-        &self.fallback_bundle
+        self.fatal_emitter.fallback_fluent_bundle()
     }
 }
 
@@ -563,12 +560,12 @@ impl Emitter for SilentEmitter {
         None
     }
 
-    fn emit_diagnostic(&mut self, mut diag: DiagInner, _registry: &Registry) {
+    fn emit_diagnostic(&mut self, mut diag: DiagInner, registry: &Registry) {
         if self.emit_fatal_diagnostic && diag.level == Level::Fatal {
             if let Some(fatal_note) = &self.fatal_note {
                 diag.sub(Level::Note, fatal_note.clone(), MultiSpan::new());
             }
-            self.fatal_dcx.handle().emit_diagnostic(diag);
+            self.fatal_emitter.emit_diagnostic(diag, registry);
         }
     }
 }

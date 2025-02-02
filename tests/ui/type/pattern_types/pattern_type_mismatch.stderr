@@ -1,0 +1,31 @@
+error: internal compiler error: ty::ConstKind::Error constructed but no error reported
+   |
+   = error: internal compiler error: ty::ConstKind::Error constructed but no error reported
+   |
+   = note: delayed at compiler/rustc_mir_build/src/thir/constant.rs:72:21 - disabled backtrace
+   = error: internal compiler error: mir_const_qualif: MIR had errors
+  --> $DIR/pattern_type_mismatch.rs:16:1
+   |
+LL | const BAD_NESTING4: pattern_type!(u8 is 'a'..='a') = todo!();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_mir_transform/src/lib.rs::LL:CC - disabled backtrace
+  --> $DIR/pattern_type_mismatch.rs:16:1
+   |
+LL | const BAD_NESTING4: pattern_type!(u8 is 'a'..='a') = todo!();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: internal compiler error: mir_const_qualif: MIR had errors
+  --> $DIR/pattern_type_mismatch.rs:18:1
+   |
+LL | const BAD_NESTING5: pattern_type!(char is 1..=1) = todo!();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: delayed at compiler/rustc_mir_transform/src/lib.rs::LL:CC - disabled backtrace
+  --> $DIR/pattern_type_mismatch.rs:18:1
+   |
+LL | const BAD_NESTING5: pattern_type!(char is 1..=1) = todo!();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+query stack during panic:
+end of query stack
