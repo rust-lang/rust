@@ -174,8 +174,6 @@ impl<T> OnceLock<T> {
     ///
     /// Waiting for a computation on another thread to finish:
     /// ```rust
-    /// #![feature(once_wait)]
-    ///
     /// use std::thread;
     /// use std::sync::OnceLock;
     ///
@@ -189,7 +187,7 @@ impl<T> OnceLock<T> {
     /// })
     /// ```
     #[inline]
-    #[unstable(feature = "once_wait", issue = "127527")]
+    #[stable(feature = "once_wait", since = "CURRENT_RUSTC_VERSION")]
     pub fn wait(&self) -> &T {
         self.once.wait_force();
 

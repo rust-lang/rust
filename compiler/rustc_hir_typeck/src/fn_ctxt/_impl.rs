@@ -253,6 +253,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
+        let mut expr_ty = self.typeck_results.borrow().expr_ty_adjusted(expr);
+
         for a in &adj {
             match a.kind {
                 Adjust::NeverToAny => {
@@ -266,7 +268,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         None,
                         expr.span,
                         overloaded_deref.method_call(self.tcx),
-                        self.tcx.mk_args(&[a.target.into()]),
+                        self.tcx.mk_args(&[expr_ty.into()]),
                     );
                 }
                 Adjust::Deref(None) => {
@@ -283,6 +285,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // No effects to enforce here.
                 }
             }
+
+            expr_ty = a.target;
         }
 
         let autoborrow_mut = adj.iter().any(|adj| {
