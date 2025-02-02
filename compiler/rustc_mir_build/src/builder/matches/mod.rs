@@ -362,11 +362,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let scrutinee_place =
             unpack!(block = self.lower_scrutinee(block, scrutinee_id, scrutinee_span));
 
-        let arms = arms.iter().map(|arm| &self.thir[*arm]);
         let match_start_span = span.shrink_to_lo().to(scrutinee_span);
         let patterns = arms
-            .clone()
-            .map(|arm| {
+            .iter()
+            .map(|&arm| {
+                let arm = &self.thir[arm];
                 let has_match_guard =
                     if arm.guard.is_some() { HasMatchGuard::Yes } else { HasMatchGuard::No };
                 (&*arm.pattern, has_match_guard)
@@ -413,20 +413,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// (by [Builder::lower_match_tree]).
     ///
     /// `outer_source_info` is the SourceInfo for the whole match.
-    fn lower_match_arms<'pat>(
+    fn lower_match_arms(
         &mut self,
         destination: Place<'tcx>,
         scrutinee_place_builder: PlaceBuilder<'tcx>,
         scrutinee_span: Span,
-        arms: impl IntoIterator<Item = &'pat Arm<'tcx>>,
+        arms: &[ArmId],
         built_match_tree: BuiltMatchTree<'tcx>,
         outer_source_info: SourceInfo,
-    ) -> BlockAnd<()>
-    where
-        'tcx: 'pat,
-    {
+    ) -> BlockAnd<()> {
         let arm_end_blocks: Vec<BasicBlock> = arms
-            .into_iter()
+            .iter()
+            .map(|&arm| &self.thir[arm])
             .zip(built_match_tree.branches)
             .map(|(arm, branch)| {
                 debug!("lowering arm {:?}\ncorresponding branch = {:?}", arm, branch);
