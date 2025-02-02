@@ -31,7 +31,7 @@ members = [
   "src/tools/miri/cargo-miri",
   "src/tools/bsan/bsan-cli/",
   "src/tools/bsan/bsan-cli/cargo-bsan",
-  "src/tools/bsan/bsan-rt/",
+  "src/tools/bsan/bsanrt/",
   "src/tools/rustdoc-themes",
   "src/tools/unicode-table-generator",
   "src/tools/jsondocck",

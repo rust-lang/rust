@@ -7,7 +7,7 @@ test-stage = 1
 docs = false
 extended = true
 tools = [
-    "libbsan",
+    "bsanrt",
     "bsan",
     "cargo-bsan",
 ]

@@ -333,7 +333,7 @@ lint_any!(
     CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri";
     CargoBsan, "src/tools/bsan/bsan-cli/cargo-bsan", "cargo-bsan";
     BsanDriver, "src/tools/bsan/bsan-cli/", "bsan";
-    BsanCore, "src/tools/bsan/bsan-rt/", "bsan-rt";
+    BsanRT, "src/tools/bsan/bsanrt/", "bsanrt";
     Clippy, "src/tools/clippy", "clippy";
     CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
     Compiletest, "src/tools/compiletest", "compiletest";

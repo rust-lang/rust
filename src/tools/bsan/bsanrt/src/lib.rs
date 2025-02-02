@@ -1,10 +1,11 @@
 #![feature(rustc_private)]
+#![feature(strict_overflow_ops)]
 #![allow(unused)]
 
 extern crate rustc_abi;
 extern crate rustc_middle;
 
-mod table;
+mod shadow;
 
 use std::num::NonZero;
 use std::os::raw::c_void;

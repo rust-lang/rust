@@ -9,10 +9,11 @@ log = "0.4.22"
 miri = { path = "../../miri" }
 macros = { path = "macros" }
 
-
 [lib]
 name = "bsanrt"
 crate-type = ["cdylib"] 
+test = true     # we have unit tests
+doctest = false # but no doc tests
 
 [build-dependencies]
 cbindgen = "0.27.0"

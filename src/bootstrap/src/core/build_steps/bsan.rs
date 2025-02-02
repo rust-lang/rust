@@ -14,7 +14,7 @@ use crate::utils::helpers::dylib;
 use crate::{Compiler, Kind, Mode, Path, fs, helpers, t};
 
 /// We need two components to compile BSAN (in addition to LLVM). The first component is the
-/// borrow tracker library (libborrowtracker), which is compiled here in the step BsanBorrowTracker.
+/// borrow tracker library (libbsanrt), which is compiled here in the step BsanBorrowTracker.
 /// This library depends on Miri's borrow tracker implementation. Since Miri relies on a variety of
 /// experimental and unstable features, we cannot build it in stage0; we need to use at least the
 /// stage1 compiler. We need to define a custom build step since we are producing a shared library, and
@@ -31,8 +31,7 @@ use crate::{Compiler, Kind, Mode, Path, fs, helpers, t};
 /// Running './x.py build sanitizers' builds every single one. Having these separate steps allows us to build
 /// BSAN without building the other sanitizers.
 
-const BSAN_CORE_PATH: &str = "src/tools/bsan/bsan-rt";
-const BSAN_RT_ALIAS: &str = "bsan-rt";
+const BSAN_CORE_PATH: &str = "src/tools/bsan/bsanrt";
 const BSAN_RT_DYLIB: &str = "bsanrt";
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -52,7 +51,7 @@ impl Step for Bsan {
                     builder.build.unstable_features(),
                     |tools| {
                         tools.iter().any(|tool: &String| match tool.as_str() {
-                            x => BSAN_RT_ALIAS == x || BSAN_RT_DYLIB == x,
+                            x => BSAN_RT_DYLIB == x,
                         })
                     },
                 ),
@@ -72,7 +71,7 @@ impl Step for Bsan {
         let compiler = self.compiler;
 
         builder.ensure(llvm::Llvm { target });
-        builder.ensure(BsanCore { compiler, target });
+        builder.ensure(BsanRT { compiler, target });
 
         let compiler_rt_dir = builder.src.join("src/llvm-project/compiler-rt");
         if !compiler_rt_dir.exists() {
@@ -106,7 +105,6 @@ impl Step for Bsan {
         cfg.define("COMPILER_RT_DEFAULT_TARGET_ONLY", "ON");
         cfg.define("COMPILER_RT_USE_LIBCXX", "OFF");
         cfg.define("LLVM_CONFIG_PATH", &llvm_config);
-
         // On Darwin targets the sanitizer runtimes are build as universal binaries.
         // Unfortunately sccache currently lacks support to build them successfully.
         // Disable compiler launcher on Darwin targets to avoid potential issues.
@@ -122,6 +120,7 @@ impl Step for Bsan {
         let sysroot = sysroot.display();
         let mut ldflags = LdFlags::default();
         ldflags.push_all(format!("-L{sysroot}"));
+
         configure_cmake(
             builder,
             self.target,
@@ -176,19 +175,19 @@ pub fn supports_bsan(
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct BsanCore {
+pub struct BsanRT {
     pub compiler: Compiler,
     pub target: TargetSelection,
 }
 
-impl Step for BsanCore {
+impl Step for BsanRT {
     type Output = PathBuf;
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(BsanCore {
+        run.builder.ensure(BsanRT {
             compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
@@ -203,7 +202,7 @@ impl Step for BsanCore {
         builder.ensure(compile::Std::new(compiler, compiler.host));
         builder.ensure(compile::Rustc::new(compiler, target));
 
-        let cargo = prepare_tool_cargo(
+        let mut cargo = prepare_tool_cargo(
             builder,
             compiler,
             mode,
@@ -213,6 +212,7 @@ impl Step for BsanCore {
             SourceType::InTree,
             &Vec::new(),
         );
+        cargo.env("BSAN_HEADER_DIR", builder.cargo_out(compiler, mode, target));
 
         // we check this below
         let build_success = compile::stream_cargo(builder, cargo, vec![], &mut |_| {});

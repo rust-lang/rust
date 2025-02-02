@@ -38,9 +38,12 @@ jobs:
           - arch: x86 Linux
             os: ubuntu-latest
             install_cmd: sudo apt-get install ninja-build
-          - arch: arm64 macOS
+          - arch: ARM64 macOS
             os: macos-latest
             install_cmd: brew install ninja
+          - arch: ARM64 Linux
+            os: ubuntu-24.04-arm
+            install_cmd: sudo apt-get install ninja-build
     runs-on: '${{ matrix.config.os }}'
     name: 'Build (${{ matrix.config.arch }})'
     steps:
@@ -56,3 +59,5 @@ jobs:
         run: src/ci/scripts/setup-upstream-remote.sh
       - name: Build
         run: ./x.py build --stage 1
+      - name: Test - BsanRT
+        run: ./x.py test --stage 2 src/tools/bsan/bsanrt
