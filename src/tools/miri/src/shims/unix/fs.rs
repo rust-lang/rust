@@ -49,16 +49,13 @@ impl FileDescription for FileHandle {
         communicate_allowed: bool,
         ptr: Pointer,
         len: usize,
-        dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
-        let result = (&mut &self.file).write(bytes);
-        match result {
-            Ok(write_size) => ecx.return_write_success(write_size, dest),
-            Err(e) => ecx.set_last_error_and_return(e, dest),
-        }
+
+        let result = ecx.write_to_host(&self.file, len, ptr)?;
+        finish.call(ecx, result)
     }
 
     fn seek<'tcx>(
@@ -153,8 +150,8 @@ impl UnixFileDescription for FileHandle {
         ptr: Pointer,
         len: usize,
         offset: u64,
-        dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         // Emulates pwrite using seek + write + seek to restore cursor position.
@@ -172,10 +169,7 @@ impl UnixFileDescription for FileHandle {
             res
         };
         let result = f();
-        match result {
-            Ok(write_size) => ecx.return_write_success(write_size, dest),
-            Err(e) => ecx.set_last_error_and_return(e, dest),
-        }
+        finish.call(ecx, result.map_err(IoError::HostError))
     }
 
     fn flock<'tcx>(

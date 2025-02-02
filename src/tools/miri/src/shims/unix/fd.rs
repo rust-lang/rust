@@ -46,8 +46,8 @@ pub trait UnixFileDescription: FileDescription {
         _ptr: Pointer,
         _len: usize,
         _offset: u64,
-        _dest: &MPlaceTy<'tcx>,
         _ecx: &mut MiriInterpCx<'tcx>,
+        _finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("cannot pwrite to {}", self.name());
     }
@@ -307,13 +307,33 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_last_error_and_return(LibcError("EBADF"), dest);
         };
 
+        let finish = {
+            let dest = dest.clone();
+            callback!(
+                @capture<'tcx> {
+                    count: usize,
+                    dest: MPlaceTy<'tcx>,
+                }
+                |this, result: Result<usize, IoError>| {
+                    match result {
+                        Ok(write_size) => {
+                            assert!(write_size <= count);
+                            // This must fit since `count` fits.
+                            this.write_int(u64::try_from(write_size).unwrap(), &dest)
+                        }
+                        Err(e) => {
+                            this.set_last_error_and_return(e, &dest)
+                        }
+                }}
+            )
+        };
         match offset {
-            None => fd.write(communicate, buf, count, dest, this)?,
+            None => fd.write(communicate, buf, count, this, finish)?,
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
                     return this.set_last_error_and_return(LibcError("EINVAL"), dest);
                 };
-                fd.as_unix().pwrite(communicate, buf, count, offset, dest, this)?
+                fd.as_unix().pwrite(communicate, buf, count, offset, this, finish)?
             }
         };
         interp_ok(())

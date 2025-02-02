@@ -7,8 +7,6 @@ use std::collections::VecDeque;
 use std::io;
 use std::io::ErrorKind;
 
-use rustc_abi::Size;
-
 use crate::concurrency::VClock;
 use crate::shims::files::{
     EvalContextExt as _, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
@@ -103,10 +101,10 @@ impl FileDescription for AnonSocket {
         _communicate_allowed: bool,
         ptr: Pointer,
         len: usize,
-        dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        anonsocket_write(self, ptr, len, dest, ecx)
+        anonsocket_write(self, ptr, len, ecx, finish)
     }
 
     fn as_unix(&self) -> &dyn UnixFileDescription {
@@ -119,25 +117,25 @@ fn anonsocket_write<'tcx>(
     self_ref: FileDescriptionRef<AnonSocket>,
     ptr: Pointer,
     len: usize,
-    dest: &MPlaceTy<'tcx>,
     ecx: &mut MiriInterpCx<'tcx>,
+    finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
 ) -> InterpResult<'tcx> {
     // Always succeed on write size 0.
     // ("If count is zero and fd refers to a file other than a regular file, the results are not specified.")
     if len == 0 {
-        return ecx.return_write_success(0, dest);
+        return finish.call(ecx, Ok(0));
     }
 
     // We are writing to our peer's readbuf.
     let Some(peer_fd) = self_ref.peer_fd().upgrade() else {
         // If the upgrade from Weak to Rc fails, it indicates that all read ends have been
         // closed. It is an error to write even if there would be space.
-        return ecx.set_last_error_and_return(ErrorKind::BrokenPipe, dest);
+        return finish.call(ecx, Err(ErrorKind::BrokenPipe.into()));
     };
 
     let Some(writebuf) = &peer_fd.readbuf else {
         // Writing to the read end of a pipe.
-        return ecx.set_last_error_and_return(IoError::LibcError("EBADF"), dest);
+        return finish.call(ecx, Err(IoError::LibcError("EBADF")));
     };
 
     // Let's see if we can write.
@@ -145,13 +143,12 @@ fn anonsocket_write<'tcx>(
     if available_space == 0 {
         if self_ref.is_nonblock {
             // Non-blocking socketpair with a full buffer.
-            return ecx.set_last_error_and_return(ErrorKind::WouldBlock, dest);
+            return finish.call(ecx, Err(ErrorKind::WouldBlock.into()));
         } else {
             self_ref.blocked_write_tid.borrow_mut().push(ecx.active_thread());
             // Blocking socketpair with a full buffer.
             // Block the current thread; only keep a weak ref for this.
             let weak_self_ref = FileDescriptionRef::downgrade(&self_ref);
-            let dest = dest.clone();
             ecx.block_thread(
                 BlockReason::UnnamedSocket,
                 None,
@@ -160,14 +157,14 @@ fn anonsocket_write<'tcx>(
                         weak_self_ref: WeakFileDescriptionRef<AnonSocket>,
                         ptr: Pointer,
                         len: usize,
-                        dest: MPlaceTy<'tcx>,
+                        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
                     }
                     |this, unblock: UnblockKind| {
                         assert_eq!(unblock, UnblockKind::Ready);
                         // If we got unblocked, then our peer successfully upgraded its weak
                         // ref to us. That means we can also upgrade our weak ref.
                         let self_ref = weak_self_ref.upgrade().unwrap();
-                        anonsocket_write(self_ref, ptr, len, &dest, this)
+                        anonsocket_write(self_ref, ptr, len, this, finish)
                     }
                 ),
             );
@@ -180,9 +177,9 @@ fn anonsocket_write<'tcx>(
             writebuf.clock.join(clock);
         });
         // Do full write / partial write based on the space available.
-        let actual_write_size = len.min(available_space);
-        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
-        writebuf.buf.extend(&bytes[..actual_write_size]);
+        let write_size = len.min(available_space);
+        let actual_write_size = ecx.write_to_host(&mut writebuf.buf, write_size, ptr)?.unwrap();
+        assert_eq!(actual_write_size, write_size);
 
         // Need to stop accessing peer_fd so that it can be notified.
         drop(writebuf);
@@ -197,7 +194,7 @@ fn anonsocket_write<'tcx>(
         // The kernel does this even if the fd was already readable before, so we follow suit.
         ecx.check_and_update_readiness(peer_fd)?;
 
-        return ecx.return_write_success(actual_write_size, dest);
+        return finish.call(ecx, Ok(write_size));
     }
     interp_ok(())
 }

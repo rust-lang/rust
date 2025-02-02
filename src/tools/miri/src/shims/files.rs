@@ -154,8 +154,8 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         _communicate_allowed: bool,
         _ptr: Pointer,
         _len: usize,
-        _dest: &MPlaceTy<'tcx>,
         _ecx: &mut MiriInterpCx<'tcx>,
+        _finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("cannot write to {}", self.name());
     }
@@ -234,22 +234,19 @@ impl FileDescription for io::Stdout {
         _communicate_allowed: bool,
         ptr: Pointer,
         len: usize,
-        dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
-        // We allow writing to stderr even with isolation enabled.
-        let result = Write::write(&mut &*self, bytes);
+        // We allow writing to stdout even with isolation enabled.
+        let result = ecx.write_to_host(&*self, len, ptr)?;
         // Stdout is buffered, flush to make sure it appears on the
         // screen.  This is the write() syscall of the interpreted
         // program, we want it to correspond to a write() syscall on
         // the host -- there is no good in adding extra buffering
         // here.
         io::stdout().flush().unwrap();
-        match result {
-            Ok(write_size) => ecx.return_write_success(write_size, dest),
-            Err(e) => ecx.set_last_error_and_return(e, dest),
-        }
+
+        finish.call(ecx, result)
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
@@ -267,17 +264,13 @@ impl FileDescription for io::Stderr {
         _communicate_allowed: bool,
         ptr: Pointer,
         len: usize,
-        dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        let bytes = ecx.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
         // We allow writing to stderr even with isolation enabled.
+        let result = ecx.write_to_host(&*self, len, ptr)?;
         // No need to flush, stderr is not buffered.
-        let result = Write::write(&mut &*self, bytes);
-        match result {
-            Ok(write_size) => ecx.return_write_success(write_size, dest),
-            Err(e) => ecx.set_last_error_and_return(e, dest),
-        }
+        finish.call(ecx, result)
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
@@ -299,11 +292,11 @@ impl FileDescription for NullOutput {
         _communicate_allowed: bool,
         _ptr: Pointer,
         len: usize,
-        dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         // We just don't write anything, but report to the user that we did.
-        ecx.return_write_success(len, dest)
+        finish.call(ecx, Ok(len))
     }
 }
 
@@ -426,16 +419,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    /// Helper to implement `FileDescription::write`:
-    /// This function is only used when `write` is successful, and writes `actual_write_size` to `dest`
-    fn return_write_success(
+    /// Write data to a host `Write` type, withthe bytes taken from machine memory.
+    fn write_to_host(
         &mut self,
-        actual_write_size: usize,
-        dest: &MPlaceTy<'tcx>,
-    ) -> InterpResult<'tcx> {
+        mut file: impl io::Write,
+        len: usize,
+        ptr: Pointer,
+    ) -> InterpResult<'tcx, Result<usize, IoError>> {
         let this = self.eval_context_mut();
-        // The actual write size is always less than what got originally requested so this cannot fail.
-        this.write_int(u64::try_from(actual_write_size).unwrap(), dest)?;
-        interp_ok(())
+
+        let bytes = this.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
+        let result = file.write(bytes);
+        interp_ok(result.map_err(IoError::HostError))
     }
 }
