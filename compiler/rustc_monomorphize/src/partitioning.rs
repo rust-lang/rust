@@ -1179,19 +1179,15 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
         }
     }
 
+    let mut autodiff_mono_items: Vec<_> = vec![];
     let mono_items: DefIdSet = items
         .iter()
         .filter_map(|mono_item| match *mono_item {
-            MonoItem::Fn(ref instance) => Some(instance.def_id()),
+            MonoItem::Fn(ref instance) => {
+                autodiff_mono_items.push((mono_item, instance));
+                Some(instance.def_id())
+            }
             MonoItem::Static(def_id) => Some(def_id),
-            _ => None,
-        })
-        .collect();
-
-    let autodiff_mono_items: Vec<_> = items
-        .iter()
-        .filter_map(|item| match *item {
-            MonoItem::Fn(ref instance) => Some((item, instance)),
             _ => None,
         })
         .collect();
