@@ -626,10 +626,9 @@ fn link_staticlib(
 
     let mut all_rust_dylibs = vec![];
     for &cnum in crates {
-        match fmts.get(cnum) {
-            Some(&Linkage::Dynamic) => {}
-            _ => continue,
-        }
+        let Some(Linkage::Dynamic) = fmts.get(cnum) else {
+            continue;
+        };
         let crate_name = codegen_results.crate_info.crate_name[&cnum];
         let used_crate_source = &codegen_results.crate_info.used_crate_source[&cnum];
         if let Some((path, _)) = &used_crate_source.dylib {

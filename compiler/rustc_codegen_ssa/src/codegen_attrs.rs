@@ -655,25 +655,20 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // llvm/llvm-project#70563).
     if !codegen_fn_attrs.target_features.is_empty()
         && matches!(codegen_fn_attrs.inline, InlineAttr::Always)
+        && let Some(span) = inline_span
     {
-        if let Some(span) = inline_span {
-            tcx.dcx().span_err(span, "cannot use `#[inline(always)]` with `#[target_feature]`");
-        }
+        tcx.dcx().span_err(span, "cannot use `#[inline(always)]` with `#[target_feature]`");
     }
 
-    if !codegen_fn_attrs.no_sanitize.is_empty() && codegen_fn_attrs.inline.always() {
-        if let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span) {
-            let hir_id = tcx.local_def_id_to_hir_id(did);
-            tcx.node_span_lint(
-                lint::builtin::INLINE_NO_SANITIZE,
-                hir_id,
-                no_sanitize_span,
-                |lint| {
-                    lint.primary_message("`no_sanitize` will have no effect after inlining");
-                    lint.span_note(inline_span, "inlining requested here");
-                },
-            )
-        }
+    if !codegen_fn_attrs.no_sanitize.is_empty()
+        && codegen_fn_attrs.inline.always()
+        && let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span)
+    {
+        let hir_id = tcx.local_def_id_to_hir_id(did);
+        tcx.node_span_lint(lint::builtin::INLINE_NO_SANITIZE, hir_id, no_sanitize_span, |lint| {
+            lint.primary_message("`no_sanitize` will have no effect after inlining");
+            lint.span_note(inline_span, "inlining requested here");
+        })
     }
 
     // Weak lang items have the same semantics as "std internal" symbols in the
@@ -703,10 +698,10 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // Any linkage to LLVM intrinsics for now forcibly marks them all as never
     // unwinds since LLVM sometimes can't handle codegen which `invoke`s
     // intrinsic functions.
-    if let Some(name) = &codegen_fn_attrs.link_name {
-        if name.as_str().starts_with("llvm.") {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
-        }
+    if let Some(name) = &codegen_fn_attrs.link_name
+        && name.as_str().starts_with("llvm.")
+    {
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
     }
 
     if let Some(features) = check_tied_features(
