@@ -644,7 +644,14 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         found_label: &dyn fmt::Display,
         found: DiagStyledString,
     ) -> &mut Self {
-        self.note_expected_found_extra(expected_label, expected, found_label, found, &"", &"")
+        self.note_expected_found_extra(
+            expected_label,
+            expected,
+            found_label,
+            found,
+            DiagStyledString::normal(""),
+            DiagStyledString::normal(""),
+        )
     }
 
     #[rustc_lint_diagnostics]
@@ -654,8 +661,8 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         expected: DiagStyledString,
         found_label: &dyn fmt::Display,
         found: DiagStyledString,
-        expected_extra: &dyn fmt::Display,
-        found_extra: &dyn fmt::Display,
+        expected_extra: DiagStyledString,
+        found_extra: DiagStyledString,
     ) -> &mut Self {
         let expected_label = expected_label.to_string();
         let expected_label = if expected_label.is_empty() {
@@ -680,10 +687,13 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
             expected_label
         ))];
         msg.extend(expected.0);
-        msg.push(StringPart::normal(format!("`{expected_extra}\n")));
+        msg.push(StringPart::normal(format!("`")));
+        msg.extend(expected_extra.0);
+        msg.push(StringPart::normal(format!("\n")));
         msg.push(StringPart::normal(format!("{}{} `", " ".repeat(found_padding), found_label)));
         msg.extend(found.0);
-        msg.push(StringPart::normal(format!("`{found_extra}")));
+        msg.push(StringPart::normal(format!("`")));
+        msg.extend(found_extra.0);
 
         // For now, just attach these as notes.
         self.highlighted_note(msg);
