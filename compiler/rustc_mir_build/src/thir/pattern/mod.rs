@@ -417,7 +417,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     .iter()
                     .map(|field| FieldPat {
                         field: self.typeck_results.field_index(field.hir_id),
-                        pattern: self.lower_pattern(field.pat),
+                        pattern: *self.lower_pattern(field.pat),
                     })
                     .collect();
 
@@ -445,13 +445,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             .enumerate_and_adjust(expected_len, gap_pos)
             .map(|(i, subpattern)| FieldPat {
                 field: FieldIdx::new(i),
-                pattern: self.lower_pattern(subpattern),
+                pattern: *self.lower_pattern(subpattern),
             })
             .collect()
     }
 
-    fn lower_patterns(&mut self, pats: &'tcx [hir::Pat<'tcx>]) -> Box<[Box<Pat<'tcx>>]> {
-        pats.iter().map(|p| self.lower_pattern(p)).collect()
+    fn lower_patterns(&mut self, pats: &'tcx [hir::Pat<'tcx>]) -> Box<[Pat<'tcx>]> {
+        pats.iter().map(|p| *self.lower_pattern(p)).collect()
     }
 
     fn lower_opt_pattern(&mut self, pat: Option<&'tcx hir::Pat<'tcx>>) -> Option<Box<Pat<'tcx>>> {

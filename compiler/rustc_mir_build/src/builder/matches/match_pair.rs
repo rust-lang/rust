@@ -37,9 +37,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         match_pairs: &mut Vec<MatchPairTree<'tcx>>,
         place: &PlaceBuilder<'tcx>,
-        prefix: &[Box<Pat<'tcx>>],
+        prefix: &[Pat<'tcx>],
         opt_slice: &Option<Box<Pat<'tcx>>>,
-        suffix: &[Box<Pat<'tcx>>],
+        suffix: &[Pat<'tcx>],
     ) {
         let tcx = self.tcx;
         let (min_length, exact_size) = if let Some(place_resolved) = place.try_to_place(self) {
