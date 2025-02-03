@@ -1,3 +1,14 @@
+//! This module handles building and managing various tools in bootstrap
+//! build system.
+//!
+//! **What It Does**
+//! - Defines how tools are built, configured and installed.
+//! - Manages tool dependencies and build steps.
+//! - Copies built tool binaries to the correct locations.
+//!
+//! Each tool **MUST** utilize `ToolBuild` inside their `Step` logic and
+//! they should never prepare `cargo` invocations manually.
+
 use std::path::PathBuf;
 use std::{env, fs};
 
