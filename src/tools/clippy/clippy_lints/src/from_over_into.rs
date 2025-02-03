@@ -134,8 +134,8 @@ impl<'tcx> Visitor<'tcx> for SelfFinder<'_, 'tcx> {
     type Result = ControlFlow<()>;
     type NestedFilter = OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 
     fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) -> Self::Result {

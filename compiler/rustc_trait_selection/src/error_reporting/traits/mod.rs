@@ -68,8 +68,8 @@ impl<'hir> FindExprBySpan<'hir> {
 impl<'v> Visitor<'v> for FindExprBySpan<'v> {
     type NestedFilter = rustc_middle::hir::nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {

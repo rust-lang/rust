@@ -563,8 +563,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 impl<'tcx> Visitor<'tcx> for RustdocVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 
     fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {

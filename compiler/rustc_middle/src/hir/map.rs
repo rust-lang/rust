@@ -1034,35 +1034,35 @@ impl<'hir> Map<'hir> {
     }
 }
 
-impl<'hir> intravisit::Map<'hir> for Map<'hir> {
-    fn hir_node(&self, hir_id: HirId) -> Node<'hir> {
-        self.tcx.hir_node(hir_id)
+impl<'tcx> intravisit::HirTyCtxt<'tcx> for TyCtxt<'tcx> {
+    fn hir_node(&self, hir_id: HirId) -> Node<'tcx> {
+        (*self).hir_node(hir_id)
     }
 
-    fn body(&self, id: BodyId) -> &'hir Body<'hir> {
-        self.tcx.hir_body(id)
+    fn hir_body(&self, id: BodyId) -> &'tcx Body<'tcx> {
+        (*self).hir_body(id)
     }
 
-    fn item(&self, id: ItemId) -> &'hir Item<'hir> {
-        self.tcx.hir_item(id)
+    fn hir_item(&self, id: ItemId) -> &'tcx Item<'tcx> {
+        (*self).hir_item(id)
     }
 
-    fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir> {
-        self.tcx.hir_trait_item(id)
+    fn hir_trait_item(&self, id: TraitItemId) -> &'tcx TraitItem<'tcx> {
+        (*self).hir_trait_item(id)
     }
 
-    fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
-        self.tcx.hir_impl_item(id)
+    fn hir_impl_item(&self, id: ImplItemId) -> &'tcx ImplItem<'tcx> {
+        (*self).hir_impl_item(id)
     }
 
-    fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir> {
-        self.tcx.hir_foreign_item(id)
+    fn hir_foreign_item(&self, id: ForeignItemId) -> &'tcx ForeignItem<'tcx> {
+        (*self).hir_foreign_item(id)
     }
 }
 
 impl<'tcx> pprust_hir::PpAnn for TyCtxt<'tcx> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
-        pprust_hir::PpAnn::nested(&(&self.hir() as &dyn intravisit::Map<'_>), state, nested)
+        pprust_hir::PpAnn::nested(&(self as &dyn intravisit::HirTyCtxt<'_>), state, nested)
     }
 }
 
@@ -1349,8 +1349,8 @@ impl<'tcx> ItemCollector<'tcx> {
 impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_item(&mut self, item: &'hir Item<'hir>) {

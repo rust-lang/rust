@@ -277,7 +277,7 @@ impl<'tcx> Visitor<'tcx> for LintCollector<'_, 'tcx> {
         }
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
         self.cx.tcx.hir()
     }
 }

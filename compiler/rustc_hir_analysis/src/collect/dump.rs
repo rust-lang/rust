@@ -63,8 +63,8 @@ pub(crate) fn def_parents(tcx: TyCtxt<'_>) {
             impl<'tcx> intravisit::Visitor<'tcx> for AnonConstFinder<'tcx> {
                 type NestedFilter = nested_filter::All;
 
-                fn nested_visit_map(&mut self) -> Self::Map {
-                    self.tcx.hir()
+                fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+                    self.tcx
                 }
 
                 fn visit_anon_const(&mut self, c: &'tcx rustc_hir::AnonConst) {
