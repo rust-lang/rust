@@ -44,12 +44,12 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
     typeck_results: &'a ty::TypeckResults<'tcx>,
     pat: &'tcx hir::Pat<'tcx>,
 ) -> Box<Pat<'tcx>> {
-    let migration_labels = typeck_results.rust_2024_migration_desugared_pats().get(pat.hir_id);
+    let migration_info = typeck_results.rust_2024_migration_desugared_pats().get(pat.hir_id);
     let mut pcx = PatCtxt {
         tcx,
         typing_env,
         typeck_results,
-        rust_2024_migration_suggestion: migration_labels.and(Some(Rust2024IncompatiblePatSugg {
+        rust_2024_migration_suggestion: migration_info.and(Some(Rust2024IncompatiblePatSugg {
             suggestion: Vec::new(),
             ref_pattern_count: 0,
             binding_mode_count: 0,
@@ -57,10 +57,10 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
     };
     let result = pcx.lower_pattern(pat);
     debug!("pat_from_hir({:?}) = {:?}", pat, result);
-    if let Some(labels) = migration_labels {
+    if let Some(info) = migration_info {
         let sugg = pcx.rust_2024_migration_suggestion.expect("suggestion should be present");
-        let mut spans = MultiSpan::from_spans(labels.iter().map(|(span, _)| *span).collect());
-        for (span, label) in labels {
+        let mut spans = MultiSpan::from_spans(info.labels.iter().map(|(span, _)| *span).collect());
+        for (span, label) in &info.labels {
             spans.push_span_label(*span, label.clone());
         }
         // If a relevant span is from at least edition 2024, this is a hard error.
@@ -68,10 +68,13 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
         if is_hard_error {
             let mut err =
                 tcx.dcx().struct_span_err(spans, fluent::mir_build_rust_2024_incompatible_pat);
-            if let Some(info) = lint::builtin::RUST_2024_INCOMPATIBLE_PAT.future_incompatible {
+            if let Some(lint_info) = lint::builtin::RUST_2024_INCOMPATIBLE_PAT.future_incompatible {
                 // provide the same reference link as the lint
-                err.note(format!("for more information, see {}", info.reference));
+                err.note(format!("for more information, see {}", lint_info.reference));
             }
+            err.arg("bad_modifiers", info.bad_modifiers);
+            err.arg("bad_ref_pats", info.bad_ref_pats);
+            err.arg("is_hard_error", true);
             err.subdiagnostic(sugg);
             err.emit();
         } else {
@@ -79,7 +82,12 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
                 lint::builtin::RUST_2024_INCOMPATIBLE_PAT,
                 pat.hir_id,
                 spans,
-                Rust2024IncompatiblePat { sugg },
+                Rust2024IncompatiblePat {
+                    sugg,
+                    bad_modifiers: info.bad_modifiers,
+                    bad_ref_pats: info.bad_ref_pats,
+                    is_hard_error,
+                },
             );
         }
     }
