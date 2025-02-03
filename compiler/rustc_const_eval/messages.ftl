@@ -300,8 +300,7 @@ const_eval_overflow_arith =
 const_eval_overflow_shift =
     overflowing shift by {$shift_amount} in `{$intrinsic}`
 
-const_eval_panic =
-    the evaluated program panicked at '{$msg}', {$file}:{$line}:{$col}
+const_eval_panic = {$msg}
 
 const_eval_panic_non_str = argument to `panic!()` in a const context must have type `&str`
 

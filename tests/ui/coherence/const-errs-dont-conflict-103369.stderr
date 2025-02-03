@@ -2,7 +2,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const-errs-dont-conflict-103369.rs:10:5
    |
 LL |     panic!("Some error occurred");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'Some error occurred', $DIR/const-errs-dont-conflict-103369.rs:10:5
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Some error occurred
    |
 note: inside `my_fn`
   --> $DIR/const-errs-dont-conflict-103369.rs:10:5
@@ -20,7 +20,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const-errs-dont-conflict-103369.rs:10:5
    |
 LL |     panic!("Some error occurred");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'Some error occurred', $DIR/const-errs-dont-conflict-103369.rs:10:5
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Some error occurred
    |
 note: inside `my_fn`
   --> $DIR/const-errs-dont-conflict-103369.rs:10:5
