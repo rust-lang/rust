@@ -474,6 +474,7 @@ macro_rules! nonzero_integer {
         #[$stability:meta]
         Self = $Ty:ident,
         Primitive = $signedness:ident $Int:ident,
+        SignedPrimitive = $Sint:ty,
         UnsignedPrimitive = $Uint:ty,
 
         // Used in doc comments.
@@ -905,6 +906,7 @@ macro_rules! nonzero_integer {
 
             nonzero_integer_signedness_dependent_methods! {
                 Primitive = $signedness $Int,
+                SignedPrimitive = $Sint,
                 UnsignedPrimitive = $Uint,
             }
 
@@ -1128,6 +1130,7 @@ macro_rules! nonzero_integer {
     (
         Self = $Ty:ident,
         Primitive = unsigned $Int:ident,
+        SignedPrimitive = $Sint:ident,
         rot = $rot:literal,
         rot_op = $rot_op:literal,
         rot_result = $rot_result:literal,
@@ -1140,6 +1143,7 @@ macro_rules! nonzero_integer {
             #[stable(feature = "nonzero", since = "1.28.0")]
             Self = $Ty,
             Primitive = unsigned $Int,
+            SignedPrimitive = $Sint,
             UnsignedPrimitive = $Int,
             rot = $rot,
             rot_op = $rot_op,
@@ -1154,7 +1158,7 @@ macro_rules! nonzero_integer {
     (
         Self = $Ty:ident,
         Primitive = signed $Int:ident,
-        UnsignedPrimitive = $UInt:ident,
+        UnsignedPrimitive = $Uint:ident,
         rot = $rot:literal,
         rot_op = $rot_op:literal,
         rot_result = $rot_result:literal,
@@ -1166,7 +1170,8 @@ macro_rules! nonzero_integer {
             #[stable(feature = "signed_nonzero", since = "1.34.0")]
             Self = $Ty,
             Primitive = signed $Int,
-            UnsignedPrimitive = $UInt,
+            SignedPrimitive = $Int,
+            UnsignedPrimitive = $Uint,
             rot = $rot,
             rot_op = $rot_op,
             rot_result = $rot_result,
@@ -1286,6 +1291,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
     // Associated items for unsigned nonzero types only.
     (
         Primitive = unsigned $Int:ident,
+        SignedPrimitive = $Sint:ty,
         UnsignedPrimitive = $Uint:ty,
     ) => {
         /// The smallest value that can be represented by this non-zero
@@ -1625,6 +1631,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
     // Associated items for signed nonzero types only.
     (
         Primitive = signed $Int:ident,
+        SignedPrimitive = $Sint:ty,
         UnsignedPrimitive = $Uint:ty,
     ) => {
         /// The smallest value that can be represented by this non-zero
@@ -2041,6 +2048,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
 nonzero_integer! {
     Self = NonZeroU8,
     Primitive = unsigned u8,
+    SignedPrimitive = i8,
     rot = 2,
     rot_op = "0x82",
     rot_result = "0xa",
@@ -2052,6 +2060,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroU16,
     Primitive = unsigned u16,
+    SignedPrimitive = i16,
     rot = 4,
     rot_op = "0xa003",
     rot_result = "0x3a",
@@ -2063,6 +2072,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroU32,
     Primitive = unsigned u32,
+    SignedPrimitive = i32,
     rot = 8,
     rot_op = "0x10000b3",
     rot_result = "0xb301",
@@ -2074,6 +2084,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroU64,
     Primitive = unsigned u64,
+    SignedPrimitive = i64,
     rot = 12,
     rot_op = "0xaa00000000006e1",
     rot_result = "0x6e10aa",
@@ -2085,6 +2096,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroU128,
     Primitive = unsigned u128,
+    SignedPrimitive = i128,
     rot = 16,
     rot_op = "0x13f40000000000000000000000004f76",
     rot_result = "0x4f7613f4",
@@ -2097,6 +2109,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroUsize,
     Primitive = unsigned usize,
+    SignedPrimitive = isize,
     rot = 4,
     rot_op = "0xa003",
     rot_result = "0x3a",
@@ -2109,6 +2122,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroUsize,
     Primitive = unsigned usize,
+    SignedPrimitive = isize,
     rot = 8,
     rot_op = "0x10000b3",
     rot_result = "0xb301",
@@ -2121,6 +2135,7 @@ nonzero_integer! {
 nonzero_integer! {
     Self = NonZeroUsize,
     Primitive = unsigned usize,
+    SignedPrimitive = isize,
     rot = 12,
     rot_op = "0xaa00000000006e1",
     rot_result = "0x6e10aa",
