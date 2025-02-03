@@ -444,14 +444,14 @@ impl SymbolGenerator {
                     MonikerResult::Moniker(moniker) => TokenSymbols {
                         symbol: scip::symbol::format_symbol(moniker_to_symbol(moniker)),
                         enclosing_symbol: None,
-                        is_inherent_impl: moniker
-                            .identifier
-                            .description
-                            .get(moniker.identifier.description.len() - 2)
-                            .is_some_and(|descriptor| {
+                        is_inherent_impl: match &moniker.identifier.description[..] {
+                            // inherent impls are represented as impl#[SelfType]
+                            [.., descriptor, _] => {
                                 descriptor.desc == MonikerDescriptorKind::Type
                                     && descriptor.name == "impl"
-                            }),
+                            }
+                            _ => false,
+                        },
                     },
                     MonikerResult::Local { enclosing_moniker } => {
                         let local_symbol = scip::types::Symbol::new_local(local_count);
@@ -549,7 +549,9 @@ mod test {
                 continue;
             }
             for &(range, id) in &file.tokens {
-                if range.contains(offset - TextSize::from(1)) {
+                // check if cursor is within token, ignoring token for the module defined by the file (whose range is the whole file)
+                if range.start() != TextSize::from(0) && range.contains(offset - TextSize::from(1))
+                {
                     let token = si.tokens.get(id).unwrap();
                     found_symbol = match token.moniker.as_ref() {
                         None => None,
@@ -885,7 +887,7 @@ pub mod example_mod {
         );
 
         let file = si.files.first().unwrap();
-        let (_, token_id) = file.tokens.first().unwrap();
+        let (_, token_id) = file.tokens.get(1).unwrap(); // first token is file module, second is `bar`
         let token = si.tokens.get(*token_id).unwrap();
 
         assert_eq!(token.documentation.as_ref().map(|d| d.as_str()), Some("foo"));
