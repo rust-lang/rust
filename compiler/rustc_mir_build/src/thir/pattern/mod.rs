@@ -159,38 +159,35 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         (Option<PatRangeBoundary<'tcx>>, Option<Ascription<'tcx>>, Option<LocalDefId>),
         ErrorGuaranteed,
     > {
-        match expr {
-            None => Ok((None, None, None)),
-            Some(expr) => {
-                let (kind, ascr, inline_const) = match self.lower_lit(expr) {
-                    PatKind::ExpandedConstant { subpattern, def_id, is_inline: true } => {
-                        (subpattern.kind, None, def_id.as_local())
-                    }
-                    PatKind::ExpandedConstant { subpattern, is_inline: false, .. } => {
-                        (subpattern.kind, None, None)
-                    }
-                    PatKind::AscribeUserType { ascription, subpattern: box Pat { kind, .. } } => {
-                        (kind, Some(ascription), None)
-                    }
-                    kind => (kind, None, None),
-                };
-                let value = match kind {
-                    PatKind::Constant { value } => value,
-                    PatKind::ExpandedConstant { subpattern, .. }
-                        if let PatKind::Constant { value } = subpattern.kind =>
-                    {
-                        value
-                    }
-                    _ => {
-                        let msg = format!(
-                            "found bad range pattern endpoint `{expr:?}` outside of error recovery"
-                        );
-                        return Err(self.tcx.dcx().span_delayed_bug(expr.span, msg));
-                    }
-                };
-                Ok((Some(PatRangeBoundary::Finite(value)), ascr, inline_const))
+        let Some(expr) = expr else { return Ok((None, None, None)) };
+
+        let (kind, ascr, inline_const) = match self.lower_lit(expr) {
+            PatKind::ExpandedConstant { subpattern, def_id, is_inline: true } => {
+                (subpattern.kind, None, def_id.as_local())
             }
-        }
+            PatKind::ExpandedConstant { subpattern, is_inline: false, .. } => {
+                (subpattern.kind, None, None)
+            }
+            PatKind::AscribeUserType { ascription, subpattern: box Pat { kind, .. } } => {
+                (kind, Some(ascription), None)
+            }
+            kind => (kind, None, None),
+        };
+        let value = match kind {
+            PatKind::Constant { value } => value,
+            PatKind::ExpandedConstant { subpattern, .. }
+                if let PatKind::Constant { value } = subpattern.kind =>
+            {
+                value
+            }
+            _ => {
+                let msg = format!(
+                    "found bad range pattern endpoint `{expr:?}` outside of error recovery"
+                );
+                return Err(self.tcx.dcx().span_delayed_bug(expr.span, msg));
+            }
+        };
+        Ok((Some(PatRangeBoundary::Finite(value)), ascr, inline_const))
     }
 
     /// Overflowing literals are linted against in a late pass. This is mostly fine, except when we
