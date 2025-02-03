@@ -259,8 +259,8 @@ struct CheckNakedAsmInNakedFn<'tcx> {
 impl<'tcx> Visitor<'tcx> for CheckNakedAsmInNakedFn<'tcx> {
     type NestedFilter = OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {

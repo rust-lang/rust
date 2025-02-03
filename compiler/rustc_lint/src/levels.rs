@@ -270,8 +270,8 @@ impl<'tcx> LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
 impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.provider.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.provider.tcx
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
@@ -365,8 +365,8 @@ impl<'tcx> LintLevelMaximum<'tcx> {
 impl<'tcx> Visitor<'tcx> for LintLevelMaximum<'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     /// FIXME(blyxyas): In a future revision, we should also graph #![allow]s,

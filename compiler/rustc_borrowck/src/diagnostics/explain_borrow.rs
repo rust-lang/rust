@@ -256,8 +256,8 @@ impl<'tcx> BorrowExplanation<'tcx> {
 
                         impl<'hir> rustc_hir::intravisit::Visitor<'hir> for FindLetExpr<'hir> {
                             type NestedFilter = rustc_middle::hir::nested_filter::OnlyBodies;
-                            fn nested_visit_map(&mut self) -> Self::Map {
-                                self.tcx.hir()
+                            fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+                                self.tcx
                             }
                             fn visit_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
                                 if let hir::ExprKind::If(cond, _conseq, _alt)
