@@ -325,17 +325,19 @@ impl GlobalState {
                 }
 
                 for progress in prime_caches_progress {
-                    let (state, message, fraction);
+                    let (state, message, fraction, title);
                     match progress {
                         PrimeCachesProgress::Begin => {
                             state = Progress::Begin;
                             message = None;
                             fraction = 0.0;
+                            title = "Indexing";
                         }
                         PrimeCachesProgress::Report(report) => {
                             state = Progress::Report;
+                            title = report.work_type;
 
-                            message = match &report.crates_currently_indexing[..] {
+                            message = match &*report.crates_currently_indexing {
                                 [crate_name] => Some(format!(
                                     "{}/{} ({crate_name})",
                                     report.crates_done, report.crates_total
@@ -356,6 +358,7 @@ impl GlobalState {
                             state = Progress::End;
                             message = None;
                             fraction = 1.0;
+                            title = "Indexing";
 
                             self.prime_caches_queue.op_completed(());
                             if cancelled {
@@ -365,7 +368,13 @@ impl GlobalState {
                         }
                     };
 
-                    self.report_progress("Indexing", state, message, Some(fraction), None);
+                    self.report_progress(
+                        title,
+                        state,
+                        message,
+                        Some(fraction),
+                        Some("rustAnalyzer/cachePriming".to_owned()),
+                    );
                 }
             }
             Event::Vfs(message) => {
