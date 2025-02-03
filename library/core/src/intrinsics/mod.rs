@@ -2995,7 +2995,7 @@ pub unsafe fn float_to_int_unchecked<Float: Copy, Int: Copy>(_value: Float) -> I
 
 /// Float addition that allows optimizations based on algebraic rules.
 ///
-/// Stabilized as [`f32::add_algebraic`] and [`f64::add_algebraic`].
+/// Stabilized as [`f16::add_algebraic`], [`f32::add_algebraic`], [`f64::add_algebraic`] and [`f128::add_algebraic`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -3005,7 +3005,7 @@ pub fn fadd_algebraic<T: Copy>(_a: T, _b: T) -> T {
 
 /// Float subtraction that allows optimizations based on algebraic rules.
 ///
-/// Stabilized as [`f32::sub_algebraic`] and [`f64::sub_algebraic`].
+/// Stabilized as [`f16::sub_algebraic`], [`f32::sub_algebraic`], [`f64::sub_algebraic`] and [`f128::sub_algebraic`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -3015,7 +3015,7 @@ pub fn fsub_algebraic<T: Copy>(_a: T, _b: T) -> T {
 
 /// Float multiplication that allows optimizations based on algebraic rules.
 ///
-/// Stabilized as [`f32::mul_algebraic`] and [`f64::mul_algebraic`].
+/// Stabilized as [`f16::mul_algebraic`], [`f32::mul_algebraic`], [`f64::mul_algebraic`] and [`f128::mul_algebraic`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -3025,7 +3025,7 @@ pub fn fmul_algebraic<T: Copy>(_a: T, _b: T) -> T {
 
 /// Float division that allows optimizations based on algebraic rules.
 ///
-/// Stabilized as [`f32::div_algebraic`] and [`f64::div_algebraic`].
+/// Stabilized as [`f16::div_algebraic`], [`f32::div_algebraic`], [`f64::div_algebraic`] and [`f128::div_algebraic`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -3035,7 +3035,7 @@ pub fn fdiv_algebraic<T: Copy>(_a: T, _b: T) -> T {
 
 /// Float remainder that allows optimizations based on algebraic rules.
 ///
-/// Stabilized as [`f32::rem_algebraic`] and [`f64::rem_algebraic`].
+/// Stabilized as [`f16::rem_algebraic`], [`f32::rem_algebraic`], [`f64::rem_algebraic`] and [`f128::rem_algebraic`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
