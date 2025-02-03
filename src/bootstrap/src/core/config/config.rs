@@ -575,6 +575,10 @@ impl TargetSelection {
         env::var("OSTYPE").is_ok_and(|v| v.to_lowercase().contains("cygwin"))
     }
 
+    pub fn needs_crt_begin_end(&self) -> bool {
+        self.contains("musl") && !self.contains("unikraft")
+    }
+
     /// Path to the file defining the custom target, if any.
     pub fn filepath(&self) -> Option<&Path> {
         self.file.as_ref().map(Path::new)
