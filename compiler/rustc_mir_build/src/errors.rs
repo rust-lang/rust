@@ -1100,6 +1100,9 @@ pub(crate) enum MiscPatternSuggestion {
 pub(crate) struct Rust2024IncompatiblePat {
     #[subdiagnostic]
     pub(crate) sugg: Rust2024IncompatiblePatSugg,
+    pub(crate) bad_modifiers: bool,
+    pub(crate) bad_ref_pats: bool,
+    pub(crate) is_hard_error: bool,
 }
 
 pub(crate) struct Rust2024IncompatiblePatSugg {

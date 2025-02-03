@@ -1,8 +1,8 @@
-error: this pattern relies on behavior which may change in edition 2024
+error: binding modifiers may only be written when the default binding mode is `move`
   --> $DIR/ref-binding-on-inh-ref-errors.rs:15:11
    |
 LL |     let [&ref x] = &[&0];
-   |           ^^^ cannot override to bind by-reference when that is the implicit default
+   |           ^^^ default binding mode is `ref`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
@@ -10,11 +10,11 @@ help: make the implied reference pattern explicit
 LL |     let &[&ref x] = &[&0];
    |         +
 
-error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:21:11
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:20:11
    |
 LL |     let [&ref x] = &mut [&0];
-   |           ^^^ cannot override to bind by-reference when that is the implicit default
+   |           ^^^ default binding mode is `ref`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
@@ -22,11 +22,11 @@ help: make the implied reference pattern explicit
 LL |     let &mut [&ref x] = &mut [&0];
    |         ++++
 
-error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:27:15
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:25:15
    |
 LL |     let [&mut ref x] = &mut [&mut 0];
-   |               ^^^ cannot override to bind by-reference when that is the implicit default
+   |               ^^^ default binding mode is `ref mut`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
@@ -34,11 +34,11 @@ help: make the implied reference pattern explicit
 LL |     let &mut [&mut ref x] = &mut [&mut 0];
    |         ++++
 
-error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:33:15
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:30:15
    |
 LL |     let [&mut ref mut x] = &mut [&mut 0];
-   |               ^^^^^^^ cannot override to bind by-reference when that is the implicit default
+   |               ^^^^^^^ default binding mode is `ref mut`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
@@ -46,11 +46,11 @@ help: make the implied reference pattern explicit
 LL |     let &mut [&mut ref mut x] = &mut [&mut 0];
    |         ++++
 
-error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:43:11
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:39:11
    |
 LL |     let [&ref x] = &[&mut 0];
-   |           ^^^ cannot override to bind by-reference when that is the implicit default
+   |           ^^^ default binding mode is `ref`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
@@ -58,11 +58,11 @@ help: make the implied reference pattern explicit
 LL |     let &[&ref x] = &[&mut 0];
    |         +
 
-error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:50:11
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:45:11
    |
 LL |     let [&ref x] = &mut [&mut 0];
-   |           ^^^ cannot override to bind by-reference when that is the implicit default
+   |           ^^^ default binding mode is `ref`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
@@ -70,11 +70,11 @@ help: make the implied reference pattern explicit
 LL |     let &mut [&ref x] = &mut [&mut 0];
    |         ++++
 
-error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:60:15
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:54:15
    |
 LL |     let [&mut ref x] = &[&mut 0];
-   |               ^^^ cannot override to bind by-reference when that is the implicit default
+   |               ^^^ default binding mode is `ref`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
@@ -82,11 +82,11 @@ help: make the implied reference pattern explicit
 LL |     let &[&mut ref x] = &[&mut 0];
    |         +
 
-error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:74:10
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:67:10
    |
 LL |     let [ref mut x] = &[0];
-   |          ^^^^^^^ cannot override to bind by-reference when that is the implicit default
+   |          ^^^^^^^ default binding mode is `ref`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
@@ -95,16 +95,16 @@ LL |     let &[ref mut x] = &[0];
    |         +
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:74:10
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:67:10
    |
 LL |     let [ref mut x] = &[0];
    |          ^^^^^^^^^ cannot borrow as mutable
 
-error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:83:10
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:75:10
    |
 LL |     let [ref x] = &[0];
-   |          ^^^ cannot override to bind by-reference when that is the implicit default
+   |          ^^^ default binding mode is `ref`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
@@ -112,11 +112,11 @@ help: make the implied reference pattern explicit
 LL |     let &[ref x] = &[0];
    |         +
 
-error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:88:10
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:79:10
    |
 LL |     let [ref x] = &mut [0];
-   |          ^^^ cannot override to bind by-reference when that is the implicit default
+   |          ^^^ default binding mode is `ref mut`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
@@ -124,11 +124,11 @@ help: make the implied reference pattern explicit
 LL |     let &mut [ref x] = &mut [0];
    |         ++++
 
-error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:93:10
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:83:10
    |
 LL |     let [ref mut x] = &mut [0];
-   |          ^^^^^^^ cannot override to bind by-reference when that is the implicit default
+   |          ^^^^^^^ default binding mode is `ref mut`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit

@@ -1,8 +1,8 @@
-error: this pattern relies on behavior which may change in edition 2024
+error: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:25:13
    |
 LL |     let Foo(mut x) = &Foo(0);
-   |             ^^^ requires binding by-value, but the implicit default is by-reference
+   |             ^^^ default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -16,11 +16,11 @@ help: make the implied reference pattern explicit
 LL |     let &Foo(mut x) = &Foo(0);
    |         +
 
-error: this pattern relies on behavior which may change in edition 2024
+error: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:30:13
    |
 LL |     let Foo(mut x) = &mut Foo(0);
-   |             ^^^ requires binding by-value, but the implicit default is by-reference
+   |             ^^^ default binding mode is `ref mut`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -29,11 +29,11 @@ help: make the implied reference pattern explicit
 LL |     let &mut Foo(mut x) = &mut Foo(0);
    |         ++++
 
-error: this pattern relies on behavior which may change in edition 2024
+error: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:35:13
    |
 LL |     let Foo(ref x) = &Foo(0);
-   |             ^^^ cannot override to bind by-reference when that is the implicit default
+   |             ^^^ default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -42,11 +42,11 @@ help: make the implied reference pattern explicit
 LL |     let &Foo(ref x) = &Foo(0);
    |         +
 
-error: this pattern relies on behavior which may change in edition 2024
+error: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:40:13
    |
 LL |     let Foo(ref x) = &mut Foo(0);
-   |             ^^^ cannot override to bind by-reference when that is the implicit default
+   |             ^^^ default binding mode is `ref mut`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -55,11 +55,11 @@ help: make the implied reference pattern explicit
 LL |     let &mut Foo(ref x) = &mut Foo(0);
    |         ++++
 
-error: this pattern relies on behavior which may change in edition 2024
+error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:57:13
    |
 LL |     let Foo(&x) = &Foo(&0);
-   |             ^ cannot implicitly match against multiple layers of reference
+   |             ^ default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -68,11 +68,11 @@ help: make the implied reference pattern explicit
 LL |     let &Foo(&x) = &Foo(&0);
    |         +
 
-error: this pattern relies on behavior which may change in edition 2024
+error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:62:13
    |
 LL |     let Foo(&mut x) = &Foo(&mut 0);
-   |             ^^^^ cannot implicitly match against multiple layers of reference
+   |             ^^^^ default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -81,11 +81,11 @@ help: make the implied reference pattern explicit
 LL |     let &Foo(&mut x) = &Foo(&mut 0);
    |         +
 
-error: this pattern relies on behavior which may change in edition 2024
+error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:67:13
    |
 LL |     let Foo(&x) = &mut Foo(&0);
-   |             ^ cannot implicitly match against multiple layers of reference
+   |             ^ default binding mode is `ref mut`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -94,11 +94,11 @@ help: make the implied reference pattern explicit
 LL |     let &mut Foo(&x) = &mut Foo(&0);
    |         ++++
 
-error: this pattern relies on behavior which may change in edition 2024
+error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:72:13
    |
 LL |     let Foo(&mut x) = &mut Foo(&mut 0);
-   |             ^^^^ cannot implicitly match against multiple layers of reference
+   |             ^^^^ default binding mode is `ref mut`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -107,11 +107,11 @@ help: make the implied reference pattern explicit
 LL |     let &mut Foo(&mut x) = &mut Foo(&mut 0);
    |         ++++
 
-error: this pattern relies on behavior which may change in edition 2024
+error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:81:17
    |
 LL |     if let Some(&x) = &&&&&Some(&0u8) {
-   |                 ^ cannot implicitly match against multiple layers of reference
+   |                 ^ default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -120,11 +120,11 @@ help: make the implied reference patterns explicit
 LL |     if let &&&&&Some(&x) = &&&&&Some(&0u8) {
    |            +++++
 
-error: this pattern relies on behavior which may change in edition 2024
+error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:87:17
    |
 LL |     if let Some(&mut x) = &&&&&Some(&mut 0u8) {
-   |                 ^^^^ cannot implicitly match against multiple layers of reference
+   |                 ^^^^ default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -133,11 +133,11 @@ help: make the implied reference patterns explicit
 LL |     if let &&&&&Some(&mut x) = &&&&&Some(&mut 0u8) {
    |            +++++
 
-error: this pattern relies on behavior which may change in edition 2024
+error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:93:17
    |
 LL |     if let Some(&x) = &&&&&mut Some(&0u8) {
-   |                 ^ cannot implicitly match against multiple layers of reference
+   |                 ^ default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -146,11 +146,11 @@ help: make the implied reference patterns explicit
 LL |     if let &&&&&mut Some(&x) = &&&&&mut Some(&0u8) {
    |            ++++++++
 
-error: this pattern relies on behavior which may change in edition 2024
+error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:99:17
    |
 LL |     if let Some(&mut Some(Some(x))) = &mut Some(&mut Some(&mut Some(0u8))) {
-   |                 ^^^^ cannot implicitly match against multiple layers of reference
+   |                 ^^^^ default binding mode is `ref mut`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -159,11 +159,11 @@ help: make the implied reference patterns and variable binding mode explicit
 LL |     if let &mut Some(&mut Some(&mut Some(ref mut x))) = &mut Some(&mut Some(&mut Some(0u8))) {
    |            ++++                ++++      +++++++
 
-error: this pattern relies on behavior which may change in edition 2024
+error: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:111:21
    |
 LL |     let Struct { a, mut b, c } = &Struct { a: 0, b: 0, c: 0 };
-   |                     ^^^ requires binding by-value, but the implicit default is by-reference
+   |                     ^^^ default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -172,13 +172,13 @@ help: make the implied reference pattern and variable binding modes explicit
 LL |     let &Struct { ref a, mut b, ref c } = &Struct { a: 0, b: 0, c: 0 };
    |         +         +++           +++
 
-error: this pattern relies on behavior which may change in edition 2024
+error: binding modifiers and reference patterns may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:117:21
    |
 LL |     let Struct { a: &a, b, ref c } = &Struct { a: &0, b: &0, c: &0 };
-   |                     ^      ^^^ cannot override to bind by-reference when that is the implicit default
+   |                     ^      ^^^ default binding mode is `ref`
    |                     |
-   |                     cannot implicitly match against multiple layers of reference
+   |                     default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -187,13 +187,13 @@ help: make the implied reference pattern and variable binding mode explicit
 LL |     let &Struct { a: &a, ref b, ref c } = &Struct { a: &0, b: &0, c: &0 };
    |         +                +++
 
-error: this pattern relies on behavior which may change in edition 2024
+error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:124:24
    |
 LL |     if let Struct { a: &Some(a), b: Some(&b), c: Some(c) } =
-   |                        ^                 ^ cannot implicitly match against multiple layers of reference
+   |                        ^                 ^ default binding mode is `ref`
    |                        |
-   |                        cannot implicitly match against multiple layers of reference
+   |                        default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -202,13 +202,13 @@ help: make the implied reference patterns and variable binding mode explicit
 LL |     if let &Struct { a: &Some(a), b: &Some(&b), c: &Some(ref c) } =
    |            +                         +             +     +++
 
-error: this pattern relies on behavior which may change in edition 2024
+error: binding modifiers may only be written when the default binding mode is `move`
   --> $DIR/migration_lint.rs:137:15
    |
 LL |         (Some(mut x), migration_lint_macros::mixed_edition_pat!(y)) => {
-   |               ^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ default binding mode is reset within expansion
+   |               ^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ occurs within expansion
    |               |
-   |               requires binding by-value, but the implicit default is by-reference
+   |               default binding mode is `ref`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
    = note: this error originates in the macro `migration_lint_macros::mixed_edition_pat` (in Nightly builds, run with -Z macro-backtrace for more info)

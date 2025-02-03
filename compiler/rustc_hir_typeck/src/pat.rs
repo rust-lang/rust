@@ -804,7 +804,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Determine the binding mode...
         let bm = match user_bind_annot {
-            BindingMode(ByRef::No, Mutability::Mut) if matches!(def_br, ByRef::Yes(_)) => {
+            BindingMode(ByRef::No, Mutability::Mut) if let ByRef::Yes(def_br_mutbl) = def_br => {
                 // Only mention the experimental `mut_ref` feature if if we're in edition 2024 and
                 // using other experimental matching features compatible with it.
                 if pat.span.at_least_rust_2024()
@@ -826,22 +826,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // `mut` resets the binding mode on edition <= 2021
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
-                        pat.span,
+                        pat,
                         ident.span,
-                        "requires binding by-value, but the implicit default is by-reference",
+                        def_br_mutbl,
                     );
                     BindingMode(ByRef::No, Mutability::Mut)
                 }
             }
             BindingMode(ByRef::No, mutbl) => BindingMode(def_br, mutbl),
             BindingMode(ByRef::Yes(_), _) => {
-                if matches!(def_br, ByRef::Yes(_)) {
+                if let ByRef::Yes(def_br_mutbl) = def_br {
                     // `ref`/`ref mut` overrides the binding mode on edition <= 2021
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
-                        pat.span,
+                        pat,
                         ident.span,
-                        "cannot override to bind by-reference when that is the implicit default",
+                        def_br_mutbl,
                     );
                 }
                 user_bind_annot
@@ -2378,9 +2378,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     pat_info.binding_mode = ByRef::No;
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
-                        pat.span,
+                        pat,
                         inner.span,
-                        "cannot implicitly match against multiple layers of reference",
+                        inh_mut,
                     )
                 }
             }
@@ -2770,9 +2770,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn add_rust_2024_migration_desugared_pat(
         &self,
         pat_id: HirId,
-        subpat_span: Span,
+        subpat: &'tcx Pat<'tcx>,
         cutoff_span: Span,
-        detailed_label: &str,
+        def_br_mutbl: Mutability,
     ) {
         // Try to trim the span we're labeling to just the `&` or binding mode that's an issue.
         // If the subpattern's span is is from an expansion, the emitted label will not be trimmed.
@@ -2780,23 +2780,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let cutoff_span = source_map
             .span_extend_prev_while(cutoff_span, char::is_whitespace)
             .unwrap_or(cutoff_span);
-        // Ensure we use the syntax context and thus edition of `subpat_span`; this will be a hard
+        // Ensure we use the syntax context and thus edition of `subpat.span`; this will be a hard
         // error if the subpattern is of edition >= 2024.
-        let trimmed_span = subpat_span.until(cutoff_span).with_ctxt(subpat_span.ctxt());
+        let trimmed_span = subpat.span.until(cutoff_span).with_ctxt(subpat.span.ctxt());
 
         // Only provide a detailed label if the problematic subpattern isn't from an expansion.
         // In the case that it's from a macro, we'll add a more detailed note in the emitter.
-        let desc = if subpat_span.from_expansion() {
-            "default binding mode is reset within expansion"
+        let desc = if subpat.span.from_expansion() {
+            "occurs within expansion"
         } else {
-            detailed_label
+            match def_br_mutbl {
+                Mutability::Not => "default binding mode is `ref`",
+                Mutability::Mut => "default binding mode is `ref mut`",
+            }
         };
 
-        self.typeck_results
-            .borrow_mut()
-            .rust_2024_migration_desugared_pats_mut()
-            .entry(pat_id)
-            .or_default()
-            .push((trimmed_span, desc.to_owned()));
+        let mut typeck_results = self.typeck_results.borrow_mut();
+        let mut table = typeck_results.rust_2024_migration_desugared_pats_mut();
+        let info = table.entry(pat_id).or_default();
+
+        info.labels.push((trimmed_span, desc.to_owned()));
+        if matches!(subpat.kind, PatKind::Binding(_, _, _, _)) {
+            info.bad_modifiers |= true;
+        } else {
+            info.bad_ref_pats |= true;
+        }
     }
 }
