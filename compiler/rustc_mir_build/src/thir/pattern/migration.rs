@@ -50,6 +50,9 @@ struct PatDeref {
     suggest: bool,
     /// The default binding mode for variables under this deref.
     default_mode: ByRef,
+    /// Whether this is an instance of `&ref x` which we may be able to simplify to `x`.
+    /// Stores the HIR id of the binding pattern `ref x`, to identify it later.
+    simplify_deref_ref: Option<HirId>,
     /// The next deref above this. Since we can't suggest using `&` or `&mut` on a by-ref default
     /// binding mode, a suggested deref's ancestors must also all be suggested.
     // FIXME(ref_pattern_eat_one_layer_2024): By suggesting `&` and `&mut` patterns that can eat
@@ -215,15 +218,27 @@ impl<'a> PatMigration<'a> {
         mutbl: Mutability,
         subpat: &'tcx hir::Pat<'tcx>,
     ) {
-        self.push_deref(pat_span, mutbl, PatDerefKind::Explicit { inner_span: subpat.span });
+        let my_ix =
+            self.push_deref(pat_span, mutbl, PatDerefKind::Explicit { inner_span: subpat.span });
 
-        // If the immediate subpattern is a binding, removing this reference pattern would change
-        // its type. To avoid that, we include it and all its parents in that case.
+        // If the subpattern is a binding, removing this reference pattern would change its type.
         // FIXME(ref_pat_eat_one_layer_2024): This assumes ref pats can't eat the binding mode
         // alone. Depending on the pattern typing rules in use, we can be more precise here.
-        // TODO: if the binding is by-`ref`, we can keep only the parent derefs and remove the `ref`
-        if matches!(subpat.kind, hir::PatKind::Binding(_, _, _, _)) {
-            self.add_derefs_to_suggestion(self.innermost_deref);
+        if let hir::PatKind::Binding(explicit_ba, _, _, _) = subpat.kind {
+            if explicit_ba == BindingMode(ByRef::Yes(mutbl), Mutability::Not) {
+                // If the binding has a `ref` modifier, we can elide both this `&` and the `ref`;
+                // i.e. we can simplify `&ref x` to `x`, as long as all parent derefs are explicit.
+                // NB: We don't rewrite `&ref x @ ...` to `x @ &...`, so we may end up needing to
+                // reinstate this `&` later if the binding's subpattern requires it.
+                // FIXME(ref_pat_eat_one_layer_2024): With RFC 3627's Rule 5, `&` patterns can match
+                // `&mut` types; we'll have to check the mutability of the type rather than the
+                // pattern to see whether we can elide it.
+                self.derefs[my_ix].simplify_deref_ref = Some(subpat.hir_id);
+                self.add_derefs_to_suggestion(self.derefs[my_ix].parent);
+            } else {
+                // Otherwise, we need to suggest including this `&` as well.
+                self.add_derefs_to_suggestion(self.innermost_deref);
+            }
         }
     }
 
@@ -250,7 +265,7 @@ impl<'a> PatMigration<'a> {
 
     /// Adds a dereference to our deref-forest, so that we can propagate binding mode changes when
     /// we suggest adding patterns. See [`PatMigration::propagate_default_mode_change`].
-    fn push_deref(&mut self, span: Span, mutbl: Mutability, kind: PatDerefKind) {
+    fn push_deref(&mut self, span: Span, mutbl: Mutability, kind: PatDerefKind) -> PatDerefIdx {
         let parent = self.innermost_deref;
         let default_ref_mutbl = match self.default_mode() {
             ByRef::Yes(parent_mutbl) => Ord::min(mutbl, parent_mutbl),
@@ -261,6 +276,7 @@ impl<'a> PatMigration<'a> {
             mutbl,
             kind,
             suggest: false,
+            simplify_deref_ref: None,
             parent,
             next_sibling: parent.and_then(|p| self.derefs[p].first_child),
             default_mode: ByRef::Yes(default_ref_mutbl),
@@ -271,6 +287,7 @@ impl<'a> PatMigration<'a> {
             self.derefs[p].first_child = Some(my_ix);
         }
         self.innermost_deref = Some(my_ix);
+        my_ix
     }
 
     /// Tracks when we leave a reference (either implicitly or explicitly derefed) while lowering.
@@ -282,22 +299,29 @@ impl<'a> PatMigration<'a> {
     }
 
     /// Keeps track of bindings and adjusts the suggestion if necessary.
-    pub(super) fn visit_binding(
+    pub(super) fn visit_binding<'tcx>(
         &mut self,
-        pat_span: Span,
+        pat: &'tcx hir::Pat<'tcx>,
         mode: BindingMode,
         explicit_ba: BindingMode,
         ident: Ident,
     ) {
-        // If `mode` doesn't match the default, we'll need to specify its binding modifiers
-        // explicitly, which in turn necessitates a by-move default binding mode.
-        let suggest = mode != BindingMode(self.default_mode(), Mutability::Not);
+        // As a special case, we may simplify `&ref x` to `x`; check our parent to see if we can.
+        // The default binding mode will always be by-move in this case.
+        let simplify_deref_ref = self.innermost_deref.is_some_and(|p| {
+            self.derefs[p].simplify_deref_ref.is_some_and(|binding_id| pat.hir_id == binding_id)
+        });
+
+        // Otherwise, if `mode` doesn't match the default, we'll need to specify its binding
+        // modifiers explicitly, which in turn necessitates a by-move default binding mode.
+        let suggest =
+            !simplify_deref_ref && mode != BindingMode(self.default_mode(), Mutability::Not);
 
         // Track the binding
         let span = if explicit_ba == BindingMode::NONE {
-            pat_span.shrink_to_lo()
+            pat.span.shrink_to_lo()
         } else {
-            pat_span.with_hi(ident.span.lo())
+            pat.span.with_hi(ident.span.lo())
         };
         // If we're not already suggesting an explicit binding modifier for this binding, we may
         // need to later, if adding reference patterns above it changes the default binding mode.
@@ -310,8 +334,6 @@ impl<'a> PatMigration<'a> {
         }
 
         // If there was a mismatch, add `&`s to make sure we're in a by-move default binding mode.
-        // TODO: to rewrite `&ref x` as `x`, we'll need to be able to accept a by-value default
-        // binding mode if we remove the `&` that was eating a reference from `x`'s type.
         if suggest {
             self.add_derefs_to_suggestion(self.innermost_deref);
         }
@@ -329,6 +351,7 @@ impl<'a> PatMigration<'a> {
             }
             deref.suggest = true;
             deref.default_mode = ByRef::No;
+            deref.simplify_deref_ref = None;
             opt_ix = deref.parent;
             let propagate_downstream_ref_mut = deref.mutbl.is_not();
             self.propagate_default_mode_change(ix, propagate_downstream_ref_mut);

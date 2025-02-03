@@ -274,10 +274,11 @@ LL |     let Foo(&ref a) = &Foo(&0);
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-help: make the implied reference pattern explicit
+help: rewrite the pattern
    |
-LL |     let &Foo(&ref a) = &Foo(&0);
-   |         +
+LL -     let Foo(&ref a) = &Foo(&0);
+LL +     let &Foo(a) = &Foo(&0);
+   |
 
 error: this pattern relies on behavior which may change in edition 2024
   --> $DIR/migration_lint.rs:175:10
@@ -357,10 +358,11 @@ LL |     let [Foo(&ref a @ ref b), Foo(&ref c @ d)] = [&Foo(&0); 2];
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-help: make the implied reference patterns explicit
+help: rewrite the pattern
    |
-LL |     let [&Foo(&ref a @ ref b), &Foo(&ref c @ d)] = [&Foo(&0); 2];
-   |          +                     +
+LL -     let [Foo(&ref a @ ref b), Foo(&ref c @ d)] = [&Foo(&0); 2];
+LL +     let [&Foo(a @ b), &Foo(&ref c @ d)] = [&Foo(&0); 2];
+   |
 
 error: this pattern relies on behavior which may change in edition 2024
   --> $DIR/migration_lint.rs:224:14
@@ -372,10 +374,11 @@ LL |     let [Foo(&ref a @ [ref b]), Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-help: make the implied reference patterns explicit
+help: rewrite the pattern
    |
-LL |     let [&Foo(&ref a @ [ref b]), &Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
-   |          +                       +
+LL -     let [Foo(&ref a @ [ref b]), Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
+LL +     let [&Foo(a @ [b]), &Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
+   |
 
 error: aborting due to 27 previous errors
 

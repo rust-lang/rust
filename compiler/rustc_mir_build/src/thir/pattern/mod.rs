@@ -338,7 +338,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     .expect("missing binding mode");
 
                 if let Some(m) = &mut self.rust_2024_migration {
-                    m.visit_binding(pat.span, mode, explicit_ba, ident);
+                    m.visit_binding(pat, mode, explicit_ba, ident);
                 }
 
                 // A ref x pattern is the same node used for x, and as such it has
