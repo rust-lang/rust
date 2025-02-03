@@ -311,16 +311,32 @@ impl LinkerFlavor {
         }
     }
 
-    fn infer_linker_hints(linker_stem: &str) -> (Option<Cc>, Option<Lld>) {
+    fn infer_linker_hints(linker_stem: &str) -> Result<Self, (Option<Cc>, Option<Lld>)> {
         // Remove any version postfix.
         let stem = linker_stem
             .rsplit_once('-')
             .and_then(|(lhs, rhs)| rhs.chars().all(char::is_numeric).then_some(lhs))
             .unwrap_or(linker_stem);
 
-        // GCC/Clang can have an optional target prefix.
-        if stem == "emcc"
-            || stem == "gcc"
+        if stem == "ld.lld" {
+            Ok(Self::Gnu(Cc::No, Lld::Yes))
+        } else if stem == "ld64.lld" {
+            Ok(Self::Darwin(Cc::No, Lld::Yes))
+        } else if stem == "lld-link" {
+            Ok(Self::Msvc(Lld::Yes))
+        } else if stem == "wasm-ld" || stem == "wasm-component-ld" {
+            Ok(Self::WasmLld(Cc::No))
+        } else if stem == "lld" || stem == "rust-lld" {
+            Err((Some(Cc::No), Some(Lld::Yes)))
+        } else if stem == "emcc" {
+            Ok(Self::EmCc)
+        } else if stem == "bpf-linker" {
+            Ok(Self::Bpf)
+        } else if stem == "llvm-bitcode-linker" {
+            Ok(Self::Llbc)
+        } else if stem == "rust-ptx-linker" {
+            Ok(Self::Ptx)
+        } else if stem == "gcc" // GCC/Clang can have an optional target prefix.
             || stem.ends_with("-gcc")
             || stem == "g++"
             || stem.ends_with("-g++")
@@ -329,19 +345,11 @@ impl LinkerFlavor {
             || stem == "clang++"
             || stem.ends_with("-clang++")
         {
-            (Some(Cc::Yes), Some(Lld::No))
-        } else if stem == "wasm-ld"
-            || stem.ends_with("-wasm-ld")
-            || stem == "ld.lld"
-            || stem == "lld"
-            || stem == "rust-lld"
-            || stem == "lld-link"
-        {
-            (Some(Cc::No), Some(Lld::Yes))
+            Err((Some(Cc::Yes), Some(Lld::No)))
         } else if stem == "ld" || stem.ends_with("-ld") || stem == "link" {
-            (Some(Cc::No), Some(Lld::No))
+            Err((Some(Cc::No), Some(Lld::No)))
         } else {
-            (None, None)
+            Err((None, None))
         }
     }
 
@@ -365,7 +373,10 @@ impl LinkerFlavor {
     }
 
     pub fn with_linker_hints(self, linker_stem: &str) -> LinkerFlavor {
-        self.with_hints(LinkerFlavor::infer_linker_hints(linker_stem))
+        match LinkerFlavor::infer_linker_hints(linker_stem) {
+            Ok(linker_flavor) => linker_flavor,
+            Err(hints) => self.with_hints(hints),
+        }
     }
 
     pub fn check_compatibility(self, cli: LinkerFlavorCli) -> Option<String> {
