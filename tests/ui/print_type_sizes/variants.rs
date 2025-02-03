@@ -16,3 +16,8 @@ pub enum Enum {
     Small(SevenBytes),
     Large(FiftyBytes),
 }
+
+fn main() {
+    let x = Enum::Small(SevenBytes([0; 7]));
+    let x = Enum::Large(FiftyBytes([0; 50]));
+}

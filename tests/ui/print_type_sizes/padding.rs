@@ -26,3 +26,9 @@ enum E2 {
     A(i8, i32),
     B(S),
 }
+
+fn main() {
+    let s = S { a: true, b: true, g: 0 };
+    let e1 = E1::A(0, 0);
+    let e2 = E2::A(0, 0);
+}
