@@ -227,13 +227,13 @@ macro_rules! uint_impl {
         ///
         #[doc = concat!("let n = ", stringify!($SelfT), "::MAX;")]
         ///
-        #[doc = concat!("assert_eq!(n.cast_signed(), -1", stringify!($SignedT), ");")]
+        #[doc = concat!("assert_eq!(n.reinterpret_signed(), -1", stringify!($SignedT), ");")]
         /// ```
         #[unstable(feature = "integer_sign_cast", issue = "125882")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        pub const fn cast_signed(self) -> $SignedT {
+        pub const fn reinterpret_signed(self) -> $SignedT {
             self as $SignedT
         }
 

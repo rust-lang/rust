@@ -197,13 +197,13 @@ macro_rules! int_impl {
         ///
         #[doc = concat!("let n = -1", stringify!($SelfT), ";")]
         ///
-        #[doc = concat!("assert_eq!(n.cast_unsigned(), ", stringify!($UnsignedT), "::MAX);")]
+        #[doc = concat!("assert_eq!(n.reinterpret_unsigned(), ", stringify!($UnsignedT), "::MAX);")]
         /// ```
         #[unstable(feature = "integer_sign_cast", issue = "125882")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        pub const fn cast_unsigned(self) -> $UnsignedT {
+        pub const fn reinterpret_unsigned(self) -> $UnsignedT {
             self as $UnsignedT
         }
 
