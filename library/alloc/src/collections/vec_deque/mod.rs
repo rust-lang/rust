@@ -2673,13 +2673,19 @@ impl<T, A: Allocator> VecDeque<T, A> {
     where
         F: FnMut(&'a T) -> Ordering,
     {
-        let (front, back) = self.as_slices();
+        let (front, mut back) = self.as_slices();
         let cmp_back = back.first().map(|elem| f(elem));
 
         if let Some(Ordering::Equal) = cmp_back {
             Ok(front.len())
         } else if let Some(Ordering::Less) = cmp_back {
-            back.binary_search_by(f).map(|idx| idx + front.len()).map_err(|idx| idx + front.len())
+            back = unsafe {
+                // SAFETY: if clause has proven a first element to skip exists
+                back.get_unchecked(1..)
+            };
+            back.binary_search_by(f)
+                .map(|idx| idx + front.len() + 1)
+                .map_err(|idx| idx + front.len() + 1)
         } else {
             front.binary_search_by(f)
         }
@@ -2783,10 +2789,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
     where
         P: FnMut(&T) -> bool,
     {
-        let (front, back) = self.as_slices();
+        let (front, mut back) = self.as_slices();
 
         if let Some(true) = back.first().map(|v| pred(v)) {
-            back.partition_point(pred) + front.len()
+            back = unsafe {
+                // SAFETY: if clause has proven a first element to skip exists
+                back.get_unchecked(1..)
+            };
+            back.partition_point(pred) + front.len() + 1
         } else {
             front.partition_point(pred)
         }
