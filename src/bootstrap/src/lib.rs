@@ -28,8 +28,6 @@ use std::{env, fs, io, str};
 use build_helper::ci::gha;
 use build_helper::exit;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
-#[cfg(feature = "tracing")]
-use tracing::{debug, instrument, span, trace};
 use utils::build_stamp::BuildStamp;
 use utils::channel::GitInfo;
 
@@ -46,6 +44,8 @@ pub use core::builder::PathSet;
 pub use core::config::Config;
 pub use core::config::flags::{Flags, Subcommand};
 
+#[cfg(feature = "tracing")]
+use tracing::{instrument, span};
 pub use utils::change_tracker::{
     CONFIG_CHANGE_HISTORY, find_recent_config_change_ids, human_readable_changes,
 };
@@ -541,72 +541,71 @@ impl Build {
     /// Executes the entire build, as configured by the flags and configuration.
     #[cfg_attr(feature = "tracing", instrument(level = "debug", name = "Build::build", skip_all))]
     pub fn build(&mut self) {
-        #[cfg(feature = "tracing")]
         trace!("setting up job management");
         unsafe {
             crate::utils::job::setup(self);
         }
 
-        #[cfg(feature = "tracing")]
-        trace!("downloading rustfmt early");
-
         // Download rustfmt early so that it can be used in rust-analyzer configs.
+        trace!("downloading rustfmt early");
         let _ = &builder::Builder::new(self).initial_rustfmt();
 
-        #[cfg(feature = "tracing")]
-        let hardcoded_span =
-            span!(tracing::Level::DEBUG, "handling hardcoded subcommands (Format, Suggest, Perf)")
-                .entered();
+        // Handle hard-coded subcommands.
+        {
+            #[cfg(feature = "tracing")]
+            let _hardcoded_span = span!(
+                tracing::Level::DEBUG,
+                "handling hardcoded subcommands (Format, Suggest, Perf)"
+            )
+            .entered();
 
-        // hardcoded subcommands
-        match &self.config.cmd {
-            Subcommand::Format { check, all } => {
-                return core::build_steps::format::format(
-                    &builder::Builder::new(self),
-                    *check,
-                    *all,
-                    &self.config.paths,
-                );
+            match &self.config.cmd {
+                Subcommand::Format { check, all } => {
+                    return core::build_steps::format::format(
+                        &builder::Builder::new(self),
+                        *check,
+                        *all,
+                        &self.config.paths,
+                    );
+                }
+                Subcommand::Suggest { run } => {
+                    return core::build_steps::suggest::suggest(&builder::Builder::new(self), *run);
+                }
+                Subcommand::Perf { .. } => {
+                    return core::build_steps::perf::perf(&builder::Builder::new(self));
+                }
+                _cmd => {
+                    debug!(cmd = ?_cmd, "not a hardcoded subcommand; returning to normal handling");
+                }
             }
-            Subcommand::Suggest { run } => {
-                return core::build_steps::suggest::suggest(&builder::Builder::new(self), *run);
-            }
-            Subcommand::Perf { .. } => {
-                return core::build_steps::perf::perf(&builder::Builder::new(self));
-            }
-            _cmd => {
-                #[cfg(feature = "tracing")]
-                debug!(cmd = ?_cmd, "not a hardcoded subcommand; returning to normal handling");
-            }
+
+            debug!("handling subcommand normally");
         }
-
-        #[cfg(feature = "tracing")]
-        drop(hardcoded_span);
-        #[cfg(feature = "tracing")]
-        debug!("handling subcommand normally");
 
         if !self.config.dry_run() {
             #[cfg(feature = "tracing")]
             let _real_run_span = span!(tracing::Level::DEBUG, "executing real run").entered();
 
+            // We first do a dry-run. This is a sanity-check to ensure that
+            // steps don't do anything expensive in the dry-run.
             {
                 #[cfg(feature = "tracing")]
                 let _sanity_check_span =
                     span!(tracing::Level::DEBUG, "(1) executing dry-run sanity-check").entered();
-
-                // We first do a dry-run. This is a sanity-check to ensure that
-                // steps don't do anything expensive in the dry-run.
                 self.config.dry_run = DryRun::SelfCheck;
                 let builder = builder::Builder::new(self);
                 builder.execute_cli();
             }
 
-            #[cfg(feature = "tracing")]
-            let _actual_run_span =
-                span!(tracing::Level::DEBUG, "(2) executing actual run").entered();
-            self.config.dry_run = DryRun::Disabled;
-            let builder = builder::Builder::new(self);
-            builder.execute_cli();
+            // Actual run.
+            {
+                #[cfg(feature = "tracing")]
+                let _actual_run_span =
+                    span!(tracing::Level::DEBUG, "(2) executing actual run").entered();
+                self.config.dry_run = DryRun::Disabled;
+                let builder = builder::Builder::new(self);
+                builder.execute_cli();
+            }
         } else {
             #[cfg(feature = "tracing")]
             let _dry_run_span = span!(tracing::Level::DEBUG, "executing dry run").entered();
