@@ -1097,20 +1097,18 @@ pub(crate) enum MiscPatternSuggestion {
 
 #[derive(LintDiagnostic)]
 #[diag(mir_build_rust_2024_incompatible_pat)]
-pub(crate) struct Rust2024IncompatiblePat<'a> {
+pub(crate) struct Rust2024IncompatiblePat {
     #[subdiagnostic]
-    pub(crate) sugg: Rust2024IncompatiblePatSugg<'a>,
+    pub(crate) sugg: Rust2024IncompatiblePatSugg,
 }
 
-pub(crate) struct Rust2024IncompatiblePatSugg<'a> {
+pub(crate) struct Rust2024IncompatiblePatSugg {
     pub(crate) suggestion: Vec<(Span, String)>,
     pub(crate) ref_pattern_count: usize,
     pub(crate) binding_mode_count: usize,
-    /// Labeled spans for subpatterns invalid in Rust 2024.
-    pub(crate) labels: &'a [(Span, String)],
 }
 
-impl<'a> Subdiagnostic for Rust2024IncompatiblePatSugg<'a> {
+impl Subdiagnostic for Rust2024IncompatiblePatSugg {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
