@@ -7,6 +7,7 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeFolder, TypeVisitableExt};
 use rustc_span::Span;
 use rustc_span::def_id::CRATE_DEF_ID;
+use rustc_type_ir::elaborate::elaborate;
 use rustc_type_ir::outlives::{Component, push_outlives_components};
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
@@ -61,6 +62,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
     ty: Ty<'tcx>,
     span: Span,
 ) -> Result<Vec<OutlivesBound<'tcx>>, NoSolution> {
+    let tcx = ocx.infcx.tcx;
     let normalize_op = |ty| -> Result<_, NoSolution> {
         // We must normalize the type so we can compute the right outlives components.
         // for example, if we have some constrained param type like `T: Trait<Out = U>`,
@@ -91,9 +93,10 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
         }
 
         // From the full set of obligations, just filter down to the region relationships.
-        for obligation in
-            wf::unnormalized_obligations(ocx.infcx, param_env, arg).into_iter().flatten()
-        {
+        for obligation in elaborate(
+            tcx,
+            wf::unnormalized_obligations(ocx.infcx, param_env, arg).into_iter().flatten(),
+        ) {
             assert!(!obligation.has_escaping_bound_vars());
             let Some(pred) = obligation.predicate.kind().no_bound_vars() else {
                 continue;
@@ -176,6 +179,7 @@ pub fn compute_implied_outlives_bounds_compat_inner<'tcx>(
         // us not dealing with inference vars in `TypeOutlives` predicates.
         let obligations =
             wf::obligations(ocx.infcx, param_env, CRATE_DEF_ID, 0, arg, span).unwrap_or_default();
+        let obligations = elaborate(tcx, obligations).collect::<Vec<_>>();
 
         for obligation in obligations {
             debug!(?obligation);

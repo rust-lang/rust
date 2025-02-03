@@ -1,17 +1,36 @@
-error[E0521]: borrowed data escapes outside of function
-  --> $DIR/issue-44454-2.rs:16:5
+error[E0310]: the parameter type `ARG` may not live long enough
+  --> $DIR/issue-44454-2.rs:7:10
    |
-LL | fn extend_lt<'a>(x: &'a str) -> Box<dyn AsRef<str> + 'static> {
-   |              --  - `x` is a reference that is only valid in the function body
-   |              |
-   |              lifetime `'a` defined here
-LL |     type DynTrait = dyn for<'a> Trait<&'a str, Assoc = &'a str>;
-LL |     hr::<DynTrait, _>(x)
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL | fn hr<T: Trait<ARG> + ?Sized, ARG>(x: T::Assoc) -> Box<dyn AsRef<str> + 'static> {
+   |          ^^^^^^^^^^
+   |          |
+   |          the parameter type `ARG` must be valid for the static lifetime...
+   |          ...so that the type `ARG` will meet its required lifetime bounds...
+   |
+note: ...that is required by this bound
+  --> $DIR/issue-44454-2.rs:3:18
+   |
+LL | trait Trait<ARG: 'static>: 'static {
+   |                  ^^^^^^^
+help: consider adding an explicit lifetime bound
+   |
+LL | fn hr<T: Trait<ARG> + ?Sized, ARG: 'static>(x: T::Assoc) -> Box<dyn AsRef<str> + 'static> {
+   |                                  +++++++++
+
+error[E0310]: the associated type `<T as Trait<ARG>>::Assoc` may not live long enough
+  --> $DIR/issue-44454-2.rs:9:5
+   |
+LL |     Box::new(x)
+   |     ^^^^^^^^^^^
    |     |
-   |     `x` escapes the function body here
-   |     argument requires that `'a` must outlive `'static`
+   |     the associated type `<T as Trait<ARG>>::Assoc` must be valid for the static lifetime...
+   |     ...so that the type `<T as Trait<ARG>>::Assoc` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn hr<T: Trait<ARG> + ?Sized, ARG>(x: T::Assoc) -> Box<dyn AsRef<str> + 'static> where <T as Trait<ARG>>::Assoc: 'static {
+   |                                                                                  +++++++++++++++++++++++++++++++++++++++
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0521`.
+For more information about this error, try `rustc --explain E0310`.
