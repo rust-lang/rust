@@ -10,14 +10,14 @@ extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
 
+use std::sync::{Arc, Mutex};
+
 use rustc_errors::emitter::Emitter;
 use rustc_errors::registry::{self, Registry};
 use rustc_errors::translation::Translate;
 use rustc_errors::{DiagCtxt, DiagInner, FluentBundle};
 use rustc_session::config;
 use rustc_span::source_map::SourceMap;
-
-use std::sync::{Arc, Mutex};
 
 struct DebugEmitter {
     source_map: Arc<SourceMap>,
@@ -67,10 +67,10 @@ fn main() {
         locale_resources: rustc_driver::DEFAULT_LOCALE_RESOURCES.to_owned(),
         lint_caps: rustc_hash::FxHashMap::default(),
         psess_created: Some(Box::new(|parse_sess| {
-            parse_sess.set_dcx(DiagCtxt::new(Box::new(DebugEmitter {
+            parse_sess.dcx().set_emitter(Box::new(DebugEmitter {
                 source_map: parse_sess.clone_source_map(),
                 diagnostics,
-            })));
+            }));
         })),
         register_lints: None,
         override_queries: None,

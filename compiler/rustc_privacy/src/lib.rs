@@ -24,7 +24,7 @@ use rustc_ast::MacroDef;
 use rustc_ast::visit::{VisitorResult, try_visit};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
-use rustc_errors::MultiSpan;
+use rustc_errors::{MultiSpan, listify};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, InferKind, Visitor};
@@ -958,29 +958,15 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
         //    |         ^^ field `gamma` is private  # `fields.2` is `false`
 
         // Get the list of all private fields for the main message.
-        let field_names: Vec<_> = fields.iter().map(|(name, _, _)| name).collect();
-        let field_names = match &field_names[..] {
-            [] => return,
-            [name] => format!("`{name}`"),
-            [fields @ .., last] => format!(
-                "{} and `{last}`",
-                fields.iter().map(|f| format!("`{f}`")).collect::<Vec<_>>().join(", "),
-            ),
-        };
+        let Some(field_names) = listify(&fields[..], |(n, _, _)| format!("`{n}`")) else { return };
         let span: MultiSpan = fields.iter().map(|(_, span, _)| *span).collect::<Vec<Span>>().into();
 
         // Get the list of all private fields when pointing at the `..rest`.
         let rest_field_names: Vec<_> =
             fields.iter().filter(|(_, _, is_present)| !is_present).map(|(n, _, _)| n).collect();
         let rest_len = rest_field_names.len();
-        let rest_field_names = match &rest_field_names[..] {
-            [] => String::new(),
-            [name] => format!("`{name}`"),
-            [fields @ .., last] => format!(
-                "{} and `{last}`",
-                fields.iter().map(|f| format!("`{f}`")).collect::<Vec<_>>().join(", "),
-            ),
-        };
+        let rest_field_names =
+            listify(&rest_field_names[..], |n| format!("`{n}`")).unwrap_or_default();
         // Get all the labels for each field or `..rest` in the primary MultiSpan.
         let labels = fields
             .iter()
@@ -1005,7 +991,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
             } else {
                 None
             },
-            field_names: field_names.clone(),
+            field_names,
             variant_descr: def.variant_descr(),
             def_path_str: self.tcx.def_path_str(def.did()),
             labels,

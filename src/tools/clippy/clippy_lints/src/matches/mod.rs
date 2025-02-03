@@ -33,7 +33,6 @@ use clippy_utils::{
 };
 use rustc_hir::{Arm, Expr, ExprKind, LetStmt, MatchSource, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::{SpanData, SyntaxContext};
 
@@ -1054,7 +1053,7 @@ impl_lint_pass!(Matches => [
 impl<'tcx> LateLintPass<'tcx> for Matches {
     #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if is_direct_expn_of(expr.span, "matches").is_none() && in_external_macro(cx.sess(), expr.span) {
+        if is_direct_expn_of(expr.span, "matches").is_none() && expr.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
         let from_expansion = expr.span.from_expansion();

@@ -6,7 +6,6 @@ use rustc_ast::Label;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_span::sym;
 
 use super::INFINITE_LOOP;
@@ -30,7 +29,7 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    if in_external_macro(cx.sess(), expr.span) || is_from_proc_macro(cx, expr) {
+    if expr.span.in_external_macro(cx.sess().source_map()) || is_from_proc_macro(cx, expr) {
         return;
     }
 

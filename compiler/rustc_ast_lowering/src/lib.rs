@@ -418,10 +418,10 @@ fn compute_hir_hash(
 pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     let sess = tcx.sess;
     // Queries that borrow `resolver_for_lowering`.
-    tcx.ensure_with_value().output_filenames(());
-    tcx.ensure_with_value().early_lint_checks(());
-    tcx.ensure_with_value().debugger_visualizers(LOCAL_CRATE);
-    tcx.ensure_with_value().get_lang_items(());
+    tcx.ensure_done().output_filenames(());
+    tcx.ensure_done().early_lint_checks(());
+    tcx.ensure_done().debugger_visualizers(LOCAL_CRATE);
+    tcx.ensure_done().get_lang_items(());
     let (mut resolver, krate) = tcx.resolver_for_lowering().steal();
 
     let ast_index = index_crate(&resolver.node_id_to_def_id, &krate);

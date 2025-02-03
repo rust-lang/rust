@@ -1819,7 +1819,7 @@ pub fn parse_error_format(
                 ErrorOutputType::HumanReadable(HumanReadableErrorType::Unicode, color)
             }
             Some(arg) => {
-                early_dcx.abort_if_error_and_set_error_format(ErrorOutputType::HumanReadable(
+                early_dcx.set_error_format(ErrorOutputType::HumanReadable(
                     HumanReadableErrorType::Default,
                     color,
                 ));
@@ -2360,7 +2360,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let error_format = parse_error_format(early_dcx, matches, color, json_color, json_rendered);
 
-    early_dcx.abort_if_error_and_set_error_format(error_format);
+    early_dcx.set_error_format(error_format);
 
     let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_else(|_| {
         early_dcx.early_fatal("`--diagnostic-width` must be an positive integer");
@@ -2770,6 +2770,7 @@ pub mod nightly_options {
                         "the option `{}` is only accepted on the nightly compiler",
                         opt.name
                     );
+                    // The non-zero nightly_options_on_stable will force an early_fatal eventually.
                     let _ = early_dcx.early_err(msg);
                 }
                 OptionStability::Stable => {}

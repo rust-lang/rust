@@ -6,7 +6,6 @@ use rustc_ast::ast::{Expr, ExprKind, LitKind};
 use rustc_ast::token;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, Lint, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use std::iter;
@@ -207,7 +206,7 @@ impl_lint_pass!(LiteralDigitGrouping => [
 impl EarlyLintPass for LiteralDigitGrouping {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::Lit(lit) = expr.kind
-            && !in_external_macro(cx.sess(), expr.span)
+            && !expr.span.in_external_macro(cx.sess().source_map())
         {
             self.check_lit(cx, lit, expr.span);
         }
@@ -421,7 +420,7 @@ impl_lint_pass!(DecimalLiteralRepresentation => [DECIMAL_LITERAL_REPRESENTATION]
 impl EarlyLintPass for DecimalLiteralRepresentation {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::Lit(lit) = expr.kind
-            && !in_external_macro(cx.sess(), expr.span)
+            && !expr.span.in_external_macro(cx.sess().source_map())
         {
             self.check_lit(cx, lit, expr.span);
         }

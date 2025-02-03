@@ -5,14 +5,13 @@ use clippy_utils::source::{SpanRangeExt, first_line_of_span};
 use rustc_ast::{Attribute, Item, ItemKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_span::sym;
 
 pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
     let skip_unused_imports = attrs.iter().any(|attr| attr.has_name(sym::macro_use));
 
     for attr in attrs {
-        if in_external_macro(cx.sess(), attr.span) {
+        if attr.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
         if let Some(lint_list) = &attr.meta_item_list() {

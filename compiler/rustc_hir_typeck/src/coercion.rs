@@ -50,7 +50,6 @@ use rustc_infer::traits::{
     IfExpressionCause, MatchExpressionArmCause, Obligation, PredicateObligation,
     PredicateObligations,
 };
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::span_bug;
 use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::adjustment::{
@@ -1937,7 +1936,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     cond_expr.span.desugaring_kind(),
                     None | Some(DesugaringKind::WhileLoop)
                 )
-                && !in_external_macro(fcx.tcx.sess, cond_expr.span)
+                && !cond_expr.span.in_external_macro(fcx.tcx.sess.source_map())
                 && !matches!(
                     cond_expr.kind,
                     hir::ExprKind::Match(.., hir::MatchSource::TryDesugar(_))

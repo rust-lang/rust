@@ -48,7 +48,6 @@ fn main() {
         let mut callbacks = CompilerCalls::default();
         // Call the Rust compiler with our callbacks.
         rustc_driver::run_compiler(&rustc_args, &mut callbacks);
-        Ok(())
     });
     std::process::exit(exit_code);
 }

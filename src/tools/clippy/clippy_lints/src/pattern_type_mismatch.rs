@@ -3,7 +3,6 @@ use rustc_hir::{
     Body, Expr, ExprKind, FnDecl, LetExpr, LocalSource, Mutability, Pat, PatKind, Stmt, StmtKind, intravisit,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
@@ -84,7 +83,7 @@ declare_lint_pass!(PatternTypeMismatch => [PATTERN_TYPE_MISMATCH]);
 impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if let StmtKind::Let(local) = stmt.kind {
-            if in_external_macro(cx.sess(), local.pat.span) {
+            if local.pat.span.in_external_macro(cx.sess().source_map()) {
                 return;
             }
             let deref_possible = match local.source {
@@ -171,7 +170,7 @@ fn find_first_mismatch(cx: &LateContext<'_>, pat: &Pat<'_>) -> Option<(Span, Mut
         if result.is_some() {
             return false;
         }
-        if in_external_macro(cx.sess(), p.span) {
+        if p.span.in_external_macro(cx.sess().source_map()) {
             return true;
         }
         let adjust_pat = match p.kind {

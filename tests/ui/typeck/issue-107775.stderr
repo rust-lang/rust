@@ -6,7 +6,7 @@ LL |         map.insert(1, Struct::do_something);
    |         |
    |         ... which causes `map` to have type `HashMap<{integer}, fn(u8) -> Pin<Box<dyn Future<Output = ()> + Send>> {<Struct as Trait>::do_something::<'_>}>`
 LL |         Self { map }
-   |                ^^^ expected `HashMap<u16, fn(u8) -> Pin<...>>`, found `HashMap<{integer}, ...>`
+   |                ^^^ expected `HashMap<u16, fn(u8) -> Pin<Box<...>>>`, found `HashMap<{integer}, ...>`
    |
    = note: expected struct `HashMap<u16, fn(_) -> Pin<Box<(dyn Future<Output = ()> + Send + 'static)>>>`
               found struct `HashMap<{integer}, fn(_) -> Pin<Box<dyn Future<Output = ()> + Send>> {<Struct as Trait>::do_something::<'_>}>`

@@ -1362,12 +1362,6 @@ pub struct EarlyDiagCtxt {
     dcx: DiagCtxt,
 }
 
-impl Default for EarlyDiagCtxt {
-    fn default() -> Self {
-        Self::new(ErrorOutputType::default())
-    }
-}
-
 impl EarlyDiagCtxt {
     pub fn new(output: ErrorOutputType) -> Self {
         let emitter = mk_emitter(output);
@@ -1375,10 +1369,9 @@ impl EarlyDiagCtxt {
     }
 
     /// Swap out the underlying dcx once we acquire the user's preference on error emission
-    /// format. Any errors prior to that will cause an abort and all stashed diagnostics of the
-    /// previous dcx will be emitted.
-    pub fn abort_if_error_and_set_error_format(&mut self, output: ErrorOutputType) {
-        self.dcx.handle().abort_if_errors();
+    /// format. If `early_err` was previously called this will panic.
+    pub fn set_error_format(&mut self, output: ErrorOutputType) {
+        assert!(self.dcx.handle().has_errors().is_none());
 
         let emitter = mk_emitter(output);
         self.dcx = DiagCtxt::new(emitter);
@@ -1398,7 +1391,7 @@ impl EarlyDiagCtxt {
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    #[must_use = "ErrorGuaranteed must be returned from `run_compiler` in order to exit with a non-zero status code"]
+    #[must_use = "raise_fatal must be called on the returned ErrorGuaranteed in order to exit with a non-zero status code"]
     pub fn early_err(&self, msg: impl Into<DiagMessage>) -> ErrorGuaranteed {
         self.dcx.handle().err(msg)
     }

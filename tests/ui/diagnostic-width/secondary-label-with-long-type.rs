@@ -12,7 +12,7 @@ fn foo(x: D) {
     //~^ NOTE this expression has type `((...,
     //~| NOTE expected `((...,
     //~| NOTE expected tuple
-    //~| NOTE the full type name has been written to
+    //~| NOTE the full name for the type has been written to
     //~| NOTE consider using `--verbose` to print the full type name to the console
 }
 

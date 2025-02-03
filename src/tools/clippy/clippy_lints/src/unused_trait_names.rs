@@ -7,7 +7,6 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Item, ItemKind, UseKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::Visibility;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::kw;
@@ -63,7 +62,7 @@ impl_lint_pass!(UnusedTraitNames => [UNUSED_TRAIT_NAMES]);
 impl<'tcx> LateLintPass<'tcx> for UnusedTraitNames {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if self.msrv.meets(msrvs::UNDERSCORE_IMPORTS)
-            && !in_external_macro(cx.sess(), item.span)
+            && !item.span.in_external_macro(cx.sess().source_map())
             && let ItemKind::Use(path, UseKind::Single) = item.kind
             // Ignore imports that already use Underscore
             && item.ident.name != kw::Underscore
