@@ -387,7 +387,7 @@ pub(crate) fn run_global_ctxt(
         let help = format!(
             "The following guide may be of use:\n\
             {}/rustdoc/how-to-write-documentation.html",
-            crate::DOC_RUST_LANG_ORG_CHANNEL
+            crate::DOC_RUST_LANG_ORG_VERSION
         );
         tcx.node_lint(
             crate::lint::MISSING_CRATE_LEVEL_DOCS,

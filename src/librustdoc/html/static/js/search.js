@@ -1,5 +1,5 @@
 // ignore-tidy-filelength
-/* global addClass, getNakedUrl, getSettingValue */
+/* global addClass, getNakedUrl, getSettingValue, getVar */
 /* global onEachLazy, removeClass, searchState, browserSupportsHistoryApi, exports */
 
 "use strict";
@@ -4923,17 +4923,18 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             }
         });
     } else if (query.error === null) {
+        const dlroChannel = `https://doc.rust-lang.org/${getVar("channel")}`;
         output.className = "search-failed" + extraClass;
         output.innerHTML = "No results :(<br/>" +
             "Try on <a href=\"https://duckduckgo.com/?q=" +
             encodeURIComponent("rust " + query.userQuery) +
             "\">DuckDuckGo</a>?<br/><br/>" +
             "Or try looking in one of these:<ul><li>The <a " +
-            "href=\"https://doc.rust-lang.org/reference/index.html\">Rust Reference</a> " +
+            `href="${dlroChannel}/reference/index.html">Rust Reference</a> ` +
             " for technical details about the language.</li><li><a " +
-            "href=\"https://doc.rust-lang.org/rust-by-example/index.html\">Rust By " +
+            `href="${dlroChannel}/rust-by-example/index.html">Rust By ` +
             "Example</a> for expository code examples.</a></li><li>The <a " +
-            "href=\"https://doc.rust-lang.org/book/index.html\">Rust Book</a> for " +
+            `href="${dlroChannel}/book/index.html">Rust Book</a> for ` +
             "introductions to language features and the language itself.</li><li><a " +
             "href=\"https://docs.rs\">Docs.rs</a> for documentation of crates released on" +
             " <a href=\"https://crates.io/\">crates.io</a>.</li></ul>";
