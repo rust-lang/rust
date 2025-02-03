@@ -424,7 +424,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn or_disjoint(&mut self, a: &'ll Value, b: &'ll Value) -> &'ll Value {
         unsafe {
             let or = llvm::LLVMBuildOr(self.llbuilder, a, b, UNNAMED);
-            llvm::LLVMSetIsDisjoint(or, True);
+
+            // If a and b are both values, then `or` is a value, rather than
+            // an instruction, so we need to check before setting the flag.
+            // (See also `LLVMBuildNUWNeg` which also needs a check.)
+            if llvm::LLVMIsAInstruction(or).is_some() {
+                llvm::LLVMSetIsDisjoint(or, True);
+            }
             or
         }
     }
