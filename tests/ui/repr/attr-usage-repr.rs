@@ -16,18 +16,39 @@ struct SSimd([f64; 2]);
 struct SInt(f64, f64);
 
 #[repr(C)]
-enum EExtern { A, B }
+enum EExtern {
+    A,
+    B,
+}
 
 #[repr(align(8))]
-enum EAlign { A, B }
+enum EAlign {
+    A,
+    B,
+}
 
 #[repr(packed)] //~ ERROR: attribute should be applied to a struct
-enum EPacked { A, B }
+enum EPacked {
+    A,
+    B,
+}
 
 #[repr(simd)] //~ ERROR: attribute should be applied to a struct
-enum ESimd { A, B }
+enum ESimd {
+    A,
+    B,
+}
 
 #[repr(i8)]
-enum EInt { A, B }
+enum EInt {
+    A,
+    B,
+}
+
+#[repr()] //~ attribute should be applied to a struct, enum, function, associated function, or union [E0517]
+type SirThisIsAType = i32;
+
+#[repr()]
+struct EmptyReprArgumentList(i32);
 
 fn main() {}

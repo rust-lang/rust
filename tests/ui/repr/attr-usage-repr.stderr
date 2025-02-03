@@ -15,21 +15,35 @@ LL | struct SInt(f64, f64);
    | ---------------------- not an enum
 
 error[E0517]: attribute should be applied to a struct or union
-  --> $DIR/attr-usage-repr.rs:24:8
+  --> $DIR/attr-usage-repr.rs:30:8
    |
-LL | #[repr(packed)]
-   |        ^^^^^^
-LL | enum EPacked { A, B }
-   | --------------------- not a struct or union
+LL |   #[repr(packed)]
+   |          ^^^^^^
+LL | / enum EPacked {
+LL | |     A,
+LL | |     B,
+LL | | }
+   | |_- not a struct or union
 
 error[E0517]: attribute should be applied to a struct
-  --> $DIR/attr-usage-repr.rs:27:8
+  --> $DIR/attr-usage-repr.rs:36:8
    |
-LL | #[repr(simd)]
-   |        ^^^^
-LL | enum ESimd { A, B }
-   | ------------------- not a struct
+LL |   #[repr(simd)]
+   |          ^^^^
+LL | / enum ESimd {
+LL | |     A,
+LL | |     B,
+LL | | }
+   | |_- not a struct
 
-error: aborting due to 4 previous errors
+error[E0517]: attribute should be applied to a struct, enum, function, associated function, or union
+  --> $DIR/attr-usage-repr.rs:48:1
+   |
+LL | #[repr()]
+   | ^^^^^^^^^
+LL | type SirThisIsAType = i32;
+   | -------------------------- not a struct, enum, function, associated function, or union
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0517`.
