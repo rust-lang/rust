@@ -1,7 +1,7 @@
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL
    |
-   = note: the evaluated program panicked at 'from_ascii_radix: radix must lie in the range `[2, 36]`', $SRC_DIR/core/src/num/mod.rs:LL:COL
+   = note: from_ascii_radix: radix must lie in the range `[2, 36]`
    |
 note: inside `core::num::<impl u64>::from_ascii_radix`
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL
@@ -17,7 +17,7 @@ LL | const _TOO_LOW: () = { u64::from_str_radix("12345ABCD", 1); };
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL
    |
-   = note: the evaluated program panicked at 'from_ascii_radix: radix must lie in the range `[2, 36]`', $SRC_DIR/core/src/num/mod.rs:LL:COL
+   = note: from_ascii_radix: radix must lie in the range `[2, 36]`
    |
 note: inside `core::num::<impl u64>::from_ascii_radix`
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL

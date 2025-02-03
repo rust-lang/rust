@@ -14,7 +14,7 @@ const fn b() -> u32 {
 const fn c() -> u32 {
     b()
     //~^ ERROR evaluation of constant value failed
-    //~| NOTE the evaluated program panicked
+    //~| NOTE hey
     //~| NOTE inside
 }
 
