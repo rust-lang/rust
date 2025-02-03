@@ -4,7 +4,6 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::CRATE_DEF_ID;
@@ -51,7 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
             && !cx.effective_visibilities.is_exported(item.owner_id.def_id)
             && self.is_exported.last() == Some(&false)
             && is_not_macro_export(item)
-            && !in_external_macro(cx.sess(), item.span)
+            && !item.span.in_external_macro(cx.sess().source_map())
         {
             let span = item.span.with_hi(item.ident.span.hi());
             let descr = cx.tcx.def_kind(item.owner_id).descr(item.owner_id.to_def_id());

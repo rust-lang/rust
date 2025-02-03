@@ -78,7 +78,11 @@ pub mod simd;
 use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, Ordering};
 
 #[stable(feature = "drop_in_place", since = "1.8.0")]
-#[rustc_allowed_through_unstable_modules]
+#[cfg_attr(bootstrap, rustc_allowed_through_unstable_modules)]
+#[cfg_attr(
+    not(bootstrap),
+    rustc_allowed_through_unstable_modules = "import this function via `std::ptr` instead"
+)]
 #[deprecated(note = "no longer an intrinsic - use `ptr::drop_in_place` directly", since = "1.52.0")]
 #[inline]
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {

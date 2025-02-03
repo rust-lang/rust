@@ -8,7 +8,6 @@ use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{self as hir, Body, Constness, FnDecl, GenericParamKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -106,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
             return;
         }
 
-        if in_external_macro(cx.tcx.sess, span) || is_entrypoint_fn(cx, def_id.to_def_id()) {
+        if span.in_external_macro(cx.tcx.sess.source_map()) || is_entrypoint_fn(cx, def_id.to_def_id()) {
             return;
         }
 

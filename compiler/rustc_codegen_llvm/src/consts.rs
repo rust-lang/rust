@@ -420,8 +420,14 @@ impl<'ll> CodegenCx<'ll, '_> {
             let g = if val_llty == llty {
                 g
             } else {
-                // If we created the global with the wrong type,
-                // correct the type.
+                // codegen_static_initializer creates the global value just from the
+                // `Allocation` data by generating one big struct value that is just
+                // all the bytes and pointers after each other. This will almost never
+                // match the type that the static was declared with. Unfortunately
+                // we can't just LLVMConstBitCast our way out of it because that has very
+                // specific rules on what can be cast. So instead of adding a new way to
+                // generate static initializers that match the static's type, we picked
+                // the easier option and retroactively change the type of the static item itself.
                 let name = llvm::get_value_name(g).to_vec();
                 llvm::set_value_name(g, b"");
 

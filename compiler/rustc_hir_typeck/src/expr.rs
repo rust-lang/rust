@@ -11,7 +11,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, Subdiagnostic, pluralize,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, Subdiagnostic, listify, pluralize,
     struct_span_code_err,
 };
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -2188,13 +2188,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             if !missing_mandatory_fields.is_empty() {
                 let s = pluralize!(missing_mandatory_fields.len());
-                let fields: Vec<_> =
-                    missing_mandatory_fields.iter().map(|f| format!("`{f}`")).collect();
-                let fields = match &fields[..] {
-                    [] => unreachable!(),
-                    [only] => only.to_string(),
-                    [start @ .., last] => format!("{} and {last}", start.join(", ")),
-                };
+                let fields = listify(&missing_mandatory_fields, |f| format!("`{f}`")).unwrap();
                 self.dcx()
                     .struct_span_err(
                         span.shrink_to_hi(),
@@ -2551,25 +2545,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .partition(|field| field.2);
         err.span_labels(used_private_fields.iter().map(|(_, span, _)| *span), "private field");
         if !remaining_private_fields.is_empty() {
-            let remaining_private_fields_len = remaining_private_fields.len();
-            let names = match &remaining_private_fields
-                .iter()
-                .map(|(name, _, _)| name)
-                .collect::<Vec<_>>()[..]
-            {
-                _ if remaining_private_fields_len > 6 => String::new(),
-                [name] => format!("`{name}` "),
-                [names @ .., last] => {
-                    let names = names.iter().map(|name| format!("`{name}`")).collect::<Vec<_>>();
-                    format!("{} and `{last}` ", names.join(", "))
-                }
-                [] => bug!("expected at least one private field to report"),
+            let names = if remaining_private_fields.len() > 6 {
+                String::new()
+            } else {
+                format!(
+                    "{} ",
+                    listify(&remaining_private_fields, |(name, _, _)| format!("`{name}`"))
+                        .expect("expected at least one private field to report")
+                )
             };
             err.note(format!(
                 "{}private field{s} {names}that {were} not provided",
                 if used_fields.is_empty() { "" } else { "...and other " },
-                s = pluralize!(remaining_private_fields_len),
-                were = pluralize!("was", remaining_private_fields_len),
+                s = pluralize!(remaining_private_fields.len()),
+                were = pluralize!("was", remaining_private_fields.len()),
             ));
         }
 

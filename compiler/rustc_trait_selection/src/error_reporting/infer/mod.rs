@@ -435,7 +435,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         exp_found: Option<ty::error::ExpectedFound<Ty<'tcx>>>,
         terr: TypeError<'tcx>,
         param_env: Option<ParamEnv<'tcx>>,
-        path: &mut Option<PathBuf>,
     ) {
         match *cause.code() {
             ObligationCauseCode::Pattern {
@@ -458,7 +457,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             format!("this is an iterator with items of type `{}`", args.type_at(0)),
                         );
                     } else {
-                        let expected_ty = self.tcx.short_ty_string(expected_ty, path);
+                        let expected_ty = self.tcx.short_string(expected_ty, err.long_ty_path());
                         err.span_label(span, format!("this expression has type `{expected_ty}`"));
                     }
                 }
@@ -1545,7 +1544,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         (false, Mismatch::Fixed("existential projection"))
                     }
                 };
-                let Some(vals) = self.values_str(values, cause) else {
+                let Some(vals) = self.values_str(values, cause, diag.long_ty_path()) else {
                     // Derived error. Cancel the emitter.
                     // NOTE(eddyb) this was `.cancel()`, but `diag`
                     // is borrowed, so we can't fully defuse it.
@@ -1600,9 +1599,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return;
         }
 
-        let mut path = None;
-        if let Some((expected, found, p)) = expected_found {
-            path = p;
+        if let Some((expected, found)) = expected_found {
             let (expected_label, found_label, exp_found) = match exp_found {
                 Mismatch::Variable(ef) => (
                     ef.expected.prefix_string(self.tcx),
@@ -1725,32 +1722,42 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }
                 TypeError::Sorts(values) => {
-                    let extra = expected == found;
+                    let extra = expected == found
+                        // Ensure that we don't ever say something like
+                        // expected `impl Trait` (opaque type `impl Trait`)
+                        //    found `impl Trait` (opaque type `impl Trait`)
+                        && values.expected.sort_string(self.tcx)
+                            != values.found.sort_string(self.tcx);
                     let sort_string = |ty: Ty<'tcx>| match (extra, ty.kind()) {
                         (true, ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })) => {
                             let sm = self.tcx.sess.source_map();
                             let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
-                            format!(
+                            DiagStyledString::normal(format!(
                                 " (opaque type at <{}:{}:{}>)",
                                 sm.filename_for_diagnostics(&pos.file.name),
                                 pos.line,
                                 pos.col.to_usize() + 1,
-                            )
+                            ))
                         }
                         (true, ty::Alias(ty::Projection, proj))
                             if self.tcx.is_impl_trait_in_trait(proj.def_id) =>
                         {
                             let sm = self.tcx.sess.source_map();
                             let pos = sm.lookup_char_pos(self.tcx.def_span(proj.def_id).lo());
-                            format!(
+                            DiagStyledString::normal(format!(
                                 " (trait associated opaque type at <{}:{}:{}>)",
                                 sm.filename_for_diagnostics(&pos.file.name),
                                 pos.line,
                                 pos.col.to_usize() + 1,
-                            )
+                            ))
                         }
-                        (true, _) => format!(" ({})", ty.sort_string(self.tcx)),
-                        (false, _) => "".to_string(),
+                        (true, _) => {
+                            let mut s = DiagStyledString::normal(" (");
+                            s.push_highlighted(ty.sort_string(self.tcx));
+                            s.push_normal(")");
+                            s
+                        }
+                        (false, _) => DiagStyledString::normal(""),
                     };
                     if !(values.expected.is_simple_text() && values.found.is_simple_text())
                         || (exp_found.is_some_and(|ef| {
@@ -1767,23 +1774,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             }
                         }))
                     {
-                        if let Some(ExpectedFound { found: found_ty, .. }) = exp_found {
+                        if let Some(ExpectedFound { found: found_ty, .. }) = exp_found
+                            && !self.tcx.ty_is_opaque_future(found_ty)
+                        {
                             // `Future` is a special opaque type that the compiler
                             // will try to hide in some case such as `async fn`, so
                             // to make an error more use friendly we will
                             // avoid to suggest a mismatch type with a
                             // type that the user usually are not using
                             // directly such as `impl Future<Output = u8>`.
-                            if !self.tcx.ty_is_opaque_future(found_ty) {
-                                diag.note_expected_found_extra(
-                                    &expected_label,
-                                    expected,
-                                    &found_label,
-                                    found,
-                                    &sort_string(values.expected),
-                                    &sort_string(values.found),
-                                );
-                            }
+                            diag.note_expected_found_extra(
+                                &expected_label,
+                                expected,
+                                &found_label,
+                                found,
+                                sort_string(values.expected),
+                                sort_string(values.found),
+                            );
                         }
                     }
                 }
@@ -1878,11 +1885,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // It reads better to have the error origin as the final
         // thing.
-        self.note_error_origin(diag, cause, exp_found, terr, param_env, &mut path);
-        if let Some(path) = path {
-            diag.note(format!("the full type name has been written to '{}'", path.display()));
-            diag.note("consider using `--verbose` to print the full type name to the console");
-        }
+        self.note_error_origin(diag, cause, exp_found, terr, param_env);
 
         debug!(?diag);
     }
@@ -1891,6 +1894,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         trace: &TypeTrace<'tcx>,
         terr: TypeError<'tcx>,
+        path: &mut Option<PathBuf>,
     ) -> Vec<TypeErrorAdditionalDiags> {
         let mut suggestions = Vec::new();
         let span = trace.cause.span;
@@ -1969,7 +1973,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         })
         | ObligationCauseCode::BlockTailExpression(.., source)) = code
             && let hir::MatchSource::TryDesugar(_) = source
-            && let Some((expected_ty, found_ty, _)) = self.values_str(trace.values, &trace.cause)
+            && let Some((expected_ty, found_ty)) = self.values_str(trace.values, &trace.cause, path)
         {
             suggestions.push(TypeErrorAdditionalDiags::TryCannotConvert {
                 found: found_ty.content(),
@@ -2048,12 +2052,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         debug!("report_and_explain_type_error(trace={:?}, terr={:?})", trace, terr);
 
         let span = trace.cause.span;
+        let mut path = None;
         let failure_code = trace.cause.as_failure_code_diag(
             terr,
             span,
-            self.type_error_additional_suggestions(&trace, terr),
+            self.type_error_additional_suggestions(&trace, terr, &mut path),
         );
         let mut diag = self.dcx().create_err(failure_code);
+        *diag.long_ty_path() = path;
         self.note_type_err(
             &mut diag,
             &trace.cause,
@@ -2098,10 +2104,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         values: ValuePairs<'tcx>,
         cause: &ObligationCause<'tcx>,
-    ) -> Option<(DiagStyledString, DiagStyledString, Option<PathBuf>)> {
+        file: &mut Option<PathBuf>,
+    ) -> Option<(DiagStyledString, DiagStyledString)> {
         match values {
             ValuePairs::Regions(exp_found) => self.expected_found_str(exp_found),
-            ValuePairs::Terms(exp_found) => self.expected_found_str_term(exp_found),
+            ValuePairs::Terms(exp_found) => self.expected_found_str_term(exp_found, file),
             ValuePairs::Aliases(exp_found) => self.expected_found_str(exp_found),
             ValuePairs::ExistentialTraitRef(exp_found) => self.expected_found_str(exp_found),
             ValuePairs::ExistentialProjection(exp_found) => self.expected_found_str(exp_found),
@@ -2111,7 +2118,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     found: exp_found.found.print_trait_sugared(),
                 };
                 match self.expected_found_str(pretty_exp_found) {
-                    Some((expected, found, _)) if expected == found => {
+                    Some((expected, found)) if expected == found => {
                         self.expected_found_str(exp_found)
                     }
                     ret => ret,
@@ -2133,9 +2140,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     (None, None)
                 };
 
-                let (exp, fnd) =
-                    self.cmp_fn_sig(&exp_found.expected, fn_def1, &exp_found.found, fn_def2);
-                Some((exp, fnd, None))
+                Some(self.cmp_fn_sig(&exp_found.expected, fn_def1, &exp_found.found, fn_def2))
             }
         }
     }
@@ -2143,7 +2148,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn expected_found_str_term(
         &self,
         exp_found: ty::error::ExpectedFound<ty::Term<'tcx>>,
-    ) -> Option<(DiagStyledString, DiagStyledString, Option<PathBuf>)> {
+        path: &mut Option<PathBuf>,
+    ) -> Option<(DiagStyledString, DiagStyledString)> {
         let exp_found = self.resolve_vars_if_possible(exp_found);
         if exp_found.references_error() {
             return None;
@@ -2158,21 +2164,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let len = self.tcx.sess().diagnostic_width() + 40;
                 let exp_s = exp.content();
                 let fnd_s = fnd.content();
-                let mut path = None;
                 if exp_s.len() > len {
-                    let exp_s = self.tcx.short_ty_string(expected, &mut path);
+                    let exp_s = self.tcx.short_string(expected, path);
                     exp = DiagStyledString::highlighted(exp_s);
                 }
                 if fnd_s.len() > len {
-                    let fnd_s = self.tcx.short_ty_string(found, &mut path);
+                    let fnd_s = self.tcx.short_string(found, path);
                     fnd = DiagStyledString::highlighted(fnd_s);
                 }
-                (exp, fnd, path)
+                (exp, fnd)
             }
             _ => (
                 DiagStyledString::highlighted(exp_found.expected.to_string()),
                 DiagStyledString::highlighted(exp_found.found.to_string()),
-                None,
             ),
         })
     }
@@ -2181,7 +2185,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn expected_found_str<T: fmt::Display + TypeFoldable<TyCtxt<'tcx>>>(
         &self,
         exp_found: ty::error::ExpectedFound<T>,
-    ) -> Option<(DiagStyledString, DiagStyledString, Option<PathBuf>)> {
+    ) -> Option<(DiagStyledString, DiagStyledString)> {
         let exp_found = self.resolve_vars_if_possible(exp_found);
         if exp_found.references_error() {
             return None;
@@ -2190,7 +2194,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         Some((
             DiagStyledString::highlighted(exp_found.expected.to_string()),
             DiagStyledString::highlighted(exp_found.found.to_string()),
-            None,
         ))
     }
 

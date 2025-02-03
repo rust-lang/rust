@@ -1391,15 +1391,13 @@ pub struct OpaqueCapturesLifetime<'tcx> {
 pub enum FunctionPointerSuggestion<'a> {
     #[suggestion(
         trait_selection_fps_use_ref,
-        code = "&{fn_name}",
+        code = "&",
         style = "verbose",
         applicability = "maybe-incorrect"
     )]
     UseRef {
         #[primary_span]
         span: Span,
-        #[skip_arg]
-        fn_name: String,
     },
     #[suggestion(
         trait_selection_fps_remove_ref,
@@ -1429,7 +1427,7 @@ pub enum FunctionPointerSuggestion<'a> {
     },
     #[suggestion(
         trait_selection_fps_cast,
-        code = "{fn_name} as {sig}",
+        code = " as {sig}",
         style = "verbose",
         applicability = "maybe-incorrect"
     )]
@@ -1437,21 +1435,17 @@ pub enum FunctionPointerSuggestion<'a> {
         #[primary_span]
         span: Span,
         #[skip_arg]
-        fn_name: String,
-        #[skip_arg]
         sig: Binder<'a, FnSig<'a>>,
     },
     #[suggestion(
         trait_selection_fps_cast_both,
-        code = "{fn_name} as {found_sig}",
+        code = " as {found_sig}",
         style = "hidden",
         applicability = "maybe-incorrect"
     )]
     CastBoth {
         #[primary_span]
         span: Span,
-        #[skip_arg]
-        fn_name: String,
         #[skip_arg]
         found_sig: Binder<'a, FnSig<'a>>,
         expected_sig: Binder<'a, FnSig<'a>>,
