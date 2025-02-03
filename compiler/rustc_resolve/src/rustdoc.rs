@@ -538,11 +538,19 @@ pub fn source_span_for_markdown_range(
         // doc fragments, but the target range does not span across multiple
         // fragments.
         let mut match_data = None;
+        let pat = &markdown[md_range.clone()];
+        // this heirustic doesn't make sense with a zero-sized range.
+        if pat.len() == 0 {
+            return None;
+        }
         for (i, fragment) in fragments.iter().enumerate() {
             if let Ok(snippet) = span_to_snippet(fragment.span)
-                && let Some(match_start) = snippet.find(&markdown[md_range.clone()])
+                && let Some(match_start) = snippet.find(pat)
             {
-                if match_data.is_none() {
+                // if there is either a match in a previous fragment,
+                // or multiple matches in this fragment,
+                // there is ambiguity.
+                if match_data.is_none() && !snippet[match_start + 1..].contains(pat) {
                     match_data = Some((i, match_start));
                 } else {
                     // heirustic produced ambiguity, return nothing.
