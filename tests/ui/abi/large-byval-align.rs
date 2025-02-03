@@ -1,6 +1,5 @@
 //@ compile-flags: -Copt-level=0
 //@ only-x86_64
-//@ ignore-windows
 //@ min-llvm-version: 19
 //@ build-pass
 

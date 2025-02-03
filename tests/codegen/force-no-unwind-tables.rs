@@ -1,5 +1,5 @@
 //@ compile-flags: -C no-prepopulate-passes -C panic=abort -C force-unwind-tables=n
-//@ ignore-windows
+//@ ignore-windows: unwind tables are required for panics on Windows
 
 #![crate_type = "lib"]
 
