@@ -1,4 +1,5 @@
 use rustc_ast::attr::AttributeExt;
+
 use rustc_attr_parsing::{RustcVersion, parse_version};
 use rustc_session::Session;
 use rustc_span::{Symbol, sym};
@@ -18,12 +19,14 @@ macro_rules! msrv_aliases {
 
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
+    1,84,0 { CONST_OPTION_AS_SLICE }
     1,83,0 { CONST_EXTERN_FN, CONST_FLOAT_BITS_CONV, CONST_FLOAT_CLASSIFY, CONST_MUT_REFS, CONST_UNWRAP }
     1,82,0 { IS_NONE_OR, REPEAT_N, RAW_REF_OP }
     1,81,0 { LINT_REASONS_STABILIZATION, ERROR_IN_CORE, EXPLICIT_SELF_TYPE_ELISION }
     1,80,0 { BOX_INTO_ITER, LAZY_CELL }
     1,77,0 { C_STR_LITERALS }
     1,76,0 { PTR_FROM_REF, OPTION_RESULT_INSPECT }
+    1,75,0 { OPTION_AS_SLICE }
     1,74,0 { REPR_RUST }
     1,73,0 { MANUAL_DIV_CEIL }
     1,71,0 { TUPLE_ARRAY_CONVERSIONS, BUILD_HASHER_HASH_ONE }
