@@ -12,8 +12,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: calling non-const function `<Vec<u8> as Drop>::drop`
    |
-note: inside `std::ptr::drop_in_place::<Vec<u8>> - shim(Some(Vec<u8>))`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `std::ptr::drop_in_place::<String> - shim(Some(String))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `std::ptr::drop_in_place::<Option<String>> - shim(Some(Option<String>))`
@@ -37,8 +35,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: calling non-const function `<Vec<u8> as Drop>::drop`
    |
-note: inside `std::ptr::drop_in_place::<Vec<u8>> - shim(Some(Vec<u8>))`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `std::ptr::drop_in_place::<String> - shim(Some(String))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `std::ptr::drop_in_place::<Option<String>> - shim(Some(Option<String>))`

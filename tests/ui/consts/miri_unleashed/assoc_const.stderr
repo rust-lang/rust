@@ -3,8 +3,6 @@ error[E0080]: evaluation of `<String as Bar<Vec<u32>, String>>::F` failed
    |
    = note: calling non-const function `<Vec<u32> as Drop>::drop`
    |
-note: inside `std::ptr::drop_in_place::<Vec<u32>> - shim(Some(Vec<u32>))`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `std::ptr::drop_in_place::<(Vec<u32>, u32)> - shim(Some((Vec<u32>, u32)))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `<String as Bar<Vec<u32>, String>>::F`

@@ -4,13 +4,8 @@ error[E0080]: evaluation of constant value failed
 LL |     panic!()
    |     ^^^^^^^^ explicit panic
    |
-note: inside `g`
-  --> $DIR/ctfe-tail-call-panic.rs:9:5
-   |
-LL |     panic!()
-   |     ^^^^^^^^
 note: inside `_`
-  --> $DIR/ctfe-tail-call-panic.rs:16:15
+  --> $DIR/ctfe-tail-call-panic.rs:14:15
    |
 LL | const _: () = f();
    |               ^^^

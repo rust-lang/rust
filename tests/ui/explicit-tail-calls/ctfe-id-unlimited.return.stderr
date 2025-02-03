@@ -4,11 +4,6 @@ error[E0080]: evaluation of constant value failed
 LL |             #[cfg(r#return)] _ => return inner(acc + 1, n - 1),
    |                                          ^^^^^^^^^^^^^^^^^^^^^ reached the configured maximum number of stack frames
    |
-note: inside `inner`
-  --> $DIR/ctfe-id-unlimited.rs:17:42
-   |
-LL |             #[cfg(r#return)] _ => return inner(acc + 1, n - 1),
-   |                                          ^^^^^^^^^^^^^^^^^^^^^
 note: [... 125 additional calls inside `inner` ...]
   --> $DIR/ctfe-id-unlimited.rs:17:42
    |

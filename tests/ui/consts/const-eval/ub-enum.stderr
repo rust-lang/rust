@@ -121,8 +121,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: read discriminant of an uninhabited enum variant
    |
-note: inside `discriminant::<Never>`
-  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 note: inside `TEST_ICE_89765`
   --> $DIR/ub-enum.rs:103:14
    |

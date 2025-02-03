@@ -3,8 +3,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: entering unreachable code
    |
-note: inside `unreachable_unchecked`
-  --> $SRC_DIR/core/src/hint.rs:LL:COL
 note: inside `foo`
   --> $DIR/const_unsafe_unreachable_ub.rs:6:18
    |

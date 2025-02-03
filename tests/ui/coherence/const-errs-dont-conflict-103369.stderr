@@ -4,11 +4,6 @@ error[E0080]: evaluation of constant value failed
 LL |     panic!("Some error occurred");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Some error occurred
    |
-note: inside `my_fn`
-  --> $DIR/const-errs-dont-conflict-103369.rs:10:5
-   |
-LL |     panic!("Some error occurred");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `<() as ConstGenericTrait<{my_fn(1)}>>::{constant#0}`
   --> $DIR/const-errs-dont-conflict-103369.rs:5:25
    |
@@ -22,11 +17,6 @@ error[E0080]: evaluation of constant value failed
 LL |     panic!("Some error occurred");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Some error occurred
    |
-note: inside `my_fn`
-  --> $DIR/const-errs-dont-conflict-103369.rs:10:5
-   |
-LL |     panic!("Some error occurred");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `<() as ConstGenericTrait<{my_fn(2)}>>::{constant#0}`
   --> $DIR/const-errs-dont-conflict-103369.rs:7:25
    |

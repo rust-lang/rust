@@ -9,8 +9,6 @@ const fn g() {
     panic!()
     //~^ error: evaluation of constant value failed
     //~| note: in this expansion of panic!
-    //~| note: inside `g`
-    //~| note: in this expansion of panic!
 }
 
 const _: () = f();

@@ -3,8 +3,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: out-of-bounds pointer arithmetic: expected a pointer to the end of 1 byte of memory, but got ALLOC0 which is at the beginning of the allocation
    |
-note: inside `std::ptr::const_ptr::<impl *const u8>::offset`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `BEFORE_START`
   --> $DIR/offset_ub.rs:8:46
    |
@@ -16,8 +14,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: out-of-bounds pointer arithmetic: expected a pointer to $BYTES bytes of memory, but got ALLOC1 which is only 1 byte from the end of the allocation
    |
-note: inside `std::ptr::const_ptr::<impl *const u8>::offset`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `AFTER_END`
   --> $DIR/offset_ub.rs:9:43
    |
@@ -29,8 +25,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: out-of-bounds pointer arithmetic: expected a pointer to $BYTES bytes of memory, but got ALLOC2 which is only $BYTES bytes from the end of the allocation
    |
-note: inside `std::ptr::const_ptr::<impl *const u8>::offset`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `AFTER_ARRAY`
   --> $DIR/offset_ub.rs:10:45
    |
@@ -42,8 +36,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
    |
-note: inside `std::ptr::const_ptr::<impl *const u16>::offset`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `OVERFLOW`
   --> $DIR/offset_ub.rs:12:43
    |
@@ -55,8 +47,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
    |
-note: inside `std::ptr::const_ptr::<impl *const u16>::offset`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `UNDERFLOW`
   --> $DIR/offset_ub.rs:13:44
    |
@@ -68,8 +58,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: out-of-bounds pointer arithmetic: expected a pointer to $BYTES bytes of memory, but got 0xf..f[noalloc] which is a dangling pointer (it has no provenance)
    |
-note: inside `std::ptr::const_ptr::<impl *const u8>::offset`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `OVERFLOW_ADDRESS_SPACE`
   --> $DIR/offset_ub.rs:14:56
    |
@@ -81,8 +69,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: out-of-bounds pointer arithmetic: expected a pointer to the end of $BYTES bytes of memory, but got 0x1[noalloc] which is a dangling pointer (it has no provenance)
    |
-note: inside `std::ptr::const_ptr::<impl *const u8>::offset`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `UNDERFLOW_ADDRESS_SPACE`
   --> $DIR/offset_ub.rs:15:57
    |
@@ -94,8 +80,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: out-of-bounds pointer arithmetic: expected a pointer to the end of $BYTES bytes of memory, but got ALLOC3-0x2 which points to before the beginning of the allocation
    |
-note: inside `std::ptr::const_ptr::<impl *const u8>::offset`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `NEGATIVE_OFFSET`
   --> $DIR/offset_ub.rs:16:49
    |
@@ -107,8 +91,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: out-of-bounds pointer arithmetic: expected a pointer to 1 byte of memory, but got ALLOC4 which is at or beyond the end of the allocation of size $BYTES bytes
    |
-note: inside `std::ptr::const_ptr::<impl *const u8>::offset`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `ZERO_SIZED_ALLOC`
   --> $DIR/offset_ub.rs:18:50
    |
@@ -120,8 +102,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: out-of-bounds pointer arithmetic: expected a pointer to $BYTES bytes of memory, but got 0x1[noalloc] which is a dangling pointer (it has no provenance)
    |
-note: inside `std::ptr::mut_ptr::<impl *mut u8>::offset`
-  --> $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
 note: inside `DANGLING`
   --> $DIR/offset_ub.rs:19:42
    |
@@ -133,8 +113,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: out-of-bounds pointer arithmetic: expected a pointer to the end of $BYTES bytes of memory, but got 0xf..f[noalloc] which is a dangling pointer (it has no provenance)
    |
-note: inside `std::ptr::const_ptr::<impl *const u8>::offset`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `UNDERFLOW_ABS`
   --> $DIR/offset_ub.rs:22:47
    |

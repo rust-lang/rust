@@ -3,8 +3,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: from_ascii_radix: radix must lie in the range `[2, 36]`
    |
-note: inside `core::num::<impl u64>::from_ascii_radix`
-  --> $SRC_DIR/core/src/num/mod.rs:LL:COL
 note: inside `core::num::<impl u64>::from_str_radix`
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL
 note: inside `_TOO_LOW`
@@ -19,8 +17,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: from_ascii_radix: radix must lie in the range `[2, 36]`
    |
-note: inside `core::num::<impl u64>::from_ascii_radix`
-  --> $SRC_DIR/core/src/num/mod.rs:LL:COL
 note: inside `core::num::<impl u64>::from_str_radix`
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL
 note: inside `_TOO_HIGH`

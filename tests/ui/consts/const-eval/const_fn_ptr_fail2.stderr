@@ -4,11 +4,6 @@ error[E0080]: evaluation of constant value failed
 LL |     x(y)
    |     ^^^^ calling non-const function `double`
    |
-note: inside `bar`
-  --> $DIR/const_fn_ptr_fail2.rs:9:5
-   |
-LL |     x(y)
-   |     ^^^^
 note: inside `Y`
   --> $DIR/const_fn_ptr_fail2.rs:14:18
    |
@@ -21,11 +16,6 @@ error[E0080]: evaluation of constant value failed
 LL |     x(y)
    |     ^^^^ calling non-const function `double`
    |
-note: inside `bar`
-  --> $DIR/const_fn_ptr_fail2.rs:9:5
-   |
-LL |     x(y)
-   |     ^^^^
 note: inside `Z`
   --> $DIR/const_fn_ptr_fail2.rs:15:18
    |
