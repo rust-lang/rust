@@ -347,6 +347,7 @@ define_symbols! {
     option,
     Option,
     Ord,
+    Ordering,
     Output,
     CallRefFuture,
     CallOnceFuture,
