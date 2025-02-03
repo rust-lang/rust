@@ -1762,7 +1762,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--coverage-dump-path").arg(coverage_dump);
         }
 
-        cmd.arg("--src-base").arg(builder.src.join("tests").join(suite));
+        cmd.arg("--src-root").arg(&builder.src);
+        cmd.arg("--src-test-suite-root").arg(builder.src.join("tests").join(suite));
+
         cmd.arg("--build-base").arg(testdir(builder, compiler.host).join(suite));
 
         // When top stage is 0, that means that we're testing an externally provided compiler.
