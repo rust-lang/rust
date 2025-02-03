@@ -25,7 +25,7 @@ use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::{AssocItemContainer, SymbolName};
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
-use rustc_session::config::{CrateType, OptLevel};
+use rustc_session::config::{CrateType, OptLevel, TargetModifier};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
     ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId, SyntaxContext,
@@ -692,6 +692,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Encode source_map. This needs to be done last, because encoding `Span`s tells us which
         // `SourceFiles` we actually need to encode.
         let source_map = stat!("source-map", || self.encode_source_map());
+        let target_modifiers = stat!("target-modifiers", || self.encode_target_modifiers());
 
         let root = stat!("final", || {
             let attrs = tcx.hir().krate_attrs();
@@ -735,6 +736,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 native_libraries,
                 foreign_modules,
                 source_map,
+                target_modifiers,
                 traits,
                 impls,
                 incoherent_impls,
@@ -2007,6 +2009,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // FIXME (#2166): This is not nearly enough to support correct versioning
         // but is enough to get transitive crate dependencies working.
         self.lazy_array(deps.iter().map(|(_, dep)| dep))
+    }
+
+    fn encode_target_modifiers(&mut self) -> LazyArray<TargetModifier> {
+        empty_proc_macro!(self);
+        let tcx = self.tcx;
+        self.lazy_array(tcx.sess.opts.gather_target_modifiers())
     }
 
     fn encode_lib_features(&mut self) -> LazyArray<(Symbol, FeatureStability)> {
