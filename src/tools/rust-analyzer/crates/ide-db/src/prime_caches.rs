@@ -6,7 +6,7 @@ mod topologic_sort;
 
 use std::time::Duration;
 
-use hir::db::DefDatabase;
+use hir::{db::DefDatabase, Symbol};
 use itertools::Itertools;
 
 use crate::{
@@ -22,7 +22,7 @@ use crate::{
 #[derive(Debug)]
 pub struct ParallelPrimeCachesProgress {
     /// the crates that we are currently priming.
-    pub crates_currently_indexing: Vec<String>,
+    pub crates_currently_indexing: Vec<Symbol>,
     /// the total number of crates we want to prime.
     pub crates_total: usize,
     /// the total number of crates that have finished priming
@@ -49,7 +49,7 @@ pub fn parallel_prime_caches(
     };
 
     enum ParallelPrimeCacheWorkerProgress {
-        BeginCrate { crate_id: CrateId, crate_name: String },
+        BeginCrate { crate_id: CrateId, crate_name: Symbol },
         EndCrate { crate_id: CrateId },
     }
 
@@ -112,7 +112,11 @@ pub fn parallel_prime_caches(
 
         for crate_id in &mut crates_to_prime {
             let krate = &graph[crate_id];
-            let name = krate.display_name.as_deref().unwrap_or_default().to_owned();
+            let name = krate
+                .display_name
+                .as_deref()
+                .cloned()
+                .unwrap_or_else(|| Symbol::integer(crate_id.into_raw().into_u32() as usize));
             if krate.origin.is_lang() {
                 additional_phases.push((crate_id, name.clone(), PrimingPhase::ImportMap));
             } else if krate.origin.is_local() {
@@ -195,7 +199,6 @@ pub fn parallel_prime_caches(
             }
             ParallelPrimeCacheWorkerProgress::EndCrate { crate_id } => {
                 crates_currently_indexing.swap_remove(&crate_id);
-                crates_to_prime.mark_done(crate_id);
                 crates_done += 1;
             }
         };

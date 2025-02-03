@@ -339,14 +339,16 @@ impl GlobalState {
 
                             message = match &*report.crates_currently_indexing {
                                 [crate_name] => Some(format!(
-                                    "{}/{} ({crate_name})",
-                                    report.crates_done, report.crates_total
+                                    "{}/{} ({})",
+                                    report.crates_done,
+                                    report.crates_total,
+                                    crate_name.as_str(),
                                 )),
                                 [crate_name, rest @ ..] => Some(format!(
                                     "{}/{} ({} + {} more)",
                                     report.crates_done,
                                     report.crates_total,
-                                    crate_name,
+                                    crate_name.as_str(),
                                     rest.len()
                                 )),
                                 _ => None,

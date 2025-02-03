@@ -84,7 +84,8 @@ impl<'a> dot::Labeller<'a, CrateId, Edge<'a>> for DotCrateGraph {
     }
 
     fn node_label(&'a self, n: &CrateId) -> LabelText<'a> {
-        let name = self.graph[*n].display_name.as_ref().map_or("(unnamed crate)", |name| name);
+        let name =
+            self.graph[*n].display_name.as_ref().map_or("(unnamed crate)", |name| name.as_str());
         LabelText::LabelStr(name.into())
     }
 }
