@@ -2995,8 +2995,7 @@ pub unsafe fn float_to_int_unchecked<Float: Copy, Int: Copy>(_value: Float) -> I
 
 /// Float addition that allows optimizations based on algebraic rules.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f32::add_algebraic`](../../std/primitive.f32.html#method.add_algebraic)
+/// Stabilized as [`f32::add_algebraic`] and [`f64::add_algebraic`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -3006,8 +3005,7 @@ pub fn fadd_algebraic<T: Copy>(_a: T, _b: T) -> T {
 
 /// Float subtraction that allows optimizations based on algebraic rules.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f32::sub_algebraic`](../../std/primitive.f32.html#method.sub_algebraic)
+/// Stabilized as [`f32::sub_algebraic`] and [`f64::sub_algebraic`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -3017,8 +3015,7 @@ pub fn fsub_algebraic<T: Copy>(_a: T, _b: T) -> T {
 
 /// Float multiplication that allows optimizations based on algebraic rules.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f32::mul_algebraic`](../../std/primitive.f32.html#method.mul_algebraic)
+/// Stabilized as [`f32::mul_algebraic`] and [`f64::mul_algebraic`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -3028,8 +3025,7 @@ pub fn fmul_algebraic<T: Copy>(_a: T, _b: T) -> T {
 
 /// Float division that allows optimizations based on algebraic rules.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f32::div_algebraic`](../../std/primitive.f32.html#method.div_algebraic)
+/// Stabilized as [`f32::div_algebraic`] and [`f64::div_algebraic`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -3039,8 +3035,7 @@ pub fn fdiv_algebraic<T: Copy>(_a: T, _b: T) -> T {
 
 /// Float remainder that allows optimizations based on algebraic rules.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f32::rem_algebraic`](../../std/primitive.f32.html#method.rem_algebraic)
+/// Stabilized as [`f32::rem_algebraic`] and [`f64::rem_algebraic`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
