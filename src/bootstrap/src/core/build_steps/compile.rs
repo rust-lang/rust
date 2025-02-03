@@ -946,6 +946,13 @@ fn cp_rustc_component_to_ci_sysroot(builder: &Builder<'_>, sysroot: &Path, conte
     }
 }
 
+/// Low-level implementation of the compiler's compilation process.
+///
+/// DO NOT `pub` the fields of this type and AVOID using it anywhere
+/// unless it’s in the `Assemble` step.
+///
+/// If you want to build a compiler for a specific stage and target, use
+/// `Builder::compiler` instead.
 #[derive(Debug, PartialOrd, Ord, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
     target: TargetSelection,
@@ -960,6 +967,8 @@ pub struct Rustc {
 }
 
 impl Rustc {
+    /// Serves as a helpful util for unit tests and should NEVER exist
+    /// for non-test environment.
     #[cfg(test)]
     pub fn new(compiler: Compiler, target: TargetSelection) -> Self {
         Self { target, compiler, crates: Default::default() }
