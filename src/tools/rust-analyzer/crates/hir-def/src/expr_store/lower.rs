@@ -1798,23 +1798,17 @@ impl ExprCollector<'_> {
                                 Expr::Literal(pat_literal_to_hir(it)?.0),
                                 ptr,
                             )),
-                            ast::Pat::IdentPat(ident) => {
-                                if ident.is_simple_ident() {
-                                    return ident
-                                        .name()
-                                        .map(|name| name.as_name())
-                                        .map(Path::from)
-                                        .map(|path| {
-                                            self.alloc_expr_from_pat(Expr::Path(path), ptr)
-                                        });
-                                }
-
-                                None
-                            }
+                            ast::Pat::IdentPat(ident) if ident.is_simple_ident() => ident
+                                .name()
+                                .map(|name| name.as_name())
+                                .map(Path::from)
+                                .map(|path| self.alloc_expr_from_pat(Expr::Path(path), ptr)),
                             ast::Pat::PathPat(p) => p
                                 .path()
                                 .and_then(|path| self.parse_path(path))
                                 .map(|parsed| self.alloc_expr_from_pat(Expr::Path(parsed), ptr)),
+                            // We only need to handle literal, ident (if bare) and path patterns here,
+                            // as any other pattern as a range pattern operand is semantically invalid.
                             _ => None,
                         }
                     })
@@ -2545,7 +2539,7 @@ impl ExprCollector<'_> {
 
     fn alloc_expr_from_pat(&mut self, expr: Expr, ptr: PatPtr) -> ExprId {
         let src = self.expander.in_file(ptr);
-        let id = self.body.exprs.alloc(expr);
+        let id = self.store.exprs.alloc(expr);
         self.source_map.pat_map.insert(src, id.into());
         self.source_map.expr_map_back.insert(id, src.map(AstPtr::wrap_right));
         id

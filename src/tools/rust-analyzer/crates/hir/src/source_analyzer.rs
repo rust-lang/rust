@@ -210,13 +210,20 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         pat: &ast::Pat,
     ) -> Option<(Type, Option<Type>)> {
-        let pat_id = self.pat_id(pat)?;
+        let expr_or_pat_id = self.pat_id(pat)?;
         let infer = self.infer.as_ref()?;
-        let coerced = infer
-            .pat_adjustments
-            .get(&pat_id.as_pat()?)
-            .and_then(|adjusts| adjusts.last().cloned());
-        let ty = infer[pat_id].clone();
+        let coerced = match expr_or_pat_id {
+            ExprOrPatId::ExprId(idx) => infer
+                .expr_adjustments
+                .get(&idx)
+                .and_then(|adjusts| adjusts.last().cloned())
+                .map(|adjust| adjust.target),
+            ExprOrPatId::PatId(idx) => {
+                infer.pat_adjustments.get(&idx).and_then(|adjusts| adjusts.last().cloned())
+            }
+        };
+
+        let ty = infer[expr_or_pat_id].clone();
         let mk_ty = |ty| Type::new_with_resolver(db, &self.resolver, ty);
         Some((mk_ty(ty), coerced.map(mk_ty)))
     }
@@ -684,19 +691,18 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         pat: &ast::IdentPat,
     ) -> Option<ModuleDef> {
-        let pat_id = self.pat_id(&pat.clone().into())?;
+        let expr_or_pat_id = self.pat_id(&pat.clone().into())?;
         let body = self.body()?;
 
-        let path = if pat_id.is_pat() {
-            match &body[pat_id.as_pat()?] {
-                Pat::Path(path) => path,
-                _ => return None,
-            }
-        } else {
-            match &body[pat_id.as_expr()?] {
+        let path = match expr_or_pat_id {
+            ExprOrPatId::ExprId(idx) => match &body[idx] {
                 Expr::Path(path) => path,
                 _ => return None,
-            }
+            },
+            ExprOrPatId::PatId(idx) => match &body[idx] {
+                Pat::Path(path) => path,
+                _ => return None,
+            },
         };
 
         let res = resolve_hir_path(db, &self.resolver, path, HygieneId::ROOT, TypesMap::EMPTY)?;
@@ -793,8 +799,9 @@ impl SourceAnalyzer {
                 }
                 prefer_value_ns = true;
             } else if let Some(path_pat) = parent().and_then(ast::PathPat::cast) {
-                let pat_id = self.pat_id(&path_pat.into())?;
-                if let Some((assoc, subs)) = infer.assoc_resolutions_for_pat(pat_id.as_pat()?) {
+                let expr_or_pat_id = self.pat_id(&path_pat.into())?;
+                if let Some((assoc, subs)) = infer.assoc_resolutions_for_expr_or_pat(expr_or_pat_id)
+                {
                     let (assoc, subst) = match assoc {
                         AssocItemId::ConstId(const_id) => {
                             let (konst, subst) =
@@ -818,7 +825,7 @@ impl SourceAnalyzer {
                     return Some((PathResolution::Def(AssocItem::from(assoc).into()), Some(subst)));
                 }
                 if let Some(VariantId::EnumVariantId(variant)) =
-                    infer.variant_resolution_for_pat(pat_id.as_pat()?)
+                    infer.variant_resolution_for_expr_or_pat(expr_or_pat_id)
                 {
                     return Some((PathResolution::Def(ModuleDef::Variant(variant.into())), None));
                 }

@@ -6,7 +6,7 @@
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_def::{
-    body::ExprOrPatPtr,
+    expr_store::ExprOrPatPtr,
     hir::ExprOrPatId,
     path::{hir_segment_to_ast_segment, ModPath},
     type_ref::TypesSourceMap,
@@ -116,14 +116,14 @@ diagnostics![
 
 #[derive(Debug)]
 pub struct BreakOutsideOfLoop {
-    pub expr: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub expr: InFile<ExprOrPatPtr>,
     pub is_break: bool,
     pub bad_value_break: bool,
 }
 
 #[derive(Debug)]
 pub struct TypedHole {
-    pub expr: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub expr: InFile<ExprOrPatPtr>,
     pub expected: Type,
 }
 
@@ -222,26 +222,26 @@ pub struct NoSuchField {
 
 #[derive(Debug)]
 pub struct PrivateAssocItem {
-    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub expr_or_pat: InFile<ExprOrPatPtr>,
     pub item: AssocItem,
 }
 
 #[derive(Debug)]
 pub struct MismatchedTupleStructPatArgCount {
-    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub expr_or_pat: InFile<ExprOrPatPtr>,
     pub expected: usize,
     pub found: usize,
 }
 
 #[derive(Debug)]
 pub struct ExpectedFunction {
-    pub call: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub call: InFile<ExprOrPatPtr>,
     pub found: Type,
 }
 
 #[derive(Debug)]
 pub struct UnresolvedField {
-    pub expr: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub expr: InFile<ExprOrPatPtr>,
     pub receiver: Type,
     pub name: Name,
     pub method_with_same_name_exists: bool,
@@ -249,7 +249,7 @@ pub struct UnresolvedField {
 
 #[derive(Debug)]
 pub struct UnresolvedMethodCall {
-    pub expr: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub expr: InFile<ExprOrPatPtr>,
     pub receiver: Type,
     pub name: Name,
     pub field_with_same_name: Option<Type>,
@@ -258,17 +258,17 @@ pub struct UnresolvedMethodCall {
 
 #[derive(Debug)]
 pub struct UnresolvedAssocItem {
-    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub expr_or_pat: InFile<ExprOrPatPtr>,
 }
 
 #[derive(Debug)]
 pub struct UnresolvedIdent {
-    pub node: InFile<(AstPtr<Either<ast::Expr, ast::Pat>>, Option<TextRange>)>,
+    pub node: InFile<(ExprOrPatPtr, Option<TextRange>)>,
 }
 
 #[derive(Debug)]
 pub struct PrivateField {
-    pub expr: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub expr: InFile<ExprOrPatPtr>,
     pub field: Field,
 }
 
@@ -281,7 +281,7 @@ pub enum UnsafeLint {
 
 #[derive(Debug)]
 pub struct MissingUnsafe {
-    pub node: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub node: InFile<ExprOrPatPtr>,
     pub lint: UnsafeLint,
     pub reason: UnsafetyReason,
 }
@@ -322,7 +322,7 @@ pub struct NonExhaustiveLet {
 
 #[derive(Debug)]
 pub struct TypeMismatch {
-    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub expr_or_pat: InFile<ExprOrPatPtr>,
     pub expected: Type,
     pub actual: Type,
 }
@@ -396,13 +396,13 @@ pub struct RemoveUnnecessaryElse {
 
 #[derive(Debug)]
 pub struct CastToUnsized {
-    pub expr: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub expr: InFile<ExprOrPatPtr>,
     pub cast_ty: Type,
 }
 
 #[derive(Debug)]
 pub struct InvalidCast {
-    pub expr: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub expr: InFile<ExprOrPatPtr>,
     pub error: CastError,
     pub expr_ty: Type,
     pub cast_ty: Type,

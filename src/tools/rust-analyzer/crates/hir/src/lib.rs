@@ -2003,7 +2003,7 @@ impl DefWithBody {
             match source_map.expr_syntax(node) {
                 Ok(node) => acc.push(
                     MissingUnsafe {
-                        node: node.map(|it| it.wrap_left()),
+                        node,
                         lint: UnsafeLint::DeprecatedSafe2024,
                         reason: UnsafetyReason::UnsafeFnCall,
                     }
