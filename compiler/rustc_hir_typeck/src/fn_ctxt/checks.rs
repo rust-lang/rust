@@ -21,7 +21,7 @@ use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
-use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::infer::{FailureCode, ObligationCauseExt};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, SelectionContext};
@@ -2414,11 +2414,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     })
                 {
                     let Some(generic_param) = generic_param else {
-                        spans.push_span_label(param.span, "");
+                        spans.push_span_label(param.span(), "");
                         continue;
                     };
 
-                    let other_params_matched: Vec<(ExpectedIdx, &hir::Param<'_>)> =
+                    let other_params_matched: Vec<(ExpectedIdx, FnParam<'_>)> =
                         params_with_generics
                             .iter_enumerated()
                             .filter(|&(other_idx, &(other_generic_param, _))| {
@@ -2447,9 +2447,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let other_param_matched_names: Vec<String> = other_params_matched
                             .iter()
                             .map(|(idx, other_param)| {
-                                if let hir::PatKind::Binding(_, _, ident, _) = other_param.pat.kind
-                                {
-                                    format!("`{ident}`")
+                                if let Some(name) = other_param.name() {
+                                    format!("`{name}`")
                                 } else {
                                     format!("parameter #{}", idx.as_u32() + 1)
                                 }
@@ -2462,7 +2461,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         if matched_inputs[idx].is_some() {
                             spans.push_span_label(
-                                param.span,
+                                param.span(),
                                 format!(
                                     "{} need{} to match the {} type of this parameter",
                                     listify(&other_param_matched_names, |n| n.to_string())
@@ -2477,7 +2476,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                         } else {
                             spans.push_span_label(
-                                param.span,
+                                param.span(),
                                 format!(
                                     "this parameter needs to match the {} type of {}",
                                     matched_ty,
@@ -2488,7 +2487,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         generics_with_unmatched_params.push(generic_param);
                     } else {
-                        spans.push_span_label(param.span, "");
+                        spans.push_span_label(param.span(), "");
                     }
                 }
 
@@ -2515,8 +2514,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         })
                         .map(|(idx, &(_, param))| {
-                            if let hir::PatKind::Binding(_, _, ident, _) = param.pat.kind {
-                                format!("`{ident}`")
+                            if let Some(name) = param.name() {
+                                format!("`{name}`")
                             } else {
                                 format!("parameter #{}", idx.as_u32() + 1)
                             }
@@ -2673,35 +2672,56 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         def_id: DefId,
         is_method: bool,
-    ) -> Option<IndexVec<ExpectedIdx, (Option<&hir::GenericParam<'_>>, &hir::Param<'_>)>> {
-        let fn_node = self.tcx.hir().get_if_local(def_id)?;
-        let fn_decl = fn_node.fn_decl()?;
-        let generic_params = fn_node.generics()?.params;
+    ) -> Option<IndexVec<ExpectedIdx, (Option<&hir::GenericParam<'_>>, FnParam<'_>)>> {
+        let (sig, generics, body_id, param_names) = match self.tcx.hir().get_if_local(def_id)? {
+            hir::Node::TraitItem(&hir::TraitItem {
+                generics,
+                kind: hir::TraitItemKind::Fn(sig, trait_fn),
+                ..
+            }) => match trait_fn {
+                hir::TraitFn::Required(params) => (sig, generics, None, Some(params)),
+                hir::TraitFn::Provided(body) => (sig, generics, Some(body), None),
+            },
+            hir::Node::ImplItem(&hir::ImplItem {
+                generics,
+                kind: hir::ImplItemKind::Fn(sig, body),
+                ..
+            })
+            | hir::Node::Item(&hir::Item {
+                kind: hir::ItemKind::Fn { sig, generics, body, .. },
+                ..
+            }) => (sig, generics, Some(body), None),
+            _ => return None,
+        };
 
-        // Remove both the receiver and variadic arguments. Neither can have an unmatched generic
-        // parameter.
-        let params = self.tcx.hir().body(fn_node.body_id()?).params;
-        let params = params.get(is_method as usize..params.len() - fn_decl.c_variadic as usize)?;
-        let fn_inputs = fn_decl.inputs.get(is_method as usize..)?;
-        debug_assert_eq!(params.len(), fn_inputs.len());
-
-        Some(
-            fn_inputs
-                .into_iter()
-                .map(|param| {
-                    if let hir::TyKind::Path(QPath::Resolved(
-                        _,
-                        &hir::Path { res: Res::Def(_, res_def_id), .. },
-                    )) = param.kind
-                    {
-                        generic_params.iter().find(|param| param.def_id.to_def_id() == res_def_id)
-                    } else {
-                        None
-                    }
-                })
-                .zip(params)
-                .collect(),
-        )
+        // Make sure to remove both the receiver and variadic argument. Both are removed
+        // when matching parameter types.
+        let fn_inputs = sig.decl.inputs.get(is_method as usize..)?.iter().map(|param| {
+            if let hir::TyKind::Path(QPath::Resolved(
+                _,
+                &hir::Path { res: Res::Def(_, res_def_id), .. },
+            )) = param.kind
+            {
+                generics.params.iter().find(|param| param.def_id.to_def_id() == res_def_id)
+            } else {
+                None
+            }
+        });
+        match (body_id, param_names) {
+            (Some(_), Some(_)) | (None, None) => unreachable!(),
+            (Some(body), None) => {
+                let params = self.tcx.hir().body(body).params;
+                let params =
+                    params.get(is_method as usize..params.len() - sig.decl.c_variadic as usize)?;
+                debug_assert_eq!(params.len(), fn_inputs.len());
+                Some(fn_inputs.zip(params.iter().map(|param| FnParam::Param(param))).collect())
+            }
+            (None, Some(params)) => {
+                let params = params.get(is_method as usize..)?;
+                debug_assert_eq!(params.len(), fn_inputs.len());
+                Some(fn_inputs.zip(params.iter().map(|param| FnParam::Name(param))).collect())
+            }
+        }
     }
 }
 
@@ -2722,5 +2742,29 @@ impl<'tcx> Visitor<'tcx> for FindClosureArg<'tcx> {
             self.calls.push((rcvr, args));
         }
         hir::intravisit::walk_expr(self, ex);
+    }
+}
+
+#[derive(Clone, Copy)]
+enum FnParam<'hir> {
+    Param(&'hir hir::Param<'hir>),
+    Name(&'hir Ident),
+}
+impl FnParam<'_> {
+    fn span(&self) -> Span {
+        match self {
+            Self::Param(x) => x.span,
+            Self::Name(x) => x.span,
+        }
+    }
+
+    fn name(&self) -> Option<Symbol> {
+        match self {
+            Self::Param(x) if let hir::PatKind::Binding(_, _, ident, _) = x.pat.kind => {
+                Some(ident.name)
+            }
+            Self::Name(x) if x.name != kw::Empty => Some(x.name),
+            _ => None,
+        }
     }
 }
