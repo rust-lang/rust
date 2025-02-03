@@ -949,7 +949,7 @@ fn cp_rustc_component_to_ci_sysroot(builder: &Builder<'_>, sysroot: &Path, conte
 /// Low-level implementation of the compiler's compilation process.
 ///
 /// DO NOT `pub` the fields of this type and AVOID using it anywhere
-/// unless it’s in the `Assemble` step.
+/// unless it's in the `Assemble` step.
 ///
 /// If you want to build a compiler for a specific stage and target, use
 /// `Builder::compiler` instead.
