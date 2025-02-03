@@ -1801,21 +1801,19 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         match (cv.valtree, cv.ty.kind()) {
             (ty::ValTree::Branch(_), ty::Ref(_, inner_ty, _)) => match inner_ty.kind() {
                 ty::Slice(t) if *t == u8_type => {
-                    let bytes =
-                        cv.valtree.try_to_raw_bytes(self.tcx(), cv.ty).unwrap_or_else(|| {
-                            bug!(
-                                "expected to convert valtree {:?} to raw bytes for type {:?}",
-                                cv.valtree,
-                                t
-                            )
-                        });
+                    let bytes = cv.try_to_raw_bytes(self.tcx()).unwrap_or_else(|| {
+                        bug!(
+                            "expected to convert valtree {:?} to raw bytes for type {:?}",
+                            cv.valtree,
+                            t
+                        )
+                    });
                     return self.pretty_print_byte_str(bytes);
                 }
                 ty::Str => {
-                    let bytes =
-                        cv.valtree.try_to_raw_bytes(self.tcx(), cv.ty).unwrap_or_else(|| {
-                            bug!("expected to convert valtree to raw bytes for type {:?}", cv.ty)
-                        });
+                    let bytes = cv.try_to_raw_bytes(self.tcx()).unwrap_or_else(|| {
+                        bug!("expected to convert valtree to raw bytes for type {:?}", cv.ty)
+                    });
                     p!(write("{:?}", String::from_utf8_lossy(bytes)));
                     return Ok(());
                 }
@@ -1827,7 +1825,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
             },
             (ty::ValTree::Branch(_), ty::Array(t, _)) if *t == u8_type => {
-                let bytes = cv.valtree.try_to_raw_bytes(self.tcx(), cv.ty).unwrap_or_else(|| {
+                let bytes = cv.try_to_raw_bytes(self.tcx()).unwrap_or_else(|| {
                     bug!("expected to convert valtree to raw bytes for type {:?}", t)
                 });
                 p!("*");
