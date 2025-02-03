@@ -121,25 +121,25 @@ pub trait Map<'hir> {
 // Used when no map is actually available, forcing manual implementation of nested visitors.
 impl<'hir> Map<'hir> for ! {
     fn hir_node(&self, _: HirId) -> Node<'hir> {
-        *self;
+        unreachable!();
     }
     fn hir_node_by_def_id(&self, _: LocalDefId) -> Node<'hir> {
         *self;
     }
     fn body(&self, _: BodyId) -> &'hir Body<'hir> {
-        *self;
+        unreachable!();
     }
     fn item(&self, _: ItemId) -> &'hir Item<'hir> {
-        *self;
+        unreachable!();
     }
     fn trait_item(&self, _: TraitItemId) -> &'hir TraitItem<'hir> {
-        *self;
+        unreachable!();
     }
     fn impl_item(&self, _: ImplItemId) -> &'hir ImplItem<'hir> {
-        *self;
+        unreachable!();
     }
     fn foreign_item(&self, _: ForeignItemId) -> &'hir ForeignItem<'hir> {
-        *self;
+        unreachable!();
     }
 }
 
@@ -203,7 +203,7 @@ use nested_filter::NestedFilter;
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
 pub trait Visitor<'v>: Sized {
-    // this type should not be overridden, it exists for convenient usage as `Self::Map`
+    // This type should not be overridden, it exists for convenient usage as `Self::Map`.
     type Map: Map<'v> = <Self::NestedFilter as NestedFilter<'v>>::Map;
 
     ///////////////////////////////////////////////////////////////////////////
