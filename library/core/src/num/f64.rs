@@ -1506,4 +1506,44 @@ impl f64 {
         // SAFETY: this is actually a safe intrinsic
         unsafe { intrinsics::copysignf64(self, sign) }
     }
+
+    /// Float addition that allows optimizations based on algebraic rules.
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_algebraic", issue = "21690")]
+    #[inline]
+    pub fn add_algebraic(self, rhs: f64) -> f64 {
+        intrinsics::fadd_algebraic(self, rhs)
+    }
+
+    /// Float subtraction that allows optimizations based on algebraic rules.
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_algebraic", issue = "21690")]
+    #[inline]
+    pub fn sub_algebraic(self, rhs: f64) -> f64 {
+        intrinsics::fsub_algebraic(self, rhs)
+    }
+
+    /// Float multiplication that allows optimizations based on algebraic rules.
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_algebraic", issue = "21690")]
+    #[inline]
+    pub fn mul_algebraic(self, rhs: f64) -> f64 {
+        intrinsics::fmul_algebraic(self, rhs)
+    }
+
+    /// Float division that allows optimizations based on algebraic rules.
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_algebraic", issue = "21690")]
+    #[inline]
+    pub fn div_algebraic(self, rhs: f64) -> f64 {
+        intrinsics::fdiv_algebraic(self, rhs)
+    }
+
+    /// Float remainder that allows optimizations based on algebraic rules.
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_algebraic", issue = "21690")]
+    #[inline]
+    pub fn rem_algebraic(self, rhs: f64) -> f64 {
+        intrinsics::frem_algebraic(self, rhs)
+    }
 }
