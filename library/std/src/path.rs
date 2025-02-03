@@ -82,6 +82,7 @@ use crate::iter::FusedIterator;
 use crate::ops::{self, Deref};
 use crate::rc::Rc;
 use crate::str::FromStr;
+use crate::string::string::String;
 use crate::sync::Arc;
 use crate::sys::path::{MAIN_SEP_STR, is_sep_byte, is_verbatim_sep, parse_prefix};
 use crate::{cmp, fmt, fs, io, sys};

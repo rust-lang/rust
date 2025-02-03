@@ -12,6 +12,7 @@ use crate::hash::{Hash, Hasher};
 use crate::ops::{self, Range};
 use crate::rc::Rc;
 use crate::str::FromStr;
+use crate::string::string::String;
 use crate::sync::Arc;
 use crate::sys::os_str::{Buf, Slice};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
