@@ -22,6 +22,17 @@ note: required by a bound in `I32Iterator`
 LL | trait I32Iterator = Iterator<Item = i32>;
    |                              ^^^^^^^^^^ required by this bound in `I32Iterator`
 
-error: aborting due to 2 previous errors
+error: conflicting associated type bounds for `Item` when expanding trait alias
+  --> $DIR/associated-types-overridden-binding.rs:10:13
+   |
+LL | trait I32Iterator = Iterator<Item = i32>;
+   |                              ---------- `Item` is specified to be `i32` here
+...
+LL |     let _: &dyn I32Iterator<Item = u32>;
+   |             ^^^^^^^^^^^^^^^^----------^
+   |                             |
+   |                             `Item` is specified to be `u32` here
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0284`.
