@@ -1974,7 +1974,7 @@ impl Step for Assemble {
             }
         }
 
-        let maybe_install_llvm_bitcode_linker = |compiler| {
+        let maybe_install_llvm_bitcode_linker = |compiler: Compiler| {
             if builder.config.llvm_bitcode_linker_enabled {
                 trace!("llvm-bitcode-linker enabled, installing");
                 let src_path = builder.ensure(crate::core::build_steps::tool::LlvmBitcodeLinker {
@@ -2182,7 +2182,7 @@ impl Step for Assemble {
             );
         }
 
-        maybe_install_llvm_bitcode_linker(build_compiler);
+        maybe_install_llvm_bitcode_linker(target_compiler);
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
         // so that it can be found when the newly built `rustc` is run.

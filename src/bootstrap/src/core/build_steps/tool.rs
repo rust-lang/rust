@@ -77,10 +77,7 @@ impl Step for ToolBuild {
     fn run(mut self, builder: &Builder<'_>) -> PathBuf {
         match self.mode {
             Mode::ToolRustc => {
-                assert!(
-                    self.compiler.stage > 0,
-                    "stage0 isn't supported for `Mode::ToolRustc` programs"
-                );
+                assert!(self.compiler.stage > 0, "stage0 isn't supported for {}", self.path);
                 // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
                 // we'd have stageN/bin/rustc and stageN/bin/$tool_name be effectively different stage
                 // compilers, which isn't what we want.
