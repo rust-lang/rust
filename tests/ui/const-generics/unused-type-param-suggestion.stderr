@@ -1,5 +1,5 @@
 error[E0392]: type parameter `N` is never used
-  --> $DIR/unused-type-param-suggestion.rs:3:10
+  --> $DIR/unused-type-param-suggestion.rs:4:10
    |
 LL | struct S<N>;
    |          ^ unused type parameter
@@ -8,7 +8,7 @@ LL | struct S<N>;
    = help: if you intended `N` to be a const parameter, use `const N: /* Type */` instead
 
 error[E0392]: type parameter `N` is never used
-  --> $DIR/unused-type-param-suggestion.rs:9:10
+  --> $DIR/unused-type-param-suggestion.rs:10:10
    |
 LL | struct T<N: Copy>;
    |          ^ unused type parameter
@@ -16,7 +16,7 @@ LL | struct T<N: Copy>;
    = help: consider removing `N`, referring to it in a field, or using a marker such as `PhantomData`
 
 error[E0091]: type parameter `N` is never used
-  --> $DIR/unused-type-param-suggestion.rs:13:8
+  --> $DIR/unused-type-param-suggestion.rs:14:8
    |
 LL | type A<N> = ();
    |        ^ unused type parameter
@@ -25,7 +25,7 @@ LL | type A<N> = ();
    = help: if you intended `N` to be a const parameter, use `const N: /* Type */` instead
 
 error[E0091]: type parameter `N` is never used
-  --> $DIR/unused-type-param-suggestion.rs:19:8
+  --> $DIR/unused-type-param-suggestion.rs:20:8
    |
 LL | type B<N: Copy> = ();
    |        ^ unused type parameter
@@ -33,7 +33,7 @@ LL | type B<N: Copy> = ();
    = help: consider removing `N` or referring to it in the body of the type alias
 
 error[E0091]: type parameter `N` is never used
-  --> $DIR/unused-type-param-suggestion.rs:22:8
+  --> $DIR/unused-type-param-suggestion.rs:23:8
    |
 LL | type C<N: Sized> = ();
    |        ^ unused type parameter
@@ -41,12 +41,13 @@ LL | type C<N: Sized> = ();
    = help: consider removing `N` or referring to it in the body of the type alias
 
 error[E0091]: type parameter `N` is never used
-  --> $DIR/unused-type-param-suggestion.rs:25:8
+  --> $DIR/unused-type-param-suggestion.rs:26:8
    |
 LL | type D<N: ?Sized> = ();
    |        ^ unused type parameter
    |
    = help: consider removing `N` or referring to it in the body of the type alias
+   = help: if you intended `N` to be a const parameter, use `const N: /* Type */` instead
 
 error: aborting due to 6 previous errors
 
