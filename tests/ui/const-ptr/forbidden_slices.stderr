@@ -190,7 +190,7 @@ LL |     from_ptr_range(ptr..ptr.add(1))
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-   = note: `ptr_offset_from_unsigned` called on pointers into different allocations
+   = note: `ptr_offset_from_unsigned` called on two different pointers that are not both derived from the same allocation
    |
 note: inside `std::ptr::const_ptr::<impl *const u32>::sub_ptr`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
@@ -205,7 +205,7 @@ LL | pub static R9: &[u32] = unsafe { from_ptr_range(&D0..(&D0 as *const u32).ad
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-   = note: `ptr_offset_from_unsigned` called on pointers into different allocations
+   = note: `ptr_offset_from_unsigned` called on two different pointers that are not both derived from the same allocation
    |
 note: inside `std::ptr::const_ptr::<impl *const u32>::sub_ptr`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL

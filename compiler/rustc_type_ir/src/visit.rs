@@ -59,7 +59,7 @@ use crate::{self as ty, Interner, TypeFlags};
 ///
 /// To implement this conveniently, use the derive macro located in
 /// `rustc_macros`.
-pub trait TypeVisitable<I: Interner>: fmt::Debug + Clone {
+pub trait TypeVisitable<I: Interner>: fmt::Debug {
     /// The entry point for visiting. To visit a value `t` with a visitor `v`
     /// call: `t.visit_with(v)`.
     ///
