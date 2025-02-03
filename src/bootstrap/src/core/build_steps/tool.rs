@@ -1,12 +1,11 @@
 use std::path::PathBuf;
 use std::{env, fs};
 
+use self::builder::cargo_profile_var;
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder;
-use crate::core::builder::{
-    Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step, cargo_profile_var,
-};
+use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::core::config::{DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{BootstrapCommand, command};
@@ -101,10 +100,27 @@ impl Step for ToolBuild {
             self.source_type,
             &self.extra_features,
         );
+
         if !self.allow_features.is_empty() {
             cargo.allow_features(self.allow_features);
         }
+
+        if self.path.ends_with("/rustdoc") {
+            // rustdoc is performance sensitive, so apply LTO to it.
+            let lto = match builder.config.rust_lto {
+                RustcLto::Off => Some("off"),
+                RustcLto::Thin => Some("thin"),
+                RustcLto::Fat => Some("fat"),
+                RustcLto::ThinLocal => None,
+            };
+
+            if let Some(lto) = lto {
+                cargo.env(cargo_profile_var("LTO", &builder.config), lto);
+            }
+        }
+
         cargo.args(self.cargo_args);
+
         let _guard = builder.msg_tool(
             Kind::Build,
             self.mode,
