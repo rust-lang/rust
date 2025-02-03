@@ -35,7 +35,7 @@ struct PatCtxt<'a, 'tcx> {
     typeck_results: &'a ty::TypeckResults<'tcx>,
 
     /// Used by the Rust 2024 migration lint.
-    rust_2024_migration_suggestion: Option<Rust2024IncompatiblePatSugg<'a>>,
+    rust_2024_migration_suggestion: Option<Rust2024IncompatiblePatSugg>,
 }
 
 pub(super) fn pat_from_hir<'a, 'tcx>(
@@ -44,25 +44,23 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
     typeck_results: &'a ty::TypeckResults<'tcx>,
     pat: &'tcx hir::Pat<'tcx>,
 ) -> Box<Pat<'tcx>> {
+    let migration_labels = typeck_results.rust_2024_migration_desugared_pats().get(pat.hir_id);
     let mut pcx = PatCtxt {
         tcx,
         typing_env,
         typeck_results,
-        rust_2024_migration_suggestion: typeck_results
-            .rust_2024_migration_desugared_pats()
-            .get(pat.hir_id)
-            .map(|labels| Rust2024IncompatiblePatSugg {
-                suggestion: Vec::new(),
-                ref_pattern_count: 0,
-                binding_mode_count: 0,
-                labels: labels.as_slice(),
-            }),
+        rust_2024_migration_suggestion: migration_labels.and(Some(Rust2024IncompatiblePatSugg {
+            suggestion: Vec::new(),
+            ref_pattern_count: 0,
+            binding_mode_count: 0,
+        })),
     };
     let result = pcx.lower_pattern(pat);
     debug!("pat_from_hir({:?}) = {:?}", pat, result);
-    if let Some(sugg) = pcx.rust_2024_migration_suggestion {
-        let mut spans = MultiSpan::from_spans(sugg.labels.iter().map(|(span, _)| *span).collect());
-        for (span, label) in sugg.labels {
+    if let Some(labels) = migration_labels {
+        let sugg = pcx.rust_2024_migration_suggestion.expect("suggestion should be present");
+        let mut spans = MultiSpan::from_spans(labels.iter().map(|(span, _)| *span).collect());
+        for (span, label) in labels {
             spans.push_span_label(*span, label.clone());
         }
         // If a relevant span is from at least edition 2024, this is a hard error.
