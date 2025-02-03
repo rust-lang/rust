@@ -3112,12 +3112,24 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             drop_span, borrow_span
         );
 
+        // `TerminatorKind::Return`'s span (the `drop_span` here) `lo` can be subtly wrong and point
+        // at a single character after the end of the function. This is somehow relied upon in
+        // existing diagnostics, and changing this in `rustc_mir_build` makes diagnostics worse in
+        // general. We fix these here.
+        let sm = self.infcx.tcx.sess.source_map();
+        let end_of_function = if drop_span.is_empty()
+            && let Ok(adjusted_span) = sm.span_extend_prev_while(drop_span, |c| c == '}')
+        {
+            adjusted_span
+        } else {
+            drop_span
+        };
         self.thread_local_value_does_not_live_long_enough(borrow_span)
             .with_span_label(
                 borrow_span,
                 "thread-local variables cannot be borrowed beyond the end of the function",
             )
-            .with_span_label(drop_span, "end of enclosing function is here")
+            .with_span_label(end_of_function, "end of enclosing function is here")
     }
 
     #[instrument(level = "debug", skip(self))]
