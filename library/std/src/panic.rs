@@ -529,6 +529,3 @@ pub fn get_backtrace_style() -> Option<BacktraceStyle> {
         Err(new) => BacktraceStyle::from_u8(new),
     }
 }
-
-#[cfg(test)]
-mod tests;
