@@ -1026,19 +1026,6 @@ impl Config {
         }
     }
 
-    pub fn find_rust_src_root(&self) -> Option<PathBuf> {
-        let mut path = self.src_base.clone();
-        let path_postfix = Path::new("src/etc/lldb_batchmode.py");
-
-        while path.pop() {
-            if path.join(&path_postfix).is_file() {
-                return Some(path);
-            }
-        }
-
-        None
-    }
-
     fn parse_edition(&self, line: &str) -> Option<String> {
         self.parse_name_value_directive(line, "edition")
     }
@@ -1098,7 +1085,7 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     }
 
     if value.contains(SRC_BASE) {
-        value = value.replace(SRC_BASE, &config.src_base.to_string_lossy());
+        value = value.replace(SRC_BASE, &config.src_test_suite_root.to_str().unwrap());
     }
 
     if value.contains(BUILD_BASE) {
