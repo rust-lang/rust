@@ -15,7 +15,6 @@ const fn c() -> u32 {
     b()
     //~^ ERROR evaluation of constant value failed
     //~| NOTE hey
-    //~| NOTE inside
 }
 
 const X: u32 = c();

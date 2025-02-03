@@ -3,8 +3,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: unable to turn pointer into integer
    |
-note: inside `std::ptr::read::<u8>`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `std::ptr::const_ptr::<impl *const u8>::read`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `C`

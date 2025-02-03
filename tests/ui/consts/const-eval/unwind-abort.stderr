@@ -4,11 +4,6 @@ error[E0080]: evaluation of constant value failed
 LL |     panic!()
    |     ^^^^^^^^ explicit panic
    |
-note: inside `foo`
-  --> $DIR/unwind-abort.rs:2:5
-   |
-LL |     panic!()
-   |     ^^^^^^^^
 note: inside `_`
   --> $DIR/unwind-abort.rs:5:15
    |

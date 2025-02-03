@@ -104,8 +104,6 @@ error[E0080]: could not evaluate static initializer
    |
    = note: assertion failed: 0 < pointee_size && pointee_size <= isize::MAX as usize
    |
-note: inside `std::ptr::const_ptr::<impl *const ()>::sub_ptr`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `from_ptr_range::<'_, ()>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
 note: inside `R1`
@@ -120,8 +118,6 @@ error[E0080]: could not evaluate static initializer
    |
    = note: out-of-bounds pointer arithmetic: expected a pointer to 8 bytes of memory, but got ALLOC10 which is only 4 bytes from the end of the allocation
    |
-note: inside `std::ptr::const_ptr::<impl *const u32>::add`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `R2`
   --> $DIR/forbidden_slices.rs:53:25
    |
@@ -179,8 +175,6 @@ error[E0080]: could not evaluate static initializer
    |
    = note: out-of-bounds pointer arithmetic: expected a pointer to 8 bytes of memory, but got ALLOC11+0x1 which is only 7 bytes from the end of the allocation
    |
-note: inside `std::ptr::const_ptr::<impl *const u64>::add`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `R8`
   --> $DIR/forbidden_slices.rs:77:25
    |
@@ -192,8 +186,6 @@ error[E0080]: could not evaluate static initializer
    |
    = note: `ptr_offset_from_unsigned` called on two different pointers that are not both derived from the same allocation
    |
-note: inside `std::ptr::const_ptr::<impl *const u32>::sub_ptr`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
 note: inside `R9`
@@ -207,8 +199,6 @@ error[E0080]: could not evaluate static initializer
    |
    = note: `ptr_offset_from_unsigned` called on two different pointers that are not both derived from the same allocation
    |
-note: inside `std::ptr::const_ptr::<impl *const u32>::sub_ptr`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
 note: inside `R10`

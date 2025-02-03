@@ -4,11 +4,6 @@ error[E0080]: evaluation of constant value failed
 LL |     b()
    |     ^^^ reached the configured maximum number of stack frames
    |
-note: inside `a`
-  --> $DIR/infinite-recursion-const-fn.rs:4:5
-   |
-LL |     b()
-   |     ^^^
 note: inside `b`
   --> $DIR/infinite-recursion-const-fn.rs:7:5
    |
