@@ -1082,6 +1082,7 @@ marker_impls! {
     issue = "none",
     reason = "internal trait for implementing various traits for all function pointers"
 )]
+#[fundamental]
 #[lang = "fn_ptr_trait"]
 #[rustc_deny_explicit_impl]
 #[rustc_do_not_implement_via_object]
