@@ -1,4 +1,5 @@
 use std::ops::{Bound, Range};
+use std::sync::Arc;
 
 use ast::token::IdentIsRaw;
 use pm::bridge::{
@@ -11,7 +12,6 @@ use rustc_ast::tokenstream::{self, DelimSpacing, Spacing, TokenStream};
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diag, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parser::Parser;
@@ -446,7 +446,7 @@ impl<'a, 'b> Rustc<'a, 'b> {
 impl server::Types for Rustc<'_, '_> {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
-    type SourceFile = Lrc<SourceFile>;
+    type SourceFile = Arc<SourceFile>;
     type Span = Span;
     type Symbol = Symbol;
 }
@@ -657,7 +657,7 @@ impl server::TokenStream for Rustc<'_, '_> {
 
 impl server::SourceFile for Rustc<'_, '_> {
     fn eq(&mut self, file1: &Self::SourceFile, file2: &Self::SourceFile) -> bool {
-        Lrc::ptr_eq(file1, file2)
+        Arc::ptr_eq(file1, file2)
     }
 
     fn path(&mut self, file: &Self::SourceFile) -> String {

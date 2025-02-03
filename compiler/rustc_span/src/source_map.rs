@@ -102,8 +102,8 @@ pub trait FileLoader {
     fn read_file(&self, path: &Path) -> io::Result<String>;
 
     /// Read the contents of a potentially non-UTF-8 file into memory.
-    /// We don't normalize binary files, so we can start in an Lrc.
-    fn read_binary_file(&self, path: &Path) -> io::Result<Lrc<[u8]>>;
+    /// We don't normalize binary files, so we can start in an Arc.
+    fn read_binary_file(&self, path: &Path) -> io::Result<Arc<[u8]>>;
 }
 
 /// A FileLoader that uses std::fs to load real files.
@@ -124,12 +124,12 @@ impl FileLoader for RealFileLoader {
         fs::read_to_string(path)
     }
 
-    fn read_binary_file(&self, path: &Path) -> io::Result<Lrc<[u8]>> {
+    fn read_binary_file(&self, path: &Path) -> io::Result<Arc<[u8]>> {
         let mut file = fs::File::open(path)?;
         let len = file.metadata()?.len();
 
-        let mut bytes = Lrc::new_uninit_slice(len as usize);
-        let mut buf = BorrowedBuf::from(Lrc::get_mut(&mut bytes).unwrap());
+        let mut bytes = Arc::new_uninit_slice(len as usize);
+        let mut buf = BorrowedBuf::from(Arc::get_mut(&mut bytes).unwrap());
         match file.read_buf_exact(buf.unfilled()) {
             Ok(()) => {}
             Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => {
@@ -146,9 +146,9 @@ impl FileLoader for RealFileLoader {
         // But we are not guaranteed to be at the end of the file, because we did not attempt to do
         // a read with a non-zero-sized buffer and get Ok(0).
         // So we do small read to a fixed-size buffer. If the read returns no bytes then we're
-        // already done, and we just return the Lrc we built above.
+        // already done, and we just return the Arc we built above.
         // If the read returns bytes however, we just fall back to reading into a Vec then turning
-        // that into an Lrc, losing our nice peak memory behavior. This fallback code path should
+        // that into an Arc, losing our nice peak memory behavior. This fallback code path should
         // be rarely exercised.
 
         let mut probe = [0u8; 32];
@@ -172,8 +172,8 @@ impl FileLoader for RealFileLoader {
 
 #[derive(Default)]
 struct SourceMapFiles {
-    source_files: monotonic::MonotonicVec<Lrc<SourceFile>>,
-    stable_id_to_source_file: UnhashMap<StableSourceFileId, Lrc<SourceFile>>,
+    source_files: monotonic::MonotonicVec<Arc<SourceFile>>,
+    stable_id_to_source_file: UnhashMap<StableSourceFileId, Arc<SourceFile>>,
 }
 
 /// Used to construct a `SourceMap` with `SourceMap::with_inputs`.
@@ -232,7 +232,7 @@ impl SourceMap {
         self.file_loader.file_exists(path)
     }
 
-    pub fn load_file(&self, path: &Path) -> io::Result<Lrc<SourceFile>> {
+    pub fn load_file(&self, path: &Path) -> io::Result<Arc<SourceFile>> {
         let src = self.file_loader.read_file(path)?;
         let filename = path.to_owned().into();
         Ok(self.new_source_file(filename, src))
@@ -242,7 +242,7 @@ impl SourceMap {
     ///
     /// Unlike `load_file`, guarantees that no normalization like BOM-removal
     /// takes place.
-    pub fn load_binary_file(&self, path: &Path) -> io::Result<(Lrc<[u8]>, Span)> {
+    pub fn load_binary_file(&self, path: &Path) -> io::Result<(Arc<[u8]>, Span)> {
         let bytes = self.file_loader.read_binary_file(path)?;
 
         // We need to add file to the `SourceMap`, so that it is present
@@ -265,14 +265,14 @@ impl SourceMap {
 
     // By returning a `MonotonicVec`, we ensure that consumers cannot invalidate
     // any existing indices pointing into `files`.
-    pub fn files(&self) -> MappedReadGuard<'_, monotonic::MonotonicVec<Lrc<SourceFile>>> {
+    pub fn files(&self) -> MappedReadGuard<'_, monotonic::MonotonicVec<Arc<SourceFile>>> {
         ReadGuard::map(self.files.borrow(), |files| &files.source_files)
     }
 
     pub fn source_file_by_stable_id(
         &self,
         stable_id: StableSourceFileId,
-    ) -> Option<Lrc<SourceFile>> {
+    ) -> Option<Arc<SourceFile>> {
         self.files.borrow().stable_id_to_source_file.get(&stable_id).cloned()
     }
 
@@ -280,7 +280,7 @@ impl SourceMap {
         &self,
         file_id: StableSourceFileId,
         mut file: SourceFile,
-    ) -> Result<Lrc<SourceFile>, OffsetOverflowError> {
+    ) -> Result<Arc<SourceFile>, OffsetOverflowError> {
         let mut files = self.files.borrow_mut();
 
         file.start_pos = BytePos(if let Some(last_file) = files.source_files.last() {
@@ -291,9 +291,9 @@ impl SourceMap {
             0
         });
 
-        let file = Lrc::new(file);
-        files.source_files.push(Lrc::clone(&file));
-        files.stable_id_to_source_file.insert(file_id, Lrc::clone(&file));
+        let file = Arc::new(file);
+        files.source_files.push(Arc::clone(&file));
+        files.stable_id_to_source_file.insert(file_id, Arc::clone(&file));
 
         Ok(file)
     }
@@ -301,7 +301,7 @@ impl SourceMap {
     /// Creates a new `SourceFile`.
     /// If a file already exists in the `SourceMap` with the same ID, that file is returned
     /// unmodified.
-    pub fn new_source_file(&self, filename: FileName, src: String) -> Lrc<SourceFile> {
+    pub fn new_source_file(&self, filename: FileName, src: String) -> Arc<SourceFile> {
         self.try_new_source_file(filename, src).unwrap_or_else(|OffsetOverflowError| {
             eprintln!(
                 "fatal error: rustc does not support text files larger than {} bytes",
@@ -315,7 +315,7 @@ impl SourceMap {
         &self,
         filename: FileName,
         src: String,
-    ) -> Result<Lrc<SourceFile>, OffsetOverflowError> {
+    ) -> Result<Arc<SourceFile>, OffsetOverflowError> {
         // Note that filename may not be a valid path, eg it may be `<anon>` etc,
         // but this is okay because the directory determined by `path.pop()` will
         // be empty, so the working directory will be used.
@@ -353,7 +353,7 @@ impl SourceMap {
         multibyte_chars: Vec<MultiByteChar>,
         normalized_pos: Vec<NormalizedPos>,
         metadata_index: u32,
-    ) -> Lrc<SourceFile> {
+    ) -> Arc<SourceFile> {
         let source_len = RelativeBytePos::from_u32(source_len);
 
         let source_file = SourceFile {
@@ -393,9 +393,9 @@ impl SourceMap {
     }
 
     /// Return the SourceFile that contains the given `BytePos`
-    pub fn lookup_source_file(&self, pos: BytePos) -> Lrc<SourceFile> {
+    pub fn lookup_source_file(&self, pos: BytePos) -> Arc<SourceFile> {
         let idx = self.lookup_source_file_idx(pos);
-        Lrc::clone(&(*self.files.borrow().source_files)[idx])
+        Arc::clone(&(*self.files.borrow().source_files)[idx])
     }
 
     /// Looks up source information about a `BytePos`.
@@ -406,7 +406,7 @@ impl SourceMap {
     }
 
     /// If the corresponding `SourceFile` is empty, does not return a line number.
-    pub fn lookup_line(&self, pos: BytePos) -> Result<SourceFileAndLine, Lrc<SourceFile>> {
+    pub fn lookup_line(&self, pos: BytePos) -> Result<SourceFileAndLine, Arc<SourceFile>> {
         let f = self.lookup_source_file(pos);
 
         let pos = f.relative_position(pos);
@@ -441,7 +441,7 @@ impl SourceMap {
     pub fn span_to_location_info(
         &self,
         sp: Span,
-    ) -> (Option<Lrc<SourceFile>>, usize, usize, usize, usize) {
+    ) -> (Option<Arc<SourceFile>>, usize, usize, usize, usize) {
         if self.files.borrow().source_files.is_empty() || sp.is_dummy() {
             return (None, 0, 0, 0, 0);
         }
@@ -477,7 +477,7 @@ impl SourceMap {
         if lo != hi {
             return true;
         }
-        let f = Lrc::clone(&(*self.files.borrow().source_files)[lo]);
+        let f = Arc::clone(&(*self.files.borrow().source_files)[lo]);
         let lo = f.relative_position(sp.lo());
         let hi = f.relative_position(sp.hi());
         f.lookup_line(lo) != f.lookup_line(hi)
@@ -998,12 +998,12 @@ impl SourceMap {
         }
     }
 
-    pub fn get_source_file(&self, filename: &FileName) -> Option<Lrc<SourceFile>> {
+    pub fn get_source_file(&self, filename: &FileName) -> Option<Arc<SourceFile>> {
         // Remap filename before lookup
         let filename = self.path_mapping().map_filename_prefix(filename).0;
         for sf in self.files.borrow().source_files.iter() {
             if filename == sf.name {
-                return Some(Lrc::clone(&sf));
+                return Some(Arc::clone(&sf));
             }
         }
         None
@@ -1012,7 +1012,7 @@ impl SourceMap {
     /// For a global `BytePos`, computes the local offset within the containing `SourceFile`.
     pub fn lookup_byte_offset(&self, bpos: BytePos) -> SourceFileAndBytePos {
         let idx = self.lookup_source_file_idx(bpos);
-        let sf = Lrc::clone(&(*self.files.borrow().source_files)[idx]);
+        let sf = Arc::clone(&(*self.files.borrow().source_files)[idx]);
         let offset = bpos - sf.start_pos;
         SourceFileAndBytePos { sf, pos: offset }
     }
@@ -1082,7 +1082,7 @@ impl SourceMap {
     }
 }
 
-pub fn get_source_map() -> Option<Lrc<SourceMap>> {
+pub fn get_source_map() -> Option<Arc<SourceMap>> {
     with_session_globals(|session_globals| session_globals.source_map.clone())
 }
 
