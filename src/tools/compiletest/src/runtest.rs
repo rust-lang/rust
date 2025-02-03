@@ -1365,7 +1365,7 @@ impl<'test> TestCx<'test> {
         //
         // Note: avoid adding a subdirectory of an already filtered directory here, otherwise the
         // same slice of text will be double counted and the truncation might not happen.
-        add_path(&self.config.src_base);
+        add_path(&self.config.src_test_suite_root);
         add_path(&self.config.build_base);
 
         read2_abbreviated(child, &filter_paths_from_len).expect("failed to read output")
@@ -1471,7 +1471,7 @@ impl<'test> TestCx<'test> {
         // Similarly, vendored sources shouldn't be shown when running from a dist tarball.
         rustc.arg("-Z").arg(format!(
             "ignore-directory-in-diagnostics-source-blocks={}",
-            self.config.find_rust_src_root().unwrap().join("vendor").display(),
+            self.config.src_root.join("vendor").to_str().unwrap(),
         ));
 
         // Optionally prevent default --sysroot if specified in test compile-flags.
@@ -1632,7 +1632,7 @@ impl<'test> TestCx<'test> {
         if self.props.remap_src_base {
             rustc.arg(format!(
                 "--remap-path-prefix={}={}",
-                self.config.src_base.display(),
+                self.config.src_test_suite_root.to_str().unwrap(),
                 FAKE_SRC_BASE,
             ));
         }
