@@ -1370,8 +1370,8 @@ impl<'tcx> Visitor<'tcx> for ContainsName<'_, 'tcx> {
         }
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }
 

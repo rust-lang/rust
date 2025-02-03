@@ -1079,8 +1079,8 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
     // Panics in const blocks will cause compilation to fail.
     fn visit_anon_const(&mut self, _: &'tcx AnonConst) {}
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }
 

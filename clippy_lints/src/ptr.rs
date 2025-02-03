@@ -583,8 +583,8 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[
     }
     impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
         type NestedFilter = nested_filter::OnlyBodies;
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.cx.tcx.hir()
+        fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+            self.cx.tcx
         }
 
         fn visit_anon_const(&mut self, _: &'tcx AnonConst) {}
