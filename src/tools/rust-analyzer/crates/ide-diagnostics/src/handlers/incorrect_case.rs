@@ -936,6 +936,7 @@ fn func() {
     fn override_lint_level() {
         check_diagnostics(
             r#"
+#![allow(unused_variables)]
 #[warn(nonstandard_style)]
 fn foo() {
     let BAR;
@@ -992,6 +993,7 @@ struct QUX;
 const foo: i32 = 0;
 fn BAR() {
     let BAZ;
+    _ = BAZ;
 }
         "#,
         );

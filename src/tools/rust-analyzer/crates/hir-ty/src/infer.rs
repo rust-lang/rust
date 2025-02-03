@@ -466,6 +466,9 @@ pub struct InferenceResult {
     pub type_of_for_iterator: FxHashMap<ExprId, Ty>,
     type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch>,
     /// Whether there are any type-mismatching errors in the result.
+    // FIXME: This isn't as useful as initially thought due to us falling back placeholders to
+    // `TyKind::Error`.
+    // Which will then mark this field.
     pub(crate) has_errors: bool,
     /// Interned common types to return references to.
     // FIXME: Move this into `InferenceContext`
