@@ -228,4 +228,9 @@ fn main() {
     assert_type_eq(b, &0u32);
     assert_type_eq(c, &[0u32]);
     assert_type_eq(d, 0u32);
+
+    // Test that we don't remove excess open parentheses when removing reference patterns
+    let [&(_)] = &[&0];
+    //~^ ERROR: this pattern relies on behavior which may change in edition 2024
+    //~| WARN: this changes meaning in Rust 2024
 }

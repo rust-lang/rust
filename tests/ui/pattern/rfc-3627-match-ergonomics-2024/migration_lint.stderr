@@ -380,5 +380,19 @@ LL -     let [Foo(&ref a @ [ref b]), Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
 LL +     let [&Foo(a @ [b]), &Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
    |
 
-error: aborting due to 27 previous errors
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/migration_lint.rs:233:10
+   |
+LL |     let [&(_)] = &[&0];
+   |          ^^ cannot implicitly match against multiple layers of reference
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the reference pattern implicit
+   |
+LL -     let [&(_)] = &[&0];
+LL +     let [(_)] = &[&0];
+   |
+
+error: aborting due to 28 previous errors
 

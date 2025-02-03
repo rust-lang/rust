@@ -7,6 +7,7 @@ use rustc_index::IndexVec;
 use rustc_lint as lint;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeckResults};
+use rustc_span::source_map::SourceMap;
 use rustc_span::{Ident, Span};
 
 use crate::errors::*;
@@ -113,7 +114,7 @@ impl<'a> PatMigration<'a> {
         for (span, label) in self.labels {
             spans.push_span_label(*span, label.clone());
         }
-        let sugg = self.build_suggestion(typeck_results);
+        let sugg = self.build_suggestion(tcx.sess.source_map(), typeck_results);
         // If a relevant span is from at least edition 2024, this is a hard error.
         let is_hard_error = spans.primary_spans().iter().any(|span| span.at_least_rust_2024());
         if is_hard_error {
@@ -135,8 +136,9 @@ impl<'a> PatMigration<'a> {
         }
     }
 
-    fn build_suggestion(
+    fn build_suggestion<'tcx>(
         &self,
+        source_map: &'tcx SourceMap,
         typeck_results: &'a TypeckResults<'_>,
     ) -> Rust2024IncompatiblePatSugg {
         let mut removed_modifiers = 0;
@@ -167,7 +169,10 @@ impl<'a> PatMigration<'a> {
             PatDerefKind::Explicit { inner_span } if !deref.suggest => {
                 // This is a ref pattern in the source but not the suggestion; suggest removing it.
                 removed_ref_pats += 1;
-                Some((deref.span.with_hi(inner_span.lo()), String::new()))
+                // Avoid eating the '(' in `&(...)`
+                let span = source_map.span_until_char(deref.span.with_hi(inner_span.lo()), '(');
+                // But *do* eat the ' ' in `&mut [...]`
+                Some((source_map.span_extend_while_whitespace(span), String::new()))
             }
             PatDerefKind::Implicit { hir_id } if deref.suggest => {
                 // This is a ref pattern in the suggestion but not the source; suggest adding it.
