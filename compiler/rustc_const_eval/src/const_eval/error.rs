@@ -48,11 +48,8 @@ impl MachineStopType for ConstEvalErrKind {
             | ModifiedGlobal
             | WriteThroughImmutablePointer => {}
             AssertFailure(kind) => kind.add_args(adder),
-            Panic { msg, line, col, file } => {
+            Panic { msg, .. } => {
                 adder("msg".into(), msg.into_diag_arg(&mut None));
-                adder("file".into(), file.into_diag_arg(&mut None));
-                adder("line".into(), line.into_diag_arg(&mut None));
-                adder("col".into(), col.into_diag_arg(&mut None));
             }
         }
     }
@@ -72,7 +69,7 @@ pub fn get_span_and_frames<'tcx>(
     let mut stacktrace = Frame::generate_stacktrace_from_stack(stack);
     // Filter out `requires_caller_location` frames.
     stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*tcx));
-    let span = stacktrace.first().map(|f| f.span).unwrap_or(tcx.span);
+    let span = stacktrace.last().map(|f| f.span).unwrap_or(tcx.span);
 
     let mut frames = Vec::new();
 
@@ -113,6 +110,20 @@ pub fn get_span_and_frames<'tcx>(
         if let Some(frame) = last_frame {
             add_frame(frame);
         }
+    }
+
+    // In `rustc`, we present const-eval errors from the outer-most place first to the inner-most.
+    // So we reverse the frames here. The first frame will be the same as the span from the current
+    // `TyCtxtAt<'_>`, so we remove it as it would be redundant.
+    frames.reverse();
+    if frames.len() > 0 {
+        frames.remove(0);
+    }
+    if let Some(last) = frames.last_mut()
+        // If the span is not going to be printed, we don't want the span label for `is_last`.
+        && tcx.sess.source_map().span_to_snippet(last.span.source_callsite()).is_ok()
+    {
+        last.has_label = true;
     }
 
     (span, frames)
