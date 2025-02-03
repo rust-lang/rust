@@ -4,13 +4,8 @@ error[E0080]: evaluation of constant value failed
 LL |     b()
    |     ^^^ hey
    |
-note: inside `c`
-  --> $DIR/const_panic_track_caller.rs:15:5
-   |
-LL |     b()
-   |     ^^^
 note: inside `X`
-  --> $DIR/const_panic_track_caller.rs:21:16
+  --> $DIR/const_panic_track_caller.rs:20:16
    |
 LL | const X: u32 = c();
    |                ^^^

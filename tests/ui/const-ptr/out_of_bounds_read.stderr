@@ -3,8 +3,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: memory access failed: expected a pointer to 4 bytes of memory, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes
    |
-note: inside `std::ptr::read::<u32>`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `_READ`
   --> $DIR/out_of_bounds_read.rs:10:33
    |
@@ -16,8 +14,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: memory access failed: expected a pointer to 4 bytes of memory, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes
    |
-note: inside `std::ptr::read::<u32>`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `std::ptr::const_ptr::<impl *const u32>::read`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `_CONST_READ`
@@ -31,8 +27,6 @@ error[E0080]: evaluation of constant value failed
    |
    = note: memory access failed: expected a pointer to 4 bytes of memory, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes
    |
-note: inside `std::ptr::read::<u32>`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `std::ptr::mut_ptr::<impl *mut u32>::read`
   --> $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
 note: inside `_MUT_READ`
