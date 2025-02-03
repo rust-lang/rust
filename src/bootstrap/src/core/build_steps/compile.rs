@@ -948,9 +948,9 @@ fn cp_rustc_component_to_ci_sysroot(builder: &Builder<'_>, sysroot: &Path, conte
 
 #[derive(Debug, PartialOrd, Ord, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
-    pub target: TargetSelection,
+    target: TargetSelection,
     /// The **previous** compiler used to compile this compiler.
-    pub compiler: Compiler,
+    compiler: Compiler,
     /// Whether to build a subset of crates, rather than the whole compiler.
     ///
     /// This should only be requested by the user, not used within bootstrap itself.
@@ -960,6 +960,7 @@ pub struct Rustc {
 }
 
 impl Rustc {
+    #[cfg(test)]
     pub fn new(compiler: Compiler, target: TargetSelection) -> Self {
         Self { target, compiler, crates: Default::default() }
     }
@@ -1045,7 +1046,8 @@ impl Step for Rustc {
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         if compiler_to_use != compiler {
-            builder.ensure(Rustc::new(compiler_to_use, target));
+            let _ = builder.compiler(compiler_to_use.stage, target);
+
             let msg = if compiler_to_use.host == target {
                 format!(
                     "Uplifting rustc (stage{} -> stage{})",
@@ -1574,7 +1576,7 @@ impl Step for CodegenBackend {
         let target = self.target;
         let backend = self.backend;
 
-        builder.ensure(Rustc::new(compiler, target));
+        let _ = builder.compiler(compiler.stage, target);
 
         if builder.config.keep_stage.contains(&compiler.stage) {
             trace!("`keep-stage` requested");
@@ -2052,7 +2054,11 @@ impl Step for Assemble {
             "target_compiler.host" = ?target_compiler.host,
             "building compiler libraries to link to"
         );
-        let actual_stage = builder.ensure(Rustc::new(build_compiler, target_compiler.host));
+        let actual_stage = builder.ensure(Rustc {
+            compiler: build_compiler,
+            target: target_compiler.host,
+            crates: vec![],
+        });
         // Current build_compiler.stage might be uplifted instead of being built; so update it
         // to not fail while linking the artifacts.
         debug!(

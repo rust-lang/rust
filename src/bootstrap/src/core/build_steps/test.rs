@@ -252,7 +252,6 @@ impl Step for Cargotest {
     /// test` to ensure that we don't regress the test suites there.
     fn run(self, builder: &Builder<'_>) {
         let compiler = builder.compiler(self.stage, self.host);
-        builder.ensure(compile::Rustc::new(compiler, compiler.host));
         let cargo = builder.ensure(tool::Cargo { compiler, target: compiler.host });
 
         // Note that this is a short, cryptic, and not scoped directory name. This
@@ -370,7 +369,7 @@ impl Step for RustAnalyzer {
 
         // We don't need to build the whole Rust Analyzer for the proc-macro-srv test suite,
         // but we do need the standard library to be present.
-        builder.ensure(compile::Rustc::new(compiler, host));
+        let _ = builder.compiler(compiler.stage, host);
 
         let workspace_path = "src/tools/rust-analyzer";
         // until the whole RA test suite runs on `i686`, we only run
@@ -1664,7 +1663,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         };
 
         if suite.ends_with("fulldeps") {
-            builder.ensure(compile::Rustc::new(compiler, target));
+            let _ = builder.compiler(compiler.stage, target);
         }
 
         if suite == "debuginfo" {
@@ -2823,7 +2822,7 @@ impl Step for CrateRustdoc {
         // the target rustdoc (`ci-rustc-sysroot` vs `stage2`). In that case, we need to ensure this
         // explicitly to make sure it ends up in the stage2 sysroot.
         builder.ensure(compile::Std::new(compiler, target));
-        builder.ensure(compile::Rustc::new(compiler, target));
+        let _ = builder.compiler(compiler.stage, target);
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -2914,7 +2913,7 @@ impl Step for CrateRustdocJsonTypes {
         // `compiler`, then it would cause rustdoc to be built *again*, which
         // isn't really necessary.
         let compiler = builder.compiler_for(builder.top_stage, target, target);
-        builder.ensure(compile::Rustc::new(compiler, target));
+        let _ = builder.compiler(compiler.stage, target);
 
         let cargo = tool::prepare_tool_cargo(
             builder,

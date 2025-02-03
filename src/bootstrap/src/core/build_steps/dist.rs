@@ -729,7 +729,7 @@ impl Step for RustcDev {
             return None;
         }
 
-        builder.ensure(compile::Rustc::new(compiler, target));
+        let _ = builder.compiler(compiler.stage, target);
 
         let tarball = Tarball::new(builder, "rustc-dev", &target.triple);
 
