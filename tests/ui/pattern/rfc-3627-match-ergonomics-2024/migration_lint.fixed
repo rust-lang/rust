@@ -121,7 +121,7 @@ fn main() {
     assert_type_eq(b, &&0u32);
     assert_type_eq(c, &&0u32);
 
-    if let &Struct { a: &Some(a), b: &Some(&b), c: &Some(ref c) } =
+    if let &Struct { a: &Some(a), b: &Some(&b), c: Some(c) } =
         //~^ ERROR: this pattern relies on behavior which may change in edition 2024
         //~| WARN: this changes meaning in Rust 2024
         &(Struct { a: &Some(&0), b: &Some(&0), c: &Some(&0) })
@@ -172,7 +172,7 @@ fn main() {
     assert_type_eq(a, &0u32);
 
     // Test that we don't change bindings' modes when adding reference paterns (caught early).
-    let &(&a, ref b, &[ref c], &mut [&mut (ref d, &[ref e])]) = &(&0, 0, &[0], &mut [&mut (0, &[0])]);
+    let &(&a, ref b, [c], &mut [&mut (ref d, [e])]) = &(&0, 0, &[0], &mut [&mut (0, &[0])]);
     //~^ ERROR: this pattern relies on behavior which may change in edition 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(a, 0u32);
@@ -190,7 +190,7 @@ fn main() {
     assert_type_eq(c, 0u32);
 
     // Test featuring both additions and removals.
-    let &(&a, &mut (ref b, &[ref c])) = &(&0, &mut (0, &[0]));
+    let &(&a, &mut (ref b, [c])) = &(&0, &mut (0, &[0]));
     //~^ ERROR: this pattern relies on behavior which may change in edition 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(a, 0u32);

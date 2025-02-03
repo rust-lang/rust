@@ -1104,7 +1104,7 @@ pub(crate) struct Rust2024IncompatiblePat {
 
 pub(crate) struct Rust2024IncompatiblePatSugg {
     pub(crate) suggestion: Vec<(Span, String)>,
-    pub(crate) kind: Rust2024IncompatiblePatSuggKind,
+    pub(crate) kind: Option<Rust2024IncompatiblePatSuggKind>,
     pub(crate) ref_pattern_count: usize,
     pub(crate) binding_mode_count: usize,
 }
@@ -1120,31 +1120,33 @@ impl Subdiagnostic for Rust2024IncompatiblePatSugg {
         diag: &mut Diag<'_, G>,
         _f: &F,
     ) {
+        use Rust2024IncompatiblePatSuggKind::*;
         let applicability =
             if self.suggestion.iter().all(|(span, _)| span.can_be_used_for_suggestions()) {
                 Applicability::MachineApplicable
             } else {
                 Applicability::MaybeIncorrect
             };
-        let derefs = if self.ref_pattern_count > 0 {
-            format!("reference pattern{}", pluralize!(self.ref_pattern_count))
+        let msg = if let Some(kind) = self.kind {
+            let derefs = if self.ref_pattern_count > 0 {
+                format!("reference pattern{}", pluralize!(self.ref_pattern_count))
+            } else {
+                String::new()
+            };
+            let modes = if self.binding_mode_count > 0 {
+                format!("variable binding mode{}", pluralize!(self.binding_mode_count))
+            } else {
+                String::new()
+            };
+            let and = if !derefs.is_empty() && !modes.is_empty() { " and " } else { "" };
+            let (old_visibility, new_visibility) = match kind {
+                Subtractive => ("", "implicit"),
+                Additive => ("implied ", "explicit"),
+            };
+            format!("make the {old_visibility}{derefs}{and}{modes} {new_visibility}")
         } else {
-            String::new()
+            "rewrite the pattern".to_owned()
         };
-        let modes = if self.binding_mode_count > 0 {
-            format!("variable binding mode{}", pluralize!(self.binding_mode_count))
-        } else {
-            String::new()
-        };
-        let and = if !derefs.is_empty() && !modes.is_empty() { " and " } else { "" };
-        let (old_visibility, new_visibility) = match self.kind {
-            Rust2024IncompatiblePatSuggKind::Subtractive => ("", "implicit"),
-            Rust2024IncompatiblePatSuggKind::Additive => ("implied ", "explicit"),
-        };
-        diag.multipart_suggestion_verbose(
-            format!("make the {old_visibility}{derefs}{and}{modes} {new_visibility}"),
-            self.suggestion,
-            applicability,
-        );
+        diag.multipart_suggestion_verbose(msg, self.suggestion, applicability);
     }
 }
