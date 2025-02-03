@@ -155,11 +155,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pattern_range_endpoint(
         &mut self,
         expr: Option<&'tcx hir::PatExpr<'tcx>>,
-    ) -> Result<
-        (Option<PatRangeBoundary<'tcx>>, Option<Ascription<'tcx>>, Option<LocalDefId>),
-        ErrorGuaranteed,
-    > {
-        let Some(expr) = expr else { return Ok((None, None, None)) };
+        // Out-parameters collecting extra data to be reapplied by the caller
+        ascriptions: &mut Vec<Ascription<'tcx>>,
+        inline_consts: &mut Vec<LocalDefId>,
+    ) -> Result<Option<PatRangeBoundary<'tcx>>, ErrorGuaranteed> {
+        let Some(expr) = expr else { return Ok(None) };
 
         let (kind, ascr, inline_const) = match self.lower_lit(expr) {
             PatKind::ExpandedConstant { subpattern, def_id, is_inline: true } => {
@@ -187,7 +187,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 return Err(self.tcx.dcx().span_delayed_bug(expr.span, msg));
             }
         };
-        Ok((Some(PatRangeBoundary::Finite(value)), ascr, inline_const))
+
+        ascriptions.extend(ascr);
+        inline_consts.extend(inline_const);
+        Ok(Some(PatRangeBoundary::Finite(value)))
     }
 
     /// Overflowing literals are linted against in a late pass. This is mostly fine, except when we
@@ -250,11 +253,15 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             self.tcx.dcx().span_bug(span, msg);
         }
 
-        let (lo, lo_ascr, lo_inline) = self.lower_pattern_range_endpoint(lo_expr)?;
-        let (hi, hi_ascr, hi_inline) = self.lower_pattern_range_endpoint(hi_expr)?;
+        // Collect extra data while lowering the endpoints, to be reapplied later.
+        let mut ascriptions = vec![];
+        let mut inline_consts = vec![];
 
-        let lo = lo.unwrap_or(PatRangeBoundary::NegInfinity);
-        let hi = hi.unwrap_or(PatRangeBoundary::PosInfinity);
+        let mut lower_endpoint =
+            |expr| self.lower_pattern_range_endpoint(expr, &mut ascriptions, &mut inline_consts);
+
+        let lo = lower_endpoint(lo_expr)?.unwrap_or(PatRangeBoundary::NegInfinity);
+        let hi = lower_endpoint(hi_expr)?.unwrap_or(PatRangeBoundary::PosInfinity);
 
         let cmp = lo.compare_with(hi, ty, self.tcx, self.typing_env);
         let mut kind = PatKind::Range(Box::new(PatRange { lo, hi, end, ty }));
@@ -295,13 +302,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // If we are handling a range with associated constants (e.g.
         // `Foo::<'a>::A..=Foo::B`), we need to put the ascriptions for the associated
         // constants somewhere. Have them on the range pattern.
-        for ascription in [lo_ascr, hi_ascr].into_iter().flatten() {
+        for ascription in ascriptions {
             kind = PatKind::AscribeUserType {
                 ascription,
                 subpattern: Box::new(Pat { span, ty, kind }),
             };
         }
-        for def in [lo_inline, hi_inline].into_iter().flatten() {
+        for def in inline_consts {
             kind = PatKind::ExpandedConstant {
                 def_id: def.to_def_id(),
                 is_inline: true,
