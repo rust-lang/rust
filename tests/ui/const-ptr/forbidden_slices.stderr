@@ -102,7 +102,7 @@ LL | pub static R0: &[u32] = unsafe { from_ptr_range(ptr::null()..ptr::null()) }
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-   = note: the evaluated program panicked at 'assertion failed: 0 < pointee_size && pointee_size <= isize::MAX as usize', $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   = note: assertion failed: 0 < pointee_size && pointee_size <= isize::MAX as usize
    |
 note: inside `std::ptr::const_ptr::<impl *const ()>::sub_ptr`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL

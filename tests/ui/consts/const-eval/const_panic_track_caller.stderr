@@ -2,7 +2,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_track_caller.rs:15:5
    |
 LL |     b()
-   |     ^^^ the evaluated program panicked at 'hey', $DIR/const_panic_track_caller.rs:15:5
+   |     ^^^ hey
    |
 note: inside `c`
   --> $DIR/const_panic_track_caller.rs:15:5
