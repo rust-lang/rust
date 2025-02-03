@@ -14,7 +14,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, MultiSpan, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{Map, Visitor, walk_block, walk_expr};
+use rustc_hir::intravisit::{Visitor, walk_block, walk_expr};
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, LangItem, PatField};
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter::OnlyBodies;
@@ -1082,7 +1082,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 ] {
                     for (destination, sp) in elements {
                         if let Ok(hir_id) = destination.target_id
-                            && let hir::Node::Expr(expr) = tcx.hir().hir_node(hir_id)
+                            && let hir::Node::Expr(expr) = tcx.hir_node(hir_id)
                             && !matches!(
                                 sp.desugaring_kind(),
                                 Some(DesugaringKind::ForLoop | DesugaringKind::WhileLoop)
