@@ -1509,7 +1509,7 @@ impl f64 {
 
     /// Float addition that allows optimizations based on algebraic rules.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "21690")]
+    #[unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub fn add_algebraic(self, rhs: f64) -> f64 {
         intrinsics::fadd_algebraic(self, rhs)
@@ -1517,7 +1517,7 @@ impl f64 {
 
     /// Float subtraction that allows optimizations based on algebraic rules.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "21690")]
+    #[unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub fn sub_algebraic(self, rhs: f64) -> f64 {
         intrinsics::fsub_algebraic(self, rhs)
@@ -1525,7 +1525,7 @@ impl f64 {
 
     /// Float multiplication that allows optimizations based on algebraic rules.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "21690")]
+    #[unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub fn mul_algebraic(self, rhs: f64) -> f64 {
         intrinsics::fmul_algebraic(self, rhs)
@@ -1533,7 +1533,7 @@ impl f64 {
 
     /// Float division that allows optimizations based on algebraic rules.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "21690")]
+    #[unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub fn div_algebraic(self, rhs: f64) -> f64 {
         intrinsics::fdiv_algebraic(self, rhs)
@@ -1541,7 +1541,7 @@ impl f64 {
 
     /// Float remainder that allows optimizations based on algebraic rules.
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_algebraic", issue = "21690")]
+    #[unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
     pub fn rem_algebraic(self, rhs: f64) -> f64 {
         intrinsics::frem_algebraic(self, rhs)
