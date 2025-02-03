@@ -946,7 +946,7 @@ impl<'a> InferenceContext<'a> {
             let ty = self.insert_type_vars(ty);
             let ty = self.normalize_associated_types_in(ty);
 
-            self.infer_top_pat(*pat, &ty);
+            self.infer_top_pat(*pat, &ty, None);
             if ty
                 .data(Interner)
                 .flags

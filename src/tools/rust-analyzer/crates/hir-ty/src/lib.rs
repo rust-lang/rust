@@ -1049,3 +1049,20 @@ pub fn known_const_to_ast(
     }
     Some(make::expr_const_value(konst.display(db, edition).to_string().as_str()))
 }
+
+#[derive(Debug, Copy, Clone)]
+pub(crate) enum DeclOrigin {
+    LetExpr,
+    /// from `let x = ..`
+    LocalDecl {
+        has_else: bool,
+    },
+}
+
+/// Provides context for checking patterns in declarations. More specifically this
+/// allows us to infer array types if the pattern is irrefutable and allows us to infer
+/// the size of the array. See issue rust-lang/rust#76342.
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct DeclContext {
+    pub(crate) origin: DeclOrigin,
+}
