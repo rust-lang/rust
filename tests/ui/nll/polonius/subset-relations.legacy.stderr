@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/subset-relations.rs:10:5
+  --> $DIR/subset-relations.rs:13:5
    |
 LL | fn missing_subset<'a, 'b>(x: &'a u32, y: &'b u32) -> &'a u32 {
    |                   --  -- lifetime `'b` defined here
