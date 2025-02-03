@@ -81,7 +81,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn malloc(&mut self, size: u64, init: AllocInit) -> InterpResult<'tcx, Pointer> {
         let this = self.eval_context_mut();
         let align = this.malloc_align(size);
-        let ptr = this.allocate_ptr(Size::from_bytes(size), align, MiriMemoryKind::C.into(), init)?;
+        let ptr =
+            this.allocate_ptr(Size::from_bytes(size), align, MiriMemoryKind::C.into(), init)?;
         interp_ok(ptr.into())
     }
 
@@ -92,7 +93,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         size: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-        let memptr = this.deref_pointer(memptr)?;
+        let memptr = this.deref_pointer_as(memptr, this.machine.layouts.mut_raw_ptr)?;
         let align = this.read_target_usize(align)?;
         let size = this.read_target_usize(size)?;
 
@@ -105,7 +106,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 Size::from_bytes(size),
                 Align::from_bytes(align).unwrap(),
                 MiriMemoryKind::C.into(),
-                AllocInit::Uninit
+                AllocInit::Uninit,
             )?;
             this.write_pointer(ptr, &memptr)?;
             interp_ok(Scalar::from_i32(0))
@@ -138,7 +139,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Size::from_bytes(new_size),
                     new_align,
                     MiriMemoryKind::C.into(),
-                    AllocInit::Uninit
+                    AllocInit::Uninit,
                 )?;
                 interp_ok(new_ptr.into())
             }
@@ -179,7 +180,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Size::from_bytes(size),
                     Align::from_bytes(align).unwrap(),
                     MiriMemoryKind::C.into(),
-                    AllocInit::Uninit
+                    AllocInit::Uninit,
                 )?;
                 interp_ok(ptr.into())
             }

@@ -116,6 +116,11 @@ fn recurse_build<'tcx>(
         | &ExprKind::ValueTypeAscription { source, .. } => {
             recurse_build(tcx, body, source, root_span)?
         }
+        &ExprKind::PlaceUnwrapUnsafeBinder { .. }
+        | &ExprKind::ValueUnwrapUnsafeBinder { .. }
+        | &ExprKind::WrapUnsafeBinder { .. } => {
+            todo!("FIXME(unsafe_binders)")
+        }
         &ExprKind::Literal { lit, neg } => {
             let sp = node.span;
             tcx.at(sp).lit_to_const(LitToConstInput { lit: &lit.node, ty: node.ty, neg })
@@ -347,6 +352,9 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::Adt(_)
             | thir::ExprKind::PlaceTypeAscription { .. }
             | thir::ExprKind::ValueTypeAscription { .. }
+            | thir::ExprKind::PlaceUnwrapUnsafeBinder { .. }
+            | thir::ExprKind::ValueUnwrapUnsafeBinder { .. }
+            | thir::ExprKind::WrapUnsafeBinder { .. }
             | thir::ExprKind::Closure(_)
             | thir::ExprKind::Literal { .. }
             | thir::ExprKind::NonHirLiteral { .. }

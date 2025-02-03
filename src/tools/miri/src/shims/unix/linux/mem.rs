@@ -49,7 +49,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Size::from_bytes(new_size),
             align,
             MiriMemoryKind::Mmap.into(),
-            AllocInit::Zero
+            AllocInit::Zero,
         )?;
 
         interp_ok(Scalar::from_pointer(ptr, this))

@@ -4,7 +4,6 @@ use core::mem::replace;
 use rustc_errors::Applicability;
 use rustc_hir::{HirId, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::Ident;
 
@@ -126,7 +125,7 @@ fn check_ident(cx: &LateContext<'_>, ident: &Ident, hir_id: HirId, be_aggressive
 impl LateLintPass<'_> for UpperCaseAcronyms {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &Item<'_>) {
         // do not lint public items or in macros
-        if in_external_macro(cx.sess(), it.span)
+        if it.span.in_external_macro(cx.sess().source_map())
             || (self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(it.owner_id.def_id))
         {
             return;

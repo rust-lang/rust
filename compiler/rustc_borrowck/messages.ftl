@@ -92,9 +92,6 @@ borrowck_lifetime_constraints_error =
 borrowck_limitations_implies_static =
     due to current limitations in the borrow checker, this implies a `'static` lifetime
 
-borrowck_long_type_consider_verbose = consider using `--verbose` to print the full type name to the console
-borrowck_long_type_full_path = the full type name has been written to '{$path}'
-
 borrowck_move_closure_suggestion =
     consider adding 'move' keyword before the nested closure
 

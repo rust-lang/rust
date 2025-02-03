@@ -8,7 +8,6 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HirId, Path, PathSegment};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::kw;
 use rustc_span::{Span, sym};
@@ -112,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
         if let Res::Def(_, def_id) = path.res
             && let Some(first_segment) = get_first_segment(path)
             && is_stable(cx, def_id, &self.msrv)
-            && !in_external_macro(cx.sess(), path.span)
+            && !path.span.in_external_macro(cx.sess().source_map())
             && !is_from_proc_macro(cx, &first_segment.ident)
         {
             let (lint, used_mod, replace_with) = match first_segment.ident.name {

@@ -9,7 +9,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::{self as hir, BodyId, Expr, ExprKind, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
@@ -139,7 +138,7 @@ impl<'hir> LateLintPass<'hir> for NonStdLazyStatic {
             return;
         }
 
-        if in_external_macro(cx.sess(), item.span) {
+        if item.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
 

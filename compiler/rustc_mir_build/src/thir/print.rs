@@ -477,6 +477,24 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_expr(*source, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
             }
+            PlaceUnwrapUnsafeBinder { source } => {
+                print_indented!(self, "PlaceUnwrapUnsafeBinder {", depth_lvl);
+                print_indented!(self, "source:", depth_lvl + 1);
+                self.print_expr(*source, depth_lvl + 2);
+                print_indented!(self, "}", depth_lvl);
+            }
+            ValueUnwrapUnsafeBinder { source } => {
+                print_indented!(self, "ValueUnwrapUnsafeBinder {", depth_lvl);
+                print_indented!(self, "source:", depth_lvl + 1);
+                self.print_expr(*source, depth_lvl + 2);
+                print_indented!(self, "}", depth_lvl);
+            }
+            WrapUnsafeBinder { source } => {
+                print_indented!(self, "WrapUnsafeBinder {", depth_lvl);
+                print_indented!(self, "source:", depth_lvl + 1);
+                self.print_expr(*source, depth_lvl + 2);
+                print_indented!(self, "}", depth_lvl);
+            }
             Closure(closure_expr) => {
                 print_indented!(self, "Closure {", depth_lvl);
                 print_indented!(self, "closure_expr:", depth_lvl + 1);

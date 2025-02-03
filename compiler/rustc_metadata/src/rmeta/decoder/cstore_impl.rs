@@ -165,7 +165,7 @@ macro_rules! provide_one {
             // doesn't need to do this (and can't, as it would cause a query cycle).
             use rustc_middle::dep_graph::dep_kinds;
             if dep_kinds::$name != dep_kinds::crate_hash && $tcx.dep_graph.is_fully_enabled() {
-                $tcx.ensure().crate_hash($def_id.krate);
+                $tcx.ensure_ok().crate_hash($def_id.krate);
             }
 
             let cdata = rustc_data_structures::sync::FreezeReadGuard::map(CStore::from_tcx($tcx), |c| {

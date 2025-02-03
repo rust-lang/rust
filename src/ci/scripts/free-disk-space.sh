@@ -1,7 +1,18 @@
 #!/bin/bash
+set -euo pipefail
 
 # Free disk space on Linux GitHub action runners
 # Script inspired by https://github.com/jlumbroso/free-disk-space
+
+isX86() {
+    local arch
+    arch=$(uname -m)
+    if [ "$arch" = "x86_64" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
 
 # print a line of the specified character
 printSeparationLine() {
@@ -14,11 +25,15 @@ printSeparationLine() {
 # compute available space
 # REF: https://unix.stackexchange.com/a/42049/60849
 # REF: https://stackoverflow.com/a/450821/408734
-getAvailableSpace() { echo $(df -a | awk 'NR > 1 {avail+=$4} END {print avail}'); }
+getAvailableSpace() {
+    df -a | awk 'NR > 1 {avail+=$4} END {print avail}'
+}
 
 # make Kb human readable (assume the input is Kb)
 # REF: https://unix.stackexchange.com/a/44087/60849
-formatByteCount() { echo $(numfmt --to=iec-i --suffix=B --padding=7 $1'000'); }
+formatByteCount() {
+    numfmt --to=iec-i --suffix=B --padding=7 "$1"'000'
+}
 
 # macro to output saved space
 printSavedSpace() {
@@ -58,11 +73,27 @@ removeDir() {
     dir=${1}
 
     local before
-    before=$(getAvailableSpace)
+    if [ ! -d "$dir" ]; then
+        echo "::warning::Directory $dir does not exist, skipping."
+    else
+        before=$(getAvailableSpace)
+        sudo rm -rf "$dir"
+        printSavedSpace "$before" "Removed $dir"
+    fi
+}
 
-    sudo rm -rf "$dir" || true
+removeUnusedDirectories() {
+    local dirs_to_remove=(
+        "/usr/local/lib/android"
+        "/usr/share/dotnet"
 
-    printSavedSpace "$before" "$dir"
+        # Haskell runtime
+        "/usr/local/.ghcup"
+    )
+
+    for dir in "${dirs_to_remove[@]}"; do
+        removeDir "$dir"
+    done
 }
 
 execAndMeasureSpaceChange() {
@@ -79,21 +110,29 @@ execAndMeasureSpaceChange() {
 # Remove large packages
 # REF: https://github.com/apache/flink/blob/master/tools/azure-pipelines/free_disk_space.sh
 cleanPackages() {
-    sudo apt-get -qq remove -y --fix-missing \
-        '^aspnetcore-.*'       \
-        '^dotnet-.*'           \
-        '^llvm-.*'             \
-        'php.*'                \
-        '^mongodb-.*'          \
-        '^mysql-.*'            \
-        'azure-cli'            \
-        'google-chrome-stable' \
-        'firefox'              \
-        'powershell'           \
-        'mono-devel'           \
-        'libgl1-mesa-dri'      \
-        'google-cloud-sdk'     \
-        'google-cloud-cli'
+    local packages=(
+        '^aspnetcore-.*'
+        '^dotnet-.*'
+        '^llvm-.*'
+        '^mongodb-.*'
+        '^mysql-.*'
+        'azure-cli'
+        'firefox'
+        'libgl1-mesa-dri'
+        'mono-devel'
+        'php.*'
+    )
+
+    if isX86; then
+        packages+=(
+            'google-chrome-stable'
+            'google-cloud-cli'
+            'google-cloud-sdk'
+            'powershell'
+        )
+    fi
+
+    sudo apt-get -qq remove -y --fix-missing "${packages[@]}"
 
     sudo apt-get autoremove -y || echo "::warning::The command [sudo apt-get autoremove -y] failed"
     sudo apt-get clean || echo "::warning::The command [sudo apt-get clean] failed failed"
@@ -101,9 +140,9 @@ cleanPackages() {
 
 # Remove Docker images
 cleanDocker() {
-    echo "Removing the following docker images:"
+    echo "=> Removing the following docker images:"
     sudo docker image ls
-    echo "Removing docker images..."
+    echo "=> Removing docker images..."
     sudo docker image prune --all --force || true
 }
 
@@ -121,16 +160,11 @@ AVAILABLE_INITIAL=$(getAvailableSpace)
 printDF "BEFORE CLEAN-UP:"
 echo ""
 
-removeDir /usr/local/lib/android
-removeDir /usr/share/dotnet
-
-# Haskell runtime
-removeDir /opt/ghc
-removeDir /usr/local/.ghcup
-
-execAndMeasureSpaceChange cleanPackages "Large misc. packages"
+execAndMeasureSpaceChange cleanPackages "Unused packages"
 execAndMeasureSpaceChange cleanDocker "Docker images"
 execAndMeasureSpaceChange cleanSwap "Swap storage"
+
+removeUnusedDirectories
 
 # Output saved space statistic
 echo ""

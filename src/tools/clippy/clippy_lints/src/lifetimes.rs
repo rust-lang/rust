@@ -21,7 +21,6 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter as middle_nested_filter;
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
@@ -164,7 +163,7 @@ fn check_fn_inner<'tcx>(
     report_extra_lifetimes: bool,
     msrv: &Msrv,
 ) {
-    if in_external_macro(cx.sess(), span) || has_where_lifetimes(cx, generics) {
+    if span.in_external_macro(cx.sess().source_map()) || has_where_lifetimes(cx, generics) {
         return;
     }
 

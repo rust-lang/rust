@@ -39,7 +39,7 @@ fn main() {
         L { //~ ERROR type mismatch
             f: |x| {
                 drop(x);
-                Unit4 //~ ERROR to be a closure that returns `Unit3`, but it returns `Unit4`
+                Unit4 //~ ERROR to return `Unit3`, but it returns `Unit4`
             },
         },
     );

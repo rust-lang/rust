@@ -132,8 +132,6 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         Ord: ord::expand_deriving_ord,
         PartialEq: partial_eq::expand_deriving_partial_eq,
         PartialOrd: partial_ord::expand_deriving_partial_ord,
-        RustcDecodable: decodable::expand_deriving_rustc_decodable,
-        RustcEncodable: encodable::expand_deriving_rustc_encodable,
         CoercePointee: coerce_pointee::expand_deriving_coerce_pointee,
     }
 

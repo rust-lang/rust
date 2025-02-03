@@ -208,7 +208,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                     | ty::Infer(_)
                     | ty::Error(_)
                     | ty::Placeholder(_) => bug!(
-                        "When Place contains ProjectionElem::Field it's type shouldn't be {place_ty:#?}"
+                        "When Place contains ProjectionElem::Field its type shouldn't be {place_ty:#?}"
                     ),
                 },
                 ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
@@ -226,6 +226,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                     }
                     _ => bug!("Unexpected type {place_ty:#?}"),
                 },
+                ProjectionElem::UnwrapUnsafeBinder(_) => {}
                 // `OpaqueCast`:Only transmutes the type, so no moves there.
                 // `Downcast`  :Only changes information about a `Place` without moving.
                 // `Subtype`   :Only transmutes the type, so moves.
@@ -399,7 +400,8 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             | Rvalue::Repeat(ref operand, _)
             | Rvalue::Cast(_, ref operand, _)
             | Rvalue::ShallowInitBox(ref operand, _)
-            | Rvalue::UnaryOp(_, ref operand) => self.gather_operand(operand),
+            | Rvalue::UnaryOp(_, ref operand)
+            | Rvalue::WrapUnsafeBinder(ref operand, _) => self.gather_operand(operand),
             Rvalue::BinaryOp(ref _binop, box (ref lhs, ref rhs)) => {
                 self.gather_operand(lhs);
                 self.gather_operand(rhs);

@@ -7,7 +7,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_body};
 use rustc_hir::{Expr, ExprKind, HirId, HirIdSet, LetStmt, MatchSource, Node, PatKind, QPath, TyKind};
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::lint::{in_external_macro, is_from_async_await};
 use rustc_middle::ty;
 
 use super::LET_UNIT_VALUE;
@@ -22,8 +21,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, local: &'tcx LetStmt<'_>) {
 
     if let Some(init) = local.init
         && !local.pat.span.from_expansion()
-        && !in_external_macro(cx.sess(), local.span)
-        && !is_from_async_await(local.span)
+        && !local.span.in_external_macro(cx.sess().source_map())
+        && !local.span.is_from_async_await()
         && cx.typeck_results().pat_ty(local.pat).is_unit()
     {
         // skip `let awa = ()`

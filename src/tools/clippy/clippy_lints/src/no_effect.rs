@@ -12,7 +12,6 @@ use rustc_hir::{
 };
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -268,7 +267,7 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
     if let StmtKind::Semi(expr) = stmt.kind
-        && !in_external_macro(cx.sess(), stmt.span)
+        && !stmt.span.in_external_macro(cx.sess().source_map())
         && let ctxt = stmt.span.ctxt()
         && expr.span.ctxt() == ctxt
         && let Some(reduced) = reduce_expression(cx, expr)

@@ -357,7 +357,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Obtains a Miri backtrace. See the README for details.
             "miri_get_backtrace" => {
                 // `check_shim` happens inside `handle_miri_get_backtrace`.
-                this.handle_miri_get_backtrace(abi, link_name, args, dest)?;
+                this.handle_miri_get_backtrace(abi, link_name, args)?;
             }
             // Resolves a Miri backtrace frame. See the README for details.
             "miri_resolve_frame" => {
@@ -509,7 +509,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         memory_kind.into(),
-                        AllocInit::Uninit
+                        AllocInit::Uninit,
                     )?;
 
                     ecx.write_pointer(ptr, dest)
@@ -538,7 +538,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         MiriMemoryKind::Rust.into(),
-                        AllocInit::Zero
+                        AllocInit::Zero,
                     )?;
                     this.write_pointer(ptr, dest)
                 });
@@ -599,7 +599,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         Size::from_bytes(new_size),
                         align,
                         MiriMemoryKind::Rust.into(),
-                        AllocInit::Uninit
+                        AllocInit::Uninit,
                     )?;
                     this.write_pointer(new_ptr, dest)
                 });
@@ -861,7 +861,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "lgammaf_r" => {
                 let [x, signp] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let x = this.read_scalar(x)?.to_f32()?;
-                let signp = this.deref_pointer(signp)?;
+                let signp = this.deref_pointer_as(signp, this.machine.layouts.i32)?;
 
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
@@ -872,7 +872,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "lgamma_r" => {
                 let [x, signp] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let x = this.read_scalar(x)?.to_f64()?;
-                let signp = this.deref_pointer(signp)?;
+                let signp = this.deref_pointer_as(signp, this.machine.layouts.i32)?;
 
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
