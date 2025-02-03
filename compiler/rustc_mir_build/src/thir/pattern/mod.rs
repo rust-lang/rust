@@ -161,35 +161,34 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     ) -> Result<Option<PatRangeBoundary<'tcx>>, ErrorGuaranteed> {
         let Some(expr) = expr else { return Ok(None) };
 
-        let (kind, ascr, inline_const) = match self.lower_lit(expr) {
-            PatKind::ExpandedConstant { subpattern, def_id, is_inline: true } => {
-                (subpattern.kind, None, def_id.as_local())
+        // Lower the endpoint into a temporary `PatKind` that will then be
+        // deconstructed to obtain the constant value and other data.
+        let mut kind: PatKind<'tcx> = self.lower_lit(expr);
+
+        // Unpeel any ascription or inline-const wrapper nodes.
+        loop {
+            match kind {
+                PatKind::AscribeUserType { ascription, subpattern } => {
+                    ascriptions.push(ascription);
+                    kind = subpattern.kind;
+                }
+                PatKind::ExpandedConstant { is_inline, def_id, subpattern } => {
+                    if is_inline {
+                        inline_consts.extend(def_id.as_local());
+                    }
+                    kind = subpattern.kind;
+                }
+                _ => break,
             }
-            PatKind::ExpandedConstant { subpattern, is_inline: false, .. } => {
-                (subpattern.kind, None, None)
-            }
-            PatKind::AscribeUserType { ascription, subpattern: box Pat { kind, .. } } => {
-                (kind, Some(ascription), None)
-            }
-            kind => (kind, None, None),
-        };
-        let value = match kind {
-            PatKind::Constant { value } => value,
-            PatKind::ExpandedConstant { subpattern, .. }
-                if let PatKind::Constant { value } = subpattern.kind =>
-            {
-                value
-            }
-            _ => {
-                let msg = format!(
-                    "found bad range pattern endpoint `{expr:?}` outside of error recovery"
-                );
-                return Err(self.tcx.dcx().span_delayed_bug(expr.span, msg));
-            }
+        }
+
+        // The unpeeled kind should now be a constant, giving us the endpoint value.
+        let PatKind::Constant { value } = kind else {
+            let msg =
+                format!("found bad range pattern endpoint `{expr:?}` outside of error recovery");
+            return Err(self.tcx.dcx().span_delayed_bug(expr.span, msg));
         };
 
-        ascriptions.extend(ascr);
-        inline_consts.extend(inline_const);
         Ok(Some(PatRangeBoundary::Finite(value)))
     }
 
