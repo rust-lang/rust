@@ -5,7 +5,7 @@
 // The cdecl ABI is used. It differs from the stdcall or fastcall ABI.
 // "i686-unknown-windows" is used to get the minimal subset of windows-specific features.
 
-use crate::spec::{Target, base};
+use crate::spec::{RustcAbi, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::uefi_msvc::opts();
@@ -22,6 +22,7 @@ pub(crate) fn target() -> Target {
     // If you initialize FP units yourself, you can override these flags with custom linker
     // arguments, thus giving you access to full MMX/SSE acceleration.
     base.features = "-mmx,-sse,+soft-float".into();
+    base.rustc_abi = Some(RustcAbi::X86Softfloat);
 
     // Use -GNU here, because of the reason below:
     // Background and Problem:
