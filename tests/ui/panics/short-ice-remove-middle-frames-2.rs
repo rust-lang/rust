@@ -5,7 +5,6 @@
 //@ needs-unwind
 //@ ignore-android FIXME #17520
 //@ ignore-openbsd no support for libbacktrace without filename
-//@ ignore-emscripten no panic
 //@ ignore-sgx Backtraces not symbolized
 //@ ignore-fuchsia Backtraces not symbolized
 //@ ignore-msvc the `__rust_{begin,end}_short_backtrace` symbols aren't reliable.
