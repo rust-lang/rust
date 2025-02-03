@@ -1626,6 +1626,29 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
             // results will be sqrt(1), which is 1, so a result can't be zero.
             unsafe { Self::new_unchecked(result) }
         }
+
+        /// Returns the bit pattern of `self` reinterpreted as a signed integer of the same size.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(integer_sign_cast)]
+        /// # use std::num::NonZero;
+        ///
+        #[doc = concat!("let n = NonZero::<", stringify!($Int), ">::MAX;")]
+        ///
+        #[doc = concat!("assert_eq!(n.cast_signed(), NonZero::new(-1", stringify!($Sint), ").unwrap());")]
+        /// ```
+        #[unstable(feature = "integer_sign_cast", issue = "125882")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn cast_signed(self) -> NonZero<$Sint> {
+            // SAFETY: `self.get()` can't be zero
+            unsafe { NonZero::new_unchecked(self.get().cast_signed()) }
+        }
     };
 
     // Associated items for signed nonzero types only.
@@ -2042,6 +2065,30 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
             // SAFETY: negation of nonzero cannot yield zero values.
             unsafe { Self::new_unchecked(result) }
         }
+
+        /// Returns the bit pattern of `self` reinterpreted as an unsigned integer of the same size.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(integer_sign_cast)]
+        /// # use std::num::NonZero;
+        ///
+        #[doc = concat!("let n = NonZero::new(-1", stringify!($Int), ").unwrap();")]
+        ///
+        #[doc = concat!("assert_eq!(n.cast_unsigned(), NonZero::<", stringify!($Uint), ">::MAX);")]
+        /// ```
+        #[unstable(feature = "integer_sign_cast", issue = "125882")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn cast_unsigned(self) -> NonZero<$Uint> {
+            // SAFETY: `self.get()` can't be zero
+            unsafe { NonZero::new_unchecked(self.get().cast_unsigned()) }
+        }
+
     };
 }
 
