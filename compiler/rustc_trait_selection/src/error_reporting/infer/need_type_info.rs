@@ -713,7 +713,7 @@ impl<'tcx> InferSourceKind<'tcx> {
                 if ty.is_closure() {
                     ("closure", closure_as_fn_str(infcx, ty), path)
                 } else if !ty.is_ty_or_numeric_infer() {
-                    ("normal", infcx.tcx.short_ty_string(ty, &mut path), path)
+                    ("normal", infcx.tcx.short_string(ty, &mut path), path)
                 } else {
                     ("other", String::new(), path)
                 }

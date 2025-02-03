@@ -1398,6 +1398,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     self.consume_operand(location, (operand, span), state);
                 }
             }
+
+            Rvalue::WrapUnsafeBinder(op, _) => {
+                self.consume_operand(location, (op, span), state);
+            }
         }
     }
 
@@ -1770,7 +1774,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 // So it's safe to skip these.
                 ProjectionElem::OpaqueCast(_)
                 | ProjectionElem::Subtype(_)
-                | ProjectionElem::Downcast(_, _) => (),
+                | ProjectionElem::Downcast(_, _)
+                | ProjectionElem::UnwrapUnsafeBinder(_) => (),
             }
 
             place_ty = place_ty.projection_ty(tcx, elem);
@@ -2003,6 +2008,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 //
                 // FIXME: is this true even if P is an adt with a dtor?
                 { }
+
+                ProjectionElem::UnwrapUnsafeBinder(_) => {
+                    check_parent_of_field(self, location, place_base, span, state);
+                }
 
                 // assigning to (*P) requires P to be initialized
                 ProjectionElem::Deref => {
@@ -2384,7 +2393,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ProjectionElem::Subslice { .. }
                     | ProjectionElem::Subtype(..)
                     | ProjectionElem::OpaqueCast { .. }
-                    | ProjectionElem::Downcast(..) => {
+                    | ProjectionElem::Downcast(..)
+                    | ProjectionElem::UnwrapUnsafeBinder(_) => {
                         let upvar_field_projection = self.is_upvar_field_projection(place);
                         if let Some(field) = upvar_field_projection {
                             let upvar = &self.upvars[field.index()];

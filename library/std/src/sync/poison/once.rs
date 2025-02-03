@@ -269,8 +269,6 @@ impl Once {
     /// # Example
     ///
     /// ```rust
-    /// #![feature(once_wait)]
-    ///
     /// use std::sync::Once;
     /// use std::thread;
     ///
@@ -289,7 +287,7 @@ impl Once {
     /// If this [`Once`] has been poisoned because an initialization closure has
     /// panicked, this method will also panic. Use [`wait_force`](Self::wait_force)
     /// if this behavior is not desired.
-    #[unstable(feature = "once_wait", issue = "127527")]
+    #[stable(feature = "once_wait", since = "CURRENT_RUSTC_VERSION")]
     pub fn wait(&self) {
         if !self.inner.is_completed() {
             self.inner.wait(false);
@@ -298,7 +296,7 @@ impl Once {
 
     /// Blocks the current thread until initialization has completed, ignoring
     /// poisoning.
-    #[unstable(feature = "once_wait", issue = "127527")]
+    #[stable(feature = "once_wait", since = "CURRENT_RUSTC_VERSION")]
     pub fn wait_force(&self) {
         if !self.inner.is_completed() {
             self.inner.wait(true);

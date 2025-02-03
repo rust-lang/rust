@@ -504,7 +504,8 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             | Rvalue::Cast(..)
             | Rvalue::BinaryOp(..)
             | Rvalue::Aggregate(..)
-            | Rvalue::ShallowInitBox(..) => {
+            | Rvalue::ShallowInitBox(..)
+            | Rvalue::WrapUnsafeBinder(..) => {
                 // No modification is possible through these r-values.
                 return ValueOrPlace::TOP;
             }

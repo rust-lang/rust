@@ -8,7 +8,6 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, Lit, Node, Path, QPath, TyKind, UnOp};
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, FloatTy, InferTy, Ty};
 use std::ops::ControlFlow;
 
@@ -142,7 +141,7 @@ pub(super) fn check<'tcx>(
         }
     }
 
-    if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
+    if cast_from.kind() == cast_to.kind() && !expr.span.in_external_macro(cx.sess().source_map()) {
         if let Some(id) = path_to_local(cast_expr)
             && !cx.tcx.hir().span(id).eq_ctxt(cast_expr.span)
         {

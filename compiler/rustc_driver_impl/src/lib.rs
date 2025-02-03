@@ -317,7 +317,7 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         if let Some(pp_mode) = sess.opts.pretty {
             if pp_mode.needs_ast_map() {
                 create_and_enter_global_ctxt(compiler, krate, |tcx| {
-                    tcx.ensure().early_lint_checks(());
+                    tcx.ensure_ok().early_lint_checks(());
                     pretty::print(sess, pp_mode, pretty::PrintExtra::NeedsAstMap { tcx });
                     passes::write_dep_info(tcx);
                 });
@@ -365,7 +365,7 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
                 return early_exit();
             }
 
-            tcx.ensure().analysis(());
+            tcx.ensure_ok().analysis(());
 
             if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
                 return early_exit();
@@ -1212,9 +1212,9 @@ pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, FatalError> {
 
 /// Variant of `catch_fatal_errors` for the `interface::Result` return type
 /// that also computes the exit code.
-pub fn catch_with_exit_code(f: impl FnOnce() -> interface::Result<()>) -> i32 {
+pub fn catch_with_exit_code(f: impl FnOnce()) -> i32 {
     match catch_fatal_errors(f) {
-        Ok(Ok(())) => EXIT_SUCCESS,
+        Ok(()) => EXIT_SUCCESS,
         _ => EXIT_FAILURE,
     }
 }
@@ -1499,10 +1499,8 @@ pub fn main() -> ! {
     install_ice_hook(DEFAULT_BUG_REPORT_URL, |_| ());
     install_ctrlc_handler();
 
-    let exit_code = catch_with_exit_code(|| {
-        run_compiler(&args::raw_args(&early_dcx)?, &mut callbacks);
-        Ok(())
-    });
+    let exit_code =
+        catch_with_exit_code(|| run_compiler(&args::raw_args(&early_dcx), &mut callbacks));
 
     if let Some(format) = callbacks.time_passes {
         let end_rss = get_resident_set_size();

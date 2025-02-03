@@ -616,7 +616,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, "allow_internal_unsafe side-steps the unsafe_code lint",
     ),
     rustc_attr!(
-        rustc_allowed_through_unstable_modules, Normal, template!(Word, NameValueStr: "deprecation message"),
+        rustc_allowed_through_unstable_modules, Normal, template!(NameValueStr: "deprecation message"),
         WarnFollowing, EncodeCrossCrate::No,
         "rustc_allowed_through_unstable_modules special cases accidental stabilizations of stable items \
         through unstable paths"

@@ -59,13 +59,13 @@ use emitter::{DynEmitter, Emitter, is_case_difference, is_different};
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
-use rustc_data_structures::sync::Lock;
+use rustc_data_structures::sync::{DynSend, Lock};
 pub use rustc_error_messages::{
     DiagMessage, FluentBundle, LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel,
     SubdiagMessage, fallback_fluent_bundle, fluent_bundle,
 };
 use rustc_lint_defs::LintExpectationId;
-pub use rustc_lint_defs::{Applicability, pluralize};
+pub use rustc_lint_defs::{Applicability, listify, pluralize};
 use rustc_macros::{Decodable, Encodable};
 pub use rustc_span::ErrorGuaranteed;
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
@@ -676,57 +676,44 @@ impl DiagCtxt {
         Self { inner: Lock::new(DiagCtxtInner::new(emitter)) }
     }
 
-    pub fn make_silent(
-        &self,
-        fallback_bundle: LazyFallbackBundle,
-        fatal_note: Option<String>,
-        emit_fatal_diagnostic: bool,
-    ) {
-        self.wrap_emitter(|old_dcx| {
-            Box::new(emitter::SilentEmitter {
-                fallback_bundle,
-                fatal_dcx: DiagCtxt { inner: Lock::new(old_dcx) },
-                fatal_note,
-                emit_fatal_diagnostic,
-            })
-        });
-    }
-
-    fn wrap_emitter<F>(&self, f: F)
-    where
-        F: FnOnce(DiagCtxtInner) -> Box<DynEmitter>,
-    {
-        // A empty type that implements `Emitter` so that a `DiagCtxtInner` can be constructed
-        // to temporarily swap in place of the real one, which will be used in constructing
-        // its replacement.
+    pub fn make_silent(&self, fatal_note: Option<String>, emit_fatal_diagnostic: bool) {
+        // An empty type that implements `Emitter` to temporarily swap in place of the real one,
+        // which will be used in constructing its replacement.
         struct FalseEmitter;
 
         impl Emitter for FalseEmitter {
             fn emit_diagnostic(&mut self, _: DiagInner, _: &Registry) {
-                unimplemented!("false emitter must only used during `wrap_emitter`")
+                unimplemented!("false emitter must only used during `make_silent`")
             }
 
             fn source_map(&self) -> Option<&SourceMap> {
-                unimplemented!("false emitter must only used during `wrap_emitter`")
+                unimplemented!("false emitter must only used during `make_silent`")
             }
         }
 
         impl translation::Translate for FalseEmitter {
             fn fluent_bundle(&self) -> Option<&FluentBundle> {
-                unimplemented!("false emitter must only used during `wrap_emitter`")
+                unimplemented!("false emitter must only used during `make_silent`")
             }
 
             fn fallback_fluent_bundle(&self) -> &FluentBundle {
-                unimplemented!("false emitter must only used during `wrap_emitter`")
+                unimplemented!("false emitter must only used during `make_silent`")
             }
         }
 
         let mut inner = self.inner.borrow_mut();
-        let mut prev_dcx = DiagCtxtInner::new(Box::new(FalseEmitter));
-        std::mem::swap(&mut *inner, &mut prev_dcx);
-        let new_emitter = f(prev_dcx);
-        let mut new_dcx = DiagCtxtInner::new(new_emitter);
-        std::mem::swap(&mut *inner, &mut new_dcx);
+        let mut prev_emitter = Box::new(FalseEmitter) as Box<dyn Emitter + DynSend>;
+        std::mem::swap(&mut inner.emitter, &mut prev_emitter);
+        let new_emitter = Box::new(emitter::SilentEmitter {
+            fatal_emitter: prev_emitter,
+            fatal_note,
+            emit_fatal_diagnostic,
+        });
+        inner.emitter = new_emitter;
+    }
+
+    pub fn set_emitter(&self, emitter: Box<dyn Emitter + DynSend>) {
+        self.inner.borrow_mut().emitter = emitter;
     }
 
     /// Translate `message` eagerly with `args` to `SubdiagMessage::Eager`.
@@ -1996,18 +1983,6 @@ pub fn a_or_an(s: &str) -> &'static str {
         "an"
     } else {
         "a"
-    }
-}
-
-/// Grammatical tool for displaying messages to end users in a nice form.
-///
-/// Take a list ["a", "b", "c"] and output a display friendly version "a, b and c"
-pub fn display_list_with_comma_and<T: std::fmt::Display>(v: &[T]) -> String {
-    match v {
-        [] => "".to_string(),
-        [a] => a.to_string(),
-        [a, b] => format!("{a} and {b}"),
-        [a, v @ ..] => format!("{a}, {}", display_list_with_comma_and(v)),
     }
 }
 

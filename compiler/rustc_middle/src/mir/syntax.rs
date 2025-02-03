@@ -1276,6 +1276,10 @@ pub enum ProjectionElem<V, T> {
     /// requiring an intermediate variable.
     OpaqueCast(T),
 
+    /// A transmute from an unsafe binder to the type that it wraps. This is a projection
+    /// of a place, so it doesn't necessarily constitute a move out of the binder.
+    UnwrapUnsafeBinder(T),
+
     /// A `Subtype(T)` projection is applied to any `StatementKind::Assign` where
     /// type of lvalue doesn't match the type of rvalue, the primary goal is making subtyping
     /// explicit during optimizations and codegen.
@@ -1493,6 +1497,9 @@ pub enum Rvalue<'tcx> {
     /// optimizations and codegen backends that previously had to handle deref operations anywhere
     /// in a place.
     CopyForDeref(Place<'tcx>),
+
+    /// Wraps a value in an unsafe binder.
+    WrapUnsafeBinder(Operand<'tcx>, Ty<'tcx>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

@@ -304,7 +304,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let c = this.read_scalar(&this.project_index(&c, i)?)?;
                     let dest = this.project_index(&dest, i)?;
 
-                    let fuse: bool = intrinsic_name == "fma" || this.machine.rng.get_mut().gen();
+                    let fuse: bool = intrinsic_name == "fma" || this.machine.rng.get_mut().random();
 
                     // Works for f32 and f64.
                     // FIXME: using host floats to work around https://github.com/rust-lang/miri/issues/2468.
@@ -639,8 +639,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let (right, right_len) = this.project_to_simd(right)?;
                 let (dest, dest_len) = this.project_to_simd(dest)?;
 
-                let index =
-                    generic_args[2].expect_const().to_value().valtree.unwrap_branch();
+                let index = generic_args[2].expect_const().to_value().valtree.unwrap_branch();
                 let index_len = index.len();
 
                 assert_eq!(left_len, right_len);

@@ -1046,7 +1046,7 @@ fn check_associated_item(
 
         // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
         // other `Foo` impls are incoherent.
-        tcx.ensure()
+        tcx.ensure_ok()
             .coherent_trait(tcx.parent(item.trait_item_def_id.unwrap_or(item_id.into())))?;
 
         let self_ty = match item.container {
@@ -1354,7 +1354,7 @@ fn check_impl<'tcx>(
                 let trait_ref = tcx.impl_trait_ref(item.owner_id).unwrap().instantiate_identity();
                 // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
                 // other `Foo` impls are incoherent.
-                tcx.ensure().coherent_trait(trait_ref.def_id)?;
+                tcx.ensure_ok().coherent_trait(trait_ref.def_id)?;
                 let trait_span = hir_trait_ref.path.span;
                 let trait_ref = wfcx.normalize(
                     trait_span,
@@ -2268,11 +2268,13 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalModDefId) -> Result<(), ErrorGuaranteed> {
     let items = tcx.hir_module_items(module);
     let res = items
-        .par_items(|item| tcx.ensure().check_well_formed(item.owner_id.def_id))
-        .and(items.par_impl_items(|item| tcx.ensure().check_well_formed(item.owner_id.def_id)))
-        .and(items.par_trait_items(|item| tcx.ensure().check_well_formed(item.owner_id.def_id)))
-        .and(items.par_foreign_items(|item| tcx.ensure().check_well_formed(item.owner_id.def_id)))
-        .and(items.par_opaques(|item| tcx.ensure().check_well_formed(item)));
+        .par_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id))
+        .and(items.par_impl_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)))
+        .and(items.par_trait_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)))
+        .and(
+            items.par_foreign_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)),
+        )
+        .and(items.par_opaques(|item| tcx.ensure_ok().check_well_formed(item)));
     if module == LocalModDefId::CRATE_DEF_ID {
         super::entry::check_for_entry_fn(tcx);
     }

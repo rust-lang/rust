@@ -62,7 +62,7 @@ pub(crate) fn check_impl_wf(
     // Check that the args are constrained. We queryfied the check for ty/const params
     // since unconstrained type/const params cause ICEs in projection, so we want to
     // detect those specifically and project those to `TyKind::Error`.
-    let mut res = tcx.ensure().enforce_impl_non_lifetime_params_are_constrained(impl_def_id);
+    let mut res = tcx.ensure_ok().enforce_impl_non_lifetime_params_are_constrained(impl_def_id);
     res = res.and(enforce_impl_lifetime_params_are_constrained(tcx, impl_def_id));
 
     if tcx.features().min_specialization() {

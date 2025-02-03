@@ -367,7 +367,7 @@ impl<'tcx> TyCtxt<'tcx> {
         validate: impl Fn(Self, DefId) -> Result<(), ErrorGuaranteed>,
     ) -> Option<ty::Destructor> {
         let drop_trait = self.lang_items().drop_trait()?;
-        self.ensure().coherent_trait(drop_trait).ok()?;
+        self.ensure_ok().coherent_trait(drop_trait).ok()?;
 
         let ty = self.type_of(adt_did).instantiate_identity();
         let mut dtor_candidate = None;
@@ -404,7 +404,7 @@ impl<'tcx> TyCtxt<'tcx> {
         validate: impl Fn(Self, DefId) -> Result<(), ErrorGuaranteed>,
     ) -> Option<ty::AsyncDestructor> {
         let async_drop_trait = self.lang_items().async_drop_trait()?;
-        self.ensure().coherent_trait(async_drop_trait).ok()?;
+        self.ensure_ok().coherent_trait(async_drop_trait).ok()?;
 
         let ty = self.type_of(adt_did).instantiate_identity();
         let mut dtor_candidate = None;

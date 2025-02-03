@@ -4,7 +4,6 @@ use clippy_utils::macros::{is_assert_macro, root_macro_call};
 use clippy_utils::{find_binding_init, get_parent_expr, is_inside_always_const_context, path_to_local};
 use rustc_hir::{Expr, HirId};
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_span::sym;
 
 use super::CONST_IS_EMPTY;
@@ -12,7 +11,7 @@ use super::CONST_IS_EMPTY;
 /// Expression whose initialization depend on a constant conditioned by a `#[cfg(…)]` directive will
 /// not trigger the lint.
 pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, receiver: &Expr<'_>) {
-    if in_external_macro(cx.sess(), expr.span) || !receiver.span.eq_ctxt(expr.span) {
+    if expr.span.in_external_macro(cx.sess().source_map()) || !receiver.span.eq_ctxt(expr.span) {
         return;
     }
     if let Some(parent) = get_parent_expr(cx, expr) {

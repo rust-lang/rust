@@ -1112,10 +1112,13 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         // Call the lang item.
         let panic = ecx.tcx.lang_items().get(reason.lang_item()).unwrap();
         let panic = ty::Instance::mono(ecx.tcx.tcx, panic);
-        ecx.call_function(panic, ExternAbi::Rust, &[], None, StackPopCleanup::Goto {
-            ret: None,
-            unwind: mir::UnwindAction::Unreachable,
-        })?;
+        ecx.call_function(
+            panic,
+            ExternAbi::Rust,
+            &[],
+            None,
+            StackPopCleanup::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
+        )?;
         interp_ok(())
     }
 
@@ -1501,7 +1504,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             catch_unwind: None,
             timing,
             is_user_relevant: ecx.machine.is_user_relevant(&frame),
-            salt: ecx.machine.rng.borrow_mut().gen::<usize>() % ADDRS_PER_ANON_GLOBAL,
+            salt: ecx.machine.rng.borrow_mut().random_range(0..ADDRS_PER_ANON_GLOBAL),
             data_race: ecx.machine.data_race.as_ref().map(|_| data_race::FrameState::default()),
         };
 
@@ -1716,7 +1719,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if unique {
             CTFE_ALLOC_SALT
         } else {
-            ecx.machine.rng.borrow_mut().gen::<usize>() % ADDRS_PER_ANON_GLOBAL
+            ecx.machine.rng.borrow_mut().random_range(0..ADDRS_PER_ANON_GLOBAL)
         }
     }
 

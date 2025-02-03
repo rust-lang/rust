@@ -830,8 +830,25 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // Let the visitor iterate into the argument/return
                 // types appearing in the fn signature.
             }
-            ty::UnsafeBinder(_) => {
-                // FIXME(unsafe_binders): We should also recurse into the binder here.
+            ty::UnsafeBinder(ty) => {
+                // FIXME(unsafe_binders): For now, we have no way to express
+                // that a type must be `ManuallyDrop` OR `Copy` (or a pointer).
+                if !ty.has_escaping_bound_vars() {
+                    self.out.push(traits::Obligation::new(
+                        self.tcx(),
+                        self.cause(ObligationCauseCode::Misc),
+                        self.param_env,
+                        ty.map_bound(|ty| {
+                            ty::TraitRef::new(
+                                self.tcx(),
+                                self.tcx().require_lang_item(LangItem::Copy, Some(self.span)),
+                                [ty],
+                            )
+                        }),
+                    ));
+                }
+
+                // We recurse into the binder below.
             }
 
             ty::Dynamic(data, r, _) => {

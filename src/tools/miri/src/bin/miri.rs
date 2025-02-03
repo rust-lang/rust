@@ -379,10 +379,8 @@ fn run_compiler_and_exit(
     callbacks: &mut (dyn rustc_driver::Callbacks + Send),
 ) -> ! {
     // Invoke compiler, and handle return code.
-    let exit_code = rustc_driver::catch_with_exit_code(move || {
-        rustc_driver::run_compiler(args, callbacks);
-        Ok(())
-    });
+    let exit_code =
+        rustc_driver::catch_with_exit_code(move || rustc_driver::run_compiler(args, callbacks));
     std::process::exit(exit_code)
 }
 
@@ -461,7 +459,7 @@ fn main() {
     // (`install_ice_hook` might change `RUST_BACKTRACE`.)
     let env_snapshot = env::vars_os().collect::<Vec<_>>();
 
-    let args = rustc_driver::args::raw_args(&early_dcx)
+    let args = rustc_driver::catch_fatal_errors(|| rustc_driver::args::raw_args(&early_dcx))
         .unwrap_or_else(|_| std::process::exit(rustc_driver::EXIT_FAILURE));
 
     // Install the ctrlc handler that sets `rustc_const_eval::CTRL_C_RECEIVED`, even if
@@ -723,8 +721,8 @@ fn main() {
 
     // Ensure we have parallelism for many-seeds mode.
     if many_seeds.is_some() && !rustc_args.iter().any(|arg| arg.starts_with("-Zthreads=")) {
-        // Clamp to 8 threads; things get a lot less efficient beyond that due to lock contention.
-        let threads = std::thread::available_parallelism().map_or(1, |n| n.get()).min(8);
+        // Clamp to 10 threads; things get a lot less efficient beyond that due to lock contention.
+        let threads = std::thread::available_parallelism().map_or(1, |n| n.get()).min(10);
         rustc_args.push(format!("-Zthreads={threads}"));
     }
     let many_seeds =
