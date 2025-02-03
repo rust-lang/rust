@@ -7,5 +7,4 @@ fn main() {
     let mut fds = [-1, -1];
     let res = unsafe { pipe(fds.as_mut_ptr()) };
     //~^ ERROR: calling a function with calling convention C using caller calling convention Rust
-    assert_eq!(res, 0);
 }
