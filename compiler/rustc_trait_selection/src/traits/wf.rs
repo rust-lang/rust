@@ -1,6 +1,7 @@
 use std::iter;
 
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_middle::bug;
@@ -10,6 +11,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_span::{DUMMY_SP, Span};
+use rustc_type_ir::Upcast;
 use tracing::{debug, instrument, trace};
 
 use crate::infer::InferCtxt;
@@ -565,24 +567,49 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> PredicateObligations<'tcx> {
-        let predicates = self.tcx().predicates_of(def_id);
+        let tcx = self.tcx();
+        let predicates = tcx.predicates_of(def_id);
         let mut origins = vec![def_id; predicates.predicates.len()];
         let mut head = predicates;
+        let mut trait_def_id = None;
         while let Some(parent) = head.parent {
-            head = self.tcx().predicates_of(parent);
+            match tcx.def_kind(parent) {
+                DefKind::Trait
+                    if matches!(tcx.def_kind(def_id), DefKind::AssocTy | DefKind::AssocConst) =>
+                {
+                    trait_def_id = Some(parent)
+                }
+                _ => {}
+            }
+            head = tcx.predicates_of(parent);
             origins.extend(iter::repeat(parent).take(head.predicates.len()));
         }
 
-        let predicates = predicates.instantiate(self.tcx(), args);
+        let predicates = predicates.instantiate(tcx, args);
         trace!("{:#?}", predicates);
         debug_assert_eq!(predicates.predicates.len(), origins.len());
 
         iter::zip(predicates, origins.into_iter().rev())
+            .filter(|(_, origin_def_id)| {
+                trait_def_id.is_none() || !matches!(tcx.def_kind(origin_def_id), DefKind::Trait)
+            })
             .map(|((pred, span), origin_def_id)| {
                 let code = ObligationCauseCode::WhereClause(origin_def_id, span);
                 let cause = self.cause(code);
+                (pred, cause)
+            })
+            .chain(trait_def_id.map(|trait_def_id| {
+                let code = ObligationCauseCode::WellFormed(None);
+                let cause = self.cause(code);
+                (
+                    ty::EarlyBinder::bind(ty::TraitRef::identity(tcx, trait_def_id).upcast(tcx))
+                        .instantiate(tcx, args),
+                    cause,
+                )
+            }))
+            .map(|(pred, cause)| {
                 traits::Obligation::with_depth(
-                    self.tcx(),
+                    tcx,
                     cause,
                     self.recursion_depth,
                     self.param_env,
