@@ -82,7 +82,7 @@ use rustc_session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_opti
 use rustc_session::{EarlyDiagCtxt, getopts};
 use tracing::info;
 
-use crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL;
+use crate::clean::utils::DOC_RUST_LANG_ORG_VERSION;
 
 /// A macro to create a FxHashMap.
 ///
@@ -709,7 +709,7 @@ fn usage(argv0: &str) {
     println!("{}", options.usage(&format!("{argv0} [options] <input>")));
     println!("    @path               Read newline separated options from `path`\n");
     println!(
-        "More information available at {DOC_RUST_LANG_ORG_CHANNEL}/rustdoc/what-is-rustdoc.html",
+        "More information available at {DOC_RUST_LANG_ORG_VERSION}/rustdoc/what-is-rustdoc.html",
     );
 }
 

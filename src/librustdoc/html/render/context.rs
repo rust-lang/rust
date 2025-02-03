@@ -32,7 +32,7 @@ use crate::html::render::write_shared::write_shared;
 use crate::html::url_parts_builder::UrlPartsBuilder;
 use crate::html::{layout, sources, static_files};
 use crate::scrape_examples::AllCallLocations;
-use crate::try_err;
+use crate::{DOC_RUST_LANG_ORG_VERSION, try_err};
 
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls
@@ -730,7 +730,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                          <noscript>\
                             <section>\
                                 <p>You need to enable JavaScript to use keyboard commands or search.</p>\
-                                <p>For more information, browse the <a href=\"https://doc.rust-lang.org/rustdoc/\">rustdoc handbook</a>.</p>\
+                                <p>For more information, browse the <a href=\"{DOC_RUST_LANG_ORG_VERSION}/rustdoc/\">rustdoc handbook</a>.</p>\
                             </section>\
                          </noscript>",
                     )
