@@ -18,7 +18,7 @@ LL |     *our = 5;
    |     ^^^^^^^^
    = help: this transition corresponds to a loss of read permissions
    = note: BACKTRACE (of the first span):
-   = note: inside `unknown_code_2` at tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
+   = note: called from `unknown_code_2` at tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
 note: inside `demo_mut_advanced_unique`
   --> tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
    |

@@ -7,7 +7,7 @@ LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `std::ptr::drop_in_place::<PartialDrop> - shim(Some(PartialDrop))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+   = note: called from `std::ptr::drop_in_place::<PartialDrop> - shim(Some(PartialDrop))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
 note: inside `main`
   --> tests/fail/unaligned_pointers/drop_in_place.rs:LL:CC
    |

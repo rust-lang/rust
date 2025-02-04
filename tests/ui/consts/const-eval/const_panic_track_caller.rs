@@ -18,4 +18,4 @@ const fn c() -> u32 {
 }
 
 const X: u32 = c();
-//~^ NOTE inside
+//~^ NOTE called from

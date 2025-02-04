@@ -18,7 +18,7 @@ LL |     let _v = *x;
    |              ^^
    = help: this transition corresponds to a temporary loss of write permissions until function exit
    = note: BACKTRACE (of the first span):
-   = note: inside `safe` at tests/fail/both_borrows/aliasing_mut2.rs:LL:CC
+   = note: called from `safe` at tests/fail/both_borrows/aliasing_mut2.rs:LL:CC
 note: inside `main`
   --> tests/fail/both_borrows/aliasing_mut2.rs:LL:CC
    |

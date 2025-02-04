@@ -18,7 +18,7 @@ help: the strongly protected tag <TAG> was created here, in the initial state Re
 LL | fn test(_x: &mut (), ptr: *mut u8, l: Layout) {
    |         ^^
    = note: BACKTRACE (of the first span):
-   = note: inside `test` at tests/fail/both_borrows/zero-sized-protected.rs:LL:CC
+   = note: called from `test` at tests/fail/both_borrows/zero-sized-protected.rs:LL:CC
 note: inside `main`
   --> tests/fail/both_borrows/zero-sized-protected.rs:LL:CC
    |

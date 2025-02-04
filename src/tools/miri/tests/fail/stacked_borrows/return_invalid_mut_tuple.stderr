@@ -21,7 +21,7 @@ help: <TAG> was later invalidated at offsets [0x0..0x8] by a read access
 LL |     let _val = unsafe { *xraw }; // invalidate xref
    |                         ^^^^^
    = note: BACKTRACE (of the first span):
-   = note: inside `foo` at tests/fail/stacked_borrows/return_invalid_mut_tuple.rs:LL:CC
+   = note: called from `foo` at tests/fail/stacked_borrows/return_invalid_mut_tuple.rs:LL:CC
 note: inside `main`
   --> tests/fail/stacked_borrows/return_invalid_mut_tuple.rs:LL:CC
    |

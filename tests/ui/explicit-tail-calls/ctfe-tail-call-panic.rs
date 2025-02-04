@@ -12,6 +12,6 @@ const fn g() {
 }
 
 const _: () = f();
-//~^ note: inside `_`
+//~^ note: called from `_`
 
 fn main() {}

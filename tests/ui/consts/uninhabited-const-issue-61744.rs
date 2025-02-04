@@ -5,11 +5,11 @@ pub const unsafe fn fake_type<T>() -> T {
 }
 
 pub const unsafe fn hint_unreachable() -> ! {
-    fake_type() //~ inside
+    fake_type() //~ called
 }
 
 trait Const {
-    const CONSTANT: i32 = unsafe { fake_type() }; //~ inside
+    const CONSTANT: i32 = unsafe { fake_type() }; //~ called
 }
 
 impl<T> Const for T {}

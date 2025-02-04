@@ -15,9 +15,9 @@ error[E0080]: evaluation of constant value failed
    |
    = note: accessing memory with alignment 1, but alignment 4 is required
    |
-note: inside `std::ptr::const_ptr::<impl *const u32>::copy_to_nonoverlapping`
+note: called from `std::ptr::const_ptr::<impl *const u32>::copy_to_nonoverlapping`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-note: inside `MISALIGNED_COPY`
+note: called from `MISALIGNED_COPY`
   --> $DIR/raw-pointer-ub.rs:19:5
    |
 LL |     y.copy_to_nonoverlapping(&mut z, 1);

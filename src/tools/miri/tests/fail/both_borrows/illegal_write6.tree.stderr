@@ -25,7 +25,7 @@ LL |     *a = 1;
    |     ^^^^^^
    = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
    = note: BACKTRACE (of the first span):
-   = note: inside `foo` at tests/fail/both_borrows/illegal_write6.rs:LL:CC
+   = note: called from `foo` at tests/fail/both_borrows/illegal_write6.rs:LL:CC
 note: inside `main`
   --> tests/fail/both_borrows/illegal_write6.rs:LL:CC
    |

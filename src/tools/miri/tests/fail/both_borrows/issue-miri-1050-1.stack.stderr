@@ -12,8 +12,8 @@ help: ALLOC was allocated here:
 LL |         let ptr = Box::into_raw(Box::new(0u16));
    |                                 ^^^^^^^^^^^^^^
    = note: BACKTRACE (of the first span):
-   = note: inside `std::boxed::Box::<u32>::from_raw_in` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-   = note: inside `std::boxed::Box::<u32>::from_raw` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+   = note: called from `std::boxed::Box::<u32>::from_raw_in` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+   = note: called from `std::boxed::Box::<u32>::from_raw` at RUSTLIB/alloc/src/boxed.rs:LL:CC
 note: inside `main`
   --> tests/fail/both_borrows/issue-miri-1050-1.rs:LL:CC
    |
