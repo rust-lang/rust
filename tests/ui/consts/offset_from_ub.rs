@@ -17,7 +17,7 @@ pub const DIFFERENT_ALLOC: usize = {
     let uninit2 = std::mem::MaybeUninit::<Struct>::uninit();
     let field_ptr: *const Struct = &uninit2 as *const _ as *const Struct;
     let offset = unsafe { ptr_offset_from(field_ptr, base_ptr) }; //~ERROR evaluation of constant value failed
-    //~| pointers into different allocations
+    //~| not both derived from the same allocation
     offset as usize
 };
 
@@ -37,7 +37,7 @@ pub const DIFFERENT_INT: isize = { // offset_from with two different integers: l
     let ptr1 = 8 as *const u8;
     let ptr2 = 16 as *const u8;
     unsafe { ptr_offset_from(ptr2, ptr1) } //~ERROR evaluation of constant value failed
-    //~| dangling pointer
+    //~| not both derived from the same allocation
 };
 
 const OUT_OF_BOUNDS_1: isize = {
@@ -46,7 +46,7 @@ const OUT_OF_BOUNDS_1: isize = {
     let end_ptr = (start_ptr).wrapping_add(length);
     // First ptr is out of bounds
     unsafe { ptr_offset_from(end_ptr, start_ptr) } //~ERROR evaluation of constant value failed
-    //~| expected a pointer to 10 bytes of memory
+    //~| the memory range between them is not in-bounds of an allocation
 };
 
 const OUT_OF_BOUNDS_2: isize = {
@@ -55,7 +55,7 @@ const OUT_OF_BOUNDS_2: isize = {
     let end_ptr = (start_ptr).wrapping_add(length);
     // Second ptr is out of bounds
     unsafe { ptr_offset_from(start_ptr, end_ptr) } //~ERROR evaluation of constant value failed
-    //~| expected a pointer to the end of 10 bytes of memory
+    //~| the memory range between them is not in-bounds of an allocation
 };
 
 pub const DIFFERENT_ALLOC_UNSIGNED: usize = {
@@ -64,7 +64,7 @@ pub const DIFFERENT_ALLOC_UNSIGNED: usize = {
     let uninit2 = std::mem::MaybeUninit::<Struct>::uninit();
     let field_ptr: *const Struct = &uninit2 as *const _ as *const Struct;
     unsafe { ptr_offset_from_unsigned(field_ptr, base_ptr) } //~ERROR evaluation of constant value failed
-    //~| pointers into different allocations
+    //~| not both derived from the same allocation
 };
 
 pub const TOO_FAR_APART1: isize = {

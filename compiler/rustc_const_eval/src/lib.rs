@@ -46,14 +46,8 @@ pub fn provide(providers: &mut Providers) {
     };
     providers.hooks.try_destructure_mir_constant_for_user_output =
         const_eval::try_destructure_mir_constant_for_user_output;
-    providers.valtree_to_const_val = |tcx, cv| {
-        const_eval::valtree_to_const_value(
-            tcx,
-            ty::TypingEnv::fully_monomorphized(),
-            cv.ty,
-            cv.valtree,
-        )
-    };
+    providers.valtree_to_const_val =
+        |tcx, cv| const_eval::valtree_to_const_value(tcx, ty::TypingEnv::fully_monomorphized(), cv);
     providers.check_validity_requirement = |tcx, (init_kind, param_env_and_ty)| {
         util::check_validity_requirement(tcx, init_kind, param_env_and_ty)
     };

@@ -60,6 +60,7 @@ use crate::diagnostics::{
 use crate::path_utils::*;
 use crate::place_ext::PlaceExt;
 use crate::places_conflict::{PlaceConflictBias, places_conflict};
+use crate::polonius::PoloniusDiagnosticsContext;
 use crate::polonius::legacy::{PoloniusLocationTable, PoloniusOutput};
 use crate::prefixes::PrefixSet;
 use crate::region_infer::RegionInferenceContext;
@@ -198,7 +199,7 @@ fn do_mir_borrowck<'tcx>(
         polonius_output,
         opt_closure_req,
         nll_errors,
-        localized_outlives_constraints,
+        polonius_diagnostics,
     } = nll::compute_regions(
         &infcx,
         free_regions,
@@ -270,6 +271,7 @@ fn do_mir_borrowck<'tcx>(
             polonius_output: None,
             move_errors: Vec::new(),
             diags_buffer,
+            polonius_diagnostics: polonius_diagnostics.as_ref(),
         };
         struct MoveVisitor<'a, 'b, 'infcx, 'tcx> {
             ctxt: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
@@ -308,6 +310,7 @@ fn do_mir_borrowck<'tcx>(
         polonius_output,
         move_errors: Vec::new(),
         diags_buffer,
+        polonius_diagnostics: polonius_diagnostics.as_ref(),
     };
 
     // Compute and report region errors, if any.
@@ -329,7 +332,7 @@ fn do_mir_borrowck<'tcx>(
         body,
         &regioncx,
         &borrow_set,
-        localized_outlives_constraints,
+        polonius_diagnostics.as_ref(),
         &opt_closure_req,
     );
 
@@ -579,6 +582,9 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
 
     diags_buffer: &'a mut BorrowckDiagnosticsBuffer<'infcx, 'tcx>,
     move_errors: Vec<MoveError<'tcx>>,
+
+    /// When using `-Zpolonius=next`: the data used to compute errors and diagnostics.
+    polonius_diagnostics: Option<&'a PoloniusDiagnosticsContext>,
 }
 
 // Check that:

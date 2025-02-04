@@ -18,7 +18,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
 use rustc_index::{IndexVec, newtype_index};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeVisitable};
+use rustc_macros::{HashStable, TypeVisitable};
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, UnOp};
@@ -53,7 +53,7 @@ macro_rules! thir_with_elements {
         /// A container for a THIR body.
         ///
         /// This can be indexed directly by any THIR index (e.g. [`ExprId`]).
-        #[derive(Debug, HashStable, Clone)]
+        #[derive(Debug, HashStable)]
         pub struct Thir<'tcx> {
             $(
                 pub $field_name: $field_ty,
@@ -98,14 +98,14 @@ thir_with_elements! {
     params: ParamId => Param<'tcx> => "p{}",
 }
 
-#[derive(Debug, HashStable, Clone)]
+#[derive(Debug, HashStable)]
 pub enum BodyTy<'tcx> {
     Const(Ty<'tcx>),
     Fn(FnSig<'tcx>),
 }
 
 /// Description of a type-checked function parameter.
-#[derive(Clone, Debug, HashStable)]
+#[derive(Debug, HashStable)]
 pub struct Param<'tcx> {
     /// The pattern that appears in the parameter list, or None for implicit parameters.
     pub pat: Option<Box<Pat<'tcx>>>,
@@ -125,7 +125,7 @@ pub enum LintLevel {
     Explicit(HirId),
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Debug, HashStable)]
 pub struct Block {
     /// Whether the block itself has a label. Used by `label: {}`
     /// and `try` blocks.
@@ -145,7 +145,7 @@ pub struct Block {
 
 type UserTy<'tcx> = Option<Box<CanonicalUserType<'tcx>>>;
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Debug, HashStable)]
 pub struct AdtExpr<'tcx> {
     /// The ADT we're constructing.
     pub adt_def: AdtDef<'tcx>,
@@ -162,7 +162,7 @@ pub struct AdtExpr<'tcx> {
     pub base: AdtExprBase<'tcx>,
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Debug, HashStable)]
 pub enum AdtExprBase<'tcx> {
     /// A struct expression where all the fields are explicitly enumerated: `Foo { a, b }`.
     None,
@@ -175,7 +175,7 @@ pub enum AdtExprBase<'tcx> {
     DefaultFields(Box<[Ty<'tcx>]>),
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Debug, HashStable)]
 pub struct ClosureExpr<'tcx> {
     pub closure_id: LocalDefId,
     pub args: UpvarArgs<'tcx>,
@@ -184,7 +184,7 @@ pub struct ClosureExpr<'tcx> {
     pub fake_reads: Vec<(ExprId, FakeReadCause, HirId)>,
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Debug, HashStable)]
 pub struct InlineAsmExpr<'tcx> {
     pub asm_macro: AsmMacro,
     pub template: &'tcx [InlineAsmTemplatePiece],
@@ -202,12 +202,12 @@ pub enum BlockSafety {
     ExplicitUnsafe(HirId),
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Debug, HashStable)]
 pub struct Stmt<'tcx> {
     pub kind: StmtKind<'tcx>,
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Debug, HashStable)]
 pub enum StmtKind<'tcx> {
     /// An expression with a trailing semicolon.
     Expr {
@@ -247,11 +247,11 @@ pub enum StmtKind<'tcx> {
     },
 }
 
-#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, HashStable)]
 pub struct LocalVarId(pub HirId);
 
 /// A THIR expression.
-#[derive(Clone, Debug, HashStable)]
+#[derive(Debug, HashStable)]
 pub struct Expr<'tcx> {
     /// kind of expression
     pub kind: ExprKind<'tcx>,
@@ -278,7 +278,7 @@ pub struct TempLifetime {
     pub backwards_incompatible: Option<region::Scope>,
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Debug, HashStable)]
 pub enum ExprKind<'tcx> {
     /// `Scope`s are used to explicitly mark destruction scopes,
     /// and to track the `HirId` of the expressions within the scope.
@@ -556,20 +556,20 @@ pub enum ExprKind<'tcx> {
 /// Represents the association of a field identifier and an expression.
 ///
 /// This is used in struct constructors.
-#[derive(Clone, Debug, HashStable)]
+#[derive(Debug, HashStable)]
 pub struct FieldExpr {
     pub name: FieldIdx,
     pub expr: ExprId,
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Debug, HashStable)]
 pub struct FruInfo<'tcx> {
     pub base: ExprId,
     pub field_types: Box<[Ty<'tcx>]>,
 }
 
 /// A `match` arm.
-#[derive(Clone, Debug, HashStable)]
+#[derive(Debug, HashStable)]
 pub struct Arm<'tcx> {
     pub pattern: Box<Pat<'tcx>>,
     pub guard: Option<ExprId>,
@@ -587,7 +587,7 @@ pub enum LogicalOp {
     Or,
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Debug, HashStable)]
 pub enum InlineAsmOperand<'tcx> {
     In {
         reg: InlineAsmRegOrRegClass,
@@ -625,13 +625,13 @@ pub enum InlineAsmOperand<'tcx> {
     },
 }
 
-#[derive(Clone, Debug, HashStable, TypeVisitable)]
+#[derive(Debug, HashStable, TypeVisitable)]
 pub struct FieldPat<'tcx> {
     pub field: FieldIdx,
     pub pattern: Box<Pat<'tcx>>,
 }
 
-#[derive(Clone, Debug, HashStable, TypeVisitable)]
+#[derive(Debug, HashStable, TypeVisitable)]
 pub struct Pat<'tcx> {
     pub ty: Ty<'tcx>,
     pub span: Span,
@@ -739,7 +739,7 @@ impl<'tcx> Pat<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, HashStable, TypeVisitable)]
+#[derive(Debug, HashStable, TypeVisitable)]
 pub struct Ascription<'tcx> {
     pub annotation: CanonicalUserTypeAnnotation<'tcx>,
     /// Variance to use when relating the `user_ty` to the **type of the value being
@@ -763,7 +763,7 @@ pub struct Ascription<'tcx> {
     pub variance: ty::Variance,
 }
 
-#[derive(Clone, Debug, HashStable, TypeVisitable)]
+#[derive(Debug, HashStable, TypeVisitable)]
 pub enum PatKind<'tcx> {
     /// A wildcard pattern: `_`.
     Wild,

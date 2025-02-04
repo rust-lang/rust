@@ -3146,7 +3146,6 @@ ui/nll/issue-97997.rs
 ui/nll/issue-98170.rs
 ui/nll/issue-98589-closures-relate-named-regions.rs
 ui/nll/issue-98693.rs
-ui/nll/polonius/issue-46589.rs
 ui/nll/relate_tys/issue-48071.rs
 ui/nll/ty-outlives/issue-53789-1.rs
 ui/nll/ty-outlives/issue-53789-2.rs

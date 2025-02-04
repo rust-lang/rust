@@ -622,8 +622,25 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             }
         }
 
+        // NLL doesn't consider boring locals for liveness, and wouldn't encounter a
+        // `Cause::LiveVar` for such a local. Polonius can't avoid computing liveness for boring
+        // locals yet, and will encounter them when trying to explain why a borrow contains a given
+        // point.
+        //
+        // We want to focus on relevant live locals in diagnostics, so when polonius is enabled, we
+        // ensure that we don't emit live boring locals as explanations.
+        let is_local_boring = |local| {
+            if let Some(polonius_diagnostics) = self.polonius_diagnostics {
+                polonius_diagnostics.boring_nll_locals.contains(&local)
+            } else {
+                assert!(!tcx.sess.opts.unstable_opts.polonius.is_next_enabled());
+
+                // Boring locals are never the cause of a borrow explanation in NLLs.
+                false
+            }
+        };
         match find_use::find(body, regioncx, tcx, region_sub, use_location) {
-            Some(Cause::LiveVar(local, location)) => {
+            Some(Cause::LiveVar(local, location)) if !is_local_boring(local) => {
                 let span = body.source_info(location).span;
                 let spans = self
                     .move_spans(Place::from(local).as_ref(), location)
@@ -666,7 +683,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 }
             }
 
-            None => {
+            Some(Cause::LiveVar(..)) | None => {
+                // Here, under NLL: no cause was found. Under polonius: no cause was found, or a
+                // boring local was found, which we ignore like NLLs do to match its diagnostics.
                 if let Some(region) = self.to_error_region_vid(borrow_region_vid) {
                     let (category, from_closure, span, region_name, path) =
                         self.free_region_constraint_info(borrow_region_vid, region);

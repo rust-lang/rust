@@ -280,7 +280,9 @@ const_eval_nullary_intrinsic_fail =
     could not evaluate nullary intrinsic
 
 const_eval_offset_from_different_allocations =
-    `{$name}` called on pointers into different allocations
+    `{$name}` called on two different pointers that are not both derived from the same allocation
+const_eval_offset_from_out_of_bounds =
+    `{$name}` called on two different pointers where the memory range between them is not in-bounds of an allocation
 const_eval_offset_from_overflow =
     `{$name}` called when first pointer is too far ahead of second
 const_eval_offset_from_test =
