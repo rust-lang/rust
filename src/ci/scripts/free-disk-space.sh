@@ -9,6 +9,17 @@ set -euo pipefail
 # - Check that there are no big packages preinstalled that we aren't using
 # - Check that all directores we are removing are still present (look at the warnings)
 
+# Check if the architecture is x86.
+isX86() {
+    local arch
+    arch=$(uname -m)
+    if [ "$arch" = "x86_64" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 # Print a line of the specified character.
 printSeparationLine() {
     for ((i = 0; i < 80; i++)); do
@@ -28,17 +39,6 @@ getAvailableSpace() {
 # REF: https://unix.stackexchange.com/a/44087/60849
 formatByteCount() {
     numfmt --to=iec-i --suffix=B --padding=7 "$1"'000'
-}
-
-# Check if the architecture is x86.
-isX86() {
-    local arch
-    arch=$(uname -m)
-    if [ "$arch" = "x86_64" ]; then
-        return 0
-    else
-        return 1
-    fi
 }
 
 # Execute a task, printing how much space was saved and how long it took to run the task
