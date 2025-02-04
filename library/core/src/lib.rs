@@ -117,6 +117,7 @@
 #![feature(const_eval_select)]
 #![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
+#![feature(disjoint_bitor)]
 #![feature(internal_impls_macro)]
 #![feature(ip)]
 #![feature(is_ascii_octdigit)]

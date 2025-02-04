@@ -777,6 +777,7 @@ symbols! {
         discriminant_kind,
         discriminant_type,
         discriminant_value,
+        disjoint_bitor,
         dispatch_from_dyn,
         div,
         div_assign,
