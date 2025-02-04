@@ -124,6 +124,7 @@ pub(crate) fn path_to_const<'g>(
             ConstScalar::UnevaluatedConst(c.into(), Substitution::empty(Interner)),
             expected_ty,
         )),
+        // FIXME: With feature(adt_const_params), we also need to consider other things here, e.g. struct constructors.
         _ => None,
     }
 }
