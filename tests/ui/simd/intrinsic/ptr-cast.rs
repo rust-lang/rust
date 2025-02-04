@@ -2,11 +2,15 @@
 
 #![feature(repr_simd, intrinsics)]
 
-extern "rust-intrinsic" {
-    fn simd_cast_ptr<T, U>(x: T) -> U;
-    fn simd_expose_provenance<T, U>(x: T) -> U;
-    fn simd_with_exposed_provenance<T, U>(x: T) -> U;
-}
+
+#[rustc_intrinsic]
+unsafe fn simd_cast_ptr<T, U>(x: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_expose_provenance<T, U>(x: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_with_exposed_provenance<T, U>(x: T) -> U;
 
 #[derive(Copy, Clone)]
 #[repr(simd)]
