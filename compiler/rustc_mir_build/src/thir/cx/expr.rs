@@ -21,9 +21,9 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, sym};
 use tracing::{debug, info, instrument, trace};
 
-use crate::thir::cx::Cx;
+use crate::thir::cx::ThirBuildCx;
 
-impl<'tcx> Cx<'tcx> {
+impl<'tcx> ThirBuildCx<'tcx> {
     /// Create a THIR expression for the given HIR expression. This expands all
     /// adjustments and directly adds the type information from the
     /// `typeck_results`. See the [dev-guide] for more details.
