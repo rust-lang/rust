@@ -1774,7 +1774,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--src-root").arg(&builder.src);
         cmd.arg("--src-test-suite-root").arg(builder.src.join("tests").join(suite));
 
-        cmd.arg("--build-base").arg(testdir(builder, compiler.host).join(suite));
+        // N.B. it's important to distinguish between the *root* build directory, the *host* build
+        // directory immediately under the root build directory, and the test-suite-specific build
+        // directory.
+        cmd.arg("--build-root").arg(&builder.out);
+        cmd.arg("--build-test-suite-root").arg(testdir(builder, compiler.host).join(suite));
 
         // When top stage is 0, that means that we're testing an externally provided compiler.
         // In that case we need to use its specific sysroot for tests to pass.
