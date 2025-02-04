@@ -1,4 +1,8 @@
-//@ known-bug: #57276
+//@ check-pass
+// Regression test for #57276.
+
+// Make sure that object safety checking doesn't freak out when
+// we have impossible-to-satisfy `DispatchFromDyn` predicates.
 
 #![feature(arbitrary_self_types, dispatch_from_dyn)]
 

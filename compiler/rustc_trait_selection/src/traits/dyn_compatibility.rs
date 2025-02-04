@@ -4,19 +4,16 @@
 //!
 //! [^1]: Formerly known as "object safety".
 
-use std::iter;
 use std::ops::ControlFlow;
 
-use rustc_abi::BackendRepr;
 use rustc_errors::FatalError;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, EarlyBinder, ExistentialPredicateStableCmpExt as _, GenericArgs, Ty, TyCtxt,
-    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
+    self, EarlyBinder, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
 };
 use rustc_span::Span;
 use rustc_type_ir::elaborate;
@@ -107,14 +104,6 @@ fn dyn_compatibility_violations_for_trait(
     let spans = super_predicates_have_non_lifetime_binders(tcx, trait_def_id);
     if !spans.is_empty() {
         violations.push(DynCompatibilityViolation::SupertraitNonLifetimeBinder(spans));
-    }
-
-    if violations.is_empty() {
-        for item in tcx.associated_items(trait_def_id).in_definition_order() {
-            if let ty::AssocKind::Fn = item.kind {
-                check_receiver_correct(tcx, trait_def_id, *item);
-            }
-        }
     }
 
     violations
@@ -499,55 +488,6 @@ fn virtual_call_violations_for_method<'tcx>(
     errors
 }
 
-/// This code checks that `receiver_is_dispatchable` is correctly implemented.
-///
-/// This check is outlined from the dyn-compatibility check to avoid cycles with
-/// layout computation, which relies on knowing whether methods are dyn-compatible.
-fn check_receiver_correct<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, method: ty::AssocItem) {
-    if !is_vtable_safe_method(tcx, trait_def_id, method) {
-        return;
-    }
-
-    let method_def_id = method.def_id;
-    let sig = tcx.fn_sig(method_def_id).instantiate_identity();
-    let typing_env = ty::TypingEnv::non_body_analysis(tcx, method_def_id);
-    let receiver_ty = tcx.liberate_late_bound_regions(method_def_id, sig.input(0));
-
-    if receiver_ty == tcx.types.self_param {
-        // Assumed OK, may change later if unsized_locals permits `self: Self` as dispatchable.
-        return;
-    }
-
-    // e.g., `Rc<()>`
-    let unit_receiver_ty = receiver_for_self_ty(tcx, receiver_ty, tcx.types.unit, method_def_id);
-    match tcx.layout_of(typing_env.as_query_input(unit_receiver_ty)).map(|l| l.backend_repr) {
-        Ok(BackendRepr::Scalar(..)) => (),
-        abi => {
-            tcx.dcx().span_delayed_bug(
-                tcx.def_span(method_def_id),
-                format!("receiver {unit_receiver_ty:?} when `Self = ()` should have a Scalar ABI; found {abi:?}"),
-            );
-        }
-    }
-
-    let trait_object_ty = object_ty_for_trait(tcx, trait_def_id, tcx.lifetimes.re_static);
-
-    // e.g., `Rc<dyn Trait>`
-    let trait_object_receiver =
-        receiver_for_self_ty(tcx, receiver_ty, trait_object_ty, method_def_id);
-    match tcx.layout_of(typing_env.as_query_input(trait_object_receiver)).map(|l| l.backend_repr) {
-        Ok(BackendRepr::ScalarPair(..)) => (),
-        abi => {
-            tcx.dcx().span_delayed_bug(
-                tcx.def_span(method_def_id),
-                format!(
-                    "receiver {trait_object_receiver:?} when `Self = {trait_object_ty}` should have a ScalarPair ABI; found {abi:?}"
-                ),
-            );
-        }
-    }
-}
-
 /// Performs a type instantiation to produce the version of `receiver_ty` when `Self = self_ty`.
 /// For example, for `receiver_ty = Rc<Self>` and `self_ty = Foo`, returns `Rc<Foo>`.
 fn receiver_for_self_ty<'tcx>(
@@ -567,49 +507,6 @@ fn receiver_for_self_ty<'tcx>(
         receiver_ty, self_ty, method_def_id, result
     );
     result
-}
-
-/// Creates the object type for the current trait. For example,
-/// if the current trait is `Deref`, then this will be
-/// `dyn Deref<Target = Self::Target> + 'static`.
-#[instrument(level = "trace", skip(tcx), ret)]
-fn object_ty_for_trait<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    trait_def_id: DefId,
-    lifetime: ty::Region<'tcx>,
-) -> Ty<'tcx> {
-    let trait_ref = ty::TraitRef::identity(tcx, trait_def_id);
-    debug!(?trait_ref);
-
-    let trait_predicate = ty::Binder::dummy(ty::ExistentialPredicate::Trait(
-        ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref),
-    ));
-    debug!(?trait_predicate);
-
-    let pred: ty::Predicate<'tcx> = trait_ref.upcast(tcx);
-    let mut elaborated_predicates: Vec<_> = elaborate(tcx, [pred])
-        .filter_map(|pred| {
-            debug!(?pred);
-            let pred = pred.as_projection_clause()?;
-            Some(pred.map_bound(|p| {
-                ty::ExistentialPredicate::Projection(ty::ExistentialProjection::erase_self_ty(
-                    tcx, p,
-                ))
-            }))
-        })
-        .collect();
-    // NOTE: Since #37965, the existential predicates list has depended on the
-    // list of predicates to be sorted. This is mostly to enforce that the primary
-    // predicate comes first.
-    elaborated_predicates.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
-    elaborated_predicates.dedup();
-
-    let existential_predicates = tcx.mk_poly_existential_predicates_from_iter(
-        iter::once(trait_predicate).chain(elaborated_predicates),
-    );
-    debug!(?existential_predicates);
-
-    Ty::new_dynamic(tcx, existential_predicates, lifetime, ty::Dyn)
 }
 
 /// Checks the method's receiver (the `self` argument) can be dispatched on when `Self` is a

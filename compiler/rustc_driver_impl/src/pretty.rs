@@ -101,6 +101,10 @@ impl<'tcx> pprust_hir::PpAnn for HirIdentifiedAnn<'tcx> {
                 s.s.space();
                 s.synth_comment(format!("pat hir_id: {}", pat.hir_id));
             }
+            pprust_hir::AnnNode::TyPat(pat) => {
+                s.s.space();
+                s.synth_comment(format!("ty pat hir_id: {}", pat.hir_id));
+            }
             pprust_hir::AnnNode::Arm(arm) => {
                 s.s.space();
                 s.synth_comment(format!("arm hir_id: {}", arm.hir_id));

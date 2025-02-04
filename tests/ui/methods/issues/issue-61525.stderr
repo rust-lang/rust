@@ -32,7 +32,7 @@ note: method defined here
   --> $DIR/issue-61525.rs:2:8
    |
 LL |     fn query<Q>(self, q: Q);
-   |        ^^^^^
+   |        ^^^^^          -
 
 error: aborting due to 2 previous errors
 

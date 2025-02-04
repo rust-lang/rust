@@ -412,7 +412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
             | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. }) => true,
 
-            hir::Node::Pat(_) => {
+            hir::Node::TyPat(_) | hir::Node::Pat(_) => {
                 self.dcx().span_delayed_bug(expr.span, "place expr not allowed in pattern");
                 true
             }

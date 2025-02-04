@@ -1,6 +1,5 @@
 const ONE: [u16] = [1];
 //~^ ERROR the size for values of type `[u16]` cannot be known at compilation time
-//~| ERROR the size for values of type `[u16]` cannot be known at compilation time
 //~| ERROR mismatched types
 
 const TWO: &'static u16 = &ONE[0];

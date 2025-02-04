@@ -393,10 +393,8 @@ pub trait Visitor<'v>: Sized {
     fn visit_expr_field(&mut self, field: &'v ExprField<'v>) -> Self::Result {
         walk_expr_field(self, field)
     }
-    fn visit_pattern_type_pattern(&mut self, _p: &'v Pat<'v>) {
-        // Do nothing. Only a few visitors need to know the details of the pattern type,
-        // and they opt into it. All other visitors will just choke on our fake patterns
-        // because they aren't in a body.
+    fn visit_pattern_type_pattern(&mut self, p: &'v TyPat<'v>) -> Self::Result {
+        walk_ty_pat(self, p)
     }
     fn visit_generic_param(&mut self, p: &'v GenericParam<'v>) -> Self::Result {
         walk_generic_param(self, p)
@@ -700,6 +698,18 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm<'v>) -> V::Res
     try_visit!(visitor.visit_pat(arm.pat));
     visit_opt!(visitor, visit_expr, arm.guard);
     visitor.visit_expr(arm.body)
+}
+
+pub fn walk_ty_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v TyPat<'v>) -> V::Result {
+    try_visit!(visitor.visit_id(pattern.hir_id));
+    match pattern.kind {
+        TyPatKind::Range(lower_bound, upper_bound, _) => {
+            visit_opt!(visitor, visit_const_arg_unambig, lower_bound);
+            visit_opt!(visitor, visit_const_arg_unambig, upper_bound);
+        }
+        TyPatKind::Err(_) => (),
+    }
+    V::Result::output()
 }
 
 pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) -> V::Result {

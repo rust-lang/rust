@@ -14,16 +14,20 @@ mod bar {
 }
 
 pub fn foo() {}
+//~^ ERROR requires `sized` lang_item
 
 fn test1() {
+    //~^ ERROR requires `sized` lang_item
     use bar::foo;
     //~^ ERROR unresolved import `bar::foo` [E0432]
     //~| no `foo` in `bar`
 }
 
 fn test2() {
+    //~^ ERROR requires `sized` lang_item
     use bar::glob::foo;
     //~^ ERROR `foo` is private
 }
 
 fn main() {}
+//~^ ERROR requires `sized` lang_item

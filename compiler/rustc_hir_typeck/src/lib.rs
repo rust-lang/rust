@@ -186,8 +186,6 @@ fn typeck_with_inspect<'tcx>(
         let wf_code = ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(def_id)));
         fcx.register_wf_obligation(expected_type.into(), body.value.span, wf_code);
 
-        fcx.require_type_is_sized(expected_type, body.value.span, ObligationCauseCode::ConstSized);
-
         // Gather locals in statics (because of block expressions).
         GatherLocalsVisitor::new(&fcx).visit_body(body);
 

@@ -26,6 +26,26 @@ help: alternatively, consider constraining `foo` so it does not apply to trait o
 LL |     fn foo() -> Self where Self: Sized;
    |                      +++++++++++++++++
 
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:22:13
+   |
+LL | fn car() -> dyn DynIncompatible {
+   |             ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL | fn car() -> impl DynIncompatible {
+   |             ~~~~
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn car() -> Box<dyn DynIncompatible> {
+LL |
+LL |     if true {
+LL ~         return Box::new(A);
+LL |     }
+LL ~     Box::new(B)
+   |
+
 error[E0038]: the trait `DynIncompatible` is not dyn compatible
   --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:30:17
    |
@@ -53,23 +73,6 @@ help: alternatively, consider constraining `foo` so it does not apply to trait o
    |
 LL |     fn foo() -> Self where Self: Sized;
    |                      +++++++++++++++++
-
-error[E0746]: return type cannot have an unboxed trait object
-  --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:22:13
-   |
-LL | fn car() -> dyn DynIncompatible {
-   |             ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: if there were a single returned type, you could use `impl Trait` instead
-help: box the return type, and wrap all of the returned values in `Box::new`
-   |
-LL ~ fn car() -> Box<dyn DynIncompatible> {
-LL |
-LL |     if true {
-LL ~         return Box::new(A);
-LL |     }
-LL ~     Box::new(B)
-   |
 
 error[E0038]: the trait `DynIncompatible` is not dyn compatible
   --> $DIR/dyn-incompatible-trait-in-return-position-dyn-trait.rs:32:16
