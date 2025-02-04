@@ -1209,8 +1209,22 @@ impl<'a> Builder<'a> {
     /// compiler will run on, *not* the target it will build code for). Explicitly does not take
     /// `Compiler` since all `Compiler` instances are meant to be obtained through this function,
     /// since it ensures that they are valid (i.e., built and assembled).
-    pub fn compiler(&self, stage: u32, host: TargetSelection) -> Compiler {
-        self.ensure(compile::Assemble { target_compiler: Compiler { stage, host } })
+    pub fn compiler(&self, stage: u32, host: TargetSelection, for_rustc_tool: bool) -> Compiler {
+        let mut compiler =
+            self.ensure(compile::Assemble { target_compiler: Compiler::new(stage, host) });
+
+        if stage > 0 && for_rustc_tool {
+            self.ensure(compile::Std::new(compiler, host));
+            // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+            // we'd have stageN/bin/rustc and stageN/bin/$tool_name be effectively different stage
+            // compilers, which isn't what we want.
+            //
+            // Compiler tools should be linked in the same way as the compiler it's paired with,
+            // so it must be built with the previous stage compiler.
+            compiler.downgrade();
+        };
+
+        compiler
     }
 
     /// Similar to `compiler`, except handles the full-bootstrap option to
@@ -1229,13 +1243,14 @@ impl<'a> Builder<'a> {
         stage: u32,
         host: TargetSelection,
         target: TargetSelection,
+        for_rustc_tool: bool,
     ) -> Compiler {
         if self.build.force_use_stage2(stage) {
-            self.compiler(2, self.config.build)
+            self.compiler(2, self.config.build, for_rustc_tool)
         } else if self.build.force_use_stage1(stage, target) {
-            self.compiler(1, self.config.build)
+            self.compiler(1, self.config.build, for_rustc_tool)
         } else {
-            self.compiler(stage, host)
+            self.compiler(stage, host, for_rustc_tool)
         }
     }
 

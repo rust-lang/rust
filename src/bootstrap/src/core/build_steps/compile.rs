@@ -110,7 +110,7 @@ impl Step for Std {
             && builder.config.last_modified_commit(&["library"], "download-rustc", true).is_none();
 
         run.builder.ensure(Std {
-            compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
+            compiler: run.builder.compiler(run.builder.top_stage, run.build_triple(), false),
             target: run.target,
             crates,
             force_recompile,
@@ -162,7 +162,7 @@ impl Step for Std {
 
         let mut target_deps = builder.ensure(StartupObjects { compiler, target });
 
-        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target, false);
         if compiler_to_use != compiler {
             builder.ensure(Std::new(compiler_to_use, target));
             let msg = if compiler_to_use.host == target {
@@ -264,7 +264,7 @@ impl Step for Std {
 
         builder.ensure(StdLink::from_std(
             self,
-            builder.compiler(compiler.stage, builder.config.build),
+            builder.compiler(compiler.stage, builder.config.build, false),
         ));
     }
 }
@@ -770,7 +770,7 @@ impl Step for StartupObjects {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(StartupObjects {
-            compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
+            compiler: run.builder.compiler(run.builder.top_stage, run.build_triple(), false),
             target: run.target,
         });
     }
@@ -894,7 +894,7 @@ impl Step for Rustc {
     fn make_run(run: RunConfig<'_>) {
         let crates = run.cargo_crates_in_set();
         run.builder.ensure(Rustc {
-            compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
+            compiler: run.builder.compiler(run.builder.top_stage, run.build_triple(), false),
             target: run.target,
             crates,
         });
@@ -931,9 +931,9 @@ impl Step for Rustc {
             return compiler.stage;
         }
 
-        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target, false);
         if compiler_to_use != compiler {
-            let _ = builder.compiler(compiler_to_use.stage, target);
+            let _ = builder.compiler(compiler_to_use.stage, target, false);
 
             let msg = if compiler_to_use.host == target {
                 format!(
@@ -957,7 +957,7 @@ impl Step for Rustc {
 
         // Ensure that build scripts and proc macros have a std / libproc_macro to link against.
         builder.ensure(Std::new(
-            builder.compiler(self.compiler.stage, builder.config.build),
+            builder.compiler(self.compiler.stage, builder.config.build, false),
             builder.config.build,
         ));
 
@@ -1023,7 +1023,7 @@ impl Step for Rustc {
 
         builder.ensure(RustcLink::from_rustc(
             self,
-            builder.compiler(compiler.stage, builder.config.build),
+            builder.compiler(compiler.stage, builder.config.build, false),
         ));
 
         compiler.stage
@@ -1424,7 +1424,7 @@ impl Step for CodegenBackend {
 
             run.builder.ensure(CodegenBackend {
                 target: run.target,
-                compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
+                compiler: run.builder.compiler(run.builder.top_stage, run.build_triple(), false),
                 backend: backend.clone(),
             });
         }
@@ -1435,7 +1435,7 @@ impl Step for CodegenBackend {
         let target = self.target;
         let backend = self.backend;
 
-        let _ = builder.compiler(compiler.stage, target);
+        let _ = builder.compiler(compiler.stage, target, false);
 
         if builder.config.keep_stage.contains(&compiler.stage) {
             builder.info(
@@ -1447,7 +1447,7 @@ impl Step for CodegenBackend {
             return;
         }
 
-        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target, false);
         if compiler_to_use != compiler {
             builder.ensure(CodegenBackend { compiler: compiler_to_use, target, backend });
             return;
@@ -1745,7 +1745,7 @@ impl Step for Assemble {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Assemble {
-            target_compiler: run.builder.compiler(run.builder.top_stage + 1, run.target),
+            target_compiler: run.builder.compiler(run.builder.top_stage + 1, run.target, false),
         });
     }
 
@@ -1846,7 +1846,8 @@ impl Step for Assemble {
         //
         // FIXME: It may be faster if we build just a stage 1 compiler and then
         //        use that to bootstrap this compiler forward.
-        let mut build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
+        let mut build_compiler =
+            builder.compiler(target_compiler.stage - 1, builder.config.build, false);
 
         // Build enzyme
         let enzyme_install = if builder.config.llvm_enzyme {
@@ -1989,7 +1990,11 @@ impl Step for Assemble {
             );
         }
 
-        maybe_install_llvm_bitcode_linker(target_compiler);
+        {
+            let mut compiler_for_rustc_tool = build_compiler;
+            compiler_for_rustc_tool.downgraded_from = Some(target_compiler.stage);
+            maybe_install_llvm_bitcode_linker(compiler_for_rustc_tool);
+        }
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
         // so that it can be found when the newly built `rustc` is run.

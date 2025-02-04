@@ -60,7 +60,7 @@ macro_rules! clean_crate_tree {
 
             fn make_run(run: RunConfig<'_>) {
                 let builder = run.builder;
-                let compiler = builder.compiler(builder.top_stage, run.target);
+                let compiler = builder.compiler(builder.top_stage, run.target, false);
                 builder.ensure(Self { crates: run.cargo_crates_in_set(), compiler });
             }
 
