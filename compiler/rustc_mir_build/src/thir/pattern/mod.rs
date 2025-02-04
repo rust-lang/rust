@@ -165,17 +165,23 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // deconstructed to obtain the constant value and other data.
         let mut kind: PatKind<'tcx> = self.lower_lit(expr);
 
-        // Unpeel any ascription or inline-const wrapper nodes.
+        // Unpeel any wrapper nodes, while preserving marker data that will
+        // need to be reapplied to the range pattern node.
         loop {
             match kind {
                 PatKind::AscribeUserType { ascription, subpattern } => {
                     ascriptions.push(ascription);
                     kind = subpattern.kind;
                 }
-                PatKind::ExpandedConstant { is_inline, def_id, subpattern } => {
-                    if is_inline {
-                        inline_consts.extend(def_id.as_local());
-                    }
+                PatKind::InlineConstMarker { def_id, subpattern } => {
+                    // Preserve inline-const markers, so that THIR unsafeck can
+                    // see const blocks that are part of a range pattern.
+                    inline_consts.push(def_id);
+                    kind = subpattern.kind;
+                }
+                PatKind::NamedConstMarker { subpattern, .. } => {
+                    // Named-const markers are only used for improved diagnostics that
+                    // aren't relevant to range patterns, so it's OK to discard them.
                     kind = subpattern.kind;
                 }
                 _ => break,
@@ -307,12 +313,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 subpattern: Box::new(Pat { span, ty, kind }),
             };
         }
-        for def in inline_consts {
-            kind = PatKind::ExpandedConstant {
-                def_id: def.to_def_id(),
-                is_inline: true,
-                subpattern: Box::new(Pat { span, ty, kind }),
-            };
+        // If one or both endpoints is an inline-const block, reapply the marker
+        // nodes so that unsafeck can traverse into the corresponding block body.
+        for def_id in inline_consts {
+            let subpattern = Box::new(Pat { span, ty, kind });
+            kind = PatKind::InlineConstMarker { def_id, subpattern };
         }
         Ok(kind)
     }
@@ -593,11 +598,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let args = self.typeck_results.node_args(id);
         let c = ty::Const::new_unevaluated(self.tcx, ty::UnevaluatedConst { def: def_id, args });
         let subpattern = self.const_to_pat(c, ty, id, span);
-        let pattern = Box::new(Pat {
-            span,
-            ty,
-            kind: PatKind::ExpandedConstant { subpattern, def_id, is_inline: false },
-        });
+        let pattern =
+            Box::new(Pat { span, ty, kind: PatKind::NamedConstMarker { subpattern, def_id } });
 
         if !is_associated_const {
             return pattern;
@@ -648,7 +650,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args };
         let subpattern = self.const_to_pat(ty::Const::new_unevaluated(self.tcx, ct), ty, id, span);
-        PatKind::ExpandedConstant { subpattern, def_id: def_id.to_def_id(), is_inline: true }
+        PatKind::InlineConstMarker { subpattern, def_id }
     }
 
     /// Converts literals, paths and negation of literals to patterns.

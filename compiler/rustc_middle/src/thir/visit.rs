@@ -243,7 +243,10 @@ pub fn walk_pat<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
         AscribeUserType { subpattern, ascription: _ }
         | Deref { subpattern }
         | DerefPattern { subpattern, .. }
-        | Binding { subpattern: Some(subpattern), .. } => visitor.visit_pat(subpattern),
+        | Binding { subpattern: Some(subpattern), .. }
+        | InlineConstMarker { subpattern, .. }
+        | NamedConstMarker { subpattern, .. } => visitor.visit_pat(subpattern),
+
         Binding { .. } | Wild | Never | Error(_) => {}
         Variant { subpatterns, adt_def: _, args: _, variant_index: _ } | Leaf { subpatterns } => {
             for subpattern in subpatterns {
@@ -251,7 +254,6 @@ pub fn walk_pat<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
             }
         }
         Constant { value: _ } => {}
-        ExpandedConstant { def_id: _, is_inline: _, subpattern } => visitor.visit_pat(subpattern),
         Range(_) => {}
         Slice { prefix, slice, suffix } | Array { prefix, slice, suffix } => {
             for subpattern in prefix.iter() {

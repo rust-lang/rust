@@ -676,10 +676,10 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         let mut interpreted_as_const = None;
         let mut interpreted_as_const_sugg = None;
 
-        if let PatKind::ExpandedConstant { def_id, is_inline: false, .. }
+        if let PatKind::NamedConstMarker { def_id,  .. }
         | PatKind::AscribeUserType {
             subpattern:
-                box Pat { kind: PatKind::ExpandedConstant { def_id, is_inline: false, .. }, .. },
+                box Pat { kind: PatKind::NamedConstMarker { def_id,  .. }, .. },
             ..
         } = pat.kind
             && let DefKind::Const = self.tcx.def_kind(def_id)
@@ -1309,7 +1309,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
 
     for &arm in arms {
         let arm = &thir.arms[arm];
-        if let PatKind::ExpandedConstant { def_id, is_inline: false, .. } = arm.pattern.kind
+        if let PatKind::NamedConstMarker { def_id, .. } = arm.pattern.kind
             && let Ok(snippet) = cx.tcx.sess.source_map().span_to_snippet(arm.pattern.span)
             // We filter out paths with multiple path::segments.
             && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')

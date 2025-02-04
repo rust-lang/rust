@@ -925,7 +925,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.visit_primary_bindings(subpattern, subpattern_user_ty, f)
             }
 
-            PatKind::ExpandedConstant { ref subpattern, .. } => {
+            PatKind::InlineConstMarker { ref subpattern, .. }
+            | PatKind::NamedConstMarker { ref subpattern, .. } => {
                 self.visit_primary_bindings(subpattern, pattern_user_ty, f)
             }
 

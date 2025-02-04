@@ -678,11 +678,14 @@ impl<'tcx> Pat<'tcx> {
             | Binding { subpattern: None, .. }
             | Constant { .. }
             | Error(_) => {}
+
             AscribeUserType { subpattern, .. }
             | Binding { subpattern: Some(subpattern), .. }
             | Deref { subpattern }
             | DerefPattern { subpattern, .. }
-            | ExpandedConstant { subpattern, .. } => subpattern.walk_(it),
+            | InlineConstMarker { subpattern, .. }
+            | NamedConstMarker { subpattern, .. } => subpattern.walk_(it),
+
             Leaf { subpatterns } | Variant { subpatterns, .. } => {
                 subpatterns.iter().for_each(|field| field.pattern.walk_(it))
             }
@@ -825,24 +828,29 @@ pub enum PatKind<'tcx> {
         value: mir::Const<'tcx>,
     },
 
-    /// Pattern obtained by converting a constant (inline or named) to its pattern
-    /// representation using `const_to_pat`.
-    ExpandedConstant {
-        /// [DefId] of the constant, we need this so that we have a
-        /// reference that can be used by unsafety checking to visit nested
-        /// unevaluated constants and for diagnostics. If the `DefId` doesn't
-        /// correspond to a local crate, it points at the `const` item.
+    /// Marker node that wraps a pattern representing an inline-const block.
+    ///
+    /// THIR unsafeck uses this marker to discover inline-const blocks that
+    /// appear in patterns, so that they can be checked together with the rest
+    /// of their enclosing body.
+    ///
+    /// Note that if a range pattern has inline-const blocks for both endpoints,
+    /// the resulting THIR pattern will be an `InlineConstMarker`, containing
+    /// another `InlineConstMarker`, containing the underlying `Range` pattern.
+    InlineConstMarker {
+        /// ID of the inline-const block, for use by THIR unsafeck.
+        def_id: LocalDefId,
+        subpattern: Box<Pat<'tcx>>,
+    },
+
+    /// Marker node that wraps a pattern representing a named constant.
+    /// Enables better diagnostics in some cases, but has no other significance.
+    ///
+    /// (Even though this is superficially similar to `InlineConstMarker`, they
+    /// are very different in actual usage, so they should be kept separate.)
+    NamedConstMarker {
+        /// ID of the named constant, for use by diagnostics.
         def_id: DefId,
-        /// If `false`, then `def_id` points at a `const` item, otherwise it
-        /// corresponds to a local inline const.
-        is_inline: bool,
-        /// If the inline constant is used in a range pattern, this subpattern
-        /// represents the range (if both ends are inline constants, there will
-        /// be multiple InlineConstant wrappers).
-        ///
-        /// Otherwise, the actual pattern that the constant lowered to. As with
-        /// other constants, inline constants are matched structurally where
-        /// possible.
         subpattern: Box<Pat<'tcx>>,
     },
 
