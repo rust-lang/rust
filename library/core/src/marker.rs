@@ -1077,6 +1077,9 @@ marker_impls! {
 }
 
 /// A common trait implemented by all function pointers.
+//
+// Note that while the trait is internal and unstable it is nevertheless
+// exposed as a public bound of the stable `core::ptr::fn_addr_eq` function.
 #[unstable(
     feature = "fn_ptr_trait",
     issue = "none",
