@@ -306,9 +306,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         hir::ItemKind::Static(ty, ..) => {
             check_item_type(tcx, def_id, ty.span, UnsizedHandling::Forbid)
         }
-        hir::ItemKind::Const(ty, ..) => {
-            check_item_type(tcx, def_id, ty.span, UnsizedHandling::Forbid)
-        }
+        hir::ItemKind::Const(ty, ..) => check_const_item(tcx, def_id, ty.span, item.span),
         hir::ItemKind::Struct(_, hir_generics) => {
             let res = check_type_defn(tcx, item, false);
             check_variances_for_type_defn(tcx, item, hir_generics);
@@ -1283,6 +1281,7 @@ enum UnsizedHandling {
     AllowIfForeignTail,
 }
 
+// FIXME(fmease): Rename to check_static_item once LTAs don't use it anymore (#136432)
 fn check_item_type(
     tcx: TyCtxt<'_>,
     item_id: LocalDefId,
@@ -1336,6 +1335,34 @@ fn check_item_type(
                 tcx.require_lang_item(LangItem::Sync, Some(ty_span)),
             );
         }
+        Ok(())
+    })
+}
+
+fn check_const_item(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+    ty_span: Span,
+    item_span: Span,
+) -> Result<(), ErrorGuaranteed> {
+    enter_wf_checking_ctxt(tcx, ty_span, def_id, |wfcx| {
+        let ty = tcx.type_of(def_id).instantiate_identity();
+        let ty = wfcx.normalize(ty_span, Some(WellFormedLoc::Ty(def_id)), ty);
+
+        wfcx.register_wf_obligation(ty_span, Some(WellFormedLoc::Ty(def_id)), ty.into());
+        wfcx.register_bound(
+            traits::ObligationCause::new(
+                ty_span,
+                wfcx.body_def_id,
+                ObligationCauseCode::WellFormed(None),
+            ),
+            wfcx.param_env,
+            ty,
+            tcx.require_lang_item(LangItem::Sized, None),
+        );
+
+        check_where_clauses(wfcx, item_span, def_id);
+
         Ok(())
     })
 }

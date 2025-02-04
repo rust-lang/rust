@@ -4,7 +4,6 @@
 #![allow(incomplete_features)]
 
 //@ revisions: fail pass
-//@[fail] build-fail (we require monomorphization)
 //@[pass] build-pass (we require monomorphization)
 
 const _<_T>: () = panic!();
