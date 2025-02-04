@@ -1,6 +1,3 @@
-#[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
-mod tests;
-
 use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::marker::PhantomData;
