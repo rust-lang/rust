@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 use crate::core::build_steps::compile::{Std, Sysroot};
-use crate::core::build_steps::tool::RustcPerf;
+use crate::core::build_steps::tool::{RustcPerf, Rustdoc};
 use crate::core::builder::Builder;
 use crate::core::config::DebuginfoLevel;
 use crate::utils::exec::{BootstrapCommand, command};
@@ -52,6 +52,18 @@ enum PerfCommand {
     },
 }
 
+impl PerfCommand {
+    fn shared_opts(&self) -> Option<&SharedOpts> {
+        match self {
+            PerfCommand::Eprintln { opts, .. }
+            | PerfCommand::Samply { opts, .. }
+            | PerfCommand::Cachegrind { opts, .. }
+            | PerfCommand::Benchmark { opts, .. } => Some(opts),
+            PerfCommand::Compare { .. } => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, clap::Parser)]
 struct SharedOpts {
     /// Select the benchmarks that you want to run (separated by commas).
@@ -76,7 +88,7 @@ struct SharedOpts {
     profiles: Vec<Profile>,
 }
 
-#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+#[derive(Clone, Copy, Debug, PartialEq, clap::ValueEnum)]
 #[value(rename_all = "PascalCase")]
 pub enum Profile {
     Check,
@@ -140,6 +152,13 @@ Consider setting `rust.debuginfo-level = 1` in `config.toml`."#);
 
     let compiler = builder.compiler(builder.top_stage, builder.config.build);
     builder.ensure(Std::new(compiler, builder.config.build));
+
+    if let Some(opts) = args.cmd.shared_opts() {
+        if opts.profiles.contains(&Profile::Doc) {
+            builder.ensure(Rustdoc { compiler });
+        }
+    }
+
     let sysroot = builder.ensure(Sysroot::new(compiler));
     let rustc = sysroot.join("bin/rustc");
 
