@@ -26,7 +26,6 @@ pub enum GenericArgsProhibitedReason {
     Static,
     /// When there is a generic enum, within the expression `Enum::Variant`,
     /// either `Enum` or `Variant` are allowed to have generic arguments, but not both.
-    // FIXME: This is not used now but it should be.
     EnumVariant,
 }
 
