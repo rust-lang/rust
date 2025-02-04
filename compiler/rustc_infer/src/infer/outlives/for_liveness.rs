@@ -48,7 +48,7 @@ where
             return ty.super_visit_with(self);
         }
 
-        match ty.kind() {
+        match *ty.kind() {
             // We can prove that an alias is live two ways:
             // 1. All the components are live.
             //
@@ -96,10 +96,7 @@ where
                     r.visit_with(self);
                 } else {
                     // Skip lifetime parameters that are not captures.
-                    let variances = match kind {
-                        ty::Opaque => Some(self.tcx.variances_of(*def_id)),
-                        _ => None,
-                    };
+                    let variances = tcx.opt_alias_variances(kind, def_id);
 
                     for (idx, s) in args.iter().enumerate() {
                         if variances.map(|variances| variances[idx]) != Some(ty::Bivariant) {
