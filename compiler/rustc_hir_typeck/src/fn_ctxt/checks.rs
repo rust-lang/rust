@@ -126,7 +126,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(guar) => Err(guar),
         };
         if let Err(guar) = has_error {
-            let err_inputs = self.err_args(args_no_rcvr.len(), guar);
+            let err_inputs = self.err_args(
+                method.map_or(args_no_rcvr.len(), |method| method.sig.inputs().len() - 1),
+                guar,
+            );
             let err_output = Ty::new_error(self.tcx, guar);
 
             let err_inputs = match tuple_arguments {
