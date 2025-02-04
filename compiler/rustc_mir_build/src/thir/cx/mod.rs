@@ -16,7 +16,6 @@ use rustc_middle::ty::{self, RvalueScopes, TyCtxt};
 use tracing::instrument;
 
 use crate::thir::pattern::pat_from_hir;
-use crate::thir::util::UserAnnotatedTyHelpers;
 
 pub(crate) fn thir_body(
     tcx: TyCtxt<'_>,
@@ -113,7 +112,7 @@ impl<'tcx> Cx<'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn pattern_from_hir(&mut self, p: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
-        pat_from_hir(self.tcx, self.typing_env, self.typeck_results(), p)
+        pat_from_hir(self.tcx, self.typing_env, self.typeck_results, p)
     }
 
     fn closure_env_param(&self, owner_def: LocalDefId, expr_id: HirId) -> Option<Param<'tcx>> {
@@ -197,15 +196,12 @@ impl<'tcx> Cx<'tcx> {
             Param { pat: Some(pat), ty, ty_span, self_kind, hir_id: Some(param.hir_id) }
         })
     }
-}
 
-impl<'tcx> UserAnnotatedTyHelpers<'tcx> for Cx<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn typeck_results(&self) -> &ty::TypeckResults<'tcx> {
-        self.typeck_results
+    fn user_args_applied_to_ty_of_hir_id(
+        &self,
+        hir_id: HirId,
+    ) -> Option<ty::CanonicalUserType<'tcx>> {
+        crate::thir::util::user_args_applied_to_ty_of_hir_id(self.typeck_results, hir_id)
     }
 }
 
