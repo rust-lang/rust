@@ -59,8 +59,7 @@ pub fn panic_output() -> Option<impl io::Write> {
 }
 
 fn _write(fd: i32, message: &[u8]) -> io::Result<usize> {
-    let mut iov =
-        libc::iovec { iov_base: message.as_ptr() as *mut _, iov_len: message.len() };
+    let mut iov = libc::iovec { iov_base: message.as_ptr() as *mut _, iov_len: message.len() };
     loop {
         // SAFETY: syscall, safe arguments.
         let ret = unsafe { libc::writev(fd, &iov, 1) };

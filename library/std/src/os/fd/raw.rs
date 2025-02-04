@@ -5,6 +5,9 @@
 #[cfg(target_os = "hermit")]
 use hermit_abi as libc;
 
+#[cfg(not(target_os = "trusty"))]
+use crate::fs;
+use crate::io;
 #[cfg(target_os = "hermit")]
 use crate::os::hermit::io::OwnedFd;
 #[cfg(not(target_os = "hermit"))]
@@ -17,9 +20,6 @@ use crate::os::unix::io::OwnedFd;
 use crate::os::wasi::io::OwnedFd;
 #[cfg(not(target_os = "trusty"))]
 use crate::sys_common::{AsInner, IntoInner};
-#[cfg(not(target_os = "trusty"))]
-use crate::fs;
-use crate::io;
 
 /// Raw file descriptors.
 #[stable(feature = "rust1", since = "1.0.0")]

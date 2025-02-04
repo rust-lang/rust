@@ -4,15 +4,20 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+#[cfg(not(target_os = "trusty"))]
+use crate::fs;
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
-#[cfg(not(any(target_arch = "wasm32", target_env = "sgx", target_os = "hermit", target_os = "trusty")))]
+#[cfg(not(any(
+    target_arch = "wasm32",
+    target_env = "sgx",
+    target_os = "hermit",
+    target_os = "trusty"
+)))]
 use crate::sys::cvt;
 #[cfg(not(target_os = "trusty"))]
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::{fmt, io};
-#[cfg(not(target_os = "trusty"))]
-use crate::fs;
 
 type ValidRawFd = core::num::niche_types::NotAllOnes<RawFd>;
 
