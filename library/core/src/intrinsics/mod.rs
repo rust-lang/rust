@@ -1537,7 +1537,7 @@ pub const fn unlikely(b: bool) -> bool {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The public form of this instrinsic is [`bool::select_unpredictable`].
+/// The public form of this intrinsic is [`bool::select_unpredictable`].
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
@@ -3836,7 +3836,7 @@ where
 /// used inside the `if const`.
 /// Note that the two arms of this `if` really each become their own function, which is why the
 /// macro supports setting attributes for those functions. The runtime function is always
-/// markes as `#[inline]`.
+/// marked as `#[inline]`.
 ///
 /// See [`const_eval_select()`] for the rules and requirements around that intrinsic.
 pub(crate) macro const_eval_select {

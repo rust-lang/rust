@@ -72,6 +72,8 @@ fn check_impl(
     let shell_lint = lint_args.contains(&"shell:lint") || shell_all;
     let cpp_all = lint_args.contains(&"cpp");
     let cpp_fmt = lint_args.contains(&"cpp:fmt") || cpp_all;
+    let spellcheck_all = lint_args.contains(&"spellcheck");
+    let spellcheck_fix = lint_args.contains(&"spellcheck:fix");
 
     let mut py_path = None;
 
@@ -213,6 +215,27 @@ fn check_impl(
         }
 
         shellcheck_runner(&merge_args(&cfg_args, &file_args_shc))?;
+    }
+
+    if spellcheck_all || spellcheck_fix {
+        let config_path = root_path.join("typos.toml");
+        // sync target files with .github/workflows/ci.yml
+        let mut args = vec![
+            "-c",
+            config_path.as_os_str().to_str().unwrap(),
+            "./compiler",
+            "./library",
+            "./src/bootstrap",
+            "./src/librustdoc",
+        ];
+
+        if spellcheck_all {
+            eprintln!("spellcheck files");
+        } else if spellcheck_fix {
+            eprintln!("spellcheck files and fix");
+            args.push("--write-changes");
+        }
+        spellcheck_runner(&args)?;
     }
 
     Ok(())
@@ -480,6 +503,25 @@ fn shellcheck_runner(args: &[&OsStr]) -> Result<(), Error> {
 
     let status = Command::new("shellcheck").args(args).status()?;
     if status.success() { Ok(()) } else { Err(Error::FailedCheck("shellcheck")) }
+}
+
+/// Check that spellchecker is installed then run it at the given path
+fn spellcheck_runner(args: &[&str]) -> Result<(), Error> {
+    match Command::new("typos").arg("--version").status() {
+        Ok(_) => (),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            return Err(Error::MissingReq(
+                "typos",
+                "spellcheck file checks",
+                // sync version with .github/workflows/ci.yml
+                Some("install tool via `cargo install typos-cli@1.29.4`".to_owned()),
+            ));
+        }
+        Err(e) => return Err(e.into()),
+    }
+
+    let status = Command::new("typos").args(args).status()?;
+    if status.success() { Ok(()) } else { Err(Error::FailedCheck("typos")) }
 }
 
 /// Check git for tracked files matching an extension
