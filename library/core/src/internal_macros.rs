@@ -146,6 +146,7 @@ macro_rules! impl_fn_for_zst {
 /// ```
 // This is a copy of `cfg_if!` from the `cfg_if` crate.
 // The recursive invocations should use $crate if this is ever exported.
+#[cfg(bootstrap)]
 macro_rules! cfg_if {
     // match if/else chains with a final `else`
     (
