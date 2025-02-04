@@ -2639,7 +2639,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If the subpattern's span is is from an expansion, the emitted label will not be trimmed.
         let source_map = self.tcx.sess.source_map();
         let cutoff_span = source_map
-            .span_extend_prev_while(cutoff_span, char::is_whitespace)
+            .span_extend_prev_while(cutoff_span, |c| c.is_whitespace() || c == '(')
             .unwrap_or(cutoff_span);
         // Ensure we use the syntax context and thus edition of `subpat.span`; this will be a hard
         // error if the subpattern is of edition >= 2024.

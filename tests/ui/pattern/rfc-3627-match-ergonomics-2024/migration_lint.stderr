@@ -284,7 +284,7 @@ error: reference patterns may only be written when the default binding mode is `
   --> $DIR/migration_lint.rs:150:10
    |
 LL |     let [&(_)] = &[&0];
-   |         -^^---
+   |         -^----
    |         ||
    |         |this reference pattern
    |         default binding mode is `ref`
