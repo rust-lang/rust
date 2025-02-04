@@ -6,6 +6,8 @@ LL |     let a: String = &String::from("a");
    |            |
    |            expected due to this
    |
+   = note: expected struct `String`
+           found reference `&String`
 help: consider removing the borrow
    |
 LL -     let a: String = &String::from("a");
@@ -24,6 +26,8 @@ LL |     let b: String = &format!("b");
    |            |
    |            expected due to this
    |
+   = note: expected struct `String`
+           found reference `&String`
 help: consider removing the borrow
    |
 LL -     let b: String = &format!("b");
@@ -42,6 +46,8 @@ LL |     let c: String = &mut format!("c");
    |            |
    |            expected due to this
    |
+   = note:         expected struct `String`
+           found mutable reference `&mut String`
 help: consider removing the borrow
    |
 LL -     let c: String = &mut format!("c");
@@ -60,6 +66,8 @@ LL |     let d: String = &mut (format!("d"));
    |            |
    |            expected due to this
    |
+   = note:         expected struct `String`
+           found mutable reference `&mut String`
 help: consider removing the borrow
    |
 LL -     let d: String = &mut (format!("d"));

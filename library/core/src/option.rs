@@ -690,8 +690,8 @@ impl<T> Option<T> {
     /// reference to the value inside the original.
     ///
     /// [`map`]: Option::map
-    /// [String]: ../../std/string/struct.String.html "String"
-    /// [`String`]: ../../std/string/struct.String.html "String"
+    /// [String]: ../../std/string/type.String.html "String"
+    /// [`String`]: ../../std/string/type.String.html "String"
     ///
     /// ```
     /// let text: Option<String> = Some("Hello, world!".to_string());
@@ -1099,7 +1099,7 @@ impl<T> Option<T> {
     /// Calculates the length of an <code>Option<[String]></code> as an
     /// <code>Option<[usize]></code>, consuming the original:
     ///
-    /// [String]: ../../std/string/struct.String.html "String"
+    /// [String]: ../../std/string/type.String.html "String"
     /// ```
     /// let maybe_some_string = Some(String::from("Hello, World!"));
     /// // `Option::map` takes self *by value*, consuming `maybe_some_string`
@@ -2138,7 +2138,7 @@ impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
     /// to the value inside the original.
     ///
     /// [`map`]: Option::map
-    /// [String]: ../../std/string/struct.String.html "String"
+    /// [String]: ../../std/string/type.String.html "String"
     ///
     /// ```
     /// let s: Option<String> = Some(String::from("Hello, Rustaceans!"));

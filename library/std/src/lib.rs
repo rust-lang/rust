@@ -372,6 +372,7 @@
 #![feature(map_try_insert)]
 #![feature(new_zeroed_alloc)]
 #![feature(slice_concat_trait)]
+#![feature(string_allocator_api)]
 #![feature(thin_box)]
 #![feature(try_reserve_kind)]
 #![feature(try_with_capacity)]

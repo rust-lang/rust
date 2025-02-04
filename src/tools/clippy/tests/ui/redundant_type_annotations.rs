@@ -154,10 +154,10 @@ fn test_complex_types<T>() {
 }
 
 fn test_functions() {
-    // Everything here should be lint
+    // Everything here should be lint, except for String, due to #101551
 
+    // FIXME: if generics support is added, the lint should fire here
     let _return: String = return_a_string();
-    //~^ ERROR: redundant type annotation
 
     let _return: Pie = return_a_struct();
     //~^ ERROR: redundant type annotation
@@ -168,8 +168,8 @@ fn test_functions() {
     let _return: u32 = return_an_int();
     //~^ ERROR: redundant type annotation
 
+    // FIXME: if generics support is added, the lint should fire here
     let _return: String = String::new();
-    //~^ ERROR: redundant type annotation
 
     let new_pie: Pie = Pie::new();
     //~^ ERROR: redundant type annotation
@@ -180,8 +180,8 @@ fn test_functions() {
     let _return: u32 = Pie::associated_return_an_int();
     //~^ ERROR: redundant type annotation
 
+    // FIXME: if generics support is added, the lint should fire here
     let _return: String = Pie::associated_return_a_string();
-    //~^ ERROR: redundant type annotation
 }
 
 fn test_simple_types() {

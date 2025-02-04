@@ -3,18 +3,18 @@
 fn f() -> () {
     let mut _0: ();
     let mut _1: !;
-    let _2: std::string::String;
+    let _2: std::string::string::String;
     let _6: ();
-    let mut _7: std::string::String;
+    let mut _7: std::string::string::String;
     scope 1 {
         debug _a => _2;
         let _3: i32;
         scope 2 {
             debug _b => _3;
-            let _4: std::string::String;
+            let _4: std::string::string::String;
             scope 3 {
                 debug _c => _4;
-                let _5: std::string::String;
+                let _5: std::string::string::String;
                 scope 4 {
                     debug _d => _5;
                 }

@@ -49,10 +49,11 @@ pub use core::str::{from_raw_parts, from_raw_parts_mut};
 use core::unicode::conversions;
 use core::{mem, ptr};
 
+use crate::alloc::{Allocator, Global};
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::slice::{Concat, Join, SliceIndex};
-use crate::string::String;
+use crate::string::string::String;
 use crate::vec::Vec;
 
 /// Note: `str` in `Concat<str>` is not meaningful here.
@@ -186,7 +187,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Borrow<str> for String {
+impl<A: Allocator> Borrow<str> for String<A> {
     #[inline]
     fn borrow(&self) -> &str {
         &self[..]
@@ -194,7 +195,7 @@ impl Borrow<str> for String {
 }
 
 #[stable(feature = "string_borrow_mut", since = "1.36.0")]
-impl BorrowMut<str> for String {
+impl<A: Allocator> BorrowMut<str> for String<A> {
     #[inline]
     fn borrow_mut(&mut self) -> &mut str {
         &mut self[..]
@@ -235,7 +236,7 @@ impl str {
     #[stable(feature = "str_box_extras", since = "1.20.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub fn into_boxed_bytes(self: Box<str>) -> Box<[u8]> {
+    pub fn into_boxed_bytes<A: Allocator>(self: Box<str, A>) -> Box<[u8], A> {
         self.into()
     }
 
@@ -502,8 +503,8 @@ impl str {
     #[rustc_allow_incoherent_impl]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
-    pub fn into_string(self: Box<str>) -> String {
-        let slice = Box::<[u8]>::from(self);
+    pub fn into_string<A: Allocator>(self: Box<str, A>) -> String<A> {
+        let slice = Box::<[u8], A>::from(self);
         unsafe { String::from_utf8_unchecked(slice.into_vec()) }
     }
 
@@ -615,8 +616,9 @@ impl str {
 #[stable(feature = "str_box_extras", since = "1.20.0")]
 #[must_use]
 #[inline]
-pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
-    unsafe { Box::from_raw(Box::into_raw(v) as *mut str) }
+pub unsafe fn from_boxed_utf8_unchecked<A: Allocator>(v: Box<[u8], A>) -> Box<str, A> {
+    let (raw, alloc) = Box::into_raw_with_allocator(v);
+    unsafe { Box::from_raw_in(raw as *mut str, alloc) }
 }
 
 /// Converts leading ascii bytes in `s` by calling the `convert` function.

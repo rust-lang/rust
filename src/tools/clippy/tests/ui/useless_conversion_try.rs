@@ -32,19 +32,19 @@ fn main() {
         let _: String = "foo".try_into().unwrap();
     }
     let _: String = "foo".to_string().try_into().unwrap();
-    //~^ ERROR: useless conversion to the same type: `std::string::String`
+    //~^ ERROR: useless conversion to the same type: `std::string::string::String`
     let _: String = TryFrom::try_from("foo".to_string()).unwrap();
-    //~^ ERROR: useless conversion to the same type: `std::string::String`
+    //~^ ERROR: useless conversion to the same type: `std::string::string::String`
     let _ = String::try_from("foo".to_string()).unwrap();
-    //~^ ERROR: useless conversion to the same type: `std::string::String`
+    //~^ ERROR: useless conversion to the same type: `std::string::string::String`
     let _ = String::try_from(format!("A: {:04}", 123)).unwrap();
-    //~^ ERROR: useless conversion to the same type: `std::string::String`
+    //~^ ERROR: useless conversion to the same type: `std::string::string::String`
     let _: String = format!("Hello {}", "world").try_into().unwrap();
-    //~^ ERROR: useless conversion to the same type: `std::string::String`
+    //~^ ERROR: useless conversion to the same type: `std::string::string::String`
     let _: String = String::new().try_into().unwrap();
-    //~^ ERROR: useless conversion to the same type: `std::string::String`
+    //~^ ERROR: useless conversion to the same type: `std::string::string::String`
     let _: String = match String::from("_").try_into() {
-        //~^ ERROR: useless conversion to the same type: `std::string::String`
+        //~^ ERROR: useless conversion to the same type: `std::string::string::String`
         Ok(a) => a,
         Err(_) => String::new(),
     };

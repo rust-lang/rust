@@ -72,6 +72,7 @@ mod tests;
 
 use core::clone::CloneToUninit;
 
+use crate::alloc::Allocator;
 use crate::borrow::{Borrow, Cow};
 use crate::collections::TryReserveError;
 use crate::error::Error;
@@ -81,6 +82,7 @@ use crate::iter::FusedIterator;
 use crate::ops::{self, Deref};
 use crate::rc::Rc;
 use crate::str::FromStr;
+use crate::string::string::String;
 use crate::sync::Arc;
 use crate::sys::path::{MAIN_SEP_STR, is_sep_byte, is_verbatim_sep, parse_prefix};
 use crate::{cmp, fmt, fs, io, sys};
@@ -3352,7 +3354,7 @@ impl AsRef<Path> for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl AsRef<Path> for String {
+impl<A: Allocator> AsRef<Path> for String<A> {
     #[inline]
     fn as_ref(&self) -> &Path {
         Path::new(self)

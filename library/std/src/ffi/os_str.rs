@@ -5,12 +5,14 @@ mod tests;
 
 use core::clone::CloneToUninit;
 
+use crate::alloc::Allocator;
 use crate::borrow::{Borrow, Cow};
 use crate::collections::TryReserveError;
 use crate::hash::{Hash, Hasher};
 use crate::ops::{self, Range};
 use crate::rc::Rc;
 use crate::str::FromStr;
+use crate::string::string::String;
 use crate::sync::Arc;
 use crate::sys::os_str::{Buf, Slice};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -1650,7 +1652,7 @@ impl AsRef<OsStr> for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl AsRef<OsStr> for String {
+impl<A: Allocator> AsRef<OsStr> for String<A> {
     #[inline]
     fn as_ref(&self) -> &OsStr {
         (&**self).as_ref()

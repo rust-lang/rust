@@ -27,6 +27,8 @@ LL |     bar(*s);
    |     |
    |     arguments to this function are incorrect
    |
+   = note: expected reference `&String`
+                 found struct `String`
 note: function defined here
   --> $DIR/suggest-remove-deref.rs:17:4
    |

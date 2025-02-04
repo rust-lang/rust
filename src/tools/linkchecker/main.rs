@@ -35,6 +35,21 @@ use html5ever::tokenizer::{
 // [(generated_documentation_page, &[broken_links])]
 #[rustfmt::skip]
 const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
+    // These link to methods on std::string::String (the type alias),
+    // and linkchecker currently cannot deal with that since type alias doc pages
+    // seem to be lazily loaded-ish?.
+    ("core/primitive.char.html", &["#method.from_utf8_lossy"]),
+    ("core/str/fn.from_utf8.html", &["#method.from_utf8"]),
+    ("core/str/struct.Utf8Chunks.html", &["#method.from_utf8_lossy"]),
+    ("core/str/struct.Utf8Error.html", &["#method.from_utf8"]),
+    ("alloc/str/fn.from_utf8.html", &["#method.from_utf8"]),
+    ("alloc/str/struct.Utf8Chunks.html", &["#method.from_utf8_lossy"]),
+    ("alloc/str/struct.Utf8Error.html", &["#method.from_utf8"]),
+    ("std/primitive.char.html", &["#method.from_utf8_lossy"]),
+    ("std/str/fn.from_utf8.html", &["#method.from_utf8"]),
+    ("std/str/struct.Utf8Chunks.html", &["#method.from_utf8_lossy"]),
+    ("std/str/struct.Utf8Error.html", &["#method.from_utf8"]),
+
     // These try to link to std::collections, but are defined in alloc
     // https://github.com/rust-lang/rust/issues/74481
     ("std/collections/btree_map/struct.BTreeMap.html", &["#insert-and-complex-keys"]),

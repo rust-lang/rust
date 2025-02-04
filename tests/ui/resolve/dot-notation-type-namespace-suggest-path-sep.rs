@@ -1,14 +1,34 @@
+// see also https://github.com/rust-lang/rust/issues/22692
+
+type Alias = Vec<u32>;
+
+mod foo {
+    fn bar() {}
+}
+
 fn main() {
     let _ = String.new();
-    //~^ ERROR expected value, found struct `String`
+    //~^ ERROR expected value, found type alias `String`
     //~| HELP use the path separator
 
     let _ = String.default;
-    //~^ ERROR expected value, found struct `String`
+    //~^ ERROR expected value, found type alias `String`
     //~| HELP use the path separator
 
     let _ = Vec::<()>.with_capacity(1);
     //~^ ERROR expected value, found struct `Vec`
+    //~| HELP use the path separator
+
+    let _ = Alias.new();
+    //~^ ERROR expected value, found type alias `Alias`
+    //~| HELP use the path separator
+
+    let _ = Alias.default;
+    //~^ ERROR expected value, found type alias `Alias`
+    //~| HELP use the path separator
+
+    let _ = foo.bar;
+    //~^ ERROR expected value, found module `foo`
     //~| HELP use the path separator
 }
 

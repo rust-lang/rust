@@ -7,7 +7,7 @@ trait Foo {
 }
 
 trait Bar<U: Foo> {
-    const F: u32 = 100 / U::X; //~ ERROR evaluation of `<std::string::String as Bar<std::string::String>>::F` failed
+    const F: u32 = 100 / U::X; //~ ERROR evaluation of `<std::string::string::String as Bar<std::string::string::String>>::F` failed
 }
 
 impl Foo for () {

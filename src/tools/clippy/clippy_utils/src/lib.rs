@@ -350,6 +350,18 @@ pub fn is_ty_alias(qpath: &QPath<'_>) -> bool {
     }
 }
 
+/// Checks if the given `QPath` belongs to the specific type alias
+/// `std::string::String`/`alloc::string::String`.
+pub fn is_string_ty_alias(cx: &LateContext<'_>, qpath: &QPath<'_>) -> bool {
+    match *qpath {
+        QPath::Resolved(_, path) => {
+            matches!(path.res, Res::Def(DefKind::TyAlias, id) if cx.tcx.get_diagnostic_name(id) == Some(sym::String))
+        },
+        QPath::TypeRelative(ty, _) if let TyKind::Path(qpath) = ty.kind => is_string_ty_alias(cx, &qpath),
+        _ => false,
+    }
+}
+
 /// Checks if the method call given in `expr` belongs to the given trait.
 /// This is a deprecated function, consider using [`is_trait_method`].
 pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) -> bool {

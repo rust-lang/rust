@@ -1735,7 +1735,7 @@ Stabilized APIs
 
 - [`impl<T: Send> Sync for mpsc::Sender<T>`](https://doc.rust-lang.org/stable/std/sync/mpsc/struct.Sender.html#impl-Sync-for-Sender%3CT%3E)
 - [`impl TryFrom<&OsStr> for &str`](https://doc.rust-lang.org/stable/std/primitive.str.html#impl-TryFrom%3C%26'a+OsStr%3E-for-%26'a+str)
-- [`String::leak`](https://doc.rust-lang.org/stable/alloc/string/struct.String.html#method.leak)
+- [`String::leak`](https://doc.rust-lang.org/stable/alloc/string/type.String.html#method.leak)
 
 These APIs are now stable in const contexts:
 
@@ -3794,8 +3794,8 @@ and related tools.
 [`collections::TryReserveError`]: https://doc.rust-lang.org/std/collections/struct.TryReserveError.html
 [`HashMap::try_reserve`]: https://doc.rust-lang.org/std/collections/hash_map/struct.HashMap.html#method.try_reserve
 [`HashSet::try_reserve`]: https://doc.rust-lang.org/std/collections/hash_set/struct.HashSet.html#method.try_reserve
-[`String::try_reserve`]: https://doc.rust-lang.org/alloc/string/struct.String.html#method.try_reserve
-[`String::try_reserve_exact`]: https://doc.rust-lang.org/alloc/string/struct.String.html#method.try_reserve_exact
+[`String::try_reserve`]: https://doc.rust-lang.org/alloc/string/type.String.html#method.try_reserve
+[`String::try_reserve_exact`]: https://doc.rust-lang.org/alloc/string/type.String.html#method.try_reserve_exact
 [`Vec::try_reserve`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.try_reserve
 [`Vec::try_reserve_exact`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.try_reserve_exact
 [`VecDeque::try_reserve`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.try_reserve
@@ -3936,7 +3936,7 @@ and related tools.
 [`BufWriter::into_parts`]: https://doc.rust-lang.org/stable/std/io/struct.BufWriter.html#method.into_parts
 [`core::panic::{UnwindSafe, RefUnwindSafe, AssertUnwindSafe}`]: https://github.com/rust-lang/rust/pull/84662
 [`Vec::shrink_to`]: https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.shrink_to
-[`String::shrink_to`]: https://doc.rust-lang.org/stable/std/string/struct.String.html#method.shrink_to
+[`String::shrink_to`]: https://doc.rust-lang.org/stable/std/string/type.String.html#method.shrink_to
 [`OsString::shrink_to`]: https://doc.rust-lang.org/stable/std/ffi/struct.OsString.html#method.shrink_to
 [`PathBuf::shrink_to`]: https://doc.rust-lang.org/stable/std/path/struct.PathBuf.html#method.shrink_to
 [`BinaryHeap::shrink_to`]: https://doc.rust-lang.org/stable/std/collections/struct.BinaryHeap.html#method.shrink_to
@@ -8131,7 +8131,7 @@ Compatibility Notes
 [`Iterator::try_for_each`]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.try_for_each
 [`NonNull::cast`]: https://doc.rust-lang.org/std/ptr/struct.NonNull.html#method.cast
 [`Option::filter`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.filter
-[`String::replace_range`]: https://doc.rust-lang.org/std/string/struct.String.html#method.replace_range
+[`String::replace_range`]: https://doc.rust-lang.org/std/string/type.String.html#method.replace_range
 [`Take::set_limit`]: https://doc.rust-lang.org/std/io/struct.Take.html#method.set_limit
 [`hint::unreachable_unchecked`]: https://doc.rust-lang.org/std/hint/fn.unreachable_unchecked.html
 [`os::unix::process::parent_id`]: https://doc.rust-lang.org/std/os/unix/process/fn.parent_id.html
@@ -8376,7 +8376,7 @@ Compatibility Notes
 [`process::id`]: https://doc.rust-lang.org/std/process/fn.id.html
 [`slice::rotate_left`]: https://doc.rust-lang.org/std/primitive.slice.html#method.rotate_left
 [`slice::rotate_right`]: https://doc.rust-lang.org/std/primitive.slice.html#method.rotate_right
-[`String::retain`]: https://doc.rust-lang.org/std/string/struct.String.html#method.retain
+[`String::retain`]: https://doc.rust-lang.org/std/string/type.String.html#method.retain
 [cargo/5041]: https://github.com/rust-lang/cargo/pull/5041
 [cargo/5083]: https://github.com/rust-lang/cargo/pull/5083
 
@@ -9827,8 +9827,8 @@ Compatibility Notes
 [`Result::unwrap_or_default`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.unwrap_or_default
 [`SocketAddr::is_ipv4`]: https://doc.rust-lang.org/std/net/enum.SocketAddr.html#method.is_ipv4
 [`SocketAddr::is_ipv6`]: https://doc.rust-lang.org/std/net/enum.SocketAddr.html#method.is_ipv6
-[`String::insert_str`]: https://doc.rust-lang.org/std/string/struct.String.html#method.insert_str
-[`String::split_off`]: https://doc.rust-lang.org/std/string/struct.String.html#method.split_off
+[`String::insert_str`]: https://doc.rust-lang.org/std/string/type.String.html#method.insert_str
+[`String::split_off`]: https://doc.rust-lang.org/std/string/type.String.html#method.split_off
 [`Vec::dedup_by_key`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.dedup_by_key
 [`Vec::dedup_by`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.dedup_by
 [`VecDeque::resize`]:  https://doc.rust-lang.org/std/collections/vec_deque/struct.VecDeque.html#method.resize
@@ -11742,8 +11742,8 @@ Compatibility Notes
 [`Ipv6Addr::is_unspecified`]: http://doc.rust-lang.org/nightly/std/net/struct.Ipv6Addr.html#method.is_unspecified
 [`Path::strip_prefix`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.strip_prefix
 [`RandomState::new`]: http://doc.rust-lang.org/nightly/std/collections/hash_map/struct.RandomState.html#method.new
-[`String::as_mut_str`]: http://doc.rust-lang.org/nightly/std/string/struct.String.html#method.as_mut_str
-[`String::as_str`]: http://doc.rust-lang.org/nightly/std/string/struct.String.html#method.as_str
+[`String::as_mut_str`]: http://doc.rust-lang.org/nightly/std/string/type.String.html#method.as_mut_str
+[`String::as_str`]: http://doc.rust-lang.org/nightly/std/string/type.String.html#method.as_str
 [`Vec::as_mut_slice`]: http://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.as_mut_slice
 [`Vec::as_slice`]: http://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.as_slice
 [`clone_from_slice`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.clone_from_slice
@@ -11929,7 +11929,7 @@ Compatibility Notes
 [`os::unix::fs::DirBuilderExt::mode`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.DirBuilderExt.html#tymethod.mode
 [`os::unix::fs::DirBuilderExt`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.DirBuilderExt.html
 [`string::Drain`]: http://doc.rust-lang.org/nightly/std/string/struct.Drain.html
-[`string::String::drain`]: http://doc.rust-lang.org/nightly/std/string/struct.String.html#method.drain
+[`string::String::drain`]: http://doc.rust-lang.org/nightly/std/string/type.String.html#method.drain
 [`vec::Drain`]: http://doc.rust-lang.org/nightly/std/vec/struct.Drain.html
 [`vec::Vec::drain`]: http://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.drain
 [`vec_deque::Drain`]: http://doc.rust-lang.org/nightly/std/collections/vec_deque/struct.Drain.html

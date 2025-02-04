@@ -5,6 +5,9 @@ LL |     let ref string: String = var;
    |                              ^^^- help: try using a conversion method: `.to_string()`
    |                              |
    |                              expected `String`, found `i32`
+   |
+   = note: expected struct `String`
+                found type `i32`
 
 error: aborting due to 1 previous error
 

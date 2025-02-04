@@ -109,6 +109,7 @@ fn match_buffer_type(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<&'static
     let path = match cx.tcx.get_diagnostic_name(id) {
         Some(sym::OsString) => "std::ffi::OsStr",
         Some(sym::PathBuf) => "std::path::Path",
+        Some(sym::String) => "str",
         _ if Some(id) == cx.tcx.lang_items().string() => "str",
         _ => return None,
     };

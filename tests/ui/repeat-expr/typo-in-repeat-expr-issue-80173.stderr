@@ -39,6 +39,9 @@ LL |     let e = [String::new(), 10];
    |                             ^^- help: try using a conversion method: `.to_string()`
    |                             |
    |                             expected `String`, found integer
+   |
+   = note: expected struct `String`
+                found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/typo-in-repeat-expr-issue-80173.rs:36:19
@@ -63,6 +66,8 @@ error[E0308]: mismatched types
 LL |     let g = vec![String::new(), 10];
    |                                 ^^ expected `String`, found integer
    |
+   = note: expected struct `String`
+                found type `{integer}`
 help: replace the comma with a semicolon to create a vector
    |
 LL |     let g = vec![String::new(); 10];

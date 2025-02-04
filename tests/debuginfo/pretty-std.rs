@@ -31,11 +31,11 @@
 // gdb-check:$7 = "IAMA OS string 😃"
 
 // gdb-command: print some_string
-// gdb-check:$8 = core::option::Option<alloc::string::String>::Some("IAMA optional string!")
+// gdb-check:$8 = core::option::Option<alloc::string::string::String<alloc::alloc::Global>>::Some("IAMA optional string!")
 
 // gdb-command: set print elements 5
 // gdb-command: print some_string
-// gdb-check:$9 = core::option::Option<alloc::string::String>::Some("IAMA "...)
+// gdb-check:$9 = core::option::Option<alloc::string::string::String<alloc::alloc::Global>>::Some("IAMA "...)
 
 // === LLDB TESTS ==================================================================================
 
@@ -123,9 +123,9 @@
 // cdb-check:    [<Raw View>]     [Type: enum2$<core::option::Option<i64> >]
 
 // cdb-command: dx some_string
-// cdb-check:some_string      : Some [Type: enum2$<core::option::Option<alloc::string::String> >]
-// cdb-check:    [<Raw View>]     [Type: enum2$<core::option::Option<alloc::string::String> >]
-// cdb-check:    [+0x000] __0              : "IAMA optional string!" [Type: alloc::string::String]
+// cdb-check:some_string      : Some [Type: enum2$<core::option::Option<alloc::string::string::String<alloc::alloc::Global> > >]
+// cdb-check:    [<Raw View>]     [Type: enum2$<core::option::Option<alloc::string::string::String<alloc::alloc::Global> > >]
+// cdb-check:    [+0x000] __0              : "IAMA optional string!" [Type: alloc::string::string::String<alloc::alloc::Global>]
 
 // cdb-command: dx linkedlist
 // cdb-check:linkedlist       : { len=0x2 } [Type: alloc::collections::linked_list::LinkedList<i32,alloc::alloc::Global>]
