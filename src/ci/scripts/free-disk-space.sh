@@ -69,31 +69,78 @@ printDF() {
     printSeparationLine "="
 }
 
-removeDir() {
-    dir=${1}
-
-    local before
-    if [ ! -d "$dir" ]; then
-        echo "::warning::Directory $dir does not exist, skipping."
-    else
-        before=$(getAvailableSpace)
-        sudo rm -rf "$dir"
-        printSavedSpace "$before" "Removed $dir"
-    fi
-}
-
-removeUnusedDirectories() {
-    local dirs_to_remove=(
+removeUnusedFilesAndDirs() {
+    local to_remove=(
+        "/etc/mysql"
+        "/usr/local/aws-sam-cli"
+        "/usr/local/doc/cmake"
+        "/usr/local/julia"*
         "/usr/local/lib/android"
-        "/usr/share/dotnet"
+        "/usr/local/share/chromedriver-"*
+        "/usr/local/share/chromium"
+        "/usr/local/share/cmake-"*
+        "/usr/local/share/edge_driver"
+        "/usr/local/share/gecko_driver"
+        "/usr/local/share/icons"
+        "/usr/local/share/vim"
+        "/usr/local/share/emacs"
+        "/usr/local/share/powershell"
+        "/usr/local/share/vcpkg"
+        "/usr/share/apache-maven-"*
+        "/usr/share/gradle-"*
+        "/usr/share/java"
+        "/usr/share/kotlinc"
+        "/usr/share/miniconda"
+        "/usr/share/php"
+        "/usr/share/ri"
+        "/usr/share/swift"
+
+        # binaries
+        "/usr/local/bin/azcopy"
+        "/usr/local/bin/bicep"
+        "/usr/local/bin/ccmake"
+        "/usr/local/bin/cmake-"*
+        "/usr/local/bin/cmake"
+        "/usr/local/bin/cpack"
+        "/usr/local/bin/ctest"
+        "/usr/local/bin/helm"
+        "/usr/local/bin/kind"
+        "/usr/local/bin/kustomize"
+        "/usr/local/bin/minikube"
+        "/usr/local/bin/packer"
+        "/usr/local/bin/phpunit"
+        "/usr/local/bin/pulumi-"*
+        "/usr/local/bin/pulumi"
+        "/usr/local/bin/stack"
 
         # Haskell runtime
         "/usr/local/.ghcup"
+
+        # Azure
+        "/opt/az"
+        "/usr/share/az_"*
+
+        # Environment variable set by GitHub Actions
+        "$AGENT_TOOLSDIRECTORY"
     )
 
-    for dir in "${dirs_to_remove[@]}"; do
-        removeDir "$dir"
+    # Filter existing files and directories because:
+    # - We don't know if GitHub guarantees the existence of these files and
+    #   directories in the future and we don't want CI to fail in case
+    #   a file or directory is removed from the runners.
+    # - Some files and directories don't exist on ARM runners because they have less software
+    #   installed than x86 runners.
+    local existing=()
+    for element in "${to_remove[@]}"; do
+        if [ ! -e "$element" ]; then
+            echo "::warning::Directory or file $element does not exist, skipping."
+        else
+            existing+=("$element")
+        fi
     done
+
+    # Remove all files and directories at once to save time.
+    sudo rm -rf "${existing[@]}"
 }
 
 execAndMeasureSpaceChange() {
@@ -138,14 +185,6 @@ cleanPackages() {
     sudo apt-get clean || echo "::warning::The command [sudo apt-get clean] failed failed"
 }
 
-# Remove Docker images
-cleanDocker() {
-    echo "=> Removing the following docker images:"
-    sudo docker image ls
-    echo "=> Removing docker images..."
-    sudo docker image prune --all --force || true
-}
-
 # Remove Swap storage
 cleanSwap() {
     sudo swapoff -a || true
@@ -161,10 +200,9 @@ printDF "BEFORE CLEAN-UP:"
 echo ""
 
 execAndMeasureSpaceChange cleanPackages "Unused packages"
-execAndMeasureSpaceChange cleanDocker "Docker images"
 execAndMeasureSpaceChange cleanSwap "Swap storage"
 
-removeUnusedDirectories
+execAndMeasureSpaceChange removeUnusedFilesAndDirs "Unused files and directories"
 
 # Output saved space statistic
 echo ""
