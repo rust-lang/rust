@@ -12,10 +12,9 @@ const fn b() -> u32 {
 }
 
 const fn c() -> u32 {
-    b()
-    //~^ ERROR evaluation of constant value failed
-    //~| NOTE hey
+    b() //~ NOTE called from
 }
 
 const X: u32 = c();
-//~^ NOTE called from
+//~^ ERROR evaluation of constant value failed
+//~| NOTE hey
