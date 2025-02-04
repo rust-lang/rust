@@ -1909,8 +1909,12 @@ impl Config {
                 }
                 _ => FilesWatcher::Server,
             },
-            exclude: self.files_exclude().iter().map(|it| self.root_path.join(it)).collect(),
+            exclude: self.excluded().collect(),
         }
+    }
+
+    pub fn excluded(&self) -> impl Iterator<Item = AbsPathBuf> + use<'_> {
+        self.files_exclude().iter().map(|it| self.root_path.join(it))
     }
 
     pub fn notifications(&self) -> NotificationsConfig {

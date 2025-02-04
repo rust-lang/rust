@@ -25,6 +25,14 @@ use vfs::{AbsPathBuf, VfsPath};
 
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
 
+#[track_caller]
+fn file_id(vfs: &vfs::Vfs, path: &VfsPath) -> vfs::FileId {
+    match vfs.file_id(path) {
+        Some((file_id, vfs::FileExcluded::No)) => file_id,
+        None | Some((_, vfs::FileExcluded::Yes)) => panic!("can't find virtual file for {path}"),
+    }
+}
+
 #[test]
 fn integrated_highlighting_benchmark() {
     if std::env::var("RUN_SLOW_BENCHES").is_err() {
@@ -62,7 +70,7 @@ fn integrated_highlighting_benchmark() {
     let file_id = {
         let file = workspace_to_load.join(file);
         let path = VfsPath::from(AbsPathBuf::assert(file));
-        vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {path}"))
+        file_id(&vfs, &path)
     };
 
     {
@@ -130,7 +138,7 @@ fn integrated_completion_benchmark() {
     let file_id = {
         let file = workspace_to_load.join(file);
         let path = VfsPath::from(AbsPathBuf::assert(file));
-        vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {path}"))
+        file_id(&vfs, &path)
     };
 
     // kick off parsing and index population
@@ -324,7 +332,7 @@ fn integrated_diagnostics_benchmark() {
     let file_id = {
         let file = workspace_to_load.join(file);
         let path = VfsPath::from(AbsPathBuf::assert(file));
-        vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {path}"))
+        file_id(&vfs, &path)
     };
 
     let diagnostics_config = DiagnosticsConfig {
