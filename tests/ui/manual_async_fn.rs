@@ -139,4 +139,30 @@ pub(self) fn issue_10450_3() -> impl Future<Output = i32> {
     async { 42 }
 }
 
+macro_rules! issue_12407 {
+    (
+        $(
+            $(#[$m:meta])*
+            $v:vis $(override($($overrides:tt),* $(,)?))? fn $name:ident $([$($params:tt)*])? (
+                $($arg_name:ident: $arg_typ:ty),* $(,)?
+            ) $(-> $ret_ty:ty)? = $e:expr;
+        )*
+    ) => {
+        $(
+            $(#[$m])*
+            $v $($($overrides)*)? fn $name$(<$($params)*>)?(
+                $($arg_name: $arg_typ),*
+            ) $(-> $ret_ty)? {
+                $e
+            }
+        )*
+    };
+}
+
+issue_12407! {
+    fn _hello() -> impl Future<Output = ()> = async {};
+    fn non_async() = println!("hello");
+    fn foo() = non_async();
+}
+
 fn main() {}
