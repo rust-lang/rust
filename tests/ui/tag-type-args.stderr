@@ -10,7 +10,7 @@ LL | enum Quux<T> { Bar }
 error[E0107]: missing generics for enum `Quux`
   --> $DIR/tag-type-args.rs:4:11
    |
-LL | fn foo(c: Quux) { assert!((false)); }
+LL | fn foo(c: Quux) { assert!(false); }
    |           ^^^^ expected 1 generic argument
    |
 note: enum defined here, with 1 generic parameter: `T`
@@ -20,7 +20,7 @@ LL | enum Quux<T> { Bar }
    |      ^^^^ -
 help: add missing generic argument
    |
-LL | fn foo(c: Quux<T>) { assert!((false)); }
+LL | fn foo(c: Quux<T>) { assert!(false); }
    |               +++
 
 error: aborting due to 2 previous errors

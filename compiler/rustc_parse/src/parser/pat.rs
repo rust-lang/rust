@@ -1732,6 +1732,7 @@ impl<'a> Parser<'a> {
         })
     }
 
+    // `pub` because we use it from `rustc_builtin_macros`.
     pub(super) fn mk_pat_ident(&self, span: Span, ann: BindingMode, ident: Ident) -> P<Pat> {
         self.mk_pat(span, PatKind::Ident(ann, ident, None))
     }

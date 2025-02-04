@@ -91,7 +91,7 @@ fn main() {
     assert_eq!(a!(), "".is_empty());
     assert_eq!("".is_empty(), b!());
     assert_eq!(a, true);
-    assert!(b);
+    assert!(!!b);
 
     assert_ne!("a".len(), 1);
     assert!("a".is_empty());
@@ -111,7 +111,7 @@ fn main() {
     debug_assert_eq!(a!(), "".is_empty());
     debug_assert_eq!("".is_empty(), b!());
     debug_assert_eq!(a, true);
-    debug_assert!(b);
+    debug_assert!(!!b);
 
     debug_assert_ne!("a".len(), 1);
     debug_assert!("a".is_empty());
@@ -143,7 +143,7 @@ fn main() {
 
     use debug_assert_eq as renamed;
     renamed!(a, true);
-    debug_assert!(b);
+    debug_assert!(!!b);
 
     let non_copy = NonCopy;
     assert_eq!(non_copy, true);

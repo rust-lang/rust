@@ -2,7 +2,7 @@ error: indexing into a slice multiple times with an `assert` that does not cover
   --> tests/ui/missing_asserts_for_indexing.rs:30:5
    |
 LL |     assert!(v.len() < 5);
-   |     -------------------- help: provide the highest index that is indexed with: `assert!(v.len() > 4)`
+   |             ----------- help: provide the highest index that is indexed with: `v.len() > 4`
 LL |     v[0] + v[1] + v[2] + v[3] + v[4]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
@@ -39,7 +39,7 @@ error: indexing into a slice multiple times with an `assert` that does not cover
   --> tests/ui/missing_asserts_for_indexing.rs:36:5
    |
 LL |     assert!(v.len() <= 5);
-   |     --------------------- help: provide the highest index that is indexed with: `assert!(v.len() > 4)`
+   |             ------------ help: provide the highest index that is indexed with: `v.len() > 4`
 LL |     v[0] + v[1] + v[2] + v[3] + v[4]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
@@ -74,7 +74,7 @@ error: indexing into a slice multiple times with an `assert` that does not cover
   --> tests/ui/missing_asserts_for_indexing.rs:42:5
    |
 LL |     assert!(v.len() > 3);
-   |     -------------------- help: provide the highest index that is indexed with: `assert!(v.len() > 4)`
+   |             ----------- help: provide the highest index that is indexed with: `v.len() > 4`
 LL |     v[0] + v[1] + v[2] + v[3] + v[4]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
@@ -109,7 +109,7 @@ error: indexing into a slice multiple times with an `assert` that does not cover
   --> tests/ui/missing_asserts_for_indexing.rs:48:5
    |
 LL |     assert!(v.len() >= 4);
-   |     --------------------- help: provide the highest index that is indexed with: `assert!(v.len() > 4)`
+   |             ------------ help: provide the highest index that is indexed with: `v.len() > 4`
 LL |     v[0] + v[1] + v[2] + v[3] + v[4]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
@@ -144,7 +144,7 @@ error: indexing into a slice multiple times with an `assert` that does not cover
   --> tests/ui/missing_asserts_for_indexing.rs:66:13
    |
 LL |       assert!(v.len() >= 3);
-   |       --------------------- help: provide the highest index that is indexed with: `assert!(v.len() > 3)`
+   |               ------------ help: provide the highest index that is indexed with: `v.len() > 3`
 LL |       let _ = v[0];
    |  _____________^
 LL | |
@@ -167,7 +167,7 @@ error: indexing into a slice multiple times with an `assert` that does not cover
   --> tests/ui/missing_asserts_for_indexing.rs:80:13
    |
 LL |       assert!(v.len() >= 4);
-   |       --------------------- help: provide the highest index that is indexed with: `assert!(v.len() > 4)`
+   |               ------------ help: provide the highest index that is indexed with: `v.len() > 4`
 LL |       let _ = v[0];
    |  _____________^
 LL | |
@@ -190,7 +190,7 @@ error: indexing into a slice multiple times with an `assert` that does not cover
   --> tests/ui/missing_asserts_for_indexing.rs:95:13
    |
 LL |     assert!(v1.len() >= 12);
-   |     ----------------------- help: provide the highest index that is indexed with: `assert!(v1.len() > 12)`
+   |             -------------- help: provide the highest index that is indexed with: `v1.len() > 12`
 LL |     assert!(v2.len() >= 15);
 LL |     let _ = v1[0] + v1[12];
    |             ^^^^^^^^^^^^^^
@@ -211,7 +211,7 @@ error: indexing into a slice multiple times with an `assert` that does not cover
   --> tests/ui/missing_asserts_for_indexing.rs:97:13
    |
 LL |     assert!(v2.len() >= 15);
-   |     ----------------------- help: provide the highest index that is indexed with: `assert!(v2.len() > 15)`
+   |             -------------- help: provide the highest index that is indexed with: `v2.len() > 15`
 ...
 LL |     let _ = v2[5] + v2[15];
    |             ^^^^^^^^^^^^^^
@@ -232,7 +232,7 @@ error: indexing into a slice multiple times with an `assert` that does not cover
   --> tests/ui/missing_asserts_for_indexing.rs:103:13
    |
 LL |     assert!(v1.len() >= 12);
-   |     ----------------------- help: provide the highest index that is indexed with: `assert!(v1.len() > 12)`
+   |             -------------- help: provide the highest index that is indexed with: `v1.len() > 12`
 LL |     assert!(v2.len() > 15);
 LL |     let _ = v1[0] + v1[12];
    |             ^^^^^^^^^^^^^^
@@ -253,7 +253,7 @@ error: indexing into a slice multiple times with an `assert` that does not cover
   --> tests/ui/missing_asserts_for_indexing.rs:127:13
    |
 LL |     assert!(v1.len() == 2);
-   |     ---------------------- help: provide the highest index that is indexed with: `assert!(v1.len() == 3)`
+   |             ------------- help: provide the highest index that is indexed with: `v1.len() == 3`
 ...
 LL |     let _ = v1[0] + v1[1] + v1[2];
    |             ^^^^^^^^^^^^^^^^^^^^^
@@ -279,7 +279,7 @@ error: indexing into a slice multiple times with an `assert` that does not cover
   --> tests/ui/missing_asserts_for_indexing.rs:131:13
    |
 LL |     assert!(2 == v3.len());
-   |     ---------------------- help: provide the highest index that is indexed with: `assert!(v3.len() == 3)`
+   |             ------------- help: provide the highest index that is indexed with: `v3.len() == 3`
 ...
 LL |     let _ = v3[0] + v3[1] + v3[2];
    |             ^^^^^^^^^^^^^^^^^^^^^

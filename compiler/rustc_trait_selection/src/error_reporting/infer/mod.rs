@@ -456,7 +456,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             span,
                             format!("this is an iterator with items of type `{}`", args.type_at(0)),
                         );
-                    } else {
+                    } else if !span.overlaps(cause.span) {
                         let expected_ty = self.tcx.short_string(expected_ty, err.long_ty_path());
                         err.span_label(span, format!("this expression has type `{expected_ty}`"));
                     }
@@ -1584,8 +1584,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         {
             let e = self.tcx.erase_regions(e);
             let f = self.tcx.erase_regions(f);
-            let expected = with_forced_trimmed_paths!(e.sort_string(self.tcx));
-            let found = with_forced_trimmed_paths!(f.sort_string(self.tcx));
+            let mut expected = with_forced_trimmed_paths!(e.sort_string(self.tcx));
+            let mut found = with_forced_trimmed_paths!(f.sort_string(self.tcx));
+            if let Some(def_id) = cause.span.ctxt().outer_expn_data().macro_def_id
+                && self.tcx.is_diagnostic_item(sym::assert_macro, def_id)
+            {
+                // When the type error comes from `assert!()`, the cause and effect are reversed
+                // because that macro expands to `match val { false => {panic!()}, _ => {} }`, which
+                // would say something like "expected `Type`, found `bool`", confusing the user.
+                (found, expected) = (expected, found);
+            }
             if expected == found {
                 label_or_note(span, terr.to_string(self.tcx));
             } else {
@@ -2108,7 +2116,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> Option<(DiagStyledString, DiagStyledString)> {
         match values {
             ValuePairs::Regions(exp_found) => self.expected_found_str(exp_found),
-            ValuePairs::Terms(exp_found) => self.expected_found_str_term(exp_found, file),
+            ValuePairs::Terms(exp_found) => self.expected_found_str_term(cause, exp_found, file),
             ValuePairs::Aliases(exp_found) => self.expected_found_str(exp_found),
             ValuePairs::ExistentialTraitRef(exp_found) => self.expected_found_str(exp_found),
             ValuePairs::ExistentialProjection(exp_found) => self.expected_found_str(exp_found),
@@ -2147,6 +2155,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn expected_found_str_term(
         &self,
+        cause: &ObligationCause<'tcx>,
         exp_found: ty::error::ExpectedFound<ty::Term<'tcx>>,
         path: &mut Option<PathBuf>,
     ) -> Option<(DiagStyledString, DiagStyledString)> {
@@ -2154,8 +2163,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if exp_found.references_error() {
             return None;
         }
+        let (mut expected, mut found) = (exp_found.expected, exp_found.found);
+        if let Some(def_id) = cause.span.ctxt().outer_expn_data().macro_def_id
+            && self.tcx.is_diagnostic_item(sym::assert_macro, def_id)
+        {
+            // When the type error comes from `assert!()`, the cause and effect are reversed
+            // because that macro expands to `match val { false => {panic!()}, _ => {} }`, which
+            // would say something like
+            // = note: expected `Type`
+            //            found `bool`"
+            (expected, found) = (found, expected);
+        }
 
-        Some(match (exp_found.expected.unpack(), exp_found.found.unpack()) {
+        Some(match (expected.unpack(), found.unpack()) {
             (ty::TermKind::Ty(expected), ty::TermKind::Ty(found)) => {
                 let (mut exp, mut fnd) = self.cmp(expected, found);
                 // Use the terminal width as the basis to determine when to compress the printed
