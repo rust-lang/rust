@@ -1946,7 +1946,7 @@ fn can_elide_trait_object_lifetime_bound<'tcx>(
     preds: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     tcx: TyCtxt<'tcx>,
 ) -> bool {
-    // Below we quote extracts from https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
+    // Below we quote extracts from https://doc.rust-lang.org/stable/reference/lifetime-elision.html#default-trait-object-lifetimes
 
     // > If the trait object is used as a type argument of a generic type then the containing type is
     // > first used to try to infer a bound.

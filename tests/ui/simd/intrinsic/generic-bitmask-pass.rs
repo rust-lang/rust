@@ -21,9 +21,8 @@ struct u8x4(pub [u8; 4]);
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct Tx4<T>(pub [T; 4]);
 
-extern "rust-intrinsic" {
-    fn simd_bitmask<T, U>(x: T) -> U;
-}
+#[rustc_intrinsic]
+unsafe fn simd_bitmask<T, U>(x: T) -> U;
 
 fn main() {
     let z = u32x4([0, 0, 0, 0]);
