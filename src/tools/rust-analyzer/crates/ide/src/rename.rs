@@ -2001,14 +2001,32 @@ impl Foo {
             "foo",
             r#"
 fn f($0self) -> i32 {
-    use self as _;
     self.i
 }
 "#,
             r#"
 fn f(foo: _) -> i32 {
-    use self as _;
     foo.i
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_type_value_ns_confuse() {
+        // Test that we don't rename items from different namespaces.
+        check(
+            "bar",
+            r#"
+struct foo {}
+fn f(foo$0: i32) -> i32 {
+    use foo as _;
+}
+"#,
+            r#"
+struct foo {}
+fn f(bar: i32) -> i32 {
+    use foo as _;
 }
 "#,
         );
