@@ -1785,7 +1785,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let sysroot = if builder.top_stage == 0 {
             builder.initial_sysroot.clone()
         } else {
-            builder.sysroot(compiler).to_path_buf()
+            builder.sysroot(compiler)
         };
 
         cmd.arg("--sysroot-base").arg(sysroot);
