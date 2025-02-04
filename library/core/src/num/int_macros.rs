@@ -1116,6 +1116,83 @@ macro_rules! int_impl {
             if b { overflow_panic::rem() } else { a }
         }
 
+        /// Checked integer division without remainder. Computes `self / rhs`,
+        /// returning `None` if `rhs == 0`, the division results in overflow,
+        /// or remainder is not zero.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(norem_div)]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN + 1).checked_norem_div(-1), Some(", stringify!($Max), "));")]
+        #[doc = concat!("assert_eq!((-5", stringify!($SelfT), ").checked_norem_div(2), None);")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.checked_norem_div(-1), None);")]
+        #[doc = concat!("assert_eq!((1", stringify!($SelfT), ").checked_norem_div(0), None);")]
+        /// ```
+        #[unstable(
+            feature = "norem_div",
+            issue = "1",
+        )]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn checked_norem_div(self, rhs: Self) -> Option<Self> {
+            if unlikely!(rhs == 0 || ((self == Self::MIN) && (rhs == -1))) {
+                None
+            } else {
+                // SAFETY: div by zero and by INT_MIN have been checked above
+                unsafe {
+                    if unlikely!(intrinsics::unchecked_rem(self, rhs) != 0) {
+                        None
+                    } else {
+                        Some(intrinsics::unchecked_div(self, rhs))
+                    }
+                }
+            }
+        }
+
+        /// Checked integer division without remainder. Computes `self / rhs`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic  if `rhs == 0`, the division results in overflow,
+        /// or remainder is not zero.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(norem_div)]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".norem_div(2), 32);")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".norem_div(32), 2);")]
+        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN + 1).norem_div(-1), ", stringify!($Max), ");")]
+        /// ```
+        ///
+        /// ```should_panic
+        /// #![feature(norem_div)]
+        #[doc = concat!("let _ = 65", stringify!($SelfT), ".norem_div(2);")]
+        /// ```
+        /// ```should_panic
+        /// #![feature(norem_div)]
+        #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.norem_div(-1);")]
+        /// ```
+        #[unstable(
+            feature = "norem_div",
+            issue = "1",
+        )]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn norem_div(self, rhs: Self) -> Self {
+            match self.checked_norem_div(rhs) {
+                Some(v) => v,
+                None => panic!("Failed to divide without remainder"),
+            }
+        }
+
         /// Checked negation. Computes `-self`, returning `None` if `self == MIN`.
         ///
         /// # Examples
