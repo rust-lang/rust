@@ -395,11 +395,6 @@ path = "{intrinsic}/main.rs""#,
     /* If there has been a linker explicitly set from the command line then
      * we want to set it via setting it in the RUSTFLAGS*/
     let mut rust_flags = "-Cdebuginfo=0".to_string();
-    if let Some(linker) = linker {
-        rust_flags.push_str(" -Clinker=");
-        rust_flags.push_str(linker);
-        rust_flags.push_str(" -Clink-args=-static");
-    }
 
     let cargo_command = format!(
         "cargo {toolchain} build --target {target} --release",
@@ -407,12 +402,24 @@ path = "{intrinsic}/main.rs""#,
         target = target
     );
 
-    let output = Command::new("sh")
+    let mut command = Command::new("sh");
+
+    command
         .current_dir("rust_programs")
         .arg("-c")
-        .arg(cargo_command)
-        .env("RUSTFLAGS", rust_flags)
-        .output();
+        .arg(cargo_command);
+
+    if let Some(linker) = linker {
+        rust_flags.push_str(" -C linker=");
+        rust_flags.push_str(linker);
+        rust_flags.push_str(" -C link-args=-static");
+
+        command.env("CPPFLAGS", "-fuse-ld=lld");
+    }
+
+    command.env("RUSTFLAGS", rust_flags);
+    let output = command.output();
+
     if let Ok(output) = output {
         if output.status.success() {
             true
