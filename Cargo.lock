@@ -3274,13 +3274,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc-perf-wrapper"
-version = "0.1.0"
-dependencies = [
- "clap",
-]
-
-[[package]]
 name = "rustc-rayon"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
