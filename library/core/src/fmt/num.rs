@@ -207,7 +207,10 @@ macro_rules! impl_Display {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 #[cfg(not(feature = "optimize_for_size"))]
                 {
-                    self._fmt(true, f)
+                    const SIZE: usize = $unsigned::MAX.ilog(10) as usize + 1;
+                    let mut buf = [MaybeUninit::<u8>::uninit(); SIZE];
+
+                    f.pad_integral(true, "", self._fmt(&mut buf, SIZE))
                 }
                 #[cfg(feature = "optimize_for_size")]
                 {
@@ -221,7 +224,10 @@ macro_rules! impl_Display {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 #[cfg(not(feature = "optimize_for_size"))]
                 {
-                    return self.unsigned_abs()._fmt(*self >= 0, f);
+                    const SIZE: usize = $signed::MAX.ilog(10) as usize + 1;
+                    let mut buf = [MaybeUninit::<u8>::uninit(); SIZE];
+
+                    f.pad_integral(*self >= 0, "", self.unsigned_abs()._fmt(&mut buf, SIZE))
                 }
                 #[cfg(feature = "optimize_for_size")]
                 {
@@ -232,11 +238,14 @@ macro_rules! impl_Display {
 
         #[cfg(not(feature = "optimize_for_size"))]
         impl $unsigned {
-            fn _fmt(mut self, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                const SIZE: usize = $unsigned::MAX.ilog(10) as usize + 1;
-                let mut buf = [MaybeUninit::<u8>::uninit(); SIZE];
-                let mut curr = SIZE;
-                let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
+            #[doc(hidden)]
+            #[unstable(
+                feature = "fmt_internals",
+                reason = "internal routines only exposed for testing",
+                issue = "none"
+            )]
+            pub fn _fmt<'a>(mut self, buf: &'a mut [MaybeUninit::<u8>], mut curr: usize) -> &'a str {
+                let buf_ptr = MaybeUninit::slice_as_mut_ptr(buf);
                 let lut_ptr = DEC_DIGITS_LUT.as_ptr();
 
                 // SAFETY: Since `d1` and `d2` are always less than or equal to `198`, we
@@ -296,11 +305,10 @@ macro_rules! impl_Display {
 
                 // SAFETY: `curr` > 0 (since we made `buf` large enough), and all the chars are valid
                 // UTF-8 since `DEC_DIGITS_LUT` is
-                let buf_slice = unsafe {
+                unsafe {
                     str::from_utf8_unchecked(
                         slice::from_raw_parts(buf_ptr.add(curr), buf.len() - curr))
-                };
-                f.pad_integral(is_nonnegative, "", buf_slice)
+                }
             }
         })*
 
