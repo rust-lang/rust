@@ -1625,8 +1625,7 @@ impl<'a> InferenceContext<'a> {
                     None => path.segments().last().unwrap(),
                     Some(n) => path.segments().get(path.segments().len() - n - 1).unwrap(),
                 };
-                let substs =
-                    ctx.substs_from_path_segment(resolved_seg, Some(it.into()), true, None);
+                let substs = ctx.substs_from_path_segment(resolved_seg, it.into(), true, None);
                 drop(ctx);
                 let ty = self.db.ty(it.into());
                 let ty = self.insert_type_vars(ty.substitute(Interner, &substs));

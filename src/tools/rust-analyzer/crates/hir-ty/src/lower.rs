@@ -592,7 +592,7 @@ impl<'a> TyLoweringContext<'a> {
                                 // this point (`trait_ref.substitution`).
                                 let substitution = self.substs_from_path_segment(
                                     segment,
-                                    Some(associated_ty.into()),
+                                    associated_ty.into(),
                                     false,
                                     None,
                                 );
@@ -1007,7 +1007,7 @@ impl<'a> TyLoweringContext<'a> {
                 // that method to optionally take parent `Substitution` as we already know them at
                 // this point (`t.substitution`).
                 let substs =
-                    self.substs_from_path_segment(segment, Some(associated_ty.into()), false, None);
+                    self.substs_from_path_segment(segment, associated_ty.into(), false, None);
 
                 let len_self =
                     crate::generics::generics(self.db.upcast(), associated_ty.into()).len_self();
@@ -1037,9 +1037,9 @@ impl<'a> TyLoweringContext<'a> {
         infer_args: bool,
     ) -> Ty {
         let generic_def = match typeable {
-            TyDefId::BuiltinType(_) => None,
-            TyDefId::AdtId(it) => Some(it.into()),
-            TyDefId::TypeAliasId(it) => Some(it.into()),
+            TyDefId::BuiltinType(builtin) => return TyBuilder::builtin(builtin),
+            TyDefId::AdtId(it) => it.into(),
+            TyDefId::TypeAliasId(it) => it.into(),
         };
         let substs = self.substs_from_path_segment(segment, generic_def, infer_args, None);
         self.db.ty(typeable).substitute(Interner, &substs)
@@ -1058,11 +1058,11 @@ impl<'a> TyLoweringContext<'a> {
     ) -> Substitution {
         let last = path.segments().last();
         let (segment, generic_def) = match resolved {
-            ValueTyDefId::FunctionId(it) => (last, Some(it.into())),
-            ValueTyDefId::StructId(it) => (last, Some(it.into())),
-            ValueTyDefId::UnionId(it) => (last, Some(it.into())),
-            ValueTyDefId::ConstId(it) => (last, Some(it.into())),
-            ValueTyDefId::StaticId(_) => (last, None),
+            ValueTyDefId::FunctionId(it) => (last, it.into()),
+            ValueTyDefId::StructId(it) => (last, it.into()),
+            ValueTyDefId::UnionId(it) => (last, it.into()),
+            ValueTyDefId::ConstId(it) => (last, it.into()),
+            ValueTyDefId::StaticId(_) => return Substitution::empty(Interner),
             ValueTyDefId::EnumVariantId(var) => {
                 // the generic args for an enum variant may be either specified
                 // on the segment referring to the enum, or on the segment
@@ -1075,23 +1075,17 @@ impl<'a> TyLoweringContext<'a> {
                     Some(segment) if segment.args_and_bindings.is_some() => Some(segment),
                     _ => last,
                 };
-                (segment, Some(var.lookup(self.db.upcast()).parent.into()))
+                (segment, var.lookup(self.db.upcast()).parent.into())
             }
         };
-        if let Some(segment) = segment {
-            self.substs_from_path_segment(segment, generic_def, infer_args, None)
-        } else if let Some(generic_def) = generic_def {
-            // lang item
-            self.substs_from_args_and_bindings(None, Some(generic_def), infer_args, None)
-        } else {
-            Substitution::empty(Interner)
-        }
+        let args_and_bindings = segment.and_then(|it| it.args_and_bindings);
+        self.substs_from_args_and_bindings(args_and_bindings, generic_def, infer_args, None)
     }
 
     pub(super) fn substs_from_path_segment(
         &mut self,
         segment: PathSegment<'_>,
-        def: Option<GenericDefId>,
+        def: GenericDefId,
         infer_args: bool,
         explicit_self_ty: Option<Ty>,
     ) -> Substitution {
@@ -1106,12 +1100,10 @@ impl<'a> TyLoweringContext<'a> {
     fn substs_from_args_and_bindings(
         &mut self,
         args_and_bindings: Option<&GenericArgs>,
-        def: Option<GenericDefId>,
+        def: GenericDefId,
         infer_args: bool,
         explicit_self_ty: Option<Ty>,
     ) -> Substitution {
-        let Some(def) = def else { return Substitution::empty(Interner) };
-
         // Order is
         // - Optional Self parameter
         // - Lifetime parameters
@@ -1317,7 +1309,7 @@ impl<'a> TyLoweringContext<'a> {
         resolved: TraitId,
         explicit_self_ty: Ty,
     ) -> Substitution {
-        self.substs_from_path_segment(segment, Some(resolved.into()), false, Some(explicit_self_ty))
+        self.substs_from_path_segment(segment, resolved.into(), false, Some(explicit_self_ty))
     }
 
     pub(crate) fn lower_where_predicate<'b>(
@@ -1445,7 +1437,7 @@ impl<'a> TyLoweringContext<'a> {
                 let substitution = self.substs_from_path_segment(
                     // FIXME: This is hack. We shouldn't really build `PathSegment` directly.
                     PathSegment { name: &binding.name, args_and_bindings: binding.args.as_ref() },
-                    Some(associated_ty.into()),
+                    associated_ty.into(),
                     false, // this is not relevant
                     Some(super_trait_ref.self_type_parameter(Interner)),
                 );
