@@ -37,10 +37,11 @@ LL |     let Foo(ref x) = &Foo(0);
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-help: make the implied reference pattern explicit
+help: make the variable binding mode implicit
    |
-LL |     let &Foo(ref x) = &Foo(0);
-   |         +
+LL -     let Foo(ref x) = &Foo(0);
+LL +     let Foo(x) = &Foo(0);
+   |
 
 error: this pattern relies on behavior which may change in edition 2024
   --> $DIR/migration_lint.rs:40:13
@@ -154,10 +155,11 @@ LL |     if let Some(&mut Some(Some(x))) = &mut Some(&mut Some(&mut Some(0u8))) 
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-help: make the implied reference patterns and variable binding mode explicit
+help: make the reference pattern implicit
    |
-LL |     if let &mut Some(&mut Some(&mut Some(ref mut x))) = &mut Some(&mut Some(&mut Some(0u8))) {
-   |            ++++                ++++      +++++++
+LL -     if let Some(&mut Some(Some(x))) = &mut Some(&mut Some(&mut Some(0u8))) {
+LL +     if let Some(Some(Some(x))) = &mut Some(&mut Some(&mut Some(0u8))) {
+   |
 
 error: this pattern relies on behavior which may change in edition 2024
   --> $DIR/migration_lint.rs:111:21
@@ -197,10 +199,10 @@ LL |     if let Struct { a: &Some(a), b: Some(&b), c: Some(c) } =
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-help: make the implied reference patterns and variable binding mode explicit
+help: make the implied reference patterns explicit
    |
-LL |     if let &Struct { a: &Some(a), b: &Some(&b), c: &Some(ref c) } =
-   |            +                         +             +     +++
+LL |     if let &Struct { a: &Some(a), b: &Some(&b), c: Some(c) } =
+   |            +                         +
 
 error: this pattern relies on behavior which may change in edition 2024
   --> $DIR/migration_lint.rs:137:15
@@ -217,5 +219,180 @@ help: make the implied reference pattern explicit
 LL |         &(Some(mut x), migration_lint_macros::mixed_edition_pat!(y)) => {
    |         +
 
-error: aborting due to 16 previous errors
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/migration_lint.rs:146:18
+   |
+LL |     let Struct { ref a, ref b, c } = &Struct { a: 0, b: 0, c: 0 };
+   |                  ^^^    ^^^ cannot override to bind by-reference when that is the implicit default
+   |                  |
+   |                  cannot override to bind by-reference when that is the implicit default
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the variable binding modes implicit
+   |
+LL -     let Struct { ref a, ref b, c } = &Struct { a: 0, b: 0, c: 0 };
+LL +     let Struct { a, b, c } = &Struct { a: 0, b: 0, c: 0 };
+   |
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/migration_lint.rs:153:18
+   |
+LL |     let Struct { ref a, ref mut b, c } = &mut Struct { a: 0, b: 0, c: 0 };
+   |                  ^^^    ^^^^^^^ cannot override to bind by-reference when that is the implicit default
+   |                  |
+   |                  cannot override to bind by-reference when that is the implicit default
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern and variable binding mode explicit
+   |
+LL |     let &mut Struct { ref a, ref mut b, ref mut c } = &mut Struct { a: 0, b: 0, c: 0 };
+   |         ++++                            +++++++
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/migration_lint.rs:161:21
+   |
+LL |     let Struct { a: &[ref a], b: &mut [[b]], c } = &mut &Struct { a: &[0], b: &mut [&[0]], c: 0 };
+   |                     ^            ^^^^ cannot implicitly match against multiple layers of reference
+   |                     |
+   |                     cannot implicitly match against multiple layers of reference
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the reference patterns and variable binding mode implicit
+   |
+LL -     let Struct { a: &[ref a], b: &mut [[b]], c } = &mut &Struct { a: &[0], b: &mut [&[0]], c: 0 };
+LL +     let Struct { a: [a], b: [[b]], c } = &mut &Struct { a: &[0], b: &mut [&[0]], c: 0 };
+   |
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/migration_lint.rs:169:13
+   |
+LL |     let Foo(&ref a) = &Foo(&0);
+   |             ^ cannot implicitly match against multiple layers of reference
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: rewrite the pattern
+   |
+LL -     let Foo(&ref a) = &Foo(&0);
+LL +     let &Foo(a) = &Foo(&0);
+   |
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/migration_lint.rs:175:10
+   |
+LL |     let (&a, b, [c], [(d, [e])]) = &(&0, 0, &[0], &mut [&mut (0, &[0])]);
+   |          ^ cannot implicitly match against multiple layers of reference
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference patterns and variable binding modes explicit
+   |
+LL |     let &(&a, ref b, [c], &mut [&mut (ref d, [e])]) = &(&0, 0, &[0], &mut [&mut (0, &[0])]);
+   |         +     +++         ++++  ++++  +++
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/migration_lint.rs:185:19
+   |
+LL |     let (a, [b], [mut c]) = &(0, &mut [0], &[0]);
+   |                   ^^^ requires binding by-value, but the implicit default is by-reference
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference patterns and variable binding modes explicit
+   |
+LL |     let &(ref a, &mut [ref b], &[mut c]) = &(0, &mut [0], &[0]);
+   |         + +++    ++++  +++     +
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/migration_lint.rs:193:10
+   |
+LL |     let (&a, (b, &[ref c])) = &(&0, &mut (0, &[0]));
+   |          ^       ^ cannot implicitly match against multiple layers of reference
+   |          |
+   |          cannot implicitly match against multiple layers of reference
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: rewrite the pattern
+   |
+LL -     let (&a, (b, &[ref c])) = &(&0, &mut (0, &[0]));
+LL +     let &(&a, &mut (ref b, [c])) = &(&0, &mut (0, &[0]));
+   |
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/migration_lint.rs:201:10
+   |
+LL |     let [mut a @ b] = &[0];
+   |          ^^^ requires binding by-value, but the implicit default is by-reference
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern and variable binding mode explicit
+   |
+LL |     let &[mut a @ ref b] = &[0];
+   |         +         +++
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/migration_lint.rs:208:14
+   |
+LL |     let [a @ mut b] = &[0];
+   |              ^^^ requires binding by-value, but the implicit default is by-reference
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern and variable binding mode explicit
+   |
+LL |     let &[ref a @ mut b] = &[0];
+   |         + +++
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/migration_lint.rs:215:14
+   |
+LL |     let [Foo(&ref a @ ref b), Foo(&ref c @ d)] = [&Foo(&0); 2];
+   |              ^                    ^ cannot implicitly match against multiple layers of reference
+   |              |
+   |              cannot implicitly match against multiple layers of reference
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: rewrite the pattern
+   |
+LL -     let [Foo(&ref a @ ref b), Foo(&ref c @ d)] = [&Foo(&0); 2];
+LL +     let [&Foo(a @ b), &Foo(&ref c @ d)] = [&Foo(&0); 2];
+   |
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/migration_lint.rs:224:14
+   |
+LL |     let [Foo(&ref a @ [ref b]), Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
+   |              ^                      ^ cannot implicitly match against multiple layers of reference
+   |              |
+   |              cannot implicitly match against multiple layers of reference
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: rewrite the pattern
+   |
+LL -     let [Foo(&ref a @ [ref b]), Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
+LL +     let [&Foo(a @ [b]), &Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
+   |
+
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/migration_lint.rs:233:10
+   |
+LL |     let [&(_)] = &[&0];
+   |          ^^ cannot implicitly match against multiple layers of reference
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the reference pattern implicit
+   |
+LL -     let [&(_)] = &[&0];
+LL +     let [(_)] = &[&0];
+   |
+
+error: aborting due to 28 previous errors
 
