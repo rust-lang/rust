@@ -178,7 +178,7 @@ impl UnixFileDescription for FileHandle {
         op: FlockOp,
     ) -> InterpResult<'tcx, io::Result<()>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        #[cfg(target_family = "unix")]
+        #[cfg(all(target_family = "unix", not(target_os = "solaris")))]
         {
             use std::os::fd::AsRawFd;
 
@@ -260,10 +260,15 @@ impl UnixFileDescription for FileHandle {
             interp_ok(res)
         }
 
-        #[cfg(not(any(target_family = "unix", target_family = "windows")))]
+        #[cfg(not(any(
+            all(target_family = "unix", not(target_os = "solaris")),
+            target_family = "windows"
+        )))]
         {
             let _ = op;
-            compile_error!("flock is supported only on UNIX and Windows hosts");
+            throw_unsup_format!(
+                "flock is supported only on UNIX (except Solaris) and Windows hosts"
+            );
         }
     }
 }
