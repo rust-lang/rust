@@ -1019,7 +1019,7 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
             // Create a label rib for the function.
             this.with_label_rib(RibKind::FnOrCoroutine, |this| {
                 match fn_kind {
-                    FnKind::Fn(_, _, _, Fn { sig, generics, body, .. }) => {
+                    FnKind::Fn(_, _, _, Fn { sig, generics, contract, body, .. }) => {
                         this.visit_generics(generics);
 
                         let declaration = &sig.decl;
@@ -1045,6 +1045,10 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
                                 );
                             },
                         );
+
+                        if let Some(contract) = contract {
+                            this.visit_contract(contract);
+                        }
 
                         if let Some(body) = body {
                             // Ignore errors in function bodies if this is rustdoc
