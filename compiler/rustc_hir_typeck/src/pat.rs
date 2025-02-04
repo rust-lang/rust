@@ -804,7 +804,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Determine the binding mode...
         let bm = match user_bind_annot {
-            BindingMode(ByRef::No, Mutability::Mut) if let ByRef::Yes(def_br_mutbl) = def_br => {
+            BindingMode(ByRef::No, Mutability::Mut) if matches!(def_br, ByRef::Yes(_)) => {
                 // Only mention the experimental `mut_ref` feature if if we're in edition 2024 and
                 // using other experimental matching features compatible with it.
                 if pat.span.at_least_rust_2024()
@@ -828,20 +828,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         pat_info.top_info.hir_id,
                         pat,
                         ident.span,
-                        def_br_mutbl,
                     );
                     BindingMode(ByRef::No, Mutability::Mut)
                 }
             }
             BindingMode(ByRef::No, mutbl) => BindingMode(def_br, mutbl),
             BindingMode(ByRef::Yes(_), _) => {
-                if let ByRef::Yes(def_br_mutbl) = def_br {
+                if matches!(def_br, ByRef::Yes(_)) {
                     // `ref`/`ref mut` overrides the binding mode on edition <= 2021
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
                         pat,
                         ident.span,
-                        def_br_mutbl,
                     );
                 }
                 user_bind_annot
@@ -2380,7 +2378,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         pat_info.top_info.hir_id,
                         pat,
                         inner.span,
-                        inh_mut,
                     )
                 }
             }
@@ -2772,7 +2769,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_id: HirId,
         subpat: &'tcx Pat<'tcx>,
         cutoff_span: Span,
-        def_br_mutbl: Mutability,
     ) {
         // Try to trim the span we're labeling to just the `&` or binding mode that's an issue.
         // If the subpattern's span is is from an expansion, the emitted label will not be trimmed.
@@ -2787,8 +2783,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut typeck_results = self.typeck_results.borrow_mut();
         let mut table = typeck_results.rust_2024_migration_desugared_pats_mut();
         let info = table.entry(pat_id).or_default();
-
-        info.primary_spans.push(trimmed_span);
 
         // Only provide a detailed label if the problematic subpattern isn't from an expansion.
         // In the case that it's from a macro, we'll add a more detailed note in the emitter.
@@ -2807,15 +2801,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 "this reference pattern"
             }
         };
-        info.span_labels.push((trimmed_span, primary_label.to_owned()));
-
-        if !from_expansion {
-            // Add a secondary label covering the whole pattern noting the default binding mode
-            let def_br_desc = match def_br_mutbl {
-                Mutability::Not => "default binding mode is `ref`",
-                Mutability::Mut => "default binding mode is `ref mut`",
-            };
-            info.span_labels.push((subpat.span, def_br_desc.to_owned()));
-        }
+        info.primary_labels.push((trimmed_span, primary_label.to_owned()));
     }
 }

@@ -103,10 +103,10 @@ error: reference patterns may only be written when the default binding mode is `
   --> $DIR/min_match_ergonomics_fail.rs:24:20
    |
 LL | test_pat_on_type![(&x,): &(&T,)];
-   |                    ^-
-   |                    |
-   |                    this reference pattern
-   |                    default binding mode is `ref`
+   |                   -^---
+   |                   ||
+   |                   |this reference pattern
+   |                   default binding mode is `ref`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
@@ -118,10 +118,10 @@ error: reference patterns may only be written when the default binding mode is `
   --> $DIR/min_match_ergonomics_fail.rs:27:20
    |
 LL | test_pat_on_type![(&mut x,): &(&mut T,)];
-   |                    ^^^^--
-   |                    |
-   |                    this reference pattern
-   |                    default binding mode is `ref`
+   |                   -^^^^----
+   |                   ||
+   |                   |this reference pattern
+   |                   default binding mode is `ref`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
@@ -133,10 +133,10 @@ error: reference patterns may only be written when the default binding mode is `
   --> $DIR/min_match_ergonomics_fail.rs:31:28
    |
 LL | test_pat_on_type![Foo { f: &(x,) }: &Foo];
-   |                            ^----
-   |                            |
-   |                            this reference pattern
-   |                            default binding mode is `ref`
+   |                   ---------^------
+   |                   |        |
+   |                   |        this reference pattern
+   |                   default binding mode is `ref`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
@@ -148,10 +148,10 @@ error: binding modifiers may only be written when the default binding mode is `m
   --> $DIR/min_match_ergonomics_fail.rs:32:20
    |
 LL | test_pat_on_type![(mut x,): &(T,)];
-   |                    ^^^--
-   |                    |
-   |                    this binding modifier
-   |                    default binding mode is `ref`
+   |                   -^^^----
+   |                   ||
+   |                   |this binding modifier
+   |                   default binding mode is `ref`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
@@ -163,10 +163,10 @@ error: binding modifiers may only be written when the default binding mode is `m
   --> $DIR/min_match_ergonomics_fail.rs:33:20
    |
 LL | test_pat_on_type![(ref x,): &(T,)];
-   |                    ^^^--
-   |                    |
-   |                    this binding modifier
-   |                    default binding mode is `ref`
+   |                   -^^^----
+   |                   ||
+   |                   |this binding modifier
+   |                   default binding mode is `ref`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
@@ -178,10 +178,10 @@ error: binding modifiers may only be written when the default binding mode is `m
   --> $DIR/min_match_ergonomics_fail.rs:34:20
    |
 LL | test_pat_on_type![(ref mut x,): &mut (T,)];
-   |                    ^^^^^^^--
-   |                    |
-   |                    this binding modifier
-   |                    default binding mode is `ref mut`
+   |                   -^^^^^^^----
+   |                   ||
+   |                   |this binding modifier
+   |                   default binding mode is `ref mut`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
@@ -193,10 +193,10 @@ error: reference patterns may only be written when the default binding mode is `
   --> $DIR/min_match_ergonomics_fail.rs:43:10
    |
 LL |         (&x,) => x,
-   |          ^-
-   |          |
-   |          this reference pattern
-   |          default binding mode is `ref`
+   |         -^---
+   |         ||
+   |         |this reference pattern
+   |         default binding mode is `ref`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
