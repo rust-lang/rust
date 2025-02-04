@@ -2132,8 +2132,8 @@ impl InferenceContext<'_> {
             for kind_id in def_generics.iter_self_id().take(self_params) {
                 let arg = args.peek();
                 let arg = match (kind_id, arg) {
-                    // Lifetimes can be elided.
-                    // Once we have implemented lifetime elision correctly,
+                    // Lifetimes can be inferred.
+                    // Once we have implemented lifetime inference correctly,
                     // this should be handled in a proper way.
                     (
                         GenericParamId::LifetimeParamId(_),
