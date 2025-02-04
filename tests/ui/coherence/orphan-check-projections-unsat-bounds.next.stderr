@@ -1,4 +1,4 @@
-warning[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`LocalTy`)
+warning: type parameter `T` must be covered by another type when it appears before the first local type (`LocalTy`)
   --> $DIR/orphan-check-projections-unsat-bounds.rs:28:6
    |
 LL | impl<T> foreign::Trait1<LocalTy, T> for <Wrapper<T> as Discard>::Output
@@ -12,4 +12,3 @@ LL | impl<T> foreign::Trait1<LocalTy, T> for <Wrapper<T> as Discard>::Output
 
 warning: 1 warning emitted
 
-For more information about this error, try `rustc --explain E0210`.

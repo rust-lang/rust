@@ -1,4 +1,4 @@
-warning[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
+warning: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
   --> $DIR/orphan-check-projections-not-covering.rs:22:6
    |
 LL | impl<T> foreign::Trait0<Local, T, ()> for <T as Identity>::Output {}
@@ -10,7 +10,7 @@ LL | impl<T> foreign::Trait0<Local, T, ()> for <T as Identity>::Output {}
    = note: for more information, see issue #124559 <https://github.com/rust-lang/rust/issues/124559>
    = note: `#[warn(uncovered_param_in_projection)]` (part of `#[warn(future_incompatible)]`) on by default
 
-warning[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
+warning: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
   --> $DIR/orphan-check-projections-not-covering.rs:27:6
    |
 LL | impl<T> foreign::Trait0<<T as Identity>::Output, Local, T> for Option<T> {}
@@ -21,7 +21,7 @@ LL | impl<T> foreign::Trait0<<T as Identity>::Output, Local, T> for Option<T> {}
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124559 <https://github.com/rust-lang/rust/issues/124559>
 
-warning[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
+warning: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
   --> $DIR/orphan-check-projections-not-covering.rs:40:6
    |
 LL | impl<T: Deferred> foreign::Trait1<Local, T> for <T as Deferred>::Output {}
@@ -34,4 +34,3 @@ LL | impl<T: Deferred> foreign::Trait1<Local, T> for <T as Deferred>::Output {}
 
 warning: 3 warnings emitted
 
-For more information about this error, try `rustc --explain E0210`.

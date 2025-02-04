@@ -1,4 +1,4 @@
-warning[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`LocalTy`)
+warning: type parameter `T` must be covered by another type when it appears before the first local type (`LocalTy`)
   --> $DIR/orphan-check-projections-not-covering-multiple-params.rs:17:6
    |
 LL | impl<T, U> foreign::Trait0<LocalTy, T, U> for <() as Trait<T, U>>::Assoc {}
@@ -10,7 +10,7 @@ LL | impl<T, U> foreign::Trait0<LocalTy, T, U> for <() as Trait<T, U>>::Assoc {}
    = note: for more information, see issue #124559 <https://github.com/rust-lang/rust/issues/124559>
    = note: `#[warn(uncovered_param_in_projection)]` (part of `#[warn(future_incompatible)]`) on by default
 
-warning[E0210]: type parameter `U` must be covered by another type when it appears before the first local type (`LocalTy`)
+warning: type parameter `U` must be covered by another type when it appears before the first local type (`LocalTy`)
   --> $DIR/orphan-check-projections-not-covering-multiple-params.rs:17:9
    |
 LL | impl<T, U> foreign::Trait0<LocalTy, T, U> for <() as Trait<T, U>>::Assoc {}
@@ -23,4 +23,3 @@ LL | impl<T, U> foreign::Trait0<LocalTy, T, U> for <() as Trait<T, U>>::Assoc {}
 
 warning: 2 warnings emitted
 
-For more information about this error, try `rustc --explain E0210`.

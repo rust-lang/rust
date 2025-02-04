@@ -1,4 +1,4 @@
-warning[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`B`)
+warning: type parameter `T` must be covered by another type when it appears before the first local type (`B`)
   --> $DIR/orphan-check-alias.rs:21:6
    |
 LL | impl<T> foreign::Trait2<B, T> for <T as Id>::Assoc {
@@ -12,4 +12,3 @@ LL | impl<T> foreign::Trait2<B, T> for <T as Id>::Assoc {
 
 warning: 1 warning emitted
 
-For more information about this error, try `rustc --explain E0210`.

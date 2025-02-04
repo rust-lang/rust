@@ -1,4 +1,4 @@
-warning[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
+warning: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
   --> $DIR/orphan-check-projections-not-covering-ambiguity.rs:25:6
    |
 LL | impl<T> foreign::Trait1<Local, T> for <T as Project>::Output {}
@@ -12,4 +12,3 @@ LL | impl<T> foreign::Trait1<Local, T> for <T as Project>::Output {}
 
 warning: 1 warning emitted
 
-For more information about this error, try `rustc --explain E0210`.
