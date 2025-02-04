@@ -49,7 +49,8 @@ impl<'tcx> UniverseInfo<'tcx> {
         UniverseInfo::RelateTys { expected, found }
     }
 
-    pub(crate) fn report_error(
+    /// Report an error where an element erroneously made its way into `placeholder`.
+    pub(crate) fn report_erroneous_element(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
         placeholder: ty::PlaceholderRegion,
@@ -68,7 +69,42 @@ impl<'tcx> UniverseInfo<'tcx> {
                 mbcx.buffer_error(err);
             }
             UniverseInfo::TypeOp(ref type_op_info) => {
-                type_op_info.report_error(mbcx, placeholder, error_element, cause);
+                type_op_info.report_erroneous_element(mbcx, placeholder, error_element, cause);
+            }
+            UniverseInfo::Other => {
+                // FIXME: This error message isn't great, but it doesn't show
+                // up in the existing UI tests. Consider investigating this
+                // some more.
+                mbcx.buffer_error(
+                    mbcx.dcx().create_err(HigherRankedSubtypeError { span: cause.span }),
+                );
+            }
+        }
+    }
+
+    /// Report an error where a placeholder erroneously outlives another.
+    pub(crate) fn report_placeholder_mismatch(
+        &self,
+        mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
+        placeholder_a: ty::PlaceholderRegion,
+        cause: ObligationCause<'tcx>,
+        placeholder_b: ty::PlaceholderRegion,
+    ) {
+        // FIXME(amandasystems) this function is now a direct copy of the one above and that's not great.
+        match *self {
+            UniverseInfo::RelateTys { expected, found } => {
+                let err = mbcx.infcx.err_ctxt().report_mismatched_types(
+                    &cause,
+                    mbcx.infcx.param_env,
+                    expected,
+                    found,
+                    TypeError::RegionsPlaceholderMismatch,
+                );
+                mbcx.buffer_error(err);
+            }
+            UniverseInfo::TypeOp(ref type_op_info) => {
+                // FIXME(amandasystems) maybe...I can just use the type error above?!?!?!?!
+                type_op_info.report_placeholder_mismatch(mbcx, placeholder_a, cause, placeholder_b);
             }
             UniverseInfo::Other => {
                 // FIXME: This error message isn't great, but it doesn't show
@@ -138,7 +174,55 @@ pub(crate) trait TypeOpInfo<'tcx> {
     ) -> Option<Diag<'infcx>>;
 
     #[instrument(level = "debug", skip(self, mbcx))]
-    fn report_error(
+    fn report_placeholder_mismatch(
+        &self,
+        mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
+        placeholder_a: ty::PlaceholderRegion,
+        cause: ObligationCause<'tcx>,
+        placeholder_b: ty::PlaceholderRegion,
+    ) {
+        // FIXME(amandasystems) -- this fn is a duplicate of the one below and it shouldn't be.
+        // This really is the dumbest version of this function.
+        let tcx = mbcx.infcx.tcx;
+        let base_universe = self.base_universe();
+        debug!(?base_universe);
+
+        let Some(adjusted_universe_a) =
+            placeholder_a.universe.as_u32().checked_sub(base_universe.as_u32())
+        else {
+            mbcx.buffer_error(self.fallback_error(tcx, cause.span));
+            return;
+        };
+
+        let Some(adjusted_universe_b) =
+            placeholder_b.universe.as_u32().checked_sub(base_universe.as_u32())
+        else {
+            mbcx.buffer_error(self.fallback_error(tcx, cause.span));
+            return;
+        };
+
+        let placeholder_a = ty::Region::new_placeholder(tcx, ty::Placeholder {
+            universe: adjusted_universe_a.into(),
+            bound: placeholder_a.bound,
+        });
+
+        let placeholder_b = ty::Region::new_placeholder(tcx, ty::Placeholder {
+            universe: adjusted_universe_b.into(),
+            bound: placeholder_b.bound,
+        });
+
+        debug!(?placeholder_a, ?placeholder_b);
+
+        let span = cause.span;
+        // FIXME(amandasystems) -- propagate or flatten the changes and remove error_region here.
+        let nice_error = self.nice_error(mbcx, cause, placeholder_a, Some(placeholder_b));
+        // I think this should never fail?!
+        debug!(?nice_error);
+        mbcx.buffer_error(nice_error.unwrap_or_else(|| self.fallback_error(tcx, span)));
+    }
+
+    #[instrument(level = "debug", skip(self, mbcx))]
+    fn report_erroneous_element(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
         placeholder: ty::PlaceholderRegion,
@@ -156,37 +240,22 @@ pub(crate) trait TypeOpInfo<'tcx> {
             return;
         };
 
+        // FIXME(amandasystems) -- construct this earlier when we have
+        // adjusted universes and pass it in rather than placeholder
         let placeholder_region = ty::Region::new_placeholder(tcx, ty::Placeholder {
             universe: adjusted_universe.into(),
             bound: placeholder.bound,
         });
 
-        let error_region =
-            if let RegionElement::PlaceholderRegion(error_placeholder) = error_element {
-                let adjusted_universe =
-                    error_placeholder.universe.as_u32().checked_sub(base_universe.as_u32());
-                adjusted_universe.map(|adjusted| {
-                    ty::Region::new_placeholder(tcx, ty::Placeholder {
-                        universe: adjusted.into(),
-                        bound: error_placeholder.bound,
-                    })
-                })
-            } else {
-                None
-            };
-
         debug!(?placeholder_region);
 
         let span = cause.span;
-        let nice_error = self.nice_error(mbcx, cause, placeholder_region, error_region);
+        // FIXME(amandasystems) -- propagate or flatten the changes and remove error_region here.
+        // --- I think we always fall back!!!
+        let nice_error = self.nice_error(mbcx, cause, placeholder_region, None);
 
         debug!(?nice_error);
-
-        if let Some(nice_error) = nice_error {
-            mbcx.buffer_error(nice_error);
-        } else {
-            mbcx.buffer_error(self.fallback_error(tcx, span));
-        }
+        mbcx.buffer_error(nice_error.unwrap_or_else(|| self.fallback_error(tcx, span)));
     }
 }
 
@@ -209,6 +278,7 @@ impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
         self.base_universe
     }
 
+    // NOTE(amandasystems) this is the method being executed!
     fn nice_error<'infcx>(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, 'infcx, 'tcx>,
@@ -394,7 +464,8 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
         ty::ReVar(vid) => universe_of_region(vid),
         _ => ty::UniverseIndex::ROOT,
     };
-    let matches =
+    // Are the two regions the same?
+    let regions_the_same =
         |a_region: Region<'tcx>, b_region: Region<'tcx>| match (a_region.kind(), b_region.kind()) {
             (RePlaceholder(a_p), RePlaceholder(b_p)) => a_p.bound == b_p.bound,
             _ => a_region == b_region,
@@ -403,7 +474,7 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
         |constraint: &Constraint<'tcx>, cause: &SubregionOrigin<'tcx>, exact| match *constraint {
             Constraint::RegSubReg(sub, sup)
                 if ((exact && sup == placeholder_region)
-                    || (!exact && matches(sup, placeholder_region)))
+                    || (!exact && regions_the_same(sup, placeholder_region)))
                     && sup != sub =>
             {
                 Some((sub, cause.clone()))
@@ -412,23 +483,21 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
                 if (exact
                     && sup == placeholder_region
                     && !universe_of_region(vid).can_name(placeholder_universe))
-                    || (!exact && matches(sup, placeholder_region)) =>
+                    || (!exact && regions_the_same(sup, placeholder_region)) =>
             {
                 Some((ty::Region::new_var(infcx.tcx, vid), cause.clone()))
             }
             _ => None,
         };
-    let mut info = region_constraints
-        .constraints
-        .iter()
-        .find_map(|(constraint, cause)| check(constraint, cause, true));
-    if info.is_none() {
-        info = region_constraints
+
+    let mut find_culprit = |exact_match: bool| {
+        region_constraints
             .constraints
             .iter()
-            .find_map(|(constraint, cause)| check(constraint, cause, false));
-    }
-    let (sub_region, cause) = info?;
+            .find_map(|(constraint, cause)| check(constraint, cause, exact_match))
+    };
+
+    let (sub_region, cause) = find_culprit(true).or_else(|| find_culprit(false))?;
 
     debug!(?sub_region, "cause = {:#?}", cause);
     let error = match (error_region, *sub_region) {

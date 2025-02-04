@@ -60,7 +60,7 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
             | ConstraintCategory::Boring
             | ConstraintCategory::BoringNoLocation
             | ConstraintCategory::Internal
-            | ConstraintCategory::IllegalUniverse => "",
+            | ConstraintCategory::IllegalPlaceholder(..) => "",
         }
     }
 }
@@ -103,6 +103,21 @@ impl std::fmt::Debug for RegionErrors<'_> {
 
 #[derive(Clone, Debug)]
 pub(crate) enum RegionErrorKind<'tcx> {
+    /// 'a outlives 'b, and both are placeholders.
+    /// This is a more general variant of `UnexpectedHiddenRegion`,
+    /// for cases where the mismatched region is a hidden region
+    /// from an opaque type.
+    PlaceholderMismatch {
+        rvid_a: RegionVid,
+        rvid_b: RegionVid,
+        origin_a: ty::PlaceholderRegion,
+        origin_b: ty::PlaceholderRegion,
+    },
+
+    /// A type test was rewritten into an outlives-static
+    /// constraint from Higher-ranked subtyping.
+    RewrittenTypeTestError { original_test: TypeTest<'tcx> },
+
     /// A generic bound failure for a type test (`T: 'a`).
     TypeTestError { type_test: TypeTest<'tcx> },
 
@@ -205,52 +220,39 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         &self,
         diag: &mut Diag<'_>,
         lower_bound: RegionVid,
-    ) {
+    ) -> Option<()> {
         let mut suggestions = vec![];
         let hir = self.infcx.tcx.hir();
 
-        // find generic associated types in the given region 'lower_bound'
-        let gat_id_and_generics = self
-            .regioncx
-            .placeholders_contained_in(lower_bound)
-            .map(|placeholder| {
-                if let Some(id) = placeholder.bound.kind.get_id()
-                    && let Some(placeholder_id) = id.as_local()
-                    && let gat_hir_id = self.infcx.tcx.local_def_id_to_hir_id(placeholder_id)
-                    && let Some(generics_impl) = self
-                        .infcx
-                        .tcx
-                        .parent_hir_node(self.infcx.tcx.parent_hir_id(gat_hir_id))
-                        .generics()
-                {
-                    Some((gat_hir_id, generics_impl))
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-        debug!(?gat_id_and_generics);
-
         // find higher-ranked trait bounds bounded to the generic associated types
+        let scc = self.regioncx.constraint_sccs().scc(lower_bound);
+
+        let placeholder: ty::PlaceholderRegion = self.regioncx.placeholder_representative(scc)?;
+
+        let placeholder_id = placeholder.bound.kind.get_id()?.as_local()?;
+        let gat_hir_id = self.infcx.tcx.local_def_id_to_hir_id(placeholder_id);
+        let generics_impl =
+            self.infcx.tcx.parent_hir_node(self.infcx.tcx.parent_hir_id(gat_hir_id)).generics()?;
+
         let mut hrtb_bounds = vec![];
-        gat_id_and_generics.iter().flatten().for_each(|(gat_hir_id, generics)| {
-            for pred in generics.predicates {
-                let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) =
-                    pred.kind
-                else {
-                    continue;
-                };
-                if bound_generic_params
-                    .iter()
-                    .rfind(|bgp| self.infcx.tcx.local_def_id_to_hir_id(bgp.def_id) == *gat_hir_id)
-                    .is_some()
-                {
-                    for bound in *bounds {
-                        hrtb_bounds.push(bound);
-                    }
+
+        for pred in generics_impl.predicates {
+            let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) =
+                pred.kind
+            else {
+                continue;
+            };
+            if bound_generic_params
+                .iter()
+                .rfind(|bgp| self.infcx.tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
+                .is_some()
+            {
+                for bound in *bounds {
+                    hrtb_bounds.push(bound);
                 }
             }
-        });
+        }
+
         debug!(?hrtb_bounds);
 
         hrtb_bounds.iter().for_each(|bound| {
@@ -295,6 +297,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
         }
+        Some(())
     }
 
     /// Produces nice borrowck error diagnostics for all the errors collected in `nll_errors`.
@@ -308,6 +311,34 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         for (nll_error, _) in nll_errors.into_iter() {
             match nll_error {
+                // A type-test failed and the constraint was rewritten due
+                // to higher-ranked trait bounds.
+                RegionErrorKind::RewrittenTypeTestError { original_test } => {
+                    debug!(?original_test);
+                    // FIXME. We should handle this case better. It
+                    // indicates that we have e.g., some region variable
+                    // whose value is like `'a+'b` where `'a` and `'b` are
+                    // distinct unrelated universal regions that are not
+                    // known to outlive one another. It'd be nice to have
+                    // some examples where this arises to decide how best
+                    // to report it; we could probably handle it by
+                    // iterating over the universal regions and reporting
+                    // an error that multiple bounds are required.
+                    let mut diag = self.dcx().create_err(GenericDoesNotLiveLongEnough {
+                        kind: original_test.generic_kind.to_string(),
+                        span: original_test.span,
+                    });
+
+                    // Add notes and suggestions for the case of 'static lifetime
+                    // implied but not specified when a generic associated types
+                    // are from higher-ranked trait bounds
+                    self.suggest_static_lifetime_for_gat_from_hrtb(
+                        &mut diag,
+                        original_test.lower_bound,
+                    );
+
+                    self.buffer_error(diag);
+                }
                 RegionErrorKind::TypeTestError { type_test } => {
                     // Try to convert the lower-bound region into something named we can print for
                     // the user.
@@ -315,41 +346,17 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
                     let type_test_span = type_test.span;
 
-                    if let Some(lower_bound_region) = lower_bound_region {
-                        let generic_ty = type_test.generic_kind.to_ty(self.infcx.tcx);
-                        let origin = RelateParamBound(type_test_span, generic_ty, None);
-                        self.buffer_error(self.infcx.err_ctxt().construct_generic_bound_failure(
-                            self.body.source.def_id().expect_local(),
-                            type_test_span,
-                            Some(origin),
-                            type_test.generic_kind,
-                            lower_bound_region,
-                        ));
-                    } else {
-                        // FIXME. We should handle this case better. It
-                        // indicates that we have e.g., some region variable
-                        // whose value is like `'a+'b` where `'a` and `'b` are
-                        // distinct unrelated universal regions that are not
-                        // known to outlive one another. It'd be nice to have
-                        // some examples where this arises to decide how best
-                        // to report it; we could probably handle it by
-                        // iterating over the universal regions and reporting
-                        // an error that multiple bounds are required.
-                        let mut diag = self.dcx().create_err(GenericDoesNotLiveLongEnough {
-                            kind: type_test.generic_kind.to_string(),
-                            span: type_test_span,
-                        });
-
-                        // Add notes and suggestions for the case of 'static lifetime
-                        // implied but not specified when a generic associated types
-                        // are from higher-ranked trait bounds
-                        self.suggest_static_lifetime_for_gat_from_hrtb(
-                            &mut diag,
-                            type_test.lower_bound,
-                        );
-
-                        self.buffer_error(diag);
-                    }
+                    let Some(lower_bound_region) = lower_bound_region else { unreachable!() };
+                    debug!(?lower_bound_region);
+                    let generic_ty = type_test.generic_kind.to_ty(self.infcx.tcx);
+                    let origin = RelateParamBound(type_test_span, generic_ty, None);
+                    self.buffer_error(self.infcx.err_ctxt().construct_generic_bound_failure(
+                        self.body.source.def_id().expect_local(),
+                        type_test_span,
+                        Some(origin),
+                        type_test.generic_kind,
+                        lower_bound_region,
+                    ));
                 }
 
                 RegionErrorKind::UnexpectedHiddenRegion { span, hidden_ty, key, member_region } => {
@@ -389,7 +396,24 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     let universe = placeholder.universe;
                     let universe_info = self.regioncx.universe_info(universe);
 
-                    universe_info.report_error(self, placeholder, error_element, cause);
+                    // FIXME(amandasystems) -- these methods should have better names, and also probably not be this generic.
+                    universe_info.report_erroneous_element(self, placeholder, error_element, cause);
+                }
+
+                RegionErrorKind::PlaceholderMismatch { rvid_a, rvid_b, origin_a, origin_b } => {
+                    debug!(
+                        "Placeholder mismatch: {rvid_a:?} ({origin_a:?}) reaches {rvid_b:?} ({origin_b:?})"
+                    );
+
+                    let (_, cause) = self.regioncx.find_outlives_blame_span(
+                        rvid_a,
+                        NllRegionVariableOrigin::Placeholder(origin_a),
+                        rvid_b,
+                    );
+
+                    self.regioncx
+                        .universe_info(origin_a.universe)
+                        .report_placeholder_mismatch(self, origin_a, cause, origin_b);
                 }
 
                 RegionErrorKind::RegionError { fr_origin, longer_fr, shorter_fr, is_reported } => {
@@ -440,9 +464,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     ) {
         debug!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let (blame_constraint, path) = self.regioncx.best_blame_constraint(fr, fr_origin, |r| {
-            self.regioncx.provides_universal_region(r, fr, outlived_fr)
-        });
+        let (blame_constraint, path) =
+            self.regioncx.best_blame_constraint(fr, fr_origin, outlived_fr);
         let BlameConstraint { category, cause, variance_info, .. } = blame_constraint;
 
         debug!("report_region_error: category={:?} {:?} {:?}", category, cause, variance_info);

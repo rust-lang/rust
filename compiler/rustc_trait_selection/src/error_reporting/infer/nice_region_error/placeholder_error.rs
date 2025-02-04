@@ -59,6 +59,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and
     /// an anonymous region, emit a descriptive diagnostic error.
     pub(super) fn try_report_placeholder_conflict(&self) -> Option<Diag<'tcx>> {
+        // eprintln!("trying error: {:?}", self.error);
         match &self.error {
             ///////////////////////////////////////////////////////////////////////////
             // NB. The ordering of cases in this match is very
@@ -195,27 +196,24 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         sup_placeholder: Option<Region<'tcx>>,
         value_pairs: &ValuePairs<'tcx>,
     ) -> Option<Diag<'tcx>> {
-        let (expected_args, found_args, trait_def_id) = match value_pairs {
-            ValuePairs::TraitRefs(ExpectedFound { expected, found })
-                if expected.def_id == found.def_id =>
-            {
-                // It's possible that the placeholders come from a binder
-                // outside of this value pair. Use `no_bound_vars` as a
-                // simple heuristic for that.
-                (expected.args, found.args, expected.def_id)
-            }
-            _ => return None,
+        let ValuePairs::TraitRefs(ExpectedFound { expected, found }) = value_pairs else {
+            return None;
         };
 
-        Some(self.report_trait_placeholder_mismatch(
-            vid,
-            cause,
-            sub_placeholder,
-            sup_placeholder,
-            trait_def_id,
-            expected_args,
-            found_args,
-        ))
+        // It's possible that the placeholders come from a binder
+        // outside of this value pair. Use `no_bound_vars` as a
+        // simple heuristic for that.
+        (expected.def_id == found.def_id).then(|| {
+            self.report_trait_placeholder_mismatch(
+                vid,
+                cause,
+                sub_placeholder,
+                sup_placeholder,
+                expected.def_id,
+                expected.args,
+                found.args,
+            )
+        })
     }
 
     // error[E0308]: implementation of `Foo` does not apply to enough lifetimes
