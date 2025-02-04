@@ -11,8 +11,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
    = note: late-bound region is '?3
    = note: number of external vids: 4
-   = note: where T: '?2
-   = note: where '?1: '?2
+   = note: where <T as Anything<'?1>>::AssocType: '?2
 
 note: no external requirements
   --> $DIR/projection-one-region-closure.rs:41:1
@@ -24,35 +23,16 @@ LL | |     T: Anything<'b>,
    |
    = note: defining type: no_relationships_late::<'?1, T>
 
-error: lifetime may not live long enough
-  --> $DIR/projection-one-region-closure.rs:45:5
-   |
-LL | fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
-   |                          --  -- lifetime `'b` defined here
-   |                          |
-   |                          lifetime `'a` defined here
-...
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
-   |
-   = help: consider adding the following bound: `'b: 'a`
-   = note: requirement occurs because of the type `Cell<&'?6 ()>`, which makes the generic argument `&'?6 ()` invariant
-   = note: the struct `Cell<T>` is invariant over the parameter `T`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-
-error[E0309]: the parameter type `T` may not live long enough
+error[E0309]: the associated type `<T as Anything<'?4>>::AssocType` may not live long enough
   --> $DIR/projection-one-region-closure.rs:45:39
    |
 LL | fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
-   |                          -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+   |                          -- the associated type `<T as Anything<'?4>>::AssocType` must be valid for the lifetime `'a` as defined here...
 ...
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |                                       ^^^^^^^^^^^^^^^^ ...so that the type `<T as Anything<'?4>>::AssocType` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound
-   |
-LL |     T: Anything<'b> + 'a,
-   |                     ++++
+   = help: consider adding an explicit lifetime bound `<T as Anything<'?4>>::AssocType: 'a`...
 
 note: external requirements
   --> $DIR/projection-one-region-closure.rs:56:29
@@ -66,8 +46,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                (),
            ]
    = note: number of external vids: 4
-   = note: where T: '?3
-   = note: where '?2: '?3
+   = note: where <T as Anything<'?2>>::AssocType: '?3
 
 note: no external requirements
   --> $DIR/projection-one-region-closure.rs:51:1
@@ -80,35 +59,16 @@ LL | |     'a: 'a,
    |
    = note: defining type: no_relationships_early::<'?1, '?2, T>
 
-error: lifetime may not live long enough
-  --> $DIR/projection-one-region-closure.rs:56:5
-   |
-LL | fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
-   |                           --  -- lifetime `'b` defined here
-   |                           |
-   |                           lifetime `'a` defined here
-...
-LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
-   |
-   = help: consider adding the following bound: `'b: 'a`
-   = note: requirement occurs because of the type `Cell<&'?7 ()>`, which makes the generic argument `&'?7 ()` invariant
-   = note: the struct `Cell<T>` is invariant over the parameter `T`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-
-error[E0309]: the parameter type `T` may not live long enough
+error[E0309]: the associated type `<T as Anything<'?5>>::AssocType` may not live long enough
   --> $DIR/projection-one-region-closure.rs:56:39
    |
 LL | fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
-   |                           -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+   |                           -- the associated type `<T as Anything<'?5>>::AssocType` must be valid for the lifetime `'a` as defined here...
 ...
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |                                       ^^^^^^^^^^^^^^^^ ...so that the type `<T as Anything<'?5>>::AssocType` will meet its required lifetime bounds
    |
-help: consider adding an explicit lifetime bound
-   |
-LL |     T: Anything<'b> + 'a,
-   |                     ++++
+   = help: consider adding an explicit lifetime bound `<T as Anything<'?5>>::AssocType: 'a`...
 
 note: external requirements
   --> $DIR/projection-one-region-closure.rs:70:29
@@ -147,8 +107,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                (),
            ]
    = note: number of external vids: 4
-   = note: where T: '?3
-   = note: where '?2: '?3
+   = note: where <T as Anything<'?2>>::AssocType: '?3
 
 note: no external requirements
   --> $DIR/projection-one-region-closure.rs:74:1
@@ -162,6 +121,6 @@ LL | |     'b: 'a,
    |
    = note: defining type: elements_outlive::<'?1, '?2, T>
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0309`.

@@ -383,19 +383,24 @@ where
         // then, we can break down the outlives into more primitive
         // components without adding unnecessary edges.
         //
-        // If there are *no* inference variables, however, we COULD do
-        // this, but we choose not to, because the error messages are less
-        // good. For example, a requirement like `T::Item: 'r` would be
+        // Right now, we choose to only do this for opaque types, since
+        // for projections, the error messages are a bit misleading.
+        // For example, a requirement like `T::Item: 'r` would be
         // translated to a requirement that `T: 'r`; when this is reported
         // to the user, it will thus say "T: 'r must hold so that T::Item:
         // 'r holds". But that makes it sound like the only way to fix
-        // the problem is to add `T: 'r`, which isn't true. So, if there are no
-        // inference variables, we use a verify constraint instead of adding
-        // edges, which winds up enforcing the same condition.
-        let is_opaque = alias_ty.kind(self.tcx) == ty::Opaque;
+        // the problem is to add `T: 'r`, which isn't true, since we also
+        // can suggest just constraining `T::Item: 'r` directly.
+        //
+        // OTOH, for opaques, we cannot express `opaque: 'a` (well, we can
+        // revisit this when TAITs are stable), decomposing the opaque into
+        // its components allows us to suggest actually applicable fixes.
+        //
+        // Beware that this does not exist for correctness, and is only here
+        // for better error messages.
         if approx_env_bounds.is_empty()
             && trait_bounds.is_empty()
-            && (alias_ty.has_infer_regions() || is_opaque)
+            && alias_ty.kind(self.tcx) == ty::Opaque
         {
             debug!("no declared bounds");
             let opt_variances = is_opaque.then(|| self.tcx.variances_of(alias_ty.def_id));
