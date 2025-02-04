@@ -1321,11 +1321,16 @@ mod prim_f16 {}
 /// # Algebraic operators
 ///
 /// Algebraic operators of the form `a.algebraic_*(b)` allow the compiler to reassociate individual
-/// floating point operations for better vectorization. Because of the unpredictable nature of
-/// compiler optimizations, the same inputs may produce different results even within a single
-/// program run. **Unsafe code must not rely on any property of the return value for soundness.**
-/// However, implementations will generally do their best to pick a reasonable tradeoff between
-/// performance and accuracy of the result.
+/// floating point operations for better vectorization. The exact set of optimizations is
+/// unspecified but typically allows combining operations, rearranging series of operations based
+/// on mathematical properties, converting between division and reciprocal multiplication, and
+/// disregarding the sign of zero. This means that the results of elementary operations may have
+/// undefined precision, but will not invoke input-dependent undefined behavior.
+///
+/// Because of the unpredictable nature of compiler optimizations, the same inputs may produce
+/// different results even within a single program run. **Unsafe code must not rely on any property
+/// of the return value for soundness.** However, implementations will generally do their best to
+/// pick a reasonable tradeoff between performance and accuracy of the result.
 
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f32 {}
