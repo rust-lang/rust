@@ -1408,7 +1408,9 @@ impl clean::Arguments {
     ) -> impl Display + 'a + Captures<'tcx> {
         fmt::from_fn(move |f| {
             for (i, input) in self.values.iter().enumerate() {
-                write!(f, "{}: ", input.name)?;
+                if !input.name.is_empty() {
+                    write!(f, "{}: ", input.name)?;
+                }
                 input.type_.print(cx).fmt(f)?;
                 if i + 1 < self.values.len() {
                     write!(f, ", ")?;

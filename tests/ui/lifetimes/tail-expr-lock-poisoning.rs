@@ -1,5 +1,4 @@
 //@ revisions: edition2021 edition2024
-//@ ignore-wasm no panic support
 //@ needs-subprocess
 //@ [edition2024] edition: 2024
 //@ run-pass

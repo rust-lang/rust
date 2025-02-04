@@ -12,6 +12,7 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use tracing::trace;
+use ty::print::PrettyPrinter;
 
 use super::graphviz::write_mir_fn_graphviz;
 use crate::mir::interpret::ConstAllocation;
@@ -1439,10 +1440,10 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 })
             };
 
-            // FIXME: call pretty_print_const_valtree?
-            let fmt_valtree = |valtree: &ty::ValTree<'tcx>| match valtree {
-                ty::ValTree::Leaf(leaf) => format!("Leaf({leaf:?})"),
-                ty::ValTree::Branch(_) => "Branch(..)".to_string(),
+            let fmt_valtree = |cv: &ty::Value<'tcx>| {
+                let mut cx = FmtPrinter::new(self.tcx, Namespace::ValueNS);
+                cx.pretty_print_const_valtree(*cv, /*print_ty*/ true).unwrap();
+                cx.into_buffer()
             };
 
             let val = match const_ {
@@ -1452,7 +1453,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                         format!("ty::Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.args,)
                     }
                     ty::ConstKind::Value(cv) => {
-                        format!("ty::Valtree({})", fmt_valtree(&cv.valtree))
+                        format!("ty::Valtree({})", fmt_valtree(&cv))
                     }
                     // No `ty::` prefix since we also use this to represent errors from `mir::Unevaluated`.
                     ty::ConstKind::Error(_) => "Error".to_string(),
