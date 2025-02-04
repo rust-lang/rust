@@ -34,7 +34,7 @@ LL | fn id<F>(f: Copy) -> usize {
    |
    = note: the trait is not dyn compatible because it requires `Self: Sized`
    = note: for a trait to be dyn compatible it needs to allow building a vtable
-           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
 
 error[E0618]: expected function, found `(dyn Copy + 'static)`
   --> $DIR/avoid-ice-on-warning-2.rs:12:5

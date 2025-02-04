@@ -82,7 +82,7 @@ use rustc_session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_opti
 use rustc_session::{EarlyDiagCtxt, getopts};
 use tracing::info;
 
-use crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL;
+use crate::clean::utils::DOC_RUST_LANG_ORG_VERSION;
 
 /// A macro to create a FxHashMap.
 ///
@@ -177,9 +177,8 @@ pub fn main() {
     rustc_driver::init_logger(&early_dcx, rustc_log::LoggerConfig::from_env("RUSTDOC_LOG"));
 
     let exit_code = rustc_driver::catch_with_exit_code(|| {
-        let at_args = rustc_driver::args::raw_args(&early_dcx)?;
+        let at_args = rustc_driver::args::raw_args(&early_dcx);
         main_args(&mut early_dcx, &at_args);
-        Ok(())
     });
     process::exit(exit_code);
 }
@@ -710,7 +709,7 @@ fn usage(argv0: &str) {
     println!("{}", options.usage(&format!("{argv0} [options] <input>")));
     println!("    @path               Read newline separated options from `path`\n");
     println!(
-        "More information available at {DOC_RUST_LANG_ORG_CHANNEL}/rustdoc/what-is-rustdoc.html",
+        "More information available at {DOC_RUST_LANG_ORG_VERSION}/rustdoc/what-is-rustdoc.html",
     );
 }
 
@@ -814,7 +813,12 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
         }
     };
 
-    match (options.should_test, config::markdown_input(&input)) {
+    let output_format = options.output_format;
+
+    match (
+        options.should_test || output_format == config::OutputFormat::Doctest,
+        config::markdown_input(&input),
+    ) {
         (true, Some(_)) => return wrap_return(dcx, doctest::test_markdown(&input, options)),
         (true, None) => return doctest::run(dcx, input, options),
         (false, Some(md_input)) => {
@@ -849,7 +853,6 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
     // plug/cleaning passes.
     let crate_version = options.crate_version.clone();
 
-    let output_format = options.output_format;
     let scrape_examples_options = options.scrape_examples_options.clone();
     let bin_crate = options.bin_crate;
 
@@ -899,6 +902,8 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 config::OutputFormat::Json => sess.time("render_json", || {
                     run_renderer::<json::JsonRenderer<'_>>(krate, render_opts, cache, tcx)
                 }),
+                // Already handled above with doctest runners.
+                config::OutputFormat::Doctest => unreachable!(),
             }
         })
     })

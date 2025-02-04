@@ -1,5 +1,6 @@
 use core::ops::ControlFlow;
 use std::borrow::Cow;
+use std::path::PathBuf;
 
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::FxHashMap;
@@ -9,7 +10,6 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, Level, MultiSpan, StashKey, StringPart, Suggestions,
     pluralize, struct_span_code_err,
 };
-use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, LangItem, Node};
@@ -20,8 +20,8 @@ use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::print::{
-    FmtPrinter, Print, PrintPolyTraitPredicateExt, PrintTraitPredicateExt as _,
-    PrintTraitRefExt as _, with_forced_trimmed_paths,
+    PrintPolyTraitPredicateExt, PrintTraitPredicateExt as _, PrintTraitRefExt as _,
+    with_forced_trimmed_paths,
 };
 use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast};
 use rustc_middle::{bug, span_bug};
@@ -60,6 +60,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> ErrorGuaranteed {
         let tcx = self.tcx;
         let mut span = obligation.cause.span;
+        let mut long_ty_file = None;
 
         let mut err = match *error {
             SelectionError::Unimplemented => {
@@ -169,11 +170,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         if let Err(guar) = self.fn_arg_obligation(&obligation) {
                             return guar;
                         }
-                        let mut file = None;
                         let (post_message, pre_message, type_def) = self
                             .get_parent_trait_ref(obligation.cause.code())
                             .map(|(t, s)| {
-                                let t = self.tcx.short_ty_string(t, &mut file);
+                                let t = self.tcx.short_string(t, &mut long_ty_file);
                                 (
                                     format!(" in `{t}`"),
                                     format!("within `{t}`, "),
@@ -181,12 +181,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 )
                             })
                             .unwrap_or_default();
-                        let file_note = file.as_ref().map(|file| format!(
-                            "the full trait has been written to '{}'",
-                            file.display(),
-                        ));
-
-                        let mut long_ty_file = None;
 
                         let OnUnimplementedNote {
                             message,
@@ -223,6 +217,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             None,
                             append_const_msg,
                             post_message,
+                            &mut long_ty_file,
                         );
 
                         let (err_msg, safe_transmute_explanation) = if self.tcx.is_lang_item(main_trait_predicate.def_id(), LangItem::TransmuteTrait)
@@ -251,14 +246,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         };
 
                         let mut err = struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg);
+                        *err.long_ty_path() = long_ty_file;
 
-                        if let Some(long_ty_file) = long_ty_file {
-                            err.note(format!(
-                                "the full name for the type has been written to '{}'",
-                                long_ty_file.display(),
-                            ));
-                            err.note("consider using `--verbose` to print the full type name to the console");
-                        }
                         let mut suggested = false;
                         if is_try_conversion {
                             suggested = self.try_conversion_context(&obligation, main_trait_predicate, &mut err);
@@ -309,7 +298,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             return err.emit();
                         }
 
-                        file_note.map(|note| err.note(note));
                         if let Some(s) = label {
                             // If it has a custom `#[rustc_on_unimplemented]`
                             // error message, let's display it as the label!
@@ -708,6 +696,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     None,
                     TypeError::Sorts(ty::error::ExpectedFound::new(expected_ty, ct_ty)),
                     false,
+                    None,
                 );
                 diag
             }
@@ -761,14 +750,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             trait_ref: predicate.trait_ref,
             polarity: ty::PredicatePolarity::Positive,
         });
+        let mut file = None;
         let err_msg = self.get_standard_error_message(
             trait_ref,
             None,
             Some(predicate.constness()),
             None,
             String::new(),
+            &mut file,
         );
         let mut diag = struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg);
+        *diag.long_ty_path() = file;
         if !self.predicate_may_hold(&Obligation::new(
             self.tcx,
             ObligationCause::dummy(),
@@ -931,14 +923,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
         let hir_id = self.tcx.local_def_id_to_hir_id(obligation.cause.body_id);
-        let body_id = match self.tcx.hir_node(hir_id) {
-            hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Fn { body: body_id, .. }, ..
-            }) => body_id,
-            _ => return false,
-        };
-        let ControlFlow::Break(expr) = (FindMethodSubexprOfTry { search_span: span })
-            .visit_body(self.tcx.hir().body(*body_id))
+        let Some(body_id) = self.tcx.hir_node(hir_id).body_id() else { return false };
+        let ControlFlow::Break(expr) =
+            (FindMethodSubexprOfTry { search_span: span }).visit_body(self.tcx.hir().body(body_id))
         else {
             return false;
         };
@@ -1385,22 +1372,53 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 _ => (None, error.err),
             };
 
-            let msg = values
+            let mut file = None;
+            let (msg, span, closure_span) = values
                 .and_then(|(predicate, normalized_term, expected_term)| {
-                    self.maybe_detailed_projection_msg(predicate, normalized_term, expected_term)
+                    self.maybe_detailed_projection_msg(
+                        obligation.cause.span,
+                        predicate,
+                        normalized_term,
+                        expected_term,
+                        &mut file,
+                    )
                 })
                 .unwrap_or_else(|| {
-                    let mut cx = FmtPrinter::new_with_limit(
-                        self.tcx,
-                        Namespace::TypeNS,
-                        rustc_session::Limit(10),
-                    );
-                    with_forced_trimmed_paths!(format!("type mismatch resolving `{}`", {
-                        self.resolve_vars_if_possible(predicate).print(&mut cx).unwrap();
-                        cx.into_buffer()
-                    }))
+                    (
+                        with_forced_trimmed_paths!(format!(
+                            "type mismatch resolving `{}`",
+                            self.tcx
+                                .short_string(self.resolve_vars_if_possible(predicate), &mut file),
+                        )),
+                        obligation.cause.span,
+                        None,
+                    )
                 });
-            let mut diag = struct_span_code_err!(self.dcx(), obligation.cause.span, E0271, "{msg}");
+            let mut diag = struct_span_code_err!(self.dcx(), span, E0271, "{msg}");
+            *diag.long_ty_path() = file;
+            if let Some(span) = closure_span {
+                // Mark the closure decl so that it is seen even if we are pointing at the return
+                // type or expression.
+                //
+                // error[E0271]: expected `{closure@foo.rs:41:16}` to be a closure that returns
+                //               `Unit3`, but it returns `Unit4`
+                //   --> $DIR/foo.rs:43:17
+                //    |
+                // LL |     let v = Unit2.m(
+                //    |                   - required by a bound introduced by this call
+                // ...
+                // LL |             f: |x| {
+                //    |                --- /* this span */
+                // LL |                 drop(x);
+                // LL |                 Unit4
+                //    |                 ^^^^^ expected `Unit3`, found `Unit4`
+                //    |
+                diag.span_label(span, "this closure");
+                if !span.overlaps(obligation.cause.span) {
+                    // Point at the binding corresponding to the closure where it is used.
+                    diag.span_label(obligation.cause.span, "closure used here");
+                }
+            }
 
             let secondary_span = (|| {
                 let ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)) =
@@ -1443,15 +1461,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         ty.span,
                         with_forced_trimmed_paths!(Cow::from(format!(
                             "type mismatch resolving `{}`",
-                            {
-                                let mut cx = FmtPrinter::new_with_limit(
-                                    self.tcx,
-                                    Namespace::TypeNS,
-                                    rustc_session::Limit(5),
-                                );
-                                self.resolve_vars_if_possible(predicate).print(&mut cx).unwrap();
-                                cx.into_buffer()
-                            }
+                            self.tcx.short_string(
+                                self.resolve_vars_if_possible(predicate),
+                                diag.long_ty_path()
+                            ),
                         ))),
                         true,
                     )),
@@ -1471,6 +1484,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }),
                 err,
                 false,
+                Some(span),
             );
             self.note_obligation_cause(&mut diag, obligation);
             diag.emit()
@@ -1479,34 +1493,65 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn maybe_detailed_projection_msg(
         &self,
+        mut span: Span,
         projection_term: ty::AliasTerm<'tcx>,
         normalized_ty: ty::Term<'tcx>,
         expected_ty: ty::Term<'tcx>,
-    ) -> Option<String> {
+        file: &mut Option<PathBuf>,
+    ) -> Option<(String, Span, Option<Span>)> {
         let trait_def_id = projection_term.trait_def_id(self.tcx);
         let self_ty = projection_term.self_ty();
 
         with_forced_trimmed_paths! {
             if self.tcx.is_lang_item(projection_term.def_id, LangItem::FnOnceOutput) {
-                let fn_kind = self_ty.prefix_string(self.tcx);
+                let (span, closure_span) = if let ty::Closure(def_id, _) = self_ty.kind() {
+                    let def_span = self.tcx.def_span(def_id);
+                    if let Some(local_def_id) = def_id.as_local()
+                        && let node = self.tcx.hir_node_by_def_id(local_def_id)
+                        && let Some(fn_decl) = node.fn_decl()
+                        && let Some(id) = node.body_id()
+                    {
+                        span = match fn_decl.output {
+                            hir::FnRetTy::Return(ty) => ty.span,
+                            hir::FnRetTy::DefaultReturn(_) => {
+                                let body = self.tcx.hir().body(id);
+                                match body.value.kind {
+                                    hir::ExprKind::Block(
+                                        hir::Block { expr: Some(expr), .. },
+                                        _,
+                                    ) => expr.span,
+                                    hir::ExprKind::Block(
+                                        hir::Block {
+                                            expr: None, stmts: [.., last], ..
+                                        },
+                                        _,
+                                    ) => last.span,
+                                    _ => body.value.span,
+                                }
+                            }
+                        };
+                    }
+                    (span, Some(def_span))
+                } else {
+                    (span, None)
+                };
                 let item = match self_ty.kind() {
                     ty::FnDef(def, _) => self.tcx.item_name(*def).to_string(),
-                    _ => self_ty.to_string(),
+                    _ => self.tcx.short_string(self_ty, file),
                 };
-                Some(format!(
-                    "expected `{item}` to be a {fn_kind} that returns `{expected_ty}`, but it \
-                     returns `{normalized_ty}`",
-                ))
+                Some((format!(
+                    "expected `{item}` to return `{expected_ty}`, but it returns `{normalized_ty}`",
+                ), span, closure_span))
             } else if self.tcx.is_lang_item(trait_def_id, LangItem::Future) {
-                Some(format!(
+                Some((format!(
                     "expected `{self_ty}` to be a future that resolves to `{expected_ty}`, but it \
                      resolves to `{normalized_ty}`"
-                ))
+                ), span, None))
             } else if Some(trait_def_id) == self.tcx.get_diagnostic_item(sym::Iterator) {
-                Some(format!(
+                Some((format!(
                     "expected `{self_ty}` to be an iterator that yields `{expected_ty}`, but it \
                      yields `{normalized_ty}`"
-                ))
+                ), span, None))
             } else {
                 None
             }
@@ -1923,8 +1968,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         StringPart::normal(" implemented for `"),
                     ]);
                     if types_content.0 == types_content.1 {
-                        let ty =
-                            self.tcx.short_ty_string(obligation_trait_ref.self_ty(), &mut None);
+                        let ty = self
+                            .tcx
+                            .short_string(obligation_trait_ref.self_ty(), err.long_ty_path());
                         msg.push(StringPart::normal(ty));
                     } else {
                         msg.extend(types.0.0);
@@ -2281,7 +2327,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // First, attempt to add note to this error with an async-await-specific
         // message, and fall back to regular note otherwise.
         if !self.maybe_note_obligation_cause_for_async_await(err, obligation) {
-            let mut long_ty_file = None;
             self.note_obligation_cause_code(
                 obligation.cause.body_id,
                 err,
@@ -2290,15 +2335,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 obligation.cause.code(),
                 &mut vec![],
                 &mut Default::default(),
-                &mut long_ty_file,
             );
-            if let Some(file) = long_ty_file {
-                err.note(format!(
-                    "the full name for the type has been written to '{}'",
-                    file.display(),
-                ));
-                err.note("consider using `--verbose` to print the full type name to the console");
-            }
             self.suggest_unsized_bound_if_applicable(err, obligation);
             if let Some(span) = err.span.primary_span()
                 && let Some(mut diag) =
@@ -2342,6 +2379,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         predicate_constness: Option<ty::BoundConstness>,
         append_const_msg: Option<AppendConstMessage>,
         post_message: String,
+        long_ty_file: &mut Option<PathBuf>,
     ) -> String {
         message
             .and_then(|cannot_do_this| {
@@ -2365,7 +2403,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             .unwrap_or_else(|| {
                 format!(
                     "the trait bound `{}` is not satisfied{post_message}",
-                    trait_predicate.print_with_bound_constness(predicate_constness)
+                    self.tcx.short_string(
+                        trait_predicate.print_with_bound_constness(predicate_constness),
+                        long_ty_file,
+                    ),
                 )
             })
     }

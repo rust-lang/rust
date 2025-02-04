@@ -5,7 +5,6 @@ use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{self as hir, Attribute, QPath};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, sym};
 
@@ -107,7 +106,7 @@ fn check_needless_must_use(
     attrs: &[Attribute],
     sig: &FnSig<'_>,
 ) {
-    if in_external_macro(cx.sess(), item_span) {
+    if item_span.in_external_macro(cx.sess().source_map()) {
         return;
     }
     if returns_unit(decl) {
@@ -185,7 +184,7 @@ fn check_must_use_candidate<'tcx>(
 ) {
     if has_mutable_arg(cx, body)
         || mutates_static(cx, body)
-        || in_external_macro(cx.sess(), item_span)
+        || item_span.in_external_macro(cx.sess().source_map())
         || returns_unit(decl)
         || !cx.effective_visibilities.is_exported(item_id.def_id)
         || is_must_use_ty(cx, return_ty(cx, item_id))

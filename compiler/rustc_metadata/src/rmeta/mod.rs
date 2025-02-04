@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::num::NonZero;
 
-pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob};
+pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob, TargetModifiers};
 use decoder::{DecodeContext, Metadata};
 use def_path_hash_map::DefPathHashMapRef;
 use encoder::EncodeContext;
@@ -32,7 +32,7 @@ use rustc_middle::ty::{
 use rustc_middle::util::Providers;
 use rustc_middle::{mir, trivially_parameterized_over_tcx};
 use rustc_serialize::opaque::FileEncoder;
-use rustc_session::config::SymbolManglingVersion;
+use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextData};
@@ -282,6 +282,7 @@ pub(crate) struct CrateRoot {
     def_path_hash_map: LazyValue<DefPathHashMapRef<'static>>,
 
     source_map: LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>,
+    target_modifiers: LazyArray<TargetModifier>,
 
     compiler_builtins: bool,
     needs_allocator: bool,

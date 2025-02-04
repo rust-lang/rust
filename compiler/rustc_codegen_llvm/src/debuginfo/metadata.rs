@@ -13,7 +13,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{
-    self, AdtKind, CoroutineArgsExt, Instance, PolyExistentialTraitRef, Ty, TyCtxt, Visibility,
+    self, AdtKind, CoroutineArgsExt, ExistentialTraitRef, Instance, Ty, TyCtxt, Visibility,
 };
 use rustc_session::config::{self, DebugInfo, Lto};
 use rustc_span::{DUMMY_SP, FileName, FileNameDisplayPreference, SourceFile, Symbol, hygiene};
@@ -919,8 +919,7 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
         .unwrap_or_default();
     let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
 
-    let dwarf_version =
-        tcx.sess.opts.unstable_opts.dwarf_version.unwrap_or(tcx.sess.target.default_dwarf_version);
+    let dwarf_version = tcx.sess.dwarf_version();
     let is_dwarf_kind =
         matches!(tcx.sess.target.debuginfo_kind, DebuginfoKind::Dwarf | DebuginfoKind::DwarfDsym);
     // Don't emit `.debug_pubnames` and `.debug_pubtypes` on DWARFv4 or lower.
@@ -1400,7 +1399,7 @@ pub(crate) fn build_global_var_di_node<'ll>(
 fn build_vtable_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
-    poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    poly_trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
 ) -> &'ll DIType {
     let tcx = cx.tcx;
 
@@ -1488,10 +1487,30 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
     .di_node
 }
 
+/// Get the global variable for the vtable.
+///
+/// When using global variables, we may have created an addrspacecast to get a pointer to the
+/// default address space if global variables are created in a different address space.
+/// For modifying the vtable, we need the real global variable. This function accepts either a
+/// global variable (which is simply returned), or an addrspacecast constant expression.
+/// If the given value is an addrspacecast, the cast is removed and the global variable behind
+/// the cast is returned.
+fn find_vtable_behind_cast<'ll>(vtable: &'ll Value) -> &'ll Value {
+    // The vtable is a global variable, which may be behind an addrspacecast.
+    unsafe {
+        if let Some(c) = llvm::LLVMIsAConstantExpr(vtable) {
+            if llvm::LLVMGetConstOpcode(c) == llvm::Opcode::AddrSpaceCast {
+                return llvm::LLVMGetOperand(c, 0).unwrap();
+            }
+        }
+    }
+    vtable
+}
+
 pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
-    trait_ref: Option<PolyExistentialTraitRef<'tcx>>,
+    trait_ref: Option<ExistentialTraitRef<'tcx>>,
     vtable: &'ll Value,
 ) {
     // FIXME(flip1995): The virtual function elimination optimization only works with full LTO in
@@ -1508,9 +1527,11 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
 
     let Some(trait_ref) = trait_ref else { return };
 
+    // Unwrap potential addrspacecast
+    let vtable = find_vtable_behind_cast(vtable);
     let trait_ref_self = trait_ref.with_self_ty(cx.tcx, ty);
     let trait_ref_self = cx.tcx.erase_regions(trait_ref_self);
-    let trait_def_id = trait_ref_self.def_id();
+    let trait_def_id = trait_ref_self.def_id;
     let trait_vis = cx.tcx.visibility(trait_def_id);
 
     let cgus = cx.sess().codegen_units().as_usize();
@@ -1569,7 +1590,7 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
 pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
-    poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    poly_trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
     vtable: &'ll Value,
 ) {
     if cx.dbg_cx.is_none() {
@@ -1580,6 +1601,9 @@ pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
     if cx.sess().opts.debuginfo != DebugInfo::Full {
         return;
     }
+
+    // Unwrap potential addrspacecast
+    let vtable = find_vtable_behind_cast(vtable);
 
     // When full debuginfo is enabled, we want to try and prevent vtables from being
     // merged. Otherwise debuggers will have a hard time mapping from dyn pointer

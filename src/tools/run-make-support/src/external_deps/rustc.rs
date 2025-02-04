@@ -216,6 +216,18 @@ impl Rustc {
         self
     }
 
+    /// Specify option of `-C symbol-mangling-version`.
+    pub fn symbol_mangling_version(&mut self, option: &str) -> &mut Self {
+        self.cmd.arg(format!("-Csymbol-mangling-version={option}"));
+        self
+    }
+
+    /// Specify `-C prefer-dynamic`.
+    pub fn prefer_dynamic(&mut self) -> &mut Self {
+        self.cmd.arg(format!("-Cprefer-dynamic"));
+        self
+    }
+
     /// Specify error format to use
     pub fn error_format(&mut self, format: &str) -> &mut Self {
         self.cmd.arg(format!("--error-format={format}"));

@@ -9,7 +9,6 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, Node, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
@@ -147,7 +146,7 @@ declare_lint_pass!(StringAdd => [STRING_ADD, STRING_ADD_ASSIGN, STRING_SLICE]);
 
 impl<'tcx> LateLintPass<'tcx> for StringAdd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), e.span) {
+        if e.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
         match e.kind {
@@ -284,7 +283,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
             );
         }
 
-        if !in_external_macro(cx.sess(), e.span)
+        if !e.span.in_external_macro(cx.sess().source_map())
             && let ExprKind::MethodCall(path, receiver, ..) = &e.kind
             && path.ident.name.as_str() == "as_bytes"
             && let ExprKind::Lit(lit) = &receiver.kind

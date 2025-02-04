@@ -224,7 +224,6 @@ pub fn query_system<'a>(
 rustc_middle::rustc_query_append! { define_queries! }
 
 pub fn provide(providers: &mut rustc_middle::util::Providers) {
-    providers.hooks.alloc_self_profile_query_strings =
-        |tcx| alloc_self_profile_query_strings(tcx.tcx);
-    providers.hooks.query_key_hash_verify_all = |tcx| query_key_hash_verify_all(tcx.tcx);
+    providers.hooks.alloc_self_profile_query_strings = alloc_self_profile_query_strings;
+    providers.hooks.query_key_hash_verify_all = query_key_hash_verify_all;
 }

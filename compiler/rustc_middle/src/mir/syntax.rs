@@ -1076,6 +1076,7 @@ pub enum AssertKind<O> {
     ResumedAfterReturn(CoroutineKind),
     ResumedAfterPanic(CoroutineKind),
     MisalignedPointerDereference { required: O, found: O },
+    NullPointerDereference,
 }
 
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
@@ -1274,6 +1275,10 @@ pub enum ProjectionElem<V, T> {
     /// Like an explicit cast from an opaque type to a concrete type, but without
     /// requiring an intermediate variable.
     OpaqueCast(T),
+
+    /// A transmute from an unsafe binder to the type that it wraps. This is a projection
+    /// of a place, so it doesn't necessarily constitute a move out of the binder.
+    UnwrapUnsafeBinder(T),
 
     /// A `Subtype(T)` projection is applied to any `StatementKind::Assign` where
     /// type of lvalue doesn't match the type of rvalue, the primary goal is making subtyping
@@ -1492,6 +1497,9 @@ pub enum Rvalue<'tcx> {
     /// optimizations and codegen backends that previously had to handle deref operations anywhere
     /// in a place.
     CopyForDeref(Place<'tcx>),
+
+    /// Wraps a value in an unsafe binder.
+    WrapUnsafeBinder(Operand<'tcx>, Ty<'tcx>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

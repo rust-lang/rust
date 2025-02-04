@@ -1104,17 +1104,29 @@ fn clean_args_from_types_and_names<'tcx>(
     types: &[hir::Ty<'tcx>],
     names: &[Ident],
 ) -> Arguments {
+    fn nonempty_name(ident: &Ident) -> Option<Symbol> {
+        if ident.name == kw::Underscore || ident.name == kw::Empty {
+            None
+        } else {
+            Some(ident.name)
+        }
+    }
+
+    // If at least one argument has a name, use `_` as the name of unnamed
+    // arguments. Otherwise omit argument names.
+    let default_name = if names.iter().any(|ident| nonempty_name(ident).is_some()) {
+        kw::Underscore
+    } else {
+        kw::Empty
+    };
+
     Arguments {
         values: types
             .iter()
             .enumerate()
             .map(|(i, ty)| Argument {
                 type_: clean_ty(ty, cx),
-                name: names
-                    .get(i)
-                    .map(|ident| ident.name)
-                    .filter(|ident| !ident.is_empty())
-                    .unwrap_or(kw::Underscore),
+                name: names.get(i).and_then(nonempty_name).unwrap_or(default_name),
                 is_const: false,
             })
             .collect(),
@@ -1934,7 +1946,7 @@ fn can_elide_trait_object_lifetime_bound<'tcx>(
     preds: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     tcx: TyCtxt<'tcx>,
 ) -> bool {
-    // Below we quote extracts from https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
+    // Below we quote extracts from https://doc.rust-lang.org/stable/reference/lifetime-elision.html#default-trait-object-lifetimes
 
     // > If the trait object is used as a type argument of a generic type then the containing type is
     // > first used to try to infer a bound.

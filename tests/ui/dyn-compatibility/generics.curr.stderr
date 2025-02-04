@@ -5,7 +5,7 @@ LL | fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
    |                               ^^^^^^^ `Bar` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/generics.rs:10:8
    |
 LL | trait Bar {
@@ -21,7 +21,7 @@ LL | fn make_bar_explicit<T:Bar>(t: &T) -> &dyn Bar {
    |                                        ^^^^^^^ `Bar` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/generics.rs:10:8
    |
 LL | trait Bar {
@@ -37,7 +37,7 @@ LL |     t
    |     ^ `Bar` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/generics.rs:10:8
    |
 LL | trait Bar {
@@ -54,7 +54,7 @@ LL |     t as &dyn Bar
    |          ^^^^^^^^ `Bar` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/generics.rs:10:8
    |
 LL | trait Bar {
@@ -70,7 +70,7 @@ LL |     t as &dyn Bar
    |     ^ `Bar` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/generics.rs:10:8
    |
 LL | trait Bar {

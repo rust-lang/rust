@@ -127,6 +127,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `isa-68881`
 `isa-68882`
 `jsconv`
+`kl`
 `lahfsahf`
 `lasx`
 `lbt`
@@ -271,6 +272,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `vsx`
 `wfxt`
 `wide-arithmetic`
+`widekl`
 `x87`
 `xop`
 `xsave`

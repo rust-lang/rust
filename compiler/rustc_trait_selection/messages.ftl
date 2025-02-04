@@ -148,8 +148,6 @@ trait_selection_dtcs_has_req_note = the used `impl` has a `'static` requirement
 trait_selection_dtcs_introduces_requirement = calling this method introduces the `impl`'s `'static` requirement
 trait_selection_dtcs_suggestion = consider relaxing the implicit `'static` requirement
 
-trait_selection_dump_vtable_entries = vtable entries for `{$trait_ref}`: {$entries}
-
 trait_selection_empty_on_clause_in_rustc_on_unimplemented = empty `on`-clause in `#[rustc_on_unimplemented]`
     .label = empty on-clause here
 

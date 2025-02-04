@@ -807,6 +807,25 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     )
                 }
             }
+            ProjectionElem::UnwrapUnsafeBinder(unwrapped_ty) => {
+                let binder_ty = place_ref.ty(&self.body.local_decls, self.tcx);
+                let ty::UnsafeBinder(binder_ty) = *binder_ty.ty.kind() else {
+                    self.fail(
+                        location,
+                        format!("WrapUnsafeBinder does not produce a ty::UnsafeBinder"),
+                    );
+                    return;
+                };
+                let binder_inner_ty = self.tcx.instantiate_bound_regions_with_erased(*binder_ty);
+                if !self.mir_assign_valid_types(unwrapped_ty, binder_inner_ty) {
+                    self.fail(
+                        location,
+                        format!(
+                            "Cannot unwrap unsafe binder {binder_ty:?} into type {unwrapped_ty:?}"
+                        ),
+                    );
+                }
+            }
             _ => {}
         }
         self.super_projection_elem(place_ref, elem, context, location);
@@ -1362,6 +1381,24 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | Rvalue::RawPtr(_, _)
             | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::UbChecks, _)
             | Rvalue::Discriminant(_) => {}
+
+            Rvalue::WrapUnsafeBinder(op, ty) => {
+                let unwrapped_ty = op.ty(self.body, self.tcx);
+                let ty::UnsafeBinder(binder_ty) = *ty.kind() else {
+                    self.fail(
+                        location,
+                        format!("WrapUnsafeBinder does not produce a ty::UnsafeBinder"),
+                    );
+                    return;
+                };
+                let binder_inner_ty = self.tcx.instantiate_bound_regions_with_erased(*binder_ty);
+                if !self.mir_assign_valid_types(unwrapped_ty, binder_inner_ty) {
+                    self.fail(
+                        location,
+                        format!("Cannot wrap {unwrapped_ty:?} into unsafe binder {binder_ty:?}"),
+                    );
+                }
+            }
         }
         self.super_rvalue(rvalue, location);
     }

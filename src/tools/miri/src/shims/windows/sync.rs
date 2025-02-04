@@ -29,7 +29,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     {
         let this = self.eval_context_mut();
 
-        let init_once = this.deref_pointer(init_once_ptr)?;
+        let init_once =
+            this.deref_pointer_as(init_once_ptr, this.windows_ty_layout("INIT_ONCE"))?;
         let init_offset = Size::ZERO;
 
         this.lazy_sync_get_data(
@@ -85,7 +86,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let id = this.init_once_get_data(init_once_op)?.id;
         let flags = this.read_scalar(flags_op)?.to_u32()?;
-        let pending_place = this.deref_pointer(pending_op)?;
+        // PBOOL is int*
+        let pending_place = this.deref_pointer_as(pending_op, this.machine.layouts.i32)?;
         let context = this.read_pointer(context_op)?;
 
         if flags != 0 {
@@ -210,14 +212,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 .futex
                 .clone();
 
+            let dest = dest.clone();
             this.futex_wait(
                 futex_ref,
                 u32::MAX, // bitset
                 timeout,
-                Scalar::from_i32(1), // retval_succ
-                Scalar::from_i32(0), // retval_timeout
-                dest.clone(),
-                IoError::WindowsError("ERROR_TIMEOUT"), // errno_timeout
+                callback!(
+                    @capture<'tcx> {
+                        dest: MPlaceTy<'tcx>
+                    }
+                    |this, unblock: UnblockKind| {
+                        match unblock {
+                            UnblockKind::Ready => {
+                                this.write_int(1, &dest)
+                            }
+                            UnblockKind::TimedOut => {
+                                this.set_last_error(IoError::WindowsError("ERROR_TIMEOUT"))?;
+                                this.write_int(0, &dest)
+                            }
+                        }
+                    }
+                ),
             );
         }
 
@@ -242,7 +257,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let futex_ref = futex_ref.futex.clone();
 
-        this.futex_wake(&futex_ref, u32::MAX)?;
+        this.futex_wake(&futex_ref, u32::MAX, 1)?;
 
         interp_ok(())
     }
@@ -262,7 +277,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
         let futex_ref = futex_ref.futex.clone();
 
-        while this.futex_wake(&futex_ref, u32::MAX)? {}
+        this.futex_wake(&futex_ref, u32::MAX, usize::MAX)?;
 
         interp_ok(())
     }

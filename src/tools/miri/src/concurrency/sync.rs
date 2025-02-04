@@ -128,7 +128,7 @@ struct Condvar {
 /// The futex state.
 #[derive(Default, Debug)]
 struct Futex {
-    waiters: VecDeque<FutexWaiter>,
+    waiters: Vec<FutexWaiter>,
     /// Tracks the happens-before relationship
     /// between a futex-wake and a futex-wait
     /// during a non-spurious wake event.
@@ -139,6 +139,12 @@ struct Futex {
 
 #[derive(Default, Clone)]
 pub struct FutexRef(Rc<RefCell<Futex>>);
+
+impl FutexRef {
+    pub fn waiters(&self) -> usize {
+        self.0.borrow().waiters.len()
+    }
+}
 
 impl VisitProvenance for FutexRef {
     fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
@@ -728,25 +734,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(true)
     }
 
-    /// Wait for the futex to be signaled, or a timeout.
-    /// On a signal, `retval_succ` is written to `dest`.
-    /// On a timeout, `retval_timeout` is written to `dest` and `errno_timeout` is set as the last error.
+    /// Wait for the futex to be signaled, or a timeout. Once the thread is
+    /// unblocked, `callback` is called with the unblock reason.
     fn futex_wait(
         &mut self,
         futex_ref: FutexRef,
         bitset: u32,
         timeout: Option<(TimeoutClock, TimeoutAnchor, Duration)>,
-        retval_succ: Scalar,
-        retval_timeout: Scalar,
-        dest: MPlaceTy<'tcx>,
-        errno_timeout: IoError,
+        callback: DynUnblockCallback<'tcx>,
     ) {
         let this = self.eval_context_mut();
         let thread = this.active_thread();
         let mut futex = futex_ref.0.borrow_mut();
         let waiters = &mut futex.waiters;
         assert!(waiters.iter().all(|waiter| waiter.thread != thread), "thread is already waiting");
-        waiters.push_back(FutexWaiter { thread, bitset });
+        waiters.push(FutexWaiter { thread, bitset });
         drop(futex);
 
         this.block_thread(
@@ -755,10 +757,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             callback!(
                 @capture<'tcx> {
                     futex_ref: FutexRef,
-                    retval_succ: Scalar,
-                    retval_timeout: Scalar,
-                    dest: MPlaceTy<'tcx>,
-                    errno_timeout: IoError,
+                    callback: DynUnblockCallback<'tcx>,
                 }
                 |this, unblock: UnblockKind| {
                     match unblock {
@@ -768,29 +767,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             if let Some(data_race) = &this.machine.data_race {
                                 data_race.acquire_clock(&futex.clock, &this.machine.threads);
                             }
-                            // Write the return value.
-                            this.write_scalar(retval_succ, &dest)?;
-                            interp_ok(())
                         },
                         UnblockKind::TimedOut => {
                             // Remove the waiter from the futex.
                             let thread = this.active_thread();
                             let mut futex = futex_ref.0.borrow_mut();
                             futex.waiters.retain(|waiter| waiter.thread != thread);
-                            // Set errno and write return value.
-                            this.set_last_error(errno_timeout)?;
-                            this.write_scalar(retval_timeout, &dest)?;
-                            interp_ok(())
                         },
                     }
+
+                    callback.call(this, unblock)
                 }
             ),
         );
     }
 
-    /// Wake up the first thread in the queue that matches any of the bits in the bitset.
-    /// Returns whether anything was woken.
-    fn futex_wake(&mut self, futex_ref: &FutexRef, bitset: u32) -> InterpResult<'tcx, bool> {
+    /// Wake up `count` of the threads in the queue that match any of the bits
+    /// in the bitset. Returns how many threads were woken.
+    fn futex_wake(
+        &mut self,
+        futex_ref: &FutexRef,
+        bitset: u32,
+        count: usize,
+    ) -> InterpResult<'tcx, usize> {
         let this = self.eval_context_mut();
         let mut futex = futex_ref.0.borrow_mut();
         let data_race = &this.machine.data_race;
@@ -800,13 +799,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             data_race.release_clock(&this.machine.threads, |clock| futex.clock.clone_from(clock));
         }
 
-        // Wake up the first thread in the queue that matches any of the bits in the bitset.
-        let Some(i) = futex.waiters.iter().position(|w| w.bitset & bitset != 0) else {
-            return interp_ok(false);
-        };
-        let waiter = futex.waiters.remove(i).unwrap();
+        // Remove `count` of the threads in the queue that match any of the bits in the bitset.
+        // We collect all of them before unblocking because the unblock callback may access the
+        // futex state to retrieve the remaining number of waiters on macOS.
+        let waiters: Vec<_> =
+            futex.waiters.extract_if(.., |w| w.bitset & bitset != 0).take(count).collect();
         drop(futex);
-        this.unblock_thread(waiter.thread, BlockReason::Futex)?;
-        interp_ok(true)
+
+        let woken = waiters.len();
+        for waiter in waiters {
+            this.unblock_thread(waiter.thread, BlockReason::Futex)?;
+        }
+
+        interp_ok(woken)
     }
 }

@@ -206,6 +206,7 @@ impl<O> AssertKind<O> {
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
                 LangItem::PanicGenFnNonePanic
             }
+            NullPointerDereference => LangItem::PanicNullPointerDereference,
 
             BoundsCheck { .. } | MisalignedPointerDereference { .. } => {
                 bug!("Unexpected AssertKind")
@@ -271,6 +272,7 @@ impl<O> AssertKind<O> {
                     "\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\", {required:?}, {found:?}"
                 )
             }
+            NullPointerDereference => write!(f, "\"null pointer dereference occured\""),
             ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
                 write!(f, "\"coroutine resumed after completion\"")
             }
@@ -341,7 +343,7 @@ impl<O> AssertKind<O> {
             ResumedAfterPanic(CoroutineKind::Coroutine(_)) => {
                 middle_assert_coroutine_resume_after_panic
             }
-
+            NullPointerDereference => middle_assert_null_ptr_deref,
             MisalignedPointerDereference { .. } => middle_assert_misaligned_ptr_deref,
         }
     }
@@ -374,7 +376,7 @@ impl<O> AssertKind<O> {
                 add!("left", format!("{left:#?}"));
                 add!("right", format!("{right:#?}"));
             }
-            ResumedAfterReturn(_) | ResumedAfterPanic(_) => {}
+            ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference => {}
             MisalignedPointerDereference { required, found } => {
                 add!("required", format!("{required:#?}"));
                 add!("found", format!("{found:#?}"));

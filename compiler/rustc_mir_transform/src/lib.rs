@@ -33,6 +33,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, query, span_bug};
+use rustc_mir_build::builder::build_mir;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, sym};
 use tracing::debug;
@@ -44,6 +45,7 @@ use std::sync::LazyLock;
 
 use pass_manager::{self as pm, Lint, MirLint, MirPass, WithMinOptLevel};
 
+mod check_pointers;
 mod cost_checker;
 mod cross_crate_inline;
 mod deduce_param_attrs;
@@ -118,6 +120,7 @@ declare_passes! {
     mod check_call_recursion : CheckCallRecursion, CheckDropRecursion;
     mod check_alignment : CheckAlignment;
     mod check_const_item_mutation : CheckConstItemMutation;
+    mod check_null : CheckNull;
     mod check_packed_ref : CheckPackedRef;
     mod check_undefined_transmutes : CheckUndefinedTransmutes;
     // This pass is public to allow external drivers to perform MIR cleanup
@@ -368,7 +371,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
 }
 
 fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
-    let mut body = tcx.build_mir(def);
+    let mut body = build_mir(tcx, def);
 
     pass_manager::dump_mir_for_phase_change(tcx, &body);
 
@@ -418,11 +421,11 @@ fn mir_promoted(
     };
 
     // the `has_ffi_unwind_calls` query uses the raw mir, so make sure it is run.
-    tcx.ensure_with_value().has_ffi_unwind_calls(def);
+    tcx.ensure_done().has_ffi_unwind_calls(def);
 
     // the `by_move_body` query uses the raw mir, so make sure it is run.
     if tcx.needs_coroutine_by_move_body_def_id(def.to_def_id()) {
-        tcx.ensure_with_value().coroutine_by_move_body_def_id(def);
+        tcx.ensure_done().coroutine_by_move_body_def_id(def);
     }
 
     let mut body = tcx.mir_built(def).steal();
@@ -485,7 +488,7 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
 /// end up missing the source MIR due to stealing happening.
 fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
     if tcx.is_coroutine(def.to_def_id()) {
-        tcx.ensure_with_value().mir_coroutine_witnesses(def);
+        tcx.ensure_done().mir_coroutine_witnesses(def);
     }
 
     // We only need to borrowck non-synthetic MIR.
@@ -498,7 +501,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
         if pm::should_run_pass(tcx, &inline::Inline, pm::Optimizations::Allowed)
             || inline::ForceInline::should_run_pass_for_callee(tcx, def.to_def_id())
         {
-            tcx.ensure_with_value().mir_inliner_callees(ty::InstanceKind::Item(def.to_def_id()));
+            tcx.ensure_done().mir_inliner_callees(ty::InstanceKind::Item(def.to_def_id()));
         }
     }
 
@@ -642,6 +645,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &[
             // Add some UB checks before any UB gets optimized away.
             &check_alignment::CheckAlignment,
+            &check_null::CheckNull,
             // Before inlining: trim down MIR with passes to reduce inlining work.
 
             // Has to be done before inlining, otherwise actual call will be almost always inlined.
@@ -729,7 +733,7 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         // Run the `mir_for_ctfe` query, which depends on `mir_drops_elaborated_and_const_checked`
         // which we are going to steal below. Thus we need to run `mir_for_ctfe` first, so it
         // computes and caches its result.
-        Some(hir::ConstContext::ConstFn) => tcx.ensure_with_value().mir_for_ctfe(did),
+        Some(hir::ConstContext::ConstFn) => tcx.ensure_done().mir_for_ctfe(did),
         None => {}
         Some(other) => panic!("do not use `optimized_mir` for constants: {other:?}"),
     }
@@ -768,7 +772,7 @@ fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_
     }
 
     if !tcx.is_synthetic_mir(def) {
-        tcx.ensure_with_value().mir_borrowck(def);
+        tcx.ensure_done().mir_borrowck(def);
     }
     let mut promoted = tcx.mir_promoted(def).1.steal();
 

@@ -6,7 +6,6 @@ use hir::{BlockCheckMode, ExprKind, QPath, UnOp};
 use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::{DesugaringKind, Span};
@@ -65,7 +64,7 @@ declare_lint_pass!(MultipleUnsafeOpsPerBlock => [MULTIPLE_UNSAFE_OPS_PER_BLOCK])
 impl<'tcx> LateLintPass<'tcx> for MultipleUnsafeOpsPerBlock {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'_>) {
         if !matches!(block.rules, BlockCheckMode::UnsafeBlock(_))
-            || in_external_macro(cx.tcx.sess, block.span)
+            || block.span.in_external_macro(cx.tcx.sess.source_map())
             || block.span.is_desugaring(DesugaringKind::Await)
         {
             return;

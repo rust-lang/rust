@@ -8,7 +8,7 @@ LL | fn fetcher() -> Box<dyn Fetcher> {
    |                     ^^^^^^^^^^^ `Fetcher` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/undispatchable-receiver-and-wc-references-Self.rs:11:22
    |
 LL | pub trait Fetcher: Send + Sync {
@@ -26,7 +26,7 @@ LL |     let fetcher = fetcher();
    |                   ^^^^^^^^^ `Fetcher` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/undispatchable-receiver-and-wc-references-Self.rs:11:22
    |
 LL | pub trait Fetcher: Send + Sync {
@@ -44,7 +44,7 @@ LL |     let _ = fetcher.get();
    |             ^^^^^^^^^^^^^ `Fetcher` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/undispatchable-receiver-and-wc-references-Self.rs:11:22
    |
 LL | pub trait Fetcher: Send + Sync {

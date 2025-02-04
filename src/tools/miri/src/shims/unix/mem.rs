@@ -116,7 +116,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             align,
             MiriMemoryKind::Mmap.into(),
             // mmap guarantees new mappings are zero-init.
-            AllocInit::Zero
+            AllocInit::Zero,
         )?;
 
         interp_ok(Scalar::from_pointer(ptr, this))

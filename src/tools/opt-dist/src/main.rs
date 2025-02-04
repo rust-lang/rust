@@ -148,16 +148,6 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
 
             let is_aarch64 = target_triple.starts_with("aarch64");
 
-            let skip_tests = if is_aarch64 {
-                vec![
-                    // Those tests fail only inside of Docker on aarch64, as of December 2024
-                    "tests/ui/consts/promoted_running_out_of_memory_issue-130687.rs".to_string(),
-                    "tests/ui/consts/large_const_alloc.rs".to_string(),
-                ]
-            } else {
-                vec![]
-            };
-
             let checkout_dir = Utf8PathBuf::from("/checkout");
             let env = EnvironmentBuilder::default()
                 .host_tuple(target_triple)
@@ -169,7 +159,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .shared_llvm(true)
                 // FIXME: Enable bolt for aarch64 once it's fixed upstream. Broken as of December 2024.
                 .use_bolt(!is_aarch64)
-                .skipped_tests(skip_tests)
+                .skipped_tests(vec![])
                 .build()?;
 
             (env, shared.build_args)

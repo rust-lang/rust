@@ -9,6 +9,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::sync::{Lrc, join, par_for_each_in};
 use rustc_data_structures::temp_dir::MaybeTempDir;
+use rustc_data_structures::thousands::format_with_underscores;
 use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
@@ -22,10 +23,9 @@ use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::{AssocItemContainer, SymbolName};
-use rustc_middle::util::common::to_readable_str;
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
-use rustc_session::config::{CrateType, OptLevel};
+use rustc_session::config::{CrateType, OptLevel, TargetModifier};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
     ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId, SyntaxContext,
@@ -692,6 +692,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Encode source_map. This needs to be done last, because encoding `Span`s tells us which
         // `SourceFiles` we actually need to encode.
         let source_map = stat!("source-map", || self.encode_source_map());
+        let target_modifiers = stat!("target-modifiers", || self.encode_target_modifiers());
 
         let root = stat!("final", || {
             let attrs = tcx.hir().krate_attrs();
@@ -735,6 +736,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 native_libraries,
                 foreign_modules,
                 source_map,
+                target_modifiers,
                 traits,
                 impls,
                 incoherent_impls,
@@ -782,7 +784,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     "{} {:<23}{:>10} ({:4.1}%)",
                     prefix,
                     label,
-                    to_readable_str(size),
+                    format_with_underscores(size),
                     perc(size)
                 );
             }
@@ -791,7 +793,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 "{} {:<23}{:>10} (of which {:.1}% are zero bytes)",
                 prefix,
                 "Total",
-                to_readable_str(total_bytes),
+                format_with_underscores(total_bytes),
                 perc(zero_bytes)
             );
             eprintln!("{prefix}");
@@ -2009,6 +2011,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_array(deps.iter().map(|(_, dep)| dep))
     }
 
+    fn encode_target_modifiers(&mut self) -> LazyArray<TargetModifier> {
+        empty_proc_macro!(self);
+        let tcx = self.tcx;
+        self.lazy_array(tcx.sess.opts.gather_target_modifiers())
+    }
+
     fn encode_lib_features(&mut self) -> LazyArray<(Symbol, FeatureStability)> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
@@ -2191,13 +2199,13 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
         let (encode_const, encode_opt) = should_encode_mir(tcx, reachable_set, def_id);
 
         if encode_const {
-            tcx.ensure_with_value().mir_for_ctfe(def_id);
+            tcx.ensure_done().mir_for_ctfe(def_id);
         }
         if encode_opt {
-            tcx.ensure_with_value().optimized_mir(def_id);
+            tcx.ensure_done().optimized_mir(def_id);
         }
         if encode_opt || encode_const {
-            tcx.ensure_with_value().promoted_mir(def_id);
+            tcx.ensure_done().promoted_mir(def_id);
         }
     })
 }

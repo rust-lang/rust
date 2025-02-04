@@ -217,6 +217,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 stable_mir::mir::Rvalue::ShallowInitBox(op.stable(tables), ty.stable(tables))
             }
             CopyForDeref(place) => stable_mir::mir::Rvalue::CopyForDeref(place.stable(tables)),
+            WrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
         }
     }
 }
@@ -395,6 +396,7 @@ impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
             Downcast(_, idx) => stable_mir::mir::ProjectionElem::Downcast(idx.stable(tables)),
             OpaqueCast(ty) => stable_mir::mir::ProjectionElem::OpaqueCast(ty.stable(tables)),
             Subtype(ty) => stable_mir::mir::ProjectionElem::Subtype(ty.stable(tables)),
+            UnwrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
         }
     }
 }
@@ -495,6 +497,9 @@ impl<'tcx> Stable<'tcx> for mir::AssertMessage<'tcx> {
                     required: required.stable(tables),
                     found: found.stable(tables),
                 }
+            }
+            AssertKind::NullPointerDereference => {
+                stable_mir::mir::AssertMessage::NullPointerDereference
             }
         }
     }

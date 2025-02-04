@@ -934,6 +934,7 @@ pub enum InlineAsmClobberAbi {
     LoongArch,
     PowerPC,
     S390x,
+    Bpf,
     Msp430,
 }
 
@@ -1001,6 +1002,10 @@ impl InlineAsmClobberAbi {
             },
             InlineAsmArch::S390x => match name {
                 "C" | "system" => Ok(InlineAsmClobberAbi::S390x),
+                _ => Err(&["C", "system"]),
+            },
+            InlineAsmArch::Bpf => match name {
+                "C" | "system" => Ok(InlineAsmClobberAbi::Bpf),
                 _ => Err(&["C", "system"]),
             },
             InlineAsmArch::Msp430 => match name {
@@ -1276,6 +1281,14 @@ impl InlineAsmClobberAbi {
                     // a0-a1 are reserved, other access registers are volatile
                     a2, a3, a4, a5, a6, a7,
                     a8, a9, a10, a11, a12, a13, a14, a15,
+                }
+            },
+            InlineAsmClobberAbi::Bpf => clobbered_regs! {
+                Bpf BpfInlineAsmReg {
+                    // Refs: Section 1.1 "Registers and calling convention" in BPF ABI Recommended Conventions and Guidelines v1.0
+                    // https://www.kernel.org/doc/html/latest/bpf/standardization/abi.html#registers-and-calling-convention
+
+                    r0, r1, r2, r3, r4, r5,
                 }
             },
             InlineAsmClobberAbi::Msp430 => clobbered_regs! {

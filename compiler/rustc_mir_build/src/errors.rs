@@ -161,6 +161,18 @@ pub(crate) struct UnsafeOpInUnsafeFnBorrowOfLayoutConstrainedFieldRequiresUnsafe
 }
 
 #[derive(LintDiagnostic)]
+#[diag(
+    mir_build_unsafe_binder_cast_requires_unsafe,
+    code = E0133,
+)]
+pub(crate) struct UnsafeOpInUnsafeFnUnsafeBinderCastRequiresUnsafe {
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(mir_build_unsafe_op_in_unsafe_fn_call_to_fn_with_requires_unsafe, code = E0133)]
 #[help]
 pub(crate) struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe {
@@ -494,6 +506,32 @@ pub(crate) struct CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
 }
 
+#[derive(Diagnostic)]
+#[diag(
+    mir_build_unsafe_binder_cast_requires_unsafe,
+    code = E0133,
+)]
+pub(crate) struct UnsafeBinderCastRequiresUnsafe {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    mir_build_unsafe_binder_cast_requires_unsafe_unsafe_op_in_unsafe_fn_allowed,
+    code = E0133,
+)]
+pub(crate) struct UnsafeBinderCastRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    #[subdiagnostic]
+    pub(crate) unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
+}
+
 #[derive(Subdiagnostic)]
 #[label(mir_build_unsafe_not_inherited)]
 pub(crate) struct UnsafeNotInheritedNote {
@@ -801,10 +839,6 @@ pub(crate) struct BorrowOfMovedValue {
     pub(crate) ty: String,
     #[suggestion(code = "ref ", applicability = "machine-applicable")]
     pub(crate) suggest_borrowing: Option<Span>,
-    #[note(mir_build_full_type_name)]
-    #[note(mir_build_consider_verbose)]
-    pub(crate) has_path: bool,
-    pub(crate) path: String,
 }
 
 #[derive(Diagnostic)]

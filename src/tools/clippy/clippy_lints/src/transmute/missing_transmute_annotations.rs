@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use rustc_errors::Applicability;
 use rustc_hir::{GenericArg, HirId, LetStmt, Node, Path, TyKind};
 use rustc_lint::LateContext;
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::Ty;
 
 use crate::transmute::MISSING_TRANSMUTE_ANNOTATIONS;
@@ -44,7 +43,7 @@ pub(super) fn check<'tcx>(
     expr_hir_id: HirId,
 ) -> bool {
     let last = path.segments.last().unwrap();
-    if in_external_macro(cx.tcx.sess, last.ident.span) {
+    if last.ident.span.in_external_macro(cx.tcx.sess.source_map()) {
         // If it comes from a non-local macro, we ignore it.
         return false;
     }

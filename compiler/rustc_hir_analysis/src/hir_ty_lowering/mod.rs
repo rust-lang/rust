@@ -53,7 +53,7 @@ use tracing::{debug, instrument};
 
 use crate::bounds::Bounds;
 use crate::check::check_abi_fn_ptr;
-use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation, WildPatTy};
+use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation, InvalidBaseType, WildPatTy};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
@@ -296,7 +296,6 @@ pub trait GenericArgsLowerer<'a, 'tcx> {
 
     fn provided_kind(
         &mut self,
-        preceding_args: &[ty::GenericArg<'tcx>],
         param: &ty::GenericParamDef,
         arg: &GenericArg<'tcx>,
     ) -> ty::GenericArg<'tcx>;
@@ -480,7 +479,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             fn provided_kind(
                 &mut self,
-                _preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
@@ -2434,6 +2432,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 self.ty_infer(None, hir_ty.span)
             }
             hir::TyKind::Pat(ty, pat) => {
+                let ty_span = ty.span;
                 let ty = self.lower_ty(ty);
                 let pat_ty = match pat.kind {
                     hir::PatKind::Wild => {
@@ -2441,6 +2440,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         Ty::new_error(tcx, err)
                     }
                     hir::PatKind::Range(start, end, include_end) => {
+                        let ty = match ty.kind() {
+                            ty::Int(_) | ty::Uint(_) | ty::Char => ty,
+                            _ => Ty::new_error(
+                                tcx,
+                                self.dcx().emit_err(InvalidBaseType {
+                                    ty,
+                                    pat: "range",
+                                    ty_span,
+                                    pat_span: pat.span,
+                                }),
+                            ),
+                        };
                         let expr_to_const = |expr: &'tcx hir::PatExpr<'tcx>| -> ty::Const<'tcx> {
                             let (c, c_ty) = match expr.kind {
                                 hir::PatExprKind::Lit { lit, negated } => {

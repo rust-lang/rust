@@ -508,6 +508,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(Rvalue::Use(Operand::Constant(Box::new(constant))))
             }
 
+            ExprKind::WrapUnsafeBinder { source } => {
+                let source = unpack!(
+                    block = this.as_operand(
+                        block,
+                        scope,
+                        source,
+                        LocalInfo::Boring,
+                        NeedsTemporary::Maybe
+                    )
+                );
+                block.and(Rvalue::WrapUnsafeBinder(source, expr.ty))
+            }
+
             ExprKind::Yield { .. }
             | ExprKind::Block { .. }
             | ExprKind::Match { .. }
@@ -532,7 +545,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Become { .. }
             | ExprKind::InlineAsm { .. }
             | ExprKind::PlaceTypeAscription { .. }
-            | ExprKind::ValueTypeAscription { .. } => {
+            | ExprKind::ValueTypeAscription { .. }
+            | ExprKind::PlaceUnwrapUnsafeBinder { .. }
+            | ExprKind::ValueUnwrapUnsafeBinder { .. } => {
                 // these do not have corresponding `Rvalue` variants,
                 // so make an operand and then return that
                 debug_assert!(!matches!(

@@ -924,7 +924,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                 <a href=\"{base}/reference/items/traits.html#dyn-compatibility\">dyn compatible</a>.</p>\
                 <p><i>In older versions of Rust, dyn compatibility was called \"object safety\", \
                 so this trait is not object safe.</i></p></div>",
-                base = crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL
+                base = crate::clean::utils::DOC_RUST_LANG_ORG_VERSION
             ),
         );
     }

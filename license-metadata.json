@@ -113,8 +113,12 @@
               {
                 "directories": [],
                 "files": [
+                  "FiraMono-Medium.woff2",
+                  "FiraMono-Regular.woff2",
+                  "FiraSans-Italic.woff2",
                   "FiraSans-LICENSE.txt",
                   "FiraSans-Medium.woff2",
+                  "FiraSans-MediumItalic.woff2",
                   "FiraSans-Regular.woff2"
                 ],
                 "license": {

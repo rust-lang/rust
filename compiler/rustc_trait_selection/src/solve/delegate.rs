@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarInfo, CanonicalVarValues,
@@ -98,9 +98,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         param_env: ty::ParamEnv<'tcx>,
         arg: ty::GenericArg<'tcx>,
     ) -> Option<Vec<Goal<'tcx, ty::Predicate<'tcx>>>> {
-        crate::traits::wf::unnormalized_obligations(&self.0, param_env, arg).map(|obligations| {
-            obligations.into_iter().map(|obligation| obligation.into()).collect()
-        })
+        crate::traits::wf::unnormalized_obligations(&self.0, param_env, arg, DUMMY_SP, CRATE_DEF_ID)
+            .map(|obligations| {
+                obligations.into_iter().map(|obligation| obligation.into()).collect()
+            })
     }
 
     fn clone_opaque_types_for_query_response(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {

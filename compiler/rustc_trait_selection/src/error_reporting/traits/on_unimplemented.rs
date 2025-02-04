@@ -932,7 +932,7 @@ impl<'tcx> OnUnimplementedFormatString {
                 let value = match param.kind {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                         if let Some(ty) = trait_ref.args[param.index as usize].as_type() {
-                            tcx.short_ty_string(ty, long_ty_file)
+                            tcx.short_string(ty, long_ty_file)
                         } else {
                             trait_ref.args[param.index as usize].to_string()
                         }

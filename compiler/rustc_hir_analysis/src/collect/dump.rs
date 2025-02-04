@@ -1,7 +1,8 @@
+use rustc_hir as hir;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::intravisit;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
 
 pub(crate) fn opaque_hidden_types(tcx: TyCtxt<'_>) {
@@ -85,5 +86,84 @@ pub(crate) fn def_parents(tcx: TyCtxt<'_>) {
                 diag.emit();
             }
         }
+    }
+}
+
+pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
+    for id in tcx.hir().items() {
+        let def_id = id.owner_id.def_id;
+
+        let Some(attr) = tcx.get_attr(def_id, sym::rustc_dump_vtable) else {
+            continue;
+        };
+
+        let vtable_entries = match tcx.hir().item(id).kind {
+            hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) => {
+                let trait_ref = tcx.impl_trait_ref(def_id).unwrap().instantiate_identity();
+                if trait_ref.has_non_region_param() {
+                    tcx.dcx().span_err(
+                        attr.span,
+                        "`rustc_dump_vtable` must be applied to non-generic impl",
+                    );
+                    continue;
+                }
+                if !tcx.is_dyn_compatible(trait_ref.def_id) {
+                    tcx.dcx().span_err(
+                        attr.span,
+                        "`rustc_dump_vtable` must be applied to dyn-compatible trait",
+                    );
+                    continue;
+                }
+                let Ok(trait_ref) = tcx
+                    .try_normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), trait_ref)
+                else {
+                    tcx.dcx().span_err(
+                        attr.span,
+                        "`rustc_dump_vtable` applied to impl header that cannot be normalized",
+                    );
+                    continue;
+                };
+                tcx.vtable_entries(trait_ref)
+            }
+            hir::ItemKind::TyAlias(_, _) => {
+                let ty = tcx.type_of(def_id).instantiate_identity();
+                if ty.has_non_region_param() {
+                    tcx.dcx().span_err(
+                        attr.span,
+                        "`rustc_dump_vtable` must be applied to non-generic type",
+                    );
+                    continue;
+                }
+                let Ok(ty) =
+                    tcx.try_normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), ty)
+                else {
+                    tcx.dcx().span_err(
+                        attr.span,
+                        "`rustc_dump_vtable` applied to type alias that cannot be normalized",
+                    );
+                    continue;
+                };
+                let ty::Dynamic(data, _, _) = *ty.kind() else {
+                    tcx.dcx().span_err(attr.span, "`rustc_dump_vtable` to type alias of dyn type");
+                    continue;
+                };
+                if let Some(principal) = data.principal() {
+                    tcx.vtable_entries(
+                        tcx.instantiate_bound_regions_with_erased(principal).with_self_ty(tcx, ty),
+                    )
+                } else {
+                    TyCtxt::COMMON_VTABLE_ENTRIES
+                }
+            }
+            _ => {
+                tcx.dcx().span_err(
+                    attr.span,
+                    "`rustc_dump_vtable` only applies to impl, or type alias of dyn type",
+                );
+                continue;
+            }
+        };
+
+        tcx.dcx().span_err(tcx.def_span(def_id), format!("vtable entries: {vtable_entries:#?}"));
     }
 }

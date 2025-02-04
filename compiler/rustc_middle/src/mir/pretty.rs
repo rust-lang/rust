@@ -12,6 +12,7 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use tracing::trace;
+use ty::print::PrettyPrinter;
 
 use super::graphviz::write_mir_fn_graphviz;
 use crate::mir::interpret::ConstAllocation;
@@ -1248,6 +1249,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             ShallowInitBox(ref place, ref ty) => {
                 with_no_trimmed_paths!(write!(fmt, "ShallowInitBox({place:?}, {ty})"))
             }
+
+            WrapUnsafeBinder(ref op, ty) => {
+                with_no_trimmed_paths!(write!(fmt, "wrap_binder!({op:?}; {ty})"))
+            }
         }
     }
 }
@@ -1308,6 +1313,9 @@ fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> 
             ProjectionElem::Index(_)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. } => {}
+            ProjectionElem::UnwrapUnsafeBinder(_) => {
+                write!(fmt, "unwrap_binder!(")?;
+            }
         }
     }
 
@@ -1355,6 +1363,9 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
             }
             ProjectionElem::Subslice { from, to, from_end: false } => {
                 write!(fmt, "[{from:?}..{to:?}]")?;
+            }
+            ProjectionElem::UnwrapUnsafeBinder(ty) => {
+                write!(fmt, "; {ty})")?;
             }
         }
     }
@@ -1429,10 +1440,10 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 })
             };
 
-            // FIXME: call pretty_print_const_valtree?
-            let fmt_valtree = |valtree: &ty::ValTree<'tcx>| match valtree {
-                ty::ValTree::Leaf(leaf) => format!("Leaf({leaf:?})"),
-                ty::ValTree::Branch(_) => "Branch(..)".to_string(),
+            let fmt_valtree = |cv: &ty::Value<'tcx>| {
+                let mut cx = FmtPrinter::new(self.tcx, Namespace::ValueNS);
+                cx.pretty_print_const_valtree(*cv, /*print_ty*/ true).unwrap();
+                cx.into_buffer()
             };
 
             let val = match const_ {
@@ -1441,7 +1452,9 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                     ty::ConstKind::Unevaluated(uv) => {
                         format!("ty::Unevaluated({}, {:?})", self.tcx.def_path_str(uv.def), uv.args,)
                     }
-                    ty::ConstKind::Value(_, val) => format!("ty::Valtree({})", fmt_valtree(&val)),
+                    ty::ConstKind::Value(cv) => {
+                        format!("ty::Valtree({})", fmt_valtree(&cv))
+                    }
                     // No `ty::` prefix since we also use this to represent errors from `mir::Unevaluated`.
                     ty::ConstKind::Error(_) => "Error".to_string(),
                     // These variants shouldn't exist in the MIR.

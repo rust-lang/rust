@@ -1,4 +1,4 @@
-error[E0271]: expected `{async closure@dont-suggest-boxing-async-closure-body.rs:9:9}` to be a closure that returns `Box<_>`, but it returns `{async closure body@$DIR/dont-suggest-boxing-async-closure-body.rs:9:23: 9:25}`
+error[E0271]: expected `{async closure@dont-suggest-boxing-async-closure-body.rs:9:9}` to return `Box<_>`, but it returns `{async closure body@$DIR/dont-suggest-boxing-async-closure-body.rs:9:23: 9:25}`
   --> $DIR/dont-suggest-boxing-async-closure-body.rs:9:9
    |
 LL |     foo(async move || {});

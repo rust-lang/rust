@@ -6,7 +6,6 @@ use rustc_middle::mir::coverage::{
     FunctionCoverageInfo, MappingKind, Op,
 };
 use rustc_middle::mir::{Body, Statement, StatementKind};
-use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_span::def_id::LocalDefId;
@@ -15,8 +14,7 @@ use tracing::trace;
 
 /// Registers query/hook implementations related to coverage.
 pub(crate) fn provide(providers: &mut Providers) {
-    providers.hooks.is_eligible_for_coverage =
-        |TyCtxtAt { tcx, .. }, def_id| is_eligible_for_coverage(tcx, def_id);
+    providers.hooks.is_eligible_for_coverage = is_eligible_for_coverage;
     providers.queries.coverage_attr_on = coverage_attr_on;
     providers.queries.coverage_ids_info = coverage_ids_info;
 }

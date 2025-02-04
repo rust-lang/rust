@@ -22,7 +22,6 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AnonConst, Attribute, Expr, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_resolve::rustdoc::{
     DocFragment, add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range,
@@ -675,7 +674,7 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
                 match item.kind {
                     ItemKind::Fn { sig, body: body_id, .. } => {
                         if !(is_entrypoint_fn(cx, item.owner_id.to_def_id())
-                            || in_external_macro(cx.tcx.sess, item.span))
+                            || item.span.in_external_macro(cx.tcx.sess.source_map()))
                         {
                             let body = cx.tcx.hir().body(body_id);
 
@@ -711,7 +710,7 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
             },
             Node::TraitItem(trait_item) => {
                 if let TraitItemKind::Fn(sig, ..) = trait_item.kind
-                    && !in_external_macro(cx.tcx.sess, trait_item.span)
+                    && !trait_item.span.in_external_macro(cx.tcx.sess.source_map())
                 {
                     missing_headers::check(
                         cx,
@@ -726,7 +725,7 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
             },
             Node::ImplItem(impl_item) => {
                 if let ImplItemKind::Fn(sig, body_id) = impl_item.kind
-                    && !in_external_macro(cx.tcx.sess, impl_item.span)
+                    && !impl_item.span.in_external_macro(cx.tcx.sess.source_map())
                     && !is_trait_impl_item(cx, impl_item.hir_id())
                 {
                     let body = cx.tcx.hir().body(body_id);
@@ -791,7 +790,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
 
     let (fragments, _) = attrs_to_doc_fragments(
         attrs.iter().filter_map(|attr| {
-            if in_external_macro(cx.sess(), attr.span) {
+            if attr.span.in_external_macro(cx.sess().source_map()) {
                 None
             } else {
                 Some((attr, None))

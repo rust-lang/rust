@@ -21,7 +21,7 @@ LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruc
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `SuperTrait` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/issue-76535.rs:4:10
    |
 LL | pub trait SuperTrait {
@@ -39,7 +39,7 @@ LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruc
    |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `SuperTrait` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/issue-76535.rs:4:10
    |
 LL | pub trait SuperTrait {

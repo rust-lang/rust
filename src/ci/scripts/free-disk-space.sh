@@ -9,7 +9,6 @@ set -euo pipefail
 # - Check that there are no big packages preinstalled that we aren't using
 # - Check that all directores we are removing are still present (look at the warnings)
 
-# Print a line of the specified character.
 printSeparationLine() {
     for ((i = 0; i < 80; i++)); do
         printf "%s" "$1"
@@ -236,6 +235,7 @@ main() {
     execAndMeasure "Python Packages" removePythonPackages
     removeUnusedDirsAndFiles
 
+    # Output saved space statistic
     printDF "AFTER CLEAN-UP:"
 }
 

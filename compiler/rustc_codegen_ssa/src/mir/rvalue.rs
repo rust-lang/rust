@@ -823,6 +823,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 OperandRef { val: OperandValue::Immediate(val), layout: box_layout }
             }
+            mir::Rvalue::WrapUnsafeBinder(ref operand, binder_ty) => {
+                let operand = self.codegen_operand(bx, operand);
+                let binder_ty = self.monomorphize(binder_ty);
+                let layout = bx.cx().layout_of(binder_ty);
+                OperandRef { val: operand.val, layout }
+            }
         }
     }
 
@@ -1123,7 +1129,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Discriminant(..) |
             mir::Rvalue::NullaryOp(..) |
             mir::Rvalue::ThreadLocalRef(_) |
-            mir::Rvalue::Use(..) => // (*)
+            mir::Rvalue::Use(..) |
+            mir::Rvalue::WrapUnsafeBinder(..) => // (*)
                 true,
             // Arrays are always aggregates, so it's not worth checking anything here.
             // (If it's really `[(); N]` or `[T; 0]` and we use the place path, fine.)

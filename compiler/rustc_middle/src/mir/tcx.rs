@@ -146,6 +146,11 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::Subtype(ty) => {
                 PlaceTy::from_ty(handle_opaque_cast_and_subtype(&self, ty))
             }
+
+            // FIXME(unsafe_binders): Rename `handle_opaque_cast_and_subtype` to be more general.
+            ProjectionElem::UnwrapUnsafeBinder(ty) => {
+                PlaceTy::from_ty(handle_opaque_cast_and_subtype(&self, ty))
+            }
         };
         debug!("projection_ty self: {:?} elem: {:?} yields: {:?}", self, elem, answer);
         answer
@@ -241,6 +246,7 @@ impl<'tcx> Rvalue<'tcx> {
             },
             Rvalue::ShallowInitBox(_, ty) => Ty::new_box(tcx, ty),
             Rvalue::CopyForDeref(ref place) => place.ty(local_decls, tcx).ty,
+            Rvalue::WrapUnsafeBinder(_, ty) => ty,
         }
     }
 

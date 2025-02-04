@@ -114,14 +114,13 @@ fn default_dcx(
         false,
     );
     let emitter = Box::new(
-        HumanEmitter::new(stderr_destination(emit_color), fallback_bundle.clone())
+        HumanEmitter::new(stderr_destination(emit_color), fallback_bundle)
             .sm(Some(source_map.clone())),
     );
 
     let emitter: Box<DynEmitter> = if !show_parse_errors {
         Box::new(SilentEmitter {
-            fallback_bundle,
-            fatal_dcx: DiagCtxt::new(emitter),
+            fatal_emitter: emitter,
             fatal_note: None,
             emit_fatal_diagnostic: false,
         })
@@ -205,16 +204,7 @@ impl ParseSess {
     }
 
     pub(crate) fn set_silent_emitter(&mut self) {
-        // Ideally this invocation wouldn't be necessary and the fallback bundle in
-        // `self.parse_sess.dcx` could be used, but the lock in `DiagCtxt` prevents this.
-        // See `<rustc_errors::SilentEmitter as Translate>::fallback_fluent_bundle`.
-        let fallback_bundle = rustc_errors::fallback_fluent_bundle(
-            rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
-            false,
-        );
-        self.raw_psess
-            .dcx()
-            .make_silent(fallback_bundle, None, false);
+        self.raw_psess.dcx().make_silent(None, false);
     }
 
     pub(crate) fn span_to_filename(&self, span: Span) -> FileName {

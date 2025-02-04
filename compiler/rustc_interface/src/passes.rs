@@ -26,7 +26,6 @@ use rustc_parse::{
 };
 use rustc_passes::{abi_test, input_stats, layout_test};
 use rustc_resolve::Resolver;
-use rustc_session::code_stats::VTableSizeInfo;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
 use rustc_session::output::{collect_crate_types, filename_for_input, find_crate_name};
@@ -269,6 +268,7 @@ fn configure_and_expand(
 
     resolver.resolve_crate(&krate);
 
+    CStore::from_tcx(tcx).report_incompatible_target_modifiers(tcx, &krate);
     krate
 }
 
@@ -833,20 +833,20 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     sess.time("misc_checking_1", || {
         parallel!(
             {
-                sess.time("looking_for_entry_point", || tcx.ensure().entry_fn(()));
+                sess.time("looking_for_entry_point", || tcx.ensure_ok().entry_fn(()));
 
                 sess.time("looking_for_derive_registrar", || {
-                    tcx.ensure().proc_macro_decls_static(())
+                    tcx.ensure_ok().proc_macro_decls_static(())
                 });
 
                 CStore::from_tcx(tcx).report_unused_deps(tcx);
             },
             {
                 tcx.hir().par_for_each_module(|module| {
-                    tcx.ensure().check_mod_loops(module);
-                    tcx.ensure().check_mod_attrs(module);
-                    tcx.ensure().check_mod_naked_functions(module);
-                    tcx.ensure().check_mod_unstable_api_usage(module);
+                    tcx.ensure_ok().check_mod_loops(module);
+                    tcx.ensure_ok().check_mod_attrs(module);
+                    tcx.ensure_ok().check_mod_naked_functions(module);
+                    tcx.ensure_ok().check_mod_unstable_api_usage(module);
                 });
             },
             {
@@ -859,8 +859,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 // since they might not otherwise get called.
                 // This marks the corresponding crate-level attributes
                 // as used, and ensures that their values are valid.
-                tcx.ensure().limits(());
-                tcx.ensure().stability_index(());
+                tcx.ensure_ok().limits(());
+                tcx.ensure_ok().stability_index(());
             }
         );
     });
@@ -869,7 +869,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     sess.time("MIR_coroutine_by_move_body", || {
         tcx.hir().par_body_owners(|def_id| {
             if tcx.needs_coroutine_by_move_body_def_id(def_id.to_def_id()) {
-                tcx.ensure_with_value().coroutine_by_move_body_def_id(def_id);
+                tcx.ensure_done().coroutine_by_move_body_def_id(def_id);
             }
         });
     });
@@ -884,13 +884,13 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
         tcx.hir().par_body_owners(|def_id| {
             // Run unsafety check because it's responsible for stealing and
             // deallocating THIR.
-            tcx.ensure().check_unsafety(def_id);
-            tcx.ensure().mir_borrowck(def_id)
+            tcx.ensure_ok().check_unsafety(def_id);
+            tcx.ensure_ok().mir_borrowck(def_id)
         });
     });
     sess.time("MIR_effect_checking", || {
         tcx.hir().par_body_owners(|def_id| {
-            tcx.ensure().has_ffi_unwind_calls(def_id);
+            tcx.ensure_ok().has_ffi_unwind_calls(def_id);
 
             // If we need to codegen, ensure that we emit all errors from
             // `mir_drops_elaborated_and_const_checked` now, to avoid discovering
@@ -898,15 +898,15 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             if tcx.sess.opts.output_types.should_codegen()
                 || tcx.hir().body_const_context(def_id).is_some()
             {
-                tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
+                tcx.ensure_ok().mir_drops_elaborated_and_const_checked(def_id);
             }
         });
     });
     sess.time("coroutine_obligations", || {
         tcx.hir().par_body_owners(|def_id| {
             if tcx.is_coroutine(def_id.to_def_id()) {
-                tcx.ensure().mir_coroutine_witnesses(def_id);
-                tcx.ensure().check_coroutine_obligations(
+                tcx.ensure_ok().mir_coroutine_witnesses(def_id);
+                tcx.ensure_ok().check_coroutine_obligations(
                     tcx.typeck_root_def_id(def_id.to_def_id()).expect_local(),
                 );
             }
@@ -951,15 +951,16 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
     sess.time("misc_checking_3", || {
         parallel!(
             {
-                tcx.ensure().effective_visibilities(());
+                tcx.ensure_ok().effective_visibilities(());
 
                 parallel!(
                     {
-                        tcx.ensure().check_private_in_public(());
+                        tcx.ensure_ok().check_private_in_public(());
                     },
                     {
-                        tcx.hir()
-                            .par_for_each_module(|module| tcx.ensure().check_mod_deathness(module));
+                        tcx.hir().par_for_each_module(|module| {
+                            tcx.ensure_ok().check_mod_deathness(module)
+                        });
                     },
                     {
                         sess.time("lint_checking", || {
@@ -967,14 +968,14 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
                         });
                     },
                     {
-                        tcx.ensure().clashing_extern_declarations(());
+                        tcx.ensure_ok().clashing_extern_declarations(());
                     }
                 );
             },
             {
                 sess.time("privacy_checking_modules", || {
                     tcx.hir().par_for_each_module(|module| {
-                        tcx.ensure().check_mod_privacy(module);
+                        tcx.ensure_ok().check_mod_privacy(module);
                     });
                 });
             }
@@ -982,97 +983,13 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
 
         // This check has to be run after all lints are done processing. We don't
         // define a lint filter, as all lint checks should have finished at this point.
-        sess.time("check_lint_expectations", || tcx.ensure().check_expectations(None));
+        sess.time("check_lint_expectations", || tcx.ensure_ok().check_expectations(None));
 
         // This query is only invoked normally if a diagnostic is emitted that needs any
         // diagnostic item. If the crate compiles without checking any diagnostic items,
         // we will fail to emit overlap diagnostics. Thus we invoke it here unconditionally.
         let _ = tcx.all_diagnostic_items(());
     });
-
-    if sess.opts.unstable_opts.print_vtable_sizes {
-        let traits = tcx.traits(LOCAL_CRATE);
-
-        for &tr in traits {
-            if !tcx.is_dyn_compatible(tr) {
-                continue;
-            }
-
-            let name = ty::print::with_no_trimmed_paths!(tcx.def_path_str(tr));
-
-            let mut first_dsa = true;
-
-            // Number of vtable entries, if we didn't have upcasting
-            let mut entries_ignoring_upcasting = 0;
-            // Number of vtable entries needed solely for upcasting
-            let mut entries_for_upcasting = 0;
-
-            let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, tr));
-
-            // A slightly edited version of the code in
-            // `rustc_trait_selection::traits::vtable::vtable_entries`, that works without self
-            // type and just counts number of entries.
-            //
-            // Note that this is technically wrong, for traits which have associated types in
-            // supertraits:
-            //
-            //   trait A: AsRef<Self::T> + AsRef<()> { type T; }
-            //
-            // Without self type we can't normalize `Self::T`, so we can't know if `AsRef<Self::T>`
-            // and `AsRef<()>` are the same trait, thus we assume that those are different, and
-            // potentially over-estimate how many vtable entries there are.
-            //
-            // Similarly this is wrong for traits that have methods with possibly-impossible bounds.
-            // For example:
-            //
-            //   trait B<T> { fn f(&self) where T: Copy; }
-            //
-            // Here `dyn B<u8>` will have 4 entries, while `dyn B<String>` will only have 3.
-            // However, since we don't know `T`, we can't know if `T: Copy` holds or not,
-            // thus we lean on the bigger side and say it has 4 entries.
-            traits::vtable::prepare_vtable_segments(tcx, trait_ref, |segment| {
-                match segment {
-                    traits::vtable::VtblSegment::MetadataDSA => {
-                        // If this is the first dsa, it would be included either way,
-                        // otherwise it's needed for upcasting
-                        if std::mem::take(&mut first_dsa) {
-                            entries_ignoring_upcasting += 3;
-                        } else {
-                            entries_for_upcasting += 3;
-                        }
-                    }
-
-                    traits::vtable::VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
-                        // Lookup the shape of vtable for the trait.
-                        let own_existential_entries =
-                            tcx.own_existential_vtable_entries(trait_ref.def_id());
-
-                        // The original code here ignores the method if its predicates are
-                        // impossible. We can't really do that as, for example, all not trivial
-                        // bounds on generic parameters are impossible (since we don't know the
-                        // parameters...), see the comment above.
-                        entries_ignoring_upcasting += own_existential_entries.len();
-
-                        if emit_vptr {
-                            entries_for_upcasting += 1;
-                        }
-                    }
-                }
-
-                std::ops::ControlFlow::Continue::<std::convert::Infallible>(())
-            });
-
-            sess.code_stats.record_vtable_size(tr, &name, VTableSizeInfo {
-                trait_name: name.clone(),
-                entries: entries_ignoring_upcasting + entries_for_upcasting,
-                entries_ignoring_upcasting,
-                entries_for_upcasting,
-                upcasting_cost_percent: entries_for_upcasting as f64
-                    / entries_ignoring_upcasting as f64
-                    * 100.,
-            })
-        }
-    }
 }
 
 /// Check for the `#[rustc_error]` annotation, which forces an error in codegen. This is used
@@ -1091,7 +1008,7 @@ fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
                     )
                 }) =>
             {
-                tcx.ensure().trigger_delayed_bug(def_id);
+                tcx.ensure_ok().trigger_delayed_bug(def_id);
             }
 
             // Bare `#[rustc_error]`.
@@ -1151,12 +1068,6 @@ pub(crate) fn start_codegen<'tcx>(
     // have been instantiated.
     if tcx.sess.opts.unstable_opts.print_type_sizes {
         tcx.sess.code_stats.print_type_sizes();
-    }
-
-    if tcx.sess.opts.unstable_opts.print_vtable_sizes {
-        let crate_name = tcx.crate_name(LOCAL_CRATE);
-
-        tcx.sess.code_stats.print_vtable_sizes(crate_name);
     }
 
     codegen

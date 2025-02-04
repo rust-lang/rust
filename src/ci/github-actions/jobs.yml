@@ -38,6 +38,10 @@ runners:
     os: windows-2022-8core-32gb
     <<: *base-job
 
+  - &job-windows-25-8c
+    os: windows-2025-8core-32gb
+    <<: *base-job
+
   - &job-aarch64-linux
     # Free some disk space to avoid running out of space during the build.
     free_disk: true
@@ -516,18 +520,16 @@ auto:
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
       SCRIPT: make ci-mingw
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
+      # There is no dist-i686-mingw-alt, so there is no prebuilt LLVM with assertions
       NO_DOWNLOAD_CI_LLVM: 1
-    <<: *job-windows-8c
+    <<: *job-windows-25-8c
 
   # x86_64-mingw is split into two jobs to run tests in parallel.
   - name: x86_64-mingw-1
     env:
       SCRIPT: make ci-mingw-x
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
+      # There is no dist-x86_64-mingw-alt, so there is no prebuilt LLVM with assertions
       NO_DOWNLOAD_CI_LLVM: 1
     <<: *job-windows
 
@@ -535,8 +537,7 @@ auto:
     env:
       SCRIPT: make ci-mingw-bootstrap
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
+      # There is no dist-x86_64-mingw-alt, so there is no prebuilt LLVM with assertions
       NO_DOWNLOAD_CI_LLVM: 1
     <<: *job-windows
 
@@ -552,7 +553,7 @@ auto:
       SCRIPT: python x.py build --set rust.debug=true opt-dist && PGO_HOST=x86_64-pc-windows-msvc ./build/x86_64-pc-windows-msvc/stage0-tools-bin/opt-dist windows-ci -- python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-windows-8c
+    <<: *job-windows-25-8c
 
   - name: dist-i686-msvc
     env:
@@ -584,9 +585,6 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --build=i686-pc-windows-gnu
         --enable-full-tools
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
-      NO_DOWNLOAD_CI_LLVM: 1
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
@@ -598,9 +596,6 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --build=x86_64-pc-windows-gnu
         --enable-full-tools
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
-      NO_DOWNLOAD_CI_LLVM: 1
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-windows

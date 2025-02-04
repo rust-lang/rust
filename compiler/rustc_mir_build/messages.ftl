@@ -25,8 +25,6 @@ mir_build_borrow_of_moved_value = borrow of moved value
     .occurs_because_label = move occurs because `{$name}` has type `{$ty}`, which does not implement the `Copy` trait
     .value_borrowed_label = value borrowed here after move
     .suggestion = borrow this binding in the pattern to avoid moving the value
-    .full_type_name = the full type name has been written to '{$path}'
-    .consider_verbose = consider using `--verbose` to print the full type name to the console
 
 mir_build_call_to_deprecated_safe_fn_requires_unsafe =
     call to deprecated safe function `{$function}` is unsafe and requires unsafe block
@@ -360,6 +358,18 @@ mir_build_unreachable_pattern = unreachable pattern
     .unreachable_pattern_const_inaccessible = there is a constant of the same name, which could have been used to pattern match against its value instead of introducing a new catch-all binding, but it is not accessible from this scope
     .unreachable_pattern_let_binding = there is a binding of the same name; if you meant to pattern match against the value of that binding, that is a feature of constants that is not available for `let` bindings
     .suggestion = remove the match arm
+
+mir_build_unsafe_binder_cast_requires_unsafe =
+    unsafe binder cast is unsafe and requires unsafe block
+    .label = unsafe binder cast
+    .note = casting to or from an `unsafe<...>` binder type is unsafe since it erases lifetime
+        information that may be required to uphold safety guarantees of a type
+
+mir_build_unsafe_binder_cast_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
+    unsafe binder cast is unsafe and requires unsafe block or unsafe fn
+    .label = unsafe binder cast
+    .note = casting to or from an `unsafe<...>` binder type is unsafe since it erases lifetime
+        information that may be required to uphold safety guarantees of a type
 
 mir_build_unsafe_field_requires_unsafe =
     use of unsafe field is unsafe and requires unsafe block

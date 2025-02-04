@@ -251,6 +251,7 @@ pub enum AssertMessage {
     ResumedAfterReturn(CoroutineKind),
     ResumedAfterPanic(CoroutineKind),
     MisalignedPointerDereference { required: Operand, found: Operand },
+    NullPointerDereference,
 }
 
 impl AssertMessage {
@@ -306,6 +307,7 @@ impl AssertMessage {
             AssertMessage::MisalignedPointerDereference { .. } => {
                 Ok("misaligned pointer dereference")
             }
+            AssertMessage::NullPointerDereference => Ok("null pointer dereference occured"),
         }
     }
 }

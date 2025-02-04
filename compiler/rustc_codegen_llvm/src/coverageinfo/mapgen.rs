@@ -298,7 +298,7 @@ struct UsageSets<'tcx> {
 /// Prepare sets of definitions that are relevant to deciding whether something
 /// is an "unused function" for coverage purposes.
 fn prepare_usage_sets<'tcx>(tcx: TyCtxt<'tcx>) -> UsageSets<'tcx> {
-    let MonoItemPartitions { all_mono_items, codegen_units } =
+    let MonoItemPartitions { all_mono_items, codegen_units, .. } =
         tcx.collect_and_partition_mono_items(());
 
     // Obtain a MIR body for each function participating in codegen, via an

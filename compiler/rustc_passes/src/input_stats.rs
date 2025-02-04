@@ -5,10 +5,10 @@
 use rustc_ast::visit::BoundKind;
 use rustc_ast::{self as ast, NodeId, visit as ast_visit};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::thousands::format_with_underscores;
 use rustc_hir::{self as hir, AmbigArg, HirId, intravisit as hir_visit};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::util::common::to_readable_str;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 
@@ -144,10 +144,10 @@ impl<'k> StatCollector<'k> {
                 "{} {:<18}{:>10} ({:4.1}%){:>14}{:>14}",
                 prefix,
                 label,
-                to_readable_str(size),
+                format_with_underscores(size),
                 percent(size, total_size),
-                to_readable_str(node.stats.count),
-                to_readable_str(node.stats.size)
+                format_with_underscores(node.stats.count),
+                format_with_underscores(node.stats.size)
             );
             if !node.subnodes.is_empty() {
                 // We will soon sort, so the initial order does not matter.
@@ -163,9 +163,9 @@ impl<'k> StatCollector<'k> {
                         "{} - {:<18}{:>10} ({:4.1}%){:>14}",
                         prefix,
                         label,
-                        to_readable_str(size),
+                        format_with_underscores(size),
                         percent(size, total_size),
-                        to_readable_str(subnode.count),
+                        format_with_underscores(subnode.count),
                     );
                 }
             }
@@ -175,8 +175,8 @@ impl<'k> StatCollector<'k> {
             "{} {:<18}{:>10}        {:>14}",
             prefix,
             "Total",
-            to_readable_str(total_size),
-            to_readable_str(total_count),
+            format_with_underscores(total_size),
+            format_with_underscores(total_count),
         );
         eprintln!("{prefix}");
     }

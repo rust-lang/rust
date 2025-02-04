@@ -275,7 +275,7 @@ Here are some notable ones:
 | `rustc_dump_def_parents` | Dumps the chain of `DefId` parents of certain definitions. |
 | `rustc_dump_item_bounds` | Dumps the [`item_bounds`] of an item. |
 | `rustc_dump_predicates` | Dumps the [`predicates_of`] an item. |
-| `rustc_dump_vtable` |  |
+| `rustc_dump_vtable` | Dumps the vtable layout of an impl, or a type alias of a dyn type. |
 | `rustc_hidden_type_of_opaques` | Dumps the [hidden type of each opaque types][opaq] in the crate. |
 | `rustc_layout` | [See this section](#debugging-type-layouts). |
 | `rustc_object_lifetime_default` | Dumps the [object lifetime defaults] of an item. |

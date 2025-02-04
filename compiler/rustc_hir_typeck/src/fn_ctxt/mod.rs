@@ -31,12 +31,12 @@ use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt};
 /// functions, closures, and `const`s, including performing type inference
 /// with [`InferCtxt`].
 ///
-/// This is in contrast to [`ItemCtxt`], which is used to type-check item *signatures*
-/// and thus does not perform type inference.
+/// This is in contrast to `rustc_hir_analysis::collect::ItemCtxt`, which is
+/// used to type-check item *signatures* and thus does not perform type
+/// inference.
 ///
-/// See [`ItemCtxt`]'s docs for more.
+/// See `ItemCtxt`'s docs for more.
 ///
-/// [`ItemCtxt`]: rustc_hir_analysis::collect::ItemCtxt
 /// [`InferCtxt`]: infer::InferCtxt
 pub(crate) struct FnCtxt<'a, 'tcx> {
     pub(super) body_id: LocalDefId,

@@ -77,8 +77,7 @@ pub(crate) struct CodegenCx<'ll, 'tcx> {
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
     /// Cache generated vtables
-    pub vtables:
-        RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
+    pub vtables: RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), &'ll Value>>,
     /// Cache of constant strings,
     pub const_str_cache: RefCell<FxHashMap<String, &'ll Value>>,
 
@@ -663,15 +662,14 @@ impl<'ll> SimpleCx<'ll> {
 impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn vtables(
         &self,
-    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>
-    {
+    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), &'ll Value>> {
         &self.vtables
     }
 
     fn apply_vcall_visibility_metadata(
         &self,
         ty: Ty<'tcx>,
-        poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+        poly_trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
         vtable: &'ll Value,
     ) {
         apply_vcall_visibility_metadata(self, ty, poly_trait_ref, vtable);

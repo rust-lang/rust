@@ -48,8 +48,8 @@ use crate::borrow_set::BorrowSet;
 use crate::constraints::{OutlivesConstraint, OutlivesConstraintSet};
 use crate::diagnostics::UniverseInfo;
 use crate::member_constraints::MemberConstraintSet;
-use crate::polonius::PoloniusContext;
 use crate::polonius::legacy::{PoloniusFacts, PoloniusLocationTable};
+use crate::polonius::{PoloniusContext, PoloniusLivenessContext};
 use crate::region_infer::TypeTest;
 use crate::region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderIndices};
 use crate::renumber::RegionCtxt;
@@ -148,8 +148,8 @@ pub(crate) fn type_check<'a, 'tcx>(
 
     debug!(?normalized_inputs_and_output);
 
-    let mut polonius_context = if infcx.tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
-        Some(PoloniusContext::new())
+    let polonius_liveness = if infcx.tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
+        Some(PoloniusLivenessContext::default())
     } else {
         None
     };
@@ -168,7 +168,7 @@ pub(crate) fn type_check<'a, 'tcx>(
         polonius_facts,
         borrow_set,
         constraints: &mut constraints,
-        polonius_context: &mut polonius_context,
+        polonius_liveness,
     };
 
     typeck.check_user_type_annotations();
@@ -185,11 +185,14 @@ pub(crate) fn type_check<'a, 'tcx>(
     let opaque_type_values =
         opaque_types::take_opaques_and_register_member_constraints(&mut typeck);
 
-    if let Some(polonius_context) = typeck.polonius_context.as_mut() {
-        let num_regions = infcx.num_region_vars();
-        let points_per_live_region = typeck.constraints.liveness_constraints.points();
-        polonius_context.record_live_regions_per_point(num_regions, points_per_live_region);
-    }
+    // We're done with typeck, we can finalize the polonius liveness context for region inference.
+    let polonius_context = typeck.polonius_liveness.take().map(|liveness_context| {
+        PoloniusContext::create_from_liveness(
+            liveness_context,
+            infcx.num_region_vars(),
+            typeck.constraints.liveness_constraints.points(),
+        )
+    });
 
     MirTypeckResults {
         constraints,
@@ -299,6 +302,25 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                         base_ty.ty,
                         location.to_locations(),
                         ConstraintCategory::TypeAnnotation(AnnotationSource::OpaqueCast),
+                    )
+                    .unwrap();
+            }
+            ProjectionElem::UnwrapUnsafeBinder(ty) => {
+                let ty::UnsafeBinder(binder_ty) = *base_ty.ty.kind() else {
+                    unreachable!();
+                };
+                let found_ty = self.typeck.infcx.instantiate_binder_with_fresh_vars(
+                    self.body().source_info(location).span,
+                    BoundRegionConversionTime::HigherRankedType,
+                    binder_ty.into(),
+                );
+                self.typeck
+                    .relate_types(
+                        ty,
+                        context.ambient_variance(),
+                        found_ty,
+                        location.to_locations(),
+                        ConstraintCategory::Boring,
                     )
                     .unwrap();
             }
@@ -564,8 +586,8 @@ struct TypeChecker<'a, 'tcx> {
     polonius_facts: &'a mut Option<PoloniusFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
-    /// When using `-Zpolonius=next`, the helper data used to create polonius constraints.
-    polonius_context: &'a mut Option<PoloniusContext>,
+    /// When using `-Zpolonius=next`, the liveness helper data used to create polonius constraints.
+    polonius_liveness: Option<PoloniusLivenessContext>,
 }
 
 /// Holder struct for passing results from MIR typeck to the rest of the non-lexical regions
@@ -2233,6 +2255,27 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_operand(right, location);
             }
 
+            Rvalue::WrapUnsafeBinder(op, ty) => {
+                self.check_operand(op, location);
+                let operand_ty = op.ty(self.body, self.tcx());
+
+                let ty::UnsafeBinder(binder_ty) = *ty.kind() else {
+                    unreachable!();
+                };
+                let expected_ty = self.infcx.instantiate_binder_with_fresh_vars(
+                    self.body().source_info(location).span,
+                    BoundRegionConversionTime::HigherRankedType,
+                    binder_ty.into(),
+                );
+                self.sub_types(
+                    operand_ty,
+                    expected_ty,
+                    location.to_locations(),
+                    ConstraintCategory::Boring,
+                )
+                .unwrap();
+            }
+
             Rvalue::RawPtr(..)
             | Rvalue::ThreadLocalRef(..)
             | Rvalue::Len(..)
@@ -2258,7 +2301,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::NullaryOp(..)
             | Rvalue::CopyForDeref(..)
             | Rvalue::UnaryOp(..)
-            | Rvalue::Discriminant(..) => None,
+            | Rvalue::Discriminant(..)
+            | Rvalue::WrapUnsafeBinder(..) => None,
 
             Rvalue::Aggregate(aggregate, _) => match **aggregate {
                 AggregateKind::Adt(_, _, _, user_ty, _) => user_ty,
@@ -2450,7 +2494,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 | ProjectionElem::OpaqueCast(..)
                 | ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Subslice { .. } => {
+                | ProjectionElem::Subslice { .. }
+                | ProjectionElem::UnwrapUnsafeBinder(_) => {
                     // other field access
                 }
                 ProjectionElem::Subtype(_) => {

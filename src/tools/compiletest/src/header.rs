@@ -882,14 +882,6 @@ fn iter_header(
         }
         let ln = ln.trim();
 
-        // Assume that any directives will be found before the first module or function. This
-        // doesn't seem to be an optimization with a warm page cache. Maybe with a cold one.
-        // FIXME(jieyouxu): this will cause `//@` directives in the rest of the test file to
-        // not be checked.
-        if ln.starts_with("fn") || ln.starts_with("mod") {
-            return;
-        }
-
         let Some(directive_line) = line_directive(line_number, comment, ln) else {
             continue;
         };

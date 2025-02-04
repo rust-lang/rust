@@ -79,6 +79,7 @@ pub struct AutoDiffItem {
     pub target: String,
     pub attrs: AutoDiffAttrs,
 }
+
 #[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct AutoDiffAttrs {
     /// Conceptually either forward or reverse mode AD, as described in various autodiff papers and
@@ -231,7 +232,7 @@ impl AutoDiffAttrs {
         self.ret_activity == DiffActivity::ActiveOnly
     }
 
-    pub fn error() -> Self {
+    pub const fn error() -> Self {
         AutoDiffAttrs {
             mode: DiffMode::Error,
             ret_activity: DiffActivity::None,

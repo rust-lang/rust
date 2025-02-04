@@ -91,7 +91,7 @@ pub use keys::{AsLocalKey, Key, LocalCrate};
 pub mod on_disk_cache;
 #[macro_use]
 pub mod plumbing;
-pub use plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsure, TyCtxtEnsureWithValue};
+pub use plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk};
 
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
@@ -1087,7 +1087,7 @@ rustc_queries! {
 
     query check_mod_type_wf(key: LocalModDefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "checking that types are well-formed in {}", describe_as_module(key, tcx) }
-        ensure_forwards_result_if_red
+        return_result_from_ensure_ok
     }
 
     /// Caches `CoerceUnsized` kinds for impls on custom types.
@@ -1095,7 +1095,7 @@ rustc_queries! {
         desc { |tcx| "computing CoerceUnsized info for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
-        ensure_forwards_result_if_red
+        return_result_from_ensure_ok
     }
 
     query typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
@@ -1110,7 +1110,7 @@ rustc_queries! {
 
     query coherent_trait(def_id: DefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "coherence checking all impls of trait `{}`", tcx.def_path_str(def_id) }
-        ensure_forwards_result_if_red
+        return_result_from_ensure_ok
     }
 
     /// Borrow-checks the function body. If this is a closure, returns
@@ -1140,7 +1140,7 @@ rustc_queries! {
     /// </div>
     query crate_inherent_impls_validity_check(_: ()) -> Result<(), ErrorGuaranteed> {
         desc { "check for inherent impls that should not be defined in crate" }
-        ensure_forwards_result_if_red
+        return_result_from_ensure_ok
     }
 
     /// Checks all types in the crate for overlap in their inherent impls. Reports errors.
@@ -1152,7 +1152,7 @@ rustc_queries! {
     /// </div>
     query crate_inherent_impls_overlap_check(_: ()) -> Result<(), ErrorGuaranteed> {
         desc { "check for overlap between inherent impls defined in this crate" }
-        ensure_forwards_result_if_red
+        return_result_from_ensure_ok
     }
 
     /// Checks whether all impls in the crate pass the overlap check, returning
@@ -1162,7 +1162,7 @@ rustc_queries! {
             "checking whether impl `{}` follows the orphan rules",
             tcx.def_path_str(key),
         }
-        ensure_forwards_result_if_red
+        return_result_from_ensure_ok
     }
 
     /// Check whether the function has any recursion that could cause the inliner to trigger
@@ -1256,9 +1256,9 @@ rustc_queries! {
         desc { "evaluating type-level constant" }
     }
 
-    /// Converts a type level constant value into `ConstValue`
-    query valtree_to_const_val(key: (Ty<'tcx>, ty::ValTree<'tcx>)) -> mir::ConstValue<'tcx> {
-        desc { "converting type-level constant value to mir constant value"}
+    /// Converts a type-level constant value into a MIR constant value.
+    query valtree_to_const_val(key: ty::Value<'tcx>) -> mir::ConstValue<'tcx> {
+        desc { "converting type-level constant value to MIR constant value"}
     }
 
     /// Destructures array, ADT or tuple constants into the constants
@@ -1437,9 +1437,9 @@ rustc_queries! {
         desc { |tcx| "finding all existential vtable entries for trait `{}`", tcx.def_path_str(key) }
     }
 
-    query vtable_entries(key: ty::PolyTraitRef<'tcx>)
+    query vtable_entries(key: ty::TraitRef<'tcx>)
                         -> &'tcx [ty::VtblEntry<'tcx>] {
-        desc { |tcx| "finding all vtable entries for trait `{}`", tcx.def_path_str(key.def_id()) }
+        desc { |tcx| "finding all vtable entries for trait `{}`", tcx.def_path_str(key.def_id) }
     }
 
     query first_method_vtable_slot(key: ty::TraitRef<'tcx>) -> usize {
@@ -1451,7 +1451,7 @@ rustc_queries! {
             key.1, key.0 }
     }
 
-    query vtable_allocation(key: (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>)) -> mir::interpret::AllocId {
+    query vtable_allocation(key: (Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>)) -> mir::interpret::AllocId {
         desc { |tcx| "vtable const allocation for <{} as {}>",
             key.0,
             key.1.map(|trait_ref| format!("{trait_ref}")).unwrap_or("_".to_owned())
@@ -1479,7 +1479,7 @@ rustc_queries! {
     query specialization_graph_of(trait_id: DefId) -> Result<&'tcx specialization_graph::Graph, ErrorGuaranteed> {
         desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(trait_id) }
         cache_on_disk_if { true }
-        ensure_forwards_result_if_red
+        return_result_from_ensure_ok
     }
     query dyn_compatibility_violations(trait_id: DefId) -> &'tcx [DynCompatibilityViolation] {
         desc { |tcx| "determining dyn-compatibility of trait `{}`", tcx.def_path_str(trait_id) }
@@ -1715,12 +1715,12 @@ rustc_queries! {
 
     query check_well_formed(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "checking that `{}` is well-formed", tcx.def_path_str(key) }
-        ensure_forwards_result_if_red
+        return_result_from_ensure_ok
     }
 
     query enforce_impl_non_lifetime_params_are_constrained(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "checking that `{}`'s generics are constrained by the impl header", tcx.def_path_str(key) }
-        ensure_forwards_result_if_red
+        return_result_from_ensure_ok
     }
 
     // The `DefId`s of all non-generic functions and statics in the given crate
@@ -2442,7 +2442,7 @@ rustc_queries! {
     /// Any other def id will ICE.
     query compare_impl_item(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "checking assoc item `{}` is compatible with trait definition", tcx.def_path_str(key) }
-        ensure_forwards_result_if_red
+        return_result_from_ensure_ok
     }
 
     query deduced_param_attrs(def_id: DefId) -> &'tcx [ty::DeducedParamAttrs] {

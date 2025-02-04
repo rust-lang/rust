@@ -41,6 +41,8 @@ pub fn sort<T, F: FnMut(&T, &T) -> bool, BufT: BufGuard<T>>(v: &mut [T], is_less
 
     cfg_if! {
         if #[cfg(any(feature = "optimize_for_size", target_pointer_width = "16"))] {
+            // Unlike driftsort, mergesort only requires len / 2,
+            // not len - len / 2.
             let alloc_len = len / 2;
 
             cfg_if! {
@@ -91,16 +93,26 @@ fn driftsort_main<T, F: FnMut(&T, &T) -> bool, BufT: BufGuard<T>>(v: &mut [T], i
     // By allocating n elements of memory we can ensure the entire input can
     // be sorted using stable quicksort, which allows better performance on
     // random and low-cardinality distributions. However, we still want to
-    // reduce our memory usage to n / 2 for large inputs. We do this by scaling
-    // our allocation as max(n / 2, min(n, 8MB)), ensuring we scale like n for
-    // small inputs and n / 2 for large inputs, without a sudden drop off. We
-    // also need to ensure our alloc >= MIN_SMALL_SORT_SCRATCH_LEN, as the
+    // reduce our memory usage to n - n / 2 for large inputs. We do this by scaling
+    // our allocation as max(n - n / 2, min(n, 8MB)), ensuring we scale like n for
+    // small inputs and n - n / 2 for large inputs, without a sudden drop off. We
+    // also need to ensure our alloc >= SMALL_SORT_GENERAL_SCRATCH_LEN, as the
     // small-sort always needs this much memory.
+    //
+    // driftsort will produce unsorted runs of up to min_good_run_len, which
+    // is at most len - len / 2.
+    // Unsorted runs need to be processed by quicksort, which requires as much
+    // scratch space as the run length, therefore the scratch space must be at
+    // least len - len / 2.
+    // If min_good_run_len is ever modified, this code must be updated to allocate
+    // the correct scratch size for it.
     const MAX_FULL_ALLOC_BYTES: usize = 8_000_000; // 8MB
     let max_full_alloc = MAX_FULL_ALLOC_BYTES / mem::size_of::<T>();
     let len = v.len();
-    let alloc_len =
-        cmp::max(cmp::max(len / 2, cmp::min(len, max_full_alloc)), SMALL_SORT_GENERAL_SCRATCH_LEN);
+    let alloc_len = cmp::max(
+        cmp::max(len - len / 2, cmp::min(len, max_full_alloc)),
+        SMALL_SORT_GENERAL_SCRATCH_LEN,
+    );
 
     // For small inputs 4KiB of stack storage suffices, which allows us to avoid
     // calling the (de-)allocator. Benchmarks showed this was quite beneficial.

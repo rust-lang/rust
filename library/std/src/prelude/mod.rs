@@ -120,16 +120,6 @@ mod common;
 pub mod v1 {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::common::*;
-
-    // Do not `doc(inline)` these `doc(hidden)` items.
-    #[unstable(
-        feature = "rustc_encodable_decodable",
-        issue = "none",
-        soft,
-        reason = "derive macro for `rustc-serialize`; should not be used in new code"
-    )]
-    #[allow(deprecated)]
-    pub use core::prelude::v1::{RustcDecodable, RustcEncodable};
 }
 
 /// The 2015 version of the prelude of The Rust Standard Library.

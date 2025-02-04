@@ -25,11 +25,10 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
 use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
-use rustc_trait_selection::regions::InferCtxtRegionExt;
+use rustc_trait_selection::regions::{InferCtxtRegionExt, OutlivesEnvironmentBuildExt};
 use rustc_trait_selection::traits::misc::{
     ConstParamTyImplementationError, type_allowed_to_implement_const_param_ty,
 };
-use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, FulfillmentError, Obligation, ObligationCause, ObligationCauseCode, ObligationCtxt,
@@ -128,13 +127,17 @@ where
     let infcx_compat = infcx.fork();
 
     // We specifically want to call the non-compat version of `implied_bounds_tys`; we do this always.
-    let implied_bounds =
-        infcx.implied_bounds_tys_compat(param_env, body_def_id, &assumed_wf_types, false);
-    let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
+    let outlives_env = OutlivesEnvironment::new_with_implied_bounds_compat(
+        &infcx,
+        body_def_id,
+        param_env,
+        assumed_wf_types.iter().copied(),
+        false,
+    );
 
     lint_redundant_lifetimes(tcx, body_def_id, &outlives_env);
 
-    let errors = infcx.resolve_regions(&outlives_env);
+    let errors = infcx.resolve_regions_with_outlives_env(&outlives_env);
     if errors.is_empty() {
         return Ok(());
     }
@@ -172,10 +175,14 @@ where
     // but that does result in slightly more work when this option is set and
     // just obscures what we mean here anyways. Let's just be explicit.
     if is_bevy && !infcx.tcx.sess.opts.unstable_opts.no_implied_bounds_compat {
-        let implied_bounds =
-            infcx_compat.implied_bounds_tys_compat(param_env, body_def_id, &assumed_wf_types, true);
-        let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
-        let errors_compat = infcx_compat.resolve_regions(&outlives_env);
+        let outlives_env = OutlivesEnvironment::new_with_implied_bounds_compat(
+            &infcx,
+            body_def_id,
+            param_env,
+            assumed_wf_types,
+            true,
+        );
+        let errors_compat = infcx_compat.resolve_regions_with_outlives_env(&outlives_env);
         if errors_compat.is_empty() {
             Ok(())
         } else {
@@ -321,16 +328,20 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         hir::ItemKind::TraitAlias(..) => check_trait(tcx, item),
         // `ForeignItem`s are handled separately.
         hir::ItemKind::ForeignMod { .. } => Ok(()),
-        hir::ItemKind::TyAlias(hir_ty, hir_generics) => {
-            if tcx.type_alias_is_lazy(item.owner_id) {
-                // Bounds of lazy type aliases and of eager ones that contain opaque types are respected.
-                // E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`.
-                let res = check_item_type(tcx, def_id, hir_ty.span, UnsizedHandling::Allow);
-                check_variances_for_type_defn(tcx, item, hir_generics);
-                res
-            } else {
+        hir::ItemKind::TyAlias(hir_ty, hir_generics) if tcx.type_alias_is_lazy(item.owner_id) => {
+            let res = enter_wf_checking_ctxt(tcx, item.span, def_id, |wfcx| {
+                let ty = tcx.type_of(def_id).instantiate_identity();
+                let item_ty = wfcx.normalize(hir_ty.span, Some(WellFormedLoc::Ty(def_id)), ty);
+                wfcx.register_wf_obligation(
+                    hir_ty.span,
+                    Some(WellFormedLoc::Ty(def_id)),
+                    item_ty.into(),
+                );
+                check_where_clauses(wfcx, item.span, def_id);
                 Ok(())
-            }
+            });
+            check_variances_for_type_defn(tcx, item, hir_generics);
+            res
         }
         _ => Ok(()),
     };
@@ -769,12 +780,7 @@ fn test_region_obligations<'tcx>(
 
     add_constraints(&infcx);
 
-    let outlives_environment = OutlivesEnvironment::with_bounds(
-        param_env,
-        infcx.implied_bounds_tys(param_env, id, wf_tys),
-    );
-
-    let errors = infcx.resolve_regions(&outlives_environment);
+    let errors = infcx.resolve_regions(id, param_env, wf_tys.iter().copied());
     debug!(?errors, "errors");
 
     // If we were able to prove that the type outlives the region without
@@ -1044,7 +1050,7 @@ fn check_associated_item(
 
         // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
         // other `Foo` impls are incoherent.
-        tcx.ensure()
+        tcx.ensure_ok()
             .coherent_trait(tcx.parent(item.trait_item_def_id.unwrap_or(item_id.into())))?;
 
         let self_ty = match item.container {
@@ -1274,7 +1280,6 @@ fn check_item_fn(
 
 enum UnsizedHandling {
     Forbid,
-    Allow,
     AllowIfForeignTail,
 }
 
@@ -1292,7 +1297,6 @@ fn check_item_type(
 
         let forbid_unsized = match unsized_handling {
             UnsizedHandling::Forbid => true,
-            UnsizedHandling::Allow => false,
             UnsizedHandling::AllowIfForeignTail => {
                 let tail =
                     tcx.struct_tail_for_codegen(item_ty, wfcx.infcx.typing_env(wfcx.param_env));
@@ -1352,7 +1356,7 @@ fn check_impl<'tcx>(
                 let trait_ref = tcx.impl_trait_ref(item.owner_id).unwrap().instantiate_identity();
                 // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
                 // other `Foo` impls are incoherent.
-                tcx.ensure().coherent_trait(trait_ref.def_id)?;
+                tcx.ensure_ok().coherent_trait(trait_ref.def_id)?;
                 let trait_span = hir_trait_ref.path.span;
                 let trait_ref = wfcx.normalize(
                     trait_span,
@@ -2265,14 +2269,14 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
 fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalModDefId) -> Result<(), ErrorGuaranteed> {
     let items = tcx.hir_module_items(module);
-    let mut res = items.par_items(|item| tcx.ensure().check_well_formed(item.owner_id.def_id));
-    res =
-        res.and(items.par_impl_items(|item| tcx.ensure().check_well_formed(item.owner_id.def_id)));
-    res =
-        res.and(items.par_trait_items(|item| tcx.ensure().check_well_formed(item.owner_id.def_id)));
-    res = res
-        .and(items.par_foreign_items(|item| tcx.ensure().check_well_formed(item.owner_id.def_id)));
-    res = res.and(items.par_opaques(|item| tcx.ensure().check_well_formed(item)));
+    let res = items
+        .par_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id))
+        .and(items.par_impl_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)))
+        .and(items.par_trait_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)))
+        .and(
+            items.par_foreign_items(|item| tcx.ensure_ok().check_well_formed(item.owner_id.def_id)),
+        )
+        .and(items.par_opaques(|item| tcx.ensure_ok().check_well_formed(item)));
     if module == LocalModDefId::CRATE_DEF_ID {
         super::entry::check_for_entry_fn(tcx);
     }

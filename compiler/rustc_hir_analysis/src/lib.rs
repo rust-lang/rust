@@ -83,12 +83,11 @@ pub mod autoderef;
 mod bounds;
 mod check_unused;
 mod coherence;
-mod delegation;
-pub mod hir_ty_lowering;
-// FIXME: This module shouldn't be public.
-pub mod collect;
+mod collect;
 mod constrained_generic_params;
+mod delegation;
 mod errors;
+pub mod hir_ty_lowering;
 pub mod hir_wf_check;
 mod impl_wf_check;
 mod outlives;
@@ -101,10 +100,11 @@ use rustc_middle::middle;
 use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
-use rustc_span::Span;
+use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits;
 
-use self::hir_ty_lowering::{FeedConstTy, HirTyLowerer};
+pub use crate::collect::suggest_impl_trait;
+use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -139,24 +139,31 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
     tcx.sess.time("coherence_checking", || {
+        // When discarding query call results, use an explicit type to indicate
+        // what we are intending to discard, to help future type-based refactoring.
+        type R = Result<(), ErrorGuaranteed>;
+
         tcx.hir().par_for_each_module(|module| {
-            let _ = tcx.ensure().check_mod_type_wf(module);
+            let _: R = tcx.ensure_ok().check_mod_type_wf(module);
         });
 
         for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
-            let _ = tcx.ensure().coherent_trait(trait_def_id);
+            let _: R = tcx.ensure_ok().coherent_trait(trait_def_id);
         }
         // these queries are executed for side-effects (error reporting):
-        let _ = tcx.ensure().crate_inherent_impls_validity_check(());
-        let _ = tcx.ensure().crate_inherent_impls_overlap_check(());
+        let _: R = tcx.ensure_ok().crate_inherent_impls_validity_check(());
+        let _: R = tcx.ensure_ok().crate_inherent_impls_overlap_check(());
     });
 
     if tcx.features().rustc_attrs() {
-        tcx.sess.time("outlives_dumping", || outlives::dump::inferred_outlives(tcx));
-        tcx.sess.time("variance_dumping", || variance::dump::variances(tcx));
-        collect::dump::opaque_hidden_types(tcx);
-        collect::dump::predicates_and_item_bounds(tcx);
-        collect::dump::def_parents(tcx);
+        tcx.sess.time("dumping_rustc_attr_data", || {
+            outlives::dump::inferred_outlives(tcx);
+            variance::dump::variances(tcx);
+            collect::dump::opaque_hidden_types(tcx);
+            collect::dump::predicates_and_item_bounds(tcx);
+            collect::dump::def_parents(tcx);
+            collect::dump::vtables(tcx);
+        });
     }
 
     // Make sure we evaluate all static and (non-associated) const items, even if unused.
@@ -164,12 +171,12 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     tcx.hir().par_body_owners(|item_def_id| {
         let def_kind = tcx.def_kind(item_def_id);
         match def_kind {
-            DefKind::Static { .. } => tcx.ensure().eval_static_initializer(item_def_id),
+            DefKind::Static { .. } => tcx.ensure_ok().eval_static_initializer(item_def_id),
             DefKind::Const if tcx.generics_of(item_def_id).is_empty() => {
                 let instance = ty::Instance::new(item_def_id.into(), ty::GenericArgs::empty());
                 let cid = GlobalId { instance, promoted: None };
                 let typing_env = ty::TypingEnv::fully_monomorphized();
-                tcx.ensure().eval_to_const_value_raw(typing_env.as_query_input(cid));
+                tcx.ensure_ok().eval_to_const_value_raw(typing_env.as_query_input(cid));
             }
             _ => (),
         }
@@ -182,11 +189,11 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     tcx.hir().par_body_owners(|item_def_id| {
         let def_kind = tcx.def_kind(item_def_id);
         if !matches!(def_kind, DefKind::AnonConst) {
-            tcx.ensure().typeck(item_def_id);
+            tcx.ensure_ok().typeck(item_def_id);
         }
     });
 
-    tcx.ensure().check_unused_traits(());
+    tcx.ensure_ok().check_unused_traits(());
 }
 
 /// Lower a [`hir::Ty`] to a [`Ty`].
