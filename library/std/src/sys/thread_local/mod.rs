@@ -170,6 +170,15 @@ pub(crate) mod key {
             pub(crate) use xous::destroy_tls;
             pub(super) use xous::{Key, get, set};
             use xous::{create, destroy};
+        } else if #[cfg(target_os = "trusty")] {
+            #[allow(unused_unsafe)]
+            mod racy;
+            #[cfg(test)]
+            mod tests;
+            mod trusty;
+            pub(super) use racy::LazyKey;
+            pub(super) use trusty::{Key, get, set};
+            use trusty::{create, destroy};
         }
     }
 }
