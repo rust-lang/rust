@@ -2077,3 +2077,51 @@ fn clone_to_uninit() {
     unsafe { a.clone_to_uninit(ptr::from_mut::<Path>(&mut b).cast()) };
     assert_eq!(a, &*b);
 }
+
+#[test]
+fn normalize_lexically() {
+    #[track_caller]
+    fn check(a: &str, b: Result<&str, NormalizeError>) {
+        assert_eq!(Path::new(a).normalize_lexically(), b.map(PathBuf::from));
+    }
+
+    // Relative paths
+    check("a", Ok("a"));
+    check("./a", Ok("./a"));
+    check("a/b/c", Ok("a/b/c"));
+    check("a/././b/./c/.", Ok("a/b/c"));
+    check("a/../c", Ok("c"));
+    check("./a/b", Ok("./a/b"));
+    check("a/../b/c/..", Ok("b"));
+
+    check("..", Err(NormalizeError));
+    check("../..", Err(NormalizeError));
+    check("a/../..", Err(NormalizeError));
+    check("a/../../b", Err(NormalizeError));
+    check("a/../../b/c", Err(NormalizeError));
+    check("a/../b/../..", Err(NormalizeError));
+
+    // Check we don't escape the root or prefix
+    #[cfg(unix)]
+    {
+        check("/..", Err(NormalizeError));
+        check("/a/../..", Err(NormalizeError));
+    }
+    #[cfg(windows)]
+    {
+        check(r"C:\..", Err(NormalizeError));
+        check(r"C:\a\..\..", Err(NormalizeError));
+
+        check(r"C:..", Err(NormalizeError));
+        check(r"C:a\..\..", Err(NormalizeError));
+
+        check(r"\\server\share\..", Err(NormalizeError));
+        check(r"\\server\share\a\..\..", Err(NormalizeError));
+
+        check(r"\..", Err(NormalizeError));
+        check(r"\a\..\..", Err(NormalizeError));
+
+        check(r"\\?\UNC\server\share\..", Err(NormalizeError));
+        check(r"\\?\UNC\server\share\a\..\..", Err(NormalizeError));
+    }
+}
