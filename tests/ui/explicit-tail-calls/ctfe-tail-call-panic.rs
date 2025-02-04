@@ -6,12 +6,11 @@ pub const fn f() {
 }
 
 const fn g() {
-    panic!()
-    //~^ error: evaluation of constant value failed
-    //~| note: in this expansion of panic!
+    panic!() //~ NOTE called from `g`
+    //~^ NOTE in this expansion of panic!
 }
 
-const _: () = f();
-//~^ note: called from `_`
+const _: () = f(); //~ ERROR evaluation of constant value failed
+//~^ NOTE explicit panic
 
 fn main() {}

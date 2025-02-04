@@ -69,7 +69,7 @@ pub fn get_span_and_frames<'tcx>(
     let mut stacktrace = Frame::generate_stacktrace_from_stack(stack);
     // Filter out `requires_caller_location` frames.
     stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*tcx));
-    let span = stacktrace.first().map(|f| f.span).unwrap_or(tcx.span);
+    let span = stacktrace.last().map(|f| f.span).unwrap_or(tcx.span);
 
     let mut frames = Vec::new();
 
@@ -111,6 +111,10 @@ pub fn get_span_and_frames<'tcx>(
             add_frame(frame);
         }
     }
+    frames.reverse();
+    if frames.len() > 0 {
+        frames.remove(0);
+    }
 
     (span, frames)
 }
@@ -147,11 +151,8 @@ where
         }
         // Report remaining errors.
         _ => {
-            let (our_span, mut frames) = get_span_and_frames();
+            let (our_span, frames) = get_span_and_frames();
             let span = span.substitute_dummy(our_span);
-            if frames.len() > 0 {
-                frames.remove(0);
-            }
             let err = mk(span, frames);
             let mut err = tcx.dcx().create_err(err);
             // We allow invalid programs in infallible promoteds since invalid layouts can occur

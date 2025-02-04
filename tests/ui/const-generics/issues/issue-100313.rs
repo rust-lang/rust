@@ -7,14 +7,13 @@ impl<const B: &'static bool> T<B> {
     const fn set_false(&self) {
         unsafe {
             *(B as *const bool as *mut bool) = false;
-            //~^ ERROR evaluation of constant value failed [E0080]
         }
     }
 }
 
 const _: () = {
     let x = T::<{ &true }>;
-    x.set_false();
+    x.set_false(); //~ ERROR evaluation of constant value failed [E0080]
 };
 
 fn main() {}
