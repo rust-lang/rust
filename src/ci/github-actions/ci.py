@@ -195,6 +195,19 @@ def format_run_type(run_type: WorkflowRunType) -> str:
         raise AssertionError()
 
 
+# Add new function before main:
+def substitute_github_vars(jobs: list) -> list:
+    """Replace GitHub context variables with environment variables in job configs."""
+    for job in jobs:
+        if "os" in job:
+            job["os"] = (
+                job["os"]
+                .replace("${{ github.run_id }}", os.environ["GITHUB_RUN_ID"])
+                .replace("${{ github.run_attempt }}", os.environ["GITHUB_RUN_ATTEMPT"])
+            )
+    return jobs
+
+
 def get_job_image(job: Job) -> str:
     """
     By default, the Docker image of a job is based on its name.
@@ -265,6 +278,7 @@ def calculate_job_matrix(job_data: Dict[str, Any]):
     if run_type is not None:
         jobs = calculate_jobs(run_type, job_data)
     jobs = skip_jobs(jobs, channel)
+    jobs = substitute_github_vars(jobs)
 
     if not jobs:
         raise Exception("Scheduled job list is empty, this is an error")

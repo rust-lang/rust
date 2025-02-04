@@ -52,6 +52,16 @@ runners:
     free_disk: true
     os: ubuntu-24.04-arm
 
+  - &job-linux-8c-codebuild
+    free_disk: true
+    os: codebuild-ubuntu-22-8c-${{ github.run_id }}-${{ github.run_attempt }}
+    <<: *base-job
+
+  - &job-linux-36c-codebuild
+    free_disk: true
+    os: codebuild-ubuntu-22-36c-${{ github.run_id }}-${{ github.run_attempt }}
+    <<: *base-job
+
   - &job-aarch64-linux-8c
     os: ubuntu-22.04-arm64-8core-32gb
 envs:
@@ -152,7 +162,7 @@ auto:
     <<: *job-linux-4c
 
   - name: dist-arm-linux
-    <<: *job-linux-8c
+    <<: *job-linux-8c-codebuild
 
   - name: dist-armhf-linux
     <<: *job-linux-4c
@@ -182,7 +192,7 @@ auto:
     <<: *job-linux-4c
 
   - name: dist-powerpc64le-linux
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-36c-codebuild
 
   - name: dist-riscv64-linux
     <<: *job-linux-4c
@@ -205,13 +215,13 @@ auto:
   - name: dist-x86_64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-16c
+    <<: *job-linux-36c-codebuild
 
   - name: dist-x86_64-linux-alt
     env:
       IMAGE: dist-x86_64-linux
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-16c
+    <<: *job-linux-36c-codebuild
 
   - name: dist-x86_64-musl
     env:
@@ -264,7 +274,7 @@ auto:
     # nightly features to compile, and this job would fail if
     # executed on beta and stable.
     only_on_channel: nightly
-    <<: *job-linux-8c
+    <<: *job-linux-36c-codebuild
 
   # Tests integration with Rust for Linux.
   # Builds stage 1 compiler and tries to compile a few RfL examples with it.
@@ -272,7 +282,7 @@ auto:
     <<: *job-linux-4c
 
   - name: x86_64-gnu
-    <<: *job-linux-4c
+    <<: *job-linux-8c-codebuild
 
   # This job ensures commits landing on nightly still pass the full
   # test suite on the stable channel. There are some UI tests that
@@ -295,10 +305,10 @@ auto:
   - name: x86_64-gnu-debug
     # This seems to be needed because a full stage 2 build + run-make tests
     # overwhelms the storage capacity of the standard 4c runner.
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-8c-codebuild
 
   - name: x86_64-gnu-distcheck
-    <<: *job-linux-8c
+    <<: *job-linux-8c-codebuild
 
   # The x86_64-gnu-llvm-19 job is split into multiple jobs to run tests in parallel.
   # x86_64-gnu-llvm-19-1 skips tests that run in x86_64-gnu-llvm-19-{2,3}.
