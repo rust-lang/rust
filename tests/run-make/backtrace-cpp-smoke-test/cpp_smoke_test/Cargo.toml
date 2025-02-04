@@ -1,0 +1,12 @@
+[package]
+name = "cpp_smoke_test"
+version = "0.1.0"
+authors = ["Nick Fitzgerald <fitzgen@gmail.com>"]
+edition = "2021"
+build = "build.rs"
+
+[build-dependencies]
+cc = "1.0"
+
+[dependencies]
+backtrace = { version = "0.3.74", features = ["cpp_demangle"] }
