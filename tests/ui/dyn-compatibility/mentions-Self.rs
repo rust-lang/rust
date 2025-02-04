@@ -1,10 +1,6 @@
 // Check that we correctly prevent users from making trait objects
 // form traits that make use of `Self` in an argument or return
 // position, unless `where Self : Sized` is present..
-//
-//@ revisions: curr dyn_compatible_for_dispatch
-
-#![cfg_attr(dyn_compatible_for_dispatch, feature(dyn_compatible_for_dispatch))]
 
 
 trait Bar {
@@ -20,13 +16,13 @@ trait Quux {
 }
 
 fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
-    //[curr]~^ ERROR E0038
+    //~^ ERROR E0038
     t
     //~^ ERROR E0038
 }
 
 fn make_baz<T:Baz>(t: &T) -> &dyn Baz {
-    //[curr]~^ ERROR E0038
+    //~^ ERROR E0038
     t
     //~^ ERROR E0038
 }
