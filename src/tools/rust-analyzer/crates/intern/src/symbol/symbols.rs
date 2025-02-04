@@ -481,6 +481,7 @@ define_symbols! {
     u64,
     u8,
     unadjusted,
+    unknown,
     Unknown,
     unpin,
     unreachable_2015,
