@@ -3,12 +3,12 @@ error[E0080]: evaluation of constant value failed
    |
    = note: entering unreachable code
    |
-note: inside `ub`
+note: called from `ub`
   --> $DIR/interpret-in-promoted.rs:7:5
    |
 LL |     std::hint::unreachable_unchecked();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: inside `FOO`
+note: called from `FOO`
   --> $DIR/interpret-in-promoted.rs:13:28
    |
 LL |     let _x: &'static () = &ub();

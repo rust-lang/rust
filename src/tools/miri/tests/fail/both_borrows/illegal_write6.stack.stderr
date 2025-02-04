@@ -17,7 +17,7 @@ help: <TAG> is this argument
 LL | fn foo(a: &mut u32, y: *mut u32) -> u32 {
    |        ^
    = note: BACKTRACE (of the first span):
-   = note: inside `foo` at tests/fail/both_borrows/illegal_write6.rs:LL:CC
+   = note: called from `foo` at tests/fail/both_borrows/illegal_write6.rs:LL:CC
 note: inside `main`
   --> tests/fail/both_borrows/illegal_write6.rs:LL:CC
    |

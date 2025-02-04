@@ -7,7 +7,7 @@ LL |     unsafe { &(*x).0 as *const i32 }
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `via_ref` at tests/fail/dangling_pointers/dangling_pointer_to_raw_pointer.rs:LL:CC
+   = note: called from `via_ref` at tests/fail/dangling_pointers/dangling_pointer_to_raw_pointer.rs:LL:CC
 note: inside `main`
   --> tests/fail/dangling_pointers/dangling_pointer_to_raw_pointer.rs:LL:CC
    |

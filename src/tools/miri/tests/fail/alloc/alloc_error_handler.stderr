@@ -6,12 +6,12 @@ LL |     ABORT();
    | ^ the program aborted execution
    |
    = note: BACKTRACE:
-   = note: inside `std::sys::pal::PLATFORM::abort_internal` at RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
-   = note: inside `std::process::abort` at RUSTLIB/std/src/process.rs:LL:CC
-   = note: inside `std::alloc::rust_oom` at RUSTLIB/std/src/alloc.rs:LL:CC
-   = note: inside `std::alloc::_::__rg_oom` at RUSTLIB/std/src/alloc.rs:LL:CC
-   = note: inside `std::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: inside `std::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: called from `std::sys::pal::PLATFORM::abort_internal` at RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
+   = note: called from `std::process::abort` at RUSTLIB/std/src/process.rs:LL:CC
+   = note: called from `std::alloc::rust_oom` at RUSTLIB/std/src/alloc.rs:LL:CC
+   = note: called from `std::alloc::_::__rg_oom` at RUSTLIB/std/src/alloc.rs:LL:CC
+   = note: called from `std::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: called from `std::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
 note: inside `main`
   --> tests/fail/alloc/alloc_error_handler.rs:LL:CC
    |

@@ -23,7 +23,7 @@ error[E0080]: could not evaluate static initializer
    |
    = note: the type `MySlice<[bool]>` has an unknown layout
    |
-note: inside `CHECK`
+note: called from `CHECK`
   --> $DIR/invalid-unsized-in-always-sized-tail.rs:15:28
    |
 LL | static CHECK: () = assert!(align_of::<P2>() == 1);

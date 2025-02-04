@@ -29,7 +29,7 @@ help: the protected tag <TAG> was created here, in the initial state Reserved
 LL |         unsafe fn write_second(x: &mut u8, y: *mut u8) {
    |                                ^
    = note: BACKTRACE (of the first span):
-   = note: inside `main::write_second` at tests/fail/tree_borrows/reserved/int-protected-write.rs:LL:CC
+   = note: called from `main::write_second` at tests/fail/tree_borrows/reserved/int-protected-write.rs:LL:CC
 note: inside `main`
   --> tests/fail/tree_borrows/reserved/int-protected-write.rs:LL:CC
    |

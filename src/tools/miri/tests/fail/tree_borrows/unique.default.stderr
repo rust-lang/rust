@@ -24,7 +24,7 @@ LL |         let _definitely_parent = data; // definitely Frozen by now
    |                                  ^^^^
    = help: this transition corresponds to a loss of write permissions
    = note: BACKTRACE (of the first span):
-   = note: inside `main` at tests/fail/tree_borrows/unique.rs:LL:CC
+   = note: called from `main` at tests/fail/tree_borrows/unique.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

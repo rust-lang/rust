@@ -19,7 +19,7 @@ help: the protected tag <TAG> was created here, in the initial state Frozen
 LL | fn inner(x: *mut i32, _y: &i32) {
    |                       ^^
    = note: BACKTRACE (of the first span):
-   = note: inside `inner` at tests/fail/both_borrows/invalidate_against_protector3.rs:LL:CC
+   = note: called from `inner` at tests/fail/both_borrows/invalidate_against_protector3.rs:LL:CC
 note: inside `main`
   --> tests/fail/both_borrows/invalidate_against_protector3.rs:LL:CC
    |

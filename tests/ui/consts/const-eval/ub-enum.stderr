@@ -121,7 +121,7 @@ error[E0080]: evaluation of constant value failed
    |
    = note: read discriminant of an uninhabited enum variant
    |
-note: inside `TEST_ICE_89765`
+note: called from `TEST_ICE_89765`
   --> $DIR/ub-enum.rs:103:14
    |
 LL |     unsafe { std::mem::discriminant(&*(&() as *const () as *const Never)); };

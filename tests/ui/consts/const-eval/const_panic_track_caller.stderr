@@ -4,7 +4,7 @@ error[E0080]: evaluation of constant value failed
 LL |     b()
    |     ^^^ hey
    |
-note: inside `X`
+note: called from `X`
   --> $DIR/const_panic_track_caller.rs:20:16
    |
 LL | const X: u32 = c();

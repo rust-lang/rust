@@ -7,7 +7,7 @@ LL |         typed_swap_nonoverlapping(a, b);
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `invalid_array` at tests/fail/intrinsics/typed-swap-invalid-array.rs:LL:CC
+   = note: called from `invalid_array` at tests/fail/intrinsics/typed-swap-invalid-array.rs:LL:CC
 note: inside `main`
   --> tests/fail/intrinsics/typed-swap-invalid-array.rs:LL:CC
    |

@@ -18,15 +18,15 @@ help: the strongly protected tag <TAG> was created here, in the initial state Re
 LL | fn inner(x: &mut i32, f: fn(*mut i32)) {
    |          ^
    = note: BACKTRACE (of the first span):
-   = note: inside `<std::boxed::Box<i32> as std::ops::Drop>::drop` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-   = note: inside `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-   = note: inside `std::mem::drop::<std::boxed::Box<i32>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
+   = note: called from `<std::boxed::Box<i32> as std::ops::Drop>::drop` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+   = note: called from `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+   = note: called from `std::mem::drop::<std::boxed::Box<i32>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
 note: inside closure
   --> tests/fail/tree_borrows/strongly-protected.rs:LL:CC
    |
 LL |         drop(unsafe { Box::from_raw(raw) });
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: inside `<{closure@tests/fail/tree_borrows/strongly-protected.rs:LL:CC} as std::ops::FnOnce<(*mut i32,)>>::call_once - shim` at RUSTLIB/core/src/ops/function.rs:LL:CC
+   = note: called from `<{closure@tests/fail/tree_borrows/strongly-protected.rs:LL:CC} as std::ops::FnOnce<(*mut i32,)>>::call_once - shim` at RUSTLIB/core/src/ops/function.rs:LL:CC
 note: inside `inner`
   --> tests/fail/tree_borrows/strongly-protected.rs:LL:CC
    |
