@@ -681,6 +681,3 @@ unsafe impl<#[may_dangle] T> Drop for OnceLock<T> {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;
