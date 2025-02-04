@@ -1508,6 +1508,8 @@ impl f32 {
     }
 
     /// Float addition that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
@@ -1516,6 +1518,8 @@ impl f32 {
     }
 
     /// Float subtraction that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
@@ -1524,6 +1528,8 @@ impl f32 {
     }
 
     /// Float multiplication that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
@@ -1532,6 +1538,8 @@ impl f32 {
     }
 
     /// Float division that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
@@ -1540,6 +1548,8 @@ impl f32 {
     }
 
     /// Float remainder that allows optimizations based on algebraic rules.
+    ///
+    /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
