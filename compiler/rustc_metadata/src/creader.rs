@@ -23,7 +23,10 @@ use rustc_hir::definitions::Definitions;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
-use rustc_session::config::{self, CrateType, ExternLocation};
+use rustc_session::config::{
+    self, CrateType, ExtendedTargetModifierInfo, ExternLocation, OptionsTargetModifiers,
+    TargetModifier,
+};
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
 use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::validate_crate_name;
@@ -35,7 +38,9 @@ use tracing::{debug, info, trace};
 
 use crate::errors;
 use crate::locator::{CrateError, CrateLocator, CratePaths};
-use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob};
+use crate::rmeta::{
+    CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob, TargetModifiers,
+};
 
 /// The backend's way to give the crate store access to the metadata in a library.
 /// Note that it returns the raw metadata bytes stored in the library file, whether
@@ -293,6 +298,94 @@ impl CStore {
                 self.unused_externs.iter().map(|ident| ident.to_ident_string()).collect::<Vec<_>>();
             let unused_externs = unused_externs.iter().map(String::as_str).collect::<Vec<&str>>();
             tcx.dcx().emit_unused_externs(level, json_unused_externs.is_loud(), &unused_externs);
+        }
+    }
+
+    fn report_target_modifiers_extended(
+        tcx: TyCtxt<'_>,
+        krate: &Crate,
+        mods: &TargetModifiers,
+        dep_mods: &TargetModifiers,
+        data: &CrateMetadata,
+    ) {
+        let span = krate.spans.inner_span.shrink_to_lo();
+        let allowed_flag_mismatches = &tcx.sess.opts.cg.unsafe_allow_abi_mismatch;
+        let name = tcx.crate_name(LOCAL_CRATE);
+        let tmod_extender = |tmod: &TargetModifier| (tmod.extend(), tmod.clone());
+        let report_diff = |prefix: &String,
+                           opt_name: &String,
+                           flag_local_value: &String,
+                           flag_extern_value: &String| {
+            if allowed_flag_mismatches.contains(&opt_name) {
+                return;
+            }
+            tcx.dcx().emit_err(errors::IncompatibleTargetModifiers {
+                span,
+                extern_crate: data.name(),
+                local_crate: name,
+                flag_name: opt_name.clone(),
+                flag_name_prefixed: format!("-{}{}", prefix, opt_name),
+                flag_local_value: flag_local_value.to_string(),
+                flag_extern_value: flag_extern_value.to_string(),
+            });
+        };
+        let mut it1 = mods.iter().map(tmod_extender);
+        let mut it2 = dep_mods.iter().map(tmod_extender);
+        let mut left_name_val: Option<(ExtendedTargetModifierInfo, TargetModifier)> = None;
+        let mut right_name_val: Option<(ExtendedTargetModifierInfo, TargetModifier)> = None;
+        let no_val = "*".to_string();
+        loop {
+            left_name_val = left_name_val.or_else(|| it1.next());
+            right_name_val = right_name_val.or_else(|| it2.next());
+            match (&left_name_val, &right_name_val) {
+                (Some(l), Some(r)) => match l.1.opt.cmp(&r.1.opt) {
+                    cmp::Ordering::Equal => {
+                        if l.0.tech_value != r.0.tech_value {
+                            report_diff(&l.0.prefix, &l.0.name, &l.1.value_name, &r.1.value_name);
+                        }
+                        left_name_val = None;
+                        right_name_val = None;
+                    }
+                    cmp::Ordering::Greater => {
+                        report_diff(&r.0.prefix, &r.0.name, &no_val, &r.1.value_name);
+                        right_name_val = None;
+                    }
+                    cmp::Ordering::Less => {
+                        report_diff(&l.0.prefix, &l.0.name, &l.1.value_name, &no_val);
+                        left_name_val = None;
+                    }
+                },
+                (Some(l), None) => {
+                    report_diff(&l.0.prefix, &l.0.name, &l.1.value_name, &no_val);
+                    left_name_val = None;
+                }
+                (None, Some(r)) => {
+                    report_diff(&r.0.prefix, &r.0.name, &no_val, &r.1.value_name);
+                    right_name_val = None;
+                }
+                (None, None) => break,
+            }
+        }
+    }
+
+    pub fn report_incompatible_target_modifiers(&self, tcx: TyCtxt<'_>, krate: &Crate) {
+        for flag_name in &tcx.sess.opts.cg.unsafe_allow_abi_mismatch {
+            if !OptionsTargetModifiers::is_target_modifier(flag_name) {
+                tcx.dcx().emit_err(errors::UnknownTargetModifierUnsafeAllowed {
+                    span: krate.spans.inner_span.shrink_to_lo(),
+                    flag_name: flag_name.clone(),
+                });
+            }
+        }
+        let mods = tcx.sess.opts.gather_target_modifiers();
+        for (_cnum, data) in self.iter_crate_data() {
+            if data.is_proc_macro_crate() {
+                continue;
+            }
+            let dep_mods = data.target_modifiers();
+            if mods != dep_mods {
+                Self::report_target_modifiers_extended(tcx, krate, &mods, &dep_mods, data);
+            }
         }
     }
 

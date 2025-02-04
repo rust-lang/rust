@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::mem;
 use std::ops::Bound;
 
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::DiagArgValue;
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability};
@@ -476,7 +477,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::Scope { value, lint_level: LintLevel::Explicit(hir_id), region_scope: _ } => {
                 let prev_id = self.hir_context;
                 self.hir_context = hir_id;
-                self.visit_expr(&self.thir[value]);
+                ensure_sufficient_stack(|| {
+                    self.visit_expr(&self.thir[value]);
+                });
                 self.hir_context = prev_id;
                 return; // don't visit the whole expression
             }

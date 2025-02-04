@@ -73,7 +73,7 @@ type Never = std::convert::Infallible;
 /// which means in practice almost every foldable type needs to also be
 /// visitable. (However, there are some types that are visitable without being
 /// foldable.)
-pub trait TypeFoldable<I: Interner>: TypeVisitable<I> {
+pub trait TypeFoldable<I: Interner>: TypeVisitable<I> + Clone {
     /// The entry point for folding. To fold a value `t` with a folder `f`
     /// call: `t.try_fold_with(f)`.
     ///

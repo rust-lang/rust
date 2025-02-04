@@ -78,30 +78,6 @@ impl<'tcx> ValTree<'tcx> {
             Self::Branch(_) => None,
         }
     }
-
-    /// Get the values inside the ValTree as a slice of bytes. This only works for
-    /// constants with types &str, &[u8], or [u8; _].
-    pub fn try_to_raw_bytes(self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<&'tcx [u8]> {
-        match ty.kind() {
-            ty::Ref(_, inner_ty, _) => match inner_ty.kind() {
-                // `&str` can be interpreted as raw bytes
-                ty::Str => {}
-                // `&[u8]` can be interpreted as raw bytes
-                ty::Slice(slice_ty) if *slice_ty == tcx.types.u8 => {}
-                // other `&_` can't be interpreted as raw bytes
-                _ => return None,
-            },
-            // `[u8; N]` can be interpreted as raw bytes
-            ty::Array(array_ty, _) if *array_ty == tcx.types.u8 => {}
-            // Otherwise, type cannot be interpreted as raw bytes
-            _ => return None,
-        }
-
-        Some(
-            tcx.arena
-                .alloc_from_iter(self.unwrap_branch().into_iter().map(|v| v.unwrap_leaf().to_u8())),
-        )
-    }
 }
 
 /// A type-level constant value.
@@ -142,6 +118,29 @@ impl<'tcx> Value<'tcx> {
             return None;
         }
         self.valtree.try_to_scalar_int().map(|s| s.to_target_usize(tcx))
+    }
+
+    /// Get the values inside the ValTree as a slice of bytes. This only works for
+    /// constants with types &str, &[u8], or [u8; _].
+    pub fn try_to_raw_bytes(self, tcx: TyCtxt<'tcx>) -> Option<&'tcx [u8]> {
+        match self.ty.kind() {
+            ty::Ref(_, inner_ty, _) => match inner_ty.kind() {
+                // `&str` can be interpreted as raw bytes
+                ty::Str => {}
+                // `&[u8]` can be interpreted as raw bytes
+                ty::Slice(slice_ty) if *slice_ty == tcx.types.u8 => {}
+                // other `&_` can't be interpreted as raw bytes
+                _ => return None,
+            },
+            // `[u8; N]` can be interpreted as raw bytes
+            ty::Array(array_ty, _) if *array_ty == tcx.types.u8 => {}
+            // Otherwise, type cannot be interpreted as raw bytes
+            _ => return None,
+        }
+
+        Some(tcx.arena.alloc_from_iter(
+            self.valtree.unwrap_branch().into_iter().map(|v| v.unwrap_leaf().to_u8()),
+        ))
     }
 }
 

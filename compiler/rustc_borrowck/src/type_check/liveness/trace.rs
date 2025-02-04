@@ -580,8 +580,8 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         });
 
         // When using `-Zpolonius=next`, we record the variance of each live region.
-        if let Some(polonius_context) = typeck.polonius_context {
-            polonius_context.record_live_region_variance(
+        if let Some(polonius_liveness) = typeck.polonius_liveness.as_mut() {
+            polonius_liveness.record_live_region_variance(
                 typeck.infcx.tcx,
                 typeck.universal_regions,
                 value,

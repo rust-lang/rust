@@ -1487,7 +1487,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             },
             ty::ConstKind::Param(ParamConst { name, .. }) => p!(write("{}", name)),
             ty::ConstKind::Value(cv) => {
-                return self.pretty_print_const_valtree(cv.valtree, cv.ty, print_ty);
+                return self.pretty_print_const_valtree(cv, print_ty);
             }
 
             ty::ConstKind::Bound(debruijn, bound_var) => {
@@ -1787,48 +1787,47 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         Ok(())
     }
 
-    // FIXME(valtrees): Accept `ty::Value` instead of `Ty` and `ty::ValTree` separately.
     fn pretty_print_const_valtree(
         &mut self,
-        valtree: ty::ValTree<'tcx>,
-        ty: Ty<'tcx>,
+        cv: ty::Value<'tcx>,
         print_ty: bool,
     ) -> Result<(), PrintError> {
         define_scoped_cx!(self);
 
         if self.should_print_verbose() {
-            p!(write("ValTree({:?}: ", valtree), print(ty), ")");
+            p!(write("ValTree({:?}: ", cv.valtree), print(cv.ty), ")");
             return Ok(());
         }
 
         let u8_type = self.tcx().types.u8;
-        match (valtree, ty.kind()) {
+        match (cv.valtree, cv.ty.kind()) {
             (ty::ValTree::Branch(_), ty::Ref(_, inner_ty, _)) => match inner_ty.kind() {
                 ty::Slice(t) if *t == u8_type => {
-                    let bytes = valtree.try_to_raw_bytes(self.tcx(), ty).unwrap_or_else(|| {
+                    let bytes = cv.try_to_raw_bytes(self.tcx()).unwrap_or_else(|| {
                         bug!(
                             "expected to convert valtree {:?} to raw bytes for type {:?}",
-                            valtree,
+                            cv.valtree,
                             t
                         )
                     });
                     return self.pretty_print_byte_str(bytes);
                 }
                 ty::Str => {
-                    let bytes = valtree.try_to_raw_bytes(self.tcx(), ty).unwrap_or_else(|| {
-                        bug!("expected to convert valtree to raw bytes for type {:?}", ty)
+                    let bytes = cv.try_to_raw_bytes(self.tcx()).unwrap_or_else(|| {
+                        bug!("expected to convert valtree to raw bytes for type {:?}", cv.ty)
                     });
                     p!(write("{:?}", String::from_utf8_lossy(bytes)));
                     return Ok(());
                 }
                 _ => {
+                    let cv = ty::Value { valtree: cv.valtree, ty: *inner_ty };
                     p!("&");
-                    p!(pretty_print_const_valtree(valtree, *inner_ty, print_ty));
+                    p!(pretty_print_const_valtree(cv, print_ty));
                     return Ok(());
                 }
             },
             (ty::ValTree::Branch(_), ty::Array(t, _)) if *t == u8_type => {
-                let bytes = valtree.try_to_raw_bytes(self.tcx(), ty).unwrap_or_else(|| {
+                let bytes = cv.try_to_raw_bytes(self.tcx()).unwrap_or_else(|| {
                     bug!("expected to convert valtree to raw bytes for type {:?}", t)
                 });
                 p!("*");
@@ -1837,10 +1836,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             // Aggregates, printed as array/tuple/struct/variant construction syntax.
             (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
-                let contents =
-                    self.tcx().destructure_const(ty::Const::new_value(self.tcx(), valtree, ty));
+                let contents = self.tcx().destructure_const(ty::Const::new_value(
+                    self.tcx(),
+                    cv.valtree,
+                    cv.ty,
+                ));
                 let fields = contents.fields.iter().copied();
-                match *ty.kind() {
+                match *cv.ty.kind() {
                     ty::Array(..) => {
                         p!("[", comma_sep(fields), "]");
                     }
@@ -1857,7 +1859,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                                 write!(this, "unreachable()")?;
                                 Ok(())
                             },
-                            |this| this.print_type(ty),
+                            |this| this.print_type(cv.ty),
                             ": ",
                         )?;
                     }
@@ -1894,7 +1896,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 return self.pretty_print_const_scalar_int(leaf, *inner_ty, print_ty);
             }
             (ty::ValTree::Leaf(leaf), _) => {
-                return self.pretty_print_const_scalar_int(leaf, ty, print_ty);
+                return self.pretty_print_const_scalar_int(leaf, cv.ty, print_ty);
             }
             // FIXME(oli-obk): also pretty print arrays and other aggregate constants by reading
             // their fields instead of just dumping the memory.
@@ -1902,13 +1904,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         // fallback
-        if valtree == ty::ValTree::zst() {
+        if cv.valtree == ty::ValTree::zst() {
             p!(write("<ZST>"));
         } else {
-            p!(write("{:?}", valtree));
+            p!(write("{:?}", cv.valtree));
         }
         if print_ty {
-            p!(": ", print(ty));
+            p!(": ", print(cv.ty));
         }
         Ok(())
     }
