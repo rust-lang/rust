@@ -1,14 +1,14 @@
 error[E0080]: evaluation of constant value failed
+  --> $DIR/ctfe-tail-call-panic.rs:13:15
+   |
+LL | const _: () = f();
+   |               ^^^ explicit panic
+   |
+note: called from `g`
   --> $DIR/ctfe-tail-call-panic.rs:9:5
    |
 LL |     panic!()
-   |     ^^^^^^^^ explicit panic
-   |
-note: called from `_`
-  --> $DIR/ctfe-tail-call-panic.rs:14:15
-   |
-LL | const _: () = f();
-   |               ^^^
+   |     ^^^^^^^^
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
