@@ -52,13 +52,13 @@ LL |     let &ref mut x = &0;
    |          ^^^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-errors.rs:35:23
+  --> $DIR/borrowck-errors.rs:37:23
    |
 LL |     if let &Some(Some(x)) = &Some(&mut Some(0)) {
    |                       ^ cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-errors.rs:40:11
+  --> $DIR/borrowck-errors.rs:42:11
    |
 LL |     let &[x] = &&mut [0];
    |           ^ cannot borrow as mutable

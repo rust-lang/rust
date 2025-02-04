@@ -2400,7 +2400,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if (ref_pat_matches_mut_ref && r_mutbl >= pat_mutbl)
                             || r_mutbl == pat_mutbl =>
                     {
-                        if ref_pat_matches_mut_ref && r_mutbl == Mutability::Not {
+                        if r_mutbl == Mutability::Not {
                             pat_info.max_ref_mutbl = MutblCap::Not;
                         }
 
