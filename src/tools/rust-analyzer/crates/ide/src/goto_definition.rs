@@ -3272,4 +3272,22 @@ fn f() {
         "#,
         );
     }
+
+    #[test]
+    fn use_inside_body() {
+        check(
+            r#"
+fn main() {
+    mod nice_module {
+        pub(super) struct NiceStruct;
+                       // ^^^^^^^^^^
+    }
+
+    use nice_module::NiceStruct$0;
+
+    let _ = NiceStruct;
+}
+    "#,
+        );
+    }
 }
