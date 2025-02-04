@@ -144,7 +144,7 @@ impl Step for Std {
         builder.require_submodule("library/stdarch", None);
 
         let target = self.target;
-        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.build, false);
 
         let mut cargo = builder::Cargo::new(
             builder,
@@ -204,7 +204,7 @@ impl Step for Rustc {
     /// This will lint the compiler for a particular stage of the build using
     /// the `compiler` targeting the `target` architecture.
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.build, false);
         let target = self.target;
 
         if compiler.stage != 0 {
@@ -254,7 +254,7 @@ impl Step for Rustc {
 
 macro_rules! lint_any {
     ($(
-        $name:ident, $path:expr, $readable_name:expr
+        $name:ident, $path:expr, $readable_name:expr, $mode:expr
         $(,lint_by_default = $lint_by_default:expr)*
         ;
     )+) => {
@@ -283,7 +283,7 @@ macro_rules! lint_any {
             }
 
             fn run(self, builder: &Builder<'_>) -> Self::Output {
-                let compiler = builder.compiler(builder.top_stage, builder.config.build);
+                let compiler = builder.compiler(builder.top_stage, builder.config.build, $mode == Mode::ToolRustc);
                 let target = self.target;
 
                 builder.ensure(check::Rustc::new(target, builder).build_kind(Some(Kind::Check)));
@@ -291,7 +291,7 @@ macro_rules! lint_any {
                 let cargo = prepare_tool_cargo(
                     builder,
                     compiler,
-                    Mode::ToolRustc,
+                    $mode,
                     target,
                     Kind::Clippy,
                     $path,
@@ -301,7 +301,7 @@ macro_rules! lint_any {
 
                 let _guard = builder.msg_tool(
                     Kind::Clippy,
-                    Mode::ToolRustc,
+                    $mode,
                     $readable_name,
                     compiler.stage,
                     &compiler.host,
@@ -309,7 +309,7 @@ macro_rules! lint_any {
                 );
 
                 let stringified_name = stringify!($name).to_lowercase();
-                let stamp = BuildStamp::new(&builder.cargo_out(compiler, Mode::ToolRustc, target))
+                let stamp = BuildStamp::new(&builder.cargo_out(compiler, $mode, target))
                     .with_prefix(&format!("{}-check", stringified_name));
 
                 run_cargo(
@@ -328,31 +328,31 @@ macro_rules! lint_any {
 }
 
 lint_any!(
-    Bootstrap, "src/bootstrap", "bootstrap";
-    BuildHelper, "src/build_helper", "build_helper";
-    BuildManifest, "src/tools/build-manifest", "build-manifest";
-    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri";
-    Clippy, "src/tools/clippy", "clippy";
-    CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
-    CodegenGcc, "compiler/rustc_codegen_gcc", "rustc-codegen-gcc";
-    Compiletest, "src/tools/compiletest", "compiletest";
-    CoverageDump, "src/tools/coverage-dump", "coverage-dump";
-    Jsondocck, "src/tools/jsondocck", "jsondocck";
-    Jsondoclint, "src/tools/jsondoclint", "jsondoclint";
-    LintDocs, "src/tools/lint-docs", "lint-docs";
-    LlvmBitcodeLinker, "src/tools/llvm-bitcode-linker", "llvm-bitcode-linker";
-    Miri, "src/tools/miri", "miri";
-    MiroptTestTools, "src/tools/miropt-test-tools", "miropt-test-tools";
-    OptDist, "src/tools/opt-dist", "opt-dist";
-    RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
-    RemoteTestServer, "src/tools/remote-test-server", "remote-test-server";
-    Rls, "src/tools/rls", "rls";
-    RustAnalyzer, "src/tools/rust-analyzer", "rust-analyzer";
-    Rustdoc, "src/librustdoc", "clippy";
-    Rustfmt, "src/tools/rustfmt", "rustfmt";
-    RustInstaller, "src/tools/rust-installer", "rust-installer";
-    Tidy, "src/tools/tidy", "tidy";
-    TestFloatParse, "src/etc/test-float-parse", "test-float-parse";
+    Bootstrap, "src/bootstrap", "bootstrap", Mode::ToolBootstrap;
+    BuildHelper, "src/build_helper", "build_helper", Mode::ToolBootstrap;
+    BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::ToolBootstrap;
+    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", Mode::ToolRustc;
+    Clippy, "src/tools/clippy", "clippy", Mode::ToolRustc;
+    CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata", Mode::ToolBootstrap;
+    CodegenGcc, "compiler/rustc_codegen_gcc", "rustc-codegen-gcc", Mode::ToolRustc;
+    Compiletest, "src/tools/compiletest", "compiletest", Mode::ToolBootstrap;
+    CoverageDump, "src/tools/coverage-dump", "coverage-dump", Mode::ToolBootstrap;
+    Jsondocck, "src/tools/jsondocck", "jsondocck", Mode::ToolBootstrap;
+    Jsondoclint, "src/tools/jsondoclint", "jsondoclint", Mode::ToolBootstrap;
+    LintDocs, "src/tools/lint-docs", "lint-docs", Mode::ToolBootstrap;
+    LlvmBitcodeLinker, "src/tools/llvm-bitcode-linker", "llvm-bitcode-linker", Mode::ToolRustc;
+    Miri, "src/tools/miri", "miri", Mode::ToolRustc;
+    MiroptTestTools, "src/tools/miropt-test-tools", "miropt-test-tools", Mode::ToolRustc;
+    OptDist, "src/tools/opt-dist", "opt-dist", Mode::ToolBootstrap;
+    RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::ToolBootstrap;
+    RemoteTestServer, "src/tools/remote-test-server", "remote-test-server", Mode::ToolBootstrap;
+    Rls, "src/tools/rls", "rls", Mode::ToolBootstrap;
+    RustAnalyzer, "src/tools/rust-analyzer", "rust-analyzer", Mode::ToolRustc;
+    Rustdoc, "src/librustdoc", "clippy", Mode::ToolRustc;
+    Rustfmt, "src/tools/rustfmt", "rustfmt", Mode::ToolRustc;
+    RustInstaller, "src/tools/rust-installer", "rust-installer", Mode::ToolBootstrap;
+    Tidy, "src/tools/tidy", "tidy", Mode::ToolBootstrap;
+    TestFloatParse, "src/etc/test-float-parse", "test-float-parse", Mode::ToolStd;
 );
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

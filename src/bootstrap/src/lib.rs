@@ -90,11 +90,28 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
 /// Each compiler has a `stage` that it is associated with and a `host` that
 /// corresponds to the platform the compiler runs on. This structure is used as
 /// a parameter to many methods below.
-#[derive(Eq, PartialOrd, Ord, PartialEq, Clone, Copy, Hash, Debug)]
+#[derive(PartialOrd, Ord, Clone, Copy, Debug)]
 pub struct Compiler {
     stage: u32,
     host: TargetSelection,
+    downgraded_from: Option<u32>,
 }
+
+impl std::hash::Hash for Compiler {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.stage.hash(state);
+        self.host.hash(state);
+    }
+}
+
+impl PartialEq for Compiler {
+    fn eq(&self, other: &Self) -> bool {
+        // FIXME: cover `downgraded_from` for test env
+        self.stage == other.stage && self.host == other.host
+    }
+}
+
+impl Eq for Compiler {}
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum DocTests {
@@ -1953,6 +1970,16 @@ fn chmod(path: &Path, perms: u32) {
 fn chmod(_path: &Path, _perms: u32) {}
 
 impl Compiler {
+    pub fn new(stage: u32, host: TargetSelection) -> Compiler {
+        Compiler { stage, host, downgraded_from: None }
+    }
+
+    #[cfg(test)]
+    pub fn downgraded_from(mut self, stage: u32) -> Compiler {
+        self.downgraded_from = Some(stage);
+        self
+    }
+
     pub fn with_stage(mut self, stage: u32) -> Compiler {
         self.stage = stage;
         self
@@ -1961,6 +1988,18 @@ impl Compiler {
     /// Returns `true` if this is a snapshot compiler for `build`'s configuration
     pub fn is_snapshot(&self, build: &Build) -> bool {
         self.stage == 0 && self.host == build.build
+    }
+
+    /// Check whether or not if compiler was already downgraded before.
+    pub fn is_downgraded_already(&self) -> bool {
+        self.downgraded_from.is_some()
+    }
+
+    /// Downgrade stage of the compiler used for rustc tools.
+    pub fn downgrade(&mut self) {
+        assert!(self.stage > 0, "Can't downgrade stage 0 compiler");
+        self.downgraded_from = Some(self.stage);
+        self.stage -= 1;
     }
 }
 

@@ -1233,8 +1233,30 @@ impl<'a> Builder<'a> {
             ),
         ),
     )]
-    pub fn compiler(&self, stage: u32, host: TargetSelection) -> Compiler {
-        self.ensure(compile::Assemble { target_compiler: Compiler { stage, host } })
+    pub fn compiler(
+        &self,
+        stage: u32,
+        host: TargetSelection,
+        downgrade_for_rustc_tool: bool,
+    ) -> Compiler {
+        let mut compiler =
+            self.ensure(compile::Assemble { target_compiler: Compiler::new(stage, host) });
+
+        // FIXME: remove stage check
+        if stage > 0 && downgrade_for_rustc_tool {
+            assert!(stage > 0, "can't downgrade stage 0 compiler");
+
+            self.ensure(compile::Std::new(compiler, host));
+            // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+            // we'd have stageN/bin/rustc and stageN/bin/$tool_name be effectively different stage
+            // compilers, which isn't what we want.
+            //
+            // Compiler tools should be linked in the same way as the compiler it's paired with,
+            // so it must be built with the previous stage compiler.
+            compiler.downgrade();
+        };
+
+        compiler
     }
 
     /// Similar to `compiler`, except handles the full-bootstrap option to
@@ -1267,17 +1289,18 @@ impl<'a> Builder<'a> {
         stage: u32,
         host: TargetSelection,
         target: TargetSelection,
+        for_rustc_tool: bool,
     ) -> Compiler {
         #![allow(clippy::let_and_return)]
         let resolved_compiler = if self.build.force_use_stage2(stage) {
             trace!(target: "COMPILER_FOR", ?stage, "force_use_stage2");
-            self.compiler(2, self.config.build)
+            self.compiler(2, self.config.build, for_rustc_tool)
         } else if self.build.force_use_stage1(stage, target) {
             trace!(target: "COMPILER_FOR", ?stage, "force_use_stage1");
-            self.compiler(1, self.config.build)
+            self.compiler(1, self.config.build, for_rustc_tool)
         } else {
             trace!(target: "COMPILER_FOR", ?stage, ?host, "no force, fallback to `compiler()`");
-            self.compiler(stage, host)
+            self.compiler(stage, host, for_rustc_tool)
         };
         trace!(target: "COMPILER_FOR", ?resolved_compiler);
         resolved_compiler
@@ -1391,7 +1414,12 @@ impl<'a> Builder<'a> {
             .map(|entry| entry.path())
     }
 
-    pub fn rustdoc(&self, compiler: Compiler) -> PathBuf {
+    pub fn rustdoc(&self, mut compiler: Compiler) -> PathBuf {
+        // FIXME: remove stage check
+        if compiler.stage > 0 && !compiler.is_downgraded_already() {
+            compiler.downgrade();
+        }
+
         self.ensure(tool::Rustdoc { compiler })
     }
 

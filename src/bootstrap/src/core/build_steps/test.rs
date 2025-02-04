@@ -69,7 +69,7 @@ impl Step for CrateBootstrap {
 
     fn run(self, builder: &Builder<'_>) {
         let bootstrap_host = builder.config.build;
-        let compiler = builder.compiler(0, bootstrap_host);
+        let compiler = builder.compiler(0, bootstrap_host, false);
         let mut path = self.path.to_str().unwrap();
 
         // Map alias `tidyselftest` back to the actual crate path of tidy.
@@ -127,7 +127,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
 
         // Test the linkchecker itself.
         let bootstrap_host = builder.config.build;
-        let compiler = builder.compiler(0, bootstrap_host);
+        let compiler = builder.compiler(0, bootstrap_host, false);
 
         let cargo = tool::prepare_tool_cargo(
             builder,
@@ -251,7 +251,7 @@ impl Step for Cargotest {
     /// This tool in `src/tools` will check out a few Rust projects and run `cargo
     /// test` to ensure that we don't regress the test suites there.
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(self.stage, self.host);
+        let compiler = builder.compiler(self.stage, self.host, false);
         let cargo = builder.ensure(tool::Cargo { compiler, target: compiler.host });
 
         // Note that this is a short, cryptic, and not scoped directory name. This
@@ -297,7 +297,7 @@ impl Step for Cargo {
 
     /// Runs `cargo test` for `cargo` packaged with Rust.
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(self.stage, self.host);
+        let compiler = builder.compiler(self.stage, self.host, true);
 
         builder.ensure(tool::Cargo { compiler, target: self.host });
         let cargo = tool::prepare_tool_cargo(
@@ -365,11 +365,7 @@ impl Step for RustAnalyzer {
     fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let host = self.host;
-        let compiler = builder.compiler(stage, host);
-
-        // We don't need to build the whole Rust Analyzer for the proc-macro-srv test suite,
-        // but we do need the standard library to be present.
-        let _ = builder.compiler(compiler.stage, host);
+        let compiler = builder.compiler(stage, host, true);
 
         let workspace_path = "src/tools/rust-analyzer";
         // until the whole RA test suite runs on `i686`, we only run
@@ -424,7 +420,7 @@ impl Step for Rustfmt {
     fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let host = self.host;
-        let compiler = builder.compiler(stage, host);
+        let compiler = builder.compiler(stage, host, true);
 
         builder.ensure(tool::Rustfmt { compiler, target: self.host });
 
@@ -520,7 +516,12 @@ impl Step for Miri {
         }
 
         // This compiler runs on the host, we'll just use it for the target.
-        let target_compiler = builder.compiler(stage, host);
+        let target_compiler = builder.compiler(stage, host, false);
+        // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+        // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
+        // compilers, which isn't what we want. Rustdoc should be linked in the same way as the
+        // rustc compiler it's paired with, so it must be built with the previous stage compiler.
+        let host_compiler = builder.compiler(stage, host, true);
 
         // Build our tools.
         let miri = builder.ensure(tool::Miri { compiler: target_compiler, target: host });
@@ -532,12 +533,6 @@ impl Step for Miri {
         let miri_sysroot = Miri::build_miri_sysroot(builder, target_compiler, target);
         builder.ensure(compile::Std::new(target_compiler, host));
         let host_sysroot = builder.sysroot(target_compiler);
-
-        // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
-        // we'd have stageN/bin/rustc and stageN/bin/miri be effectively different stage
-        // compilers, which isn't what we want. Rustdoc should be linked in the same way as the
-        // rustc compiler it's paired with, so it must be built with the previous stage compiler.
-        let host_compiler = builder.compiler(stage - 1, host);
 
         // Miri has its own "target dir" for ui test dependencies. Make sure it gets cleared when
         // the sysroot gets rebuilt, to avoid "found possibly newer version of crate `std`" errors.
@@ -637,7 +632,7 @@ impl Step for CargoMiri {
         }
 
         // This compiler runs on the host, we'll just use it for the target.
-        let compiler = builder.compiler(stage, host);
+        let compiler = builder.compiler(stage, host, false);
 
         // Run `cargo miri test`.
         // This is just a smoke test (Miri's own CI invokes this in a bunch of different ways and ensures
@@ -696,7 +691,7 @@ impl Step for CompiletestTest {
     /// Runs `cargo test` for compiletest.
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
-        let compiler = builder.compiler(builder.top_stage, host);
+        let compiler = builder.compiler(builder.top_stage, host, false);
 
         // We need `ToolStd` for the locally-built sysroot because
         // compiletest uses unstable features of the `test` crate.
@@ -741,7 +736,7 @@ impl Step for Clippy {
     fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let host = self.host;
-        let compiler = builder.compiler(stage, host);
+        let compiler = builder.compiler(stage, host, true);
 
         builder.ensure(tool::Clippy { compiler, target: self.host });
         let mut cargo = tool::prepare_tool_cargo(
@@ -801,7 +796,7 @@ impl Step for RustdocTheme {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.target);
+        let compiler = run.builder.compiler(run.builder.top_stage, run.target, false);
 
         run.builder.ensure(RustdocTheme { compiler });
     }
@@ -899,7 +894,7 @@ impl Step for RustdocJSNotStd {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple(), false);
         run.builder.ensure(RustdocJSNotStd { target: run.target, compiler });
     }
 
@@ -964,7 +959,7 @@ impl Step for RustdocGUI {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple(), false);
         run.builder.ensure(RustdocGUI { target: run.target, compiler });
     }
 
@@ -1176,7 +1171,7 @@ macro_rules! test {
             }
 
             fn make_run(run: RunConfig<'_>) {
-                let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+                let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple(), false);
 
                 run.builder.ensure($name { compiler, target: run.target });
             }
@@ -1215,7 +1210,7 @@ impl Step for RunMakeSupport {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple(), false);
         run.builder.ensure(RunMakeSupport { compiler, target: run.build_triple() });
     }
 
@@ -1267,7 +1262,7 @@ impl Step for CrateRunMakeSupport {
     /// Runs `cargo test` for run-make-support.
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
-        let compiler = builder.compiler(0, host);
+        let compiler = builder.compiler(0, host, false);
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -1312,7 +1307,7 @@ impl Step for CrateBuildHelper {
     /// Runs `cargo test` for build_helper.
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
-        let compiler = builder.compiler(0, host);
+        let compiler = builder.compiler(0, host, false);
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -1414,7 +1409,7 @@ impl Step for RunMake {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple(), false);
         run.builder.ensure(RunMakeSupport { compiler, target: run.build_triple() });
         run.builder.ensure(RunMake { compiler, target: run.target });
     }
@@ -1468,7 +1463,7 @@ impl Step for Coverage {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple(), false);
         let target = run.target;
 
         // List of (coverage) test modes that the coverage test suite will be
@@ -1551,7 +1546,7 @@ impl Step for MirOpt {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple(), false);
         run.builder.ensure(MirOpt { compiler, target: run.target });
     }
 
@@ -1654,7 +1649,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             // finding an incorrect compiler path on cross-targets, as the stage 0 beta compiler is
             // always equal to `build.build` in the configuration.
             let build = builder.build.build;
-            compiler = builder.compiler(compiler.stage - 1, build);
+            compiler = builder.compiler(compiler.stage - 1, build, false);
             let test_stage = compiler.stage + 1;
             (test_stage, format!("stage{}-{}", test_stage, build))
         } else {
@@ -1663,7 +1658,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         };
 
         if suite.ends_with("fulldeps") {
-            let _ = builder.compiler(compiler.stage, target);
+            let _ = builder.compiler(compiler.stage + 1, target, false);
         }
 
         if suite == "debuginfo" {
@@ -2214,7 +2209,7 @@ impl BookTest {
     /// This runs the equivalent of `mdbook test` (via the rustbook wrapper)
     /// which in turn runs `rustdoc --test` on each file in the book.
     fn run_ext_doc(self, builder: &Builder<'_>) {
-        let compiler = self.compiler;
+        let mut compiler = self.compiler;
 
         builder.ensure(compile::Std::new(compiler, compiler.host));
 
@@ -2231,6 +2226,11 @@ impl BookTest {
         // Books often have feature-gated example text.
         rustbook_cmd.env("RUSTC_BOOTSTRAP", "1");
         rustbook_cmd.env("PATH", new_path).arg("test").arg(path);
+
+        // FIXME: remove stage check
+        if compiler.stage > 0 {
+            compiler.downgrade();
+        }
 
         // Books may also need to build dependencies. For example, `TheBook` has
         // code samples which use the `trpl` crate. For the `rustdoc` invocation
@@ -2358,7 +2358,7 @@ macro_rules! test_book {
 
                 fn make_run(run: RunConfig<'_>) {
                     run.builder.ensure($name {
-                        compiler: run.builder.compiler(run.builder.top_stage, run.target),
+                        compiler: run.builder.compiler(run.builder.top_stage, run.target, false),
                     });
                 }
 
@@ -2422,7 +2422,7 @@ impl Step for ErrorIndex {
         // error_index_generator depends on librustdoc. Use the compiler that
         // is normally used to build rustdoc for other tests (like compiletest
         // tests in tests/rustdoc) so that it shares the same artifacts.
-        let compiler = run.builder.compiler(run.builder.top_stage, run.builder.config.build);
+        let compiler = run.builder.compiler(run.builder.top_stage, run.builder.config.build, false);
         run.builder.ensure(ErrorIndex { compiler });
     }
 
@@ -2505,7 +2505,7 @@ impl Step for CrateLibrustc {
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
         let host = run.build_triple();
-        let compiler = builder.compiler_for(builder.top_stage, host, host);
+        let compiler = builder.compiler_for(builder.top_stage, host, host, false);
         let crates = run.make_run_crates(Alias::Compiler);
 
         builder.ensure(CrateLibrustc { compiler, target: run.target, crates });
@@ -2664,7 +2664,7 @@ impl Step for Crate {
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
         let host = run.build_triple();
-        let compiler = builder.compiler_for(builder.top_stage, host, host);
+        let compiler = builder.compiler_for(builder.top_stage, host, host, false);
         let crates = run
             .paths
             .iter()
@@ -2695,7 +2695,12 @@ impl Step for Crate {
         // version of libstd, then what we're actually testing is the libstd
         // produced in stage1. Reflect that here by updating the compiler that
         // we're working with automatically.
-        let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
+        let compiler = builder.compiler_for(
+            compiler.stage,
+            compiler.host,
+            target,
+            self.mode == Mode::ToolRustc,
+        );
 
         let mut cargo = if builder.kind == Kind::Miri {
             if builder.top_stage == 0 {
@@ -2809,20 +2814,20 @@ impl Step for CrateRustdoc {
         let target = self.host;
 
         let compiler = if builder.download_rustc() {
-            builder.compiler(builder.top_stage, target)
+            builder.compiler(builder.top_stage, target, false)
         } else {
             // Use the previous stage compiler to reuse the artifacts that are
             // created when running compiletest for tests/rustdoc. If this used
             // `compiler`, then it would cause rustdoc to be built *again*, which
             // isn't really necessary.
-            builder.compiler_for(builder.top_stage, target, target)
+            builder.compiler_for(builder.top_stage, target, target, false)
         };
         // NOTE: normally `ensure(Rustc)` automatically runs `ensure(Std)` for us. However, when
         // using `download-rustc`, the rustc_private artifacts may be in a *different sysroot* from
         // the target rustdoc (`ci-rustc-sysroot` vs `stage2`). In that case, we need to ensure this
         // explicitly to make sure it ends up in the stage2 sysroot.
         builder.ensure(compile::Std::new(compiler, target));
-        let _ = builder.compiler(compiler.stage, target);
+        let _ = builder.compiler(compiler.stage, target, false);
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -2912,8 +2917,8 @@ impl Step for CrateRustdocJsonTypes {
         // created when running compiletest for tests/rustdoc. If this used
         // `compiler`, then it would cause rustdoc to be built *again*, which
         // isn't really necessary.
-        let compiler = builder.compiler_for(builder.top_stage, target, target);
-        let _ = builder.compiler(compiler.stage, target);
+        let compiler = builder.compiler_for(builder.top_stage, target, target, false);
+        let _ = builder.compiler(compiler.stage, target, false);
 
         let cargo = tool::prepare_tool_cargo(
             builder,
@@ -3077,7 +3082,7 @@ impl Step for Bootstrap {
     /// Tests the build system itself.
     fn run(self, builder: &Builder<'_>) {
         let host = builder.config.build;
-        let compiler = builder.compiler(0, host);
+        let compiler = builder.compiler(0, host, false);
         let _guard = builder.msg(Kind::Test, 0, "bootstrap", host, host);
 
         // Some tests require cargo submodule to be present.
@@ -3142,8 +3147,12 @@ impl Step for TierCheck {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let compiler =
-            run.builder.compiler_for(run.builder.top_stage, run.builder.build.build, run.target);
+        let compiler = run.builder.compiler_for(
+            run.builder.top_stage,
+            run.builder.build.build,
+            run.target,
+            false,
+        );
         run.builder.ensure(TierCheck { compiler });
     }
 
@@ -3194,7 +3203,7 @@ impl Step for LintDocs {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(LintDocs {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build, false),
             target: run.target,
         });
     }
@@ -3221,7 +3230,7 @@ impl Step for RustInstaller {
     /// Ensure the version placeholder replacement tool builds
     fn run(self, builder: &Builder<'_>) {
         let bootstrap_host = builder.config.build;
-        let compiler = builder.compiler(0, bootstrap_host);
+        let compiler = builder.compiler(0, bootstrap_host, false);
         let cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -3349,7 +3358,7 @@ impl Step for CodegenCranelift {
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
         let host = run.build_triple();
-        let compiler = run.builder.compiler_for(run.builder.top_stage, host, host);
+        let compiler = run.builder.compiler_for(run.builder.top_stage, host, host, false);
 
         if builder.doc_tests == DocTests::Only {
             return;
@@ -3388,7 +3397,7 @@ impl Step for CodegenCranelift {
         // version of libstd, then what we're actually testing is the libstd
         // produced in stage1. Reflect that here by updating the compiler that
         // we're working with automatically.
-        let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
+        let compiler = builder.compiler_for(compiler.stage, compiler.host, target, false);
 
         let build_cargo = || {
             let mut cargo = builder::Cargo::new(
@@ -3473,7 +3482,7 @@ impl Step for CodegenGCC {
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
         let host = run.build_triple();
-        let compiler = run.builder.compiler_for(run.builder.top_stage, host, host);
+        let compiler = run.builder.compiler_for(run.builder.top_stage, host, host, false);
 
         if builder.doc_tests == DocTests::Only {
             return;
@@ -3518,7 +3527,7 @@ impl Step for CodegenGCC {
         // version of libstd, then what we're actually testing is the libstd
         // produced in stage1. Reflect that here by updating the compiler that
         // we're working with automatically.
-        let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
+        let compiler = builder.compiler_for(compiler.stage, compiler.host, target, false);
 
         let build_cargo = || {
             let mut cargo = builder::Cargo::new(
@@ -3609,7 +3618,7 @@ impl Step for TestFloatParse {
 
     fn run(self, builder: &Builder<'_>) {
         let bootstrap_host = builder.config.build;
-        let compiler = builder.compiler(builder.top_stage, bootstrap_host);
+        let compiler = builder.compiler(builder.top_stage, bootstrap_host, false);
         let path = self.path.to_str().unwrap();
         let crate_name = self.path.components().last().unwrap().as_os_str().to_str().unwrap();
 

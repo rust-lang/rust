@@ -369,8 +369,9 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder
-            .ensure(Rustc { compiler: run.builder.compiler(run.builder.top_stage, run.target) });
+        run.builder.ensure(Rustc {
+            compiler: run.builder.compiler(run.builder.top_stage, run.target, false),
+        });
     }
 
     /// Creates the `rustc` installer component.
@@ -425,6 +426,7 @@ impl Step for Rustc {
                         compiler.stage,
                         builder.config.build,
                         compiler.host,
+                        false,
                     ),
                     target: compiler.host,
                 },
@@ -665,6 +667,7 @@ impl Step for Std {
                 run.builder.top_stage,
                 run.builder.config.build,
                 run.target,
+                false,
             ),
             target: run.target,
         });
@@ -683,7 +686,7 @@ impl Step for Std {
         let mut tarball = Tarball::new(builder, "rust-std", &target.triple);
         tarball.include_target_in_component_name(true);
 
-        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target, false);
         let stamp = build_stamp::libstd_stamp(builder, compiler_to_use, target);
         verify_uefi_rlib_format(builder, target, &stamp);
         copy_target_libs(builder, target, tarball.image_dir(), &stamp);
@@ -717,6 +720,7 @@ impl Step for RustcDev {
                 run.builder.top_stage,
                 run.builder.config.build,
                 run.target,
+                false,
             ),
             target: run.target,
         });
@@ -729,11 +733,11 @@ impl Step for RustcDev {
             return None;
         }
 
-        let _ = builder.compiler(compiler.stage, target);
+        let _ = builder.compiler(compiler.stage, target, false);
 
         let tarball = Tarball::new(builder, "rustc-dev", &target.triple);
 
-        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target, false);
         let stamp = build_stamp::librustc_stamp(builder, compiler_to_use, target);
         copy_target_libs(builder, target, tarball.image_dir(), &stamp);
 
@@ -779,6 +783,7 @@ impl Step for Analysis {
                 run.builder.top_stage,
                 run.builder.config.build,
                 run.target,
+                false,
             ),
             target: run.target,
         });
@@ -1127,6 +1132,7 @@ impl Step for Cargo {
                 run.builder.top_stage,
                 run.builder.config.build,
                 run.target,
+                true,
             ),
             target: run.target,
         });
@@ -1176,6 +1182,7 @@ impl Step for Rls {
                 run.builder.top_stage,
                 run.builder.config.build,
                 run.target,
+                false,
             ),
             target: run.target,
         });
@@ -1218,6 +1225,7 @@ impl Step for RustAnalyzer {
                 run.builder.top_stage,
                 run.builder.config.build,
                 run.target,
+                true,
             ),
             target: run.target,
         });
@@ -1260,6 +1268,7 @@ impl Step for Clippy {
                 run.builder.top_stage,
                 run.builder.config.build,
                 run.target,
+                true,
             ),
             target: run.target,
         });
@@ -1307,6 +1316,7 @@ impl Step for Miri {
                 run.builder.top_stage,
                 run.builder.config.build,
                 run.target,
+                true,
             ),
             target: run.target,
         });
@@ -1357,7 +1367,7 @@ impl Step for CodegenBackend {
             }
 
             run.builder.ensure(CodegenBackend {
-                compiler: run.builder.compiler(run.builder.top_stage, run.target),
+                compiler: run.builder.compiler(run.builder.top_stage, run.target, false),
                 backend: backend.clone(),
             });
         }
@@ -1445,6 +1455,7 @@ impl Step for Rustfmt {
                 run.builder.top_stage,
                 run.builder.config.build,
                 run.target,
+                true,
             ),
             target: run.target,
         });
@@ -1495,7 +1506,7 @@ impl Step for Extended {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
         let stage = self.stage;
-        let compiler = builder.compiler_for(self.stage, self.host, self.target);
+        let compiler = builder.compiler_for(self.stage, self.host, self.target, false);
 
         builder.info(&format!("Dist extended stage{} ({})", compiler.stage, target));
 
@@ -1514,7 +1525,7 @@ impl Step for Extended {
         // upgrades rustc was upgraded before rust-std. To avoid rustc clobbering
         // the std files during uninstall. To do this ensure that rustc comes
         // before rust-std in the list below.
-        tarballs.push(builder.ensure(Rustc { compiler: builder.compiler(stage, target) }));
+        tarballs.push(builder.ensure(Rustc { compiler: builder.compiler(stage, target, false) }));
         tarballs.push(builder.ensure(Std { compiler, target }).expect("missing std"));
 
         if target.is_windows_gnu() {
@@ -1532,7 +1543,7 @@ impl Step for Extended {
         add_component!("miri" => Miri { compiler, target });
         add_component!("analysis" => Analysis { compiler, target });
         add_component!("rustc-codegen-cranelift" => CodegenBackend {
-            compiler: builder.compiler(stage, target),
+            compiler: builder.compiler(stage, target, false),
             backend: "cranelift".to_string(),
         });
         add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {compiler, target});
@@ -2143,8 +2154,7 @@ pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection,
     ),
 )]
 pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
-    let dst_libdir =
-        sysroot.join(builder.sysroot_libdir_relative(Compiler { stage: 1, host: target }));
+    let dst_libdir = sysroot.join(builder.sysroot_libdir_relative(Compiler::new(1, target)));
     // We do not need to copy LLVM files into the sysroot if it is not
     // dynamically linked; it is already included into librustc_llvm
     // statically.
@@ -2263,6 +2273,7 @@ impl Step for LlvmBitcodeLinker {
                 run.builder.top_stage,
                 run.builder.config.build,
                 run.target,
+                true,
             ),
             target: run.target,
         });

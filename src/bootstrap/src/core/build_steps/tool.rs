@@ -69,7 +69,7 @@ impl Builder<'_> {
                 *target,
             ),
             // doesn't depend on compiler, same as host compiler
-            _ => self.msg(Kind::Build, build_stage, format_args!("tool {tool}"), *host, *target),
+            _ => self.msg(kind, build_stage, format_args!("tool {tool}"), *host, *target),
         }
     }
 }
@@ -88,14 +88,17 @@ impl Step for ToolBuild {
     fn run(mut self, builder: &Builder<'_>) -> PathBuf {
         match self.mode {
             Mode::ToolRustc => {
-                assert!(self.compiler.stage > 0, "stage0 isn't supported for {}", self.path);
-                // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
-                // we'd have stageN/bin/rustc and stageN/bin/$tool_name be effectively different stage
-                // compilers, which isn't what we want.
-                //
-                // Compiler tools should be linked in the same way as the compiler it's paired with,
-                // so it must be built with the previous stage compiler.
-                self.compiler.stage -= 1;
+                // FIXME: remove stage check
+                if self.compiler.stage > 0 && !self.compiler.is_downgraded_already() {
+                    builder.ensure(compile::Std::new(self.compiler, self.target));
+                    // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+                    // we'd have stageN/bin/rustc and stageN/bin/$tool_name be effectively different stage
+                    // compilers, which isn't what we want.
+                    //
+                    // Compiler tools should be linked in the same way as the compiler it's paired with,
+                    // so it must be built with the previous stage compiler.
+                    self.compiler.downgrade();
+                };
             }
             Mode::ToolStd => builder.ensure(compile::Std::new(self.compiler, self.target)),
             Mode::ToolBootstrap => {}
@@ -168,7 +171,7 @@ impl Step for ToolBuild {
 #[allow(clippy::too_many_arguments)] // FIXME: reduce the number of args and remove this.
 pub fn prepare_tool_cargo(
     builder: &Builder<'_>,
-    compiler: Compiler,
+    mut compiler: Compiler,
     mode: Mode,
     target: TargetSelection,
     cmd_kind: Kind,
@@ -176,6 +179,17 @@ pub fn prepare_tool_cargo(
     source_type: SourceType,
     extra_features: &[String],
 ) -> CargoCommand {
+    // FIXME: remove stage check
+    if mode == Mode::ToolRustc && !compiler.is_downgraded_already() && compiler.stage != 0 {
+        // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+        // we'd have stageN/bin/rustc and stageN/bin/$tool_name be effectively different stage
+        // compilers, which isn't what we want.
+        //
+        // Compiler tools should be linked in the same way as the compiler it's paired with,
+        // so it must be built with the previous stage compiler.
+        compiler.downgrade();
+    }
+
     let mut cargo = builder::Cargo::new(builder, compiler, mode, source_type, target, cmd_kind);
 
     let dir = builder.src.join(path);
@@ -306,7 +320,7 @@ macro_rules! bootstrap_tool {
                 match tool {
                     $(Tool::$name =>
                         self.ensure($name {
-                            compiler: self.compiler(0, self.config.build),
+                            compiler: self.compiler(0, self.config.build, false),
                             target: self.config.build,
                         }),
                     )+
@@ -331,7 +345,7 @@ macro_rules! bootstrap_tool {
             fn make_run(run: RunConfig<'_>) {
                 run.builder.ensure($name {
                     // snapshot compiler
-                    compiler: run.builder.compiler(0, run.builder.config.build),
+                    compiler: run.builder.compiler(0, run.builder.config.build, false),
                     target: run.target,
                 });
             }
@@ -427,7 +441,7 @@ impl Step for OptimizedDist {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(OptimizedDist {
-            compiler: run.builder.compiler(0, run.builder.config.build),
+            compiler: run.builder.compiler(0, run.builder.config.build, false),
             target: run.target,
         });
     }
@@ -469,7 +483,7 @@ impl Step for RustcPerf {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RustcPerf {
-            compiler: run.builder.compiler(0, run.builder.config.build),
+            compiler: run.builder.compiler(0, run.builder.config.build, false),
             target: run.target,
         });
     }
@@ -510,7 +524,7 @@ impl ErrorIndex {
         // Error-index-generator links with the rustdoc library, so we need to add `rustc_lib_paths`
         // for rustc_private and libLLVM.so, and `sysroot_lib` for libstd, etc.
         let host = builder.config.build;
-        let compiler = builder.compiler_for(builder.top_stage, host, host);
+        let compiler = builder.compiler_for(builder.top_stage, host, host, true);
         let mut cmd = command(builder.ensure(ErrorIndex { compiler }));
         let mut dylib_paths = builder.rustc_lib_paths(compiler);
         dylib_paths.push(PathBuf::from(&builder.sysroot_target_libdir(compiler, compiler.host)));
@@ -527,16 +541,12 @@ impl Step for ErrorIndex {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        // Compile the error-index in the same stage as rustdoc to avoid
-        // recompiling rustdoc twice if we can.
-        //
         // NOTE: This `make_run` isn't used in normal situations, only if you
         // manually build the tool with `x.py build
         // src/tools/error-index-generator` which almost nobody does.
         // Normally, `x.py test` or `x.py doc` will use the
         // `ErrorIndex::command` function instead.
-        let compiler =
-            run.builder.compiler(run.builder.top_stage.saturating_sub(1), run.builder.config.build);
+        let compiler = run.builder.compiler(run.builder.top_stage, run.builder.config.build, true);
         run.builder.ensure(ErrorIndex { compiler });
     }
 
@@ -570,7 +580,7 @@ impl Step for RemoteTestServer {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RemoteTestServer {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build, false),
             target: run.target,
         });
     }
@@ -612,7 +622,7 @@ impl Step for Rustdoc {
             // compiler here, because rustdoc *is* a compiler. We won't be using
             // this as the compiler to build with, but rather this is "what
             // compiler are we producing"?
-            compiler: run.builder.compiler(run.builder.top_stage, run.target),
+            compiler: run.builder.compiler(run.builder.top_stage, run.target, true),
         });
     }
 
@@ -621,7 +631,7 @@ impl Step for Rustdoc {
         let target = compiler.host;
 
         if compiler.stage == 0 {
-            if !compiler.is_snapshot(builder) {
+            if !compiler.is_snapshot(builder) && !compiler.is_downgraded_already() {
                 panic!("rustdoc in stage 0 must be snapshot rustdoc");
             }
             return builder.initial_rustdoc.clone();
@@ -717,7 +727,7 @@ impl Step for Cargo {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Cargo {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build, true),
             target: run.target,
         });
     }
@@ -819,7 +829,7 @@ impl Step for RustAnalyzer {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RustAnalyzer {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build, true),
             target: run.target,
         });
     }
@@ -863,7 +873,7 @@ impl Step for RustAnalyzerProcMacroSrv {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RustAnalyzerProcMacroSrv {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build, true),
             target: run.target,
         });
     }
@@ -911,7 +921,7 @@ impl Step for LlvmBitcodeLinker {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(LlvmBitcodeLinker {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build, true),
             extra_features: Vec::new(),
             target: run.target,
         });
@@ -1044,7 +1054,7 @@ macro_rules! tool_extended {
 
             fn make_run(run: RunConfig<'_>) {
                 run.builder.ensure($name {
-                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build, true),
                     target: run.target,
                 });
             }
@@ -1171,7 +1181,7 @@ impl Step for TestFloatParse {
 
     fn run(self, builder: &Builder<'_>) {
         let bootstrap_host = builder.config.build;
-        let compiler = builder.compiler(builder.top_stage, bootstrap_host);
+        let compiler = builder.compiler(builder.top_stage, bootstrap_host, false);
 
         builder.ensure(ToolBuild {
             compiler,
@@ -1192,7 +1202,7 @@ impl Builder<'_> {
     /// `host`.
     pub fn tool_cmd(&self, tool: Tool) -> BootstrapCommand {
         let mut cmd = command(self.tool_exe(tool));
-        let compiler = self.compiler(0, self.config.build);
+        let compiler = self.compiler(0, self.config.build, false);
         let host = &compiler.host;
         // Prepares the `cmd` provided to be able to run the `compiler` provided.
         //

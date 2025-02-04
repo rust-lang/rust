@@ -185,7 +185,7 @@ macro_rules! install {
 
             fn make_run(run: RunConfig<'_>) {
                 run.builder.ensure($name {
-                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build, false),
                     target: run.target,
                 });
             }
@@ -267,7 +267,7 @@ install!((self, builder, _config),
     };
     Rustc, path = "compiler/rustc", true, only_hosts: true, {
         let tarball = builder.ensure(dist::Rustc {
-            compiler: builder.compiler(builder.top_stage, self.target),
+            compiler: builder.compiler(builder.top_stage, self.target, false),
         });
         install_sh(builder, "rustc", self.compiler.stage, Some(self.target), &tarball);
     };

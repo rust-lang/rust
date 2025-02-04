@@ -135,7 +135,7 @@ impl Display for Scenario {
 /// Performs profiling using `rustc-perf` on a built version of the compiler.
 pub fn perf(builder: &Builder<'_>, args: &PerfArgs) {
     let collector = builder.ensure(RustcPerf {
-        compiler: builder.compiler(0, builder.config.build),
+        compiler: builder.compiler(0, builder.config.build, false),
         target: builder.config.build,
     });
 
@@ -150,7 +150,7 @@ pub fn perf(builder: &Builder<'_>, args: &PerfArgs) {
 Consider setting `rust.debuginfo-level = 1` in `config.toml`."#);
     }
 
-    let compiler = builder.compiler(builder.top_stage, builder.config.build);
+    let compiler = builder.compiler(builder.top_stage, builder.config.build, false);
     builder.ensure(Std::new(compiler, builder.config.build));
 
     if let Some(opts) = args.cmd.shared_opts() {
