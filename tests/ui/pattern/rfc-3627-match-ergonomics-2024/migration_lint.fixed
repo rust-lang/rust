@@ -141,4 +141,13 @@ fn main() {
         }
         _ => {}
     }
+
+    let &mut [&mut &[ref a]] = &mut [&mut &[0]];
+    //~^ ERROR: binding modifiers and reference patterns may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, &0u32);
+
+    let &[&(_)] = &[&0];
+    //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
 }
