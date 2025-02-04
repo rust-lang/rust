@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.145](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.144...compiler_builtins-v0.1.145) - 2025-02-04
+
+### Other
+
+- Revert "Eliminate the use of `public_test_dep!`"
+- Indentation fix to please clippy
+- Don't build out of line atomics support code for uefi
+- Add a version to some FIXMEs that will be resolved in LLVM 20
+- Remove use of the `start` feature
+
 ## [0.1.144](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.143...compiler_builtins-v0.1.144) - 2025-01-15
 
 ### Other
