@@ -22,7 +22,7 @@ help: <TAG> is this argument
 LL |     unsafe { ptr.write(0) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    = note: BACKTRACE (of the first span):
-   = note: inside `myfun2` at tests/fail/function_calls/return_pointer_aliasing_write_tail_call.rs:LL:CC
+   = note: called from `myfun2` at tests/fail/function_calls/return_pointer_aliasing_write_tail_call.rs:LL:CC
 note: inside `main`
   --> tests/fail/function_calls/return_pointer_aliasing_write_tail_call.rs:LL:CC
    |

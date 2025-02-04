@@ -153,9 +153,9 @@ error[E0080]: evaluation of constant value failed
    |
    = note: accessing memory based on pointer with alignment 1, but alignment 4 is required
    |
-note: inside `std::ptr::const_ptr::<impl *const u32>::read`
+note: called from `std::ptr::const_ptr::<impl *const u32>::read`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-note: inside `UNALIGNED_READ`
+note: called from `UNALIGNED_READ`
   --> $DIR/ub-ref-ptr.rs:66:5
    |
 LL |     ptr.read();

@@ -4,7 +4,7 @@ error[E0080]: evaluation of constant value failed
 LL |     x(y)
    |     ^^^^ calling non-const function `double`
    |
-note: inside `Y`
+note: called from `Y`
   --> $DIR/const_fn_ptr_fail2.rs:14:18
    |
 LL | const Y: usize = bar(X, 2); // FIXME: should fail to typeck someday
@@ -16,7 +16,7 @@ error[E0080]: evaluation of constant value failed
 LL |     x(y)
    |     ^^^^ calling non-const function `double`
    |
-note: inside `Z`
+note: called from `Z`
   --> $DIR/const_fn_ptr_fail2.rs:15:18
    |
 LL | const Z: usize = bar(double, 2); // FIXME: should fail to typeck someday

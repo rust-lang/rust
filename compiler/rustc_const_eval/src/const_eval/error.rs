@@ -149,7 +149,7 @@ where
         _ => {
             let (our_span, mut frames) = get_span_and_frames();
             let span = span.substitute_dummy(our_span);
-            if Some(span) == frames.get(0).map(|frame| frame.span) {
+            if frames.len() > 0 {
                 frames.remove(0);
             }
             let err = mk(span, frames);

@@ -18,7 +18,7 @@ LL |     unsafe { *xraw = (42, 23) }; // unfreeze
    |              ^^^^^^^^^^^^^^^^
    = help: this transition corresponds to a loss of read permissions
    = note: BACKTRACE (of the first span):
-   = note: inside `foo` at tests/fail/both_borrows/return_invalid_shr.rs:LL:CC
+   = note: called from `foo` at tests/fail/both_borrows/return_invalid_shr.rs:LL:CC
 note: inside `main`
   --> tests/fail/both_borrows/return_invalid_shr.rs:LL:CC
    |

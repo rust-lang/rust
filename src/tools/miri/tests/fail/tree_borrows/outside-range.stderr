@@ -19,7 +19,7 @@ help: the protected tag <TAG> was created here, in the initial state Reserved
 LL | unsafe fn stuff(x: &mut u8, y: *mut u8) {
    |                 ^
    = note: BACKTRACE (of the first span):
-   = note: inside `stuff` at tests/fail/tree_borrows/outside-range.rs:LL:CC
+   = note: called from `stuff` at tests/fail/tree_borrows/outside-range.rs:LL:CC
 note: inside `main`
   --> tests/fail/tree_borrows/outside-range.rs:LL:CC
    |

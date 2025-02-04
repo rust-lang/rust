@@ -9,7 +9,7 @@ error[E0080]: evaluation of constant value failed
    |
    = note: `ptr_offset_from` called on two different pointers that are not both derived from the same allocation
    |
-note: inside `NOT_PTR`
+note: called from `NOT_PTR`
   --> $DIR/offset_from_ub.rs:25:14
    |
 LL |     unsafe { (42 as *const u8).offset_from(&5u8) as usize }
@@ -80,7 +80,7 @@ error[E0080]: evaluation of constant value failed
    |
    = note: `ptr_offset_from` called on two different pointers that are not both derived from the same allocation
    |
-note: inside `OFFSET_VERY_FAR1`
+note: called from `OFFSET_VERY_FAR1`
   --> $DIR/offset_from_ub.rs:110:14
    |
 LL |     unsafe { ptr2.offset_from(ptr1) }
@@ -91,7 +91,7 @@ error[E0080]: evaluation of constant value failed
    |
    = note: `ptr_offset_from` called when first pointer is too far before second
    |
-note: inside `OFFSET_VERY_FAR2`
+note: called from `OFFSET_VERY_FAR2`
   --> $DIR/offset_from_ub.rs:116:14
    |
 LL |     unsafe { ptr1.offset_from(ptr2.wrapping_offset(1)) }

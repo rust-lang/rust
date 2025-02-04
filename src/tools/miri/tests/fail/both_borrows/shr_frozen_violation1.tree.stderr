@@ -12,7 +12,7 @@ help: the accessed tag <TAG> was created here, in the initial state Frozen
 LL | fn unknown_code(x: &i32) {
    |                 ^
    = note: BACKTRACE (of the first span):
-   = note: inside `unknown_code` at tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
+   = note: called from `unknown_code` at tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
 note: inside `foo`
   --> tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
    |

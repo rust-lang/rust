@@ -3,9 +3,9 @@ error[E0080]: evaluation of constant value failed
    |
    = note: unable to turn pointer into integer
    |
-note: inside `std::ptr::const_ptr::<impl *const u8>::read`
+note: called from `std::ptr::const_ptr::<impl *const u8>::read`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-note: inside `C`
+note: called from `C`
   --> $DIR/issue-miri-1910.rs:7:5
    |
 LL |     (&foo as *const _ as *const u8).add(one_and_a_half_pointers).read();

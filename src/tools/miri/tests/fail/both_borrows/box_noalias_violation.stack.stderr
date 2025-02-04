@@ -17,7 +17,7 @@ help: <TAG> is this argument
 LL | unsafe fn test(mut x: Box<i32>, y: *const i32) -> i32 {
    |                ^^^^^
    = note: BACKTRACE (of the first span):
-   = note: inside `test` at tests/fail/both_borrows/box_noalias_violation.rs:LL:CC
+   = note: called from `test` at tests/fail/both_borrows/box_noalias_violation.rs:LL:CC
 note: inside `main`
   --> tests/fail/both_borrows/box_noalias_violation.rs:LL:CC
    |

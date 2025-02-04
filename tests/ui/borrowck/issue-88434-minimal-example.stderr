@@ -4,7 +4,7 @@ error[E0080]: evaluation of constant value failed
 LL |     panic!()
    |     ^^^^^^^^ explicit panic
    |
-note: inside `_CONST`
+note: called from `_CONST`
   --> $DIR/issue-88434-minimal-example.rs:3:22
    |
 LL | const _CONST: &() = &f(&|_| {});

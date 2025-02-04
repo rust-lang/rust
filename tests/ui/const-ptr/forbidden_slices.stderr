@@ -104,9 +104,9 @@ error[E0080]: could not evaluate static initializer
    |
    = note: assertion failed: 0 < pointee_size && pointee_size <= isize::MAX as usize
    |
-note: inside `from_ptr_range::<'_, ()>`
+note: called from `from_ptr_range::<'_, ()>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: inside `R1`
+note: called from `R1`
   --> $DIR/forbidden_slices.rs:50:33
    |
 LL | pub static R1: &[()] = unsafe { from_ptr_range(ptr::null()..ptr::null()) }; // errors inside libcore
@@ -118,7 +118,7 @@ error[E0080]: could not evaluate static initializer
    |
    = note: out-of-bounds pointer arithmetic: expected a pointer to 8 bytes of memory, but got ALLOC10 which is only 4 bytes from the end of the allocation
    |
-note: inside `R2`
+note: called from `R2`
   --> $DIR/forbidden_slices.rs:53:25
    |
 LL |     from_ptr_range(ptr..ptr.add(2)) // errors inside libcore
@@ -175,7 +175,7 @@ error[E0080]: could not evaluate static initializer
    |
    = note: out-of-bounds pointer arithmetic: expected a pointer to 8 bytes of memory, but got ALLOC11+0x1 which is only 7 bytes from the end of the allocation
    |
-note: inside `R8`
+note: called from `R8`
   --> $DIR/forbidden_slices.rs:77:25
    |
 LL |     from_ptr_range(ptr..ptr.add(1))
@@ -186,9 +186,9 @@ error[E0080]: could not evaluate static initializer
    |
    = note: `ptr_offset_from_unsigned` called on two different pointers that are not both derived from the same allocation
    |
-note: inside `from_ptr_range::<'_, u32>`
+note: called from `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: inside `R9`
+note: called from `R9`
   --> $DIR/forbidden_slices.rs:82:34
    |
 LL | pub static R9: &[u32] = unsafe { from_ptr_range(&D0..(&D0 as *const u32).add(1)) };
@@ -199,9 +199,9 @@ error[E0080]: could not evaluate static initializer
    |
    = note: `ptr_offset_from_unsigned` called on two different pointers that are not both derived from the same allocation
    |
-note: inside `from_ptr_range::<'_, u32>`
+note: called from `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: inside `R10`
+note: called from `R10`
   --> $DIR/forbidden_slices.rs:83:35
    |
 LL | pub static R10: &[u32] = unsafe { from_ptr_range(&D0..&D0) };

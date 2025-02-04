@@ -30,7 +30,7 @@ LL |     x.0 = 0;
    |     ^^^^^^^
    = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
    = note: BACKTRACE (of the first span):
-   = note: inside `change_arg` at tests/fail/function_calls/arg_inplace_observe_during.rs:LL:CC
+   = note: called from `change_arg` at tests/fail/function_calls/arg_inplace_observe_during.rs:LL:CC
 note: inside `main`
   --> tests/fail/function_calls/arg_inplace_observe_during.rs:LL:CC
    |

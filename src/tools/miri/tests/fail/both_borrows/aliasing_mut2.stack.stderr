@@ -17,7 +17,7 @@ help: <TAG> is this argument
 LL | pub fn safe(x: &i32, y: &mut i32) {
    |             ^
    = note: BACKTRACE (of the first span):
-   = note: inside `safe` at tests/fail/both_borrows/aliasing_mut2.rs:LL:CC
+   = note: called from `safe` at tests/fail/both_borrows/aliasing_mut2.rs:LL:CC
 note: inside `main`
   --> tests/fail/both_borrows/aliasing_mut2.rs:LL:CC
    |

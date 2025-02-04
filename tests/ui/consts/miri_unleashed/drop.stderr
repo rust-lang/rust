@@ -3,7 +3,7 @@ error[E0080]: could not evaluate static initializer
    |
    = note: calling non-const function `<Vec<i32> as Drop>::drop`
    |
-note: inside `TEST_BAD`
+note: called from `TEST_BAD`
   --> $DIR/drop.rs:17:1
    |
 LL | };

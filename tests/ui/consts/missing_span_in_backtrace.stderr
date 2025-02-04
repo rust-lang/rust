@@ -3,13 +3,13 @@ error[E0080]: evaluation of constant value failed
    |
    = note: unable to copy parts of a pointer from memory at ALLOC0
    |
-note: inside `std::ptr::swap_nonoverlapping_simple_untyped::<MaybeUninit<u8>>`
+note: called from `std::ptr::swap_nonoverlapping_simple_untyped::<MaybeUninit<u8>>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `swap_nonoverlapping::compiletime::<MaybeUninit<u8>>`
+note: called from `swap_nonoverlapping::compiletime::<MaybeUninit<u8>>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `swap_nonoverlapping::<MaybeUninit<u8>>`
+note: called from `swap_nonoverlapping::<MaybeUninit<u8>>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `X`
+note: called from `X`
   --> $DIR/missing_span_in_backtrace.rs:16:9
    |
 16 | /         ptr::swap_nonoverlapping(

@@ -3,12 +3,12 @@ error[E0080]: evaluation of constant value failed
    |
    = note: entering unreachable code
    |
-note: inside `foo`
+note: called from `foo`
   --> $DIR/const_unsafe_unreachable_ub.rs:6:18
    |
 LL |         false => std::hint::unreachable_unchecked(),
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: inside `BAR`
+note: called from `BAR`
   --> $DIR/const_unsafe_unreachable_ub.rs:10:28
    |
 LL | const BAR: bool = unsafe { foo(false) };

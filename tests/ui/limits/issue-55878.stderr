@@ -3,7 +3,7 @@ error[E0080]: evaluation of constant value failed
    |
    = note: values of the type `[u8; usize::MAX]` are too big for the target architecture
    |
-note: inside `main`
+note: called from `main`
   --> $DIR/issue-55878.rs:5:26
    |
 LL |     println!("Size: {}", std::mem::size_of::<[u8; u64::MAX as usize]>());

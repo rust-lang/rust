@@ -3,7 +3,7 @@ error[E0080]: evaluation of constant value failed
    |
    = note: the type `<() as Project>::Assoc` has an unknown layout
    |
-note: inside `foo::{constant#0}`
+note: called from `foo::{constant#0}`
   --> $DIR/unknown-when-no-type-parameter.rs:11:10
    |
 LL |     [(); size_of::<<() as Project>::Assoc>()];

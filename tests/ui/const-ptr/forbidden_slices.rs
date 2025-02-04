@@ -74,7 +74,7 @@ pub static R7: &[u16] = unsafe {
 };
 pub static R8: &[u64] = unsafe {
     let ptr = (&D4 as *const [u32; 2] as *const u32).byte_add(1).cast::<u64>();
-    from_ptr_range(ptr..ptr.add(1)) //~ inside `R8`
+    from_ptr_range(ptr..ptr.add(1)) //~ called from `R8`
 };
 
 // This is sneaky: &D0 and &D0 point to different objects
