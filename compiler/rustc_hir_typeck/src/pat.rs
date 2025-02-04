@@ -2649,29 +2649,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // error if the subpattern is of edition >= 2024.
         let trimmed_span = subpat.span.until(cutoff_span).with_ctxt(subpat.span.ctxt());
 
+        let mut typeck_results = self.typeck_results.borrow_mut();
+        let mut table = typeck_results.rust_2024_migration_desugared_pats_mut();
+        let info = table.entry(pat_id).or_default();
+
+        info.primary_spans.push(trimmed_span);
+
         // Only provide a detailed label if the problematic subpattern isn't from an expansion.
         // In the case that it's from a macro, we'll add a more detailed note in the emitter.
-        let desc = if subpat.span.from_expansion() {
+        let from_expansion = subpat.span.from_expansion();
+        let primary_label = if from_expansion {
             // NB: This wording assumes the only expansions that can produce problematic reference
             // patterns and bindings are macros. If a desugaring or AST pass is added that can do
             // so, we may want to inspect the span's source callee or macro backtrace.
             "occurs within macro expansion"
         } else {
-            match def_br_mutbl {
-                Mutability::Not => "default binding mode is `ref`",
-                Mutability::Mut => "default binding mode is `ref mut`",
+            if matches!(subpat.kind, PatKind::Binding(_, _, _, _)) {
+                info.bad_modifiers |= true;
+                "this binding modifier"
+            } else {
+                info.bad_ref_pats |= true;
+                "this reference pattern"
             }
         };
+        info.span_labels.push((trimmed_span, primary_label.to_owned()));
 
-        let mut typeck_results = self.typeck_results.borrow_mut();
-        let mut table = typeck_results.rust_2024_migration_desugared_pats_mut();
-        let info = table.entry(pat_id).or_default();
-
-        info.labels.push((trimmed_span, desc.to_owned()));
-        if matches!(subpat.kind, PatKind::Binding(_, _, _, _)) {
-            info.bad_modifiers |= true;
-        } else {
-            info.bad_ref_pats |= true;
+        if !from_expansion {
+            // Add a secondary label covering the whole pattern noting the default binding mode
+            let def_br_desc = match def_br_mutbl {
+                Mutability::Not => "default binding mode is `ref`",
+                Mutability::Mut => "default binding mode is `ref mut`",
+            };
+            info.span_labels.push((subpat.span, def_br_desc.to_owned()));
         }
     }
 }

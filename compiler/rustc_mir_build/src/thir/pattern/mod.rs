@@ -59,8 +59,8 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
     debug!("pat_from_hir({:?}) = {:?}", pat, result);
     if let Some(info) = migration_info {
         let sugg = pcx.rust_2024_migration_suggestion.expect("suggestion should be present");
-        let mut spans = MultiSpan::from_spans(info.labels.iter().map(|(span, _)| *span).collect());
-        for (span, label) in &info.labels {
+        let mut spans = MultiSpan::from_spans(info.primary_spans.clone());
+        for (span, label) in &info.span_labels {
             spans.push_span_label(*span, label.clone());
         }
         // If a relevant span is from at least edition 2024, this is a hard error.
