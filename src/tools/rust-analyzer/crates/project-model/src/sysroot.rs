@@ -21,7 +21,7 @@ use stdx::format_to;
 use toolchain::{probe_for_binary, Tool};
 
 use crate::{
-    cargo_workspace::CargoMetadataConfig, utf8_stdout, CargoWorkspace, ManifestPath,
+    cargo_workspace::CargoMetadataConfig, utf8_stdout, CargoWorkspace, ManifestPath, ProjectJson,
     RustSourceWorkspaceConfig,
 };
 
@@ -36,6 +36,7 @@ pub struct Sysroot {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RustLibSrcWorkspace {
     Workspace(CargoWorkspace),
+    Json(ProjectJson),
     Stitched(Stitched),
     Empty,
 }
@@ -114,6 +115,7 @@ impl Sysroot {
     pub fn is_rust_lib_src_empty(&self) -> bool {
         match &self.workspace {
             RustLibSrcWorkspace::Workspace(ws) => ws.packages().next().is_none(),
+            RustLibSrcWorkspace::Json(project_json) => project_json.n_crates() == 0,
             RustLibSrcWorkspace::Stitched(stitched) => stitched.crates.is_empty(),
             RustLibSrcWorkspace::Empty => true,
         }
@@ -126,6 +128,7 @@ impl Sysroot {
     pub fn num_packages(&self) -> usize {
         match &self.workspace {
             RustLibSrcWorkspace::Workspace(ws) => ws.packages().count(),
+            RustLibSrcWorkspace::Json(project_json) => project_json.n_crates(),
             RustLibSrcWorkspace::Stitched(c) => c.crates().count(),
             RustLibSrcWorkspace::Empty => 0,
         }
@@ -252,6 +255,8 @@ impl Sysroot {
                     return Some(loaded);
                 }
             }
+        } else if let RustSourceWorkspaceConfig::Json(project_json) = sysroot_source_config {
+            return Some(RustLibSrcWorkspace::Json(project_json.clone()));
         }
         tracing::debug!("Stitching sysroot library: {src_root}");
 
@@ -308,6 +313,10 @@ impl Sysroot {
                     RustLibSrcWorkspace::Workspace(ws) => {
                         ws.packages().any(|p| ws[p].name == "core")
                     }
+                    RustLibSrcWorkspace::Json(project_json) => project_json
+                        .crates()
+                        .filter_map(|(_, krate)| krate.display_name.clone())
+                        .any(|name| name.canonical_name().as_str() == "core"),
                     RustLibSrcWorkspace::Stitched(stitched) => stitched.by_name("core").is_some(),
                     RustLibSrcWorkspace::Empty => true,
                 };
