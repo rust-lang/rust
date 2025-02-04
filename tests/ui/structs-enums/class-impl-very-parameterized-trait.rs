@@ -102,6 +102,6 @@ pub fn main() {
     let mut spotty: cat<cat_type> = cat::new(2, 57, cat_type::tuxedo);
     for _ in 0_usize..6 { spotty.speak(); }
     assert_eq!(spotty.len(), 8);
-    assert!((spotty.contains_key(&2)));
+    assert!(spotty.contains_key(&2));
     assert_eq!(spotty.get(&3), &cat_type::tuxedo);
 }

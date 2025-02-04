@@ -2297,21 +2297,21 @@ fn utf8_chars() {
     assert_eq!(schs.len(), 4);
     assert_eq!(schs.iter().cloned().collect::<String>(), s);
 
-    assert!((from_utf8(s.as_bytes()).is_ok()));
+    assert!(from_utf8(s.as_bytes()).is_ok());
     // invalid prefix
-    assert!((!from_utf8(&[0x80]).is_ok()));
+    assert!(!from_utf8(&[0x80]).is_ok());
     // invalid 2 byte prefix
-    assert!((!from_utf8(&[0xc0]).is_ok()));
-    assert!((!from_utf8(&[0xc0, 0x10]).is_ok()));
+    assert!(!from_utf8(&[0xc0]).is_ok());
+    assert!(!from_utf8(&[0xc0, 0x10]).is_ok());
     // invalid 3 byte prefix
-    assert!((!from_utf8(&[0xe0]).is_ok()));
-    assert!((!from_utf8(&[0xe0, 0x10]).is_ok()));
-    assert!((!from_utf8(&[0xe0, 0xff, 0x10]).is_ok()));
+    assert!(!from_utf8(&[0xe0]).is_ok());
+    assert!(!from_utf8(&[0xe0, 0x10]).is_ok());
+    assert!(!from_utf8(&[0xe0, 0xff, 0x10]).is_ok());
     // invalid 4 byte prefix
-    assert!((!from_utf8(&[0xf0]).is_ok()));
-    assert!((!from_utf8(&[0xf0, 0x10]).is_ok()));
-    assert!((!from_utf8(&[0xf0, 0xff, 0x10]).is_ok()));
-    assert!((!from_utf8(&[0xf0, 0xff, 0xff, 0x10]).is_ok()));
+    assert!(!from_utf8(&[0xf0]).is_ok());
+    assert!(!from_utf8(&[0xf0, 0x10]).is_ok());
+    assert!(!from_utf8(&[0xf0, 0xff, 0x10]).is_ok());
+    assert!(!from_utf8(&[0xf0, 0xff, 0xff, 0x10]).is_ok());
 }
 
 #[test]

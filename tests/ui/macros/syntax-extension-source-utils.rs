@@ -16,7 +16,7 @@ pub fn main() {
     assert_eq!(line!(), 16);
     assert_eq!(column!(), 16);
     assert_eq!(indirect_line!(), 18);
-    assert!((file!().ends_with("syntax-extension-source-utils.rs")));
+    assert!(file!().ends_with("syntax-extension-source-utils.rs"));
     assert_eq!(stringify!((2*3) + 5).to_string(), "(2*3) + 5".to_string());
     assert!(include!("syntax-extension-source-utils-files/includeme.\
                       fragment").to_string()
@@ -30,7 +30,7 @@ pub fn main() {
         include_bytes!("syntax-extension-source-utils-files/includeme.fragment")
         [1] == (42 as u8)); // '*'
     // The Windows tests are wrapped in an extra module for some reason
-    assert!((m1::m2::where_am_i().ends_with("m1::m2")));
+    assert!(m1::m2::where_am_i().ends_with("m1::m2"));
 
     assert_eq!((35, "(2*3) + 5"), (line!(), stringify!((2*3) + 5)));
 }
