@@ -703,7 +703,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         self.note_obligation_cause(&mut err, &obligation);
-        self.point_at_returns_when_relevant(&mut err, &obligation);
         err.emit()
     }
 }
@@ -806,7 +805,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "Async",
                 );
                 self.note_obligation_cause(&mut err, &obligation);
-                self.point_at_returns_when_relevant(&mut err, &obligation);
                 return Some(err.emit());
             }
         }
@@ -852,7 +850,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "",
                 );
                 self.note_obligation_cause(&mut err, &obligation);
-                self.point_at_returns_when_relevant(&mut err, &obligation);
                 return Some(err.emit());
             }
 
@@ -868,7 +865,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     kind: expected_kind.as_str(),
                 });
                 self.note_obligation_cause(&mut err, &obligation);
-                self.point_at_returns_when_relevant(&mut err, &obligation);
                 return Some(err.emit());
             }
         }
@@ -2826,7 +2822,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err.span_note(self.tcx.def_span(def_id), "opaque type is declared here");
 
         self.note_obligation_cause(&mut err, &obligation);
-        self.point_at_returns_when_relevant(&mut err, &obligation);
         self.dcx().try_steal_replace_and_emit_err(self.tcx.def_span(def_id), StashKey::Cycle, err)
     }
 

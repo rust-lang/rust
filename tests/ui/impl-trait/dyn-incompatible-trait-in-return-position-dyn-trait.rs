@@ -20,7 +20,7 @@ impl DynIncompatible for B {
 }
 
 fn car() -> dyn DynIncompatible { //~ ERROR the trait `DynIncompatible` is not dyn compatible
-//~^ ERROR return type cannot have an unboxed trait object
+//~^ ERROR return type cannot be a trait object without pointer indirection
     if true {
         return A;
     }
