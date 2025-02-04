@@ -314,6 +314,10 @@ pub fn parse_config(args: Vec<String>) -> Config {
     let build_test_suite_root = opt_path(matches, "build-test-suite-root");
     assert!(build_test_suite_root.starts_with(&build_root));
 
+    let build_root = opt_path(matches, "build-root");
+    let build_test_suite_root = opt_path(matches, "build-test-suite-root");
+    assert!(build_test_suite_root.starts_with(&build_root));
+
     Config {
         bless: matches.opt_present("bless"),
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
