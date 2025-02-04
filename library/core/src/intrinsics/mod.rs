@@ -2739,110 +2739,112 @@ pub unsafe fn truncf128(_x: f128) -> f128 {
     unreachable!()
 }
 
-/// Returns the nearest integer to an `f16`. Changing the rounding mode is not possible in Rust,
-/// so this rounds half-way cases to the number with an even least significant digit.
-///
-/// May raise an inexact floating-point exception if the argument is not an integer.
-/// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
-/// cannot actually be utilized from Rust code.
-/// In other words, this intrinsic is equivalent in behavior to `nearbyintf16` and `roundevenf16`.
+/// Returns the nearest integer to an `f16`. Rounds half-way cases to the number with an even
+/// least significant digit.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::round_ties_even`](../../std/primitive.f16.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
-pub unsafe fn rintf16(_x: f16) -> f16 {
+#[cfg(not(bootstrap))]
+pub unsafe fn round_ties_even_f16(_x: f16) -> f16 {
     unreachable!()
 }
-/// Returns the nearest integer to an `f32`. Changing the rounding mode is not possible in Rust,
-/// so this rounds half-way cases to the number with an even least significant digit.
-///
-/// May raise an inexact floating-point exception if the argument is not an integer.
-/// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
-/// cannot actually be utilized from Rust code.
-/// In other words, this intrinsic is equivalent in behavior to `nearbyintf32` and `roundevenf32`.
+
+/// To be removed on next bootstrap bump.
+#[cfg(bootstrap)]
+pub unsafe fn round_ties_even_f16(x: f16) -> f16 {
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    #[rustc_nounwind]
+    unsafe fn rintf16(_x: f16) -> f16 {
+        unreachable!()
+    }
+
+    // SAFETY: this intrinsic isn't actually unsafe
+    unsafe { rintf16(x) }
+}
+
+/// Returns the nearest integer to an `f32`. Rounds half-way cases to the number with an even
+/// least significant digit.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
-pub unsafe fn rintf32(_x: f32) -> f32 {
+#[cfg(not(bootstrap))]
+pub unsafe fn round_ties_even_f32(_x: f32) -> f32 {
     unreachable!()
 }
-/// Returns the nearest integer to an `f64`. Changing the rounding mode is not possible in Rust,
-/// so this rounds half-way cases to the number with an even least significant digit.
-///
-/// May raise an inexact floating-point exception if the argument is not an integer.
-/// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
-/// cannot actually be utilized from Rust code.
-/// In other words, this intrinsic is equivalent in behavior to `nearbyintf64` and `roundevenf64`.
+
+/// To be removed on next bootstrap bump.
+#[cfg(bootstrap)]
+pub unsafe fn round_ties_even_f32(x: f32) -> f32 {
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    #[rustc_nounwind]
+    unsafe fn rintf32(_x: f32) -> f32 {
+        unreachable!()
+    }
+
+    // SAFETY: this intrinsic isn't actually unsafe
+    unsafe { rintf32(x) }
+}
+
+/// Returns the nearest integer to an `f64`. Rounds half-way cases to the number with an even
+/// least significant digit.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
-pub unsafe fn rintf64(_x: f64) -> f64 {
+#[cfg(not(bootstrap))]
+pub unsafe fn round_ties_even_f64(_x: f64) -> f64 {
     unreachable!()
 }
-/// Returns the nearest integer to an `f128`. Changing the rounding mode is not possible in Rust,
-/// so this rounds half-way cases to the number with an even least significant digit.
-///
-/// May raise an inexact floating-point exception if the argument is not an integer.
-/// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
-/// cannot actually be utilized from Rust code.
-/// In other words, this intrinsic is equivalent in behavior to `nearbyintf128` and `roundevenf128`.
+
+/// To be removed on next bootstrap bump.
+#[cfg(bootstrap)]
+pub unsafe fn round_ties_even_f64(x: f64) -> f64 {
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    #[rustc_nounwind]
+    unsafe fn rintf64(_x: f64) -> f64 {
+        unreachable!()
+    }
+
+    // SAFETY: this intrinsic isn't actually unsafe
+    unsafe { rintf64(x) }
+}
+
+/// Returns the nearest integer to an `f128`. Rounds half-way cases to the number with an even
+/// least significant digit.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::round_ties_even`](../../std/primitive.f128.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
-pub unsafe fn rintf128(_x: f128) -> f128 {
+#[cfg(not(bootstrap))]
+pub unsafe fn round_ties_even_f128(_x: f128) -> f128 {
     unreachable!()
 }
 
-/// Returns the nearest integer to an `f16`. Changing the rounding mode is not possible in Rust,
-/// so this rounds half-way cases to the number with an even least significant digit.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-pub unsafe fn nearbyintf16(_x: f16) -> f16 {
-    unreachable!()
-}
-/// Returns the nearest integer to an `f32`. Changing the rounding mode is not possible in Rust,
-/// so this rounds half-way cases to the number with an even least significant digit.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-pub unsafe fn nearbyintf32(_x: f32) -> f32 {
-    unreachable!()
-}
-/// Returns the nearest integer to an `f64`. Changing the rounding mode is not possible in Rust,
-/// so this rounds half-way cases to the number with an even least significant digit.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-pub unsafe fn nearbyintf64(_x: f64) -> f64 {
-    unreachable!()
-}
-/// Returns the nearest integer to an `f128`. Changing the rounding mode is not possible in Rust,
-/// so this rounds half-way cases to the number with an even least significant digit.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-pub unsafe fn nearbyintf128(_x: f128) -> f128 {
-    unreachable!()
+/// To be removed on next bootstrap bump.
+#[cfg(bootstrap)]
+pub unsafe fn round_ties_even_f128(x: f128) -> f128 {
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    #[rustc_nounwind]
+    unsafe fn rintf128(_x: f128) -> f128 {
+        unreachable!()
+    }
+
+    // SAFETY: this intrinsic isn't actually unsafe
+    unsafe { rintf128(x) }
 }
 
 /// Returns the nearest integer to an `f16`. Rounds half-way cases away from zero.
@@ -2883,47 +2885,6 @@ pub unsafe fn roundf64(_x: f64) -> f64 {
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn roundf128(_x: f128) -> f128 {
-    unreachable!()
-}
-
-/// Returns the nearest integer to an `f16`. Rounds half-way cases to the number
-/// with an even least significant digit.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-pub unsafe fn roundevenf16(_x: f16) -> f16 {
-    unreachable!()
-}
-/// Returns the nearest integer to an `f32`. Rounds half-way cases to the number
-/// with an even least significant digit.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-pub unsafe fn roundevenf32(_x: f32) -> f32 {
-    unreachable!()
-}
-/// Returns the nearest integer to an `f64`. Rounds half-way cases to the number
-/// with an even least significant digit.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-pub unsafe fn roundevenf64(_x: f64) -> f64 {
-    unreachable!()
-}
-/// Returns the nearest integer to an `f128`. Rounds half-way cases to the number
-/// with an even least significant digit.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-pub unsafe fn roundevenf128(_x: f128) -> f128 {
     unreachable!()
 }
 

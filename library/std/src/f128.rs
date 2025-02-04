@@ -129,7 +129,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn round_ties_even(self) -> f128 {
-        unsafe { intrinsics::rintf128(self) }
+        unsafe { intrinsics::round_ties_even_f128(self) }
     }
 
     /// Returns the integer part of `self`.
