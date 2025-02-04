@@ -2313,6 +2313,18 @@ impl Expr<'_> {
                     [val2],
                     StructTailExpr::None,
                 ),
+            )
+            | (
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeFromCopy, _),
+                    [val1],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeFromCopy, _),
+                    [val2],
+                    StructTailExpr::None,
+                ),
             ) => val1.expr.equivalent_for_indexing(val2.expr),
             (
                 ExprKind::Struct(
@@ -2322,6 +2334,30 @@ impl Expr<'_> {
                 ),
                 ExprKind::Struct(
                     QPath::LangItem(LangItem::Range, _),
+                    [val2, val4],
+                    StructTailExpr::None,
+                ),
+            )
+            | (
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeCopy, _),
+                    [val1, val3],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeCopy, _),
+                    [val2, val4],
+                    StructTailExpr::None,
+                ),
+            )
+            | (
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeInclusiveCopy, _),
+                    [val1, val3],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeInclusiveCopy, _),
                     [val2, val4],
                     StructTailExpr::None,
                 ),
@@ -2354,7 +2390,10 @@ pub fn is_range_literal(expr: &Expr<'_>) -> bool {
                     | LangItem::RangeTo
                     | LangItem::RangeFrom
                     | LangItem::RangeFull
-                    | LangItem::RangeToInclusive,
+                    | LangItem::RangeToInclusive
+                    | LangItem::RangeCopy
+                    | LangItem::RangeFromCopy
+                    | LangItem::RangeInclusiveCopy,
                 ..
             )
         ),

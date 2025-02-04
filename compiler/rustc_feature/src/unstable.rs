@@ -570,6 +570,8 @@ declare_features! (
     (unstable, never_type, "1.13.0", Some(35121)),
     /// Allows diverging expressions to fall back to `!` rather than `()`.
     (unstable, never_type_fallback, "1.41.0", Some(65992)),
+    /// Switch `..` syntax to use the new (`Copy + IntoIterator`) range types.
+    (unstable, new_range, "CURRENT_RUSTC_VERSION", Some(123741)),
     /// Allows `#![no_core]`.
     (unstable, no_core, "1.3.0", Some(29639)),
     /// Allows the use of `no_sanitize` attribute.
