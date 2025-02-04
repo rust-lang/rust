@@ -53,15 +53,28 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
             suggestion: Vec::new(),
             ref_pattern_count: 0,
             binding_mode_count: 0,
+            default_mode_span: None,
+            default_mode_labels: Default::default(),
         })),
     };
     let result = pcx.lower_pattern(pat);
     debug!("pat_from_hir({:?}) = {:?}", pat, result);
     if let Some(info) = migration_info {
         let sugg = pcx.rust_2024_migration_suggestion.expect("suggestion should be present");
-        let mut spans = MultiSpan::from_spans(info.primary_spans.clone());
-        for (span, label) in &info.span_labels {
+        let mut spans =
+            MultiSpan::from_spans(info.primary_labels.iter().map(|(span, _)| *span).collect());
+        for (span, label) in &info.primary_labels {
             spans.push_span_label(*span, label.clone());
+        }
+        for (span, label_mutbl) in &sugg.default_mode_labels {
+            // Don't point to a macro call site.
+            if !span.from_expansion() {
+                let label = match label_mutbl {
+                    Mutability::Not => "default binding mode is `ref`",
+                    Mutability::Mut => "default binding mode is `ref mut`",
+                };
+                spans.push_span_label(*span, label.to_owned())
+            }
         }
         // If a relevant span is from at least edition 2024, this is a hard error.
         let is_hard_error = spans.primary_spans().iter().any(|span| span.at_least_rust_2024());
@@ -96,6 +109,40 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
+        let adjustments: &[Ty<'tcx>] =
+            self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
+
+        let mut opt_old_mode_span = None;
+        if let Some(s) = &mut self.rust_2024_migration_suggestion
+            && !adjustments.is_empty()
+        {
+            let mut min_mutbl = Mutability::Mut;
+            let suggestion_str: String = adjustments
+                .iter()
+                .map(|ref_ty| {
+                    let &ty::Ref(_, _, mutbl) = ref_ty.kind() else {
+                        span_bug!(pat.span, "pattern implicitly dereferences a non-ref type");
+                    };
+
+                    match mutbl {
+                        Mutability::Not => {
+                            min_mutbl = Mutability::Not;
+                            "&"
+                        }
+                        Mutability::Mut => "&mut ",
+                    }
+                })
+                .collect();
+            s.suggestion.push((pat.span.shrink_to_lo(), suggestion_str));
+            s.ref_pattern_count += adjustments.len();
+
+            // Remember if this changed the default binding mode, in case we want to label it.
+            if s.default_mode_span.is_none_or(|(_, old_mutbl)| min_mutbl < old_mutbl) {
+                opt_old_mode_span = Some(s.default_mode_span);
+                s.default_mode_span = Some((pat.span, min_mutbl));
+            }
+        };
+
         // When implicit dereferences have been inserted in this pattern, the unadjusted lowered
         // pattern has the type that results *after* dereferencing. For example, in this code:
         //
@@ -124,8 +171,6 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => self.lower_pattern_unadjusted(pat),
         };
 
-        let adjustments: &[Ty<'tcx>] =
-            self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
         let adjusted_pat = adjustments.iter().rev().fold(unadjusted_pat, |thir_pat, ref_ty| {
             debug!("{:?}: wrapping pattern with type {:?}", thir_pat, ref_ty);
             Box::new(Pat {
@@ -136,24 +181,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         });
 
         if let Some(s) = &mut self.rust_2024_migration_suggestion
-            && !adjustments.is_empty()
+            && let Some(old_mode_span) = opt_old_mode_span
         {
-            let suggestion_str: String = adjustments
-                .iter()
-                .map(|ref_ty| {
-                    let &ty::Ref(_, _, mutbl) = ref_ty.kind() else {
-                        span_bug!(pat.span, "pattern implicitly dereferences a non-ref type");
-                    };
-
-                    match mutbl {
-                        ty::Mutability::Not => "&",
-                        ty::Mutability::Mut => "&mut ",
-                    }
-                })
-                .collect();
-            s.suggestion.push((pat.span.shrink_to_lo(), suggestion_str));
-            s.ref_pattern_count += adjustments.len();
-        };
+            s.default_mode_span = old_mode_span;
+        }
 
         adjusted_pat
     }
@@ -353,7 +384,22 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
                 PatKind::DerefPattern { subpattern: self.lower_pattern(subpattern), mutability }
             }
-            hir::PatKind::Ref(subpattern, _) | hir::PatKind::Box(subpattern) => {
+            hir::PatKind::Ref(subpattern, _) => {
+                // Track the default binding mode for the Rust 2024 migration suggestion.
+                let old_mode_span = self.rust_2024_migration_suggestion.as_mut().and_then(|s| {
+                    if let Some((default_mode_span, default_ref_mutbl)) = s.default_mode_span {
+                        // If this eats a by-ref default binding mode, label the binding mode.
+                        s.default_mode_labels.insert(default_mode_span, default_ref_mutbl);
+                    }
+                    s.default_mode_span.take()
+                });
+                let subpattern = self.lower_pattern(subpattern);
+                if let Some(s) = &mut self.rust_2024_migration_suggestion {
+                    s.default_mode_span = old_mode_span;
+                }
+                PatKind::Deref { subpattern }
+            }
+            hir::PatKind::Box(subpattern) => {
                 PatKind::Deref { subpattern: self.lower_pattern(subpattern) }
             }
 
@@ -380,19 +426,26 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     .get(pat.hir_id)
                     .expect("missing binding mode");
 
-                if let Some(s) = &mut self.rust_2024_migration_suggestion
-                    && explicit_ba.0 == ByRef::No
-                    && let ByRef::Yes(mutbl) = mode.0
-                {
-                    let sugg_str = match mutbl {
-                        Mutability::Not => "ref ",
-                        Mutability::Mut => "ref mut ",
-                    };
-                    s.suggestion.push((
-                        pat.span.with_lo(ident.span.lo()).shrink_to_lo(),
-                        sugg_str.to_owned(),
-                    ));
-                    s.binding_mode_count += 1;
+                if let Some(s) = &mut self.rust_2024_migration_suggestion {
+                    if explicit_ba != hir::BindingMode::NONE
+                        && let Some((default_mode_span, default_ref_mutbl)) = s.default_mode_span
+                    {
+                        // If this overrides a by-ref default binding mode, label the binding mode.
+                        s.default_mode_labels.insert(default_mode_span, default_ref_mutbl);
+                    }
+                    if explicit_ba.0 == ByRef::No
+                        && let ByRef::Yes(mutbl) = mode.0
+                    {
+                        let sugg_str = match mutbl {
+                            Mutability::Not => "ref ",
+                            Mutability::Mut => "ref mut ",
+                        };
+                        s.suggestion.push((
+                            pat.span.with_lo(ident.span.lo()).shrink_to_lo(),
+                            sugg_str.to_owned(),
+                        ));
+                        s.binding_mode_count += 1;
+                    }
                 }
 
                 // A ref x pattern is the same node used for x, and as such it has
