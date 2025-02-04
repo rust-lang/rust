@@ -10,7 +10,7 @@ use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics::{exact_div, unchecked_sub};
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZero;
-use crate::ops::{Bound, OneSidedRange, Range, RangeBounds, RangeInclusive};
+use crate::ops::{OneSidedRange, OneSidedRangeBound, Range, RangeBounds, RangeInclusive};
 use crate::panic::const_panic;
 use crate::simd::{self, Simd};
 use crate::ub_checks::assert_unsafe_precondition;
@@ -83,14 +83,12 @@ pub use raw::{from_raw_parts, from_raw_parts_mut};
 /// which to split. Returns `None` if the split index would overflow.
 #[inline]
 fn split_point_of(range: impl OneSidedRange<usize>) -> Option<(Direction, usize)> {
-    use Bound::*;
+    use OneSidedRangeBound::{End, EndInclusive, StartInclusive};
 
-    Some(match (range.start_bound(), range.end_bound()) {
-        (Unbounded, Excluded(i)) => (Direction::Front, *i),
-        (Unbounded, Included(i)) => (Direction::Front, i.checked_add(1)?),
-        (Excluded(i), Unbounded) => (Direction::Back, i.checked_add(1)?),
-        (Included(i), Unbounded) => (Direction::Back, *i),
-        _ => unreachable!(),
+    Some(match range.bound() {
+        (StartInclusive, i) => (Direction::Back, i),
+        (End, i) => (Direction::Front, i),
+        (EndInclusive, i) => (Direction::Front, i.checked_add(1)?),
     })
 }
 
