@@ -206,7 +206,7 @@ error: binding modifiers may only be written when the default binding mode is `m
   --> $DIR/migration_lint.rs:137:15
    |
 LL |         (Some(mut x), migration_lint_macros::mixed_edition_pat!(y)) => {
-   |               ^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ occurs within expansion
+   |               ^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ occurs within macro expansion
    |               |
    |               default binding mode is `ref`
    |

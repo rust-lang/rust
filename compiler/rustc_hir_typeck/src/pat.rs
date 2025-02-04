@@ -2652,7 +2652,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Only provide a detailed label if the problematic subpattern isn't from an expansion.
         // In the case that it's from a macro, we'll add a more detailed note in the emitter.
         let desc = if subpat.span.from_expansion() {
-            "occurs within expansion"
+            // NB: This wording assumes the only expansions that can produce problematic reference
+            // patterns and bindings are macros. If a desugaring or AST pass is added that can do
+            // so, we may want to inspect the span's source callee or macro backtrace.
+            "occurs within macro expansion"
         } else {
             match def_br_mutbl {
                 Mutability::Not => "default binding mode is `ref`",
