@@ -2,7 +2,7 @@
 //! crate or pertains to a type defined in this crate.
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{Diag, EmissionGuarantee, ErrorGuaranteed};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_lint_defs::builtin::UNCOVERED_PARAM_IN_PROJECTION;
 use rustc_middle::ty::{
@@ -10,6 +10,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::{Ident, Span};
 use rustc_trait_selection::traits::{
     self, IsFirstInputType, OrphanCheckErr, OrphanCheckMode, UncoveredTyParams,
 };
@@ -30,7 +31,25 @@ pub(crate) fn orphan_check_impl(
         Err(err) => match orphan_check(tcx, impl_def_id, OrphanCheckMode::Compat) {
             Ok(()) => match err {
                 OrphanCheckErr::UncoveredTyParams(uncovered_ty_params) => {
-                    lint_uncovered_ty_params(tcx, uncovered_ty_params, impl_def_id)
+                    let hir_id = tcx.local_def_id_to_hir_id(impl_def_id);
+
+                    for param_def_id in uncovered_ty_params.uncovered {
+                        let ident = tcx.item_ident(param_def_id);
+
+                        tcx.node_span_lint(
+                            UNCOVERED_PARAM_IN_PROJECTION,
+                            hir_id,
+                            ident.span,
+                            |diag| {
+                                decorate_uncovered_ty_params_diag(
+                                    diag,
+                                    ident.span,
+                                    ident,
+                                    uncovered_ty_params.local_ty,
+                                )
+                            },
+                        );
+                    }
                 }
                 OrphanCheckErr::NonLocalInputType(_) => {
                     bug!("orphanck: shouldn't've gotten non-local input tys in compat mode")
@@ -465,51 +484,47 @@ fn emit_orphan_check_error<'tcx>(
             diag.emit()
         }
         traits::OrphanCheckErr::UncoveredTyParams(UncoveredTyParams { uncovered, local_ty }) => {
-            let mut reported = None;
+            let mut guar = None;
             for param_def_id in uncovered {
-                let name = tcx.item_ident(param_def_id);
-                let span = name.span;
-
-                reported.get_or_insert(match local_ty {
-                    Some(local_type) => tcx.dcx().emit_err(errors::TyParamFirstLocal {
-                        span,
-                        note: (),
-                        param: name,
-                        local_type,
-                    }),
-                    None => tcx.dcx().emit_err(errors::TyParamSome { span, note: (), param: name }),
-                });
+                let ident = tcx.item_ident(param_def_id);
+                let mut diag = tcx.dcx().struct_span_err(ident.span, "");
+                decorate_uncovered_ty_params_diag(&mut diag, ident.span, ident, local_ty);
+                guar.get_or_insert(diag.emit());
             }
-            reported.unwrap() // FIXME(fmease): This is very likely reachable.
+            guar.unwrap()
         }
     }
 }
 
-fn lint_uncovered_ty_params<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    UncoveredTyParams { uncovered, local_ty }: UncoveredTyParams<TyCtxt<'tcx>, FxIndexSet<DefId>>,
-    impl_def_id: LocalDefId,
+fn decorate_uncovered_ty_params_diag(
+    diag: &mut Diag<'_, impl EmissionGuarantee>,
+    span: Span,
+    param: Ident,
+    local_ty: Option<Ty<'_>>,
 ) {
-    let hir_id = tcx.local_def_id_to_hir_id(impl_def_id);
+    diag.code(rustc_errors::E0210);
 
-    for param_def_id in uncovered {
-        let span = tcx.def_ident_span(param_def_id).unwrap();
-        let name = tcx.item_ident(param_def_id);
-
-        match local_ty {
-            Some(local_type) => tcx.emit_node_span_lint(
-                UNCOVERED_PARAM_IN_PROJECTION,
-                hir_id,
-                span,
-                errors::TyParamFirstLocalLint { span, note: (), param: name, local_type },
-            ),
-            None => tcx.emit_node_span_lint(
-                UNCOVERED_PARAM_IN_PROJECTION,
-                hir_id,
-                span,
-                errors::TyParamSomeLint { span, note: (), param: name },
-            ),
-        };
+    let note = "implementing a foreign trait is only possible if at least one of the types for which it is implemented is local";
+    if let Some(local_ty) = local_ty {
+        let msg = format!(
+            "type parameter `{param}` must be covered by another type when it appears before the first local type (`{local_ty}`)"
+        );
+        diag.primary_message(msg.clone());
+        diag.span_label(span, msg);
+        diag.note(format!(
+            "{note}, and no uncovered type parameters appear before that first local type"
+        ));
+        diag.note("in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last");
+    } else {
+        let msg = format!(
+            "type parameter `{param}` must be used as the type parameter for some local type"
+        );
+        diag.primary_message(format!("{msg} (e.g., `MyStruct<{param}>`)"));
+        diag.span_label(span, msg);
+        diag.note(note);
+        diag.note(
+            "only traits defined in the current crate can be implemented for a type parameter",
+        );
     }
 }
 
