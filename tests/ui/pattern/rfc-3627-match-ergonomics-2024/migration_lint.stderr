@@ -2,7 +2,10 @@ error: binding modifiers may only be written when the default binding mode is `m
   --> $DIR/migration_lint.rs:25:13
    |
 LL |     let Foo(mut x) = &Foo(0);
-   |             ^^^ default binding mode is `ref`
+   |             ^^^--
+   |             |
+   |             this binding modifier
+   |             default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -20,7 +23,10 @@ error: binding modifiers may only be written when the default binding mode is `m
   --> $DIR/migration_lint.rs:30:13
    |
 LL |     let Foo(mut x) = &mut Foo(0);
-   |             ^^^ default binding mode is `ref mut`
+   |             ^^^--
+   |             |
+   |             this binding modifier
+   |             default binding mode is `ref mut`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -33,7 +39,10 @@ error: binding modifiers may only be written when the default binding mode is `m
   --> $DIR/migration_lint.rs:35:13
    |
 LL |     let Foo(ref x) = &Foo(0);
-   |             ^^^ default binding mode is `ref`
+   |             ^^^--
+   |             |
+   |             this binding modifier
+   |             default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -46,7 +55,10 @@ error: binding modifiers may only be written when the default binding mode is `m
   --> $DIR/migration_lint.rs:40:13
    |
 LL |     let Foo(ref x) = &mut Foo(0);
-   |             ^^^ default binding mode is `ref mut`
+   |             ^^^--
+   |             |
+   |             this binding modifier
+   |             default binding mode is `ref mut`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -59,7 +71,10 @@ error: reference patterns may only be written when the default binding mode is `
   --> $DIR/migration_lint.rs:57:13
    |
 LL |     let Foo(&x) = &Foo(&0);
-   |             ^ default binding mode is `ref`
+   |             ^-
+   |             |
+   |             this reference pattern
+   |             default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -72,7 +87,10 @@ error: reference patterns may only be written when the default binding mode is `
   --> $DIR/migration_lint.rs:62:13
    |
 LL |     let Foo(&mut x) = &Foo(&mut 0);
-   |             ^^^^ default binding mode is `ref`
+   |             ^^^^--
+   |             |
+   |             this reference pattern
+   |             default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -85,7 +103,10 @@ error: reference patterns may only be written when the default binding mode is `
   --> $DIR/migration_lint.rs:67:13
    |
 LL |     let Foo(&x) = &mut Foo(&0);
-   |             ^ default binding mode is `ref mut`
+   |             ^-
+   |             |
+   |             this reference pattern
+   |             default binding mode is `ref mut`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -98,7 +119,10 @@ error: reference patterns may only be written when the default binding mode is `
   --> $DIR/migration_lint.rs:72:13
    |
 LL |     let Foo(&mut x) = &mut Foo(&mut 0);
-   |             ^^^^ default binding mode is `ref mut`
+   |             ^^^^--
+   |             |
+   |             this reference pattern
+   |             default binding mode is `ref mut`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -111,7 +135,10 @@ error: reference patterns may only be written when the default binding mode is `
   --> $DIR/migration_lint.rs:81:17
    |
 LL |     if let Some(&x) = &&&&&Some(&0u8) {
-   |                 ^ default binding mode is `ref`
+   |                 ^-
+   |                 |
+   |                 this reference pattern
+   |                 default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -124,7 +151,10 @@ error: reference patterns may only be written when the default binding mode is `
   --> $DIR/migration_lint.rs:87:17
    |
 LL |     if let Some(&mut x) = &&&&&Some(&mut 0u8) {
-   |                 ^^^^ default binding mode is `ref`
+   |                 ^^^^--
+   |                 |
+   |                 this reference pattern
+   |                 default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -137,7 +167,10 @@ error: reference patterns may only be written when the default binding mode is `
   --> $DIR/migration_lint.rs:93:17
    |
 LL |     if let Some(&x) = &&&&&mut Some(&0u8) {
-   |                 ^ default binding mode is `ref`
+   |                 ^-
+   |                 |
+   |                 this reference pattern
+   |                 default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -150,7 +183,10 @@ error: reference patterns may only be written when the default binding mode is `
   --> $DIR/migration_lint.rs:99:17
    |
 LL |     if let Some(&mut Some(Some(x))) = &mut Some(&mut Some(&mut Some(0u8))) {
-   |                 ^^^^ default binding mode is `ref mut`
+   |                 ^^^^--------------
+   |                 |
+   |                 this reference pattern
+   |                 default binding mode is `ref mut`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -163,7 +199,10 @@ error: binding modifiers may only be written when the default binding mode is `m
   --> $DIR/migration_lint.rs:111:21
    |
 LL |     let Struct { a, mut b, c } = &Struct { a: 0, b: 0, c: 0 };
-   |                     ^^^ default binding mode is `ref`
+   |                     ^^^--
+   |                     |
+   |                     this binding modifier
+   |                     default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -176,8 +215,11 @@ error: binding modifiers and reference patterns may only be written when the def
   --> $DIR/migration_lint.rs:117:21
    |
 LL |     let Struct { a: &a, b, ref c } = &Struct { a: &0, b: &0, c: &0 };
-   |                     ^      ^^^ default binding mode is `ref`
-   |                     |
+   |                     ^-     ^^^--
+   |                     |      |
+   |                     |      this binding modifier
+   |                     |      default binding mode is `ref`
+   |                     this reference pattern
    |                     default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
@@ -191,8 +233,11 @@ error: reference patterns may only be written when the default binding mode is `
   --> $DIR/migration_lint.rs:124:24
    |
 LL |     if let Struct { a: &Some(a), b: Some(&b), c: Some(c) } =
-   |                        ^                 ^ default binding mode is `ref`
-   |                        |
+   |                        ^-------          ^-
+   |                        |                 |
+   |                        |                 this reference pattern
+   |                        |                 default binding mode is `ref`
+   |                        this reference pattern
    |                        default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
@@ -206,8 +251,9 @@ error: binding modifiers may only be written when the default binding mode is `m
   --> $DIR/migration_lint.rs:137:15
    |
 LL |         (Some(mut x), migration_lint_macros::mixed_edition_pat!(y)) => {
-   |               ^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ occurs within macro expansion
+   |               ^^^--   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ occurs within macro expansion
    |               |
+   |               this binding modifier
    |               default binding mode is `ref`
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -221,8 +267,11 @@ error: binding modifiers and reference patterns may only be written when the def
   --> $DIR/migration_lint.rs:145:10
    |
 LL |     let [&mut [ref a]] = &mut [&mut &[0]];
-   |          ^^^^  ^^^ default binding mode is `ref`
-   |          |
+   |          ^^^^--^^^---
+   |          |     |
+   |          |     this binding modifier
+   |          |     default binding mode is `ref`
+   |          this reference pattern
    |          default binding mode is `ref mut`
    |
    = warning: this changes meaning in Rust 2024
@@ -236,7 +285,10 @@ error: reference patterns may only be written when the default binding mode is `
   --> $DIR/migration_lint.rs:150:10
    |
 LL |     let [&(_)] = &[&0];
-   |          ^^ default binding mode is `ref`
+   |          ^^--
+   |          |
+   |          this reference pattern
+   |          default binding mode is `ref`
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>

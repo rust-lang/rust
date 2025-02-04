@@ -816,8 +816,10 @@ impl<'tcx> std::fmt::Display for UserTypeKind<'tcx> {
 /// emitted during THIR construction.
 #[derive(TyEncodable, TyDecodable, Debug, HashStable, Default)]
 pub struct Rust2024IncompatiblePatInfo {
-    /// Labels for subpatterns incompatible with Rust 2024.
-    pub labels: Vec<(Span, String)>,
+    /// Spans for `&`s, `&mut`s, and binding modifiers incompatible with Rust 2024.
+    pub primary_spans: Vec<Span>,
+    /// Labels for the primary spans and their patterns, to provide additional context.
+    pub span_labels: Vec<(Span, String)>,
     /// Whether any binding modifiers occur under a non-`move` default binding mode.
     pub bad_modifiers: bool,
     /// Whether any `&` or `&mut` patterns occur under a non-`move` default binding mode.
