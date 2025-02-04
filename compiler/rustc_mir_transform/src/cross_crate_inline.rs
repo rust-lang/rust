@@ -75,6 +75,12 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return false;
     }
 
+    if let Some(drop_in_place) = tcx.lang_items().drop_in_place_fn() {
+        if rustc_hir::def_id::DefId::from(def_id) == drop_in_place {
+            return true;
+        }
+    }
+
     if !tcx.is_mir_available(def_id) {
         return false;
     }
