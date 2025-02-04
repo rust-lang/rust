@@ -1317,6 +1317,15 @@ mod prim_f16 {}
 /// | `wasm32`, `wasm64` | If all input NaNs are quiet with all-zero payload: None.<br> Otherwise: all possible payloads. |
 ///
 /// For targets not in this table, all payloads are possible.
+///
+/// # Algebraic operators
+///
+/// Algebraic operators of the form `a.*_algebraic(b)` allow the compiler to reassociate individual
+/// floating point operations for better vectorization. Because of the unpredictable nature of
+/// compiler optimizations, the same inputs may produce different results even within a single
+/// program run. **Unsafe code must not rely on any property of the return value for soundness.**
+/// However, implementations will generally do their best to pick a reasonable tradeoff between
+/// performance and accuracy of the result.
 
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f32 {}
