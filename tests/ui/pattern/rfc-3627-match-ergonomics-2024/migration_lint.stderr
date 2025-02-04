@@ -217,5 +217,33 @@ help: make the implied reference pattern explicit
 LL |         &(Some(mut x), migration_lint_macros::mixed_edition_pat!(y)) => {
    |         +
 
-error: aborting due to 16 previous errors
+error: binding modifiers and reference patterns may only be written when the default binding mode is `move` in Rust 2024
+  --> $DIR/migration_lint.rs:145:10
+   |
+LL |     let [&mut [ref a]] = &mut [&mut &[0]];
+   |          ^^^^  ^^^ default binding mode is `ref`
+   |          |
+   |          default binding mode is `ref mut`
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference patterns explicit
+   |
+LL |     let &mut [&mut &[ref a]] = &mut [&mut &[0]];
+   |         ++++       +
+
+error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+  --> $DIR/migration_lint.rs:150:10
+   |
+LL |     let [&(_)] = &[&0];
+   |          ^^ default binding mode is `ref`
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL |     let &[&(_)] = &[&0];
+   |         +
+
+error: aborting due to 18 previous errors
 
