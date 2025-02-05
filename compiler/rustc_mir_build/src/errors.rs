@@ -1123,6 +1123,27 @@ impl Subdiagnostic for Rust2024IncompatiblePatSugg {
         diag: &mut Diag<'_, G>,
         _f: &F,
     ) {
+        // Format and emit explanatory notes about default binding modes. Reversing the spans' order
+        // means if we have nested spans, the innermost ones will be visited first.
+        for (span, def_br_mutbl) in self.default_mode_labels.into_iter().rev() {
+            // Don't point to a macro call site.
+            if !span.from_expansion() {
+                let dbm_str = match def_br_mutbl {
+                    ty::Mutability::Not => "ref",
+                    ty::Mutability::Mut => "ref mut",
+                };
+                let note_msg = format!(
+                    "the default binding mode changed to `{dbm_str}` because this has type `{}_`",
+                    def_br_mutbl.ref_prefix_str()
+                );
+                let label_msg = format!("the default binding mode is `{dbm_str}`, introduced here");
+                let mut label = MultiSpan::from(span);
+                label.push_span_label(span, label_msg);
+                diag.span_note(label, note_msg);
+            }
+        }
+
+        // Format and emit the suggestion.
         let applicability =
             if self.suggestion.iter().all(|(span, _)| span.can_be_used_for_suggestions()) {
                 Applicability::MachineApplicable
