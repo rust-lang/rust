@@ -413,15 +413,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             }
 
             ty::Pat(ty, pat) => match *pat {
-                ty::PatternKind::Range { start, end, include_end } => {
-                    let consts = [
-                        start,
-                        end,
-                        ty::Const::from_bool(
-                            self.tcx,
-                            matches!(include_end, rustc_hir::RangeEnd::Included),
-                        ),
-                    ];
+                ty::PatternKind::Range { start, end } => {
+                    let consts = [start, end];
                     // HACK: Represent as tuple until we have something better.
                     // HACK: constants are used in arrays, even if the types don't match.
                     self.push("T");

@@ -1,7 +1,6 @@
 use std::fmt;
 
 use rustc_data_structures::intern::Interned;
-use rustc_hir::RangeEnd;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 
 use crate::ty;
@@ -27,8 +26,8 @@ impl<'tcx> fmt::Debug for Pattern<'tcx> {
 impl<'tcx> fmt::Debug for PatternKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            PatternKind::Range { start, end, include_end } => {
-                write!(f, "{start}{include_end}{end}")
+            PatternKind::Range { start, end } => {
+                write!(f, "{start}..={end}")
             }
         }
     }
@@ -37,5 +36,5 @@ impl<'tcx> fmt::Debug for PatternKind<'tcx> {
 #[derive(Clone, PartialEq, Eq, Hash)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeVisitable, TypeFoldable)]
 pub enum PatternKind<'tcx> {
-    Range { start: ty::Const<'tcx>, end: ty::Const<'tcx>, include_end: RangeEnd },
+    Range { start: ty::Const<'tcx>, end: ty::Const<'tcx> },
 }
