@@ -62,9 +62,6 @@ jobs:
     name: ${{ matrix.full_name }}
     needs: [ calculate_matrix ]
     runs-on: "${{ matrix.os }}"
-    defaults:
-      run:
-        shell: ${{ contains(matrix.os, 'windows') && 'msys2 {0}' || 'bash' }}
     timeout-minutes: 360
     env:
       CI_JOB_NAME: ${{ matrix.name }}
@@ -80,22 +77,6 @@ jobs:
         # Check the `calculate_matrix` job to see how is the matrix defined.
         include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
     steps:
-      - if: contains(matrix.os, 'windows')
-        uses: msys2/setup-msys2@v2.22.0
-        with:
-          # i686 jobs use mingw32. x86_64 and cross-compile jobs use mingw64.
-          msystem: ${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}
-          # don't try to download updates for already installed packages
-          update: false
-          # don't try to use the msys that comes built-in to the github runner,
-          # so we can control what is installed (i.e. not python)
-          release: true
-          # Inherit the full path from the Windows environment, with MSYS2's */bin/
-          # dirs placed in front. This lets us run Windows-native Python etc.
-          path-type: inherit
-          install: >
-            make
-
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
 
