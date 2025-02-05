@@ -205,7 +205,7 @@ fn layout_of_uncached<'tcx>(
             let layout = cx.layout_of(ty)?.layout;
             let mut layout = LayoutData::clone(&layout.0);
             match *pat {
-                ty::PatternKind::Range { start, end, include_end } => {
+                ty::PatternKind::Range { start, end } => {
                     if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
                         &mut layout.backend_repr
                     {
@@ -213,14 +213,9 @@ fn layout_of_uncached<'tcx>(
                             .try_to_bits(tcx, cx.typing_env)
                             .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
 
-                        let mut end = extract_const_value(cx, ty, end)?
+                        scalar.valid_range_mut().end = extract_const_value(cx, ty, end)?
                             .try_to_bits(tcx, cx.typing_env)
                             .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
-                        match include_end {
-                            rustc_hir::RangeEnd::Included => {}
-                            rustc_hir::RangeEnd::Excluded => end = end.wrapping_sub(1),
-                        }
-                        scalar.valid_range_mut().end = end;
 
                         let niche = Niche {
                             offset: Size::ZERO,

@@ -137,7 +137,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
 
             ty::Pat(ty, pat) => {
                 match *pat {
-                    ty::PatternKind::Range { start, end, include_end: _ } => {
+                    ty::PatternKind::Range { start, end } => {
                         stack.push(end.into());
                         stack.push(start.into());
                     }
