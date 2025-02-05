@@ -503,6 +503,7 @@ impl AsciiChar {
     /// something useful. It might be tightened before stabilization.)
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[inline]
+    #[track_caller]
     pub const unsafe fn digit_unchecked(d: u8) -> Self {
         assert_unsafe_precondition!(
             check_language_ub,

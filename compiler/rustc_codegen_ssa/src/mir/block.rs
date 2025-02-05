@@ -808,13 +808,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let (fn_abi, llfn, instance) =
                     common::build_langcall(bx, Some(source_info.span), LangItem::PanicNounwind);
 
+                let location = self.get_caller_location(bx, source_info).immediate();
+
                 // Codegen the actual panic invoke/call.
                 helper.do_call(
                     self,
                     bx,
                     fn_abi,
                     llfn,
-                    &[msg.0, msg.1],
+                    &[msg.0, msg.1, location],
                     target.as_ref().map(|bb| (ReturnDest::Nothing, *bb)),
                     unwind,
                     &[],

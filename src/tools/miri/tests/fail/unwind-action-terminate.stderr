@@ -20,7 +20,6 @@ LL |     ABORT();
    = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::begin_panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
    = note: inside `std::panicking::begin_panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: inside `core::panicking::panic_nounwind` at RUSTLIB/core/src/panicking.rs:LL:CC
    = note: inside `core::panicking::panic_cannot_unwind` at RUSTLIB/core/src/panicking.rs:LL:CC
 note: inside `panic_abort`
   --> tests/fail/unwind-action-terminate.rs:LL:CC

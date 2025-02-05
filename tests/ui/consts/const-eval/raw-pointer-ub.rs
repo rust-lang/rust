@@ -17,8 +17,8 @@ const MISALIGNED_COPY: () = unsafe {
     let y = x.as_ptr().cast::<u32>();
     let mut z = 123;
     y.copy_to_nonoverlapping(&mut z, 1);
-    //~^NOTE
-    // The actual error points into the implementation of `copy_to_nonoverlapping`.
+    //~^ evaluation of constant value failed
+    //~^^ accessing memory with alignment 1, but alignment 4 is required
 };
 
 const MISALIGNED_FIELD: () = unsafe {
