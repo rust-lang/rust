@@ -1,6 +1,5 @@
 //@ only-x86_64
 //@ build-pass
-#![feature(target_feature_11)]
 #![allow(dead_code)]
 
 #[target_feature(enable = "ssse3")]

@@ -1,5 +1,5 @@
 error: `#[target_feature(..)]` cannot be applied to safe trait method
-  --> $DIR/trait-impl.rs:13:5
+  --> $DIR/trait-impl.rs:11:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be applied to safe trait method
@@ -8,13 +8,13 @@ LL |     fn foo(&self) {}
    |     ------------- not an `unsafe` function
 
 error[E0053]: method `foo` has an incompatible type for trait
-  --> $DIR/trait-impl.rs:15:5
+  --> $DIR/trait-impl.rs:13:5
    |
 LL |     fn foo(&self) {}
    |     ^^^^^^^^^^^^^ expected safe fn, found unsafe fn
    |
 note: type in trait
-  --> $DIR/trait-impl.rs:6:5
+  --> $DIR/trait-impl.rs:4:5
    |
 LL |     fn foo(&self);
    |     ^^^^^^^^^^^^^^
@@ -22,7 +22,7 @@ LL |     fn foo(&self);
               found signature `#[target_features] fn(&Bar)`
 
 error: `#[target_feature(..)]` cannot be applied to safe trait method
-  --> $DIR/trait-impl.rs:23:5
+  --> $DIR/trait-impl.rs:21:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be applied to safe trait method

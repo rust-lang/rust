@@ -4,7 +4,6 @@
 // make sure the feature is not enabled at compile-time
 //@ compile-flags: -C opt-level=3 -C target-feature=-sse4.1 -C llvm-args=-x86-asm-syntax=intel
 
-#![feature(target_feature_11)]
 #![crate_type = "rlib"]
 
 use std::arch::x86_64::{__m128, _mm_blend_ps};
