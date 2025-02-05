@@ -1358,6 +1358,14 @@ pub(crate) mod builtin {
     /// first macro invocation leading up to the invocation of the `file!`
     /// macro.
     ///
+    /// The file name is derived from the root module's source path passed to the Rust compiler
+    /// and the sequence the compiler takes to get from root module to the
+    /// module containing `file!`, modified by any flags passed to the Rust compiler (e.g.
+    /// `--remap-path-prefix`).  If the root module's source path is relative, the initial base
+    /// directory will be the working directory of the Rust compiler.  For example, if the source
+    /// path passed to the compiler is `./src/lib.rs` which has a `mod foo;` with a source path of
+    /// `src/foo/mod.rs`, then calling `file!` inside `mod foo;` will return `./src/foo/mod.rs`.
+    ///
     /// # Examples
     ///
     /// ```
