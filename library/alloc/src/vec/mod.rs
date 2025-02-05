@@ -2415,18 +2415,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[rustc_confusables("push_back", "put", "append")]
     #[track_caller]
     pub fn push(&mut self, value: T) {
-        // Inform codegen that the length does not change across grow_one().
-        let len = self.len;
-        // This will panic or abort if we would allocate > isize::MAX bytes
-        // or if the length increment would overflow for zero-sized types.
-        if len == self.buf.capacity() {
-            self.buf.grow_one();
-        }
-        unsafe {
-            let end = self.as_mut_ptr().add(len);
-            ptr::write(end, value);
-            self.len = len + 1;
-        }
+        let _ = self.push_mut(value);
     }
 
     /// Appends an element if there is sufficient spare capacity, otherwise an error is returned
@@ -2467,6 +2456,73 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[unstable(feature = "vec_push_within_capacity", issue = "100486")]
     pub fn push_within_capacity(&mut self, value: T) -> Result<(), T> {
+        self.push_mut_within_capacity(value).map(|_| ())
+    }
+
+    /// Appends an element to the back of a collection, returning a reference to it.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(push_mut)]
+    ///
+    /// let mut vec = vec![];
+    /// // Polonius moment.
+    /// let last = if let Some(v) = vec.last_mut() { v } else { vec.push_mut(0) };
+    /// *last += 6;
+    /// assert_eq!(vec, [6]);
+    /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Takes amortized *O*(1) time. If the vector's length would exceed its
+    /// capacity after the push, *O*(*capacity*) time is taken to copy the
+    /// vector's elements to a larger allocation. This expensive operation is
+    /// offset by the *capacity* *O*(1) insertions it allows.
+    #[cfg(not(no_global_oom_handling))]
+    #[inline]
+    #[unstable(feature = "push_mut", issue = "135974")]
+    #[track_caller]
+    #[must_use = "if you don't need a reference to the value, use Vec::push instead"]
+    pub fn push_mut(&mut self, value: T) -> &mut T {
+        // Inform codegen that the length does not change across grow_one().
+        let len = self.len;
+        // This will panic or abort if we would allocate > isize::MAX bytes
+        // or if the length increment would overflow for zero-sized types.
+        if len == self.buf.capacity() {
+            self.buf.grow_one();
+        }
+        unsafe {
+            let end = self.as_mut_ptr().add(len);
+            ptr::write(end, value);
+            self.len = len + 1;
+            // SAFETY: We just wrote a value to the pointer that will live the lifetime of the reference.
+            &mut *end
+        }
+    }
+
+    /// Appends an element and returns a reference to it if there is sufficient spare capacity, otherwise an error is returned
+    /// with the element.
+    ///
+    /// Unlike [`push_mut`] this method will not reallocate when there's insufficient capacity.
+    /// The caller should use [`reserve`] or [`try_reserve`] to ensure that there is enough capacity.
+    ///
+    /// [`push_mut`]: Vec::push_mut
+    /// [`reserve`]: Vec::reserve
+    /// [`try_reserve`]: Vec::try_reserve
+    ///
+    /// # Time complexity
+    ///
+    /// Takes *O*(1) time.
+    #[inline]
+    #[unstable(feature = "push_mut", issue = "135974")]
+    // #[unstable(feature = "vec_push_within_capacity", issue = "100486")]
+    #[must_use = "if you don't need a reference to the value, use Vec::push_within_capacity instead"]
+    pub fn push_mut_within_capacity(&mut self, value: T) -> Result<&mut T, T> {
         if self.len == self.buf.capacity() {
             return Err(value);
         }
@@ -2474,8 +2530,9 @@ impl<T, A: Allocator> Vec<T, A> {
             let end = self.as_mut_ptr().add(self.len);
             ptr::write(end, value);
             self.len += 1;
+            // SAFETY: We just wrote a value to the pointer that will live the lifetime of the reference.
+            Ok(&mut *end)
         }
-        Ok(())
     }
 
     /// Removes the last element from a vector and returns it, or [`None`] if it
