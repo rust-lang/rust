@@ -154,12 +154,12 @@ error[E0308]: mismatched types
   --> $DIR/pretty.rs:41:56
    |
 LL | fn dyn_has_gat(x: &dyn HasGat<u8, Assoc<bool> = ()>) { x }
-   |                                                     -  ^ expected `()`, found `&dyn HasGat<u8, Assoc<bool> = ()>`
+   |                                                     -  ^ expected `()`, found `&dyn HasGat<u8>`
    |                                                     |
-   |                                                     help: try adding a return type: `-> &dyn HasGat<u8, Assoc<bool> = ()>`
+   |                                                     help: try adding a return type: `-> &dyn HasGat<u8>`
    |
    = note: expected unit type `()`
-              found reference `&dyn HasGat<u8, Assoc<bool> = ()>`
+              found reference `&dyn HasGat<u8>`
 
 error: aborting due to 14 previous errors; 1 warning emitted
 

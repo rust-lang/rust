@@ -1,9 +1,10 @@
-//@ known-bug: rust-lang/rust#126944
+//@ check-pass
+
 // Step 1: Create two names for a single type: `Thing` and `AlsoThing`
 
 struct Thing;
 struct Dummy;
-pub trait DummyTrait {
+trait DummyTrait {
     type DummyType;
 }
 impl DummyTrait for Dummy {
@@ -13,7 +14,7 @@ type AlsoThing = <Dummy as DummyTrait>::DummyType;
 
 // Step 2: Create names for a single trait object type: `TraitObject` and `AlsoTraitObject`
 
-pub trait SomeTrait {
+trait SomeTrait {
     type Item;
 }
 type TraitObject = dyn SomeTrait<Item = AlsoThing>;
@@ -21,12 +22,12 @@ type AlsoTraitObject = dyn SomeTrait<Item = Thing>;
 
 // Step 3: Force the compiler to check whether the two names are the same type
 
-pub trait Supertrait {
+trait Supertrait {
     type Foo;
 }
-pub trait Subtrait: Supertrait<Foo = TraitObject> {}
+trait Subtrait: Supertrait<Foo = TraitObject> {}
 
-pub trait HasOutput<A: ?Sized> {
+trait HasOutput<A: ?Sized> {
     type Output;
 }
 
@@ -36,3 +37,5 @@ where
 {
     todo!()
 }
+
+fn main() {}
