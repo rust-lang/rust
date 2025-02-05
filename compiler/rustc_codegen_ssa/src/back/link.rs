@@ -2518,6 +2518,12 @@ fn add_order_independent_options(
             "--target-cpu",
             &codegen_results.crate_info.target_cpu,
         ]);
+        if codegen_results.crate_info.target_features.len() > 0 {
+            cmd.link_arg(&format!(
+                "--target-feature={}",
+                &codegen_results.crate_info.target_features.join(",")
+            ));
+        }
     } else if flavor == LinkerFlavor::Ptx {
         cmd.link_args(&["--fallback-arch", &codegen_results.crate_info.target_cpu]);
     } else if flavor == LinkerFlavor::Bpf {
