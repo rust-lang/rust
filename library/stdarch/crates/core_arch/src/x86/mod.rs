@@ -750,3 +750,7 @@ pub use self::avxneconvert::*;
 mod avx512fp16;
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub use self::avx512fp16::*;
+
+mod kl;
+#[unstable(feature = "keylocker_x86", issue = "134813")]
+pub use self::kl::*;

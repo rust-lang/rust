@@ -119,6 +119,9 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
                 // it from the slightly more restrictive 22 instructions below.
                 "cpuid" => 30,
 
+                // These require 8 loads and stores, so it _just_ overflows the limit
+                "aesencwide128kl" | "aesencwide256kl" | "aesdecwide128kl" | "aesdecwide256kl" => 24,
+
                 // Apparently, on Windows, LLVM generates a bunch of
                 // saves/restores of xmm registers around these instructions,
                 // which exceeds the limit of 20 below. As it seems dictated by

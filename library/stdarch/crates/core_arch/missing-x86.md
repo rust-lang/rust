@@ -137,27 +137,6 @@
 </p></details>
 
 
-<details><summary>["KEYLOCKER"]</summary><p>
-
-  * [ ] [`_mm_aesdec128kl_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_aesdec128kl_u8)
-  * [ ] [`_mm_aesdec256kl_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_aesdec256kl_u8)
-  * [ ] [`_mm_aesenc128kl_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_aesenc128kl_u8)
-  * [ ] [`_mm_aesenc256kl_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_aesenc256kl_u8)
-  * [ ] [`_mm_encodekey128_u32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_encodekey128_u32)
-  * [ ] [`_mm_encodekey256_u32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_encodekey256_u32)
-  * [ ] [`_mm_loadiwkey`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_loadiwkey)
-</p></details>
-
-
-<details><summary>["KEYLOCKER_WIDE"]</summary><p>
-
-  * [ ] [`_mm_aesdecwide128kl_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_aesdecwide128kl_u8)
-  * [ ] [`_mm_aesdecwide256kl_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_aesdecwide256kl_u8)
-  * [ ] [`_mm_aesencwide128kl_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_aesencwide128kl_u8)
-  * [ ] [`_mm_aesencwide256kl_u8`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_aesencwide256kl_u8)
-</p></details>
-
-
 <details><summary>["MONITOR"]</summary><p>
 
   * [ ] [`_mm_monitor`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_monitor)

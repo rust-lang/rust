@@ -38,7 +38,8 @@
     asm_experimental_arch,
     sha512_sm_x86,
     x86_amx_intrinsics,
-    f16
+    f16,
+    keylocker_x86
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall, stdarch_internal))]
 #![deny(clippy::missing_inline_in_public_items)]

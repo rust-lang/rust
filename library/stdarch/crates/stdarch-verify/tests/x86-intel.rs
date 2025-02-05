@@ -201,6 +201,7 @@ fn verify_all_signatures() {
                 "_xrstors",
                 "_xsaves64",
                 "_xrstors64",
+                "_mm_loadiwkey",
                 // RDRAND
                 "_rdrand16_step",
                 "_rdrand32_step",
@@ -448,6 +449,8 @@ fn check_target_features(rust: &Function, intel: &Intrinsic) -> Result<(), Strin
             // it "avx512ifma".
             "avx512ifma52" => String::from("avx512ifma"),
             "xss" => String::from("xsaves"),
+            "keylocker" => String::from("kl"),
+            "keylockerwide" => String::from("widekl"),
             _ => cpuid,
         };
 

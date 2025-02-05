@@ -185,7 +185,12 @@ fn parse(output: &str) -> HashSet<Function> {
                     _ => {}
                 };
             }
+
             instructions.push(parts.join(" "));
+            if matches!(&**instructions.last().unwrap(), "ret" | "retq") {
+                cached_header = None;
+                break;
+            }
         }
         let function = Function {
             name: symbol,
