@@ -514,12 +514,6 @@ impl<'tcx> ObligationCauseCode<'tcx> {
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(ObligationCauseCode<'_>, 48);
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum StatementAsExpression {
-    CorrectType,
-    NeedsBoxing,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct MatchExpressionArmCause<'tcx> {
