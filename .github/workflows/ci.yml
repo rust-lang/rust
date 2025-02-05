@@ -99,6 +99,10 @@ jobs:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
