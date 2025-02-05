@@ -1286,13 +1286,12 @@ impl InvocationCollectorNode for P<ast::Item> {
                     }
                 }
             }
-
-            let mut idents = Vec::new();
-            collect_use_tree_leaves(ut, &mut idents);
-            return idents;
+            let mut idents = vec![];
+            collect_use_tree_leaves(&ut, &mut idents);
+            idents
+        } else {
+            vec![self.ident]
         }
-
-        vec![self.ident]
     }
 }
 

@@ -4,6 +4,22 @@ error[E0433]: failed to resolve: use of unresolved module or unlinked crate `a`
 LL |     a::bar();
    |     ^ use of unresolved module or unlinked crate `a`
    |
+note: found an item that was configured out
+  --> $DIR/macro-inner-attributes.rs:7:7
+   |
+LL | test!(a,
+   |       ^
+note: the item is gated here
+  --> $DIR/macro-inner-attributes.rs:5:45
+   |
+LL |                        $i:item) => (mod $nm { #![$a] $i }); }
+   |                                               ^^^^^^
+LL |
+LL | / test!(a,
+LL | |       #[cfg(FALSE)],
+LL | |       pub fn bar() { });
+   | |_______________________- in this macro invocation
+   = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: there is a crate or module with a similar name
    |
 LL |     b::bar();
