@@ -15,6 +15,7 @@ use crate::io::prelude::*;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::iter::FusedIterator;
 use crate::net::{Shutdown, SocketAddr, ToSocketAddrs};
+use crate::sync::Arc;
 use crate::sys_common::{AsInner, FromInner, IntoInner, net as net_imp};
 use crate::time::Duration;
 
@@ -720,6 +721,47 @@ impl IntoInner<net_imp::TcpStream> for TcpStream {
 impl fmt::Debug for TcpStream {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+#[stable(feature = "io_traits_arc_more", since = "CURRENT_RUSTC_VERSION")]
+impl Read for Arc<TcpStream> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        (&**self).read(buf)
+    }
+
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        (&**self).read_buf(buf)
+    }
+
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        (&**self).read_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        (&**self).is_read_vectored()
+    }
+}
+
+#[stable(feature = "io_traits_arc_more", since = "CURRENT_RUSTC_VERSION")]
+impl Write for Arc<TcpStream> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        (&**self).write(buf)
+    }
+
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        (&**self).write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        (&**self).is_write_vectored()
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        (&**self).flush()
     }
 }
 
