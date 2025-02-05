@@ -31,6 +31,10 @@ use crate::ops::{
 ///
 /// assert_eq!(u32::MAX, (max + one).0);
 /// ```
+///
+/// # Layout
+///
+/// `Saturating<T>` is guaranteed to have the same layout and ABI as `T`.
 #[stable(feature = "saturating_int_impl", since = "1.74.0")]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default, Hash)]
 #[repr(transparent)]

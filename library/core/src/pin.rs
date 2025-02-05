@@ -1524,8 +1524,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     ///
     /// This function is unsafe. You must guarantee that the data you return
     /// will not move so long as the argument value does not move (for example,
-    /// because it is one of the fields of that value), and also that you do
-    /// not move out of the argument you receive to the interior function.
+    /// because it is one of the fields of that value).
     ///
     /// [`pin` module]: self#projections-and-structural-pinning
     #[stable(feature = "pin", since = "1.33.0")]
