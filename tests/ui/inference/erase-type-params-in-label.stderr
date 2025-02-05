@@ -12,8 +12,8 @@ LL | fn foo<T, K, W: Default, Z: Default>(t: T, k: K) -> Foo<T, K, W, Z> {
    |                 ^^^^^^^ required by this bound in `foo`
 help: consider giving `foo` an explicit type, where the type for type parameter `W` is specified
    |
-LL |     let foo: Foo<i32, &str, W, Z> = foo(1, "");
-   |            ++++++++++++++++++++++
+LL |     let foo: Foo<_, &_, W, Z> = foo(1, "");
+   |            ++++++++++++++++++
 
 error[E0283]: type annotations needed for `Bar<i32, &str, _>`
   --> $DIR/erase-type-params-in-label.rs:5:9
@@ -29,8 +29,8 @@ LL | fn bar<T, K, Z: Default>(t: T, k: K) -> Bar<T, K, Z> {
    |                 ^^^^^^^ required by this bound in `bar`
 help: consider giving `bar` an explicit type, where the type for type parameter `Z` is specified
    |
-LL |     let bar: Bar<i32, &str, Z> = bar(1, "");
-   |            +++++++++++++++++++
+LL |     let bar: Bar<_, &_, Z> = bar(1, "");
+   |            +++++++++++++++
 
 error: aborting due to 2 previous errors
 
