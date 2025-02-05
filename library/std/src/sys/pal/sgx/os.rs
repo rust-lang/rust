@@ -5,7 +5,7 @@ use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::path::{self, PathBuf};
-use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
 use crate::sync::{Mutex, Once};
 use crate::sys::{decode_error_kind, sgx_ineffective, unsupported};
 use crate::{fmt, io, str, vec};
@@ -75,7 +75,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg_attr(test, linkage = "available_externally")]
 #[export_name = "_ZN16__rust_internals3std3sys3sgx2os3ENVE"]
-static ENV: AtomicUsize = AtomicUsize::new(0);
+static ENV: Atomic<usize> = AtomicUsize::new(0);
 #[cfg_attr(test, linkage = "available_externally")]
 #[export_name = "_ZN16__rust_internals3std3sys3sgx2os8ENV_INITE"]
 static ENV_INIT: Once = Once::new();

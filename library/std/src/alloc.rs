@@ -57,7 +57,7 @@
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
 use core::ptr::NonNull;
-use core::sync::atomic::{AtomicPtr, Ordering};
+use core::sync::atomic::{Atomic, AtomicPtr, Ordering};
 use core::{hint, mem, ptr};
 
 #[stable(feature = "alloc_module", since = "1.28.0")]
@@ -287,7 +287,7 @@ unsafe impl Allocator for System {
     }
 }
 
-static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
+static HOOK: Atomic<*mut ()> = AtomicPtr::new(ptr::null_mut());
 
 /// Registers a custom allocation error hook, replacing any that was previously registered.
 ///
