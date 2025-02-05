@@ -83,15 +83,15 @@ pub(crate) fn compile_codegen_unit(
         // Instantiate monomorphizations without filling out definitions yet...
         let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
         {
-            let cx = CodegenCx::new(tcx, cgu, &llvm_module);
+            let mut cx = CodegenCx::new(tcx, cgu, &llvm_module);
             let mono_items = cx.codegen_unit.items_in_deterministic_order(cx.tcx);
             for &(mono_item, data) in &mono_items {
                 mono_item.predefine::<Builder<'_, '_, '_>>(&cx, data.linkage, data.visibility);
             }
 
             // ... and now that we have everything pre-defined, fill out those definitions.
-            for &(mono_item, _) in &mono_items {
-                mono_item.define::<Builder<'_, '_, '_>>(&cx);
+            for &(mono_item, item_data) in &mono_items {
+                mono_item.define::<Builder<'_, '_, '_>>(&mut cx, item_data);
             }
 
             // If this codegen unit contains the main function, also create the
