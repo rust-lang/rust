@@ -1,5 +1,6 @@
 use crate::io;
-use crate::sys::anonymous_pipe::{AnonPipe, pipe as pipe_inner};
+use crate::sys::pipe::{AnonPipe, anon_pipe};
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 /// Create an anonymous pipe.
 ///
@@ -40,12 +41,9 @@ use crate::sys::anonymous_pipe::{AnonPipe, pipe as pipe_inner};
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(anonymous_pipe)]
-/// # #[cfg(miri)] fn main() {}
-/// # #[cfg(not(miri))]
-/// # fn main() -> std::io::Result<()> {
 /// use std::process::Command;
 /// use std::io::{pipe, Read, Write};
+///
 /// let (ping_rx, mut ping_tx) = pipe()?;
 /// let (mut pong_rx, pong_tx) = pipe()?;
 ///
@@ -62,26 +60,30 @@ use crate::sys::anonymous_pipe::{AnonPipe, pipe as pipe_inner};
 /// assert_eq!(&buf, "hello");
 ///
 /// echo_server.wait()?;
-/// # Ok(())
-/// # }
+/// # Ok::<(), std::io::Error>(())
 /// ```
 /// [changes]: io#platform-specific-behavior
 /// [man page]: https://man7.org/linux/man-pages/man7/pipe.7.html
-#[unstable(feature = "anonymous_pipe", issue = "127154")]
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
 #[inline]
 pub fn pipe() -> io::Result<(PipeReader, PipeWriter)> {
-    pipe_inner().map(|(reader, writer)| (PipeReader(reader), PipeWriter(writer)))
+    anon_pipe()
+        .map(|(reader, writer)| (PipeReader::from_inner(reader), PipeWriter::from_inner(writer)))
 }
 
 /// Read end of an anonymous pipe.
-#[unstable(feature = "anonymous_pipe", issue = "127154")]
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
 #[derive(Debug)]
-pub struct PipeReader(pub(crate) AnonPipe);
+pub struct PipeReader {
+    inner: AnonPipe,
+}
 
 /// Write end of an anonymous pipe.
-#[unstable(feature = "anonymous_pipe", issue = "127154")]
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
 #[derive(Debug)]
-pub struct PipeWriter(pub(crate) AnonPipe);
+pub struct PipeWriter {
+    inner: AnonPipe,
+}
 
 impl PipeReader {
     /// Create a new [`PipeReader`] instance that shares the same underlying file description.
@@ -89,13 +91,10 @@ impl PipeReader {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(anonymous_pipe)]
-    /// # #[cfg(miri)] fn main() {}
-    /// # #[cfg(not(miri))]
-    /// # fn main() -> std::io::Result<()> {
     /// use std::fs;
     /// use std::io::{pipe, Write};
     /// use std::process::Command;
+    ///
     /// const NUM_SLOT: u8 = 2;
     /// const NUM_PROC: u8 = 5;
     /// const OUTPUT: &str = "work.txt";
@@ -134,12 +133,11 @@ impl PipeReader {
     /// let xs = fs::read_to_string(OUTPUT)?;
     /// fs::remove_file(OUTPUT)?;
     /// assert_eq!(xs, "x".repeat(NUM_PROC.into()));
-    /// # Ok(())
-    /// # }
+    /// # Ok::<(), std::io::Error>(())
     /// ```
-    #[unstable(feature = "anonymous_pipe", issue = "127154")]
+    #[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
     pub fn try_clone(&self) -> io::Result<Self> {
-        self.0.try_clone().map(Self)
+        self.as_inner().try_clone().map(Self::from_inner)
     }
 }
 
@@ -149,12 +147,9 @@ impl PipeWriter {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(anonymous_pipe)]
-    /// # #[cfg(miri)] fn main() {}
-    /// # #[cfg(not(miri))]
-    /// # fn main() -> std::io::Result<()> {
     /// use std::process::Command;
     /// use std::io::{pipe, Read};
+    ///
     /// let (mut reader, writer) = pipe()?;
     ///
     /// // Spawn a process that writes to stdout and stderr.
@@ -174,87 +169,120 @@ impl PipeWriter {
     /// assert_eq!(&msg, "foobar");
     ///
     /// peer.wait()?;
-    /// # Ok(())
-    /// # }
+    /// # Ok::<(), std::io::Error>(())
     /// ```
-    #[unstable(feature = "anonymous_pipe", issue = "127154")]
+    #[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
     pub fn try_clone(&self) -> io::Result<Self> {
-        self.0.try_clone().map(Self)
+        self.as_inner().try_clone().map(Self::from_inner)
     }
 }
 
-#[unstable(feature = "anonymous_pipe", issue = "127154")]
+impl AsInner<AnonPipe> for PipeReader {
+    #[inline]
+    fn as_inner(&self) -> &AnonPipe {
+        &self.inner
+    }
+}
+impl FromInner<AnonPipe> for PipeReader {
+    fn from_inner(pipe: AnonPipe) -> PipeReader {
+        PipeReader { inner: pipe }
+    }
+}
+impl IntoInner<AnonPipe> for PipeReader {
+    fn into_inner(self) -> AnonPipe {
+        self.inner
+    }
+}
+
+impl AsInner<AnonPipe> for PipeWriter {
+    #[inline]
+    fn as_inner(&self) -> &AnonPipe {
+        &self.inner
+    }
+}
+impl FromInner<AnonPipe> for PipeWriter {
+    fn from_inner(pipe: AnonPipe) -> PipeWriter {
+        PipeWriter { inner: pipe }
+    }
+}
+impl IntoInner<AnonPipe> for PipeWriter {
+    fn into_inner(self) -> AnonPipe {
+        self.inner
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
 impl io::Read for &PipeReader {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.0.read(buf)
+        self.as_inner().read(buf)
     }
     fn read_vectored(&mut self, bufs: &mut [io::IoSliceMut<'_>]) -> io::Result<usize> {
-        self.0.read_vectored(bufs)
+        self.as_inner().read_vectored(bufs)
     }
     #[inline]
     fn is_read_vectored(&self) -> bool {
-        self.0.is_read_vectored()
+        self.as_inner().is_read_vectored()
     }
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        self.0.read_to_end(buf)
+        self.as_inner().read_to_end(buf)
     }
     fn read_buf(&mut self, buf: io::BorrowedCursor<'_>) -> io::Result<()> {
-        self.0.read_buf(buf)
+        self.as_inner().read_buf(buf)
     }
 }
 
-#[unstable(feature = "anonymous_pipe", issue = "127154")]
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
 impl io::Read for PipeReader {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.0.read(buf)
+        self.as_inner().read(buf)
     }
     fn read_vectored(&mut self, bufs: &mut [io::IoSliceMut<'_>]) -> io::Result<usize> {
-        self.0.read_vectored(bufs)
+        self.as_inner().read_vectored(bufs)
     }
     #[inline]
     fn is_read_vectored(&self) -> bool {
-        self.0.is_read_vectored()
+        self.as_inner().is_read_vectored()
     }
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        self.0.read_to_end(buf)
+        self.as_inner().read_to_end(buf)
     }
     fn read_buf(&mut self, buf: io::BorrowedCursor<'_>) -> io::Result<()> {
-        self.0.read_buf(buf)
+        self.as_inner().read_buf(buf)
     }
 }
 
-#[unstable(feature = "anonymous_pipe", issue = "127154")]
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
 impl io::Write for &PipeWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.0.write(buf)
+        self.as_inner().write(buf)
     }
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
     fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
-        self.0.write_vectored(bufs)
+        self.as_inner().write_vectored(bufs)
     }
     #[inline]
     fn is_write_vectored(&self) -> bool {
-        self.0.is_write_vectored()
+        self.as_inner().is_write_vectored()
     }
 }
 
-#[unstable(feature = "anonymous_pipe", issue = "127154")]
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
 impl io::Write for PipeWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.0.write(buf)
+        self.as_inner().write(buf)
     }
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
     fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
-        self.0.write_vectored(bufs)
+        self.as_inner().write_vectored(bufs)
     }
     #[inline]
     fn is_write_vectored(&self) -> bool {
-        self.0.is_write_vectored()
+        self.as_inner().is_write_vectored()
     }
 }

@@ -37,6 +37,24 @@ pub struct Pipes {
     pub theirs: AnonPipe,
 }
 
+pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
+    let mut read_pipe = c::INVALID_HANDLE_VALUE;
+    let mut write_pipe = c::INVALID_HANDLE_VALUE;
+
+    let ret = unsafe { c::CreatePipe(&mut read_pipe, &mut write_pipe, ptr::null_mut(), 0) };
+
+    if ret == 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        unsafe {
+            Ok((
+                AnonPipe::from_inner(Handle::from_raw_handle(read_pipe)),
+                AnonPipe::from_inner(Handle::from_raw_handle(write_pipe)),
+            ))
+        }
+    }
+}
+
 /// Although this looks similar to `anon_pipe` in the Unix module it's actually
 /// subtly different. Here we'll return two pipes in the `Pipes` return value,
 /// but one is intended for "us" where as the other is intended for "someone
@@ -56,7 +74,7 @@ pub struct Pipes {
 /// mode. This means that technically speaking it should only ever be used
 /// with `OVERLAPPED` instances, but also works out ok if it's only ever used
 /// once at a time (which we do indeed guarantee).
-pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Result<Pipes> {
+pub fn anon_pipe_relay(ours_readable: bool, their_handle_inheritable: bool) -> io::Result<Pipes> {
     // A 64kb pipe capacity is the same as a typical Linux default.
     const PIPE_BUFFER_CAPACITY: u32 = 64 * 1024;
 
@@ -182,7 +200,7 @@ pub fn spawn_pipe_relay(
     let source = source.try_clone()?;
 
     // create a new pair of anon pipes.
-    let Pipes { theirs, ours } = anon_pipe(ours_readable, their_handle_inheritable)?;
+    let Pipes { theirs, ours } = anon_pipe_relay(ours_readable, their_handle_inheritable)?;
 
     // Spawn a thread that passes messages from one pipe to the other.
     // Any errors will simply cause the thread to exit.

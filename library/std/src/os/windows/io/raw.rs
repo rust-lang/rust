@@ -98,6 +98,20 @@ impl AsRawHandle for fs::File {
     }
 }
 
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl AsRawHandle for io::PipeReader {
+    fn as_raw_handle(&self) -> RawHandle {
+        self.as_inner().as_raw_handle()
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl AsRawHandle for io::PipeWriter {
+    fn as_raw_handle(&self) -> RawHandle {
+        self.as_inner().as_raw_handle()
+    }
+}
+
 #[stable(feature = "asraw_stdio", since = "1.21.0")]
 impl AsRawHandle for io::Stdin {
     fn as_raw_handle(&self) -> RawHandle {
@@ -158,7 +172,7 @@ impl FromRawHandle for fs::File {
     unsafe fn from_raw_handle(handle: RawHandle) -> fs::File {
         unsafe {
             let handle = handle as sys::c::HANDLE;
-            fs::File::from_inner(sys::fs::File::from_inner(FromInner::from_inner(
+            fs::File::from_inner(FromInner::from_inner(FromInner::from_inner(
                 OwnedHandle::from_raw_handle(handle),
             )))
         }
@@ -168,6 +182,42 @@ impl FromRawHandle for fs::File {
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawHandle for fs::File {
     #[inline]
+    fn into_raw_handle(self) -> RawHandle {
+        self.into_inner().into_raw_handle() as *mut _
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl FromRawHandle for io::PipeReader {
+    unsafe fn from_raw_handle(raw_handle: RawHandle) -> io::PipeReader {
+        unsafe {
+            let handle = handle as sys::c::HANDLE;
+            io::PipeReader::from_inner(FromInner::from_inner(FromInner::from_inner(
+                OwnedHandle::from_raw_handle(handle),
+            )))
+        }
+    }
+}
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl IntoRawHandle for io::PipeReader {
+    fn into_raw_handle(self) -> RawHandle {
+        self.into_inner().into_raw_handle() as *mut _
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl FromRawHandle for io::PipeWriter {
+    unsafe fn from_raw_handle(raw_handle: RawHandle) -> io::PipeWriter {
+        unsafe {
+            let handle = handle as sys::c::HANDLE;
+            io::PipeReader::from_inner(FromInner::from_inner(FromInner::from_inner(
+                OwnedHandle::from_raw_handle(handle),
+            )))
+        }
+    }
+}
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl IntoRawHandle for io::PipeWriter {
     fn into_raw_handle(self) -> RawHandle {
         self.into_inner().into_raw_handle() as *mut _
     }

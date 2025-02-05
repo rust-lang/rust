@@ -1657,6 +1657,34 @@ impl From<io::Stderr> for Stdio {
     }
 }
 
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl From<io::PipeReader> for Stdio {
+    /// Make command stdin read from an opened pipe.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// todo!();
+    /// ```
+    fn from(pipe: io::PipeReader) -> Stdio {
+        Stdio::from_inner(pipe.into())
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl From<io::PipeWriter> for Stdio {
+    /// Redirect command stdout/stderr to an opened pipe.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// todo!();
+    /// ```
+    fn from(pipe: io::PipeWriter) -> Stdio {
+        Stdio::from_inner(pipe.into())
+    }
+}
+
 /// Describes the result of a process after it has terminated.
 ///
 /// This `struct` is used to represent the exit status or other termination of a child process.

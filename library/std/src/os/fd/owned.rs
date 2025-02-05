@@ -310,6 +310,44 @@ impl From<OwnedFd> for fs::File {
     }
 }
 
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl AsFd for io::PipeReader {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.as_inner().as_fd()
+    }
+}
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl From<io::PipeReader> for OwnedFd {
+    fn from(pipe: io::PipeReader) -> OwnedFd {
+        pipe.into_inner().into_inner().into_inner()
+    }
+}
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl From<OwnedFd> for io::PipeReader {
+    fn from(owned_fd: OwnedFd) -> io::PipeReader {
+        Self::from_inner(FromInner::from_inner(FromInner::from_inner(owned_fd)))
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl AsFd for io::PipeWriter {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.as_inner().as_fd()
+    }
+}
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl From<io::PipeWriter> for OwnedFd {
+    fn from(pipe: io::PipeWriter) -> OwnedFd {
+        pipe.into_inner().into_inner().into_inner()
+    }
+}
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl From<OwnedFd> for io::PipeWriter {
+    fn from(owned_fd: OwnedFd) -> io::PipeWriter {
+        Self::from_inner(FromInner::from_inner(FromInner::from_inner(owned_fd)))
+    }
+}
+
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for crate::net::TcpStream {
     #[inline]
