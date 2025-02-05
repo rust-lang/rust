@@ -189,7 +189,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         // Lower the endpoint into a temporary `PatKind` that will then be
         // deconstructed to obtain the constant value and other data.
-        let mut kind: PatKind<'tcx> = self.lower_lit(expr);
+        let mut kind: PatKind<'tcx> = self.lower_pat_expr(expr);
 
         // Unpeel any ascription or inline-const wrapper nodes.
         loop {
@@ -353,7 +353,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             hir::PatKind::Never => PatKind::Never,
 
-            hir::PatKind::Expr(value) => self.lower_lit(value),
+            hir::PatKind::Expr(value) => self.lower_pat_expr(value),
 
             hir::PatKind::Range(ref lo_expr, ref hi_expr, end) => {
                 let (lo_expr, hi_expr) = (lo_expr.as_deref(), hi_expr.as_deref());
@@ -708,11 +708,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         PatKind::ExpandedConstant { subpattern, def_id: def_id.to_def_id(), is_inline: true }
     }
 
-    /// Converts literals, paths and negation of literals to patterns.
-    /// The special case for negation exists to allow things like `-128_i8`
-    /// which would overflow if we tried to evaluate `128_i8` and then negate
-    /// afterwards.
-    fn lower_lit(&mut self, expr: &'tcx hir::PatExpr<'tcx>) -> PatKind<'tcx> {
+    /// Lowers the kinds of "expression" that can appear in a HIR pattern:
+    /// - Paths (e.g. `FOO`, `foo::BAR`, `Option::None`)
+    /// - Inline const blocks (e.g. `const { 1 + 1 }`)
+    /// - Literals, possibly negated (e.g. `-128u8`, `"hello"`)
+    fn lower_pat_expr(&mut self, expr: &'tcx hir::PatExpr<'tcx>) -> PatKind<'tcx> {
         let (lit, neg) = match &expr.kind {
             hir::PatExprKind::Path(qpath) => {
                 return self.lower_path(qpath, expr.hir_id, expr.span).kind;
