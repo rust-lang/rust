@@ -8,7 +8,7 @@ pub(crate) mod addr;
 #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 pub(crate) mod socket;
 
-#[unstable(feature = "tcp_quickack", issue = "96256")]
+#[stable(feature = "tcp_quickack", since = "CURRENT_RUSTC_VERSION")]
 pub(crate) mod tcp;
 
 #[cfg(test)]
