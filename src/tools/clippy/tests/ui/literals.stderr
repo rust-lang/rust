@@ -1,3 +1,12 @@
+error: lint `clippy::zero_prefixed_literal` has been renamed to `leading_zeros_in_decimal_literals`
+  --> tests/ui/literals.rs:5:9
+   |
+LL | #![warn(clippy::zero_prefixed_literal)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `leading_zeros_in_decimal_literals`
+   |
+   = note: `-D renamed-and-removed-lints` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(renamed_and_removed_lints)]`
+
 error: integer type suffix should not be separated by an underscore
   --> tests/ui/literals.rs:13:15
    |
@@ -67,46 +76,48 @@ error: this is a decimal constant
 LL |     let fail_multi_zero = 000_123usize;
    |                           ^^^^^^^^^^^^
    |
-   = note: `-D clippy::zero-prefixed-literal` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::zero_prefixed_literal)]`
-help: if you mean to use a decimal constant, remove the `0` to avoid confusion
+   = note: `-D leading-zeros-in-decimal-literals` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(leading_zeros_in_decimal_literals)]`
+help: if you meant to use a decimal constant, remove leading zeros to avoid confusion
    |
-LL |     let fail_multi_zero = 123usize;
-   |                           ~~~~~~~~
-help: if you mean to use an octal constant, use `0o`
+LL -     let fail_multi_zero = 000_123usize;
+LL +     let fail_multi_zero = 123usize;
    |
-LL |     let fail_multi_zero = 0o123usize;
-   |                           ~~~~~~~~~~
+help: if you meant to use an octal constant, prefix it with `0o` instead
+   |
+LL |     let fail_multi_zero = 0o00_123usize;
+   |                           ~~
 
 error: integer type suffix should not be separated by an underscore
-  --> tests/ui/literals.rs:36:16
+  --> tests/ui/literals.rs:35:16
    |
 LL |     let ok10 = 0_i64;
    |                ^^^^^ help: remove the underscore: `0i64`
 
 error: this is a decimal constant
-  --> tests/ui/literals.rs:38:17
+  --> tests/ui/literals.rs:37:17
    |
 LL |     let fail8 = 0123;
    |                 ^^^^
    |
-help: if you mean to use a decimal constant, remove the `0` to avoid confusion
+help: if you meant to use a decimal constant, remove leading zeros to avoid confusion
    |
-LL |     let fail8 = 123;
-   |                 ~~~
-help: if you mean to use an octal constant, use `0o`
+LL -     let fail8 = 0123;
+LL +     let fail8 = 123;
+   |
+help: if you meant to use an octal constant, prefix it with `0o` instead
    |
 LL |     let fail8 = 0o123;
-   |                 ~~~~~
+   |                 ~~
 
 error: integer type suffix should not be separated by an underscore
-  --> tests/ui/literals.rs:48:16
+  --> tests/ui/literals.rs:47:16
    |
 LL |     let ok17 = 0x123_4567_8901_usize;
    |                ^^^^^^^^^^^^^^^^^^^^^ help: remove the underscore: `0x123_4567_8901usize`
 
 error: digits grouped inconsistently by underscores
-  --> tests/ui/literals.rs:52:18
+  --> tests/ui/literals.rs:51:18
    |
 LL |     let fail19 = 12_3456_21;
    |                  ^^^^^^^^^^ help: consider: `12_345_621`
@@ -115,19 +126,19 @@ LL |     let fail19 = 12_3456_21;
    = help: to override `-D warnings` add `#[allow(clippy::inconsistent_digit_grouping)]`
 
 error: digits grouped inconsistently by underscores
-  --> tests/ui/literals.rs:55:18
+  --> tests/ui/literals.rs:54:18
    |
 LL |     let fail22 = 3__4___23;
    |                  ^^^^^^^^^ help: consider: `3_423`
 
 error: digits grouped inconsistently by underscores
-  --> tests/ui/literals.rs:57:18
+  --> tests/ui/literals.rs:56:18
    |
 LL |     let fail23 = 3__16___23;
    |                  ^^^^^^^^^^ help: consider: `31_623`
 
 error: digits of hex, binary or octal literal not in groups of equal size
-  --> tests/ui/literals.rs:60:18
+  --> tests/ui/literals.rs:59:18
    |
 LL |     let fail24 = 0xAB_ABC_AB;
    |                  ^^^^^^^^^^^ help: consider: `0x0ABA_BCAB`
@@ -135,38 +146,5 @@ LL |     let fail24 = 0xAB_ABC_AB;
    = note: `-D clippy::unusual-byte-groupings` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unusual_byte_groupings)]`
 
-error: this is a decimal constant
-  --> tests/ui/literals.rs:70:13
-   |
-LL |     let _ = 08;
-   |             ^^
-   |
-help: if you mean to use a decimal constant, remove the `0` to avoid confusion
-   |
-LL |     let _ = 8;
-   |             ~
-
-error: this is a decimal constant
-  --> tests/ui/literals.rs:72:13
-   |
-LL |     let _ = 09;
-   |             ^^
-   |
-help: if you mean to use a decimal constant, remove the `0` to avoid confusion
-   |
-LL |     let _ = 9;
-   |             ~
-
-error: this is a decimal constant
-  --> tests/ui/literals.rs:74:13
-   |
-LL |     let _ = 089;
-   |             ^^^
-   |
-help: if you mean to use a decimal constant, remove the `0` to avoid confusion
-   |
-LL |     let _ = 89;
-   |             ~~
-
-error: aborting due to 20 previous errors
+error: aborting due to 18 previous errors
 

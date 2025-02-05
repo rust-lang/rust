@@ -30,7 +30,6 @@ fn main() {
     //~^ ERROR: integer type suffix should be separated by an underscore
     //~| NOTE: `-D clippy::unseparated-literal-suffix` implied by `-D warnings`
     //~| ERROR: this is a decimal constant
-    //~| NOTE: `-D clippy::zero-prefixed-literal` implied by `-D warnings`
 
     let ok9 = 0;
     let ok10 = 0_i64;
@@ -66,11 +65,8 @@ fn main() {
 }
 
 fn issue9651() {
-    // lint but octal form is not possible here
+    // octal form is not possible here
     let _ = 08;
-    //~^ ERROR: this is a decimal constant
     let _ = 09;
-    //~^ ERROR: this is a decimal constant
     let _ = 089;
-    //~^ ERROR: this is a decimal constant
 }
