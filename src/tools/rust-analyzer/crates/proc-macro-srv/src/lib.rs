@@ -35,6 +35,7 @@ use std::{
     ffi::OsString,
     fs,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex, PoisonError},
     thread,
 };
 
@@ -53,7 +54,7 @@ pub enum ProcMacroKind {
 pub const RUSTC_VERSION_STRING: &str = env!("RUSTC_VERSION");
 
 pub struct ProcMacroSrv<'env> {
-    expanders: HashMap<Utf8PathBuf, dylib::Expander>,
+    expanders: Mutex<HashMap<Utf8PathBuf, Arc<dylib::Expander>>>,
     env: &'env EnvSnapshot,
 }
 
@@ -67,7 +68,7 @@ const EXPANDER_STACK_SIZE: usize = 8 * 1024 * 1024;
 
 impl ProcMacroSrv<'_> {
     pub fn expand<S: ProcMacroSrvSpan>(
-        &mut self,
+        &self,
         lib: impl AsRef<Utf8Path>,
         env: Vec<(String, String)>,
         current_dir: Option<impl AsRef<Path>>,
@@ -118,29 +119,37 @@ impl ProcMacroSrv<'_> {
     }
 
     pub fn list_macros(
-        &mut self,
+        &self,
         dylib_path: &Utf8Path,
     ) -> Result<Vec<(String, ProcMacroKind)>, String> {
         let expander = self.expander(dylib_path)?;
         Ok(expander.list_macros())
     }
 
-    fn expander(&mut self, path: &Utf8Path) -> Result<&dylib::Expander, String> {
+    fn expander(&self, path: &Utf8Path) -> Result<Arc<dylib::Expander>, String> {
         let expander = || {
-            dylib::Expander::new(path)
-                .map_err(|err| format!("Cannot create expander for {path}: {err}",))
+            let expander = dylib::Expander::new(path)
+                .map_err(|err| format!("Cannot create expander for {path}: {err}",));
+            expander.map(Arc::new)
         };
 
-        Ok(match self.expanders.entry(path.to_path_buf()) {
-            Entry::Vacant(v) => v.insert(expander()?),
-            Entry::Occupied(mut e) => {
-                let time = fs::metadata(path).and_then(|it| it.modified()).ok();
-                if Some(e.get().modified_time()) != time {
-                    e.insert(expander()?);
+        Ok(
+            match self
+                .expanders
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .entry(path.to_path_buf())
+            {
+                Entry::Vacant(v) => v.insert(expander()?).clone(),
+                Entry::Occupied(mut e) => {
+                    let time = fs::metadata(path).and_then(|it| it.modified()).ok();
+                    if Some(e.get().modified_time()) != time {
+                        e.insert(expander()?);
+                    }
+                    e.get().clone()
                 }
-                e.into_mut()
-            }
-        })
+            },
+        )
     }
 }
 
