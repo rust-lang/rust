@@ -1013,7 +1013,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         //
                         // This is also relevant for `Pin<&mut Self>`, where we need to peel the
                         // `Pin`.
-                        while !op.layout.ty.is_unsafe_ptr() && !op.layout.ty.is_ref() {
+                        while !op.layout.ty.is_raw_ptr() && !op.layout.ty.is_ref() {
                             let (idx, _) = op.layout.non_1zst_field(bx).expect(
                                 "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
                             );
@@ -1045,7 +1045,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     Immediate(_) => {
                         // See comment above explaining why we peel these newtypes
-                        while !op.layout.ty.is_unsafe_ptr() && !op.layout.ty.is_ref() {
+                        while !op.layout.ty.is_raw_ptr() && !op.layout.ty.is_ref() {
                             let (idx, _) = op.layout.non_1zst_field(bx).expect(
                                 "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
                             );

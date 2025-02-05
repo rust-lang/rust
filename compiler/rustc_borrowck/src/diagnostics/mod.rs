@@ -570,7 +570,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // If we didn't find an overloaded deref or index, then assume it's a
         // built in deref and check the type of the base.
         let base_ty = deref_base.ty(self.body, tcx).ty;
-        if base_ty.is_unsafe_ptr() {
+        if base_ty.is_raw_ptr() {
             BorrowedContentSource::DerefRawPointer
         } else if base_ty.is_mutable_ptr() {
             BorrowedContentSource::DerefMutableRef

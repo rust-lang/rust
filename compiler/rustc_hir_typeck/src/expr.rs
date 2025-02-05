@@ -3556,7 +3556,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
 
-                    if base_t.is_unsafe_ptr() && idx_t.is_integral() {
+                    if base_t.is_raw_ptr() && idx_t.is_integral() {
                         err.multipart_suggestion(
                             "consider using `wrapping_add` or `add` for indexing into raw pointer",
                             vec![

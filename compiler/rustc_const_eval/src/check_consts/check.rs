@@ -710,7 +710,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 if is_int_bool_float_or_char(lhs_ty) && is_int_bool_float_or_char(rhs_ty) {
                     // Int, bool, float, and char operations are fine.
-                } else if lhs_ty.is_fn_ptr() || lhs_ty.is_unsafe_ptr() {
+                } else if lhs_ty.is_fn_ptr() || lhs_ty.is_raw_ptr() {
                     assert_matches!(
                         op,
                         BinOp::Eq

@@ -241,7 +241,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // Figure out whether this is an addr_of of an already raw place.
                 let place_base_raw = if place.is_indirect_first_projection() {
                     let ty = self.frame().body.local_decls[place.local].ty;
-                    ty.is_unsafe_ptr()
+                    ty.is_raw_ptr()
                 } else {
                     // Not a deref, and thus not raw.
                     false

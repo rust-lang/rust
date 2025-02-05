@@ -47,7 +47,7 @@ impl<'a, 'tcx> UndefinedTransmutesChecker<'a, 'tcx> {
         {
             let fn_sig = function.ty(self.body, self.tcx).fn_sig(self.tcx).skip_binder();
             if let [input] = fn_sig.inputs() {
-                return input.is_unsafe_ptr() && fn_sig.output().is_integral();
+                return input.is_raw_ptr() && fn_sig.output().is_integral();
             }
         }
         false
