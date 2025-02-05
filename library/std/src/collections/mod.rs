@@ -433,8 +433,7 @@ pub use self::hash_map::HashMap;
 #[doc(inline)]
 pub use self::hash_set::HashSet;
 #[stable(feature = "rust1", since = "1.0.0")]
-// FIXME(#82080) The deprecation here is only theoretical, and does not actually produce a warning.
-#[deprecated(note = "moved to `std::ops::Bound`", since = "1.26.0")]
+// FIXME(#82080) This has moved but #[deprecated] on `use` is unsupported.
 #[doc(hidden)]
 pub use crate::ops::Bound;
 
