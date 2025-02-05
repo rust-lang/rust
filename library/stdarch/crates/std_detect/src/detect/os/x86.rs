@@ -141,6 +141,13 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
         enable(extended_features_ebx, 9, Feature::ermsb);
 
+        // Detect if CPUID.19h available
+        if bit::test(extended_features_ecx as usize, 23) {
+            let CpuidResult { ebx, .. } = unsafe { __cpuid(0x19) };
+            enable(ebx, 0, Feature::kl);
+            enable(ebx, 2, Feature::widekl);
+        }
+
         // `XSAVE` and `AVX` support:
         let cpu_xsave = bit::test(proc_info_ecx as usize, 26);
         if cpu_xsave {

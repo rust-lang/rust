@@ -103,6 +103,8 @@ features! {
     /// * `"xsaves"`
     /// * `"xsavec"`
     /// * `"cmpxchg16b"`
+    /// * `"kl"`
+    /// * `"widekl"`
     /// * `"adx"`
     /// * `"rtm"`
     /// * `"movbe"`
@@ -241,6 +243,10 @@ features! {
     /// XSAVEC (Save Processor Extended States Compacted)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] cmpxchg16b: "cmpxchg16b";
     /// CMPXCH16B (16-byte compare-and-swap instruction)
+    @FEATURE: #[unstable(feature = "keylocker_x86", issue = "134813")] kl: "kl";
+    /// Intel Key Locker
+    @FEATURE: #[unstable(feature = "keylocker_x86", issue = "134813")] widekl: "widekl";
+    /// Intel Key Locker Wide
     @FEATURE: #[stable(feature = "simd_x86_adx", since = "1.33.0")] adx: "adx";
     /// ADX, Intel ADX (Multi-Precision Add-Carry Instruction Extensions)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] rtm: "rtm";
