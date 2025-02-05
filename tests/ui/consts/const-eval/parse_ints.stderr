@@ -6,8 +6,10 @@ LL | const _TOO_LOW: () = { u64::from_str_radix("12345ABCD", 1); };
    |
 note: inside `core::num::<impl u64>::from_str_radix`
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL
-note: inside `core::num::<impl u64>::from_ascii_radix`
+note: the evaluated program failed inside `core::num::<impl u64>::from_ascii_radix`
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL
+   |
+   = note: the evaluated program failed here
    = note: this error originates in the macro `from_str_int_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
@@ -18,8 +20,10 @@ LL | const _TOO_HIGH: () = { u64::from_str_radix("12345ABCD", 37); };
    |
 note: inside `core::num::<impl u64>::from_str_radix`
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL
-note: inside `core::num::<impl u64>::from_ascii_radix`
+note: the evaluated program failed inside `core::num::<impl u64>::from_ascii_radix`
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL
+   |
+   = note: the evaluated program failed here
    = note: this error originates in the macro `from_str_int_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors

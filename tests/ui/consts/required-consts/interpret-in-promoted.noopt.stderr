@@ -9,8 +9,10 @@ note: inside `ub`
    |
 LL |     std::hint::unreachable_unchecked();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: inside `unreachable_unchecked`
+note: the evaluated program failed inside `unreachable_unchecked`
   --> $SRC_DIR/core/src/hint.rs:LL:COL
+   |
+   = note: the evaluated program failed here
 
 note: erroneous constant encountered
   --> $DIR/interpret-in-promoted.rs:13:27

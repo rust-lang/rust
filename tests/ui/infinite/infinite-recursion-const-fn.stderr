@@ -634,11 +634,11 @@ note: inside `b`
    |
 LL |     a()
    |     ^^^
-note: inside `a`
+note: the evaluated program failed inside `a`
   --> $DIR/infinite-recursion-const-fn.rs:4:5
    |
 LL |     b()
-   |     ^^^
+   |     ^^^ the evaluated program failed here
 
 error: aborting due to 1 previous error
 
