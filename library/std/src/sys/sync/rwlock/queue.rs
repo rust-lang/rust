@@ -117,11 +117,11 @@ use crate::hint::spin_loop;
 use crate::mem;
 use crate::ptr::{self, NonNull, null_mut, without_provenance_mut};
 use crate::sync::atomic::Ordering::{AcqRel, Acquire, Relaxed, Release};
-use crate::sync::atomic::{AtomicBool, AtomicPtr};
+use crate::sync::atomic::{Atomic, AtomicBool, AtomicPtr};
 use crate::thread::{self, Thread};
 
 /// The atomic lock state.
-type AtomicState = AtomicPtr<()>;
+type AtomicState = Atomic<State>;
 /// The inner lock state.
 type State = *mut ();
 
@@ -181,11 +181,11 @@ struct Node {
     tail: AtomicLink,
     write: bool,
     thread: OnceCell<Thread>,
-    completed: AtomicBool,
+    completed: Atomic<bool>,
 }
 
 /// An atomic node pointer with relaxed operations.
-struct AtomicLink(AtomicPtr<Node>);
+struct AtomicLink(Atomic<*mut Node>);
 
 impl AtomicLink {
     fn new(v: Option<NonNull<Node>>) -> AtomicLink {
