@@ -11,6 +11,7 @@ use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, MetaItemLit, as
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
@@ -246,6 +247,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 [sym::coroutine, ..] => {
                     self.check_coroutine(attr, target);
+                }
+                [sym::type_const, ..] => {
+                    self.check_type_const(hir_id,attr, target);
                 }
                 [sym::linkage, ..] => self.check_linkage(attr, span, target),
                 [sym::rustc_pub_transparent, ..] => self.check_rustc_pub_transparent(attr.span, span, attrs),
@@ -2490,6 +2494,23 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             _ => {
                 self.dcx().emit_err(errors::CoroutineOnNonClosure { span: attr.span });
             }
+        }
+    }
+
+    fn check_type_const(&self, hir_id: HirId, attr: &Attribute, target: Target) {
+        let tcx = self.tcx;
+        if target == Target::AssocConst
+            && let parent = tcx.parent(hir_id.expect_owner().to_def_id())
+            && self.tcx.def_kind(parent) == DefKind::Trait
+        {
+            return;
+        } else {
+            self.dcx()
+                .struct_span_err(
+                    attr.span,
+                    "`#[type_const]` must only be applied to trait associated constants",
+                )
+                .emit();
         }
     }
 

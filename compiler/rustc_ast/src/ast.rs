@@ -124,10 +124,11 @@ impl Path {
         self.segments.first().is_some_and(|segment| segment.ident.name == kw::PathRoot)
     }
 
-    /// If this path is a single identifier with no arguments, does not ensure
-    /// that the path resolves to a const param, the caller should check this.
-    pub fn is_potential_trivial_const_arg(&self) -> bool {
-        matches!(self.segments[..], [PathSegment { args: None, .. }])
+    // FIXME: add docs
+    #[tracing::instrument(level = "debug", ret)]
+    pub fn is_potential_trivial_const_arg(&self, allow_mgca_arg: bool) -> bool {
+        allow_mgca_arg
+            || self.segments.len() == 1 && self.segments.iter().all(|seg| seg.args.is_none())
     }
 }
 
@@ -1177,6 +1178,7 @@ pub struct Expr {
 }
 
 impl Expr {
+    // FIXME: update docs
     /// Could this expr be either `N`, or `{ N }`, where `N` is a const parameter.
     ///
     /// If this is not the case, name resolution does not resolve `N` when using
@@ -1184,15 +1186,18 @@ impl Expr {
     ///
     /// Does not ensure that the path resolves to a const param, the caller should check this.
     /// This also does not consider macros, so it's only correct after macro-expansion.
-    pub fn is_potential_trivial_const_arg(&self) -> bool {
+    pub fn is_potential_trivial_const_arg(&self, allow_mgca_arg: bool) -> bool {
         let this = self.maybe_unwrap_block();
-
-        if let ExprKind::Path(None, path) = &this.kind
-            && path.is_potential_trivial_const_arg()
-        {
-            true
+        if allow_mgca_arg {
+            matches!(this.kind, ExprKind::Path(..))
         } else {
-            false
+            if let ExprKind::Path(None, path) = &this.kind
+                && path.is_potential_trivial_const_arg(allow_mgca_arg)
+            {
+                true
+            } else {
+                false
+            }
         }
     }
 
