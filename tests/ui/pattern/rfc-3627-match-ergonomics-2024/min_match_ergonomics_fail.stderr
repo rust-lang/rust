@@ -106,11 +106,11 @@ LL | test_pat_on_type![(&x,): &(&T,)];
    |                    ^ reference pattern not allowed under `ref` default binding mode
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/min_match_ergonomics_fail.rs:24:19
    |
 LL | test_pat_on_type![(&x,): &(&T,)];
-   |                   ^^^^^ the default binding mode is `ref`, introduced here
+   |                   ^^^^^ this matches on type `&_`
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&(&x,): &(&T,)];
@@ -123,11 +123,11 @@ LL | test_pat_on_type![(&mut x,): &(&mut T,)];
    |                    ^^^^ reference pattern not allowed under `ref` default binding mode
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/min_match_ergonomics_fail.rs:27:19
    |
 LL | test_pat_on_type![(&mut x,): &(&mut T,)];
-   |                   ^^^^^^^^^ the default binding mode is `ref`, introduced here
+   |                   ^^^^^^^^^ this matches on type `&_`
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&(&mut x,): &(&mut T,)];
@@ -140,11 +140,11 @@ LL | test_pat_on_type![Foo { f: &(x,) }: &Foo];
    |                            ^ reference pattern not allowed under `ref` default binding mode
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/min_match_ergonomics_fail.rs:31:19
    |
 LL | test_pat_on_type![Foo { f: &(x,) }: &Foo];
-   |                   ^^^^^^^^^^^^^^^^ the default binding mode is `ref`, introduced here
+   |                   ^^^^^^^^^^^^^^^^ this matches on type `&_`
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&Foo { f: &(x,) }: &Foo];
@@ -157,11 +157,11 @@ LL | test_pat_on_type![(mut x,): &(T,)];
    |                    ^^^ binding modifier not allowed under `ref` default binding mode
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/min_match_ergonomics_fail.rs:32:19
    |
 LL | test_pat_on_type![(mut x,): &(T,)];
-   |                   ^^^^^^^^ the default binding mode is `ref`, introduced here
+   |                   ^^^^^^^^ this matches on type `&_`
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&(mut x,): &(T,)];
@@ -174,11 +174,11 @@ LL | test_pat_on_type![(ref x,): &(T,)];
    |                    ^^^ binding modifier not allowed under `ref` default binding mode
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/min_match_ergonomics_fail.rs:33:19
    |
 LL | test_pat_on_type![(ref x,): &(T,)];
-   |                   ^^^^^^^^ the default binding mode is `ref`, introduced here
+   |                   ^^^^^^^^ this matches on type `&_`
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&(ref x,): &(T,)];
@@ -191,11 +191,11 @@ LL | test_pat_on_type![(ref mut x,): &mut (T,)];
    |                    ^^^^^^^ binding modifier not allowed under `ref mut` default binding mode
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref mut` because this has type `&mut _`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/min_match_ergonomics_fail.rs:34:19
    |
 LL | test_pat_on_type![(ref mut x,): &mut (T,)];
-   |                   ^^^^^^^^^^^^ the default binding mode is `ref mut`, introduced here
+   |                   ^^^^^^^^^^^^ this matches on type `&mut _`
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&mut (ref mut x,): &mut (T,)];
@@ -208,11 +208,11 @@ LL |         (&x,) => x,
    |          ^ reference pattern not allowed under `ref` default binding mode
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/min_match_ergonomics_fail.rs:43:9
    |
 LL |         (&x,) => x,
-   |         ^^^^^ the default binding mode is `ref`, introduced here
+   |         ^^^^^ this matches on type `&_`
 help: make the implied reference pattern explicit
    |
 LL |         &(&x,) => x,
