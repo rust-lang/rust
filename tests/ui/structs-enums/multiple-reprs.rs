@@ -69,7 +69,7 @@ pub fn main() {
     assert_eq!(size_of::<E4>(), 8);
     assert_eq!(size_of::<E5>(), align_size(10, align_of::<u32>()));
     assert_eq!(size_of::<E6>(), align_size(14, align_of::<u64>()));
-    assert_eq!(size_of::<E7>(), align_size(6 + size_of::<c_int>(), align_of::<c_int>()));
+    assert_eq!(size_of::<E7>(), align_size(6 + c_enum_min_size(), align_of::<c_int>()));
     assert_eq!(size_of::<p0f_api_query>(), 21);
 }
 
@@ -79,4 +79,14 @@ fn align_size(size: usize, align: usize) -> usize {
     } else {
         size
     }
+}
+
+// this is `TargetOptions.c_enum_min_bits` which is not available as a `cfg` value so we retrieve
+// the value at runtime. On most targets this is `sizeof(c_int)` but on `thumb*-none` is 1 byte
+fn c_enum_min_size() -> usize {
+    #[repr(C)]
+    enum E {
+        A,
+    }
+    size_of::<E>()
 }
