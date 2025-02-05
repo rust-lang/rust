@@ -118,6 +118,14 @@ help: to link to the trait, prefix with `trait@`
 LL | /// [x][trait@Clone ]
    |         ~~~~~~
 
+error: unresolved link to `Clone\(\)`
+  --> $DIR/weird-syntax.rs:68:9
+   |
+LL | /// [x][Clone\(\)]
+   |         ^^^^^^^^^ no item named `Clone\(\)` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
 error: unresolved link to `Clone`
   --> $DIR/weird-syntax.rs:74:9
    |
@@ -268,5 +276,5 @@ LL | /// The [cln][] link here will produce a plain text suggestion
    |
    = help: to link to the trait, prefix with `trait@`: trait@Clone
 
-error: aborting due to 26 previous errors
+error: aborting due to 27 previous errors
 
