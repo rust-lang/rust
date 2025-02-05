@@ -2,8 +2,8 @@ use crate::abi::call::{ArgAttribute, FnAbi, PassMode, Reg, RegKind};
 use crate::abi::{
     AddressSpace, Align, BackendRepr, Float, HasDataLayout, Pointer, TyAbiInterface, TyAndLayout,
 };
-use crate::spec::HasTargetSpec;
 use crate::spec::abi::Abi as SpecAbi;
+use crate::spec::{HasTargetSpec, RustcAbi};
 
 #[derive(PartialEq)]
 pub(crate) enum Flavor {
@@ -234,8 +234,16 @@ where
             _ => false, // anyway not passed via registers on x86
         };
         if has_float {
-            if fn_abi.ret.layout.size <= Pointer(AddressSpace::DATA).size(cx) {
-                // Same size or smaller than pointer, return in a register.
+            if cx.target_spec().rustc_abi == Some(RustcAbi::X86Sse2)
+                && fn_abi.ret.layout.backend_repr.is_scalar()
+                && fn_abi.ret.layout.size.bits() <= 128
+            {
+                // This is a single scalar that fits into an SSE register, and the target uses the
+                // SSE ABI. We prefer this over integer registers as float scalars need to be in SSE
+                // registers for float operations, so that's the best place to pass them around.
+                fn_abi.ret.cast_to(Reg { kind: RegKind::Vector, size: fn_abi.ret.layout.size });
+            } else if fn_abi.ret.layout.size <= Pointer(AddressSpace::DATA).size(cx) {
+                // Same size or smaller than pointer, return in an integer register.
                 fn_abi.ret.cast_to(Reg { kind: RegKind::Integer, size: fn_abi.ret.layout.size });
             } else {
                 // Larger than a pointer, return indirectly.

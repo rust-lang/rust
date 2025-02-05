@@ -1,8 +1,9 @@
-use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, Target, base};
+use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, RustcAbi, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_gnu::opts();
     base.vendor = "win7".into();
+    base.rustc_abi = Some(RustcAbi::X86Sse2);
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.frame_pointer = FramePointer::Always; // Required for backtraces
