@@ -107,6 +107,7 @@
 #![feature(const_destruct)]
 #![feature(const_eval_select)]
 #![feature(const_select_unpredictable)]
+#![feature(contracts)]
 #![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
 #![feature(disjoint_bitor)]
