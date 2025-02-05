@@ -1,0 +1,32 @@
+error: cannot find attribute `sede` in this scope
+  --> $DIR/missing-derive-3.rs:20:7
+   |
+LL |     #[sede(untagged)]
+   |       ^^^^
+
+error: cannot find attribute `serde` in this scope
+  --> $DIR/missing-derive-3.rs:14:7
+   |
+LL |     #[serde(untagged)]
+   |       ^^^^^
+   |
+note: `serde` is imported here, but it is a crate, not an attribute
+  --> $DIR/missing-derive-3.rs:4:1
+   |
+LL | extern crate serde;
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: cannot find attribute `serde` in this scope
+  --> $DIR/missing-derive-3.rs:6:3
+   |
+LL | #[serde(untagged)]
+   |   ^^^^^
+   |
+note: `serde` is imported here, but it is a crate, not an attribute
+  --> $DIR/missing-derive-3.rs:4:1
+   |
+LL | extern crate serde;
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
