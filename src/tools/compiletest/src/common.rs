@@ -215,8 +215,10 @@ pub struct Config {
     /// `None` then these tests will be ignored.
     pub run_clang_based_tests_with: Option<String>,
 
-    /// The directory containing the tests to run
-    pub src_base: PathBuf,
+    /// The directory containing the sources.
+    pub src_root: PathBuf,
+    /// The directory containing the test suite sources. Must be a subdirectory of `src_root`.
+    pub src_test_suite_root: PathBuf,
 
     /// The directory where programs should be built
     pub build_base: PathBuf,
@@ -224,7 +226,9 @@ pub struct Config {
     /// The directory containing the compiler sysroot
     pub sysroot_base: PathBuf,
 
-    /// The name of the stage being built (stage1, etc)
+    /// The number of the stage under test.
+    pub stage: u32,
+    /// The id of the stage under test (stage1-xxx, etc).
     pub stage_id: String,
 
     /// The test mode, e.g. ui or debuginfo.

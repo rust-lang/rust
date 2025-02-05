@@ -192,7 +192,7 @@ fn parse_cfg_name_directive<'a>(
         message: "on big-endian targets",
     }
     condition! {
-        name: config.stage_id.split('-').next().unwrap(),
+        name: format!("stage{}", config.stage).as_str(),
         allowed_names: &["stage0", "stage1", "stage2"],
         message: "when the bootstrapping stage is {name}",
     }
