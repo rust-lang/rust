@@ -1,0 +1,37 @@
+error[E0599]: no method named `show` found for opaque type `Test` in the current scope
+  --> $DIR/reveal-hidden-via-unwrapped-receiver.rs:33:22
+   |
+LL |     let _: IShow = x.show();
+   |                      ^^^^ method not found in `Test`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `OnI` defines an item `show`, perhaps you need to implement it
+  --> $DIR/reveal-hidden-via-unwrapped-receiver.rs:19:1
+   |
+LL | trait OnI {
+   | ^^^^^^^^^
+
+error[E0391]: cycle detected when computing type of opaque `Test::{opaque#0}`
+  --> $DIR/reveal-hidden-via-unwrapped-receiver.rs:26:13
+   |
+LL | type Test = impl Sized;
+   |             ^^^^^^^^^^
+   |
+note: ...which requires type-checking `test`...
+  --> $DIR/reveal-hidden-via-unwrapped-receiver.rs:33:20
+   |
+LL |     let _: IShow = x.show();
+   |                    ^
+   = note: ...which requires evaluating trait selection obligation `Test: core::marker::Unpin`...
+   = note: ...which again requires computing type of opaque `Test::{opaque#0}`, completing the cycle
+note: cycle used when computing type of `Test::{opaque#0}`
+  --> $DIR/reveal-hidden-via-unwrapped-receiver.rs:26:13
+   |
+LL | type Test = impl Sized;
+   |             ^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0391, E0599.
+For more information about an error, try `rustc --explain E0391`.

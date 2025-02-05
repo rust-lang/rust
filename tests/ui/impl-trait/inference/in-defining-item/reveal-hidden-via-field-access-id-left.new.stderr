@@ -1,0 +1,9 @@
+error[E0609]: no field `field` on type `impl Sized`
+  --> $DIR/reveal-hidden-via-field-access-id-left.rs:18:34
+   |
+LL |     let _: () = id2(test(!n), I).field;
+   |                                  ^^^^^ unknown field
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0609`.
