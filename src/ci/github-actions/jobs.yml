@@ -12,15 +12,15 @@ runners:
 
   # Large runner used mainly for its bigger disk capacity
   - &job-linux-4c-largedisk
-    os: ubuntu-22.04-4core-16gb
+    os: ubuntu-24.04-4core-16gb
     <<: *base-job
 
   - &job-linux-8c
-    os: ubuntu-22.04-8core-32gb
+    os: ubuntu-24.04-8core-32gb
     <<: *base-job
 
   - &job-linux-16c
-    os: ubuntu-22.04-16core-64gb
+    os: ubuntu-24.04-16core-64gb
     <<: *base-job
 
   - &job-macos-xl
@@ -53,7 +53,7 @@ runners:
     os: ubuntu-24.04-arm
 
   - &job-aarch64-linux-8c
-    os: ubuntu-22.04-arm64-8core-32gb
+    os: ubuntu-24.04-arm64-8core-32gb
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
     SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc -- --exact
