@@ -230,20 +230,23 @@ TrivialLiftImpls! {
     bool,
     usize,
     u64,
-    crate::mir::Promoted,
+    // tidy-alphabetical-start
     crate::mir::interpret::AllocId,
     crate::mir::interpret::Scalar,
+    crate::mir::Promoted,
     rustc_abi::ExternAbi,
     rustc_abi::Size,
     rustc_hir::Safety,
     rustc_type_ir::BoundConstness,
     rustc_type_ir::PredicatePolarity,
+    // tidy-alphabetical-end
 }
 
 // For some things about which the type library does not know, or does not
 // provide any traversal implementations, we need to provide a traversal
 // implementation (only for TyCtxt<'_> interners).
 TrivialTypeTraversalImpls! {
+    // tidy-alphabetical-start
     crate::infer::canonical::Certainty,
     crate::mir::BasicBlock,
     crate::mir::BindingForm<'tcx>,
@@ -265,6 +268,9 @@ TrivialTypeTraversalImpls! {
     crate::mir::SwitchTargets,
     crate::traits::IsConstable,
     crate::traits::OverflowError,
+    crate::ty::abstract_const::NotConstEvaluatable,
+    crate::ty::adjustment::AutoBorrowMutability,
+    crate::ty::adjustment::PointerCoercion,
     crate::ty::AdtKind,
     crate::ty::AssocItem,
     crate::ty::AssocKind,
@@ -275,21 +281,19 @@ TrivialTypeTraversalImpls! {
     crate::ty::Placeholder<ty::BoundVar>,
     crate::ty::UserTypeAnnotationIndex,
     crate::ty::ValTree<'tcx>,
-    crate::ty::abstract_const::NotConstEvaluatable,
-    crate::ty::adjustment::AutoBorrowMutability,
-    crate::ty::adjustment::PointerCoercion,
     rustc_abi::FieldIdx,
     rustc_abi::VariantIdx,
     rustc_ast::InlineAsmOptions,
     rustc_ast::InlineAsmTemplatePiece,
     rustc_hir::CoroutineKind,
+    rustc_hir::def_id::LocalDefId,
     rustc_hir::HirId,
     rustc_hir::MatchSource,
-    rustc_hir::def_id::LocalDefId,
     rustc_span::Ident,
     rustc_span::Span,
     rustc_span::Symbol,
     rustc_target::asm::InlineAsmRegOrRegClass,
+    // tidy-alphabetical-end
 }
 
 // For some things about which the type library does not know, or does not
@@ -297,10 +301,12 @@ TrivialTypeTraversalImpls! {
 // implementation and a lift implementation (the former only for TyCtxt<'_>
 // interners).
 TrivialTypeTraversalAndLiftImpls! {
+    // tidy-alphabetical-start
+    crate::ty::instance::ReifyReason,
     crate::ty::ParamConst,
     crate::ty::ParamTy,
-    crate::ty::instance::ReifyReason,
     rustc_hir::def_id::DefId,
+    // tidy-alphabetical-end
 }
 
 ///////////////////////////////////////////////////////////////////////////
