@@ -403,6 +403,8 @@ declare_features! (
     (unstable, c_variadic, "1.34.0", Some(44930)),
     /// Allows the use of `#[cfg(<true/false>)]`.
     (unstable, cfg_boolean_literals, "1.83.0", Some(131204)),
+    /// Allows the use of `#[cfg(contract_checks)` to check if contract checks are enabled.
+    (unstable, cfg_contract_checks, "CURRENT_RUSTC_VERSION", Some(128044)),
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
     (unstable, cfg_overflow_checks, "1.71.0", Some(111466)),
     /// Provides the relocation model information as cfg entry
@@ -445,6 +447,10 @@ declare_features! (
     (unstable, const_trait_impl, "1.42.0", Some(67792)),
     /// Allows the `?` operator in const contexts.
     (unstable, const_try, "1.56.0", Some(74935)),
+    /// Allows use of contracts attributes.
+    (incomplete, contracts, "CURRENT_RUSTC_VERSION", Some(128044)),
+    /// Allows access to internal machinery used to implement contracts.
+    (internal, contracts_internals, "CURRENT_RUSTC_VERSION", Some(128044)),
     /// Allows coroutines to be cloned.
     (unstable, coroutine_clone, "1.65.0", Some(95360)),
     /// Allows defining coroutines.

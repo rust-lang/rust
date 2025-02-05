@@ -132,6 +132,9 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::aggregate_raw_ptr
         | sym::ptr_metadata
         | sym::ub_checks
+        | sym::contract_checks
+        | sym::contract_check_requires
+        | sym::contract_check_ensures
         | sym::fadd_algebraic
         | sym::fsub_algebraic
         | sym::fmul_algebraic
@@ -219,6 +222,16 @@ pub fn check_intrinsic_type(
             }
         };
         (n_tps, 0, 0, inputs, output, hir::Safety::Unsafe)
+    } else if intrinsic_name == sym::contract_check_ensures {
+        // contract_check_ensures::<'a, Ret, C>(&'a Ret, C)
+        // where C: impl Fn(&'a Ret) -> bool,
+        //
+        // so: two type params, one lifetime param, 0 const params, two inputs, no return
+
+        let p = generics.param_at(0, tcx);
+        let r = ty::Region::new_early_param(tcx, p.to_early_bound_region_data());
+        let ref_ret = Ty::new_imm_ref(tcx, r, param(1));
+        (2, 1, 0, vec![ref_ret, param(2)], tcx.types.unit, hir::Safety::Safe)
     } else {
         let safety = intrinsic_operation_unsafety(tcx, intrinsic_id);
         let (n_tps, n_cts, inputs, output) = match intrinsic_name {
@@ -609,6 +622,11 @@ pub fn check_intrinsic_type(
             sym::ub_checks => (0, 0, Vec::new(), tcx.types.bool),
 
             sym::box_new => (1, 0, vec![param(0)], Ty::new_box(tcx, param(0))),
+
+            // contract_checks() -> bool
+            sym::contract_checks => (0, 0, Vec::new(), tcx.types.bool),
+            // contract_check_requires::<C>(C) -> bool, where C: impl Fn() -> bool
+            sym::contract_check_requires => (1, 0, vec![param(0)], tcx.types.unit),
 
             sym::simd_eq
             | sym::simd_ne

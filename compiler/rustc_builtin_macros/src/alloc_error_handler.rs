@@ -85,6 +85,7 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
         defaultness: ast::Defaultness::Final,
         sig,
         generics: Generics::default(),
+        contract: None,
         body,
     }));
 
