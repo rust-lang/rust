@@ -105,13 +105,12 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
         return Const::Ty(Ty::new_error(tcx, guar), ty::Const::new_error(tcx, guar));
     }
 
-    let trunc = |n| {
-        let width = match tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty)) {
-            Ok(layout) => layout.size,
-            Err(_) => {
-                tcx.dcx().bug(format!("couldn't compute width of literal: {:?}", lit_input.lit))
-            }
-        };
+    let trunc = |n, width: ty::UintTy| {
+        let width = width
+            .normalize(tcx.data_layout.pointer_size.bits().try_into().unwrap())
+            .bit_width()
+            .unwrap();
+        let width = Size::from_bits(width);
         trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
         let result = width.truncate(n);
         trace!("trunc result: {}", result);
@@ -145,9 +144,11 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
         (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
             ConstValue::Scalar(Scalar::from_uint(*n, Size::from_bytes(1)))
         }
-        (ast::LitKind::Int(n, _), ty::Uint(_)) | (ast::LitKind::Int(n, _), ty::Int(_)) => {
-            trunc(if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() })
-        }
+        (ast::LitKind::Int(n, _), ty::Uint(ui)) if !neg => trunc(n.get(), *ui),
+        (ast::LitKind::Int(n, _), ty::Int(i)) => trunc(
+            if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() },
+            i.to_unsigned(),
+        ),
         (ast::LitKind::Float(n, _), ty::Float(fty)) => {
             parse_float_into_constval(*n, *fty, neg).unwrap()
         }
