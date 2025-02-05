@@ -185,3 +185,14 @@ fn compare_with_cupid() {
     assert_eq!(is_x86_feature_detected!("rtm"), information.rtm(),);
     assert_eq!(is_x86_feature_detected!("movbe"), information.movbe(),);
 }
+
+#[test]
+#[allow(deprecated)]
+fn x86_deprecated() {
+    println!("avx512gfni {:?}", is_x86_feature_detected!("avx512gfni"));
+    println!("avx512vaes {:?}", is_x86_feature_detected!("avx512vaes"));
+    println!(
+        "avx512vpclmulqdq {:?}",
+        is_x86_feature_detected!("avx512vpclmulqdq")
+    );
+}
