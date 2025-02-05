@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{reindent_multiline, snippet_indent, snippet_with_applicability, snippet_with_context};
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
     SpanlessEq, can_move_expr_to_closure_no_visit, higher, is_expr_final_block_expr, is_expr_used_or_unified,
     peel_hir_expr_while,
@@ -12,6 +13,7 @@ use rustc_hir::{Block, Expr, ExprKind, HirId, Pat, Stmt, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::{DUMMY_SP, Span, SyntaxContext, sym};
+use std::ops::ControlFlow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -500,7 +502,7 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                 self.visit_non_tail_expr(insert_expr.value);
                 self.is_single_insert = is_single_insert;
             },
-            _ if SpanlessEq::new(self.cx).eq_expr(self.map, expr) => {
+            _ if is_any_expr_in_map_used(self.cx, self.map, expr) => {
                 self.is_map_used = true;
             },
             _ => match expr.kind {
@@ -560,6 +562,19 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
             self.locals.insert(id);
         });
     }
+}
+
+/// Check if the given expression is used for each sub-expression in the given map.
+/// For example, in map `a.b.c.my_map`, The expression `a.b.c.my_map`, `a.b.c`, `a.b`, and `a` are
+/// all checked.
+fn is_any_expr_in_map_used<'tcx>(cx: &LateContext<'tcx>, map: &'tcx Expr<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+    for_each_expr(cx, map, |e| {
+        if SpanlessEq::new(cx).eq_expr(e, expr) {
+            return ControlFlow::Break(());
+        }
+        ControlFlow::Continue(())
+    })
+    .is_some()
 }
 
 struct InsertSearchResults<'tcx> {
