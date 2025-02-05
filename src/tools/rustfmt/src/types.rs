@@ -463,8 +463,9 @@ impl Rewrite for ast::WherePredicate {
     }
 
     fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
+        let attrs_str = self.attrs.rewrite_result(context, shape)?;
         // FIXME: dead spans?
-        let result = match self.kind {
+        let pred_str = &match self.kind {
             ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
                 ref bound_generic_params,
                 ref bounded_ty,
@@ -498,6 +499,38 @@ impl Rewrite for ast::WherePredicate {
                 rewrite_assign_rhs(context, lhs_ty_str, &**rhs_ty, &RhsAssignKind::Ty, shape)?
             }
         };
+
+        let mut result = String::with_capacity(attrs_str.len() + pred_str.len() + 1);
+        result.push_str(&attrs_str);
+        let pred_start = self.span.lo();
+        let line_len = last_line_width(&attrs_str) + 1 + first_line_width(&pred_str);
+        if let Some(last_attr) = self.attrs.last().filter(|last_attr| {
+            contains_comment(context.snippet(mk_sp(last_attr.span.hi(), pred_start)))
+        }) {
+            result = combine_strs_with_missing_comments(
+                context,
+                &result,
+                &pred_str,
+                mk_sp(last_attr.span.hi(), pred_start),
+                Shape {
+                    width: shape.width.min(context.config.inline_attribute_width()),
+                    ..shape
+                },
+                !last_attr.is_doc_comment(),
+            )?;
+        } else {
+            if !self.attrs.is_empty() {
+                if context.config.inline_attribute_width() < line_len
+                    || self.attrs.len() > 1
+                    || self.attrs.last().is_some_and(|a| a.is_doc_comment())
+                {
+                    result.push_str(&shape.indent.to_string_with_newline(context.config));
+                } else {
+                    result.push(' ');
+                }
+            }
+            result.push_str(&pred_str);
+        }
 
         Ok(result)
     }

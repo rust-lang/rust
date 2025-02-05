@@ -56,6 +56,7 @@ pub enum Target {
     Param,
     PatField,
     ExprField,
+    WherePredicate,
 }
 
 impl Display for Target {
@@ -96,7 +97,8 @@ impl Target {
             | Target::MacroDef
             | Target::Param
             | Target::PatField
-            | Target::ExprField => false,
+            | Target::ExprField
+            | Target::WherePredicate => false,
         }
     }
 
@@ -217,6 +219,7 @@ impl Target {
             Target::Param => "function param",
             Target::PatField => "pattern field",
             Target::ExprField => "struct field",
+            Target::WherePredicate => "where predicate",
         }
     }
 }

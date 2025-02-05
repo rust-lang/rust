@@ -919,7 +919,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::Arm
             | Target::ForeignMod
             | Target::Closure
-            | Target::Impl => Some(target.name()),
+            | Target::Impl
+            | Target::WherePredicate => Some(target.name()),
             Target::ExternCrate
             | Target::Use
             | Target::Static
@@ -2612,6 +2613,32 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         let target = Target::from_item(item);
         self.check_attributes(item.hir_id(), item.span, target, Some(ItemLike::Item(item)));
         intravisit::walk_item(self, item)
+    }
+
+    fn visit_where_predicate(&mut self, where_predicate: &'tcx hir::WherePredicate<'tcx>) {
+        // FIXME(where_clause_attrs): Currently, as the following check shows,
+        // only `#[cfg]` and `#[cfg_attr]` are allowed, but it should be removed
+        // if we allow more attributes (e.g., tool attributes and `allow/deny/warn`)
+        // in where clauses. After that, only `self.check_attributes` should be enough.
+        const ATTRS_ALLOWED: &[Symbol] = &[sym::cfg, sym::cfg_attr];
+        let spans = self
+            .tcx
+            .hir()
+            .attrs(where_predicate.hir_id)
+            .iter()
+            .filter(|attr| !ATTRS_ALLOWED.iter().any(|&sym| attr.has_name(sym)))
+            .map(|attr| attr.span())
+            .collect::<Vec<_>>();
+        if !spans.is_empty() {
+            self.tcx.dcx().emit_err(errors::UnsupportedAttributesInWhere { span: spans.into() });
+        }
+        self.check_attributes(
+            where_predicate.hir_id,
+            where_predicate.span,
+            Target::WherePredicate,
+            None,
+        );
+        intravisit::walk_where_predicate(self, where_predicate)
     }
 
     fn visit_generic_param(&mut self, generic_param: &'tcx hir::GenericParam<'tcx>) {
