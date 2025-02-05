@@ -1,0 +1,111 @@
+warning: implicit auto-ref creates a reference to a dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:12:14
+   |
+LL |     addr_of!((*ptr)[..16])
+   |              ^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+   = note: `#[warn(dangerous_implicit_autorefs)]` on by default
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     addr_of!((&(*ptr))[..16])
+   |              ++      +
+
+warning: implicit auto-ref creates a reference to a dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:21:13
+   |
+LL |     let l = (*ptr).field.len();
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let l = (&(*ptr).field).len();
+   |             ++            +
+
+warning: implicit auto-ref creates a reference to a dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:24:14
+   |
+LL |     addr_of!((*ptr).field[..l - 1])
+   |              ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     addr_of!((&(*ptr).field)[..l - 1])
+   |              ++            +
+
+warning: implicit auto-ref creates a reference to a dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:29:9
+   |
+LL |     _ = (*a)[0].len();
+   |         ^^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     _ = (&(*a)[0]).len();
+   |         ++       +
+
+warning: implicit auto-ref creates a reference to a dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:32:9
+   |
+LL |     _ = (*a)[..1][0].len();
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     _ = (&(*a)[..1][0]).len();
+   |         ++            +
+
+warning: implicit auto-ref creates a reference to a dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:32:9
+   |
+LL |     _ = (*a)[..1][0].len();
+   |         ^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     _ = (&(*a))[..1][0].len();
+   |         ++    +
+
+warning: implicit auto-ref creates a reference to a dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:38:18
+   |
+LL |     _ = addr_of!((*ptr).field);
+   |                  ^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     _ = addr_of!((&(*ptr)).field);
+   |                  ++      +
+
+warning: implicit auto-ref creates a reference to a dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:43:22
+   |
+LL |     _ = addr_of_mut!((*ptr).field);
+   |                      ^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     _ = addr_of_mut!((&mut (*ptr)).field);
+   |                      +++++       +
+
+warning: implicit auto-ref creates a reference to a dereference of a raw pointer
+  --> $DIR/implicit_autorefs.rs:57:26
+   |
+LL |     let _p: *const i32 = addr_of!(**w);
+   |                          ^^^^^^^^^^^^^
+   |
+   = note: creating a reference requires the pointer to be valid and imposes aliasing requirements
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+LL |     let _p: *const i32 = addr_of!(*(&**w));
+   |                                    +++  +
+
+warning: 9 warnings emitted
+

@@ -1,0 +1,66 @@
+//@ check-pass
+//@ run-rustfix
+
+#![allow(dead_code)] // for the rustfix-ed code
+
+use std::mem::ManuallyDrop;
+use std::ptr::addr_of_mut;
+use std::ptr::addr_of;
+use std::ops::Deref;
+
+unsafe fn test_const(ptr: *const [u8]) -> *const [u8] {
+    addr_of!((*ptr)[..16])
+    //~^ WARN implicit auto-ref
+}
+
+struct Test {
+    field: [u8],
+}
+
+unsafe fn test_field(ptr: *const Test) -> *const [u8] {
+    let l = (*ptr).field.len();
+    //~^ WARN implicit auto-ref
+
+    addr_of!((*ptr).field[..l - 1])
+    //~^ WARN implicit auto-ref
+}
+
+unsafe fn test_builtin_index(a: *mut [String]) {
+    _ = (*a)[0].len();
+    //~^ WARN implicit auto-ref
+
+    _ = (*a)[..1][0].len();
+    //~^ WARN implicit auto-ref
+    //~^^ WARN implicit auto-ref
+}
+
+unsafe fn test_overloaded_deref_const(ptr: *const ManuallyDrop<Test>) {
+    _ = addr_of!((*ptr).field);
+    //~^ WARN implicit auto-ref
+}
+
+unsafe fn test_overloaded_deref_mut(ptr: *mut ManuallyDrop<Test>) {
+    _ = addr_of_mut!((*ptr).field);
+    //~^ WARN implicit auto-ref
+}
+
+unsafe fn test_manually_overloaded_deref() {
+    struct W<T>(T);
+
+    impl<T> Deref for W<T> {
+        type Target = T;
+        fn deref(&self) -> &T { &self.0 }
+    }
+
+    let w: W<i32> = W(5);
+    let w = addr_of!(w);
+    let _p: *const i32 = addr_of!(**w);
+    //~^ WARN implicit auto-ref
+}
+
+unsafe fn test_no_attr(ptr: *mut ManuallyDrop<u8>) {
+    ptr.write(ManuallyDrop::new(1)); // should not warn, as `ManuallyDrop::write` is not
+                                     // annotated with `#[rustc_no_implicit_auto_ref]`
+}
+
+fn main() {}

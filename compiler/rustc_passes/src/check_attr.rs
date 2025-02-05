@@ -164,6 +164,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 [sym::rustc_never_returns_null_ptr, ..] => {
                     self.check_applied_to_fn_or_method(hir_id, attr, span, target)
                 }
+                [sym::rustc_no_implicit_autorefs, ..] => {
+                    self.check_applied_to_fn_or_method(hir_id, attr, span, target)
+                }
                 [sym::rustc_legacy_const_generics, ..] => {
                     self.check_rustc_legacy_const_generics(hir_id, attr, span, target, item)
                 }

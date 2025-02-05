@@ -1,5 +1,7 @@
 // Test DST raw pointers
 
+#![allow(dangerous_implicit_autorefs)]
+
 trait Trait {
     fn foo(&self) -> isize;
 }
