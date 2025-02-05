@@ -144,7 +144,7 @@ impl Thread {
                     const TASK_COMM_LEN: usize = 16;
                     let name = truncate_cstr::<{ TASK_COMM_LEN }>(name);
                 } else {
-                    // FreeBSD, DragonFly, FreeBSD and NuttX do not enforce length limits.
+                    // FreeBSD, DragonFly BSD and NuttX do not enforce length limits.
                 }
             };
             // Available since glibc 2.12, musl 1.1.16, and uClibc 1.0.20 for Linux,
