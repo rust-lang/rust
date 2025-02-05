@@ -18,3 +18,4 @@ description = "BorrowSanitizer"
 [llvm]
 download-ci-llvm = false
 clang = true
+link-shared = true

@@ -5,16 +5,6 @@ use crate::setup::*;
 use crate::util::*;
 use crate::*;
 
-#[derive(Clone, Debug)]
-pub enum BSANCommand {
-    /// Our own special 'setup' command.
-    Setup,
-    /// A command to be forwarded to cargo.
-    Forward(String),
-    /// Clean the cache
-    Clean,
-}
-
 pub fn phase_cargo_bsan(mut args: impl Iterator<Item = String>) {
     if has_arg_flag("--help") || has_arg_flag("-h") {
         show_help();
@@ -46,17 +36,12 @@ pub fn phase_cargo_bsan(mut args: impl Iterator<Item = String>) {
         panic!("failed to determine underlying rustc version of BSAN ({:?}):\n{err:?}", bsan())
     });
 
-    let mut targets = get_arg_flag_values("--target").collect::<Vec<_>>();
+    let targets = get_arg_flag_values("--target").collect::<Vec<_>>();
 
-    // If `targets` is empty, we need to add a `--target $HOST` flag ourselves, and also ensure
-    // that the host target is indeed setup.
-    let target_flag = if targets.is_empty() {
-        let host = &rustc_version.host;
-        targets.push(host.clone());
-        Some(host)
-    } else {
+    // We only allow specifying the host as a target.
+    if targets.len() > 1 || targets.iter().any(|t| t != &rustc_version.host) {
         show_error!("Cross-compilation is not supported at this time.");
-    };
+    }
 
     // If cleaning the target directory & sysroot cache,
     // delete them then exit. There is no reason to setup a new
@@ -67,10 +52,7 @@ pub fn phase_cargo_bsan(mut args: impl Iterator<Item = String>) {
         return;
     }
 
-    for target in &targets {
-        // We always setup.
-        setup(&subcommand, target.as_str(), &rustc_version, verbose, quiet);
-    }
+    setup(&subcommand, &rustc_version.host.as_str(), &rustc_version, verbose, quiet);
 
     let bsan_sysroot = get_sysroot_dir();
     let bsan_path = find_bsan();
@@ -98,10 +80,8 @@ pub fn phase_cargo_bsan(mut args: impl Iterator<Item = String>) {
         );
     }
 
-    if let Some(target_flag) = target_flag {
-        cmd.arg("--target");
-        cmd.arg(target_flag);
-    }
+    cmd.arg("--target");
+    cmd.arg(&rustc_version.host);
 
     if env::var_os("RUSTC_WRAPPER").is_some() {
         println!(
@@ -136,4 +116,58 @@ pub fn phase_cargo_bsan(mut args: impl Iterator<Item = String>) {
     // Run cargo.
     debug_cmd("[cargo-bsan rustc]", verbose, &cmd);
     exec(cmd)
+}
+
+pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
+    /// Determines if we are being invoked (as rustc) to build a crate for
+    /// the "target" architecture, in contrast to the "host" architecture.
+    /// Host crates are for build scripts and proc macros and still need to
+    /// be built like normal. Target crates need to be built with BorrowSanitizer
+    /// instrumentation.
+    ///
+    /// Currently, we detect this by checking for "--target=", which is
+    /// never set for host crates. This matches what rustc bootstrap does,
+    /// which hopefully makes it "reliable enough". This relies on us always
+    /// invoking cargo itself with `--target`, which `in_cargo_miri` ensures.
+    fn is_target_crate() -> bool {
+        get_arg_flag_value("--target").is_some()
+    }
+
+    let verbose = env::var("BSAN_VERBOSE")
+        .map_or(0, |verbose| verbose.parse().expect("verbosity flag must be an integer"));
+
+    let target_crate = is_target_crate();
+
+    let mut cmd = bsan();
+    // Arguments are treated very differently depending on whether this crate needs to be
+    // instrumented by BorrowSanitizer or if it's for a build script / proc macro.
+    if target_crate {
+        if phase != RustcPhase::Setup {
+            // Set the sysroot -- except during setup, where we don't have an existing sysroot yet
+            // and where the bootstrap wrapper adds its own `--sysroot` flag so we can't set ours.
+            cmd.arg("--sysroot").arg(env::var_os("BSAN_SYSROOT").unwrap());
+        }
+        // During setup, patch the panic runtime for `libpanic_abort` (mirroring what bootstrap usually does).
+        if phase == RustcPhase::Setup
+            && get_arg_flag_value("--crate-name").as_deref() == Some("panic_abort")
+        {
+            cmd.arg("-C").arg("panic=abort");
+        }
+    } else {
+        // This is a host crate.
+        // When we're running `cargo-bsan` from `x.py` we need to pass the sysroot explicitly
+        // due to bootstrap complications.
+        if let Some(sysroot) = env::var_os("BSAN_HOST_SYSROOT") {
+            cmd.arg("--sysroot").arg(sysroot);
+        }
+    }
+    // Forward everything else.
+    cmd.args(args);
+    cmd.env("BSAN_BE_RUSTC", if target_crate { "target" } else { "host" });
+
+    if verbose > 0 {
+        eprintln!("[cargo-bsan rustc] target_crate={target_crate}");
+    }
+    debug_cmd("[cargo-bsan rustc]", verbose, &cmd);
+    exec(cmd);
 }
