@@ -3655,20 +3655,22 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// ```
     /// # use std::cmp::min;
-    /// # let some_predicate = |x: &mut i32| { *x == 2 || *x == 3 || *x == 6 };
-    /// # let mut vec = vec![1, 2, 3, 4, 5, 6];
-    /// # let range = 1..4;
+    /// # let some_predicate = |x: &mut i32| { *x % 2 == 1 };
+    /// # let mut vec = vec![0, 1, 2, 3, 4, 5, 6];
+    /// # let range = 1..5;
     /// let mut i = range.start;
-    /// while i < min(vec.len(), range.end) {
+    /// let mut end = range.end;
+    /// while i < min(vec.len(), end) {
     ///     if some_predicate(&mut vec[i]) {
     ///         let val = vec.remove(i);
+    ///         end -= 1;
     ///         // your code here
     ///     } else {
     ///         i += 1;
     ///     }
     /// }
     ///
-    /// # assert_eq!(vec, vec![1, 4, 5]);
+    /// # assert_eq!(vec, vec![0, 2, 4, 5, 6]);
     /// ```
     ///
     /// But `extract_if` is easier to use. `extract_if` is also more efficient,
