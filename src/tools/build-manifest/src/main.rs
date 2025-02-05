@@ -67,6 +67,7 @@ static TARGETS: &[&str] = &[
     "aarch64-unknown-none-softfloat",
     "aarch64-unknown-redox",
     "aarch64-unknown-uefi",
+    "amdgcn-amd-amdhsa",
     "arm64e-apple-darwin",
     "arm64e-apple-ios",
     "arm64e-apple-tvos",

@@ -29,6 +29,7 @@
     - [\*-apple-watchos](platform-support/apple-watchos.md)
     - [\*-apple-visionos](platform-support/apple-visionos.md)
     - [aarch64-nintendo-switch-freestanding](platform-support/aarch64-nintendo-switch-freestanding.md)
+    - [amdgcn-amd-amdhsa](platform-support/amdgcn-amd-amdhsa.md)
     - [armeb-unknown-linux-gnueabi](platform-support/armeb-unknown-linux-gnueabi.md)
     - [arm-none-eabi](platform-support/arm-none-eabi.md)
       - [armv4t-none-eabi](platform-support/armv4t-none-eabi.md)
