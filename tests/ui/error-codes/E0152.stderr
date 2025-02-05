@@ -5,7 +5,7 @@ LL | struct Foo<T>(T);
    | ^^^^^^^^^^^^^^^^^
    |
    = note: the lang item is first defined in crate `alloc` (which `std` depends on)
-   = note: first definition in `alloc` loaded from SYSROOT/liballoc-*.rlib
+   = note: first definition in `alloc` loaded from SYSROOT/liballoc-*.rmeta
    = note: second definition in the local crate (`E0152`)
 
 error: aborting due to 1 previous error

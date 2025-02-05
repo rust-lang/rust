@@ -1,4 +1,4 @@
-//@ normalize-stderr: "loaded from .*libcore-.*.rlib" -> "loaded from SYSROOT/libcore-*.rlib"
+//@ normalize-stderr: "loaded from .*libcore-.*.rmeta" -> "loaded from SYSROOT/libcore-*.rmeta"
 #![feature(lang_items)]
 
 #[lang = "sized"]
