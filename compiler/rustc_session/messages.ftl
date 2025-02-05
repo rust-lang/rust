@@ -8,11 +8,7 @@ session_cannot_mix_and_match_sanitizers = `-Zsanitizer={$first}` is incompatible
 session_cli_feature_diagnostic_help =
     add `-Zcrate-attr="feature({$feature})"` to the command-line options to enable
 
-session_crate_name_does_not_match = `--crate-name` and `#[crate_name]` are required to match, but `{$s}` != `{$name}`
-
 session_crate_name_empty = crate name must not be empty
-
-session_crate_name_invalid = crate names cannot start with a `-`, but `{$s}` has a leading hyphen
 
 session_embed_source_insufficient_dwarf_version = `-Zembed-source=y` requires at least `-Z dwarf-version=5` but DWARF version is {$dwarf_version}
 
@@ -52,8 +48,8 @@ session_instrumentation_not_supported = {$us} instrumentation is not supported f
 session_int_literal_too_large = integer literal is too large
     .note = value exceeds limit of `{$limit}`
 
-session_invalid_character_in_create_name = invalid character `{$character}` in crate name: `{$crate_name}`
-session_invalid_character_in_create_name_help = you can either pass `--crate-name` on the command line or add `#![crate_name="…"]` to set the crate name
+session_invalid_character_in_crate_name = invalid character {$character} in crate name: `{$crate_name}`
+    .help = you can either pass `--crate-name` on the command line or add `#![crate_name = "…"]` to set the crate name
 
 session_invalid_float_literal_suffix = invalid suffix `{$suffix}` for float literal
     .label = invalid suffix `{$suffix}`

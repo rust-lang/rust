@@ -1,0 +1,6 @@
+error: invalid character '$' in crate name: `need_crate_arg_ignore_tidy$x`
+   |
+   = help: you can either pass `--crate-name` on the command line or add `#![crate_name = "…"]` to set the crate name
+
+error: aborting due to 1 previous error
+
