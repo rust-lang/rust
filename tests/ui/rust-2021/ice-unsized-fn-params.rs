@@ -1,7 +1,6 @@
 //@ edition:2021
 // Test that it doesn't trigger an ICE when using an unsized fn params.
 // https://github.com/rust-lang/rust/issues/120241
-#![feature(dyn_compatible_for_dispatch)]
 
 trait B {
     fn f(a: A) -> A;

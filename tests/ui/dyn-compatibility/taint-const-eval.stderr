@@ -1,20 +1,12 @@
-error[E0557]: feature has been removed
-  --> $DIR/taint-const-eval.rs:5:50
-   |
-LL | #![cfg_attr(dyn_compatible_for_dispatch, feature(dyn_compatible_for_dispatch))]
-   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ feature has been removed
-   |
-   = note: removed, not used heavily and represented additional complexity in dyn compatibility
-
 error[E0038]: the trait `Qux` is not dyn compatible
-  --> $DIR/taint-const-eval.rs:11:15
+  --> $DIR/taint-const-eval.rs:7:15
    |
 LL | static FOO: &(dyn Qux + Sync) = "desc";
    |               ^^^^^^^^^^^^^^ `Qux` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/taint-const-eval.rs:8:8
+  --> $DIR/taint-const-eval.rs:4:8
    |
 LL | trait Qux {
    |       --- this trait is not dyn compatible...
@@ -30,14 +22,14 @@ LL |     fn bar() where Self: Sized;
    |              +++++++++++++++++
 
 error[E0038]: the trait `Qux` is not dyn compatible
-  --> $DIR/taint-const-eval.rs:11:33
+  --> $DIR/taint-const-eval.rs:7:33
    |
 LL | static FOO: &(dyn Qux + Sync) = "desc";
    |                                 ^^^^^^ `Qux` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/taint-const-eval.rs:8:8
+  --> $DIR/taint-const-eval.rs:4:8
    |
 LL | trait Qux {
    |       --- this trait is not dyn compatible...
@@ -54,14 +46,14 @@ LL |     fn bar() where Self: Sized;
    |              +++++++++++++++++
 
 error[E0038]: the trait `Qux` is not dyn compatible
-  --> $DIR/taint-const-eval.rs:11:15
+  --> $DIR/taint-const-eval.rs:7:15
    |
 LL | static FOO: &(dyn Qux + Sync) = "desc";
    |               ^^^^^^^^^^^^^^ `Qux` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/taint-const-eval.rs:8:8
+  --> $DIR/taint-const-eval.rs:4:8
    |
 LL | trait Qux {
    |       --- this trait is not dyn compatible...
@@ -77,7 +69,6 @@ help: alternatively, consider constraining `bar` so it does not apply to trait o
 LL |     fn bar() where Self: Sized;
    |              +++++++++++++++++
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0038, E0557.
-For more information about an error, try `rustc --explain E0038`.
+For more information about this error, try `rustc --explain E0038`.
