@@ -2,15 +2,15 @@
 // first try backticks
 /// Trait: [`trait@Name`], fn: [`fn@Name`], [`Name`][`macro@Name`]
 //@ has disambiguators_removed/struct.AtDisambiguator.html
-//@ has - '//a[@href="trait.Name.html"][code]' "Name"
-//@ has - '//a[@href="fn.Name.html"][code]' "Name"
-//@ has - '//a[@href="macro.Name.html"][code]' "Name"
+//@ has - '//code/a[@href="trait.Name.html"]' "Name"
+//@ has - '//code/a[@href="fn.Name.html"]' "Name"
+//@ has - '//code/a[@href="macro.Name.html"]' "Name"
 pub struct AtDisambiguator;
 
 /// fn: [`Name()`], macro: [`Name!`]
 //@ has disambiguators_removed/struct.SymbolDisambiguator.html
-//@ has - '//a[@href="fn.Name.html"][code]' "Name()"
-//@ has - '//a[@href="macro.Name.html"][code]' "Name!"
+//@ has - '//code/a[@href="fn.Name.html"]' "Name()"
+//@ has - '//code/a[@href="macro.Name.html"]' "Name!"
 pub struct SymbolDisambiguator;
 
 // Now make sure that backticks aren't added if they weren't already there

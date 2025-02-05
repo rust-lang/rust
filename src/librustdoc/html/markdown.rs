@@ -589,6 +589,109 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for HeadingLinks<'a, '_,
     }
 }
 
+/// Type used to merge `<code>` tags. It also takes into accounts links if the link only contains
+/// `<code>` tag(s).
+///
+/// So if you have:
+///
+///    `<`[`Stream`](crate::Foo)`>`
+///
+/// Instead of getting:
+///
+/// ```html
+/// <code>&lt;</code><a href="crate::Foo"><code>Stream</code></a><code>&gt;</code>
+/// ```
+///
+/// You will get:
+///
+/// ```html
+/// <code>&lt;<a href="crate::Foo">Stream</a>&gt;</code>
+/// ```
+struct CodeMerger<'a, I> {
+    inner: I,
+    queue: VecDeque<SpannedEvent<'a>>,
+}
+
+impl<'a, I> CodeMerger<'a, I> {
+    fn new(iter: I) -> Self {
+        Self { inner: iter, queue: VecDeque::new() }
+    }
+
+    fn merge_codes(&mut self, mut codes: VecDeque<SpannedEvent<'a>>) {
+        if codes.len() < 2 {
+            for item in codes.drain(..) {
+                self.queue.push_back(item);
+            }
+            return;
+        }
+        self.queue.push_back((Event::InlineHtml(CowStr::Borrowed("<code>")), 0..0));
+        for item in codes.drain(..) {
+            self.queue.push_back(match item {
+                (Event::Code(code), range) => (Event::Text(code), range),
+                _ => item,
+            });
+        }
+        self.queue.push_back((Event::InlineHtml(CowStr::Borrowed("</code>")), 0..0));
+    }
+}
+
+impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for CodeMerger<'a, I> {
+    type Item = SpannedEvent<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(item) = self.queue.pop_front() {
+            return Some(item);
+        }
+
+        let mut buffed_link_items = VecDeque::new();
+        let mut codes = VecDeque::new();
+        let mut is_inside_link = false;
+        let mut extra = None;
+
+        while let Some(event) = self.inner.next() {
+            match event.0 {
+                Event::Code(_) => {
+                    if is_inside_link {
+                        buffed_link_items.push_back(event);
+                    } else {
+                        codes.push_back(event);
+                    }
+                }
+                Event::Start(Tag::Link { .. }) => {
+                    buffed_link_items.push_back(event);
+                    is_inside_link = true;
+                }
+                Event::End(TagEnd::Link { .. }) if is_inside_link => {
+                    // Seems like it's all good!
+                    for item in buffed_link_items.drain(..) {
+                        codes.push_back(item);
+                    }
+                    codes.push_back(event);
+                    is_inside_link = false;
+                }
+                _ => {
+                    extra = Some(event);
+                    break;
+                }
+            }
+        }
+        // First we merge the code items if any.
+        self.merge_codes(codes);
+        // The link doesn't only contain codes so we first merge the codes into 1,
+        // then we put the link elements into the queue as well.
+        if is_inside_link {
+            for item in buffed_link_items.drain(..) {
+                self.queue.push_back(item);
+            }
+        }
+        if let Some(item) = extra {
+            self.queue.push_back(item);
+        }
+
+        self.queue.pop_front()
+    }
+}
+
 /// Extracts just the first paragraph.
 struct SummaryLine<'a, I: Iterator<Item = Event<'a>>> {
     inner: I,
@@ -1374,6 +1477,7 @@ impl<'a> Markdown<'a> {
         ids.handle_footnotes(|ids, existing_footnotes| {
             let p = HeadingLinks::new(p, None, ids, heading_offset);
             let p = SpannedLinkReplacer::new(p, links);
+            let p = CodeMerger::new(p);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
             CodeBlocks::new(p, codes, edition, playground)
@@ -1455,6 +1559,7 @@ impl MarkdownWithToc<'_> {
 
         ids.handle_footnotes(|ids, existing_footnotes| {
             let p = HeadingLinks::new(p, Some(&mut toc), ids, HeadingOffset::H1);
+            let p = CodeMerger::new(p);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
             let p = CodeBlocks::new(p, codes, edition, playground);
@@ -1489,6 +1594,7 @@ impl MarkdownItemInfo<'_> {
 
         ids.handle_footnotes(|ids, existing_footnotes| {
             let p = HeadingLinks::new(p, None, ids, HeadingOffset::H1);
+            let p = CodeMerger::new(p);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
             let p = p.filter(|event| {
@@ -1516,9 +1622,9 @@ impl MarkdownSummaryLine<'_> {
                 .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
-        let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer))
-            .peekable();
-        let mut summary = SummaryLine::new(p);
+        let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
+        let p = CodeMerger::new(p.map(|ev| (ev, 0..0)));
+        let mut summary = SummaryLine::new(p.map(|(ev, _)| ev).peekable());
 
         let mut s = String::new();
 

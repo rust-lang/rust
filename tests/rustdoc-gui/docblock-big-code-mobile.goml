@@ -12,4 +12,5 @@ assert-size: (".docblock p > code", {"height": 48})
 
 // Same check, but where the long code block is also a link
 go-to: "file://" + |DOC_PATH| + "/test_docs/long_code_block_link/index.html"
-assert-size: (".docblock p > a > code", {"height": 48})
+assert-size: (".docblock p > code", {"height": 48})
+assert-size: (".docblock p > code > a", {"height": 44})
