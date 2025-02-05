@@ -308,48 +308,6 @@ where
         Self(mask_impl::Mask::from_bitmask_integer(bitmask))
     }
 
-    /// Creates a bitmask vector from a mask.
-    ///
-    /// Each bit is set if the corresponding element in the mask is `true`.
-    /// The remaining bits are unset.
-    ///
-    /// The bits are packed into the first N bits of the vector:
-    /// ```
-    /// # #![feature(portable_simd)]
-    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
-    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::mask32x8;
-    /// let mask = mask32x8::from_array([true, false, true, false, false, false, true, false]);
-    /// assert_eq!(mask.to_bitmask_vector()[0], 0b01000101);
-    /// ```
-    #[inline]
-    #[must_use = "method returns a new integer and does not mutate the original value"]
-    pub fn to_bitmask_vector(self) -> Simd<u8, N> {
-        self.0.to_bitmask_vector()
-    }
-
-    /// Creates a mask from a bitmask vector.
-    ///
-    /// For each bit, if it is set, the corresponding element in the mask is set to `true`.
-    ///
-    /// The bits are packed into the first N bits of the vector:
-    /// ```
-    /// # #![feature(portable_simd)]
-    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
-    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{mask32x8, u8x8};
-    /// let bitmask = u8x8::from_array([0b01000101, 0, 0, 0, 0, 0, 0, 0]);
-    /// assert_eq!(
-    ///     mask32x8::from_bitmask_vector(bitmask),
-    ///     mask32x8::from_array([true, false, true, false, false, false, true, false]),
-    /// );
-    /// ```
-    #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn from_bitmask_vector(bitmask: Simd<u8, N>) -> Self {
-        Self(mask_impl::Mask::from_bitmask_vector(bitmask))
-    }
-
     /// Finds the index of the first set element.
     ///
     /// ```

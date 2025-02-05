@@ -77,7 +77,7 @@ macro_rules! int_divrem_guard {
     (   $lhs:ident,
         $rhs:ident,
         {   const PANIC_ZERO: &'static str = $zero:literal;
-            $simd_call:ident
+            $simd_call:ident, $op:tt
         },
         $int:ident ) => {
         if $rhs.simd_eq(Simd::splat(0 as _)).any() {
@@ -96,8 +96,23 @@ macro_rules! int_divrem_guard {
                 // Nice base case to make it easy to const-fold away the other branch.
                 $rhs
             };
-            // Safety: $lhs and rhs are vectors
-            unsafe { core::intrinsics::simd::$simd_call($lhs, rhs) }
+
+            // aarch64 div fails for arbitrary `v % 0`, mod fails when rhs is MIN, for non-powers-of-two
+            // these operations aren't vectorized on aarch64 anyway
+            #[cfg(target_arch = "aarch64")]
+            {
+                let mut out = Simd::splat(0 as _);
+                for i in 0..Self::LEN {
+                    out[i] = $lhs[i] $op rhs[i];
+                }
+                out
+            }
+
+            #[cfg(not(target_arch = "aarch64"))]
+            {
+                // Safety: $lhs and rhs are vectors
+                unsafe { core::intrinsics::simd::$simd_call($lhs, rhs) }
+            }
         }
     };
 }
@@ -205,14 +220,14 @@ for_base_ops! {
     impl Div::div {
         int_divrem_guard {
             const PANIC_ZERO: &'static str = "attempt to divide by zero";
-            simd_div
+            simd_div, /
         }
     }
 
     impl Rem::rem {
         int_divrem_guard {
             const PANIC_ZERO: &'static str = "attempt to calculate the remainder with a divisor of zero";
-            simd_rem
+            simd_rem, %
         }
     }
 

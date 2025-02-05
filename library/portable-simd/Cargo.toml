@@ -5,3 +5,9 @@ members = [
     "crates/std_float",
     "crates/test_helpers",
 ]
+
+[profile.test.package."*"]
+opt-level = 2
+
+[profile.test.package.test_helpers]
+opt-level = 2

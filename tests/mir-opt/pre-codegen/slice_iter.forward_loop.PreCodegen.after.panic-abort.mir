@@ -31,7 +31,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                     let _9: *const T;
                     scope 7 {
                     }
-                    scope 12 (inlined without_provenance::<T>) {
+                    scope 12 (inlined std::ptr::without_provenance::<T>) {
                         scope 13 (inlined without_provenance_mut::<T>) {
                         }
                     }

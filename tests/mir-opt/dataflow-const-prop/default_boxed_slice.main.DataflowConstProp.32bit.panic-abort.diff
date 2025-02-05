@@ -26,7 +26,7 @@
                           }
                           scope 11 (inlined NonZero::<usize>::get) {
                           }
-                          scope 12 (inlined without_provenance::<[bool; 0]>) {
+                          scope 12 (inlined std::ptr::without_provenance::<[bool; 0]>) {
                               scope 13 (inlined without_provenance_mut::<[bool; 0]>) {
                               }
                           }

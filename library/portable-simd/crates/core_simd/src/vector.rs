@@ -99,7 +99,7 @@ use crate::simd::{
 // directly constructing an instance of the type (i.e. `let vector = Simd(array)`) should be
 // avoided, as it will likely become illegal on `#[repr(simd)]` structs in the future. It also
 // causes rustc to emit illegal LLVM IR in some cases.
-#[repr(simd)]
+#[repr(simd, packed)]
 pub struct Simd<T, const N: usize>([T; N])
 where
     LaneCount<N>: SupportedLaneCount,
@@ -144,14 +144,32 @@ where
     /// assert_eq!(v.as_array(), &[8, 8, 8, 8]);
     /// ```
     #[inline]
-    pub fn splat(value: T) -> Self {
-        // This is preferred over `[value; N]`, since it's explicitly a splat:
-        // https://github.com/rust-lang/rust/issues/97804
-        struct Splat;
-        impl<const N: usize> Swizzle<N> for Splat {
-            const INDEX: [usize; N] = [0; N];
+    #[rustc_const_unstable(feature = "portable_simd", issue = "86656")]
+    pub const fn splat(value: T) -> Self {
+        const fn splat_const<T, const N: usize>(value: T) -> Simd<T, N>
+        where
+            T: SimdElement,
+            LaneCount<N>: SupportedLaneCount,
+        {
+            Simd::from_array([value; N])
         }
-        Splat::swizzle::<T, 1>(Simd::<T, 1>::from([value]))
+
+        fn splat_rt<T, const N: usize>(value: T) -> Simd<T, N>
+        where
+            T: SimdElement,
+            LaneCount<N>: SupportedLaneCount,
+        {
+            // This is preferred over `[value; N]`, since it's explicitly a splat:
+            // https://github.com/rust-lang/rust/issues/97804
+            struct Splat;
+            impl<const N: usize> Swizzle<N> for Splat {
+                const INDEX: [usize; N] = [0; N];
+            }
+
+            Splat::swizzle::<T, 1>(Simd::<T, 1>::from([value]))
+        }
+
+        core::intrinsics::const_eval_select((value,), splat_const, splat_rt)
     }
 
     /// Returns an array reference containing the entire SIMD vector.
@@ -425,6 +443,9 @@ where
     ///
     /// When the element is disabled, that memory location is not accessed and the corresponding
     /// value from `or` is passed through.
+    ///
+    /// # Safety
+    /// Enabled loads must not exceed the length of `slice`.
     #[must_use]
     #[inline]
     pub unsafe fn load_select_unchecked(
@@ -442,6 +463,9 @@ where
     ///
     /// When the element is disabled, that memory location is not accessed and the corresponding
     /// value from `or` is passed through.
+    ///
+    /// # Safety
+    /// Enabled `ptr` elements must be safe to read as if by `std::ptr::read`.
     #[must_use]
     #[inline]
     pub unsafe fn load_select_ptr(
@@ -924,6 +948,7 @@ where
     }
 }
 
+/// Lexicographic order. For the SIMD elementwise minimum and maximum, use simd_min and simd_max instead.
 impl<T, const N: usize> PartialOrd for Simd<T, N>
 where
     LaneCount<N>: SupportedLaneCount,
@@ -943,6 +968,7 @@ where
 {
 }
 
+/// Lexicographic order. For the SIMD elementwise minimum and maximum, use simd_min and simd_max instead.
 impl<T, const N: usize> Ord for Simd<T, N>
 where
     LaneCount<N>: SupportedLaneCount,
@@ -1195,6 +1221,7 @@ fn lane_indices<const N: usize>() -> Simd<usize, N>
 where
     LaneCount<N>: SupportedLaneCount,
 {
+    #![allow(clippy::needless_range_loop)]
     let mut index = [0; N];
     for i in 0..N {
         index[i] = i;
