@@ -1,11 +1,14 @@
 //! Types and functions shared across tools in this workspace.
 
 pub mod ci;
+pub mod compiletest;
 pub mod drop_bomb;
 pub mod fs;
 pub mod git;
 pub mod metrics;
 pub mod stage0_parser;
+#[cfg(test)]
+mod tests;
 pub mod util;
 
 /// The default set of crates for opt-dist to collect LLVM profiles.
