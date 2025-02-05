@@ -460,13 +460,19 @@ where
 
         if adt.is_box() {
             // we need to drop the inside of the box before running the destructor
-            let succ = self.destructor_call_block(contents_drop);
+            let destructor = self.destructor_call_block(contents_drop);
             let unwind = contents_drop
                 .1
                 .map(|unwind| self.destructor_call_block((unwind, Unwind::InCleanup)));
 
-            self.open_drop_for_box_contents(adt, args, succ, unwind)
+            let boxed_drop = self.open_drop_for_box_contents(adt, args, destructor, unwind);
+
+            // the drop flag will be at the end of contents_drop
+            self.drop_flag_test_block(boxed_drop, self.succ, unwind)
         } else if adt.has_dtor(self.tcx()) {
+            // We don't need to test drop flags here because
+            // this path is only taken with DropShimElaborator
+            // where testing drop flags is a noop
             self.destructor_call_block(contents_drop)
         } else {
             contents_drop.0
@@ -659,13 +665,7 @@ where
             }),
             is_cleanup: unwind.is_cleanup(),
         };
-
-        let destructor_block = self.elaborator.patch().new_block(result);
-
-        let block_start = Location { block: destructor_block, statement_index: 0 };
-        self.elaborator.clear_drop_flag(block_start, self.path, DropFlagMode::Shallow);
-
-        self.drop_flag_test_block(destructor_block, succ, unwind)
+        self.elaborator.patch().new_block(result)
     }
 
     /// Create a loop that drops an array:
