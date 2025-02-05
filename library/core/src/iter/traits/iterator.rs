@@ -1825,10 +1825,16 @@ pub trait Iterator {
         Inspect::new(self, f)
     }
 
-    /// Borrows an iterator, rather than consuming it.
+    /// If you use a consuming method on an iterator,
+    /// the iterator is consumed by the method and cannot be used afterwards.
+    /// This method allows you to mutably borrow an iterator,
+    /// such that consuming methods don't consume the original.
     ///
-    /// This is useful to allow applying iterator adapters while still
-    /// retaining ownership of the original iterator.
+    /// This turns an iterator into its mutably-borrowed iterator via
+    /// [impl<I: Iterator + ?Sized> Iterator for &mut I { type Item = I::Item; ...}](trait.Iterator.html#impl-Iterator-for-&mut I).
+    /// This allows using consuming methods on the mutable borrow,
+    /// which then consume the mutable borrow instead of the original,
+    /// such that you can continue to use the original iterator afterwards.
     ///
     /// # Examples
     ///
@@ -4019,6 +4025,7 @@ where
     }
 }
 
+/// Implements Iterator for mutable references to Iterator, such as those produced by [Iterator::by_ref]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator + ?Sized> Iterator for &mut I {
     type Item = I::Item;
