@@ -740,29 +740,27 @@ impl Iterator for ReadDir {
                 // to `byte_offset` and thus does not require the full extent of `*entry_ptr`
                 // to be in bounds of the same allocation, only the offset of the field
                 // being referenced.
-                macro_rules! entry_field_ptr {
-                    ($field:ident) => {
-                        &raw const (*entry_ptr).$field
-                    };
-                }
 
                 // d_name is guaranteed to be null-terminated.
-                let name = CStr::from_ptr(entry_field_ptr!(d_name).cast());
+                let name = CStr::from_ptr((&raw const (*entry_ptr).d_name).cast());
                 let name_bytes = name.to_bytes();
                 if name_bytes == b"." || name_bytes == b".." {
                     continue;
                 }
 
+                // When loading from a field, we can skip the `&raw const`; `(*entry_ptr).d_ino` as
+                // a value expression will do the right thing: `byte_offset` to the field and then
+                // only access those bytes.
                 #[cfg(not(target_os = "vita"))]
                 let entry = dirent64_min {
-                    d_ino: *entry_field_ptr!(d_ino) as u64,
+                    d_ino: (*entry_ptr).d_ino as u64,
                     #[cfg(not(any(
                         target_os = "solaris",
                         target_os = "illumos",
                         target_os = "aix",
                         target_os = "nto",
                     )))]
-                    d_type: *entry_field_ptr!(d_type) as u8,
+                    d_type: (*entry_ptr).d_type as u8,
                 };
 
                 #[cfg(target_os = "vita")]

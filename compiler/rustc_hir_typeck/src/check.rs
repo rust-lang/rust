@@ -117,22 +117,17 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     fcx.typeck_results.borrow_mut().liberated_fn_sigs_mut().insert(fn_id, fn_sig);
 
-    let return_or_body_span = match decl.output {
-        hir::FnRetTy::DefaultReturn(_) => body.value.span,
-        hir::FnRetTy::Return(ty) => ty.span,
-    };
-
-    fcx.require_type_is_sized(
-        declared_ret_ty,
-        return_or_body_span,
-        ObligationCauseCode::SizedReturnType,
-    );
-    // We checked the root's signature during wfcheck, but not the child.
+    // We checked the root's ret ty during wfcheck, but not the child.
     if fcx.tcx.is_typeck_child(fn_def_id.to_def_id()) {
+        let return_or_body_span = match decl.output {
+            hir::FnRetTy::DefaultReturn(_) => body.value.span,
+            hir::FnRetTy::Return(ty) => ty.span,
+        };
+
         fcx.require_type_is_sized(
             declared_ret_ty,
             return_or_body_span,
-            ObligationCauseCode::WellFormed(None),
+            ObligationCauseCode::SizedReturnType,
         );
     }
 

@@ -1419,6 +1419,14 @@ impl<'hir> Block<'hir> {
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub struct TyPat<'hir> {
+    #[stable_hasher(ignore)]
+    pub hir_id: HirId,
+    pub kind: TyPatKind<'hir>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Pat<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
@@ -1589,6 +1597,15 @@ pub enum PatExprKind<'hir> {
     ConstBlock(ConstBlock),
     /// A path pattern for a unit struct/variant or a (maybe-associated) constant.
     Path(QPath<'hir>),
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub enum TyPatKind<'hir> {
+    /// A range pattern (e.g., `1..=2` or `1..2`).
+    Range(Option<&'hir ConstArg<'hir>>, Option<&'hir ConstArg<'hir>>, RangeEnd),
+
+    /// A placeholder for a pattern that wasn't well formed in some way.
+    Err(ErrorGuaranteed),
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -2313,6 +2330,18 @@ impl Expr<'_> {
                     [val2],
                     StructTailExpr::None,
                 ),
+            )
+            | (
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeFromCopy, _),
+                    [val1],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeFromCopy, _),
+                    [val2],
+                    StructTailExpr::None,
+                ),
             ) => val1.expr.equivalent_for_indexing(val2.expr),
             (
                 ExprKind::Struct(
@@ -2322,6 +2351,30 @@ impl Expr<'_> {
                 ),
                 ExprKind::Struct(
                     QPath::LangItem(LangItem::Range, _),
+                    [val2, val4],
+                    StructTailExpr::None,
+                ),
+            )
+            | (
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeCopy, _),
+                    [val1, val3],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeCopy, _),
+                    [val2, val4],
+                    StructTailExpr::None,
+                ),
+            )
+            | (
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeInclusiveCopy, _),
+                    [val1, val3],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeInclusiveCopy, _),
                     [val2, val4],
                     StructTailExpr::None,
                 ),
@@ -2354,7 +2407,10 @@ pub fn is_range_literal(expr: &Expr<'_>) -> bool {
                     | LangItem::RangeTo
                     | LangItem::RangeFrom
                     | LangItem::RangeFull
-                    | LangItem::RangeToInclusive,
+                    | LangItem::RangeToInclusive
+                    | LangItem::RangeCopy
+                    | LangItem::RangeFromCopy
+                    | LangItem::RangeInclusiveCopy,
                 ..
             )
         ),
@@ -3345,7 +3401,7 @@ pub enum TyKind<'hir, Unambig = ()> {
     /// Placeholder for a type that has failed to be defined.
     Err(rustc_span::ErrorGuaranteed),
     /// Pattern types (`pattern_type!(u32 is 1..)`)
-    Pat(&'hir Ty<'hir>, &'hir Pat<'hir>),
+    Pat(&'hir Ty<'hir>, &'hir TyPat<'hir>),
     /// `TyKind::Infer` means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     ///
@@ -4331,6 +4387,7 @@ pub enum Node<'hir> {
     AssocItemConstraint(&'hir AssocItemConstraint<'hir>),
     TraitRef(&'hir TraitRef<'hir>),
     OpaqueTy(&'hir OpaqueTy<'hir>),
+    TyPat(&'hir TyPat<'hir>),
     Pat(&'hir Pat<'hir>),
     PatField(&'hir PatField<'hir>),
     /// Needed as its own node with its own HirId for tracking
@@ -4393,6 +4450,7 @@ impl<'hir> Node<'hir> {
             | Node::Block(..)
             | Node::Ctor(..)
             | Node::Pat(..)
+            | Node::TyPat(..)
             | Node::PatExpr(..)
             | Node::Arm(..)
             | Node::LetStmt(..)

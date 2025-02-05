@@ -11,7 +11,7 @@ const RANGE : _Range<{ 0 .. 1000 }> = _Range;
 
 // `RangeFrom` should be usable within const generics:
 struct _RangeFrom<const R: std::ops::RangeFrom<usize>>;
-//[min]~^ ERROR `RangeFrom<usize>` is forbidden
+//[min]~^ ERROR `std::ops::RangeFrom<usize>` is forbidden
 const RANGE_FROM : _RangeFrom<{ 0 .. }> = _RangeFrom;
 
 // `RangeFull` should be usable within const generics:
@@ -22,7 +22,7 @@ const RANGE_FULL : _RangeFull<{ .. }> = _RangeFull;
 // Regression test for #70155
 // `RangeInclusive` should be usable within const generics:
 struct _RangeInclusive<const R: std::ops::RangeInclusive<usize>>;
-//[min]~^ ERROR `RangeInclusive<usize>` is forbidden
+//[min]~^ ERROR `std::ops::RangeInclusive<usize>` is forbidden
 const RANGE_INCLUSIVE : _RangeInclusive<{ 0 ..= 999 }> = _RangeInclusive;
 
 // `RangeTo` should be usable within const generics:

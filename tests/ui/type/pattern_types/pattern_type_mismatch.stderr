@@ -1,31 +1,37 @@
-error: internal compiler error: ty::ConstKind::Error constructed but no error reported
-   |
-   = error: internal compiler error: ty::ConstKind::Error constructed but no error reported
-   |
-   = note: delayed at compiler/rustc_mir_build/src/thir/constant.rs:72:21 - disabled backtrace
-   = error: internal compiler error: mir_const_qualif: MIR had errors
-  --> $DIR/pattern_type_mismatch.rs:16:1
+error[E0308]: mismatched types
+  --> $DIR/pattern_type_mismatch.rs:8:41
    |
 LL | const BAD_NESTING4: pattern_type!(u8 is 'a'..='a') = todo!();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                         ^^^ expected `u8`, found `char`
    |
-note: delayed at compiler/rustc_mir_transform/src/lib.rs::LL:CC - disabled backtrace
-  --> $DIR/pattern_type_mismatch.rs:16:1
+help: if you meant to write a byte literal, prefix with `b`
+   |
+LL | const BAD_NESTING4: pattern_type!(u8 is b'a'..='a') = todo!();
+   |                                         ~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/pattern_type_mismatch.rs:8:47
    |
 LL | const BAD_NESTING4: pattern_type!(u8 is 'a'..='a') = todo!();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                               ^^^ expected `u8`, found `char`
+   |
+help: if you meant to write a byte literal, prefix with `b`
+   |
+LL | const BAD_NESTING4: pattern_type!(u8 is 'a'..=b'a') = todo!();
+   |                                               ~~~~
 
-error: internal compiler error: mir_const_qualif: MIR had errors
-  --> $DIR/pattern_type_mismatch.rs:18:1
+error[E0308]: mismatched types
+  --> $DIR/pattern_type_mismatch.rs:12:43
    |
 LL | const BAD_NESTING5: pattern_type!(char is 1..=1) = todo!();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: delayed at compiler/rustc_mir_transform/src/lib.rs::LL:CC - disabled backtrace
-  --> $DIR/pattern_type_mismatch.rs:18:1
+   |                                           ^ expected `char`, found `u8`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern_type_mismatch.rs:12:47
    |
 LL | const BAD_NESTING5: pattern_type!(char is 1..=1) = todo!();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                               ^ expected `char`, found `u8`
 
-query stack during panic:
-end of query stack
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1377,7 +1377,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                 }
             }
-            TyKind::Pat(ty, pat) => hir::TyKind::Pat(self.lower_ty(ty, itctx), self.lower_pat(pat)),
+            TyKind::Pat(ty, pat) => {
+                hir::TyKind::Pat(self.lower_ty(ty, itctx), self.lower_ty_pat(pat))
+            }
             TyKind::MacCall(_) => {
                 span_bug!(t.span, "`TyKind::MacCall` should have been expanded by now")
             }

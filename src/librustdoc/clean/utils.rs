@@ -588,9 +588,9 @@ pub(crate) fn attrs_have_doc_flag<'a>(
 /// so that the channel is consistent.
 ///
 /// Set by `bootstrap::Builder::doc_rust_lang_org_channel` in order to keep tests passing on beta/stable.
-pub(crate) const DOC_RUST_LANG_ORG_CHANNEL: &str = env!("DOC_RUST_LANG_ORG_CHANNEL");
-pub(crate) static DOC_CHANNEL: Lazy<&'static str> =
-    Lazy::new(|| DOC_RUST_LANG_ORG_CHANNEL.rsplit('/').find(|c| !c.is_empty()).unwrap());
+pub(crate) const DOC_RUST_LANG_ORG_VERSION: &str = env!("DOC_RUST_LANG_ORG_CHANNEL");
+pub(crate) static RUSTDOC_VERSION: Lazy<&'static str> =
+    Lazy::new(|| DOC_RUST_LANG_ORG_VERSION.rsplit('/').find(|c| !c.is_empty()).unwrap());
 
 /// Render a sequence of macro arms in a format suitable for displaying to the user
 /// as part of an item declaration.

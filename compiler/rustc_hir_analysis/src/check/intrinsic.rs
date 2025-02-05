@@ -472,7 +472,7 @@ pub fn check_intrinsic_type(
                 vec![Ty::new_imm_ptr(tcx, param(0)), Ty::new_imm_ptr(tcx, param(0))],
                 tcx.types.usize,
             ),
-            sym::unchecked_div | sym::unchecked_rem | sym::exact_div => {
+            sym::unchecked_div | sym::unchecked_rem | sym::exact_div | sym::disjoint_bitor => {
                 (1, 0, vec![param(0), param(0)], param(0))
             }
             sym::unchecked_shl | sym::unchecked_shr => (2, 0, vec![param(0), param(1)], param(0)),

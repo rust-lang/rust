@@ -27,7 +27,6 @@ use tracing::{debug, instrument};
 pub(crate) use self::check_match::check_match;
 use crate::errors::*;
 use crate::fluent_generated as fluent;
-use crate::thir::util::UserAnnotatedTyHelpers;
 
 struct PatCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -155,42 +154,41 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pattern_range_endpoint(
         &mut self,
         expr: Option<&'tcx hir::PatExpr<'tcx>>,
-    ) -> Result<
-        (Option<PatRangeBoundary<'tcx>>, Option<Ascription<'tcx>>, Option<LocalDefId>),
-        ErrorGuaranteed,
-    > {
-        match expr {
-            None => Ok((None, None, None)),
-            Some(expr) => {
-                let (kind, ascr, inline_const) = match self.lower_lit(expr) {
-                    PatKind::ExpandedConstant { subpattern, def_id, is_inline: true } => {
-                        (subpattern.kind, None, def_id.as_local())
+        // Out-parameters collecting extra data to be reapplied by the caller
+        ascriptions: &mut Vec<Ascription<'tcx>>,
+        inline_consts: &mut Vec<LocalDefId>,
+    ) -> Result<Option<PatRangeBoundary<'tcx>>, ErrorGuaranteed> {
+        let Some(expr) = expr else { return Ok(None) };
+
+        // Lower the endpoint into a temporary `PatKind` that will then be
+        // deconstructed to obtain the constant value and other data.
+        let mut kind: PatKind<'tcx> = self.lower_lit(expr);
+
+        // Unpeel any ascription or inline-const wrapper nodes.
+        loop {
+            match kind {
+                PatKind::AscribeUserType { ascription, subpattern } => {
+                    ascriptions.push(ascription);
+                    kind = subpattern.kind;
+                }
+                PatKind::ExpandedConstant { is_inline, def_id, subpattern } => {
+                    if is_inline {
+                        inline_consts.extend(def_id.as_local());
                     }
-                    PatKind::ExpandedConstant { subpattern, is_inline: false, .. } => {
-                        (subpattern.kind, None, None)
-                    }
-                    PatKind::AscribeUserType { ascription, subpattern: box Pat { kind, .. } } => {
-                        (kind, Some(ascription), None)
-                    }
-                    kind => (kind, None, None),
-                };
-                let value = match kind {
-                    PatKind::Constant { value } => value,
-                    PatKind::ExpandedConstant { subpattern, .. }
-                        if let PatKind::Constant { value } = subpattern.kind =>
-                    {
-                        value
-                    }
-                    _ => {
-                        let msg = format!(
-                            "found bad range pattern endpoint `{expr:?}` outside of error recovery"
-                        );
-                        return Err(self.tcx.dcx().span_delayed_bug(expr.span, msg));
-                    }
-                };
-                Ok((Some(PatRangeBoundary::Finite(value)), ascr, inline_const))
+                    kind = subpattern.kind;
+                }
+                _ => break,
             }
         }
+
+        // The unpeeled kind should now be a constant, giving us the endpoint value.
+        let PatKind::Constant { value } = kind else {
+            let msg =
+                format!("found bad range pattern endpoint `{expr:?}` outside of error recovery");
+            return Err(self.tcx.dcx().span_delayed_bug(expr.span, msg));
+        };
+
+        Ok(Some(PatRangeBoundary::Finite(value)))
     }
 
     /// Overflowing literals are linted against in a late pass. This is mostly fine, except when we
@@ -253,11 +251,15 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             self.tcx.dcx().span_bug(span, msg);
         }
 
-        let (lo, lo_ascr, lo_inline) = self.lower_pattern_range_endpoint(lo_expr)?;
-        let (hi, hi_ascr, hi_inline) = self.lower_pattern_range_endpoint(hi_expr)?;
+        // Collect extra data while lowering the endpoints, to be reapplied later.
+        let mut ascriptions = vec![];
+        let mut inline_consts = vec![];
 
-        let lo = lo.unwrap_or(PatRangeBoundary::NegInfinity);
-        let hi = hi.unwrap_or(PatRangeBoundary::PosInfinity);
+        let mut lower_endpoint =
+            |expr| self.lower_pattern_range_endpoint(expr, &mut ascriptions, &mut inline_consts);
+
+        let lo = lower_endpoint(lo_expr)?.unwrap_or(PatRangeBoundary::NegInfinity);
+        let hi = lower_endpoint(hi_expr)?.unwrap_or(PatRangeBoundary::PosInfinity);
 
         let cmp = lo.compare_with(hi, ty, self.tcx, self.typing_env);
         let mut kind = PatKind::Range(Box::new(PatRange { lo, hi, end, ty }));
@@ -298,13 +300,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // If we are handling a range with associated constants (e.g.
         // `Foo::<'a>::A..=Foo::B`), we need to put the ascriptions for the associated
         // constants somewhere. Have them on the range pattern.
-        for ascription in [lo_ascr, hi_ascr].into_iter().flatten() {
+        for ascription in ascriptions {
             kind = PatKind::AscribeUserType {
                 ascription,
                 subpattern: Box::new(Pat { span, ty, kind }),
             };
         }
-        for def in [lo_inline, hi_inline].into_iter().flatten() {
+        for def in inline_consts {
             kind = PatKind::ExpandedConstant {
                 def_id: def.to_def_id(),
                 is_inline: true,
@@ -537,16 +539,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => {
                 let e = match res {
                     Res::Def(DefKind::ConstParam, def_id) => {
-                        self.tcx.dcx().emit_err(ConstParamInPattern {
-                            span,
-                            const_span: self.tcx().def_span(def_id),
-                        })
+                        let const_span = self.tcx.def_span(def_id);
+                        self.tcx.dcx().emit_err(ConstParamInPattern { span, const_span })
                     }
                     Res::Def(DefKind::Static { .. }, def_id) => {
-                        self.tcx.dcx().emit_err(StaticInPattern {
-                            span,
-                            static_span: self.tcx().def_span(def_id),
-                        })
+                        let static_span = self.tcx.def_span(def_id);
+                        self.tcx.dcx().emit_err(StaticInPattern { span, static_span })
                     }
                     _ => self.tcx.dcx().emit_err(NonConstPath { span }),
                 };
@@ -568,6 +566,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         }
 
         kind
+    }
+
+    fn user_args_applied_to_ty_of_hir_id(
+        &self,
+        hir_id: hir::HirId,
+    ) -> Option<ty::CanonicalUserType<'tcx>> {
+        crate::thir::util::user_args_applied_to_ty_of_hir_id(self.typeck_results, hir_id)
     }
 
     /// Takes a HIR Path. If the path is a constant, evaluates it and feeds
@@ -600,12 +605,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             return pattern;
         }
 
-        let user_provided_types = self.typeck_results().user_provided_types();
+        let user_provided_types = self.typeck_results.user_provided_types();
         if let Some(&user_ty) = user_provided_types.get(id) {
             let annotation = CanonicalUserTypeAnnotation {
                 user_ty: Box::new(user_ty),
                 span,
-                inferred_ty: self.typeck_results().node_type(id),
+                inferred_ty: self.typeck_results.node_type(id),
             };
             Box::new(Pat {
                 span,
@@ -667,15 +672,5 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty, neg };
         let constant = self.tcx.at(expr.span).lit_to_const(lit_input);
         self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind
-    }
-}
-
-impl<'tcx> UserAnnotatedTyHelpers<'tcx> for PatCtxt<'_, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn typeck_results(&self) -> &ty::TypeckResults<'tcx> {
-        self.typeck_results
     }
 }

@@ -14,10 +14,12 @@ pub struct x4<T>(pub [T; 4]);
 #[derive(Copy, Clone)]
 pub struct f32x4(pub [f32; 4]);
 
-extern "rust-intrinsic" {
-    fn simd_saturating_add<T>(x: T, y: T) -> T;
-    fn simd_saturating_sub<T>(x: T, y: T) -> T;
-}
+#[rustc_intrinsic]
+unsafe fn simd_saturating_add<T>(x: T, y: T) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_saturating_sub<T>(x: T, y: T) -> T;
+
 
 fn main() {
     let x = i32x4([0, 0, 0, 0]);

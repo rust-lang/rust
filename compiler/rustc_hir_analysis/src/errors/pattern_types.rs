@@ -3,13 +3,6 @@ use rustc_middle::ty::Ty;
 use rustc_span::Span;
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_pattern_type_wild_pat)]
-pub(crate) struct WildPatTy {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_invalid_base_type)]
 pub(crate) struct InvalidBaseType<'tcx> {
     pub ty: Ty<'tcx>,
