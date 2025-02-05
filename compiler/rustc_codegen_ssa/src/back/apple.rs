@@ -56,6 +56,11 @@ pub fn pretty_version(version: OSVersion) -> impl Display {
     })
 }
 
+fn full_version(version: OSVersion) -> impl Display {
+    let (major, minor, patch) = version;
+    from_fn(move |f| write!(f, "{major}.{minor}.{patch}"))
+}
+
 /// Minimum operating system versions currently supported by `rustc`.
 fn os_minimum_deployment_target(os: &str) -> OSVersion {
     // When bumping a version in here, remember to update the platform-support docs too.
@@ -155,7 +160,7 @@ pub(super) fn add_version_to_llvm_target(
     let environment = components.next();
     assert_eq!(components.next(), None, "too many LLVM triple components");
 
-    let (major, minor, patch) = deployment_target;
+    let version = full_version(deployment_target);
 
     assert!(
         !os.contains(|c: char| c.is_ascii_digit()),
@@ -164,8 +169,47 @@ pub(super) fn add_version_to_llvm_target(
 
     if let Some(env) = environment {
         // Insert version into OS, before environment
-        format!("{arch}-{vendor}-{os}{major}.{minor}.{patch}-{env}")
+        format!("{arch}-{vendor}-{os}{version}-{env}")
     } else {
-        format!("{arch}-{vendor}-{os}{major}.{minor}.{patch}")
+        format!("{arch}-{vendor}-{os}{version}")
+    }
+}
+
+/// The flag needed to specify the OS and deployment target to a C compiler.
+///
+/// There are many aliases for these, and `-mtargetos=` is preferred on Clang
+/// nowadays, but for compatibility with older Clang and other tooling, we try
+/// use the earliest supported name here.
+pub(super) fn cc_os_version_min_flag(os: &str, abi: &str, deployment_target: OSVersion) -> String {
+    let version = full_version(deployment_target);
+    // NOTE: GCC does not support `-miphoneos-version-min=` etc. (because it
+    // does not support iOS in general), but we specify them there anyhow in
+    // case GCC adds support for these in the future, and to force a
+    // compilation error if GCC compiler is not configured for Darwin:
+    // https://gcc.gnu.org/onlinedocs/gcc/Darwin-Options.html
+    //
+    // See also:
+    // https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang-mmacos-version-min
+    // https://clang.llvm.org/docs/AttributeReference.html#availability
+    // https://gcc.gnu.org/onlinedocs/gcc/Darwin-Options.html#index-mmacosx-version-min
+    //
+    // Note: These are intentionally passed as a single argument, Clang
+    // doesn't seem to like it otherwise.
+    match (os, abi) {
+        ("macos", "") => format!("-mmacosx-version-min={version}"),
+        ("ios", "") => format!("-miphoneos-version-min={version}"),
+        ("ios", "sim") => format!("-mios-simulator-version-min={version}"),
+        // Mac Catalyst came after the introduction of `-mtargetos=`, so no
+        // other flag exists for that.
+        ("ios", "macabi") => format!("-mtargetos=ios{version}-macabi"),
+        ("tvos", "") => format!("-mappletvos-version-min={version}"),
+        ("tvos", "sim") => format!("-mappletvsimulator-version-min={version}"),
+        ("watchos", "") => format!("-mwatchos-version-min={version}"),
+        ("watchos", "sim") => format!("-mwatchsimulator-version-min={version}"),
+        // `-mxros-version-min=` does not exist, use `-mtargetos=`.
+        // https://github.com/llvm/llvm-project/issues/88271
+        ("visionos", "") => format!("-mtargetos=xros{version}"),
+        ("visionos", "sim") => format!("-mtargetos=xros{version}-simulator"),
+        _ => unreachable!("tried to get cc version flag for non-Apple platform"),
     }
 }

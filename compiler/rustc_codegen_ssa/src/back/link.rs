@@ -3163,39 +3163,43 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
     } else {
         // cc == Cc::Yes
         //
-        // We'd _like_ to use `-target` everywhere, since that can uniquely
+        // We'd _like_ to pass `--target` everywhere, since that can uniquely
         // communicate all the required details except for the SDK version
-        // (which is read by Clang itself from the SDKROOT), but that doesn't
-        // work on GCC, and since we don't know whether the `cc` compiler is
-        // Clang, GCC, or something else, we fall back to other options that
-        // also work on GCC when compiling for macOS.
+        // (which is read by Clang itself from the SDK root). But that has a
+        // few problems:
+        // - It doesn't work with GCC.
+        // - It doesn't work with Zig CC:
+        //   <https://github.com/ziglang/zig/issues/4911>.
+        // - It worked poorly with Clang when using config files before:
+        //   <https://github.com/llvm/llvm-project/pull/111387>
+        // - It worked poorly with certain versions of the `llvm` package in
+        //   Homebrew that expected the older flags:
+        //   <https://github.com/Homebrew/homebrew-core/issues/197532>
         //
-        // Targets other than macOS are ill-supported by GCC (it doesn't even
-        // support e.g. `-miphoneos-version-min`), so in those cases we can
-        // fairly safely use `-target`. See also the following, where it is
-        // made explicit that the recommendation by LLVM developers is to use
-        // `-target`: <https://github.com/llvm/llvm-project/issues/88271>
-        if target_os == "macos" {
-            // `-arch` communicates the architecture.
-            //
-            // CC forwards the `-arch` to the linker, so we use the same value
-            // here intentionally.
-            cmd.cc_args(&["-arch", ld64_arch]);
+        // So instead, we fall back to to using a combination of `-arch` with
+        // `-mtargetos=` (and similar).
 
-            // The presence of `-mmacosx-version-min` makes CC default to
-            // macOS, and it sets the deployment target.
-            let (major, minor, patch) = apple::deployment_target(sess);
-            // Intentionally pass this as a single argument, Clang doesn't
-            // seem to like it otherwise.
-            cmd.cc_arg(&format!("-mmacosx-version-min={major}.{minor}.{patch}"));
+        // cc usually forwards the `-arch` to the linker, so we use the same
+        // value here intentionally.
+        //
+        // NOTE: We avoid `-m32`/`-m64` as this is already encoded by `-arch`.
+        cmd.cc_args(&["-arch", ld64_arch]);
 
-            // macOS has no environment, so with these two, we've told CC the
-            // four desired parameters.
-            //
-            // We avoid `-m32`/`-m64`, as this is already encoded by `-arch`.
-        } else {
-            cmd.cc_args(&["-target", &versioned_llvm_target(sess)]);
-        }
+        let version = apple::deployment_target(sess);
+
+        // The presence of the `-mmacosx-version-min=`, `-mtargetos=` etc.
+        // flag both allows Clang to figure out the desired target OS,
+        // environment / ABI, and the deployment target. See the logic in:
+        // <https://github.com/llvm/llvm-project/blob/llvmorg-19.1.7/clang/lib/Driver/ToolChains/Darwin.cpp#L2235-L2320>
+        //
+        // NOTE: These all (correctly) take precedence over the equivalent
+        // `*_DEPLOYMENT_TARGET` environment variables (which we read
+        // ourselves to figure out the desired deployment target), so the
+        // current state of the environment should not have an effect.
+        cmd.cc_arg(&apple::cc_os_version_min_flag(target_os, target_abi, version));
+
+        // With these two flags + the SDK root, we've told cc the five desired
+        // parameters.
     }
 }
 
