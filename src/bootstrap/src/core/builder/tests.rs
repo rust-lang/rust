@@ -579,7 +579,7 @@ mod dist {
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[
             "compiler/rustc".into(),
-            "library".into(),
+            "std".into(),
         ]);
 
         assert_eq!(first(builder.cache.all::<compile::Std>()), &[

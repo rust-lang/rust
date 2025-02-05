@@ -1,12 +1,12 @@
 use std::ops::Range;
 
+use literal_escaper::{self, EscapeError, Mode};
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, StashKey};
-use rustc_lexer::unescape::{self, EscapeError, Mode};
 use rustc_lexer::{Base, Cursor, DocStyle, LiteralKind, RawStrError};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
@@ -970,7 +970,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         postfix_len: u32,
     ) -> (token::LitKind, Symbol) {
         self.cook_common(kind, mode, start, end, prefix_len, postfix_len, |src, mode, callback| {
-            unescape::unescape_unicode(src, mode, &mut |span, result| {
+            literal_escaper::unescape_unicode(src, mode, &mut |span, result| {
                 callback(span, result.map(drop))
             })
         })
@@ -986,7 +986,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         postfix_len: u32,
     ) -> (token::LitKind, Symbol) {
         self.cook_common(kind, mode, start, end, prefix_len, postfix_len, |src, mode, callback| {
-            unescape::unescape_mixed(src, mode, &mut |span, result| {
+            literal_escaper::unescape_mixed(src, mode, &mut |span, result| {
                 callback(span, result.map(drop))
             })
         })
