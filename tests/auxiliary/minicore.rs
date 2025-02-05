@@ -17,8 +17,63 @@
 #![feature(no_core, lang_items, rustc_attrs, decl_macro, naked_functions, f16, f128)]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
 #![feature(asm_experimental_arch)]
+#![feature(intrinsics)]
 #![no_std]
 #![no_core]
+
+/// Vendored from the 'cfg_if' crate
+
+macro_rules! cfg_if {
+    // match if/else chains with a final `else`
+    (
+        $(
+            if #[cfg( $i_meta:meta )] { $( $i_tokens:tt )* }
+        ) else+
+        else { $( $e_tokens:tt )* }
+    ) => {
+        cfg_if! {
+            @__items () ;
+            $(
+                (( $i_meta ) ( $( $i_tokens )* )) ,
+            )+
+            (() ( $( $e_tokens )* )) ,
+        }
+    };
+
+    // Internal and recursive macro to emit all the items
+    //
+    // Collects all the previous cfgs in a list at the beginning, so they can be
+    // negated. After the semicolon is all the remaining items.
+    (@__items ( $( $_:meta , )* ) ; ) => {};
+    (
+        @__items ( $( $no:meta , )* ) ;
+        (( $( $yes:meta )? ) ( $( $tokens:tt )* )) ,
+        $( $rest:tt , )*
+    ) => {
+        // Emit all items within one block, applying an appropriate #[cfg]. The
+        // #[cfg] will require all `$yes` matchers specified and must also negate
+        // all previous matchers.
+        #[cfg(all(
+            $( $yes , )?
+            not(any( $( $no ),* ))
+        ))]
+        cfg_if! { @__identity $( $tokens )* }
+
+        // Recurse to emit all other items in `$rest`, and when we do so add all
+        // our `$yes` matchers to the list of `$no` matchers as future emissions
+        // will have to negate everything we just matched as well.
+        cfg_if! {
+            @__items ( $( $no , )* $( $yes , )? ) ;
+            $( $rest , )*
+        }
+    };
+
+    // Internal macro to make __apply work out right for different match types,
+    // because of how macros match/expand stuff.
+    (@__identity $( $tokens:tt )* ) => {
+        $( $tokens )*
+    };
+}
 
 // `core` has some exotic `marker_impls!` macro for handling the with-generics cases, but for our
 // purposes, just use a simple macro_rules macro.
@@ -101,10 +156,70 @@ macro_rules! concat {
         /* compiler built-in */
     };
 }
+
 #[rustc_builtin_macro]
 #[macro_export]
 macro_rules! stringify {
     ($($t:tt)*) => {
         /* compiler built-in */
     };
+}
+
+#[macro_export]
+macro_rules! panic {
+    ($msg:literal) => {
+        $crate::panic(&$msg)
+    };
+}
+
+#[rustc_intrinsic]
+#[rustc_intrinsic_const_stable_indirect]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn size_of<T>() -> usize {
+    loop {}
+}
+
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn abort() -> ! {
+    loop {}
+}
+
+#[lang = "panic"]
+#[rustc_const_panic_str]
+const fn panic(_expr: &&'static str) -> ! {
+    abort();
+}
+
+#[lang = "eq"]
+pub trait PartialEq<Rhs: ?Sized = Self> {
+    fn eq(&self, other: &Rhs) -> bool;
+    fn ne(&self, other: &Rhs) -> bool {
+        !self.eq(other)
+    }
+}
+
+impl PartialEq for usize {
+    fn eq(&self, other: &usize) -> bool {
+        (*self) == (*other)
+    }
+}
+
+impl PartialEq for bool {
+    fn eq(&self, other: &bool) -> bool {
+        (*self) == (*other)
+    }
+}
+
+#[lang = "not"]
+pub trait Not {
+    type Output;
+    fn not(self) -> Self::Output;
+}
+
+impl Not for bool {
+    type Output = bool;
+    fn not(self) -> Self {
+        !self
+    }
 }
