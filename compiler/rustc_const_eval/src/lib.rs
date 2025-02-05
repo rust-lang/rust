@@ -51,6 +51,8 @@ pub fn provide(providers: &mut Providers) {
     providers.check_validity_requirement = |tcx, (init_kind, param_env_and_ty)| {
         util::check_validity_requirement(tcx, init_kind, param_env_and_ty)
     };
+    providers.hooks.validate_scalar_in_layout =
+        |tcx, scalar, layout| util::validate_scalar_in_layout(tcx, scalar, layout);
 }
 
 /// `rustc_driver::main` installs a handler that will set this to `true` if

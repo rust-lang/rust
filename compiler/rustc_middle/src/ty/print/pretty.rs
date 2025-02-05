@@ -1741,7 +1741,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     " as ",
                 )?;
             }
-            ty::Pat(base_ty, pat) => {
+            ty::Pat(base_ty, pat) if self.tcx().validate_scalar_in_layout(int, ty) => {
                 self.pretty_print_const_scalar_int(int, *base_ty, print_ty)?;
                 p!(write(" is {pat:?}"));
             }

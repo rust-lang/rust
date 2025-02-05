@@ -8,6 +8,7 @@ mod type_name;
 
 pub use self::alignment::{is_disaligned, is_within_packed};
 pub use self::check_validity_requirement::check_validity_requirement;
+pub(crate) use self::check_validity_requirement::validate_scalar_in_layout;
 pub use self::compare_types::{relate_types, sub_types};
 pub use self::type_name::type_name;
 
