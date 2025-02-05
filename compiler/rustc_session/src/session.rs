@@ -1,11 +1,11 @@
 use std::any::Any;
-use std::ops::{Div, Mul};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
-use std::{env, fmt, io};
+use std::{env, io};
 
+pub use rustc_ast::Limit;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
@@ -56,59 +56,6 @@ pub enum CtfeBacktrace {
     Capture,
     /// Capture a backtrace at the point the error is created and immediately print it out.
     Immediate,
-}
-
-/// New-type wrapper around `usize` for representing limits. Ensures that comparisons against
-/// limits are consistent throughout the compiler.
-#[derive(Clone, Copy, Debug, HashStable_Generic)]
-pub struct Limit(pub usize);
-
-impl Limit {
-    /// Create a new limit from a `usize`.
-    pub fn new(value: usize) -> Self {
-        Limit(value)
-    }
-
-    /// Check that `value` is within the limit. Ensures that the same comparisons are used
-    /// throughout the compiler, as mismatches can cause ICEs, see #72540.
-    #[inline]
-    pub fn value_within_limit(&self, value: usize) -> bool {
-        value <= self.0
-    }
-}
-
-impl From<usize> for Limit {
-    fn from(value: usize) -> Self {
-        Self::new(value)
-    }
-}
-
-impl fmt::Display for Limit {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl Div<usize> for Limit {
-    type Output = Limit;
-
-    fn div(self, rhs: usize) -> Self::Output {
-        Limit::new(self.0 / rhs)
-    }
-}
-
-impl Mul<usize> for Limit {
-    type Output = Limit;
-
-    fn mul(self, rhs: usize) -> Self::Output {
-        Limit::new(self.0 * rhs)
-    }
-}
-
-impl rustc_errors::IntoDiagArg for Limit {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
-        self.to_string().into_diag_arg()
-    }
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]

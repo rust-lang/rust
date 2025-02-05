@@ -42,6 +42,7 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCtxt;
+use rustc_type_ir::visit::collect_referenced_late_bound_regions;
 use tracing::{debug, instrument};
 
 use crate::check::intrinsic::intrinsic_operation_unsafety;
@@ -635,11 +636,10 @@ fn get_new_lifetime_name<'tcx>(
     poly_trait_ref: ty::PolyTraitRef<'tcx>,
     generics: &hir::Generics<'tcx>,
 ) -> String {
-    let existing_lifetimes = tcx
-        .collect_referenced_late_bound_regions(poly_trait_ref)
+    let existing_lifetimes = collect_referenced_late_bound_regions(tcx, poly_trait_ref)
         .into_iter()
         .filter_map(|lt| {
-            if let ty::BoundRegionKind::Named(_, name) = lt {
+            if let ty::BoundRegionKind::Named(_, name) = lt.kind {
                 Some(name.as_str().to_string())
             } else {
                 None

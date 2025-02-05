@@ -11,6 +11,9 @@ mod delayed_map;
 #[cfg(feature = "nightly")]
 mod impl_ {
     pub use rustc_data_structures::sso::{SsoHashMap, SsoHashSet};
+    pub mod fx {
+        pub use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+    }
     pub use rustc_data_structures::stack::ensure_sufficient_stack;
     pub use rustc_data_structures::sync::Lrc;
 }
@@ -19,6 +22,11 @@ mod impl_ {
 mod impl_ {
     pub use std::collections::{HashMap as SsoHashMap, HashSet as SsoHashSet};
     pub use std::sync::Arc as Lrc;
+    pub mod fx {
+        pub use std::collections::{HashMap as FxHashMap, HashSet as FxHashSet};
+
+        pub use indexmap::{IndexMap as FxIndexMap, IndexSet as FxIndexSet};
+    }
 
     #[inline]
     pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {

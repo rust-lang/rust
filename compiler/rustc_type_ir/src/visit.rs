@@ -51,6 +51,8 @@ use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
 use crate::data_structures::Lrc;
+use crate::data_structures::fx::FxIndexSet;
+use crate::fold::TypeFoldable;
 use crate::inherent::*;
 use crate::{self as ty, Interner, TypeFlags};
 
@@ -579,5 +581,114 @@ impl<I: Interner> TypeVisitor<I> for HasErrorVisitor {
 
     fn visit_error(&mut self, guar: <I as Interner>::ErrorGuaranteed) -> Self::Result {
         ControlFlow::Break(guar)
+    }
+}
+
+/// Returns a set of all late-bound regions that are constrained
+/// by `value`, meaning that if we instantiate those LBR with
+/// variables and equate `value` with something else, those
+/// variables will also be equated.
+pub fn collect_constrained_late_bound_regions<I: Interner, T>(
+    cx: I,
+    value: ty::Binder<I, T>,
+) -> FxIndexSet<I::BoundRegion>
+where
+    T: TypeFoldable<I>,
+{
+    collect_late_bound_regions(cx, value, true)
+}
+
+/// Returns a set of all late-bound regions that appear in `value` anywhere.
+pub fn collect_referenced_late_bound_regions<I: Interner, T>(
+    cx: I,
+    value: ty::Binder<I, T>,
+) -> FxIndexSet<I::BoundRegion>
+where
+    T: TypeFoldable<I>,
+{
+    collect_late_bound_regions(cx, value, false)
+}
+
+fn collect_late_bound_regions<I: Interner, T>(
+    cx: I,
+    value: ty::Binder<I, T>,
+    just_constrained: bool,
+) -> FxIndexSet<I::BoundRegion>
+where
+    T: TypeFoldable<I>,
+{
+    let mut collector = LateBoundRegionsCollector::new(just_constrained);
+    let value = value.skip_binder();
+    let value =
+        if just_constrained { crate::fold::expand_weak_alias_tys(cx, value) } else { value };
+    value.visit_with(&mut collector);
+    collector.regions
+}
+
+/// Collects all the late-bound regions at the innermost binding level
+/// into a hash set.
+struct LateBoundRegionsCollector<I: Interner> {
+    current_index: ty::DebruijnIndex,
+    regions: FxIndexSet<I::BoundRegion>,
+
+    /// `true` if we only want regions that are known to be
+    /// "constrained" when you equate this type with another type. In
+    /// particular, if you have e.g., `&'a u32` and `&'b u32`, equating
+    /// them constraints `'a == 'b`. But if you have `<&'a u32 as
+    /// Trait>::Foo` and `<&'b u32 as Trait>::Foo`, normalizing those
+    /// types may mean that `'a` and `'b` don't appear in the results,
+    /// so they are not considered *constrained*.
+    just_constrained: bool,
+}
+
+impl<I: Interner> LateBoundRegionsCollector<I> {
+    fn new(just_constrained: bool) -> Self {
+        Self { current_index: ty::INNERMOST, regions: Default::default(), just_constrained }
+    }
+}
+
+impl<I: Interner> TypeVisitor<I> for LateBoundRegionsCollector<I> {
+    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &ty::Binder<I, T>) {
+        self.current_index.shift_in(1);
+        t.super_visit_with(self);
+        self.current_index.shift_out(1);
+    }
+
+    fn visit_ty(&mut self, t: I::Ty) {
+        if self.just_constrained {
+            match t.kind() {
+                // If we are only looking for "constrained" regions, we have to ignore the
+                // inputs to a projection as they may not appear in the normalized form.
+                ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, _) => {
+                    return;
+                }
+                // All weak alias types should've been expanded beforehand.
+                ty::Alias(ty::Weak, _) => unreachable!("unexpected weak alias type"),
+                _ => {}
+            }
+        }
+
+        t.super_visit_with(self)
+    }
+
+    fn visit_const(&mut self, c: I::Const) {
+        // if we are only looking for "constrained" region, we have to
+        // ignore the inputs of an unevaluated const, as they may not appear
+        // in the normalized form
+        if self.just_constrained {
+            if let ty::ConstKind::Unevaluated(..) = c.kind() {
+                return;
+            }
+        }
+
+        c.super_visit_with(self)
+    }
+
+    fn visit_region(&mut self, r: I::Region) {
+        if let ty::ReBound(debruijn, br) = r.kind() {
+            if debruijn == self.current_index {
+                self.regions.insert(br);
+            }
+        }
     }
 }

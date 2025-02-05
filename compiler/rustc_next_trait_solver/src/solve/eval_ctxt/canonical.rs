@@ -168,7 +168,7 @@ where
         if !self.is_normalizes_to_goal {
             let num_non_region_vars =
                 canonical.variables.iter().filter(|c| !c.is_region() && c.is_existential()).count();
-            if num_non_region_vars > self.cx().recursion_limit() {
+            if !self.cx().recursion_limit().value_within_limit(num_non_region_vars) {
                 debug!(?num_non_region_vars, "too many inference variables -> overflow");
                 return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow {
                     suggest_increasing_limit: true,

@@ -11,7 +11,10 @@ use rustc_middle::bug;
 use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TyCtxt};
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::traits;
-use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
+use rustc_type_ir::visit::{
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    collect_constrained_late_bound_regions, collect_referenced_late_bound_regions,
+};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -358,9 +361,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
                 //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
                 let late_bound_in_projection_ty =
-                    tcx.collect_constrained_late_bound_regions(projection_term);
+                    collect_constrained_late_bound_regions(tcx, projection_term);
                 let late_bound_in_term =
-                    tcx.collect_referenced_late_bound_regions(trait_ref.rebind(term));
+                    collect_referenced_late_bound_regions(tcx, trait_ref.rebind(term));
                 debug!(?late_bound_in_projection_ty);
                 debug!(?late_bound_in_term);
 

@@ -13,6 +13,9 @@ use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
 use rustc_trait_selection::traits::{self, hir_ty_lowering_dyn_compatibility_violations};
 use rustc_type_ir::elaborate::ClauseWithSupertraitSpan;
+use rustc_type_ir::visit::{
+    collect_constrained_late_bound_regions, collect_referenced_late_bound_regions,
+};
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
@@ -362,10 +365,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         //
         //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
         //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
-        let late_bound_in_projection_term =
-            tcx.collect_constrained_late_bound_regions(pred.map_bound(|pred| pred.projection_term));
+        let late_bound_in_projection_term = collect_constrained_late_bound_regions(
+            tcx,
+            pred.map_bound(|pred| pred.projection_term),
+        );
         let late_bound_in_term =
-            tcx.collect_referenced_late_bound_regions(pred.map_bound(|pred| pred.term));
+            collect_referenced_late_bound_regions(tcx, pred.map_bound(|pred| pred.term));
         debug!(?late_bound_in_projection_term);
         debug!(?late_bound_in_term);
 

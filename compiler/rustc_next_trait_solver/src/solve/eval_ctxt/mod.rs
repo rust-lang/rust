@@ -1,6 +1,7 @@
 use std::ops::ControlFlow;
 
 use derive_where::derive_where;
+use rustc_ast_ir::Limit;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir::data_structures::{HashMap, HashSet, ensure_sufficient_stack};
@@ -148,7 +149,7 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
     /// in coherence checking.
     fn root_goal_may_hold_with_depth(
         &self,
-        root_depth: usize,
+        root_depth: Limit,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
     ) -> bool;
 
@@ -182,7 +183,7 @@ where
 
     fn root_goal_may_hold_with_depth(
         &self,
-        root_depth: usize,
+        root_depth: Limit,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
     ) -> bool {
         self.probe(|| {
@@ -227,7 +228,7 @@ where
     /// over using this manually (such as [`SolverDelegateEvalExt::evaluate_root_goal`]).
     pub(super) fn enter_root<R>(
         delegate: &D,
-        root_depth: usize,
+        root_depth: Limit,
         generate_proof_tree: GenerateProofTree,
         f: impl FnOnce(&mut EvalCtxt<'_, D>) -> R,
     ) -> (R, Option<inspect::GoalEvaluation<I>>) {

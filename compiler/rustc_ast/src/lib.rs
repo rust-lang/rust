@@ -44,6 +44,8 @@ pub mod token;
 pub mod tokenstream;
 pub mod visit;
 
+pub use rustc_ast_ir::Limit;
+
 pub use self::ast::*;
 pub use self::ast_traits::{AstDeref, AstNodeWrapper, HasAttrs, HasNodeId, HasTokens};
 

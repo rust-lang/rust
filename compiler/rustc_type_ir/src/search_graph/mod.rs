@@ -18,6 +18,7 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 
 use derive_where::derive_where;
+use rustc_ast_ir::Limit;
 use rustc_index::{Idx, IndexVec};
 use tracing::debug;
 
@@ -142,6 +143,11 @@ impl UsageKind {
 
 #[derive(Debug, Clone, Copy)]
 struct AvailableDepth(usize);
+impl From<Limit> for AvailableDepth {
+    fn from(Limit(value): Limit) -> AvailableDepth {
+        AvailableDepth(value)
+    }
+}
 impl AvailableDepth {
     /// Returns the remaining depth allowed for nested goals.
     ///
@@ -368,9 +374,9 @@ pub struct SearchGraph<D: Delegate<Cx = X>, X: Cx = <D as Delegate>::Cx> {
 }
 
 impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
-    pub fn new(root_depth: usize) -> SearchGraph<D> {
+    pub fn new(recursion_limit: Limit) -> SearchGraph<D> {
         Self {
-            root_depth: AvailableDepth(root_depth),
+            root_depth: recursion_limit.into(),
             stack: Default::default(),
             provisional_cache: Default::default(),
             _marker: PhantomData,
