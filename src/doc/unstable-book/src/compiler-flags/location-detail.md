@@ -16,6 +16,7 @@ within this list are:
 - `file` - the filename of the panic will be included in the panic output
 - `line` - the source line of the panic will be included in the panic output
 - `column` - the source column of the panic will be included in the panic output
+- `cstr` - whether the location strings should be nul-terminated
 
 Any combination of these three options are supported. Alternatively, you can pass
 `none` to this option, which results in no location details being tracked.
@@ -39,6 +40,11 @@ be fused, as the output is different depending on which panic occurs. However if
 and column information is identical for all panics, these branches can be fused, which
 can lead to substantial code size savings, especially for small embedded binaries with
 many panics.
+
+Although the `cstr` option makes location strings one byte longer, some linkers have
+functionality for deduplicating nul-terminated strings, so using this option may decrease
+binary size under some circumstances. Some applications may also use this option to pass
+location strings into C or C++ code that relies on nul-terminated strings.
 
 The savings from this option are amplified when combined with the use of `-Zbuild-std`, as
 otherwise paths for panics within the standard library are still included in your binary.
