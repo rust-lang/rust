@@ -1,4 +1,4 @@
-use crate::Span;
+use crate::{LintId, Span};
 
 /// An enum representing a diagnostic level.
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
@@ -112,7 +112,27 @@ impl Diagnostic {
     }
 
     diagnostic_child_methods!(span_error, error, Level::Error);
-    diagnostic_child_methods!(span_warning, warning, Level::Warning);
+
+    /// Adds a new child diagnostics message to `self` with the [`Level::Warning`] level, and the given `spans` and `message`.
+    #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
+    pub fn span_warning<S, T>(mut self, id: LintId, spans: S, message: T) -> Diagnostic
+    where
+        S: MultiSpan,
+        T: Into<String>,
+    {
+        let _ = id; // to be used in the future for allow/warn/deny
+        self.children.push(Diagnostic::spanned(spans, Level::Warning, message));
+        self
+    }
+
+    /// Adds a new child diagnostic message to `self` with the [`Level::Warning`] level, and the given `message`.
+    #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
+    pub fn warning<T: Into<String>>(mut self, id: LintId, message: T) -> Diagnostic {
+        let _ = id; // to be used in the future for allow/warn/deny
+        self.children.push(Diagnostic::new(Level::Warning, message));
+        self
+    }
+
     diagnostic_child_methods!(span_note, note, Level::Note);
     diagnostic_child_methods!(span_help, help, Level::Help);
 

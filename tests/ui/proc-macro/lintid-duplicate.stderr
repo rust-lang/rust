@@ -1,0 +1,14 @@
+error[E0428]: the name `ambiguous_thing` is defined multiple times
+  --> $DIR/lintid-duplicate.rs:15:1
+   |
+LL | pub static ambiguous_thing: LintId;
+   | ----------------------------------- previous definition of the value `ambiguous_thing` here
+...
+LL | pub static ambiguous_thing: LintId;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ambiguous_thing` redefined here
+   |
+   = note: `ambiguous_thing` must be defined only once in the value namespace of this module
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0428`.

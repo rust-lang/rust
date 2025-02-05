@@ -166,6 +166,7 @@ impl ItemType {
             | DefKind::Impl { .. }
             | DefKind::Closure
             | DefKind::SyntheticCoroutineBody => Self::ForeignType,
+            DefKind::LintId => unimplemented!("LintId"),
         }
     }
 

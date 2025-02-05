@@ -206,6 +206,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         &mut self,
         call_site: Span,
         pass: AstPass,
+        edition: Option<Edition>,
         features: &[Symbol],
         parent_module_id: Option<NodeId>,
     ) -> LocalExpnId {
@@ -215,7 +216,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             ExpnData::allow_unstable(
                 ExpnKind::AstPass(pass),
                 call_site,
-                self.tcx.sess.edition(),
+                edition.unwrap_or_else(|| self.tcx.sess.edition()),
                 features.into(),
                 None,
                 parent_module,
@@ -587,6 +588,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         });
                     }
                 }
+            }
+            Res::Def(DefKind::LintId, _) => {
+                self.dcx().emit_err(MacroExpectedFound {
+                    span: path.span,
+                    expected: kind.descr_expected(),
+                    article: "a",
+                    found: res.descr(),
+                    macro_path: &pprust::path_to_string(path),
+                    remove_surrounding_derive: None,
+                    add_as_non_derive: None,
+                });
+                return Ok((self.dummy_ext(kind), Res::Err));
             }
             Res::NonMacroAttr(..) | Res::Err => {}
             _ => panic!("expected `DefKind::Macro` or `Res::NonMacroAttr`"),

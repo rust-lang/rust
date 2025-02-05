@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 use std::sync::atomic::AtomicU32;
 
 use super::*;
+use crate::LintId;
 
 macro_rules! define_client_handles {
     (
@@ -380,6 +381,10 @@ pub enum ProcMacro {
         name: &'static str,
         client: Client<crate::TokenStream, crate::TokenStream>,
     },
+
+    Warning {
+        lint_id: LintId,
+    },
 }
 
 impl ProcMacro {
@@ -388,6 +393,7 @@ impl ProcMacro {
             ProcMacro::CustomDerive { trait_name, .. } => trait_name,
             ProcMacro::Attr { name, .. } => name,
             ProcMacro::Bang { name, .. } => name,
+            ProcMacro::Warning { lint_id } => lint_id.name,
         }
     }
 
@@ -411,5 +417,9 @@ impl ProcMacro {
         expand: impl Fn(crate::TokenStream) -> crate::TokenStream + Copy,
     ) -> Self {
         ProcMacro::Bang { name, client: Client::expand1(expand) }
+    }
+
+    pub const fn warning(lint_id: LintId) -> Self {
+        ProcMacro::Warning { lint_id }
     }
 }

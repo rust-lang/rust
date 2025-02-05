@@ -875,6 +875,7 @@ fn should_encode_span(def_kind: DefKind) -> bool {
         | DefKind::AssocFn
         | DefKind::AssocConst
         | DefKind::Macro(_)
+        | DefKind::LintId
         | DefKind::ExternCrate
         | DefKind::Use
         | DefKind::AnonConst
@@ -906,6 +907,7 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::AssocFn
         | DefKind::AssocConst
         | DefKind::Macro(_)
+        | DefKind::LintId
         | DefKind::Field
         | DefKind::Impl { .. } => true,
         // Tools may want to be able to detect their tool lints on
@@ -951,6 +953,7 @@ fn should_encode_expn_that_defined(def_kind: DefKind) -> bool {
         | DefKind::AssocFn
         | DefKind::AssocConst
         | DefKind::Macro(_)
+        | DefKind::LintId
         | DefKind::ExternCrate
         | DefKind::Use
         | DefKind::ForeignMod
@@ -984,6 +987,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::AssocFn
         | DefKind::AssocConst
         | DefKind::Macro(..)
+        | DefKind::LintId
         | DefKind::Field => true,
         DefKind::Use
         | DefKind::ForeignMod
@@ -1026,6 +1030,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::Trait
         | DefKind::TraitAlias
         | DefKind::Macro(..)
+        | DefKind::LintId
         | DefKind::ForeignTy => true,
         DefKind::Use
         | DefKind::LifetimeParam
@@ -1121,6 +1126,7 @@ fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: Def
         | DefKind::Trait
         | DefKind::TraitAlias
         | DefKind::Macro(..)
+        | DefKind::LintId
         | DefKind::ForeignTy
         | DefKind::Use
         | DefKind::LifetimeParam
@@ -1151,6 +1157,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::Ctor(..)
         | DefKind::AssocFn
         | DefKind::AssocConst
+        | DefKind::LintId
         | DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::OpaqueTy
@@ -1186,6 +1193,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::Impl { .. }
         | DefKind::AssocFn
         | DefKind::AssocConst
+        | DefKind::LintId
         | DefKind::Closure
         | DefKind::ConstParam
         | DefKind::AnonConst
@@ -1259,6 +1267,7 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
         | DefKind::Mod
         | DefKind::ForeignMod
         | DefKind::Macro(..)
+        | DefKind::LintId
         | DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
@@ -1292,6 +1301,7 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::Mod
         | DefKind::ForeignMod
         | DefKind::Macro(..)
+        | DefKind::LintId
         | DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
@@ -1328,6 +1338,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::Mod
         | DefKind::ForeignMod
         | DefKind::Macro(..)
+        | DefKind::LintId
         | DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
@@ -1922,10 +1933,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
                 let attrs = hir.attrs(proc_macro);
-                let macro_kind = if ast::attr::contains_name(attrs, sym::proc_macro) {
-                    MacroKind::Bang
+                let def_kind = if ast::attr::contains_name(attrs, sym::proc_macro) {
+                    DefKind::Macro(MacroKind::Bang)
                 } else if ast::attr::contains_name(attrs, sym::proc_macro_attribute) {
-                    MacroKind::Attr
+                    DefKind::Macro(MacroKind::Attr)
                 } else if let Some(attr) = ast::attr::find_by_name(attrs, sym::proc_macro_derive) {
                     // This unwrap chain should have been checked by the proc-macro harness.
                     name = attr.meta_item_list().unwrap()[0]
@@ -1934,7 +1945,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         .ident()
                         .unwrap()
                         .name;
-                    MacroKind::Derive
+                    DefKind::Macro(MacroKind::Derive)
+                } else if ast::attr::contains_name(attrs, sym::proc_macro_warning) {
+                    DefKind::LintId
                 } else {
                     bug!("Unknown proc-macro type for item {:?}", id);
                 };
@@ -1943,8 +1956,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 def_key.disambiguated_data.data = DefPathData::MacroNs(name);
 
                 let def_id = id.to_def_id();
-                self.tables.def_kind.set_some(def_id.index, DefKind::Macro(macro_kind));
-                self.tables.proc_macro.set_some(def_id.index, macro_kind);
+                self.tables.def_kind.set_some(def_id.index, def_kind);
+                if let DefKind::Macro(macro_kind) = def_kind {
+                    self.tables.proc_macro.set_some(def_id.index, macro_kind);
+                }
                 self.encode_attrs(id);
                 record!(self.tables.def_keys[def_id] <- def_key);
                 record!(self.tables.def_ident_span[def_id] <- span);

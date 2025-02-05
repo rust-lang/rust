@@ -622,6 +622,8 @@ passes_pass_by_value =
 
 passes_proc_macro_bad_sig = {$kind} has incorrect signature
 
+passes_proc_macro_warning_wrong_type = wrong type for proc macro warning id
+
 passes_remove_fields =
     consider removing { $num ->
       [one] this
