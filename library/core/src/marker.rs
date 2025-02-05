@@ -797,7 +797,8 @@ impl<T: ?Sized> Clone for PhantomData<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Default for PhantomData<T> {
+#[rustc_const_unstable(feature = "const_default", issue = "none")]
+impl<T: ?Sized> const Default for PhantomData<T> {
     fn default() -> Self {
         Self
     }
