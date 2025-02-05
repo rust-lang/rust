@@ -215,6 +215,8 @@ mod iter;
 /// [`ThinBox`] implementation.
 mod thin;
 
+#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+pub use iter::BoxedArrayIntoIter;
 #[unstable(feature = "thin_box", issue = "92791")]
 pub use thin::ThinBox;
 
