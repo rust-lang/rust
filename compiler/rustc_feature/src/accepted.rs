@@ -62,6 +62,8 @@ declare_features! (
     (accepted, arbitrary_enum_discriminant, "1.66.0", Some(60553)),
     /// Allows using `const` operands in inline assembly.
     (accepted, asm_const, "1.82.0", Some(93332)),
+    /// Allows using `label` operands in inline assembly.
+    (accepted, asm_goto, "CURRENT_RUSTC_VERSION", Some(119364)),
     /// Allows using `sym` operands in inline assembly.
     (accepted, asm_sym, "1.66.0", Some(93333)),
     /// Allows the definition of associated constants in `trait` or `impl` blocks.
