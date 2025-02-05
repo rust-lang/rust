@@ -427,10 +427,6 @@ pub enum IsConstable {
     Ctor,
 }
 
-TrivialTypeTraversalAndLiftImpls! {
-    IsConstable,
-}
-
 /// The 'location' at which we try to perform HIR-based wf checking.
 /// This information is used to obtain an `hir::Ty`, which
 /// we can walk in order to obtain precise spans for any
