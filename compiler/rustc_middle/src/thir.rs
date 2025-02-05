@@ -811,28 +811,44 @@ pub enum PatKind<'tcx> {
     ///   exhaustiveness to cover exactly its own value, similar to `&str`, but these values are
     ///   much simpler.
     /// * `String`, if `string_deref_patterns` is enabled.
+    ///
+    /// # Caution
+    ///
+    /// Note that in general, "constants" don't necessarily get lowered to this!
+    /// For example, a constant of an enum type would typically be lowered to
+    /// `PatKind::Variant` instead.
     Constant {
         value: mir::Const<'tcx>,
     },
 
-    /// Pattern obtained by converting a constant (inline or named) to its pattern
-    /// representation using `const_to_pat`.
+    /// Marker node that wraps the result of converting some kind of "constant"
+    /// (currently either a named constant, or an inline const block) to a
+    /// pattern.
+    ///
+    /// This is needed because constants can potentially be lowered to several
+    /// different kinds of pattern node (not just `Constant`), but some checks
+    /// and diagnostics need to know whether a pattern was the result of
+    /// lowering a constant, and what constant it was.
+    ///
+    /// Note that range patterns can potentially contain two constants
+    /// (one for each endpoint). In that case there might be two nested
+    /// `ExpandedConstant` nodes wrapping the `Range` node.
     ExpandedConstant {
-        /// [DefId] of the constant, we need this so that we have a
-        /// reference that can be used by unsafety checking to visit nested
-        /// unevaluated constants and for diagnostics. If the `DefId` doesn't
-        /// correspond to a local crate, it points at the `const` item.
-        def_id: DefId,
-        /// If `false`, then `def_id` points at a `const` item, otherwise it
-        /// corresponds to a local inline const.
-        is_inline: bool,
-        /// If the inline constant is used in a range pattern, this subpattern
-        /// represents the range (if both ends are inline constants, there will
-        /// be multiple InlineConstant wrappers).
+        /// [`DefId`] of the constant that was lowered to the contents of this
+        /// pattern. This allows code that cares about lowered constants to
+        /// identify the original constant.
         ///
-        /// Otherwise, the actual pattern that the constant lowered to. As with
-        /// other constants, inline constants are matched structurally where
-        /// possible.
+        /// For inline const blocks, this should always be a [`LocalDefId`].
+        def_id: DefId,
+
+        /// - If true, this wrapper represents an inline const block
+        ///   (e.g. `const { 1 + 1 }`).
+        /// - If false, this wrapper represents a named constant
+        ///   (e.g. `foo::BAR`).
+        is_inline: bool,
+
+        /// The underlying pattern that the constant was lowered to.
+        /// (Or possibly another `ExpandedConstant`, for range patterns.)
         subpattern: Box<Pat<'tcx>>,
     },
 
