@@ -4,6 +4,12 @@ error: `extern` fn uses type `NotSafe`, which is not FFI-safe
 LL | extern "C" fn bar(x: Bar) -> Bar {
    |                      ^^^ not FFI-safe
    |
+   = note: this struct/enum/union (`Bar`) is FFI-unsafe due to a `NotSafe` field
+note: the type is defined here
+  --> $DIR/lint-ctypes-113436-1.rs:16:1
+   |
+LL | pub struct Bar {
+   | ^^^^^^^^^^^^^^
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
 note: the type is defined here
@@ -23,6 +29,12 @@ error: `extern` fn uses type `NotSafe`, which is not FFI-safe
 LL | extern "C" fn bar(x: Bar) -> Bar {
    |                              ^^^ not FFI-safe
    |
+   = note: this struct/enum/union (`Bar`) is FFI-unsafe due to a `NotSafe` field
+note: the type is defined here
+  --> $DIR/lint-ctypes-113436-1.rs:16:1
+   |
+LL | pub struct Bar {
+   | ^^^^^^^^^^^^^^
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
 note: the type is defined here
