@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Create a text file listing all public API. This can be used to ensure that all
 functions are covered by our macros.
+
+This file additionally does tidy-esque checks that all functions are listed where
+needed, or that lists are sorted.
 """
 
 import difflib
@@ -14,6 +17,9 @@ from typing import Any, TypeAlias
 
 ETC_DIR = Path(__file__).parent
 ROOT_DIR = ETC_DIR.parent
+
+# These files do not trigger a retest.
+IGNORED_SOURCES = ["src/libm_helper.rs"]
 
 IndexTy: TypeAlias = dict[str, dict[str, Any]]
 """Type of the `index` item in rustdoc's JSON output"""
@@ -119,6 +125,9 @@ class Crate:
             base_sources = defs[base_name(name)[0]]
             for src in (s for s in base_sources if "generic" in s):
                 sources.add(src)
+
+            for src in IGNORED_SOURCES:
+                sources.discard(src)
 
         # Sort the set
         self.defs = {k: sorted(v) for (k, v) in defs.items()}
