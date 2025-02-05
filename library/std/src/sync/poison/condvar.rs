@@ -106,6 +106,7 @@ impl WaitTimeoutResult {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), rustc_significant_interior_mutable_type)]
 pub struct Condvar {
     inner: sys::Condvar,
 }

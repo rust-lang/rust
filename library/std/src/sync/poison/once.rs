@@ -32,6 +32,7 @@ use crate::sys::sync as sys;
 /// [`OnceLock<T>`]: crate::sync::OnceLock
 /// [`LazyLock<T, F>`]: crate::sync::LazyLock
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), rustc_significant_interior_mutable_type)]
 pub struct Once {
     inner: sys::Once,
 }
@@ -70,6 +71,7 @@ pub(crate) enum ExclusiveState {
     note = "the `Once::new()` function is now preferred",
     suggestion = "Once::new()"
 )]
+#[cfg_attr(not(bootstrap), expect(interior_mutable_consts))]
 pub const ONCE_INIT: Once = Once::new();
 
 impl Once {

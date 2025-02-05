@@ -890,6 +890,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "#[rustc_never_returns_null_ptr] is used to mark functions returning non-null pointers."
     ),
     rustc_attr!(
+        rustc_significant_interior_mutable_type, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::Yes,
+        "#[rustc_significant_interior_mutable_type] is used to mark type that are significant interior mutable types."
+    ),
+    rustc_attr!(
         rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
         "#![rustc_coherence_is_core] allows inherent methods on builtin types, only intended to be used in `core`."
     ),

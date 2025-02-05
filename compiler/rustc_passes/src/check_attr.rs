@@ -164,6 +164,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 [sym::rustc_never_returns_null_ptr, ..] => {
                     self.check_applied_to_fn_or_method(hir_id, attr, span, target)
                 }
+                [sym::rustc_significant_interior_mutable_type, ..] => {
+                    self.check_rustc_significant_interior_mutable_type(attr, span, target)
+                }
                 [sym::rustc_legacy_const_generics, ..] => {
                     self.check_rustc_legacy_const_generics(hir_id, attr, span, target, item)
                 }
@@ -1743,6 +1746,24 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_rustc_dirty_clean(&self, attr: &Attribute) {
         if !self.tcx.sess.opts.unstable_opts.query_dep_graph {
             self.dcx().emit_err(errors::RustcDirtyClean { span: attr.span });
+        }
+    }
+
+    /// Checks if `#[rustc_significant_interior_mutable_type]` is applied to a struct, enum, union, or trait.
+    fn check_rustc_significant_interior_mutable_type(
+        &self,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+    ) {
+        match target {
+            Target::Struct | Target::Enum | Target::Union => {}
+            _ => {
+                self.dcx().emit_err(errors::AttrShouldBeAppliedToStructEnum {
+                    attr_span: attr.span,
+                    span,
+                });
+            }
         }
     }
 
