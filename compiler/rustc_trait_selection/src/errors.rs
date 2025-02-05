@@ -1857,7 +1857,7 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
             new_params += name_as_bounds;
         }
 
-        let Some(generics) = tcx.hir().get_generics(fn_def_id) else {
+        let Some(generics) = tcx.hir_get_generics(fn_def_id) else {
             // This shouldn't happen, but don't ICE.
             return None;
         };

@@ -60,12 +60,12 @@ impl<'tcx> LateLintPass<'tcx> for AsyncYieldsAsync {
                 // XXXkhuey maybe we should?
                 return;
             },
-            CoroutineSource::Block => cx.tcx.hir().body(*body_id).value,
+            CoroutineSource::Block => cx.tcx.hir_body(*body_id).value,
             CoroutineSource::Closure => {
                 // Like `async fn`, async closures are wrapped in an additional block
                 // to move all of the closure's arguments into the future.
 
-                let async_closure_body = cx.tcx.hir().body(*body_id).value;
+                let async_closure_body = cx.tcx.hir_body(*body_id).value;
                 let ExprKind::Block(block, _) = async_closure_body.kind else {
                     return;
                 };

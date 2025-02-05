@@ -7,7 +7,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, CaptureBy, ExprKind, HirId, Node};
 use rustc_middle::bug;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{LookupResult, MovePathIndex};
 use rustc_span::{BytePos, ExpnKind, MacroKind, Span};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
@@ -347,7 +347,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // Find the closure that captured the binding.
         let mut expr_finder = FindExprBySpan::new(args_span, tcx);
         expr_finder.include_closures = true;
-        expr_finder.visit_expr(tcx.hir().body(body_id).value);
+        expr_finder.visit_expr(tcx.hir_body(body_id).value);
         let Some(closure_expr) = expr_finder.result else { return };
         let ExprKind::Closure(closure) = closure_expr.kind else { return };
         // We'll only suggest cloning the binding if it's a `move` closure.
@@ -357,7 +357,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let use_span = use_spans.var_or_use();
         let mut expr_finder = FindExprBySpan::new(use_span, tcx);
         expr_finder.include_closures = true;
-        expr_finder.visit_expr(tcx.hir().body(body_id).value);
+        expr_finder.visit_expr(tcx.hir_body(body_id).value);
         let Some(use_expr) = expr_finder.result else { return };
         let parent = tcx.parent_hir_node(use_expr.hir_id);
         if let Node::Expr(expr) = parent
@@ -690,7 +690,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         /// make it bind by reference instead (if possible)
         struct BindingFinder<'tcx> {
             typeck_results: &'tcx ty::TypeckResults<'tcx>,
-            hir: rustc_middle::hir::map::Map<'tcx>,
+            tcx: TyCtxt<'tcx>,
             /// Input: the span of the pattern we're finding bindings in
             pat_span: Span,
             /// Input: the spans of the bindings we're providing suggestions for
@@ -709,8 +709,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         impl<'tcx> Visitor<'tcx> for BindingFinder<'tcx> {
             type NestedFilter = rustc_middle::hir::nested_filter::OnlyBodies;
 
-            fn nested_visit_map(&mut self) -> Self::Map {
-                self.hir
+            fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+                self.tcx
             }
 
             fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) -> Self::Result {
@@ -782,7 +782,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
         let mut finder = BindingFinder {
             typeck_results,
-            hir,
+            tcx: self.infcx.tcx,
             pat_span,
             binding_spans,
             found_pat: false,

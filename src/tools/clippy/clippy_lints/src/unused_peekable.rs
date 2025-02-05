@@ -112,8 +112,8 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
     type NestedFilter = OnlyBodies;
     type Result = ControlFlow<()>;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) -> ControlFlow<()> {

@@ -143,8 +143,8 @@ impl<'tcx> Visitor<'tcx> for UnwrapVisitor<'_, 'tcx> {
         walk_path(self, path);
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }
 
@@ -174,7 +174,7 @@ impl<'tcx> Visitor<'tcx> for ReferenceVisitor<'_, 'tcx> {
         rustc_hir::intravisit::walk_expr(self, expr)
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }

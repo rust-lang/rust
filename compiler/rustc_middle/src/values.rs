@@ -53,7 +53,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
         let arity = if let Some(frame) = cycle_error.cycle.get(0)
             && frame.query.dep_kind == dep_kinds::fn_sig
             && let Some(def_id) = frame.query.def_id
-            && let Some(node) = tcx.hir().get_if_local(def_id)
+            && let Some(node) = tcx.hir_get_if_local(def_id)
             && let Some(sig) = node.fn_sig()
         {
             sig.decl.inputs.len()

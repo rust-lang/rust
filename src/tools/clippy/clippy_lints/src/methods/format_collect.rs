@@ -19,7 +19,7 @@ fn peel_non_expn_blocks<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, map_arg: &Expr<'_>, map_span: Span) {
     if is_type_lang_item(cx, cx.typeck_results().expr_ty(expr), LangItem::String)
         && let ExprKind::Closure(closure) = map_arg.kind
-        && let body = cx.tcx.hir().body(closure.body)
+        && let body = cx.tcx.hir_body(closure.body)
         && let Some(value) = peel_non_expn_blocks(body.value)
         && let Some(mac) = root_macro_call_first_node(cx, value)
         && is_format_macro(cx, mac.def_id)

@@ -37,7 +37,7 @@ pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>
             check_must_use_candidate(
                 cx,
                 sig.decl,
-                cx.tcx.hir().body(*body_id),
+                cx.tcx.hir_body(*body_id),
                 item.span,
                 item.owner_id,
                 item.span.with_hi(sig.decl.output.span().hi()),
@@ -59,7 +59,7 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
             check_must_use_candidate(
                 cx,
                 sig.decl,
-                cx.tcx.hir().body(*body_id),
+                cx.tcx.hir_body(*body_id),
                 item.span,
                 item.owner_id,
                 item.span.with_hi(sig.decl.output.span().hi()),
@@ -79,7 +79,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr, attrs, sig);
         } else if let hir::TraitFn::Provided(eid) = *eid {
-            let body = cx.tcx.hir().body(eid);
+            let body = cx.tcx.hir_body(eid);
             if attr.is_none() && is_public && !is_proc_macro(attrs) {
                 check_must_use_candidate(
                     cx,

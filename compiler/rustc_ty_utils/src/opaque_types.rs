@@ -125,7 +125,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
             #[instrument(level = "trace", skip(self))]
             // Recurse into these, as they are type checked with their parent
             fn visit_nested_body(&mut self, id: rustc_hir::BodyId) {
-                let body = self.collector.tcx.hir().body(id);
+                let body = self.collector.tcx.hir_body(id);
                 self.visit_body(body);
             }
         }

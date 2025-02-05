@@ -298,8 +298,8 @@ impl TaitConstraintLocator<'_> {
 impl<'tcx> intravisit::Visitor<'tcx> for TaitConstraintLocator<'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         if let hir::ExprKind::Closure(closure) = ex.kind {
@@ -441,8 +441,8 @@ impl RpitConstraintChecker<'_> {
 impl<'tcx> intravisit::Visitor<'tcx> for RpitConstraintChecker<'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         if let hir::ExprKind::Closure(closure) = ex.kind {

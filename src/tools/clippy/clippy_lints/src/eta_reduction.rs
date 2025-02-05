@@ -97,7 +97,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
         && matches!(c.fn_decl.output, FnRetTy::DefaultReturn(_))
         && !expr.span.from_expansion()
     {
-        cx.tcx.hir().body(c.body)
+        cx.tcx.hir_body(c.body)
     } else {
         return;
     };

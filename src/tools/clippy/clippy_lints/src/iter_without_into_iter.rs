@@ -142,7 +142,7 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
             })
             && let Some(iter_assoc_span) = imp.items.iter().find_map(|item| {
                 if item.ident.name.as_str() == "IntoIter" {
-                    Some(cx.tcx.hir().impl_item(item.id).expect_type().span)
+                    Some(cx.tcx.hir_impl_item(item.id).expect_type().span)
                 } else {
                     None
                 }
