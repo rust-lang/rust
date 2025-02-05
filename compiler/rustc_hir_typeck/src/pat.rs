@@ -570,8 +570,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_pat_expr_unadjusted(&self, lt: &'tcx hir::PatExpr<'tcx>) -> Ty<'tcx> {
         let ty = match &lt.kind {
-            rustc_hir::PatExprKind::Lit { lit, .. } => {
-                self.check_expr_lit(lit, Expectation::NoExpectation)
+            rustc_hir::PatExprKind::Lit { lit, negated } => {
+                let ty = self.check_expr_lit(lit, Expectation::NoExpectation);
+                if *negated {
+                    self.register_bound(
+                        ty,
+                        self.tcx.require_lang_item(LangItem::Neg, Some(lt.span)),
+                        ObligationCause::dummy_with_span(lt.span),
+                    );
+                }
+                ty
             }
             rustc_hir::PatExprKind::ConstBlock(c) => {
                 self.check_expr_const_block(c, Expectation::NoExpectation)
