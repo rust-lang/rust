@@ -1,6 +1,6 @@
 use clippy_utils::{get_attr, higher};
 use rustc_ast::LitIntType;
-use rustc_ast::ast::{LitFloatType, LitKind};
+use rustc_ast::ast::{LitFloatType, LitKind, Pinnedness};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
     self as hir, BindingMode, CaptureBy, Closure, ClosureKind, ConstArg, ConstArgKind, CoroutineKind, ExprKind,
@@ -683,6 +683,9 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                     BindingMode::REF_MUT => "REF_MUT",
                     BindingMode::MUT_REF => "MUT_REF",
                     BindingMode::MUT_REF_MUT => "MUT_REF_MUT",
+                    BindingMode::PIN_CONST => "PIN_CONST ",
+                    BindingMode::PIN_MUT => "PIN_MUT",
+                    BindingMode(_, Pinnedness::Pinned, _) => panic!("unsupported pinned binding mode"),
                 };
                 kind!("Binding(BindingMode::{ann}, _, {name}, {sub})");
                 self.ident(name);

@@ -681,7 +681,7 @@ fn resolve_local<'tcx>(
         // & expression, and its lifetime would be extended to the end of the block (due
         // to a different rule, not the below code).
         match pat.kind {
-            PatKind::Binding(hir::BindingMode(hir::ByRef::Yes(_), _), ..) => true,
+            PatKind::Binding(hir::BindingMode(hir::ByRef::Yes(_), _, _), ..) => true,
 
             PatKind::Struct(_, field_pats, _) => field_pats.iter().any(|fp| is_binding_pat(fp.pat)),
 
@@ -700,7 +700,7 @@ fn resolve_local<'tcx>(
             }
 
             PatKind::Ref(_, _)
-            | PatKind::Binding(hir::BindingMode(hir::ByRef::No, _), ..)
+            | PatKind::Binding(hir::BindingMode(hir::ByRef::No, _, _), ..)
             | PatKind::Wild
             | PatKind::Never
             | PatKind::Expr(_)

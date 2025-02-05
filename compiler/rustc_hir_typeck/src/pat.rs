@@ -804,7 +804,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Determine the binding mode...
         let bm = match user_bind_annot {
-            BindingMode(ByRef::No, Mutability::Mut) if matches!(def_br, ByRef::Yes(_)) => {
+            BindingMode(ByRef::No, pin, Mutability::Mut) if matches!(def_br, ByRef::Yes(_)) => {
                 // Only mention the experimental `mut_ref` feature if if we're in edition 2024 and
                 // using other experimental matching features compatible with it.
                 if pat.span.at_least_rust_2024()
@@ -821,7 +821,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .emit();
                     }
 
-                    BindingMode(def_br, Mutability::Mut)
+                    BindingMode(def_br, pin, Mutability::Mut)
                 } else {
                     // `mut` resets the binding mode on edition <= 2021
                     self.add_rust_2024_migration_desugared_pat(
@@ -830,11 +830,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ident.span,
                         "requires binding by-value, but the implicit default is by-reference",
                     );
-                    BindingMode(ByRef::No, Mutability::Mut)
+                    BindingMode(ByRef::No, pin, Mutability::Mut)
                 }
             }
-            BindingMode(ByRef::No, mutbl) => BindingMode(def_br, mutbl),
-            BindingMode(ByRef::Yes(_), _) => {
+            BindingMode(ByRef::No, pin, mutbl) => BindingMode(def_br, pin, mutbl),
+            BindingMode(ByRef::Yes(_), _, _) => {
                 if matches!(def_br, ByRef::Yes(_)) {
                     // `ref`/`ref mut` overrides the binding mode on edition <= 2021
                     self.add_rust_2024_migration_desugared_pat(
@@ -1056,7 +1056,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let PatKind::Ref(the_ref, _) = i.kind
                             && let PatKind::Binding(mt, _, ident, _) = the_ref.kind
                         {
-                            let BindingMode(_, mtblty) = mt;
+                            let BindingMode(_, _, mtblty) = mt;
                             err.span_suggestion_verbose(
                                 i.span,
                                 format!("consider removing `&{mutability}` from the pattern"),

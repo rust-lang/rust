@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx LetStmt<'tcx>) {
         if !local.span.is_desugaring(DesugaringKind::Async)
             // the pattern is a single by-value binding
-            && let PatKind::Binding(BindingMode(ByRef::No, mutability), _, ident, None) = local.pat.kind
+            && let PatKind::Binding(BindingMode(ByRef::No, _, mutability), _, ident, None) = local.pat.kind
             // the binding is not type-ascribed
             && local.ty.is_none()
             // the expression is a resolved path
@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
             && let Res::Local(binding_id) = cx.qpath_res(&qpath, expr.hir_id)
             && let Node::Pat(binding_pat) = cx.tcx.hir_node(binding_id)
             // the previous binding has the same mutability
-            && find_binding(binding_pat, ident).is_some_and(|bind| bind.1 == mutability)
+            && find_binding(binding_pat, ident).is_some_and(|bind| bind.2 == mutability)
             // the local does not change the effect of assignments to the binding. see #11290
             && !affects_assignments(cx, mutability, binding_id, local.hir_id)
             // the local does not affect the code's drop behavior

@@ -415,7 +415,7 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
         && !is_else_clause(cx.tcx, expr)
         && let PatKind::TupleStruct(ref path1, [field], ddpos) = let_pat.kind
         && ddpos.as_opt_usize().is_none()
-        && let PatKind::Binding(BindingMode(by_ref, _), bind_id, ident, None) = field.kind
+        && let PatKind::Binding(BindingMode(by_ref, _, _), bind_id, ident, None) = field.kind
         && let caller_ty = cx.typeck_results().expr_ty(let_expr)
         && let if_block = IfBlockType::IfLet(
             cx.qpath_res(path1, let_pat.hir_id),

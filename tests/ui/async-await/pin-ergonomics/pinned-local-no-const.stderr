@@ -1,0 +1,13 @@
+error: expected one of `:`, `;`, `=`, `@`, or `|`, found `x`
+  --> $DIR/pinned-local-no-const.rs:9:13
+   |
+LL |     let pin x = Foo;
+   |             ^ expected one of `:`, `;`, `=`, `@`, or `|`
+   |
+help: there is a keyword `in` with a similar name
+   |
+LL |     let in x = Foo;
+   |         ~~
+
+error: aborting due to 1 previous error
+

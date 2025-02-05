@@ -456,7 +456,7 @@ impl<'tcx> TypeckResults<'tcx> {
         let mut has_ref_mut = false;
         pat.walk(|pat| {
             if let hir::PatKind::Binding(_, id, _, _) = pat.kind
-                && let Some(BindingMode(ByRef::Yes(Mutability::Mut), _)) =
+                && let Some(BindingMode(ByRef::Yes(Mutability::Mut), _, _)) =
                     self.pat_binding_modes().get(id)
             {
                 has_ref_mut = true;

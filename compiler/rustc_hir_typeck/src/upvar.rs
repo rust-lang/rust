@@ -276,7 +276,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 else {
                     bug!();
                 };
-                let hir::PatKind::Binding(hir::BindingMode(hir::ByRef::No, _), _, _, _) = pat.kind
+                let hir::PatKind::Binding(hir::BindingMode(hir::ByRef::No, _, _), _, _, _) =
+                    pat.kind
                 else {
                     // Complex pattern, skip the non-upvar local.
                     continue;
@@ -1799,7 +1800,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let bm = *typeck_results.pat_binding_modes().get(var_hir_id).expect("missing binding mode");
 
-        let mut is_mutbl = bm.1;
+        let mut is_mutbl = bm.2;
 
         for pointer_ty in place.deref_tys() {
             match self.structurally_resolve_type(self.tcx.hir().span(var_hir_id), pointer_ty).kind()

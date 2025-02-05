@@ -1594,7 +1594,10 @@ impl<'a> State<'a> {
         match &pat.kind {
             PatKind::Wild => self.word("_"),
             PatKind::Never => self.word("!"),
-            PatKind::Ident(BindingMode(by_ref, mutbl), ident, sub) => {
+            PatKind::Ident(BindingMode(by_ref, pin, mutbl), ident, sub) => {
+                if pin.is_pin() {
+                    self.word_nbsp("pin");
+                }
                 if mutbl.is_mut() {
                     self.word_nbsp("mut");
                 }

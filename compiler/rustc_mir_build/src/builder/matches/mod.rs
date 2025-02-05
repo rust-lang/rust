@@ -583,7 +583,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<()> {
         match irrefutable_pat.kind {
             // Optimize the case of `let x = ...` to write directly into `x`
-            PatKind::Binding { mode: BindingMode(ByRef::No, _), var, subpattern: None, .. } => {
+            PatKind::Binding {
+                mode: BindingMode(ByRef::No, _, _), var, subpattern: None, ..
+            } => {
                 let place = self.storage_live_binding(
                     block,
                     var,
@@ -608,7 +610,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     box Pat {
                         kind:
                             PatKind::Binding {
-                                mode: BindingMode(ByRef::No, _),
+                                mode: BindingMode(ByRef::No, _, _),
                                 var,
                                 subpattern: None,
                                 ..
@@ -2765,7 +2767,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let tcx = self.tcx;
         let debug_source_info = SourceInfo { span: source_info.span, scope: visibility_scope };
         let local = LocalDecl {
-            mutability: mode.1,
+            mutability: mode.2,
             ty: var_ty,
             user_ty: if user_ty.is_empty() { None } else { Some(Box::new(user_ty)) },
             source_info,

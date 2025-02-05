@@ -24,7 +24,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
                 && (is_diag_item_method(cx, fn_id, sym::Option) || is_diag_item_method(cx, fn_id, sym::Result))))
         && let body = cx.tcx.hir().body(c.body)
         && let [param] = body.params
-        && let PatKind::Binding(BindingMode(ByRef::No, Mutability::Not), arg_id, _, None) = param.pat.kind
+        && let PatKind::Binding(BindingMode(ByRef::No, _, Mutability::Not), arg_id, _, None) = param.pat.kind
         && let arg_ty = typeck.node_type(arg_id)
         && let ExprKind::Block(block, _) = body.value.kind
         && let Some(final_expr) = block.expr

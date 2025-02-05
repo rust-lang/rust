@@ -187,7 +187,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 })
                 && !implements_borrow_trait
                 && !all_borrowable_trait
-                && let PatKind::Binding(BindingMode(_, Mutability::Not), canonical_id, ..) = arg.pat.kind
+                && let PatKind::Binding(BindingMode(_, _, Mutability::Not), canonical_id, ..) = arg.pat.kind
                 && !moved_vars.contains(&canonical_id)
             {
                 // Dereference suggestion

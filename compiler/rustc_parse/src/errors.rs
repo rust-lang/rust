@@ -2617,6 +2617,27 @@ pub(crate) enum InvalidMutInPattern {
 }
 
 #[derive(Diagnostic)]
+pub(crate) enum InvalidPinInPattern {
+    #[diag(parse_pin_on_nested_ident_pattern)]
+    #[note(parse_note_pin_pattern_usage)]
+    NestedIdent {
+        #[primary_span]
+        #[suggestion(code = "{pat}", applicability = "machine-applicable", style = "verbose")]
+        span: Span,
+        mutbl: &'static str,
+        pat: String,
+    },
+    #[diag(parse_pin_on_non_ident_pattern)]
+    #[note(parse_note_pin_pattern_usage)]
+    NonIdent {
+        #[primary_span]
+        #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
+        span: Span,
+        mutbl: &'static str,
+    },
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_repeated_mut_in_pattern)]
 pub(crate) struct RepeatedMutInPattern {
     #[primary_span]

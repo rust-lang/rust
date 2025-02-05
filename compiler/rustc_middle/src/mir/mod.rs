@@ -1126,7 +1126,7 @@ impl<'tcx> LocalDecl<'tcx> {
             self.local_info(),
             LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
-                    binding_mode: BindingMode(ByRef::No, _),
+                    binding_mode: BindingMode(ByRef::No, _, _),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
@@ -1143,7 +1143,7 @@ impl<'tcx> LocalDecl<'tcx> {
             self.local_info(),
             LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
-                    binding_mode: BindingMode(ByRef::No, _),
+                    binding_mode: BindingMode(ByRef::No, _, _),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
