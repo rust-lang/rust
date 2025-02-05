@@ -132,6 +132,7 @@ libm_macros::for_each_function! {
     emit_types: [RustFn],
     skip: [
         // Most of these need a manual implementation
+        // verify-sorted-start
         ceil,
         ceilf,
         ceilf128,
@@ -188,6 +189,7 @@ libm_macros::for_each_function! {
         truncf128,
         truncf16,yn,
         ynf,
+        // verify-sorted-end
     ],
     fn_extra: match MACRO_FN_NAME {
         // Remap function names that are different between mpfr and libm

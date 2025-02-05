@@ -8,21 +8,31 @@ needed, or that lists are sorted.
 
 import difflib
 import json
+import re
 import subprocess as sp
 import sys
 from dataclasses import dataclass
-from glob import glob
+from glob import glob, iglob
 from pathlib import Path
-from typing import Any, TypeAlias
+from typing import Any, Callable, TypeAlias
 
-ETC_DIR = Path(__file__).parent
+SELF_PATH = Path(__file__)
+ETC_DIR = SELF_PATH.parent
 ROOT_DIR = ETC_DIR.parent
+
+# Loose approximation of what gets checked in to git, without needing `git ls-files`.
+DIRECTORIES = [".github", "ci", "crates", "etc", "src"]
 
 # These files do not trigger a retest.
 IGNORED_SOURCES = ["src/libm_helper.rs"]
 
 IndexTy: TypeAlias = dict[str, dict[str, Any]]
 """Type of the `index` item in rustdoc's JSON output"""
+
+
+def eprint(*args, **kwargs):
+    """Print to stderr."""
+    print(*args, file=sys.stderr, **kwargs)
 
 
 @dataclass
@@ -146,7 +156,7 @@ class Crate:
         if check:
             with open(out_file, "r") as f:
                 current = f.read()
-            diff_and_exit(current, output)
+            diff_and_exit(current, output, "function list")
         else:
             with open(out_file, "w") as f:
                 f.write(output)
@@ -171,18 +181,115 @@ class Crate:
         if check:
             with open(out_file, "r") as f:
                 current = f.read()
-            diff_and_exit(current, output)
+            diff_and_exit(current, output, "source list")
         else:
             with open(out_file, "w") as f:
                 f.write(output)
 
+    def tidy_lists(self) -> None:
+        """In each file, check annotations indicating blocks of code should be sorted or should
+        include all public API.
+        """
+        for dirname in DIRECTORIES:
+            dir = ROOT_DIR.joinpath(dirname)
+            for fname in iglob("**", root_dir=dir, recursive=True):
+                fpath = dir.joinpath(fname)
+                if fpath.is_dir() or fpath == SELF_PATH:
+                    continue
 
-def diff_and_exit(actual: str, expected: str):
+                lines = fpath.read_text().splitlines()
+
+                validate_delimited_block(
+                    fpath,
+                    lines,
+                    "verify-sorted-start",
+                    "verify-sorted-end",
+                    ensure_sorted,
+                )
+
+                validate_delimited_block(
+                    fpath,
+                    lines,
+                    "verify-apilist-start",
+                    "verify-apilist-end",
+                    lambda p, n, lines: self.ensure_contains_api(p, n, lines),
+                )
+
+    def ensure_contains_api(self, fpath: Path, line_num: int, lines: list[str]):
+        """Given a list of strings, ensure that each public function we have is named
+        somewhere.
+        """
+        not_found = []
+        for func in self.public_functions:
+            # The function name may be on its own or somewhere in a snake case string.
+            pat = re.compile(rf"(\b|_){func}(\b|_)")
+            found = next((line for line in lines if pat.search(line)), None)
+
+            if found is None:
+                not_found.append(func)
+
+        if len(not_found) == 0:
+            return
+
+        relpath = fpath.relative_to(ROOT_DIR)
+        eprint(f"functions not found at {relpath}:{line_num}: {not_found}")
+        exit(1)
+
+
+def validate_delimited_block(
+    fpath: Path,
+    lines: list[str],
+    start: str,
+    end: str,
+    validate: Callable[[Path, int, list[str]], None],
+) -> None:
+    """Identify blocks of code wrapped within `start` and `end`, collect their contents
+    to a list of strings, and call `validate` for each of those lists.
+    """
+    relpath = fpath.relative_to(ROOT_DIR)
+    block_lines = []
+    block_start_line: None | int = None
+    for line_num, line in enumerate(lines):
+        line_num += 1
+
+        if start in line:
+            block_start_line = line_num
+            continue
+
+        if end in line:
+            if block_start_line is None:
+                eprint(f"`{end}` without `{start}` at {relpath}:{line_num}")
+                exit(1)
+
+            validate(fpath, block_start_line, block_lines)
+            block_lines = []
+            block_start_line = None
+            continue
+
+        if block_start_line is not None:
+            block_lines.append(line)
+
+    if block_start_line is not None:
+        eprint(f"`{start}` without `{end}` at {relpath}:{block_start_line}")
+        exit(1)
+
+
+def ensure_sorted(fpath: Path, block_start_line: int, lines: list[str]) -> None:
+    """Ensure that a list of lines is sorted, otherwise print a diff and exit."""
+    relpath = fpath.relative_to(ROOT_DIR)
+    diff_and_exit(
+        "".join(lines),
+        "".join(sorted(lines)),
+        f"sorted block at {relpath}:{block_start_line}",
+    )
+
+
+def diff_and_exit(actual: str, expected: str, name: str):
     """If the two strings are different, print a diff between them and then exit
     with an error.
     """
     if actual == expected:
-        print("output matches expected; success")
+        print(f"{name} output matches expected; success")
         return
 
     a = [f"{line}\n" for line in actual.splitlines()]
@@ -190,7 +297,7 @@ def diff_and_exit(actual: str, expected: str):
 
     diff = difflib.unified_diff(a, b, "actual", "expected")
     sys.stdout.writelines(diff)
-    print("mismatched function list")
+    print(f"mismatched {name}")
     exit(1)
 
 
@@ -223,22 +330,30 @@ def base_name(name: str) -> tuple[str, str]:
     return (name, "f64")
 
 
+def ensure_updated_list(check: bool) -> None:
+    """Runner to update the function list and JSON, or check that it is already up
+    to date.
+    """
+    crate = Crate()
+    crate.write_function_list(check)
+    crate.write_function_defs(check)
+
+    if check:
+        crate.tidy_lists()
+
+
 def main():
     """By default overwrite the file. If `--check` is passed, print a diff instead and
     error if the files are different.
     """
     match sys.argv:
         case [_]:
-            check = False
+            ensure_updated_list(False)
         case [_, "--check"]:
-            check = True
+            ensure_updated_list(True)
         case _:
             print("unrecognized arguments")
             exit(1)
-
-    crate = Crate()
-    crate.write_function_list(check)
-    crate.write_function_defs(check)
 
 
 if __name__ == "__main__":

@@ -44,9 +44,11 @@ macro_rules! libm_helper {
     };
 }
 
+// verify-apilist-start
 libm_helper! {
     f32,
     funcs: {
+        // verify-sorted-start
         (fn acos(x: f32) -> (f32);                  => acosf);
         (fn acosh(x: f32) -> (f32);                 => acoshf);
         (fn asin(x: f32) -> (f32);                  => asinf);
@@ -62,8 +64,8 @@ libm_helper! {
         (fn erf(x: f32) -> (f32);                   => erff);
         (fn erfc(x: f32) -> (f32);                  => erfcf);
         (fn exp(x: f32) -> (f32);                   => expf);
-        (fn exp2(x: f32) -> (f32);                  => exp2f);
         (fn exp10(x: f32) -> (f32);                 => exp10f);
+        (fn exp2(x: f32) -> (f32);                  => exp2f);
         (fn expm1(x: f32) -> (f32);                 => expm1f);
         (fn fabs(x: f32) -> (f32);                  => fabsf);
         (fn fdim(x: f32, y: f32) -> (f32);          => fdimf);
@@ -79,12 +81,12 @@ libm_helper! {
         (fn j1(x: f32) -> (f32);                    => j1f);
         (fn jn(n: i32, x: f32) -> (f32);            => jnf);
         (fn ldexp(x: f32, n: i32) -> (f32);         => ldexpf);
-        (fn lgamma_r(x: f32) -> (f32, i32);         => lgammaf_r);
         (fn lgamma(x: f32) -> (f32);                => lgammaf);
+        (fn lgamma_r(x: f32) -> (f32, i32);         => lgammaf_r);
         (fn log(x: f32) -> (f32);                   => logf);
+        (fn log10(x: f32) -> (f32);                 => log10f);
         (fn log1p(x: f32) -> (f32);                 => log1pf);
         (fn log2(x: f32) -> (f32);                  => log2f);
-        (fn log10(x: f32) -> (f32);                 => log10f);
         (fn modf(x: f32) -> (f32, f32);             => modff);
         (fn nextafter(x: f32, y: f32) -> (f32);     => nextafterf);
         (fn pow(x: f32, y: f32) -> (f32);           => powf);
@@ -104,12 +106,14 @@ libm_helper! {
         (fn y0(x: f32) -> (f32);                    => y0f);
         (fn y1(x: f32) -> (f32);                    => y1f);
         (fn yn(n: i32, x: f32) -> (f32);            => ynf);
+        // verify-sorted-end
     }
 }
 
 libm_helper! {
     f64,
     funcs: {
+        // verify-sorted-start
         (fn acos(x: f64) -> (f64);                  => acos);
         (fn acosh(x: f64) -> (f64);                 => acosh);
         (fn asin(x: f64) -> (f64);                  => asin);
@@ -125,8 +129,8 @@ libm_helper! {
         (fn erf(x: f64) -> (f64);                   => erf);
         (fn erfc(x: f64) -> (f64);                  => erfc);
         (fn exp(x: f64) -> (f64);                   => exp);
-        (fn exp2(x: f64) -> (f64);                  => exp2);
         (fn exp10(x: f64) -> (f64);                 => exp10);
+        (fn exp2(x: f64) -> (f64);                  => exp2);
         (fn expm1(x: f64) -> (f64);                 => expm1);
         (fn fabs(x: f64) -> (f64);                  => fabs);
         (fn fdim(x: f64, y: f64) -> (f64);          => fdim);
@@ -142,12 +146,12 @@ libm_helper! {
         (fn j1(x: f64) -> (f64);                    => j1);
         (fn jn(n: i32, x: f64) -> (f64);            => jn);
         (fn ldexp(x: f64, n: i32) -> (f64);         => ldexp);
-        (fn lgamma_r(x: f64) -> (f64, i32);         => lgamma_r);
         (fn lgamma(x: f64) -> (f64);                => lgamma);
+        (fn lgamma_r(x: f64) -> (f64, i32);         => lgamma_r);
         (fn log(x: f64) -> (f64);                   => log);
+        (fn log10(x: f64) -> (f64);                 => log10);
         (fn log1p(x: f64) -> (f64);                 => log1p);
         (fn log2(x: f64) -> (f64);                  => log2);
-        (fn log10(x: f64) -> (f64);                 => log10);
         (fn modf(x: f64) -> (f64, f64);             => modf);
         (fn nextafter(x: f64, y: f64) -> (f64);     => nextafter);
         (fn pow(x: f64, y: f64) -> (f64);           => pow);
@@ -167,6 +171,7 @@ libm_helper! {
         (fn y0(x: f64) -> (f64);                    => y0);
         (fn y1(x: f64) -> (f64);                    => y1);
         (fn yn(n: i32, x: f64) -> (f64);            => yn);
+        // verify-sorted-end
     }
 }
 
@@ -174,9 +179,22 @@ libm_helper! {
 libm_helper! {
     f16,
     funcs: {
+        // verify-sorted-start
+        (fn ceilf(x: f16) -> (f16);                 => ceilf16);
         (fn copysign(x: f16, y: f16) -> (f16);      => copysignf16);
         (fn fabs(x: f16) -> (f16);                  => fabsf16);
         (fn fdim(x: f16, y: f16) -> (f16);          => fdimf16);
+        (fn floorf(x: f16) -> (f16);                => floorf16);
+        (fn fmaxf(x: f16, y: f16) -> (f16);         => fmaxf16);
+        (fn fminf(x: f16, y: f16) -> (f16);         => fminf16);
+        (fn fmodf(x: f16, y: f16) -> (f16);         => fmodf16);
+        (fn ldexpf16(x: f16, n: i32) -> (f16);      => ldexpf16);
+        (fn rintf(x: f16) -> (f16);                 => rintf16);
+        (fn roundf(x: f16) -> (f16);                => roundf16);
+        (fn scalbnf16(x: f16, n: i32) -> (f16);     => ldexpf16);
+        (fn sqrtf(x: f16) -> (f16);                 => sqrtf16);
+        (fn truncf(x: f16) -> (f16);                => truncf16);
+        // verify-sorted-end
     }
 }
 
@@ -184,8 +202,22 @@ libm_helper! {
 libm_helper! {
     f128,
     funcs: {
+        // verify-sorted-start
+        (fn ceil(x: f128) -> (f128);                => ceilf128);
         (fn copysign(x: f128, y: f128) -> (f128);   => copysignf128);
         (fn fabs(x: f128) -> (f128);                => fabsf128);
         (fn fdim(x: f128, y: f128) -> (f128);       => fdimf128);
+        (fn floor(x: f128) -> (f128);               => floorf128);
+        (fn fmax(x: f128, y: f128) -> (f128);       => fmaxf128);
+        (fn fmin(x: f128, y: f128) -> (f128);       => fminf128);
+        (fn fmod(x: f128, y: f128) -> (f128);       => fmodf128);
+        (fn ldexpf128(x: f128, n: i32) -> (f128);   => ldexpf128);
+        (fn rint(x: f128) -> (f128);                => rintf128);
+        (fn round(x: f128) -> (f128);               => roundf128);
+        (fn scalbnf128(x: f128, n: i32) -> (f128);  => ldexpf128);
+        (fn sqrt(x: f128) -> (f128);                => sqrtf128);
+        (fn trunc(x: f128) -> (f128);               => truncf128);
+        // verify-sorted-end
     }
 }
+// verify-apilist-end
