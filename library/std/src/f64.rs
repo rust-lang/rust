@@ -122,7 +122,7 @@ impl f64 {
     #[stable(feature = "round_ties_even", since = "1.77.0")]
     #[inline]
     pub fn round_ties_even(self) -> f64 {
-        unsafe { intrinsics::rintf64(self) }
+        unsafe { intrinsics::round_ties_even_f64(self) }
     }
 
     /// Returns the integer part of `self`.
