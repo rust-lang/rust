@@ -6,10 +6,22 @@ fn mem_replace(_1: &mut u32, _2: u32) -> u32 {
     let mut _0: u32;
     scope 1 (inlined std::mem::replace::<u32>) {
         scope 2 {
-            scope 4 (inlined std::ptr::write::<u32>) {
+            scope 7 (inlined std::ptr::write::<u32>) {
+                scope 8 (inlined core::ub_checks::check_language_ub) {
+                    scope 9 (inlined core::ub_checks::check_language_ub::runtime) {
+                    }
+                }
+                scope 10 (inlined align_of::<u32>) {
+                }
             }
         }
         scope 3 (inlined std::ptr::read::<u32>) {
+            scope 4 (inlined core::ub_checks::check_language_ub) {
+                scope 5 (inlined core::ub_checks::check_language_ub::runtime) {
+                }
+            }
+            scope 6 (inlined align_of::<u32>) {
+            }
         }
     }
 
