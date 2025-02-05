@@ -1240,6 +1240,17 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.push(42);
     /// assert!(vec.capacity() >= 10);
     /// ```
+    ///
+    /// ```
+    /// #[derive(Clone)]
+    /// struct ZeroSized;
+    ///
+    /// fn main() {
+    ///     assert_eq!(std::mem::size_of::<ZeroSized>(), 0);
+    ///     let v = vec![ZeroSized; 0];
+    ///     assert_eq!(v.capacity(), usize::MAX);
+    /// }
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
