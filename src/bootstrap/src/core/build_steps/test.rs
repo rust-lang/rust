@@ -1648,16 +1648,17 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // bootstrap compiler.
         // NOTE: Only stage 1 is special cased because we need the rustc_private artifacts to match the
         // running compiler in stage 2 when plugins run.
-        let stage_id = if suite == "ui-fulldeps" && compiler.stage == 1 {
-            // At stage 0 (stage - 1) we are using the beta compiler. Using `self.target` can lead finding
-            // an incorrect compiler path on cross-targets, as the stage 0 beta compiler is always equal
-            // to `build.build` in the configuration.
+        let (stage, stage_id) = if suite == "ui-fulldeps" && compiler.stage == 1 {
+            // At stage 0 (stage - 1) we are using the beta compiler. Using `self.target` can lead
+            // finding an incorrect compiler path on cross-targets, as the stage 0 beta compiler is
+            // always equal to `build.build` in the configuration.
             let build = builder.build.build;
-
             compiler = builder.compiler(compiler.stage - 1, build);
-            format!("stage{}-{}", compiler.stage + 1, build)
+            let test_stage = compiler.stage + 1;
+            (test_stage, format!("stage{}-{}", test_stage, build))
         } else {
-            format!("stage{}-{}", compiler.stage, target)
+            let stage = compiler.stage;
+            (stage, format!("stage{}-{}", stage, target))
         };
 
         if suite.ends_with("fulldeps") {
@@ -1698,6 +1699,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         // compiletest currently has... a lot of arguments, so let's just pass all
         // of them!
+
+        cmd.arg("--stage").arg(stage.to_string());
+        cmd.arg("--stage-id").arg(stage_id);
 
         cmd.arg("--compile-lib-path").arg(builder.rustc_libdir(compiler));
         cmd.arg("--run-lib-path").arg(builder.sysroot_target_libdir(compiler, target));
@@ -1767,8 +1771,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         } else {
             builder.sysroot(compiler).to_path_buf()
         };
+
         cmd.arg("--sysroot-base").arg(sysroot);
-        cmd.arg("--stage-id").arg(stage_id);
+
         cmd.arg("--suite").arg(suite);
         cmd.arg("--mode").arg(mode);
         cmd.arg("--target").arg(target.rustc_target_arg());

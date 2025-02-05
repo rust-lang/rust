@@ -239,30 +239,6 @@ impl TestCx<'_> {
             }
         }
 
-        // `self.config.stage_id` looks like `stage1-<target_triple>`, but we only want
-        // the `stage1` part as that is what the output directories of bootstrap are prefixed with.
-        // Note that this *assumes* build layout from bootstrap is produced as:
-        //
-        // ```
-        // build/<target_triple>/          // <- this is `build_root`
-        // ├── stage0
-        // ├── stage0-bootstrap-tools
-        // ├── stage0-codegen
-        // ├── stage0-rustc
-        // ├── stage0-std
-        // ├── stage0-sysroot
-        // ├── stage0-tools
-        // ├── stage0-tools-bin
-        // ├── stage1
-        // ├── stage1-std
-        // ├── stage1-tools
-        // ├── stage1-tools-bin
-        // └── test
-        // ```
-        // FIXME(jieyouxu): improve the communication between bootstrap and compiletest here so
-        // we don't have to hack out a `stageN`.
-        let stage = self.config.stage_id.split('-').next().unwrap();
-
         // In order to link in the support library as a rlib when compiling recipes, we need three
         // paths:
         // 1. Path of the built support library rlib itself.
@@ -284,10 +260,12 @@ impl TestCx<'_> {
         // support lib and its deps are organized, can't we copy them to the tools-bin dir as
         // well?), but this seems to work for now.
 
-        let stage_tools_bin = build_root.join(format!("{stage}-tools-bin"));
+        let stage_number = self.config.stage;
+
+        let stage_tools_bin = build_root.join(format!("stage{stage_number}-tools-bin"));
         let support_lib_path = stage_tools_bin.join("librun_make_support.rlib");
 
-        let stage_tools = build_root.join(format!("{stage}-tools"));
+        let stage_tools = build_root.join(format!("stage{stage_number}-tools"));
         let support_lib_deps = stage_tools.join(&self.config.host).join("release").join("deps");
         let support_lib_deps_deps = stage_tools.join("release").join("deps");
 
@@ -368,7 +346,7 @@ impl TestCx<'_> {
         // provided through env vars.
 
         // Compute stage-specific standard library paths.
-        let stage_std_path = build_root.join(&stage).join("lib");
+        let stage_std_path = build_root.join(format!("stage{stage_number}")).join("lib");
 
         // Compute dynamic library search paths for recipes.
         let recipe_dylib_search_paths = {
