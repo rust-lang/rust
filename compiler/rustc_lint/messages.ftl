@@ -390,9 +390,6 @@ lint_improper_ctypes_only_phantomdata = composed only of `PhantomData`
 
 lint_improper_ctypes_opaque = opaque types have no C equivalent
 
-lint_improper_ctypes_pat_help = consider using the base type instead
-
-lint_improper_ctypes_pat_reason = pattern types have no C equivalent
 lint_improper_ctypes_slice_help = consider using a raw pointer instead
 
 lint_improper_ctypes_slice_reason = slices have no C equivalent

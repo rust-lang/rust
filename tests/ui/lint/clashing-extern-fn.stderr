@@ -17,6 +17,15 @@ LL |             fn hidden_niche_unsafe_cell() -> Option<UnsafeCell<NonZero<usiz
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
    = note: enum has no representation hint
 
+warning: `extern` block uses type `Option<(usize) is 0..=>`, which is not FFI-safe
+  --> $DIR/clashing-extern-fn.rs:502:54
+   |
+LL |             fn pt_non_zero_usize_opt_full_range() -> Option<pattern_type!(usize is 0..)>;
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
+   = note: enum has no representation hint
+
 warning: `clash` redeclared with a different signature
   --> $DIR/clashing-extern-fn.rs:13:13
    |
@@ -258,5 +267,17 @@ LL |             fn hidden_niche_unsafe_cell() -> Option<UnsafeCell<NonZero<usiz
    = note: expected `unsafe extern "C" fn() -> usize`
               found `unsafe extern "C" fn() -> Option<UnsafeCell<NonZero<usize>>>`
 
-warning: 22 warnings emitted
+warning: `pt_non_null_ptr` redeclared with a different signature
+  --> $DIR/clashing-extern-fn.rs:516:13
+   |
+LL |             fn pt_non_null_ptr() -> pattern_type!(usize is 1..);
+   |             ---------------------------------------------------- `pt_non_null_ptr` previously declared here
+...
+LL |             fn pt_non_null_ptr() -> *const ();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+   = note: expected `unsafe extern "C" fn() -> (usize) is 1..=`
+              found `unsafe extern "C" fn() -> *const ()`
+
+warning: 24 warnings emitted
 
