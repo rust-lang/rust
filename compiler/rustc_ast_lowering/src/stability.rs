@@ -40,7 +40,7 @@ pub(crate) fn gate_unstable_abi(sess: &Session, features: &Features, span: Span,
     }
 }
 
-pub(crate) struct UnstableAbi {
+pub struct UnstableAbi {
     abi: ExternAbi,
     feature: Symbol,
     explain: GateReason,
@@ -70,7 +70,7 @@ impl fmt::Display for UnstableAbi {
     }
 }
 
-pub(crate) fn extern_abi_stability(abi: ExternAbi) -> Result<(), UnstableAbi> {
+pub fn extern_abi_stability(abi: ExternAbi) -> Result<(), UnstableAbi> {
     match abi {
         // stable ABIs
         ExternAbi::Rust

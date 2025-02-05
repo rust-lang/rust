@@ -4,6 +4,7 @@
 use std::mem::replace;
 use std::num::NonZero;
 
+use rustc_ast_lowering::stability::extern_abi_stability;
 use rustc_attr_parsing::{
     self as attr, ConstStability, DeprecatedSince, Stability, StabilityLevel, StableSince,
     UnstableReason, VERSION_PLACEHOLDER,
@@ -1027,8 +1028,8 @@ impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
         if let TyKind::Never = t.kind {
             self.fully_stable = false;
         }
-        if let TyKind::BareFn(f) = t.kind {
-            if rustc_target::spec::abi::is_stable(f.abi.name()).is_err() {
+        if let TyKind::BareFn(function) = t.kind {
+            if extern_abi_stability(function.abi).is_err() {
                 self.fully_stable = false;
             }
         }
