@@ -1,23 +1,22 @@
 use libc::{c_int, c_void, size_t};
 
 use self::netc::{MSG_PEEK, sockaddr, socklen_t};
-use super::abi;
 use crate::ffi::CStr;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::solid::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd};
-use crate::sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr};
+use crate::sys::abi;
+use crate::sys::net::{getsockopt, setsockopt, sockaddr_to_addr};
 use crate::sys_common::{FromInner, IntoInner};
 use crate::time::Duration;
 use crate::{cmp, mem, ptr, str};
 
 pub mod netc {
-    pub use super::super::abi::sockets::*;
+    pub use crate::sys::abi::sockets::*;
 }
 
+#[expect(non_camel_case_types)]
 pub type wrlen_t = size_t;
-
-const READ_LIMIT: usize = libc::ssize_t::MAX as usize;
 
 const fn max_iov() -> usize {
     // Judging by the source code, it's unlimited, but specify a lower
@@ -78,7 +77,7 @@ fn last_error() -> io::Error {
     io::Error::from_raw_os_error(unsafe { netc::SOLID_NET_GetLastError() })
 }
 
-pub(super) fn error_name(er: abi::ER) -> Option<&'static str> {
+pub fn error_name(er: abi::ER) -> Option<&'static str> {
     unsafe { CStr::from_ptr(netc::strerror(er)) }.to_str().ok()
 }
 
@@ -87,7 +86,7 @@ pub fn is_interrupted(er: abi::ER) -> bool {
     er == netc::SOLID_NET_ERR_BASE - libc::EINTR
 }
 
-pub(super) fn decode_error_kind(er: abi::ER) -> ErrorKind {
+pub fn decode_error_kind(er: abi::ER) -> ErrorKind {
     let errno = netc::SOLID_NET_ERR_BASE - er;
     match errno as libc::c_int {
         libc::ECONNREFUSED => ErrorKind::ConnectionRefused,
@@ -266,17 +265,6 @@ impl Socket {
 
     pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.recv_from_with_flags(buf, MSG_PEEK)
-    }
-
-    pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        let ret = cvt(unsafe {
-            netc::write(
-                self.as_raw_fd(),
-                buf.as_ptr() as *const c_void,
-                cmp::min(buf.len(), READ_LIMIT),
-            )
-        })?;
-        Ok(ret as usize)
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
