@@ -15,12 +15,12 @@ error[E0080]: evaluation of constant value failed
 LL | const X: () = f(1);
    |               ^^^^ reached the configured maximum number of stack frames
    |
-note: [... 126 additional calls called from `f::<i32>` ...]
+note: [... 126 additional calls inside `f::<i32>` ...]
   --> $DIR/recursive.rs:4:5
    |
 LL |     f(x);
    |     ^^^^
-note: called from `f::<i32>`
+note: inside `f::<i32>`
   --> $DIR/recursive.rs:4:5
    |
 LL |     f(x);

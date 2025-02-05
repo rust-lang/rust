@@ -6,7 +6,7 @@ LL |     core::intrinsics::abort();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ the program aborted execution
    |
    = note: BACKTRACE:
-   = note: called from `alloc_error_handler` at tests/fail/alloc/alloc_error_handler_custom.rs:LL:CC
+   = note: inside `alloc_error_handler` at tests/fail/alloc/alloc_error_handler_custom.rs:LL:CC
 note: inside `_::__rg_oom`
   --> tests/fail/alloc/alloc_error_handler_custom.rs:LL:CC
    |
@@ -14,8 +14,8 @@ LL | #[alloc_error_handler]
    | ---------------------- in this procedural macro expansion
 LL | fn alloc_error_handler(layout: Layout) -> ! {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: called from `alloc::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: called from `alloc::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `alloc::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `alloc::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
 note: inside `miri_start`
   --> tests/fail/alloc/alloc_error_handler_custom.rs:LL:CC
    |

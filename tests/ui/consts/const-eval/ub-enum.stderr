@@ -122,7 +122,7 @@ error[E0080]: evaluation of constant value failed
 LL |     unsafe { std::mem::discriminant(&*(&() as *const () as *const Never)); };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ read discriminant of an uninhabited enum variant
    |
-note: called from `discriminant::<Never>`
+note: inside `discriminant::<Never>`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 error: aborting due to 14 previous errors

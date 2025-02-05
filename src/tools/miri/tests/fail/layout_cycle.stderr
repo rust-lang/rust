@@ -11,7 +11,7 @@ LL |     intrinsics::size_of::<T>()
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ a cycle occurred during layout computation
    |
    = note: BACKTRACE:
-   = note: called from `std::mem::size_of::<S<S<()>>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
+   = note: inside `std::mem::size_of::<S<S<()>>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
 note: inside `foo::<S<()>>`
   --> tests/fail/layout_cycle.rs:LL:CC
    |

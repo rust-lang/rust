@@ -4,7 +4,7 @@ error[E0080]: evaluation of constant value failed
 LL | const FOO: [empty::Empty; 3] = [foo(); 3];
    |                                 ^^^^^ constructing invalid value: encountered a value of the never type `!`
    |
-note: called from `foo`
+note: inside `foo`
   --> $DIR/validate_uninhabited_zsts.rs:2:14
    |
 LL |     unsafe { std::mem::transmute(()) }

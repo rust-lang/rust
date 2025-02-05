@@ -103,7 +103,7 @@ const_eval_frame_note = {$times ->
     *[other] [... {$times} additional calls {const_eval_frame_note_inner} ...]
 }
 
-const_eval_frame_note_inner = called from {$where_ ->
+const_eval_frame_note_inner = inside {$where_ ->
     [closure] closure
     [instance] `{$instance}`
     *[other] {""}

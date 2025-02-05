@@ -105,9 +105,9 @@ error[E0080]: could not evaluate static initializer
 LL | pub static R1: &[()] = unsafe { from_ptr_range(ptr::null()..ptr::null()) }; // errors inside libcore
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ panic: assertion failed: 0 < pointee_size && pointee_size <= isize::MAX as usize
    |
-note: called from `from_ptr_range::<'_, ()>`
+note: inside `from_ptr_range::<'_, ()>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: called from `std::ptr::const_ptr::<impl *const ()>::sub_ptr`
+note: inside `std::ptr::const_ptr::<impl *const ()>::sub_ptr`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -117,7 +117,7 @@ error[E0080]: could not evaluate static initializer
 LL |     from_ptr_range(ptr..ptr.add(2)) // errors inside libcore
    |                         ^^^^^^^^^^ out-of-bounds pointer arithmetic: expected a pointer to 8 bytes of memory, but got ALLOC10 which is only 4 bytes from the end of the allocation
    |
-note: called from `std::ptr::const_ptr::<impl *const u32>::add`
+note: inside `std::ptr::const_ptr::<impl *const u32>::add`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 
 error[E0080]: it is undefined behavior to use this value
@@ -172,7 +172,7 @@ error[E0080]: could not evaluate static initializer
 LL |     from_ptr_range(ptr..ptr.add(1))
    |                         ^^^^^^^^^^ out-of-bounds pointer arithmetic: expected a pointer to 8 bytes of memory, but got ALLOC11+0x1 which is only 7 bytes from the end of the allocation
    |
-note: called from `std::ptr::const_ptr::<impl *const u64>::add`
+note: inside `std::ptr::const_ptr::<impl *const u64>::add`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 
 error[E0080]: could not evaluate static initializer
@@ -181,9 +181,9 @@ error[E0080]: could not evaluate static initializer
 LL | pub static R9: &[u32] = unsafe { from_ptr_range(&D0..(&D0 as *const u32).add(1)) };
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from_unsigned` called on two different pointers that are not both derived from the same allocation
    |
-note: called from `from_ptr_range::<'_, u32>`
+note: inside `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: called from `std::ptr::const_ptr::<impl *const u32>::sub_ptr`
+note: inside `std::ptr::const_ptr::<impl *const u32>::sub_ptr`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 
 error[E0080]: could not evaluate static initializer
@@ -192,9 +192,9 @@ error[E0080]: could not evaluate static initializer
 LL | pub static R10: &[u32] = unsafe { from_ptr_range(&D0..&D0) };
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from_unsigned` called on two different pointers that are not both derived from the same allocation
    |
-note: called from `from_ptr_range::<'_, u32>`
+note: inside `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: called from `std::ptr::const_ptr::<impl *const u32>::sub_ptr`
+note: inside `std::ptr::const_ptr::<impl *const u32>::sub_ptr`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 
 error: aborting due to 18 previous errors

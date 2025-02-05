@@ -5,7 +5,7 @@ LL |         libc::pthread_rwlock_rdlock(rw.get());
    |                                             ^ the evaluated program deadlocked
    |
    = note: BACKTRACE:
-   = note: called from `main` at tests/fail-dep/concurrency/libc_pthread_rwlock_write_read_deadlock_single_thread.rs:LL:CC
+   = note: inside `main` at tests/fail-dep/concurrency/libc_pthread_rwlock_write_read_deadlock_single_thread.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

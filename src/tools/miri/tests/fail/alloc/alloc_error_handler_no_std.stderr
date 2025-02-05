@@ -8,10 +8,10 @@ LL |     core::intrinsics::abort();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ the program aborted execution
    |
    = note: BACKTRACE:
-   = note: called from `panic_handler` at tests/fail/alloc/alloc_error_handler_no_std.rs:LL:CC
-   = note: called from `alloc::alloc::__alloc_error_handler::__rdl_oom` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: called from `alloc::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-   = note: called from `alloc::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `panic_handler` at tests/fail/alloc/alloc_error_handler_no_std.rs:LL:CC
+   = note: inside `alloc::alloc::__alloc_error_handler::__rdl_oom` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `alloc::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+   = note: inside `alloc::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
 note: inside `miri_start`
   --> tests/fail/alloc/alloc_error_handler_no_std.rs:LL:CC
    |

@@ -5,9 +5,9 @@ LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
    |                                                                  ^ the evaluated program deadlocked
    |
    = note: BACKTRACE:
-   = note: called from `std::sys::pal::PLATFORM::thread::Thread::join` at RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
-   = note: called from `std::thread::JoinInner::<'_, ()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
-   = note: called from `std::thread::JoinHandle::<()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
+   = note: inside `std::sys::pal::PLATFORM::thread::Thread::join` at RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
+   = note: inside `std::thread::JoinInner::<'_, ()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
+   = note: inside `std::thread::JoinHandle::<()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
 note: inside `main`
   --> tests/fail-dep/libc/eventfd_block_read_twice.rs:LL:CC
    |
@@ -27,7 +27,7 @@ LL |         let res: i64 = unsafe { libc::read(fd, buf.as_mut_ptr().cast(), 8).
    |                                                                          ^ the evaluated program deadlocked
    |
    = note: BACKTRACE on thread `unnamed-ID`:
-   = note: called from closure at tests/fail-dep/libc/eventfd_block_read_twice.rs:LL:CC
+   = note: inside closure at tests/fail-dep/libc/eventfd_block_read_twice.rs:LL:CC
 
 error: deadlock: the evaluated program deadlocked
    |

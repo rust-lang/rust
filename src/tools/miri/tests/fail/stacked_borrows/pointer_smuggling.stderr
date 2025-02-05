@@ -20,7 +20,7 @@ help: <TAG> was later invalidated at offsets [0x0..0x1] by a write access
 LL |     *val = 2; // this invalidates any raw ptrs `fun1` might have created.
    |     ^^^^^^^^
    = note: BACKTRACE (of the first span):
-   = note: called from `fun2` at tests/fail/stacked_borrows/pointer_smuggling.rs:LL:CC
+   = note: inside `fun2` at tests/fail/stacked_borrows/pointer_smuggling.rs:LL:CC
 note: inside `main`
   --> tests/fail/stacked_borrows/pointer_smuggling.rs:LL:CC
    |

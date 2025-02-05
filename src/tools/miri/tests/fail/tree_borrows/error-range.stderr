@@ -18,7 +18,7 @@ LL |         data[5] = 1;
    |         ^^^^^^^^^^^
    = help: this transition corresponds to a loss of read permissions
    = note: BACKTRACE (of the first span):
-   = note: called from `main` at tests/fail/tree_borrows/error-range.rs:LL:CC
+   = note: inside `main` at tests/fail/tree_borrows/error-range.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

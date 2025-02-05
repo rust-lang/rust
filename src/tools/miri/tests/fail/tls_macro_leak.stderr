@@ -5,9 +5,9 @@ LL |             cell.set(Some(Box::leak(Box::new(123))));
    |                                     ^^^^^^^^^^^^^
    |
    = note: BACKTRACE:
-   = note: called from closure at tests/fail/tls_macro_leak.rs:LL:CC
-   = note: called from `std::thread::LocalKey::<std::cell::Cell<std::option::Option<&i32>>>::try_with::<{closure@tests/fail/tls_macro_leak.rs:LL:CC}, ()>` at RUSTLIB/std/src/thread/local.rs:LL:CC
-   = note: called from `std::thread::LocalKey::<std::cell::Cell<std::option::Option<&i32>>>::with::<{closure@tests/fail/tls_macro_leak.rs:LL:CC}, ()>` at RUSTLIB/std/src/thread/local.rs:LL:CC
+   = note: inside closure at tests/fail/tls_macro_leak.rs:LL:CC
+   = note: inside `std::thread::LocalKey::<std::cell::Cell<std::option::Option<&i32>>>::try_with::<{closure@tests/fail/tls_macro_leak.rs:LL:CC}, ()>` at RUSTLIB/std/src/thread/local.rs:LL:CC
+   = note: inside `std::thread::LocalKey::<std::cell::Cell<std::option::Option<&i32>>>::with::<{closure@tests/fail/tls_macro_leak.rs:LL:CC}, ()>` at RUSTLIB/std/src/thread/local.rs:LL:CC
 note: inside closure
   --> tests/fail/tls_macro_leak.rs:LL:CC
    |

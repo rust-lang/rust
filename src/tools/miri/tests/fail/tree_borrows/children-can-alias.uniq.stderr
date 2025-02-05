@@ -18,7 +18,7 @@ LL |     child1.write(1);
    |     ^^^^^^^^^^^^^^^
    = help: this transition corresponds to a loss of read and write permissions
    = note: BACKTRACE (of the first span):
-   = note: called from `raw_children_of_unique_can_alias` at tests/fail/tree_borrows/children-can-alias.rs:LL:CC
+   = note: inside `raw_children_of_unique_can_alias` at tests/fail/tree_borrows/children-can-alias.rs:LL:CC
 note: inside `main`
   --> tests/fail/tree_borrows/children-can-alias.rs:LL:CC
    |

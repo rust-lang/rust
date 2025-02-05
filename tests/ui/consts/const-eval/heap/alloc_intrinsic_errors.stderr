@@ -4,7 +4,7 @@ error[E0080]: evaluation of constant value failed
 LL | const FOO: i32 = foo();
    |                  ^^^^^ invalid align passed to `const_allocate`: 3 is not a power of 2
    |
-note: called from `foo`
+note: inside `foo`
   --> $DIR/alloc_intrinsic_errors.rs:8:17
    |
 LL |         let _ = intrinsics::const_allocate(4, 3) as *mut i32;

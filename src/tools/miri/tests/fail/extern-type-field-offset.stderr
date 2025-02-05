@@ -7,7 +7,7 @@ LL |     let x: &Newtype = unsafe { &*(&buf as *const _ as *const Newtype) };
    = help: `extern type` are not compatible with the Stacked Borrows aliasing model implemented by Miri; Miri may miss bugs in this code
    = help: try running with `MIRIFLAGS=-Zmiri-tree-borrows` to use the more permissive but also even more experimental Tree Borrows aliasing checks instead
    = note: BACKTRACE:
-   = note: called from `main` at tests/fail/extern-type-field-offset.rs:LL:CC
+   = note: inside `main` at tests/fail/extern-type-field-offset.rs:LL:CC
 
 error: unsupported operation: `extern type` field does not have a known offset
   --> tests/fail/extern-type-field-offset.rs:LL:CC
@@ -17,7 +17,7 @@ LL |     let _field = &x.a;
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:
-   = note: called from `main` at tests/fail/extern-type-field-offset.rs:LL:CC
+   = note: inside `main` at tests/fail/extern-type-field-offset.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

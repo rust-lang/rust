@@ -16,9 +16,9 @@ error[E0080]: evaluation of constant value failed
 LL |     y.copy_to_nonoverlapping(&mut z, 1);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ accessing memory with alignment 1, but alignment 4 is required
    |
-note: called from `std::ptr::const_ptr::<impl *const u32>::copy_to_nonoverlapping`
+note: inside `std::ptr::const_ptr::<impl *const u32>::copy_to_nonoverlapping`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-note: called from `copy_nonoverlapping::<u32>`
+note: inside `copy_nonoverlapping::<u32>`
   --> $SRC_DIR/core/src/intrinsics/mod.rs:LL:COL
 
 error[E0080]: evaluation of constant value failed

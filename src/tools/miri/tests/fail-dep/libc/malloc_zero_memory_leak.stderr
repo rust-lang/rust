@@ -5,7 +5,7 @@ LL |         let _ptr = libc::malloc(0);
    |                    ^^^^^^^^^^^^^^^
    |
    = note: BACKTRACE:
-   = note: called from `main` at tests/fail-dep/libc/malloc_zero_memory_leak.rs:LL:CC
+   = note: inside `main` at tests/fail-dep/libc/malloc_zero_memory_leak.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

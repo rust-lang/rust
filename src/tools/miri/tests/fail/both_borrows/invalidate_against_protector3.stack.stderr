@@ -17,7 +17,7 @@ help: <TAG> is this argument
 LL | fn inner(x: *mut i32, _y: &i32) {
    |                       ^^
    = note: BACKTRACE (of the first span):
-   = note: called from `inner` at tests/fail/both_borrows/invalidate_against_protector3.rs:LL:CC
+   = note: inside `inner` at tests/fail/both_borrows/invalidate_against_protector3.rs:LL:CC
 note: inside `main`
   --> tests/fail/both_borrows/invalidate_against_protector3.rs:LL:CC
    |

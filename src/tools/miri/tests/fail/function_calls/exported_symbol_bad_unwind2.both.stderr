@@ -15,13 +15,13 @@ LL |     ABORT();
    | ^ the program aborted execution
    |
    = note: BACKTRACE:
-   = note: called from `std::sys::pal::PLATFORM::abort_internal` at RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
-   = note: called from `std::panicking::rust_panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: called from closure at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: called from `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::begin_panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
-   = note: called from `std::panicking::begin_panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
-   = note: called from `core::panicking::panic_nounwind` at RUSTLIB/core/src/panicking.rs:LL:CC
-   = note: called from `core::panicking::panic_cannot_unwind` at RUSTLIB/core/src/panicking.rs:LL:CC
+   = note: inside `std::sys::pal::PLATFORM::abort_internal` at RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
+   = note: inside `std::panicking::rust_panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::begin_panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
+   = note: inside `std::panicking::begin_panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `core::panicking::panic_nounwind` at RUSTLIB/core/src/panicking.rs:LL:CC
+   = note: inside `core::panicking::panic_cannot_unwind` at RUSTLIB/core/src/panicking.rs:LL:CC
 note: inside `nounwind`
   --> tests/fail/function_calls/exported_symbol_bad_unwind2.rs:LL:CC
    |

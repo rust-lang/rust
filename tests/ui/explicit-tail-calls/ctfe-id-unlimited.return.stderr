@@ -4,17 +4,17 @@ error[E0080]: evaluation of constant value failed
 LL | const ID_ED: u32 = rec_id(ORIGINAL);
    |                    ^^^^^^^^^^^^^^^^ reached the configured maximum number of stack frames
    |
-note: called from `rec_id`
+note: inside `rec_id`
   --> $DIR/ctfe-id-unlimited.rs:21:5
    |
 LL |     inner(0, n)
    |     ^^^^^^^^^^^
-note: [... 125 additional calls called from `inner` ...]
+note: [... 125 additional calls inside `inner` ...]
   --> $DIR/ctfe-id-unlimited.rs:17:42
    |
 LL |             #[cfg(r#return)] _ => return inner(acc + 1, n - 1),
    |                                          ^^^^^^^^^^^^^^^^^^^^^
-note: called from `inner`
+note: inside `inner`
   --> $DIR/ctfe-id-unlimited.rs:17:42
    |
 LL |             #[cfg(r#return)] _ => return inner(acc + 1, n - 1),

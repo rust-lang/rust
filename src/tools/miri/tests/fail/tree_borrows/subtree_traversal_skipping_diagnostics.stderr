@@ -18,7 +18,7 @@ help: the conflicting tag <TAG> was created here, in the initial state Frozen
 LL |         let intermediary = &root;
    |                            ^^^^^
    = note: BACKTRACE (of the first span):
-   = note: called from `write_to_mut` at tests/fail/tree_borrows/subtree_traversal_skipping_diagnostics.rs:LL:CC
+   = note: inside `write_to_mut` at tests/fail/tree_borrows/subtree_traversal_skipping_diagnostics.rs:LL:CC
 note: inside `main`
   --> tests/fail/tree_borrows/subtree_traversal_skipping_diagnostics.rs:LL:CC
    |

@@ -6,7 +6,7 @@ LL |     let _val = X;
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:
-   = note: called from `main` at tests/fail/extern_static_in_const.rs:LL:CC
+   = note: inside `main` at tests/fail/extern_static_in_const.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

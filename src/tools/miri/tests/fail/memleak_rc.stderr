@@ -5,7 +5,7 @@ LL |                 Box::leak(Box::new(RcInner { strong: Cell::new(1), weak: Ce
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: BACKTRACE:
-   = note: called from `std::rc::Rc::<std::cell::RefCell<std::option::Option<Dummy>>>::new` at RUSTLIB/alloc/src/rc.rs:LL:CC
+   = note: inside `std::rc::Rc::<std::cell::RefCell<std::option::Option<Dummy>>>::new` at RUSTLIB/alloc/src/rc.rs:LL:CC
 note: inside `main`
   --> tests/fail/memleak_rc.rs:LL:CC
    |
