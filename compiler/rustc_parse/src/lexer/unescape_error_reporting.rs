@@ -158,6 +158,13 @@ pub(crate) fn emit_unescape_error(
                     "this is an isolated carriage return; consider checking your editor and \
                      version control settings",
                 );
+            } else if looks_like_quote(c) {
+                diag.help(format!(
+                    "{ec} is not an ascii quote, \
+                             but may look like one in some fonts.\n\
+                             consider writing it in its \
+                             escaped form for clarity."
+                ));
             } else {
                 if mode == Mode::Str || mode == Mode::Char {
                     diag.span_suggestion(
@@ -293,5 +300,19 @@ pub(crate) fn escaped_char(c: char) -> String {
             c.to_string()
         }
         _ => c.escape_default().to_string(),
+    }
+}
+
+/// Returns true if `c` may look identical to `"` in some fonts.
+fn looks_like_quote(c: char) -> bool {
+    // list of homoglyphs generated using the following wikidata query:
+    // SELECT ?u WHERE {
+    //   wd:Q87495536 wdt:P2444+ ?c.
+    //   ?c wdt:P4213 ?u.
+    // }
+    match c {
+        '\u{2033}' | '\u{02BA}' | '\u{02DD}' | '\u{030B}' | '\u{030E}' | '\u{05F4}'
+        | '\u{201C}' | '\u{201D}' => true,
+        _ => false,
     }
 }
