@@ -1,5 +1,6 @@
 use std::iter;
 
+use rustc_hir::CRATE_HIR_ID;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -7,6 +8,7 @@ use rustc_middle::mir::{UnwindTerminateReason, traversal};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_middle::{bug, mir, span_bug};
+use rustc_session::lint;
 use rustc_target::callconv::{FnAbi, PassMode};
 use tracing::{debug, instrument};
 
@@ -29,6 +31,8 @@ mod statement;
 use self::debuginfo::{FunctionDebugContext, PerLocalVarDebugInfo};
 use self::operand::{OperandRef, OperandValue};
 use self::place::PlaceRef;
+
+const MIN_DANGEROUS_ALLOC_SIZE: u64 = 1024 * 1024 * 1024 * 1; // 1 GB
 
 // Used for tracking the state of generated basic blocks.
 enum CachedLlbb<T> {
@@ -245,6 +249,21 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let layout = start_bx.layout_of(fx.monomorphize(decl.ty));
             assert!(!layout.ty.has_erasable_regions());
 
+            if layout.size.bytes() >= MIN_DANGEROUS_ALLOC_SIZE {
+                let (size_quantity, size_unit) = human_readable_bytes(layout.size.bytes());
+                cx.tcx().node_span_lint(
+                    lint::builtin::DANGEROUS_STACK_ALLOCATION,
+                    CRATE_HIR_ID,
+                    decl.source_info.span,
+                    |lint| {
+                        lint.primary_message(format!(
+                            "allocation of size: {:.2} {}  exceeds most system architecture limits",
+                            size_quantity, size_unit
+                        ));
+                    },
+                );
+            }
+
             if local == mir::RETURN_PLACE {
                 match fx.fn_abi.ret.mode {
                     PassMode::Indirect { .. } => {
@@ -308,6 +327,14 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     for bb in unreached_blocks.iter() {
         fx.codegen_block_as_unreachable(bb);
     }
+}
+
+/// Formats a number of bytes into a human readable SI-prefixed size.
+/// Returns a tuple of `(quantity, units)`.
+pub fn human_readable_bytes(bytes: u64) -> (u64, &'static str) {
+    static UNITS: [&str; 7] = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"];
+    let i = ((bytes.checked_ilog2().unwrap_or(0) / 10) as usize).min(UNITS.len() - 1);
+    (bytes >> (10 * i), UNITS[i])
 }
 
 /// Produces, for each argument, a `Value` pointing at the
