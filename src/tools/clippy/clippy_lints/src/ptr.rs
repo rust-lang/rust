@@ -19,7 +19,7 @@ use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, Pre
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, sym};
-use rustc_target::spec::abi::Abi;
+use rustc_abi::ExternAbi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use std::{fmt, iter};
@@ -160,7 +160,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
             check_mut_from_ref(cx, sig, None);
 
-            if !matches!(sig.header.abi, Abi::Rust) {
+            if !matches!(sig.header.abi, ExternAbi::Rust) {
                 // Ignore `extern` functions with non-Rust calling conventions
                 return;
             }
@@ -220,7 +220,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
         check_mut_from_ref(cx, sig, Some(body));
 
-        if !matches!(sig.header.abi, Abi::Rust) {
+        if !matches!(sig.header.abi, ExternAbi::Rust) {
             // Ignore `extern` functions with non-Rust calling conventions
             return;
         }
