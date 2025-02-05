@@ -296,6 +296,10 @@ impl OpenOptions {
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         let path = maybe_verbatim(path)?;
+        Self::open_native(&path, opts)
+    }
+
+    fn open_native(path: &[u16], opts: &OpenOptions) -> io::Result<File> {
         let creation = opts.get_creation_mode()?;
         let handle = unsafe {
             c::CreateFileW(
@@ -1226,8 +1230,26 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 
 pub fn unlink(p: &Path) -> io::Result<()> {
     let p_u16s = maybe_verbatim(p)?;
-    cvt(unsafe { c::DeleteFileW(p_u16s.as_ptr()) })?;
-    Ok(())
+    if unsafe { c::DeleteFileW(p_u16s.as_ptr()) } == 0 {
+        let err = api::get_last_error();
+        // if `DeleteFileW` fails with ERROR_ACCESS_DENIED then try to remove
+        // the file while ignoring the readonly attribute.
+        // This is accomplished by calling the `posix_delete` function on an open file handle.
+        if err == WinError::ACCESS_DENIED {
+            let mut opts = OpenOptions::new();
+            opts.access_mode(c::DELETE);
+            opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT);
+            if let Ok(f) = File::open_native(&p_u16s, &opts) {
+                if f.posix_delete().is_ok() {
+                    return Ok(());
+                }
+            }
+        }
+        // return the original error if any of the above fails.
+        Err(io::Error::from_raw_os_error(err.code as i32))
+    } else {
+        Ok(())
+    }
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
