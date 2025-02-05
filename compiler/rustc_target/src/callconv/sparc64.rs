@@ -5,7 +5,7 @@ use rustc_abi::{
     TyAndLayout,
 };
 
-use crate::abi::call::{
+use crate::callconv::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, FnAbi, Uniform,
 };
 use crate::spec::HasTargetSpec;

@@ -3,7 +3,7 @@ use rustc_abi::{
     TyAbiInterface, TyAndLayout,
 };
 
-use crate::abi::call::{ArgAttribute, FnAbi, PassMode};
+use crate::callconv::{ArgAttribute, FnAbi, PassMode};
 use crate::spec::HasTargetSpec;
 
 #[derive(PartialEq)]

@@ -4015,6 +4015,7 @@ version = "0.0.0"
 dependencies = [
  "rustc-rayon",
  "rustc-rayon-core",
+ "rustc_abi",
  "rustc_ast",
  "rustc_ast_lowering",
  "rustc_ast_passes",
