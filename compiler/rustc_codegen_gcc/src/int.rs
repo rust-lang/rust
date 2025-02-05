@@ -3,12 +3,11 @@
 //! 128-bit integers on 32-bit platforms and thus require to be handled manually.
 
 use gccjit::{BinaryOp, ComparisonOp, FunctionType, Location, RValue, ToRValue, Type, UnaryOp};
+use rustc_abi::{Endian, ExternAbi};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, BuilderMethods, OverflowOp};
 use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::Endian;
-use rustc_target::abi::call::{ArgAbi, ArgAttributes, Conv, FnAbi, PassMode};
-use rustc_target::spec;
+use rustc_target::callconv::{ArgAbi, ArgAttributes, Conv, FnAbi, PassMode};
 
 use crate::builder::{Builder, ToGccComp};
 use crate::common::{SignType, TypeReflection};
@@ -401,7 +400,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             conv: Conv::C,
             can_unwind: false,
         };
-        fn_abi.adjust_for_foreign_abi(self.cx, spec::abi::Abi::C { unwind: false }).unwrap();
+        fn_abi.adjust_for_foreign_abi(self.cx, ExternAbi::C { unwind: false }).unwrap();
 
         let ret_indirect = matches!(fn_abi.ret.mode, PassMode::Indirect { .. });
 
