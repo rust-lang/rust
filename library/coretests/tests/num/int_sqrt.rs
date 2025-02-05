@@ -244,5 +244,8 @@ macro_rules! unsigned_check {
     };
 }
 
-tests!(signed_check: i8 i16 i32 i64 i128);
+tests!(signed_check: i8 i16 i32 i64);
+#[cfg(not(no_iu128_fmt))]
+tests!(signed_check: i128);
+
 tests!(unsigned_check: u8 u16 u32 u64 u128);

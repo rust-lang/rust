@@ -66,6 +66,7 @@
 #![doc(cfg_hide(
     not(test),
     no_fp_fmt_parse,
+    no_iu128_fmt,
     target_pointer_width = "16",
     target_pointer_width = "32",
     target_pointer_width = "64",

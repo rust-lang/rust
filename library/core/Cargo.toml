@@ -29,6 +29,7 @@ level = "warn"
 check-cfg = [
     'cfg(bootstrap)',
     'cfg(no_fp_fmt_parse)',
+    'cfg(no_iu128_fmt)',
     'cfg(stdarch_intel_sde)',
     'cfg(target_arch, values("xtensa"))',
     # core use #[path] imports to portable-simd `core_simd` crate
