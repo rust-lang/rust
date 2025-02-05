@@ -215,6 +215,10 @@ given:
 The following guidelines for comments are recommendations only, a mechanical
 formatter might skip formatting of comments.
 
+The style guide does not account for every possible placement of comments.
+Placing a comment in unexpected places (e.g. between `pub` and `fn` in `pub
+fn`) may result in suboptimal "best effort" formatting by a formatter.
+
 Prefer line comments (`//`) to block comments (`/* ... */`).
 
 When using line comments, put a single space after the opening sigil.
