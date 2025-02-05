@@ -163,6 +163,7 @@ impl<'tcx> graph::Predecessors for BasicBlocks<'tcx> {
     }
 }
 
+// Done here instead of in `structural_impls.rs` because `Cache` is private, as is `basic_blocks`.
 TrivialTypeTraversalImpls! { Cache }
 
 impl<S: Encoder> Encodable<S> for Cache {
