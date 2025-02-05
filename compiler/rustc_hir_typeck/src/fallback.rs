@@ -684,6 +684,12 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Self::Result {
+        if let hir::ExprKind::Closure(&hir::Closure { body, .. })
+        | hir::ExprKind::ConstBlock(hir::ConstBlock { body, .. }) = expr.kind
+        {
+            self.visit_body(self.fcx.tcx.hir().body(body))?;
+        }
+
         // Try to suggest adding an explicit qself `()` to a trait method path.
         // i.e. changing `Default::default()` to `<() as Default>::default()`.
         if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
