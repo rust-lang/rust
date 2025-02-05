@@ -208,7 +208,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 let field = FieldIdx::new(idx);
                 // Patterns can only use monomorphic types.
                 let ty = self.tcx.normalize_erasing_regions(self.typing_env, ty);
-                FieldPat { field, pattern: self.valtree_to_pat(val, ty) }
+                FieldPat { field, pattern: *self.valtree_to_pat(val, ty) }
             })
             .collect()
     }
@@ -277,7 +277,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| self.valtree_to_pat(*val, *elem_ty))
+                    .map(|val| *self.valtree_to_pat(*val, *elem_ty))
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),
@@ -286,7 +286,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| self.valtree_to_pat(*val, *elem_ty))
+                    .map(|val| *self.valtree_to_pat(*val, *elem_ty))
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),

@@ -67,7 +67,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 ///    a MIR pass run after borrow checking.
 pub(super) fn collect_fake_borrows<'tcx>(
     cx: &mut Builder<'_, 'tcx>,
-    candidates: &[Candidate<'_, 'tcx>],
+    candidates: &[Candidate<'tcx>],
     temp_span: Span,
     scrutinee_base: PlaceBase,
 ) -> Vec<(Place<'tcx>, Local, FakeBorrowKind)> {
@@ -135,7 +135,7 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
         }
     }
 
-    fn visit_candidate(&mut self, candidate: &Candidate<'_, 'tcx>) {
+    fn visit_candidate(&mut self, candidate: &Candidate<'tcx>) {
         for binding in &candidate.extra_data.bindings {
             self.visit_binding(binding);
         }
@@ -144,7 +144,7 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
         }
     }
 
-    fn visit_flat_pat(&mut self, flat_pat: &FlatPat<'_, 'tcx>) {
+    fn visit_flat_pat(&mut self, flat_pat: &FlatPat<'tcx>) {
         for binding in &flat_pat.extra_data.bindings {
             self.visit_binding(binding);
         }
@@ -153,7 +153,7 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
         }
     }
 
-    fn visit_match_pair(&mut self, match_pair: &MatchPairTree<'_, 'tcx>) {
+    fn visit_match_pair(&mut self, match_pair: &MatchPairTree<'tcx>) {
         if let TestCase::Or { pats, .. } = &match_pair.test_case {
             for flat_pat in pats.iter() {
                 self.visit_flat_pat(flat_pat)

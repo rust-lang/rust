@@ -4,6 +4,7 @@ mod check_match;
 mod const_to_pat;
 
 use std::cmp::Ordering;
+use std::sync::Arc;
 
 use rustc_abi::{FieldIdx, Integer};
 use rustc_errors::MultiSpan;
@@ -262,7 +263,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let hi = lower_endpoint(hi_expr)?.unwrap_or(PatRangeBoundary::PosInfinity);
 
         let cmp = lo.compare_with(hi, ty, self.tcx, self.typing_env);
-        let mut kind = PatKind::Range(Box::new(PatRange { lo, hi, end, ty }));
+        let mut kind = PatKind::Range(Arc::new(PatRange { lo, hi, end, ty }));
         match (end, cmp) {
             // `x..y` where `x < y`.
             (RangeEnd::Excluded, Some(Ordering::Less)) => {}
@@ -418,7 +419,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     .iter()
                     .map(|field| FieldPat {
                         field: self.typeck_results.field_index(field.hir_id),
-                        pattern: self.lower_pattern(field.pat),
+                        pattern: *self.lower_pattern(field.pat),
                     })
                     .collect();
 
@@ -446,13 +447,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             .enumerate_and_adjust(expected_len, gap_pos)
             .map(|(i, subpattern)| FieldPat {
                 field: FieldIdx::new(i),
-                pattern: self.lower_pattern(subpattern),
+                pattern: *self.lower_pattern(subpattern),
             })
             .collect()
     }
 
-    fn lower_patterns(&mut self, pats: &'tcx [hir::Pat<'tcx>]) -> Box<[Box<Pat<'tcx>>]> {
-        pats.iter().map(|p| self.lower_pattern(p)).collect()
+    fn lower_patterns(&mut self, pats: &'tcx [hir::Pat<'tcx>]) -> Box<[Pat<'tcx>]> {
+        pats.iter().map(|p| *self.lower_pattern(p)).collect()
     }
 
     fn lower_opt_pattern(&mut self, pat: Option<&'tcx hir::Pat<'tcx>>) -> Option<Box<Pat<'tcx>>> {

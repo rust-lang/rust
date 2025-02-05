@@ -23,9 +23,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Simplify a list of match pairs so they all require a test. Stores relevant bindings and
     /// ascriptions in `extra_data`.
     #[instrument(skip(self), level = "debug")]
-    pub(super) fn simplify_match_pairs<'pat>(
+    pub(super) fn simplify_match_pairs(
         &mut self,
-        match_pairs: &mut Vec<MatchPairTree<'pat, 'tcx>>,
+        match_pairs: &mut Vec<MatchPairTree<'tcx>>,
         extra_data: &mut PatternExtraData<'tcx>,
     ) {
         // In order to please the borrow checker, in a pattern like `x @ pat` we must lower the

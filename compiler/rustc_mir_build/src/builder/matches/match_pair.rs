@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
@@ -12,11 +14,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// [`PatKind::Leaf`].
     ///
     /// Used internally by [`MatchPairTree::for_pattern`].
-    fn field_match_pairs<'pat>(
+    fn field_match_pairs(
         &mut self,
         place: PlaceBuilder<'tcx>,
-        subpatterns: &'pat [FieldPat<'tcx>],
-    ) -> Vec<MatchPairTree<'pat, 'tcx>> {
+        subpatterns: &[FieldPat<'tcx>],
+    ) -> Vec<MatchPairTree<'tcx>> {
         subpatterns
             .iter()
             .map(|fieldpat| {
@@ -31,13 +33,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// array pattern or slice pattern, and adds those trees to `match_pairs`.
     ///
     /// Used internally by [`MatchPairTree::for_pattern`].
-    fn prefix_slice_suffix<'pat>(
+    fn prefix_slice_suffix(
         &mut self,
-        match_pairs: &mut Vec<MatchPairTree<'pat, 'tcx>>,
+        match_pairs: &mut Vec<MatchPairTree<'tcx>>,
         place: &PlaceBuilder<'tcx>,
-        prefix: &'pat [Box<Pat<'tcx>>],
-        opt_slice: &'pat Option<Box<Pat<'tcx>>>,
-        suffix: &'pat [Box<Pat<'tcx>>],
+        prefix: &[Pat<'tcx>],
+        opt_slice: &Option<Box<Pat<'tcx>>>,
+        suffix: &[Pat<'tcx>],
     ) {
         let tcx = self.tcx;
         let (min_length, exact_size) = if let Some(place_resolved) = place.try_to_place(self) {
@@ -83,14 +85,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 }
 
-impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
+impl<'tcx> MatchPairTree<'tcx> {
     /// Recursively builds a match pair tree for the given pattern and its
     /// subpatterns.
     pub(in crate::builder) fn for_pattern(
         mut place_builder: PlaceBuilder<'tcx>,
-        pattern: &'pat Pat<'tcx>,
+        pattern: &Pat<'tcx>,
         cx: &mut Builder<'_, 'tcx>,
-    ) -> MatchPairTree<'pat, 'tcx> {
+    ) -> MatchPairTree<'tcx> {
         // Force the place type to the pattern's type.
         // FIXME(oli-obk): can we use this to simplify slice/array pattern hacks?
         if let Some(resolved) = place_builder.resolve_upvar(cx) {
@@ -125,7 +127,7 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
                 if range.is_full_range(cx.tcx) == Some(true) {
                     default_irrefutable()
                 } else {
-                    TestCase::Range(range)
+                    TestCase::Range(Arc::clone(range))
                 }
             }
 
@@ -255,6 +257,12 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
             PatKind::Never => TestCase::Never,
         };
 
-        MatchPairTree { place, test_case, subpairs, pattern }
+        MatchPairTree {
+            place,
+            test_case,
+            subpairs,
+            pattern_ty: pattern.ty,
+            pattern_span: pattern.span,
+        }
     }
 }
