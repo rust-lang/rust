@@ -211,21 +211,18 @@ fn layout_of_uncached<'tcx>(
                     if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
                         &mut layout.backend_repr
                     {
-                        if let Some(start) = start {
-                            scalar.valid_range_mut().start = extract_const_value(cx, ty, start)?
-                                .try_to_bits(tcx, cx.typing_env)
-                                .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
+                        scalar.valid_range_mut().start = extract_const_value(cx, ty, start)?
+                            .try_to_bits(tcx, cx.typing_env)
+                            .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
+
+                        let mut end = extract_const_value(cx, ty, end)?
+                            .try_to_bits(tcx, cx.typing_env)
+                            .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
+                        match include_end {
+                            rustc_hir::RangeEnd::Included => {}
+                            rustc_hir::RangeEnd::Excluded => end = end.wrapping_sub(1),
                         }
-                        if let Some(end) = end {
-                            let mut end = extract_const_value(cx, ty, end)?
-                                .try_to_bits(tcx, cx.typing_env)
-                                .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
-                            match include_end {
-                                rustc_hir::RangeEnd::Included => {}
-                                rustc_hir::RangeEnd::Excluded => end = end.wrapping_sub(1),
-                            }
-                            scalar.valid_range_mut().end = end;
-                        }
+                        scalar.valid_range_mut().end = end;
 
                         let niche = Niche {
                             offset: Size::ZERO,

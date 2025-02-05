@@ -28,14 +28,7 @@ impl<'tcx> fmt::Debug for PatternKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             PatternKind::Range { start, end, include_end } => {
-                if let Some(start) = start {
-                    write!(f, "{start}")?;
-                }
-                write!(f, "{include_end}")?;
-                if let Some(end) = end {
-                    write!(f, "{end}")?;
-                }
-                Ok(())
+                write!(f, "{start}{include_end}{end}")
             }
         }
     }
@@ -44,5 +37,5 @@ impl<'tcx> fmt::Debug for PatternKind<'tcx> {
 #[derive(Clone, PartialEq, Eq, Hash)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeVisitable, TypeFoldable)]
 pub enum PatternKind<'tcx> {
-    Range { start: Option<ty::Const<'tcx>>, end: Option<ty::Const<'tcx>>, include_end: RangeEnd },
+    Range { start: ty::Const<'tcx>, end: ty::Const<'tcx>, include_end: RangeEnd },
 }
