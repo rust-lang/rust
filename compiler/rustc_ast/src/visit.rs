@@ -188,6 +188,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_closure_binder(&mut self, b: &'ast ClosureBinder) -> Self::Result {
         walk_closure_binder(self, b)
     }
+    fn visit_contract(&mut self, c: &'ast FnContract) -> Self::Result {
+        walk_contract(self, c)
+    }
     fn visit_where_predicate(&mut self, p: &'ast WherePredicate) -> Self::Result {
         walk_where_predicate(self, p)
     }
@@ -800,6 +803,17 @@ pub fn walk_closure_binder<'a, V: Visitor<'a>>(
     V::Result::output()
 }
 
+pub fn walk_contract<'a, V: Visitor<'a>>(visitor: &mut V, c: &'a FnContract) -> V::Result {
+    let FnContract { requires, ensures } = c;
+    if let Some(pred) = requires {
+        visitor.visit_expr(pred);
+    }
+    if let Some(pred) = ensures {
+        visitor.visit_expr(pred);
+    }
+    V::Result::output()
+}
+
 pub fn walk_where_predicate<'a, V: Visitor<'a>>(
     visitor: &mut V,
     predicate: &'a WherePredicate,
@@ -862,12 +876,13 @@ pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Resu
             _ctxt,
             _ident,
             _vis,
-            Fn { defaultness: _, sig: FnSig { header, decl, span: _ }, generics, body },
+            Fn { defaultness: _, sig: FnSig { header, decl, span: _ }, generics, contract, body },
         ) => {
             // Identifier and visibility are visited as a part of the item.
             try_visit!(visitor.visit_fn_header(header));
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_fn_decl(decl));
+            visit_opt!(visitor, visit_contract, contract);
             visit_opt!(visitor, visit_block, body);
         }
         FnKind::Closure(binder, coroutine_kind, decl, body) => {

@@ -127,7 +127,7 @@ fn make_mir_scope<'ll, 'tcx>(
             })
         }
         None => unsafe {
-            llvm::LLVMRustDIBuilderCreateLexicalBlock(
+            llvm::LLVMDIBuilderCreateLexicalBlock(
                 DIB(cx),
                 parent_scope.dbg_scope,
                 file_metadata,

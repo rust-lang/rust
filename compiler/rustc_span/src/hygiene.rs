@@ -1163,6 +1163,8 @@ pub enum DesugaringKind {
     WhileLoop,
     /// `async Fn()` bound modifier
     BoundModifier,
+    /// Calls to contract checks (`#[requires]` to precond, `#[ensures]` to postcond)
+    Contract,
 }
 
 impl DesugaringKind {
@@ -1179,6 +1181,7 @@ impl DesugaringKind {
             DesugaringKind::ForLoop => "`for` loop",
             DesugaringKind::WhileLoop => "`while` loop",
             DesugaringKind::BoundModifier => "trait bound modifier",
+            DesugaringKind::Contract => "contract check",
         }
     }
 }
