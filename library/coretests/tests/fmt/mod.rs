@@ -15,8 +15,39 @@ fn test_format_flags() {
 fn test_pointer_formats_data_pointer() {
     let b: &[u8] = b"";
     let s: &str = "";
-    assert_eq!(format!("{s:p}"), format!("{:p}", s.as_ptr()));
-    assert_eq!(format!("{b:p}"), format!("{:p}", b.as_ptr()));
+    assert_eq!(format!("{s:p}"), format!("{:p}", s as *const _));
+    assert_eq!(format!("{b:p}"), format!("{:p}", b as *const _));
+}
+
+#[test]
+fn test_fmt_debug_of_raw_pointers() {
+    use core::fmt::Debug;
+
+    fn check_fmt<T: Debug>(t: T, expected: &str) {
+        use std::sync::LazyLock;
+
+        use regex::Regex;
+
+        static ADDR_REGEX: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"0x[0-9a-fA-F]+").unwrap());
+
+        let formatted = format!("{:?}", t);
+        let normalized = ADDR_REGEX.replace_all(&formatted, "$$HEX");
+
+        assert_eq!(normalized, expected);
+    }
+
+    let plain = &mut 100;
+    check_fmt(plain as *mut i32, "$HEX");
+    check_fmt(plain as *const i32, "$HEX");
+
+    let slice = &mut [200, 300, 400][..];
+    check_fmt(slice as *mut [i32], "Pointer { addr: $HEX, metadata: 3 }");
+    check_fmt(slice as *const [i32], "Pointer { addr: $HEX, metadata: 3 }");
+
+    let vtable = &mut 500 as &mut dyn Debug;
+    check_fmt(vtable as *mut dyn Debug, "Pointer { addr: $HEX, metadata: DynMetadata($HEX) }");
+    check_fmt(vtable as *const dyn Debug, "Pointer { addr: $HEX, metadata: DynMetadata($HEX) }");
 }
 
 #[test]

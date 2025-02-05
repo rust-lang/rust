@@ -2776,7 +2776,14 @@ impl Display for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        pointer_fmt_inner(self.expose_provenance(), f)
+        if core::mem::size_of::<<T as core::ptr::Pointee>::Metadata>() == 0 {
+            pointer_fmt_inner(self.expose_provenance(), f)
+        } else {
+            f.debug_struct("Pointer")
+                .field_with("addr", |f| pointer_fmt_inner(self.expose_provenance(), f))
+                .field("metadata", &core::ptr::metadata(*self))
+                .finish()
+        }
     }
 }
 
