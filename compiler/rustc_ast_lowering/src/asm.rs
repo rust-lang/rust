@@ -152,11 +152,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     InlineAsmRegOrRegClass::RegClass(reg_class) => {
                         asm::InlineAsmRegOrRegClass::RegClass(if let Some(asm_arch) = asm_arch {
                             asm::InlineAsmRegClass::parse(asm_arch, reg_class).unwrap_or_else(
-                                |error| {
+                                |supported_register_classes| {
+                                    let mut register_classes =
+                                        format!("`{}`", supported_register_classes[0]);
+                                    for m in &supported_register_classes[1..] {
+                                        let _ = write!(register_classes, ", `{m}`");
+                                    }
                                     self.dcx().emit_err(InvalidRegisterClass {
                                         op_span: *op_sp,
                                         reg_class,
-                                        error,
+                                        supported_register_classes: register_classes,
                                     });
                                     asm::InlineAsmRegClass::Err
                                 },

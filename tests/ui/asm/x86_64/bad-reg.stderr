@@ -3,6 +3,8 @@ error: invalid register class `foo`: unknown register class
    |
 LL |         asm!("{}", in(foo) foo);
    |                    ^^^^^^^^^^^
+   |
+   = note: the following register classes are supported on this target: `reg`, `reg_abcd`, `reg_byte`, `xmm_reg`, `ymm_reg`, `zmm_reg`, `kreg`, `kreg0`, `mmx_reg`, `x87_reg`, `tmm_reg`
 
 error: invalid register `foo`: unknown register
   --> $DIR/bad-reg.rs:14:18

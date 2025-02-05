@@ -39,12 +39,12 @@ macro_rules! def_reg_class {
                 }
             }
 
-            pub fn parse(name: rustc_span::Symbol) -> Result<Self, &'static str> {
+            pub fn parse(name: rustc_span::Symbol) -> Result<Self, &'static [rustc_span::Symbol]> {
                 match name {
                     $(
                         rustc_span::sym::$class => Ok(Self::$class),
                     )*
-                    _ => Err("unknown register class"),
+                    _ => Err(&[$(rustc_span::sym::$class),*]),
                 }
             }
         }
@@ -635,7 +635,7 @@ impl InlineAsmRegClass {
         }
     }
 
-    pub fn parse(arch: InlineAsmArch, name: Symbol) -> Result<Self, &'static str> {
+    pub fn parse(arch: InlineAsmArch, name: Symbol) -> Result<Self, &'static [rustc_span::Symbol]> {
         Ok(match arch {
             InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
                 Self::X86(X86InlineAsmRegClass::parse(name)?)
