@@ -3,8 +3,6 @@
 // -Clinker-plugin-lto.
 // See https://github.com/rust-lang/rust/pull/50000
 
-#![feature(path_file_prefix)]
-
 use std::path::PathBuf;
 
 use run_make_support::{
