@@ -230,8 +230,7 @@ pub fn compute_alias_components_recursive<I: Interner>(
         unreachable!("can only call `compute_alias_components_recursive` on an alias type")
     };
 
-    let opt_variances =
-        if kind == ty::Opaque { Some(cx.variances_of(alias_ty.def_id)) } else { None };
+    let opt_variances = cx.opt_alias_variances(kind, alias_ty.def_id);
 
     let mut visitor = OutlivesCollector { cx, out, visited: Default::default() };
 
