@@ -12,10 +12,10 @@ fn field_read(f: Foo) -> usize {
 }
 
 enum XYZ {
-    X, //~ ERROR variants `X` and `Y` are never constructed
+    X, //~ ERROR variant `X` is never constructed
     Y {
         a: String,
-        b: i32,
+        b: i32, //~ ERROR fields `b` and `c` are never read
         c: i32,
     },
     Z

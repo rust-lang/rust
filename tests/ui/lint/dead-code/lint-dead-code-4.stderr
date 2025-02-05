@@ -13,14 +13,23 @@ note: the lint level is defined here
 LL | #![deny(dead_code)]
    |         ^^^^^^^^^
 
-error: variants `X` and `Y` are never constructed
+error: fields `b` and `c` are never read
+  --> $DIR/lint-dead-code-4.rs:18:9
+   |
+LL |     Y {
+   |     - fields in this variant
+LL |         a: String,
+LL |         b: i32,
+   |         ^
+LL |         c: i32,
+   |         ^
+
+error: variant `X` is never constructed
   --> $DIR/lint-dead-code-4.rs:15:5
    |
 LL | enum XYZ {
-   |      --- variants in this enum
+   |      --- variant in this enum
 LL |     X,
-   |     ^
-LL |     Y {
    |     ^
 
 error: enum `ABC` is never used
@@ -62,5 +71,5 @@ LL |     b: bool,
 LL |     c: bool,
    |     ^
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
