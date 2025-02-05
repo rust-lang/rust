@@ -23,6 +23,8 @@ optimize_for_size = []
 # Make `RefCell` store additional debugging information, which is printed out when
 # a borrow error occurs
 debug_refcell = []
+# Make `TypeId` store a reference to the name of the type, so that it can print that name.
+debug_typeid = []
 
 [lints.rust.unexpected_cfgs]
 level = "warn"

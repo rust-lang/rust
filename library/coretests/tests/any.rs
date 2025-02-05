@@ -118,6 +118,14 @@ fn any_unsized() {
     is_any::<[i32]>();
 }
 
+#[cfg(feature = "debug_typeid")]
+#[test]
+fn debug_typeid_includes_name() {
+    let type_id = TypeId::of::<[usize; 2]>();
+    let debug_str = format!("{type_id:?}");
+    assert!(debug_str.ends_with("= [usize; 2])"), "{debug_str:?} did not match");
+}
+
 #[test]
 fn distinct_type_names() {
     // https://github.com/rust-lang/rust/issues/84666
