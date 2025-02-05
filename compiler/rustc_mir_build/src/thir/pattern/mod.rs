@@ -66,16 +66,6 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
         for (span, label) in &info.primary_labels {
             spans.push_span_label(*span, label.clone());
         }
-        for (span, label_mutbl) in &sugg.default_mode_labels {
-            // Don't point to a macro call site.
-            if !span.from_expansion() {
-                let label = match label_mutbl {
-                    Mutability::Not => "default binding mode is `ref`",
-                    Mutability::Mut => "default binding mode is `ref mut`",
-                };
-                spans.push_span_label(*span, label.to_owned())
-            }
-        }
         // If a relevant span is from at least edition 2024, this is a hard error.
         let is_hard_error = spans.primary_spans().iter().any(|span| span.at_least_rust_2024());
         if is_hard_error {

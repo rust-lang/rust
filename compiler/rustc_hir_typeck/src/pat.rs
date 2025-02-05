@@ -699,7 +699,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Determine the binding mode...
         let bm = match user_bind_annot {
-            BindingMode(ByRef::No, Mutability::Mut) if matches!(def_br, ByRef::Yes(_)) => {
+            BindingMode(ByRef::No, Mutability::Mut) if let ByRef::Yes(def_br_mutbl) = def_br => {
                 if pat.span.at_least_rust_2024()
                     && (self.tcx.features().ref_pat_eat_one_layer_2024()
                         || self.tcx.features().ref_pat_eat_one_layer_2024_structural())
@@ -721,18 +721,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         pat_info.top_info.hir_id,
                         pat,
                         ident.span,
+                        def_br_mutbl,
                     );
                     BindingMode(ByRef::No, Mutability::Mut)
                 }
             }
             BindingMode(ByRef::No, mutbl) => BindingMode(def_br, mutbl),
             BindingMode(ByRef::Yes(_), _) => {
-                if matches!(def_br, ByRef::Yes(_)) {
+                if let ByRef::Yes(def_br_mutbl) = def_br {
                     // `ref`/`ref mut` overrides the binding mode on edition <= 2021
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
                         pat,
                         ident.span,
+                        def_br_mutbl,
                     );
                 }
                 user_bind_annot
@@ -2261,12 +2263,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else {
             // Reset binding mode on old editions
-            if pat_info.binding_mode != ByRef::No {
+            if let ByRef::Yes(inh_mut) = pat_info.binding_mode {
                 pat_info.binding_mode = ByRef::No;
                 self.add_rust_2024_migration_desugared_pat(
                     pat_info.top_info.hir_id,
                     pat,
                     inner.span,
+                    inh_mut,
                 )
             }
         }
@@ -2634,6 +2637,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_id: HirId,
         subpat: &'tcx Pat<'tcx>,
         cutoff_span: Span,
+        def_br_mutbl: Mutability,
     ) {
         // Try to trim the span we're labeling to just the `&` or binding mode that's an issue.
         // If the subpattern's span is is from an expansion, the emitted label will not be trimmed.
@@ -2656,16 +2660,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // NB: This wording assumes the only expansions that can produce problematic reference
             // patterns and bindings are macros. If a desugaring or AST pass is added that can do
             // so, we may want to inspect the span's source callee or macro backtrace.
-            "occurs within macro expansion"
+            "occurs within macro expansion".to_owned()
         } else {
-            if matches!(subpat.kind, PatKind::Binding(_, _, _, _)) {
+            let pat_kind = if matches!(subpat.kind, PatKind::Binding(_, _, _, _)) {
                 info.bad_modifiers |= true;
-                "this binding modifier"
+                "binding modifier"
             } else {
                 info.bad_ref_pats |= true;
-                "this reference pattern"
-            }
+                "reference pattern"
+            };
+            let dbm_str = match def_br_mutbl {
+                Mutability::Not => "ref",
+                Mutability::Mut => "ref mut",
+            };
+            format!("{pat_kind} not allowed under `{dbm_str}` default binding mode")
         };
-        info.primary_labels.push((trimmed_span, primary_label.to_owned()));
+        info.primary_labels.push((trimmed_span, primary_label));
     }
 }
