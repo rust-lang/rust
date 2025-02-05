@@ -318,7 +318,7 @@ pub struct BuiltinAttribute {
 
 /// Attributes that have a special meaning to rustc or rustdoc.
 #[rustfmt::skip]
-pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
+pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
     // Stable attributes:
     // ==========================================================================
