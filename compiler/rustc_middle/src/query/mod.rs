@@ -1713,6 +1713,13 @@ rustc_queries! {
         feedable
     }
 
+    /// Returns the default `const` value for a struct field.
+    query default_field(def_id: DefId) -> Option<DefId> {
+        desc { |tcx| "looking up the `const` corresponding to the default for `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
+        feedable
+    }
+
     query check_well_formed(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "checking that `{}` is well-formed", tcx.def_path_str(key) }
         return_result_from_ensure_ok
