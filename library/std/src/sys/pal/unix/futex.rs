@@ -115,6 +115,17 @@ pub fn futex_wake_all(futex: &AtomicU32) {
     }
 }
 
+/// Wakes one waiter on `futex` and requeue the remaining waiters to `futex2`.
+#[cfg(any(target_os = "linux", target_os = "android"))]
+pub fn futex_requeue(futex: &AtomicU32, futex2: &AtomicU32) {
+    let ptr = futex as *const AtomicU32;
+    let ptr2 = futex2 as *const AtomicU32;
+    let op = libc::FUTEX_REQUEUE | libc::FUTEX_PRIVATE_FLAG;
+    unsafe {
+        libc::syscall(libc::SYS_futex, ptr, op, 1, i32::MAX, ptr2);
+    }
+}
+
 // FreeBSD doesn't tell us how many threads are woken up, so this always returns false.
 #[cfg(target_os = "freebsd")]
 pub fn futex_wake(futex: &AtomicU32) -> bool {
@@ -187,6 +198,21 @@ pub fn futex_wake_all(futex: &AtomicU32) {
             i32::MAX,
             null(),
             null_mut(),
+        );
+    }
+}
+
+/// Wakes one waiter on `futex` and requeue the remaining waiters to `futex2`.
+#[cfg(target_os = "openbsd")]
+pub fn futex_requeue(futex: &AtomicU32, futex2: &AtomicU32) {
+    use crate::ptr::null;
+    unsafe {
+        libc::futex(
+            futex as *const AtomicU32 as *mut u32,
+            libc::FUTEX_REQUEUE,
+            1,
+            null::<libc::timespec>().with_addr(i32::MAX as usize),
+            futex2 as *const AtomicU32 as *mut u32,
         );
     }
 }
