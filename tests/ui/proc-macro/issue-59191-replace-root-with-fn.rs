@@ -3,6 +3,7 @@
 
 //@ edition:2018
 //@ proc-macro: issue-59191.rs
+//@ needs-unwind (affects error output)
 //@ error-pattern: requires `sized` lang_item
 
 #![feature(custom_inner_attributes)]
