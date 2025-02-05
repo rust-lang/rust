@@ -59,8 +59,9 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
     };
     let result = pcx.lower_pattern(pat);
     debug!("pat_from_hir({:?}) = {:?}", pat, result);
-    if let Some(info) = migration_info {
-        let sugg = pcx.rust_2024_migration_suggestion.expect("suggestion should be present");
+    if let Some(info) = migration_info
+        && let Some(sugg) = pcx.rust_2024_migration_suggestion
+    {
         let mut spans =
             MultiSpan::from_spans(info.primary_labels.iter().map(|(span, _)| *span).collect());
         for (span, label) in &info.primary_labels {
