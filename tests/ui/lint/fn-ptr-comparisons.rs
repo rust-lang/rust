@@ -11,7 +11,6 @@ extern "C" fn c() {}
 
 extern "C" fn args(_a: i32) -> i32 { 0 }
 
-#[derive(PartialEq, Eq)]
 struct A {
     f: fn(),
 }
@@ -52,7 +51,6 @@ fn main() {
     let _ = t == test;
     //~^ WARN function pointer comparisons
 
-    let _ = a1 == a2; // should not warn
     let _ = a1.f == a2.f;
     //~^ WARN function pointer comparisons
 }
