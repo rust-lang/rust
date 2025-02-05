@@ -4,12 +4,12 @@ error[E0080]: evaluation of constant value failed
 LL |     let _x: &'static () = &ub();
    |                            ^^^^ entering unreachable code
    |
-note: called from `ub`
+note: inside `ub`
   --> $DIR/interpret-in-promoted.rs:7:5
    |
 LL |     std::hint::unreachable_unchecked();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: called from `unreachable_unchecked`
+note: inside `unreachable_unchecked`
   --> $SRC_DIR/core/src/hint.rs:LL:COL
 
 note: erroneous constant encountered

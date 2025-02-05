@@ -9,7 +9,7 @@ LL |     f(0);
    = help: this means these two types are not *guaranteed* to be ABI-compatible across all targets
    = help: if you think this code should be accepted anyway, please report an issue with Miri
    = note: BACKTRACE:
-   = note: called from `main` at tests/fail/tail_calls/signature-mismatch-arg.rs:LL:CC
+   = note: inside `main` at tests/fail/tail_calls/signature-mismatch-arg.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

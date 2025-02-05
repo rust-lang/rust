@@ -15,7 +15,7 @@ help: <TAG> was created by a SharedReadOnly retag at offsets [0x0..0x4]
 LL |         *(x as *const i32 as *mut i32) = 7;
    |           ^
    = note: BACKTRACE (of the first span):
-   = note: called from `unknown_code` at tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
+   = note: inside `unknown_code` at tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
 note: inside `foo`
   --> tests/fail/both_borrows/shr_frozen_violation1.rs:LL:CC
    |

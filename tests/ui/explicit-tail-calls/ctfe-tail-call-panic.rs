@@ -6,7 +6,7 @@ pub const fn f() {
 }
 
 const fn g() {
-    panic!() //~ NOTE called from `g`
+    panic!() //~ NOTE inside `g`
     //~^ NOTE in this expansion of panic!
 }
 

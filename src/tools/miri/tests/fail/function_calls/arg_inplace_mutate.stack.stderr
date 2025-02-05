@@ -22,7 +22,7 @@ help: <TAG> is this argument
 LL |     unsafe { ptr.write(S(0)) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: BACKTRACE (of the first span):
-   = note: called from `callee` at tests/fail/function_calls/arg_inplace_mutate.rs:LL:CC
+   = note: inside `callee` at tests/fail/function_calls/arg_inplace_mutate.rs:LL:CC
 note: inside `main`
   --> tests/fail/function_calls/arg_inplace_mutate.rs:LL:CC
    |

@@ -15,7 +15,7 @@ LL |         let _r = &mut *p;
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE (of the first span) on thread `unnamed-ID`:
-   = note: called from `thread_2` at tests/fail/both_borrows/retag_data_race_write.rs:LL:CC
+   = note: inside `thread_2` at tests/fail/both_borrows/retag_data_race_write.rs:LL:CC
 note: inside closure
   --> tests/fail/both_borrows/retag_data_race_write.rs:LL:CC
    |

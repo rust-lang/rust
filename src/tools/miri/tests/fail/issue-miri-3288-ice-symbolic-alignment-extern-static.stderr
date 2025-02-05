@@ -6,7 +6,7 @@ LL |     let _val = *DISPATCH_QUEUE_CONCURRENT;
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:
-   = note: called from `main` at tests/fail/issue-miri-3288-ice-symbolic-alignment-extern-static.rs:LL:CC
+   = note: inside `main` at tests/fail/issue-miri-3288-ice-symbolic-alignment-extern-static.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

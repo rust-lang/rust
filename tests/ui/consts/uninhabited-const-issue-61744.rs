@@ -1,11 +1,11 @@
 //@ build-fail
 
 pub const unsafe fn fake_type<T>() -> T {
-    hint_unreachable() //~ called
+    hint_unreachable() //~ inside
 }
 
 pub const unsafe fn hint_unreachable() -> ! {
-    fake_type() //~ called
+    fake_type() //~ inside
 }
 
 trait Const {

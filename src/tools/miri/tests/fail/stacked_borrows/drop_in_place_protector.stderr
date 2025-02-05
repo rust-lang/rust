@@ -17,9 +17,9 @@ help: <TAG> is this argument
 LL |         core::ptr::drop_in_place(x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: BACKTRACE (of the first span):
-   = note: called from `<HasDrop as std::ops::Drop>::drop` at tests/fail/stacked_borrows/drop_in_place_protector.rs:LL:CC
-   = note: called from `std::ptr::drop_in_place::<HasDrop> - shim(Some(HasDrop))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-   = note: called from `std::ptr::drop_in_place::<(HasDrop, u8)> - shim(Some((HasDrop, u8)))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+   = note: inside `<HasDrop as std::ops::Drop>::drop` at tests/fail/stacked_borrows/drop_in_place_protector.rs:LL:CC
+   = note: inside `std::ptr::drop_in_place::<HasDrop> - shim(Some(HasDrop))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+   = note: inside `std::ptr::drop_in_place::<(HasDrop, u8)> - shim(Some((HasDrop, u8)))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
 note: inside `main`
   --> tests/fail/stacked_borrows/drop_in_place_protector.rs:LL:CC
    |

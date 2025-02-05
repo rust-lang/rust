@@ -5,7 +5,7 @@ LL |     core::intrinsics::breakpoint();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trace/breakpoint trap
    |
    = note: BACKTRACE:
-   = note: called from `main` at tests/fail/breakpoint.rs:LL:CC
+   = note: inside `main` at tests/fail/breakpoint.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

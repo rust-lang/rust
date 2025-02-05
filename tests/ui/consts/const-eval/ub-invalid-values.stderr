@@ -4,7 +4,7 @@ error[E0080]: evaluation of constant value failed
 LL |     bool_cast(&v as *const u8 as *const bool);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ interpreting an invalid 8-bit value as a bool: 0x03
    |
-note: called from `bool_cast`
+note: inside `bool_cast`
   --> $DIR/ub-invalid-values.rs:2:16
    |
 LL |     let _val = *ptr as u32;

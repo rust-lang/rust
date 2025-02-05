@@ -4,7 +4,7 @@ error[E0080]: evaluation of constant value failed
 LL | const _: () = foo();
    |               ^^^^^ panic: explicit panic
    |
-note: called from `foo`
+note: inside `foo`
   --> $DIR/unwind-abort.rs:2:5
    |
 LL |     panic!()

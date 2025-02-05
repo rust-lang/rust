@@ -25,9 +25,9 @@ LL |             || drop(Box::from_raw(ptr)),
    |                     ^^^^^^^^^^^^^^^^^^
    = help: this transition corresponds to a temporary loss of write permissions until function exit
    = note: BACKTRACE (of the first span):
-   = note: called from `<std::boxed::Box<i32> as std::ops::Drop>::drop` at RUSTLIB/alloc/src/boxed.rs:LL:CC
-   = note: called from `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
-   = note: called from `std::mem::drop::<std::boxed::Box<i32>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
+   = note: inside `<std::boxed::Box<i32> as std::ops::Drop>::drop` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+   = note: inside `std::ptr::drop_in_place::<std::boxed::Box<i32>> - shim(Some(std::boxed::Box<i32>))` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+   = note: inside `std::mem::drop::<std::boxed::Box<i32>>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
 note: inside closure
   --> tests/fail/both_borrows/newtype_retagging.rs:LL:CC
    |

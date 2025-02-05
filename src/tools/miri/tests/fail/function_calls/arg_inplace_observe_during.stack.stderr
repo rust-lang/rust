@@ -22,7 +22,7 @@ help: <TAG> is this argument
 LL |     x.0 = 0;
    |     ^^^^^^^
    = note: BACKTRACE (of the first span):
-   = note: called from `change_arg` at tests/fail/function_calls/arg_inplace_observe_during.rs:LL:CC
+   = note: inside `change_arg` at tests/fail/function_calls/arg_inplace_observe_during.rs:LL:CC
 note: inside `main`
   --> tests/fail/function_calls/arg_inplace_observe_during.rs:LL:CC
    |
