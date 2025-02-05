@@ -1,4 +1,3 @@
-// skip-filecheck
 //@ test-mir-pass: CopyProp
 //
 // This attempts to mutate `a` via a pointer derived from `addr_of!(a)`. That is UB
@@ -18,6 +17,10 @@ use core::intrinsics::mir::*;
 
 #[custom_mir(dialect = "analysis", phase = "post-cleanup")]
 fn f(c: bool) -> bool {
+    // CHECK-LABEL: fn f(
+    // CHECK: _2 = copy _1;
+    // CHECK-NOT: _3 = &raw const _1;
+    // CHECK: _3 = &raw const _2;
     mir! {
         {
             let a = c;
