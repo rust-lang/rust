@@ -1,11 +1,11 @@
 error[E0432]: unresolved import `bar::foo`
-  --> $DIR/privacy2.rs:19:9
+  --> $DIR/privacy2.rs:21:9
    |
 LL |     use bar::foo;
    |         ^^^^^^^^ no `foo` in `bar`
 
 error[E0603]: function import `foo` is private
-  --> $DIR/privacy2.rs:25:20
+  --> $DIR/privacy2.rs:28:20
    |
 LL |     use bar::glob::foo;
    |                    ^^^ private function import
@@ -22,8 +22,40 @@ LL | pub fn foo() {}
    | ^^^^^^^^^^^^ you could import this directly
 
 error: requires `sized` lang_item
+  --> $DIR/privacy2.rs:16:14
+   |
+LL | pub fn foo() {}
+   |              ^^
 
-error: aborting due to 3 previous errors
+error: requires `sized` lang_item
+  --> $DIR/privacy2.rs:19:12
+   |
+LL |   fn test1() {
+   |  ____________^
+LL | |
+LL | |     use bar::foo;
+...  |
+LL | | }
+   | |_^
+
+error: requires `sized` lang_item
+  --> $DIR/privacy2.rs:26:12
+   |
+LL |   fn test2() {
+   |  ____________^
+LL | |
+LL | |     use bar::glob::foo;
+LL | |
+LL | | }
+   | |_^
+
+error: requires `sized` lang_item
+  --> $DIR/privacy2.rs:32:11
+   |
+LL | fn main() {}
+   |           ^^
+
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0432, E0603.
 For more information about an error, try `rustc --explain E0432`.

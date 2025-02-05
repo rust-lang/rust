@@ -1765,7 +1765,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         err.code(E0746);
-        err.primary_message("return type cannot have an unboxed trait object");
+        err.primary_message("return type cannot be a trait object without pointer indirection");
         err.children.clear();
 
         let span = obligation.cause.span;
@@ -1781,25 +1781,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         } else {
             ("dyn ", span.shrink_to_lo())
         };
-        let alternatively = if visitor
-            .returns
-            .iter()
-            .map(|expr| self.typeck_results.as_ref().unwrap().expr_ty_adjusted_opt(expr))
-            .collect::<FxHashSet<_>>()
-            .len()
-            <= 1
-        {
-            err.span_suggestion_verbose(
-                impl_span,
-                "consider returning an `impl Trait` instead of a `dyn Trait`",
-                "impl ",
-                Applicability::MaybeIncorrect,
-            );
-            "alternatively, "
-        } else {
-            err.help("if there were a single returned type, you could use `impl Trait` instead");
-            ""
-        };
+
+        err.span_suggestion_verbose(
+            impl_span,
+            "consider returning an `impl Trait` instead of a `dyn Trait`",
+            "impl ",
+            Applicability::MaybeIncorrect,
+        );
 
         let mut sugg = vec![
             (span.shrink_to_lo(), format!("Box<{pre}")),
@@ -1831,7 +1819,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         err.multipart_suggestion(
             format!(
-                "{alternatively}box the return type, and wrap all of the returned values in \
+                "alternatively, box the return type, and wrap all of the returned values in \
                  `Box::new`",
             ),
             sugg,
@@ -1839,41 +1827,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
 
         true
-    }
-
-    pub(super) fn point_at_returns_when_relevant(
-        &self,
-        err: &mut Diag<'_>,
-        obligation: &PredicateObligation<'tcx>,
-    ) {
-        match obligation.cause.code().peel_derives() {
-            ObligationCauseCode::SizedReturnType => {}
-            _ => return,
-        }
-
-        let hir = self.tcx.hir();
-        let node = self.tcx.hir_node_by_def_id(obligation.cause.body_id);
-        if let hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Fn { body: body_id, .. }, ..
-        }) = node
-        {
-            let body = hir.body(*body_id);
-            // Point at all the `return`s in the function as they have failed trait bounds.
-            let mut visitor = ReturnsVisitor::default();
-            visitor.visit_body(body);
-            let typeck_results = self.typeck_results.as_ref().unwrap();
-            for expr in &visitor.returns {
-                if let Some(returned_ty) = typeck_results.node_type_opt(expr.hir_id) {
-                    let ty = self.resolve_vars_if_possible(returned_ty);
-                    if ty.references_error() {
-                        // don't print out the [type error] here
-                        err.downgrade_to_delayed_bug();
-                    } else {
-                        err.span_label(expr.span, format!("this returned value is of type `{ty}`"));
-                    }
-                }
-            }
-        }
     }
 
     pub(super) fn report_closure_arg_mismatch(

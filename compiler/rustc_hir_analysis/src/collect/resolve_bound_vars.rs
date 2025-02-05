@@ -831,8 +831,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn visit_pattern_type_pattern(&mut self, p: &'tcx hir::Pat<'tcx>) {
-        intravisit::walk_pat(self, p)
+    fn visit_pattern_type_pattern(&mut self, p: &'tcx hir::TyPat<'tcx>) {
+        intravisit::walk_ty_pat(self, p)
     }
 
     #[instrument(level = "debug", skip(self))]

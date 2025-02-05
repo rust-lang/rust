@@ -21,13 +21,12 @@ use rustc_macros::{
 };
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_span::{DUMMY_SP, Span, Symbol};
-// FIXME: Remove this import and import via `solve::`
-pub use rustc_type_ir::solve::BuiltinImplSource;
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
 use crate::mir::ConstraintCategory;
+pub use crate::traits::solve::BuiltinImplSource;
 use crate::ty::abstract_const::NotConstEvaluatable;
 use crate::ty::{self, AdtKind, GenericArgsRef, Ty};
 

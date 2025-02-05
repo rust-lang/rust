@@ -1534,10 +1534,10 @@ function preLoadCss(cssUrl) {
 
     function buildHelpMenu() {
         const book_info = document.createElement("span");
-        const channel = getVar("channel");
+        const drloChannel = `https://doc.rust-lang.org/${getVar("channel")}`;
         book_info.className = "top";
         book_info.innerHTML = `You can find more information in \
-<a href="https://doc.rust-lang.org/${channel}/rustdoc/">the rustdoc book</a>.`;
+<a href="${drloChannel}/rustdoc/">the rustdoc book</a>.`;
 
         const shortcuts = [
             ["?", "Show this help dialog"],
@@ -1557,8 +1557,8 @@ function preLoadCss(cssUrl) {
         div_shortcuts.innerHTML = "<h2>Keyboard Shortcuts</h2><dl>" + shortcuts + "</dl></div>";
 
         const infos = [
-            `For a full list of all search features, take a look <a \
-href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.html">here</a>.`,
+            `For a full list of all search features, take a look \
+             <a href="${drloChannel}/rustdoc/read-documentation/search.html">here</a>.`,
             "Prefix searches with a type followed by a colon (e.g., <code>fn:</code>) to \
              restrict the search to a given item kind.",
             "Accepted kinds are: <code>fn</code>, <code>mod</code>, <code>struct</code>, \
@@ -1568,10 +1568,10 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
              <code>-&gt; vec</code> or <code>String, enum:Cow -&gt; bool</code>)",
             "You can look for items with an exact name by putting double quotes around \
              your request: <code>\"string\"</code>",
-             "Look for functions that accept or return \
-              <a href=\"https://doc.rust-lang.org/std/primitive.slice.html\">slices</a> and \
-              <a href=\"https://doc.rust-lang.org/std/primitive.array.html\">arrays</a> by writing \
-              square brackets (e.g., <code>-&gt; [u8]</code> or <code>[] -&gt; Option</code>)",
+             `Look for functions that accept or return \
+              <a href="${drloChannel}/std/primitive.slice.html">slices</a> and \
+              <a href="${drloChannel}/std/primitive.array.html">arrays</a> by writing square \
+              brackets (e.g., <code>-&gt; [u8]</code> or <code>[] -&gt; Option</code>)`,
             "Look for items inside another one by searching for a path: <code>vec::Vec</code>",
         ].map(x => "<p>" + x + "</p>").join("");
         const div_infos = document.createElement("div");

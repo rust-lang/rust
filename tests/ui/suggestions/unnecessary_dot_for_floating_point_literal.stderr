@@ -22,7 +22,7 @@ LL |     let _: f64 = 1..;
    |            expected due to this
    |
    = note: expected type `f64`
-            found struct `RangeFrom<{integer}>`
+            found struct `std::ops::RangeFrom<{integer}>`
 help: remove the unnecessary `.` operator for a floating point literal
    |
 LL |     let _: f64 = 1.;

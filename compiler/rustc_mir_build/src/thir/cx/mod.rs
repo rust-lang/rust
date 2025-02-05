@@ -16,15 +16,15 @@ use rustc_middle::ty::{self, RvalueScopes, TyCtxt};
 use tracing::instrument;
 
 use crate::thir::pattern::pat_from_hir;
-use crate::thir::util::UserAnnotatedTyHelpers;
 
+/// Query implementation for [`TyCtxt::thir_body`].
 pub(crate) fn thir_body(
     tcx: TyCtxt<'_>,
     owner_def: LocalDefId,
 ) -> Result<(&Steal<Thir<'_>>, ExprId), ErrorGuaranteed> {
     let hir = tcx.hir();
     let body = hir.body_owned_by(owner_def);
-    let mut cx = Cx::new(tcx, owner_def);
+    let mut cx = ThirBuildCx::new(tcx, owner_def);
     if let Some(reported) = cx.typeck_results.tainted_by_errors {
         return Err(reported);
     }
@@ -52,8 +52,10 @@ pub(crate) fn thir_body(
     Ok((tcx.alloc_steal_thir(cx.thir), expr))
 }
 
-struct Cx<'tcx> {
+/// Context for lowering HIR to THIR for a single function body (or other kind of body).
+struct ThirBuildCx<'tcx> {
     tcx: TyCtxt<'tcx>,
+    /// The THIR data that this context is building.
     thir: Thir<'tcx>,
 
     typing_env: ty::TypingEnv<'tcx>,
@@ -69,8 +71,8 @@ struct Cx<'tcx> {
     body_owner: DefId,
 }
 
-impl<'tcx> Cx<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Cx<'tcx> {
+impl<'tcx> ThirBuildCx<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Self {
         let typeck_results = tcx.typeck(def);
         let hir = tcx.hir();
         let hir_id = tcx.local_def_id_to_hir_id(def);
@@ -94,7 +96,7 @@ impl<'tcx> Cx<'tcx> {
             BodyTy::Const(typeck_results.node_type(hir_id))
         };
 
-        Cx {
+        Self {
             tcx,
             thir: Thir::new(body_type),
             // FIXME(#132279): We're in a body, we should use a typing
@@ -113,7 +115,7 @@ impl<'tcx> Cx<'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn pattern_from_hir(&mut self, p: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
-        pat_from_hir(self.tcx, self.typing_env, self.typeck_results(), p)
+        pat_from_hir(self.tcx, self.typing_env, self.typeck_results, p)
     }
 
     fn closure_env_param(&self, owner_def: LocalDefId, expr_id: HirId) -> Option<Param<'tcx>> {
@@ -197,15 +199,12 @@ impl<'tcx> Cx<'tcx> {
             Param { pat: Some(pat), ty, ty_span, self_kind, hir_id: Some(param.hir_id) }
         })
     }
-}
 
-impl<'tcx> UserAnnotatedTyHelpers<'tcx> for Cx<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn typeck_results(&self) -> &ty::TypeckResults<'tcx> {
-        self.typeck_results
+    fn user_args_applied_to_ty_of_hir_id(
+        &self,
+        hir_id: HirId,
+    ) -> Option<ty::CanonicalUserType<'tcx>> {
+        crate::thir::util::user_args_applied_to_ty_of_hir_id(self.typeck_results, hir_id)
     }
 }
 

@@ -507,6 +507,8 @@ declare_features! (
     (incomplete, generic_const_exprs, "1.56.0", Some(76560)),
     /// Allows generic parameters and where-clauses on free & associated const items.
     (incomplete, generic_const_items, "1.73.0", Some(113521)),
+    /// Allows any generic constants being used as pattern type range ends
+    (incomplete, generic_pattern_types, "CURRENT_RUSTC_VERSION", Some(136574)),
     /// Allows registering static items globally, possibly across crates, to iterate over at runtime.
     (unstable, global_registration, "1.80.0", Some(125119)),
     /// Allows using guards in patterns.
@@ -529,6 +531,8 @@ declare_features! (
     (unstable, inline_const_pat, "1.58.0", Some(76001)),
     /// Allows using `pointer` and `reference` in intra-doc links
     (unstable, intra_doc_pointers, "1.51.0", Some(80896)),
+    // Allows using the `kl` and `widekl` target features and the associated intrinsics
+    (unstable, keylocker_x86, "CURRENT_RUSTC_VERSION", Some(134813)),
     // Allows setting the threshold for the `large_assignments` lint.
     (unstable, large_assignments, "1.52.0", Some(83518)),
     /// Allow to have type alias types for inter-crate use.
@@ -568,6 +572,8 @@ declare_features! (
     (unstable, never_type, "1.13.0", Some(35121)),
     /// Allows diverging expressions to fall back to `!` rather than `()`.
     (unstable, never_type_fallback, "1.41.0", Some(65992)),
+    /// Switch `..` syntax to use the new (`Copy + IntoIterator`) range types.
+    (unstable, new_range, "CURRENT_RUSTC_VERSION", Some(123741)),
     /// Allows `#![no_core]`.
     (unstable, no_core, "1.3.0", Some(29639)),
     /// Allows the use of `no_sanitize` attribute.

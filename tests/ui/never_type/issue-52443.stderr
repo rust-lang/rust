@@ -31,7 +31,7 @@ help: give the `break` a value of the expected type
 LL |     [(); loop { break 42 }];
    |                       ++
 
-error[E0015]: cannot use `for` loop on `RangeFrom<usize>` in constants
+error[E0015]: cannot use `for` loop on `std::ops::RangeFrom<usize>` in constants
   --> $DIR/issue-52443.rs:9:21
    |
 LL |     [(); { for _ in 0usize.. {}; 0}];
@@ -39,7 +39,7 @@ LL |     [(); { for _ in 0usize.. {}; 0}];
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
-error[E0015]: cannot use `for` loop on `RangeFrom<usize>` in constants
+error[E0015]: cannot use `for` loop on `std::ops::RangeFrom<usize>` in constants
   --> $DIR/issue-52443.rs:9:21
    |
 LL |     [(); { for _ in 0usize.. {}; 0}];

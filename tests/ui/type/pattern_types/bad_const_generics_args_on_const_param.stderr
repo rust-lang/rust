@@ -1,38 +1,14 @@
-error[E0109]: type and const arguments are not allowed on const parameter `START`
-  --> $DIR/bad_const_generics_args_on_const_param.rs:5:44
+error: internal compiler error: compiler/rustc_hir_analysis/src/hir_ty_lowering/mod.rs:LL:CC: try_lower_anon_const_lit: received const param which shouldn't be possible
+  --> $DIR/bad_const_generics_args_on_const_param.rs:12:36
    |
 LL |     std::pat::pattern_type!(u32 is START::<(), i32, 2>..=END::<_, Assoc = ()>);
-   |                                    -----   ^^  ^^^  ^ type and const arguments not allowed
-   |                                    |
-   |                                    not allowed on const parameter `START`
-   |
-note: const parameter `START` defined here
-  --> $DIR/bad_const_generics_args_on_const_param.rs:4:16
-   |
-LL | type Pat<const START: u32, const END: u32> =
-   |                ^^^^^
+   |                                    ^^^^^^^^^^^^^^^^^^^
 
-error[E0109]: generic arguments are not allowed on const parameter `END`
-  --> $DIR/bad_const_generics_args_on_const_param.rs:5:64
-   |
-LL |     std::pat::pattern_type!(u32 is START::<(), i32, 2>..=END::<_, Assoc = ()>);
-   |                                                          ---   ^ generic argument not allowed
-   |                                                          |
-   |                                                          not allowed on const parameter `END`
-   |
-note: const parameter `END` defined here
-  --> $DIR/bad_const_generics_args_on_const_param.rs:4:34
-   |
-LL | type Pat<const START: u32, const END: u32> =
-   |                                  ^^^
 
-error[E0229]: associated item constraints are not allowed here
-  --> $DIR/bad_const_generics_args_on_const_param.rs:5:67
-   |
-LL |     std::pat::pattern_type!(u32 is START::<(), i32, 2>..=END::<_, Assoc = ()>);
-   |                                                                   ^^^^^^^^^^ associated item constraint not allowed here
+Box<dyn Any>
+query stack during panic:
+#0 [type_of] expanding type alias `Pat`
+#1 [check_well_formed] checking that `Pat` is well-formed
+... and 2 other queries... use `env RUST_BACKTRACE=1` to see the full query stack
+error: aborting due to 1 previous error
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0109, E0229.
-For more information about an error, try `rustc --explain E0109`.

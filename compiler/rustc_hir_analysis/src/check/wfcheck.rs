@@ -1065,6 +1065,7 @@ fn check_associated_item(
                 let ty = tcx.type_of(item.def_id).instantiate_identity();
                 let ty = wfcx.normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
                 wfcx.register_wf_obligation(span, loc, ty.into());
+                check_sized_if_body(wfcx, item.def_id.expect_local(), ty, Some(span));
                 Ok(())
             }
             ty::AssocKind::Fn => {
@@ -1189,7 +1190,7 @@ fn check_type_defn<'tcx>(
                     ),
                     wfcx.param_env,
                     ty,
-                    tcx.require_lang_item(LangItem::Sized, None),
+                    tcx.require_lang_item(LangItem::Sized, Some(hir_ty.span)),
                 );
             }
 
@@ -1314,7 +1315,7 @@ fn check_item_type(
                 ),
                 wfcx.param_env,
                 item_ty,
-                tcx.require_lang_item(LangItem::Sized, None),
+                tcx.require_lang_item(LangItem::Sized, Some(ty_span)),
             );
         }
 
@@ -1643,6 +1644,31 @@ fn check_fn_or_method<'tcx>(
                 "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
             );
         }
+    }
+
+    // If the function has a body, additionally require that the return type is sized.
+    check_sized_if_body(wfcx, def_id, sig.output(), match hir_decl.output {
+        hir::FnRetTy::Return(ty) => Some(ty.span),
+        hir::FnRetTy::DefaultReturn(_) => None,
+    });
+}
+
+fn check_sized_if_body<'tcx>(
+    wfcx: &WfCheckingCtxt<'_, 'tcx>,
+    def_id: LocalDefId,
+    ty: Ty<'tcx>,
+    maybe_span: Option<Span>,
+) {
+    let tcx = wfcx.tcx();
+    if let Some(body) = tcx.hir().maybe_body_owned_by(def_id) {
+        let span = maybe_span.unwrap_or(body.value.span);
+
+        wfcx.register_bound(
+            ObligationCause::new(span, def_id, traits::ObligationCauseCode::SizedReturnType),
+            wfcx.param_env,
+            ty,
+            tcx.require_lang_item(LangItem::Sized, Some(span)),
+        );
     }
 }
 

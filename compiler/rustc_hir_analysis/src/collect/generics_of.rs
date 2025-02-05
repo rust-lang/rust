@@ -198,6 +198,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     {
                         Some(parent_did)
                     }
+                    Node::TyPat(_) => Some(parent_did),
                     _ => None,
                 }
             }

@@ -29,7 +29,8 @@
 //@ ignore-aarch64
 //@ ignore-windows
 
-// note: windows is ignored as rust_test_helpers does not have the sysv64 abi on windows
+// Windows is ignored because bootstrap doesn't yet know to compile rust_test_helpers with
+// the sysv64 ABI on Windows.
 
 #[allow(dead_code)]
 #[allow(improper_ctypes)]

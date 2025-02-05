@@ -1,4 +1,4 @@
-error[E0746]: return type cannot have an unboxed trait object
+error[E0746]: return type cannot be a trait object without pointer indirection
   --> $DIR/issue-18107.rs:4:5
    |
 LL |     dyn AbstractRenderer

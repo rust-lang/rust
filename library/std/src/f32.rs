@@ -12,9 +12,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
-#[cfg(test)]
-mod tests;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::f32::{
