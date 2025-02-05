@@ -162,11 +162,11 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
                 TestCase::Irrefutable { ascription: None, binding }
             }
 
-            PatKind::ExpandedConstant { subpattern: ref pattern, def_id: _, is_inline: false } => {
+            PatKind::NamedConstMarker { subpattern: ref pattern, def_id: _ } => {
                 subpairs.push(MatchPairTree::for_pattern(place_builder, pattern, cx));
                 default_irrefutable()
             }
-            PatKind::ExpandedConstant { subpattern: ref pattern, def_id, is_inline: true } => {
+            PatKind::InlineConstMarker { subpattern: ref pattern, def_id } => {
                 // Apply a type ascription for the inline constant to the value at `match_pair.place`
                 let ascription = place.map(|source| {
                     let span = pattern.span;
@@ -177,7 +177,10 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
                     })
                     .args;
                     let user_ty = cx.infcx.canonicalize_user_type_annotation(ty::UserType::new(
-                        ty::UserTypeKind::TypeOf(def_id, ty::UserArgs { args, user_self_ty: None }),
+                        ty::UserTypeKind::TypeOf(def_id.to_def_id(), ty::UserArgs {
+                            args,
+                            user_self_ty: None,
+                        }),
                     ));
                     let annotation = ty::CanonicalUserTypeAnnotation {
                         inferred_ty: pattern.ty,
