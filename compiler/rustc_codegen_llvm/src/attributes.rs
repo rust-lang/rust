@@ -378,6 +378,15 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         to_add.push(llvm::CreateAttrString(cx.llcx, "use-sample-profile"));
     }
 
+    // patchable-function is only implemented on x86 on LLVM
+    if cx.sess().opts.unstable_opts.hotpatch && cx.sess().target.is_x86() {
+        to_add.push(llvm::CreateAttrStringValue(
+            cx.llcx,
+            "patchable-function",
+            "prologue-short-redirect",
+        ));
+    }
+
     // FIXME: none of these functions interact with source level attributes.
     to_add.extend(frame_pointer_type_attr(cx));
     to_add.extend(function_return_attr(cx));

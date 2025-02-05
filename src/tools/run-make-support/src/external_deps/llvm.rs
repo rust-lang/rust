@@ -282,6 +282,13 @@ impl LlvmFilecheck {
         self
     }
 
+    /// Specify the prefix (without :) for patterns to match. By default, these patterns are prefixed with "CHECK:".
+    pub fn check_prefix(&mut self, prefix: &str) -> &mut Self {
+        self.cmd.arg("--check-prefix");
+        self.cmd.arg(prefix);
+        self
+    }
+
     /// `--input-file` option.
     pub fn input_file<P: AsRef<Path>>(&mut self, input_file: P) -> &mut Self {
         self.cmd.arg("--input-file");
