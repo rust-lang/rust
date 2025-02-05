@@ -67,9 +67,7 @@ fn baz() {
     let string_ref = &owned;
     let partial = "foobar";
     _ = string_ref == partial[..3];
-    //~^ERROR can't compare `&String` with `str` [E0277]
     _ = partial[..3] == string_ref;
-    //~^ERROR can't compare `str` with `&String` [E0277]
 }
 
 fn qux() {

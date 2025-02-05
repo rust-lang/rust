@@ -12,6 +12,14 @@ LL |     let foo = 5 - 6;
    |               ~   ~
 
 error: taken reference of right operand
+  --> tests/ui/op_ref.rs:21:8
+   |
+LL |     if b < &a {
+   |        ^^^^--
+   |            |
+   |            help: use the right value directly: `a`
+
+error: taken reference of right operand
   --> tests/ui/op_ref.rs:58:13
    |
 LL |     let z = x & &y;
@@ -35,5 +43,5 @@ LL |         let _ = two + &three;
    |                       |
    |                       help: use the right value directly: `three`
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

@@ -13,13 +13,13 @@ fn main() {
 
     let _: Option<String> = vec.iter().chain(vec.iter()).next().cloned();
 
-    let _: usize = vec.iter().filter(|x| x == &"2").count();
+    let _: usize = vec.iter().filter(|x| x == "2").count();
 
     let _: Vec<_> = vec.iter().take(2).cloned().collect();
 
     let _: Vec<_> = vec.iter().skip(2).cloned().collect();
 
-    let _ = vec.iter().filter(|x| x == &"2").nth(2).cloned();
+    let _ = vec.iter().filter(|x| x == "2").nth(2).cloned();
 
     let _ = [Some(Some("str".to_string())), Some(Some("str".to_string()))]
         .iter()
@@ -46,7 +46,7 @@ fn main() {
         iter: impl Iterator<Item = &'a (&'a u32, String)> + 'a,
         target: String,
     ) -> impl Iterator<Item = (&'a u32, String)> + 'a {
-        iter.filter(move |&(&a, b)| a == 1 && b == &target).cloned()
+        iter.filter(move |&(&a, b)| a == 1 && b == target).cloned()
     }
 
     {
@@ -57,7 +57,7 @@ fn main() {
         }
 
         fn bar<'a>(iter: impl Iterator<Item = &'a S<'a>> + 'a, target: String) -> impl Iterator<Item = S<'a>> + 'a {
-            iter.filter(move |&S { a, b }| **a == 1 && b == &target).cloned()
+            iter.filter(move |&S { a, b }| **a == 1 && b == target).cloned()
         }
     }
 
