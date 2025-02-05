@@ -233,10 +233,8 @@ main() {
 
     execAndMeasure "Unused packages" cleanPackages
     execAndMeasure "Unused Python Packages" removePythonPackages
-    if isX86; then
-        # On ARM, `npm uninstall` fails with a segmentation fault.
-        execAndMeasure "Unused Node modules" removeNodeModules
-    fi
+    execAndMeasure "Unused Node modules" removeNodeModules
+
     removeUnusedDirsAndFiles
 
     # Output saved space statistic
