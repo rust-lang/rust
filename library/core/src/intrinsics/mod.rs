@@ -2995,7 +2995,7 @@ pub unsafe fn float_to_int_unchecked<Float: Copy, Int: Copy>(_value: Float) -> I
 
 /// Float addition that allows optimizations based on algebraic rules.
 ///
-/// This intrinsic does not have a stable counterpart.
+/// Stabilized as [`f16::algebraic_add`], [`f32::algebraic_add`], [`f64::algebraic_add`] and [`f128::algebraic_add`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -3005,7 +3005,7 @@ pub fn fadd_algebraic<T: Copy>(_a: T, _b: T) -> T {
 
 /// Float subtraction that allows optimizations based on algebraic rules.
 ///
-/// This intrinsic does not have a stable counterpart.
+/// Stabilized as [`f16::algebraic_sub`], [`f32::algebraic_sub`], [`f64::algebraic_sub`] and [`f128::algebraic_sub`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -3015,7 +3015,7 @@ pub fn fsub_algebraic<T: Copy>(_a: T, _b: T) -> T {
 
 /// Float multiplication that allows optimizations based on algebraic rules.
 ///
-/// This intrinsic does not have a stable counterpart.
+/// Stabilized as [`f16::algebraic_mul`], [`f32::algebraic_mul`], [`f64::algebraic_mul`] and [`f128::algebraic_mul`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -3025,7 +3025,7 @@ pub fn fmul_algebraic<T: Copy>(_a: T, _b: T) -> T {
 
 /// Float division that allows optimizations based on algebraic rules.
 ///
-/// This intrinsic does not have a stable counterpart.
+/// Stabilized as [`f16::algebraic_div`], [`f32::algebraic_div`], [`f64::algebraic_div`] and [`f128::algebraic_div`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -3035,7 +3035,7 @@ pub fn fdiv_algebraic<T: Copy>(_a: T, _b: T) -> T {
 
 /// Float remainder that allows optimizations based on algebraic rules.
 ///
-/// This intrinsic does not have a stable counterpart.
+/// Stabilized as [`f16::algebraic_rem`], [`f32::algebraic_rem`], [`f64::algebraic_rem`] and [`f128::algebraic_rem`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
