@@ -2106,8 +2106,20 @@ fn add_linked_symbol_object(
         file.set_mangling(object::write::Mangling::None);
     }
 
+    // ld64 requires a relocation to load undefined symbols, see below.
+    // Not strictly needed if linking with lld, but might as well do it there too.
+    let ld64_section_helper = if file.format() == object::BinaryFormat::MachO {
+        Some(file.add_section(
+            file.segment_name(object::write::StandardSegment::Text).to_vec(),
+            "__text".into(),
+            object::SectionKind::Text,
+        ))
+    } else {
+        None
+    };
+
     for (sym, kind) in symbols.iter() {
-        file.add_symbol(object::write::Symbol {
+        let symbol = file.add_symbol(object::write::Symbol {
             name: sym.clone().into(),
             value: 0,
             size: 0,
@@ -2121,6 +2133,21 @@ fn add_linked_symbol_object(
             section: object::write::SymbolSection::Undefined,
             flags: object::SymbolFlags::None,
         });
+
+        // The linker shipped with Apple's Xcode, ld64, works a bit differently from other linkers.
+        // In particular, it completely ignores undefined symbols by themselves, and only consider
+        // undefined symbols if they have relocations.
+        //
+        // So to make this trick work on ld64, we need to actually insert a relocation. The
+        // relocation must be valid though, and hence must point to a valid piece of machine code,
+        // and hence this is all very architecture-specific.
+        //
+        // See the following for a few details on the design of ld64:
+        // https://github.com/apple-oss-distributions/ld64/blob/ld64-951.9/doc/design/linker.html
+        if let Some(section) = ld64_section_helper {
+            apple::add_data_and_relocation(&mut file, section, symbol, &sess.target)
+                .expect("failed adding relocation");
+        }
     }
 
     let path = tmpdir.join("symbols.o");
