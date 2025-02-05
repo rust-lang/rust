@@ -179,10 +179,11 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL | test_pat_on_type![(ref x,): &(T,)];
    |                   ^^^^^^^^ this matches on type `&_`
-help: make the implied reference pattern explicit
+help: remove the unnecessary binding modifier
    |
-LL | test_pat_on_type![&(ref x,): &(T,)];
-   |                   +
+LL - test_pat_on_type![(ref x,): &(T,)];
+LL + test_pat_on_type![(x,): &(T,)];
+   |
 
 error: binding modifiers may only be written when the default binding mode is `move`
   --> $DIR/min_match_ergonomics_fail.rs:34:20
@@ -196,10 +197,11 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL | test_pat_on_type![(ref mut x,): &mut (T,)];
    |                   ^^^^^^^^^^^^ this matches on type `&mut _`
-help: make the implied reference pattern explicit
+help: remove the unnecessary binding modifier
    |
-LL | test_pat_on_type![&mut (ref mut x,): &mut (T,)];
-   |                   ++++
+LL - test_pat_on_type![(ref mut x,): &mut (T,)];
+LL + test_pat_on_type![(x,): &mut (T,)];
+   |
 
 error: reference patterns may only be written when the default binding mode is `move`
   --> $DIR/min_match_ergonomics_fail.rs:43:10

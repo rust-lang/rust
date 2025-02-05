@@ -814,7 +814,7 @@ impl<'tcx> std::fmt::Display for UserTypeKind<'tcx> {
 
 /// Information on a pattern incompatible with Rust 2024, for use by the error/migration diagnostic
 /// emitted during THIR construction.
-#[derive(TyEncodable, TyDecodable, Debug, HashStable, Default)]
+#[derive(TyEncodable, TyDecodable, Debug, HashStable)]
 pub struct Rust2024IncompatiblePatInfo {
     /// Labeled spans for `&`s, `&mut`s, and binding modifiers incompatible with Rust 2024.
     pub primary_labels: Vec<(Span, String)>,
@@ -822,4 +822,6 @@ pub struct Rust2024IncompatiblePatInfo {
     pub bad_modifiers: bool,
     /// Whether any `&` or `&mut` patterns occur under a non-`move` default binding mode.
     pub bad_ref_pats: bool,
+    /// If `true`, we can give a simpler suggestion solely by eliding explicit binding modifiers.
+    pub suggest_eliding_modes: bool,
 }
