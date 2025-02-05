@@ -185,10 +185,6 @@ mod tests {
         }
     }
 
-    // We cannot test for `_xsave`, `xrstor`, `_xsetbv`, `_xsaveopt`, `_xsaves`, `_xrstors` as they
-    // are privileged instructions and will need access to kernel mode to execute and test them.
-    // see https://github.com/rust-lang/stdarch/issues/209
-
     #[cfg_attr(stdarch_intel_sde, ignore)]
     #[simd_test(enable = "xsave")]
     #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri

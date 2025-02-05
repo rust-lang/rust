@@ -98,23 +98,48 @@ mod tests {
     use crate::{core_arch::x86::*, mem::transmute};
     use stdarch_test::simd_test;
 
+    const F16_ONE: i16 = 0x3c00;
+    const F16_TWO: i16 = 0x4000;
+    const F16_THREE: i16 = 0x4200;
+    const F16_FOUR: i16 = 0x4400;
+    const F16_FIVE: i16 = 0x4500;
+    const F16_SIX: i16 = 0x4600;
+    const F16_SEVEN: i16 = 0x4700;
+    const F16_EIGHT: i16 = 0x4800;
+
     #[simd_test(enable = "f16c")]
     unsafe fn test_mm_cvtph_ps() {
-        let array = [1_f32, 2_f32, 3_f32, 4_f32];
-        let float_vec: __m128 = transmute(array);
-        let halfs: __m128i = _mm_cvtps_ph::<0>(float_vec);
-        let floats: __m128 = _mm_cvtph_ps(halfs);
-        let result: [f32; 4] = transmute(floats);
-        assert_eq!(result, array);
+        let a = _mm_set_epi16(0, 0, 0, 0, F16_ONE, F16_TWO, F16_THREE, F16_FOUR);
+        let r = _mm_cvtph_ps(a);
+        let e = _mm_set_ps(1.0, 2.0, 3.0, 4.0);
+        assert_eq_m128(r, e);
     }
 
     #[simd_test(enable = "f16c")]
     unsafe fn test_mm256_cvtph_ps() {
-        let array = [1_f32, 2_f32, 3_f32, 4_f32, 5_f32, 6_f32, 7_f32, 8_f32];
-        let float_vec: __m256 = transmute(array);
-        let halfs: __m128i = _mm256_cvtps_ph::<0>(float_vec);
-        let floats: __m256 = _mm256_cvtph_ps(halfs);
-        let result: [f32; 8] = transmute(floats);
-        assert_eq!(result, array);
+        let a = _mm_set_epi16(
+            F16_ONE, F16_TWO, F16_THREE, F16_FOUR, F16_FIVE, F16_SIX, F16_SEVEN, F16_EIGHT,
+        );
+        let r = _mm256_cvtph_ps(a);
+        let e = _mm256_set_ps(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        assert_eq_m256(r, e);
+    }
+
+    #[simd_test(enable = "f16c")]
+    unsafe fn test_mm_cvtps_ph() {
+        let a = _mm_set_ps(1.0, 2.0, 3.0, 4.0);
+        let r = _mm_cvtps_ph::<_MM_FROUND_CUR_DIRECTION>(a);
+        let e = _mm_set_epi16(0, 0, 0, 0, F16_ONE, F16_TWO, F16_THREE, F16_FOUR);
+        assert_eq_m128i(r, e);
+    }
+
+    #[simd_test(enable = "f16c")]
+    unsafe fn test_mm256_cvtps_ph() {
+        let a = _mm256_set_ps(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
+        let r = _mm256_cvtps_ph::<_MM_FROUND_CUR_DIRECTION>(a);
+        let e = _mm_set_epi16(
+            F16_ONE, F16_TWO, F16_THREE, F16_FOUR, F16_FIVE, F16_SIX, F16_SEVEN, F16_EIGHT,
+        );
+        assert_eq_m128i(r, e);
     }
 }

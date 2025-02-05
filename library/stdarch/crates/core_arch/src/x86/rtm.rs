@@ -120,13 +120,13 @@ mod tests {
     use crate::core_arch::x86::*;
 
     #[simd_test(enable = "rtm")]
-    unsafe fn test_xbegin_xend() {
+    unsafe fn test_xbegin() {
         let mut x = 0;
         for _ in 0..10 {
-            let code = rtm::_xbegin();
+            let code = _xbegin();
             if code == _XBEGIN_STARTED {
                 x += 1;
-                rtm::_xend();
+                _xend();
                 assert_eq!(x, 1);
                 break;
             }

@@ -181,12 +181,7 @@ fn verify_all_signatures() {
         if !rust.has_test {
             // FIXME: this list should be almost empty
             let skip = [
-                // EFLAGS
-                "__readeflags",
-                "__readeflags",
-                "__writeeflags",
-                "__writeeflags",
-                // MXCSR - deprecated
+                // MXCSR - deprecated, immediate UB
                 "_mm_getcsr",
                 "_mm_setcsr",
                 "_MM_GET_EXCEPTION_MASK",
@@ -207,14 +202,6 @@ fn verify_all_signatures() {
                 "_xrstors",
                 "_xsaves64",
                 "_xrstors64",
-                // TSC
-                "_rdtsc",
-                "__rdtscp",
-                // TBM
-                "_t1mskc_u64",
-                // RTM
-                "_xbegin",
-                "_xend",
                 // RDRAND
                 "_rdrand16_step",
                 "_rdrand32_step",
@@ -250,16 +237,13 @@ fn verify_all_signatures() {
                 "_mm256_unpacklo_epi32",
                 "_mm256_unpackhi_epi64",
                 "_mm256_unpacklo_epi64",
-                // Has tests with different name
-                "_mm_min_epi8",
-                "_mm_min_epi32",
+                // Has tests with some other intrinsic
+                "__writeeflags",
                 "_xrstor",
                 "_xrstor64",
                 "_fxrstor",
                 "_fxrstor64",
-                // Needs `f16` to test
-                "_mm_cvtps_ph",
-                "_mm256_cvtps_ph",
+                "_xend",
                 // Aliases
                 "_mm_comige_ss",
                 "_mm_cvt_ss2si",

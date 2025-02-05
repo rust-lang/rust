@@ -1310,7 +1310,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.1")]
-    unsafe fn test_mm_min_epi8_1() {
+    unsafe fn test_mm_min_epi8() {
         #[rustfmt::skip]
         let a = _mm_setr_epi8(
             1, 4, 5, 8, 9, 12, 13, 16,
@@ -1328,10 +1328,7 @@ mod tests {
             17, 19, 21, 23, 25, 27, 29, 31,
         );
         assert_eq_m128i(r, e);
-    }
 
-    #[simd_test(enable = "sse4.1")]
-    unsafe fn test_mm_min_epi8_2() {
         #[rustfmt::skip]
         let a = _mm_setr_epi8(
             1, -4, -5, 8, -9, -12, 13, -16,
@@ -1361,16 +1358,13 @@ mod tests {
     }
 
     #[simd_test(enable = "sse4.1")]
-    unsafe fn test_mm_min_epi32_1() {
+    unsafe fn test_mm_min_epi32() {
         let a = _mm_setr_epi32(1, 4, 5, 8);
         let b = _mm_setr_epi32(2, 3, 6, 7);
         let r = _mm_min_epi32(a, b);
         let e = _mm_setr_epi32(1, 3, 5, 7);
         assert_eq_m128i(r, e);
-    }
 
-    #[simd_test(enable = "sse4.1")]
-    unsafe fn test_mm_min_epi32_2() {
         let a = _mm_setr_epi32(-1, 4, 5, -7);
         let b = _mm_setr_epi32(-2, 3, -6, 8);
         let r = _mm_min_epi32(a, b);

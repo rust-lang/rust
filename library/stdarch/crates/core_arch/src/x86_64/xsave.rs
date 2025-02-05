@@ -149,10 +149,6 @@ mod tests {
         }
     }
 
-    // We cannot test `_xsave64`, `_xrstor64`, `_xsaveopt64`, `_xsaves64` and `_xrstors64` directly
-    // as they are privileged instructions and will need access to the kernel to run and test them.
-    // See https://github.com/rust-lang/stdarch/issues/209
-
     #[cfg_attr(stdarch_intel_sde, ignore)]
     #[simd_test(enable = "xsave")]
     #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
