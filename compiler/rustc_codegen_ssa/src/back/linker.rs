@@ -1926,14 +1926,14 @@ impl<'a> Linker for LlbcLinker<'a> {
     }
 
     fn optimize(&mut self) {
-        match self.sess.opts.optimize {
+        self.link_arg(match self.sess.opts.optimize {
             OptLevel::No => "-O0",
             OptLevel::Less => "-O1",
             OptLevel::Default => "-O2",
             OptLevel::Aggressive => "-O3",
             OptLevel::Size => "-Os",
             OptLevel::SizeMin => "-Oz",
-        };
+        });
     }
 
     fn full_relro(&mut self) {}

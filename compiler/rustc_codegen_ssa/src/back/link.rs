@@ -2518,6 +2518,12 @@ fn add_order_independent_options(
             "--target-cpu",
             &codegen_results.crate_info.target_cpu,
         ]);
+        if let Some(feat) = [sess.opts.cg.target_feature.as_str(), &sess.target.options.features]
+            .into_iter()
+            .find(|feat| !feat.is_empty())
+        {
+            cmd.link_args(&["--target-feature", feat]);
+        }
     } else if flavor == LinkerFlavor::Ptx {
         cmd.link_args(&["--fallback-arch", &codegen_results.crate_info.target_cpu]);
     } else if flavor == LinkerFlavor::Bpf {
