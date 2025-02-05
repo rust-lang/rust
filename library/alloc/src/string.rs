@@ -587,7 +587,7 @@ impl String {
     /// between the two. Not all byte slices are valid strings, however: strings
     /// are required to be valid UTF-8. During this conversion,
     /// `from_utf8_lossy()` will replace any invalid UTF-8 sequences with
-    /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD], which looks like this: �
+    /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD], which looks like this:  
     ///
     /// [byteslice]: prim@slice
     /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
@@ -627,7 +627,7 @@ impl String {
     /// let input = b"Hello \xF0\x90\x80World";
     /// let output = String::from_utf8_lossy(input);
     ///
-    /// assert_eq!("Hello �World", output);
+    /// assert_eq!("Hello  World", output);
     /// ```
     #[must_use]
     #[cfg(not(no_global_oom_handling))]
@@ -694,7 +694,7 @@ impl String {
     /// let input: Vec<u8> = b"Hello \xF0\x90\x80World".into();
     /// let output = String::from_utf8_lossy_owned(input);
     ///
-    /// assert_eq!(String::from("Hello �World"), output);
+    /// assert_eq!(String::from("Hello  World"), output);
     /// ```
     #[must_use]
     #[cfg(not(no_global_oom_handling))]
@@ -1419,7 +1419,9 @@ impl String {
     pub fn push(&mut self, ch: char) {
         match ch.len_utf8() {
             1 => self.vec.push(ch as u8),
-            _ => self.vec.extend_from_slice(ch.encode_utf8(&mut [0; 4]).as_bytes()),
+            _ => {
+                self.vec.extend_from_slice(ch.encode_utf8(&mut [0; char::MAX_LEN_UTF8]).as_bytes())
+            }
         }
     }
 
@@ -1716,7 +1718,7 @@ impl String {
     #[rustc_confusables("set")]
     pub fn insert(&mut self, idx: usize, ch: char) {
         assert!(self.is_char_boundary(idx));
-        let mut bits = [0; 4];
+        let mut bits = [0; char::MAX_LEN_UTF8];
         let bits = ch.encode_utf8(&mut bits).as_bytes();
 
         unsafe {
@@ -2148,7 +2150,7 @@ impl FromUtf8Error {
     /// let input: Vec<u8> = b"Hello \xF0\x90\x80World".into();
     /// let output = String::from_utf8(input).unwrap_or_else(|e| e.into_utf8_lossy());
     ///
-    /// assert_eq!(String::from("Hello �World"), output);
+    /// assert_eq!(String::from("Hello  World"), output);
     /// ```
     #[must_use]
     #[cfg(not(no_global_oom_handling))]
@@ -2771,7 +2773,7 @@ impl SpecToString for core::ascii::Char {
 impl SpecToString for char {
     #[inline]
     fn spec_to_string(&self) -> String {
-        String::from(self.encode_utf8(&mut [0; 4]))
+        String::from(self.encode_utf8(&mut [0; char::MAX_LEN_UTF8]))
     }
 }
 
