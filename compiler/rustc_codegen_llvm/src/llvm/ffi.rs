@@ -1430,6 +1430,8 @@ unsafe extern "C" {
 
     // Extra flags on arithmetic
     pub(crate) fn LLVMSetIsDisjoint(Instr: &Value, IsDisjoint: Bool);
+    pub(crate) fn LLVMSetNUW(ArithInst: &Value, HasNUW: Bool);
+    pub(crate) fn LLVMSetNSW(ArithInst: &Value, HasNSW: Bool);
 
     // Memory
     pub(crate) fn LLVMBuildAlloca<'a>(
