@@ -18,7 +18,7 @@ LL |     do_something(*orig_ptr);
    |                  ^^^^^^^^^
    = help: this transition corresponds to a temporary loss of write permissions until function exit
    = note: BACKTRACE (of the first span):
-   = note: inside `access_after_sub_1` at tests/fail/tree_borrows/repeated_foreign_read_lazy_conflicted.rs:LL:CC
+   = note: called from `access_after_sub_1` at tests/fail/tree_borrows/repeated_foreign_read_lazy_conflicted.rs:LL:CC
 note: inside `main`
   --> tests/fail/tree_borrows/repeated_foreign_read_lazy_conflicted.rs:LL:CC
    |

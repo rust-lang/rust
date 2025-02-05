@@ -30,7 +30,7 @@ LL |     unsafe { ptr.read() };
    |     ^^^^^^^^^^^^^^^^^^^^^
    = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
    = note: BACKTRACE (of the first span):
-   = note: inside `myfun` at tests/fail/function_calls/return_pointer_aliasing_read.rs:LL:CC
+   = note: called from `myfun` at tests/fail/function_calls/return_pointer_aliasing_read.rs:LL:CC
 note: inside `main`
   --> tests/fail/function_calls/return_pointer_aliasing_read.rs:LL:CC
    |

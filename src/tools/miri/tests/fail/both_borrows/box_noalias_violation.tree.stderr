@@ -25,7 +25,7 @@ LL |     *x = 5;
    |     ^^^^^^
    = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
    = note: BACKTRACE (of the first span):
-   = note: inside `test` at tests/fail/both_borrows/box_noalias_violation.rs:LL:CC
+   = note: called from `test` at tests/fail/both_borrows/box_noalias_violation.rs:LL:CC
 note: inside `main`
   --> tests/fail/both_borrows/box_noalias_violation.rs:LL:CC
    |

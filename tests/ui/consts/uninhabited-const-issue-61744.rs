@@ -1,15 +1,15 @@
 //@ build-fail
 
 pub const unsafe fn fake_type<T>() -> T {
-    hint_unreachable() //~ ERROR evaluation of `<i32 as Const>::CONSTANT` failed
+    hint_unreachable() //~ called
 }
 
 pub const unsafe fn hint_unreachable() -> ! {
-    fake_type() //~ inside
+    fake_type() //~ called
 }
 
 trait Const {
-    const CONSTANT: i32 = unsafe { fake_type() }; //~ inside
+    const CONSTANT: i32 = unsafe { fake_type() }; //~ ERROR evaluation of `fake_type::<!>` failed
 }
 
 impl<T> Const for T {}

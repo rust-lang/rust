@@ -12,6 +12,6 @@ struct P2 {
     //~^ ERROR: the size for values of type `[bool]` cannot be known at compilation time
 }
 
-static CHECK: () = assert!(align_of::<P2>() == 1);
+static CHECK: () = assert!(align_of::<P2>() == 1); //~ ERROR could not evaluate static initializer
 
 fn main() {}

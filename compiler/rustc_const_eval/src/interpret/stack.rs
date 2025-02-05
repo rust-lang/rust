@@ -216,12 +216,12 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             if tcx.def_key(self.instance.def_id()).disambiguated_data.data == DefPathData::Closure {
-                write!(f, "inside closure")
+                write!(f, "called from closure")
             } else {
                 // Note: this triggers a `must_produce_diag` state, which means that if we ever
                 // get here we must emit a diagnostic. We should never display a `FrameInfo` unless
                 // we actually want to emit a warning or error to the user.
-                write!(f, "inside `{}`", self.instance)
+                write!(f, "called from `{}`", self.instance)
             }
         })
     }
