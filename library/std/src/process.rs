@@ -2294,6 +2294,30 @@ impl Child {
 /// considered undesirable. Note that returning from `main` also calls `exit`, so making `exit` an
 /// unsafe operation is not an option.)
 ///
+/// ## Safe interop with C code
+///
+/// This function is safe to call as long as `exit` is only ever invoked from Rust. However, the C
+/// standard does not permit multiple threads to call `exit` concurrently. Rust mitigates this with
+/// a lock, but if C code calls `exit`, that can still cause undefined behavior. Note that returning
+/// from `main` is equivalent to calling `exit`.
+/// Therefore, it is undefined behavior to have two concurrent threads perform the following
+/// without synchronization:
+/// - One thread calls Rust's `exit` function or returns from Rust's `main` function
+/// - Another thread calls the C function `exit` or `quick_exit`, or returns from C's `main` function
+///
+/// Note that if a binary contains multiple copies of the Rust runtime (e.g., when combining
+/// multiple `cdylib` or `staticlib`), they each have their own separate lock, so from the
+/// perspective of code running in one of the Rust runtimes, the "outside" Rust code is basically C
+/// code, and concurrent `exit` again causes undefined behavior.
+///
+/// Individual C implementations might provide more guarantees than the standard and permit concurrent
+/// calls to `exit`; consult the documentation of your C implementation for details.
+///
+/// For some of the on-going discussion to make `exit` thread-safe in C, see:
+/// - [Rust issue #126600](https://github.com/rust-lang/rust/issues/126600)
+/// - [Austin Group Bugzilla (for POSIX)](https://austingroupbugs.net/view.php?id=1845)
+/// - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=31997)
+///
 /// ## Platform-specific behavior
 ///
 /// **Unix**: On Unix-like platforms, it is unlikely that all 32 bits of `exit`
