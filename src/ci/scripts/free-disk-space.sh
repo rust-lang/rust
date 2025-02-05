@@ -1,9 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
-# Free disk space on Linux GitHub action runners
+# Free disk space on Linux GitHub action runners.
 # Script inspired by https://github.com/jlumbroso/free-disk-space
 
+# When updating to a new ubuntu version (e.g. from ubuntu-24.04):
+# - Check that there are no docker images preinstalled with `docker image ls`
+# - Check that there are no big packages preinstalled that we aren't using
+# - Check that all directores we are removing are still present (look at the warnings)
+
+# Check if the architecture is x86.
 isX86() {
     local arch
     arch=$(uname -m)
@@ -14,7 +20,7 @@ isX86() {
     fi
 }
 
-# print a line of the specified character
+# Print a line of the specified character.
 printSeparationLine() {
     for ((i = 0; i < 80; i++)); do
         printf "%s" "$1"
@@ -22,41 +28,47 @@ printSeparationLine() {
     printf "\n"
 }
 
-# compute available space
+# Compute available space.
 # REF: https://unix.stackexchange.com/a/42049/60849
 # REF: https://stackoverflow.com/a/450821/408734
 getAvailableSpace() {
     df -a | awk 'NR > 1 {avail+=$4} END {print avail}'
 }
 
-# make Kb human readable (assume the input is Kb)
+# Make Kb human readable (assume the input is Kb).
 # REF: https://unix.stackexchange.com/a/44087/60849
 formatByteCount() {
     numfmt --to=iec-i --suffix=B --padding=7 "$1"'000'
 }
 
-# macro to output saved space
-printSavedSpace() {
-    # Disk space before the operation
-    local before=${1}
-    local title=${2:-}
+# Execute a task, printing how much space was saved and how long it took to run the task
+execAndMeasure() {
+    local task_name=${1}
+
+    local start
+    start=$(date +%s)
+
+    local before
+    before=$(getAvailableSpace)
+
+    # Run the task. Skip the first argument because it's the task name.
+    "${@:2}"
+
+    local end
+    end=$(date +%s)
 
     local after
     after=$(getAvailableSpace)
-    local saved=$((after - before))
 
-    echo ""
-    printSeparationLine "*"
-    if [ -n "${title}" ]; then
-        echo "=> ${title}: Saved $(formatByteCount "$saved")"
-    else
-        echo "=> Saved $(formatByteCount "$saved")"
-    fi
-    printSeparationLine "*"
-    echo ""
+    # How much space was saved.
+    local saved=$((after - before))
+    # How long the task took.
+    local seconds_taken=$((end - start))
+
+    echo "==> ${task_name}: Saved $(formatByteCount "$saved") in $seconds_taken seconds"
 }
 
-# macro to print output of df with caption
+# Print output of df with caption. It shows information about disk space.
 printDF() {
     local caption=${1}
 
@@ -67,110 +79,168 @@ printDF() {
     echo ""
     df -h
     printSeparationLine "="
+    echo ""
 }
 
-removeDir() {
-    dir=${1}
-
-    local before
-    if [ ! -d "$dir" ]; then
-        echo "::warning::Directory $dir does not exist, skipping."
-    else
-        before=$(getAvailableSpace)
-        sudo rm -rf "$dir"
-        printSavedSpace "$before" "Removed $dir"
-    fi
-}
-
-removeUnusedDirectories() {
-    local dirs_to_remove=(
+removeUnusedDirsAndFiles() {
+    local to_remove=(
+        "/etc/mysql"
+        "/usr/local/aws-sam-cli"
+        "/usr/local/doc/cmake"
+        "/usr/local/julia"*
         "/usr/local/lib/android"
-        "/usr/share/dotnet"
+        "/usr/local/share/chromedriver-"*
+        "/usr/local/share/chromium"
+        "/usr/local/share/cmake-"*
+        "/usr/local/share/edge_driver"
+        "/usr/local/share/gecko_driver"
+        "/usr/local/share/icons"
+        "/usr/local/share/vim"
+        "/usr/local/share/emacs"
+        "/usr/local/share/powershell"
+        "/usr/local/share/vcpkg"
+        "/usr/share/apache-maven-"*
+        "/usr/share/gradle-"*
+        "/usr/share/java"
+        "/usr/share/kotlinc"
+        "/usr/share/miniconda"
+        "/usr/share/php"
+        "/usr/share/ri"
+        "/usr/share/swift"
+
+        # binaries
+        "/usr/local/bin/azcopy"
+        "/usr/local/bin/bicep"
+        "/usr/local/bin/ccmake"
+        "/usr/local/bin/cmake-"*
+        "/usr/local/bin/cmake"
+        "/usr/local/bin/cpack"
+        "/usr/local/bin/ctest"
+        "/usr/local/bin/helm"
+        "/usr/local/bin/kind"
+        "/usr/local/bin/kustomize"
+        "/usr/local/bin/minikube"
+        "/usr/local/bin/packer"
+        "/usr/local/bin/phpunit"
+        "/usr/local/bin/pulumi-"*
+        "/usr/local/bin/pulumi"
+        "/usr/local/bin/stack"
 
         # Haskell runtime
         "/usr/local/.ghcup"
+
+        # Azure
+        "/opt/az"
+        "/usr/share/az_"*
+
+        # Environemnt variable set by GitHub Actions
+        "$AGENT_TOOLSDIRECTORY"
     )
 
-    for dir in "${dirs_to_remove[@]}"; do
-        removeDir "$dir"
+    local existing=()
+    for element in "${to_remove[@]}"; do
+        if [ ! -e "$element" ]; then
+            echo "::warning::Directory or file $element does not exist, skipping."
+        else
+            existing+=("$element")
+        fi
     done
+
+    execAndMeasure "Removed unused directories" sudo rm -rf "${existing[@]}"
 }
 
-execAndMeasureSpaceChange() {
-    local operation=${1} # Function to execute
-    local title=${2}
-
-    local before
-    before=$(getAvailableSpace)
-    $operation
-
-    printSavedSpace "$before" "$title"
+removeNodeModules() {
+    sudo npm uninstall -g \
+        "@bazel/bazelisk" \
+        "grunt"           \
+        "gulp"            \
+        "lerna"           \
+        "n"               \
+        "newman"          \
+        "parcel"          \
+        "typescript"      \
+        "webpack-cli"     \
+        "webpack"         \
+        "yarn"
 }
 
-# Remove large packages
-# REF: https://github.com/apache/flink/blob/master/tools/azure-pipelines/free_disk_space.sh
+# Remove unused packages.
 cleanPackages() {
     local packages=(
+        '.*-icon-theme$'
         '^aspnetcore-.*'
         '^dotnet-.*'
+        '^java-*'
+        '^libllvm.*'
         '^llvm-.*'
-        '^mongodb-.*'
+        '^mercurial.*'
         '^mysql-.*'
+        '^vim.*'
+        '^fonts-.*'
         'azure-cli'
+        'buildah'
+        'cpp-13'
         'firefox'
+        'gcc-12'
+        'gcc-13'
+        'gcc-14'
+        'gcc'
+        'g++-14'
+        'gfortran-14'
+        'groff-base'
+        'kubectl'
         'libgl1-mesa-dri'
-        'mono-devel'
+        'microsoft-edge-stable'
         'php.*'
+        'podman'
+        'powershell'
+        'skopeo'
+        'snapd'
+        'tmux'
     )
 
     if isX86; then
         packages+=(
             'google-chrome-stable'
             'google-cloud-cli'
-            'google-cloud-sdk'
-            'powershell'
         )
     fi
 
-    sudo apt-get -qq remove -y --fix-missing "${packages[@]}"
+    sudo apt-get purge -y --autoremove --fix-missing "${packages[@]}"
 
+    echo "=> apt-get autoremove"
     sudo apt-get autoremove -y || echo "::warning::The command [sudo apt-get autoremove -y] failed"
     sudo apt-get clean || echo "::warning::The command [sudo apt-get clean] failed failed"
 }
 
-# Remove Docker images
-cleanDocker() {
-    echo "=> Removing the following docker images:"
-    sudo docker image ls
-    echo "=> Removing docker images..."
-    sudo docker image prune --all --force || true
+removePythonPackages() {
+    local packages=(
+    )
+
+    if isX86; then
+        packages+=(
+            'ansible-core'
+        )
+    fi
+
+    for p in "${packages[@]}"; do
+        sudo pipx uninstall "$p"
+    done
 }
 
-# Remove Swap storage
-cleanSwap() {
-    sudo swapoff -a || true
-    sudo rm -rf /mnt/swapfile || true
-    free -h
+main() {
+    printDF "BEFORE CLEAN-UP:"
+
+    execAndMeasure "Unused packages" cleanPackages
+    execAndMeasure "Unused Python Packages" removePythonPackages
+    if isX86; then
+        # On ARM, `npm uninstall` fails with a segmentation fault.
+        execAndMeasure "Unused Node modules" removeNodeModules
+    fi
+    removeUnusedDirsAndFiles
+
+    # Output saved space statistic
+    printDF "AFTER CLEAN-UP:"
 }
 
-# Display initial disk space stats
-
-AVAILABLE_INITIAL=$(getAvailableSpace)
-
-printDF "BEFORE CLEAN-UP:"
-echo ""
-
-execAndMeasureSpaceChange cleanPackages "Unused packages"
-execAndMeasureSpaceChange cleanDocker "Docker images"
-execAndMeasureSpaceChange cleanSwap "Swap storage"
-
-removeUnusedDirectories
-
-# Output saved space statistic
-echo ""
-printDF "AFTER CLEAN-UP:"
-
-echo ""
-echo ""
-
-printSavedSpace "$AVAILABLE_INITIAL" "Total saved"
+execAndMeasure "Total" main
