@@ -1,0 +1,34 @@
+error: invalid suffix `em` for number literal
+  --> $DIR/custom-suffixes-exponent-like.rs:1:17
+   |
+LL | const _A: f64 = 1em;
+   |                 ^^^ invalid suffix `em`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: invalid suffix `m` for float literal
+  --> $DIR/custom-suffixes-exponent-like.rs:3:17
+   |
+LL | const _B: f64 = 1e0m;
+   |                 ^^^^ invalid suffix `m`
+   |
+   = help: valid suffixes are `f32` and `f64`
+
+error: invalid suffix `m` for float literal
+  --> $DIR/custom-suffixes-exponent-like.rs:5:17
+   |
+LL | const _C: f64 = 1e_______________0m;
+   |                 ^^^^^^^^^^^^^^^^^^^ invalid suffix `m`
+   |
+   = help: valid suffixes are `f32` and `f64`
+
+error: invalid suffix `e_______________m` for number literal
+  --> $DIR/custom-suffixes-exponent-like.rs:7:17
+   |
+LL | const _D: f64 = 1e_______________m;
+   |                 ^^^^^^^^^^^^^^^^^^ invalid suffix `e_______________m`
+   |
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+error: aborting due to 4 previous errors
+
