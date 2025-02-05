@@ -1738,7 +1738,7 @@ pub unsafe fn _MM_GET_ROUNDING_MODE() -> u32 {
     note = "see `_mm_setcsr` documentation - use inline assembly instead"
 )]
 pub unsafe fn _MM_SET_EXCEPTION_MASK(x: u32) {
-    _mm_setcsr((_mm_getcsr() & !_MM_MASK_MASK) | x)
+    _mm_setcsr((_mm_getcsr() & !_MM_MASK_MASK) | (x & _MM_MASK_MASK))
 }
 
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
@@ -1754,7 +1754,7 @@ pub unsafe fn _MM_SET_EXCEPTION_MASK(x: u32) {
     note = "see `_mm_setcsr` documentation - use inline assembly instead"
 )]
 pub unsafe fn _MM_SET_EXCEPTION_STATE(x: u32) {
-    _mm_setcsr((_mm_getcsr() & !_MM_EXCEPT_MASK) | x)
+    _mm_setcsr((_mm_getcsr() & !_MM_EXCEPT_MASK) | (x & _MM_EXCEPT_MASK))
 }
 
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
@@ -1770,9 +1770,7 @@ pub unsafe fn _MM_SET_EXCEPTION_STATE(x: u32) {
     note = "see `_mm_setcsr` documentation - use inline assembly instead"
 )]
 pub unsafe fn _MM_SET_FLUSH_ZERO_MODE(x: u32) {
-    let val = (_mm_getcsr() & !_MM_FLUSH_ZERO_MASK) | x;
-    // println!("setting csr={:x}", val);
-    _mm_setcsr(val)
+    _mm_setcsr((_mm_getcsr() & !_MM_FLUSH_ZERO_MASK) | (x & _MM_FLUSH_ZERO_MASK))
 }
 
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
@@ -1788,7 +1786,7 @@ pub unsafe fn _MM_SET_FLUSH_ZERO_MODE(x: u32) {
     note = "see `_mm_setcsr` documentation - use inline assembly instead"
 )]
 pub unsafe fn _MM_SET_ROUNDING_MODE(x: u32) {
-    _mm_setcsr((_mm_getcsr() & !_MM_ROUND_MASK) | x)
+    _mm_setcsr((_mm_getcsr() & !_MM_ROUND_MASK) | (x & _MM_ROUND_MASK))
 }
 
 /// See [`_mm_prefetch`](fn._mm_prefetch.html).
@@ -2901,57 +2899,6 @@ mod tests {
         }
     }
 
-    #[allow(deprecated)] // FIXME: This test uses deprecated CSR access functions
-    #[simd_test(enable = "sse")]
-    #[cfg_attr(miri, ignore)] // Uses _mm_setcsr, which is not supported by Miri
-    unsafe fn test_mm_comieq_ss_vs_ucomieq_ss() {
-        // If one of the arguments is a quiet NaN `comieq_ss` should signal an
-        // Invalid Operation Exception while `ucomieq_ss` should not.
-        let aa = &[3.0f32, NAN, 23.0, NAN];
-        let bb = &[3.0f32, 47.5, NAN, NAN];
-
-        let ee = &[1i32, 0, 0, 0];
-        let exc = &[0u32, 1, 1, 1]; // Should comieq_ss signal an exception?
-
-        for i in 0..4 {
-            let a = _mm_setr_ps(aa[i], 1.0, 2.0, 3.0);
-            let b = _mm_setr_ps(bb[i], 0.0, 2.0, 4.0);
-
-            _MM_SET_EXCEPTION_STATE(0);
-            let r1 = _mm_comieq_ss(*black_box(&a), b);
-            let s1 = _MM_GET_EXCEPTION_STATE();
-
-            _MM_SET_EXCEPTION_STATE(0);
-            let r2 = _mm_ucomieq_ss(*black_box(&a), b);
-            let s2 = _MM_GET_EXCEPTION_STATE();
-
-            assert_eq!(
-                ee[i], r1,
-                "_mm_comeq_ss({:?}, {:?}) = {}, expected: {} (i={})",
-                a, b, r1, ee[i], i
-            );
-            assert_eq!(
-                ee[i], r2,
-                "_mm_ucomeq_ss({:?}, {:?}) = {}, expected: {} (i={})",
-                a, b, r2, ee[i], i
-            );
-            assert_eq!(
-                s1,
-                exc[i] * _MM_EXCEPT_INVALID,
-                "_mm_comieq_ss() set exception flags: {} (i={})",
-                s1,
-                i
-            );
-            assert_eq!(
-                s2,
-                0, // ucomieq_ss should not signal an exception
-                "_mm_ucomieq_ss() set exception flags: {} (i={})",
-                s2,
-                i
-            );
-        }
-    }
-
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_cvtss_si32() {
         let inputs = &[42.0f32, -3.1, 4.0e10, 4.0e-20, NAN, 2147483500.1];
@@ -3318,64 +3265,6 @@ mod tests {
     #[cfg_attr(miri, ignore)]
     unsafe fn test_mm_sfence() {
         _mm_sfence();
-    }
-
-    #[allow(deprecated)] // FIXME: This tests functions that are immediate UB
-    #[simd_test(enable = "sse")]
-    #[cfg_attr(miri, ignore)] // Miri does not support accesing the CSR
-    unsafe fn test_mm_getcsr_setcsr_1() {
-        let saved_csr = _mm_getcsr();
-
-        let a = _mm_setr_ps(1.1e-36, 0.0, 0.0, 1.0);
-        let b = _mm_setr_ps(0.001, 0.0, 0.0, 1.0);
-
-        _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
-        let r = _mm_mul_ps(*black_box(&a), *black_box(&b));
-
-        _mm_setcsr(saved_csr);
-
-        let exp = _mm_setr_ps(0.0, 0.0, 0.0, 1.0);
-        assert_eq_m128(r, exp); // first component is a denormalized f32
-    }
-
-    #[allow(deprecated)] // FIXME: This tests functions that are immediate UB
-    #[simd_test(enable = "sse")]
-    #[cfg_attr(miri, ignore)] // Miri does not support accesing the CSR
-    unsafe fn test_mm_getcsr_setcsr_2() {
-        // Same as _mm_setcsr_1 test, but with opposite flag value.
-
-        let saved_csr = _mm_getcsr();
-
-        let a = _mm_setr_ps(1.1e-36, 0.0, 0.0, 1.0);
-        let b = _mm_setr_ps(0.001, 0.0, 0.0, 1.0);
-
-        _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_OFF);
-        let r = _mm_mul_ps(*black_box(&a), *black_box(&b));
-
-        _mm_setcsr(saved_csr);
-
-        let exp = _mm_setr_ps(1.1e-39, 0.0, 0.0, 1.0);
-        assert_eq_m128(r, exp); // first component is a denormalized f32
-    }
-
-    #[allow(deprecated)] // FIXME: This tests functions that are immediate UB
-    #[simd_test(enable = "sse")]
-    #[cfg_attr(miri, ignore)] // Miri does not support accesing the CSR
-    unsafe fn test_mm_getcsr_setcsr_underflow() {
-        _MM_SET_EXCEPTION_STATE(0);
-
-        let a = _mm_setr_ps(1.1e-36, 0.0, 0.0, 1.0);
-        let b = _mm_setr_ps(1e-5, 0.0, 0.0, 1.0);
-
-        assert_eq!(_MM_GET_EXCEPTION_STATE(), 0); // just to be sure
-
-        let r = _mm_mul_ps(*black_box(&a), *black_box(&b));
-
-        let exp = _mm_setr_ps(1.1e-41, 0.0, 0.0, 1.0);
-        assert_eq_m128(r, exp);
-
-        let underflow = _MM_GET_EXCEPTION_STATE() & _MM_EXCEPT_UNDERFLOW != 0;
-        assert!(underflow);
     }
 
     #[simd_test(enable = "sse")]
