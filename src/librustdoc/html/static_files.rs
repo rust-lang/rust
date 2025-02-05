@@ -8,26 +8,18 @@ use std::{fmt, str};
 
 pub(crate) struct StaticFile {
     pub(crate) filename: PathBuf,
-    pub(crate) bytes: &'static [u8],
+    pub(crate) src_bytes: &'static [u8],
+    pub(crate) minified_bytes: &'static [u8],
 }
 
 impl StaticFile {
-    fn new(filename: &str, bytes: &'static [u8], sha256: &'static str) -> StaticFile {
-        Self { filename: static_filename(filename, sha256), bytes }
-    }
-
-    pub(crate) fn minified(&self) -> Vec<u8> {
-        let extension = match self.filename.extension() {
-            Some(e) => e,
-            None => return self.bytes.to_owned(),
-        };
-        if extension == "css" {
-            minifier::css::minify(str::from_utf8(self.bytes).unwrap()).unwrap().to_string().into()
-        } else if extension == "js" {
-            minifier::js::minify(str::from_utf8(self.bytes).unwrap()).to_string().into()
-        } else {
-            self.bytes.to_owned()
-        }
+    fn new(
+        filename: &str,
+        src_bytes: &'static [u8],
+        minified_bytes: &'static [u8],
+        sha256: &'static str,
+    ) -> StaticFile {
+        Self { filename: static_filename(filename, sha256), src_bytes, minified_bytes }
     }
 
     pub(crate) fn output_filename(&self) -> &Path {
@@ -68,7 +60,7 @@ macro_rules! static_files {
 
         // sha256 files are generated in build.rs
         pub(crate) static STATIC_FILES: std::sync::LazyLock<StaticFiles> = std::sync::LazyLock::new(|| StaticFiles {
-            $($field: StaticFile::new($file_path, include_bytes!($file_path), include_str!(concat!(env!("OUT_DIR"), "/", $file_path, ".sha256"))),)+
+            $($field: StaticFile::new($file_path, include_bytes!($file_path), include_bytes!(concat!(env!("OUT_DIR"), "/", $file_path, ".min")), include_str!(concat!(env!("OUT_DIR"), "/", $file_path, ".sha256"))),)+
         });
 
         pub(crate) fn for_each<E>(f: impl Fn(&StaticFile) -> Result<(), E>) -> Result<(), E> {
