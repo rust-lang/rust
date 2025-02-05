@@ -18,7 +18,7 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
         None,
         &[
             "acosf", "acoshf", "asinf", "asinhf", "atanf", "atanhf", "cbrtf", "ceilf", "cosf",
-            "coshf", "erff", "erfcf", "exp10f", "exp2f", "expf", "expm1f", "fabsf", "floorf",
+            "coshf", "erfcf", "erff", "exp10f", "exp2f", "expf", "expm1f", "fabsf", "floorf",
             "j0f", "j1f", "lgammaf", "log10f", "log1pf", "log2f", "logf", "rintf", "roundf",
             "sinf", "sinhf", "sqrtf", "tanf", "tanhf", "tgammaf", "truncf", "y0f", "y1f",
         ],
@@ -30,8 +30,8 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
         None,
         &[
             "acos", "acosh", "asin", "asinh", "atan", "atanh", "cbrt", "ceil", "cos", "cosh",
-            "erf", "erfc", "exp10", "exp2", "exp", "expm1", "fabs", "floor", "j0", "j1", "lgamma",
-            "log10", "log1p", "log2", "log", "rint", "round", "sin", "sinh", "sqrt", "tan", "tanh",
+            "erf", "erfc", "exp", "exp10", "exp2", "expm1", "fabs", "floor", "j0", "j1", "lgamma",
+            "log", "log10", "log1p", "log2", "rint", "round", "sin", "sinh", "sqrt", "tan", "tanh",
             "tgamma", "trunc", "y0", "y1",
         ],
     ),
@@ -139,28 +139,28 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
         FloatTy::F16,
         Signature { args: &[Ty::F16, Ty::I32], returns: &[Ty::F16] },
         None,
-        &["scalbnf16", "ldexpf16"],
+        &["ldexpf16", "scalbnf16"],
     ),
     (
         // `(f32, i32) -> f32`
         FloatTy::F32,
         Signature { args: &[Ty::F32, Ty::I32], returns: &[Ty::F32] },
         None,
-        &["scalbnf", "ldexpf"],
+        &["ldexpf", "scalbnf"],
     ),
     (
         // `(f64, i64) -> f64`
         FloatTy::F64,
         Signature { args: &[Ty::F64, Ty::I32], returns: &[Ty::F64] },
         None,
-        &["scalbn", "ldexp"],
+        &["ldexp", "scalbn"],
     ),
     (
         // `(f128, i32) -> f128`
         FloatTy::F128,
         Signature { args: &[Ty::F128, Ty::I32], returns: &[Ty::F128] },
         None,
-        &["scalbnf128", "ldexpf128"],
+        &["ldexpf128", "scalbnf128"],
     ),
     (
         // `(f32, &mut f32) -> f32` as `(f32) -> (f32, f32)`
@@ -311,6 +311,12 @@ pub static ALL_OPERATIONS: LazyLock<Vec<MathOpInfo>> = LazyLock::new(|| {
                 c_sig: c_sig.clone().unwrap_or_else(|| rust_sig.clone()),
             };
             ret.push(api);
+        }
+
+        if !names.is_sorted() {
+            let mut sorted = (*names).to_owned();
+            sorted.sort_unstable();
+            panic!("names list is not sorted: {names:?}\nExpected: {sorted:?}");
         }
     }
 

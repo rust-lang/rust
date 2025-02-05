@@ -52,7 +52,10 @@ libm_macros::for_each_function! {
 }
 
 main!(
-    library_benchmark_groups = icount_bench_acos_group,
+    library_benchmark_groups =
+    // verify-apilist-start
+    // verify-sorted-start
+    icount_bench_acos_group,
     icount_bench_acosf_group,
     icount_bench_acosh_group,
     icount_bench_acoshf_group,
@@ -169,6 +172,8 @@ main!(
     icount_bench_scalbnf16_group,
     icount_bench_scalbnf_group,
     icount_bench_sin_group,
+    icount_bench_sincos_group,
+    icount_bench_sincosf_group,
     icount_bench_sinf_group,
     icount_bench_sinh_group,
     icount_bench_sinhf_group,
@@ -192,4 +197,6 @@ main!(
     icount_bench_y1f_group,
     icount_bench_yn_group,
     icount_bench_ynf_group,
+    // verify-sorted-end
+    // verify-apilist-end
 );

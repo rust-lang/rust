@@ -341,6 +341,7 @@ pub use self::truncf::truncf;
 
 cfg_if! {
     if #[cfg(f16_enabled)] {
+        // verify-sorted-start
         mod ceilf16;
         mod copysignf16;
         mod fabsf16;
@@ -355,7 +356,9 @@ cfg_if! {
         mod scalbnf16;
         mod sqrtf16;
         mod truncf16;
+        // verify-sorted-end
 
+        // verify-sorted-start
         pub use self::ceilf16::ceilf16;
         pub use self::copysignf16::copysignf16;
         pub use self::fabsf16::fabsf16;
@@ -370,11 +373,13 @@ cfg_if! {
         pub use self::scalbnf16::scalbnf16;
         pub use self::sqrtf16::sqrtf16;
         pub use self::truncf16::truncf16;
+        // verify-sorted-end
     }
 }
 
 cfg_if! {
     if #[cfg(f128_enabled)] {
+        // verify-sorted-start
         mod ceilf128;
         mod copysignf128;
         mod fabsf128;
@@ -389,7 +394,9 @@ cfg_if! {
         mod scalbnf128;
         mod sqrtf128;
         mod truncf128;
+        // verify-sorted-end
 
+        // verify-sorted-start
         pub use self::ceilf128::ceilf128;
         pub use self::copysignf128::copysignf128;
         pub use self::fabsf128::fabsf128;
@@ -404,6 +411,7 @@ cfg_if! {
         pub use self::scalbnf128::scalbnf128;
         pub use self::sqrtf128::sqrtf128;
         pub use self::truncf128::truncf128;
+        // verify-sorted-end
     }
 }
 

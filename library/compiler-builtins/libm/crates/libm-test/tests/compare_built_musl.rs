@@ -79,6 +79,7 @@ libm_macros::for_each_function! {
         ynf,
 
         // Not provided by musl
+        // verify-sorted-start
         ceilf128,
         ceilf16,
         copysignf128,
@@ -107,5 +108,6 @@ libm_macros::for_each_function! {
         sqrtf16,
         truncf128,
         truncf16,
+        // verify-sorted-end
     ],
 }
