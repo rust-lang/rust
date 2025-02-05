@@ -304,7 +304,6 @@ pub use once::OnceCell;
 /// ```
 ///
 /// See the [module-level documentation](self) for more.
-#[cfg_attr(not(test), rustc_diagnostic_item = "Cell")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
 #[rustc_pub_transparent]
@@ -2362,7 +2361,6 @@ impl<T: PointerLike> PointerLike for UnsafeCell<T> {}
 /// See [`UnsafeCell`] for details.
 #[unstable(feature = "sync_unsafe_cell", issue = "95439")]
 #[repr(transparent)]
-#[rustc_diagnostic_item = "SyncUnsafeCell"]
 #[rustc_pub_transparent]
 pub struct SyncUnsafeCell<T: ?Sized> {
     value: UnsafeCell<T>,
