@@ -26,7 +26,6 @@ pub mod util {
     pub mod case;
     pub mod classify;
     pub mod comments;
-    mod const_args;
     pub mod literal;
     pub mod parser;
     pub mod unicode;
