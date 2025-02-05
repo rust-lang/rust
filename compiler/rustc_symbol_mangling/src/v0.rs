@@ -415,8 +415,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Pat(ty, pat) => match *pat {
                 ty::PatternKind::Range { start, end, include_end } => {
                     let consts = [
-                        start.unwrap_or(self.tcx.consts.unit),
-                        end.unwrap_or(self.tcx.consts.unit),
+                        start,
+                        end,
                         ty::Const::from_bool(
                             self.tcx,
                             matches!(include_end, rustc_hir::RangeEnd::Included),

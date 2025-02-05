@@ -90,8 +90,8 @@ impl RustcInternal for Pattern {
     fn internal<'tcx>(&self, tables: &mut Tables<'_>, tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
         tcx.mk_pat(match self {
             Pattern::Range { start, end, include_end } => rustc_ty::PatternKind::Range {
-                start: start.as_ref().map(|c| c.internal(tables, tcx)),
-                end: end.as_ref().map(|c| c.internal(tables, tcx)),
+                start: start.as_ref().unwrap().internal(tables, tcx),
+                end: end.as_ref().unwrap().internal(tables, tcx),
                 include_end: if *include_end { RangeEnd::Included } else { RangeEnd::Excluded },
             },
         })
