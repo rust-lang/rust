@@ -13,6 +13,7 @@ const fn b() -> u32 {
 
 const fn c() -> u32 {
     b() //~ NOTE inside `c`
+    //~^ NOTE the evaluated
 }
 
 const X: u32 = c();

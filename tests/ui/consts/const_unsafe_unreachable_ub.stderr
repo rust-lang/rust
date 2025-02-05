@@ -9,8 +9,10 @@ note: inside `foo`
    |
 LL |         false => std::hint::unreachable_unchecked(),
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: inside `unreachable_unchecked`
+note: the evaluated program failed inside `unreachable_unchecked`
   --> $SRC_DIR/core/src/hint.rs:LL:COL
+   |
+   = note: the evaluated program failed here
 
 error: aborting due to 1 previous error
 

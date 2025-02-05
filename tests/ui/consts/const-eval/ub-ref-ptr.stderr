@@ -156,8 +156,10 @@ LL |     ptr.read();
    |
 note: inside `std::ptr::const_ptr::<impl *const u32>::read`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-note: inside `std::ptr::read::<u32>`
+note: the evaluated program failed inside `std::ptr::read::<u32>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |
+   = note: the evaluated program failed here
 
 error: aborting due to 15 previous errors
 

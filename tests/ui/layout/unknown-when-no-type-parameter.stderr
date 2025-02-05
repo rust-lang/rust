@@ -4,8 +4,10 @@ error[E0080]: evaluation of constant value failed
 LL |     [(); size_of::<<() as Project>::Assoc>()];
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `<() as Project>::Assoc` has an unknown layout
    |
-note: inside `std::mem::size_of::<<() as Project>::Assoc>`
+note: the evaluated program failed inside `std::mem::size_of::<<() as Project>::Assoc>`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+   = note: the evaluated program failed here
 
 error: aborting due to 1 previous error
 

@@ -115,6 +115,9 @@ pub fn get_span_and_frames<'tcx>(
     if frames.len() > 0 {
         frames.remove(0);
     }
+    if let Some(last) = frames.last_mut() {
+        last.is_last = true;
+    }
 
     (span, frames)
 }

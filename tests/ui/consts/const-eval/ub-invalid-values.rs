@@ -1,5 +1,6 @@
 const fn bool_cast(ptr: *const bool) { unsafe {
     let _val = *ptr as u32; //~ NOTE inside `bool_cast`
+    //~^ NOTE the evaluated
 }}
 
 const _: () = {

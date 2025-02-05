@@ -6,8 +6,10 @@ LL |     const F: u32 = (U::X, 42).1;
    |
 note: inside `std::ptr::drop_in_place::<(Vec<u32>, u32)> - shim(Some((Vec<u32>, u32)))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `std::ptr::drop_in_place::<Vec<u32>> - shim(Some(Vec<u32>))`
+note: the evaluated program failed inside `std::ptr::drop_in_place::<Vec<u32>> - shim(Some(Vec<u32>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |
+   = note: the evaluated program failed here
 
 note: erroneous constant encountered
   --> $DIR/assoc_const.rs:29:13
