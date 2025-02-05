@@ -79,6 +79,9 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for &'tcx ty::List<ty::PolyExistentialPredicate<
         b: Self,
     ) -> RelateResult<'tcx, Self> {
         let tcx = relation.cx();
+        // Fast path for when the auto traits do not match, or if the principals
+        // are from different traits and therefore the projections definitely don't
+        // match up.
         if a.len() != b.len() {
             return Err(TypeError::ExistentialMismatch(ExpectedFound::new(a, b)));
         }
