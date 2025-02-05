@@ -74,8 +74,7 @@ The following test suites are available, with links for more information:
 
 ### General purpose test suite
 
-[`run-make`](#run-make-tests) are general purpose tests using Rust programs (or
-Makefiles (legacy)).
+[`run-make`](#run-make-tests) are general purpose tests using Rust programs.
 
 ### Rustdoc test suites
 
@@ -396,14 +395,6 @@ your test, causing separate files to be generated for 32bit and 64bit systems.
 
 ### `run-make` tests
 
-> **Note on phasing out `Makefile`s**
-> 
-> We are planning to migrate all existing Makefile-based `run-make` tests
-> to Rust programs. You should not be adding new Makefile-based `run-make`
-> tests.
->
-> See <https://github.com/rust-lang/rust/issues/121876>.
-
 The tests in [`tests/run-make`] are general-purpose tests using Rust *recipes*,
 which are small programs (`rmake.rs`) allowing arbitrary Rust code such as
 `rustc` invocations, and is supported by a [`run_make_support`] library. Using
@@ -423,11 +414,6 @@ If you need new utilities or functionality, consider extending and improving the
 Compiletest directives like `//@ only-<target>` or `//@ ignore-<target>` are
 supported in `rmake.rs`, like in UI tests. However, revisions or building
 auxiliary via directives are not currently supported.
-
-Two `run-make` tests are ported over to Rust recipes as examples:
-
-- <https://github.com/rust-lang/rust/tree/master/tests/run-make/CURRENT_RUSTC_VERSION>
-- <https://github.com/rust-lang/rust/tree/master/tests/run-make/a-b-a-linker-guard>
 
 #### Quickly check if `rmake.rs` tests can be compiled
 
@@ -481,20 +467,6 @@ Then add a corresponding entry to `"rust-analyzer.linkedProjects"`
 ],
 ```
 
-#### Using Makefiles (legacy)
-
-<div class="warning">
-You should avoid writing new Makefile-based `run-make` tests.
-</div>
-
-Each test should be in a separate directory with a `Makefile` indicating the
-commands to run.
-
-There is a [`tools.mk`] Makefile which you can include which provides a bunch of
-utilities to make it easier to run commands and compare outputs. Take a look at
-some of the other tests for some examples on how to get started.
-
-[`tools.mk`]: https://github.com/rust-lang/rust/blob/master/tests/run-make/tools.mk
 [`tests/run-make`]: https://github.com/rust-lang/rust/tree/master/tests/run-make
 [`run_make_support`]: https://github.com/rust-lang/rust/tree/master/src/tools/run-make-support
 
