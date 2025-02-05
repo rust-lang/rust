@@ -1,3 +1,5 @@
+use std::ops;
+
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::mir::*;
 use rustc_middle::ty::Ty;
@@ -227,5 +229,48 @@ pub(crate) fn ref_pat_borrow_kind(ref_mutability: Mutability) -> BorrowKind {
     match ref_mutability {
         Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
         Mutability::Not => BorrowKind::Shared,
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub(super) struct Range {
+    pub(super) start: u64,
+    pub(super) end: u64,
+    pub(super) from_end: bool,
+}
+
+impl Range {
+    pub(super) fn from_start(range: ops::Range<u64>) -> Self {
+        Range { start: range.start, end: range.end, from_end: false }
+    }
+
+    pub(super) fn from_end(range: ops::Range<u64>) -> Self {
+        Range { start: range.end, end: range.start, from_end: true }
+    }
+
+    pub(super) fn len(self) -> u64 {
+        if !self.from_end { self.end - self.start } else { self.start - self.end }
+    }
+
+    pub(super) fn apply<T>(self, slice: &[T]) -> &[T] {
+        if !self.from_end {
+            &slice[self.start as usize..self.end as usize]
+        } else {
+            &slice[..self.start as usize - self.end as usize]
+        }
+    }
+
+    pub(super) fn shift_idx(self, idx: u64) -> u64 {
+        if !self.from_end { self.start + idx } else { self.start - idx }
+    }
+
+    pub(super) fn shift_range(self, range_within: ops::Range<u64>) -> Self {
+        if !self.from_end {
+            Self::from_start(self.start + range_within.start..self.start + range_within.end)
+        } else {
+            let range_within_start = range_within.end;
+            let range_within_end = range_within.start;
+            Self::from_end(self.start - range_within_start..self.start - range_within_end)
+        }
     }
 }

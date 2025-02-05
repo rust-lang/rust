@@ -19,8 +19,8 @@ use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
-use crate::builder::Builder;
 use crate::builder::matches::{Candidate, MatchPairTree, Test, TestBranch, TestCase, TestKind};
+use crate::builder::{Builder, PlaceBuilder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
@@ -34,8 +34,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestCase::Variant { adt_def, variant_index: _ } => TestKind::Switch { adt_def },
 
             TestCase::Constant { .. } if match_pair.pattern.ty.is_bool() => TestKind::If,
-            TestCase::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => TestKind::SwitchInt,
+            TestCase::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => {
+                TestKind::SwitchInt { fused: 1 }
+            }
             TestCase::Constant { value } => TestKind::Eq { value, ty: match_pair.pattern.ty },
+
+            TestCase::FusedConstant { fused, .. } => TestKind::SwitchInt { fused },
 
             TestCase::Range(range) => {
                 assert_eq!(range.ty, match_pair.pattern.ty);
@@ -113,7 +117,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
             }
 
-            TestKind::SwitchInt => {
+            TestKind::SwitchInt { fused } => {
                 // The switch may be inexhaustive so we have a catch-all block
                 let otherwise_block = target_block(TestBranch::Failure);
                 let switch_targets = SwitchTargets::new(
@@ -126,10 +130,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }),
                     otherwise_block,
                 );
-                let terminator = TerminatorKind::SwitchInt {
-                    discr: Operand::Copy(place),
-                    targets: switch_targets,
+
+                let discr = match fused {
+                    0 => span_bug!(test.span, "there must be at least one constant"),
+                    1 => Operand::Copy(place),
+                    2.. => {
+                        self.fuse_switch_discriminant(block, place, place_ty.ty, fused, test.span)
+                    }
                 };
+
+                let terminator = TerminatorKind::SwitchInt { discr, targets: switch_targets };
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }
 
@@ -335,6 +345,91 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             call_source: CallSource::Misc,
             fn_span: source_info.span,
         });
+    }
+
+    /// "Fuse" multiple small integer constants in a sequence into a single integer, possibly
+    /// removing unecessary branches from the lowered match tree.
+    fn fuse_switch_discriminant(
+        &mut self,
+        block: BasicBlock,
+        place: Place<'tcx>,
+        elem_ty: Ty<'tcx>,
+        count: u64,
+        test_span: Span,
+    ) -> Operand<'tcx> {
+        let tcx = self.tcx;
+        let source_info = self.source_info(test_span);
+        match (count, elem_ty) {
+            (2..=4, ty) if ty == tcx.types.u8 || ty == tcx.types.i8 => (),
+            (2..=2, ty) if ty == tcx.types.u16 || ty == tcx.types.i16 => (),
+            (fused, ty) => span_bug!(
+                test_span,
+                "unsupported constant fusion combination of count {} and type {}",
+                ty,
+                fused
+            ),
+        };
+
+        let fused_ty = match count * elem_ty.primitive_size(tcx).bits() {
+            8..=16 => tcx.types.u16,
+            ..=32 => tcx.types.u32,
+            _ => unreachable!(),
+        };
+
+        let builder = PlaceBuilder::from(place);
+        let place_for = move |b: &mut Self, idx| {
+            let mut builder = builder.clone();
+            match builder.projection_mut() {
+                [.., ProjectionElem::ConstantIndex { offset, ref from_end, .. }] => {
+                    if !from_end {
+                        *offset += idx;
+                    } else {
+                        *offset -= idx;
+                    }
+                }
+                _ => span_bug!(test_span, "found unexpected projections"),
+            }
+            builder.to_place(b)
+        };
+
+        let temp = self.temp(fused_ty, DUMMY_SP);
+        let acc = self.temp(fused_ty, DUMMY_SP);
+
+        // Since we can freely cast up integers + the required shift is zero on the first
+        // iteration, we skip both the shift and OR operations the first time.
+        self.cfg.push_assign(
+            block,
+            source_info,
+            acc,
+            Rvalue::Cast(CastKind::IntToInt, Operand::Copy(place), fused_ty),
+        );
+
+        // Handle all but the first iterations, iteratively building up the fused integer.
+        for i in 1..count {
+            let place = place_for(self, i);
+            let shift = self.literal_operand(DUMMY_SP, Const::from_usize(tcx, i * 8));
+
+            self.cfg.push_assign(
+                block,
+                source_info,
+                temp,
+                Rvalue::Cast(CastKind::IntToInt, Operand::Copy(place), fused_ty),
+            );
+            self.cfg.push_assign(
+                block,
+                source_info,
+                temp,
+                Rvalue::BinaryOp(BinOp::Shl, Box::new((Operand::Copy(temp), shift))),
+            );
+            self.cfg.push_assign(
+                block,
+                source_info,
+                acc,
+                Rvalue::BinaryOp(BinOp::BitOr, Box::new((Operand::Copy(acc), Operand::Copy(temp)))),
+            );
+        }
+
+        Operand::Copy(acc)
     }
 
     /// Compare using the provided built-in comparison operator
@@ -557,9 +652,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             //
             // FIXME(#29623) we could use PatKind::Range to rule
             // things out here, in some cases.
-            (TestKind::SwitchInt, &TestCase::Constant { value })
-                if is_switch_ty(match_pair.pattern.ty) =>
-            {
+            (
+                TestKind::SwitchInt { .. },
+                &TestCase::Constant { value } | &TestCase::FusedConstant { value, .. },
+            ) if is_switch_ty(match_pair.pattern.ty) => {
                 // An important invariant of candidate sorting is that a candidate
                 // must not match in multiple branches. For `SwitchInt` tests, adding
                 // a new value might invalidate that property for range patterns that
@@ -591,7 +687,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Some(TestBranch::Constant(value, bits))
                 }
             }
-            (TestKind::SwitchInt, TestCase::Range(range)) => {
+            (TestKind::SwitchInt { fused: _fused }, TestCase::Range(range)) => {
                 // When performing a `SwitchInt` test, a range pattern can be
                 // sorted into the failure arm if it doesn't contain _any_ of
                 // the values being tested. (This restricts what values can be

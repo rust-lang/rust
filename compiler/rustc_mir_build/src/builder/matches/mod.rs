@@ -1238,6 +1238,7 @@ enum TestCase<'pat, 'tcx> {
     Irrefutable { binding: Option<Binding<'tcx>>, ascription: Option<Ascription<'tcx>> },
     Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
     Constant { value: mir::Const<'tcx> },
+    FusedConstant { value: mir::Const<'tcx>, fused: u64 },
     Range(&'pat PatRange<'tcx>),
     Slice { len: usize, variable_length: bool },
     Deref { temp: Place<'tcx>, mutability: Mutability },
@@ -1304,7 +1305,7 @@ enum TestKind<'tcx> {
     ///
     /// The test's target values are not stored here; instead they are extracted
     /// from the [`TestCase`]s of the candidates participating in the test.
-    SwitchInt,
+    SwitchInt { fused: u64 },
 
     /// Test whether a `bool` is `true` or `false`.
     If,
