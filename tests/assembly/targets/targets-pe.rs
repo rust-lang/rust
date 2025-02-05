@@ -15,9 +15,9 @@
 //@ revisions: arm64ec_pc_windows_msvc
 //@ [arm64ec_pc_windows_msvc] compile-flags: --target arm64ec-pc-windows-msvc
 //@ [arm64ec_pc_windows_msvc] needs-llvm-components: aarch64
-//@ revisions: avr_unknown_gnu_atmega328
-//@ [avr_unknown_gnu_atmega328] compile-flags: --target avr-unknown-gnu-atmega328
-//@ [avr_unknown_gnu_atmega328] needs-llvm-components: avr
+//@ revisions: avr_none
+//@ [avr_none] compile-flags: --target avr-none -C target-cpu=atmega328p
+//@ [avr_none] needs-llvm-components: avr
 //@ revisions: bpfeb_unknown_none
 //@ [bpfeb_unknown_none] compile-flags: --target bpfeb-unknown-none
 //@ [bpfeb_unknown_none] needs-llvm-components: bpf
