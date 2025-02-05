@@ -29,9 +29,9 @@ COPY scripts/cmake.sh /scripts/
 RUN /scripts/cmake.sh
 
 ENV \
-    AR_x86_64_unknown_freebsd=x86_64-unknown-freebsd13-ar \
-    CC_x86_64_unknown_freebsd=x86_64-unknown-freebsd13-clang \
-    CXX_x86_64_unknown_freebsd=x86_64-unknown-freebsd13-clang++
+    AR_x86_64_unknown_freebsd=x86_64-unknown-freebsd12-ar \
+    CC_x86_64_unknown_freebsd=x86_64-unknown-freebsd12-clang \
+    CXX_x86_64_unknown_freebsd=x86_64-unknown-freebsd12-clang++
 
 ENV HOSTS=x86_64-unknown-freebsd
 
