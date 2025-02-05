@@ -1107,6 +1107,9 @@ pub(crate) struct Rust2024IncompatiblePat {
 }
 
 pub(crate) struct Rust2024IncompatiblePatSugg {
+    /// If true, our suggestion is to elide explicit binding modifiers.
+    /// If false, our suggestion is to make the pattern fully explicit.
+    pub(crate) suggest_eliding_modes: bool,
     pub(crate) suggestion: Vec<(Span, String)>,
     pub(crate) ref_pattern_count: usize,
     pub(crate) binding_mode_count: usize,
@@ -1144,16 +1147,18 @@ impl Subdiagnostic for Rust2024IncompatiblePatSugg {
             } else {
                 Applicability::MaybeIncorrect
             };
-        let plural_derefs = pluralize!(self.ref_pattern_count);
-        let and_modes = if self.binding_mode_count > 0 {
-            format!(" and variable binding mode{}", pluralize!(self.binding_mode_count))
+        let msg = if self.suggest_eliding_modes {
+            let plural_modes = pluralize!(self.binding_mode_count);
+            format!("remove the unnecessary binding modifier{plural_modes}")
         } else {
-            String::new()
+            let plural_derefs = pluralize!(self.ref_pattern_count);
+            let and_modes = if self.binding_mode_count > 0 {
+                format!(" and variable binding mode{}", pluralize!(self.binding_mode_count))
+            } else {
+                String::new()
+            };
+            format!("make the implied reference pattern{plural_derefs}{and_modes} explicit")
         };
-        diag.multipart_suggestion_verbose(
-            format!("make the implied reference pattern{plural_derefs}{and_modes} explicit"),
-            self.suggestion,
-            applicability,
-        );
+        diag.multipart_suggestion_verbose(msg, self.suggestion, applicability);
     }
 }

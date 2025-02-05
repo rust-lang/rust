@@ -52,10 +52,11 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL |     let Foo(ref x) = &Foo(0);
    |         ^^^^^^^^^^ this matches on type `&_`
-help: make the implied reference pattern explicit
+help: remove the unnecessary binding modifier
    |
-LL |     let &Foo(ref x) = &Foo(0);
-   |         +
+LL -     let Foo(ref x) = &Foo(0);
+LL +     let Foo(x) = &Foo(0);
+   |
 
 error: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:40:13

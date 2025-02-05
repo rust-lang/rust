@@ -32,7 +32,7 @@ fn main() {
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, 0u8);
 
-    let &Foo(ref x) = &Foo(0);
+    let Foo(x) = &Foo(0);
     //~^ ERROR: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, &0u8);

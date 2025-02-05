@@ -49,13 +49,16 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
         tcx,
         typing_env,
         typeck_results,
-        rust_2024_migration_suggestion: migration_info.and(Some(Rust2024IncompatiblePatSugg {
-            suggestion: Vec::new(),
-            ref_pattern_count: 0,
-            binding_mode_count: 0,
-            default_mode_span: None,
-            default_mode_labels: Default::default(),
-        })),
+        rust_2024_migration_suggestion: migration_info.and_then(|info| {
+            Some(Rust2024IncompatiblePatSugg {
+                suggest_eliding_modes: info.suggest_eliding_modes,
+                suggestion: Vec::new(),
+                ref_pattern_count: 0,
+                binding_mode_count: 0,
+                default_mode_span: None,
+                default_mode_labels: Default::default(),
+            })
+        }),
     };
     let result = pcx.lower_pattern(pat);
     debug!("pat_from_hir({:?}) = {:?}", pat, result);
@@ -107,27 +110,22 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         if let Some(s) = &mut self.rust_2024_migration_suggestion
             && !adjustments.is_empty()
         {
-            let mut min_mutbl = Mutability::Mut;
-            let suggestion_str: String = adjustments
-                .iter()
-                .map(|ref_ty| {
-                    let &ty::Ref(_, _, mutbl) = ref_ty.kind() else {
-                        span_bug!(pat.span, "pattern implicitly dereferences a non-ref type");
-                    };
+            let implicit_deref_mutbls = adjustments.iter().map(|ref_ty| {
+                let &ty::Ref(_, _, mutbl) = ref_ty.kind() else {
+                    span_bug!(pat.span, "pattern implicitly dereferences a non-ref type");
+                };
+                mutbl
+            });
 
-                    match mutbl {
-                        Mutability::Not => {
-                            min_mutbl = Mutability::Not;
-                            "&"
-                        }
-                        Mutability::Mut => "&mut ",
-                    }
-                })
-                .collect();
-            s.suggestion.push((pat.span.shrink_to_lo(), suggestion_str));
-            s.ref_pattern_count += adjustments.len();
+            if !s.suggest_eliding_modes {
+                let suggestion_str: String =
+                    implicit_deref_mutbls.clone().map(|mutbl| mutbl.ref_prefix_str()).collect();
+                s.suggestion.push((pat.span.shrink_to_lo(), suggestion_str));
+                s.ref_pattern_count += adjustments.len();
+            }
 
             // Remember if this changed the default binding mode, in case we want to label it.
+            let min_mutbl = implicit_deref_mutbls.min().unwrap();
             if s.default_mode_span.is_none_or(|(_, old_mutbl)| min_mutbl < old_mutbl) {
                 opt_old_mode_span = Some(s.default_mode_span);
                 s.default_mode_span = Some((pat.span, min_mutbl));
@@ -413,8 +411,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     {
                         // If this overrides a by-ref default binding mode, label the binding mode.
                         s.default_mode_labels.insert(default_mode_span, default_ref_mutbl);
+                        // If our suggestion is to elide redundnt modes, this will be one of them.
+                        if s.suggest_eliding_modes {
+                            s.suggestion.push((pat.span.with_hi(ident.span.lo()), String::new()));
+                            s.binding_mode_count += 1;
+                        }
                     }
-                    if explicit_ba.0 == ByRef::No
+                    if !s.suggest_eliding_modes
+                        && explicit_ba.0 == ByRef::No
                         && let ByRef::Yes(mutbl) = mode.0
                     {
                         let sugg_str = match mutbl {
