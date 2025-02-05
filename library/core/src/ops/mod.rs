@@ -181,7 +181,9 @@ pub(crate) use self::drop::fallback_surface_drop;
 pub use self::function::{Fn, FnMut, FnOnce};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::index::{Index, IndexMut};
-pub(crate) use self::index_range::IndexRange;
+#[doc(hidden)]
+#[unstable(feature = "std_internals", issue = "none")]
+pub use self::index_range::IndexRange;
 #[unstable(feature = "one_sided_range", issue = "69780")]
 pub use self::range::OneSidedRange;
 #[stable(feature = "inclusive_range", since = "1.26.0")]
