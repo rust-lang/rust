@@ -2246,8 +2246,8 @@ impl GenericArg {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericArgs {
-    AngleBracketed { args: Box<[GenericArg]>, constraints: ThinVec<AssocItemConstraint> },
-    Parenthesized { inputs: Box<[Type]>, output: Option<Box<Type>> },
+    AngleBracketed { args: ThinVec<GenericArg>, constraints: ThinVec<AssocItemConstraint> },
+    Parenthesized { inputs: ThinVec<Type>, output: Option<Box<Type>> },
 }
 
 impl GenericArgs {
@@ -2271,7 +2271,7 @@ impl GenericArgs {
                         assoc: PathSegment {
                             name: sym::Output,
                             args: GenericArgs::AngleBracketed {
-                                args: Vec::new().into_boxed_slice(),
+                                args: ThinVec::new(),
                                 constraints: ThinVec::new(),
                             },
                         },
@@ -2588,12 +2588,12 @@ mod size_asserts {
     static_assert_size!(Crate, 56); // frequently moved by-value
     static_assert_size!(DocFragment, 32);
     static_assert_size!(GenericArg, 32);
-    static_assert_size!(GenericArgs, 32);
+    static_assert_size!(GenericArgs, 24);
     static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 48);
     static_assert_size!(ItemKind, 48);
-    static_assert_size!(PathSegment, 40);
+    static_assert_size!(PathSegment, 32);
     static_assert_size!(Type, 32);
     // tidy-alphabetical-end
 }
