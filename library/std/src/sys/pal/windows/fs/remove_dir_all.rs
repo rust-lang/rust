@@ -29,7 +29,7 @@
 //! race but we do make a best effort such that it *should* do so.
 
 use core::ptr;
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::sync::atomic::{Atomic, AtomicU32, Ordering};
 
 use super::{AsRawHandle, DirBuff, File, FromRawHandle};
 use crate::sys::c;
@@ -87,7 +87,7 @@ fn open_link_no_reparse(
     // The `OBJ_DONT_REPARSE` attribute ensures that we haven't been
     // tricked into following a symlink. However, it may not be available in
     // earlier versions of Windows.
-    static ATTRIBUTES: AtomicU32 = AtomicU32::new(c::OBJ_DONT_REPARSE);
+    static ATTRIBUTES: Atomic<u32> = AtomicU32::new(c::OBJ_DONT_REPARSE);
 
     let result = unsafe {
         let mut path_str = c::UNICODE_STRING::from_ref(path);

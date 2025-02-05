@@ -1,7 +1,7 @@
 use core::ffi::c_void;
 use core::sync::atomic::{
-    AtomicBool, AtomicI8, AtomicI16, AtomicI32, AtomicI64, AtomicIsize, AtomicPtr, AtomicU8,
-    AtomicU16, AtomicU32, AtomicU64, AtomicUsize,
+    Atomic, AtomicBool, AtomicI8, AtomicI16, AtomicI32, AtomicI64, AtomicIsize, AtomicPtr,
+    AtomicU8, AtomicU16, AtomicU32, AtomicU64, AtomicUsize,
 };
 use core::time::Duration;
 use core::{mem, ptr};
@@ -10,12 +10,12 @@ use super::api::{self, WinError};
 use crate::sys::{c, dur2timeout};
 
 /// An atomic for use as a futex that is at least 32-bits but may be larger
-pub type Futex = AtomicU32;
+pub type Futex = Atomic<Primitive>;
 /// Must be the underlying type of Futex
 pub type Primitive = u32;
 
 /// An atomic for use as a futex that is at least 8-bits but may be larger.
-pub type SmallFutex = AtomicU8;
+pub type SmallFutex = Atomic<SmallPrimitive>;
 /// Must be the underlying type of SmallFutex
 pub type SmallPrimitive = u8;
 
