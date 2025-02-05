@@ -1,4 +1,5 @@
 //@ build-fail
+//@ compile-flags: -Zdeduplicate-diagnostics=yes
 
 struct Bar<const BITS: usize>;
 

@@ -1,6 +1,7 @@
 //@ build-fail
 //@ revisions: normal mir-opt
 //@ [mir-opt]compile-flags: -Zmir-opt-level=4
+//@ compile-flags: -Zdeduplicate-diagnostics=yes
 
 trait C {
     const BOO: usize;

@@ -47,6 +47,7 @@ pub(super) enum SimplifyCfg {
     Final,
     MakeShim,
     AfterUnreachableEnumBranching,
+    PostMono,
 }
 
 impl SimplifyCfg {
@@ -62,6 +63,7 @@ impl SimplifyCfg {
             SimplifyCfg::AfterUnreachableEnumBranching => {
                 "SimplifyCfg-after-unreachable-enum-branching"
             }
+            SimplifyCfg::PostMono => "SimplifyCfg-post-mono",
         }
     }
 }
@@ -79,7 +81,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyCfg {
         self.name()
     }
 
-    fn run_pass(&self, _: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.name(), body.source);
         simplify_cfg(body);
     }

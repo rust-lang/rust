@@ -628,6 +628,13 @@ fn layout_of_uncached<'tcx>(
 
             let maybe_unsized = def.is_struct()
                 && def.non_enum_variant().tail_opt().is_some_and(|last_field| {
+                    /*
+                    let typing_env = if cx.typing_env == ty::TypingEnv::fully_monomorphized() {
+                        cx.typing_env
+                    } else {
+                        ty::TypingEnv::post_analysis(tcx, def.did())
+                    };
+                    */
                     let typing_env = ty::TypingEnv::post_analysis(tcx, def.did());
                     !tcx.type_of(last_field.did).instantiate_identity().is_sized(tcx, typing_env)
                 });
