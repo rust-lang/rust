@@ -1,4 +1,3 @@
-#![feature(trait_upcasting)]
 //@ check-fail
 //
 // issue: <https://github.com/rust-lang/rust/pull/120222>

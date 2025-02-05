@@ -5,8 +5,6 @@
 //@[next] compile-flags: -Znext-solver
 //@[next] check-pass
 
-#![feature(trait_upcasting)]
-
 trait Trait {}
 
 impl Trait for u32 {}

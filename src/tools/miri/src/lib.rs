@@ -1,3 +1,4 @@
+#![cfg_attr(bootstrap, feature(trait_upcasting))]
 #![feature(rustc_private)]
 #![feature(cell_update)]
 #![feature(float_gamma)]
@@ -9,7 +10,6 @@
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
 #![feature(let_chains)]
-#![feature(trait_upcasting)]
 #![feature(strict_overflow_ops)]
 #![feature(pointer_is_aligned_to)]
 #![feature(unqualified_local_imports)]

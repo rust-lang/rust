@@ -1,6 +1,6 @@
 //@ known-bug: #131886
 //@ compile-flags: -Zvalidate-mir --crate-type=lib
-#![feature(trait_upcasting, type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
 
 type Tait = impl Sized;
 
