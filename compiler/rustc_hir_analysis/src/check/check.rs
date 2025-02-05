@@ -19,7 +19,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::fold::{BottomUpFolder, fold_regions};
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
-use rustc_middle::ty::util::{Discr, InspectCoroutineFields, IntTypeExt};
+use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
     AdtDef, GenericArgKind, RegionKind, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
@@ -257,30 +257,9 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
 
     // First, try to look at any opaque expansion cycles, considering coroutine fields
     // (even though these aren't necessarily true errors).
-    if tcx
-        .try_expand_impl_trait_type(def_id.to_def_id(), args, InspectCoroutineFields::Yes)
-        .is_err()
-    {
-        // Look for true opaque expansion cycles, but ignore coroutines.
-        // This will give us any true errors. Coroutines are only problematic
-        // if they cause layout computation errors.
-        if tcx
-            .try_expand_impl_trait_type(def_id.to_def_id(), args, InspectCoroutineFields::No)
-            .is_err()
-        {
-            let reported = opaque_type_cycle_error(tcx, def_id);
-            return Err(reported);
-        }
-
-        // And also look for cycle errors in the layout of coroutines.
-        if let Err(&LayoutError::Cycle(guar)) =
-            tcx.layout_of(
-                ty::TypingEnv::post_analysis(tcx, def_id.to_def_id())
-                    .as_query_input(Ty::new_opaque(tcx, def_id.to_def_id(), args)),
-            )
-        {
-            return Err(guar);
-        }
+    if tcx.try_expand_impl_trait_type(def_id.to_def_id(), args).is_err() {
+        let reported = opaque_type_cycle_error(tcx, def_id);
+        return Err(reported);
     }
 
     Ok(())
