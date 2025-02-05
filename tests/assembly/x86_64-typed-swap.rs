@@ -22,8 +22,8 @@ pub fn swap_i32(x: &mut i32, y: &mut i32) {
 // CHECK-LABEL: swap_pair:
 #[no_mangle]
 pub fn swap_pair(x: &mut (i32, u32), y: &mut (i32, u32)) {
-    // CHECK: movq (%[[ARG1]]), %[[T1:.+]]
     // CHECK: movq (%[[ARG2]]), %[[T2:.+]]
+    // CHECK: movq (%[[ARG1]]), %[[T1:.+]]
     // CHECK: movq %[[T2]], (%[[ARG1]])
     // CHECK: movq %[[T1]], (%[[ARG2]])
     // CHECK: retq

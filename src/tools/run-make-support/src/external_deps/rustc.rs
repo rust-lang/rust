@@ -84,7 +84,7 @@ impl Rustc {
         self
     }
 
-    /// Specify default optimization level `-O` (alias for `-C opt-level=2`).
+    /// Specify default optimization level `-O` (alias for `-C opt-level=3`).
     pub fn opt(&mut self) -> &mut Self {
         self.cmd.arg("-O");
         self

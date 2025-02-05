@@ -49,8 +49,7 @@ impl<'tcx> crate::MirPass<'tcx> for Inline {
         match sess.mir_opt_level() {
             0 | 1 => false,
             2 => {
-                (sess.opts.optimize == OptLevel::Default
-                    || sess.opts.optimize == OptLevel::Aggressive)
+                (sess.opts.optimize == OptLevel::More || sess.opts.optimize == OptLevel::Aggressive)
                     && sess.opts.incremental == None
             }
             _ => true,
