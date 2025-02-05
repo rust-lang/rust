@@ -107,7 +107,7 @@ fn assert_expand_impl(
 pub(crate) fn list() -> Vec<String> {
     let dylib_path = proc_macro_test_dylib_path();
     let env = EnvSnapshot::default();
-    let mut srv = ProcMacroSrv::new(&env);
+    let srv = ProcMacroSrv::new(&env);
     let res = srv.list_macros(&dylib_path).unwrap();
     res.into_iter().map(|(name, kind)| format!("{name} [{kind:?}]")).collect()
 }
