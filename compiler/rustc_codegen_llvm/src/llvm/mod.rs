@@ -245,6 +245,10 @@ pub fn set_linkage(llglobal: &Value, linkage: Linkage) {
     }
 }
 
+pub fn is_declaration(llglobal: &Value) -> bool {
+    unsafe { LLVMIsDeclaration(llglobal) == ffi::True }
+}
+
 pub fn get_visibility(llglobal: &Value) -> Visibility {
     unsafe { LLVMGetVisibility(llglobal) }.to_rust()
 }

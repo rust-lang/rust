@@ -191,7 +191,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             })
         });
         llvm::set_linkage(g2, llvm::Linkage::InternalLinkage);
-        unsafe { llvm::LLVMSetInitializer(g2, g1) };
+        llvm::set_initializer(g2, g1);
         g2
     } else if cx.tcx.sess.target.arch == "x86"
         && common::is_mingw_gnu_toolchain(&cx.tcx.sess.target)
@@ -235,7 +235,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             }
             _ => self.define_private_global(self.val_ty(cv)),
         };
-        unsafe { llvm::LLVMSetInitializer(gv, cv) };
+        llvm::set_initializer(gv, cv);
         set_global_alignment(self, gv, align);
         llvm::SetUnnamedAddress(gv, llvm::UnnamedAddr::Global);
         gv
@@ -458,7 +458,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 new_g
             };
             set_global_alignment(self, g, alloc.align);
-            llvm::LLVMSetInitializer(g, v);
+            llvm::set_initializer(g, v);
 
             if self.should_assume_dso_local(g, true) {
                 llvm::LLVMRustSetDSOLocal(g, true);

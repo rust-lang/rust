@@ -219,8 +219,8 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 let g = self.define_global(&sym, self.val_ty(sc)).unwrap_or_else(|| {
                     bug!("symbol `{}` is already defined", sym);
                 });
+                llvm::set_initializer(g, sc);
                 unsafe {
-                    llvm::LLVMSetInitializer(g, sc);
                     llvm::LLVMSetGlobalConstant(g, True);
                     llvm::LLVMSetUnnamedAddress(g, llvm::UnnamedAddr::Global);
                 }
