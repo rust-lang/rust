@@ -20,7 +20,7 @@
 +         nop;
 +         _6 = copy (*_1);
           _2 = copy (*_6);
-          _3 = unknown() -> [return: bb1, unwind continue];
+          _3 = unknown() -> [return: bb1, unwind unreachable];
       }
   
       bb1: {

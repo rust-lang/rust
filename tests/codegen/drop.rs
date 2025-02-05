@@ -23,7 +23,7 @@ pub fn droppy() {
     // FIXME(eddyb) the `void @` forces a match on the instruction, instead of the
     // comment, that's `; call core::ptr::drop_in_place::<drop::SomeUniqueName>`
     // for the `v0` mangling, should switch to matching on that once `legacy` is gone.
-    // CHECK-COUNT-6: {{(call|invoke) void @.*}}drop_in_place{{.*}}SomeUniqueName
+    // CHECK-COUNT-5: {{(call|invoke) void @.*}}drop_in_place{{.*}}SomeUniqueName
     // CHECK-NOT: {{(call|invoke) void @.*}}drop_in_place{{.*}}SomeUniqueName
     // The next line checks for the } that ends the function definition
     // CHECK-LABEL: {{^[}]}}
