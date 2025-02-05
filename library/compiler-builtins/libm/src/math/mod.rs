@@ -385,6 +385,7 @@ cfg_if! {
         mod fabsf128;
         mod fdimf128;
         mod floorf128;
+        mod fmaf128;
         mod fmaxf128;
         mod fminf128;
         mod fmodf128;
@@ -402,6 +403,7 @@ cfg_if! {
         pub use self::fabsf128::fabsf128;
         pub use self::fdimf128::fdimf128;
         pub use self::floorf128::floorf128;
+        pub use self::fmaf128::fmaf128;
         pub use self::fmaxf128::fmaxf128;
         pub use self::fminf128::fminf128;
         pub use self::fmodf128::fmodf128;

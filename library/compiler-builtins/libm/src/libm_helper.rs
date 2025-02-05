@@ -208,6 +208,7 @@ libm_helper! {
         (fn fabs(x: f128) -> (f128);                => fabsf128);
         (fn fdim(x: f128, y: f128) -> (f128);       => fdimf128);
         (fn floor(x: f128) -> (f128);               => floorf128);
+        (fn fmaf128(x: f128, y: f128, z: f128) -> (f128); => fmaf128);
         (fn fmax(x: f128, y: f128) -> (f128);       => fmaxf128);
         (fn fmin(x: f128, y: f128) -> (f128);       => fminf128);
         (fn fmod(x: f128, y: f128) -> (f128);       => fmodf128);

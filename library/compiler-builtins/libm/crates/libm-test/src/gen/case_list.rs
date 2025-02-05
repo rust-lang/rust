@@ -6,6 +6,9 @@
 //!
 //! This is useful for adding regression tests or expected failures.
 
+#[cfg(f128_enabled)]
+use libm::hf128;
+
 use crate::{CheckBasis, CheckCtx, GeneratorKind, MathOp, op};
 
 pub struct TestCase<Op: MathOp> {
@@ -250,7 +253,7 @@ fn fma_cases() -> Vec<TestCase<op::fma::Routine>> {
     TestCase::append_pairs(
         &mut v,
         &[
-            // Previously failure with incorrect sign
+            // Previous failure with incorrect sign
             ((5e-324, -5e-324, 0.0), Some(-0.0)),
         ],
     );
@@ -259,6 +262,24 @@ fn fma_cases() -> Vec<TestCase<op::fma::Routine>> {
 
 fn fmaf_cases() -> Vec<TestCase<op::fmaf::Routine>> {
     vec![]
+}
+
+#[cfg(f128_enabled)]
+fn fmaf128_cases() -> Vec<TestCase<op::fmaf128::Routine>> {
+    let mut v = vec![];
+    TestCase::append_pairs(
+        &mut v,
+        &[(
+            // Tricky rounding case that previously failed in extensive tests
+            (
+                hf128!("-0x1.1966cc01966cc01966cc01966f06p-25"),
+                hf128!("-0x1.669933fe69933fe69933fe6997c9p-16358"),
+                hf128!("-0x0.000000000000000000000000048ap-16382"),
+            ),
+            Some(hf128!("0x0.c5171470a3ff5e0f68d751491b18p-16382")),
+        )],
+    );
+    v
 }
 
 fn fmax_cases() -> Vec<TestCase<op::fmax::Routine>> {

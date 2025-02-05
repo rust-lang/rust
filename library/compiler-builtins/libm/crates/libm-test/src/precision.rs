@@ -560,3 +560,5 @@ impl MaybeOverride<(f128, i32)> for SpecialCase {}
 
 impl MaybeOverride<(f32, f32, f32)> for SpecialCase {}
 impl MaybeOverride<(f64, f64, f64)> for SpecialCase {}
+#[cfg(f128_enabled)]
+impl MaybeOverride<(f128, f128, f128)> for SpecialCase {}

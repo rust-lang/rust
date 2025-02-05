@@ -356,6 +356,13 @@
         ],
         "type": "f32"
     },
+    "fmaf128": {
+        "sources": [
+            "src/math/fmaf128.rs",
+            "src/math/generic/fma.rs"
+        ],
+        "type": "f128"
+    },
     "fmax": {
         "sources": [
             "src/math/fmax.rs",
