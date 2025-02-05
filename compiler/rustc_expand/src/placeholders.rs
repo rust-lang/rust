@@ -188,6 +188,14 @@ pub(crate) fn placeholder(
             vis,
             is_placeholder: true,
         }]),
+        AstFragmentKind::WherePredicates => {
+            AstFragment::WherePredicates(smallvec![ast::WherePredicate {
+                attrs: Default::default(),
+                id,
+                span,
+                kind: ast::WherePredicateKind::MacCall(mac_placeholder()),
+            }])
+        }
     }
 }
 
@@ -264,6 +272,18 @@ impl MutVisitor for PlaceholderExpander {
             self.remove(variant.id).make_variants()
         } else {
             walk_flat_map_variant(self, variant)
+        }
+    }
+
+    fn flat_map_where_predicate(
+        &mut self,
+        predicate: ast::WherePredicate,
+    ) -> SmallVec<[ast::WherePredicate; 1]> {
+        match predicate.kind {
+            ast::WherePredicateKind::MacCall(_) => {
+                self.remove(predicate.id).make_where_predicates()
+            }
+            _ => walk_flat_map_where_predicate(self, predicate),
         }
     }
 

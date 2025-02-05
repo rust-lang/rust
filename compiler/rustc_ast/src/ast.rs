@@ -417,6 +417,7 @@ impl WhereClause {
 /// A single predicate in a where-clause.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct WherePredicate {
+    pub attrs: AttrVec,
     pub kind: WherePredicateKind,
     pub id: NodeId,
     pub span: Span,
@@ -431,6 +432,8 @@ pub enum WherePredicateKind {
     RegionPredicate(WhereRegionPredicate),
     /// An equality predicate (unsupported).
     EqPredicate(WhereEqPredicate),
+    /// A macro invocation,
+    MacCall(P<MacCall>),
 }
 
 /// A type bound.

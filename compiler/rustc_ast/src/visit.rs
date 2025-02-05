@@ -833,7 +833,8 @@ pub fn walk_where_predicate<'a, V: Visitor<'a>>(
     visitor: &mut V,
     predicate: &'a WherePredicate,
 ) -> V::Result {
-    let WherePredicate { kind, id: _, span: _ } = predicate;
+    let WherePredicate { attrs, kind, id: _, span: _ } = predicate;
+    walk_list!(visitor, visit_attribute, attrs);
     visitor.visit_where_predicate_kind(kind)
 }
 
@@ -858,6 +859,9 @@ pub fn walk_where_predicate_kind<'a, V: Visitor<'a>>(
         WherePredicateKind::EqPredicate(WhereEqPredicate { lhs_ty, rhs_ty }) => {
             try_visit!(visitor.visit_ty(lhs_ty));
             try_visit!(visitor.visit_ty(rhs_ty));
+        }
+        WherePredicateKind::MacCall(mac) => {
+            try_visit!(visitor.visit_mac_call(mac));
         }
     }
     V::Result::output()

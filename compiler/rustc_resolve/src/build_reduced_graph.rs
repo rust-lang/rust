@@ -1309,6 +1309,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
     method!(visit_expr: ast::Expr, ast::ExprKind::MacCall, walk_expr);
     method!(visit_pat: ast::Pat, ast::PatKind::MacCall, walk_pat);
     method!(visit_ty: ast::Ty, ast::TyKind::MacCall, walk_ty);
+    method!(visit_where_predicate: ast::WherePredicate, ast::WherePredicateKind::MacCall, walk_where_predicate);
 
     fn visit_item(&mut self, item: &'a Item) {
         let orig_module_scope = self.parent_scope.module;
