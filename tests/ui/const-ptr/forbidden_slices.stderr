@@ -103,7 +103,7 @@ error[E0080]: could not evaluate static initializer
   --> $DIR/forbidden_slices.rs:50:33
    |
 LL | pub static R1: &[()] = unsafe { from_ptr_range(ptr::null()..ptr::null()) }; // errors inside libcore
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ assertion failed: 0 < pointee_size && pointee_size <= isize::MAX as usize
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ panic: assertion failed: 0 < pointee_size && pointee_size <= isize::MAX as usize
    |
 note: called from `from_ptr_range::<'_, ()>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL

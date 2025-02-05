@@ -2,7 +2,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const-ptr-is-null.rs:22:14
    |
 LL |     assert!(!ptr.wrapping_sub(512).is_null());
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ null-ness of this pointer cannot be determined in const context
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ panic: null-ness of this pointer cannot be determined in const context
    |
 note: called from `std::ptr::const_ptr::<impl *const i32>::is_null`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL

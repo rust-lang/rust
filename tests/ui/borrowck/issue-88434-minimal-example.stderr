@@ -2,7 +2,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/issue-88434-minimal-example.rs:3:22
    |
 LL | const _CONST: &() = &f(&|_| {});
-   |                      ^^^^^^^^^^ explicit panic
+   |                      ^^^^^^^^^^ panic: explicit panic
    |
 note: called from `f::<{closure@$DIR/issue-88434-minimal-example.rs:3:25: 3:28}>`
   --> $DIR/issue-88434-minimal-example.rs:10:5
