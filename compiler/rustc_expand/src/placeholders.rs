@@ -301,16 +301,18 @@ impl MutVisitor for PlaceholderExpander {
         }
     }
 
-    fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
+    fn visit_expr(&mut self, expr: &mut ast::Expr) {
         match expr.kind {
-            ast::ExprKind::MacCall(_) => *expr = self.remove(expr.id).make_expr(),
+            ast::ExprKind::MacCall(_) => *expr = self.remove(expr.id).make_expr().into_inner(),
             _ => walk_expr(self, expr),
         }
     }
 
-    fn visit_method_receiver_expr(&mut self, expr: &mut P<ast::Expr>) {
+    fn visit_method_receiver_expr(&mut self, expr: &mut ast::Expr) {
         match expr.kind {
-            ast::ExprKind::MacCall(_) => *expr = self.remove(expr.id).make_method_receiver_expr(),
+            ast::ExprKind::MacCall(_) => {
+                *expr = self.remove(expr.id).make_method_receiver_expr().into_inner()
+            }
             _ => walk_expr(self, expr),
         }
     }
@@ -368,16 +370,16 @@ impl MutVisitor for PlaceholderExpander {
         stmts
     }
 
-    fn visit_pat(&mut self, pat: &mut P<ast::Pat>) {
+    fn visit_pat(&mut self, pat: &mut ast::Pat) {
         match pat.kind {
-            ast::PatKind::MacCall(_) => *pat = self.remove(pat.id).make_pat(),
+            ast::PatKind::MacCall(_) => *pat = self.remove(pat.id).make_pat().into_inner(),
             _ => walk_pat(self, pat),
         }
     }
 
-    fn visit_ty(&mut self, ty: &mut P<ast::Ty>) {
+    fn visit_ty(&mut self, ty: &mut ast::Ty) {
         match ty.kind {
-            ast::TyKind::MacCall(_) => *ty = self.remove(ty.id).make_ty(),
+            ast::TyKind::MacCall(_) => *ty = self.remove(ty.id).make_ty().into_inner(),
             _ => walk_ty(self, ty),
         }
     }

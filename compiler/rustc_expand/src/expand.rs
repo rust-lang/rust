@@ -1592,14 +1592,14 @@ impl InvocationCollectorNode for ast::Crate {
     }
 }
 
-impl InvocationCollectorNode for P<ast::Ty> {
-    type OutputTy = P<ast::Ty>;
+impl InvocationCollectorNode for ast::Ty {
+    type OutputTy = ast::Ty;
     const KIND: AstFragmentKind = AstFragmentKind::Ty;
     fn to_annotatable(self) -> Annotatable {
         unreachable!()
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
-        fragment.make_ty()
+        fragment.make_ty().into_inner()
     }
     fn walk<V: MutVisitor>(&mut self, visitor: &mut V) {
         walk_ty(visitor, self)
@@ -1608,22 +1608,21 @@ impl InvocationCollectorNode for P<ast::Ty> {
         matches!(self.kind, ast::TyKind::MacCall(..))
     }
     fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
-        let node = self.into_inner();
-        match node.kind {
+        match self.kind {
             TyKind::MacCall(mac) => (mac, AttrVec::new(), AddSemicolon::No),
             _ => unreachable!(),
         }
     }
 }
 
-impl InvocationCollectorNode for P<ast::Pat> {
-    type OutputTy = P<ast::Pat>;
+impl InvocationCollectorNode for ast::Pat {
+    type OutputTy = ast::Pat;
     const KIND: AstFragmentKind = AstFragmentKind::Pat;
     fn to_annotatable(self) -> Annotatable {
         unreachable!()
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
-        fragment.make_pat()
+        fragment.make_pat().into_inner()
     }
     fn walk<V: MutVisitor>(&mut self, visitor: &mut V) {
         walk_pat(visitor, self)
@@ -1632,23 +1631,22 @@ impl InvocationCollectorNode for P<ast::Pat> {
         matches!(self.kind, PatKind::MacCall(..))
     }
     fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
-        let node = self.into_inner();
-        match node.kind {
+        match self.kind {
             PatKind::MacCall(mac) => (mac, AttrVec::new(), AddSemicolon::No),
             _ => unreachable!(),
         }
     }
 }
 
-impl InvocationCollectorNode for P<ast::Expr> {
-    type OutputTy = P<ast::Expr>;
+impl InvocationCollectorNode for ast::Expr {
+    type OutputTy = ast::Expr;
     type AttrsTy = ast::AttrVec;
     const KIND: AstFragmentKind = AstFragmentKind::Expr;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::Expr(self)
+        Annotatable::Expr(P(self))
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
-        fragment.make_expr()
+        fragment.make_expr().into_inner()
     }
     fn descr() -> &'static str {
         "an expression"
@@ -1660,9 +1658,8 @@ impl InvocationCollectorNode for P<ast::Expr> {
         matches!(self.kind, ExprKind::MacCall(..))
     }
     fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
-        let node = self.into_inner();
-        match node.kind {
-            ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
+        match self.kind {
+            ExprKind::MacCall(mac) => (mac, self.attrs, AddSemicolon::No),
             _ => unreachable!(),
         }
     }
@@ -2176,15 +2173,15 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.visit_node(node)
     }
 
-    fn visit_ty(&mut self, node: &mut P<ast::Ty>) {
+    fn visit_ty(&mut self, node: &mut ast::Ty) {
         self.visit_node(node)
     }
 
-    fn visit_pat(&mut self, node: &mut P<ast::Pat>) {
+    fn visit_pat(&mut self, node: &mut ast::Pat) {
         self.visit_node(node)
     }
 
-    fn visit_expr(&mut self, node: &mut P<ast::Expr>) {
+    fn visit_expr(&mut self, node: &mut ast::Expr) {
         // FIXME: Feature gating is performed inconsistently between `Expr` and `OptExpr`.
         if let Some(attr) = node.attrs.first() {
             self.cfg().maybe_emit_expr_attr_err(attr);
@@ -2192,11 +2189,11 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.visit_node(node)
     }
 
-    fn visit_method_receiver_expr(&mut self, node: &mut P<ast::Expr>) {
+    fn visit_method_receiver_expr(&mut self, node: &mut ast::Expr) {
         visit_clobber(node, |node| {
-            let mut wrapper = AstNodeWrapper::new(node, MethodReceiverTag);
+            let mut wrapper = AstNodeWrapper::new(P(node), MethodReceiverTag);
             self.visit_node(&mut wrapper);
-            wrapper.wrapped
+            wrapper.wrapped.into_inner()
         })
     }
 
@@ -2204,7 +2201,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.flat_map_node(AstNodeWrapper::new(node, OptExprTag))
     }
 
-    fn visit_block(&mut self, node: &mut P<ast::Block>) {
+    fn visit_block(&mut self, node: &mut ast::Block) {
         let orig_dir_ownership = mem::replace(
             &mut self.cx.current_expansion.dir_ownership,
             DirOwnership::UnownedViaBlock,

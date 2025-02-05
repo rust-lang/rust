@@ -143,7 +143,7 @@ pub trait MutVisitor: Sized {
         walk_flat_map_assoc_item(self, i, ctxt)
     }
 
-    fn visit_fn_decl(&mut self, d: &mut P<FnDecl>) {
+    fn visit_fn_decl(&mut self, d: &mut FnDecl) {
         walk_fn_decl(self, d);
     }
 
@@ -160,7 +160,7 @@ pub trait MutVisitor: Sized {
         walk_closure_binder(self, b);
     }
 
-    fn visit_block(&mut self, b: &mut P<Block>) {
+    fn visit_block(&mut self, b: &mut Block) {
         walk_block(self, b);
     }
 
@@ -176,7 +176,7 @@ pub trait MutVisitor: Sized {
         walk_flat_map_arm(self, arm)
     }
 
-    fn visit_pat(&mut self, p: &mut P<Pat>) {
+    fn visit_pat(&mut self, p: &mut Pat) {
         walk_pat(self, p);
     }
 
@@ -184,13 +184,13 @@ pub trait MutVisitor: Sized {
         walk_anon_const(self, c);
     }
 
-    fn visit_expr(&mut self, e: &mut P<Expr>) {
+    fn visit_expr(&mut self, e: &mut Expr) {
         walk_expr(self, e);
     }
 
     /// This method is a hack to workaround unstable of `stmt_expr_attributes`.
     /// It can be removed once that feature is stabilized.
-    fn visit_method_receiver_expr(&mut self, ex: &mut P<Expr>) {
+    fn visit_method_receiver_expr(&mut self, ex: &mut Expr) {
         self.visit_expr(ex)
     }
 
@@ -202,7 +202,7 @@ pub trait MutVisitor: Sized {
         walk_generic_arg(self, arg);
     }
 
-    fn visit_ty(&mut self, t: &mut P<Ty>) {
+    fn visit_ty(&mut self, t: &mut Ty) {
         walk_ty(self, t);
     }
 
@@ -254,7 +254,7 @@ pub trait MutVisitor: Sized {
         walk_parenthesized_parameter_data(self, p);
     }
 
-    fn visit_local(&mut self, l: &mut P<Local>) {
+    fn visit_local(&mut self, l: &mut Local) {
         walk_local(self, l);
     }
 
@@ -537,8 +537,8 @@ fn walk_assoc_item_constraint<T: MutVisitor>(
     vis.visit_span(span);
 }
 
-pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut P<Ty>) {
-    let Ty { id, kind, span, tokens } = ty.deref_mut();
+pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut Ty) {
+    let Ty { id, kind, span, tokens } = ty;
     vis.visit_id(id);
     match kind {
         TyKind::Err(_guar) => {}
@@ -675,8 +675,8 @@ fn walk_parenthesized_parameter_data<T: MutVisitor>(vis: &mut T, args: &mut Pare
     vis.visit_span(inputs_span);
 }
 
-fn walk_local<T: MutVisitor>(vis: &mut T, local: &mut P<Local>) {
-    let Local { id, pat, ty, kind, span, colon_sp, attrs, tokens } = local.deref_mut();
+fn walk_local<T: MutVisitor>(vis: &mut T, local: &mut Local) {
+    let Local { id, pat, ty, kind, span, colon_sp, attrs, tokens } = local;
     vis.visit_id(id);
     visit_attrs(vis, attrs);
     vis.visit_pat(pat);
@@ -979,8 +979,8 @@ fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
     }
 }
 
-fn walk_fn_decl<T: MutVisitor>(vis: &mut T, decl: &mut P<FnDecl>) {
-    let FnDecl { inputs, output } = decl.deref_mut();
+fn walk_fn_decl<T: MutVisitor>(vis: &mut T, decl: &mut FnDecl) {
+    let FnDecl { inputs, output } = decl;
     inputs.flat_map_in_place(|param| vis.flat_map_param(param));
     vis.visit_fn_ret_ty(output);
 }
@@ -1170,8 +1170,8 @@ fn walk_mt<T: MutVisitor>(vis: &mut T, MutTy { ty, mutbl: _ }: &mut MutTy) {
     vis.visit_ty(ty);
 }
 
-pub fn walk_block<T: MutVisitor>(vis: &mut T, block: &mut P<Block>) {
-    let Block { id, stmts, rules: _, span, tokens, could_be_bare_literal: _ } = block.deref_mut();
+pub fn walk_block<T: MutVisitor>(vis: &mut T, block: &mut Block) {
+    let Block { id, stmts, rules: _, span, tokens, could_be_bare_literal: _ } = block;
     vis.visit_id(id);
     stmts.flat_map_in_place(|stmt| vis.flat_map_stmt(stmt));
     visit_lazy_tts(vis, tokens);
@@ -1501,8 +1501,8 @@ impl WalkItemKind for ForeignItemKind {
     }
 }
 
-pub fn walk_pat<T: MutVisitor>(vis: &mut T, pat: &mut P<Pat>) {
-    let Pat { id, kind, span, tokens } = pat.deref_mut();
+pub fn walk_pat<T: MutVisitor>(vis: &mut T, pat: &mut Pat) {
+    let Pat { id, kind, span, tokens } = pat;
     vis.visit_id(id);
     match kind {
         PatKind::Err(_guar) => {}
