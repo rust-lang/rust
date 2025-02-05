@@ -3,16 +3,8 @@ use crate::spec::{Cc, LinkerFlavor, Lld, Target, base};
 pub(crate) fn target() -> Target {
     let mut base = base::cygwin::opts();
     base.cpu = "x86-64".into();
-    // FIXME: Disable ASLR for now to fix relocation error
-    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &[
-        "-m",
-        "i386pep",
-        "--disable-high-entropy-va",
-    ]);
-    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &[
-        "-m64",
-        "-Wl,--disable-high-entropy-va",
-    ]);
+    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &["-m", "i386pep"]);
+    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
     base.max_atomic_width = Some(64);
     base.linker = Some("x86_64-pc-cygwin-gcc".into());
     Target {
@@ -26,7 +18,7 @@ pub(crate) fn target() -> Target {
             description: Some("64-bit x86 Cygwin".into()),
             tier: Some(3),
             host_tools: Some(false),
-            std: Some(true),
+            std: None,
         },
     }
 }
