@@ -1,7 +1,9 @@
-use std::alloc::{Layout, alloc, dealloc};
-use std::marker::PhantomData;
-use std::mem;
-use std::ops::{Add, BitAnd, Deref, DerefMut};
+use core::alloc::Layout;
+use core::marker::PhantomData;
+use core::mem;
+use core::ops::{Add, BitAnd, Deref, DerefMut, Shr};
+use alloc::vec::Vec;
+use alloc::alloc::{alloc, dealloc};
 
 /// Different targets have a different number
 /// of significant bits in their pointer representation.
@@ -45,8 +47,6 @@ static L1_LEN: usize = 2_usize.pow(L1_POWER);
 /// levels of the shadow page table.
 #[inline(always)]
 fn table_indices(address: usize) -> (usize, usize) {
-    use std::ops::Shr;
-
     #[cfg(target_endian = "little")]
     let l1_index = address.shr(L2_POWER).bitand((L1_POWER - 1) as usize);
 
@@ -89,7 +89,7 @@ pub struct L1<T: Provenance> {
 
 impl<T: Provenance> L1<T> {
     fn new() -> Self {
-        Self { entries: [std::ptr::null_mut(); L1_LEN], chunks: Vec::new() }
+        Self { entries: [core::ptr::null_mut(); L1_LEN], chunks: Vec::new() }
     }
 
     #[inline(always)]

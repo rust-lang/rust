@@ -13,33 +13,17 @@ use crate::core::config::TargetSelection;
 use crate::utils::helpers::dylib;
 use crate::{Compiler, Kind, Mode, Path, fs, helpers, t};
 
-/// We need two components to compile BSAN (in addition to LLVM). The first component is the
-/// borrow tracker library (libbsanrt), which is compiled here in the step BsanBorrowTracker.
-/// This library depends on Miri's borrow tracker implementation. Since Miri relies on a variety of
-/// experimental and unstable features, we cannot build it in stage0; we need to use at least the
-/// stage1 compiler. We need to define a custom build step since we are producing a shared library, and
-/// the current build system for implementation assumes that the output of every tool is a binary.
-///
-/// The second component is the BSAN sanitizer library (Bsan). Note that Rust's standard library depends
-/// on the LLVM sanitizers, but our sanitizer depends on standard library (since it uses Miri)! To resolve
-/// this cycle, we define separate build step instead of adding BSAN as a sanitizer over in llvm.rs
-///
-/// This is all a temporary workaround; whenever BSAN is moved upstream, this should all be removed and reintegrated
-/// with llvm.rs, tools.rs, and compile.rs.
-///
-/// This has an added benefit for development. Currently, there is no way to build a specific sanitizer.
-/// Running './x.py build sanitizers' builds every single one. Having these separate steps allows us to build
-/// BSAN without building the other sanitizers.
 
 const BSAN_CORE_PATH: &str = "src/tools/bsan/bsanrt";
 const BSAN_RT_DYLIB: &str = "bsanrt";
 
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Bsan {
+pub struct BsanRT {
     pub compiler: Compiler,
     pub target: TargetSelection,
 }
-impl Step for Bsan {
+impl Step for BsanRT {
     type Output = Option<SanitizerRuntime>;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -59,7 +43,7 @@ impl Step for Bsan {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Bsan {
+        run.builder.ensure(BsanRT {
             compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
@@ -71,7 +55,7 @@ impl Step for Bsan {
         let compiler = self.compiler;
 
         builder.ensure(llvm::Llvm { target });
-        builder.ensure(BsanRT { compiler, target });
+        builder.ensure(BsanRTCore { compiler, target });
 
         let compiler_rt_dir = builder.src.join("src/llvm-project/compiler-rt");
         if !compiler_rt_dir.exists() {
@@ -175,19 +159,19 @@ pub fn supports_bsan(
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct BsanRT {
+pub struct BsanRTCore {
     pub compiler: Compiler,
     pub target: TargetSelection,
 }
 
-impl Step for BsanRT {
+impl Step for BsanRTCore {
     type Output = PathBuf;
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
+        run.path("src/tools/bsan/bsanrt")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(BsanRT {
+        run.builder.ensure(BsanRTCore {
             compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
@@ -199,7 +183,6 @@ impl Step for BsanRT {
         let mode = Mode::ToolRustc;
         let kind = Kind::Build;
 
-        builder.ensure(compile::Std::new(compiler, compiler.host));
         builder.ensure(compile::Rustc::new(compiler, target));
 
         let mut cargo = prepare_tool_cargo(
@@ -244,3 +227,4 @@ impl Step for BsanRT {
         }
     }
 }
+

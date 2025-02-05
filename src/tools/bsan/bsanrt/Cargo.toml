@@ -5,8 +5,8 @@ edition = "2021"
 
 [dependencies]
 env_logger = "0.11.5"
+jemalloc-sys = "0.5.4"
 log = "0.4.22"
-miri = { path = "../../miri" }
 macros = { path = "macros" }
 
 [lib]

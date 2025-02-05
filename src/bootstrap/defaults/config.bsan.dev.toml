@@ -2,8 +2,8 @@ change-id = 132494
 
 [build]
 sanitizers = true
-build-stage = 1
-test-stage = 1
+build-stage = 0
+test-stage = 0
 docs = false
 extended = true
 tools = [

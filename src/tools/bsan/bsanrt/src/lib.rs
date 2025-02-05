@@ -1,33 +1,26 @@
-#![feature(rustc_private)]
+#![no_std]
 #![feature(strict_overflow_ops)]
 #![allow(unused)]
 
-extern crate rustc_abi;
-extern crate rustc_middle;
+extern crate alloc;
+
+mod allocator;
+use allocator::BsanAlloc;
+
+#[cfg(not(target_env = "msvc"))]
+#[global_allocator]
+static GLOBAL: BsanAlloc = BsanAlloc {};
 
 mod shadow;
 
-use std::num::NonZero;
-use std::os::raw::c_void;
-use std::sync::OnceLock;
+use core::ffi::c_void;
+use core::num::NonZero;
 
 use log::info;
-use miri::{AllocId, BorTag, Pointer, Provenance, ProvenanceExtra};
-use rustc_abi::Size;
-use rustc_middle::mir::{PlaceKind, RetagKind};
-
-mod state;
-use state::GlobalState;
-
-mod tracked_pointer;
-pub use tracked_pointer::TrackedPointer;
-
-static BSAN_GLOBAL: OnceLock<GlobalState> = OnceLock::new();
 
 #[no_mangle]
 extern "C" fn bsan_init() {
     let _ = env_logger::builder().try_init();
-    BSAN_GLOBAL.get_or_init(GlobalState::default);
     info!("Initialized global state");
 }
 

@@ -423,12 +423,12 @@ impl Step for Rustfmt {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct BsanRT {
+pub struct BsanRTCore {
     stage: u32,
     host: TargetSelection,
 }
 
-impl Step for BsanRT {
+impl Step for BsanRTCore {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
@@ -437,7 +437,7 @@ impl Step for BsanRT {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(BsanRT { stage: run.builder.top_stage, host: run.target });
+        run.builder.ensure(BsanRTCore { stage: run.builder.top_stage, host: run.target });
     }
 
     /// Runs `cargo test` for rustfmt.
@@ -446,7 +446,7 @@ impl Step for BsanRT {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(bsan::BsanRT { compiler, target: self.host });
+        builder.ensure(bsan::BsanRTCore { compiler, target: self.host });
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
