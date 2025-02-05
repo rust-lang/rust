@@ -299,10 +299,15 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 
     Symbol::intern(&match p.kind {
         // FIXME(never_patterns): does this make sense?
-        PatKind::Wild | PatKind::Err(_) | PatKind::Never | PatKind::Struct(..) => {
+        PatKind::Wild
+        | PatKind::Err(_)
+        | PatKind::Never
+        | PatKind::Struct(..)
+        | PatKind::Range(..) => {
             return kw::Underscore;
         }
         PatKind::Binding(_, _, ident, _) => return ident.name,
+        PatKind::Box(p) | PatKind::Ref(p, _) | PatKind::Guard(p, _) => return name_from_pat(p),
         PatKind::TupleStruct(ref p, ..)
         | PatKind::Expr(PatExpr { kind: PatExprKind::Path(ref p), .. }) => qpath_to_string(p),
         PatKind::Or(pats) => {
@@ -312,17 +317,13 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
             "({})",
             elts.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(", ")
         ),
-        PatKind::Box(p) => return name_from_pat(p),
         PatKind::Deref(p) => format!("deref!({})", name_from_pat(p)),
-        PatKind::Ref(p, _) => return name_from_pat(p),
         PatKind::Expr(..) => {
             warn!(
                 "tried to get argument name from PatKind::Expr, which is silly in function arguments"
             );
             return Symbol::intern("()");
         }
-        PatKind::Guard(p, _) => return name_from_pat(p),
-        PatKind::Range(..) => return kw::Underscore,
         PatKind::Slice(begin, ref mid, end) => {
             let begin = begin.iter().map(|p| name_from_pat(p).to_string());
             let mid = mid.as_ref().map(|p| format!("..{}", name_from_pat(p))).into_iter();
