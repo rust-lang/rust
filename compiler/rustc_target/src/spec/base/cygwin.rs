@@ -4,14 +4,10 @@ use crate::spec::{Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOp
 
 pub(crate) fn opts() -> TargetOptions {
     let mut pre_link_args = TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &[
-        // FIXME: Disable ASLR for now to fix relocation error
         "--disable-dynamicbase",
         "--enable-auto-image-base",
     ]);
     crate::spec::add_link_args(&mut pre_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), &[
-        // Tell GCC to avoid linker plugins, because we are not bundling
-        // them with Windows installer, and Rust does its own LTO anyways.
-        "-fno-use-linker-plugin",
         "-Wl,--disable-dynamicbase",
         "-Wl,--enable-auto-image-base",
     ]);
@@ -42,9 +38,7 @@ pub(crate) fn opts() -> TargetOptions {
         emit_debug_gdb_scripts: false,
         requires_uwtable: true,
         eh_frame_header: false,
-        // FIXME(davidtwco): Support Split DWARF on Cygwin - may require LLVM changes to
-        // output DWO, despite using DWARF, doesn't use ELF..
-        debuginfo_kind: DebuginfoKind::Pdb,
+        debuginfo_kind: DebuginfoKind::Dwarf,
         supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
         ..Default::default()
     }
