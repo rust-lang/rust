@@ -44,7 +44,7 @@ pub struct FileType {
 }
 
 pub struct ReadDir {
-    handle: FindNextFileHandle,
+    handle: Option<FindNextFileHandle>,
     root: Arc<PathBuf>,
     first: Option<c::WIN32_FIND_DATAW>,
 }
@@ -113,13 +113,13 @@ impl fmt::Debug for ReadDir {
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        if self.handle.0 == c::INVALID_HANDLE_VALUE {
+        let Some(handle) = self.handle.as_ref() else {
             // This iterator was initialized with an `INVALID_HANDLE_VALUE` as its handle.
             // Simply return `None` because this is only the case when `FindFirstFileExW` in
             // the construction of this iterator returns `ERROR_FILE_NOT_FOUND` which means
             // no matchhing files can be found.
             return None;
-        }
+        };
         if let Some(first) = self.first.take() {
             if let Some(e) = DirEntry::new(&self.root, &first) {
                 return Some(Ok(e));
@@ -128,7 +128,7 @@ impl Iterator for ReadDir {
         unsafe {
             let mut wfd = mem::zeroed();
             loop {
-                if c::FindNextFileW(self.handle.0, &mut wfd) == 0 {
+                if c::FindNextFileW(handle.0, &mut wfd) == 0 {
                     match api::get_last_error() {
                         WinError::NO_MORE_FILES => return None,
                         WinError { code } => {
@@ -1190,7 +1190,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 
         if find_handle != c::INVALID_HANDLE_VALUE {
             Ok(ReadDir {
-                handle: FindNextFileHandle(find_handle),
+                handle: Some(FindNextFileHandle(find_handle)),
                 root: Arc::new(root),
                 first: Some(wfd),
             })
@@ -1208,11 +1208,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
             // See issue #120040: https://github.com/rust-lang/rust/issues/120040.
             let last_error = api::get_last_error();
             if last_error == WinError::FILE_NOT_FOUND {
-                return Ok(ReadDir {
-                    handle: FindNextFileHandle(find_handle),
-                    root: Arc::new(root),
-                    first: None,
-                });
+                return Ok(ReadDir { handle: None, root: Arc::new(root), first: None });
             }
 
             // Just return the error constructed from the raw OS error if the above is not the case.
