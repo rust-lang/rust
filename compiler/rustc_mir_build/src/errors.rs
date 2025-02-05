@@ -1137,8 +1137,11 @@ impl Subdiagnostic for Rust2024IncompatiblePatSugg {
                     def_br_mutbl.ref_prefix_str()
                 );
                 let label_msg = format!("the default binding mode is `{dbm_str}`, introduced here");
-                let mut label = MultiSpan::from(span);
-                label.push_span_label(span, label_msg);
+                // Get a ^---- label with the ^ pointing to where the user would write `&` or `&mut`
+                let imaginary_ref_span = span.shrink_to_lo();
+                let mut label = MultiSpan::from(imaginary_ref_span);
+                label.push_span_label(imaginary_ref_span, label_msg);
+                label.push_span_label(span, "");
                 diag.span_note(label, note_msg);
             }
         }

@@ -9,7 +9,9 @@ note: the default binding mode changed to `ref` because this has type `&_`
   --> $DIR/ref-binding-on-inh-ref-errors.rs:15:9
    |
 LL |     let [&ref x] = &[&0];
-   |         ^^^^^^^^ the default binding mode is `ref`, introduced here
+   |         ^-------
+   |         |
+   |         the default binding mode is `ref`, introduced here
 help: make the implied reference pattern explicit
    |
 LL |     let &[&ref x] = &[&0];
@@ -26,7 +28,9 @@ note: the default binding mode changed to `ref mut` because this has type `&mut 
   --> $DIR/ref-binding-on-inh-ref-errors.rs:20:9
    |
 LL |     let [&ref x] = &mut [&0];
-   |         ^^^^^^^^ the default binding mode is `ref mut`, introduced here
+   |         ^-------
+   |         |
+   |         the default binding mode is `ref mut`, introduced here
 help: make the implied reference pattern explicit
    |
 LL |     let &mut [&ref x] = &mut [&0];
@@ -43,7 +47,9 @@ note: the default binding mode changed to `ref mut` because this has type `&mut 
   --> $DIR/ref-binding-on-inh-ref-errors.rs:25:9
    |
 LL |     let [&mut ref x] = &mut [&mut 0];
-   |         ^^^^^^^^^^^^ the default binding mode is `ref mut`, introduced here
+   |         ^-----------
+   |         |
+   |         the default binding mode is `ref mut`, introduced here
 help: make the implied reference pattern explicit
    |
 LL |     let &mut [&mut ref x] = &mut [&mut 0];
@@ -60,7 +66,9 @@ note: the default binding mode changed to `ref mut` because this has type `&mut 
   --> $DIR/ref-binding-on-inh-ref-errors.rs:30:9
    |
 LL |     let [&mut ref mut x] = &mut [&mut 0];
-   |         ^^^^^^^^^^^^^^^^ the default binding mode is `ref mut`, introduced here
+   |         ^---------------
+   |         |
+   |         the default binding mode is `ref mut`, introduced here
 help: make the implied reference pattern explicit
    |
 LL |     let &mut [&mut ref mut x] = &mut [&mut 0];
@@ -77,7 +85,9 @@ note: the default binding mode changed to `ref` because this has type `&_`
   --> $DIR/ref-binding-on-inh-ref-errors.rs:39:9
    |
 LL |     let [&ref x] = &[&mut 0];
-   |         ^^^^^^^^ the default binding mode is `ref`, introduced here
+   |         ^-------
+   |         |
+   |         the default binding mode is `ref`, introduced here
 help: make the implied reference pattern explicit
    |
 LL |     let &[&ref x] = &[&mut 0];
@@ -94,7 +104,9 @@ note: the default binding mode changed to `ref mut` because this has type `&mut 
   --> $DIR/ref-binding-on-inh-ref-errors.rs:45:9
    |
 LL |     let [&ref x] = &mut [&mut 0];
-   |         ^^^^^^^^ the default binding mode is `ref mut`, introduced here
+   |         ^-------
+   |         |
+   |         the default binding mode is `ref mut`, introduced here
 help: make the implied reference pattern explicit
    |
 LL |     let &mut [&ref x] = &mut [&mut 0];
@@ -111,7 +123,9 @@ note: the default binding mode changed to `ref` because this has type `&_`
   --> $DIR/ref-binding-on-inh-ref-errors.rs:54:9
    |
 LL |     let [&mut ref x] = &[&mut 0];
-   |         ^^^^^^^^^^^^ the default binding mode is `ref`, introduced here
+   |         ^-----------
+   |         |
+   |         the default binding mode is `ref`, introduced here
 help: make the implied reference pattern explicit
    |
 LL |     let &[&mut ref x] = &[&mut 0];
@@ -128,7 +142,9 @@ note: the default binding mode changed to `ref` because this has type `&_`
   --> $DIR/ref-binding-on-inh-ref-errors.rs:67:9
    |
 LL |     let [ref mut x] = &[0];
-   |         ^^^^^^^^^^^ the default binding mode is `ref`, introduced here
+   |         ^----------
+   |         |
+   |         the default binding mode is `ref`, introduced here
 help: make the implied reference pattern explicit
    |
 LL |     let &[ref mut x] = &[0];
@@ -151,7 +167,9 @@ note: the default binding mode changed to `ref` because this has type `&_`
   --> $DIR/ref-binding-on-inh-ref-errors.rs:75:9
    |
 LL |     let [ref x] = &[0];
-   |         ^^^^^^^ the default binding mode is `ref`, introduced here
+   |         ^------
+   |         |
+   |         the default binding mode is `ref`, introduced here
 help: make the implied reference pattern explicit
    |
 LL |     let &[ref x] = &[0];
@@ -168,7 +186,9 @@ note: the default binding mode changed to `ref mut` because this has type `&mut 
   --> $DIR/ref-binding-on-inh-ref-errors.rs:79:9
    |
 LL |     let [ref x] = &mut [0];
-   |         ^^^^^^^ the default binding mode is `ref mut`, introduced here
+   |         ^------
+   |         |
+   |         the default binding mode is `ref mut`, introduced here
 help: make the implied reference pattern explicit
    |
 LL |     let &mut [ref x] = &mut [0];
@@ -185,7 +205,9 @@ note: the default binding mode changed to `ref mut` because this has type `&mut 
   --> $DIR/ref-binding-on-inh-ref-errors.rs:83:9
    |
 LL |     let [ref mut x] = &mut [0];
-   |         ^^^^^^^^^^^ the default binding mode is `ref mut`, introduced here
+   |         ^----------
+   |         |
+   |         the default binding mode is `ref mut`, introduced here
 help: make the implied reference pattern explicit
    |
 LL |     let &mut [ref mut x] = &mut [0];

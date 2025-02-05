@@ -110,7 +110,9 @@ note: the default binding mode changed to `ref` because this has type `&_`
   --> $DIR/min_match_ergonomics_fail.rs:24:19
    |
 LL | test_pat_on_type![(&x,): &(&T,)];
-   |                   ^^^^^ the default binding mode is `ref`, introduced here
+   |                   ^----
+   |                   |
+   |                   the default binding mode is `ref`, introduced here
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&(&x,): &(&T,)];
@@ -127,7 +129,9 @@ note: the default binding mode changed to `ref` because this has type `&_`
   --> $DIR/min_match_ergonomics_fail.rs:27:19
    |
 LL | test_pat_on_type![(&mut x,): &(&mut T,)];
-   |                   ^^^^^^^^^ the default binding mode is `ref`, introduced here
+   |                   ^--------
+   |                   |
+   |                   the default binding mode is `ref`, introduced here
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&(&mut x,): &(&mut T,)];
@@ -144,7 +148,9 @@ note: the default binding mode changed to `ref` because this has type `&_`
   --> $DIR/min_match_ergonomics_fail.rs:31:19
    |
 LL | test_pat_on_type![Foo { f: &(x,) }: &Foo];
-   |                   ^^^^^^^^^^^^^^^^ the default binding mode is `ref`, introduced here
+   |                   ^---------------
+   |                   |
+   |                   the default binding mode is `ref`, introduced here
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&Foo { f: &(x,) }: &Foo];
@@ -161,7 +167,9 @@ note: the default binding mode changed to `ref` because this has type `&_`
   --> $DIR/min_match_ergonomics_fail.rs:32:19
    |
 LL | test_pat_on_type![(mut x,): &(T,)];
-   |                   ^^^^^^^^ the default binding mode is `ref`, introduced here
+   |                   ^-------
+   |                   |
+   |                   the default binding mode is `ref`, introduced here
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&(mut x,): &(T,)];
@@ -178,7 +186,9 @@ note: the default binding mode changed to `ref` because this has type `&_`
   --> $DIR/min_match_ergonomics_fail.rs:33:19
    |
 LL | test_pat_on_type![(ref x,): &(T,)];
-   |                   ^^^^^^^^ the default binding mode is `ref`, introduced here
+   |                   ^-------
+   |                   |
+   |                   the default binding mode is `ref`, introduced here
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&(ref x,): &(T,)];
@@ -195,7 +205,9 @@ note: the default binding mode changed to `ref mut` because this has type `&mut 
   --> $DIR/min_match_ergonomics_fail.rs:34:19
    |
 LL | test_pat_on_type![(ref mut x,): &mut (T,)];
-   |                   ^^^^^^^^^^^^ the default binding mode is `ref mut`, introduced here
+   |                   ^-----------
+   |                   |
+   |                   the default binding mode is `ref mut`, introduced here
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&mut (ref mut x,): &mut (T,)];
@@ -212,7 +224,9 @@ note: the default binding mode changed to `ref` because this has type `&_`
   --> $DIR/min_match_ergonomics_fail.rs:43:9
    |
 LL |         (&x,) => x,
-   |         ^^^^^ the default binding mode is `ref`, introduced here
+   |         ^----
+   |         |
+   |         the default binding mode is `ref`, introduced here
 help: make the implied reference pattern explicit
    |
 LL |         &(&x,) => x,
