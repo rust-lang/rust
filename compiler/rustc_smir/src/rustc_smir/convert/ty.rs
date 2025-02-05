@@ -405,11 +405,11 @@ impl<'tcx> Stable<'tcx> for ty::Pattern<'tcx> {
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         match **self {
-            ty::PatternKind::Range { start, end, include_end } => stable_mir::ty::Pattern::Range {
+            ty::PatternKind::Range { start, end } => stable_mir::ty::Pattern::Range {
                 // FIXME(SMIR): update data structures to not have an Option here anymore
                 start: Some(start.stable(tables)),
                 end: Some(end.stable(tables)),
-                include_end: matches!(include_end, rustc_hir::RangeEnd::Included),
+                include_end: true,
             },
         }
     }
