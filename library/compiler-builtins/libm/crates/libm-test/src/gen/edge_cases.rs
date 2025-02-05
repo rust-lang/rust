@@ -9,7 +9,7 @@ use crate::{CheckCtx, FloatExt, MathOp, test_log};
 
 /// Generate a sequence of edge cases, e.g. numbers near zeroes and infiniteis.
 pub trait EdgeCaseInput<Op> {
-    fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> + Send;
+    fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self> + Send, u64);
 }
 
 /// Create a list of values around interesting points (infinities, zeroes, NaNs).
@@ -140,10 +140,10 @@ macro_rules! impl_edge_case_input {
         where
             Op: MathOp<RustArgs = Self, FTy = $fty>,
         {
-            fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let (iter0, steps0) = float_edge_cases::<Op>(ctx, 0);
                 let iter0 = iter0.map(|v| (v,));
-                KnownSize::new(iter0, steps0)
+                (iter0, steps0)
             }
         }
 
@@ -151,13 +151,13 @@ macro_rules! impl_edge_case_input {
         where
             Op: MathOp<RustArgs = Self, FTy = $fty>,
         {
-            fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let (iter0, steps0) = float_edge_cases::<Op>(ctx, 0);
                 let (iter1, steps1) = float_edge_cases::<Op>(ctx, 1);
                 let iter =
                     iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
                 let count = steps0.checked_mul(steps1).unwrap();
-                KnownSize::new(iter, count)
+                (iter, count)
             }
         }
 
@@ -165,7 +165,7 @@ macro_rules! impl_edge_case_input {
         where
             Op: MathOp<RustArgs = Self, FTy = $fty>,
         {
-            fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let (iter0, steps0) = float_edge_cases::<Op>(ctx, 0);
                 let (iter1, steps1) = float_edge_cases::<Op>(ctx, 1);
                 let (iter2, steps2) = float_edge_cases::<Op>(ctx, 2);
@@ -177,7 +177,7 @@ macro_rules! impl_edge_case_input {
                     });
                 let count = steps0.checked_mul(steps1).unwrap().checked_mul(steps2).unwrap();
 
-                KnownSize::new(iter, count)
+                (iter, count)
             }
         }
 
@@ -185,7 +185,7 @@ macro_rules! impl_edge_case_input {
         where
             Op: MathOp<RustArgs = Self, FTy = $fty>,
         {
-            fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let (iter0, steps0) = int_edge_cases(ctx, 0);
                 let (iter1, steps1) = float_edge_cases::<Op>(ctx, 1);
 
@@ -193,7 +193,7 @@ macro_rules! impl_edge_case_input {
                     iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
                 let count = steps0.checked_mul(steps1).unwrap();
 
-                KnownSize::new(iter, count)
+                (iter, count)
             }
         }
 
@@ -201,7 +201,7 @@ macro_rules! impl_edge_case_input {
         where
             Op: MathOp<RustArgs = Self, FTy = $fty>,
         {
-            fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> {
+            fn get_cases(ctx: &CheckCtx) -> (impl Iterator<Item = Self>, u64) {
                 let (iter0, steps0) = float_edge_cases::<Op>(ctx, 0);
                 let (iter1, steps1) = int_edge_cases(ctx, 1);
 
@@ -209,7 +209,7 @@ macro_rules! impl_edge_case_input {
                     iter0.flat_map(move |first| iter1.clone().map(move |second| (first, second)));
                 let count = steps0.checked_mul(steps1).unwrap();
 
-                KnownSize::new(iter, count)
+                (iter, count)
             }
         }
     };
@@ -224,10 +224,13 @@ impl_edge_case_input!(f128);
 
 pub fn get_test_cases<Op>(
     ctx: &CheckCtx,
-) -> impl ExactSizeIterator<Item = Op::RustArgs> + use<'_, Op>
+) -> (impl Iterator<Item = Op::RustArgs> + Send + use<'_, Op>, u64)
 where
     Op: MathOp,
     Op::RustArgs: EdgeCaseInput<Op>,
 {
-    Op::RustArgs::get_cases(ctx)
+    let (iter, count) = Op::RustArgs::get_cases(ctx);
+
+    // Wrap in `KnownSize` so we get an assertion if the cuunt is wrong.
+    (KnownSize::new(iter, count), count)
 }

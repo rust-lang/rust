@@ -29,7 +29,7 @@ macro_rules! mp_tests {
             fn [< mp_random_ $fn_name >]() {
                 type Op = libm_test::op::$fn_name::Routine;
                 let ctx = CheckCtx::new(Op::IDENTIFIER, BASIS, GeneratorKind::Random);
-                let cases = random::get_test_cases::<<Op as MathOp>::RustArgs>(&ctx);
+                let cases = random::get_test_cases::<<Op as MathOp>::RustArgs>(&ctx).0;
                 mp_runner::<Op>(&ctx, cases);
             }
 
@@ -38,7 +38,7 @@ macro_rules! mp_tests {
             fn [< mp_edge_case_ $fn_name >]() {
                 type Op = libm_test::op::$fn_name::Routine;
                 let ctx = CheckCtx::new(Op::IDENTIFIER, BASIS, GeneratorKind::EdgeCases);
-                let cases = edge_cases::get_test_cases::<Op>(&ctx);
+                let cases = edge_cases::get_test_cases::<Op>(&ctx).0;
                 mp_runner::<Op>(&ctx, cases);
             }
 

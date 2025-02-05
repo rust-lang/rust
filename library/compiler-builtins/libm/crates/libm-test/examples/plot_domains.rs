@@ -58,7 +58,13 @@ where
     let mut ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Mpfr, GeneratorKind::QuickSpaced);
     plot_one_generator(out_dir, &ctx, "logspace", config, spaced::get_test_cases::<Op>(&ctx).0);
     ctx.gen_kind = GeneratorKind::EdgeCases;
-    plot_one_generator(out_dir, &ctx, "edge_cases", config, edge_cases::get_test_cases::<Op>(&ctx));
+    plot_one_generator(
+        out_dir,
+        &ctx,
+        "edge_cases",
+        config,
+        edge_cases::get_test_cases::<Op>(&ctx).0,
+    );
 }
 
 /// Plot the output of a single generator.

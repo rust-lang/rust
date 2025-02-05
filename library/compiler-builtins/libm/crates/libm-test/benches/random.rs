@@ -54,7 +54,7 @@ where
 
     let ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Musl, GeneratorKind::Random);
     let benchvec: Vec<_> =
-        random::get_test_cases::<Op::RustArgs>(&ctx).take(BENCH_ITER_ITEMS).collect();
+        random::get_test_cases::<Op::RustArgs>(&ctx).0.take(BENCH_ITER_ITEMS).collect();
 
     // Perform a sanity check that we are benchmarking the same thing
     // Don't test against musl if it is not available

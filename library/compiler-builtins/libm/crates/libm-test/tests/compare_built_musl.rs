@@ -39,7 +39,7 @@ macro_rules! musl_tests {
             fn [< musl_random_ $fn_name >]() {
                 type Op = libm_test::op::$fn_name::Routine;
                 let ctx = CheckCtx::new(Op::IDENTIFIER, BASIS, GeneratorKind::Random);
-                let cases = random::get_test_cases::<<Op as MathOp>::RustArgs>(&ctx);
+                let cases = random::get_test_cases::<<Op as MathOp>::RustArgs>(&ctx).0;
                 musl_runner::<Op>(&ctx, cases, musl_math_sys::$fn_name);
             }
 
@@ -48,7 +48,7 @@ macro_rules! musl_tests {
             fn [< musl_edge_case_ $fn_name >]() {
                 type Op = libm_test::op::$fn_name::Routine;
                 let ctx = CheckCtx::new(Op::IDENTIFIER, BASIS, GeneratorKind::EdgeCases);
-                let cases = edge_cases::get_test_cases::<Op>(&ctx);
+                let cases = edge_cases::get_test_cases::<Op>(&ctx).0;
                 musl_runner::<Op>(&ctx, cases, musl_math_sys::$fn_name);
             }
 
