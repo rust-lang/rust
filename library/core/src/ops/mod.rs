@@ -182,10 +182,10 @@ pub use self::function::{Fn, FnMut, FnOnce};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::index::{Index, IndexMut};
 pub(crate) use self::index_range::IndexRange;
-#[unstable(feature = "one_sided_range", issue = "69780")]
-pub use self::range::OneSidedRange;
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub use self::range::{Bound, RangeBounds, RangeInclusive, RangeToInclusive};
+#[unstable(feature = "one_sided_range", issue = "69780")]
+pub use self::range::{OneSidedRange, OneSidedRangeBound};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]

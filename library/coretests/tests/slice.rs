@@ -2399,18 +2399,18 @@ fn slice_rsplit_once() {
     assert_eq!(v.rsplit_once(|&x| x == 0), None);
 }
 
-macro_rules! take_tests {
+macro_rules! split_off_tests {
     (slice: &[], $($tts:tt)*) => {
-        take_tests!(ty: &[()], slice: &[], $($tts)*);
+        split_off_tests!(ty: &[()], slice: &[], $($tts)*);
     };
     (slice: &mut [], $($tts:tt)*) => {
-        take_tests!(ty: &mut [()], slice: &mut [], $($tts)*);
+        split_off_tests!(ty: &mut [()], slice: &mut [], $($tts)*);
     };
     (slice: &$slice:expr, $($tts:tt)*) => {
-        take_tests!(ty: &[_], slice: &$slice, $($tts)*);
+        split_off_tests!(ty: &[_], slice: &$slice, $($tts)*);
     };
     (slice: &mut $slice:expr, $($tts:tt)*) => {
-        take_tests!(ty: &mut [_], slice: &mut $slice, $($tts)*);
+        split_off_tests!(ty: &mut [_], slice: &mut $slice, $($tts)*);
     };
     (ty: $ty:ty, slice: $slice:expr, method: $method:ident, $(($test_name:ident, ($($args:expr),*), $output:expr, $remaining:expr),)*) => {
         $(
@@ -2425,64 +2425,64 @@ macro_rules! take_tests {
     };
 }
 
-take_tests! {
-    slice: &[0, 1, 2, 3], method: take,
-    (take_in_bounds_range_to, (..1), Some(&[0] as _), &[1, 2, 3]),
-    (take_in_bounds_range_to_inclusive, (..=0), Some(&[0] as _), &[1, 2, 3]),
-    (take_in_bounds_range_from, (2..), Some(&[2, 3] as _), &[0, 1]),
-    (take_oob_range_to, (..5), None, &[0, 1, 2, 3]),
-    (take_oob_range_to_inclusive, (..=4), None, &[0, 1, 2, 3]),
-    (take_oob_range_from, (5..), None, &[0, 1, 2, 3]),
+split_off_tests! {
+    slice: &[0, 1, 2, 3], method: split_off,
+    (split_off_in_bounds_range_to, (..1), Some(&[0] as _), &[1, 2, 3]),
+    (split_off_in_bounds_range_to_inclusive, (..=0), Some(&[0] as _), &[1, 2, 3]),
+    (split_off_in_bounds_range_from, (2..), Some(&[2, 3] as _), &[0, 1]),
+    (split_off_oob_range_to, (..5), None, &[0, 1, 2, 3]),
+    (split_off_oob_range_to_inclusive, (..=4), None, &[0, 1, 2, 3]),
+    (split_off_oob_range_from, (5..), None, &[0, 1, 2, 3]),
 }
 
-take_tests! {
-    slice: &mut [0, 1, 2, 3], method: take_mut,
-    (take_mut_in_bounds_range_to, (..1), Some(&mut [0] as _), &mut [1, 2, 3]),
-    (take_mut_in_bounds_range_to_inclusive, (..=0), Some(&mut [0] as _), &mut [1, 2, 3]),
-    (take_mut_in_bounds_range_from, (2..), Some(&mut [2, 3] as _), &mut [0, 1]),
-    (take_mut_oob_range_to, (..5), None, &mut [0, 1, 2, 3]),
-    (take_mut_oob_range_to_inclusive, (..=4), None, &mut [0, 1, 2, 3]),
-    (take_mut_oob_range_from, (5..), None, &mut [0, 1, 2, 3]),
+split_off_tests! {
+    slice: &mut [0, 1, 2, 3], method: split_off_mut,
+    (split_off_mut_in_bounds_range_to, (..1), Some(&mut [0] as _), &mut [1, 2, 3]),
+    (split_off_mut_in_bounds_range_to_inclusive, (..=0), Some(&mut [0] as _), &mut [1, 2, 3]),
+    (split_off_mut_in_bounds_range_from, (2..), Some(&mut [2, 3] as _), &mut [0, 1]),
+    (split_off_mut_oob_range_to, (..5), None, &mut [0, 1, 2, 3]),
+    (split_off_mut_oob_range_to_inclusive, (..=4), None, &mut [0, 1, 2, 3]),
+    (split_off_mut_oob_range_from, (5..), None, &mut [0, 1, 2, 3]),
 }
 
-take_tests! {
-    slice: &[1, 2], method: take_first,
-    (take_first_nonempty, (), Some(&1), &[2]),
+split_off_tests! {
+    slice: &[1, 2], method: split_off_first,
+    (split_off_first_nonempty, (), Some(&1), &[2]),
 }
 
-take_tests! {
-    slice: &mut [1, 2], method: take_first_mut,
-    (take_first_mut_nonempty, (), Some(&mut 1), &mut [2]),
+split_off_tests! {
+    slice: &mut [1, 2], method: split_off_first_mut,
+    (split_off_first_mut_nonempty, (), Some(&mut 1), &mut [2]),
 }
 
-take_tests! {
-    slice: &[1, 2], method: take_last,
-    (take_last_nonempty, (), Some(&2), &[1]),
+split_off_tests! {
+    slice: &[1, 2], method: split_off_last,
+    (split_off_last_nonempty, (), Some(&2), &[1]),
 }
 
-take_tests! {
-    slice: &mut [1, 2], method: take_last_mut,
-    (take_last_mut_nonempty, (), Some(&mut 2), &mut [1]),
+split_off_tests! {
+    slice: &mut [1, 2], method: split_off_last_mut,
+    (split_off_last_mut_nonempty, (), Some(&mut 2), &mut [1]),
 }
 
-take_tests! {
-    slice: &[], method: take_first,
-    (take_first_empty, (), None, &[]),
+split_off_tests! {
+    slice: &[], method: split_off_first,
+    (split_off_first_empty, (), None, &[]),
 }
 
-take_tests! {
-    slice: &mut [], method: take_first_mut,
-    (take_first_mut_empty, (), None, &mut []),
+split_off_tests! {
+    slice: &mut [], method: split_off_first_mut,
+    (split_off_first_mut_empty, (), None, &mut []),
 }
 
-take_tests! {
-    slice: &[], method: take_last,
-    (take_last_empty, (), None, &[]),
+split_off_tests! {
+    slice: &[], method: split_off_last,
+    (split_off_last_empty, (), None, &[]),
 }
 
-take_tests! {
-    slice: &mut [], method: take_last_mut,
-    (take_last_mut_empty, (), None, &mut []),
+split_off_tests! {
+    slice: &mut [], method: split_off_last_mut,
+    (split_off_last_mut_empty, (), None, &mut []),
 }
 
 #[cfg(not(miri))] // unused in Miri
@@ -2497,19 +2497,19 @@ macro_rules! empty_max_mut {
 }
 
 #[cfg(not(miri))] // Comparing usize::MAX many elements takes forever in Miri (and in rustc without optimizations)
-take_tests! {
-    slice: &[(); usize::MAX], method: take,
-    (take_in_bounds_max_range_to, (..usize::MAX), Some(EMPTY_MAX), &[(); 0]),
-    (take_oob_max_range_to_inclusive, (..=usize::MAX), None, EMPTY_MAX),
-    (take_in_bounds_max_range_from, (usize::MAX..), Some(&[] as _), EMPTY_MAX),
+split_off_tests! {
+    slice: &[(); usize::MAX], method: split_off,
+    (split_off_in_bounds_max_range_to, (..usize::MAX), Some(EMPTY_MAX), &[(); 0]),
+    (split_off_oob_max_range_to_inclusive, (..=usize::MAX), None, EMPTY_MAX),
+    (split_off_in_bounds_max_range_from, (usize::MAX..), Some(&[] as _), EMPTY_MAX),
 }
 
 #[cfg(not(miri))] // Comparing usize::MAX many elements takes forever in Miri (and in rustc without optimizations)
-take_tests! {
-    slice: &mut [(); usize::MAX], method: take_mut,
-    (take_mut_in_bounds_max_range_to, (..usize::MAX), Some(empty_max_mut!()), &mut [(); 0]),
-    (take_mut_oob_max_range_to_inclusive, (..=usize::MAX), None, empty_max_mut!()),
-    (take_mut_in_bounds_max_range_from, (usize::MAX..), Some(&mut [] as _), empty_max_mut!()),
+split_off_tests! {
+    slice: &mut [(); usize::MAX], method: split_off_mut,
+    (split_off_mut_in_bounds_max_range_to, (..usize::MAX), Some(empty_max_mut!()), &mut [(); 0]),
+    (split_off_mut_oob_max_range_to_inclusive, (..=usize::MAX), None, empty_max_mut!()),
+    (split_off_mut_in_bounds_max_range_from, (usize::MAX..), Some(&mut [] as _), empty_max_mut!()),
 }
 
 #[test]
