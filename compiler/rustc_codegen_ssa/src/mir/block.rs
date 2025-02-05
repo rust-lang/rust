@@ -1,6 +1,6 @@
 use std::cmp;
 
-use rustc_abi::{self as abi, ExternAbi, HasDataLayout, WrappingRange};
+use rustc_abi::{BackendRepr, ExternAbi, HasDataLayout, Reg, WrappingRange};
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::lang_items::LangItem;
@@ -14,7 +14,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, sym};
-use rustc_target::callconv::{ArgAbi, FnAbi, PassMode, Reg};
+use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
@@ -1545,7 +1545,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // the load would just produce `OperandValue::Ref` instead
                 // of the `OperandValue::Immediate` we need for the call.
                 llval = bx.load(bx.backend_type(arg.layout), llval, align);
-                if let abi::BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
+                if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
                     if scalar.is_bool() {
                         bx.range_metadata(llval, WrappingRange { start: 0, end: 1 });
                     }
