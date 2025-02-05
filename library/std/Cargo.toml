@@ -25,7 +25,7 @@ hashbrown = { version = "0.15", default-features = false, features = [
 ] }
 std_detect = { path = "../stdarch/crates/std_detect", default-features = false, features = [
     'rustc-dep-of-std',
-] }
+], public = true }
 
 # Dependencies of the `backtrace` crate
 rustc-demangle = { version = "0.1.24", features = ['rustc-dep-of-std'] }

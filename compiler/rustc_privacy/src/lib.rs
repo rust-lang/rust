@@ -1727,6 +1727,13 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                             .generics()
                             .predicates();
                     }
+
+                    // Check the impl trait refs and impl trait targets
+                    if let Some(trait_ref) = tcx.impl_trait_ref(item.owner_id.def_id) {
+                        self.check(item.owner_id.def_id, impl_vis, None)
+                            .visit_trait(trait_ref.instantiate_identity());
+                    }
+
                     for impl_item_ref in impl_.items {
                         let impl_item_vis = if impl_.of_trait.is_none() {
                             min(
@@ -1752,6 +1759,33 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                             impl_item_ev,
                         );
                     }
+                }
+            }
+            DefKind::Use => {
+                let item = tcx.hir().item(id);
+                if let hir::ItemKind::Use(path, use_kind) = item.kind
+                    // List imports are desugared as single ones so skip fake `ListStem`s
+                    && use_kind != rustc_hir::UseKind::ListStem
+                {
+                    for def_id in path.res.iter().filter_map(Res::opt_def_id) {
+                        self.check(item.owner_id.def_id, item_visibility, None).check_def_id(
+                            def_id,
+                            item.kind.descr(),
+                            &LazyDefPathStr { def_id, tcx },
+                        );
+                    }
+                }
+            }
+            DefKind::ExternCrate => {
+                let item = tcx.hir().item(id);
+                if let Some(cnum) = tcx.extern_mod_stmt_cnum(item.owner_id.def_id) {
+                    let def_id = cnum.as_def_id();
+                    // Since extern crate is available only in the crate root, just omit effective vis
+                    self.check(item.owner_id.def_id, item_visibility, None).visit_def_id(
+                        def_id,
+                        item.kind.descr(),
+                        &LazyDefPathStr { def_id, tcx },
+                    );
                 }
             }
             _ => {}
