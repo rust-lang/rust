@@ -23,6 +23,18 @@ impl<I> Enumerate<I> {
     pub(in crate::iter) fn new(iter: I) -> Enumerate<I> {
         Enumerate { iter, count: 0 }
     }
+
+    /// Retrieve the current position of the iterator.
+    ///
+    /// If the iterator has not advanced, the position returned will be 0.
+    ///
+    /// The position may also exceed the bounds of the iterator to allow for calculating
+    /// the displacement of the iterator from following calls to [`Iterator::next`].
+    #[inline]
+    #[unstable(feature = "peek_index", issue = "130711")]
+    pub fn peek_index(&self) -> usize {
+        self.count
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
