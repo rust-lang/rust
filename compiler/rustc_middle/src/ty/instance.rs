@@ -295,10 +295,7 @@ impl<'tcx> InstanceKind<'tcx> {
             ty::InstanceKind::ThreadLocalShim(_) => return false,
             _ => return true,
         };
-        matches!(
-            tcx.def_key(def_id).disambiguated_data.data,
-            DefPathData::Ctor | DefPathData::Closure
-        )
+        matches!(tcx.def_key(def_id).disambiguated_data.data, DefPathData::Ctor)
     }
 
     /// Returns `true` if the machine code for this instance is instantiated in
