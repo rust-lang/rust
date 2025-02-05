@@ -17,7 +17,7 @@ pub fn run<'a>(path: &str, args: impl Iterator<Item = &'a String>) {
                 .args(["run", "--bin", "clippy-driver", "--"])
                 .args(["-L", "./target/debug"])
                 .args(["-Z", "no-codegen"])
-                .args(["--edition", "2021"])
+                .args(["--edition", "2024"])
                 .arg(path)
                 .args(args)
                 // Prevent rustc from creating `rustc-ice-*` files the console output is enough.
