@@ -299,7 +299,7 @@ fn check_explicit_predicates<'tcx>(
     }
 }
 
-/// Check the inferred predicates declared on the type.
+/// Check the inferred predicates of the type.
 ///
 /// ### Example
 ///

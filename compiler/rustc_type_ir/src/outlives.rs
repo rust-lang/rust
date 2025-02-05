@@ -148,7 +148,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
             // trait-ref. Therefore, if we see any higher-ranked regions,
             // we simply fallback to the most restrictive rule, which
             // requires that `Pi: 'a` for all `i`.
-            ty::Alias(_, alias_ty) => {
+            ty::Alias(ty::Projection | ty::Opaque | ty::Inherent, alias_ty) => {
                 if !alias_ty.has_escaping_bound_vars() {
                     // best case: no escaping regions, so push the
                     // projection and skip the subtree (thus generating no
@@ -195,6 +195,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
             }
 
             ty::Adt(_, _)
+            | ty::Alias(ty::Weak, _)
             | ty::Foreign(_)
             | ty::Array(_, _)
             | ty::Pat(_, _)
