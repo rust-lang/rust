@@ -7,7 +7,6 @@ pub mod env;
 pub mod fs;
 #[path = "../unsupported/io.rs"]
 pub mod io;
-pub mod net;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;

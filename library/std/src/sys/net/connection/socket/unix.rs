@@ -5,8 +5,8 @@ use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys::fd::FileDesc;
-use crate::sys::pal::unix::IsMinusOne;
-use crate::sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr};
+use crate::sys::net::{getsockopt, setsockopt, sockaddr_to_addr};
+use crate::sys::pal::IsMinusOne;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::{Duration, Instant};
 use crate::{cmp, mem};
@@ -19,11 +19,11 @@ cfg_if::cfg_if! {
     }
 }
 
+pub(crate) use libc as netc;
+
 pub use crate::sys::{cvt, cvt_r};
 
-#[allow(unused_extern_crates)]
-pub extern crate libc as netc;
-
+#[expect(non_camel_case_types)]
 pub type wrlen_t = size_t;
 
 pub struct Socket(FileDesc);

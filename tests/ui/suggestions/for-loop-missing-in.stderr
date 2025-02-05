@@ -1,5 +1,5 @@
 error: missing `in` in `for` loop
-  --> $DIR/issue-40782.rs:4:11
+  --> $DIR/for-loop-missing-in.rs:4:11
    |
 LL |     for _i 0..2 {
    |           ^
@@ -10,7 +10,7 @@ LL |     for _i in 0..2 {
    |            ++
 
 error: missing `in` in `for` loop
-  --> $DIR/issue-40782.rs:6:12
+  --> $DIR/for-loop-missing-in.rs:6:12
    |
 LL |     for _i of 0..2 {
    |            ^^

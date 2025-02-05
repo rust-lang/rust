@@ -3,6 +3,7 @@ use std::iter::FromIterator;
 use gccjit::{BinaryOp, RValue, ToRValue, Type};
 #[cfg(feature = "master")]
 use gccjit::{ComparisonOp, UnaryOp};
+use rustc_abi::{Align, Size};
 use rustc_codegen_ssa::base::compare_simd_types;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 #[cfg(feature = "master")]
@@ -17,7 +18,6 @@ use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, Symbol, sym};
-use rustc_target::abi::{Align, Size};
 
 use crate::builder::Builder;
 #[cfg(not(feature = "master"))]
