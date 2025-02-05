@@ -1013,6 +1013,7 @@ symbols! {
         generic_const_exprs,
         generic_const_items,
         generic_param_attrs,
+        generic_pattern_types,
         get_context,
         global_alloc_ty,
         global_allocator,
