@@ -1252,7 +1252,11 @@ fn scope_for(
     node: InFile<&SyntaxNode>,
 ) -> Option<ScopeId> {
     node.ancestors_with_macros(db.upcast())
-        .take_while(|it| !ast::Item::can_cast(it.kind()) || ast::MacroCall::can_cast(it.kind()))
+        .take_while(|it| {
+            !ast::Item::can_cast(it.kind())
+                || ast::MacroCall::can_cast(it.kind())
+                || ast::Use::can_cast(it.kind())
+        })
         .filter_map(|it| it.map(ast::Expr::cast).transpose())
         .filter_map(|it| source_map.node_expr(it.as_ref())?.as_expr())
         .find_map(|it| scopes.scope_for(it))
