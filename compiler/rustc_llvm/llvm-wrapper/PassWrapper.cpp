@@ -22,6 +22,7 @@
 #include "llvm/Passes/StandardInstrumentations.h"
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/Support/FileSystem.h"
+#include "llvm/Support/Program.h"
 #include "llvm/Support/TimeProfiler.h"
 #include "llvm/Support/VirtualFileSystem.h"
 #include "llvm/Target/TargetMachine.h"
@@ -472,16 +473,19 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     assert(ArgsCstrBuff[ArgsCstrBuffLen - 1] == '\0');
     auto Arg0 = std::string(ArgsCstrBuff);
     buffer_offset = Arg0.size() + 1;
-    auto ArgsCppStr = std::string(ArgsCstrBuff + buffer_offset,
-                                  ArgsCstrBuffLen - buffer_offset);
-    auto i = 0;
-    while (i != std::string::npos) {
-      i = ArgsCppStr.find('\0', i + 1);
-      if (i != std::string::npos)
-        ArgsCppStr.replace(i, 1, " ");
+
+    std::string CommandlineArgs;
+    raw_string_ostream OS(CommandlineArgs);
+    ListSeparator LS(" ");
+    for (StringRef Arg : split(StringRef(ArgsCstrBuff + buffer_offset,
+                                         ArgsCstrBuffLen - buffer_offset),
+                               '\0')) {
+      OS << LS;
+      sys::printArg(OS, Arg, /*Quote=*/true);
     }
+    OS.flush();
     Options.MCOptions.Argv0 = Arg0;
-    Options.MCOptions.CommandlineArgs = ArgsCppStr;
+    Options.MCOptions.CommandlineArgs = CommandlineArgs;
 #else
     int buffer_offset = 0;
     assert(ArgsCstrBuff[ArgsCstrBuffLen - 1] == '\0');
