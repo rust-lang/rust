@@ -1,7 +1,10 @@
 name: CI with sysroot compiled in release mode
 
 on:
-  - pull_request
+  push:
+    branches:
+      - master
+  pull_request:
 
 permissions:
   contents: read
