@@ -135,6 +135,13 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
         &["jn", "yn"],
     ),
     (
+        // `(f16, i32) -> f16`
+        FloatTy::F16,
+        Signature { args: &[Ty::F16, Ty::I32], returns: &[Ty::F16] },
+        None,
+        &["scalbnf16", "ldexpf16"],
+    ),
+    (
         // `(f32, i32) -> f32`
         FloatTy::F32,
         Signature { args: &[Ty::F32, Ty::I32], returns: &[Ty::F32] },
@@ -147,6 +154,13 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
         Signature { args: &[Ty::F64, Ty::I32], returns: &[Ty::F64] },
         None,
         &["scalbn", "ldexp"],
+    ),
+    (
+        // `(f128, i32) -> f128`
+        FloatTy::F128,
+        Signature { args: &[Ty::F128, Ty::I32], returns: &[Ty::F128] },
+        None,
+        &["scalbnf128", "ldexpf128"],
     ),
     (
         // `(f32, &mut f32) -> f32` as `(f32) -> (f32, f32)`

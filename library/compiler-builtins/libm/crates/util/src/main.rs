@@ -102,10 +102,14 @@ fn do_eval(basis: &str, op: &str, inputs: &[&str]) {
             | fminf16
             | fmodf128
             | fmodf16
+            | ldexpf128
+            | ldexpf16
             | rintf128
             | rintf16
             | roundf128
             | roundf16
+            | scalbnf128
+            | scalbnf16
             | sqrtf128
             | sqrtf16
             | truncf128

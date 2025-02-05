@@ -349,8 +349,10 @@ cfg_if! {
         mod fmaxf16;
         mod fminf16;
         mod fmodf16;
+        mod ldexpf16;
         mod rintf16;
         mod roundf16;
+        mod scalbnf16;
         mod sqrtf16;
         mod truncf16;
 
@@ -362,8 +364,10 @@ cfg_if! {
         pub use self::fmaxf16::fmaxf16;
         pub use self::fminf16::fminf16;
         pub use self::fmodf16::fmodf16;
+        pub use self::ldexpf16::ldexpf16;
         pub use self::rintf16::rintf16;
         pub use self::roundf16::roundf16;
+        pub use self::scalbnf16::scalbnf16;
         pub use self::sqrtf16::sqrtf16;
         pub use self::truncf16::truncf16;
     }
@@ -379,8 +383,10 @@ cfg_if! {
         mod fmaxf128;
         mod fminf128;
         mod fmodf128;
+        mod ldexpf128;
         mod rintf128;
         mod roundf128;
+        mod scalbnf128;
         mod sqrtf128;
         mod truncf128;
 
@@ -392,8 +398,10 @@ cfg_if! {
         pub use self::fmaxf128::fmaxf128;
         pub use self::fminf128::fminf128;
         pub use self::fmodf128::fmodf128;
+        pub use self::ldexpf128::ldexpf128;
         pub use self::rintf128::rintf128;
         pub use self::roundf128::roundf128;
+        pub use self::scalbnf128::scalbnf128;
         pub use self::sqrtf128::sqrtf128;
         pub use self::truncf128::truncf128;
     }
