@@ -1147,6 +1147,46 @@ fn test_algebraic() {
     #[inline(never)]
     pub fn test_operations_f16(a: f16, b: f16) {
         // make sure they all map to the correct operation
+        assert_eq!(a.algebraic_add(b), a + b);
+        assert_eq!(a.algebraic_sub(b), a - b);
+        assert_eq!(a.algebraic_mul(b), a * b);
+        assert_eq!(a.algebraic_div(b), a / b);
+        assert_eq!(a.algebraic_rem(b), a % b);
+    }
+
+    #[inline(never)]
+    pub fn test_operations_f32(a: f32, b: f32) {
+        // make sure they all map to the correct operation
+        assert_eq!(a.algebraic_add(b), a + b);
+        assert_eq!(a.algebraic_sub(b), a - b);
+        assert_eq!(a.algebraic_mul(b), a * b);
+        assert_eq!(a.algebraic_div(b), a / b);
+        assert_eq!(a.algebraic_rem(b), a % b);
+    }
+
+    #[inline(never)]
+    pub fn test_operations_f64(a: f64, b: f64) {
+        // make sure they all map to the correct operation
+        assert_eq!(a.algebraic_add(b), a + b);
+        assert_eq!(a.algebraic_sub(b), a - b);
+        assert_eq!(a.algebraic_mul(b), a * b);
+        assert_eq!(a.algebraic_div(b), a / b);
+        assert_eq!(a.algebraic_rem(b), a % b);
+    }
+
+    #[inline(never)]
+    pub fn test_operations_f128(a: f128, b: f128) {
+        // make sure they all map to the correct operation
+        assert_eq!(a.algebraic_add(b), a + b);
+        assert_eq!(a.algebraic_sub(b), a - b);
+        assert_eq!(a.algebraic_mul(b), a * b);
+        assert_eq!(a.algebraic_div(b), a / b);
+        assert_eq!(a.algebraic_rem(b), a % b);
+    }
+
+    #[inline(never)]
+    pub fn test_operations_f16(a: f16, b: f16) {
+        // make sure they all map to the correct operation
         assert_eq!(fadd_algebraic(a, b), a + b);
         assert_eq!(fsub_algebraic(a, b), a - b);
         assert_eq!(fmul_algebraic(a, b), a * b);
