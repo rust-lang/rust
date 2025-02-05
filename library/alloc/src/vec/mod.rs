@@ -2842,7 +2842,20 @@ impl<T, A: Allocator> Vec<T, A> {
         A: 'a,
     {
         let mut me = ManuallyDrop::new(self);
-        unsafe { slice::from_raw_parts_mut(me.as_mut_ptr(), me.len) }
+
+        unsafe {
+            let ptr = me.as_mut_ptr();
+
+            #[cfg(miri)]
+            {
+                extern "Rust" {
+                    fn miri_static_root(ptr: *const u8);
+                }
+                miri_static_root(ptr.cast());
+            }
+
+            slice::from_raw_parts_mut(ptr, me.len)
+        }
     }
 
     /// Returns the remaining spare capacity of the vector as a slice of
