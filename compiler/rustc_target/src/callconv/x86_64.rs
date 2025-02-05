@@ -1,10 +1,12 @@
 // The classification code for the x86_64 ABI is taken from the clay language
 // https://github.com/jckarter/clay/blob/db0bd2702ab0b6e48965cd85f8859bbd5f60e48e/compiler/externals.cpp
 
-use rustc_abi::{BackendRepr, HasDataLayout, Size, TyAbiInterface, TyAndLayout};
+use rustc_abi::{
+    BackendRepr, HasDataLayout, Primitive, Reg, RegKind, Size, TyAbiInterface, TyAndLayout,
+    Variants,
+};
 
-use crate::abi;
-use crate::abi::call::{ArgAbi, CastTarget, FnAbi, Reg, RegKind};
+use crate::abi::call::{ArgAbi, CastTarget, FnAbi};
 
 /// Classification of "eightbyte" components.
 // N.B., the order of the variants is from general to specific,
@@ -52,8 +54,8 @@ where
             BackendRepr::Uninhabited => return Ok(()),
 
             BackendRepr::Scalar(scalar) => match scalar.primitive() {
-                abi::Int(..) | abi::Pointer(_) => Class::Int,
-                abi::Float(_) => Class::Sse,
+                Primitive::Int(..) | Primitive::Pointer(_) => Class::Int,
+                Primitive::Float(_) => Class::Sse,
             },
 
             BackendRepr::Vector { .. } => Class::Sse,
@@ -65,8 +67,8 @@ where
                 }
 
                 match &layout.variants {
-                    abi::Variants::Single { .. } | abi::Variants::Empty => {}
-                    abi::Variants::Multiple { variants, .. } => {
+                    Variants::Single { .. } | Variants::Empty => {}
+                    Variants::Multiple { variants, .. } => {
                         // Treat enum variants like union members.
                         for variant_idx in variants.indices() {
                             classify(cx, layout.for_variant(cx, variant_idx), cls, off)?;

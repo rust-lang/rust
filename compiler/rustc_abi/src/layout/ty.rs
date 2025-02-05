@@ -1,13 +1,15 @@
 use std::fmt;
 use std::ops::Deref;
 
-use Float::*;
-use Primitive::*;
 use rustc_data_structures::intern::Interned;
 use rustc_macros::HashStable_Generic;
 
+use crate::{
+    AbiAndPrefAlign, Align, BackendRepr, FieldsShape, Float, HasDataLayout, LayoutData, Niche,
+    PointeeInfo, Primitive, Scalar, Size, TargetDataLayout, Variants,
+};
+
 // Explicitly import `Float` to avoid ambiguity with `Primitive::Float`.
-use crate::{Float, *};
 
 rustc_index::newtype_index! {
     /// The *source-order* index of a field in a variant.
@@ -197,7 +199,9 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         C: HasDataLayout,
     {
         match self.backend_repr {
-            BackendRepr::Scalar(scalar) => matches!(scalar.primitive(), Float(F32 | F64)),
+            BackendRepr::Scalar(scalar) => {
+                matches!(scalar.primitive(), Primitive::Float(Float::F32 | Float::F64))
+            }
             BackendRepr::Memory { .. } => {
                 if self.fields.count() == 1 && self.fields.offset(0).bytes() == 0 {
                     self.field(cx, 0).is_single_fp_element(cx)
