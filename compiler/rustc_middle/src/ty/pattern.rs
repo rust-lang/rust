@@ -27,7 +27,29 @@ impl<'tcx> fmt::Debug for PatternKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             PatternKind::Range { start, end } => {
-                write!(f, "{start}..={end}")
+                write!(f, "{start}")?;
+
+                if let Some(c) = end.try_to_value() {
+                    let end = c.valtree.unwrap_leaf();
+                    let size = end.size();
+                    let max = match c.ty.kind() {
+                        ty::Int(_) => {
+                            Some(ty::ScalarInt::truncate_from_int(size.signed_int_max(), size))
+                        }
+                        ty::Uint(_) => {
+                            Some(ty::ScalarInt::truncate_from_uint(size.unsigned_int_max(), size))
+                        }
+                        ty::Char => Some(ty::ScalarInt::truncate_from_uint(char::MAX, size)),
+                        _ => None,
+                    };
+                    if let Some((max, _)) = max
+                        && end == max
+                    {
+                        return write!(f, "..");
+                    }
+                }
+
+                write!(f, "..={end}")
             }
         }
     }

@@ -2,18 +2,18 @@ error[E0308]: mismatched types
   --> $DIR/nested.rs:10:63
    |
 LL | const BAD_NESTING: pattern_type!(pattern_type!(u32 is 1..) is 0..) = todo!();
-   |                                                               ^ expected `(u32) is 1..=u32::MAX`, found integer
+   |                                                               ^ expected `(u32) is 1..`, found integer
    |
-   = note: expected pattern type `(u32) is 1..=u32::MAX`
+   = note: expected pattern type `(u32) is 1..`
                       found type `{integer}`
 
-error[E0277]: `(u32) is 1..=u32::MAX` is not a valid base type for range patterns
+error[E0277]: `(u32) is 1..` is not a valid base type for range patterns
   --> $DIR/nested.rs:10:34
    |
 LL | const BAD_NESTING: pattern_type!(pattern_type!(u32 is 1..) is 0..) = todo!();
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^ only integer types and `char` are supported
    |
-   = help: the trait `core::pat::RangePattern` is not implemented for `(u32) is 1..=u32::MAX`
+   = help: the trait `core::pat::RangePattern` is not implemented for `(u32) is 1..`
    = help: the following other types implement trait `core::pat::RangePattern`:
              char
              i128
@@ -25,13 +25,13 @@ LL | const BAD_NESTING: pattern_type!(pattern_type!(u32 is 1..) is 0..) = todo!(
              u128
            and 5 others
 
-error[E0277]: `(i32) is 1..=i32::MAX` is not a valid base type for range patterns
+error[E0277]: `(i32) is 1..` is not a valid base type for range patterns
   --> $DIR/nested.rs:15:35
    |
 LL | const BAD_NESTING2: pattern_type!(pattern_type!(i32 is 1..) is ..=-1) = todo!();
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ only integer types and `char` are supported
    |
-   = help: the trait `core::pat::RangePattern` is not implemented for `(i32) is 1..=i32::MAX`
+   = help: the trait `core::pat::RangePattern` is not implemented for `(i32) is 1..`
    = help: the following other types implement trait `core::pat::RangePattern`:
              char
              i128
@@ -47,18 +47,18 @@ error[E0308]: mismatched types
   --> $DIR/nested.rs:15:67
    |
 LL | const BAD_NESTING2: pattern_type!(pattern_type!(i32 is 1..) is ..=-1) = todo!();
-   |                                                                   ^^ expected `(i32) is 1..=i32::MAX`, found integer
+   |                                                                   ^^ expected `(i32) is 1..`, found integer
    |
-   = note: expected pattern type `(i32) is 1..=i32::MAX`
+   = note: expected pattern type `(i32) is 1..`
                       found type `{integer}`
 
-error[E0277]: `(i32) is 1..=i32::MAX` is not a valid base type for range patterns
+error[E0277]: `(i32) is 1..` is not a valid base type for range patterns
   --> $DIR/nested.rs:19:35
    |
 LL | const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!();
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ only integer types and `char` are supported
    |
-   = help: the trait `core::pat::RangePattern` is not implemented for `(i32) is 1..=i32::MAX`
+   = help: the trait `core::pat::RangePattern` is not implemented for `(i32) is 1..`
    = help: the following other types implement trait `core::pat::RangePattern`:
              char
              i128
@@ -76,10 +76,10 @@ error[E0308]: mismatched types
 LL | const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!();
    |                                                                  ^
    |                                                                  |
-   |                                                                  expected `(i32) is 1..=i32::MAX`, found integer
+   |                                                                  expected `(i32) is 1..`, found integer
    |                                                                  arguments to this function are incorrect
    |
-   = note: expected pattern type `(i32) is 1..=i32::MAX`
+   = note: expected pattern type `(i32) is 1..`
                       found type `{integer}`
 help: the return type of this call is `{integer}` due to the type of the argument passed
   --> $DIR/nested.rs:19:66
@@ -89,13 +89,13 @@ LL | const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!
 note: method defined here
   --> $SRC_DIR/core/src/pat.rs:LL:COL
 
-error[E0277]: `(i32) is 1..=i32::MAX` is not a valid base type for range patterns
+error[E0277]: `(i32) is 1..` is not a valid base type for range patterns
   --> $DIR/nested.rs:19:66
    |
 LL | const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!();
    |                                                                  ^ only integer types and `char` are supported
    |
-   = help: the trait `core::pat::RangePattern` is not implemented for `(i32) is 1..=i32::MAX`
+   = help: the trait `core::pat::RangePattern` is not implemented for `(i32) is 1..`
    = help: the following other types implement trait `core::pat::RangePattern`:
              char
              i128
