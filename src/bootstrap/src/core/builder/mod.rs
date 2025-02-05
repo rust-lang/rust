@@ -1211,8 +1211,22 @@ impl<'a> Builder<'a> {
     /// compiler will run on, *not* the target it will build code for). Explicitly does not take
     /// `Compiler` since all `Compiler` instances are meant to be obtained through this function,
     /// since it ensures that they are valid (i.e., built and assembled).
-    pub fn compiler(&self, stage: u32, host: TargetSelection) -> Compiler {
-        self.ensure(compile::Assemble { target_compiler: Compiler { stage, host } })
+    pub fn compiler(&self, stage: u32, host: TargetSelection, for_rustc_tool: bool) -> Compiler {
+        let mut compiler =
+            self.ensure(compile::Assemble { target_compiler: Compiler::new(stage, host) });
+
+        if stage > 0 && for_rustc_tool {
+            self.ensure(compile::Std::new(compiler, host));
+            // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+            // we'd have stageN/bin/rustc and stageN/bin/$tool_name be effectively different stage
+            // compilers, which isn't what we want.
+            //
+            // Compiler tools should be linked in the same way as the compiler it's paired with,
+            // so it must be built with the previous stage compiler.
+            compiler.downgrade();
+        };
+
+        compiler
     }
 
     /// Similar to `compiler`, except handles the full-bootstrap option to
@@ -1231,13 +1245,14 @@ impl<'a> Builder<'a> {
         stage: u32,
         host: TargetSelection,
         target: TargetSelection,
+        for_rustc_tool: bool,
     ) -> Compiler {
         if self.build.force_use_stage2(stage) {
-            self.compiler(2, self.config.build)
+            self.compiler(2, self.config.build, for_rustc_tool)
         } else if self.build.force_use_stage1(stage, target) {
-            self.compiler(1, self.config.build)
+            self.compiler(1, self.config.build, for_rustc_tool)
         } else {
-            self.compiler(stage, host)
+            self.compiler(stage, host, for_rustc_tool)
         }
     }
 
@@ -1353,8 +1368,8 @@ impl<'a> Builder<'a> {
         self.ensure(tool::Rustdoc { compiler })
     }
 
-    pub fn cargo_clippy_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
-        if run_compiler.stage == 0 {
+    pub fn cargo_clippy_cmd(&self, compiler: Compiler) -> BootstrapCommand {
+        if compiler.stage == 0 {
             let cargo_clippy = self
                 .config
                 .initial_cargo_clippy
@@ -1366,12 +1381,10 @@ impl<'a> Builder<'a> {
             return cmd;
         }
 
-        let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
-        self.ensure(tool::Clippy { compiler: build_compiler, target: self.build.build });
-        let cargo_clippy =
-            self.ensure(tool::CargoClippy { compiler: build_compiler, target: self.build.build });
+        self.ensure(tool::Clippy { compiler, target: self.build.build });
+        let cargo_clippy = self.ensure(tool::CargoClippy { compiler, target: self.build.build });
         let mut dylib_path = helpers::dylib_path();
-        dylib_path.insert(0, self.sysroot(run_compiler).join("lib"));
+        dylib_path.insert(0, self.sysroot(compiler).join("lib"));
 
         let mut cmd = command(cargo_clippy);
         cmd.env(helpers::dylib_path_var(), env::join_paths(&dylib_path).unwrap());
@@ -1379,14 +1392,12 @@ impl<'a> Builder<'a> {
         cmd
     }
 
-    pub fn cargo_miri_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
-        assert!(run_compiler.stage > 0, "miri can not be invoked at stage 0");
-        let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
+    pub fn cargo_miri_cmd(&self, compiler: Compiler) -> BootstrapCommand {
+        assert!(compiler.stage > 0, "miri can not be invoked at stage 0");
 
         // Prepare the tools
-        let miri = self.ensure(tool::Miri { compiler: build_compiler, target: self.build.build });
-        let cargo_miri =
-            self.ensure(tool::CargoMiri { compiler: build_compiler, target: self.build.build });
+        let miri = self.ensure(tool::Miri { compiler, target: self.build.build });
+        let cargo_miri = self.ensure(tool::CargoMiri { compiler, target: self.build.build });
         // Invoke cargo-miri, make sure it can find miri and cargo.
         let mut cmd = command(cargo_miri);
         cmd.env("MIRI", &miri);
@@ -1399,7 +1410,7 @@ impl<'a> Builder<'a> {
         // `add_rustc_lib_path` as that's a NOP on Windows but we do need these libraries added to
         // the PATH due to the stage mismatch.
         // Also see https://github.com/rust-lang/rust/pull/123192#issuecomment-2028901503.
-        add_dylib_path(self.rustc_lib_paths(run_compiler), &mut cmd);
+        add_dylib_path(self.rustc_lib_paths(compiler), &mut cmd);
         cmd
     }
 

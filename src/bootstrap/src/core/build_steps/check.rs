@@ -57,7 +57,7 @@ impl Step for Std {
         builder.require_submodule("library/stdarch", None);
 
         let target = self.target;
-        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.build, false);
 
         let mut cargo = builder::Cargo::new(
             builder,
@@ -192,7 +192,7 @@ impl Step for Rustc {
     /// the `compiler` targeting the `target` architecture. The artifacts
     /// created will also be linked into the sysroot directory.
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.build, false);
         let target = self.target;
 
         if compiler.stage != 0 {
@@ -274,7 +274,7 @@ impl Step for CodegenBackend {
             return;
         }
 
-        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.build, false);
         let target = self.target;
         let backend = self.backend;
 
@@ -329,7 +329,7 @@ impl Step for RustAnalyzer {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        let compiler = builder.compiler(builder.top_stage, builder.config.build, true);
         let target = self.target;
 
         builder.ensure(Rustc::new(target, builder));
@@ -411,7 +411,7 @@ fn run_tool_check_step(
     path: &str,
 ) {
     let display_name = path.rsplit('/').next().unwrap();
-    let compiler = builder.compiler(builder.top_stage, builder.config.build);
+    let compiler = builder.compiler(builder.top_stage, builder.config.build, true);
 
     builder.ensure(Rustc::new(target, builder));
 

@@ -1,12 +1,22 @@
+//! This module handles building and managing various tools in bootstrap
+//! build system.
+//!
+//! **What It Does**
+//! - Defines how tools are built, configured and installed.
+//! - Manages tool dependencies and build steps.
+//! - Copies built tool binaries to the correct locations.
+//!
+//! Each tool **MUST** utilize `ToolBuild` inside their `Step` logic and
+//! they should never prepare `cargo` invocations manually.
+
 use std::path::PathBuf;
 use std::{env, fs};
 
+use self::builder::cargo_profile_var;
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder;
-use crate::core::builder::{
-    Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step, cargo_profile_var,
-};
+use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::core::config::{DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{BootstrapCommand, command};
@@ -55,7 +65,7 @@ impl Builder<'_> {
                 *target,
             ),
             // doesn't depend on compiler, same as host compiler
-            _ => self.msg(Kind::Build, build_stage, format_args!("tool {tool}"), *host, *target),
+            _ => self.msg(kind, build_stage, format_args!("tool {tool}"), *host, *target),
         }
     }
 }
@@ -71,36 +81,56 @@ impl Step for ToolBuild {
     ///
     /// This will build the specified tool with the specified `host` compiler in
     /// `stage` into the normal cargo output directory.
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let compiler = self.compiler;
-        let target = self.target;
-        let mut tool = self.tool;
-        let path = self.path;
-
+    fn run(mut self, builder: &Builder<'_>) -> PathBuf {
         match self.mode {
             Mode::ToolRustc => {
-                builder.ensure(compile::Std::new(compiler, compiler.host));
-                builder.ensure(compile::Rustc::new(compiler, target));
+                if !self.compiler.is_downgraded_already() {
+                    builder.ensure(compile::Std::new(self.compiler, self.target));
+                    // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+                    // we'd have stageN/bin/rustc and stageN/bin/$tool_name be effectively different stage
+                    // compilers, which isn't what we want.
+                    //
+                    // Compiler tools should be linked in the same way as the compiler it's paired with,
+                    // so it must be built with the previous stage compiler.
+                    self.compiler.downgrade();
+                };
             }
-            Mode::ToolStd => builder.ensure(compile::Std::new(compiler, target)),
-            Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
+            Mode::ToolStd => builder.ensure(compile::Std::new(self.compiler, self.target)),
+            Mode::ToolBootstrap => {}
             _ => panic!("unexpected Mode for tool build"),
         }
 
         let mut cargo = prepare_tool_cargo(
             builder,
-            compiler,
+            self.compiler,
             self.mode,
-            target,
+            self.target,
             Kind::Build,
-            path,
+            self.path,
             self.source_type,
             &self.extra_features,
         );
+
         if !self.allow_features.is_empty() {
             cargo.allow_features(self.allow_features);
         }
+
+        if self.path.ends_with("/rustdoc") {
+            // rustdoc is performance sensitive, so apply LTO to it.
+            let lto = match builder.config.rust_lto {
+                RustcLto::Off => Some("off"),
+                RustcLto::Thin => Some("thin"),
+                RustcLto::Fat => Some("fat"),
+                RustcLto::ThinLocal => None,
+            };
+
+            if let Some(lto) = lto {
+                cargo.env(cargo_profile_var("LTO", &builder.config), lto);
+            }
+        }
+
         cargo.args(self.cargo_args);
+
         let _guard = builder.msg_tool(
             Kind::Build,
             self.mode,
@@ -114,7 +144,7 @@ impl Step for ToolBuild {
         let build_success = compile::stream_cargo(builder, cargo, vec![], &mut |_| {});
 
         builder.save_toolstate(
-            tool,
+            self.tool,
             if build_success { ToolState::TestFail } else { ToolState::BuildFail },
         );
 
@@ -124,10 +154,10 @@ impl Step for ToolBuild {
             // HACK(#82501): on Windows, the tools directory gets added to PATH when running tests, and
             // compiletest confuses HTML tidy with the in-tree tidy. Name the in-tree tidy something
             // different so the problem doesn't come up.
-            if tool == "tidy" {
-                tool = "rust-tidy";
+            if self.tool == "tidy" {
+                self.tool = "rust-tidy";
             }
-            copy_link_tool_bin(builder, self.compiler, self.target, self.mode, tool)
+            copy_link_tool_bin(builder, self.compiler, self.target, self.mode, self.tool)
         }
     }
 }
@@ -135,7 +165,7 @@ impl Step for ToolBuild {
 #[allow(clippy::too_many_arguments)] // FIXME: reduce the number of args and remove this.
 pub fn prepare_tool_cargo(
     builder: &Builder<'_>,
-    compiler: Compiler,
+    mut compiler: Compiler,
     mode: Mode,
     target: TargetSelection,
     cmd_kind: Kind,
@@ -143,6 +173,16 @@ pub fn prepare_tool_cargo(
     source_type: SourceType,
     extra_features: &[String],
 ) -> CargoCommand {
+    if mode == Mode::ToolRustc && !compiler.is_downgraded_already() && compiler.stage != 0 {
+        // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+        // we'd have stageN/bin/rustc and stageN/bin/$tool_name be effectively different stage
+        // compilers, which isn't what we want.
+        //
+        // Compiler tools should be linked in the same way as the compiler it's paired with,
+        // so it must be built with the previous stage compiler.
+        compiler.downgrade();
+    }
+
     let mut cargo = builder::Cargo::new(builder, compiler, mode, source_type, target, cmd_kind);
 
     let dir = builder.src.join(path);
@@ -273,7 +313,7 @@ macro_rules! bootstrap_tool {
                 match tool {
                     $(Tool::$name =>
                         self.ensure($name {
-                            compiler: self.compiler(0, self.config.build),
+                            compiler: self.compiler(0, self.config.build, false),
                             target: self.config.build,
                         }),
                     )+
@@ -298,7 +338,7 @@ macro_rules! bootstrap_tool {
             fn make_run(run: RunConfig<'_>) {
                 run.builder.ensure($name {
                     // snapshot compiler
-                    compiler: run.builder.compiler(0, run.builder.config.build),
+                    compiler: run.builder.compiler(0, run.builder.config.build, false),
                     target: run.target,
                 });
             }
@@ -387,7 +427,7 @@ impl Step for OptimizedDist {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(OptimizedDist {
-            compiler: run.builder.compiler(0, run.builder.config.build),
+            compiler: run.builder.compiler(0, run.builder.config.build, false),
             target: run.target,
         });
     }
@@ -429,7 +469,7 @@ impl Step for RustcPerf {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RustcPerf {
-            compiler: run.builder.compiler(0, run.builder.config.build),
+            compiler: run.builder.compiler(0, run.builder.config.build, false),
             target: run.target,
         });
     }
@@ -470,7 +510,7 @@ impl ErrorIndex {
         // Error-index-generator links with the rustdoc library, so we need to add `rustc_lib_paths`
         // for rustc_private and libLLVM.so, and `sysroot_lib` for libstd, etc.
         let host = builder.config.build;
-        let compiler = builder.compiler_for(builder.top_stage, host, host);
+        let compiler = builder.compiler_for(builder.top_stage, host, host, true);
         let mut cmd = command(builder.ensure(ErrorIndex { compiler }));
         let mut dylib_paths = builder.rustc_lib_paths(compiler);
         dylib_paths.push(PathBuf::from(&builder.sysroot_target_libdir(compiler, compiler.host)));
@@ -495,8 +535,11 @@ impl Step for ErrorIndex {
         // src/tools/error-index-generator` which almost nobody does.
         // Normally, `x.py test` or `x.py doc` will use the
         // `ErrorIndex::command` function instead.
-        let compiler =
-            run.builder.compiler(run.builder.top_stage.saturating_sub(1), run.builder.config.build);
+        let compiler = run.builder.compiler(
+            run.builder.top_stage.saturating_sub(1),
+            run.builder.config.build,
+            true,
+        );
         run.builder.ensure(ErrorIndex { compiler });
     }
 
@@ -530,7 +573,7 @@ impl Step for RemoteTestServer {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RemoteTestServer {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build, false),
             target: run.target,
         });
     }
@@ -572,25 +615,26 @@ impl Step for Rustdoc {
             // compiler here, because rustdoc *is* a compiler. We won't be using
             // this as the compiler to build with, but rather this is "what
             // compiler are we producing"?
-            compiler: run.builder.compiler(run.builder.top_stage, run.target),
+            compiler: run.builder.compiler(run.builder.top_stage, run.target, true),
         });
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let target_compiler = self.compiler;
-        if target_compiler.stage == 0 {
-            if !target_compiler.is_snapshot(builder) {
+        let compiler = self.compiler;
+        let target = compiler.host;
+
+        if compiler.stage == 0 {
+            if !compiler.is_snapshot(builder) {
                 panic!("rustdoc in stage 0 must be snapshot rustdoc");
             }
-            return builder.initial_rustc.with_file_name(exe("rustdoc", target_compiler.host));
+            return builder.initial_rustc.with_file_name(exe("rustdoc", compiler.host));
         }
-        let target = target_compiler.host;
 
         let bin_rustdoc = || {
-            let sysroot = builder.sysroot(target_compiler);
+            let sysroot = builder.sysroot(compiler);
             let bindir = sysroot.join("bin");
             t!(fs::create_dir_all(&bindir));
-            let bin_rustdoc = bindir.join(exe("rustdoc", target_compiler.host));
+            let bin_rustdoc = bindir.join(exe("rustdoc", target));
             let _ = fs::remove_file(&bin_rustdoc);
             bin_rustdoc
         };
@@ -598,7 +642,7 @@ impl Step for Rustdoc {
         // If CI rustc is enabled and we haven't modified the rustdoc sources,
         // use the precompiled rustdoc from CI rustc's sysroot to speed up bootstrapping.
         if builder.download_rustc()
-            && target_compiler.stage > 0
+            && compiler.stage > 0
             && builder.rust_info().is_managed_git_subrepository()
         {
             let files_to_track = &["src/librustdoc", "src/tools/rustdoc"];
@@ -606,34 +650,14 @@ impl Step for Rustdoc {
             // Check if unchanged
             if builder.config.last_modified_commit(files_to_track, "download-rustc", true).is_some()
             {
-                let precompiled_rustdoc = builder
-                    .config
-                    .ci_rustc_dir()
-                    .join("bin")
-                    .join(exe("rustdoc", target_compiler.host));
+                let precompiled_rustdoc =
+                    builder.config.ci_rustc_dir().join("bin").join(exe("rustdoc", target));
 
                 let bin_rustdoc = bin_rustdoc();
                 builder.copy_link(&precompiled_rustdoc, &bin_rustdoc);
                 return bin_rustdoc;
             }
         }
-
-        let build_compiler = if builder.download_rustc() && target_compiler.stage == 1 {
-            // We already have the stage 1 compiler, we don't need to cut the stage.
-            builder.compiler(target_compiler.stage, builder.config.build)
-        } else {
-            // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
-            // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
-            // compilers, which isn't what we want. Rustdoc should be linked in the same way as the
-            // rustc compiler it's paired with, so it must be built with the previous stage compiler.
-            builder.compiler(target_compiler.stage - 1, builder.config.build)
-        };
-
-        // When using `download-rustc` and a stage0 build_compiler, copying rustc doesn't actually
-        // build stage0 libstd (because the libstd in sysroot has the wrong ABI). Explicitly build
-        // it.
-        builder.ensure(compile::Std::new(build_compiler, target_compiler.host));
-        builder.ensure(compile::Rustc::new(build_compiler, target_compiler.host));
 
         // The presence of `target_compiler` ensures that the necessary libraries (codegen backends,
         // compiler libraries, ...) are built. Rustdoc does not require the presence of any
@@ -642,53 +666,28 @@ impl Step for Rustdoc {
         // libraries here. The intuition here is that If we've built a compiler, we should be able
         // to build rustdoc.
         //
-        let mut features = Vec::new();
+        let mut extra_features = Vec::new();
         if builder.config.jemalloc {
-            features.push("jemalloc".to_string());
+            extra_features.push("jemalloc".to_string());
         }
 
-        // NOTE: Never modify the rustflags here, it breaks the build cache for other tools!
-        let mut cargo = prepare_tool_cargo(
-            builder,
-            build_compiler,
-            Mode::ToolRustc,
+        let tool_rustdoc = builder.ensure(ToolBuild {
+            compiler,
             target,
-            Kind::Build,
-            "src/tools/rustdoc",
-            SourceType::InTree,
-            features.as_slice(),
-        );
-
-        // rustdoc is performance sensitive, so apply LTO to it.
-        let lto = match builder.config.rust_lto {
-            RustcLto::Off => Some("off"),
-            RustcLto::Thin => Some("thin"),
-            RustcLto::Fat => Some("fat"),
-            RustcLto::ThinLocal => None,
-        };
-        if let Some(lto) = lto {
-            cargo.env(cargo_profile_var("LTO", &builder.config), lto);
-        }
-
-        let _guard = builder.msg_tool(
-            Kind::Build,
-            Mode::ToolRustc,
-            "rustdoc",
-            build_compiler.stage,
-            &self.compiler.host,
-            &target,
-        );
-        cargo.into_cmd().run(builder);
-
-        // Cargo adds a number of paths to the dylib search path on windows, which results in
-        // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
-        // rustdoc a different name.
-        let tool_rustdoc = builder
-            .cargo_out(build_compiler, Mode::ToolRustc, target)
-            .join(exe("rustdoc_tool_binary", target_compiler.host));
+            // Cargo adds a number of paths to the dylib search path on windows, which results in
+            // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
+            // rustdoc a different name.
+            tool: "rustdoc_tool_binary",
+            mode: Mode::ToolRustc,
+            path: "src/tools/rustdoc",
+            source_type: SourceType::InTree,
+            extra_features,
+            allow_features: "",
+            cargo_args: Vec::new(),
+        });
 
         // don't create a stage0-sysroot/bin directory.
-        if target_compiler.stage > 0 {
+        if compiler.stage > 0 {
             if builder.config.rust_debuginfo_level_tools == DebuginfoLevel::None {
                 // Due to LTO a lot of debug info from C++ dependencies such as jemalloc can make it into
                 // our final binaries
@@ -721,7 +720,7 @@ impl Step for Cargo {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Cargo {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build, true),
             target: run.target,
         });
     }
@@ -814,7 +813,7 @@ impl Step for RustAnalyzer {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RustAnalyzer {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build, true),
             target: run.target,
         });
     }
@@ -858,7 +857,7 @@ impl Step for RustAnalyzerProcMacroSrv {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RustAnalyzerProcMacroSrv {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build, true),
             target: run.target,
         });
     }
@@ -906,57 +905,36 @@ impl Step for LlvmBitcodeLinker {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(LlvmBitcodeLinker {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build, true),
             extra_features: Vec::new(),
             target: run.target,
         });
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let bin_name = "llvm-bitcode-linker";
-
-        // If enabled, use ci-rustc and skip building the in-tree compiler.
-        if !builder.download_rustc() {
-            builder.ensure(compile::Std::new(self.compiler, self.compiler.host));
-            builder.ensure(compile::Rustc::new(self.compiler, self.target));
-        }
-
-        let cargo = prepare_tool_cargo(
-            builder,
-            self.compiler,
-            Mode::ToolRustc,
-            self.target,
-            Kind::Build,
-            "src/tools/llvm-bitcode-linker",
-            SourceType::InTree,
-            &self.extra_features,
-        );
-
-        let _guard = builder.msg_tool(
-            Kind::Build,
-            Mode::ToolRustc,
-            bin_name,
-            self.compiler.stage,
-            &self.compiler.host,
-            &self.target,
-        );
-
-        cargo.into_cmd().run(builder);
-
-        let tool_out = builder
-            .cargo_out(self.compiler, Mode::ToolRustc, self.target)
-            .join(exe(bin_name, self.compiler.host));
+        let bin_source = builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "llvm-bitcode-linker",
+            mode: Mode::ToolRustc,
+            path: "src/tools/llvm-bitcode-linker",
+            source_type: SourceType::InTree,
+            extra_features: self.extra_features,
+            allow_features: "",
+            cargo_args: Vec::new(),
+        });
 
         if self.compiler.stage > 0 {
             let bindir_self_contained = builder
                 .sysroot(self.compiler)
                 .join(format!("lib/rustlib/{}/bin/self-contained", self.target.triple));
             t!(fs::create_dir_all(&bindir_self_contained));
-            let bin_destination = bindir_self_contained.join(exe(bin_name, self.compiler.host));
-            builder.copy_link(&tool_out, &bin_destination);
+            let bin_destination =
+                bindir_self_contained.join(exe("llvm-bitcode-linker", self.compiler.host));
+            builder.copy_link(&bin_source, &bin_destination);
             bin_destination
         } else {
-            tool_out
+            bin_source
         }
     }
 }
@@ -1056,7 +1034,7 @@ macro_rules! tool_extended {
 
             fn make_run(run: RunConfig<'_>) {
                 run.builder.ensure($name {
-                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build, true),
                     target: run.target,
                 });
             }
@@ -1108,7 +1086,7 @@ fn run_tool_build_step(
     path: &'static str,
     add_bins_to_sysroot: Option<&[&str]>,
 ) -> PathBuf {
-    let tool = builder.ensure(ToolBuild {
+    let bin_source = builder.ensure(ToolBuild {
         compiler,
         target,
         tool: tool_name,
@@ -1127,10 +1105,7 @@ fn run_tool_build_step(
         let bindir = builder.sysroot(compiler).join("bin");
         t!(fs::create_dir_all(&bindir));
 
-        let tools_out = builder.cargo_out(compiler, Mode::ToolRustc, target);
-
         for add_bin in add_bins_to_sysroot {
-            let bin_source = tools_out.join(exe(add_bin, target));
             let bin_destination = bindir.join(exe(add_bin, compiler.host));
             builder.copy_link(&bin_source, &bin_destination);
         }
@@ -1138,7 +1113,7 @@ fn run_tool_build_step(
         // Return a path into the bin dir.
         bindir.join(exe(tool_name, compiler.host))
     } else {
-        tool
+        bin_source
     }
 }
 
@@ -1186,7 +1161,7 @@ impl Step for TestFloatParse {
 
     fn run(self, builder: &Builder<'_>) {
         let bootstrap_host = builder.config.build;
-        let compiler = builder.compiler(builder.top_stage, bootstrap_host);
+        let compiler = builder.compiler(builder.top_stage, bootstrap_host, false);
 
         builder.ensure(ToolBuild {
             compiler,
@@ -1207,7 +1182,7 @@ impl Builder<'_> {
     /// `host`.
     pub fn tool_cmd(&self, tool: Tool) -> BootstrapCommand {
         let mut cmd = command(self.tool_exe(tool));
-        let compiler = self.compiler(0, self.config.build);
+        let compiler = self.compiler(0, self.config.build, false);
         let host = &compiler.host;
         // Prepares the `cmd` provided to be able to run the `compiler` provided.
         //
