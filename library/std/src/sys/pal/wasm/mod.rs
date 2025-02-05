@@ -23,8 +23,6 @@ pub mod env;
 pub mod fs;
 #[path = "../unsupported/io.rs"]
 pub mod io;
-#[path = "../unsupported/net.rs"]
-pub mod net;
 #[path = "../unsupported/os.rs"]
 pub mod os;
 #[path = "../unsupported/pipe.rs"]

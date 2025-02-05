@@ -5,10 +5,30 @@ use crate::ffi::{c_int, c_void};
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::sys::common::small_c_string::run_with_cstr;
-use crate::sys::net::{Socket, cvt, cvt_gai, cvt_r, init, netc as c, wrlen_t};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 use crate::{cmp, fmt, mem, ptr};
+
+cfg_if::cfg_if! {
+    if #[cfg(target_os = "hermit")] {
+        mod hermit;
+        pub use hermit::*;
+    } else if #[cfg(target_os = "solid_asp3")] {
+        mod solid;
+        pub use solid::*;
+    } else if #[cfg(target_family = "unix")] {
+        mod unix;
+        pub use unix::*;
+    } else if #[cfg(all(target_os = "wasi", target_env = "p2"))] {
+        mod wasip2;
+        pub use wasip2::*;
+    } else if #[cfg(target_os = "windows")] {
+        mod windows;
+        pub use windows::*;
+    }
+}
+
+use netc as c;
 
 cfg_if::cfg_if! {
     if #[cfg(any(
@@ -24,11 +44,11 @@ cfg_if::cfg_if! {
         target_os = "nuttx",
         target_vendor = "apple",
     ))] {
-        use crate::sys::net::netc::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
-        use crate::sys::net::netc::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
+        use c::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
+        use c::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
     } else {
-        use crate::sys::net::netc::IPV6_ADD_MEMBERSHIP;
-        use crate::sys::net::netc::IPV6_DROP_MEMBERSHIP;
+        use c::IPV6_ADD_MEMBERSHIP;
+        use c::IPV6_DROP_MEMBERSHIP;
     }
 }
 

@@ -22,7 +22,6 @@ pub mod fs;
 pub mod futex;
 pub mod handle;
 pub mod io;
-pub mod net;
 pub mod os;
 pub mod pipe;
 pub mod process;
@@ -63,7 +62,7 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
 // SAFETY: must be called only once during runtime cleanup.
 // NOTE: this is not guaranteed to run, for example when the program aborts.
 pub unsafe fn cleanup() {
-    net::cleanup();
+    crate::sys::net::cleanup();
 }
 
 #[inline]

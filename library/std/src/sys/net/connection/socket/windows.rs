@@ -9,7 +9,7 @@ use crate::os::windows::io::{
 };
 use crate::sync::OnceLock;
 use crate::sys::c;
-use crate::sys_common::{AsInner, FromInner, IntoInner, net};
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 use crate::{cmp, mem, ptr, sys};
 
@@ -110,6 +110,7 @@ pub mod netc {
     }
 }
 
+#[expect(missing_debug_implementations)]
 pub struct Socket(OwnedSocket);
 
 static WSA_CLEANUP: OnceLock<unsafe extern "system" fn() -> i32> = OnceLock::new();
@@ -400,12 +401,12 @@ impl Socket {
                 let error = unsafe { c::WSAGetLastError() };
 
                 if error == c::WSAESHUTDOWN {
-                    Ok((0, net::sockaddr_to_addr(&storage, addrlen as usize)?))
+                    Ok((0, super::sockaddr_to_addr(&storage, addrlen as usize)?))
                 } else {
                     Err(io::Error::from_raw_os_error(error))
                 }
             }
-            _ => Ok((result as usize, net::sockaddr_to_addr(&storage, addrlen as usize)?)),
+            _ => Ok((result as usize, super::sockaddr_to_addr(&storage, addrlen as usize)?)),
         }
     }
 
@@ -450,11 +451,11 @@ impl Socket {
             }
             None => 0,
         };
-        net::setsockopt(self, c::SOL_SOCKET, kind, timeout)
+        super::setsockopt(self, c::SOL_SOCKET, kind, timeout)
     }
 
     pub fn timeout(&self, kind: c_int) -> io::Result<Option<Duration>> {
-        let raw: u32 = net::getsockopt(self, c::SOL_SOCKET, kind)?;
+        let raw: u32 = super::getsockopt(self, c::SOL_SOCKET, kind)?;
         if raw == 0 {
             Ok(None)
         } else {
@@ -487,26 +488,26 @@ impl Socket {
             l_linger: linger.unwrap_or_default().as_secs() as c_ushort,
         };
 
-        net::setsockopt(self, c::SOL_SOCKET, c::SO_LINGER, linger)
+        super::setsockopt(self, c::SOL_SOCKET, c::SO_LINGER, linger)
     }
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
-        let val: c::LINGER = net::getsockopt(self, c::SOL_SOCKET, c::SO_LINGER)?;
+        let val: c::LINGER = super::getsockopt(self, c::SOL_SOCKET, c::SO_LINGER)?;
 
         Ok((val.l_onoff != 0).then(|| Duration::from_secs(val.l_linger as u64)))
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
-        net::setsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY, nodelay as c::BOOL)
+        super::setsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY, nodelay as c::BOOL)
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
-        let raw: c::BOOL = net::getsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY)?;
+        let raw: c::BOOL = super::getsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY)?;
         Ok(raw != 0)
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        let raw: c_int = net::getsockopt(self, c::SOL_SOCKET, c::SO_ERROR)?;
+        let raw: c_int = super::getsockopt(self, c::SOL_SOCKET, c::SO_ERROR)?;
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
     }
 
