@@ -301,10 +301,13 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         let mut const_stab = const_stab.map(|(stab, _span)| stab);
 
         // If this is a const fn but not annotated with stability markers, see if we can inherit regular stability.
-        if fn_sig.is_some_and(|s| s.header.is_const())  && const_stab.is_none() &&
+        if fn_sig.is_some_and(|s| s.header.is_const())
+            && const_stab.is_none()
+            // Don't inherit const stability from regular stabiliy if this is
+            // an item inside of an impl or trait.
+            && self.parent_const_stab.is_none()
             // We only ever inherit unstable features.
-            let Some(inherit_regular_stab) =
-                final_stab.filter(|s| s.is_unstable())
+            && let Some(inherit_regular_stab) = final_stab.filter(|s| s.is_unstable())
         {
             const_stab = Some(ConstStability {
                 // We subject these implicitly-const functions to recursive const stability.
@@ -416,6 +419,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) => {
                 self.in_trait_impl = true;
                 kind = AnnotationKind::DeprecationProhibited;
+                const_stab_inherit = InheritConstStability::Yes;
+            }
+            hir::ItemKind::Trait(..) => {
                 const_stab_inherit = InheritConstStability::Yes;
             }
             hir::ItemKind::Struct(ref sd, _) => {
