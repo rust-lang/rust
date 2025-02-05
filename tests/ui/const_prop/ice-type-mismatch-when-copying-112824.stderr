@@ -2,9 +2,12 @@ error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/ice-type-mismatch-when-copying-112824.rs:5:21
    |
 LL | pub struct Opcode2(&'a S);
-   |                   - ^^ undeclared lifetime
-   |                   |
-   |                   help: consider introducing lifetime `'a` here: `<'a>`
+   |                     ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | pub struct Opcode2<'a>(&'a S);
+   |                   ++++
 
 error[E0412]: cannot find type `S` in this scope
   --> $DIR/ice-type-mismatch-when-copying-112824.rs:5:24

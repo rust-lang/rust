@@ -23,9 +23,12 @@ error[E0261]: use of undeclared lifetime name `'q`
   --> $DIR/ice-ifer-var-leaked-out-of-rollback-122098.rs:14:21
    |
 LL | impl<'static> Query<'q> {
-   |      -              ^^ undeclared lifetime
-   |      |
-   |      help: consider introducing lifetime `'q` here: `'q,`
+   |                     ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'q` here
+   |
+LL | impl<'q, 'static> Query<'q> {
+   |      +++
 
 error[E0392]: lifetime parameter `'q` is never used
   --> $DIR/ice-ifer-var-leaked-out-of-rollback-122098.rs:11:14
