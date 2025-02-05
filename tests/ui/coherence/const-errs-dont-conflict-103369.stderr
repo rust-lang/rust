@@ -2,7 +2,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const-errs-dont-conflict-103369.rs:5:25
    |
 LL | impl ConstGenericTrait<{my_fn(1)}> for () {}
-   |                         ^^^^^^^^ Some error occurred
+   |                         ^^^^^^^^ panic: Some error occurred
    |
 note: called from `my_fn`
   --> $DIR/const-errs-dont-conflict-103369.rs:10:5
@@ -15,7 +15,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const-errs-dont-conflict-103369.rs:7:25
    |
 LL | impl ConstGenericTrait<{my_fn(2)}> for () {}
-   |                         ^^^^^^^^ Some error occurred
+   |                         ^^^^^^^^ panic: Some error occurred
    |
 note: called from `my_fn`
   --> $DIR/const-errs-dont-conflict-103369.rs:10:5
