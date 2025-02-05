@@ -31,6 +31,8 @@
 #![feature(round_char_boundary)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
+#![feature(str_from_raw_parts)]
+#![feature(strict_provenance_atomic_ptr)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
