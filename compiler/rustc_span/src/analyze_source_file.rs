@@ -95,65 +95,32 @@ cfg_match! {
                 if multibyte_mask == 0 {
                     assert!(intra_chunk_offset == 0);
 
-                    // Check if there are any control characters in the chunk. All
-                    // control characters that we can encounter at this point have a
-                    // byte value less than 32 or ...
-                    let control_char_test0 = unsafe { _mm_cmplt_epi8(chunk, _mm_set1_epi8(32)) };
-                    let control_char_mask0 = unsafe { _mm_movemask_epi8(control_char_test0) };
+                    // Check for newlines in the chunk
+                    let newlines_test = unsafe { _mm_cmpeq_epi8(chunk, _mm_set1_epi8(b'\n' as i8)) };
+                    let mut newlines_mask = unsafe { _mm_movemask_epi8(newlines_test) };
 
-                    // ... it's the ASCII 'DEL' character with a value of 127.
-                    let control_char_test1 = unsafe { _mm_cmpeq_epi8(chunk, _mm_set1_epi8(127)) };
-                    let control_char_mask1 = unsafe { _mm_movemask_epi8(control_char_test1) };
+                    let output_offset = RelativeBytePos::from_usize(chunk_index * CHUNK_SIZE + 1);
 
-                    let control_char_mask = control_char_mask0 | control_char_mask1;
+                    while newlines_mask != 0 {
+                        let index = newlines_mask.trailing_zeros();
 
-                    if control_char_mask != 0 {
-                        // Check for newlines in the chunk
-                        let newlines_test = unsafe { _mm_cmpeq_epi8(chunk, _mm_set1_epi8(b'\n' as i8)) };
-                        let newlines_mask = unsafe { _mm_movemask_epi8(newlines_test) };
+                        lines.push(RelativeBytePos(index) + output_offset);
 
-                        if control_char_mask == newlines_mask {
-                            // All control characters are newlines, record them
-                            let mut newlines_mask = 0xFFFF0000 | newlines_mask as u32;
-                            let output_offset = RelativeBytePos::from_usize(chunk_index * CHUNK_SIZE + 1);
-
-                            loop {
-                                let index = newlines_mask.trailing_zeros();
-
-                                if index >= CHUNK_SIZE as u32 {
-                                    // We have arrived at the end of the chunk.
-                                    break;
-                                }
-
-                                lines.push(RelativeBytePos(index) + output_offset);
-
-                                // Clear the bit, so we can find the next one.
-                                newlines_mask &= (!1) << index;
-                            }
-
-                            // We are done for this chunk. All control characters were
-                            // newlines and we took care of those.
-                            continue;
-                        } else {
-                            // Some of the control characters are not newlines,
-                            // fall through to the slow path below.
-                        }
-                    } else {
-                        // No control characters, nothing to record for this chunk
-                        continue;
+                        // Clear the bit, so we can find the next one.
+                        newlines_mask &= newlines_mask - 1;
                     }
+                } else {
+                    // The slow path.
+                    // There are multibyte chars in here, fallback to generic decoding.
+                    let scan_start = chunk_index * CHUNK_SIZE + intra_chunk_offset;
+                    intra_chunk_offset = analyze_source_file_generic(
+                        &src[scan_start..],
+                        CHUNK_SIZE - intra_chunk_offset,
+                        RelativeBytePos::from_usize(scan_start),
+                        lines,
+                        multi_byte_chars,
+                    );
                 }
-
-                // The slow path.
-                // There are control chars in here, fallback to generic decoding.
-                let scan_start = chunk_index * CHUNK_SIZE + intra_chunk_offset;
-                intra_chunk_offset = analyze_source_file_generic(
-                    &src[scan_start..],
-                    CHUNK_SIZE - intra_chunk_offset,
-                    RelativeBytePos::from_usize(scan_start),
-                    lines,
-                    multi_byte_chars,
-                );
             }
 
             // There might still be a tail left to analyze
@@ -253,65 +220,32 @@ cfg_match! {
                 if multibyte_mask == 0 {
                     assert!(intra_chunk_offset == 0);
 
-                    // Check if there are any control characters in the chunk. All
-                    // control characters that we can encounter at this point have a
-                    // byte value less than 32 or ...
-                    let control_char_test0 = unsafe { _mm_cmplt_epi8(chunk, _mm_set1_epi8(32)) };
-                    let control_char_mask0 = unsafe { _mm_movemask_epi8(control_char_test0) };
+                    // Check for newlines in the chunk
+                    let newlines_test = unsafe { _mm_cmpeq_epi8(chunk, _mm_set1_epi8(b'\n' as i8)) };
+                    let mut newlines_mask = unsafe { _mm_movemask_epi8(newlines_test) };
 
-                    // ... it's the ASCII 'DEL' character with a value of 127.
-                    let control_char_test1 = unsafe { _mm_cmpeq_epi8(chunk, _mm_set1_epi8(127)) };
-                    let control_char_mask1 = unsafe { _mm_movemask_epi8(control_char_test1) };
+                    let output_offset = RelativeBytePos::from_usize(chunk_index * CHUNK_SIZE + 1);
 
-                    let control_char_mask = control_char_mask0 | control_char_mask1;
+                    while newlines_mask != 0 {
+                        let index = newlines_mask.trailing_zeros();
 
-                    if control_char_mask != 0 {
-                        // Check for newlines in the chunk
-                        let newlines_test = unsafe { _mm_cmpeq_epi8(chunk, _mm_set1_epi8(b'\n' as i8)) };
-                        let newlines_mask = unsafe { _mm_movemask_epi8(newlines_test) };
+                        lines.push(RelativeBytePos(index) + output_offset);
 
-                        if control_char_mask == newlines_mask {
-                            // All control characters are newlines, record them
-                            let mut newlines_mask = 0xFFFF0000 | newlines_mask as u32;
-                            let output_offset = RelativeBytePos::from_usize(chunk_index * CHUNK_SIZE + 1);
-
-                            loop {
-                                let index = newlines_mask.trailing_zeros();
-
-                                if index >= CHUNK_SIZE as u32 {
-                                    // We have arrived at the end of the chunk.
-                                    break;
-                                }
-
-                                lines.push(RelativeBytePos(index) + output_offset);
-
-                                // Clear the bit, so we can find the next one.
-                                newlines_mask &= (!1) << index;
-                            }
-
-                            // We are done for this chunk. All control characters were
-                            // newlines and we took care of those.
-                            continue;
-                        } else {
-                            // Some of the control characters are not newlines,
-                            // fall through to the slow path below.
-                        }
-                    } else {
-                        // No control characters, nothing to record for this chunk
-                        continue;
+                        // Clear the bit, so we can find the next one.
+                        newlines_mask &= newlines_mask - 1;
                     }
+                } else {
+                    // The slow path.
+                    // There are multibyte chars in here, fallback to generic decoding.
+                    let scan_start = chunk_index * CHUNK_SIZE + intra_chunk_offset;
+                    intra_chunk_offset = analyze_source_file_generic(
+                        &src[scan_start..],
+                        CHUNK_SIZE - intra_chunk_offset,
+                        RelativeBytePos::from_usize(scan_start),
+                        lines,
+                        multi_byte_chars,
+                    );
                 }
-
-                // The slow path.
-                // There are control chars in here, fallback to generic decoding.
-                let scan_start = chunk_index * CHUNK_SIZE + intra_chunk_offset;
-                intra_chunk_offset = analyze_source_file_generic(
-                    &src[scan_start..],
-                    CHUNK_SIZE - intra_chunk_offset,
-                    RelativeBytePos::from_usize(scan_start),
-                    lines,
-                    multi_byte_chars,
-                );
             }
 
             // There might still be a tail left to analyze
@@ -369,29 +303,18 @@ fn analyze_source_file_generic(
         // string.
         let mut char_len = 1;
 
-        if byte < 32 {
-            // This is an ASCII control character, it could be one of the cases
-            // that are interesting to us.
-
+        if byte == b'\n' {
             let pos = RelativeBytePos::from_usize(i) + output_offset;
-
-            if let b'\n' = byte {
-                lines.push(pos + RelativeBytePos(1));
-            }
-        } else if byte >= 127 {
-            // The slow path:
-            // This is either ASCII control character "DEL" or the beginning of
-            // a multibyte char. Just decode to `char`.
+            lines.push(pos + RelativeBytePos(1));
+        } else if byte >= 128 {
+            // This is the beginning of a multibyte char. Just decode to `char`.
             let c = src[i..].chars().next().unwrap();
             char_len = c.len_utf8();
 
             let pos = RelativeBytePos::from_usize(i) + output_offset;
-
-            if char_len > 1 {
-                assert!((2..=4).contains(&char_len));
-                let mbc = MultiByteChar { pos, bytes: char_len as u8 };
-                multi_byte_chars.push(mbc);
-            }
+            assert!((2..=4).contains(&char_len));
+            let mbc = MultiByteChar { pos, bytes: char_len as u8 };
+            multi_byte_chars.push(mbc);
         }
 
         i += char_len;
