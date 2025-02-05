@@ -1150,6 +1150,9 @@ impl Subdiagnostic for Rust2024IncompatiblePatSugg {
             };
             format!("make the implied reference pattern{plural_derefs}{and_modes} explicit")
         };
-        diag.multipart_suggestion_verbose(msg, self.suggestion, applicability);
+        // FIXME(dianne): for peace of mind, don't risk emitting a 0-part suggestion (that panics!)
+        if !self.suggestion.is_empty() {
+            diag.multipart_suggestion_verbose(msg, self.suggestion, applicability);
+        }
     }
 }
