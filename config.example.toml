@@ -424,6 +424,9 @@
 # What custom diff tool to use for displaying compiletest tests.
 #compiletest-diff-tool = <none>
 
+# List of tests or directories to exclude from the test suite. For example, exclude = ["tests/assembly", "tests/codegen"];
+#exclude = []
+
 # =============================================================================
 # General install configuration options
 # =============================================================================

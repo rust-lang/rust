@@ -251,8 +251,10 @@ impl PathSet {
 
     fn has(&self, needle: &Path, module: Kind) -> bool {
         match self {
-            PathSet::Set(set) => set.iter().any(|p| Self::check(p, needle, module)),
-            PathSet::Suite(suite) => Self::check(suite, needle, module),
+            PathSet::Set(set) => {
+                set.iter().any(|p| p.path == needle && Self::check(p, needle, module))
+            }
+            PathSet::Suite(suite) => suite.path == needle && Self::check(suite, needle, module),
         }
     }
 
@@ -417,13 +419,28 @@ impl StepDescription {
     }
 
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
-        if builder.config.skip.iter().any(|e| pathset.has(e, builder.kind)) {
+        // Helper function to determine if a path is explicitly excluded
+        let is_path_excluded = |exclude: &PathBuf| {
+            let exclude_path: &Path = exclude.as_path();
+            pathset.has(exclude_path, builder.kind)
+        };
+        // Check if the path is excluded by the --exclude flags
+        if builder.config.skip.iter().any(is_path_excluded) {
             if !matches!(builder.config.dry_run, DryRun::SelfCheck) {
-                println!("Skipping {pathset:?} because it is excluded");
+                println!("Skipping {pathset:?} because it is excluded by --exclude flag");
             }
             return true;
         }
-
+        // Check if the path is excluded by the exclude field in config.toml
+        if let Some(ref excludes) = builder.config.exclude {
+            if excludes.iter().any(is_path_excluded) {
+                if !matches!(builder.config.dry_run, DryRun::SelfCheck) {
+                    println!("Skipping {pathset:?} because it is excluded by config.toml");
+                }
+                return true;
+            }
+        }
+        // Verbose logging if not excluded
         if !builder.config.skip.is_empty() && !matches!(builder.config.dry_run, DryRun::SelfCheck) {
             builder.verbose(|| {
                 println!(
@@ -432,6 +449,7 @@ impl StepDescription {
                 )
             });
         }
+
         false
     }
 
