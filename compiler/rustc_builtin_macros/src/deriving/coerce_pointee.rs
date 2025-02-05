@@ -3,11 +3,11 @@ use ast::ptr::P;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::visit::BoundKind;
 use rustc_ast::{
-    self as ast, GenericArg, GenericBound, GenericParamKind, ItemKind, MetaItem,
+    self as ast, GenericArg, GenericBound, GenericParamKind, Generics, ItemKind, MetaItem,
     TraitBoundModifiers, VariantData, WherePredicate,
 };
-use rustc_attr_parsing as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
+use rustc_errors::E0802;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_macros::Diagnostic;
 use rustc_span::{Ident, Span, Symbol, sym};
@@ -32,15 +32,6 @@ pub(crate) fn expand_deriving_coerce_pointee(
     let (name_ident, generics) = if let Annotatable::Item(aitem) = item
         && let ItemKind::Struct(struct_data, g) = &aitem.kind
     {
-        let is_transparent = aitem.attrs.iter().any(|attr| {
-            attr::find_repr_attrs(cx.sess, attr)
-                .into_iter()
-                .any(|r| matches!(r, attr::ReprTransparent))
-        });
-        if !is_transparent {
-            cx.dcx().emit_err(RequireTransparent { span });
-            return;
-        }
         if !matches!(
             struct_data,
             VariantData::Struct { fields, recovered: _ } | VariantData::Tuple(fields, _)
@@ -88,8 +79,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
     } else {
         let mut pointees = type_params
             .iter()
-            .filter_map(|&(idx, span, is_pointee)| is_pointee.then_some((idx, span)))
-            .fuse();
+            .filter_map(|&(idx, span, is_pointee)| is_pointee.then_some((idx, span)));
         match (pointees.next(), pointees.next()) {
             (Some((idx, _span)), None) => idx,
             (None, _) => {
@@ -110,6 +100,52 @@ pub(crate) fn expand_deriving_coerce_pointee(
     // Declare helper function that adds implementation blocks.
     // FIXME(dingxiangfei2009): Investigate the set of attributes on target struct to be propagated to impls
     let attrs = thin_vec![cx.attr_word(sym::automatically_derived, span),];
+    // # Validity assertion which will be checked later in `rustc_hir_analysis::coherence::builtins`.
+    {
+        let trait_path =
+            cx.path_all(span, true, path!(span, core::marker::CoercePointeeValidated), vec![]);
+        let trait_ref = cx.trait_ref(trait_path);
+        push(Annotatable::Item(
+            cx.item(
+                span,
+                Ident::empty(),
+                attrs.clone(),
+                ast::ItemKind::Impl(Box::new(ast::Impl {
+                    safety: ast::Safety::Default,
+                    polarity: ast::ImplPolarity::Positive,
+                    defaultness: ast::Defaultness::Final,
+                    constness: ast::Const::No,
+                    generics: Generics {
+                        params: generics
+                            .params
+                            .iter()
+                            .map(|p| match &p.kind {
+                                GenericParamKind::Lifetime => {
+                                    cx.lifetime_param(p.span(), p.ident, p.bounds.clone())
+                                }
+                                GenericParamKind::Type { default: _ } => {
+                                    cx.typaram(p.span(), p.ident, p.bounds.clone(), None)
+                                }
+                                GenericParamKind::Const { ty, kw_span: _, default: _ } => cx
+                                    .const_param(
+                                        p.span(),
+                                        p.ident,
+                                        p.bounds.clone(),
+                                        ty.clone(),
+                                        None,
+                                    ),
+                            })
+                            .collect(),
+                        where_clause: generics.where_clause.clone(),
+                        span: generics.span,
+                    },
+                    of_trait: Some(trait_ref),
+                    self_ty: self_type.clone(),
+                    items: ThinVec::new(),
+                })),
+            ),
+        ));
+    }
     let mut add_impl_block = |generics, trait_symbol, trait_args| {
         let mut parts = path!(span, core::ops);
         parts.push(Ident::new(trait_symbol, span));
@@ -430,35 +466,35 @@ impl<'a, 'b> rustc_ast::visit::Visitor<'a> for AlwaysErrorOnGenericParam<'a, 'b>
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_coerce_pointee_requires_transparent)]
+#[diag(builtin_macros_coerce_pointee_requires_transparent, code = E0802)]
 struct RequireTransparent {
     #[primary_span]
     span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_coerce_pointee_requires_one_field)]
+#[diag(builtin_macros_coerce_pointee_requires_one_field, code = E0802)]
 struct RequireOneField {
     #[primary_span]
     span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_coerce_pointee_requires_one_generic)]
+#[diag(builtin_macros_coerce_pointee_requires_one_generic, code = E0802)]
 struct RequireOneGeneric {
     #[primary_span]
     span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_coerce_pointee_requires_one_pointee)]
+#[diag(builtin_macros_coerce_pointee_requires_one_pointee, code = E0802)]
 struct RequireOnePointee {
     #[primary_span]
     span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_coerce_pointee_too_many_pointees)]
+#[diag(builtin_macros_coerce_pointee_too_many_pointees, code = E0802)]
 struct TooManyPointees {
     #[primary_span]
     one: Span,
@@ -467,7 +503,7 @@ struct TooManyPointees {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_coerce_pointee_requires_maybe_sized)]
+#[diag(builtin_macros_coerce_pointee_requires_maybe_sized, code = E0802)]
 struct RequiresMaybeSized {
     #[primary_span]
     span: Span,
