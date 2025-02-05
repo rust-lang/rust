@@ -95,8 +95,6 @@ impl From<ReportedErrorInfo> for ErrorGuaranteed {
     }
 }
 
-TrivialTypeTraversalImpls! { ErrorHandled }
-
 pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
 pub type EvalStaticInitializerRawResult<'tcx> = Result<ConstAllocation<'tcx>, ErrorHandled>;
 pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
