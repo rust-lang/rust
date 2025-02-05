@@ -1,4 +1,4 @@
-error[E0658]: C-cmse-nonsecure-entry ABI is experimental and subject to change
+error[E0658]: the extern "C-cmse-nonsecure-entry" ABI is experimental and subject to change
   --> $DIR/gate_test.rs:4:12
    |
 LL | pub extern "C-cmse-nonsecure-entry" fn entry_function(input: u32) -> u32 {
