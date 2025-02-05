@@ -57,6 +57,7 @@ mod tests;
 /// Note that platform-specific behavior [may change in the future][changes].
 ///
 /// [changes]: crate::io#platform-specific-behavior
+#[doc(alias = "copy_file_range", alias = "sendfile", alias = "splice")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> Result<u64>
 where
