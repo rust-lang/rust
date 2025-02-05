@@ -11,7 +11,7 @@ pub(crate) fn target() -> Target {
     base.features = "+v8a".into();
 
     Target {
-        llvm_target: "aarch64-unknown-windows".into(),
+        llvm_target: "aarch64-unknown-uefi".into(),
         metadata: crate::spec::TargetMetadata {
             description: Some("ARM64 UEFI".into()),
             tier: Some(2),
