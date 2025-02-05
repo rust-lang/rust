@@ -100,7 +100,7 @@ mod private { // this item is private and will not be documented
 }
 ```
 
-`--document-private-items` documents all items, even if they're not public.
+`--document-private-items` causes all items to be documented as if they were `pub`.
 
 ## `-L`/`--library-path`: where to look for dependencies
 
