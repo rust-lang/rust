@@ -142,6 +142,7 @@ Some examples of `X` in `ignore-X` or `only-X`:
   matches that target as well as the emscripten targets.
 - Pointer width: `32bit`, `64bit`
 - Endianness: `endian-big`
+- Binary format: `elf`
 - Stage: `stage0`, `stage1`, `stage2`
 - Channel: `stable`, `beta`
 - When cross compiling: `cross-compile`
