@@ -18,6 +18,13 @@ LL | impl<const UNUSED: usize> Drop for Foo {}
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
+help: either remove the type parameter UNUSED, or make use of it, for example
+   |
+LL - impl<const UNUSED: usize> Drop for Foo {}
+LL + impl Drop for Foo {}
+   |
+LL | impl<const UNUSED: usize> Drop for Foo<UNUSED> {}
+   |                                       ++++++++
 
 error: aborting due to 2 previous errors
 

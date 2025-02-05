@@ -3,6 +3,14 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
    |
 LL | impl<T: Default> Foo {
    |      ^ unconstrained type parameter
+   |
+help: either remove the type parameter T, or make use of it, for example
+   |
+LL - impl<T: Default> Foo {
+LL + impl Foo {
+   |
+LL | impl<T: Default> Foo<T> {
+   |                     +++
 
 error: aborting due to 1 previous error
 
