@@ -2005,10 +2005,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // Only pass correct values for these flags for the `run-make` suite as it
         // requires that a C++ compiler was configured which isn't always the case.
         if !builder.config.dry_run() && mode == "run-make" {
-            let mut cflags = builder.default_cflags(target, CLang::C);
-            cflags.extend(builder.extra_cflags(target, GitRepo::Rustc, CLang::C));
-            let mut cxxflags = builder.default_cflags(target, CLang::Cxx);
-            cxxflags.extend(builder.extra_cflags(target, GitRepo::Rustc, CLang::Cxx));
+            let mut cflags = builder.cc_handled_clags(target, CLang::C);
+            cflags.extend(builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C));
+            let mut cxxflags = builder.cc_handled_clags(target, CLang::Cxx);
+            cxxflags.extend(builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx));
             cmd.arg("--cc")
                 .arg(builder.cc(target))
                 .arg("--cxx")

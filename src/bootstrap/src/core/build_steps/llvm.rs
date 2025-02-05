@@ -763,9 +763,9 @@ fn configure_cmake(
     // Needs `suppressed_compiler_flag_prefixes` to be gone, and hence
     // https://github.com/llvm/llvm-project/issues/88780 to be fixed.
     let mut cflags: OsString = builder
-        .default_cflags(target, CLang::C)
+        .cc_handled_clags(target, CLang::C)
         .into_iter()
-        .chain(builder.extra_cflags(target, GitRepo::Llvm, CLang::C))
+        .chain(builder.cc_unhandled_cflags(target, GitRepo::Llvm, CLang::C))
         .filter(|flag| {
             !suppressed_compiler_flag_prefixes
                 .iter()
@@ -784,9 +784,9 @@ fn configure_cmake(
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags: OsString = builder
-        .default_cflags(target, CLang::Cxx)
+        .cc_handled_clags(target, CLang::Cxx)
         .into_iter()
-        .chain(builder.extra_cflags(target, GitRepo::Llvm, CLang::Cxx))
+        .chain(builder.cc_unhandled_cflags(target, GitRepo::Llvm, CLang::Cxx))
         .filter(|flag| {
             !suppressed_compiler_flag_prefixes
                 .iter()

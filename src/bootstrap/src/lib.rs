@@ -1142,7 +1142,7 @@ Executed at: {executed_at}"#,
 
     /// Returns C flags that `cc-rs` thinks should be enabled for the
     /// specified target by default.
-    fn default_cflags(&self, target: TargetSelection, c: CLang) -> Vec<String> {
+    fn cc_handled_clags(&self, target: TargetSelection, c: CLang) -> Vec<String> {
         if self.config.dry_run() {
             return Vec::new();
         }
@@ -1161,7 +1161,12 @@ Executed at: {executed_at}"#,
     }
 
     /// Returns extra C flags that `cc-rs` doesn't handle.
-    fn extra_cflags(&self, target: TargetSelection, which: GitRepo, c: CLang) -> Vec<String> {
+    fn cc_unhandled_cflags(
+        &self,
+        target: TargetSelection,
+        which: GitRepo,
+        c: CLang,
+    ) -> Vec<String> {
         let mut base = Vec::new();
 
         // If we're compiling C++ on macOS then we add a flag indicating that
