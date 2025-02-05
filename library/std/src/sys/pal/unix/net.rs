@@ -1,8 +1,9 @@
 use libc::{MSG_PEEK, c_int, c_void, size_t, sockaddr, socklen_t};
 
-use crate::ffi::CStr;
+use crate::ffi::{CStr, OsString};
 use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Shutdown, SocketAddr};
+use crate::os::unix::ffi::OsStringExt;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys::fd::FileDesc;
 use crate::sys::pal::unix::IsMinusOne;
@@ -649,3 +650,31 @@ fn on_resolver_failure() {
 
 #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
 fn on_resolver_failure() {}
+
+pub fn gethostname() -> io::Result<OsString> {
+    // 255 bytes is the maximum allowable length for a hostname (as per the DNS spec),
+    // so we shouldn't ever have problems with this. I (@orowith2os) considered using a constant
+    // and letting the platform set the length, but it was determined after some discussion that
+    // this could break things if the platform changes their length. Possible alternative is to
+    // read the sysconf setting for the max hostname length, but that might be a bit too much work.
+    // The 256 byte length is to allow for the NUL terminator.
+    let mut temp_buffer = [0; 256];
+
+    // SAFETY: we're passing in a valid (0-initialized) buffer, and the length of said buffer.
+    unsafe {
+        cvt(libc::gethostname(temp_buffer.as_mut_ptr() as _, temp_buffer.len() as _))?;
+    }
+
+    // Unfortunately, the UNIX specification says that the name will be truncated
+    // if it does not fit in the buffer, without returning. As additionally, the
+    // truncated name may still be null-terminated, there is no reliable way to
+    // detect truncation. Fortunately, most platforms ignore what the specication
+    // says and return an error (mostly ENAMETOOLONG). Should that not be the case,
+    // the following detects truncation if the null-terminator was omitted. Note
+    // that this check does not impact performance at all as we need to find the
+    // length of the string anyways.
+    match CStr::from_bytes_until_nul(&temp_buffer) {
+        Ok(bytes) => Ok(OsString::from_vec(bytes.to_bytes().to_vec())),
+        Err(_) => Err(io::Error::from_raw_os_error(libc::ENAMETOOLONG)),
+    }
+}
