@@ -23,13 +23,20 @@ pub enum Edition {
     Edition2021,
     /// The 2024 edition
     Edition2024,
+    /// The 2027 edition
+    Edition2027,
 }
 
 // Must be in order from oldest to newest.
-pub const ALL_EDITIONS: &[Edition] =
-    &[Edition::Edition2015, Edition::Edition2018, Edition::Edition2021, Edition::Edition2024];
+pub const ALL_EDITIONS: &[Edition] = &[
+    Edition::Edition2015,
+    Edition::Edition2018,
+    Edition::Edition2021,
+    Edition::Edition2024,
+    Edition::Edition2027,
+];
 
-pub const EDITION_NAME_LIST: &str = "2015|2018|2021|2024";
+pub const EDITION_NAME_LIST: &str = "2015|2018|2021|2024|2027";
 
 pub const DEFAULT_EDITION: Edition = Edition::Edition2015;
 
@@ -42,6 +49,7 @@ impl fmt::Display for Edition {
             Edition::Edition2018 => "2018",
             Edition::Edition2021 => "2021",
             Edition::Edition2024 => "2024",
+            Edition::Edition2027 => "2027",
         };
         write!(f, "{s}")
     }
@@ -54,6 +62,7 @@ impl Edition {
             Edition::Edition2018 => "rust_2018_compatibility",
             Edition::Edition2021 => "rust_2021_compatibility",
             Edition::Edition2024 => "rust_2024_compatibility",
+            Edition::Edition2027 => "rust_2027_compatibility",
         }
     }
 
@@ -63,6 +72,7 @@ impl Edition {
             Edition::Edition2018 => true,
             Edition::Edition2021 => true,
             Edition::Edition2024 => true,
+            Edition::Edition2027 => false,
         }
     }
 
@@ -85,6 +95,11 @@ impl Edition {
     pub fn at_least_rust_2024(self) -> bool {
         self >= Edition::Edition2024
     }
+
+    /// Are we allowed to use features from the Rust 2027 edition?
+    pub fn at_least_rust_2027(self) -> bool {
+        self >= Edition::Edition2027
+    }
 }
 
 impl FromStr for Edition {
@@ -95,6 +110,7 @@ impl FromStr for Edition {
             "2018" => Ok(Edition::Edition2018),
             "2021" => Ok(Edition::Edition2021),
             "2024" => Ok(Edition::Edition2024),
+            "2027" => Ok(Edition::Edition2027),
             _ => Err(()),
         }
     }

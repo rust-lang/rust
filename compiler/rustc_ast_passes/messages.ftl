@@ -164,6 +164,8 @@ ast_passes_match_arm_with_no_body =
     `match` arm with no body
     .suggestion = add a body after the pattern
 
+ast_passes_missing_extern_abi = extern declarations without an explicit ABI are disallowed
+
 ast_passes_missing_unsafe_on_extern = extern blocks must be unsafe
 
 ast_passes_module_nonascii = trying to load file for module `{$name}` with non-ascii identifier name

@@ -168,3 +168,17 @@ pub mod rust_2024 {
     #[doc(no_inline)]
     pub use core::prelude::rust_2024::*;
 }
+
+/// The 2027 version of the prelude of The Rust Standard Library.
+///
+/// See the [module-level documentation](self) for more.
+#[unstable(feature = "prelude_2027", issue = "none")]
+pub mod rust_2027 {
+    #[unstable(feature = "prelude_2027", issue = "none")]
+    #[doc(no_inline)]
+    pub use super::v1::*;
+
+    #[unstable(feature = "prelude_2027", issue = "none")]
+    #[doc(no_inline)]
+    pub use core::prelude::rust_2027::*;
+}

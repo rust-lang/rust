@@ -30,7 +30,8 @@ macro_rules! style_edition_default {
                     $crate::config::StyleEdition::Edition2015
                     | $crate::config::StyleEdition::Edition2018
                     | $crate::config::StyleEdition::Edition2021 => $default_2015,
-                    $crate::config::StyleEdition::Edition2024 => $default_2024,
+                    $crate::config::StyleEdition::Edition2024
+                    | $crate::config::StyleEdition::Edition2027 => $default_2024,
                 }
             }
         }

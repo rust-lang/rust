@@ -485,6 +485,8 @@ declare_features! (
     (incomplete, dyn_star, "1.65.0", Some(102425)),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
     (unstable, exhaustive_patterns, "1.13.0", Some(51085)),
+    /// Allows explicit extern ABIs.
+    (unstable, explicit_extern_abis, "1.84.2", Some(134986)),
     /// Allows explicit tail calls via `become` expression.
     (incomplete, explicit_tail_calls, "1.72.0", Some(112788)),
     /// Allows defining `extern type`s.

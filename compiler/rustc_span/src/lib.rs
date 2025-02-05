@@ -851,6 +851,12 @@ impl Span {
         self.edition().at_least_rust_2024()
     }
 
+    /// Are we allowed to use features from the Rust 2027 edition?
+    #[inline]
+    pub fn at_least_rust_2027(self) -> bool {
+        self.edition().at_least_rust_2027()
+    }
+
     /// Returns the source callee.
     ///
     /// Returns `None` if the supplied span has no expansion trace,
