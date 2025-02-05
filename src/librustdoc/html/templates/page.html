@@ -100,7 +100,7 @@
             <h2> {# #}
                 <a href="{{page.root_path|safe}}{{display_krate_with_trailing_slash|safe}}index.html">{{display_krate|wrapped|safe}}</a>
                 {% if !display_krate_version_number.is_empty() %}
-                    <span class="version">{{+ display_krate_version_number}}</span>
+                    <span class="version">{{+ display_krate_version_number}}<button id="copy-cargo-snippet" title="Copy Cargo.toml snippet to clipboard"></button></span>
                 {% endif %}
             </h2> {# #}
         </div>

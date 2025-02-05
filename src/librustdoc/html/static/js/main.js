@@ -2079,6 +2079,19 @@ function preLoadCss(cssUrl) {
         copyButtonAnimation(but);
     };
 
+    // Copy button that appears next to the crate version.
+    const crate_version_copy_button = document.getElementById("copy-cargo-snippet");
+    if (!crate_version_copy_button) {
+        return;
+    }
+    crate_version_copy_button.onclick = () => {
+        const crate_version = crate_version_copy_button.parentElement.textContent;
+        const snippet = `${window.currentCrate} = "${crate_version}"`;
+
+        copyContentToClipboard(snippet);
+        copyButtonAnimation(crate_version_copy_button);
+    };
+
     // Copy buttons on code examples.
     // @ts-expect-error
     function copyCode(codeElem) {
