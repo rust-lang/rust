@@ -347,9 +347,17 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // yield an object-type (e.g., `&Object` or `Box<Object>`
         // etc).
 
-        // FIXME: this feels, like, super dubious
-        self.fcx
-            .autoderef(self.span, self_ty)
+        let mut autoderef = self.fcx.autoderef(self.span, self_ty);
+
+        // We don't need to gate this behind arbitrary self types
+        // per se, but it does make things a bit more gated.
+        if self.tcx.features().arbitrary_self_types()
+            || self.tcx.features().arbitrary_self_types_pointers()
+        {
+            autoderef = autoderef.use_receiver_trait();
+        }
+
+        autoderef
             .include_raw_pointers()
             .find_map(|(ty, _)| match ty.kind() {
                 ty::Dynamic(data, ..) => Some(closure(
