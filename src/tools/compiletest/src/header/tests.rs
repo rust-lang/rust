@@ -239,11 +239,6 @@ fn check_ignore(config: &Config, contents: &str) -> bool {
     d.ignore
 }
 
-fn parse_makefile(config: &Config, contents: &str) -> EarlyProps {
-    let bytes = contents.as_bytes();
-    EarlyProps::from_reader(config, Path::new("Makefile"), bytes)
-}
-
 #[test]
 fn should_fail() {
     let config: Config = cfg().build();
@@ -261,10 +256,6 @@ fn revisions() {
     let config: Config = cfg().build();
 
     assert_eq!(parse_rs(&config, "//@ revisions: a b c").revisions, vec!["a", "b", "c"],);
-    assert_eq!(
-        parse_makefile(&config, "# revisions: hello there").revisions,
-        vec!["hello", "there"],
-    );
 }
 
 #[test]
