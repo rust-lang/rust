@@ -11,12 +11,12 @@ use std::str::FromStr;
 use std::{env, process};
 
 use bootstrap::{
-    Build, CONFIG_CHANGE_HISTORY, Config, Flags, Subcommand, find_recent_config_change_ids,
+    Build, CONFIG_CHANGE_HISTORY, Config, Flags, Subcommand, debug, find_recent_config_change_ids,
     human_readable_changes, t,
 };
 use build_helper::ci::CiEnv;
 #[cfg(feature = "tracing")]
-use tracing::{debug, instrument};
+use tracing::instrument;
 
 #[cfg_attr(feature = "tracing", instrument(level = "trace", name = "main"))]
 fn main() {
@@ -29,10 +29,8 @@ fn main() {
         return;
     }
 
-    #[cfg(feature = "tracing")]
     debug!("parsing flags");
     let flags = Flags::parse(&args);
-    #[cfg(feature = "tracing")]
     debug!("parsing config based on flags");
     let config = Config::parse(flags);
 
@@ -95,7 +93,6 @@ fn main() {
     let dump_bootstrap_shims = config.dump_bootstrap_shims;
     let out_dir = config.out.clone();
 
-    #[cfg(feature = "tracing")]
     debug!("creating new build based on config");
     Build::new(config).build();
 
@@ -207,8 +204,9 @@ fn check_version(config: &Config) -> Option<String> {
 // Due to the conditional compilation via the `tracing` cargo feature, this means that `tracing`
 // usages in bootstrap need to be also gated behind the `tracing` feature:
 //
-// - `tracing` macros (like `trace!`) and anything from `tracing`, `tracing_subscriber` and
-//   `tracing-tree` will need to be gated by `#[cfg(feature = "tracing")]`.
+// - `tracing` macros with log levels (`trace!`, `debug!`, `warn!`, `info`, `error`) should not be
+//   used *directly*. You should use the wrapped `tracing` macros which gate the actual invocations
+//   behind `feature = "tracing"`.
 // - `tracing`'s `#[instrument(..)]` macro will need to be gated like `#![cfg_attr(feature =
 //   "tracing", instrument(..))]`.
 #[cfg(feature = "tracing")]

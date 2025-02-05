@@ -162,7 +162,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
         inner_visitor.check(i.owner_id, |this| intravisit::walk_impl_item(this, i));
     }
 
-    fn visit_pattern_type_pattern(&mut self, p: &'hir hir::Pat<'hir>) {
-        self.visit_pat(p)
+    fn visit_pattern_type_pattern(&mut self, p: &'hir hir::TyPat<'hir>) {
+        intravisit::walk_ty_pat(self, p)
     }
 }

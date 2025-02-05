@@ -8,12 +8,11 @@
 //! not be used external to this module.
 
 use std::borrow::Cow;
-use std::cell::Cell;
 use std::cmp::Ordering;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
 
-use itertools::Itertools;
+use itertools::Either;
 use rustc_abi::ExternAbi;
 use rustc_attr_parsing::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
@@ -35,6 +34,7 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::{Escape, EscapeBodyText};
 use crate::html::render::Context;
+use crate::joined::Joined as _;
 use crate::passes::collect_intra_doc_links::UrlFragment;
 
 pub(crate) trait Print {
@@ -146,22 +146,6 @@ impl Buffer {
     }
 }
 
-pub(crate) fn comma_sep<T: Display>(
-    items: impl Iterator<Item = T>,
-    space_after_comma: bool,
-) -> impl Display {
-    let items = Cell::new(Some(items));
-    fmt::from_fn(move |f| {
-        for (i, item) in items.take().unwrap().enumerate() {
-            if i != 0 {
-                write!(f, ",{}", if space_after_comma { " " } else { "" })?;
-            }
-            item.fmt(f)?;
-        }
-        Ok(())
-    })
-}
-
 pub(crate) fn print_generic_bounds<'a, 'tcx: 'a>(
     bounds: &'a [clean::GenericBound],
     cx: &'a Context<'tcx>,
@@ -169,13 +153,11 @@ pub(crate) fn print_generic_bounds<'a, 'tcx: 'a>(
     fmt::from_fn(move |f| {
         let mut bounds_dup = FxHashSet::default();
 
-        for (i, bound) in bounds.iter().filter(|b| bounds_dup.insert(*b)).enumerate() {
-            if i > 0 {
-                f.write_str(" + ")?;
-            }
-            bound.print(cx).fmt(f)?;
-        }
-        Ok(())
+        bounds
+            .iter()
+            .filter(move |b| bounds_dup.insert(*b))
+            .map(|bound| bound.print(cx))
+            .joined(" + ", f)
     })
 }
 
@@ -190,12 +172,7 @@ impl clean::GenericParamDef {
 
                 if !outlives.is_empty() {
                     f.write_str(": ")?;
-                    for (i, lt) in outlives.iter().enumerate() {
-                        if i != 0 {
-                            f.write_str(" + ")?;
-                        }
-                        write!(f, "{}", lt.print())?;
-                    }
+                    outlives.iter().map(|lt| lt.print()).joined(" + ", f)?;
                 }
 
                 Ok(())
@@ -245,10 +222,12 @@ impl clean::Generics {
                 return Ok(());
             }
 
+            let real_params =
+                fmt::from_fn(|f| real_params.clone().map(|g| g.print(cx)).joined(", ", f));
             if f.alternate() {
-                write!(f, "<{:#}>", comma_sep(real_params.map(|g| g.print(cx)), true))
+                write!(f, "<{:#}>", real_params)
             } else {
-                write!(f, "&lt;{}&gt;", comma_sep(real_params.map(|g| g.print(cx)), true))
+                write!(f, "&lt;{}&gt;", real_params)
             }
         })
     }
@@ -258,6 +237,42 @@ impl clean::Generics {
 pub(crate) enum Ending {
     Newline,
     NoNewline,
+}
+
+fn print_where_predicate<'a, 'tcx: 'a>(
+    predicate: &'a clean::WherePredicate,
+    cx: &'a Context<'tcx>,
+) -> impl Display + 'a + Captures<'tcx> {
+    fmt::from_fn(move |f| {
+        match predicate {
+            clean::WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
+                print_higher_ranked_params_with_space(bound_params, cx, "for").fmt(f)?;
+                ty.print(cx).fmt(f)?;
+                f.write_str(":")?;
+                if !bounds.is_empty() {
+                    f.write_str(" ")?;
+                    print_generic_bounds(bounds, cx).fmt(f)?;
+                }
+                Ok(())
+            }
+            clean::WherePredicate::RegionPredicate { lifetime, bounds } => {
+                // We don't need to check `alternate` since we can be certain that neither
+                // the lifetime nor the bounds contain any characters which need escaping.
+                write!(f, "{}:", lifetime.print())?;
+                if !bounds.is_empty() {
+                    write!(f, " {}", print_generic_bounds(bounds, cx))?;
+                }
+                Ok(())
+            }
+            clean::WherePredicate::EqPredicate { lhs, rhs } => {
+                if f.alternate() {
+                    write!(f, "{:#} == {:#}", lhs.print(cx), rhs.print(cx))
+                } else {
+                    write!(f, "{} == {}", lhs.print(cx), rhs.print(cx))
+                }
+            }
+        }
+    })
 }
 
 /// * The Generics from which to emit a where-clause.
@@ -270,55 +285,26 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
     ending: Ending,
 ) -> impl Display + 'a + Captures<'tcx> {
     fmt::from_fn(move |f| {
-        let mut where_predicates = gens
-            .where_predicates
-            .iter()
-            .map(|pred| {
-                fmt::from_fn(move |f| {
-                    if f.alternate() {
-                        f.write_str(" ")?;
-                    } else {
-                        f.write_str("\n")?;
-                    }
-
-                    match pred {
-                        clean::WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
-                            print_higher_ranked_params_with_space(bound_params, cx, "for")
-                                .fmt(f)?;
-                            ty.print(cx).fmt(f)?;
-                            f.write_str(":")?;
-                            if !bounds.is_empty() {
-                                f.write_str(" ")?;
-                                print_generic_bounds(bounds, cx).fmt(f)?;
-                            }
-                            Ok(())
-                        }
-                        clean::WherePredicate::RegionPredicate { lifetime, bounds } => {
-                            // We don't need to check `alternate` since we can be certain that neither
-                            // the lifetime nor the bounds contain any characters which need escaping.
-                            write!(f, "{}:", lifetime.print())?;
-                            if !bounds.is_empty() {
-                                write!(f, " {}", print_generic_bounds(bounds, cx))?;
-                            }
-                            Ok(())
-                        }
-                        clean::WherePredicate::EqPredicate { lhs, rhs } => {
-                            if f.alternate() {
-                                write!(f, "{:#} == {:#}", lhs.print(cx), rhs.print(cx))
-                            } else {
-                                write!(f, "{} == {}", lhs.print(cx), rhs.print(cx))
-                            }
-                        }
-                    }
-                })
-            })
-            .peekable();
-
-        if where_predicates.peek().is_none() {
+        if gens.where_predicates.is_empty() {
             return Ok(());
         }
 
-        let where_preds = comma_sep(where_predicates, false);
+        let where_preds = fmt::from_fn(|f| {
+            gens.where_predicates
+                .iter()
+                .map(|predicate| {
+                    fmt::from_fn(|f| {
+                        if f.alternate() {
+                            f.write_str(" ")?;
+                        } else {
+                            f.write_str("\n")?;
+                        }
+                        print_where_predicate(predicate, cx).fmt(f)
+                    })
+                })
+                .joined(",", f)
+        });
+
         let clause = if f.alternate() {
             if ending == Ending::Newline {
                 format!(" where{where_preds},")
@@ -415,12 +401,7 @@ impl clean::GenericBound {
                 } else {
                     f.write_str("use&lt;")?;
                 }
-                for (i, arg) in args.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
-                    }
-                    arg.fmt(f)?;
-                }
+                args.iter().joined(", ", f)?;
                 if f.alternate() { f.write_str(">") } else { f.write_str("&gt;") }
             }
         })
@@ -438,29 +419,18 @@ impl clean::GenericArgs {
                         } else {
                             f.write_str("&lt;")?;
                         }
-                        let mut comma = false;
-                        for arg in args.iter() {
-                            if comma {
-                                f.write_str(", ")?;
-                            }
-                            comma = true;
-                            if f.alternate() {
-                                write!(f, "{:#}", arg.print(cx))?;
-                            } else {
-                                write!(f, "{}", arg.print(cx))?;
-                            }
-                        }
-                        for constraint in constraints.iter() {
-                            if comma {
-                                f.write_str(", ")?;
-                            }
-                            comma = true;
-                            if f.alternate() {
-                                write!(f, "{:#}", constraint.print(cx))?;
-                            } else {
-                                write!(f, "{}", constraint.print(cx))?;
-                            }
-                        }
+
+                        [Either::Left(args), Either::Right(constraints)]
+                            .into_iter()
+                            .flat_map(Either::factor_into_iter)
+                            .map(|either| {
+                                either.map_either(
+                                    |arg| arg.print(cx),
+                                    |constraint| constraint.print(cx),
+                                )
+                            })
+                            .joined(", ", f)?;
+
                         if f.alternate() {
                             f.write_str(">")?;
                         } else {
@@ -470,14 +440,7 @@ impl clean::GenericArgs {
                 }
                 clean::GenericArgs::Parenthesized { inputs, output } => {
                     f.write_str("(")?;
-                    let mut comma = false;
-                    for ty in inputs.iter() {
-                        if comma {
-                            f.write_str(", ")?;
-                        }
-                        comma = true;
-                        ty.print(cx).fmt(f)?;
-                    }
+                    inputs.iter().map(|ty| ty.print(cx)).joined(", ", f)?;
                     f.write_str(")")?;
                     if let Some(ref ty) = *output {
                         if f.alternate() {
@@ -524,6 +487,7 @@ pub(crate) enum HrefError {
 // Panics if `syms` is empty.
 pub(crate) fn join_with_double_colon(syms: &[Symbol]) -> String {
     let mut s = String::with_capacity(estimate_item_path_byte_length(syms.len()));
+    // NOTE: using `Joined::joined` here causes a noticeable perf regression
     s.push_str(syms[0].as_str());
     for sym in &syms[1..] {
         s.push_str("::");
@@ -572,20 +536,20 @@ fn generate_macro_def_id_path(
     }
 
     if let Some(last) = path.last_mut() {
-        *last = Symbol::intern(&format!("macro.{}.html", last.as_str()));
+        *last = Symbol::intern(&format!("macro.{last}.html"));
     }
 
     let url = match cache.extern_locations[&def_id.krate] {
         ExternalLocation::Remote(ref s) => {
             // `ExternalLocation::Remote` always end with a `/`.
-            format!("{s}{path}", path = path.iter().map(|p| p.as_str()).join("/"))
+            format!("{s}{path}", path = fmt::from_fn(|f| path.iter().joined("/", f)))
         }
         ExternalLocation::Local => {
             // `root_path` always end with a `/`.
             format!(
                 "{root_path}{path}",
                 root_path = root_path.unwrap_or(""),
-                path = path.iter().map(|p| p.as_str()).join("/")
+                path = fmt::from_fn(|f| path.iter().joined("/", f))
             )
         }
         ExternalLocation::Unknown => {
@@ -682,9 +646,8 @@ fn make_href(
             url_parts.push("index.html");
         }
         _ => {
-            let prefix = shortty.as_str();
             let last = fqp.last().unwrap();
-            url_parts.push_fmt(format_args!("{prefix}.{last}.html"));
+            url_parts.push_fmt(format_args!("{shortty}.{last}.html"));
         }
     }
     Ok((url_parts.finish(), shortty, fqp.to_vec()))
@@ -950,12 +913,7 @@ fn tybounds<'a, 'tcx: 'a>(
     cx: &'a Context<'tcx>,
 ) -> impl Display + 'a + Captures<'tcx> {
     fmt::from_fn(move |f| {
-        for (i, bound) in bounds.iter().enumerate() {
-            if i > 0 {
-                write!(f, " + ")?;
-            }
-            bound.print(cx).fmt(f)?;
-        }
+        bounds.iter().map(|bound| bound.print(cx)).joined(" + ", f)?;
         if let Some(lt) = lt {
             // We don't need to check `alternate` since we can be certain that
             // the lifetime doesn't contain any characters which need escaping.
@@ -974,7 +932,7 @@ fn print_higher_ranked_params_with_space<'a, 'tcx: 'a>(
         if !params.is_empty() {
             f.write_str(keyword)?;
             f.write_str(if f.alternate() { "<" } else { "&lt;" })?;
-            comma_sep(params.iter().map(|lt| lt.print(cx)), true).fmt(f)?;
+            params.iter().map(|lt| lt.print(cx)).joined(", ", f)?;
             f.write_str(if f.alternate() { "> " } else { "&gt; " })?;
         }
         Ok(())
@@ -1025,9 +983,7 @@ fn fmt_type(
         clean::Primitive(clean::PrimitiveType::Never) => {
             primitive_link(f, PrimitiveType::Never, format_args!("!"), cx)
         }
-        clean::Primitive(prim) => {
-            primitive_link(f, prim, format_args!("{}", prim.as_sym().as_str()), cx)
-        }
+        clean::Primitive(prim) => primitive_link(f, prim, format_args!("{}", prim.as_sym()), cx),
         clean::BareFunction(ref decl) => {
             print_higher_ranked_params_with_space(&decl.generic_params, cx, "for").fmt(f)?;
             decl.safety.print_with_space().fmt(f)?;
@@ -1067,18 +1023,16 @@ fn fmt_type(
                     primitive_link(
                         f,
                         PrimitiveType::Tuple,
-                        format_args!("({})", generic_names.iter().map(|s| s.as_str()).join(", ")),
+                        format_args!(
+                            "({})",
+                            fmt::from_fn(|f| generic_names.iter().joined(", ", f))
+                        ),
                         cx,
                     )
                 } else {
-                    write!(f, "(")?;
-                    for (i, item) in many.iter().enumerate() {
-                        if i != 0 {
-                            write!(f, ", ")?;
-                        }
-                        item.print(cx).fmt(f)?;
-                    }
-                    write!(f, ")")
+                    f.write_str("(")?;
+                    many.iter().map(|item| item.print(cx)).joined(", ", f)?;
+                    f.write_str(")")
                 }
             }
         },
@@ -1407,16 +1361,17 @@ impl clean::Arguments {
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
         fmt::from_fn(move |f| {
-            for (i, input) in self.values.iter().enumerate() {
-                if !input.name.is_empty() {
-                    write!(f, "{}: ", input.name)?;
-                }
-                input.type_.print(cx).fmt(f)?;
-                if i + 1 < self.values.len() {
-                    write!(f, ", ")?;
-                }
-            }
-            Ok(())
+            self.values
+                .iter()
+                .map(|input| {
+                    fmt::from_fn(|f| {
+                        if !input.name.is_empty() {
+                            write!(f, "{}: ", input.name)?;
+                        }
+                        input.type_.print(cx).fmt(f)
+                    })
+                })
+                .joined(", ", f)
         })
     }
 }
@@ -1725,12 +1680,7 @@ impl clean::ImportSource {
                 }
                 let name = self.path.last();
                 if let hir::def::Res::PrimTy(p) = self.path.res {
-                    primitive_link(
-                        f,
-                        PrimitiveType::from(p),
-                        format_args!("{}", name.as_str()),
-                        cx,
-                    )?;
+                    primitive_link(f, PrimitiveType::from(p), format_args!("{name}"), cx)?;
                 } else {
                     f.write_str(name.as_str())?;
                 }

@@ -196,15 +196,13 @@ function switchDisplayedElement(elemToDisplay) {
     removeClass(el, "hidden");
 
     const mainHeading = elemToDisplay.querySelector(".main-heading");
-    // @ts-expect-error
-    if (mainHeading && searchState.rustdocToolbar) {
-        // @ts-expect-error
-        if (searchState.rustdocToolbar.parentElement) {
-            // @ts-expect-error
-            searchState.rustdocToolbar.parentElement.removeChild(searchState.rustdocToolbar);
+    if (mainHeading && window.searchState.rustdocToolbar) {
+        if (window.searchState.rustdocToolbar.parentElement) {
+            window.searchState.rustdocToolbar.parentElement.removeChild(
+                window.searchState.rustdocToolbar,
+            );
         }
-        // @ts-expect-error
-        mainHeading.appendChild(searchState.rustdocToolbar);
+        mainHeading.appendChild(window.searchState.rustdocToolbar);
     }
 }
 
@@ -212,7 +210,12 @@ function browserSupportsHistoryApi() {
     return window.history && typeof window.history.pushState === "function";
 }
 
-// @ts-expect-error
+/**
+ * Download CSS from the web without making it the active stylesheet.
+ * We use this in the settings popover so that you don't get FOUC when switching.
+ *
+ * @param {string} cssUrl
+ */
 function preLoadCss(cssUrl) {
     // https://developer.mozilla.org/en-US/docs/Web/HTML/Link_types/preload
     const link = document.createElement("link");
@@ -225,7 +228,11 @@ function preLoadCss(cssUrl) {
 (function() {
     const isHelpPage = window.location.pathname.endsWith("/help.html");
 
-    // @ts-expect-error
+    /**
+     * Run a JavaScript file asynchronously.
+     * @param {string} url
+     * @param {function(): any} errorCallback
+     */
     function loadScript(url, errorCallback) {
         const script = document.createElement("script");
         script.src = url;
@@ -235,13 +242,12 @@ function preLoadCss(cssUrl) {
         document.head.append(script);
     }
 
-    if (getSettingsButton()) {
-        // @ts-expect-error
-        getSettingsButton().onclick = event => {
+    const settingsButton = getSettingsButton();
+    if (settingsButton) {
+        settingsButton.onclick = event => {
             if (event.ctrlKey || event.altKey || event.metaKey) {
                 return;
             }
-            // @ts-expect-error
             window.hideAllModals(false);
             addClass(getSettingsButton(), "rotate");
             event.preventDefault();
@@ -470,7 +476,6 @@ function preLoadCss(cssUrl) {
                     }
                     return onEachLazy(implElem.parentElement.parentElement.querySelectorAll(
                         `[id^="${assocId}"]`),
-                        // @ts-expect-error
                         item => {
                             const numbered = /^(.+?)-([0-9]+)$/.exec(item.id);
                             if (item.id === assocId || (numbered && numbered[1] === assocId)) {
@@ -522,7 +527,6 @@ function preLoadCss(cssUrl) {
         ev.preventDefault();
         // @ts-expect-error
         searchState.defocus();
-        // @ts-expect-error
         window.hideAllModals(true); // true = reset focus for tooltips
     }
 
@@ -687,7 +691,6 @@ function preLoadCss(cssUrl) {
             //
             // By the way, this is only used by and useful for traits implemented automatically
             // (like "Send" and "Sync").
-            // @ts-expect-error
             onEachLazy(synthetic_implementors.getElementsByClassName("impl"), el => {
                 const aliases = el.getAttribute("data-aliases");
                 if (!aliases) {
@@ -740,7 +743,6 @@ function preLoadCss(cssUrl) {
                 code.innerHTML = struct[TEXT_IDX];
                 addClass(code, "code-header");
 
-                // @ts-expect-error
                 onEachLazy(code.getElementsByTagName("a"), elem => {
                     const href = elem.getAttribute("href");
 
@@ -886,7 +888,6 @@ function preLoadCss(cssUrl) {
             const template = document.createElement("template");
             template.innerHTML = text;
 
-            // @ts-expect-error
             onEachLazy(template.content.querySelectorAll("a"), elem => {
                 const href = elem.getAttribute("href");
 
@@ -894,7 +895,6 @@ function preLoadCss(cssUrl) {
                     elem.setAttribute("href", window.rootPath + href);
                 }
             });
-            // @ts-expect-error
             onEachLazy(template.content.querySelectorAll("[id]"), el => {
                 let i = 0;
                 if (idMap.has(el.id)) {
@@ -912,7 +912,6 @@ function preLoadCss(cssUrl) {
                     const oldHref = `#${el.id}`;
                     const newHref = `#${el.id}-${i}`;
                     el.id = `${el.id}-${i}`;
-                    // @ts-expect-error
                     onEachLazy(template.content.querySelectorAll("a[href]"), link => {
                         if (link.getAttribute("href") === oldHref) {
                             link.href = newHref;
@@ -933,7 +932,6 @@ function preLoadCss(cssUrl) {
                 // @ts-expect-error
                 sidebarTraitList.append(li);
             } else {
-                // @ts-expect-error
                 onEachLazy(templateAssocItems, item => {
                     let block = hasClass(item, "associatedtype") ? associatedTypes : (
                         hasClass(item, "associatedconstant") ? associatedConstants : (
@@ -1040,7 +1038,6 @@ function preLoadCss(cssUrl) {
     function expandAllDocs() {
         const innerToggle = document.getElementById(toggleAllDocsId);
         removeClass(innerToggle, "will-expand");
-        // @ts-expect-error
         onEachLazy(document.getElementsByClassName("toggle"), e => {
             if (!hasClass(e, "type-contents-toggle") && !hasClass(e, "more-examples-toggle")) {
                 e.open = true;
@@ -1053,7 +1050,6 @@ function preLoadCss(cssUrl) {
     function collapseAllDocs() {
         const innerToggle = document.getElementById(toggleAllDocsId);
         addClass(innerToggle, "will-expand");
-        // @ts-expect-error
         onEachLazy(document.getElementsByClassName("toggle"), e => {
             if (e.parentNode.id !== "implementations-list" ||
                 (!hasClass(e, "implementors-toggle") &&
@@ -1092,7 +1088,6 @@ function preLoadCss(cssUrl) {
         function setImplementorsTogglesOpen(id, open) {
             const list = document.getElementById(id);
             if (list !== null) {
-                // @ts-expect-error
                 onEachLazy(list.getElementsByClassName("implementors-toggle"), e => {
                     e.open = open;
                 });
@@ -1104,7 +1099,6 @@ function preLoadCss(cssUrl) {
             setImplementorsTogglesOpen("blanket-implementations-list", false);
         }
 
-        // @ts-expect-error
         onEachLazy(document.getElementsByClassName("toggle"), e => {
             if (!hideLargeItemContents && hasClass(e, "type-contents-toggle")) {
                 e.open = true;
@@ -1124,7 +1118,6 @@ function preLoadCss(cssUrl) {
         }
         onEachLazy(document.querySelectorAll(
             ":not(.scraped-example) > .example-wrap > pre:not(.example-line-numbers)",
-        // @ts-expect-error
         ), x => {
             const parent = x.parentNode;
             const line_numbers = parent.querySelectorAll(".example-line-numbers");
@@ -1145,7 +1138,6 @@ function preLoadCss(cssUrl) {
 
     // @ts-expect-error
     window.rustdoc_remove_line_numbers_from_examples = () => {
-        // @ts-expect-error
         onEachLazy(document.querySelectorAll(".example-wrap > .example-line-numbers"), x => {
             x.parentNode.removeChild(x);
         });
@@ -1157,16 +1149,13 @@ function preLoadCss(cssUrl) {
     }
 
     function showSidebar() {
-        // @ts-expect-error
         window.hideAllModals(false);
         const sidebar = document.getElementsByClassName("sidebar")[0];
-        // @ts-expect-error
         addClass(sidebar, "shown");
     }
 
     function hideSidebar() {
         const sidebar = document.getElementsByClassName("sidebar")[0];
-        // @ts-expect-error
         removeClass(sidebar, "shown");
     }
 
@@ -1193,7 +1182,6 @@ function preLoadCss(cssUrl) {
         mainElem.addEventListener("click", hideSidebar);
     }
 
-    // @ts-expect-error
     onEachLazy(document.querySelectorAll("a[href^='#']"), el => {
         // For clicks on internal links (<A> tags with a hash property), we expand the section we're
         // jumping to *before* jumping there. We can't do this in onHashChange, because it changes
@@ -1204,7 +1192,6 @@ function preLoadCss(cssUrl) {
         });
     });
 
-    // @ts-expect-error
     onEachLazy(document.querySelectorAll(".toggle > summary:not(.hideme)"), el => {
         // @ts-expect-error
         el.addEventListener("click", e => {
@@ -1241,7 +1228,6 @@ function preLoadCss(cssUrl) {
             clearTooltipHoverTimeout(window.CURRENT_TOOLTIP_ELEMENT);
             return;
         }
-        // @ts-expect-error
         window.hideAllModals(false);
         const wrapper = document.createElement("div");
         if (notable_ty) {
@@ -1422,7 +1408,6 @@ function preLoadCss(cssUrl) {
         }
     }
 
-    // @ts-expect-error
     onEachLazy(document.getElementsByClassName("tooltip"), e => {
         e.onclick = () => {
             e.TOOLTIP_FORCE_VISIBLE = e.TOOLTIP_FORCE_VISIBLE ? false : true;
@@ -1527,7 +1512,6 @@ function preLoadCss(cssUrl) {
             // @ts-expect-error
             !getSettingsButton().contains(event.relatedTarget)
         ) {
-            // @ts-expect-error
             window.hidePopoverMenus();
         }
     }
@@ -1626,10 +1610,8 @@ function preLoadCss(cssUrl) {
      *
      * Pass "true" to reset focus for tooltip popovers.
      */
-    // @ts-expect-error
     window.hideAllModals = switchFocus => {
         hideSidebar();
-        // @ts-expect-error
         window.hidePopoverMenus();
         hideTooltip(switchFocus);
     };
@@ -1637,9 +1619,7 @@ function preLoadCss(cssUrl) {
     /**
      * Hide all the popover menus.
      */
-    // @ts-expect-error
     window.hidePopoverMenus = () => {
-        // @ts-expect-error
         onEachLazy(document.querySelectorAll("rustdoc-toolbar .popover"), elem => {
             elem.style.display = "none";
         });
@@ -1708,7 +1688,6 @@ function preLoadCss(cssUrl) {
             if (shouldShowHelp) {
                 showHelp();
             } else {
-                // @ts-expect-error
                 window.hidePopoverMenus();
             }
         });
@@ -1780,30 +1759,42 @@ function preLoadCss(cssUrl) {
         });
     }
 
-    // Pointer capture.
-    //
-    // Resizing is a single-pointer gesture. Any secondary pointer is ignored
-    // @ts-expect-error
+    /**
+     * Pointer capture.
+     *
+     * Resizing is a single-pointer gesture. Any secondary pointer is ignored
+     *
+     * @type {null|number}
+     */
     let currentPointerId = null;
 
-    // "Desired" sidebar size.
-    //
-    // This is stashed here for window resizing. If the sidebar gets
-    // shrunk to maintain BODY_MIN, and then the user grows the window again,
-    // it gets the sidebar to restore its size.
-    // @ts-expect-error
+    /**
+     * "Desired" sidebar size.
+     *
+     * This is stashed here for window resizing. If the sidebar gets
+     * shrunk to maintain BODY_MIN, and then the user grows the window again,
+     * it gets the sidebar to restore its size.
+     *
+     * @type {null|number}
+     */
     let desiredSidebarSize = null;
 
-    // Sidebar resize debouncer.
-    //
-    // The sidebar itself is resized instantly, but the body HTML can be too
-    // big for that, causing reflow jank. To reduce this, we queue up a separate
-    // animation frame and throttle it.
+    /**
+     * Sidebar resize debouncer.
+     *
+     * The sidebar itself is resized instantly, but the body HTML can be too
+     * big for that, causing reflow jank. To reduce this, we queue up a separate
+     * animation frame and throttle it.
+     *
+     * @type {false|ReturnType<typeof setTimeout>}
+     */
     let pendingSidebarResizingFrame = false;
 
-    // If this page has no sidebar at all, bail out.
+    /** @type {HTMLElement|null} */
     const resizer = document.querySelector(".sidebar-resizer");
+    /** @type {HTMLElement|null} */
     const sidebar = document.querySelector(".sidebar");
+    // If this page has no sidebar at all, bail out.
     if (!resizer || !sidebar) {
         return;
     }
@@ -1820,11 +1811,9 @@ function preLoadCss(cssUrl) {
     // from settings.js, which uses a separate function. It's done here because
     // the minimum sidebar size is rather uncomfortable, and it must pass
     // through that size when using the shrink-to-nothing gesture.
-    function hideSidebar() {
+    const hideSidebar = function() {
         if (isSrcPage) {
-            // @ts-expect-error
             window.rustdocCloseSourceSidebar();
-            // @ts-expect-error
             updateLocalStorage("src-sidebar-width", null);
             // [RUSTDOCIMPL] CSS variable fast path
             //
@@ -1837,22 +1826,17 @@ function preLoadCss(cssUrl) {
             //
             // So, to clear it, we need to clear all three.
             document.documentElement.style.removeProperty("--src-sidebar-width");
-            // @ts-expect-error
             sidebar.style.removeProperty("--src-sidebar-width");
-            // @ts-expect-error
             resizer.style.removeProperty("--src-sidebar-width");
         } else {
             addClass(document.documentElement, "hide-sidebar");
             updateLocalStorage("hide-sidebar", "true");
-            // @ts-expect-error
             updateLocalStorage("desktop-sidebar-width", null);
             document.documentElement.style.removeProperty("--desktop-sidebar-width");
-            // @ts-expect-error
             sidebar.style.removeProperty("--desktop-sidebar-width");
-            // @ts-expect-error
             resizer.style.removeProperty("--desktop-sidebar-width");
         }
-    }
+    };
 
     // Call this function to show the sidebar from the resize handle.
     // On docs pages, this can only happen if the user has grabbed the resize
@@ -1860,15 +1844,14 @@ function preLoadCss(cssUrl) {
     // the visible range without releasing it. You can, however, grab the
     // resize handle on a source page with the sidebar closed, because it
     // remains visible all the time on there.
-    function showSidebar() {
+    const showSidebar = function() {
         if (isSrcPage) {
-            // @ts-expect-error
             window.rustdocShowSourceSidebar();
         } else {
             removeClass(document.documentElement, "hide-sidebar");
             updateLocalStorage("hide-sidebar", "false");
         }
-    }
+    };
 
     /**
      * Call this to set the correct CSS variable and setting.
@@ -1876,44 +1859,40 @@ function preLoadCss(cssUrl) {
      *
      * @param {number} size - CSS px width of the sidebar.
      */
-    function changeSidebarSize(size) {
+    const changeSidebarSize = function(size) {
         if (isSrcPage) {
-            // @ts-expect-error
-            updateLocalStorage("src-sidebar-width", size);
+            updateLocalStorage("src-sidebar-width", size.toString());
             // [RUSTDOCIMPL] CSS variable fast path
             //
             // While this property is set on the HTML element at load time,
             // because the sidebar isn't actually loaded yet,
             // we scope this update to the sidebar to avoid hitting a slow
             // path in WebKit.
-            // @ts-expect-error
             sidebar.style.setProperty("--src-sidebar-width", size + "px");
-            // @ts-expect-error
             resizer.style.setProperty("--src-sidebar-width", size + "px");
         } else {
-            // @ts-expect-error
-            updateLocalStorage("desktop-sidebar-width", size);
-            // @ts-expect-error
+            updateLocalStorage("desktop-sidebar-width", size.toString());
             sidebar.style.setProperty("--desktop-sidebar-width", size + "px");
-            // @ts-expect-error
             resizer.style.setProperty("--desktop-sidebar-width", size + "px");
         }
-    }
+    };
 
     // Check if the sidebar is hidden. Since src pages and doc pages have
     // different settings, this function has to check that.
-    function isSidebarHidden() {
+    const isSidebarHidden = function() {
         return isSrcPage ?
             !hasClass(document.documentElement, "src-sidebar-expanded") :
             hasClass(document.documentElement, "hide-sidebar");
-    }
+    };
 
-    // Respond to the resize handle event.
-    // This function enforces size constraints, and implements the
-    // shrink-to-nothing gesture based on thresholds defined above.
-    // @ts-expect-error
-    function resize(e) {
-        // @ts-expect-error
+    /**
+     * Respond to the resize handle event.
+     * This function enforces size constraints, and implements the
+     * shrink-to-nothing gesture based on thresholds defined above.
+     *
+     * @param {PointerEvent} e
+     */
+    const resize = function(e) {
         if (currentPointerId === null || currentPointerId !== e.pointerId) {
             return;
         }
@@ -1931,97 +1910,83 @@ function preLoadCss(cssUrl) {
             changeSidebarSize(constrainedPos);
             desiredSidebarSize = constrainedPos;
             if (pendingSidebarResizingFrame !== false) {
-                // @ts-expect-error
                 clearTimeout(pendingSidebarResizingFrame);
             }
-            // @ts-expect-error
             pendingSidebarResizingFrame = setTimeout(() => {
-                // @ts-expect-error
                 if (currentPointerId === null || pendingSidebarResizingFrame === false) {
                     return;
                 }
                 pendingSidebarResizingFrame = false;
                 document.documentElement.style.setProperty(
                     "--resizing-sidebar-width",
-                    // @ts-expect-error
                     desiredSidebarSize + "px",
                 );
             }, 100);
         }
-    }
+    };
     // Respond to the window resize event.
     window.addEventListener("resize", () => {
         if (window.innerWidth < RUSTDOC_MOBILE_BREAKPOINT) {
             return;
         }
         stopResize();
-        // @ts-expect-error
-        if (desiredSidebarSize >= (window.innerWidth - BODY_MIN)) {
+        if (desiredSidebarSize !== null && desiredSidebarSize >= (window.innerWidth - BODY_MIN)) {
             changeSidebarSize(window.innerWidth - BODY_MIN);
-        // @ts-expect-error
         } else if (desiredSidebarSize !== null && desiredSidebarSize > SIDEBAR_MIN) {
-            // @ts-expect-error
             changeSidebarSize(desiredSidebarSize);
         }
     });
-    // @ts-expect-error
-    function stopResize(e) {
-        // @ts-expect-error
+
+    /**
+     * @param {PointerEvent=} e
+     */
+    const stopResize = function(e) {
         if (currentPointerId === null) {
             return;
         }
         if (e) {
             e.preventDefault();
         }
-        // @ts-expect-error
         desiredSidebarSize = sidebar.getBoundingClientRect().width;
-        // @ts-expect-error
         removeClass(resizer, "active");
         window.removeEventListener("pointermove", resize, false);
         window.removeEventListener("pointerup", stopResize, false);
         removeClass(document.documentElement, "sidebar-resizing");
         document.documentElement.style.removeProperty( "--resizing-sidebar-width");
-        // @ts-expect-error
         if (resizer.releasePointerCapture) {
-            // @ts-expect-error
             resizer.releasePointerCapture(currentPointerId);
             currentPointerId = null;
         }
-    }
-    // @ts-expect-error
-    function initResize(e) {
-        // @ts-expect-error
+    };
+
+    /**
+     * @param {PointerEvent} e
+     */
+    const initResize = function(e) {
         if (currentPointerId !== null || e.altKey || e.ctrlKey || e.metaKey || e.button !== 0) {
             return;
         }
-        // @ts-expect-error
         if (resizer.setPointerCapture) {
-            // @ts-expect-error
             resizer.setPointerCapture(e.pointerId);
-            // @ts-expect-error
             if (!resizer.hasPointerCapture(e.pointerId)) {
                 // unable to capture pointer; something else has it
                 // on iOS, this usually means you long-clicked a link instead
-                // @ts-expect-error
                 resizer.releasePointerCapture(e.pointerId);
                 return;
             }
             currentPointerId = e.pointerId;
         }
-        // @ts-expect-error
         window.hideAllModals(false);
         e.preventDefault();
         window.addEventListener("pointermove", resize, false);
         window.addEventListener("pointercancel", stopResize, false);
         window.addEventListener("pointerup", stopResize, false);
-        // @ts-expect-error
         addClass(resizer, "active");
         addClass(document.documentElement, "sidebar-resizing");
-        // @ts-expect-error
         const pos = e.clientX - sidebar.offsetLeft - 3;
         document.documentElement.style.setProperty( "--resizing-sidebar-width", pos + "px");
         desiredSidebarSize = null;
-    }
+    };
     resizer.addEventListener("pointerdown", initResize, false);
 }());
 
@@ -2029,8 +1994,13 @@ function preLoadCss(cssUrl) {
 // and the copy buttons on the code examples.
 (function() {
     // Common functions to copy buttons.
-    // @ts-expect-error
+    /**
+     * @param {string|null} content
+     */
     function copyContentToClipboard(content) {
+        if (content === null) {
+            return;
+        }
         const el = document.createElement("textarea");
         el.value = content;
         el.setAttribute("readonly", "");
@@ -2044,15 +2014,17 @@ function preLoadCss(cssUrl) {
         document.body.removeChild(el);
     }
 
-    // @ts-expect-error
+    /**
+     * @param {HTMLElement & {reset_button_timeout?: ReturnType<typeof setTimeout>}} button
+     */
     function copyButtonAnimation(button) {
         button.classList.add("clicked");
 
         if (button.reset_button_timeout !== undefined) {
-            window.clearTimeout(button.reset_button_timeout);
+            clearTimeout(button.reset_button_timeout);
         }
 
-        button.reset_button_timeout = window.setTimeout(() => {
+        button.reset_button_timeout = setTimeout(() => {
             button.reset_button_timeout = undefined;
             button.classList.remove("clicked");
         }, 1000);
@@ -2067,9 +2039,7 @@ function preLoadCss(cssUrl) {
         // Most page titles are '<Item> in <path::to::module> - Rust', except
         // modules (which don't have the first part) and keywords/primitives
         // (which don't have a module path)
-        // @ts-expect-error
-        const title = document.querySelector("title").textContent.replace(" - Rust", "");
-        const [item, module] = title.split(" in ");
+        const [item, module] = document.title.split(" in ");
         const path = [item];
         if (module !== undefined) {
             path.unshift(module);
@@ -2079,8 +2049,10 @@ function preLoadCss(cssUrl) {
         copyButtonAnimation(but);
     };
 
-    // Copy buttons on code examples.
-    // @ts-expect-error
+    /**
+     * Copy buttons on code examples.
+     * @param {HTMLElement|null} codeElem
+     */
     function copyCode(codeElem) {
         if (!codeElem) {
             // Should never happen, but the world is a dark and dangerous place.
@@ -2089,23 +2061,34 @@ function preLoadCss(cssUrl) {
         copyContentToClipboard(codeElem.textContent);
     }
 
-    // @ts-expect-error
+    /**
+     * @param {UIEvent} event
+     * @returns {HTMLElement|null}
+     */
     function getExampleWrap(event) {
-        let elem = event.target;
-        while (!hasClass(elem, "example-wrap")) {
-            if (elem === document.body ||
-                elem.tagName === "A" ||
-                elem.tagName === "BUTTON" ||
-                hasClass(elem, "docblock")
-            ) {
-                return null;
+        const target = event.target;
+        if (target instanceof HTMLElement) {
+            /** @type {HTMLElement|null} */
+            let elem = target;
+            while (elem !== null && !hasClass(elem, "example-wrap")) {
+                if (elem === document.body ||
+                    elem.tagName === "A" ||
+                    elem.tagName === "BUTTON" ||
+                    hasClass(elem, "docblock")
+                ) {
+                    return null;
+                }
+                elem = elem.parentElement;
             }
-            elem = elem.parentElement;
+            return elem;
+        } else {
+            return null;
         }
-        return elem;
     }
 
-    // @ts-expect-error
+    /**
+     * @param {UIEvent} event
+     */
     function addCopyButton(event) {
         const elem = getExampleWrap(event);
         if (elem === null) {
@@ -2132,15 +2115,17 @@ function preLoadCss(cssUrl) {
         });
         parent.appendChild(copyButton);
 
-        if (!elem.parentElement.classList.contains("scraped-example")) {
+        if (!elem.parentElement || !elem.parentElement.classList.contains("scraped-example") ||
+            !window.updateScrapedExample) {
             return;
         }
         const scrapedWrapped = elem.parentElement;
-        // @ts-expect-error
         window.updateScrapedExample(scrapedWrapped, parent);
     }
 
-    // @ts-expect-error
+    /**
+     * @param {UIEvent} event
+     */
     function showHideCodeExampleButtons(event) {
         const elem = getExampleWrap(event);
         if (elem === null) {
@@ -2159,7 +2144,6 @@ function preLoadCss(cssUrl) {
         buttons.classList.toggle("keep-visible");
     }
 
-    // @ts-expect-error
     onEachLazy(document.querySelectorAll(".docblock .example-wrap"), elem => {
         elem.addEventListener("mouseover", addCopyButton);
         elem.addEventListener("click", showHideCodeExampleButtons);

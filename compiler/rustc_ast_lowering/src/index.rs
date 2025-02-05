@@ -412,8 +412,12 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_pattern_type_pattern(&mut self, p: &'hir hir::Pat<'hir>) {
-        self.visit_pat(p)
+    fn visit_pattern_type_pattern(&mut self, pat: &'hir hir::TyPat<'hir>) {
+        self.insert(pat.span, pat.hir_id, Node::TyPat(pat));
+
+        self.with_parent(pat.hir_id, |this| {
+            intravisit::walk_ty_pat(this, pat);
+        });
     }
 
     fn visit_precise_capturing_arg(

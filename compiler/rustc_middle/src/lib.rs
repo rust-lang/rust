@@ -1,10 +1,11 @@
 //! The "main crate" of the Rust compiler. This crate contains common
 //! type definitions that are used by the other crates in the rustc
-//! "family". Some prominent examples (note that each of these modules
-//! has their own README with further details).
+//! "family". The following are some prominent examples.
 //!
 //! - **HIR.** The "high-level (H) intermediate representation (IR)" is
 //!   defined in the [`hir`] module.
+//! - **THIR.** The "typed high-level (H) intermediate representation (IR)"
+//!   is defined in the [`thir`] module.
 //! - **MIR.** The "mid-level (M) intermediate representation (IR)" is
 //!   defined in the [`mir`] module. This module contains only the
 //!   *definition* of the MIR; the passes that transform and operate
@@ -37,7 +38,6 @@
 #![feature(box_as_ptr)]
 #![feature(box_patterns)]
 #![feature(closure_track_caller)]
-#![feature(const_type_name)]
 #![feature(core_intrinsics)]
 #![feature(coroutines)]
 #![feature(debug_closure_helpers)]
@@ -50,7 +50,6 @@
 #![feature(intra_doc_pointers)]
 #![feature(iter_from_coroutine)]
 #![feature(let_chains)]
-#![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]

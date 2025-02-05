@@ -1,8 +1,7 @@
 use super::{
-    AdtExpr, Arm, Block, ClosureExpr, Expr, ExprKind, InlineAsmExpr, InlineAsmOperand, Pat,
-    PatKind, Stmt, StmtKind, Thir,
+    AdtExpr, AdtExprBase, Arm, Block, ClosureExpr, Expr, ExprKind, InlineAsmExpr, InlineAsmOperand,
+    Pat, PatKind, Stmt, StmtKind, Thir,
 };
-use crate::thir::AdtExprBase;
 
 pub trait Visitor<'thir, 'tcx: 'thir>: Sized {
     fn thir(&self) -> &'thir Thir<'tcx>;

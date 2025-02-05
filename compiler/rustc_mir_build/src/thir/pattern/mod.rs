@@ -27,7 +27,6 @@ use tracing::{debug, instrument};
 pub(crate) use self::check_match::check_match;
 use crate::errors::*;
 use crate::fluent_generated as fluent;
-use crate::thir::util::UserAnnotatedTyHelpers;
 
 struct PatCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -540,16 +539,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => {
                 let e = match res {
                     Res::Def(DefKind::ConstParam, def_id) => {
-                        self.tcx.dcx().emit_err(ConstParamInPattern {
-                            span,
-                            const_span: self.tcx().def_span(def_id),
-                        })
+                        let const_span = self.tcx.def_span(def_id);
+                        self.tcx.dcx().emit_err(ConstParamInPattern { span, const_span })
                     }
                     Res::Def(DefKind::Static { .. }, def_id) => {
-                        self.tcx.dcx().emit_err(StaticInPattern {
-                            span,
-                            static_span: self.tcx().def_span(def_id),
-                        })
+                        let static_span = self.tcx.def_span(def_id);
+                        self.tcx.dcx().emit_err(StaticInPattern { span, static_span })
                     }
                     _ => self.tcx.dcx().emit_err(NonConstPath { span }),
                 };
@@ -571,6 +566,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         }
 
         kind
+    }
+
+    fn user_args_applied_to_ty_of_hir_id(
+        &self,
+        hir_id: hir::HirId,
+    ) -> Option<ty::CanonicalUserType<'tcx>> {
+        crate::thir::util::user_args_applied_to_ty_of_hir_id(self.typeck_results, hir_id)
     }
 
     /// Takes a HIR Path. If the path is a constant, evaluates it and feeds
@@ -603,12 +605,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             return pattern;
         }
 
-        let user_provided_types = self.typeck_results().user_provided_types();
+        let user_provided_types = self.typeck_results.user_provided_types();
         if let Some(&user_ty) = user_provided_types.get(id) {
             let annotation = CanonicalUserTypeAnnotation {
                 user_ty: Box::new(user_ty),
                 span,
-                inferred_ty: self.typeck_results().node_type(id),
+                inferred_ty: self.typeck_results.node_type(id),
             };
             Box::new(Pat {
                 span,
@@ -670,15 +672,5 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty, neg };
         let constant = self.tcx.at(expr.span).lit_to_const(lit_input);
         self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind
-    }
-}
-
-impl<'tcx> UserAnnotatedTyHelpers<'tcx> for PatCtxt<'_, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn typeck_results(&self) -> &ty::TypeckResults<'tcx> {
-        self.typeck_results
     }
 }

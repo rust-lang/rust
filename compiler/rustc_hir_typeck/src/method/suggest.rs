@@ -2395,6 +2395,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let lang_item = match parent_expr.kind {
                         ExprKind::Struct(qpath, _, _) => match *qpath {
                             QPath::LangItem(LangItem::Range, ..) => Some(LangItem::Range),
+                            QPath::LangItem(LangItem::RangeCopy, ..) => Some(LangItem::RangeCopy),
+                            QPath::LangItem(LangItem::RangeInclusiveCopy, ..) => {
+                                Some(LangItem::RangeInclusiveCopy)
+                            }
                             QPath::LangItem(LangItem::RangeTo, ..) => Some(LangItem::RangeTo),
                             QPath::LangItem(LangItem::RangeToInclusive, ..) => {
                                 Some(LangItem::RangeToInclusive)

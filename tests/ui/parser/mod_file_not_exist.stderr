@@ -1,5 +1,5 @@
 error[E0583]: file not found for module `not_a_real_file`
-  --> $DIR/mod_file_not_exist.rs:3:1
+  --> $DIR/mod_file_not_exist.rs:1:1
    |
 LL | mod not_a_real_file;
    | ^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | mod not_a_real_file;
    = note: if there is a `mod not_a_real_file` elsewhere in the crate already, import it with `use crate::...` instead
 
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `mod_file_aux`
-  --> $DIR/mod_file_not_exist.rs:7:16
+  --> $DIR/mod_file_not_exist.rs:5:16
    |
 LL |     assert_eq!(mod_file_aux::bar(), 10);
    |                ^^^^^^^^^^^^ use of unresolved module or unlinked crate `mod_file_aux`
