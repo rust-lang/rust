@@ -595,6 +595,11 @@ fn register_builtins(store: &mut LintStore) {
          <https://github.com/rust-lang/rust/pull/125380> for more information",
     );
     store.register_removed("unsupported_calling_conventions", "converted into hard error");
+    store.register_removed(
+        "cenum_impl_drop_cast",
+        "converted into hard error, \
+         see <https://github.com/rust-lang/rust/issues/73333> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
