@@ -10,7 +10,7 @@ use rustc_span::Symbol;
 use stable_mir::abi::Layout;
 use stable_mir::mir::alloc::AllocId;
 use stable_mir::mir::mono::{Instance, MonoItem, StaticDef};
-use stable_mir::mir::{BinOp, Mutability, Place, ProjectionElem, Safety, UnOp};
+use stable_mir::mir::{BinOp, Mutability, Place, ProjectionElem, RawPtrKind, Safety, UnOp};
 use stable_mir::ty::{
     Abi, AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, DynKind,
     ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FloatTy, FnSig,
@@ -222,6 +222,18 @@ impl RustcInternal for Movability {
         match self {
             Movability::Static => rustc_ty::Movability::Static,
             Movability::Movable => rustc_ty::Movability::Movable,
+        }
+    }
+}
+
+impl RustcInternal for RawPtrKind {
+    type T<'tcx> = rustc_middle::mir::RawPtrKind;
+
+    fn internal<'tcx>(&self, _tables: &mut Tables<'_>, _tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
+        match self {
+            RawPtrKind::Mut => rustc_middle::mir::RawPtrKind::Mut,
+            RawPtrKind::Const => rustc_middle::mir::RawPtrKind::Const,
+            RawPtrKind::FakeForPtrMetadata => rustc_middle::mir::RawPtrKind::FakeForPtrMetadata,
         }
     }
 }
