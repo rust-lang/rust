@@ -33,6 +33,7 @@ pub mod memchr;
 pub mod sort;
 
 mod ascii;
+pub(crate) mod byte_pattern;
 mod cmp;
 pub(crate) mod index;
 mod iter;
