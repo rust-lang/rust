@@ -1151,4 +1151,59 @@ impl f64 {
         let x = unsafe { cmath::lgamma_r(self, &mut signgamp) };
         (x, signgamp)
     }
+
+    /// Error function.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform, Rust version, and
+    /// can even differ within the same execution from one invocation to the next.
+    /// This function currently corresponds to the `erf` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_erf)]
+    /// let x: f64 = 1.0;
+    ///
+    /// let abs_difference = (x.erf() - 0.8427007929497149).abs();
+    ///
+    /// assert!(abs_difference <= f64::EPSILON);
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_erf", issue = "136321")]
+    #[inline]
+    pub fn erf(self) -> f64 {
+        unsafe { cmath::erf(self) }
+    }
+
+    /// Complementary error function.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform, Rust version, and
+    /// can even differ within the same execution from one invocation to the next.
+    /// This function currently corresponds to the `erfc` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_erf)]
+    /// let x: f64 = 0.123;
+    ///
+    /// let one = x.erf() + x.erfc();
+    /// let abs_difference = (one - 1.0).abs();
+    ///
+    /// assert!(abs_difference <= f64::EPSILON);
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_erf", issue = "136321")]
+    #[inline]
+    pub fn erfc(self) -> f64 {
+        unsafe { cmath::erfc(self) }
+    }
 }

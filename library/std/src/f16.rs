@@ -1224,6 +1224,7 @@ impl f16 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    // #[unstable(feature = "float_gamma", issue = "99842")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn gamma(self) -> f16 {
         (unsafe { cmath::tgammaf(self as f32) }) as f16
@@ -1258,10 +1259,70 @@ impl f16 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    // #[unstable(feature = "float_gamma", issue = "99842")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn ln_gamma(self) -> (f16, i32) {
         let mut signgamp: i32 = 0;
         let x = (unsafe { cmath::lgammaf_r(self as f32, &mut signgamp) }) as f16;
         (x, signgamp)
+    }
+
+    /// Error function.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform, Rust version, and
+    /// can even differ within the same execution from one invocation to the next.
+    /// This function currently corresponds to the `erff` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// #![feature(float_erf)]
+    /// let x: f16 = 1.0;
+    ///
+    /// let abs_difference = (x.erf() - 0.8427).abs();
+    ///
+    /// assert!(abs_difference <= f16::EPSILON);
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "f16", issue = "116909")]
+    // #[unstable(feature = "float_erf", issue = "136321")]
+    #[inline]
+    pub fn erf(self) -> f16 {
+        (unsafe { cmath::erff(self as f32) }) as f16
+    }
+
+    /// Complementary error function.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform, Rust version, and
+    /// can even differ within the same execution from one invocation to the next.
+    /// This function currently corresponds to the `erfcf` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// #![feature(float_erf)]
+    /// let x: f16 = 0.123;
+    ///
+    /// let one = x.erf() + x.erfc();
+    /// let abs_difference = (one - 1.0).abs();
+    ///
+    /// assert!(abs_difference <= f16::EPSILON);
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "f16", issue = "116909")]
+    // #[unstable(feature = "float_erf", issue = "136321")]
+    #[inline]
+    pub fn erfc(self) -> f16 {
+        (unsafe { cmath::erfcf(self as f32) }) as f16
     }
 }
