@@ -2,7 +2,6 @@
 //@ compile-flags: --test
 
 #![allow(undefined_naked_function_abi)]
-#![feature(naked_functions)]
 #![feature(test)]
 #![crate_type = "lib"]
 

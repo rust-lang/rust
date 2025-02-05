@@ -4,7 +4,7 @@
 //@ only-x86_64
 
 #![crate_type = "lib"]
-#![feature(naked_functions)]
+
 use std::arch::naked_asm;
 
 // The problem at hand: Rust has adopted a fairly strict meaning for "naked functions",

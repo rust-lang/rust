@@ -5,7 +5,7 @@
 //@ build-pass
 
 #![crate_type = "lib"]
-#![feature(no_core, naked_functions)]
+#![feature(no_core)]
 #![no_core]
 
 extern crate minicore;

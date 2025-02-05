@@ -6,7 +6,7 @@
 
 #![crate_type = "lib"]
 #![no_std]
-#![feature(abi_x86_interrupt, naked_functions)]
+#![feature(abi_x86_interrupt)]
 
 pub fn caller() {
     page_fault_handler(1, 2);

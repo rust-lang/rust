@@ -245,9 +245,7 @@ See the [Clang ControlFlowIntegrity documentation][clang-cfi] for more details.
 ## Example 1: Redirecting control flow using an indirect branch/call to an invalid destination
 
 ```rust,ignore (making doc tests pass cross-platform is hard)
-#![feature(naked_functions)]
-
-use std::arch::asm;
+use std::arch::naked_asm;
 use std::mem;
 
 fn add_one(x: i32) -> i32 {
@@ -258,7 +256,7 @@ fn add_one(x: i32) -> i32 {
 pub extern "C" fn add_two(x: i32) {
     // x + 2 preceded by a landing pad/nop block
     unsafe {
-        asm!(
+        naked_asm!(
             "
              nop
              nop

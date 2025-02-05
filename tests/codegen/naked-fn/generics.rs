@@ -2,7 +2,6 @@
 //@ only-x86_64
 
 #![crate_type = "lib"]
-#![feature(naked_functions, asm_const)]
 
 use std::arch::naked_asm;
 
