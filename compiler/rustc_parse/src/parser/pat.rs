@@ -1472,17 +1472,6 @@ impl<'a> Parser<'a> {
         let mut last_non_comma_dotdot_span = None;
 
         while self.token != token::CloseDelim(Delimiter::Brace) {
-            let attrs = match self.parse_outer_attributes() {
-                Ok(attrs) => attrs,
-                Err(err) => {
-                    if let Some(delayed) = delayed_err {
-                        delayed.emit();
-                    }
-                    return Err(err);
-                }
-            };
-            let lo = self.token.span;
-
             // check that a comma comes after every field
             if !ate_comma {
                 let err = if self.token == token::At {
@@ -1584,6 +1573,17 @@ impl<'a> Parser<'a> {
                     return Err(err);
                 }
             }
+
+            let attrs = match self.parse_outer_attributes() {
+                Ok(attrs) => attrs,
+                Err(err) => {
+                    if let Some(delayed) = delayed_err {
+                        delayed.emit();
+                    }
+                    return Err(err);
+                }
+            };
+            let lo = self.token.span;
 
             let field = self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
                 let field = match this.parse_pat_field(lo, attrs) {
