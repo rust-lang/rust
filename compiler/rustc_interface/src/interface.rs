@@ -442,7 +442,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             locale_resources.push(codegen_backend.locale_resource());
 
             let mut sess = rustc_session::build_session(
-                early_dcx,
                 config.opts,
                 CompilerIO {
                     input: config.input,
