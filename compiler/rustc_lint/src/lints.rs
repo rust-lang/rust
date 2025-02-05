@@ -536,6 +536,10 @@ pub(crate) enum BuiltinSpecialModuleNameUsed {
     Main,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_returning_pointers_to_local_variables)]
+pub(crate) struct BuiltinReturningPointersToLocalVariables;
+
 // deref_into_dyn_supertrait.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_supertrait_as_deref_target)]

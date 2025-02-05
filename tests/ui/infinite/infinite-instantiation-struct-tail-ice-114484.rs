@@ -9,6 +9,7 @@
 // Regression test for #114484: This used to ICE during monomorphization, because we treated
 // `<VirtualWrapper<...> as Pointee>::Metadata` as a rigid projection after reaching the recursion
 // limit when finding the struct tail.
+#![allow(returning_pointers_to_local_variables)]
 
 use std::marker::PhantomData;
 
