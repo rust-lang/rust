@@ -5,7 +5,6 @@
 
 // Prefer importing stable_mir over internal rustc constructs to make this file more readable.
 
-use rustc_hir::RangeEnd;
 use rustc_middle::ty::{self as rustc_ty, Const as InternalConst, Ty as InternalTy, TyCtxt};
 use rustc_span::Symbol;
 use stable_mir::abi::Layout;
@@ -89,10 +88,9 @@ impl RustcInternal for Pattern {
     type T<'tcx> = rustc_ty::Pattern<'tcx>;
     fn internal<'tcx>(&self, tables: &mut Tables<'_>, tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
         tcx.mk_pat(match self {
-            Pattern::Range { start, end, include_end } => rustc_ty::PatternKind::Range {
+            Pattern::Range { start, end, include_end: _ } => rustc_ty::PatternKind::Range {
                 start: start.as_ref().unwrap().internal(tables, tcx),
                 end: end.as_ref().unwrap().internal(tables, tcx),
-                include_end: if *include_end { RangeEnd::Included } else { RangeEnd::Excluded },
             },
         })
     }

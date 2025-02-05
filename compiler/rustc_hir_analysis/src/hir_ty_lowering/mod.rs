@@ -21,9 +21,8 @@ pub mod generics;
 mod lint;
 
 use std::assert_matches::assert_matches;
-use std::{char, slice};
+use std::slice;
 
-use rustc_abi::Size;
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
@@ -32,7 +31,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, AnonConst, ConstArg, GenericArg, GenericArgs, HirId};
+use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability::AllowUnstable;
@@ -56,9 +55,7 @@ use tracing::{debug, instrument};
 
 use self::errors::assoc_kind_str;
 use crate::check::check_abi_fn_ptr;
-use crate::errors::{
-    AmbiguousLifetimeBound, BadReturnTypeNotation, InvalidBaseType, NoVariantNamed,
-};
+use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation, NoVariantNamed};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
@@ -2693,25 +2690,26 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let ty_span = ty.span;
                 let ty = self.lower_ty(ty);
                 let pat_ty = match pat.kind {
-                    hir::TyPatKind::Range(start, end, include_end) => {
+                    hir::TyPatKind::Range(start, end) => {
                         let (ty, start, end) = match ty.kind() {
+                            // Keep this list of types in sync with the list of types that
+                            // the `RangePattern` trait is implemented for.
                             ty::Int(_) | ty::Uint(_) | ty::Char => {
-                                let (start, end) = self.lower_ty_pat_range(ty, start, end);
+                                let start = self.lower_const_arg(start, FeedConstTy::No);
+                                let end = self.lower_const_arg(end, FeedConstTy::No);
                                 (ty, start, end)
                             }
                             _ => {
-                                let guar = self.dcx().emit_err(InvalidBaseType {
-                                    ty,
-                                    pat: "range",
+                                let guar = self.dcx().span_delayed_bug(
                                     ty_span,
-                                    pat_span: pat.span,
-                                });
+                                    "invalid base type for range pattern",
+                                );
                                 let errc = ty::Const::new_error(tcx, guar);
                                 (Ty::new_error(tcx, guar), errc, errc)
                             }
                         };
 
-                        let pat = tcx.mk_pat(ty::PatternKind::Range { start, end, include_end });
+                        let pat = tcx.mk_pat(ty::PatternKind::Range { start, end });
                         Ty::new_pat(tcx, ty, pat)
                     }
                     hir::TyPatKind::Err(e) => Ty::new_error(tcx, e),
@@ -2724,70 +2722,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         self.record_ty(hir_ty.hir_id, result_ty, hir_ty.span);
         result_ty
-    }
-
-    fn lower_ty_pat_range(
-        &self,
-        base: Ty<'tcx>,
-        start: Option<&ConstArg<'tcx>>,
-        end: Option<&ConstArg<'tcx>>,
-    ) -> (ty::Const<'tcx>, ty::Const<'tcx>) {
-        let tcx = self.tcx();
-        let size = match base.kind() {
-            ty::Int(i) => {
-                i.bit_width().map_or(tcx.data_layout.pointer_size, |bits| Size::from_bits(bits))
-            }
-            ty::Uint(ui) => {
-                ui.bit_width().map_or(tcx.data_layout.pointer_size, |bits| Size::from_bits(bits))
-            }
-            ty::Char => Size::from_bytes(4),
-            _ => unreachable!(),
-        };
-        let start =
-            start.map(|expr| self.lower_const_arg(expr, FeedConstTy::No)).unwrap_or_else(|| {
-                match base.kind() {
-                    ty::Char | ty::Uint(_) => ty::Const::new_value(
-                        tcx,
-                        ty::ValTree::from_scalar_int(ty::ScalarInt::null(size)),
-                        base,
-                    ),
-                    ty::Int(_) => ty::Const::new_value(
-                        tcx,
-                        ty::ValTree::from_scalar_int(
-                            ty::ScalarInt::truncate_from_int(size.signed_int_min(), size).0,
-                        ),
-                        base,
-                    ),
-                    _ => unreachable!(),
-                }
-            });
-        let end = end.map(|expr| self.lower_const_arg(expr, FeedConstTy::No)).unwrap_or_else(
-            || match base.kind() {
-                ty::Char => ty::Const::new_value(
-                    tcx,
-                    ty::ValTree::from_scalar_int(
-                        ty::ScalarInt::truncate_from_uint(char::MAX, size).0,
-                    ),
-                    base,
-                ),
-                ty::Uint(_) => ty::Const::new_value(
-                    tcx,
-                    ty::ValTree::from_scalar_int(
-                        ty::ScalarInt::truncate_from_uint(size.unsigned_int_max(), size).0,
-                    ),
-                    base,
-                ),
-                ty::Int(_) => ty::Const::new_value(
-                    tcx,
-                    ty::ValTree::from_scalar_int(
-                        ty::ScalarInt::truncate_from_int(size.signed_int_max(), size).0,
-                    ),
-                    base,
-                ),
-                _ => unreachable!(),
-            },
-        );
-        (start, end)
     }
 
     /// Lower an opaque type (i.e., an existential impl-Trait type) from the HIR.

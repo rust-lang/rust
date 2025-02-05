@@ -276,7 +276,7 @@ LL |             fn pt_non_null_ptr() -> pattern_type!(usize is 1..);
 LL |             fn pt_non_null_ptr() -> *const ();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
    |
-   = note: expected `unsafe extern "C" fn() -> (usize) is 1..=usize::MAX`
+   = note: expected `unsafe extern "C" fn() -> (usize) is 1..=`
               found `unsafe extern "C" fn() -> *const ()`
 
 warning: 24 warnings emitted
