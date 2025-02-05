@@ -78,4 +78,66 @@ impl LazyKey {
             },
         }
     }
+
+    /// Registers destructor to run at process exit.
+    #[cfg(not(target_thread_local))]
+    pub fn register_process_dtor(&'static self) {
+        if self.dtor.is_none() {
+            return;
+        }
+
+        crate::sys::thread_local::guard::enable();
+        lazy_keys().borrow_mut().push(self);
+    }
+}
+
+/// POSIX does not run TLS destructors on process exit.
+/// Thus we keep our own thread-local list for that purpose.
+#[cfg(not(target_thread_local))]
+fn lazy_keys() -> &'static crate::cell::RefCell<Vec<&'static LazyKey>> {
+    static KEY: LazyKey = LazyKey::new(Some(drop_lazy_keys));
+
+    unsafe extern "C" fn drop_lazy_keys(ptr: *mut u8) {
+        let ptr = ptr as *mut crate::cell::RefCell<Vec<&'static LazyKey>>;
+        drop(unsafe { Box::from_raw(ptr) });
+    }
+
+    let key = KEY.force();
+    let mut ptr = unsafe { super::get(key) as *const crate::cell::RefCell<Vec<&'static LazyKey>> };
+    if ptr.is_null() {
+        let list = Box::new(crate::cell::RefCell::new(Vec::new()));
+        ptr = Box::into_raw(list);
+        unsafe { super::set(key, ptr as _) };
+    }
+
+    unsafe { &*ptr }
+}
+
+/// Run destructors at process exit.
+///
+/// SAFETY: This will and must only be run by the destructor callback in [`guard`].
+#[cfg(not(target_thread_local))]
+pub unsafe fn run_dtors() {
+    let lazy_keys_cell = lazy_keys();
+
+    for _ in 0..5 {
+        let mut any_run = false;
+
+        for lazy_key in lazy_keys_cell.take() {
+            let key = lazy_key.force();
+            let ptr = unsafe { super::get(key) };
+            if !ptr.is_null() {
+                // SAFETY: only keys with destructors are registered.
+                unsafe {
+                    let Some(dtor) = &lazy_key.dtor else { crate::hint::unreachable_unchecked() };
+                    dtor(ptr);
+                }
+                any_run = true;
+            }
+        }
+
+        if !any_run {
+            break;
+        }
+    }
 }
