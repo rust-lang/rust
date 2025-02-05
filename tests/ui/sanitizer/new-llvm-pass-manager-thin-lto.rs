@@ -8,7 +8,7 @@
 //
 //@ no-prefer-dynamic
 //@ revisions: opt0 opt1
-//@ compile-flags: -Zsanitizer=address -Clto=thin
+//@ compile-flags: -Zunstable-options -Csanitize=address -Clto=thin
 //@[opt0]compile-flags: -Copt-level=0
 //@[opt1]compile-flags: -Copt-level=1
 //@ run-fail

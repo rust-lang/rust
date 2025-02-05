@@ -1507,6 +1507,37 @@ impl SanitizerSet {
         })
     }
 
+    pub fn from_comma_list(s: &str) -> Result<Self, String> {
+        let mut sanitizer_set = SanitizerSet::empty();
+        for name in s.split(',') {
+            sanitizer_set |= match name {
+                "address" => SanitizerSet::ADDRESS,
+                "cfi" => SanitizerSet::CFI,
+                "dataflow" => SanitizerSet::DATAFLOW,
+                "kcfi" => SanitizerSet::KCFI,
+                "kernel-address" => SanitizerSet::KERNELADDRESS,
+                "leak" => SanitizerSet::LEAK,
+                "memory" => SanitizerSet::MEMORY,
+                "memtag" => SanitizerSet::MEMTAG,
+                "safestack" => SanitizerSet::SAFESTACK,
+                "shadow-call-stack" => SanitizerSet::SHADOWCALLSTACK,
+                "thread" => SanitizerSet::THREAD,
+                "hwaddress" => SanitizerSet::HWADDRESS,
+                _ => return Err(format!("Unknown sanitizer {}", name)),
+            };
+        }
+        return Ok(sanitizer_set);
+    }
+
+    fn from_json(json: &Json) -> Result<Self, String> {
+        if let Some(array) = json.as_array() {
+            let s: String = array.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(",");
+            return Self::from_comma_list(&s);
+        } else {
+            return Err("Expected a list of sanitizers".to_string());
+        }
+    }
+
     pub fn mutually_exclusive(self) -> Option<(SanitizerSet, SanitizerSet)> {
         Self::MUTUALLY_EXCLUSIVE
             .into_iter()
@@ -2572,6 +2603,9 @@ pub struct TargetOptions {
     /// distributed with the target, the sanitizer should still appear in this list for the target.
     pub supported_sanitizers: SanitizerSet,
 
+    /// The stable sanitizers supported by this target
+    pub stable_sanitizers: SanitizerSet,
+
     /// Minimum number of bits in #[repr(C)] enum. Defaults to the size of c_int
     pub c_enum_min_bits: Option<u64>,
 
@@ -2814,6 +2848,7 @@ impl Default for TargetOptions {
             // `Off` is supported by default, but targets can remove this manually, e.g. Windows.
             supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
             supported_sanitizers: SanitizerSet::empty(),
+            stable_sanitizers: SanitizerSet::empty(),
             c_enum_min_bits: None,
             generate_arange_section: true,
             supports_stack_protector: true,

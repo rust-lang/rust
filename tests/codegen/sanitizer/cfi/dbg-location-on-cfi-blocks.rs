@@ -1,7 +1,7 @@
 // Verifies that the parent block's debug information are assigned to the inserted cfi block.
 //
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clto -Cno-prepopulate-passes -Copt-level=0 -Zsanitizer=cfi -Ctarget-feature=-crt-static -Cdebuginfo=1
+//@ compile-flags: -Clto -Cno-prepopulate-passes -Copt-level=0 -Zunstable-options -Csanitize=cfi -Ctarget-feature=-crt-static -Cdebuginfo=1
 
 #![crate_type = "lib"]
 

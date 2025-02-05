@@ -1,23 +1,23 @@
-// Verifies that when compiling with -Zsanitizer=option,
+// Verifies that when compiling with -Csanitize=option,
 // the `#[cfg(sanitize = "option")]` attribute is configured.
 
 //@ check-pass
 //@ revisions: address cfi kcfi leak memory thread
 //@compile-flags: -Ctarget-feature=-crt-static
 //@[address]needs-sanitizer-address
-//@[address]compile-flags: -Zsanitizer=address
+//@[address]compile-flags: -Zunstable-options -Csanitize=address
 //@[cfi]needs-sanitizer-cfi
-//@[cfi]compile-flags:     -Zsanitizer=cfi
+//@[cfi]compile-flags:     -Zunstable-options -Csanitize=cfi
 //@[cfi]compile-flags:     -Clto -Ccodegen-units=1
 //@[kcfi]needs-llvm-components: x86
-//@[kcfi]compile-flags:    -Zsanitizer=kcfi --target x86_64-unknown-none
-//@[kcfi]compile-flags:    -C panic=abort
+//@[kcfi]compile-flags:    -Zunstable-options -Csanitize=kcfi
+//@[kcfi]compile-flags:    --target x86_64-unknown-none -C panic=abort
 //@[leak]needs-sanitizer-leak
-//@[leak]compile-flags:    -Zsanitizer=leak
+//@[leak]compile-flags:    -Zunstable-options -Csanitize=leak
 //@[memory]needs-sanitizer-memory
-//@[memory]compile-flags:  -Zsanitizer=memory
+//@[memory]compile-flags:  -Zunstable-options -Csanitize=memory
 //@[thread]needs-sanitizer-thread
-//@[thread]compile-flags:  -Zsanitizer=thread
+//@[thread]compile-flags:  -Zunstable-options -Csanitize=thread
 
 #![feature(cfg_sanitize, no_core, lang_items)]
 #![crate_type="lib"]

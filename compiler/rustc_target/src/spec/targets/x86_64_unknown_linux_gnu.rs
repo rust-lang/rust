@@ -10,12 +10,13 @@ pub(crate) fn target() -> Target {
     base.static_position_independent_executables = true;
     base.supported_sanitizers = SanitizerSet::ADDRESS
         | SanitizerSet::CFI
-        | SanitizerSet::KCFI
         | SanitizerSet::DATAFLOW
+        | SanitizerSet::KCFI
         | SanitizerSet::LEAK
         | SanitizerSet::MEMORY
         | SanitizerSet::SAFESTACK
         | SanitizerSet::THREAD;
+    base.stable_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::LEAK;
     base.supports_xray = true;
 
     // When we're asked to use the `rust-lld` linker by default, set the appropriate lld-using
