@@ -103,8 +103,6 @@ fn main() {
         check!(tests_revision_unpaired_stdout_stderr, &tests_path);
         check!(debug_artifacts, &tests_path);
         check!(ui_tests, &root_path, bless);
-        // FIXME(jieyouxu): remove this check once all run-make tests are ported over to rmake.rs.
-        check!(run_make_tests, &tests_path, &src_path, bless);
         check!(mir_opt_tests, &tests_path, bless);
         check!(rustdoc_gui_tests, &tests_path);
         check!(rustdoc_css_themes, &librustdoc_path);
