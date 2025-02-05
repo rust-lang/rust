@@ -4,8 +4,8 @@ use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::solve::{Certainty, Goal, NoSolution};
 use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
 
-pub trait SolverDelegate: Deref<Target = <Self as SolverDelegate>::Infcx> + Sized {
-    type Infcx: InferCtxtLike<Interner = <Self as SolverDelegate>::Interner>;
+pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
+    type Infcx: InferCtxtLike<Interner = Self::Interner>;
     type Interner: Interner;
     fn cx(&self) -> Self::Interner {
         (**self).cx()
@@ -59,6 +59,7 @@ pub trait SolverDelegate: Deref<Target = <Self as SolverDelegate>::Infcx> + Size
     fn instantiate_canonical_var_with_infer(
         &self,
         cv_info: ty::CanonicalVarInfo<Self::Interner>,
+        span: <Self::Interner as Interner>::Span,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> <Self::Interner as Interner>::GenericArg;
 
@@ -84,6 +85,7 @@ pub trait SolverDelegate: Deref<Target = <Self as SolverDelegate>::Infcx> + Size
         &self,
         key: ty::OpaqueTypeKey<Self::Interner>,
         hidden_ty: <Self::Interner as Interner>::Ty,
+        span: <Self::Interner as Interner>::Span,
     );
 
     fn reset_opaque_types(&self);
