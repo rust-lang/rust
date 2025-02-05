@@ -550,6 +550,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(unsafe_binders, "unsafe binder types are experimental");
     gate_all!(contracts, "contracts are incomplete");
     gate_all!(contracts_internals, "contract internal machinery is for internal use only");
+    gate_all!(cfg_attribute_in_where, "`#[cfg]` attribute in `where` clause is unstable");
 
     if !visitor.features.never_patterns() {
         if let Some(spans) = spans.get(&sym::never_patterns) {

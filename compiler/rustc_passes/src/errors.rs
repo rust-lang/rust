@@ -1898,3 +1898,11 @@ pub(crate) struct NoSanitize<'a> {
     pub accepted_kind: &'a str,
     pub attr_str: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(passes_unsupported_attributes_in_where)]
+#[help]
+pub(crate) struct UnsupportedAttributesInWhere {
+    #[primary_span]
+    pub span: MultiSpan,
+}

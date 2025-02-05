@@ -1,0 +1,413 @@
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:20:5
+   |
+LL |     #[cfg(a)] T: TraitA,
+   |     ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:21:5
+   |
+LL |     #[cfg(b)] T: TraitB,
+   |     ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:22:5
+   |
+LL |     #[cfg(all())] T: Defined,
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:23:5
+   |
+LL |     #[cfg(any())] T: Undefined,
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:27:9
+   |
+LL |         #[cfg(a)] U: TraitA,
+   |         ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:28:9
+   |
+LL |         #[cfg(b)] U: TraitB,
+   |         ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:29:9
+   |
+LL |         #[cfg(all())] T: Defined,
+   |         ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:30:9
+   |
+LL |         #[cfg(any())] T: Undefined;
+   |         ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:34:9
+   |
+LL |         #[cfg(a)] U: TraitA,
+   |         ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:35:9
+   |
+LL |         #[cfg(b)] U: TraitB,
+   |         ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:36:9
+   |
+LL |         #[cfg(all())] T: Defined,
+   |         ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:37:9
+   |
+LL |         #[cfg(any())] T: Undefined;
+   |         ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:42:5
+   |
+LL |     #[cfg(a)] T: TraitA,
+   |     ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:43:5
+   |
+LL |     #[cfg(b)] T: TraitB,
+   |     ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:44:5
+   |
+LL |     #[cfg(all())] T: Defined,
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:45:5
+   |
+LL |     #[cfg(any())] T: Undefined,
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:48:9
+   |
+LL |         #[cfg(a)] U: TraitA,
+   |         ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:49:9
+   |
+LL |         #[cfg(b)] U: TraitB,
+   |         ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:50:9
+   |
+LL |         #[cfg(any())] T: Undefined;
+   |         ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:54:9
+   |
+LL |         #[cfg(a)] U: TraitA,
+   |         ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:55:9
+   |
+LL |         #[cfg(b)] U: TraitB,
+   |         ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:56:9
+   |
+LL |         #[cfg(any())] T: Undefined {}
+   |         ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:61:5
+   |
+LL |     #[cfg(a)] T: TraitA,
+   |     ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:62:5
+   |
+LL |     #[cfg(b)] T: TraitB,
+   |     ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:63:5
+   |
+LL |     #[cfg(all())] T: Defined,
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:64:5
+   |
+LL |     #[cfg(any())] T: Undefined,
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:71:5
+   |
+LL |     #[cfg(a)] T: TraitA,
+   |     ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:72:5
+   |
+LL |     #[cfg(b)] T: TraitB,
+   |     ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:73:5
+   |
+LL |     #[cfg(any())] T: Undefined,
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:81:5
+   |
+LL |     #[cfg(a)] T: TraitA,
+   |     ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:82:5
+   |
+LL |     #[cfg(b)] T: TraitB,
+   |     ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:83:5
+   |
+LL |     #[cfg(all())] T: Defined,
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:84:5
+   |
+LL |     #[cfg(any())] T: Undefined,
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:90:5
+   |
+LL |     #[cfg(a)] T: TraitA,
+   |     ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:91:5
+   |
+LL |     #[cfg(b)] T: TraitB,
+   |     ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:92:5
+   |
+LL |     #[cfg(all())] T: Defined,
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:93:5
+   |
+LL |     #[cfg(any())] T: Undefined,
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:96:9
+   |
+LL |         #[cfg(a)] U: TraitA,
+   |         ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:97:9
+   |
+LL |         #[cfg(b)] U: TraitB,
+   |         ^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:98:9
+   |
+LL |         #[cfg(all())] T: Defined,
+   |         ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `#[cfg]` attribute in `where` clause is unstable
+  --> $DIR/feature-gate-cfg_attribute_in_where.rs:99:9
+   |
+LL |         #[cfg(any())] T: Undefined,
+   |         ^^^^^^^^^^^^^
+   |
+   = note: see issue #115590 <https://github.com/rust-lang/rust/issues/115590> for more information
+   = help: add `#![feature(cfg_attribute_in_where)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 41 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

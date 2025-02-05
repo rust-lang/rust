@@ -228,6 +228,12 @@ ast_fragments! {
         "variant"; many fn flat_map_variant; fn visit_variant(); fn make_variants;
     }
     Crate(ast::Crate) { "crate"; one fn visit_crate; fn visit_crate; fn make_crate; }
+    WherePredicate(SmallVec<[ast::WherePredicate; 1]>) {
+        "where predicate";
+        many fn flat_map_where_predicate;
+        fn visit_where_predicate();
+        fn make_where_predicates;
+     }
 }
 
 pub enum SupportsMacroExpansion {
@@ -259,7 +265,8 @@ impl AstFragmentKind {
             | AstFragmentKind::GenericParams
             | AstFragmentKind::Params
             | AstFragmentKind::FieldDefs
-            | AstFragmentKind::Variants => SupportsMacroExpansion::No,
+            | AstFragmentKind::Variants
+            | AstFragmentKind::WherePredicate => SupportsMacroExpansion::No,
         }
     }
 
@@ -317,6 +324,9 @@ impl AstFragmentKind {
             AstFragmentKind::Crate => {
                 AstFragment::Crate(items.next().expect("expected exactly one crate").expect_crate())
             }
+            AstFragmentKind::WherePredicate => AstFragment::WherePredicate(
+                items.map(Annotatable::expect_where_predicate).collect(),
+            ),
             AstFragmentKind::Pat | AstFragmentKind::Ty => {
                 panic!("patterns and types aren't annotatable")
             }
@@ -865,7 +875,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             | Annotatable::GenericParam(..)
             | Annotatable::Param(..)
             | Annotatable::FieldDef(..)
-            | Annotatable::Variant(..) => panic!("unexpected annotatable"),
+            | Annotatable::Variant(..)
+            | Annotatable::WherePredicate(..) => panic!("unexpected annotatable"),
         };
         if self.cx.ecfg.features.proc_macro_hygiene() {
             return;
@@ -1002,7 +1013,8 @@ pub fn parse_ast_fragment<'a>(
         | AstFragmentKind::GenericParams
         | AstFragmentKind::Params
         | AstFragmentKind::FieldDefs
-        | AstFragmentKind::Variants => panic!("unexpected AST fragment kind"),
+        | AstFragmentKind::Variants
+        | AstFragmentKind::WherePredicate => panic!("unexpected AST fragment kind"),
     })
 }
 
@@ -1589,6 +1601,19 @@ impl InvocationCollectorNode for ast::Crate {
         self.attrs.truncate(pos);
         // Standard prelude imports are left in the crate for backward compatibility.
         self.items.truncate(collector.cx.num_standard_library_imports);
+    }
+}
+
+impl InvocationCollectorNode for ast::WherePredicate {
+    const KIND: AstFragmentKind = AstFragmentKind::WherePredicate;
+    fn to_annotatable(self) -> Annotatable {
+        Annotatable::WherePredicate(self)
+    }
+    fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
+        fragment.make_where_predicates()
+    }
+    fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
+        walk_flat_map_where_predicate(visitor, self)
     }
 }
 
@@ -2182,6 +2207,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
     fn visit_pat(&mut self, node: &mut P<ast::Pat>) {
         self.visit_node(node)
+    }
+
+    fn flat_map_where_predicate(
+        &mut self,
+        node: ast::WherePredicate,
+    ) -> SmallVec<[ast::WherePredicate; 1]> {
+        self.flat_map_node(node)
     }
 
     fn visit_expr(&mut self, node: &mut P<ast::Expr>) {

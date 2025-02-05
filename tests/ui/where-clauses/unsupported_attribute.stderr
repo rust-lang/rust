@@ -1,0 +1,162 @@
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:8:5
+   |
+LL |     #[doc = "doc"] T: Trait,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:9:5
+   |
+LL |     #[doc = "doc"] 'a: 'static,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:10:5
+   |
+LL |     #[ignore] T: Trait,
+   |     ^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:11:5
+   |
+LL |     #[ignore] 'a: 'static,
+   |     ^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:12:5
+   |
+LL |     #[should_panic] T: Trait,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:13:5
+   |
+LL |     #[should_panic] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:14:5
+   |
+LL |     #[macro_use] T: Trait,
+   |     ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:15:5
+   |
+LL |     #[macro_use] 'a: 'static,
+   |     ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:16:5
+   |
+LL |     #[allow(unused)] T: Trait,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:17:5
+   |
+LL |     #[allow(unused)] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:18:5
+   |
+LL |     #[warn(unused)] T: Trait,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:19:5
+   |
+LL |     #[warn(unused)] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:20:5
+   |
+LL |     #[deny(unused)] T: Trait,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:21:5
+   |
+LL |     #[deny(unused)] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:22:5
+   |
+LL |     #[forbid(unused)] T: Trait,
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:23:5
+   |
+LL |     #[forbid(unused)] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:24:5
+   |
+LL |     #[deprecated] T: Trait,
+   |     ^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:25:5
+   |
+LL |     #[deprecated] 'a: 'static,
+   |     ^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:26:5
+   |
+LL |     #[automatically_derived] T: Trait,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:27:5
+   |
+LL |     #[automatically_derived] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` is supported in `where` clauses
+
+error: aborting due to 20 previous errors
+
