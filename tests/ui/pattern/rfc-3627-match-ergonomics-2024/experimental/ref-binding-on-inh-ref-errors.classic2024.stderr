@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:60:10
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:64:10
    |
 LL |     let [&mut ref x] = &[&mut 0];
    |          ^^^^^
@@ -11,7 +11,7 @@ LL |     let [&ref x] = &[&mut 0];
    |          ~
 
 error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:74:10
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:78:10
    |
 LL |     let [ref mut x] = &[0];
    |          ^^^^^^^ cannot override to bind by-reference when that is the implicit default
@@ -23,13 +23,13 @@ LL |     let &[ref mut x] = &[0];
    |         +
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:74:10
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:78:10
    |
 LL |     let [ref mut x] = &[0];
    |          ^^^^^^^^^ cannot borrow as mutable
 
 error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:83:10
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:87:10
    |
 LL |     let [ref x] = &[0];
    |          ^^^ cannot override to bind by-reference when that is the implicit default
@@ -41,7 +41,7 @@ LL |     let &[ref x] = &[0];
    |         +
 
 error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:88:10
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:92:10
    |
 LL |     let [ref x] = &mut [0];
    |          ^^^ cannot override to bind by-reference when that is the implicit default
@@ -53,7 +53,7 @@ LL |     let &mut [ref x] = &mut [0];
    |         ++++
 
 error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:93:10
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:97:10
    |
 LL |     let [ref mut x] = &mut [0];
    |          ^^^^^^^ cannot override to bind by-reference when that is the implicit default

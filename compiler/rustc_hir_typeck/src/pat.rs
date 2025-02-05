@@ -230,10 +230,16 @@ enum InheritedRefMatchRule {
     /// underlying type is not a reference type, the inherited reference will be consumed.
     EatInner,
     /// When the underlying type is a reference type, reference patterns consume both layers of
-    /// reference, i.e. they both reset the binding mode and consume the reference type. Reference
-    /// patterns are not permitted when there is no underlying reference type, i.e. they can't eat
-    /// only an inherited reference. This is the current stable Rust behavior.
-    EatBoth,
+    /// reference, i.e. they both reset the binding mode and consume the reference type.
+    EatBoth {
+        /// This represents two behaviors implemented by both the `ref_pat_eat_one_layer_2024` and
+        /// `ref_pat_eat_one_layer_2024_structural` feature gates, and is false for stable Rust.
+        /// - Whether to allow reference patterns to consume only an inherited reference when
+        ///   matching against a non-reference type.
+        /// - Whether to allow a `&mut` reference pattern to eat a `&` reference type if it's also
+        ///   able to consume a mutable inherited reference.
+        consider_inherited_ref_first: bool,
+    },
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -259,10 +265,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 // Currently, matching against an inherited ref on edition 2024 is an error.
                 // Use `EatBoth` as a fallback to be similar to stable Rust.
-                InheritedRefMatchRule::EatBoth
+                InheritedRefMatchRule::EatBoth { consider_inherited_ref_first: false }
             }
         } else {
-            InheritedRefMatchRule::EatBoth
+            InheritedRefMatchRule::EatBoth {
+                consider_inherited_ref_first: self.tcx.features().ref_pat_eat_one_layer_2024()
+                    || self.tcx.features().ref_pat_eat_one_layer_2024_structural(),
+            }
         }
     }
 
@@ -2363,6 +2372,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // NB: This assumes that `&` patterns can match against mutable
                             // references (RFC 3627, Rule 5). If we implement a pattern typing
                             // ruleset with Rule 4 but not Rule 5, we'll need to check that here.
+                            // FIXME(ref_pat_eat_one_layer_2024_structural): If we already tried
+                            // matching the real reference, the error message should explain that
+                            // falling back to the inherited reference didn't work. This should be
+                            // the same error as the old-Edition version below.
                             debug_assert!(ref_pat_matches_mut_ref);
                             self.error_inherited_ref_mutability_mismatch(pat, pat_prefix_span);
                         }
@@ -2373,8 +2386,49 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return expected;
                     }
                 }
-                InheritedRefMatchRule::EatBoth => {
+                InheritedRefMatchRule::EatBoth { consider_inherited_ref_first: true } => {
                     // Reset binding mode on old editions
+                    pat_info.binding_mode = ByRef::No;
+
+                    if let ty::Ref(_, inner_ty, _) = *expected.kind() {
+                        // Consume both the inherited and inner references.
+                        if inh_mut.is_mut() {
+                            // If the expected type is a reference type (of any mutability) and the
+                            // inherited ref is mutable, we'll be able to match, since we can fall
+                            // back to matching the inherited ref if the real reference isn't
+                            // mutable enough for our pattern. We handle that here to avoid adding
+                            // fallback-to-outer to the common logic below.
+                            // NB: This way of phrasing the logic will catch more cases than those
+                            // that need to fall back to matching the inherited reference. However,
+                            // as long as `&` patterns can match mutable (inherited) references
+                            // (RFC 3627, Rule 5) this should be sound.
+                            debug_assert!(ref_pat_matches_mut_ref);
+                            self.check_pat(inner, inner_ty, pat_info);
+                            return expected;
+                        } else {
+                            // Otherwise, use the common logic below for matching the inner
+                            // reference type.
+                            // FIXME(ref_pat_eat_one_layer_2024_structural): If this results in a
+                            // mutability mismatch, the error message should explain that falling
+                            // back to the inherited reference didn't work. This should be the same
+                            // error as the Edition 2024 version above.
+                        }
+                    } else {
+                        // The expected type isn't a reference type, so only match against the
+                        // inherited reference.
+                        if pat_mutbl > inh_mut {
+                            // We can't match a lone inherited shared reference with `&mut`.
+                            self.error_inherited_ref_mutability_mismatch(pat, pat_prefix_span);
+                        }
+
+                        self.typeck_results.borrow_mut().skipped_ref_pats_mut().insert(pat.hir_id);
+                        self.check_pat(inner, expected, pat_info);
+                        return expected;
+                    }
+                }
+                InheritedRefMatchRule::EatBoth { consider_inherited_ref_first: false } => {
+                    // Reset binding mode on stable Rust. This will be a type error below if
+                    // `expected` is not a reference type.
                     pat_info.binding_mode = ByRef::No;
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
