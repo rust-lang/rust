@@ -8,7 +8,7 @@ use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
 #[cfg(feature = "master")]
 use rustc_session::config;
-use rustc_target::abi::call::{ArgAttributes, CastTarget, FnAbi, PassMode, Reg, RegKind};
+use rustc_target::callconv::{ArgAttributes, CastTarget, FnAbi, PassMode, Reg, RegKind};
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
@@ -132,10 +132,10 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             if cx.sess().opts.optimize == config::OptLevel::No {
                 return ty;
             }
-            if attrs.regular.contains(rustc_target::abi::call::ArgAttribute::NoAlias) {
+            if attrs.regular.contains(rustc_target::callconv::ArgAttribute::NoAlias) {
                 ty = ty.make_restrict()
             }
-            if attrs.regular.contains(rustc_target::abi::call::ArgAttribute::NonNull) {
+            if attrs.regular.contains(rustc_target::callconv::ArgAttribute::NonNull) {
                 non_null_args.push(arg_index as i32 + 1);
             }
             ty

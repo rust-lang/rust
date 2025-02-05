@@ -338,6 +338,18 @@ impl Rustc {
         self
     }
 
+    /// Specify `-C debuginfo=...`.
+    pub fn debuginfo(&mut self, level: &str) -> &mut Self {
+        self.cmd.arg(format!("-Cdebuginfo={level}"));
+        self
+    }
+
+    /// Specify `-C split-debuginfo={packed,unpacked,off}`.
+    pub fn split_debuginfo(&mut self, split_kind: &str) -> &mut Self {
+        self.cmd.arg(format!("-Csplit-debuginfo={split_kind}"));
+        self
+    }
+
     /// Pass the `--verbose` flag.
     pub fn verbose(&mut self) -> &mut Self {
         self.cmd.arg("--verbose");

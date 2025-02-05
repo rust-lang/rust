@@ -1,12 +1,11 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-use super::err2io;
-use super::fd::WasiFd;
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
-use crate::sys::unsupported;
+use crate::sys::fd::WasiFd;
+use crate::sys::{err2io, unsupported};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 

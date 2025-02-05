@@ -1,7 +1,7 @@
-use super::abi::usercalls;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, ToSocketAddrs};
 use crate::sync::Arc;
+use crate::sys::abi::usercalls;
 use crate::sys::fd::FileDesc;
 use crate::sys::{AsInner, FromInner, IntoInner, TryIntoInner, sgx_ineffective, unsupported};
 use crate::time::Duration;
