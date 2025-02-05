@@ -1,7 +1,7 @@
 //@ edition: 2021
 //@ run-pass
 //@ check-run-results
-//@ run-flags: --sysroot {{sysroot-base}} --edition=2021 {{src-base}}/auxiliary/obtain-borrowck-input.rs
+//@ run-flags: --sysroot {{sysroot-base}} --edition=2021 {{test-suite-src-base}}/auxiliary/obtain-borrowck-input.rs
 //@ ignore-stage1 (requires matching sysroot built with in-tree compiler)
 // ignore-tidy-linelength
 

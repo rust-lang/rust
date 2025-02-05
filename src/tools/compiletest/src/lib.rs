@@ -61,9 +61,17 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "jsondoclint-path", "path to jsondoclint to use for doc tests", "PATH")
         .optopt("", "run-clang-based-tests-with", "path to Clang executable", "PATH")
         .optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR")
-        .reqopt("", "src-base", "directory to scan for test files", "PATH")
-        .reqopt("", "build-base", "directory to deposit test outputs", "PATH")
-        .reqopt("", "sysroot-base", "directory containing the compiler sysroot", "PATH")
+        .reqopt("", "src-root", "root directory of rust-lang/rust source files", "PATH")
+        .reqopt(
+            "",
+            "src-test-suite-root",
+            "root directory of the test suite (e.g. `tests/ui/`)",
+            "PATH",
+        )
+        .reqopt("", "build-root", "build directory", "PATH")
+        .reqopt("", "build-test-suite-root", "directory to deposit test outputs", "PATH")
+        .reqopt("", "sysroot", "directory containing the compiler sysroot", "PATH")
+        .reqopt("", "stage", "test stage", "N")
         .reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET")
         .reqopt(
             "",
@@ -242,7 +250,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
             || header::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
         );
 
-    let src_base = opt_path(matches, "src-base");
+    let stage = if let Some(ref stage) = matches.opt_str("stage") {
+        stage.parse::<u32>().expect("expected `--stage` to be a non-negative integer")
+    } else {
+        panic!("expected `--stage` number")
+    };
+
     let run_ignored = matches.opt_present("ignored");
     let with_rustc_debug_assertions = matches.opt_present("with-rustc-debug-assertions");
     let with_std_debug_assertions = matches.opt_present("with-std-debug-assertions");
@@ -308,10 +321,18 @@ pub fn parse_config(args: Vec<String>) -> Config {
         run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),
         llvm_filecheck: matches.opt_str("llvm-filecheck").map(PathBuf::from),
         llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(PathBuf::from),
-        src_base,
-        build_base: opt_path(matches, "build-base"),
-        sysroot_base: opt_path(matches, "sysroot-base"),
+
+        src_root: opt_path(matches, "src-root"),
+        src_test_suite_root: opt_path(matches, "src-test-suite-root"),
+
+        build_root: opt_path(matches, "build-root"),
+        build_test_suite_root: opt_path(matches, "build-test-suite-root"),
+
+        sysroot: opt_path(matches, "sysroot"),
+
+        stage,
         stage_id: matches.opt_str("stage-id").unwrap(),
+
         mode,
         suite: matches.opt_str("suite").unwrap(),
         debugger: matches.opt_str("debugger").map(|debugger| {
@@ -413,9 +434,16 @@ pub fn log_config(config: &Config) {
     logv(c, format!("rustc_path: {:?}", config.rustc_path.display()));
     logv(c, format!("cargo_path: {:?}", config.cargo_path));
     logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path));
-    logv(c, format!("src_base: {:?}", config.src_base.display()));
-    logv(c, format!("build_base: {:?}", config.build_base.display()));
+
+    logv(c, format!("src_root: {:?}", config.src_root.display()));
+    logv(c, format!("src_test_suite_root: {:?}", config.src_test_suite_root.display()));
+
+    logv(c, format!("build_root: {:?}", config.build_root.display()));
+    logv(c, format!("build_test_suite_root: {:?}", config.build_test_suite_root.display()));
+
+    logv(c, format!("stage: {}", config.stage));
     logv(c, format!("stage_id: {}", config.stage_id));
+
     logv(c, format!("mode: {}", config.mode));
     logv(c, format!("run_ignored: {}", config.run_ignored));
     logv(c, format!("filters: {:?}", config.filters));
@@ -463,7 +491,7 @@ pub fn run_tests(config: Arc<Config>) {
     // we first make sure that the coverage file does not exist.
     // It will be created later on.
     if config.rustfix_coverage {
-        let mut coverage_file_path = config.build_base.clone();
+        let mut coverage_file_path = config.build_test_suite_root.clone();
         coverage_file_path.push("rustfix_missing_coverage.txt");
         if coverage_file_path.exists() {
             if let Err(e) = fs::remove_file(&coverage_file_path) {
@@ -610,20 +638,29 @@ struct TestCollector {
 /// regardless of whether any filters/tests were specified on the command-line,
 /// because filtering is handled later by libtest.
 pub fn collect_and_make_tests(config: Arc<Config>) -> Vec<test::TestDescAndFn> {
-    debug!("making tests from {:?}", config.src_base.display());
+    debug!("making tests from {:?}", config.src_root.display());
     let common_inputs_stamp = common_inputs_stamp(&config);
-    let modified_tests = modified_tests(&config, &config.src_base).unwrap_or_else(|err| {
-        panic!("modified_tests got error from dir: {}, error: {}", config.src_base.display(), err)
-    });
+    let modified_tests =
+        modified_tests(&config, &config.src_test_suite_root).unwrap_or_else(|err| {
+            panic!(
+                "modified_tests got error from dir: {}, error: {}",
+                config.src_root.display(),
+                err
+            )
+        });
     let cache = HeadersCache::load(&config);
 
     let cx = TestCollectorCx { config, cache, common_inputs_stamp, modified_tests };
     let mut collector =
         TestCollector { tests: vec![], found_path_stems: HashSet::new(), poisoned: false };
 
-    collect_tests_from_dir(&cx, &mut collector, &cx.config.src_base, Path::new("")).unwrap_or_else(
-        |reason| panic!("Could not read tests from {}: {reason}", cx.config.src_base.display()),
-    );
+    collect_tests_from_dir(&cx, &mut collector, &cx.config.src_test_suite_root, Path::new(""))
+        .unwrap_or_else(|reason| {
+            panic!(
+                "Could not read tests from {}: {reason}",
+                cx.config.src_test_suite_root.display()
+            )
+        });
 
     let TestCollector { tests, found_path_stems, poisoned } = collector;
 
@@ -645,8 +682,7 @@ pub fn collect_and_make_tests(config: Arc<Config>) -> Vec<test::TestDescAndFn> {
 /// common to some subset of tests, and are hopefully unlikely to be modified
 /// while working on other tests.)
 fn common_inputs_stamp(config: &Config) -> Stamp {
-    let rust_src_dir = config.find_rust_src_root().expect("Could not find Rust source root");
-
+    let src_root = &config.src_root;
     let mut stamp = Stamp::from_path(&config.rustc_path);
 
     // Relevant pretty printer files
@@ -660,17 +696,17 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         "src/etc/lldb_providers.py",
     ];
     for file in &pretty_printer_files {
-        let path = rust_src_dir.join(file);
+        let path = src_root.join(file);
         stamp.add_path(&path);
     }
 
-    stamp.add_dir(&rust_src_dir.join("src/etc/natvis"));
+    stamp.add_dir(&src_root.join("src").join("etc").join("natvis"));
 
     stamp.add_dir(&config.run_lib_path);
 
     if let Some(ref rustdoc_path) = config.rustdoc_path {
         stamp.add_path(&rustdoc_path);
-        stamp.add_path(&rust_src_dir.join("src/etc/htmldocck.py"));
+        stamp.add_path(&src_root.join("src/etc/htmldocck.py"));
     }
 
     // Re-run coverage tests if the `coverage-dump` tool was modified,
@@ -679,10 +715,10 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         stamp.add_path(coverage_dump_path)
     }
 
-    stamp.add_dir(&rust_src_dir.join("src/tools/run-make-support"));
+    stamp.add_dir(&src_root.join("src/tools/run-make-support"));
 
     // Compiletest itself.
-    stamp.add_dir(&rust_src_dir.join("src/tools/compiletest/"));
+    stamp.add_dir(&src_root.join("src/tools/compiletest/"));
 
     stamp
 }
@@ -923,10 +959,7 @@ fn files_related_to_test(
     }
 
     // `minicore.rs` test auxiliary: we need to make sure tests get rerun if this changes.
-    //
-    // FIXME(jieyouxu): untangle these paths, we should provide both a path to root `tests/` or
-    // `tests/auxiliary/` and the test suite in question. `src_base` is also a terrible name.
-    related.push(config.src_base.parent().unwrap().join("auxiliary").join("minicore.rs"));
+    related.push(config.src_root.join("tests").join("auxiliary").join("minicore.rs"));
 
     related
 }
@@ -1016,10 +1049,9 @@ fn make_test_name(
     testpaths: &TestPaths,
     revision: Option<&str>,
 ) -> test::TestName {
-    // Print the name of the file, relative to the repository root.
-    // `src_base` looks like `/path/to/rust/tests/ui`
-    let root_directory = config.src_base.parent().unwrap().parent().unwrap();
-    let path = testpaths.file.strip_prefix(root_directory).unwrap();
+    // Print the name of the file, relative to the repository root. `src_base` looks like
+    // `/path/to/rust/tests/ui`.
+    let path = testpaths.file.strip_prefix(&config.src_test_suite_root).unwrap();
     let debugger = match config.debugger {
         Some(d) => format!("-{}", d),
         None => String::new(),

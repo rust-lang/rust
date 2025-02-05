@@ -1,4 +1,4 @@
-//@ compile-flags: --crate-type lib --extern foo={{src-base}}/crate-loading/auxiliary/libfoo.rlib
+//@ compile-flags: --crate-type lib --extern foo={{test-suite-src-base}}/crate-loading/auxiliary/libfoo.rlib
 //@ normalize-stderr: "failed to mmap file '.*auxiliary/libfoo.rlib':.*" -> "failed to mmap file 'auxiliary/libfoo.rlib'"
 // don't emit warn logging, it's basically the same as the errors and it's annoying to normalize
 //@ rustc-env:RUSTC_LOG=error

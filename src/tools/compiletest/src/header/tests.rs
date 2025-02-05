@@ -158,6 +158,8 @@ impl ConfigBuilder {
             "--android-cross-path=",
             "--stage-id",
             self.stage_id.as_deref().unwrap_or("stage2-x86_64-unknown-linux-gnu"),
+            "--stage",
+            "2",
             "--channel",
             self.channel.as_deref().unwrap_or("nightly"),
             "--host",
