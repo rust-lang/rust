@@ -37,6 +37,8 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
     }
 }
 
+pub fn thread_cleanup() {}
+
 // SAFETY: must be called only once during runtime cleanup.
 // NOTE: this is not guaranteed to run, for example when the program aborts.
 pub unsafe fn cleanup() {}
