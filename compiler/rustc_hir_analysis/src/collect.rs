@@ -445,47 +445,6 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         self.tcx.at(span).type_param_predicates((self.item_def_id, def_id, assoc_name))
     }
 
-    fn lower_assoc_ty(
-        &self,
-        span: Span,
-        item_def_id: DefId,
-        item_segment: &hir::PathSegment<'tcx>,
-        poly_trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> Ty<'tcx> {
-        match self.lower_assoc_shared(
-            span,
-            item_def_id,
-            item_segment,
-            poly_trait_ref,
-            ty::AssocKind::Type,
-        ) {
-            Ok((def_id, args)) => Ty::new_projection_from_args(self.tcx(), def_id, args),
-            Err(witness) => Ty::new_error(self.tcx(), witness),
-        }
-    }
-
-    fn lower_assoc_const(
-        &self,
-        span: Span,
-        item_def_id: DefId,
-        item_segment: &hir::PathSegment<'tcx>,
-        poly_trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> Const<'tcx> {
-        match self.lower_assoc_shared(
-            span,
-            item_def_id,
-            item_segment,
-            poly_trait_ref,
-            ty::AssocKind::Const,
-        ) {
-            Ok((def_id, args)) => {
-                let uv = ty::UnevaluatedConst::new(def_id, args);
-                Const::new_unevaluated(self.tcx(), uv)
-            }
-            Err(witness) => Const::new_error(self.tcx(), witness),
-        }
-    }
-
     fn lower_assoc_shared(
         &self,
         span: Span,

@@ -109,10 +109,11 @@ impl AssocItem {
         self.opt_rpitit_info.is_some()
     }
 
-    /// Does this associated item have the `#[type_const]` attribute,
-    /// or (if it is in a trait impl), does the item from the original
-    /// trait have this attribute?
-    pub fn has_type_const_attr(&self, tcx: TyCtxt<'_>) -> bool {
+    /// Returns true if:
+    /// - This trait associated item has the `#[type_const]` attribute,
+    /// - If it is in a trait impl, the item from the original trait has this attribute, or
+    /// - It is an inherent assoc const.
+    pub fn is_type_const_capable(&self, tcx: TyCtxt<'_>) -> bool {
         if self.kind != ty::AssocKind::Const {
             return false;
         }
@@ -121,7 +122,7 @@ impl AssocItem {
             (AssocItemContainer::Trait, _) => self.def_id,
             (AssocItemContainer::Impl, Some(trait_item_did)) => trait_item_did,
             // Inherent impl but this attr is only applied to trait assoc items.
-            (AssocItemContainer::Impl, None) => return false,
+            (AssocItemContainer::Impl, None) => return true,
         };
         tcx.has_attr(def_id, sym::type_const)
     }
