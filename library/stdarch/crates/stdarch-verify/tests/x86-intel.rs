@@ -8,9 +8,8 @@ use std::io::{BufWriter, Write};
 use serde::Deserialize;
 
 const PRINT_INSTRUCTION_VIOLATIONS: bool = false;
-const PRINT_MISSING_LISTS: bool = false;
-const PRINT_MISSING_LISTS_MARKDOWN: bool = false;
-const SS: u8 = (8 * core::mem::size_of::<usize>()) as u8;
+const GENERATE_MISSING_X86_MD: bool = false;
+const SS: u8 = (8 * size_of::<usize>()) as u8;
 
 struct Function {
     name: &'static str,
@@ -291,16 +290,13 @@ fn verify_all_signatures() {
             "__cpuid" |
             "__get_cpuid_max" |
             // Not listed with intel, but manually verified
-            "cmpxchg16b"
-            => continue,
+            "cmpxchg16b" |
             // Intel requires the mask argument for _mm_shuffle_ps to be an
             // unsigned integer, but all other _mm_shuffle_.. intrinsics
             // take a signed-integer. This breaks `_MM_SHUFFLE` for
-            // `_mm_shuffle_ps`:
-            name@"_mm_shuffle_ps" => {
-                map.remove(name);
-                continue;
-            },
+            // `_mm_shuffle_ps`
+            "_mm_shuffle_ps"
+            => continue,
             _ => {}
         }
 
@@ -331,10 +327,7 @@ fn verify_all_signatures() {
     }
     assert!(all_valid);
 
-    if PRINT_MISSING_LISTS {
-        print_missing(&map, io::stdout()).unwrap();
-    }
-    if PRINT_MISSING_LISTS_MARKDOWN {
+    if GENERATE_MISSING_X86_MD {
         print_missing(
             &map,
             BufWriter::new(File::create("../core_arch/missing-x86.md").unwrap()),
@@ -367,23 +360,16 @@ fn print_missing(map: &HashMap<&str, Vec<&Intrinsic>>, mut f: impl Write) -> io:
 
     for (k, v) in &mut missing {
         v.sort_by_key(|intrinsic| &intrinsic.name); // sort to make the order of everything same
-        if PRINT_MISSING_LISTS_MARKDOWN {
-            writeln!(f, "\n<details><summary>{k:?}</summary><p>\n")?;
-            for intel in v {
-                let url = format!(
-                    "https://software.intel.com/sites/landingpage\
+        writeln!(f, "\n<details><summary>{k:?}</summary><p>\n")?;
+        for intel in v {
+            let url = format!(
+                "https://software.intel.com/sites/landingpage\
                          /IntrinsicsGuide/#text={}",
-                    intel.name
-                );
-                writeln!(f, "  * [ ] [`{}`]({url})", intel.name)?;
-            }
-            writeln!(f, "</p></details>\n")?;
-        } else {
-            writeln!(f, "\n{k:?}\n")?;
-            for intel in v {
-                writeln!(f, "\t{}", intel.name)?;
-            }
+                intel.name
+            );
+            writeln!(f, "  * [ ] [`{}`]({url})", intel.name)?;
         }
+        writeln!(f, "</p></details>\n")?;
     }
 
     f.flush()
@@ -454,51 +440,18 @@ fn check_target_features(rust: &Function, intel: &Intrinsic) -> Result<(), Strin
             continue;
         }
 
-        let cpuid = cpuid.to_lowercase();
+        let cpuid = cpuid.to_lowercase().replace('_', "");
 
         // Fix mismatching feature names:
-        let fixup_cpuid = |cpuid: String| match cpuid.as_ref() {
+        let fixed_cpuid = match cpuid.as_ref() {
             // The XML file names IFMA as "avx512ifma52", while Rust calls
             // it "avx512ifma".
             "avx512ifma52" => String::from("avx512ifma"),
-            // The XML file names BITALG as "avx512_bitalg", while Rust calls
-            // it "avx512bitalg".
-            "avx512_bitalg" => String::from("avx512bitalg"),
-            // The XML file names VBMI as "avx512_vbmi", while Rust calls
-            // it "avx512vbmi".
-            "avx512_vbmi" => String::from("avx512vbmi"),
-            // The XML file names VBMI2 as "avx512_vbmi2", while Rust calls
-            // it "avx512vbmi2".
-            "avx512_vbmi2" => String::from("avx512vbmi2"),
-            // The XML file names VNNI as "avx512_vnni", while Rust calls
-            // it "avx512vnni".
-            "avx512_vnni" => String::from("avx512vnni"),
-            // The XML file names BF16 as "avx512_bf16", while Rust calls
-            // it "avx512bf16".
-            "avx512_bf16" => String::from("avx512bf16"),
-            // The XML file names FP16 as "avx512_fp16", while Rust calls
-            // it "avx512fp16".
-            "avx512_fp16" => String::from("avx512fp16"),
-            // The XML file names AVX-VNNI as "avx_vnni", while Rust calls
-            // it "avxvnni"
-            "avx_vnni" => String::from("avxvnni"),
-            // The XML file names AVX-VNNI_INT8 as "avx_vnni_int8", while Rust calls
-            // it "avxvnniint8"
-            "avx_vnni_int8" => String::from("avxvnniint8"),
-            // The XML file names AVX-NE-CONVERT as "avx_ne_convert", while Rust calls
-            // it "avxvnni"
-            "avx_ne_convert" => String::from("avxneconvert"),
-            // The XML file names AVX-IFMA as "avx_ifma", while Rust calls
-            // it "avxifma"
-            "avx_ifma" => String::from("avxifma"),
-            // The XML file names AVX-VNNI_INT16 as "avx_vnni_int16", while Rust calls
-            // it "avxvnniint16"
-            "avx_vnni_int16" => String::from("avxvnniint16"),
             "xss" => String::from("xsaves"),
             _ => cpuid,
         };
 
-        intel_cpuids.insert(fixup_cpuid(cpuid));
+        intel_cpuids.insert(fixed_cpuid);
     }
 
     if intel_cpuids.contains("gfni") {
