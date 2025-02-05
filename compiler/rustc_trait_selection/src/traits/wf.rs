@@ -738,12 +738,8 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                                 }
                             }
                         };
-                        if let Some(start) = start {
-                            check(start)
-                        }
-                        if let Some(end) = end {
-                            check(end)
-                        }
+                        check(start);
+                        check(end);
                     }
                 }
             }

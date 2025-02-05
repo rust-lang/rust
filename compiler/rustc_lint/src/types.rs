@@ -883,22 +883,14 @@ fn ty_is_known_nonnull<'tcx>(
                     try {
                         match **pat {
                             ty::PatternKind::Range { start, end, include_end } => {
-                                match (start, end) {
-                                    (Some(start), None) => {
-                                        start.try_to_value()?.try_to_bits(tcx, typing_env)? > 0
-                                    }
-                                    (Some(start), Some(end)) => {
-                                        let start =
-                                            start.try_to_value()?.try_to_bits(tcx, typing_env)?;
-                                        let end =
-                                            end.try_to_value()?.try_to_bits(tcx, typing_env)?;
+                                let start = start.try_to_value()?.try_to_bits(tcx, typing_env)?;
+                                let end = end.try_to_value()?.try_to_bits(tcx, typing_env)?;
 
-                                        match include_end {
-                                            RangeEnd::Included => start > 0 && end >= start,
-                                            RangeEnd::Excluded => start > 0 && end > start,
-                                        }
-                                    }
-                                    _ => false,
+                                match include_end {
+                                    // This also works for negative numbers, as we just need
+                                    // to ensure we aren't wrapping over zero.
+                                    RangeEnd::Included => start > 0 && end >= start,
+                                    RangeEnd::Excluded => start > 0 && end > start,
                                 }
                             }
                         }
