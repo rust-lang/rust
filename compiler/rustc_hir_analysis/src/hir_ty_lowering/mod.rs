@@ -151,7 +151,7 @@ pub trait HirTyLowerer<'tcx> {
         assoc_name: Ident,
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]>;
 
-    /// Lower an associated type (from a trait) to a projection.
+    /// Lower an associated type/const (from a trait) to a projection.
     ///
     /// This method has to be defined by the concrete lowering context because
     /// dealing with higher-ranked trait references depends on its capabilities:
@@ -163,26 +163,6 @@ pub trait HirTyLowerer<'tcx> {
     ///
     /// The canonical example of this is associated type `T::P` where `T` is a type
     /// param constrained by `T: for<'a> Trait<'a>` and where `Trait` defines `P`.
-    fn lower_assoc_ty(
-        &self,
-        span: Span,
-        item_def_id: DefId,
-        item_segment: &hir::PathSegment<'tcx>,
-        poly_trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> Ty<'tcx>;
-
-    /// Lower an associated constant (from a trait) to a [`ty::Const`].
-    fn lower_assoc_const(
-        &self,
-        span: Span,
-        item_def_id: DefId,
-        item_segment: &hir::PathSegment<'tcx>,
-        poly_trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> Const<'tcx>;
-
-    /// Helper function; use [`Self::lower_assoc_ty`] or [`Self::lower_assoc_const`] instead.
-    ///
-    /// The logic for lowering associated items that is the same between types and consts.
     fn lower_assoc_shared(
         &self,
         span: Span,
@@ -293,9 +273,8 @@ impl LowerAssocMode {
 
 #[derive(Debug, Clone, Copy)]
 enum LoweredAssoc<'tcx> {
-    Type(Ty<'tcx>, DefId),
+    Term(DefId, GenericArgsRef<'tcx>),
     Variant { adt: Ty<'tcx>, variant_did: DefId },
-    Const(Const<'tcx>),
 }
 
 /// New-typed boolean indicating whether explicit late-bound lifetimes
@@ -1158,6 +1137,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         assoc_segment: &'tcx hir::PathSegment<'tcx>,
         permit_variants: bool,
     ) -> Result<(Ty<'tcx>, DefKind, DefId), ErrorGuaranteed> {
+        let tcx = self.tcx();
         match self.lower_assoc_path_shared(
             hir_ref_id,
             span,
@@ -1166,9 +1146,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             assoc_segment,
             LowerAssocMode::Type { permit_variants },
         )? {
-            LoweredAssoc::Type(ty, def_id) => Ok((ty, DefKind::AssocTy, def_id)),
+            LoweredAssoc::Term(def_id, args) => {
+                let assoc = tcx.associated_item(def_id);
+                let ty = if matches!(assoc, ty::AssocItem {
+                    container: ty::AssocItemContainer::Impl,
+                    trait_item_def_id: None,
+                    ..
+                }) {
+                    Ty::new_alias(tcx, ty::Inherent, ty::AliasTy::new_from_args(tcx, def_id, args))
+                } else {
+                    Ty::new_projection_from_args(tcx, def_id, args)
+                };
+                Ok((ty, DefKind::AssocTy, def_id))
+            }
             LoweredAssoc::Variant { adt, variant_did } => Ok((adt, DefKind::Variant, variant_did)),
-            LoweredAssoc::Const(_) => unreachable!("lowered assoc type to const somehow"),
         }
     }
 
@@ -1181,7 +1172,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         qself: &'tcx hir::Ty<'tcx>,
         assoc_segment: &'tcx hir::PathSegment<'tcx>,
     ) -> Result<Const<'tcx>, ErrorGuaranteed> {
-        match self.lower_assoc_path_shared(
+        let tcx = self.tcx();
+        let (def_id, args) = match self.lower_assoc_path_shared(
             hir_ref_id,
             span,
             qself_ty,
@@ -1189,13 +1181,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             assoc_segment,
             LowerAssocMode::Const,
         )? {
-            LoweredAssoc::Type(..) => unreachable!("lowered assoc const to type somehow"),
-            LoweredAssoc::Variant { adt: _, variant_did } => {
-                let uv = ty::UnevaluatedConst::new(variant_did, ty::List::empty());
-                Ok(Const::new_unevaluated(self.tcx(), uv))
+            LoweredAssoc::Term(def_id, args) => {
+                if !tcx.associated_item(def_id).is_type_const_capable(tcx) {
+                    let mut err = tcx.dcx().struct_span_err(
+                        span,
+                        "use of trait associated const without `#[type_const]`",
+                    );
+                    err.note("the declaration in the trait must be marked with `#[type_const]`");
+                    return Err(err.emit());
+                }
+                (def_id, args)
             }
-            LoweredAssoc::Const(ct) => Ok(ct),
-        }
+            LoweredAssoc::Variant { adt: _, variant_did } => (variant_did, ty::List::empty()),
+        };
+        Ok(Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(def_id, args)))
     }
 
     #[instrument(level = "debug", skip_all, ret)]
@@ -1238,31 +1237,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
 
-            match mode {
-                LowerAssocMode::Type { .. } => {
-                    // FIXME(inherent_associated_types, #106719): Support self types other than ADTs.
-                    if let Some((ty, did)) = self.probe_inherent_assoc_ty(
-                        assoc_segment,
-                        adt_def.did(),
-                        qself_ty,
-                        hir_ref_id,
-                        span,
-                    )? {
-                        return Ok(LoweredAssoc::Type(ty, did));
-                    }
-                }
-                LowerAssocMode::Const => {
-                    // FIXME(mgca): Support self types other than ADTs.
-                    if let Some((ct, _)) = self.probe_inherent_assoc_const(
-                        assoc_segment,
-                        adt_def.did(),
-                        qself_ty,
-                        hir_ref_id,
-                        span,
-                    )? {
-                        return Ok(LoweredAssoc::Const(ct));
-                    }
-                }
+            // FIXME(inherent_associated_types, #106719): Support self types other than ADTs.
+            if let Some((did, args)) = self.probe_inherent_assoc_shared(
+                assoc_segment,
+                adt_def.did(),
+                qself_ty,
+                hir_ref_id,
+                span,
+                mode.kind(),
+            )? {
+                return Ok(LoweredAssoc::Term(did, args));
             }
         }
 
@@ -1430,26 +1414,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let assoc_item = self
             .probe_assoc_item(assoc_ident, mode.kind(), hir_ref_id, span, trait_did)
             .expect("failed to find associated item");
-        let result = match mode {
-            LowerAssocMode::Type { .. } => {
-                let assoc_ty = self.lower_assoc_ty(span, assoc_item.def_id, assoc_segment, bound);
-                LoweredAssoc::Type(assoc_ty, assoc_item.def_id)
-            }
-            LowerAssocMode::Const => {
-                if assoc_item.has_type_const_attr(tcx) {
-                    let assoc_ct =
-                        self.lower_assoc_const(span, assoc_item.def_id, assoc_segment, bound);
-                    LoweredAssoc::Const(assoc_ct)
-                } else {
-                    let mut err = tcx.dcx().struct_span_err(
-                        span,
-                        "use of trait associated const without `#[type_const]`",
-                    );
-                    err.note("the declaration in the trait must be marked with `#[type_const]`");
-                    return Err(err.emit());
-                }
-            }
-        };
+        let (def_id, args) =
+            self.lower_assoc_shared(span, assoc_item.def_id, assoc_segment, bound, mode.kind())?;
+        let result = LoweredAssoc::Term(def_id, args);
 
         if let Some(variant_def_id) = variant_resolution {
             tcx.node_span_lint(AMBIGUOUS_ASSOCIATED_ITEMS, hir_ref_id, span, |lint| {
@@ -1478,68 +1445,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         Ok(result)
     }
 
-    fn probe_inherent_assoc_ty(
-        &self,
-        segment: &hir::PathSegment<'tcx>,
-        adt_did: DefId,
-        self_ty: Ty<'tcx>,
-        block: HirId,
-        span: Span,
-    ) -> Result<Option<(Ty<'tcx>, DefId)>, ErrorGuaranteed> {
-        let tcx = self.tcx();
-
-        // Don't attempt to look up inherent associated types when the feature is not enabled.
-        // Theoretically it'd be fine to do so since we feature-gate their definition site.
-        // However, due to current limitations of the implementation (caused by us performing
-        // selection during HIR ty lowering instead of in the trait solver), IATs can lead to cycle
-        // errors (#108491) which mask the feature-gate error, needlessly confusing users
-        // who use IATs by accident (#113265).
-        if !tcx.features().inherent_associated_types() {
-            return Ok(None);
-        }
-
-        let Some((def_id, args)) = self.probe_inherent_assoc_shared(
-            segment,
-            adt_did,
-            self_ty,
-            block,
-            span,
-            ty::AssocKind::Type,
-        )?
-        else {
-            return Ok(None);
-        };
-
-        let ty = Ty::new_alias(tcx, ty::Inherent, ty::AliasTy::new_from_args(tcx, def_id, args));
-        Ok(Some((ty, def_id)))
-    }
-
-    fn probe_inherent_assoc_const(
-        &self,
-        segment: &hir::PathSegment<'tcx>,
-        adt_did: DefId,
-        self_ty: Ty<'tcx>,
-        block: HirId,
-        span: Span,
-    ) -> Result<Option<(Const<'tcx>, DefId)>, ErrorGuaranteed> {
-        let tcx = self.tcx();
-
-        let Some((def_id, args)) = self.probe_inherent_assoc_shared(
-            segment,
-            adt_did,
-            self_ty,
-            block,
-            span,
-            ty::AssocKind::Const,
-        )?
-        else {
-            return Ok(None);
-        };
-
-        let ct = Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(def_id, args));
-        Ok(Some((ct, def_id)))
-    }
-
     fn probe_inherent_assoc_shared(
         &self,
         segment: &hir::PathSegment<'tcx>,
@@ -1551,13 +1456,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Result<Option<(DefId, GenericArgsRef<'tcx>)>, ErrorGuaranteed> {
         let tcx = self.tcx();
 
+        // Don't attempt to look up inherent associated types when the feature is not enabled.
+        // Theoretically it'd be fine to do so since we feature-gate their definition site.
+        // However, due to current limitations of the implementation (caused by us performing
+        // selection during HIR ty lowering instead of in the trait solver), IATs can lead to cycle
+        // errors (#108491) which mask the feature-gate error, needlessly confusing users
+        // who use IATs by accident (#113265).
+        if kind == ty::AssocKind::Type && !tcx.features().inherent_associated_types() {
+            return Ok(None);
+        }
+
         let name = segment.ident;
         let candidates: Vec<_> = tcx
             .inherent_impls(adt_did)
             .iter()
             .filter_map(|&impl_| {
-                let (item, scope) =
-                    self.probe_assoc_item_unchecked(name, ty::AssocKind::Type, block, impl_)?;
+                let (item, scope) = self.probe_assoc_item_unchecked(name, kind, block, impl_)?;
                 Some((impl_, (item.def_id, scope)))
             })
             .collect();
