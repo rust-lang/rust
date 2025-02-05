@@ -7,15 +7,15 @@ extern crate rustc_parse;
 extern crate rustc_session;
 extern crate rustc_span;
 
-use rustc_ast::ast::{DUMMY_NODE_ID, Expr};
-use rustc_ast::mut_visit::MutVisitor;
+use rustc_ast::ast::{DUMMY_NODE_ID, Attribute, Expr};
+use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::node_id::NodeId;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_errors::Diag;
 use rustc_parse::parser::Recovery;
 use rustc_session::parse::ParseSess;
-use rustc_span::{DUMMY_SP, FileName, Span};
+use rustc_span::{DUMMY_SP, AttrId, FileName, Span};
 
 pub fn parse_expr(psess: &ParseSess, source_code: &str) -> Option<P<Expr>> {
     let parser = rustc_parse::unwrap_or_emit_fatal(rustc_parse::new_parser_from_source_str(
@@ -47,5 +47,10 @@ impl MutVisitor for Normalize {
 
     fn visit_span(&mut self, span: &mut Span) {
         *span = DUMMY_SP;
+    }
+
+    fn visit_attribute(&mut self, attr: &mut Attribute) {
+        attr.id = AttrId::from_u32(0);
+        mut_visit::walk_attribute(self, attr);
     }
 }

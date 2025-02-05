@@ -44,7 +44,7 @@ pub(super) fn check<'tcx>(
     };
 
     if let Node::Expr(parent) = cx.tcx.parent_hir_node(e.hir_id)
-        && parent.precedence() > ExprPrecedence::Cast
+        && cx.precedence(parent) > ExprPrecedence::Cast
     {
         sugg = format!("({sugg})");
     }
