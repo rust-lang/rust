@@ -733,6 +733,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "strsim",
  "tracing",
  "tracing-subscriber",
  "unified-diff",
