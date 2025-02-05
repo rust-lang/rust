@@ -2562,6 +2562,8 @@ pub enum SelfKind {
     Value(Mutability),
     /// `&'lt self`, `&'lt mut self`
     Region(Option<Lifetime>, Mutability),
+    /// `&'lt pin const self`, `&'lt pin mut self`
+    Pinned(Option<Lifetime>, Mutability),
     /// `self: TYPE`, `mut self: TYPE`
     Explicit(P<Ty>, Mutability),
 }
@@ -2571,6 +2573,8 @@ impl SelfKind {
         match self {
             SelfKind::Region(None, mutbl) => mutbl.ref_prefix_str().to_string(),
             SelfKind::Region(Some(lt), mutbl) => format!("&{lt} {}", mutbl.prefix_str()),
+            SelfKind::Pinned(None, mutbl) => format!("&pin {}", mutbl.ptr_str()),
+            SelfKind::Pinned(Some(lt), mutbl) => format!("&{lt} pin {}", mutbl.ptr_str()),
             SelfKind::Value(_) | SelfKind::Explicit(_, _) => {
                 unreachable!("if we had an explicit self, we wouldn't be here")
             }
@@ -2587,11 +2591,13 @@ impl Param {
             if ident.name == kw::SelfLower {
                 return match self.ty.kind {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
-                    TyKind::Ref(lt, MutTy { ref ty, mutbl })
-                    | TyKind::PinnedRef(lt, MutTy { ref ty, mutbl })
+                    TyKind::Ref(lt, MutTy { ref ty, mutbl }) if ty.kind.is_implicit_self() => {
+                        Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
+                    }
+                    TyKind::PinnedRef(lt, MutTy { ref ty, mutbl })
                         if ty.kind.is_implicit_self() =>
                     {
-                        Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
+                        Some(respan(self.pat.span, SelfKind::Pinned(lt, mutbl)))
                     }
                     _ => Some(respan(
                         self.pat.span.to(self.ty.span),
@@ -2629,6 +2635,15 @@ impl Param {
                 P(Ty {
                     id: DUMMY_NODE_ID,
                     kind: TyKind::Ref(lt, MutTy { ty: infer_ty, mutbl }),
+                    span,
+                    tokens: None,
+                }),
+            ),
+            SelfKind::Pinned(lt, mutbl) => (
+                mutbl,
+                P(Ty {
+                    id: DUMMY_NODE_ID,
+                    kind: TyKind::PinnedRef(lt, MutTy { ty: infer_ty, mutbl }),
                     span,
                     tokens: None,
                 }),

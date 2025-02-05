@@ -7,9 +7,13 @@ struct Foo;
 impl Foo {
     fn foo(self: Pin<&mut Self>) {
     }
+    fn foo_sugar(&pin mut self) {} //~ ERROR pinned reference syntax is experimental
+    fn foo_sugar_const(&pin const self) {} //~ ERROR pinned reference syntax is experimental
 }
 
-fn foo(x: Pin<&mut Foo>) {
+fn foo(mut x: Pin<&mut Foo>) {
+    Foo::foo_sugar(x.as_mut());
+    Foo::foo_sugar_const(x.as_ref());
     let _y: &pin mut Foo = x; //~ ERROR pinned reference syntax is experimental
 }
 
