@@ -1,8 +1,7 @@
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::{io, mem};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
 use rustc_driver::USING_INTERNAL_FEATURES;
 use rustc_errors::TerminalUrl;
@@ -145,7 +144,7 @@ impl<'tcx> DocContext<'tcx> {
 /// will be created for the `DiagCtxt`.
 pub(crate) fn new_dcx(
     error_format: ErrorOutputType,
-    source_map: Option<Lrc<source_map::SourceMap>>,
+    source_map: Option<Arc<source_map::SourceMap>>,
     diagnostic_width: Option<usize>,
     unstable_opts: &UnstableOptions,
 ) -> rustc_errors::DiagCtxt {
@@ -173,7 +172,7 @@ pub(crate) fn new_dcx(
         }
         ErrorOutputType::Json { pretty, json_rendered, color_config } => {
             let source_map = source_map.unwrap_or_else(|| {
-                Lrc::new(source_map::SourceMap::new(source_map::FilePathMapping::empty()))
+                Arc::new(source_map::SourceMap::new(source_map::FilePathMapping::empty()))
             });
             Box::new(
                 JsonEmitter::new(

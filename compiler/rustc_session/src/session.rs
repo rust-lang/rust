@@ -9,9 +9,7 @@ use std::{env, fmt, io};
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
-use rustc_data_structures::sync::{
-    DynSend, DynSync, Lock, Lrc, MappedReadGuard, ReadGuard, RwLock,
-};
+use rustc_data_structures::sync::{DynSend, DynSync, Lock, MappedReadGuard, ReadGuard, RwLock};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
 use rustc_errors::emitter::{
@@ -138,8 +136,8 @@ pub struct Session {
     pub target: Target,
     pub host: Target,
     pub opts: config::Options,
-    pub host_tlib_path: Lrc<SearchPath>,
-    pub target_tlib_path: Lrc<SearchPath>,
+    pub host_tlib_path: Arc<SearchPath>,
+    pub target_tlib_path: Arc<SearchPath>,
     pub psess: ParseSess,
     pub sysroot: PathBuf,
     /// Input, input file path and output file path to this compilation process.
@@ -154,7 +152,7 @@ pub struct Session {
     pub code_stats: CodeStats,
 
     /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
-    pub lint_store: Option<Lrc<dyn LintStoreMarker>>,
+    pub lint_store: Option<Arc<dyn LintStoreMarker>>,
 
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -885,8 +883,8 @@ impl Session {
 #[allow(rustc::bad_opt_access)]
 fn default_emitter(
     sopts: &config::Options,
-    source_map: Lrc<SourceMap>,
-    bundle: Option<Lrc<FluentBundle>>,
+    source_map: Arc<SourceMap>,
+    bundle: Option<Arc<FluentBundle>>,
     fallback_bundle: LazyFallbackBundle,
 ) -> Box<DynEmitter> {
     let macro_backtrace = sopts.unstable_opts.macro_backtrace;
@@ -970,7 +968,7 @@ pub fn build_session(
     early_dcx: EarlyDiagCtxt,
     sopts: config::Options,
     io: CompilerIO,
-    bundle: Option<Lrc<rustc_errors::FluentBundle>>,
+    bundle: Option<Arc<rustc_errors::FluentBundle>>,
     registry: rustc_errors::registry::Registry,
     fluent_resources: Vec<&'static str>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -1005,7 +1003,7 @@ pub fn build_session(
         sopts.unstable_opts.translate_directionality_markers,
     );
     let source_map = rustc_span::source_map::get_source_map().unwrap();
-    let emitter = default_emitter(&sopts, Lrc::clone(&source_map), bundle, fallback_bundle);
+    let emitter = default_emitter(&sopts, Arc::clone(&source_map), bundle, fallback_bundle);
 
     let mut dcx = DiagCtxt::new(emitter)
         .with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings))
@@ -1045,13 +1043,13 @@ pub fn build_session(
 
     let host_triple = config::host_tuple();
     let target_triple = sopts.target_triple.tuple();
-    let host_tlib_path = Lrc::new(SearchPath::from_sysroot_and_triple(&sysroot, host_triple));
+    let host_tlib_path = Arc::new(SearchPath::from_sysroot_and_triple(&sysroot, host_triple));
     let target_tlib_path = if host_triple == target_triple {
         // Use the same `SearchPath` if host and target triple are identical to avoid unnecessary
         // rescanning of the target lib path and an unnecessary allocation.
-        Lrc::clone(&host_tlib_path)
+        Arc::clone(&host_tlib_path)
     } else {
-        Lrc::new(SearchPath::from_sysroot_and_triple(&sysroot, target_triple))
+        Arc::new(SearchPath::from_sysroot_and_triple(&sysroot, target_triple))
     };
 
     let prof = SelfProfilerRef::new(
@@ -1446,7 +1444,7 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
         config::ErrorOutputType::Json { pretty, json_rendered, color_config } => {
             Box::new(JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),
-                Some(Lrc::new(SourceMap::new(FilePathMapping::empty()))),
+                Some(Arc::new(SourceMap::new(FilePathMapping::empty()))),
                 fallback_bundle,
                 pretty,
                 json_rendered,

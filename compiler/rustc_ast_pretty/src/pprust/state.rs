@@ -7,6 +7,7 @@ mod fixup;
 mod item;
 
 use std::borrow::Cow;
+use std::sync::Arc;
 
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
@@ -21,7 +22,6 @@ use rustc_ast::{
     InlineAsmOperand, InlineAsmOptions, InlineAsmRegOrRegClass, InlineAsmTemplatePiece, PatKind,
     RangeEnd, RangeSyntax, Safety, SelfKind, Term, attr,
 };
-use rustc_data_structures::sync::Lrc;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::IdentPrinter;
@@ -106,7 +106,7 @@ fn split_block_comment_into_lines(text: &str, col: CharPos) -> Vec<String> {
 fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comment> {
     let sm = SourceMap::new(sm.path_mapping().clone());
     let source_file = sm.new_source_file(path, src);
-    let text = Lrc::clone(&(*source_file.src.as_ref().unwrap()));
+    let text = Arc::clone(&(*source_file.src.as_ref().unwrap()));
 
     let text: &str = text.as_str();
     let start_bpos = source_file.start_pos;

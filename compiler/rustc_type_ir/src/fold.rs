@@ -46,12 +46,12 @@
 //! ```
 
 use std::mem;
+use std::sync::Arc;
 
 use rustc_index::{Idx, IndexVec};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
-use crate::data_structures::Lrc;
 use crate::inherent::*;
 use crate::visit::{TypeVisitable, TypeVisitableExt as _};
 use crate::{self as ty, Interner};
@@ -273,28 +273,28 @@ impl<I: Interner, T: TypeFoldable<I>, E: TypeFoldable<I>> TypeFoldable<I> for Re
     }
 }
 
-impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Lrc<T> {
+impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Arc<T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(mut self, folder: &mut F) -> Result<Self, F::Error> {
         // We merely want to replace the contained `T`, if at all possible,
-        // so that we don't needlessly allocate a new `Lrc` or indeed clone
+        // so that we don't needlessly allocate a new `Arc` or indeed clone
         // the contained type.
         unsafe {
             // First step is to ensure that we have a unique reference to
-            // the contained type, which `Lrc::make_mut` will accomplish (by
-            // allocating a new `Lrc` and cloning the `T` only if required).
-            // This is done *before* casting to `Lrc<ManuallyDrop<T>>` so that
+            // the contained type, which `Arc::make_mut` will accomplish (by
+            // allocating a new `Arc` and cloning the `T` only if required).
+            // This is done *before* casting to `Arc<ManuallyDrop<T>>` so that
             // panicking during `make_mut` does not leak the `T`.
-            Lrc::make_mut(&mut self);
+            Arc::make_mut(&mut self);
 
-            // Casting to `Lrc<ManuallyDrop<T>>` is safe because `ManuallyDrop`
+            // Casting to `Arc<ManuallyDrop<T>>` is safe because `ManuallyDrop`
             // is `repr(transparent)`.
-            let ptr = Lrc::into_raw(self).cast::<mem::ManuallyDrop<T>>();
-            let mut unique = Lrc::from_raw(ptr);
+            let ptr = Arc::into_raw(self).cast::<mem::ManuallyDrop<T>>();
+            let mut unique = Arc::from_raw(ptr);
 
-            // Call to `Lrc::make_mut` above guarantees that `unique` is the
+            // Call to `Arc::make_mut` above guarantees that `unique` is the
             // sole reference to the contained value, so we can avoid doing
             // a checked `get_mut` here.
-            let slot = Lrc::get_mut(&mut unique).unwrap_unchecked();
+            let slot = Arc::get_mut(&mut unique).unwrap_unchecked();
 
             // Semantically move the contained type out from `unique`, fold
             // it, then move the folded value back into `unique`. Should
@@ -304,8 +304,8 @@ impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Lrc<T> {
             let folded = owned.try_fold_with(folder)?;
             *slot = mem::ManuallyDrop::new(folded);
 
-            // Cast back to `Lrc<T>`.
-            Ok(Lrc::from_raw(Lrc::into_raw(unique).cast()))
+            // Cast back to `Arc<T>`.
+            Ok(Arc::from_raw(Arc::into_raw(unique).cast()))
         }
     }
 }

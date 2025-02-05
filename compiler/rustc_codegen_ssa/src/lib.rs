@@ -24,10 +24,10 @@
 use std::collections::BTreeSet;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::CrateNum;
@@ -200,9 +200,9 @@ pub struct CrateInfo {
     pub native_libraries: FxIndexMap<CrateNum, Vec<NativeLib>>,
     pub crate_name: UnordMap<CrateNum, Symbol>,
     pub used_libraries: Vec<NativeLib>,
-    pub used_crate_source: UnordMap<CrateNum, Lrc<CrateSource>>,
+    pub used_crate_source: UnordMap<CrateNum, Arc<CrateSource>>,
     pub used_crates: Vec<CrateNum>,
-    pub dependency_formats: Lrc<Dependencies>,
+    pub dependency_formats: Arc<Dependencies>,
     pub windows_subsystem: Option<String>,
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
     pub lint_levels: CodegenLintLevels,

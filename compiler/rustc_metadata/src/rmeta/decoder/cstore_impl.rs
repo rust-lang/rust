@@ -1,8 +1,8 @@
 use std::any::Any;
 use std::mem;
+use std::sync::Arc;
 
 use rustc_attr_parsing::Deprecation;
-use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -409,7 +409,7 @@ provide! { tcx, def_id, other, cdata,
         matches!(cdata.extern_crate, Some(extern_crate) if !extern_crate.is_direct())
     }
 
-    used_crate_source => { Lrc::clone(&cdata.source) }
+    used_crate_source => { Arc::clone(&cdata.source) }
     debugger_visualizers => { cdata.get_debugger_visualizers() }
 
     exported_symbols => {
@@ -548,7 +548,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             visible_parent_map
         },
 
-        dependency_formats: |tcx, ()| Lrc::new(crate::dependency_format::calculate(tcx)),
+        dependency_formats: |tcx, ()| Arc::new(crate::dependency_format::calculate(tcx)),
         has_global_allocator: |tcx, LocalCrate| CStore::from_tcx(tcx).has_global_allocator(),
         has_alloc_error_handler: |tcx, LocalCrate| CStore::from_tcx(tcx).has_alloc_error_handler(),
         postorder_cnums: |tcx, ()| {

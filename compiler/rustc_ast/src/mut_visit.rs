@@ -9,10 +9,10 @@
 
 use std::ops::DerefMut;
 use std::panic;
+use std::sync::Arc;
 
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::Lrc;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Ident, Span};
 use smallvec::{Array, SmallVec, smallvec};
@@ -793,14 +793,14 @@ fn visit_tt<T: MutVisitor>(vis: &mut T, tt: &mut TokenTree) {
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 fn visit_tts<T: MutVisitor>(vis: &mut T, TokenStream(tts): &mut TokenStream) {
     if T::VISIT_TOKENS && !tts.is_empty() {
-        let tts = Lrc::make_mut(tts);
+        let tts = Arc::make_mut(tts);
         visit_vec(tts, |tree| visit_tt(vis, tree));
     }
 }
 
 fn visit_attr_tts<T: MutVisitor>(vis: &mut T, AttrTokenStream(tts): &mut AttrTokenStream) {
     if T::VISIT_TOKENS && !tts.is_empty() {
-        let tts = Lrc::make_mut(tts);
+        let tts = Arc::make_mut(tts);
         visit_vec(tts, |tree| visit_attr_tt(vis, tree));
     }
 }
@@ -840,7 +840,7 @@ pub fn visit_token<T: MutVisitor>(vis: &mut T, t: &mut Token) {
             vis.visit_ident(ident);
         }
         token::Interpolated(nt) => {
-            let nt = Lrc::make_mut(nt);
+            let nt = Arc::make_mut(nt);
             visit_nonterminal(vis, nt);
         }
         _ => {}

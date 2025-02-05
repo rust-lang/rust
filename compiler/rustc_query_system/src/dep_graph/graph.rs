@@ -11,7 +11,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{QueryInvocationId, SelfProfilerRef};
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc};
+use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock};
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
@@ -29,13 +29,13 @@ use crate::query::{QueryContext, QuerySideEffects};
 
 #[derive(Clone)]
 pub struct DepGraph<D: Deps> {
-    data: Option<Lrc<DepGraphData<D>>>,
+    data: Option<Arc<DepGraphData<D>>>,
 
     /// This field is used for assigning DepNodeIndices when running in
     /// non-incremental mode. Even in non-incremental mode we make sure that
     /// each task has a `DepNodeIndex` that uniquely identifies it. This unique
     /// ID is used for self-profiling.
-    virtual_dep_node_index: Lrc<AtomicU32>,
+    virtual_dep_node_index: Arc<AtomicU32>,
 }
 
 rustc_index::newtype_index! {
@@ -171,7 +171,7 @@ impl<D: Deps> DepGraph<D> {
         }
 
         DepGraph {
-            data: Some(Lrc::new(DepGraphData {
+            data: Some(Arc::new(DepGraphData {
                 previous_work_products: prev_work_products,
                 dep_node_debug: Default::default(),
                 current,
@@ -180,12 +180,12 @@ impl<D: Deps> DepGraph<D> {
                 colors,
                 debug_loaded_from_disk: Default::default(),
             })),
-            virtual_dep_node_index: Lrc::new(AtomicU32::new(0)),
+            virtual_dep_node_index: Arc::new(AtomicU32::new(0)),
         }
     }
 
     pub fn new_disabled() -> DepGraph<D> {
-        DepGraph { data: None, virtual_dep_node_index: Lrc::new(AtomicU32::new(0)) }
+        DepGraph { data: None, virtual_dep_node_index: Arc::new(AtomicU32::new(0)) }
     }
 
     #[inline]

@@ -43,6 +43,7 @@
 
 use std::fmt;
 use std::ops::ControlFlow;
+use std::sync::Arc;
 
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_ast_ir::{try_visit, walk_visitable_list};
@@ -50,7 +51,6 @@ use rustc_index::{Idx, IndexVec};
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
-use crate::data_structures::Lrc;
 use crate::inherent::*;
 use crate::{self as ty, Interner, TypeFlags};
 
@@ -167,7 +167,7 @@ impl<I: Interner, T: TypeVisitable<I>, E: TypeVisitable<I>> TypeVisitable<I> for
     }
 }
 
-impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Lrc<T> {
+impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Arc<T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         (**self).visit_with(visitor)
     }

@@ -2,6 +2,7 @@
 
 use std::cell::{OnceCell, RefCell};
 use std::ops::Range;
+use std::sync::Arc;
 use std::{iter, ptr};
 
 use libc::c_uint;
@@ -10,7 +11,6 @@ use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_index::IndexVec;
@@ -240,7 +240,7 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
 // `lookup_char_pos` return the right information instead.
 struct DebugLoc {
     /// Information about the original source file.
-    file: Lrc<SourceFile>,
+    file: Arc<SourceFile>,
     /// The (1-based) line number.
     line: u32,
     /// The (1-based) column number.

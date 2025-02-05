@@ -41,13 +41,14 @@
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
+use std::sync::Arc;
+
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
@@ -144,11 +145,11 @@ struct LoweringContext<'a, 'hir> {
     #[cfg(debug_assertions)]
     node_id_to_local_id: NodeMap<hir::ItemLocalId>,
 
-    allow_try_trait: Lrc<[Symbol]>,
-    allow_gen_future: Lrc<[Symbol]>,
-    allow_async_iterator: Lrc<[Symbol]>,
-    allow_for_await: Lrc<[Symbol]>,
-    allow_async_fn_traits: Lrc<[Symbol]>,
+    allow_try_trait: Arc<[Symbol]>,
+    allow_gen_future: Arc<[Symbol]>,
+    allow_async_iterator: Arc<[Symbol]>,
+    allow_for_await: Arc<[Symbol]>,
+    allow_async_fn_traits: Arc<[Symbol]>,
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
@@ -738,7 +739,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &self,
         reason: DesugaringKind,
         span: Span,
-        allow_internal_unstable: Option<Lrc<[Symbol]>>,
+        allow_internal_unstable: Option<Arc<[Symbol]>>,
     ) -> Span {
         self.tcx.with_stable_hashing_context(|hcx| {
             span.mark_with_reason(allow_internal_unstable, reason, span.edition(), hcx)
@@ -1686,7 +1687,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             CoroutineKind::Async { return_impl_trait_id, .. } => (return_impl_trait_id, None),
             CoroutineKind::Gen { return_impl_trait_id, .. } => (return_impl_trait_id, None),
             CoroutineKind::AsyncGen { return_impl_trait_id, .. } => {
-                (return_impl_trait_id, Some(Lrc::clone(&self.allow_async_iterator)))
+                (return_impl_trait_id, Some(Arc::clone(&self.allow_async_iterator)))
             }
         };
 

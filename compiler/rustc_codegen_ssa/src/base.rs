@@ -1,5 +1,6 @@
 use std::cmp;
 use std::collections::BTreeSet;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use itertools::Itertools;
@@ -7,7 +8,7 @@ use rustc_abi::FIRST_VARIANT;
 use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, AllocatorKind, global_fn_name};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
-use rustc_data_structures::sync::{Lrc, par_map};
+use rustc_data_structures::sync::par_map;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
@@ -932,7 +933,7 @@ impl CrateInfo {
             crate_name: UnordMap::with_capacity(n_crates),
             used_crates,
             used_crate_source: UnordMap::with_capacity(n_crates),
-            dependency_formats: Lrc::clone(tcx.dependency_formats(())),
+            dependency_formats: Arc::clone(tcx.dependency_formats(())),
             windows_subsystem,
             natvis_debugger_visualizers: Default::default(),
             lint_levels: CodegenLintLevels::from_tcx(tcx),
@@ -946,7 +947,7 @@ impl CrateInfo {
             info.crate_name.insert(cnum, tcx.crate_name(cnum));
 
             let used_crate_source = tcx.used_crate_source(cnum);
-            info.used_crate_source.insert(cnum, Lrc::clone(used_crate_source));
+            info.used_crate_source.insert(cnum, Arc::clone(used_crate_source));
             if tcx.is_profiler_runtime(cnum) {
                 info.profiler_runtime = Some(cnum);
             }

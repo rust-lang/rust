@@ -1,6 +1,5 @@
 use std::ops::Range;
-
-use rustc_data_structures::sync::Lrc;
+use std::sync::Arc;
 
 use crate::source_map::SourceMap;
 use crate::{BytePos, Pos, RelativeBytePos, SourceFile, SpanData};
@@ -22,7 +21,7 @@ struct CacheEntry {
     // misses for these rare positions. A line lookup for the position via `SourceMap::lookup_line`
     // after a cache miss will produce the last line number, as desired.
     line: Range<BytePos>,
-    file: Lrc<SourceFile>,
+    file: Arc<SourceFile>,
     file_index: usize,
 }
 
@@ -30,7 +29,7 @@ impl CacheEntry {
     #[inline]
     fn update(
         &mut self,
-        new_file_and_idx: Option<(Lrc<SourceFile>, usize)>,
+        new_file_and_idx: Option<(Arc<SourceFile>, usize)>,
         pos: BytePos,
         time_stamp: usize,
     ) {
@@ -63,7 +62,7 @@ pub struct CachingSourceMapView<'sm> {
 impl<'sm> CachingSourceMapView<'sm> {
     pub fn new(source_map: &'sm SourceMap) -> CachingSourceMapView<'sm> {
         let files = source_map.files();
-        let first_file = Lrc::clone(&files[0]);
+        let first_file = Arc::clone(&files[0]);
         let entry = CacheEntry {
             time_stamp: 0,
             line_number: 0,
@@ -82,7 +81,7 @@ impl<'sm> CachingSourceMapView<'sm> {
     pub fn byte_pos_to_line_and_col(
         &mut self,
         pos: BytePos,
-    ) -> Option<(Lrc<SourceFile>, usize, RelativeBytePos)> {
+    ) -> Option<(Arc<SourceFile>, usize, RelativeBytePos)> {
         self.time_stamp += 1;
 
         // Check if the position is in one of the cached lines
@@ -92,7 +91,7 @@ impl<'sm> CachingSourceMapView<'sm> {
             cache_entry.touch(self.time_stamp);
 
             let col = RelativeBytePos(pos.to_u32() - cache_entry.line.start.to_u32());
-            return Some((Lrc::clone(&cache_entry.file), cache_entry.line_number, col));
+            return Some((Arc::clone(&cache_entry.file), cache_entry.line_number, col));
         }
 
         // No cache hit ...
@@ -109,13 +108,13 @@ impl<'sm> CachingSourceMapView<'sm> {
         cache_entry.update(new_file_and_idx, pos, self.time_stamp);
 
         let col = RelativeBytePos(pos.to_u32() - cache_entry.line.start.to_u32());
-        Some((Lrc::clone(&cache_entry.file), cache_entry.line_number, col))
+        Some((Arc::clone(&cache_entry.file), cache_entry.line_number, col))
     }
 
     pub fn span_data_to_lines_and_cols(
         &mut self,
         span_data: &SpanData,
-    ) -> Option<(Lrc<SourceFile>, usize, BytePos, usize, BytePos)> {
+    ) -> Option<(Arc<SourceFile>, usize, BytePos, usize, BytePos)> {
         self.time_stamp += 1;
 
         // Check if lo and hi are in the cached lines.
@@ -133,7 +132,7 @@ impl<'sm> CachingSourceMapView<'sm> {
                 }
 
                 (
-                    Lrc::clone(&lo.file),
+                    Arc::clone(&lo.file),
                     lo.line_number,
                     span_data.lo - lo.line.start,
                     hi.line_number,
@@ -181,7 +180,7 @@ impl<'sm> CachingSourceMapView<'sm> {
                 lo.update(new_file_and_idx, span_data.lo, self.time_stamp);
 
                 if !lo.line.contains(&span_data.hi) {
-                    let new_file_and_idx = Some((Lrc::clone(&lo.file), lo.file_index));
+                    let new_file_and_idx = Some((Arc::clone(&lo.file), lo.file_index));
                     let next_oldest = self.oldest_cache_entry_index_avoid(oldest);
                     let hi = &mut self.line_cache[next_oldest];
                     hi.update(new_file_and_idx, span_data.hi, self.time_stamp);
@@ -227,7 +226,7 @@ impl<'sm> CachingSourceMapView<'sm> {
         assert_eq!(lo.file_index, hi.file_index);
 
         Some((
-            Lrc::clone(&lo.file),
+            Arc::clone(&lo.file),
             lo.line_number,
             span_data.lo - lo.line.start,
             hi.line_number,
@@ -271,13 +270,13 @@ impl<'sm> CachingSourceMapView<'sm> {
         oldest
     }
 
-    fn file_for_position(&self, pos: BytePos) -> Option<(Lrc<SourceFile>, usize)> {
+    fn file_for_position(&self, pos: BytePos) -> Option<(Arc<SourceFile>, usize)> {
         if !self.source_map.files().is_empty() {
             let file_idx = self.source_map.lookup_source_file_idx(pos);
             let file = &self.source_map.files()[file_idx];
 
             if file_contains(file, pos) {
-                return Some((Lrc::clone(file), file_idx));
+                return Some((Arc::clone(file), file_idx));
             }
         }
 

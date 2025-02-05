@@ -2,6 +2,7 @@
 
 use std::iter::TrustedLen;
 use std::path::Path;
+use std::sync::Arc;
 use std::{io, iter, mem};
 
 pub(super) use cstore_impl::provide;
@@ -11,7 +12,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::owned_slice::OwnedSlice;
-use rustc_data_structures::sync::{Lock, Lrc, OnceLock};
+use rustc_data_structures::sync::{Lock, OnceLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
@@ -117,7 +118,7 @@ pub(crate) struct CrateMetadata {
     /// How to link (or not link) this crate to the currently compiled crate.
     dep_kind: CrateDepKind,
     /// Filesystem location of this crate.
-    source: Lrc<CrateSource>,
+    source: Arc<CrateSource>,
     /// Whether or not this crate should be consider a private dependency.
     /// Used by the 'exported_private_dependencies' lint, and for determining
     /// whether to emit suggestions that reference this crate.
@@ -149,7 +150,7 @@ struct ImportedSourceFile {
     /// The end of this SourceFile within the source_map of its original crate
     original_end_pos: rustc_span::BytePos,
     /// The imported SourceFile's representation within the local source_map
-    translated_source_file: Lrc<rustc_span::SourceFile>,
+    translated_source_file: Arc<rustc_span::SourceFile>,
 }
 
 pub(super) struct DecodeContext<'a, 'tcx> {
@@ -1866,7 +1867,7 @@ impl CrateMetadata {
             cnum_map,
             dependencies,
             dep_kind,
-            source: Lrc::new(source),
+            source: Arc::new(source),
             private_dep,
             host_hash,
             used: false,

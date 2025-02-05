@@ -1,11 +1,11 @@
 use std::assert_matches::assert_matches;
 use std::ops::ControlFlow;
+use std::sync::Arc;
 
 use rustc_ast::ptr::P as AstP;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, Res};
@@ -147,7 +147,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::IncludedBytes(bytes) => {
                     let lit = self.arena.alloc(respan(
                         self.lower_span(e.span),
-                        LitKind::ByteStr(Lrc::clone(bytes), StrStyle::Cooked),
+                        LitKind::ByteStr(Arc::clone(bytes), StrStyle::Cooked),
                     ));
                     hir::ExprKind::Lit(lit)
                 }
@@ -625,7 +625,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     this.mark_span_with_reason(
                         DesugaringKind::TryBlock,
                         expr.span,
-                        Some(Lrc::clone(&this.allow_try_trait)),
+                        Some(Arc::clone(&this.allow_try_trait)),
                     ),
                     expr,
                 )
@@ -633,7 +633,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let try_span = this.mark_span_with_reason(
                     DesugaringKind::TryBlock,
                     this.tcx.sess.source_map().end_point(body.span),
-                    Some(Lrc::clone(&this.allow_try_trait)),
+                    Some(Arc::clone(&this.allow_try_trait)),
                 );
 
                 (try_span, this.expr_unit(try_span))
@@ -742,7 +742,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let unstable_span = self.mark_span_with_reason(
                     DesugaringKind::Async,
                     self.lower_span(span),
-                    Some(Lrc::clone(&self.allow_gen_future)),
+                    Some(Arc::clone(&self.allow_gen_future)),
                 );
                 let resume_ty =
                     self.make_lang_item_qpath(hir::LangItem::ResumeTy, unstable_span, None);
@@ -826,7 +826,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let unstable_span = self.mark_span_with_reason(
                 DesugaringKind::Async,
                 span,
-                Some(Lrc::clone(&self.allow_gen_future)),
+                Some(Arc::clone(&self.allow_gen_future)),
             );
             self.lower_attrs(inner_hir_id, &[Attribute {
                 kind: AttrKind::Normal(ptr::P(NormalAttr::from_ident(Ident::new(
@@ -902,13 +902,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let features = match await_kind {
             FutureKind::Future => None,
-            FutureKind::AsyncIterator => Some(Lrc::clone(&self.allow_for_await)),
+            FutureKind::AsyncIterator => Some(Arc::clone(&self.allow_for_await)),
         };
         let span = self.mark_span_with_reason(DesugaringKind::Await, await_kw_span, features);
         let gen_future_span = self.mark_span_with_reason(
             DesugaringKind::Await,
             full_span,
-            Some(Lrc::clone(&self.allow_gen_future)),
+            Some(Arc::clone(&self.allow_gen_future)),
         );
         let expr_hir_id = expr.hir_id;
 
@@ -1952,13 +1952,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::QuestionMark,
             span,
-            Some(Lrc::clone(&self.allow_try_trait)),
+            Some(Arc::clone(&self.allow_try_trait)),
         );
         let try_span = self.tcx.sess.source_map().end_point(span);
         let try_span = self.mark_span_with_reason(
             DesugaringKind::QuestionMark,
             try_span,
-            Some(Lrc::clone(&self.allow_try_trait)),
+            Some(Arc::clone(&self.allow_try_trait)),
         );
 
         // `Try::branch(<expr>)`
@@ -2053,7 +2053,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::YeetExpr,
             span,
-            Some(Lrc::clone(&self.allow_try_trait)),
+            Some(Arc::clone(&self.allow_try_trait)),
         );
 
         let from_yeet_expr = self.wrap_in_try_constructor(

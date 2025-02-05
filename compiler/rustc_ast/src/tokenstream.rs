@@ -14,10 +14,11 @@
 //! ownership of the original.
 
 use std::borrow::Cow;
+use std::sync::Arc;
 use std::{cmp, fmt, iter};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{self, Lrc};
+use rustc_data_structures::sync;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
@@ -119,11 +120,11 @@ impl ToAttrTokenStream for AttrTokenStream {
 /// of an actual `TokenStream` until it is needed.
 /// `Box` is here only to reduce the structure size.
 #[derive(Clone)]
-pub struct LazyAttrTokenStream(Lrc<Box<dyn ToAttrTokenStream>>);
+pub struct LazyAttrTokenStream(Arc<Box<dyn ToAttrTokenStream>>);
 
 impl LazyAttrTokenStream {
     pub fn new(inner: impl ToAttrTokenStream + 'static) -> LazyAttrTokenStream {
-        LazyAttrTokenStream(Lrc::new(Box::new(inner)))
+        LazyAttrTokenStream(Arc::new(Box::new(inner)))
     }
 
     pub fn to_attr_token_stream(&self) -> AttrTokenStream {
@@ -160,7 +161,7 @@ impl<CTX> HashStable<CTX> for LazyAttrTokenStream {
 /// during expansion to perform early cfg-expansion, and to process attributes
 /// during proc-macro invocations.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
-pub struct AttrTokenStream(pub Lrc<Vec<AttrTokenTree>>);
+pub struct AttrTokenStream(pub Arc<Vec<AttrTokenTree>>);
 
 /// Like `TokenTree`, but for `AttrTokenStream`.
 #[derive(Clone, Debug, Encodable, Decodable)]
@@ -175,7 +176,7 @@ pub enum AttrTokenTree {
 
 impl AttrTokenStream {
     pub fn new(tokens: Vec<AttrTokenTree>) -> AttrTokenStream {
-        AttrTokenStream(Lrc::new(tokens))
+        AttrTokenStream(Arc::new(tokens))
     }
 
     /// Converts this `AttrTokenStream` to a plain `Vec<TokenTree>`. During
@@ -293,7 +294,7 @@ pub struct AttrsTarget {
 /// Today's `TokenTree`s can still contain AST via `token::Interpolated` for
 /// backwards compatibility.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
-pub struct TokenStream(pub(crate) Lrc<Vec<TokenTree>>);
+pub struct TokenStream(pub(crate) Arc<Vec<TokenTree>>);
 
 /// Indicates whether a token can join with the following token to form a
 /// compound token. Used for conversions to `proc_macro::Spacing`. Also used to
@@ -412,7 +413,7 @@ impl PartialEq<TokenStream> for TokenStream {
 
 impl TokenStream {
     pub fn new(tts: Vec<TokenTree>) -> TokenStream {
-        TokenStream(Lrc::new(tts))
+        TokenStream(Arc::new(tts))
     }
 
     pub fn is_empty(&self) -> bool {
@@ -544,7 +545,7 @@ impl TokenStream {
     /// Push `tt` onto the end of the stream, possibly gluing it to the last
     /// token. Uses `make_mut` to maximize efficiency.
     pub fn push_tree(&mut self, tt: TokenTree) {
-        let vec_mut = Lrc::make_mut(&mut self.0);
+        let vec_mut = Arc::make_mut(&mut self.0);
 
         if Self::try_glue_to_last(vec_mut, &tt) {
             // nothing else to do
@@ -557,7 +558,7 @@ impl TokenStream {
     /// token tree to the last token. (No other token trees will be glued.)
     /// Uses `make_mut` to maximize efficiency.
     pub fn push_stream(&mut self, stream: TokenStream) {
-        let vec_mut = Lrc::make_mut(&mut self.0);
+        let vec_mut = Arc::make_mut(&mut self.0);
 
         let stream_iter = stream.0.iter().cloned();
 
@@ -577,7 +578,7 @@ impl TokenStream {
     }
 
     /// Desugar doc comments like `/// foo` in the stream into `#[doc =
-    /// r"foo"]`. Modifies the `TokenStream` via `Lrc::make_mut`, but as little
+    /// r"foo"]`. Modifies the `TokenStream` via `Arc::make_mut`, but as little
     /// as possible.
     pub fn desugar_doc_comments(&mut self) {
         if let Some(desugared_stream) = desugar_inner(self.clone()) {
@@ -596,7 +597,7 @@ impl TokenStream {
                     ) => {
                         let desugared = desugared_tts(attr_style, data, span);
                         let desugared_len = desugared.len();
-                        Lrc::make_mut(&mut stream.0).splice(i..i + 1, desugared);
+                        Arc::make_mut(&mut stream.0).splice(i..i + 1, desugared);
                         modified = true;
                         i += desugared_len;
                     }
@@ -607,7 +608,7 @@ impl TokenStream {
                         if let Some(desugared_delim_stream) = desugar_inner(delim_stream.clone()) {
                             let new_tt =
                                 TokenTree::Delimited(sp, spacing, delim, desugared_delim_stream);
-                            Lrc::make_mut(&mut stream.0)[i] = new_tt;
+                            Arc::make_mut(&mut stream.0)[i] = new_tt;
                             modified = true;
                         }
                         i += 1;

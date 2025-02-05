@@ -1,9 +1,10 @@
 use std::collections::hash_map::Entry;
 use std::mem;
+use std::sync::Arc;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
-use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, RwLock};
+use rustc_data_structures::sync::{HashMapExt, Lock, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, LocalDefId, StableCrateId};
@@ -60,7 +61,7 @@ pub struct OnDiskCache {
     file_index_to_stable_id: FxHashMap<SourceFileIndex, EncodedSourceFileId>,
 
     // Caches that are populated lazily during decoding.
-    file_index_to_file: Lock<FxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
+    file_index_to_file: Lock<FxHashMap<SourceFileIndex, Arc<SourceFile>>>,
 
     // A map from dep-node to the position of the cached query result in
     // `serialized_data`.
@@ -453,7 +454,7 @@ impl OnDiskCache {
 pub struct CacheDecoder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     opaque: MemDecoder<'a>,
-    file_index_to_file: &'a Lock<FxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
+    file_index_to_file: &'a Lock<FxHashMap<SourceFileIndex, Arc<SourceFile>>>,
     file_index_to_stable_id: &'a FxHashMap<SourceFileIndex, EncodedSourceFileId>,
     alloc_decoding_session: AllocDecodingSession<'a>,
     syntax_contexts: &'a FxHashMap<u32, AbsoluteBytePos>,
@@ -464,10 +465,10 @@ pub struct CacheDecoder<'a, 'tcx> {
 
 impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
     #[inline]
-    fn file_index_to_file(&self, index: SourceFileIndex) -> Lrc<SourceFile> {
+    fn file_index_to_file(&self, index: SourceFileIndex) -> Arc<SourceFile> {
         let CacheDecoder { tcx, file_index_to_file, file_index_to_stable_id, .. } = *self;
 
-        Lrc::clone(file_index_to_file.borrow_mut().entry(index).or_insert_with(|| {
+        Arc::clone(file_index_to_file.borrow_mut().entry(index).or_insert_with(|| {
             let source_file_id = &file_index_to_stable_id[&index];
             let source_file_cnum = tcx.stable_crate_id_to_crate_num(source_file_id.stable_crate_id);
 
@@ -824,7 +825,7 @@ pub struct CacheEncoder<'a, 'tcx> {
 
 impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {
     #[inline]
-    fn source_file_index(&mut self, source_file: Lrc<SourceFile>) -> SourceFileIndex {
+    fn source_file_index(&mut self, source_file: Arc<SourceFile>) -> SourceFileIndex {
         self.file_to_file_index[&(&raw const *source_file)]
     }
 

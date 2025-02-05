@@ -1,9 +1,9 @@
 //! Doctest functionality used only for doctests in `.rs` source files.
 
 use std::env;
+use std::sync::Arc;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, intravisit};
 use rustc_middle::hir::nested_filter;
@@ -17,7 +17,7 @@ use crate::clean::{Attributes, extract_cfg_from_attrs};
 use crate::html::markdown::{self, ErrorCodes, LangString, MdRelLine};
 
 struct RustCollector {
-    source_map: Lrc<SourceMap>,
+    source_map: Arc<SourceMap>,
     tests: Vec<ScrapedDocTest>,
     cur_path: Vec<String>,
     position: Span,

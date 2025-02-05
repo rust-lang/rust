@@ -17,12 +17,12 @@
 
 use std::path::{Path, PathBuf};
 use std::str::Utf8Error;
+use std::sync::Arc;
 
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrItem, Attribute, MetaItemInner, token};
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diag, EmissionGuarantee, FatalError, PResult, pluralize};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
@@ -147,7 +147,7 @@ pub fn utf8_error<E: EmissionGuarantee>(
 /// the initial token stream.
 fn new_parser_from_source_file(
     psess: &ParseSess,
-    source_file: Lrc<SourceFile>,
+    source_file: Arc<SourceFile>,
 ) -> Result<Parser<'_>, Vec<Diag<'_>>> {
     let end_pos = source_file.end_position();
     let stream = source_file_to_stream(psess, source_file, None)?;
@@ -172,7 +172,7 @@ pub fn source_str_to_stream(
 /// parsing the token stream.
 fn source_file_to_stream<'psess>(
     psess: &'psess ParseSess,
-    source_file: Lrc<SourceFile>,
+    source_file: Arc<SourceFile>,
     override_span: Option<Span>,
 ) -> Result<TokenStream, Vec<Diag<'psess>>> {
     let src = source_file.src.as_ref().unwrap_or_else(|| {

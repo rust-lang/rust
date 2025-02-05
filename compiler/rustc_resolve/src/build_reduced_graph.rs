@@ -6,6 +6,7 @@
 //! Imports are also considered items and placed into modules here, but not resolved yet.
 
 use std::cell::Cell;
+use std::sync::Arc;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
 use rustc_ast::{
@@ -13,7 +14,6 @@ use rustc_ast::{
     ItemKind, MetaItemKind, NodeId, StmtKind,
 };
 use rustc_attr_parsing as attr;
-use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::ResolverExpand;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{self, *};
@@ -179,7 +179,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             LoadedMacro::MacroDef { def, ident, attrs, span, edition } => {
                 self.compile_macro(&def, ident, &attrs, span, ast::DUMMY_NODE_ID, edition)
             }
-            LoadedMacro::ProcMacro(ext) => MacroData::new(Lrc::new(ext)),
+            LoadedMacro::ProcMacro(ext) => MacroData::new(Arc::new(ext)),
         };
 
         self.macro_map.entry(def_id).or_insert(macro_data)

@@ -27,6 +27,7 @@
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::fmt;
+use std::sync::Arc;
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
 use effective_visibilities::EffectiveVisibilitiesVisitor;
@@ -46,7 +47,7 @@ use rustc_ast::{
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
+use rustc_data_structures::sync::FreezeReadGuard;
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
@@ -995,13 +996,13 @@ struct DeriveData {
 }
 
 struct MacroData {
-    ext: Lrc<SyntaxExtension>,
+    ext: Arc<SyntaxExtension>,
     rule_spans: Vec<(usize, Span)>,
     macro_rules: bool,
 }
 
 impl MacroData {
-    fn new(ext: Lrc<SyntaxExtension>) -> MacroData {
+    fn new(ext: Arc<SyntaxExtension>) -> MacroData {
         MacroData { ext, rule_spans: Vec::new(), macro_rules: false }
     }
 }
@@ -1110,8 +1111,8 @@ pub struct Resolver<'ra, 'tcx> {
     registered_tools: &'tcx RegisteredTools,
     macro_use_prelude: FxHashMap<Symbol, NameBinding<'ra>>,
     macro_map: FxHashMap<DefId, MacroData>,
-    dummy_ext_bang: Lrc<SyntaxExtension>,
-    dummy_ext_derive: Lrc<SyntaxExtension>,
+    dummy_ext_bang: Arc<SyntaxExtension>,
+    dummy_ext_derive: Arc<SyntaxExtension>,
     non_macro_attr: MacroData,
     local_macro_def_scopes: FxHashMap<LocalDefId, Module<'ra>>,
     ast_transform_scopes: FxHashMap<LocalExpnId, Module<'ra>>,
@@ -1510,9 +1511,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             registered_tools,
             macro_use_prelude: FxHashMap::default(),
             macro_map: FxHashMap::default(),
-            dummy_ext_bang: Lrc::new(SyntaxExtension::dummy_bang(edition)),
-            dummy_ext_derive: Lrc::new(SyntaxExtension::dummy_derive(edition)),
-            non_macro_attr: MacroData::new(Lrc::new(SyntaxExtension::non_macro_attr(edition))),
+            dummy_ext_bang: Arc::new(SyntaxExtension::dummy_bang(edition)),
+            dummy_ext_derive: Arc::new(SyntaxExtension::dummy_derive(edition)),
+            non_macro_attr: MacroData::new(Arc::new(SyntaxExtension::non_macro_attr(edition))),
             invocation_parent_scopes: Default::default(),
             output_macro_rules_scopes: Default::default(),
             macro_rules_scopes: Default::default(),
@@ -1688,11 +1689,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         CStore::from_tcx(self.tcx)
     }
 
-    fn dummy_ext(&self, macro_kind: MacroKind) -> Lrc<SyntaxExtension> {
+    fn dummy_ext(&self, macro_kind: MacroKind) -> Arc<SyntaxExtension> {
         match macro_kind {
-            MacroKind::Bang => Lrc::clone(&self.dummy_ext_bang),
-            MacroKind::Derive => Lrc::clone(&self.dummy_ext_derive),
-            MacroKind::Attr => Lrc::clone(&self.non_macro_attr.ext),
+            MacroKind::Bang => Arc::clone(&self.dummy_ext_bang),
+            MacroKind::Derive => Arc::clone(&self.dummy_ext_derive),
+            MacroKind::Attr => Arc::clone(&self.non_macro_attr.ext),
         }
     }
 

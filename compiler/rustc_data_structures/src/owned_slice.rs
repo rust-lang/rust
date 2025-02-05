@@ -1,15 +1,15 @@
 use std::borrow::Borrow;
 use std::ops::Deref;
+use std::sync::Arc;
 
 // Use our fake Send/Sync traits when on not parallel compiler,
 // so that `OwnedSlice` only implements/requires Send/Sync
 // for parallel compiler builds.
 use crate::sync;
-use crate::sync::Lrc;
 
 /// An owned slice.
 ///
-/// This is similar to `Lrc<[u8]>` but allows slicing and using anything as the
+/// This is similar to `Arc<[u8]>` but allows slicing and using anything as the
 /// backing buffer.
 ///
 /// See [`slice_owned`] for `OwnedSlice` construction and examples.
@@ -34,7 +34,7 @@ pub struct OwnedSlice {
     //       \/
     //      ⊂(´･◡･⊂ )∘˚˳° (I am the phantom remnant of #97770)
     #[expect(dead_code)]
-    owner: Lrc<dyn sync::Send + sync::Sync>,
+    owner: Arc<dyn sync::Send + sync::Sync>,
 }
 
 /// Makes an [`OwnedSlice`] out of an `owner` and a `slicer` function.
@@ -86,7 +86,7 @@ where
     // N.B. the HRTB on the `slicer` is important — without it the caller could provide
     // a short lived slice, unrelated to the owner.
 
-    let owner = Lrc::new(owner);
+    let owner = Arc::new(owner);
     let bytes = slicer(&*owner)?;
 
     Ok(OwnedSlice { bytes, owner })

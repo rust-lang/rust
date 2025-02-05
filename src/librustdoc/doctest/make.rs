@@ -2,9 +2,9 @@
 //! runnable, e.g. by adding a `main` function if it doesn't already exist.
 
 use std::io;
+use std::sync::Arc;
 
 use rustc_ast as ast;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::stderr_destination;
 use rustc_errors::{ColorConfig, FatalError};
 use rustc_parse::new_parser_from_source_str;
@@ -280,7 +280,7 @@ fn parse_source(
 
     // Any errors in parsing should also appear when the doctest is compiled for real, so just
     // send all the errors that librustc_ast emits directly into a `Sink` instead of stderr.
-    let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+    let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
     let fallback_bundle = rustc_errors::fallback_fluent_bundle(
         rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
         false,
@@ -474,7 +474,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> Option<AttrKind>
             let filename = FileName::anon_source_code(source);
             // Any errors in parsing should also appear when the doctest is compiled for real, so just
             // send all the errors that librustc_ast emits directly into a `Sink` instead of stderr.
-            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
             let fallback_bundle = rustc_errors::fallback_fluent_bundle(
                 rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
                 false,

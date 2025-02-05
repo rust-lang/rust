@@ -13,6 +13,7 @@ mod ty;
 
 use std::assert_matches::debug_assert_matches;
 use std::ops::Range;
+use std::sync::Arc;
 use std::{fmt, mem, slice};
 
 use attr_wrapper::{AttrWrapper, UsePreAttrPos};
@@ -34,7 +35,6 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
 use rustc_index::interval::IntervalSet;
 use rustc_session::parse::ParseSess;
@@ -1685,5 +1685,5 @@ pub enum ParseNtResult {
     Lifetime(Ident, IdentIsRaw),
 
     /// This case will eventually be removed, along with `Token::Interpolate`.
-    Nt(Lrc<Nonterminal>),
+    Nt(Arc<Nonterminal>),
 }

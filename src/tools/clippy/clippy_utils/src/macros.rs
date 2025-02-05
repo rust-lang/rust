@@ -1,12 +1,14 @@
 #![allow(clippy::similar_names)] // `expr` and `expn`
 
+use std::sync::Arc;
+
 use crate::get_unique_attr;
 use crate::visitors::{Descend, for_each_expr_without_closures};
 
 use arrayvec::ArrayVec;
 use rustc_ast::{FormatArgs, FormatArgument, FormatPlaceholder};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::{Lrc, OnceLock};
+use rustc_data_structures::sync::OnceLock;
 use rustc_hir::{self as hir, Expr, ExprKind, HirId, Node, QPath};
 use rustc_lint::{LateContext, LintContext};
 use rustc_span::def_id::DefId;
@@ -393,7 +395,7 @@ fn is_assert_arg(cx: &LateContext<'_>, expr: &Expr<'_>, assert_expn: ExpnId) -> 
 /// Stores AST [`FormatArgs`] nodes for use in late lint passes, as they are in a desugared form in
 /// the HIR
 #[derive(Default, Clone)]
-pub struct FormatArgsStorage(Lrc<OnceLock<FxHashMap<Span, FormatArgs>>>);
+pub struct FormatArgsStorage(Arc<OnceLock<FxHashMap<Span, FormatArgs>>>);
 
 impl FormatArgsStorage {
     /// Returns an AST [`FormatArgs`] node if a `format_args` expansion is found as a descendant of

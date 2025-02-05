@@ -1,8 +1,8 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use std::sync::Arc;
 
 use rustc_ast::{ast, token::Delimiter, visit};
-use rustc_data_structures::sync::Lrc;
 use rustc_span::{BytePos, Pos, Span, symbol};
 use tracing::debug;
 
@@ -32,7 +32,7 @@ use crate::{ErrorKind, FormatReport, FormattingError};
 /// Creates a string slice corresponding to the specified span.
 pub(crate) struct SnippetProvider {
     /// A pointer to the content of the file we are formatting.
-    big_snippet: Lrc<String>,
+    big_snippet: Arc<String>,
     /// A position of the start of `big_snippet`, used as an offset.
     start_pos: usize,
     /// An end position of the file that this snippet lives.
@@ -46,7 +46,7 @@ impl SnippetProvider {
         Some(&self.big_snippet[start_index..end_index])
     }
 
-    pub(crate) fn new(start_pos: BytePos, end_pos: BytePos, big_snippet: Lrc<String>) -> Self {
+    pub(crate) fn new(start_pos: BytePos, end_pos: BytePos, big_snippet: Arc<String>) -> Self {
         let start_pos = start_pos.to_usize();
         let end_pos = end_pos.to_usize();
         SnippetProvider {

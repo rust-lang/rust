@@ -31,7 +31,7 @@ macro_rules! arena_types {
             [decode] borrowck_result: rustc_middle::mir::BorrowCheckResult<'tcx>,
             [] resolver: rustc_data_structures::steal::Steal<(
                 rustc_middle::ty::ResolverAstLowering,
-                rustc_data_structures::sync::Lrc<rustc_ast::Crate>,
+                std::sync::Arc<rustc_ast::Crate>,
             )>,
             [] crate_for_resolver: rustc_data_structures::steal::Steal<(rustc_ast::Crate, rustc_ast::AttrVec)>,
             [] resolutions: rustc_middle::ty::ResolverGlobalCtxt,
