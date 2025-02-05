@@ -6,11 +6,11 @@ LL |     let Foo(mut x) = &Foo(0);
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:25:9
    |
 LL |     let Foo(mut x) = &Foo(0);
-   |         ^^^^^^^^^^ the default binding mode is `ref`, introduced here
+   |         ^^^^^^^^^^ this matches on type `&_`
 note: the lint level is defined here
   --> $DIR/migration_lint.rs:7:9
    |
@@ -29,11 +29,11 @@ LL |     let Foo(mut x) = &mut Foo(0);
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref mut` because this has type `&mut _`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:30:9
    |
 LL |     let Foo(mut x) = &mut Foo(0);
-   |         ^^^^^^^^^^ the default binding mode is `ref mut`, introduced here
+   |         ^^^^^^^^^^ this matches on type `&mut _`
 help: make the implied reference pattern explicit
    |
 LL |     let &mut Foo(mut x) = &mut Foo(0);
@@ -47,11 +47,11 @@ LL |     let Foo(ref x) = &Foo(0);
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:35:9
    |
 LL |     let Foo(ref x) = &Foo(0);
-   |         ^^^^^^^^^^ the default binding mode is `ref`, introduced here
+   |         ^^^^^^^^^^ this matches on type `&_`
 help: make the implied reference pattern explicit
    |
 LL |     let &Foo(ref x) = &Foo(0);
@@ -65,11 +65,11 @@ LL |     let Foo(ref x) = &mut Foo(0);
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref mut` because this has type `&mut _`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:40:9
    |
 LL |     let Foo(ref x) = &mut Foo(0);
-   |         ^^^^^^^^^^ the default binding mode is `ref mut`, introduced here
+   |         ^^^^^^^^^^ this matches on type `&mut _`
 help: make the implied reference pattern explicit
    |
 LL |     let &mut Foo(ref x) = &mut Foo(0);
@@ -83,11 +83,11 @@ LL |     let Foo(&x) = &Foo(&0);
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:57:9
    |
 LL |     let Foo(&x) = &Foo(&0);
-   |         ^^^^^^^ the default binding mode is `ref`, introduced here
+   |         ^^^^^^^ this matches on type `&_`
 help: make the implied reference pattern explicit
    |
 LL |     let &Foo(&x) = &Foo(&0);
@@ -101,11 +101,11 @@ LL |     let Foo(&mut x) = &Foo(&mut 0);
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:62:9
    |
 LL |     let Foo(&mut x) = &Foo(&mut 0);
-   |         ^^^^^^^^^^^ the default binding mode is `ref`, introduced here
+   |         ^^^^^^^^^^^ this matches on type `&_`
 help: make the implied reference pattern explicit
    |
 LL |     let &Foo(&mut x) = &Foo(&mut 0);
@@ -119,11 +119,11 @@ LL |     let Foo(&x) = &mut Foo(&0);
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref mut` because this has type `&mut _`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:67:9
    |
 LL |     let Foo(&x) = &mut Foo(&0);
-   |         ^^^^^^^ the default binding mode is `ref mut`, introduced here
+   |         ^^^^^^^ this matches on type `&mut _`
 help: make the implied reference pattern explicit
    |
 LL |     let &mut Foo(&x) = &mut Foo(&0);
@@ -137,11 +137,11 @@ LL |     let Foo(&mut x) = &mut Foo(&mut 0);
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref mut` because this has type `&mut _`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:72:9
    |
 LL |     let Foo(&mut x) = &mut Foo(&mut 0);
-   |         ^^^^^^^^^^^ the default binding mode is `ref mut`, introduced here
+   |         ^^^^^^^^^^^ this matches on type `&mut _`
 help: make the implied reference pattern explicit
    |
 LL |     let &mut Foo(&mut x) = &mut Foo(&mut 0);
@@ -155,11 +155,11 @@ LL |     if let Some(&x) = &&&&&Some(&0u8) {
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:81:12
    |
 LL |     if let Some(&x) = &&&&&Some(&0u8) {
-   |            ^^^^^^^^ the default binding mode is `ref`, introduced here
+   |            ^^^^^^^^ this matches on type `&_`
 help: make the implied reference patterns explicit
    |
 LL |     if let &&&&&Some(&x) = &&&&&Some(&0u8) {
@@ -173,11 +173,11 @@ LL |     if let Some(&mut x) = &&&&&Some(&mut 0u8) {
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:87:12
    |
 LL |     if let Some(&mut x) = &&&&&Some(&mut 0u8) {
-   |            ^^^^^^^^^^^^ the default binding mode is `ref`, introduced here
+   |            ^^^^^^^^^^^^ this matches on type `&_`
 help: make the implied reference patterns explicit
    |
 LL |     if let &&&&&Some(&mut x) = &&&&&Some(&mut 0u8) {
@@ -191,11 +191,11 @@ LL |     if let Some(&x) = &&&&&mut Some(&0u8) {
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:93:12
    |
 LL |     if let Some(&x) = &&&&&mut Some(&0u8) {
-   |            ^^^^^^^^ the default binding mode is `ref`, introduced here
+   |            ^^^^^^^^ this matches on type `&_`
 help: make the implied reference patterns explicit
    |
 LL |     if let &&&&&mut Some(&x) = &&&&&mut Some(&0u8) {
@@ -209,11 +209,11 @@ LL |     if let Some(&mut Some(Some(x))) = &mut Some(&mut Some(&mut Some(0u8))) 
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref mut` because this has type `&mut _`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:99:12
    |
 LL |     if let Some(&mut Some(Some(x))) = &mut Some(&mut Some(&mut Some(0u8))) {
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^ the default binding mode is `ref mut`, introduced here
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&mut _`
 help: make the implied reference patterns and variable binding mode explicit
    |
 LL |     if let &mut Some(&mut Some(&mut Some(ref mut x))) = &mut Some(&mut Some(&mut Some(0u8))) {
@@ -227,11 +227,11 @@ LL |     let Struct { a, mut b, c } = &Struct { a: 0, b: 0, c: 0 };
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:111:9
    |
 LL |     let Struct { a, mut b, c } = &Struct { a: 0, b: 0, c: 0 };
-   |         ^^^^^^^^^^^^^^^^^^^^^^ the default binding mode is `ref`, introduced here
+   |         ^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
 help: make the implied reference pattern and variable binding modes explicit
    |
 LL |     let &Struct { ref a, mut b, ref c } = &Struct { a: 0, b: 0, c: 0 };
@@ -247,11 +247,11 @@ LL |     let Struct { a: &a, b, ref c } = &Struct { a: &0, b: &0, c: &0 };
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:117:9
    |
 LL |     let Struct { a: &a, b, ref c } = &Struct { a: &0, b: &0, c: &0 };
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ the default binding mode is `ref`, introduced here
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
 help: make the implied reference pattern and variable binding mode explicit
    |
 LL |     let &Struct { a: &a, ref b, ref c } = &Struct { a: &0, b: &0, c: &0 };
@@ -267,11 +267,11 @@ LL |     if let Struct { a: &Some(a), b: Some(&b), c: Some(c) } =
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:124:12
    |
 LL |     if let Struct { a: &Some(a), b: Some(&b), c: Some(c) } =
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the default binding mode is `ref`, introduced here
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
 help: make the implied reference patterns and variable binding mode explicit
    |
 LL |     if let &Struct { a: &Some(a), b: &Some(&b), c: &Some(ref c) } =
@@ -286,11 +286,11 @@ LL |         (Some(mut x), migration_lint_macros::mixed_edition_pat!(y)) => {
    |               binding modifier not allowed under `ref` default binding mode
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:137:9
    |
 LL |         (Some(mut x), migration_lint_macros::mixed_edition_pat!(y)) => {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the default binding mode is `ref`, introduced here
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
    = note: this error originates in the macro `migration_lint_macros::mixed_edition_pat` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: make the implied reference pattern explicit
    |
@@ -307,16 +307,16 @@ LL |     let [&mut [ref a]] = &mut [&mut &[0]];
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:145:15
    |
 LL |     let [&mut [ref a]] = &mut [&mut &[0]];
-   |               ^^^^^^^ the default binding mode is `ref`, introduced here
-note: the default binding mode changed to `ref mut` because this has type `&mut _`
+   |               ^^^^^^^ this matches on type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:145:9
    |
 LL |     let [&mut [ref a]] = &mut [&mut &[0]];
-   |         ^^^^^^^^^^^^^^ the default binding mode is `ref mut`, introduced here
+   |         ^^^^^^^^^^^^^^ this matches on type `&mut _`
 help: make the implied reference patterns explicit
    |
 LL |     let &mut [&mut &[ref a]] = &mut [&mut &[0]];
@@ -330,11 +330,11 @@ LL |     let [&(_)] = &[&0];
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: the default binding mode changed to `ref` because this has type `&_`
+note: matching on a reference type with a non-reference pattern changes the default binding mode
   --> $DIR/migration_lint.rs:150:9
    |
 LL |     let [&(_)] = &[&0];
-   |         ^^^^^^ the default binding mode is `ref`, introduced here
+   |         ^^^^^^ this matches on type `&_`
 help: make the implied reference pattern explicit
    |
 LL |     let &[&(_)] = &[&0];

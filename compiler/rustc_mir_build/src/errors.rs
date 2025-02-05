@@ -1128,15 +1128,9 @@ impl Subdiagnostic for Rust2024IncompatiblePatSugg {
         for (span, def_br_mutbl) in self.default_mode_labels.into_iter().rev() {
             // Don't point to a macro call site.
             if !span.from_expansion() {
-                let dbm_str = match def_br_mutbl {
-                    ty::Mutability::Not => "ref",
-                    ty::Mutability::Mut => "ref mut",
-                };
-                let note_msg = format!(
-                    "the default binding mode changed to `{dbm_str}` because this has type `{}_`",
-                    def_br_mutbl.ref_prefix_str()
-                );
-                let label_msg = format!("the default binding mode is `{dbm_str}`, introduced here");
+                let note_msg = "matching on a reference type with a non-reference pattern changes the default binding mode";
+                let label_msg =
+                    format!("this matches on type `{}_`", def_br_mutbl.ref_prefix_str());
                 let mut label = MultiSpan::from(span);
                 label.push_span_label(span, label_msg);
                 diag.span_note(label, note_msg);
