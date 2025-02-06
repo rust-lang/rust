@@ -169,6 +169,18 @@ impl fmt::Debug for Wtf8Buf {
     }
 }
 
+/// Formats the string with unpaired surrogates substituted with the replacement
+/// character, U+FFFD.
+impl fmt::Display for Wtf8Buf {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(s) = self.as_known_utf8() {
+            fmt::Display::fmt(s, formatter)
+        } else {
+            fmt::Display::fmt(&**self, formatter)
+        }
+    }
+}
+
 impl Wtf8Buf {
     /// Creates a new, empty WTF-8 string.
     #[inline]
@@ -260,6 +272,18 @@ impl Wtf8Buf {
         // cause them to change from well-formed UTF-8 to ill-formed UTF-8,
         // which would break the assumptions of the `is_known_utf8` field.
         unsafe { Wtf8::from_mut_bytes_unchecked(&mut self.bytes) }
+    }
+
+    /// Converts the string to UTF-8 without validation, if it was created from
+    /// valid UTF-8.
+    #[inline]
+    fn as_known_utf8(&self) -> Option<&str> {
+        if self.is_known_utf8 {
+            // SAFETY: The buffer is known to be valid UTF-8.
+            Some(unsafe { str::from_utf8_unchecked(self.as_bytes()) })
+        } else {
+            None
+        }
     }
 
     /// Reserves capacity for at least `additional` more bytes to be inserted
