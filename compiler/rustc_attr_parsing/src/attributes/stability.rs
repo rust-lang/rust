@@ -8,7 +8,9 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_span::{Span, Symbol, sym};
 
 use super::util::parse_version;
-use super::{AcceptMapping, AttributeDuplicates, AttributeParser, SingleAttributeParser};
+use super::{
+    AcceptMapping, AttributeDuplicates, AttributeParser, OnDuplicate, SingleAttributeParser,
+};
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::parser::{ArgParser, MetaItemParser};
 use crate::session_diagnostics::{self, UnsupportedLiteralReason};
@@ -119,9 +121,7 @@ pub(crate) struct ConstStabilityIndirectParser;
 impl SingleAttributeParser for ConstStabilityIndirectParser {
     const PATH: &'static [Symbol] = &[sym::rustc_const_stable_indirect];
     const ON_DUPLICATE_STRATEGY: AttributeDuplicates = AttributeDuplicates::ErrorFollowing;
-
-    // ignore
-    fn on_duplicate(_cx: &AcceptContext<'_>, _used: Span, _unused: Span) {}
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Ignore;
 
     fn convert(_cx: &AcceptContext<'_>, _args: &ArgParser<'_>) -> Option<AttributeKind> {
         Some(AttributeKind::ConstStabilityIndirect)
