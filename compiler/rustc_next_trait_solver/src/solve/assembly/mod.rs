@@ -267,6 +267,11 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution>;
 
+    fn consider_builtin_bikeshed_guaranteed_no_drop_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution>;
+
     /// Consider (possibly several) candidates to upcast or unsize a type to another
     /// type, excluding the coercion of a sized type into a `dyn Trait`.
     ///
@@ -477,6 +482,9 @@ where
                 }
                 Some(TraitSolverLangItem::TransmuteTrait) => {
                     G::consider_builtin_transmute_candidate(self, goal)
+                }
+                Some(TraitSolverLangItem::BikeshedGuaranteedNoDrop) => {
+                    G::consider_builtin_bikeshed_guaranteed_no_drop_candidate(self, goal)
                 }
                 _ => Err(NoSolution),
             }

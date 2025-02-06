@@ -39,6 +39,9 @@ impl<T: ?Sized> LegacyReceiver for &mut T {}
 #[lang = "copy"]
 pub trait Copy: Sized {}
 
+#[lang = "bikeshed_guaranteed_no_drop"]
+pub trait BikeshedGuaranteedNoDrop {}
+
 impl_marker_trait!(
     Copy => [
         bool, char,

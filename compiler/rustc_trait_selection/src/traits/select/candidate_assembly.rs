@@ -102,6 +102,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.assemble_candidate_for_tuple(obligation, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::FnPtrTrait) {
                 self.assemble_candidates_for_fn_ptr_trait(obligation, &mut candidates);
+            } else if tcx.is_lang_item(def_id, LangItem::BikeshedGuaranteedNoDrop) {
+                self.assemble_candidates_for_bikeshed_guaranteed_no_drop_trait(
+                    obligation,
+                    &mut candidates,
+                );
             } else {
                 if tcx.is_lang_item(def_id, LangItem::Clone) {
                     // Same builtin conditions as `Copy`, i.e., every type which has builtin support
@@ -1180,6 +1185,50 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::InferTy::FreshFloatTy(_),
             ) => {}
             ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_)) => {
+                candidates.ambiguous = true;
+            }
+        }
+    }
+
+    fn assemble_candidates_for_bikeshed_guaranteed_no_drop_trait(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        match obligation.predicate.self_ty().skip_binder().kind() {
+            ty::Ref(..)
+            | ty::Adt(..)
+            | ty::Tuple(_)
+            | ty::Array(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Error(_)
+            | ty::Uint(_)
+            | ty::Int(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Bool
+            | ty::Float(_)
+            | ty::Char
+            | ty::RawPtr(..)
+            | ty::Never
+            | ty::Pat(..)
+            | ty::Dynamic(..)
+            | ty::Str
+            | ty::Slice(_)
+            | ty::Foreign(..)
+            | ty::Alias(..)
+            | ty::Param(_)
+            | ty::Placeholder(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::UnsafeBinder(_)
+            | ty::CoroutineWitness(..)
+            | ty::Bound(..) => {
+                candidates.vec.push(BikeshedGuaranteedNoDropCandidate);
+            }
+
+            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 candidates.ambiguous = true;
             }
         }
