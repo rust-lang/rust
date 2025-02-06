@@ -39,6 +39,7 @@ where
             max_input_universe,
             search_graph: outer_ecx.search_graph,
             nested_goals: outer_ecx.nested_goals.clone(),
+            origin_span: outer_ecx.origin_span,
             tainted: outer_ecx.tainted,
             inspect: outer_ecx.inspect.take_and_enter_probe(),
         };

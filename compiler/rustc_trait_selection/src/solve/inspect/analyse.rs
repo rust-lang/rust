@@ -238,7 +238,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                 // constraints, we get an ICE if we already applied the constraints
                 // from the chosen candidate.
                 let proof_tree = infcx
-                    .probe(|_| infcx.evaluate_root_goal(goal, GenerateProofTree::Yes).1)
+                    .probe(|_| infcx.evaluate_root_goal(goal, GenerateProofTree::Yes, span).1)
                     .unwrap();
                 InspectGoal::new(infcx, self.goal.depth + 1, proof_tree, None, source)
             }
@@ -440,8 +440,11 @@ impl<'tcx> InferCtxt<'tcx> {
         depth: usize,
         visitor: &mut V,
     ) -> V::Result {
-        let (_, proof_tree) =
-            <&SolverDelegate<'tcx>>::from(self).evaluate_root_goal(goal, GenerateProofTree::Yes);
+        let (_, proof_tree) = <&SolverDelegate<'tcx>>::from(self).evaluate_root_goal(
+            goal,
+            GenerateProofTree::Yes,
+            visitor.span(),
+        );
         let proof_tree = proof_tree.unwrap();
         visitor.visit_goal(&InspectGoal::new(self, depth, proof_tree, None, GoalSource::Misc))
     }

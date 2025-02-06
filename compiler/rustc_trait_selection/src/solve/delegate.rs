@@ -43,8 +43,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         self.0.tcx
     }
 
-    type Span = Span;
-
     fn build_with_canonical<V>(
         interner: TyCtxt<'tcx>,
         canonical: &CanonicalQueryInput<'tcx, V>,
@@ -147,9 +145,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     fn instantiate_canonical_var_with_infer(
         &self,
         cv_info: CanonicalVarInfo<'tcx>,
+        span: Span,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> ty::GenericArg<'tcx> {
-        self.0.instantiate_canonical_var(DUMMY_SP, cv_info, universe_map)
+        self.0.instantiate_canonical_var(span, cv_info, universe_map)
     }
 
     fn insert_hidden_type(
@@ -175,11 +174,13 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         self.0.add_item_bounds_for_hidden_type(def_id, args, param_env, hidden_ty, goals);
     }
 
-    fn inject_new_hidden_type_unchecked(&self, key: ty::OpaqueTypeKey<'tcx>, hidden_ty: Ty<'tcx>) {
-        self.0.inject_new_hidden_type_unchecked(key, ty::OpaqueHiddenType {
-            ty: hidden_ty,
-            span: DUMMY_SP,
-        })
+    fn inject_new_hidden_type_unchecked(
+        &self,
+        key: ty::OpaqueTypeKey<'tcx>,
+        hidden_ty: Ty<'tcx>,
+        span: Span,
+    ) {
+        self.0.inject_new_hidden_type_unchecked(key, ty::OpaqueHiddenType { ty: hidden_ty, span })
     }
 
     fn reset_opaque_types(&self) {

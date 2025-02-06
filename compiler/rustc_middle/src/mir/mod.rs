@@ -34,7 +34,6 @@ use self::visit::TyContext;
 use crate::mir::interpret::{AllocRange, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{
@@ -59,7 +58,6 @@ pub mod tcx;
 mod terminator;
 
 pub mod traversal;
-mod type_foldable;
 pub mod visit;
 
 pub use consts::*;
@@ -926,8 +924,6 @@ pub enum BindingForm<'tcx> {
     /// Reference used in a guard expression to ensure immutability.
     RefForGuard,
 }
-
-TrivialTypeTraversalImpls! { BindingForm<'tcx> }
 
 mod binding_form_impl {
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
