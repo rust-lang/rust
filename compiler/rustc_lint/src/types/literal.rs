@@ -54,9 +54,9 @@ fn lint_overflowing_range_endpoint<'tcx>(
 
     use rustc_ast::{LitIntType, LitKind};
     let suffix = match lit.node {
-        LitKind::Int(_, LitIntType::Signed(s)) => s.name_str(),
+        LitKind::Int(_, LitIntType::Signed(s, _)) => s.name_str(),
         LitKind::Int(_, LitIntType::Unsigned(s)) => s.name_str(),
-        LitKind::Int(_, LitIntType::Unsuffixed) => "",
+        LitKind::Int(_, LitIntType::Unsuffixed(_)) => "",
         _ => bug!(),
     };
 
@@ -115,12 +115,16 @@ pub(crate) fn uint_ty_range(uint_ty: ty::UintTy) -> (u128, u128) {
 
 fn get_bin_hex_repr(cx: &LateContext<'_>, lit: &hir::Lit) -> Option<String> {
     let src = cx.sess().source_map().span_to_snippet(lit.span).ok()?;
-    let firstch = src.chars().next()?;
+    let mut chars = src.chars();
+    let mut firstch = chars.next()?;
+
+    if firstch == '-' {
+        firstch = chars.next()?;
+    }
 
     if firstch == '0' {
-        match src.chars().nth(1) {
-            Some('x' | 'b') => return Some(src),
-            _ => return None,
+        if let 'x' | 'b' = chars.next()? {
+            return Some(src);
         }
     }
 
@@ -284,6 +288,7 @@ fn lint_int_literal<'tcx>(
             .source_map()
             .span_to_snippet(span)
             .unwrap_or_else(|_| if negative { format!("-{v}") } else { v.to_string() });
+        // FIXME: Don't suggest unsigned types for negative literals
         let help = get_type_suggestion(cx.typeck_results().node_type(hir_id), v, negative)
             .map(|suggestion_ty| OverflowingIntHelp { suggestion_ty });
 
@@ -304,10 +309,10 @@ fn lint_uint_literal<'tcx>(
 ) {
     let uint_type = t.normalize(cx.sess().target.pointer_width);
     let (min, max) = uint_ty_range(uint_type);
-    let lit_val: u128 = match lit.node {
+    let lit_val = match lit.node {
         // _v is u8, within range by definition
         ast::LitKind::Byte(_v) => return,
-        ast::LitKind::Int(v, _) => v.get(),
+        ast::LitKind::Int(v, _lit) => v.get(),
         _ => bug!(),
     };
 
@@ -340,7 +345,7 @@ fn lint_uint_literal<'tcx>(
                 Integer::from_uint_ty(cx, t).size(),
                 repr_str,
                 lit_val,
-                false,
+                lit.node.is_negative(),
             );
             return;
         }
@@ -363,25 +368,36 @@ fn lint_uint_literal<'tcx>(
 
 pub(crate) fn lint_literal<'tcx>(
     cx: &LateContext<'tcx>,
-    type_limits: &TypeLimits,
+    type_limits: &mut TypeLimits,
     hir_id: HirId,
     span: Span,
     lit: &hir::Lit,
-    negated: bool,
 ) {
     match *cx.typeck_results().node_type(hir_id).kind() {
         ty::Int(t) => {
             match lit.node {
-                ast::LitKind::Int(v, ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed) => {
+                ast::LitKind::Int(
+                    v,
+                    ast::LitIntType::Signed(_, negated) | ast::LitIntType::Unsuffixed(negated),
+                ) => {
+                    let mut span = span;
+                    if negated {
+                        if type_limits.negated_expr_id == Some(hir_id) {
+                            // Double negation is just the value again, so we treat it
+                            // as if there were no negations for oflo lint purposes.
+                            type_limits.negated_expr_id = None;
+                            span = type_limits.negated_expr_span.take().unwrap();
+                        } else {
+                            type_limits.negated_expr_id = Some(hir_id);
+                            type_limits.negated_expr_span = Some(span);
+                        }
+                    }
                     lint_int_literal(cx, type_limits, hir_id, span, lit, t, v.get())
                 }
                 _ => bug!(),
             };
         }
-        ty::Uint(t) => {
-            assert!(!negated);
-            lint_uint_literal(cx, hir_id, span, lit, t)
-        }
+        ty::Uint(t) => lint_uint_literal(cx, hir_id, span, lit, t),
         ty::Float(t) => {
             let (is_infinite, sym) = match lit.node {
                 ast::LitKind::Float(v, _) => match t {

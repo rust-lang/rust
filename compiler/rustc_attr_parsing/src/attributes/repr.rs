@@ -225,7 +225,7 @@ fn parse_repr_align(
 }
 
 fn parse_alignment(node: &LitKind) -> Result<Align, &'static str> {
-    if let LitKind::Int(literal, LitIntType::Unsuffixed) = node {
+    if let LitKind::Int(literal, LitIntType::Unsuffixed(false)) = node {
         // `Align::from_bytes` accepts 0 as an input, check is_power_of_two() first
         if literal.get().is_power_of_two() {
             // Only possible error is larger than 2^29

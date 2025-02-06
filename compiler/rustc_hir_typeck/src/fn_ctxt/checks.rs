@@ -1602,6 +1602,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_expr_lit(
         &self,
         lit: &hir::Lit,
+        hir_id: HirId,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
@@ -1615,9 +1616,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ),
             ast::LitKind::Byte(_) => tcx.types.u8,
             ast::LitKind::Char(_) => tcx.types.char,
-            ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => Ty::new_int(tcx, ty::int_ty(t)),
+            ast::LitKind::Int(_, ast::LitIntType::Signed(t, _)) => Ty::new_int(tcx, ty::int_ty(t)),
             ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => Ty::new_uint(tcx, ty::uint_ty(t)),
-            ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
+            ast::LitKind::Int(positive, ast::LitIntType::Unsuffixed(neg)) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
                     ty::Int(_) | ty::Uint(_) => Some(ty),
                     // These exist to direct casts like `0x61 as char` to use
@@ -1628,7 +1629,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::FnDef(..) | ty::FnPtr(..) => Some(tcx.types.usize),
                     _ => None,
                 });
-                opt_ty.unwrap_or_else(|| self.next_int_var())
+                let ty = opt_ty.unwrap_or_else(|| self.next_int_var());
+
+                if neg {
+                    let cast = if let hir::Node::Expr(parent) = self.tcx.parent_hir_node(hir_id)
+                        && let hir::ExprKind::Cast(..) = parent.kind
+                    {
+                        // `-1 as usize` -> `usize::MAX`
+                        Some(parent.span)
+                    } else {
+                        None
+                    };
+
+                    self.register_bound(
+                        ty,
+                        self.tcx.require_lang_item(hir::LangItem::Neg, Some(lit.span)),
+                        traits::ObligationCause::new(
+                            lit.span,
+                            self.body_id,
+                            ObligationCauseCode::NegLit { cast, positive: positive.get() },
+                        ),
+                    );
+                }
+                ty
             }
             ast::LitKind::Float(_, ast::LitFloatType::Suffixed(t)) => {
                 Ty::new_float(tcx, ty::float_ty(t))

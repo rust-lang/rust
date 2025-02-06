@@ -336,6 +336,15 @@ struct IntLiteralTooLarge {
 }
 
 #[derive(Diagnostic)]
+#[diag(session_invalid_negation)]
+#[note]
+struct InvalidNegation {
+    #[primary_span]
+    span: Span,
+    kind: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag(session_hexadecimal_float_literal_not_supported)]
 struct HexadecimalFloatLiteralNotSupported {
     #[primary_span]
@@ -439,6 +448,9 @@ pub fn report_lit_error(
                 _ => format!("{max}"),
             };
             dcx.emit_err(IntLiteralTooLarge { span, limit })
+        }
+        LitError::InvalidNegation(kind) => {
+            dcx.emit_err(InvalidNegation { span, kind: kind.descr() })
         }
     }
 }

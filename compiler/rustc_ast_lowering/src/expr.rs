@@ -138,11 +138,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::Binary(binop, lhs, rhs)
                 }
                 ExprKind::Unary(op, ohs) => {
+                    if let UnOp::Neg = op {
+                        if let ExprKind::Lit(token_lit) = &ohs.kind {
+                            return hir::Expr {
+                                hir_id: expr_hir_id,
+                                kind: hir::ExprKind::Lit(self.lower_lit(token_lit, e.span, true)),
+                                span: self.lower_span(e.span),
+                            };
+                        }
+                    }
                     let op = self.lower_unop(*op);
                     let ohs = self.lower_expr(ohs);
                     hir::ExprKind::Unary(op, ohs)
                 }
-                ExprKind::Lit(token_lit) => hir::ExprKind::Lit(self.lower_lit(token_lit, e.span)),
+                ExprKind::Lit(token_lit) => {
+                    hir::ExprKind::Lit(self.lower_lit(token_lit, e.span, false))
+                }
                 ExprKind::IncludedBytes(bytes) => {
                     let lit = self.arena.alloc(respan(
                         self.lower_span(e.span),
@@ -419,8 +430,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         token_lit: &token::Lit,
         span: Span,
+        negated: bool,
     ) -> &'hir Spanned<LitKind> {
-        let lit_kind = match LitKind::from_token_lit(*token_lit) {
+        let lit_kind = match LitKind::from_token_lit_maybe_negated(*token_lit, negated) {
             Ok(lit_kind) => lit_kind,
             Err(err) => {
                 let guar = report_lit_error(&self.tcx.sess.psess, err, *token_lit, span);
