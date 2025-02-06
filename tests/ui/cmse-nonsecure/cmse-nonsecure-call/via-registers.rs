@@ -39,6 +39,7 @@ pub fn params(
 }
 
 #[no_mangle]
+#[allow(improper_ctypes_definitions)]
 pub fn returns(
     f1: extern "C-cmse-nonsecure-call" fn() -> u32,
     f2: extern "C-cmse-nonsecure-call" fn() -> u64,

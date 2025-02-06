@@ -364,14 +364,22 @@ lint_improper_ctypes_128bit = 128-bit integers don't currently have a known stab
 lint_improper_ctypes_array_help = consider passing a pointer to the array
 
 lint_improper_ctypes_array_reason = passing raw arrays by value is not FFI-safe
-lint_improper_ctypes_box = box cannot be represented as a single pointer
 
 lint_improper_ctypes_char_help = consider using `u32` or `libc::wchar_t` instead
 
 lint_improper_ctypes_char_reason = the `char` type has no C equivalent
 
-lint_improper_ctypes_cstr_help =
-    consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
+lint_improper_ctypes_cstr_help_const =
+    consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()` or `CString::as_ptr()`
+lint_improper_ctypes_cstr_help_mut =
+    consider passing a `*mut std::ffi::c_char` instead, and use `CString::into_raw()` then `CString::from_raw()` or a dedicated buffer
+lint_improper_ctypes_cstr_help_owned =
+    consider passing a `*const std::ffi::c_char` or `*mut std::ffi::c_char` instead,
+    and use `CString::into_raw()` then `CString::from_raw()` or a dedicated buffer
+    (note that `CString::into_raw()`'s output must not be `libc::free()`'d)
+lint_improper_ctypes_cstr_help_unknown =
+    consider passing a `*const std::ffi::c_char` or `*mut std::ffi::c_char` instead,
+    and use (depending on the use case) `CStr::as_ptr()`, `CString::into_raw()` then `CString::from_raw()`, or a dedicated buffer
 lint_improper_ctypes_cstr_reason = `CStr`/`CString` do not have a guaranteed layout
 
 lint_improper_ctypes_dyn = trait objects have no C equivalent
@@ -382,7 +390,9 @@ lint_improper_ctypes_enum_repr_help =
 lint_improper_ctypes_enum_repr_reason = enum has no representation hint
 lint_improper_ctypes_fnptr_help = consider using an `extern fn(...) -> ...` function pointer instead
 
+lint_improper_ctypes_fnptr_indirect_reason = the function pointer to `{$ty}` is FFI-unsafe due to `{$inner_ty}`
 lint_improper_ctypes_fnptr_reason = this function pointer has Rust-specific calling convention
+
 lint_improper_ctypes_non_exhaustive = this enum is non-exhaustive
 lint_improper_ctypes_non_exhaustive_variant = this enum has non-exhaustive variants
 
@@ -390,15 +400,24 @@ lint_improper_ctypes_only_phantomdata = composed only of `PhantomData`
 
 lint_improper_ctypes_opaque = opaque types have no C equivalent
 
-lint_improper_ctypes_pat_help = consider using the base type instead
+lint_improper_ctypes_pat_intrange_help = consider using the base type instead
+lint_improper_ctypes_pat_intrange_reason = integers constrained to a given range cannot have their value be provided by non-rust code
 
-lint_improper_ctypes_pat_reason = pattern types have no C equivalent
-lint_improper_ctypes_slice_help = consider using a raw pointer instead
+lint_improper_ctypes_ptr_validity_help = consider using a raw pointer, or wrapping `{$ty}` in an `Option<_>`
+lint_improper_ctypes_ptr_validity_reason =
+    boxes and references are assumed to be valid (non-null, non-dangling, aligned) pointers,
+    which cannot be garanteed if their values are produced by non-rust code
 
+lint_improper_ctypes_sized_ptr_to_unsafe_type =
+    this reference (`{$ty}`) is ABI-compatible with a C pointer, but `{$inner_ty}` itself does not have a C layout
+
+lint_improper_ctypes_slice_help = consider using a raw pointer to the slice's first element (and a length) instead
 lint_improper_ctypes_slice_reason = slices have no C equivalent
-lint_improper_ctypes_str_help = consider using `*const u8` and a length instead
 
+lint_improper_ctypes_str_help = consider using `*const u8` and a length instead
 lint_improper_ctypes_str_reason = string slices have no C equivalent
+
+lint_improper_ctypes_struct_dueto = this struct/enum/union (`{$ty}`) is FFI-unsafe due to a `{$inner_ty}` field
 lint_improper_ctypes_struct_fieldless_help = consider adding a member to this struct
 
 lint_improper_ctypes_struct_fieldless_reason = this struct has no fields
@@ -418,6 +437,10 @@ lint_improper_ctypes_union_layout_help = consider adding a `#[repr(C)]` or `#[re
 
 lint_improper_ctypes_union_layout_reason = this union has unspecified layout
 lint_improper_ctypes_union_non_exhaustive = this union is non-exhaustive
+
+lint_improper_ctypes_unsized_box = this box for an unsized type contains metadata, which makes it incompatible with a C pointer
+lint_improper_ctypes_unsized_ptr = this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer
+lint_improper_ctypes_unsized_ref = this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 lint_incomplete_include =
     include macro expected single expression in source
