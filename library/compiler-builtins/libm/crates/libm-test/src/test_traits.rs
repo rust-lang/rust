@@ -9,6 +9,7 @@
 use std::fmt;
 
 use anyhow::{Context, anyhow, bail, ensure};
+use libm::support::Hexf;
 
 use crate::precision::CheckAction;
 use crate::{CheckCtx, Float, Int, MaybeOverride, SpecialCase, TestResult};
@@ -35,7 +36,10 @@ pub trait CheckOutput<Input>: Sized {
 ///
 /// This is only used for printing errors so allocating is okay.
 pub trait Hex: Copy {
+    /// Hex integer syntax.
     fn hex(self) -> String;
+    /// Hex float syntax.
+    fn hexf(self) -> String;
 }
 
 /* implement `TupleCall` */
@@ -128,6 +132,10 @@ where
     fn hex(self) -> String {
         format!("({},)", self.0.hex())
     }
+
+    fn hexf(self) -> String {
+        format!("({},)", self.0.hexf())
+    }
 }
 
 impl<T1, T2> Hex for (T1, T2)
@@ -137,6 +145,10 @@ where
 {
     fn hex(self) -> String {
         format!("({}, {})", self.0.hex(), self.1.hex())
+    }
+
+    fn hexf(self) -> String {
+        format!("({}, {})", self.0.hexf(), self.1.hexf())
     }
 }
 
@@ -149,6 +161,10 @@ where
     fn hex(self) -> String {
         format!("({}, {}, {})", self.0.hex(), self.1.hex(), self.2.hex())
     }
+
+    fn hexf(self) -> String {
+        format!("({}, {}, {})", self.0.hexf(), self.1.hexf(), self.2.hexf())
+    }
 }
 
 /* trait implementations for ints */
@@ -159,6 +175,10 @@ macro_rules! impl_int {
             impl Hex for $ty {
                 fn hex(self) -> String {
                     format!("{self:#0width$x}", width = ((Self::BITS / 4) + 2) as usize)
+                }
+
+                fn hexf(self) -> String {
+                    String::new()
                 }
             }
 
@@ -233,6 +253,10 @@ macro_rules! impl_float {
                         self.to_bits(),
                         width = ((Self::BITS / 4) + 2) as usize
                     )
+                }
+
+                fn hexf(self) -> String {
+                    format!("{}", Hexf(self))
                 }
             }
 
@@ -324,13 +348,18 @@ where
     res.with_context(|| {
         format!(
             "\
-            \n    input:    {input:?} {ibits}\
-            \n    expected: {expected:<22?} {expbits}\
-            \n    actual:   {actual:<22?} {actbits}\
+            \n    input:    {input:?}\
+            \n    as hex:   {ihex}\
+            \n    as bits:  {ibits}\
+            \n    expected: {expected:<22?} {exphex} {expbits}\
+            \n    actual:   {actual:<22?} {acthex} {actbits}\
             ",
-            actbits = actual.hex(),
-            expbits = expected.hex(),
+            ihex = input.hexf(),
             ibits = input.hex(),
+            exphex = expected.hexf(),
+            expbits = expected.hex(),
+            actbits = actual.hex(),
+            acthex = actual.hexf(),
         )
     })
 }
@@ -365,12 +394,15 @@ macro_rules! impl_tuples {
                         .with_context(|| format!(
                             "full context:\
                             \n    input:    {input:?} {ibits}\
+                            \n    as hex:   {ihex}\
+                            \n    as bits:  {ibits}\
                             \n    expected: {expected:?} {expbits}\
                             \n    actual:   {self:?} {actbits}\
                             ",
-                            actbits = self.hex(),
-                            expbits = expected.hex(),
+                            ihex = input.hexf(),
                             ibits = input.hex(),
+                            expbits = expected.hex(),
+                            actbits = self.hex(),
                         ))
                 }
             }
