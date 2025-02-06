@@ -545,9 +545,6 @@ pub enum OutputType {
     Bitcode,
     /// This is the summary or index data part of the ThinLTO bitcode.
     ThinLinkBitcode,
-    /// This is ThinLTO's pre-link bitcode, primarily used for embedding bitcode in object files.
-    /// This can also be used for FatLTO.
-    ThinBitcode,
     Assembly,
     LlvmAssembly,
     Mir,
@@ -578,7 +575,6 @@ impl OutputType {
             OutputType::Exe | OutputType::DepInfo | OutputType::Metadata => true,
             OutputType::Bitcode
             | OutputType::ThinLinkBitcode
-            | OutputType::ThinBitcode
             | OutputType::Assembly
             | OutputType::LlvmAssembly
             | OutputType::Mir
@@ -590,7 +586,6 @@ impl OutputType {
         match *self {
             OutputType::Bitcode => "llvm-bc",
             OutputType::ThinLinkBitcode => "thin-link-bitcode",
-            OutputType::ThinBitcode => "thin-llvm-bc",
             OutputType::Assembly => "asm",
             OutputType::LlvmAssembly => "llvm-ir",
             OutputType::Mir => "mir",
@@ -608,7 +603,6 @@ impl OutputType {
             "mir" => OutputType::Mir,
             "llvm-bc" => OutputType::Bitcode,
             "thin-link-bitcode" => OutputType::ThinLinkBitcode,
-            "thin-llvm-bc" => OutputType::ThinBitcode,
             "obj" => OutputType::Object,
             "metadata" => OutputType::Metadata,
             "link" => OutputType::Exe,
@@ -619,10 +613,9 @@ impl OutputType {
 
     fn shorthands_display() -> String {
         format!(
-            "`{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`",
+            "`{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`",
             OutputType::Bitcode.shorthand(),
             OutputType::ThinLinkBitcode.shorthand(),
-            OutputType::ThinBitcode.shorthand(),
             OutputType::Assembly.shorthand(),
             OutputType::LlvmAssembly.shorthand(),
             OutputType::Mir.shorthand(),
@@ -637,7 +630,6 @@ impl OutputType {
         match *self {
             OutputType::Bitcode => "bc",
             OutputType::ThinLinkBitcode => "indexing.o",
-            OutputType::ThinBitcode => "thin.bc",
             OutputType::Assembly => "s",
             OutputType::LlvmAssembly => "ll",
             OutputType::Mir => "mir",
@@ -656,7 +648,6 @@ impl OutputType {
             | OutputType::DepInfo => true,
             OutputType::Bitcode
             | OutputType::ThinLinkBitcode
-            | OutputType::ThinBitcode
             | OutputType::Object
             | OutputType::Metadata
             | OutputType::Exe => false,
@@ -744,7 +735,6 @@ impl OutputTypes {
         self.0.keys().any(|k| match *k {
             OutputType::Bitcode
             | OutputType::ThinLinkBitcode
-            | OutputType::ThinBitcode
             | OutputType::Assembly
             | OutputType::LlvmAssembly
             | OutputType::Mir
@@ -759,7 +749,6 @@ impl OutputTypes {
         self.0.keys().any(|k| match *k {
             OutputType::Bitcode
             | OutputType::ThinLinkBitcode
-            | OutputType::ThinBitcode
             | OutputType::Assembly
             | OutputType::LlvmAssembly
             | OutputType::Mir
