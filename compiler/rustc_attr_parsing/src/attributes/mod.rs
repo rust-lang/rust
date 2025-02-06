@@ -76,22 +76,7 @@ pub(crate) trait SingleAttributeParser: 'static {
     const PATH: &'static [rustc_span::Symbol];
 
     const ON_DUPLICATE_STRATEGY: AttributeDuplicates;
-
-    /// Caled when a duplicate attribute is found.
-    ///
-    /// - `unused` is the span of the attribute that was unused or bad because of some
-    ///   duplicate reason (see [`AttributeDuplicates`])
-    /// - `used` is the span of the attribute that was used in favor of the unused attribute
-    // FIXME(jdonszelmann): default error
-    fn on_duplicate(cx: &AcceptContext<'_>, used: Span, unused: Span) {
-        cx.emit_err(UnusedMultiple {
-            this: used,
-            other: unused,
-            name: Symbol::intern(
-                &Self::PATH.into_iter().map(|i| i.to_string()).collect::<Vec<_>>().join(".."),
-            ),
-        });
-    }
+    const ON_DUPLICATE: OnDuplicate;
 
     /// Converts a single syntactical attribute to a single semantic attribute, or [`AttributeKind`]
     fn convert(cx: &AcceptContext<'_>, args: &ArgParser<'_>) -> Option<AttributeKind>;
@@ -112,7 +97,7 @@ impl<T: SingleAttributeParser> AttributeParser for Single<T> {
                 // keep the first and error
                 AttributeDuplicates::ErrorFollowing => {
                     if let Some((_, unused)) = group.1 {
-                        T::on_duplicate(cx, cx.attr_span, unused);
+                        T::ON_DUPLICATE.exec::<T>(cx, cx.attr_span, unused);
                         return;
                     }
                 }
@@ -120,7 +105,7 @@ impl<T: SingleAttributeParser> AttributeParser for Single<T> {
                 // then replace
                 AttributeDuplicates::FutureWarnPreceding => {
                     if let Some((_, used)) = group.1 {
-                        T::on_duplicate(cx, used, cx.attr_span);
+                        T::ON_DUPLICATE.exec::<T>(cx, used, cx.attr_span);
                     }
                 }
             }
