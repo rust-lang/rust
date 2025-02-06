@@ -1,5 +1,6 @@
 use std::mem;
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Diag, DiagArgName, DiagArgValue, DiagMessage, IntoDiagArg};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::interpret::{AllocId, Provenance, ReportedErrorInfo};
@@ -9,7 +10,7 @@ use rustc_middle::ty::{ConstInt, TyCtxt};
 use rustc_span::{Span, Symbol};
 
 use super::CompileTimeMachine;
-use crate::errors::{self, FrameNote, ReportErrorExt};
+use crate::errors::{FrameNote, ReportErrorExt};
 use crate::interpret::{
     CtfeProvenance, ErrorHandled, Frame, InterpErrorInfo, InterpErrorKind, MachineStopType,
     Pointer, err_inval, err_machine_stop,
@@ -93,7 +94,7 @@ impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
 pub fn get_span_and_frames<'tcx>(
     tcx: TyCtxtAt<'tcx>,
     stack: &[Frame<'tcx, impl Provenance, impl Sized>],
-) -> (Span, Vec<errors::FrameNote>) {
+) -> (Span, Vec<FrameNote>) {
     let mut stacktrace = Frame::generate_stacktrace_from_stack(stack);
     // Filter out `requires_caller_location` frames.
     stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*tcx));
@@ -104,8 +105,8 @@ pub fn get_span_and_frames<'tcx>(
     // Add notes to the backtrace. Don't print a single-line backtrace though.
     if stacktrace.len() > 1 {
         // Helper closure to print duplicated lines.
-        let mut add_frame = |mut frame: errors::FrameNote| {
-            frames.push(errors::FrameNote { times: 0, ..frame.clone() });
+        let mut add_frame = |mut frame: FrameNote| {
+            frames.push(FrameNote { times: 0, ..frame.clone() });
             // Don't print [... additional calls ...] if the number of lines is small
             if frame.times < 3 {
                 let times = frame.times;
@@ -116,21 +117,19 @@ pub fn get_span_and_frames<'tcx>(
             }
         };
 
-        let mut last_frame: Option<errors::FrameNote> = None;
+        let mut last_frame: Option<FrameNote> = None;
+        let mut seen = FxHashSet::default();
         for frame_info in &stacktrace {
             let frame = frame_info.as_note(*tcx);
             match last_frame.as_mut() {
-                Some(last_frame)
-                    if last_frame.span == frame.span
-                        && last_frame.where_ == frame.where_
-                        && last_frame.instance == frame.instance =>
-                {
+                Some(last_frame) if !seen.insert(frame.clone()) => {
                     last_frame.times += 1;
                 }
                 Some(last_frame) => {
                     add_frame(mem::replace(last_frame, frame));
                 }
                 None => {
+                    seen.insert(frame.clone());
                     last_frame = Some(frame);
                 }
             }
@@ -219,7 +218,7 @@ pub(super) fn lint<'tcx, L>(
     tcx: TyCtxtAt<'tcx>,
     machine: &CompileTimeMachine<'tcx>,
     lint: &'static rustc_session::lint::Lint,
-    decorator: impl FnOnce(Vec<errors::FrameNote>) -> L,
+    decorator: impl FnOnce(Vec<FrameNote>) -> L,
 ) where
     L: for<'a> rustc_errors::LintDiagnostic<'a, ()>,
 {

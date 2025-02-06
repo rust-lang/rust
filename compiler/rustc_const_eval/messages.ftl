@@ -117,7 +117,7 @@ const_eval_fn_ptr_call =
     function pointers need an RFC before allowed to be called in {const_eval_const_context}s
 const_eval_frame_note = {$times ->
     [0] {const_eval_frame_note_inner}
-    *[other] [... {$times} additional calls {const_eval_frame_note_inner} ...]
+    *[other] [... {$times} additional calls ...] {const_eval_frame_note_inner}
 }
 
 const_eval_frame_note_inner = inside {$where_ ->

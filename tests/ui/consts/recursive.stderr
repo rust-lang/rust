@@ -15,7 +15,7 @@ error[E0080]: reached the configured maximum number of stack frames
 LL | const X: () = f(1);
    |               ^^^^ evaluation of `X` failed inside this call
    |
-note: [... 126 additional calls inside `f::<i32>` ...]
+note: [... 126 additional calls ...] inside `f::<i32>`
   --> $DIR/recursive.rs:4:5
    |
 LL |     f(x);
