@@ -31,7 +31,7 @@ where
     if nz.e >= ZEROINFNAN {
         if nz.e > ZEROINFNAN {
             /* z==0 */
-            return x * y + z;
+            return x * y;
         }
         return z;
     }
