@@ -1693,49 +1693,41 @@ impl<'a> Formatter<'a> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pad(&mut self, s: &str) -> Result {
-        // Make sure there's a fast path up front
+        // Make sure there's a fast path up front.
         if self.options.width.is_none() && self.options.precision.is_none() {
             return self.buf.write_str(s);
         }
-        // The `precision` field can be interpreted as a `max-width` for the
+
+        // The `precision` field can be interpreted as a maximum width for the
         // string being formatted.
-        let s = if let Some(max) = self.options.precision {
-            // If our string is longer that the precision, then we must have
-            // truncation. However other flags like `fill`, `width` and `align`
-            // must act as always.
-            if let Some((i, _)) = s.char_indices().nth(max) {
-                // LLVM here can't prove that `..i` won't panic `&s[..i]`, but
-                // we know that it can't panic. Use `get` + `unwrap_or` to avoid
-                // `unsafe` and otherwise don't emit any panic-related code
-                // here.
-                s.get(..i).unwrap_or(s)
-            } else {
-                &s
-            }
+        let (s, char_count) = if let Some(max_char_count) = self.options.precision {
+            let mut iter = s.char_indices();
+            let remaining = match iter.advance_by(max_char_count) {
+                Ok(()) => 0,
+                Err(remaining) => remaining.get(),
+            };
+            // SAFETY: The offset of `.char_indices()` is guaranteed to be
+            // in-bounds and between character boundaries.
+            let truncated = unsafe { s.get_unchecked(..iter.offset()) };
+            (truncated, max_char_count - remaining)
         } else {
-            &s
+            // Use the optimized char counting algorithm for the full string.
+            (s, s.chars().count())
         };
-        // The `width` field is more of a `min-width` parameter at this point.
-        match self.options.width {
-            // If we're under the maximum length, and there's no minimum length
-            // requirements, then we can just emit the string
-            None => self.buf.write_str(s),
-            Some(width) => {
-                let chars_count = s.chars().count();
-                // If we're under the maximum width, check if we're over the minimum
-                // width, if so it's as easy as just emitting the string.
-                if chars_count >= width {
-                    self.buf.write_str(s)
-                }
-                // If we're under both the maximum and the minimum width, then fill
-                // up the minimum width with the specified string + some alignment.
-                else {
-                    let align = Alignment::Left;
-                    let post_padding = self.padding(width - chars_count, align)?;
-                    self.buf.write_str(s)?;
-                    post_padding.write(self)
-                }
-            }
+
+        // The `width` field is more of a minimum width parameter at this point.
+        if let Some(width) = self.options.width
+            && char_count < width
+        {
+            // If we're under the minimum width, then fill up the minimum width
+            // with the specified string + some alignment.
+            let post_padding = self.padding(width - char_count, Alignment::Left)?;
+            self.buf.write_str(s)?;
+            post_padding.write(self)
+        } else {
+            // If we're over the minimum width or there is no minimum width, we
+            // can just emit the string.
+            self.buf.write_str(s)
         }
     }
 
