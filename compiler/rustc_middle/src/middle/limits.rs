@@ -24,30 +24,36 @@ pub fn provide(providers: &mut Providers) {
             tcx.hir().krate_attrs(),
             tcx.sess,
             sym::move_size_limit,
-            tcx.sess.opts.unstable_opts.move_size_limit.unwrap_or(0),
+            Limit::new(tcx.sess.opts.unstable_opts.move_size_limit.unwrap_or(0)),
         ),
         type_length_limit: get_limit(
             tcx.hir().krate_attrs(),
             tcx.sess,
             sym::type_length_limit,
-            2usize.pow(24),
+            Limit::new(2usize.pow(24)),
+        ),
+        pattern_complexity_limit: get_limit(
+            tcx.hir().krate_attrs(),
+            tcx.sess,
+            sym::pattern_complexity,
+            Limit::unlimited(),
         ),
     }
 }
 
 pub fn get_recursion_limit(krate_attrs: &[impl AttributeExt], sess: &Session) -> Limit {
-    get_limit(krate_attrs, sess, sym::recursion_limit, 128)
+    get_limit(krate_attrs, sess, sym::recursion_limit, Limit::new(128))
 }
 
 fn get_limit(
     krate_attrs: &[impl AttributeExt],
     sess: &Session,
     name: Symbol,
-    default: usize,
+    default: Limit,
 ) -> Limit {
     match get_limit_size(krate_attrs, sess, name) {
         Some(size) => Limit::new(size),
-        None => Limit::new(default),
+        None => default,
     }
 }
 
