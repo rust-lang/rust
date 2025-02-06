@@ -262,14 +262,11 @@ use core::ptr::{self, NonNull, drop_in_place};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
 use core::{borrow, fmt, hint};
-#[cfg(test)]
-use std::boxed::Box;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
-#[cfg(not(test))]
 use crate::boxed::Box;
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
@@ -306,7 +303,7 @@ fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
 ///
 /// [get_mut]: Rc::get_mut
 #[doc(search_unbox)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Rc")]
+#[rustc_diagnostic_item = "Rc"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
 pub struct Rc<
@@ -2981,7 +2978,7 @@ impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
 ///
 /// [`upgrade`]: Weak::upgrade
 #[stable(feature = "rc_weak", since = "1.4.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "RcWeak")]
+#[rustc_diagnostic_item = "RcWeak"]
 pub struct Weak<
     T: ?Sized,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
