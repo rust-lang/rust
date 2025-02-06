@@ -1509,6 +1509,7 @@ fn detect_discriminant_duplicate<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>)
                     && let hir::ExprKind::Lit(lit) = &tcx.hir().body(expr.body).value.kind
                     && let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node
                     && *lit_value != dis.val
+                    && (!lit.node.is_negative() && -(lit_value.get() as i128) != dis.val as i128)
                 {
                     (tcx.def_span(discr_def_id), format!("`{dis}` (overflowed from `{lit_value}`)"))
                 } else {

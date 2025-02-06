@@ -1,11 +1,22 @@
-error[E0600]: cannot apply unary operator `-` to type `usize`
+error[E0277]: cannot apply unary operator `-` to type `usize`
   --> $DIR/feature-gate-negate-unsigned.rs:10:23
    |
 LL |     let _max: usize = -1;
    |                       ^^ cannot apply unary operator `-`
    |
+   = help: the trait `Neg` is not implemented for `usize`
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
    = note: unsigned values cannot be negated
-help: you may have meant the maximum value of `usize`
+help: you may have meant to the wrapped-around value of type `usize`
    |
 LL -     let _max: usize = -1;
 LL +     let _max: usize = usize::MAX;
@@ -21,4 +32,5 @@ LL |     let _y = -x;
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0600`.
+Some errors have detailed explanations: E0277, E0600.
+For more information about an error, try `rustc --explain E0277`.

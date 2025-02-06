@@ -498,7 +498,6 @@ pub enum ExprKind<'tcx> {
     /// A literal.
     Literal {
         lit: &'tcx hir::Lit,
-        neg: bool,
     },
     /// For literals that don't correspond to anything in the HIR
     NonHirLiteral {

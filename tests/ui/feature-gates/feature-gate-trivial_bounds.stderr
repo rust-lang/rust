@@ -76,12 +76,13 @@ help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 LL + #![feature(trivial_bounds)]
    |
 
-error[E0277]: the trait bound `String: Neg` is not satisfied
+error[E0277]: cannot apply unary operator `-` to type `String`
   --> $DIR/feature-gate-trivial_bounds.rs:36:38
    |
 LL | fn use_op(s: String) -> String where String: ::std::ops::Neg<Output=String> {
-   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Neg` is not implemented for `String`
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot apply unary operator `-`
    |
+   = help: the trait `Neg` is not implemented for `String`
    = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |

@@ -51,7 +51,7 @@ fn invalid_type_err(
                 snippet.map(|snippet| ConcatBytesInvalidSuggestion::IntLit { span, snippet });
             dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "numeric", sugg })
         }
-        Ok(LitKind::Int(val, LitIntType::Unsuffixed | LitIntType::Unsigned(UintTy::U8))) => {
+        Ok(LitKind::Int(val, LitIntType::Unsuffixed(false) | LitIntType::Unsigned(UintTy::U8))) => {
             assert!(val.get() > u8::MAX.into()); // must be an error
             dcx.emit_err(ConcatBytesOob { span })
         }
@@ -79,7 +79,7 @@ fn handle_array_element(
             match LitKind::from_token_lit(token_lit) {
                 Ok(LitKind::Int(
                     val,
-                    LitIntType::Unsuffixed | LitIntType::Unsigned(UintTy::U8),
+                    LitIntType::Unsuffixed(false) | LitIntType::Unsigned(UintTy::U8),
                 )) if let Ok(val) = u8::try_from(val.get()) => {
                     return Some(val);
                 }

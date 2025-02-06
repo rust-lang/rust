@@ -145,7 +145,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
             movability: _,
             fake_reads: _,
         }) => {}
-        Literal { lit: _, neg: _ } => {}
+        Literal { lit: _ } => {}
         NonHirLiteral { lit: _, user_ty: _ } => {}
         ZstLiteral { user_ty: _ } => {}
         NamedConst { def_id: _, args: _, user_ty: _ } => {}

@@ -777,8 +777,9 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &hir::Attribute) -> Option<u16> {
         }
         _ => None,
     };
-    if let Some(MetaItemLit { kind: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) =
-        sole_meta_list
+    if let Some(MetaItemLit {
+        kind: LitKind::Int(ordinal, LitIntType::Unsuffixed(false)), ..
+    }) = sole_meta_list
     {
         // According to the table at
         // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-header, the

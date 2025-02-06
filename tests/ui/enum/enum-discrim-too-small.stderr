@@ -1,35 +1,99 @@
-error[E0600]: cannot apply unary operator `-` to type `u8`
+error[E0277]: cannot apply unary operator `-` to type `u8`
   --> $DIR/enum-discrim-too-small.rs:5:11
    |
 LL |     Cu8 = -23,
    |           ^^^ cannot apply unary operator `-`
    |
+   = help: the trait `Neg` is not implemented for `u8`
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
    = note: unsigned values cannot be negated
+help: you may have meant to the wrapped-around value of type `u8`
+   |
+LL -     Cu8 = -23,
+LL +     Cu8 = 233,
+   |
 
-error[E0600]: cannot apply unary operator `-` to type `u16`
+error[E0277]: cannot apply unary operator `-` to type `u16`
   --> $DIR/enum-discrim-too-small.rs:13:12
    |
 LL |     Cu16 = -22333,
    |            ^^^^^^ cannot apply unary operator `-`
    |
+   = help: the trait `Neg` is not implemented for `u16`
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
    = note: unsigned values cannot be negated
+help: you may have meant to the wrapped-around value of type `u16`
+   |
+LL -     Cu16 = -22333,
+LL +     Cu16 = 0xa8c3,
+   |
 
-error[E0600]: cannot apply unary operator `-` to type `u32`
+error[E0277]: cannot apply unary operator `-` to type `u32`
   --> $DIR/enum-discrim-too-small.rs:21:12
    |
 LL |     Cu32 = -2_000_000_000,
    |            ^^^^^^^^^^^^^^ cannot apply unary operator `-`
    |
+   = help: the trait `Neg` is not implemented for `u32`
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
    = note: unsigned values cannot be negated
+help: you may have meant to the wrapped-around value of type `u32`
+   |
+LL -     Cu32 = -2_000_000_000,
+LL +     Cu32 = 0x88ca6c00,
+   |
 
-error[E0600]: cannot apply unary operator `-` to type `u64`
+error[E0277]: cannot apply unary operator `-` to type `u64`
   --> $DIR/enum-discrim-too-small.rs:29:12
    |
 LL |     Cu32 = -2_000_000_000,
    |            ^^^^^^^^^^^^^^ cannot apply unary operator `-`
    |
+   = help: the trait `Neg` is not implemented for `u64`
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
    = note: unsigned values cannot be negated
+help: you may have meant to the wrapped-around value of type `u64`
+   |
+LL -     Cu32 = -2_000_000_000,
+LL +     Cu32 = 0xffffffff88ca6c00,
+   |
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0600`.
+For more information about this error, try `rustc --explain E0277`.

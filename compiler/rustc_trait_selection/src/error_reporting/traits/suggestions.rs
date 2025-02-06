@@ -2697,6 +2697,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::CheckAssociatedTypeBounds { .. }
             | ObligationCauseCode::LetElse
             | ObligationCauseCode::BinOp { .. }
+            | ObligationCauseCode::NegLit { .. }
             | ObligationCauseCode::AscribeUserTypeProvePredicate(..)
             | ObligationCauseCode::DropImpl
             | ObligationCauseCode::ConstParam(_)

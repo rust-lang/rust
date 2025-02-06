@@ -196,7 +196,7 @@ fn int_type_of_word(s: Symbol) -> Option<IntType> {
 }
 
 pub fn parse_alignment(node: &ast::LitKind) -> Result<Align, &'static str> {
-    if let ast::LitKind::Int(literal, ast::LitIntType::Unsuffixed) = node {
+    if let ast::LitKind::Int(literal, ast::LitIntType::Unsuffixed(false)) = node {
         // `Align::from_bytes` accepts 0 as an input, check is_power_of_two() first
         if literal.get().is_power_of_two() {
             // Only possible error is larger than 2^29

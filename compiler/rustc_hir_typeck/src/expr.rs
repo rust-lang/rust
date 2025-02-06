@@ -503,7 +503,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let tcx = self.tcx;
         match expr.kind {
-            ExprKind::Lit(ref lit) => self.check_expr_lit(lit, expected),
+            ExprKind::Lit(ref lit) => self.check_expr_lit(lit, expr.hir_id, expected),
             ExprKind::Binary(op, lhs, rhs) => self.check_expr_binop(expr, op, lhs, rhs, expected),
             ExprKind::Assign(lhs, rhs, span) => {
                 self.check_expr_assign(expr, expected, lhs, rhs, span)
@@ -2982,7 +2982,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             if let ty::Infer(ty::IntVar(_)) = base_ty.kind()
                 && let ExprKind::Lit(Spanned {
-                    node: ast::LitKind::Int(_, ast::LitIntType::Unsuffixed),
+                    node: ast::LitKind::Int(_, ast::LitIntType::Unsuffixed(_)),
                     ..
                 }) = base.kind
                 && !base.span.from_expansion()
@@ -3528,7 +3528,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // If the index is an integer, we can show the actual
                         // fixed expression:
                         if let ExprKind::Lit(lit) = idx.kind
-                            && let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) = lit.node
+                            && let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed(false)) =
+                                lit.node
                             && i.get()
                                 < types
                                     .len()
