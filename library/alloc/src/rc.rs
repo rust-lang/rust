@@ -276,9 +276,6 @@ use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
 
-#[cfg(test)]
-mod tests;
-
 // This is repr(C) to future-proof against possible field-reordering, which
 // would interfere with otherwise safe [into|from]_raw() of transmutable
 // inner types.
