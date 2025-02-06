@@ -243,12 +243,17 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         return;
     }
 
+    let input = make_input(&default_early_dcx, &matches.free);
+    let has_input = input.is_some();
     let (odir, ofile) = make_output(&matches);
+
+    drop(default_early_dcx);
+
     let mut config = interface::Config {
         opts: sopts,
         crate_cfg: matches.opt_strs("cfg"),
         crate_check_cfg: matches.opt_strs("check-cfg"),
-        input: Input::File(PathBuf::new()),
+        input: input.unwrap_or(Input::File(PathBuf::new())),
         output_file: ofile,
         output_dir: odir,
         ice_file,
@@ -264,16 +269,6 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         using_internal_features: &USING_INTERNAL_FEATURES,
         expanded_args: args,
     };
-
-    let has_input = match make_input(&default_early_dcx, &matches.free) {
-        Some(input) => {
-            config.input = input;
-            true // has input: normal compilation
-        }
-        None => false, // no input: we will exit early
-    };
-
-    drop(default_early_dcx);
 
     callbacks.config(&mut config);
 
@@ -407,7 +402,7 @@ fn dump_feature_usage_metrics(tcxt: TyCtxt<'_>, metrics_dir: &Path) {
     }
 }
 
-// Extract output directory and file from matches.
+/// Extract output directory and file from matches.
 fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<OutFileName>) {
     let odir = matches.opt_str("out-dir").map(|o| PathBuf::from(&o));
     let ofile = matches.opt_str("o").map(|o| match o.as_str() {
