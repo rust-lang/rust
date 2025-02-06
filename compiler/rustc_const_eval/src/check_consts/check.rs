@@ -488,7 +488,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::Use(_)
             | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
-            | Rvalue::Discriminant(..) => {}
+            | Rvalue::Discriminant(..)
+            | Rvalue::Len(_) => {}
 
             Rvalue::Aggregate(kind, ..) => {
                 if let AggregateKind::Coroutine(def_id, ..) = kind.as_ref()
@@ -572,27 +573,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             ) => {}
             Rvalue::ShallowInitBox(_, _) => {}
 
-            Rvalue::UnaryOp(op, operand) => {
+            Rvalue::UnaryOp(_, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
-                match op {
-                    UnOp::Not | UnOp::Neg => {
-                        if is_int_bool_float_or_char(ty) {
-                            // Int, bool, float, and char operations are fine.
-                        } else {
-                            span_bug!(
-                                self.span,
-                                "non-primitive type in `Rvalue::UnaryOp{op:?}`: {ty:?}",
-                            );
-                        }
-                    }
-                    UnOp::PtrMetadata => {
-                        if !ty.is_ref() && !ty.is_unsafe_ptr() {
-                            span_bug!(
-                                self.span,
-                                "non-pointer type in `Rvalue::UnaryOp({op:?})`: {ty:?}",
-                            );
-                        }
-                    }
+                if is_int_bool_float_or_char(ty) {
+                    // Int, bool, float, and char operations are fine.
+                } else {
+                    span_bug!(self.span, "non-primitive type in `Rvalue::UnaryOp`: {:?}", ty);
                 }
             }
 
