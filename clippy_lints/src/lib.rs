@@ -126,6 +126,7 @@ mod duplicate_mod;
 mod else_if_without_else;
 mod empty_drop;
 mod empty_enum;
+mod empty_line_after;
 mod empty_with_brackets;
 mod endian_bytes;
 mod entry;
@@ -973,6 +974,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(unused_trait_names::UnusedTraitNames::new(conf)));
     store.register_late_pass(|_| Box::new(manual_ignore_case_cmp::ManualIgnoreCaseCmp));
     store.register_late_pass(|_| Box::new(unnecessary_literal_bound::UnnecessaryLiteralBound));
+    store.register_early_pass(|| Box::new(empty_line_after::EmptyLineAfter::new()));
     store.register_late_pass(move |_| Box::new(arbitrary_source_item_ordering::ArbitrarySourceItemOrdering::new(conf)));
     store.register_late_pass(|_| Box::new(unneeded_struct_pattern::UnneededStructPattern));
     store.register_late_pass(|_| Box::<unnecessary_semicolon::UnnecessarySemicolon>::default());
