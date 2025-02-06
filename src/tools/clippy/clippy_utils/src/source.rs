@@ -727,12 +727,15 @@ pub fn str_literal_to_char_literal(
             &snip[1..(snip.len() - 1)]
         };
 
-        let hint = format!("'{}'", match ch {
-            "'" => "\\'",
-            r"\" => "\\\\",
-            "\\\"" => "\"", // no need to escape `"` in `'"'`
-            _ => ch,
-        });
+        let hint = format!(
+            "'{}'",
+            match ch {
+                "'" => "\\'",
+                r"\" => "\\\\",
+                "\\\"" => "\"", // no need to escape `"` in `'"'`
+                _ => ch,
+            }
+        );
 
         Some(hint)
     } else {
