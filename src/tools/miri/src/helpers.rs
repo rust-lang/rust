@@ -999,6 +999,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &'a [OpTy<'tcx>; N]: TryFrom<&'a [OpTy<'tcx>]>,
     {
         self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
+        if abi.c_variadic {
+            throw_ub_format!(
+                "calling a non-variadic function with a variadic caller-side signature"
+            );
+        }
         check_arg_count(args)
     }
 
