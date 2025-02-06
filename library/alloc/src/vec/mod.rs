@@ -404,7 +404,7 @@ mod spec_extend;
 /// [owned slice]: Box
 /// [`into_boxed_slice`]: Vec::into_boxed_slice
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Vec")]
+#[rustc_diagnostic_item = "Vec"]
 #[rustc_insignificant_dtor]
 pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
     buf: RawVec<T, A>,
@@ -428,7 +428,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[rustc_const_stable(feature = "const_vec_new", since = "1.39.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_new")]
+    #[rustc_diagnostic_item = "vec_new"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub const fn new() -> Self {
@@ -489,7 +489,7 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_with_capacity")]
+    #[rustc_diagnostic_item = "vec_with_capacity"]
     #[track_caller]
     pub fn with_capacity(capacity: usize) -> Self {
         Self::with_capacity_in(capacity, Global)
@@ -1279,7 +1279,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_reserve")]
+    #[rustc_diagnostic_item = "vec_reserve"]
     pub fn reserve(&mut self, additional: usize) {
         self.buf.reserve(self.len, additional);
     }
@@ -1568,7 +1568,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_as_slice")]
+    #[rustc_diagnostic_item = "vec_as_slice"]
     #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
     pub const fn as_slice(&self) -> &[T] {
         // SAFETY: `slice::from_raw_parts` requires pointee is a contiguous, aligned buffer of size
@@ -1600,7 +1600,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_as_mut_slice")]
+    #[rustc_diagnostic_item = "vec_as_mut_slice"]
     #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
     pub const fn as_mut_slice(&mut self) -> &mut [T] {
         // SAFETY: `slice::from_raw_parts_mut` requires pointee is a contiguous, aligned buffer of
@@ -2511,7 +2511,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Takes *O*(1) time.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_pop")]
+    #[rustc_diagnostic_item = "vec_pop"]
     pub fn pop(&mut self) -> Option<T> {
         if self.len == 0 {
             None
@@ -2712,7 +2712,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert!(!v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_is_empty")]
+    #[rustc_diagnostic_item = "vec_is_empty"]
     #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
@@ -3193,7 +3193,7 @@ impl<T: PartialEq, A: Allocator> Vec<T, A> {
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "vec_from_elem")]
+#[rustc_diagnostic_item = "vec_from_elem"]
 #[track_caller]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
     <T as SpecFromElem>::from_elem(elem, n, Global)
@@ -3293,21 +3293,10 @@ unsafe impl<T, A: Allocator> ops::DerefPure for Vec<T, A> {}
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
-    #[cfg(not(test))]
     #[track_caller]
     fn clone(&self) -> Self {
         let alloc = self.allocator().clone();
         <[T]>::to_vec_in(&**self, alloc)
-    }
-
-    // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is
-    // required for this method definition, is not available. Instead use the
-    // `slice::to_vec` function which is only available with cfg(test)
-    // NB see the slice::hack module in slice.rs for more information
-    #[cfg(test)]
-    fn clone(&self) -> Self {
-        let alloc = self.allocator().clone();
-        crate::slice::to_vec(&**self, alloc)
     }
 
     /// Overwrites the contents of `self` with a clone of the contents of `source`.
@@ -3854,14 +3843,9 @@ impl<T: Clone> From<&[T]> for Vec<T> {
     /// ```
     /// assert_eq!(Vec::from(&[1, 2, 3][..]), vec![1, 2, 3]);
     /// ```
-    #[cfg(not(test))]
     #[track_caller]
     fn from(s: &[T]) -> Vec<T> {
         s.to_vec()
-    }
-    #[cfg(test)]
-    fn from(s: &[T]) -> Vec<T> {
-        crate::slice::to_vec(s, Global)
     }
 }
 
@@ -3875,14 +3859,9 @@ impl<T: Clone> From<&mut [T]> for Vec<T> {
     /// ```
     /// assert_eq!(Vec::from(&mut [1, 2, 3][..]), vec![1, 2, 3]);
     /// ```
-    #[cfg(not(test))]
     #[track_caller]
     fn from(s: &mut [T]) -> Vec<T> {
         s.to_vec()
-    }
-    #[cfg(test)]
-    fn from(s: &mut [T]) -> Vec<T> {
-        crate::slice::to_vec(s, Global)
     }
 }
 
@@ -3928,15 +3907,9 @@ impl<T, const N: usize> From<[T; N]> for Vec<T> {
     /// ```
     /// assert_eq!(Vec::from([1, 2, 3]), vec![1, 2, 3]);
     /// ```
-    #[cfg(not(test))]
     #[track_caller]
     fn from(s: [T; N]) -> Vec<T> {
         <[T]>::into_vec(Box::new(s))
-    }
-
-    #[cfg(test)]
-    fn from(s: [T; N]) -> Vec<T> {
-        crate::slice::into_vec(Box::new(s))
     }
 }
 
@@ -3966,7 +3939,6 @@ where
 }
 
 // note: test pulls in std, which causes errors here
-#[cfg(not(test))]
 #[stable(feature = "vec_from_box", since = "1.18.0")]
 impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
     /// Converts a boxed slice into a vector by transferring ownership of
@@ -3985,7 +3957,6 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
 
 // note: test pulls in std, which causes errors here
 #[cfg(not(no_global_oom_handling))]
-#[cfg(not(test))]
 #[stable(feature = "box_from_vec", since = "1.20.0")]
 impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
     /// Converts a vector into a boxed slice.
