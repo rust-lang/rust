@@ -1,0 +1,4 @@
+warning: linking module flags 'Dwarf Version': IDs have conflicting values ('i32 4' from  with 'i32 5' from dwarf_mixed_versions_lto.7f4a44b55cf2f174-cgu.0)
+
+warning: 1 warning emitted
+
