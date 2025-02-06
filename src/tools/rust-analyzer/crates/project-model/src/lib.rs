@@ -263,7 +263,6 @@ fn parse_cfg(s: &str) -> Result<cfg::CfgAtom, String> {
 pub enum RustSourceWorkspaceConfig {
     CargoMetadata(CargoMetadataConfig),
     Json(ProjectJson),
-    Stitched,
 }
 
 impl Default for RustSourceWorkspaceConfig {
