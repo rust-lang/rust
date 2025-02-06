@@ -33,6 +33,8 @@ extern crate tikv_jemalloc_sys as _;
 
 mod log;
 
+use std::any::Any;
+use std::cell::RefCell;
 use std::env;
 use std::num::{NonZero, NonZeroI32};
 use std::ops::Range;
@@ -46,19 +48,21 @@ use miri::{
     TreeBorrowsParams, ValidationMode, entry_fn, run_genmc_mode,
 };
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig};
 use rustc_data_structures::sync::{self, DynSync};
 use rustc_driver::Compilation;
 use rustc_hir::{self as hir, Node};
 use rustc_interface::interface::Config;
 use rustc_interface::util::DummyCodegenBackend;
 use rustc_log::tracing::debug;
+use rustc_middle::dep_graph::WorkProductMap;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
     ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
+use rustc_session::config::{CrateType, ErrorOutputType, OptLevel, OutputFilenames};
 use rustc_session::{EarlyDiagCtxt, Session};
 
 use crate::log::setup::{deinit_loggers, init_early_loggers, init_late_loggers};
@@ -144,19 +148,81 @@ fn make_miri_codegen_backend(sess: &Session) -> Box<dyn CodegenBackend> {
 }
 
 impl rustc_driver::Callbacks for MiriCompilerCalls {
-    fn config(&mut self, config: &mut rustc_interface::interface::Config) {
+    fn config(&mut self, config: &mut Config) {
+        let mut miri_config = self.miri_config.take();
+        let mut many_seeds = self.many_seeds.take();
+
         // We never reach codegen anyway.
-        config.make_codegen_backend = Some(Box::new(make_miri_codegen_backend));
+        config.make_codegen_backend = Some(Box::new(move |sess| {
+            let early_dcx = EarlyDiagCtxt::new(sess.opts.error_format);
+
+            // Use the target_config method of the default codegen backend (eg LLVM) to ensure the
+            // calculated target features match said backend by respecting eg -Ctarget-cpu.
+            let target_config_backend = rustc_interface::util::get_codegen_backend(
+                &early_dcx,
+                &sess.opts.sysroot,
+                None,
+                &sess.target,
+            );
+            target_config_backend.init(sess);
+
+            Box::new(MiriCodegenBackend {
+                miri_config: RefCell::new(miri_config.take()),
+                many_seeds: RefCell::new(many_seeds.take()),
+                target_config_override: Box::new(move |sess| {
+                    let mut cfg = target_config_backend.target_config(sess);
+                    // The basic types and ABI always work.
+                    cfg.has_reliable_f16 = true;
+                    cfg.has_reliable_f128 = true;
+                    // We always provide the f16 intrinsics, but some are provided via the host,
+                    // so forward its reliability.
+                    cfg.has_reliable_f16_math = cfg!(target_has_reliable_f16_math);
+                    // Many f128 operations are still missing.
+                    cfg.has_reliable_f128_math = false;
+                    cfg
+                }),
+            })
+        }));
 
         // Register our custom extra symbols.
         config.extra_symbols = miri::sym::EXTRA_SYMBOLS.into();
     }
+}
 
-    fn after_analysis<'tcx>(
-        &mut self,
-        _: &rustc_interface::interface::Compiler,
-        tcx: TyCtxt<'tcx>,
-    ) -> Compilation {
+struct MiriCodegenBackend {
+    miri_config: RefCell<Option<MiriConfig>>,
+    many_seeds: RefCell<Option<ManySeedsConfig>>,
+    target_config_override: Box<dyn Fn(&Session) -> TargetConfig>,
+}
+
+impl CodegenBackend for MiriCodegenBackend {
+    fn name(&self) -> &'static str {
+        "miri"
+    }
+
+    fn target_config(&self, sess: &Session) -> TargetConfig {
+        (self.target_config_override)(sess)
+    }
+
+    fn target_cpu(&self, _sess: &Session) -> String {
+        "miri".to_owned()
+    }
+
+    fn codegen_crate<'tcx>(&self, _tcx: TyCtxt<'tcx>) -> Box<dyn Any> {
+        unreachable!()
+    }
+
+    fn join_codegen(
+        &self,
+        _ongoing_codegen: Box<dyn Any>,
+        _sess: &Session,
+        _outputs: &OutputFilenames,
+        _crate_info: &CrateInfo,
+    ) -> (CompiledModules, WorkProductMap) {
+        unreachable!()
+    }
+
+    fn jit_crate<'tcx>(&self, tcx: TyCtxt<'tcx>, mut args: Vec<String>) -> ExitCode {
         // Compilation is done, interpretation is starting. Deal with diagnostics from the
         // compilation part. We cannot call `sess.finish_diagnostics()` as then "aborting due to
         // previous errors" gets printed twice.
@@ -174,9 +240,10 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         let (entry_def_id, entry_type) = entry_fn(tcx);
 
         // Obtain and complete the Miri configuration.
-        let mut config = self.miri_config.take().expect("after_analysis must only be called once");
+        let config = self.miri_config.take().expect("after_analysis must only be called once");
+
         // Add filename to `miri` arguments.
-        config.args.insert(0, tcx.sess.io.input.filestem().to_string());
+        args.insert(0, tcx.sess.io.input.filestem().to_string());
 
         // Adjust working directory for interpretation.
         if let Some(cwd) = env::var_os("MIRI_CWD") {
@@ -200,9 +267,9 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
 
         // Invoke the interpreter.
         let res = if config.genmc_config.is_some() {
-            assert!(self.many_seeds.is_none());
+            assert!(self.many_seeds.borrow().is_none());
             run_genmc_mode(tcx, &config, |genmc_ctx: Rc<GenmcCtx>| {
-                miri::eval_entry(tcx, entry_def_id, entry_type, &config, Some(genmc_ctx))
+                miri::eval_entry(tcx, entry_def_id, entry_type, &args, &config, Some(genmc_ctx))
             })
         } else if let Some(many_seeds) = self.many_seeds.take() {
             assert!(config.seed.is_none());
@@ -210,10 +277,17 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 let mut config = config.clone();
                 config.seed = Some(seed);
                 eprintln!("Trying seed: {seed}");
-                miri::eval_entry(tcx, entry_def_id, entry_type, &config, /* genmc_ctx */ None)
+                miri::eval_entry(
+                    tcx,
+                    entry_def_id,
+                    entry_type,
+                    &args,
+                    &config,
+                    /* genmc_ctx */ None,
+                )
             })
         } else {
-            miri::eval_entry(tcx, entry_def_id, entry_type, &config, None)
+            miri::eval_entry(tcx, entry_def_id, entry_type, &args, &config, None)
         };
         // Process interpreter result.
         if let Err(return_code) = res {
@@ -447,6 +521,7 @@ fn main() -> ExitCode {
 
     let mut rustc_args = vec![];
     let mut after_dashdash = false;
+    let mut guest_args = vec![];
 
     // Note that we require values to be given with `=`, not with a space.
     // This matches how rustc parses `-Z`.
@@ -459,7 +534,7 @@ fn main() -> ExitCode {
             rustc_args.extend(miri::MIRI_DEFAULT_ARGS.iter().map(ToString::to_string));
         } else if after_dashdash {
             // Everything that comes after `--` is forwarded to the interpreted crate.
-            miri_config.args.push(arg);
+            guest_args.push(arg);
         } else if arg == "--" {
             after_dashdash = true;
         } else if arg == "-Zmiri-disable-validation" {
@@ -734,7 +809,6 @@ fn main() -> ExitCode {
         many_seeds.map(|seeds| ManySeedsConfig { seeds, keep_going: many_seeds_keep_going });
 
     debug!("rustc arguments: {:?}", rustc_args);
-    debug!("crate arguments: {:?}", miri_config.args);
     if !miri_config.native_lib.is_empty() && miri_config.native_lib_enable_tracing {
         // SAFETY: No other threads are running
         #[cfg(all(feature = "native-lib", unix))]
@@ -745,5 +819,9 @@ fn main() -> ExitCode {
             );
         }
     }
+    rustc_args.push("-Zjit-mode".to_owned());
+    rustc_args.push("--".to_owned());
+    rustc_args.extend(guest_args);
+
     run_compiler_and_exit(&rustc_args, &mut MiriCompilerCalls::new(miri_config, many_seeds))
 }
