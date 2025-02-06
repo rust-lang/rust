@@ -1819,6 +1819,18 @@ fn test_clone_into() {
 fn display_format_flags() {
     assert_eq!(format!("a{:#<5}b", Path::new("").display()), "a#####b");
     assert_eq!(format!("a{:#<5}b", Path::new("a").display()), "aa####b");
+    assert_eq!(format!("a{:^10}e", Path::new("bcd").display()), "a   bcd    e");
+}
+
+#[cfg(windows)]
+#[test]
+fn display_invalid_wtf8_windows() {
+    use std::ffi::OsString;
+    use std::os::windows::ffi::OsStringExt;
+
+    let path_buf = PathBuf::from(OsString::from_wide(&[b'b' as _, 0xD800, b'd' as _]));
+    assert_eq!(format!("a{:^10}e", path_buf.display()), "a   b�d    e");
+    assert_eq!(format!("a{:^10}e", path_buf.as_path().display()), "a   b�d    e");
 }
 
 #[test]
