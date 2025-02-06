@@ -30,8 +30,6 @@ version = "0.0.0"
 dependencies = [
  "compiler_builtins",
  "core",
- "rand",
- "rand_xorshift",
 ]
 
 [[package]]
