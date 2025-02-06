@@ -1,8 +1,10 @@
 use std::any::Any;
+use std::process::ExitCode;
 use std::sync::Arc;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::svh::Svh;
 use rustc_errors::timings::TimingSection;
@@ -16,6 +18,11 @@ use rustc_session::config::{self, OutputFilenames, OutputType};
 use crate::errors::FailedWritingFile;
 use crate::passes;
 
+enum ExitCodeOr<T> {
+    ExitCode(ExitCode),
+    Codegen(T),
+}
+
 pub struct Linker {
     dep_graph: DepGraph,
     output_filenames: Arc<OutputFilenames>,
@@ -23,15 +30,32 @@ pub struct Linker {
     crate_hash: Option<Svh>,
     crate_info: CrateInfo,
     metadata: EncodedMetadata,
-    ongoing_codegen: Box<dyn Any>,
+    ongoing_codegen: ExitCodeOr<Box<dyn Any>>,
 }
 
 impl Linker {
     pub fn codegen_and_build_linker(
         tcx: TyCtxt<'_>,
         codegen_backend: &dyn CodegenBackend,
+        jit_args: Vec<String>,
     ) -> Linker {
-        let (ongoing_codegen, crate_info, metadata) = passes::start_codegen(codegen_backend, tcx);
+        let (ongoing_codegen, crate_info, metadata) = if tcx.sess.opts.unstable_opts.jit_mode {
+            if !tcx.sess.opts.output_types.should_codegen() {
+                tcx.sess.dcx().fatal("JIT mode doesn't work with `cargo check`");
+            }
+
+            // FIXME allow the backend to finalize the incr comp session before execution
+
+            (
+                ExitCodeOr::ExitCode(passes::jit_crate(codegen_backend, tcx, jit_args)),
+                CrateInfo::new(tcx, codegen_backend.target_cpu(&tcx.sess)),
+                EncodedMetadata::empty(),
+            )
+        } else {
+            let (ongoing_codegen, crate_info, metadata) =
+                passes::start_codegen(codegen_backend, tcx);
+            (ExitCodeOr::Codegen(ongoing_codegen), crate_info, metadata)
+        };
 
         Linker {
             dep_graph: tcx.dep_graph.clone(),
@@ -48,16 +72,25 @@ impl Linker {
     }
 
     pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) {
-        let (compiled_modules, mut work_products) = sess.time("finish_ongoing_codegen", || {
-            match self.ongoing_codegen.downcast::<CompiledModules>() {
-                // This was a check only build
-                Ok(compiled_modules) => (*compiled_modules, IndexMap::default()),
-
-                Err(ongoing_codegen) => {
-                    codegen_backend.join_codegen(ongoing_codegen, sess, &self.output_filenames)
-                }
+        let (res, mut work_products) = match self.ongoing_codegen {
+            ExitCodeOr::ExitCode(exit_code) => {
+                (ExitCodeOr::ExitCode(exit_code), FxIndexMap::default())
             }
-        });
+            ExitCodeOr::Codegen(ongoing_codegen) => sess.time("finish_ongoing_codegen", || {
+                let (codegen_results, work_products) = match ongoing_codegen
+                    .downcast::<CompiledModules>()
+                {
+                    // This was a check only build
+                    Ok(codegen_results) => (*codegen_results, IndexMap::default()),
+
+                    Err(ongoing_codegen) => {
+                        codegen_backend.join_codegen(ongoing_codegen, sess, &self.output_filenames)
+                    }
+                };
+
+                (ExitCodeOr::Codegen(codegen_results), work_products)
+            }),
+        };
         sess.timings.end_section(sess.dcx(), TimingSection::Codegen);
 
         if sess.opts.incremental.is_some()
@@ -97,30 +130,35 @@ impl Linker {
             return;
         }
 
-        if sess.opts.unstable_opts.no_link {
-            let rlink_file = self.output_filenames.with_extension(config::RLINK_EXT);
-            CompiledModules::serialize_rlink(
-                sess,
-                &rlink_file,
-                &compiled_modules,
-                &self.crate_info,
-                &self.metadata,
-                &self.output_filenames,
-            )
-            .unwrap_or_else(|error| {
-                sess.dcx().emit_fatal(FailedWritingFile { path: &rlink_file, error })
-            });
-            return;
-        }
+        match res {
+            ExitCodeOr::ExitCode(exit_code) => exit_code.exit_process(),
+            ExitCodeOr::Codegen(codegen_results) => {
+                if sess.opts.unstable_opts.no_link {
+                    let rlink_file = self.output_filenames.with_extension(config::RLINK_EXT);
+                    CompiledModules::serialize_rlink(
+                        sess,
+                        &rlink_file,
+                        &codegen_results,
+                        &self.crate_info,
+                        &self.metadata,
+                        &self.output_filenames,
+                    )
+                    .unwrap_or_else(|error| {
+                        sess.dcx().emit_fatal(FailedWritingFile { path: &rlink_file, error })
+                    });
+                    return;
+                }
 
-        let _timer = sess.prof.verbose_generic_activity("link_crate");
-        let _timing = sess.timings.section_guard(sess.dcx(), TimingSection::Linking);
-        codegen_backend.link(
-            sess,
-            compiled_modules,
-            self.crate_info,
-            self.metadata,
-            &self.output_filenames,
-        )
+                let _timer = sess.prof.verbose_generic_activity("link_crate");
+                let _timing = sess.timings.section_guard(sess.dcx(), TimingSection::Linking);
+                codegen_backend.link(
+                    sess,
+                    codegen_results,
+                    self.crate_info,
+                    self.metadata,
+                    &self.output_filenames,
+                )
+            }
+        }
     }
 }

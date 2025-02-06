@@ -2,6 +2,7 @@ use std::any::Any;
 use std::ffi::{OsStr, OsString};
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
+use std::process::ExitCode;
 use std::sync::{Arc, LazyLock, OnceLock};
 use std::{env, fs, iter};
 
@@ -1189,14 +1190,8 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
     }
 }
 
-/// Runs the codegen backend, after which the AST and analysis can
-/// be discarded.
-pub(crate) fn start_codegen<'tcx>(
-    codegen_backend: &dyn CodegenBackend,
-    tcx: TyCtxt<'tcx>,
-) -> (Box<dyn Any>, CrateInfo, EncodedMetadata) {
-    tcx.sess.timings.start_section(tcx.sess.dcx(), TimingSection::Codegen);
-
+/// A couple of checks that need to run before we run codegen.
+fn pre_codegen_checks(tcx: TyCtxt<'_>) {
     // Hook for tests.
     if let Some((def_id, _)) = tcx.entry_fn(())
         && find_attr!(tcx, def_id, RustcDelayedBugFromInsideQuery)
@@ -1216,6 +1211,17 @@ pub(crate) fn start_codegen<'tcx>(
     if let Some(guar) = tcx.sess.dcx().has_errors_or_delayed_bugs() {
         guar.raise_fatal();
     }
+}
+
+/// Runs the codegen backend, after which the AST and analysis can
+/// be discarded.
+pub(crate) fn start_codegen<'tcx>(
+    codegen_backend: &dyn CodegenBackend,
+    tcx: TyCtxt<'tcx>,
+) -> (Box<dyn Any>, CrateInfo, EncodedMetadata) {
+    tcx.sess.timings.start_section(tcx.sess.dcx(), TimingSection::Codegen);
+
+    pre_codegen_checks(tcx);
 
     info!("Pre-codegen\n{:?}", tcx.debug_stats());
 
@@ -1244,6 +1250,16 @@ pub(crate) fn start_codegen<'tcx>(
     }
 
     (codegen, crate_info, metadata)
+}
+
+pub fn jit_crate<'tcx>(
+    codegen_backend: &dyn CodegenBackend,
+    tcx: TyCtxt<'tcx>,
+    args: Vec<String>,
+) -> ExitCode {
+    pre_codegen_checks(tcx);
+
+    tcx.sess.time("jit_crate", move || codegen_backend.jit_crate(tcx, args))
 }
 
 /// Compute and validate the crate name.

@@ -1,5 +1,6 @@
 // tidy-alphabetical-start
 #![feature(decl_macro)]
+#![feature(exitcode_exit_method)]
 #![feature(file_buffered)]
 #![feature(iter_intersperse)]
 #![feature(try_blocks)]

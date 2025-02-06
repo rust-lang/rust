@@ -33,8 +33,8 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 use std::any::Any;
-use std::cell::OnceCell;
 use std::env;
+use std::process::ExitCode;
 use std::sync::Arc;
 
 use cranelift_codegen::isa::TargetIsa;
@@ -48,7 +48,6 @@ use rustc_session::config::OutputFilenames;
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{Abi, Arch, Env, Os};
 
-pub use crate::config::*;
 use crate::prelude::*;
 
 mod abi;
@@ -61,7 +60,6 @@ mod codegen_i128;
 mod common;
 mod compiler_builtins;
 mod concurrency_limiter;
-mod config;
 mod constant;
 mod debuginfo;
 mod discriminant;
@@ -119,9 +117,7 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
     }
 }
 
-pub struct CraneliftCodegenBackend {
-    pub config: OnceCell<BackendConfig>,
-}
+pub struct CraneliftCodegenBackend;
 
 impl CodegenBackend for CraneliftCodegenBackend {
     fn name(&self) -> &'static str {
@@ -140,15 +136,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
         if sess.opts.cg.instrument_coverage() != InstrumentCoverage::No {
             sess.dcx()
                 .fatal("`-Cinstrument-coverage` is LLVM specific and not supported by Cranelift");
-        }
-
-        let config = self.config.get_or_init(|| {
-            BackendConfig::from_opts(&sess.opts.cg.llvm_args)
-                .unwrap_or_else(|err| sess.dcx().fatal(err))
-        });
-
-        if config.jit_mode && !sess.opts.output_types.should_codegen() {
-            sess.dcx().fatal("JIT mode doesn't work with `cargo check`");
         }
     }
 
@@ -211,16 +198,17 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>, _crate_info: &CrateInfo) -> Box<dyn Any> {
         info!("codegen crate {}", tcx.crate_name(LOCAL_CRATE));
-        let config = self.config.get().unwrap();
-        if config.jit_mode {
-            #[cfg(feature = "jit")]
-            driver::jit::run_jit(tcx, _crate_info, config.jit_args.clone());
 
-            #[cfg(not(feature = "jit"))]
-            tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
-        } else {
-            driver::aot::run_aot(tcx)
+        for opt in &tcx.sess.opts.cg.llvm_args {
+            if opt.starts_with("-import-instr-limit") {
+                // Silently ignore -import-instr-limit. It is set by rust's build system even when
+                // testing cg_clif.
+                continue;
+            }
+            tcx.sess.dcx().fatal(format!("Unknown option `{}`", opt));
         }
+
+        driver::aot::run_aot(tcx)
     }
 
     fn join_codegen(
@@ -230,6 +218,29 @@ impl CodegenBackend for CraneliftCodegenBackend {
         outputs: &OutputFilenames,
     ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
         ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(sess, outputs)
+    }
+
+    fn jit_crate<'tcx>(&self, tcx: TyCtxt<'tcx>, args: Vec<String>) -> ExitCode {
+        info!("jit crate {}", tcx.crate_name(LOCAL_CRATE));
+
+        for opt in &tcx.sess.opts.cg.llvm_args {
+            if opt.starts_with("-import-instr-limit") {
+                // Silently ignore -import-instr-limit. It is set by rust's build system even when
+                // testing cg_clif.
+                continue;
+            }
+            tcx.sess.dcx().fatal(format!("Unknown option `{}`", opt));
+        }
+
+        #[cfg(feature = "jit")]
+        #[allow(unreachable_code)]
+        return driver::jit::run_jit(tcx, self.target_cpu(&tcx.sess), args);
+
+        #[cfg(not(feature = "jit"))]
+        {
+            let _ = args;
+            tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
+        }
     }
 }
 
@@ -360,5 +371,5 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift
 #[unsafe(no_mangle)]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
-    Box::new(CraneliftCodegenBackend { config: OnceCell::new() })
+    Box::new(CraneliftCodegenBackend)
 }
