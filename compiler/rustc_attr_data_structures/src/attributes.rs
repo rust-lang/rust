@@ -8,7 +8,7 @@ use thin_vec::ThinVec;
 
 use crate::{DefaultBodyStability, PartialConstStability, PrintAttribute, RustcVersion, Stability};
 
-#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, PrintAttribute)]
 pub enum InlineAttr {
     None,
     Hint,
@@ -216,12 +216,21 @@ pub enum AttributeKind {
     ConstStabilityIndirect,
 
     /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).
-    Deprecation { deprecation: Deprecation, span: Span },
+    Deprecation {
+        deprecation: Deprecation,
+        span: Span,
+    },
 
     /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
-    DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
+    DocComment {
+        style: AttrStyle,
+        kind: CommentKind,
+        span: Span,
+        comment: Symbol,
+    },
 
     /// Represents `#[rustc_macro_transparency]`.
+    Inline(InlineAttr, Span),
     MacroTransparency(Transparency),
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).

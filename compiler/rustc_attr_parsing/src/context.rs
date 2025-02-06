@@ -18,6 +18,7 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInternalUnstableParser};
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
+use crate::attributes::inline::InlineParser;
 use crate::attributes::lint_helpers::AsPtrParser;
 use crate::attributes::repr::ReprParser;
 use crate::attributes::stability::{
@@ -106,6 +107,7 @@ attribute_parsers!(
         Single<AsPtrParser>,
         Single<ConstStabilityIndirectParser>,
         Single<DeprecationParser>,
+        Single<InlineParser>,
         Single<TransparencyParser>,
         // tidy-alphabetical-end
     ];
