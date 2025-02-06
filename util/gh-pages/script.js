@@ -1,3 +1,5 @@
+"use strict";
+
 window.searchState = {
     timeout: null,
     inputElem: document.getElementById("search-input"),
@@ -124,13 +126,6 @@ function toggleElements(filter, value) {
     }
 }
 
-function changeSetting(elem) {
-    if (elem.id === "disable-shortcuts") {
-        disableShortcuts = elem.checked;
-        storeValue(elem.id, elem.checked);
-    }
-}
-
 function onEachLazy(lazyArray, func) {
     const arr = Array.prototype.slice.call(lazyArray);
     for (const el of arr) {
@@ -138,17 +133,9 @@ function onEachLazy(lazyArray, func) {
     }
 }
 
-function highlightIfNeeded(lintId) {
-    onEachLazy(document.querySelectorAll(`#${lintId} pre > code:not(.hljs)`), el => {
-        hljs.highlightElement(el.parentElement)
-        el.classList.add("highlighted");
-    });
-}
-
 function expandLint(lintId) {
     const elem = document.querySelector(`#${lintId} > input[type="checkbox"]`);
     elem.checked = true;
-    highlightIfNeeded(lintId);
 }
 
 function lintAnchor(event) {
@@ -194,13 +181,9 @@ function handleBlur(event, elementId) {
 }
 
 function toggleExpansion(expand) {
-    onEachLazy(
-        document.querySelectorAll("article"),
-        expand ? el => {
-            el.classList.remove("collapsed");
-            highlightIfNeeded(el);
-        } : el => el.classList.add("collapsed"),
-    );
+    for (const checkbox of document.querySelectorAll("article input[type=checkbox]")) {
+        checkbox.checked = expand;
+    }
 }
 
 // Returns the current URL without any query parameter or hash.
@@ -535,7 +518,7 @@ function parseURLFilters() {
         for (const [corres_key, corres_value] of Object.entries(URL_PARAMS_CORRESPONDENCE)) {
             if (corres_value === key) {
                 if (key !== "versions") {
-                    const settings  = new Set(value.split(","));
+                    const settings = new Set(value.split(","));
                     onEachLazy(document.querySelectorAll(`#lint-${key} ul input`), elem => {
                         elem.checked = settings.has(elem.getAttribute("data-value"));
                         updateFilter(elem, corres_key, true);
@@ -555,12 +538,60 @@ function parseURLFilters() {
     }
 }
 
-document.getElementById(`theme-choice`).value = loadValue("theme");
-let disableShortcuts = loadValue('disable-shortcuts') === "true";
-document.getElementById("disable-shortcuts").checked = disableShortcuts;
+function addListeners() {
+    disableShortcutsButton.addEventListener("change", () => {
+        disableShortcuts = disableShortcutsButton.checked;
+        storeValue("disable-shortcuts", disableShortcuts);
+    });
 
-document.addEventListener("keypress", handleShortcut);
-document.addEventListener("keydown", handleShortcut);
+    document.getElementById("expand-all").addEventListener("click", () => toggleExpansion(true));
+    document.getElementById("collapse-all").addEventListener("click", () => toggleExpansion(false));
+
+    // A delegated listener to avoid the upfront cost of >1000 listeners
+    document.addEventListener("click", event => {
+        if (!event.target instanceof HTMLAnchorElement) {
+            return;
+        }
+
+        if (event.target.classList.contains("lint-anchor")) {
+            lintAnchor(event);
+        } else if (event.target.classList.contains("copy-to-clipboard")) {
+            copyToClipboard(event);
+        }
+    });
+
+    document.addEventListener("keypress", handleShortcut);
+    document.addEventListener("keydown", handleShortcut);
+}
+
+// Highlight code blocks only when they approach the viewport so that clicking the "Expand All"
+// button doesn't take a long time
+function highlightLazily() {
+    if (!'IntersectionObserver' in window) {
+        return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+            if (entry.isIntersecting) {
+                observer.unobserve(entry.target);
+                for (const code of entry.target.querySelectorAll("pre code")) {
+                    hljs.highlightElement(code);
+                }
+            }
+        }
+    });
+    for (const docs of document.querySelectorAll(".lint-docs")) {
+        observer.observe(docs);
+    }
+}
+
+let disableShortcuts = loadValue("disable-shortcuts") === "true";
+
+const disableShortcutsButton = document.getElementById("disable-shortcuts");
+disableShortcutsButton.checked = disableShortcuts;
+
+addListeners();
+highlightLazily();
 
 generateSettings();
 generateSearch();
