@@ -622,7 +622,7 @@ impl TypeAliasPart {
                     // to make that functionality work here, it needs to be called with
                     // each type alias, and if it gives a different result, split the impl
                     for &(type_alias_fqp, type_alias_item) in type_aliases {
-                        let mut buf = Buffer::html();
+                        let mut buf = Buffer::new();
                         cx.id_map.borrow_mut().clear();
                         cx.deref_id_map.borrow_mut().clear();
                         let target_did = impl_

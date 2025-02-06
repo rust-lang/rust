@@ -787,7 +787,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         let item_type = m.type_();
         let id = cx.derive_id(format!("{item_type}.{name}"));
 
-        let mut content = Buffer::empty_from(w);
+        let mut content = Buffer::new();
         write!(content, "{}", document_full(m, cx, HeadingOffset::H5));
 
         let toggled = !content.is_empty();
@@ -2152,7 +2152,7 @@ fn render_union<'a, 'cx: 'a>(
 
         let where_displayed = g
             .map(|g| {
-                let mut buf = Buffer::html();
+                let mut buf = Buffer::new();
                 write!(buf, "{}", g.print(cx));
                 let where_displayed = print_where_clause_and_check(&mut buf, g, cx);
                 write!(f, "{buf}", buf = buf.into_inner()).unwrap();

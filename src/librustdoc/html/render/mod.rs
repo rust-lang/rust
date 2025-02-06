@@ -1222,7 +1222,7 @@ pub(crate) fn render_all_impls(
     synthetic: &[&Impl],
     blanket_impl: &[&Impl],
 ) {
-    let mut impls = Buffer::html();
+    let mut impls = Buffer::new();
     render_impls(cx, &mut impls, concrete, containing_item, true);
     let impls = impls.into_inner();
     if !impls.is_empty() {
@@ -1277,7 +1277,7 @@ fn render_assoc_items_inner(
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !non_trait.is_empty() {
         let mut close_tags = <Vec<&str>>::with_capacity(1);
-        let mut tmp_buf = Buffer::html();
+        let mut tmp_buf = Buffer::new();
         let (render_mode, id, class_html) = match what {
             AssocItemRender::All => {
                 write_impl_section_heading(&mut tmp_buf, "Implementations", "implementations");
@@ -1305,7 +1305,7 @@ fn render_assoc_items_inner(
                 (RenderMode::ForDeref { mut_: deref_mut_ }, derived_id, r#" class="impl-items""#)
             }
         };
-        let mut impls_buf = Buffer::html();
+        let mut impls_buf = Buffer::new();
         for i in &non_trait {
             render_impl(
                 &mut impls_buf,
@@ -1485,7 +1485,7 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Optio
 }
 
 fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
-    let mut out = Buffer::html();
+    let mut out = Buffer::new();
 
     let did = ty.def_id(cx.cache()).expect("notable_traits_button already checked this");
 
@@ -1622,8 +1622,8 @@ fn render_impl(
 
         let in_trait_class = if trait_.is_some() { " trait-impl" } else { "" };
 
-        let mut doc_buffer = Buffer::empty_from(boring);
-        let mut info_buffer = Buffer::empty_from(boring);
+        let mut doc_buffer = Buffer::new();
+        let mut info_buffer = Buffer::new();
         let mut short_documented = true;
 
         if render_method_item {
@@ -1819,8 +1819,8 @@ fn render_impl(
         }
     }
 
-    let mut impl_items = Buffer::empty_from(w);
-    let mut default_impl_items = Buffer::empty_from(w);
+    let mut impl_items = Buffer::new();
+    let mut default_impl_items = Buffer::new();
     let impl_ = i.inner_impl();
 
     // Impl items are grouped by kinds:

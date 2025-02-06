@@ -98,8 +98,8 @@ pub(crate) fn render<T: Print, S: Print>(
     let mut themes: Vec<String> = style_files.iter().map(|s| s.basename().unwrap()).collect();
     themes.sort();
 
-    let content = Buffer::html().to_display(t); // Note: This must happen before making the sidebar.
-    let sidebar = Buffer::html().to_display(sidebar);
+    let content = Buffer::new().to_display(t); // Note: This must happen before making the sidebar.
+    let sidebar = Buffer::new().to_display(sidebar);
     PageLayout {
         static_root_path,
         page,

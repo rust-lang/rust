@@ -62,9 +62,8 @@ impl Print for &'_ str {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub(crate) struct Buffer {
-    for_html: bool,
     buffer: String,
 }
 
@@ -86,16 +85,8 @@ impl core::fmt::Write for Buffer {
 }
 
 impl Buffer {
-    pub(crate) fn empty_from(v: &Buffer) -> Buffer {
-        Buffer { for_html: v.for_html, buffer: String::new() }
-    }
-
-    pub(crate) fn html() -> Buffer {
-        Buffer { for_html: true, buffer: String::new() }
-    }
-
     pub(crate) fn new() -> Buffer {
-        Buffer { for_html: false, buffer: String::new() }
+        Self::default()
     }
 
     pub(crate) fn is_empty(&self) -> bool {

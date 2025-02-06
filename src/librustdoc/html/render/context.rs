@@ -235,7 +235,7 @@ impl<'tcx> Context<'tcx> {
         };
 
         if !render_redirect_pages {
-            let mut page_buffer = Buffer::html();
+            let mut page_buffer = Buffer::new();
             print_item(self, it, &mut page_buffer);
             let page = layout::Page {
                 css_class: tyname_s,
@@ -627,7 +627,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             rust_logo: has_doc_flag(self.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
         };
         let all = shared.all.replace(AllTypes::new());
-        let mut sidebar = Buffer::html();
+        let mut sidebar = Buffer::new();
 
         // all.html is not customizable, so a blank id map is fine
         let blocks = sidebar_module_like(all.item_sections(), &mut IdMap::new(), ModuleLike::Crate);
