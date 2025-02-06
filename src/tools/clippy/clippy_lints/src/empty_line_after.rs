@@ -3,13 +3,13 @@ use clippy_utils::source::{SpanRangeExt, snippet_indent};
 use clippy_utils::tokenize_with_text;
 use itertools::Itertools;
 use rustc_ast::token::CommentKind;
-use rustc_ast::{AttrKind, AttrStyle, Attribute, Crate, Item, ItemKind, ModKind, NodeId};
+use rustc_ast::{AssocItemKind, AttrKind, AttrStyle, Attribute, Crate, Item, ItemKind, ModKind, NodeId};
 use rustc_errors::{Applicability, Diag, SuggestionStyle};
 use rustc_lexer::TokenKind;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::kw;
-use rustc_span::{BytePos, ExpnKind, InnerSpan, Span, SpanData, Symbol};
+use rustc_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, SpanData, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -92,7 +92,7 @@ struct ItemInfo {
     kind: &'static str,
     name: Symbol,
     span: Span,
-    mod_items: Vec<NodeId>,
+    mod_items: Option<NodeId>,
 }
 
 pub struct EmptyLineAfter {
@@ -347,7 +347,7 @@ impl EmptyLineAfter {
     fn suggest_inner(&self, diag: &mut Diag<'_, ()>, kind: StopKind, gaps: &[Gap<'_>], id: NodeId) {
         if let Some(parent) = self.items.iter().rev().nth(1)
             && (parent.kind == "module" || parent.kind == "crate")
-            && parent.mod_items.first() == Some(&id)
+            && parent.mod_items == Some(id)
         {
             let desc = if parent.kind == "module" {
                 "parent module"
@@ -367,48 +367,35 @@ impl EmptyLineAfter {
             );
         }
     }
-}
 
-impl EarlyLintPass for EmptyLineAfter {
-    fn check_crate(&mut self, _: &EarlyContext<'_>, krate: &Crate) {
+    fn check_item_kind(
+        &mut self,
+        cx: &EarlyContext<'_>,
+        kind: &ItemKind,
+        ident: &Ident,
+        span: Span,
+        attrs: &[Attribute],
+        id: NodeId,
+    ) {
         self.items.push(ItemInfo {
-            kind: "crate",
-            name: kw::Crate,
-            span: krate.spans.inner_span.with_hi(krate.spans.inner_span.lo()),
-            mod_items: krate
-                .items
-                .iter()
-                .filter(|i| !matches!(i.span.ctxt().outer_expn_data().kind, ExpnKind::AstPass(_)))
-                .map(|i| i.id)
-                .collect::<Vec<_>>(),
-        });
-    }
-
-    fn check_item_post(&mut self, _: &EarlyContext<'_>, _: &Item) {
-        self.items.pop();
-    }
-
-    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        self.items.push(ItemInfo {
-            kind: item.kind.descr(),
-            name: item.ident.name,
-            span: if item.span.contains(item.ident.span) {
-                item.span.with_hi(item.ident.span.hi())
+            kind: kind.descr(),
+            name: ident.name,
+            span: if span.contains(ident.span) {
+                span.with_hi(ident.span.hi())
             } else {
-                item.span.with_hi(item.span.lo())
+                span.with_hi(span.lo())
             },
-            mod_items: match item.kind {
-                ItemKind::Mod(_, ModKind::Loaded(ref items, _, _, _)) => items
+            mod_items: match kind {
+                ItemKind::Mod(_, ModKind::Loaded(items, _, _, _)) => items
                     .iter()
                     .filter(|i| !matches!(i.span.ctxt().outer_expn_data().kind, ExpnKind::AstPass(_)))
                     .map(|i| i.id)
-                    .collect::<Vec<_>>(),
-                _ => Vec::new(),
+                    .next(),
+                _ => None,
             },
         });
 
-        let mut outer = item
-            .attrs
+        let mut outer = attrs
             .iter()
             .filter(|attr| attr.style == AttrStyle::Outer && !attr.span.from_expansion())
             .map(|attr| Stop::from_attr(cx, attr))
@@ -448,6 +435,58 @@ impl EarlyLintPass for EmptyLineAfter {
             }
         }
 
-        self.check_gaps(cx, &gaps, item.id);
+        self.check_gaps(cx, &gaps, id);
+    }
+}
+
+impl EarlyLintPass for EmptyLineAfter {
+    fn check_crate(&mut self, _: &EarlyContext<'_>, krate: &Crate) {
+        self.items.push(ItemInfo {
+            kind: "crate",
+            name: kw::Crate,
+            span: krate.spans.inner_span.with_hi(krate.spans.inner_span.lo()),
+            mod_items: krate
+                .items
+                .iter()
+                .filter(|i| !matches!(i.span.ctxt().outer_expn_data().kind, ExpnKind::AstPass(_)))
+                .map(|i| i.id)
+                .next(),
+        });
+    }
+
+    fn check_item_post(&mut self, _: &EarlyContext<'_>, _: &Item) {
+        self.items.pop();
+    }
+    fn check_impl_item_post(&mut self, _: &EarlyContext<'_>, _: &Item<AssocItemKind>) {
+        self.items.pop();
+    }
+    fn check_trait_item_post(&mut self, _: &EarlyContext<'_>, _: &Item<AssocItemKind>) {
+        self.items.pop();
+    }
+
+    fn check_impl_item(&mut self, cx: &EarlyContext<'_>, item: &Item<AssocItemKind>) {
+        self.check_item_kind(
+            cx,
+            &item.kind.clone().into(),
+            &item.ident,
+            item.span,
+            &item.attrs,
+            item.id,
+        );
+    }
+
+    fn check_trait_item(&mut self, cx: &EarlyContext<'_>, item: &Item<AssocItemKind>) {
+        self.check_item_kind(
+            cx,
+            &item.kind.clone().into(),
+            &item.ident,
+            item.span,
+            &item.attrs,
+            item.id,
+        );
+    }
+
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
+        self.check_item_kind(cx, &item.kind, &item.ident, item.span, &item.attrs, item.id);
     }
 }
