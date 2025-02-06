@@ -81,7 +81,7 @@ pub mod support;
 
 #[macro_use]
 #[cfg(not(feature = "unstable-public-internals"))]
-mod support;
+pub(crate) mod support;
 
 cfg_if! {
     if #[cfg(feature = "unstable-public-internals")] {

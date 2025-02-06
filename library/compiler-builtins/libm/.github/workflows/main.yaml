@@ -143,6 +143,7 @@ jobs:
     - name: Install Rust
       run: rustup update nightly --no-self-update && rustup default nightly
     - uses: Swatinem/rust-cache@v2
+    - run: cargo check --manifest-path crates/compiler-builtins-smoke-test/Cargo.toml
     - run: cargo test --manifest-path crates/compiler-builtins-smoke-test/Cargo.toml
 
   benchmarks:

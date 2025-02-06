@@ -17,6 +17,9 @@ pub mod libm;
 
 use core::ffi::c_int;
 
+// Required for macro paths.
+use libm::support;
+
 /// Mark functions `#[no_mangle]` and with the C ABI.
 macro_rules! no_mangle {
     ($( $name:ident( $($tt:tt)+ ) -> $ret:ty; )+) => {

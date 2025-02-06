@@ -107,7 +107,7 @@ pub trait Float:
         !self.is_sign_negative()
     }
 
-    /// Returns if `self` is subnormal
+    /// Returns if `self` is subnormal.
     fn is_subnormal(self) -> bool {
         (self.to_bits() & Self::EXP_MASK) == Self::Int::ZERO
     }
