@@ -5,7 +5,7 @@ use rustc_abi::{BackendRepr, ExternAbi, TagEncoding, VariantIdx, Variants, Wrapp
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
 use rustc_hir::intravisit::VisitorExt;
-use rustc_hir::{AmbigArg, Expr, ExprKind, LangItem};
+use rustc_hir::{AmbigArg, Expr, ExprKind, HirId, LangItem};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
 use rustc_middle::ty::{
@@ -536,6 +536,16 @@ fn lint_fn_pointer<'tcx>(
 }
 
 impl<'tcx> LateLintPass<'tcx> for TypeLimits {
+    fn check_lit(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        hir_id: HirId,
+        lit: &'tcx hir::Lit,
+        negated: bool,
+    ) {
+        lint_literal(cx, self, hir_id, lit.span, lit, negated)
+    }
+
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
             hir::ExprKind::Unary(hir::UnOp::Neg, expr) => {
@@ -557,7 +567,6 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                     }
                 }
             }
-            hir::ExprKind::Lit(lit) => lint_literal(cx, self, e, lit),
             hir::ExprKind::Call(path, [l, r])
                 if let ExprKind::Path(ref qpath) = path.kind
                     && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
