@@ -75,15 +75,27 @@ pub struct ModuleCodegen<M> {
     pub name: String,
     pub module_llvm: M,
     pub kind: ModuleKind,
+    /// Saving the ThinLTO buffer for embedding in the object file.
+    pub thin_lto_buffer: Option<Vec<u8>>,
 }
 
 impl<M> ModuleCodegen<M> {
     pub fn new_regular(name: impl Into<String>, module: M) -> Self {
-        Self { name: name.into(), module_llvm: module, kind: ModuleKind::Regular }
+        Self {
+            name: name.into(),
+            module_llvm: module,
+            kind: ModuleKind::Regular,
+            thin_lto_buffer: None,
+        }
     }
 
     pub fn new_allocator(name: impl Into<String>, module: M) -> Self {
-        Self { name: name.into(), module_llvm: module, kind: ModuleKind::Allocator }
+        Self {
+            name: name.into(),
+            module_llvm: module,
+            kind: ModuleKind::Allocator,
+            thin_lto_buffer: None,
+        }
     }
 
     pub fn into_compiled_module(

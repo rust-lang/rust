@@ -689,7 +689,7 @@ pub(crate) unsafe fn llvm_optimize(
 pub(crate) unsafe fn optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     dcx: DiagCtxtHandle<'_>,
-    module: &ModuleCodegen<ModuleLlvm>,
+    module: &mut ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
 ) -> Result<(), FatalError> {
     let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_optimize", &*module.name);
@@ -745,10 +745,7 @@ pub(crate) unsafe fn optimize(
         }?;
         if let Some(thin_lto_buffer) = thin_lto_buffer {
             let thin_lto_buffer = unsafe { ThinBuffer::from_raw_ptr(thin_lto_buffer) };
-            let thin_bc_out = cgcx.output_filenames.temp_path(OutputType::ThinBitcode, module_name);
-            if let Err(err) = fs::write(&thin_bc_out, thin_lto_buffer.data()) {
-                dcx.emit_err(WriteBytecode { path: &thin_bc_out, err });
-            }
+            module.thin_lto_buffer = Some(thin_lto_buffer.data().to_vec());
             let bc_summary_out =
                 cgcx.output_filenames.temp_path(OutputType::ThinLinkBitcode, module_name);
             if config.emit_thin_lto_summary
@@ -848,20 +845,14 @@ pub(crate) unsafe fn codegen(
                 }
             }
 
-            if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full)
-                && module.kind == ModuleKind::Regular
-            {
+            if config.embed_bitcode() && module.kind == ModuleKind::Regular {
                 let _timer = cgcx
                     .prof
                     .generic_activity_with_arg("LLVM_module_codegen_embed_bitcode", &*module.name);
-                let thin_bc_out =
-                    cgcx.output_filenames.temp_path(OutputType::ThinBitcode, module_name);
-                assert!(thin_bc_out.exists(), "cannot find {:?} as embedded bitcode", thin_bc_out);
-                let data = fs::read(&thin_bc_out).unwrap();
-                debug!("removing embed bitcode file {:?}", thin_bc_out);
-                ensure_removed(dcx, &thin_bc_out);
+                let thin_bc =
+                    module.thin_lto_buffer.as_deref().expect("cannot find embedded bitcode");
                 unsafe {
-                    embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, &data);
+                    embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, &thin_bc);
                 }
             }
         }

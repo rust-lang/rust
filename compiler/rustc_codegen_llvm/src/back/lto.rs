@@ -776,6 +776,10 @@ pub(crate) unsafe fn optimize_thin_module(
     // that LLVM Context and Module.
     let module_llvm = ModuleLlvm::parse(cgcx, module_name, thin_module.data(), dcx)?;
     let mut module = ModuleCodegen::new_regular(thin_module.name(), module_llvm);
+    // Given that the newly created module lacks a thinlto buffer for embedding, we need to re-add it here.
+    if cgcx.config(ModuleKind::Regular).embed_bitcode() {
+        module.thin_lto_buffer = Some(thin_module.data().to_vec());
+    }
     {
         let target = &*module.module_llvm.tm;
         let llmod = module.module_llvm.llmod();
