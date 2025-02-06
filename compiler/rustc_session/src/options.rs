@@ -2444,6 +2444,8 @@ options! {
          `=skip-entry`
          `=skip-exit`
          Multiple options can be combined with commas."),
+    jit_mode: bool = (false, parse_bool, [TRACKED],
+        "enable JIT mode (only supported by some backends, default: no)"),
     layout_seed: Option<u64> = (None, parse_opt_number, [TRACKED],
         "seed layout randomization"),
     link_directives: bool = (true, parse_bool, [TRACKED],

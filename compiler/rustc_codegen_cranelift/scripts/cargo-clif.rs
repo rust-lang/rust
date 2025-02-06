@@ -51,11 +51,7 @@ fn main() {
             args.remove(0);
             IntoIterator::into_iter(["rustc".to_string()])
                 .chain(args)
-                .chain([
-                    "--".to_string(),
-                    "-Zunstable-options".to_string(),
-                    "-Cllvm-args=jit-mode".to_string(),
-                ])
+                .chain(["--".to_string(), "-Zjit-mode".to_string()])
                 .collect()
         }
         _ => args,
