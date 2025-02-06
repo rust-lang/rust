@@ -831,7 +831,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
             // prim -> prim
             (Int(CEnum), Int(_)) => {
-                self.cenum_impl_drop_lint(fcx);
+                self.err_if_cenum_impl_drop(fcx);
                 Ok(CastKind::EnumCast)
             }
             (Int(Char) | Int(Bool), Int(_)) => Ok(CastKind::PrimIntCast),
@@ -1091,19 +1091,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn cenum_impl_drop_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {
+    fn err_if_cenum_impl_drop(&self, fcx: &FnCtxt<'a, 'tcx>) {
         if let ty::Adt(d, _) = self.expr_ty.kind()
             && d.has_dtor(fcx.tcx)
         {
             let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
             let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
 
-            fcx.tcx.emit_node_span_lint(
-                lint::builtin::CENUM_IMPL_DROP_CAST,
-                self.expr.hir_id,
-                self.span,
-                errors::CastEnumDrop { expr_ty, cast_ty },
-            );
+            fcx.dcx().emit_err(errors::CastEnumDrop { span: self.span, expr_ty, cast_ty });
         }
     }
 

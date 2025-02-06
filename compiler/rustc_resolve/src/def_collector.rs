@@ -174,10 +174,13 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 _ctxt,
                 _ident,
                 _vis,
-                Fn { sig: FnSig { header, decl, span: _ }, generics, body, .. },
+                Fn { sig: FnSig { header, decl, span: _ }, generics, contract, body, .. },
             ) if let Some(coroutine_kind) = header.coroutine_kind => {
                 self.visit_fn_header(header);
                 self.visit_generics(generics);
+                if let Some(contract) = contract {
+                    self.visit_contract(contract);
+                }
 
                 // For async functions, we need to create their inner defs inside of a
                 // closure to match their desugared representation. Besides that,

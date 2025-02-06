@@ -119,6 +119,7 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             (sym::overflow_checks, None) => disallow(cfg, "-C overflow-checks"),
             (sym::debug_assertions, None) => disallow(cfg, "-C debug-assertions"),
             (sym::ub_checks, None) => disallow(cfg, "-Z ub-checks"),
+            (sym::contract_checks, None) => disallow(cfg, "-Z contract-checks"),
             (sym::sanitize, None | Some(_)) => disallow(cfg, "-Z sanitizer"),
             (
                 sym::sanitizer_cfi_generalize_pointers | sym::sanitizer_cfi_normalize_integers,
@@ -300,6 +301,11 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
     if sess.is_nightly_build() && sess.opts.unstable_opts.emscripten_wasm_eh {
         ins_none!(sym::emscripten_wasm_eh);
     }
+
+    if sess.contract_checks() {
+        ins_none!(sym::contract_checks);
+    }
+
     ret
 }
 
@@ -464,6 +470,7 @@ impl CheckCfg {
         ins!(sym::target_thread_local, no_values);
 
         ins!(sym::ub_checks, no_values);
+        ins!(sym::contract_checks, no_values);
 
         ins!(sym::unix, no_values);
         ins!(sym::windows, no_values);

@@ -821,7 +821,7 @@ pub(crate) fn get_function_type_for_search(
                     .map(|name| clean::PathSegment {
                         name: *name,
                         args: clean::GenericArgs::AngleBracketed {
-                            args: Vec::new().into_boxed_slice(),
+                            args: ThinVec::new(),
                             constraints: ThinVec::new(),
                         },
                     })

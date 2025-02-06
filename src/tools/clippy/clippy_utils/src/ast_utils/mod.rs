@@ -362,18 +362,21 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 defaultness: ld,
                 sig: lf,
                 generics: lg,
+                contract: lc,
                 body: lb,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
                 sig: rf,
                 generics: rg,
+                contract: rc,
                 body: rb,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
                 && eq_fn_sig(lf, rf)
                 && eq_generics(lg, rg)
+                && eq_opt_fn_contract(lc, rc)
                 && both(lb.as_ref(), rb.as_ref(), |l, r| eq_block(l, r))
         },
         (Mod(lu, lmk), Mod(ru, rmk)) => {
@@ -497,18 +500,21 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 defaultness: ld,
                 sig: lf,
                 generics: lg,
+                contract: lc,
                 body: lb,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
                 sig: rf,
                 generics: rg,
+                contract: rc,
                 body: rb,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
                 && eq_fn_sig(lf, rf)
                 && eq_generics(lg, rg)
+                && eq_opt_fn_contract(lc, rc)
                 && both(lb.as_ref(), rb.as_ref(), |l, r| eq_block(l, r))
         },
         (
@@ -559,18 +565,21 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 defaultness: ld,
                 sig: lf,
                 generics: lg,
+                contract: lc,
                 body: lb,
             }),
             Fn(box ast::Fn {
                 defaultness: rd,
                 sig: rf,
                 generics: rg,
+                contract: rc,
                 body: rb,
             }),
         ) => {
             eq_defaultness(*ld, *rd)
                 && eq_fn_sig(lf, rf)
                 && eq_generics(lg, rg)
+                && eq_opt_fn_contract(lc, rc)
                 && both(lb.as_ref(), rb.as_ref(), |l, r| eq_block(l, r))
         },
         (
@@ -651,6 +660,17 @@ pub fn eq_fn_header(l: &FnHeader, r: &FnHeader) -> bool {
         && eq_opt_coroutine_kind(l.coroutine_kind, r.coroutine_kind)
         && matches!(l.constness, Const::No) == matches!(r.constness, Const::No)
         && eq_ext(&l.ext, &r.ext)
+}
+
+pub fn eq_opt_fn_contract(l: &Option<P<FnContract>>, r: &Option<P<FnContract>>) -> bool {
+    match (l, r) {
+        (Some(l), Some(r)) => {
+            eq_expr_opt(l.requires.as_ref(), r.requires.as_ref())
+            && eq_expr_opt(l.ensures.as_ref(), r.ensures.as_ref())
+        }
+        (None, None) => true,
+        (Some(_), None) | (None, Some(_)) => false,
+    }
 }
 
 pub fn eq_generics(l: &Generics, r: &Generics) -> bool {
