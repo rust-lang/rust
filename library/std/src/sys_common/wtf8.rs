@@ -588,23 +588,48 @@ impl fmt::Debug for Wtf8 {
 /// Formats the string with unpaired surrogates substituted with the replacement
 /// character, U+FFFD.
 impl fmt::Display for Wtf8 {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let wtf8_bytes = &self.bytes;
-        let mut pos = 0;
-        loop {
-            match self.next_surrogate(pos) {
-                Some((surrogate_pos, _)) => {
-                    formatter.write_str(unsafe {
-                        str::from_utf8_unchecked(&wtf8_bytes[pos..surrogate_pos])
-                    })?;
-                    formatter.write_str(UTF8_REPLACEMENT_CHARACTER)?;
-                    pos = surrogate_pos + 3;
-                }
-                None => {
-                    let s = unsafe { str::from_utf8_unchecked(&wtf8_bytes[pos..]) };
-                    if pos == 0 { return s.fmt(formatter) } else { return formatter.write_str(s) }
-                }
-            }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Corresponds to `Formatter::pad`, but for `Wtf8` instead of `str`.
+
+        // Make sure there's a fast path up front.
+        if f.options().get_width().is_none() && f.options().get_precision().is_none() {
+            return self.write_lossy(f);
+        }
+
+        // The `precision` field can be interpreted as a maximum width for the
+        // string being formatted.
+        let (s, code_point_count) = if let Some(max_code_point_count) = f.options().get_precision()
+        {
+            let mut iter = self.code_point_indices();
+            let remaining = match iter.advance_by(max_code_point_count as usize) {
+                Ok(()) => 0,
+                Err(remaining) => remaining.get(),
+            };
+            // SAFETY: The offset of `.code_point_indices()` is guaranteed to be
+            // in-bounds and between code point boundaries.
+            let truncated = unsafe {
+                Wtf8::from_bytes_unchecked(self.bytes.get_unchecked(..iter.front_offset))
+            };
+            (truncated, max_code_point_count as usize - remaining)
+        } else {
+            // Use the optimized code point counting algorithm for the full
+            // string.
+            (self, self.code_points().count())
+        };
+
+        // The `width` field is more of a minimum width parameter at this point.
+        if let Some(width) = f.options().get_width()
+            && code_point_count < width as usize
+        {
+            // If we're under the minimum width, then fill up the minimum width
+            // with the specified string + some alignment.
+            let post_padding = f.padding(width - code_point_count as u16, fmt::Alignment::Left)?;
+            s.write_lossy(f)?;
+            post_padding.write(f)
+        } else {
+            // If we're over the minimum width or there is no minimum width, we
+            // can just emit the string.
+            s.write_lossy(f)
         }
     }
 }
@@ -724,6 +749,19 @@ impl Wtf8 {
                 }
             }
         }
+    }
+
+    /// Writes the string as lossy UTF-8 like [`Wtf8::to_string_lossy`].
+    /// It ignores formatter flags.
+    fn write_lossy(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let wtf8_bytes = &self.bytes;
+        let mut pos = 0;
+        while let Some((surrogate_pos, _)) = self.next_surrogate(pos) {
+            f.write_str(unsafe { str::from_utf8_unchecked(&wtf8_bytes[pos..surrogate_pos]) })?;
+            f.write_str(UTF8_REPLACEMENT_CHARACTER)?;
+            pos = surrogate_pos + 3;
+        }
+        f.write_str(unsafe { str::from_utf8_unchecked(&wtf8_bytes[pos..]) })
     }
 
     /// Converts the WTF-8 string to potentially ill-formed UTF-16
