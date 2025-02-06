@@ -418,8 +418,13 @@ fn test_creation_flags() {
     const EXIT_PROCESS_DEBUG_EVENT: u32 = 5;
     const DBG_EXCEPTION_NOT_HANDLED: u32 = 0x80010001;
 
-    let mut child =
-        Command::new("cmd").creation_flags(DEBUG_PROCESS).stdin(Stdio::piped()).spawn().unwrap();
+    let mut child = Command::new("cmd")
+        .creation_flags(DEBUG_PROCESS)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .unwrap();
     child.stdin.take().unwrap().write_all(b"exit\r\n").unwrap();
     let mut events = 0;
     let mut event = DEBUG_EVENT { event_code: 0, process_id: 0, thread_id: 0, _junk: [0; 164] };
@@ -486,9 +491,13 @@ fn test_proc_thread_attributes() {
         }
     }
 
-    let parent = ProcessDropGuard(Command::new("cmd").spawn().unwrap());
+    let mut parent = Command::new("cmd");
+    parent.stdout(Stdio::null()).stderr(Stdio::null());
+
+    let parent = ProcessDropGuard(parent.spawn().unwrap());
 
     let mut child_cmd = Command::new("cmd");
+    child_cmd.stdout(Stdio::null()).stderr(Stdio::null());
 
     let parent_process_handle = parent.0.as_raw_handle();
 

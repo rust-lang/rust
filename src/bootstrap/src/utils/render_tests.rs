@@ -310,6 +310,9 @@ impl<'a> Renderer<'a> {
         match message {
             Message::Suite(SuiteMessage::Started { test_count }) => {
                 println!("\nrunning {test_count} tests");
+                self.benches = vec![];
+                self.failures = vec![];
+                self.ignored_tests = 0;
                 self.executed_tests = 0;
                 self.terse_tests_in_line = 0;
                 self.tests_count = Some(test_count);
