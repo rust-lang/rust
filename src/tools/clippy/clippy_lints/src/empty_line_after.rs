@@ -133,7 +133,7 @@ struct Stop {
 impl Stop {
     fn convert_to_inner(&self) -> (Span, String) {
         let inner = match self.kind {
-            // #|[...]
+            // #![...]
             StopKind::Attr => InnerSpan::new(1, 1),
             // /// or /**
             //   ^      ^
