@@ -1,8 +1,12 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::{indent_of, reindent_multiline, snippet};
 use rustc_ast::ast::{Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_ast::visit::{Visitor, walk_expr};
+use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::declare_lint_pass;
+use rustc_span::Span;
+use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -75,13 +79,27 @@ impl EarlyLintPass for RedundantElse {
                 _ => break,
             }
         }
-        span_lint_and_help(
+
+        let mut app = Applicability::MachineApplicable;
+        if let ExprKind::Block(block, _) = &els.kind {
+            for stmt in &block.stmts {
+                // If the `else` block contains a local binding or a macro invocation, Clippy shouldn't auto-fix it
+                if matches!(&stmt.kind, StmtKind::Let(_) | StmtKind::MacCall(_)) {
+                    app = Applicability::Unspecified;
+                    break;
+                }
+            }
+        }
+
+        // FIXME: The indentation of the suggestion would be the same as the one of the macro invocation in this implementation, see https://github.com/rust-lang/rust-clippy/pull/13936#issuecomment-2569548202
+        span_lint_and_sugg(
             cx,
             REDUNDANT_ELSE,
-            els.span,
+            els.span.with_lo(then.span.hi()),
             "redundant else block",
-            None,
             "remove the `else` block and move the contents out",
+            make_sugg(cx, els.span, "..", Some(expr.span)).to_string(),
+            app,
         );
     }
 }
@@ -135,4 +153,24 @@ impl BreakVisitor {
     fn check_stmt(&mut self, stmt: &Stmt) -> bool {
         self.check(stmt, Self::visit_stmt)
     }
+}
+
+// Extract the inner contents of an `else` block str
+// e.g. `{ foo(); bar(); }` -> `foo(); bar();`
+fn extract_else_block(mut block: &str) -> String {
+    block = block.strip_prefix("{").unwrap_or(block);
+    block = block.strip_suffix("}").unwrap_or(block);
+    block.trim_end().to_string()
+}
+
+fn make_sugg<'a>(
+    cx: &EarlyContext<'_>,
+    els_span: Span,
+    default: &'a str,
+    indent_relative_to: Option<Span>,
+) -> Cow<'a, str> {
+    let extracted = extract_else_block(&snippet(cx, els_span, default));
+    let indent = indent_relative_to.and_then(|s| indent_of(cx, s));
+
+    reindent_multiline(extracted.into(), false, indent)
 }

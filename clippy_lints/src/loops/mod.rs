@@ -8,6 +8,7 @@ mod iter_next_loop;
 mod manual_find;
 mod manual_flatten;
 mod manual_memcpy;
+mod manual_slice_fill;
 mod manual_while_let_some;
 mod missing_spin_loop;
 mod mut_range_bound;
@@ -714,6 +715,31 @@ declare_clippy_lint! {
     "possibly unintended infinite loop"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for manually filling a slice with a value.
+    ///
+    /// ### Why is this bad?
+    /// Using the `fill` method is more idiomatic and concise.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let mut some_slice = [1, 2, 3, 4, 5];
+    /// for i in 0..some_slice.len() {
+    ///     some_slice[i] = 0;
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let mut some_slice = [1, 2, 3, 4, 5];
+    /// some_slice.fill(0);
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub MANUAL_SLICE_FILL,
+    style,
+    "manually filling a slice with a value"
+}
+
 pub struct Loops {
     msrv: Msrv,
     enforce_iter_loop_reborrow: bool,
@@ -750,6 +776,7 @@ impl_lint_pass!(Loops => [
     MANUAL_WHILE_LET_SOME,
     UNUSED_ENUMERATE_INDEX,
     INFINITE_LOOP,
+    MANUAL_SLICE_FILL,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
@@ -823,6 +850,7 @@ impl Loops {
     ) {
         let is_manual_memcpy_triggered = manual_memcpy::check(cx, pat, arg, body, expr);
         if !is_manual_memcpy_triggered {
+            manual_slice_fill::check(cx, pat, arg, body, expr, &self.msrv);
             needless_range_loop::check(cx, pat, arg, body, expr);
             explicit_counter_loop::check(cx, pat, arg, body, expr, label);
         }
