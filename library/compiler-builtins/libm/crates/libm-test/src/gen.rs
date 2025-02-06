@@ -1,5 +1,6 @@
 //! Different generators that can create random or systematic bit patterns.
 
+pub mod case_list;
 pub mod edge_cases;
 pub mod random;
 pub mod spaced;

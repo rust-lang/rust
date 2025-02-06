@@ -102,6 +102,7 @@ pub enum GeneratorKind {
     Extensive,
     QuickSpaced,
     Random,
+    List,
 }
 
 /// A list of all functions that should get extensive tests.
@@ -219,8 +220,8 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
         GeneratorKind::QuickSpaced => domain_iter_count,
         GeneratorKind::Random => random_iter_count,
         GeneratorKind::Extensive => extensive_max_iterations(),
-        GeneratorKind::EdgeCases => {
-            unimplemented!("edge case tests shoudn't need `iteration_count`")
+        GeneratorKind::EdgeCases | GeneratorKind::List => {
+            unimplemented!("shoudn't need `iteration_count` for {:?}", ctx.gen_kind)
         }
     };
 
@@ -269,7 +270,7 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
         GeneratorKind::Random => {
             format!(" using `{SEED_ENV}={}`", str::from_utf8(SEED.as_slice()).unwrap())
         }
-        GeneratorKind::EdgeCases => unreachable!(),
+        GeneratorKind::EdgeCases | GeneratorKind::List => unimplemented!(),
     };
 
     test_log(&format!(
@@ -310,6 +311,7 @@ pub fn int_range(ctx: &CheckCtx, argnum: usize) -> RangeInclusive<i32> {
         GeneratorKind::Extensive => extensive_range,
         GeneratorKind::QuickSpaced | GeneratorKind::Random => non_extensive_range,
         GeneratorKind::EdgeCases => extensive_range,
+        GeneratorKind::List => unimplemented!("shoudn't need range for {:?}", ctx.gen_kind),
     }
 }
 

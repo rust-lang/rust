@@ -9,7 +9,7 @@
 // There are some targets we can't build musl for
 #![cfg(feature = "build-musl")]
 
-use libm_test::gen::{edge_cases, random, spaced};
+use libm_test::gen::{case_list, edge_cases, random, spaced};
 use libm_test::{CheckBasis, CheckCtx, CheckOutput, GeneratorKind, MathOp, TupleCall};
 
 const BASIS: CheckBasis = CheckBasis::Musl;
@@ -34,6 +34,15 @@ macro_rules! musl_tests {
         attrs: [$($attr:meta),*],
     ) => {
         paste::paste! {
+            #[test]
+            $(#[$attr])*
+            fn [< musl_case_list_ $fn_name >]() {
+                type Op = libm_test::op::$fn_name::Routine;
+                let ctx = CheckCtx::new(Op::IDENTIFIER, BASIS, GeneratorKind::List);
+                let cases = case_list::get_test_cases_basis::<Op>(&ctx).0;
+                musl_runner::<Op>(&ctx, cases, musl_math_sys::$fn_name);
+            }
+
             #[test]
             $(#[$attr])*
             fn [< musl_random_ $fn_name >]() {

@@ -2,7 +2,7 @@
 
 #![cfg(feature = "build-mpfr")]
 
-use libm_test::gen::{edge_cases, random, spaced};
+use libm_test::gen::{case_list, edge_cases, random, spaced};
 use libm_test::mpfloat::MpOp;
 use libm_test::{CheckBasis, CheckCtx, CheckOutput, GeneratorKind, MathOp, TupleCall};
 
@@ -24,6 +24,15 @@ macro_rules! mp_tests {
         attrs: [$($attr:meta),*],
     ) => {
         paste::paste! {
+            #[test]
+            $(#[$attr])*
+            fn [< mp_case_list_ $fn_name >]() {
+                type Op = libm_test::op::$fn_name::Routine;
+                let ctx = CheckCtx::new(Op::IDENTIFIER, BASIS, GeneratorKind::List);
+                let cases = case_list::get_test_cases_basis::<Op>(&ctx).0;
+                mp_runner::<Op>(&ctx, cases);
+            }
+
             #[test]
             $(#[$attr])*
             fn [< mp_random_ $fn_name >]() {
