@@ -56,6 +56,7 @@ check-aux:
 	# Run standard library tests in Miri.
 	$(Q)$(BOOTSTRAP) miri --stage 2 \
 		library/coretests \
+		library/alloctests \
 		library/alloc \
 		$(BOOTSTRAP_ARGS) \
 		--no-doc
@@ -63,6 +64,7 @@ check-aux:
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" \
 		$(BOOTSTRAP) miri --stage 2 \
 		library/coretests \
+		library/alloctests \
 		library/alloc \
 		$(BOOTSTRAP_ARGS) \
 		--doc
