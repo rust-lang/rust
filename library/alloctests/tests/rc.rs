@@ -316,6 +316,24 @@ fn weak_self_cyclic() {
 }
 
 #[test]
+fn is_unique() {
+    fn is_unique<T>(this: &Rc<T>) -> bool {
+        Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
+    }
+
+    let x = Rc::new(3);
+    assert!(is_unique(&x));
+    let y = x.clone();
+    assert!(!is_unique(&x));
+    drop(y);
+    assert!(is_unique(&x));
+    let w = Rc::downgrade(&x);
+    assert!(!is_unique(&x));
+    drop(w);
+    assert!(is_unique(&x));
+}
+
+#[test]
 fn test_strong_count() {
     let a = Rc::new(0);
     assert!(Rc::strong_count(&a) == 1);
