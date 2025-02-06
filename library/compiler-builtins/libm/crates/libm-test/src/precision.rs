@@ -558,48 +558,5 @@ impl MaybeOverride<(f64, i32)> for SpecialCase {}
 #[cfg(f128_enabled)]
 impl MaybeOverride<(f128, i32)> for SpecialCase {}
 
-impl MaybeOverride<(f32, f32, f32)> for SpecialCase {
-    fn check_float<F: Float>(
-        input: (f32, f32, f32),
-        actual: F,
-        expected: F,
-        ctx: &CheckCtx,
-    ) -> CheckAction {
-        ternop_common(input, actual, expected, ctx)
-    }
-}
-impl MaybeOverride<(f64, f64, f64)> for SpecialCase {
-    fn check_float<F: Float>(
-        input: (f64, f64, f64),
-        actual: F,
-        expected: F,
-        ctx: &CheckCtx,
-    ) -> CheckAction {
-        ternop_common(input, actual, expected, ctx)
-    }
-}
-
-// F1 and F2 are always the same type, this is just to please generics
-fn ternop_common<F1: Float, F2: Float>(
-    input: (F1, F1, F1),
-    actual: F2,
-    expected: F2,
-    ctx: &CheckCtx,
-) -> CheckAction {
-    // FIXME(fma): 754-2020 says "When the exact result of (a × b) + c is non-zero yet the result
-    // of fusedMultiplyAdd is zero because of rounding, the zero result takes the sign of the
-    // exact result". Our implementation returns the wrong sign:
-    //     fma(5e-324, -5e-324, 0.0) = 0.0 (should be -0.0)
-    if ctx.base_name == BaseName::Fma
-        && (input.0.is_sign_negative() ^ input.1.is_sign_negative())
-        && input.0 != F1::ZERO
-        && input.1 != F1::ZERO
-        && input.2.biteq(F1::ZERO)
-        && expected.biteq(F2::NEG_ZERO)
-        && actual.biteq(F2::ZERO)
-    {
-        return XFAIL("fma sign");
-    }
-
-    DEFAULT
-}
+impl MaybeOverride<(f32, f32, f32)> for SpecialCase {}
+impl MaybeOverride<(f64, f64, f64)> for SpecialCase {}
