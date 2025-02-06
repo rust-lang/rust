@@ -686,6 +686,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     providers.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
     providers.early_lint_checks = early_lint_checks;
     proc_macro_decls::provide(providers);
+    rustc_expand::provide(providers);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);
     rustc_borrowck::provide(providers);

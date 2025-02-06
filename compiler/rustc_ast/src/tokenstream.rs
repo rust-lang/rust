@@ -14,12 +14,14 @@
 //! ownership of the original.
 
 use std::borrow::Cow;
+use std::hash::Hash;
 use std::{cmp, fmt, iter};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_serialize::{Decodable, Encodable};
+use rustc_serialize::{Decodable, Encodable, Encoder};
+use rustc_span::def_id::{CrateNum, DefIndex};
 use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
 
 use crate::ast::{AttrStyle, StmtKind};
@@ -294,6 +296,96 @@ pub struct AttrsTarget {
 /// backwards compatibility.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
 pub struct TokenStream(pub(crate) Lrc<Vec<TokenTree>>);
+
+struct HashEncoder<H: std::hash::Hasher> {
+    hasher: H,
+}
+
+impl<H: std::hash::Hasher> Encoder for HashEncoder<H> {
+    fn emit_usize(&mut self, v: usize) {
+        self.hasher.write_usize(v)
+    }
+
+    fn emit_u128(&mut self, v: u128) {
+        self.hasher.write_u128(v)
+    }
+
+    fn emit_u64(&mut self, v: u64) {
+        self.hasher.write_u64(v)
+    }
+
+    fn emit_u32(&mut self, v: u32) {
+        self.hasher.write_u32(v)
+    }
+
+    fn emit_u16(&mut self, v: u16) {
+        self.hasher.write_u16(v)
+    }
+
+    fn emit_u8(&mut self, v: u8) {
+        self.hasher.write_u8(v)
+    }
+
+    fn emit_isize(&mut self, v: isize) {
+        self.hasher.write_isize(v)
+    }
+
+    fn emit_i128(&mut self, v: i128) {
+        self.hasher.write_i128(v)
+    }
+
+    fn emit_i64(&mut self, v: i64) {
+        self.hasher.write_i64(v)
+    }
+
+    fn emit_i32(&mut self, v: i32) {
+        self.hasher.write_i32(v)
+    }
+
+    fn emit_i16(&mut self, v: i16) {
+        self.hasher.write_i16(v)
+    }
+
+    fn emit_raw_bytes(&mut self, s: &[u8]) {
+        self.hasher.write(s)
+    }
+}
+
+impl<H: std::hash::Hasher> SpanEncoder for HashEncoder<H> {
+    fn encode_span(&mut self, span: Span) {
+        span.hash(&mut self.hasher)
+    }
+
+    fn encode_symbol(&mut self, symbol: Symbol) {
+        symbol.hash(&mut self.hasher)
+    }
+
+    fn encode_expn_id(&mut self, expn_id: rustc_span::ExpnId) {
+        expn_id.hash(&mut self.hasher)
+    }
+
+    fn encode_syntax_context(&mut self, syntax_context: rustc_span::SyntaxContext) {
+        syntax_context.hash(&mut self.hasher)
+    }
+
+    fn encode_crate_num(&mut self, crate_num: CrateNum) {
+        crate_num.hash(&mut self.hasher)
+    }
+
+    fn encode_def_index(&mut self, def_index: DefIndex) {
+        def_index.hash(&mut self.hasher)
+    }
+
+    fn encode_def_id(&mut self, def_id: rustc_span::def_id::DefId) {
+        def_id.hash(&mut self.hasher)
+    }
+}
+
+impl Hash for TokenStream {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        Encodable::encode(self, &mut HashEncoder { hasher: state });
+    }
+}
 
 /// Indicates whether a token can join with the following token to form a
 /// compound token. Used for conversions to `proc_macro::Spacing`. Also used to
