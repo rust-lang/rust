@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.146](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.145...compiler_builtins-v0.1.146) - 2025-02-06
+
+### Other
+
+- Expose erf{,c}{,f} from libm
+
 ## [0.1.145](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.144...compiler_builtins-v0.1.145) - 2025-02-04
 
 ### Other
