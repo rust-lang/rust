@@ -1,14 +1,14 @@
 use std::str::FromStr;
 use std::{fmt, iter};
 
-pub use rustc_abi::{ExternAbi, Reg, RegKind};
+use rustc_abi::{
+    AddressSpace, Align, BackendRepr, ExternAbi, HasDataLayout, Scalar, Size, TyAbiInterface,
+    TyAndLayout,
+};
+pub use rustc_abi::{Primitive, Reg, RegKind};
 use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 
-use crate::abi::{
-    self, AddressSpace, Align, BackendRepr, HasDataLayout, Pointer, Size, TyAbiInterface,
-    TyAndLayout,
-};
 use crate::spec::{HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, WasmCAbi};
 
 mod aarch64;
@@ -349,7 +349,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     pub fn new(
         cx: &impl HasDataLayout,
         layout: TyAndLayout<'a, Ty>,
-        scalar_attrs: impl Fn(&TyAndLayout<'a, Ty>, abi::Scalar, Size) -> ArgAttributes,
+        scalar_attrs: impl Fn(&TyAndLayout<'a, Ty>, Scalar, Size) -> ArgAttributes,
     ) -> Self {
         let mode = match layout.backend_repr {
             BackendRepr::Uninhabited => PassMode::Ignore,
@@ -464,7 +464,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     pub fn extend_integer_width_to(&mut self, bits: u64) {
         // Only integers have signedness
         if let BackendRepr::Scalar(scalar) = self.layout.backend_repr {
-            if let abi::Int(i, signed) = scalar.primitive() {
+            if let Primitive::Int(i, signed) = scalar.primitive() {
                 if i.size().bits() < bits {
                     if let PassMode::Direct(ref mut attrs) = self.mode {
                         if signed {
@@ -756,7 +756,9 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 continue;
             }
 
-            if arg_idx.is_none() && arg.layout.size > Pointer(AddressSpace::DATA).size(cx) * 2 {
+            if arg_idx.is_none()
+                && arg.layout.size > Primitive::Pointer(AddressSpace::DATA).size(cx) * 2
+            {
                 // Return values larger than 2 registers using a return area
                 // pointer. LLVM and Cranelift disagree about how to return
                 // values that don't fit in the registers designated for return
@@ -837,7 +839,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             assert!(is_indirect_not_on_stack);
 
             let size = arg.layout.size;
-            if !arg.layout.is_unsized() && size <= Pointer(AddressSpace::DATA).size(cx) {
+            if !arg.layout.is_unsized() && size <= Primitive::Pointer(AddressSpace::DATA).size(cx) {
                 // We want to pass small aggregates as immediates, but using
                 // an LLVM aggregate type for this leads to bad optimizations,
                 // so we pick an appropriately sized integer type instead.

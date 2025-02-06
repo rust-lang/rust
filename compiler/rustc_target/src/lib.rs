@@ -31,10 +31,7 @@ pub mod target_features;
 mod tests;
 
 pub mod abi {
-    pub(crate) use Float::*;
-    pub(crate) use Primitive::*;
-    // Explicitly import `Float` to avoid ambiguity with `Primitive::Float`.
-    pub use rustc_abi::{Float, *};
+    pub use rustc_abi::*;
 
     pub use crate::callconv as call;
 }
