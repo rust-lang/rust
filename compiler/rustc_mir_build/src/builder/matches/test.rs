@@ -6,6 +6,7 @@
 // the candidates based on the result.
 
 use std::cmp::Ordering;
+use std::sync::Arc;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::{LangItem, RangeEnd};
@@ -26,20 +27,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
     ///
     /// It is a bug to call this with a not-fully-simplified pattern.
-    pub(super) fn pick_test_for_match_pair<'pat>(
+    pub(super) fn pick_test_for_match_pair(
         &mut self,
-        match_pair: &MatchPairTree<'pat, 'tcx>,
+        match_pair: &MatchPairTree<'tcx>,
     ) -> Test<'tcx> {
         let kind = match match_pair.test_case {
             TestCase::Variant { adt_def, variant_index: _ } => TestKind::Switch { adt_def },
 
-            TestCase::Constant { .. } if match_pair.pattern.ty.is_bool() => TestKind::If,
-            TestCase::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => TestKind::SwitchInt,
-            TestCase::Constant { value } => TestKind::Eq { value, ty: match_pair.pattern.ty },
+            TestCase::Constant { .. } if match_pair.pattern_ty.is_bool() => TestKind::If,
+            TestCase::Constant { .. } if is_switch_ty(match_pair.pattern_ty) => TestKind::SwitchInt,
+            TestCase::Constant { value } => TestKind::Eq { value, ty: match_pair.pattern_ty },
 
-            TestCase::Range(range) => {
-                assert_eq!(range.ty, match_pair.pattern.ty);
-                TestKind::Range(Box::new(range.clone()))
+            TestCase::Range(ref range) => {
+                assert_eq!(range.ty, match_pair.pattern_ty);
+                TestKind::Range(Arc::clone(range))
             }
 
             TestCase::Slice { len, variable_length } => {
@@ -56,13 +57,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestCase::Or { .. } => bug!("or-patterns should have already been handled"),
 
             TestCase::Irrefutable { .. } => span_bug!(
-                match_pair.pattern.span,
+                match_pair.pattern_span,
                 "simplifiable pattern found: {:?}",
-                match_pair.pattern
+                match_pair.pattern_span
             ),
         };
 
-        Test { span: match_pair.pattern.span, kind }
+        Test { span: match_pair.pattern_span, kind }
     }
 
     #[instrument(skip(self, target_blocks, place), level = "debug")]
@@ -521,8 +522,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         test_place: Place<'tcx>,
         test: &Test<'tcx>,
-        candidate: &mut Candidate<'_, 'tcx>,
-        sorted_candidates: &FxIndexMap<TestBranch<'tcx>, Vec<&mut Candidate<'_, 'tcx>>>,
+        candidate: &mut Candidate<'tcx>,
+        sorted_candidates: &FxIndexMap<TestBranch<'tcx>, Vec<&mut Candidate<'tcx>>>,
     ) -> Option<TestBranch<'tcx>> {
         // Find the match_pair for this place (if any). At present,
         // afaik, there can be at most one. (In the future, if we
@@ -558,14 +559,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // FIXME(#29623) we could use PatKind::Range to rule
             // things out here, in some cases.
             (TestKind::SwitchInt, &TestCase::Constant { value })
-                if is_switch_ty(match_pair.pattern.ty) =>
+                if is_switch_ty(match_pair.pattern_ty) =>
             {
                 // An important invariant of candidate sorting is that a candidate
                 // must not match in multiple branches. For `SwitchInt` tests, adding
                 // a new value might invalidate that property for range patterns that
                 // have already been sorted into the failure arm, so we must take care
                 // not to add such values here.
-                let is_covering_range = |test_case: &TestCase<'_, 'tcx>| {
+                let is_covering_range = |test_case: &TestCase<'tcx>| {
                     test_case.as_range().is_some_and(|range| {
                         matches!(
                             range.contains(value, self.tcx, self.typing_env()),
@@ -573,7 +574,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         )
                     })
                 };
-                let is_conflicting_candidate = |candidate: &&mut Candidate<'_, 'tcx>| {
+                let is_conflicting_candidate = |candidate: &&mut Candidate<'tcx>| {
                     candidate
                         .match_pairs
                         .iter()
@@ -685,8 +686,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            (TestKind::Range(test), &TestCase::Range(pat)) => {
-                if test.as_ref() == pat {
+            (TestKind::Range(test), TestCase::Range(pat)) => {
+                if test == pat {
                     fully_matched = true;
                     Some(TestBranch::Success)
                 } else {
