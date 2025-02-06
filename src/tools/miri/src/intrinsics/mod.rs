@@ -11,7 +11,7 @@ use rustc_middle::ty::{self, FloatTy};
 use rustc_span::{Symbol, sym};
 
 use self::atomic::EvalContextExt as _;
-use self::helpers::{ToHost, ToSoft, check_arg_count};
+use self::helpers::{ToHost, ToSoft, check_intrinsic_arg_count};
 use self::simd::EvalContextExt as _;
 use crate::*;
 
@@ -104,24 +104,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Raw memory accesses
             "volatile_load" => {
-                let [place] = check_arg_count(args)?;
+                let [place] = check_intrinsic_arg_count(args)?;
                 let place = this.deref_pointer(place)?;
                 this.copy_op(&place, dest)?;
             }
             "volatile_store" => {
-                let [place, dest] = check_arg_count(args)?;
+                let [place, dest] = check_intrinsic_arg_count(args)?;
                 let place = this.deref_pointer(place)?;
                 this.copy_op(dest, &place)?;
             }
 
             "volatile_set_memory" => {
-                let [ptr, val_byte, count] = check_arg_count(args)?;
+                let [ptr, val_byte, count] = check_intrinsic_arg_count(args)?;
                 this.write_bytes_intrinsic(ptr, val_byte, count, "volatile_set_memory")?;
             }
 
             // Memory model / provenance manipulation
             "ptr_mask" => {
-                let [ptr, mask] = check_arg_count(args)?;
+                let [ptr, mask] = check_intrinsic_arg_count(args)?;
 
                 let ptr = this.read_pointer(ptr)?;
                 let mask = this.read_target_usize(mask)?;
@@ -137,7 +137,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // ```
             // Would not be considered UB, or the other way around (`is_val_statically_known(0)`).
             "is_val_statically_known" => {
-                let [_arg] = check_arg_count(args)?;
+                let [_arg] = check_intrinsic_arg_count(args)?;
                 // FIXME: should we check for validity here? It's tricky because we do not have a
                 // place. Codegen does not seem to set any attributes like `noundef` for intrinsic
                 // calls, so we don't *have* to do anything.
@@ -146,7 +146,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "floorf16" | "ceilf16" | "truncf16" | "roundf16" | "rintf16" => {
-                let [f] = check_arg_count(args)?;
+                let [f] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f16()?;
                 let mode = match intrinsic_name {
                     "floorf16" => Round::TowardNegative,
@@ -161,7 +161,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "floorf32" | "ceilf32" | "truncf32" | "roundf32" | "rintf32" => {
-                let [f] = check_arg_count(args)?;
+                let [f] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
                 let mode = match intrinsic_name {
                     "floorf32" => Round::TowardNegative,
@@ -176,7 +176,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "floorf64" | "ceilf64" | "truncf64" | "roundf64" | "rintf64" => {
-                let [f] = check_arg_count(args)?;
+                let [f] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
                 let mode = match intrinsic_name {
                     "floorf64" => Round::TowardNegative,
@@ -191,7 +191,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "floorf128" | "ceilf128" | "truncf128" | "roundf128" | "rintf128" => {
-                let [f] = check_arg_count(args)?;
+                let [f] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f128()?;
                 let mode = match intrinsic_name {
                     "floorf128" => Round::TowardNegative,
@@ -216,7 +216,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "log10f32"
             | "log2f32"
             => {
-                let [f] = check_arg_count(args)?;
+                let [f] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
                 // Using host floats except for sqrt (but it's fine, these operations do not have
                 // guaranteed precision).
@@ -244,7 +244,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "log10f64"
             | "log2f64"
             => {
-                let [f] = check_arg_count(args)?;
+                let [f] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
                 // Using host floats except for sqrt (but it's fine, these operations do not have
                 // guaranteed precision).
@@ -264,7 +264,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "fmaf32" => {
-                let [a, b, c] = check_arg_count(args)?;
+                let [a, b, c] = check_intrinsic_arg_count(args)?;
                 let a = this.read_scalar(a)?.to_f32()?;
                 let b = this.read_scalar(b)?.to_f32()?;
                 let c = this.read_scalar(c)?.to_f32()?;
@@ -274,7 +274,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "fmaf64" => {
-                let [a, b, c] = check_arg_count(args)?;
+                let [a, b, c] = check_intrinsic_arg_count(args)?;
                 let a = this.read_scalar(a)?.to_f64()?;
                 let b = this.read_scalar(b)?.to_f64()?;
                 let c = this.read_scalar(c)?.to_f64()?;
@@ -285,7 +285,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "fmuladdf32" => {
-                let [a, b, c] = check_arg_count(args)?;
+                let [a, b, c] = check_intrinsic_arg_count(args)?;
                 let a = this.read_scalar(a)?.to_f32()?;
                 let b = this.read_scalar(b)?.to_f32()?;
                 let c = this.read_scalar(c)?.to_f32()?;
@@ -300,7 +300,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "fmuladdf64" => {
-                let [a, b, c] = check_arg_count(args)?;
+                let [a, b, c] = check_intrinsic_arg_count(args)?;
                 let a = this.read_scalar(a)?.to_f64()?;
                 let b = this.read_scalar(b)?.to_f64()?;
                 let c = this.read_scalar(c)?.to_f64()?;
@@ -316,7 +316,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "powf32" => {
-                let [f1, f2] = check_arg_count(args)?;
+                let [f1, f2] = check_intrinsic_arg_count(args)?;
                 let f1 = this.read_scalar(f1)?.to_f32()?;
                 let f2 = this.read_scalar(f2)?.to_f32()?;
                 // Using host floats (but it's fine, this operation does not have guaranteed precision).
@@ -325,7 +325,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "powf64" => {
-                let [f1, f2] = check_arg_count(args)?;
+                let [f1, f2] = check_intrinsic_arg_count(args)?;
                 let f1 = this.read_scalar(f1)?.to_f64()?;
                 let f2 = this.read_scalar(f2)?.to_f64()?;
                 // Using host floats (but it's fine, this operation does not have guaranteed precision).
@@ -335,7 +335,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "powif32" => {
-                let [f, i] = check_arg_count(args)?;
+                let [f, i] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
                 let i = this.read_scalar(i)?.to_i32()?;
                 // Using host floats (but it's fine, this operation does not have guaranteed precision).
@@ -344,7 +344,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "powif64" => {
-                let [f, i] = check_arg_count(args)?;
+                let [f, i] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
                 let i = this.read_scalar(i)?.to_i32()?;
                 // Using host floats (but it's fine, this operation does not have guaranteed precision).
@@ -360,7 +360,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "fdiv_algebraic"
             | "frem_algebraic"
             => {
-                let [a, b] = check_arg_count(args)?;
+                let [a, b] = check_intrinsic_arg_count(args)?;
                 let a = this.read_immediate(a)?;
                 let b = this.read_immediate(b)?;
                 let op = match intrinsic_name {
@@ -383,7 +383,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "fdiv_fast"
             | "frem_fast"
             => {
-                let [a, b] = check_arg_count(args)?;
+                let [a, b] = check_intrinsic_arg_count(args)?;
                 let a = this.read_immediate(a)?;
                 let b = this.read_immediate(b)?;
                 let op = match intrinsic_name {
@@ -427,7 +427,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "float_to_int_unchecked" => {
-                let [val] = check_arg_count(args)?;
+                let [val] = check_intrinsic_arg_count(args)?;
                 let val = this.read_immediate(val)?;
 
                 let res = this
@@ -444,7 +444,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Other
             "breakpoint" => {
-                let [] = check_arg_count(args)?;
+                let [] = check_intrinsic_arg_count(args)?;
                 // normally this would raise a SIGTRAP, which aborts if no debugger is connected
                 throw_machine_stop!(TerminationInfo::Abort(format!("trace/breakpoint trap")))
             }
