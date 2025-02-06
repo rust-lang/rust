@@ -665,8 +665,14 @@ impl Wtf8 {
 
     /// Returns an iterator for the string’s code points.
     #[inline]
-    pub fn code_points(&self) -> Wtf8CodePoints<'_> {
-        Wtf8CodePoints { bytes: self.bytes.iter() }
+    pub fn code_points(&self) -> CodePoints<'_> {
+        CodePoints { bytes: self.bytes.iter() }
+    }
+
+    /// Returns an iterator for the string’s code points.
+    #[inline]
+    pub fn code_point_indices(&self) -> CodePointIndices<'_> {
+        CodePointIndices { front_offset: 0, iter: self.code_points() }
     }
 
     /// Access raw bytes of WTF-8 data
@@ -984,11 +990,11 @@ pub fn slice_error_fail(s: &Wtf8, begin: usize, end: usize) -> ! {
 ///
 /// Created with the method `.code_points()`.
 #[derive(Clone)]
-pub struct Wtf8CodePoints<'a> {
+pub struct CodePoints<'a> {
     bytes: slice::Iter<'a, u8>,
 }
 
-impl Iterator for Wtf8CodePoints<'_> {
+impl Iterator for CodePoints<'_> {
     type Item = CodePoint;
 
     #[inline]
@@ -1004,11 +1010,66 @@ impl Iterator for Wtf8CodePoints<'_> {
     }
 }
 
+impl<'a> CodePoints<'a> {
+    /// Views the underlying data as a subslice of the original data.
+    #[inline]
+    pub fn as_slice(&self) -> &Wtf8 {
+        // SAFETY: `CodePoints` is only made from a `Wtf8Str`, which guarantees
+        // the iter is valid WTF-8.
+        unsafe { Wtf8::from_bytes_unchecked(self.bytes.as_slice()) }
+    }
+}
+
+/// An iterator over the code points of a WTF-8 string, and their positions.
+///
+/// Created with the method `.code_point_indices()`.
+#[derive(Clone)]
+pub struct CodePointIndices<'a> {
+    front_offset: usize,
+    iter: CodePoints<'a>,
+}
+
+impl Iterator for CodePointIndices<'_> {
+    type Item = (usize, CodePoint);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let pre_len = self.iter.bytes.len();
+        match self.iter.next() {
+            None => None,
+            Some(code_point) => {
+                let index = self.front_offset;
+                let len = self.iter.bytes.len();
+                self.front_offset += pre_len - len;
+                Some((index, code_point))
+            }
+        }
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.iter.count()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl<'a> CodePointIndices<'a> {
+    /// Views the underlying data as a subslice of the original data.
+    #[inline]
+    pub fn as_slice(&self) -> &Wtf8 {
+        self.iter.as_slice()
+    }
+}
+
 /// Generates a wide character sequence for potentially ill-formed UTF-16.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct EncodeWide<'a> {
-    code_points: Wtf8CodePoints<'a>,
+    code_points: CodePoints<'a>,
     extra: u16,
 }
 
