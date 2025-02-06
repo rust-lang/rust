@@ -97,7 +97,11 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
                 // Android has the same issue (#22398)
                 llvm::add_module_flag_u32(
                     self.llmod,
-                    llvm::ModuleFlagMergeBehavior::Warning,
+                    // In the case where multiple CGUs with different dwarf version
+                    // values are being merged together, such as with cross-crate
+                    // LTO, then we want to use the highest version of dwarf
+                    // we can. This matches Clang's behavior as well.
+                    llvm::ModuleFlagMergeBehavior::Max,
                     "Dwarf Version",
                     sess.dwarf_version(),
                 );
