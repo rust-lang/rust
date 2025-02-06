@@ -63,7 +63,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(Word, List: "reason", NameValueStr: "reason");
 
-    fn convert(cx: &AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let reason = match args {
             ArgParser::NoArgs => None,
             ArgParser::List(list) => {
