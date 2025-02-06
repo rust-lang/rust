@@ -32,7 +32,7 @@ declare_clippy_lint! {
     ///     None => 0,
     /// };
     /// ```
-    #[clippy::version = "1.83.0"]
+    #[clippy::version = "1.86.0"]
     pub UNNEEDED_STRUCT_PATTERN,
     style,
     "using struct pattern to match against unit variant"

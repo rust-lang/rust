@@ -257,10 +257,13 @@ fn is_default_method_on_current_ty<'tcx>(tcx: TyCtxt<'tcx>, qpath: QPath<'tcx>, 
             }
             if matches!(
                 ty.kind,
-                TyKind::Path(QPath::Resolved(_, hir::Path {
-                    res: Res::SelfTyAlias { .. },
-                    ..
-                },))
+                TyKind::Path(QPath::Resolved(
+                    _,
+                    hir::Path {
+                        res: Res::SelfTyAlias { .. },
+                        ..
+                    },
+                ))
             ) {
                 return true;
             }

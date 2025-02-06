@@ -181,13 +181,16 @@ fn build_suggestion(
             ExprKind::Lit(Spanned {
                 node: LitKind::Int(_, LitIntType::Unsuffixed),
                 ..
-            }) | ExprKind::Unary(UnOp::Neg, Expr {
-                kind: ExprKind::Lit(Spanned {
-                    node: LitKind::Int(_, LitIntType::Unsuffixed),
+            }) | ExprKind::Unary(
+                UnOp::Neg,
+                Expr {
+                    kind: ExprKind::Lit(Spanned {
+                        node: LitKind::Int(_, LitIntType::Unsuffixed),
+                        ..
+                    }),
                     ..
-                }),
-                ..
-            })
+                }
+            )
         ) {
         format!("_{}", cx.typeck_results().expr_ty(rhs))
     } else {

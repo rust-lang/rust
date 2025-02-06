@@ -55,3 +55,9 @@ fn no_borrow_issue(a: u32, b: u32) {
         None => {},
     };
 }
+
+fn issue14100() -> bool {
+    // Removing the `;` would make the block type be `()` instead of `!`, and this could no longer be
+    // cast into the `bool` function return type.
+    if return true {};
+}

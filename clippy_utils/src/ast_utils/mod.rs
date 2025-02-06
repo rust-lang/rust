@@ -662,12 +662,12 @@ pub fn eq_fn_header(l: &FnHeader, r: &FnHeader) -> bool {
         && eq_ext(&l.ext, &r.ext)
 }
 
+#[expect(clippy::ref_option, reason = "This is the type how it is stored in the AST")]
 pub fn eq_opt_fn_contract(l: &Option<P<FnContract>>, r: &Option<P<FnContract>>) -> bool {
     match (l, r) {
         (Some(l), Some(r)) => {
-            eq_expr_opt(l.requires.as_ref(), r.requires.as_ref())
-            && eq_expr_opt(l.ensures.as_ref(), r.ensures.as_ref())
-        }
+            eq_expr_opt(l.requires.as_ref(), r.requires.as_ref()) && eq_expr_opt(l.ensures.as_ref(), r.ensures.as_ref())
+        },
         (None, None) => true,
         (Some(_), None) | (None, Some(_)) => false,
     }
