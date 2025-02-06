@@ -6,8 +6,8 @@ on:
       - master
   pull_request:
   schedule:
-    # Run at 18:00 UTC every day
-    - cron: '0 18 * * *'
+    # Run multiple times a day as the successfull cached links are not checked every time.
+    - cron: '0 */3 * * *'
 
 jobs:
   ci:
