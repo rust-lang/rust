@@ -311,12 +311,7 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
 
     debug_context(cx).type_map.unique_id_to_di_node.borrow_mut().remove(&unique_type_id);
 
-    let fn_di_node = unsafe {
-        llvm::LLVMRustDIBuilderCreateSubroutineType(
-            DIB(cx),
-            create_DIArray(DIB(cx), &signature_di_nodes[..]),
-        )
-    };
+    let fn_di_node = DIB(cx).create_subroutine_type(&signature_di_nodes, DIFlags::FlagZero);
 
     // This is actually a function pointer, so wrap it in pointer DI.
     let name = compute_debuginfo_type_name(cx.tcx, fn_ty, false);

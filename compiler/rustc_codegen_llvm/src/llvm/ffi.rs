@@ -1772,6 +1772,14 @@ unsafe extern "C" {
         Scope: &'ll Metadata,
         InlinedAt: Option<&'ll Metadata>,
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateSubroutineType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        File: Option<&'ll Metadata>, // (unused)
+        ParameterTypes: *const Option<&'ll Metadata>,
+        NumParameterTypes: c_uint,
+        Flags: DIFlags, // (optional; default is `DIFlags::FlagZero`)
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2084,11 +2092,6 @@ unsafe extern "C" {
         Source: *const c_char,
         SourceLen: size_t,
     ) -> &'a DIFile;
-
-    pub(crate) fn LLVMRustDIBuilderCreateSubroutineType<'a>(
-        Builder: &DIBuilder<'a>,
-        ParameterTypes: &'a DIArray,
-    ) -> &'a DICompositeType;
 
     pub(crate) fn LLVMRustDIBuilderCreateFunction<'a>(
         Builder: &DIBuilder<'a>,
