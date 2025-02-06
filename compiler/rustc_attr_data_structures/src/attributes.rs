@@ -189,7 +189,7 @@ pub enum AttributeKind {
         span: Span,
         comment: Symbol,
     },
-    Inline(InlineAttr),
+    Inline(InlineAttr, Span),
     MacroTransparency(Transparency),
     Repr(ThinVec<(ReprAttr, Span)>),
     Stability {
