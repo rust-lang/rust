@@ -78,6 +78,14 @@ pub struct ModuleCodegen<M> {
 }
 
 impl<M> ModuleCodegen<M> {
+    pub fn new_regular(name: impl Into<String>, module: M) -> Self {
+        Self { name: name.into(), module_llvm: module, kind: ModuleKind::Regular }
+    }
+
+    pub fn new_allocator(name: impl Into<String>, module: M) -> Self {
+        Self { name: name.into(), module_llvm: module, kind: ModuleKind::Allocator }
+    }
+
     pub fn into_compiled_module(
         self,
         emit_obj: bool,
