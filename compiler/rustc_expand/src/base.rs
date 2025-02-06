@@ -3,6 +3,7 @@ use std::iter;
 use std::path::Component::Prefix;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::Arc;
 
 use rustc_ast::attr::{AttributeExt, MarkedAttrs};
 use rustc_ast::ptr::P;
@@ -12,7 +13,7 @@ use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
 use rustc_attr_parsing::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::sync::{self, Lrc};
+use rustc_data_structures::sync;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_lint_defs::{BufferedEarlyLint, RegisteredTools};
@@ -727,7 +728,7 @@ pub struct SyntaxExtension {
     /// Span of the macro definition.
     pub span: Span,
     /// List of unstable features that are treated as stable inside this macro.
-    pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
+    pub allow_internal_unstable: Option<Arc<[Symbol]>>,
     /// The macro's stability info.
     pub stability: Option<Stability>,
     /// The macro's deprecation info.
@@ -986,7 +987,7 @@ pub struct Indeterminate;
 pub struct DeriveResolution {
     pub path: ast::Path,
     pub item: Annotatable,
-    pub exts: Option<Lrc<SyntaxExtension>>,
+    pub exts: Option<Arc<SyntaxExtension>>,
     pub is_const: bool,
 }
 
@@ -1017,7 +1018,7 @@ pub trait ResolverExpand {
         invoc: &Invocation,
         eager_expansion_root: LocalExpnId,
         force: bool,
-    ) -> Result<Lrc<SyntaxExtension>, Indeterminate>;
+    ) -> Result<Arc<SyntaxExtension>, Indeterminate>;
 
     fn record_macro_rule_usage(&mut self, mac_id: NodeId, rule_index: usize);
 

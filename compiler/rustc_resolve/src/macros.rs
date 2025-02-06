@@ -3,6 +3,7 @@
 
 use std::cell::Cell;
 use std::mem;
+use std::sync::Arc;
 
 use rustc_ast::attr::AttributeExt;
 use rustc_ast::expand::StrippedCfgItem;
@@ -10,7 +11,6 @@ use rustc_ast::{self as ast, Crate, NodeId, attr};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::StabilityLevel;
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, StashKey};
 use rustc_expand::base::{
     DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension, SyntaxExtensionKind,
@@ -239,7 +239,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         invoc: &Invocation,
         eager_expansion_root: LocalExpnId,
         force: bool,
-    ) -> Result<Lrc<SyntaxExtension>, Indeterminate> {
+    ) -> Result<Arc<SyntaxExtension>, Indeterminate> {
         let invoc_id = invoc.expansion_data.id;
         let parent_scope = match self.invocation_parent_scopes.get(&invoc_id) {
             Some(parent_scope) => *parent_scope,
@@ -529,7 +529,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         force: bool,
         deleg_impl: Option<LocalDefId>,
         invoc_in_mod_inert_attr: Option<LocalDefId>,
-    ) -> Result<(Lrc<SyntaxExtension>, Res), Indeterminate> {
+    ) -> Result<(Arc<SyntaxExtension>, Res), Indeterminate> {
         let (ext, res) = match self.resolve_macro_or_delegation_path(
             path,
             Some(kind),
@@ -682,7 +682,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         trace: bool,
         force: bool,
         ignore_import: Option<Import<'ra>>,
-    ) -> Result<(Option<Lrc<SyntaxExtension>>, Res), Determinacy> {
+    ) -> Result<(Option<Arc<SyntaxExtension>>, Res), Determinacy> {
         self.resolve_macro_or_delegation_path(
             path,
             kind,
@@ -705,7 +705,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         deleg_impl: Option<LocalDefId>,
         invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
         ignore_import: Option<Import<'ra>>,
-    ) -> Result<(Option<Lrc<SyntaxExtension>>, Res), Determinacy> {
+    ) -> Result<(Option<Arc<SyntaxExtension>>, Res), Determinacy> {
         let path_span = ast_path.span;
         let mut path = Segment::from_path(ast_path);
 
@@ -788,11 +788,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             Some(impl_def_id) => match res {
                 def::Res::Def(DefKind::Trait, def_id) => {
                     let edition = self.tcx.sess.edition();
-                    Some(Lrc::new(SyntaxExtension::glob_delegation(def_id, impl_def_id, edition)))
+                    Some(Arc::new(SyntaxExtension::glob_delegation(def_id, impl_def_id, edition)))
                 }
                 _ => None,
             },
-            None => self.get_macro(res).map(|macro_data| Lrc::clone(&macro_data.ext)),
+            None => self.get_macro(res).map(|macro_data| Arc::clone(&macro_data.ext)),
         };
         Ok((ext, res))
     }
@@ -1130,7 +1130,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
-        MacroData { ext: Lrc::new(ext), rule_spans, macro_rules: macro_def.macro_rules }
+        MacroData { ext: Arc::new(ext), rule_spans, macro_rules: macro_def.macro_rules }
     }
 
     fn path_accessible(
