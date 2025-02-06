@@ -476,7 +476,7 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
         Some(level) => match level {
             OptLevel::No => OptimizationLevel::None,
             OptLevel::Less => OptimizationLevel::Limited,
-            OptLevel::Default => OptimizationLevel::Standard,
+            OptLevel::More => OptimizationLevel::Standard,
             OptLevel::Aggressive => OptimizationLevel::Aggressive,
             OptLevel::Size | OptLevel::SizeMin => OptimizationLevel::Limited,
         },
