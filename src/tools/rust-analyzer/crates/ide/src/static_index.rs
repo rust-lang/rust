@@ -154,6 +154,7 @@ impl StaticIndex<'_> {
                     implicit_drop_hints: false,
                     hide_named_constructor_hints: false,
                     hide_closure_initialization_hints: false,
+                    hide_closure_parameter_hints: false,
                     closure_style: hir::ClosureStyle::ImplFn,
                     param_names_for_lifetime_elision_hints: false,
                     binding_mode_hints: false,

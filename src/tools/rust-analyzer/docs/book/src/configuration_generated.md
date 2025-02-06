@@ -782,6 +782,11 @@ This setting is deprecated in favor of #rust-analyzer.inlayHints.expressionAdjus
 Only applies to closures with blocks, same as `#rust-analyzer.inlayHints.closureReturnTypeHints.enable#`.
 
 
+**rust-analyzer.inlayHints.typeHints.hideClosureParameter** (default: false)
+
+ Whether to hide inlay parameter type hints for closures.
+
+
 **rust-analyzer.inlayHints.typeHints.hideNamedConstructor** (default: false)
 
  Whether to hide inlay type hints for constructors.
