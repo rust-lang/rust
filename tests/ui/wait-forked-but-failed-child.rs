@@ -38,7 +38,7 @@ fn find_zombies() {
     // expected to be an integer.
     let filtered_ps: Vec<_> = ps_output
         .lines()
-        .filter(|line| line.split(' ').filter(|x| 0 < x.len()).nth(1) != Some("-"))
+        .filter(|line| line.split_whitespace().nth(1) != Some("-"))
         .collect();
 
     for (line_no, line) in filtered_ps.into_iter().enumerate() {
