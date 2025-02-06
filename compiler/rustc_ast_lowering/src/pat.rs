@@ -4,10 +4,10 @@ use rustc_ast::ptr::P;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::Res;
 use rustc_middle::span_bug;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{Ident, Span, kw};
+use rustc_span::{Ident, Span};
 
 use super::errors::{
     ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,
@@ -430,78 +430,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(hir::PatExpr { hir_id: self.lower_node_id(expr.id), span, kind })
     }
 
-    pub(crate) fn lower_ty_pat(&mut self, pattern: &Pat) -> &'hir hir::TyPat<'hir> {
+    pub(crate) fn lower_ty_pat(&mut self, pattern: &TyPat) -> &'hir hir::TyPat<'hir> {
         self.arena.alloc(self.lower_ty_pat_mut(pattern))
     }
 
-    fn lower_ty_pat_mut(&mut self, mut pattern: &Pat) -> hir::TyPat<'hir> {
+    fn lower_ty_pat_mut(&mut self, pattern: &TyPat) -> hir::TyPat<'hir> {
         // loop here to avoid recursion
         let pat_hir_id = self.lower_node_id(pattern.id);
-        let node = loop {
-            match &pattern.kind {
-                PatKind::Range(e1, e2, Spanned { node: end, .. }) => {
-                    // FIXME(pattern_types): remove this closure and call `lower_const_arg` instead.
-                    // That requires first modifying the AST to have const args here.
-                    let mut lower_expr = |e: &Expr| -> &_ {
-                        if let ExprKind::Path(None, path) = &e.kind
-                            && let Some(res) = self
-                                .resolver
-                                .get_partial_res(e.id)
-                                .and_then(|partial_res| partial_res.full_res())
-                        {
-                            self.lower_const_path_to_const_arg(path, res, e.id, e.span)
-                        } else {
-                            let node_id = self.next_node_id();
-                            let def_id = self.create_def(
-                                self.current_hir_id_owner.def_id,
-                                node_id,
-                                kw::Empty,
-                                DefKind::AnonConst,
-                                e.span,
-                            );
-                            let hir_id = self.lower_node_id(node_id);
-                            let ac = self.arena.alloc(hir::AnonConst {
-                                def_id,
-                                hir_id,
-                                body: self.lower_const_body(pattern.span, Some(e)),
-                                span: self.lower_span(pattern.span),
-                            });
-                            self.arena.alloc(hir::ConstArg {
-                                hir_id: self.next_id(),
-                                kind: hir::ConstArgKind::Anon(ac),
-                            })
-                        }
-                    };
-                    break hir::TyPatKind::Range(
-                        e1.as_deref().map(|e| lower_expr(e)),
-                        e2.as_deref().map(|e| lower_expr(e)),
-                        self.lower_range_end(end, e2.is_some()),
-                    );
-                }
-                // return inner to be processed in next loop
-                PatKind::Paren(inner) => pattern = inner,
-                PatKind::MacCall(_) => panic!("{:?} shouldn't exist here", pattern.span),
-                PatKind::Err(guar) => break hir::TyPatKind::Err(*guar),
-                PatKind::Deref(..)
-                | PatKind::Box(..)
-                | PatKind::Or(..)
-                | PatKind::Struct(..)
-                | PatKind::TupleStruct(..)
-                | PatKind::Tuple(..)
-                | PatKind::Ref(..)
-                | PatKind::Expr(..)
-                | PatKind::Guard(..)
-                | PatKind::Slice(_)
-                | PatKind::Ident(..)
-                | PatKind::Path(..)
-                | PatKind::Wild
-                | PatKind::Never
-                | PatKind::Rest => {
-                    break hir::TyPatKind::Err(
-                        self.dcx().span_err(pattern.span, "pattern not supported in pattern types"),
-                    );
-                }
-            }
+        let node = match &pattern.kind {
+            TyPatKind::Range(e1, e2, Spanned { node: end, .. }) => hir::TyPatKind::Range(
+                e1.as_deref().map(|e| self.lower_anon_const_to_const_arg(e)),
+                e2.as_deref().map(|e| self.lower_anon_const_to_const_arg(e)),
+                self.lower_range_end(end, e2.is_some()),
+            ),
+            TyPatKind::Err(guar) => hir::TyPatKind::Err(*guar),
         };
 
         hir::TyPat { hir_id: pat_hir_id, kind: node, span: self.lower_span(pattern.span) }

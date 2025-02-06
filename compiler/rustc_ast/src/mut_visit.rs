@@ -210,6 +210,10 @@ pub trait MutVisitor: Sized {
         walk_ty(self, t);
     }
 
+    fn visit_ty_pat(&mut self, t: &mut P<TyPat>) {
+        walk_ty_pat(self, t);
+    }
+
     fn visit_lifetime(&mut self, l: &mut Lifetime) {
         walk_lifetime(self, l);
     }
@@ -570,7 +574,7 @@ pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut P<Ty>) {
         TyKind::Paren(ty) => vis.visit_ty(ty),
         TyKind::Pat(ty, pat) => {
             vis.visit_ty(ty);
-            vis.visit_pat(pat);
+            vis.visit_ty_pat(pat);
         }
         TyKind::Path(qself, path) => {
             vis.visit_qself(qself);
@@ -589,6 +593,20 @@ pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut P<Ty>) {
             visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Impl));
         }
         TyKind::MacCall(mac) => vis.visit_mac_call(mac),
+    }
+    visit_lazy_tts(vis, tokens);
+    vis.visit_span(span);
+}
+
+pub fn walk_ty_pat<T: MutVisitor>(vis: &mut T, ty: &mut P<TyPat>) {
+    let TyPat { id, kind, span, tokens } = ty.deref_mut();
+    vis.visit_id(id);
+    match kind {
+        TyPatKind::Range(start, end, _include_end) => {
+            visit_opt(start, |c| vis.visit_anon_const(c));
+            visit_opt(end, |c| vis.visit_anon_const(c));
+        }
+        TyPatKind::Err(_) => {}
     }
     visit_lazy_tts(vis, tokens);
     vis.visit_span(span);
