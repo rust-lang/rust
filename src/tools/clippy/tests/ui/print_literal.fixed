@@ -66,3 +66,17 @@ fn main() {
 
     println!("mixed: {{hello}} {world}");
 }
+
+fn issue_13959() {
+    println!("\"");
+    println!(
+        "
+        foo
+        \\
+        \\\\
+        \"
+        \\\"
+        bar
+"
+    );
+}

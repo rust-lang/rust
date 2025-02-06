@@ -1,5 +1,6 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::SpanRangeExt;
+use clippy_utils::sugg::Sugg;
 use clippy_utils::visitors::contains_unsafe_block;
 use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local, std_or_core};
 use hir::LifetimeName;
@@ -250,15 +251,24 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Binary(ref op, l, r) = expr.kind {
-            if (op.node == BinOpKind::Eq || op.node == BinOpKind::Ne) && (is_null_path(cx, l) || is_null_path(cx, r)) {
-                span_lint(
-                    cx,
-                    CMP_NULL,
-                    expr.span,
-                    "comparing with null is better expressed by the `.is_null()` method",
-                );
-            }
+        if let ExprKind::Binary(op, l, r) = expr.kind
+            && (op.node == BinOpKind::Eq || op.node == BinOpKind::Ne)
+        {
+            let non_null_path_snippet = match (is_null_path(cx, l), is_null_path(cx, r)) {
+                (true, false) if let Some(sugg) = Sugg::hir_opt(cx, r) => sugg.maybe_par(),
+                (false, true) if let Some(sugg) = Sugg::hir_opt(cx, l) => sugg.maybe_par(),
+                _ => return,
+            };
+
+            span_lint_and_sugg(
+                cx,
+                CMP_NULL,
+                expr.span,
+                "comparing with null is better expressed by the `.is_null()` method",
+                "try",
+                format!("{non_null_path_snippet}.is_null()"),
+                Applicability::MachineApplicable,
+            );
         } else {
             check_invalid_ptr_usage(cx, expr);
         }
