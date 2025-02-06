@@ -54,8 +54,6 @@ pub struct MiriConfig {
     pub forwarded_env_vars: Vec<String>,
     /// Additional environment variables that should be set in the interpreted program.
     pub set_env_vars: FxHashMap<String, String>,
-    /// Command-line arguments passed to the interpreted program.
-    pub args: Vec<String>,
     /// The seed to use when non-determinism or randomness are required (e.g. ptr-to-int cast, `getrandom()`).
     pub seed: Option<u64>,
     /// The stacked borrows pointer ids to report about.
@@ -130,7 +128,6 @@ impl Default for MiriConfig {
             ignore_leaks: false,
             forwarded_env_vars: vec![],
             set_env_vars: FxHashMap::default(),
-            args: vec![],
             seed: None,
             tracked_pointer_tags: FxHashSet::default(),
             tracked_alloc_ids: FxHashSet::default(),
@@ -276,6 +273,7 @@ pub fn create_ecx<'tcx>(
     tcx: TyCtxt<'tcx>,
     entry_id: DefId,
     entry_type: MiriEntryFnType,
+    args: &[String],
     config: &MiriConfig,
     genmc_ctx: Option<Rc<GenmcCtx>>,
 ) -> InterpResult<'tcx, InterpCx<'tcx, MiriMachine<'tcx>>> {
@@ -299,12 +297,11 @@ pub fn create_ecx<'tcx>(
     }
 
     // Compute argc and argv from `config.args`.
-    let argc =
-        ImmTy::from_int(i64::try_from(config.args.len()).unwrap(), ecx.machine.layouts.isize);
+    let argc = ImmTy::from_int(i64::try_from(args.len()).unwrap(), ecx.machine.layouts.isize);
     let argv = {
         // Put each argument in memory, collect pointers.
-        let mut argvs = Vec::<Immediate<Provenance>>::with_capacity(config.args.len());
-        for arg in config.args.iter() {
+        let mut argvs = Vec::<Immediate<Provenance>>::with_capacity(args.len());
+        for arg in args.iter() {
             // Make space for `0` terminator.
             let size = u64::try_from(arg.len()).unwrap().strict_add(1);
             let arg_type = Ty::new_array(tcx, tcx.types.u8, size);
@@ -342,7 +339,7 @@ pub fn create_ecx<'tcx>(
         // Store command line as UTF-16 for Windows `GetCommandLineW`.
         if tcx.sess.target.os == Os::Windows {
             // Construct a command string with all the arguments.
-            let cmd_utf16: Vec<u16> = args_to_utf16_command_string(config.args.iter());
+            let cmd_utf16: Vec<u16> = args_to_utf16_command_string(args.iter());
 
             let cmd_type =
                 Ty::new_array(tcx, tcx.types.u16, u64::try_from(cmd_utf16.len()).unwrap());
@@ -458,13 +455,15 @@ pub fn eval_entry<'tcx>(
     tcx: TyCtxt<'tcx>,
     entry_id: DefId,
     entry_type: MiriEntryFnType,
+    args: &[String],
     config: &MiriConfig,
     genmc_ctx: Option<Rc<GenmcCtx>>,
 ) -> Result<(), NonZeroI32> {
     // Copy setting before we move `config`.
     let ignore_leaks = config.ignore_leaks;
 
-    let mut ecx = match create_ecx(tcx, entry_id, entry_type, config, genmc_ctx).report_err() {
+    let mut ecx = match create_ecx(tcx, entry_id, entry_type, args, config, genmc_ctx).report_err()
+    {
         Ok(v) => v,
         Err(err) => {
             let (kind, backtrace) = err.into_parts();
