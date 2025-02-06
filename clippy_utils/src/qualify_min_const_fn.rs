@@ -116,6 +116,7 @@ fn check_rvalue<'tcx>(
         Rvalue::CopyForDeref(place) => check_place(tcx, *place, span, body, msrv),
         Rvalue::Repeat(operand, _)
         | Rvalue::Use(operand)
+        | Rvalue::WrapUnsafeBinder(operand, _)
         | Rvalue::Cast(
             CastKind::PointerWithExposedProvenance
             | CastKind::IntToInt
@@ -178,7 +179,10 @@ fn check_rvalue<'tcx>(
                 ))
             }
         },
-        Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) | NullOp::UbChecks, _)
+        Rvalue::NullaryOp(
+            NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) | NullOp::UbChecks | NullOp::ContractChecks,
+            _,
+        )
         | Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::UnaryOp(_, operand) => {
             let ty = operand.ty(body, tcx);
@@ -289,7 +293,8 @@ fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &B
             | ProjectionElem::Downcast(..)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Subtype(_)
-            | ProjectionElem::Index(_) => {},
+            | ProjectionElem::Index(_)
+            | ProjectionElem::UnwrapUnsafeBinder(_) => {},
         }
     }
 

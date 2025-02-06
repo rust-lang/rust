@@ -4,7 +4,6 @@ use rustc_ast::ast::{Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 use std::borrow::Cow;
@@ -50,7 +49,7 @@ declare_lint_pass!(RedundantElse => [REDUNDANT_ELSE]);
 
 impl EarlyLintPass for RedundantElse {
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, stmt: &Stmt) {
-        if in_external_macro(cx.sess(), stmt.span) {
+        if stmt.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
         // Only look at expressions that are a whole statement

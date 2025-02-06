@@ -7,7 +7,6 @@ use clippy_utils::{is_in_const_context, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, Node, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -60,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
             && rem_rhs.span.ctxt() == ctxt
             && add_lhs.span.ctxt() == ctxt
             && add_rhs.span.ctxt() == ctxt
-            && !in_external_macro(cx.sess(), expr.span)
+            && !expr.span.in_external_macro(cx.sess().source_map())
             && self.msrv.meets(msrvs::REM_EUCLID)
             && (self.msrv.meets(msrvs::REM_EUCLID_CONST) || !is_in_const_context(cx))
             && let Some(const1) = check_for_unsigned_int_constant(cx, rem_rhs)

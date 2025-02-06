@@ -5,7 +5,6 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{Expr, ExprKind, ImplItem, ImplItemKind, LangItem, Node, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::EarlyBinder;
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
@@ -129,7 +128,7 @@ impl LateLintPass<'_> for NonCanonicalImpls {
         let ExprKind::Block(block, ..) = body.value.kind else {
             return;
         };
-        if in_external_macro(cx.sess(), block.span) || is_from_proc_macro(cx, impl_item) {
+        if block.span.in_external_macro(cx.sess().source_map()) || is_from_proc_macro(cx, impl_item) {
             return;
         }
 

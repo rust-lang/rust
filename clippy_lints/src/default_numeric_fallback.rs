@@ -9,7 +9,6 @@ use rustc_hir::{
     StructTailExpr,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, FloatTy, IntTy, PolyFnSig, Ty};
 use rustc_session::declare_lint_pass;
 use std::iter;
@@ -86,7 +85,7 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
 
     /// Check whether a passed literal has potential to cause fallback or not.
     fn check_lit(&self, lit: &Lit, lit_ty: Ty<'tcx>, emit_hir_id: HirId) {
-        if !in_external_macro(self.cx.sess(), lit.span)
+        if !lit.span.in_external_macro(self.cx.sess().source_map())
             && matches!(self.ty_bounds.last(), Some(ExplicitTyBound(false)))
             && matches!(
                 lit.node,

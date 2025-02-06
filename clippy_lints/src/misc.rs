@@ -13,7 +13,6 @@ use rustc_hir::{
     BinOpKind, BindingMode, Body, ByRef, Expr, ExprKind, FnDecl, Mutability, PatKind, QPath, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
@@ -162,7 +161,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
             for arg in iter_input_pats(decl, body) {
                 if let PatKind::Binding(BindingMode(ByRef::Yes(_), _), ..) = arg.pat.kind
                     && is_lint_allowed(cx, REF_PATTERNS, arg.pat.hir_id)
-                    && !in_external_macro(cx.tcx.sess, arg.span)
+                    && !arg.span.in_external_macro(cx.tcx.sess.source_map())
                 {
                     span_lint_hir(
                         cx,
@@ -183,7 +182,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
             && let Some(init) = local.init
             // Do not emit if clippy::ref_patterns is not allowed to avoid having two lints for the same issue.
             && is_lint_allowed(cx, REF_PATTERNS, local.pat.hir_id)
-            && !in_external_macro(cx.tcx.sess, stmt.span)
+            && !stmt.span.in_external_macro(cx.tcx.sess.source_map())
         {
             let ctxt = local.span.ctxt();
             let mut app = Applicability::MachineApplicable;
@@ -239,7 +238,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span)
+        if expr.span.in_external_macro(cx.sess().source_map())
             || expr.span.desugaring_kind().is_some()
             || in_automatically_derived(cx.tcx, expr.hir_id)
         {

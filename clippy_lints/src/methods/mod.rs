@@ -153,7 +153,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::{Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, sym};
@@ -4667,7 +4666,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
     #[allow(clippy::too_many_lines)]
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
-        if in_external_macro(cx.sess(), impl_item.span) {
+        if impl_item.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
         let name = impl_item.ident.name.as_str();
@@ -4755,7 +4754,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
-        if in_external_macro(cx.tcx.sess, item.span) {
+        if item.span.in_external_macro(cx.tcx.sess.source_map()) {
             return;
         }
 
@@ -5487,9 +5486,12 @@ impl ShouldImplTraitCase {
     fn lifetime_param_cond(&self, impl_item: &hir::ImplItem<'_>) -> bool {
         self.lint_explicit_lifetime
             || !impl_item.generics.params.iter().any(|p| {
-                matches!(p.kind, hir::GenericParamKind::Lifetime {
-                    kind: hir::LifetimeParamKind::Explicit
-                })
+                matches!(
+                    p.kind,
+                    hir::GenericParamKind::Lifetime {
+                        kind: hir::LifetimeParamKind::Explicit
+                    }
+                )
             })
     }
 }

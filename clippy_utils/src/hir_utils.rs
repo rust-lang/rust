@@ -10,7 +10,7 @@ use rustc_hir::{
     AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr, ExprField,
     ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime, LifetimeName,
     Pat, PatExpr, PatExprKind, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, StructTailExpr,
-    TraitBoundModifiers, Ty, TyKind,
+    TraitBoundModifiers, Ty, TyKind, TyPat, TyPatKind,
 };
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::LateContext;
@@ -524,7 +524,6 @@ impl HirEqInterExpr<'_, '_, '_> {
                 }
                 eq
             },
-            (PatKind::Path(l), PatKind::Path(r)) => self.eq_qpath(l, r),
             (&PatKind::Expr(l), &PatKind::Expr(r)) => self.eq_pat_expr(l, r),
             (&PatKind::Tuple(l, ls), &PatKind::Tuple(r, rs)) => ls == rs && over(l, r, |l, r| self.eq_pat(l, r)),
             (&PatKind::Range(ref ls, ref le, li), &PatKind::Range(ref rs, ref re, ri)) => {
@@ -1103,6 +1102,22 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         }
     }
 
+    pub fn hash_ty_pat(&mut self, pat: &TyPat<'_>) {
+        std::mem::discriminant(&pat.kind).hash(&mut self.s);
+        match pat.kind {
+            TyPatKind::Range(s, e, i) => {
+                if let Some(s) = s {
+                    self.hash_const_arg(s);
+                }
+                if let Some(e) = e {
+                    self.hash_const_arg(e);
+                }
+                std::mem::discriminant(&i).hash(&mut self.s);
+            },
+            TyPatKind::Err(_) => {},
+        }
+    }
+
     pub fn hash_pat(&mut self, pat: &Pat<'_>) {
         std::mem::discriminant(&pat.kind).hash(&mut self.s);
         match pat.kind {
@@ -1120,7 +1135,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_pat(pat);
                 }
             },
-            PatKind::Path(ref qpath) => self.hash_qpath(qpath),
             PatKind::Range(s, e, i) => {
                 if let Some(s) = s {
                     self.hash_pat_expr(s);
@@ -1249,7 +1263,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             },
             TyKind::Pat(ty, pat) => {
                 self.hash_ty(ty);
-                self.hash_pat(pat);
+                self.hash_ty_pat(pat);
             },
             TyKind::Ptr(mut_ty) => {
                 self.hash_ty(mut_ty.ty);
