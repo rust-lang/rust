@@ -667,3 +667,48 @@ mod issue_10371 {
         }
     }
 }
+
+mod issue_13092 {
+    use std::cell::RefCell;
+    macro_rules! macro_inner_item {
+        ($ty:ty) => {
+            fn foo(_: $ty) {
+                fn inner(_: $ty) {}
+            }
+        };
+    }
+
+    #[derive(Default)]
+    struct MyStruct;
+
+    impl MyStruct {
+        macro_inner_item!(MyStruct);
+    }
+
+    impl MyStruct {
+        thread_local! {
+            static SPECIAL: RefCell<MyStruct> = RefCell::default();
+        }
+    }
+}
+
+mod crash_check_13128 {
+    struct A;
+
+    impl A {
+        fn a() {
+            struct B;
+
+            // pushes a NoCheck
+            impl Iterator for &B {
+                // Pops the NoCheck
+                type Item = A;
+
+                // Lints A -> Self
+                fn next(&mut self) -> Option<A> {
+                    Some(A)
+                }
+            }
+        }
+    }
+}

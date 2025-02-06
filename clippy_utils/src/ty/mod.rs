@@ -10,6 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, FnDecl, LangItem, TyKind};
+use rustc_hir_analysis::lower_ty;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::ConstValue;
@@ -35,6 +36,19 @@ use crate::{def_path_def_ids, match_def_path, path_res};
 
 mod type_certainty;
 pub use type_certainty::expr_type_is_certain;
+
+/// Lower a [`hir::Ty`] to a [`rustc_middle::Ty`].
+pub fn ty_from_hir_ty<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
+    cx.maybe_typeck_results()
+        .and_then(|results| {
+            if results.hir_owner == hir_ty.hir_id.owner {
+                results.node_type_opt(hir_ty.hir_id)
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| lower_ty(cx.tcx, hir_ty))
+}
 
 /// Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
