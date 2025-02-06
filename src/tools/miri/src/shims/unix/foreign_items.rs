@@ -815,7 +815,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.handle_miri_start_unwind(payload)?;
                 return interp_ok(EmulateItemResult::NeedsUnwind);
             }
-            "getuid" => {
+            "getuid" | "geteuid" => {
                 let [] = this.check_shim(abi, Conv::C, link_name, args)?;
                 // For now, just pretend we always have this fixed UID.
                 this.write_int(UID, dest)?;
