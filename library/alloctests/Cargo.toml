@@ -1,0 +1,46 @@
+[package]
+name = "alloctests"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/rust.git"
+description = "Tests for the Rust Allocation Library"
+autotests = false
+autobenches = false
+edition = "2021"
+
+[lib]
+path = "lib.rs"
+test = false
+bench = false
+
+[dev-dependencies]
+rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
+rand_xorshift = "0.3.0"
+
+[[test]]
+name = "alloctests"
+path = "tests/lib.rs"
+
+[[test]]
+name = "vec_deque_alloc_error"
+path = "tests/vec_deque_alloc_error.rs"
+
+[[bench]]
+name = "allocbenches"
+path = "benches/lib.rs"
+test = true
+
+[[bench]]
+name = "vec_deque_append_bench"
+path = "benches/vec_deque_append.rs"
+harness = false
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    'cfg(bootstrap)',
+    'cfg(no_global_oom_handling)',
+    'cfg(no_rc)',
+    'cfg(no_sync)',
+    'cfg(randomized_layouts)',
+]
