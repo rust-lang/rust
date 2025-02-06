@@ -208,7 +208,7 @@ impl Wtf8Buf {
     /// Since WTF-8 is a superset of UTF-8, this always succeeds.
     #[inline]
     pub fn from_str(s: &str) -> Wtf8Buf {
-        Wtf8Buf { bytes: <[_]>::to_vec(s.as_bytes()), is_known_utf8: true }
+        Wtf8Buf { bytes: s.as_bytes().to_vec(), is_known_utf8: true }
     }
 
     pub fn clear(&mut self) {
@@ -444,24 +444,17 @@ impl Wtf8Buf {
     ///
     /// Surrogates are replaced with `"\u{FFFD}"` (the replacement character “�”)
     pub fn into_string_lossy(mut self) -> String {
-        // Fast path: If we already have UTF-8, we can return it immediately.
-        if self.is_known_utf8 {
-            return unsafe { String::from_utf8_unchecked(self.bytes) };
-        }
-
-        let mut pos = 0;
-        loop {
-            match self.next_surrogate(pos) {
-                Some((surrogate_pos, _)) => {
-                    pos = surrogate_pos + 3;
-                    // Surrogates and the replacement character are all 3 bytes,
-                    // so they can substituted in-place.
-                    self.bytes[surrogate_pos..pos]
-                        .copy_from_slice(UTF8_REPLACEMENT_CHARACTER.as_bytes());
-                }
-                None => return unsafe { String::from_utf8_unchecked(self.bytes) },
+        if !self.is_known_utf8 {
+            let mut pos = 0;
+            while let Some((surrogate_pos, _)) = self.next_surrogate(pos) {
+                pos = surrogate_pos + 3;
+                // Surrogates and the replacement character are all 3 bytes, so
+                // they can substituted in-place.
+                self.bytes[surrogate_pos..pos]
+                    .copy_from_slice(UTF8_REPLACEMENT_CHARACTER.as_bytes());
             }
         }
+        unsafe { String::from_utf8_unchecked(self.bytes) }
     }
 
     /// Converts this `Wtf8Buf` into a boxed `Wtf8`.
@@ -680,9 +673,8 @@ impl Wtf8 {
     ///
     /// This only copies the data if necessary (if it contains any surrogate).
     pub fn to_string_lossy(&self) -> Cow<'_, str> {
-        let surrogate_pos = match self.next_surrogate(0) {
-            None => return Cow::Borrowed(unsafe { str::from_utf8_unchecked(&self.bytes) }),
-            Some((pos, _)) => pos,
+        let Some((surrogate_pos, _)) = self.next_surrogate(0) else {
+            return Cow::Borrowed(unsafe { str::from_utf8_unchecked(&self.bytes) });
         };
         let wtf8_bytes = &self.bytes;
         let mut utf8_bytes = Vec::with_capacity(self.len());
@@ -972,7 +964,7 @@ pub struct Wtf8CodePoints<'a> {
     bytes: slice::Iter<'a, u8>,
 }
 
-impl<'a> Iterator for Wtf8CodePoints<'a> {
+impl Iterator for Wtf8CodePoints<'_> {
     type Item = CodePoint;
 
     #[inline]
@@ -998,7 +990,7 @@ pub struct EncodeWide<'a> {
 
 // Copied from libunicode/u_str.rs
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Iterator for EncodeWide<'a> {
+impl Iterator for EncodeWide<'_> {
     type Item = u16;
 
     #[inline]
