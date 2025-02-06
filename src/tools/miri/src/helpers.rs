@@ -1020,7 +1020,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &'a [OpTy<'tcx>; N]: TryFrom<&'a [OpTy<'tcx>]>,
     {
         self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
-        check_vargarg_fixed_arg_count(link_name, abi, args)
+        if !abi.c_variadic {
+            throw_ub_format!(
+                "calling a variadic function with a non-variadic caller-side signature"
+            );
+        }
+        if abi.fixed_count != u32::try_from(N).unwrap() {
+            throw_ub_format!(
+                "incorrect number of fixed arguments for variadic function `{}`: got {}, expected {N}",
+                link_name.as_str(),
+                abi.fixed_count
+            )
+        }
+        if let Some(args) = args.split_first_chunk() {
+            return interp_ok(args);
+        }
+        panic!("mismatch between signature and `args` slice");
     }
 
     /// Mark a machine allocation that was just created as immutable.
@@ -1228,34 +1243,6 @@ pub fn check_min_vararg_count<'a, 'tcx, const N: usize>(
     }
     throw_ub_format!(
         "not enough variadic arguments for `{name}`: got {}, expected at least {}",
-        args.len(),
-        N
-    )
-}
-
-/// Check the number of fixed args of a vararg function.
-/// Returns a tuple that consisting of an array of fixed args, and a slice of varargs.
-fn check_vargarg_fixed_arg_count<'a, 'tcx, const N: usize>(
-    link_name: Symbol,
-    abi: &FnAbi<'tcx, Ty<'tcx>>,
-    args: &'a [OpTy<'tcx>],
-) -> InterpResult<'tcx, (&'a [OpTy<'tcx>; N], &'a [OpTy<'tcx>])> {
-    if !abi.c_variadic {
-        throw_ub_format!("calling a variadic function with a non-variadic caller-side signature");
-    }
-    if abi.fixed_count != u32::try_from(N).unwrap() {
-        throw_ub_format!(
-            "incorrect number of fixed arguments for variadic function `{}`: got {}, expected {N}",
-            link_name.as_str(),
-            abi.fixed_count
-        )
-    }
-    if let Some(args) = args.split_first_chunk() {
-        return interp_ok(args);
-    }
-    throw_ub_format!(
-        "incorrect number of arguments for `{}`: got {}, expected at least {}",
-        link_name.as_str(),
         args.len(),
         N
     )
