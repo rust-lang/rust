@@ -209,7 +209,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
-        tcx.dcx().abort_if_errors();
         info!("codegen crate {}", tcx.crate_name(LOCAL_CRATE));
         let config = self.config.clone().unwrap_or_else(|| {
             BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
