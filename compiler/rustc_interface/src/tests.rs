@@ -65,7 +65,6 @@ where
         static USING_INTERNAL_FEATURES: AtomicBool = AtomicBool::new(false);
 
         let sess = build_session(
-            early_dcx,
             sessopts,
             io,
             None,
