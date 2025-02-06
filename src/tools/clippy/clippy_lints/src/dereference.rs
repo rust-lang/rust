@@ -291,10 +291,13 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             && let Some(ty) = use_node.defined_ty(cx)
                             && TyCoercionStability::for_defined_ty(cx, ty, use_node.is_return()).is_deref_stable()
                         {
-                            self.state = Some((State::ExplicitDeref { mutability: None }, StateData {
-                                first_expr: expr,
-                                adjusted_ty,
-                            }));
+                            self.state = Some((
+                                State::ExplicitDeref { mutability: None },
+                                StateData {
+                                    first_expr: expr,
+                                    adjusted_ty,
+                                },
+                            ));
                         }
                     },
                     RefOp::Method { mutbl, is_ufcs }
@@ -456,10 +459,13 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             && next_adjust.is_none_or(|a| matches!(a.kind, Adjust::Deref(_) | Adjust::Borrow(_)))
                             && iter.all(|a| matches!(a.kind, Adjust::Deref(_) | Adjust::Borrow(_)))
                         {
-                            self.state = Some((State::Borrow { mutability }, StateData {
-                                first_expr: expr,
-                                adjusted_ty,
-                            }));
+                            self.state = Some((
+                                State::Borrow { mutability },
+                                StateData {
+                                    first_expr: expr,
+                                    adjusted_ty,
+                                },
+                            ));
                         }
                     },
                     _ => {},
@@ -503,10 +509,13 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                 let stability = state.stability;
                 report(cx, expr, State::DerefedBorrow(state), data, typeck);
                 if stability.is_deref_stable() {
-                    self.state = Some((State::Borrow { mutability }, StateData {
-                        first_expr: expr,
-                        adjusted_ty,
-                    }));
+                    self.state = Some((
+                        State::Borrow { mutability },
+                        StateData {
+                            first_expr: expr,
+                            adjusted_ty,
+                        },
+                    ));
                 }
             },
             (Some((State::DerefedBorrow(state), data)), RefOp::Deref) => {
@@ -531,10 +540,13 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                 } else if stability.is_deref_stable()
                     && let Some(parent) = get_parent_expr(cx, expr)
                 {
-                    self.state = Some((State::ExplicitDeref { mutability: None }, StateData {
-                        first_expr: parent,
-                        adjusted_ty,
-                    }));
+                    self.state = Some((
+                        State::ExplicitDeref { mutability: None },
+                        StateData {
+                            first_expr: parent,
+                            adjusted_ty,
+                        },
+                    ));
                 }
             },
 
@@ -1124,17 +1136,20 @@ impl<'tcx> Dereferencing<'tcx> {
         if let Some(outer_pat) = self.ref_locals.get_mut(&local) {
             if let Some(pat) = outer_pat {
                 // Check for auto-deref
-                if !matches!(cx.typeck_results().expr_adjustments(e), [
-                    Adjustment {
-                        kind: Adjust::Deref(_),
+                if !matches!(
+                    cx.typeck_results().expr_adjustments(e),
+                    [
+                        Adjustment {
+                            kind: Adjust::Deref(_),
+                            ..
+                        },
+                        Adjustment {
+                            kind: Adjust::Deref(_),
+                            ..
+                        },
                         ..
-                    },
-                    Adjustment {
-                        kind: Adjust::Deref(_),
-                        ..
-                    },
-                    ..
-                ]) {
+                    ]
+                ) {
                     match get_parent_expr(cx, e) {
                         // Field accesses are the same no matter the number of references.
                         Some(Expr {

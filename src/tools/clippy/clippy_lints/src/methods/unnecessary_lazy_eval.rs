@@ -18,7 +18,7 @@ pub(super) fn check<'tcx>(
     recv: &'tcx hir::Expr<'_>,
     arg: &'tcx hir::Expr<'_>,
     simplify_using: &str,
-) {
+) -> bool {
     let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option);
     let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result);
     let is_bool = cx.typeck_results().expr_ty(recv).is_bool();
@@ -29,7 +29,7 @@ pub(super) fn check<'tcx>(
             let body_expr = &body.value;
 
             if usage::BindingUsageFinder::are_params_used(cx, body) || is_from_proc_macro(cx, expr) {
-                return;
+                return false;
             }
 
             if eager_or_lazy::switch_to_eager_eval(cx, body_expr) {
@@ -71,8 +71,10 @@ pub(super) fn check<'tcx>(
                             applicability,
                         );
                     });
+                    return true;
                 }
             }
         }
     }
+    false
 }
