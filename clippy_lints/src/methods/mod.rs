@@ -5398,7 +5398,7 @@ impl Methods {
                             option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, &self.msrv);
                         },
                         Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
-                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg, then_method);
+                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg, then_method, "unwrap_or");
                         },
                         _ => {},
                     }
@@ -5417,6 +5417,9 @@ impl Methods {
                     match method_call(recv) {
                         Some(("map", recv, [map_arg], _, _))
                             if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, &self.msrv) => {},
+                        Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
+                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg, then_method, "unwrap_or_else");
+                        },
                         _ => {
                             unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
                         },
