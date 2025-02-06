@@ -194,7 +194,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     unsafe fn optimize(
         cgcx: &CodegenContext<Self>,
         dcx: DiagCtxtHandle<'_>,
-        module: &ModuleCodegen<Self::Module>,
+        module: &mut ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
         unsafe { back::write::optimize(cgcx, dcx, module, config) }
