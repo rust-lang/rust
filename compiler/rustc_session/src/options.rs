@@ -2473,6 +2473,8 @@ options! {
     // stands out a lot more during code review making it easier to get caught.
     internal_testing_features: bool = (false, parse_bool, [TRACKED],
         "allow certain internal language features to be enabled that help exercise & test the compiler"),
+    jit_mode: bool = (false, parse_bool, [TRACKED],
+        "enable JIT mode (only supported by some backends, default: no)"),
     large_data_threshold: Option<u64> = (None, parse_opt_number, [TRACKED],
         "set the threshold for objects to be stored in a \"large data\" section \
          (only effective with -Ccode-model=medium, default: 65536)"),
