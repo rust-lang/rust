@@ -624,7 +624,7 @@ where
 
     /// NOTE: This is implemented as a built-in goal and not a set of impls like:
     ///
-    /// ```
+    /// ```rust,ignore (illustrative)
     /// impl<T> BikeshedGuaranteedNoDrop for T where T: Copy {}
     /// impl<T> BikeshedGuaranteedNoDrop for ManuallyDrop<T> {}
     /// ```
