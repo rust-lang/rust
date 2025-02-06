@@ -108,7 +108,7 @@ mod signal_handler {
 }
 
 use crate::session_diagnostics::{
-    RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
+    CantEmitMIR, RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
     RLinkWrongFileType, RlinkCorruptFile, RlinkNotAFile, RlinkUnableToRead, UnstableFeatureUsage,
 };
 
@@ -372,6 +372,12 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
 
             if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
                 return early_exit();
+            }
+
+            if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
+                if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx) {
+                    tcx.dcx().emit_fatal(CantEmitMIR { error });
+                }
             }
 
             Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend))
