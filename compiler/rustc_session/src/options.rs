@@ -2513,7 +2513,17 @@ written to standard error output)"),
     /// in the future. Note that -Zthreads=0 is the way to get
     /// the num_cpus behavior.
     #[rustc_lint_opt_deny_field_access("use `Session::threads` instead of this field")]
-    threads: usize = (1, parse_threads, [UNTRACKED],
+    threads: usize = ({
+        #[cfg(bootstrap)]
+        {
+            1
+        }
+
+        #[cfg(not(bootstrap))]
+        {
+            4
+        }
+    }, parse_threads, [UNTRACKED],
         "use a thread pool with N threads"),
     time_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each LLVM pass (default: no)"),
