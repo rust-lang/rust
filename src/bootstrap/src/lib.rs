@@ -106,8 +106,9 @@ impl std::hash::Hash for Compiler {
 
 impl PartialEq for Compiler {
     fn eq(&self, other: &Self) -> bool {
-        // FIXME: cover `downgraded_from` for test env
         self.stage == other.stage && self.host == other.host
+            // We have coverage for `downgraded_from` in our unit tests
+            && (!cfg!(test) || self.downgraded_from == other.downgraded_from)
     }
 }
 

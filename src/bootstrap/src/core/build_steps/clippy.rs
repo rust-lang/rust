@@ -283,7 +283,7 @@ macro_rules! lint_any {
             }
 
             fn run(self, builder: &Builder<'_>) -> Self::Output {
-                let compiler = builder.compiler(builder.top_stage, builder.config.build, $mode == Mode::ToolRustc);
+                let compiler = builder.compiler(builder.top_stage, builder.config.build, builder.top_stage > 0 && $mode == Mode::ToolRustc);
                 let target = self.target;
 
                 builder.ensure(check::Rustc::new(target, builder).build_kind(Some(Kind::Check)));

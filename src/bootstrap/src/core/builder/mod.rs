@@ -1244,8 +1244,6 @@ impl<'a> Builder<'a> {
 
         // FIXME: remove stage check
         if stage > 0 && downgrade_for_rustc_tool {
-            assert!(stage > 0, "can't downgrade stage 0 compiler");
-
             self.ensure(compile::Std::new(compiler, host));
             // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
             // we'd have stageN/bin/rustc and stageN/bin/$tool_name be effectively different stage
@@ -1415,8 +1413,12 @@ impl<'a> Builder<'a> {
     }
 
     pub fn rustdoc(&self, mut compiler: Compiler) -> PathBuf {
-        // FIXME: remove stage check
-        if compiler.stage > 0 && !compiler.is_downgraded_already() {
+        if compiler.is_snapshot(self) && !compiler.is_downgraded_already() {
+            return self.initial_rustc.with_file_name(exe("rustdoc", compiler.host));
+        }
+
+        if !compiler.is_downgraded_already() {
+            assert!(compiler.stage > 0, "Can't use stage0 compiler for rustdoc");
             compiler.downgrade();
         }
 

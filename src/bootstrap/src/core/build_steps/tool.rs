@@ -180,7 +180,7 @@ pub fn prepare_tool_cargo(
     extra_features: &[String],
 ) -> CargoCommand {
     // FIXME: remove stage check
-    if mode == Mode::ToolRustc && !compiler.is_downgraded_already() && compiler.stage != 0 {
+    if builder.top_stage > 0 && mode == Mode::ToolRustc && !compiler.is_downgraded_already() {
         // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
         // we'd have stageN/bin/rustc and stageN/bin/$tool_name be effectively different stage
         // compilers, which isn't what we want.
@@ -630,8 +630,8 @@ impl Step for Rustdoc {
         let compiler = self.compiler;
         let target = compiler.host;
 
-        if compiler.stage == 0 {
-            if !compiler.is_snapshot(builder) && !compiler.is_downgraded_already() {
+        if compiler.stage == 0 && !compiler.is_downgraded_already() {
+            if !compiler.is_snapshot(builder) {
                 panic!("rustdoc in stage 0 must be snapshot rustdoc");
             }
             return builder.initial_rustdoc.clone();

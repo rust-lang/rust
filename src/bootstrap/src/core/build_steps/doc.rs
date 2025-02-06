@@ -951,7 +951,7 @@ macro_rules! tool_doc {
                     // Rustdoc needs the rustc sysroot available to build.
                     // FIXME: is there a way to only ensure `check::Rustc` here? Last time I tried it failed
                     // with strange errors, but only on a full bors test ...
-                    let _ = builder.compiler(compiler.stage, target, false);
+                    let _ = builder.compiler(compiler.stage, target, true);
                 }
 
                 // Build cargo command.
