@@ -206,6 +206,8 @@ pub struct Parser<'input> {
     input_vec: Vec<(Range<usize>, usize, char)>,
     /// Index into input_vec
     input_vec_index: usize,
+    /// Warnings accumulated during parsing
+    pub warnings: Vec<ParseError>,
     /// Error messages accumulated during parsing
     pub errors: Vec<ParseError>,
     /// Current position of implicit positional argument pointer
@@ -406,6 +408,7 @@ impl<'input> Parser<'input> {
             input,
             input_vec,
             input_vec_index: 0,
+            warnings: vec![],
             errors: vec![],
             curarg: 0,
             arg_places: vec![],
@@ -681,8 +684,21 @@ impl<'input> Parser<'input> {
             } else {
                 spec.precision = self.count();
             }
-            spec.precision_span =
-                Some(range.start..self.input_vec_index2range(self.input_vec_index).start);
+            let span = range.start..self.input_vec_index2range(self.input_vec_index).start;
+            if spec.precision == CountImplied && spec.width != CountImplied {
+                self.warnings.push(ParseError {
+                    description:
+                        "precision specifier without precision value (but with a width value)"
+                            .to_string(),
+                    note: None,
+                    label: "precision specifier without precision value".to_string(),
+                    span,
+                    secondary_label: None,
+                    suggestion: Suggestion::None,
+                });
+            } else {
+                spec.precision_span = Some(span);
+            }
         }
 
         let start_idx = self.input_vec_index;

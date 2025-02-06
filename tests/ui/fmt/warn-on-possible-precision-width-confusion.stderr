@@ -1,0 +1,14 @@
+warning: invalid format string: precision specifier without precision value (but with a width value)
+  --> $DIR/warn-on-possible-precision-width-confusion.rs:4:52
+   |
+LL |     println!("Missing precision: {float:.} {float:3.} {float:_^12.}");
+   |                                                    ^ precision specifier without precision value in format string
+
+warning: invalid format string: precision specifier without precision value (but with a width value)
+  --> $DIR/warn-on-possible-precision-width-confusion.rs:4:66
+   |
+LL |     println!("Missing precision: {float:.} {float:3.} {float:_^12.}");
+   |                                                                  ^ precision specifier without precision value in format string
+
+warning: 2 warnings emitted
+
