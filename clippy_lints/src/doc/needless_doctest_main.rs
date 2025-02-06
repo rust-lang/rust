@@ -1,10 +1,10 @@
 use std::ops::Range;
 use std::{io, thread};
+use std::sync::Arc;
 
 use crate::doc::{NEEDLESS_DOCTEST_MAIN, TEST_ATTR_IN_DOCTEST};
 use clippy_utils::diagnostics::span_lint;
 use rustc_ast::{CoroutineKind, Fn, FnRetTy, Item, ItemKind};
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::HumanEmitter;
 use rustc_errors::{Diag, DiagCtxt};
 use rustc_lint::LateContext;
@@ -46,8 +46,8 @@ pub fn check(
                     rustc_errors::fallback_fluent_bundle(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
                 let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
                 let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
-                #[expect(clippy::arc_with_non_send_sync)] // `Lrc` is expected by with_dcx
-                let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+                #[expect(clippy::arc_with_non_send_sync)] // `Arc` is expected by with_dcx
+                let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
                 let psess = ParseSess::with_dcx(dcx, sm);
 
                 let mut parser = match new_parser_from_source_str(&psess, filename, code) {
