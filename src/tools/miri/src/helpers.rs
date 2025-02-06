@@ -999,12 +999,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &'a [OpTy<'tcx>; N]: TryFrom<&'a [OpTy<'tcx>]>,
     {
         self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
+
         if abi.c_variadic {
             throw_ub_format!(
                 "calling a non-variadic function with a variadic caller-side signature"
             );
         }
-        check_arg_count(args)
+        if let Ok(ops) = args.try_into() {
+            return interp_ok(ops);
+        }
+        throw_ub_format!(
+            "incorrect number of arguments for `{link_name}`: got {}, expected {}",
+            args.len(),
+            N
+        )
     }
 
     /// Check shim for variadic function.
@@ -1020,6 +1028,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &'a [OpTy<'tcx>; N]: TryFrom<&'a [OpTy<'tcx>]>,
     {
         self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
+
         if !abi.c_variadic {
             throw_ub_format!(
                 "calling a variadic function with a non-variadic caller-side signature"
@@ -1219,7 +1228,7 @@ impl<'tcx> MiriMachine<'tcx> {
 }
 
 /// Check that the number of args is what we expect.
-pub fn check_arg_count<'a, 'tcx, const N: usize>(
+pub fn check_intrinsic_arg_count<'a, 'tcx, const N: usize>(
     args: &'a [OpTy<'tcx>],
 ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]>
 where
@@ -1228,7 +1237,11 @@ where
     if let Ok(ops) = args.try_into() {
         return interp_ok(ops);
     }
-    throw_ub_format!("incorrect number of arguments: got {}, expected {}", args.len(), N)
+    throw_ub_format!(
+        "incorrect number of arguments for intrinsic: got {}, expected {}",
+        args.len(),
+        N
+    )
 }
 
 /// Check that the number of varargs is at least the minimum what we expect.
