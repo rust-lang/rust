@@ -1,4 +1,5 @@
 #![unstable(feature = "raw_vec_internals", reason = "unstable const warnings", issue = "none")]
+#![cfg_attr(test, allow(dead_code))]
 
 use core::marker::PhantomData;
 use core::mem::{ManuallyDrop, MaybeUninit, SizedTypeProperties};

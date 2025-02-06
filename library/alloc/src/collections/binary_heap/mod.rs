@@ -153,7 +153,9 @@ use core::{fmt, ptr};
 use crate::alloc::Global;
 use crate::collections::TryReserveError;
 use crate::slice;
-use crate::vec::{self, AsVecIntoIter, Vec};
+#[cfg(not(test))]
+use crate::vec::AsVecIntoIter;
+use crate::vec::{self, Vec};
 
 /// A priority queue implemented with a binary heap.
 ///
@@ -1600,6 +1602,7 @@ unsafe impl<I, A: Allocator> InPlaceIterable for IntoIter<I, A> {
     const MERGE_BY: Option<NonZero<usize>> = NonZero::new(1);
 }
 
+#[cfg(not(test))]
 unsafe impl<I> AsVecIntoIter for IntoIter<I> {
     type Item = I;
 

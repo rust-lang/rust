@@ -219,7 +219,6 @@ impl ToOwned for str {
 }
 
 /// Methods for string slices.
-#[cfg(not(test))]
 impl str {
     /// Converts a `Box<str>` into a `Box<[u8]>` without copying or allocating.
     ///
@@ -631,7 +630,6 @@ pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
 #[unstable(feature = "str_internals", issue = "none")]
 #[doc(hidden)]
 #[inline]
-#[cfg(not(test))]
 #[cfg(not(no_global_oom_handling))]
 pub fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &str) {
     // Process the input in chunks of 16 bytes to enable auto-vectorization.
@@ -704,7 +702,6 @@ pub fn convert_while_ascii(s: &str, convert: fn(&u8) -> u8) -> (String, &str) {
     }
 }
 #[inline]
-#[cfg(not(test))]
 #[cfg(not(no_global_oom_handling))]
 #[allow(dead_code)]
 /// Faster implementation of string replacement for ASCII to ASCII cases.
