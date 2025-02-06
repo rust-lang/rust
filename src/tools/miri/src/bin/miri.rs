@@ -23,6 +23,7 @@ rustc_driver::override_c_allocator_in_binary!();
 mod log;
 
 use std::any::Any;
+use std::cell::RefCell;
 use std::env;
 use std::num::{NonZero, NonZeroI32};
 use std::ops::Range;
@@ -55,6 +56,8 @@ struct MiriCompilerCalls {
 }
 
 struct MiriCodegenBackend {
+    miri_config: RefCell<Option<MiriConfig>>,
+    many_seeds: RefCell<Option<ManySeedsConfig>>,
     native: Box<dyn CodegenBackend>,
     dummy: DummyCodegenBackend,
     /// Whether we are in a dependency or in the to-be-interpreted binary crate
@@ -107,7 +110,12 @@ fn run_many_seeds(
 /// Generates the codegen backend for code that Miri will interpret: we basically
 /// use the dummy backend, except that we put the LLVM backend in charge of
 /// target features.
-fn make_miri_codegen_backend(sess: &Session, dep: bool) -> Box<dyn CodegenBackend> {
+fn make_miri_codegen_backend(
+    sess: &Session,
+    dep: bool,
+    miri_config: Option<MiriConfig>,
+    many_seeds: Option<ManySeedsConfig>,
+) -> Box<dyn CodegenBackend> {
     let early_dcx = EarlyDiagCtxt::new(sess.opts.error_format);
 
     // Use the target_config method of the default codegen backend (eg LLVM) to ensure the
@@ -120,91 +128,27 @@ fn make_miri_codegen_backend(sess: &Session, dep: bool) -> Box<dyn CodegenBacken
     );
     native_codegen_backend.init(sess);
 
-    Box::new(MiriCodegenBackend { native: native_codegen_backend, dummy: DummyCodegenBackend, dep })
+    Box::new(MiriCodegenBackend {
+        miri_config: RefCell::new(miri_config),
+        many_seeds: RefCell::new(many_seeds),
+        native: native_codegen_backend,
+        dummy: DummyCodegenBackend,
+        dep,
+    })
 }
 
 impl rustc_driver::Callbacks for MiriCompilerCalls {
-    fn config(&mut self, config: &mut rustc_interface::interface::Config) {
+    fn config(&mut self, config: &mut Config) {
+        let miri_config = self.miri_config.take();
+        let many_seeds = self.many_seeds.take();
+
         // We never reach codegen anyway.
-        config.make_codegen_backend =
-            Some(Box::new(|sess| make_miri_codegen_backend(sess, /* dep */ false)));
+        config.make_codegen_backend = Some(Box::new(|sess| {
+            make_miri_codegen_backend(sess, /* dep */ false, miri_config, many_seeds)
+        }));
 
         // Register our custom extra symbols.
         config.extra_symbols = miri::sym::EXTRA_SYMBOLS.into();
-    }
-
-    fn after_analysis<'tcx>(
-        &mut self,
-        _: &rustc_interface::interface::Compiler,
-        tcx: TyCtxt<'tcx>,
-    ) -> Compilation {
-        // Compilation is done, interpretation is starting. Deal with diagnostics from the
-        // compilation part. We cannot call `sess.finish_diagnostics()` as then "aborting due to
-        // previous errors" gets printed twice.
-        tcx.dcx().emit_stashed_diagnostics();
-        tcx.dcx().abort_if_errors();
-        tcx.dcx().flush_delayed();
-
-        // Miri is taking over. Start logging.
-        init_late_loggers(&EarlyDiagCtxt::new(tcx.sess.opts.error_format), tcx);
-
-        // Find the entry point.
-        if !tcx.crate_types().contains(&CrateType::Executable) {
-            tcx.dcx().fatal("miri only makes sense on bin crates");
-        }
-        let (entry_def_id, entry_type) = entry_fn(tcx);
-
-        // Obtain and complete the Miri configuration.
-        let mut config = self.miri_config.take().expect("after_analysis must only be called once");
-        // Add filename to `miri` arguments.
-        config.args.insert(0, tcx.sess.io.input.filestem().to_string());
-
-        // Adjust working directory for interpretation.
-        if let Some(cwd) = env::var_os("MIRI_CWD") {
-            env::set_current_dir(cwd).unwrap();
-        }
-
-        // Emit warnings for some unusual configurations.
-        if tcx.sess.opts.optimize != OptLevel::No {
-            tcx.dcx().warn("Miri does not support optimizations: the opt-level is ignored. The only effect \
-                    of selecting a Cargo profile that enables optimizations (such as --release) is to apply \
-                    its remaining settings, such as whether debug assertions and overflow checks are enabled.");
-        }
-        if tcx.sess.mir_opt_level() > 0 {
-            tcx.dcx().warn("You have explicitly enabled MIR optimizations, overriding Miri's default \
-                    which is to completely disable them. Any optimizations may hide UB that Miri would \
-                    otherwise detect, and it is not necessarily possible to predict what kind of UB will \
-                    be missed. If you are enabling optimizations to make Miri run faster, we advise using \
-                    cfg(miri) to shrink your workload instead. The performance benefit of enabling MIR \
-                    optimizations is usually marginal at best.");
-        }
-
-        // Invoke the interpreter.
-        let res = if config.genmc_config.is_some() {
-            assert!(self.many_seeds.is_none());
-            run_genmc_mode(tcx, &config, |genmc_ctx: Rc<GenmcCtx>| {
-                miri::eval_entry(tcx, entry_def_id, entry_type, &config, Some(genmc_ctx))
-            })
-        } else if let Some(many_seeds) = self.many_seeds.take() {
-            assert!(config.seed.is_none());
-            run_many_seeds(many_seeds, |seed| {
-                let mut config = config.clone();
-                config.seed = Some(seed);
-                eprintln!("Trying seed: {seed}");
-                miri::eval_entry(tcx, entry_def_id, entry_type, &config, /* genmc_ctx */ None)
-            })
-        } else {
-            miri::eval_entry(tcx, entry_def_id, entry_type, &config, None)
-        };
-        // Process interpreter result.
-        if let Err(return_code) = res {
-            tcx.dcx().abort_if_errors();
-            exit(return_code.get())
-        } else {
-            // We want to continue here so rustc can do its usual shutdown and finalize the
-            // incremental session. Our custom codegen backend ensures nothing actually happens.
-            Compilation::Continue
-        }
     }
 }
 
@@ -240,7 +184,7 @@ impl CodegenBackend for MiriCodegenBackend {
     }
 
     fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any> {
-        self.dummy.codegen_crate(tcx)
+        if self.dep { self.dummy.codegen_crate(tcx) } else { unreachable!() }
     }
 
     fn join_codegen(
@@ -251,7 +195,86 @@ impl CodegenBackend for MiriCodegenBackend {
         outputs: &rustc_session::config::OutputFilenames,
         crate_info: &CrateInfo,
     ) -> (CompiledModules, rustc_middle::dep_graph::WorkProductMap) {
-        self.dummy.join_codegen(ongoing_codegen, sess, incr_comp_session, outputs, crate_info)
+        if self.dep {
+            self.dummy.join_codegen(ongoing_codegen, sess, incr_comp_session, outputs, crate_info)
+        } else {
+            unreachable!()
+        }
+    }
+
+    fn jit_crate<'tcx>(&self, tcx: TyCtxt<'tcx>, mut args: Vec<String>) -> ExitCode {
+        // Compilation is done, interpretation is starting. Deal with diagnostics from the
+        // compilation part. We cannot call `sess.finish_diagnostics()` as then "aborting due to
+        // previous errors" gets printed twice.
+        tcx.dcx().emit_stashed_diagnostics();
+        tcx.dcx().abort_if_errors();
+        tcx.dcx().flush_delayed();
+
+        // Miri is taking over. Start logging.
+        init_late_loggers(&EarlyDiagCtxt::new(tcx.sess.opts.error_format), tcx);
+
+        // Find the entry point.
+        if !tcx.crate_types().contains(&CrateType::Executable) {
+            tcx.dcx().fatal("miri only makes sense on bin crates");
+        }
+        let (entry_def_id, entry_type) = entry_fn(tcx);
+
+        // Obtain and complete the Miri configuration.
+        let mut config = self.miri_config.take().expect("after_analysis must only be called once");
+        // Add filename to `miri` arguments.
+        args.insert(0, tcx.sess.io.input.filestem().to_string());
+
+        // Adjust working directory for interpretation.
+        if let Some(cwd) = env::var_os("MIRI_CWD") {
+            env::set_current_dir(cwd).unwrap();
+        }
+
+        // Emit warnings for some unusual configurations.
+        if tcx.sess.opts.optimize != OptLevel::No {
+            tcx.dcx().warn("Miri does not support optimizations: the opt-level is ignored. The only effect \
+                    of selecting a Cargo profile that enables optimizations (such as --release) is to apply \
+                    its remaining settings, such as whether debug assertions and overflow checks are enabled.");
+        }
+        if tcx.sess.mir_opt_level() > 0 {
+            tcx.dcx().warn("You have explicitly enabled MIR optimizations, overriding Miri's default \
+                    which is to completely disable them. Any optimizations may hide UB that Miri would \
+                    otherwise detect, and it is not necessarily possible to predict what kind of UB will \
+                    be missed. If you are enabling optimizations to make Miri run faster, we advise using \
+                    cfg(miri) to shrink your workload instead. The performance benefit of enabling MIR \
+                    optimizations is usually marginal at best.");
+        }
+
+        // Invoke the interpreter.
+        let res = if config.genmc_config.is_some() {
+            assert!(self.many_seeds.is_none());
+            run_genmc_mode(tcx, &config, |genmc_ctx: Rc<GenmcCtx>| {
+                miri::eval_entry(tcx, entry_def_id, entry_type, &args, &config, Some(genmc_ctx))
+            })
+        } else if let Some(many_seeds) = self.many_seeds.take() {
+            assert!(config.seed.is_none());
+            run_many_seeds(many_seeds, |seed| {
+                let mut config = config.clone();
+                config.seed = Some(seed);
+                eprintln!("Trying seed: {seed}");
+                miri::eval_entry(
+                    tcx,
+                    entry_def_id,
+                    entry_type,
+                    &args,
+                    &config,
+                    /* genmc_ctx */ None,
+                )
+            })
+        } else {
+            miri::eval_entry(tcx, entry_def_id, entry_type, &args, &config, None)
+        };
+        // Process interpreter result.
+        if let Err(return_code) = res {
+            tcx.dcx().abort_if_errors();
+            exit(return_code.get());
+        } else {
+            ExitCode::SUCCESS
+        }
     }
 
     fn link(
@@ -276,8 +299,11 @@ impl rustc_driver::Callbacks for MiriDepCompilerCalls {
     #[allow(rustc::potential_query_instability)] // rustc_codegen_ssa (where this code is copied from) also allows this lint
     fn config(&mut self, config: &mut Config) {
         // We don't need actual codegen, we just emit an rlib that Miri can later consume.
-        config.make_codegen_backend =
-            Some(Box::new(|sess| make_miri_codegen_backend(sess, /* dep */ true)));
+        config.make_codegen_backend = Some(Box::new(|sess| {
+            make_miri_codegen_backend(
+                sess, /* dep */ true, /* miri_config */ None, /* many_seeds */ None,
+            )
+        }));
 
         // Avoid warnings about unsupported crate types. However, only do that we we are *not* being
         // queried by cargo about the supported crate types so that cargo still receives the
@@ -446,6 +472,7 @@ fn main() -> ExitCode {
 
     let mut rustc_args = vec![];
     let mut after_dashdash = false;
+    let mut guest_args = vec![];
 
     // Note that we require values to be given with `=`, not with a space.
     // This matches how rustc parses `-Z`.
@@ -458,7 +485,7 @@ fn main() -> ExitCode {
             rustc_args.extend(miri::MIRI_DEFAULT_ARGS.iter().map(ToString::to_string));
         } else if after_dashdash {
             // Everything that comes after `--` is forwarded to the interpreted crate.
-            miri_config.args.push(arg);
+            guest_args.push(arg);
         } else if arg == "--" {
             after_dashdash = true;
         } else if arg == "-Zmiri-disable-validation" {
@@ -731,7 +758,6 @@ fn main() -> ExitCode {
         many_seeds.map(|seeds| ManySeedsConfig { seeds, keep_going: many_seeds_keep_going });
 
     debug!("rustc arguments: {:?}", rustc_args);
-    debug!("crate arguments: {:?}", miri_config.args);
     if !miri_config.native_lib.is_empty() && miri_config.native_lib_enable_tracing {
         // SAFETY: No other threads are running
         #[cfg(all(feature = "native-lib", unix))]
@@ -742,6 +768,10 @@ fn main() -> ExitCode {
             );
         }
     }
+    rustc_args.push("-Zjit-mode".to_owned());
+    rustc_args.push("--".to_owned());
+    rustc_args.extend(guest_args);
+
     run_compiler_and_exit(&rustc_args, &mut MiriCompilerCalls::new(miri_config, many_seeds))
     // Note that we *cannot* just return here, in native-lib mode we have to coordinate
     // with the supervisor process!
