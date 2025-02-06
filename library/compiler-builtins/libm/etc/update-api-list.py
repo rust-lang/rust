@@ -278,8 +278,8 @@ def ensure_sorted(fpath: Path, block_start_line: int, lines: list[str]) -> None:
     """Ensure that a list of lines is sorted, otherwise print a diff and exit."""
     relpath = fpath.relative_to(ROOT_DIR)
     diff_and_exit(
-        "".join(lines),
-        "".join(sorted(lines)),
+        "\n".join(lines),
+        "\n".join(sorted(lines)),
         f"sorted block at {relpath}:{block_start_line}",
     )
 
@@ -338,8 +338,7 @@ def ensure_updated_list(check: bool) -> None:
     crate.write_function_list(check)
     crate.write_function_defs(check)
 
-    if check:
-        crate.tidy_lists()
+    crate.tidy_lists()
 
 
 def main():
