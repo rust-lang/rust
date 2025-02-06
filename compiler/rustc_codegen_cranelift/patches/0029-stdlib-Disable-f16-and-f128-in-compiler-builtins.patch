@@ -12,15 +12,15 @@ index 7165c3e48af..968552ad435 100644
 --- a/library/alloc/Cargo.toml
 +++ b/library/alloc/Cargo.toml
 @@ -11,7 +11,7 @@ test = { path = "../test" }
- edition = "2021"
+ bench = false
  
  [dependencies]
  core = { path = "../core", public = true }
 -compiler_builtins = { version = "=0.1.151", features = ['rustc-dep-of-std'] }
 +compiler_builtins = { version = "=0.1.151", features = ['rustc-dep-of-std', 'no-f16-f128'] }
  
- [dev-dependencies]
- rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
+ [features]
+ compiler-builtins-mem = ['compiler_builtins/mem']
 -- 
 2.34.1
 

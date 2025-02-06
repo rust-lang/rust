@@ -10,8 +10,9 @@ edition = "2021"
 
 [lib]
 path = "lib.rs"
-test = false
-bench = false
+test = true
+bench = true
+doc = false
 
 [dev-dependencies]
 rand = { version = "0.9.0", default-features = false, features = ["alloc"] }
