@@ -118,9 +118,9 @@ fn recurse_build<'tcx>(
         | &ExprKind::WrapUnsafeBinder { .. } => {
             todo!("FIXME(unsafe_binders)")
         }
-        &ExprKind::Literal { lit, neg } => {
+        &ExprKind::Literal { lit } => {
             let sp = node.span;
-            tcx.at(sp).lit_to_const(LitToConstInput { lit: &lit.node, ty: node.ty, neg })
+            tcx.at(sp).lit_to_const(LitToConstInput { lit: &lit.node, ty: node.ty })
         }
         &ExprKind::NonHirLiteral { lit, user_ty: _ } => {
             let val = ty::ValTree::from_scalar_int(tcx, lit);

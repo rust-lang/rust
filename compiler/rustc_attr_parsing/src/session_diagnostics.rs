@@ -320,7 +320,7 @@ pub(crate) enum IncorrectReprFormatGenericCause<'a> {
         name: &'a str,
 
         #[skip_arg]
-        int: u128,
+        int: String,
     },
 
     #[suggestion(
@@ -342,11 +342,13 @@ pub(crate) enum IncorrectReprFormatGenericCause<'a> {
 
 impl<'a> IncorrectReprFormatGenericCause<'a> {
     pub(crate) fn from_lit_kind(span: Span, kind: &ast::LitKind, name: &'a str) -> Option<Self> {
-        match kind {
-            ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
-                Some(Self::Int { span, name, int: int.get() })
-            }
-            ast::LitKind::Str(symbol, _) => Some(Self::Symbol { span, name, symbol: *symbol }),
+        match *kind {
+            ast::LitKind::Int(int, ast::LitIntType::Unsuffixed(negated)) => Some(Self::Int {
+                span,
+                name,
+                int: if negated { format!("-{}", int.get()) } else { int.get().to_string() },
+            }),
+            ast::LitKind::Str(symbol, _) => Some(Self::Symbol { span, name, symbol }),
             _ => None,
         }
     }

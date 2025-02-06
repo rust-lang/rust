@@ -492,7 +492,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 }
             }
 
-            hir::ExprKind::Lit(lit) => ExprKind::Literal { lit, neg: false },
+            hir::ExprKind::Lit(lit) => ExprKind::Literal { lit },
 
             hir::ExprKind::Binary(op, lhs, rhs) => {
                 if self.typeck_results.is_method_call(expr) {
@@ -561,8 +561,6 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 if self.typeck_results.is_method_call(expr) {
                     let arg = self.mirror_expr(arg);
                     self.overloaded_operator(expr, Box::new([arg]))
-                } else if let hir::ExprKind::Lit(lit) = arg.kind {
-                    ExprKind::Literal { lit, neg: true }
                 } else {
                     ExprKind::Unary { op: UnOp::Neg, arg: self.mirror_expr(arg) }
                 }

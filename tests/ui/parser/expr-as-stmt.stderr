@@ -151,12 +151,23 @@ help: you might have meant to return this value
 LL |     {return 2;} - 2
    |      ++++++  +
 
-error[E0600]: cannot apply unary operator `-` to type `u32`
+error[E0277]: cannot apply unary operator `-` to type `u32`
   --> $DIR/expr-as-stmt.rs:36:9
    |
 LL |     {2} - 2
    |         ^^^ cannot apply unary operator `-`
    |
+   = help: the trait `Neg` is not implemented for `u32`
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
 help: parentheses are required to parse this as an expression
    |
 LL |     ({2}) - 2
@@ -244,5 +255,5 @@ LL |     unsafe { return 1; } + unsafe { 1 }
 
 error: aborting due to 22 previous errors
 
-Some errors have detailed explanations: E0308, E0600, E0614.
-For more information about an error, try `rustc --explain E0308`.
+Some errors have detailed explanations: E0277, E0308, E0614.
+For more information about an error, try `rustc --explain E0277`.

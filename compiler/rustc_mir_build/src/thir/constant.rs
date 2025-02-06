@@ -1,5 +1,5 @@
 use rustc_abi::Size;
-use rustc_ast::{self as ast};
+use rustc_ast::{self as ast, LitIntType};
 use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::LitToConstInput;
@@ -12,7 +12,7 @@ pub(crate) fn lit_to_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     lit_input: LitToConstInput<'tcx>,
 ) -> ty::Const<'tcx> {
-    let LitToConstInput { lit, ty, neg } = lit_input;
+    let LitToConstInput { lit, ty } = lit_input;
 
     if let Err(guar) = ty.error_reported() {
         return ty::Const::new_error(tcx, guar);
@@ -55,11 +55,17 @@ pub(crate) fn lit_to_const<'tcx>(
             let bytes = data as &[u8];
             ty::ValTree::from_raw_bytes(tcx, bytes)
         }
-        (ast::LitKind::Int(n, _), ty::Uint(ui)) if !neg => {
+        (
+            ast::LitKind::Int(n, LitIntType::Unsigned(_) | LitIntType::Unsuffixed(false)),
+            ty::Uint(ui),
+        ) => {
             let scalar_int = trunc(n.get(), *ui);
             ty::ValTree::from_scalar_int(tcx, scalar_int)
         }
-        (ast::LitKind::Int(n, _), ty::Int(i)) => {
+        (
+            &ast::LitKind::Int(n, LitIntType::Signed(_, neg) | LitIntType::Unsuffixed(neg)),
+            ty::Int(i),
+        ) => {
             let scalar_int = trunc(
                 if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() },
                 i.to_unsigned(),
@@ -68,7 +74,7 @@ pub(crate) fn lit_to_const<'tcx>(
         }
         (ast::LitKind::Bool(b), ty::Bool) => ty::ValTree::from_scalar_int(tcx, (*b).into()),
         (ast::LitKind::Float(n, _), ty::Float(fty)) => {
-            let bits = parse_float_into_scalar(*n, *fty, neg).unwrap_or_else(|| {
+            let bits = parse_float_into_scalar(*n, *fty).unwrap_or_else(|| {
                 tcx.dcx().bug(format!("couldn't parse float literal: {:?}", lit_input.lit))
             });
             ty::ValTree::from_scalar_int(tcx, bits)

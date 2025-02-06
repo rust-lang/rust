@@ -1599,7 +1599,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             ExprKind::Lit(Spanned {
-                node: rustc_ast::LitKind::Int(lit, rustc_ast::LitIntType::Unsuffixed),
+                node: rustc_ast::LitKind::Int(lit, rustc_ast::LitIntType::Unsuffixed(false)),
                 span,
             }) => {
                 let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(*span) else {
@@ -3058,12 +3058,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "change the type of the numeric literal from `{checked_ty}` to `{expected_ty}`",
         );
 
-        let close_paren = if expr.precedence() < ExprPrecedence::Unambiguous {
-            sugg.push((expr.span.shrink_to_lo(), "(".to_string()));
-            ")"
-        } else {
-            ""
+        let is_negative_int = |expr: &hir::Expr<'_>| match expr.kind {
+            hir::ExprKind::Unary(hir::UnOp::Neg, ..) => true,
+            hir::ExprKind::Lit(lit) => lit.node.is_negative(),
+            _ => false,
         };
+
+        let close_paren =
+            if expr.precedence() < ExprPrecedence::Unambiguous || is_negative_int(expr) {
+                sugg.push((expr.span.shrink_to_lo(), "(".to_string()));
+                ")"
+            } else {
+                ""
+            };
 
         let mut cast_suggestion = sugg.clone();
         cast_suggestion.push((expr.span.shrink_to_hi(), format!("{close_paren} as {expected_ty}")));
@@ -3091,10 +3098,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
         ));
         let literal_is_ty_suffixed = |expr: &hir::Expr<'_>| {
-            if let hir::ExprKind::Lit(lit) = &expr.kind { lit.node.is_suffixed() } else { false }
+            if let hir::ExprKind::Lit(lit) = &expr.kind {
+                lit.node.is_suffixed() && !lit.node.is_negative()
+            } else {
+                false
+            }
         };
-        let is_negative_int =
-            |expr: &hir::Expr<'_>| matches!(expr.kind, hir::ExprKind::Unary(hir::UnOp::Neg, ..));
         let is_uint = |ty: Ty<'_>| matches!(ty.kind(), ty::Uint(..));
 
         let in_const_context = self.tcx.hir_is_inside_const_context(expr.hir_id);

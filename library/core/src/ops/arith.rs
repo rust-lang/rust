@@ -663,6 +663,10 @@ rem_impl_float! { f16 f32 f64 f128 }
 /// ```
 #[lang = "neg"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_on_unimplemented(
+    message = "cannot apply unary operator `-` to type `{Self}`",
+    label = "cannot apply unary operator `-`"
+)]
 #[doc(alias = "-")]
 pub trait Neg {
     /// The resulting type after applying the `-` operator.

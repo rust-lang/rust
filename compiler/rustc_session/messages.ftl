@@ -64,6 +64,9 @@ session_invalid_int_literal_width = invalid width `{$width}` for integer literal
 session_invalid_literal_suffix = suffixes on {$kind} literals are invalid
     .label = invalid suffix `{$suffix}`
 
+session_invalid_negation = cannot negate `{$kind}` literal
+    .note = only signed integer literals and float literals can be negated
+
 session_invalid_num_literal_base_prefix = invalid base prefix for number literal
     .note = base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
     .suggestion = try making the prefix lowercase

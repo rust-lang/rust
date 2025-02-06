@@ -80,8 +80,6 @@ pub struct LitToConstInput<'tcx> {
     pub lit: &'tcx LitKind,
     /// The type of the constant.
     pub ty: Ty<'tcx>,
-    /// If the constant is negative.
-    pub neg: bool,
 }
 
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
