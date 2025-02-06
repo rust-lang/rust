@@ -103,4 +103,14 @@ fn match_bool() {
     };
 }
 
+fn issue14099() {
+    match true {
+        //~^ ERROR: `match` on a boolean expression
+        true => 'a: {
+            break 'a;
+        },
+        _ => (),
+    }
+}
+
 fn main() {}
