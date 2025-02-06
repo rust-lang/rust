@@ -682,6 +682,7 @@ bidirectional_lang_item_map! {
     AsyncFnOnce,
     AsyncFnOnceOutput,
     AsyncIterator,
+    BikeshedGuaranteedNoDrop,
     CallOnceFuture,
     CallRefFuture,
     Clone,
