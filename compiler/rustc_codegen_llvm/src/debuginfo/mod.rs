@@ -34,7 +34,7 @@ use crate::builder::Builder;
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::llvm;
 use crate::llvm::debuginfo::{
-    DIArray, DIBuilder, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope, DIType,
+    DIArray, DIBuilderBox, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope, DIType,
     DIVariable,
 };
 use crate::value::Value;
@@ -61,7 +61,7 @@ const DW_TAG_arg_variable: c_uint = 0x101;
 /// A context object for maintaining all state needed by the debuginfo module.
 pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     llmod: &'ll llvm::Module,
-    builder: &'ll mut DIBuilder<'ll>,
+    builder: DIBuilderBox<'ll>,
     created_files: RefCell<UnordMap<Option<(StableSourceFileId, SourceFileHash)>, &'ll DIFile>>,
 
     type_map: metadata::TypeMap<'ll, 'tcx>,
@@ -69,18 +69,10 @@ pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     recursion_marker_type: OnceCell<&'ll DIType>,
 }
 
-impl Drop for CodegenUnitDebugContext<'_, '_> {
-    fn drop(&mut self) {
-        unsafe {
-            llvm::LLVMRustDIBuilderDispose(&mut *(self.builder as *mut _));
-        }
-    }
-}
-
 impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
     pub(crate) fn new(llmod: &'ll llvm::Module) -> Self {
         debug!("CodegenUnitDebugContext::new");
-        let builder = unsafe { llvm::LLVMRustDIBuilderCreate(llmod) };
+        let builder = DIBuilderBox::new(llmod);
         // DIBuilder inherits context from the module, so we'd better use the same one
         CodegenUnitDebugContext {
             llmod,
@@ -93,7 +85,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
     }
 
     pub(crate) fn finalize(&self, sess: &Session) {
-        unsafe { llvm::LLVMRustDIBuilderFinalize(self.builder) };
+        unsafe { llvm::LLVMDIBuilderFinalize(self.builder.as_ref()) };
 
         match sess.target.debuginfo_kind {
             DebuginfoKind::Dwarf | DebuginfoKind::DwarfDsym => {
@@ -105,7 +97,11 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
                 // Android has the same issue (#22398)
                 llvm::add_module_flag_u32(
                     self.llmod,
-                    llvm::ModuleFlagMergeBehavior::Warning,
+                    // In the case where multiple CGUs with different dwarf version
+                    // values are being merged together, such as with cross-crate
+                    // LTO, then we want to use the highest version of dwarf
+                    // we can. This matches Clang's behavior as well.
+                    llvm::ModuleFlagMergeBehavior::Max,
                     "Dwarf Version",
                     sess.dwarf_version(),
                 );
@@ -582,7 +578,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             (line, col)
         };
 
-        unsafe { llvm::LLVMRustDIBuilderCreateDebugLocation(line, col, scope, inlined_at) }
+        unsafe { llvm::LLVMDIBuilderCreateDebugLocation(self.llcx, line, col, scope, inlined_at) }
     }
 
     fn create_vtable_debuginfo(

@@ -27,7 +27,6 @@ declare_lint_pass! {
         BARE_TRAIT_OBJECTS,
         BINDINGS_WITH_VARIANT_NAME,
         BREAK_WITH_LABEL_AND_LOOP,
-        CENUM_IMPL_DROP_CAST,
         COHERENCE_LEAK_CHECK,
         CONFLICTING_REPR_HINTS,
         CONST_EVALUATABLE_UNCHECKED,
@@ -2610,58 +2609,6 @@ declare_lint! {
         explain_reason: false
     };
     @edition Edition2024 => Warn;
-}
-
-declare_lint! {
-    /// The `cenum_impl_drop_cast` lint detects an `as` cast of a field-less
-    /// `enum` that implements [`Drop`].
-    ///
-    /// [`Drop`]: https://doc.rust-lang.org/std/ops/trait.Drop.html
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// # #![allow(unused)]
-    /// enum E {
-    ///     A,
-    /// }
-    ///
-    /// impl Drop for E {
-    ///     fn drop(&mut self) {
-    ///         println!("Drop");
-    ///     }
-    /// }
-    ///
-    /// fn main() {
-    ///     let e = E::A;
-    ///     let i = e as u32;
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Casting a field-less `enum` that does not implement [`Copy`] to an
-    /// integer moves the value without calling `drop`. This can result in
-    /// surprising behavior if it was expected that `drop` should be called.
-    /// Calling `drop` automatically would be inconsistent with other move
-    /// operations. Since neither behavior is clear or consistent, it was
-    /// decided that a cast of this nature will no longer be allowed.
-    ///
-    /// This is a [future-incompatible] lint to transition this to a hard error
-    /// in the future. See [issue #73333] for more details.
-    ///
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    /// [issue #73333]: https://github.com/rust-lang/rust/issues/73333
-    /// [`Copy`]: https://doc.rust-lang.org/std/marker/trait.Copy.html
-    pub CENUM_IMPL_DROP_CAST,
-    Deny,
-    "a C-like enum implementing Drop is cast",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #73333 <https://github.com/rust-lang/rust/issues/73333>",
-    };
 }
 
 declare_lint! {

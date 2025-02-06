@@ -1151,6 +1151,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     }
 
     #[inline(always)]
+    fn contract_checks(ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool> {
+        interp_ok(ecx.tcx.sess.contract_checks())
+    }
+
+    #[inline(always)]
     fn thread_local_static_pointer(
         ecx: &mut MiriInterpCx<'tcx>,
         def_id: DefId,

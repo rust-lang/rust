@@ -709,6 +709,10 @@ impl Session {
         self.opts.unstable_opts.ub_checks.unwrap_or(self.opts.debug_assertions)
     }
 
+    pub fn contract_checks(&self) -> bool {
+        self.opts.unstable_opts.contract_checks.unwrap_or(false)
+    }
+
     pub fn relocation_model(&self) -> RelocModel {
         self.opts.cg.relocation_model.unwrap_or(self.target.relocation_model)
     }

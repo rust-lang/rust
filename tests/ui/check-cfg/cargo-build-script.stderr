@@ -4,7 +4,7 @@ warning: unexpected `cfg` condition name: `has_foo`
 LL | #[cfg(has_foo)]
    |       ^^^^^^^
    |
-   = help: expected names are: `has_bar` and 30 more
+   = help: expected names are: `has_bar` and 31 more
    = help: consider using a Cargo feature instead
    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
             [lints.rust]

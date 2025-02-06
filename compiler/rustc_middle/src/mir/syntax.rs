@@ -1591,6 +1591,9 @@ pub enum NullOp<'tcx> {
     /// Returns whether we should perform some UB-checking at runtime.
     /// See the `ub_checks` intrinsic docs for details.
     UbChecks,
+    /// Returns whether we should perform contract-checking at runtime.
+    /// See the `contract_checks` intrinsic docs for details.
+    ContractChecks,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

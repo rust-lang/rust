@@ -179,7 +179,7 @@ fn check_rvalue<'tcx>(
                 ))
             }
         },
-        Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) | NullOp::UbChecks, _)
+        Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) | NullOp::UbChecks | NullOp::ContractChecks, _)
         | Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::UnaryOp(_, operand) => {
             let ty = operand.ty(body, tcx);

@@ -489,7 +489,7 @@ impl Options {
         let to_check = matches.opt_strs("check-theme");
         if !to_check.is_empty() {
             let mut content =
-                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.bytes).unwrap();
+                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.src_bytes).unwrap();
             if let Some((_, inside)) = content.split_once("/* Begin theme: light */") {
                 content = inside;
             }
@@ -638,7 +638,7 @@ impl Options {
         let mut themes = Vec::new();
         if matches.opt_present("theme") {
             let mut content =
-                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.bytes).unwrap();
+                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.src_bytes).unwrap();
             if let Some((_, inside)) = content.split_once("/* Begin theme: light */") {
                 content = inside;
             }

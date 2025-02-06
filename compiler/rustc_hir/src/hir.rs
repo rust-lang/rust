@@ -2654,6 +2654,8 @@ pub enum LocalSource {
     /// A desugared `expr = expr`, where the LHS is a tuple, struct, array or underscore expression.
     /// The span is that of the `=` sign.
     AssignDesugar(Span),
+    /// A contract `#[ensures(..)]` attribute injects a let binding for the check that runs at point of return.
+    Contract,
 }
 
 /// Hints at the original code for a `match _ { .. }`.
