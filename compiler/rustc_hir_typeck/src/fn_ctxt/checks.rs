@@ -773,7 +773,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // First, check if we just need to wrap some arguments in a tuple.
         if let Some((mismatch_idx, terr)) =
-            compatibility_diagonal.iter().enumerate().find_map(|(i, c)| {
+            compatibility_diagonal.iter_enumerated().find_map(|(i, c)| {
                 if let Compatibility::Incompatible(Some(terr)) = c {
                     Some((i, *terr))
                 } else {
@@ -785,7 +785,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Do we have as many extra provided arguments as the tuple's length?
             // If so, we might have just forgotten to wrap some args in a tuple.
             if let Some(ty::Tuple(tys)) =
-                formal_and_expected_inputs.get(mismatch_idx.into()).map(|tys| tys.1.kind())
+                formal_and_expected_inputs.get(mismatch_idx.to_expected_idx()).map(|tys| tys.1.kind())
                 // If the tuple is unit, we're not actually wrapping any arguments.
                 && !tys.is_empty()
                 && provided_arg_tys.len() == formal_and_expected_inputs.len() - 1 + tys.len()
@@ -793,15 +793,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Wrap up the N provided arguments starting at this position in a tuple.
                 let provided_as_tuple = Ty::new_tup_from_iter(
                     tcx,
-                    provided_arg_tys.iter().map(|(ty, _)| *ty).skip(mismatch_idx).take(tys.len()),
+                    provided_arg_tys[mismatch_idx..mismatch_idx.plus(tys.len())]
+                        .iter()
+                        .map(|&(ty, _)| ty),
                 );
 
                 let mut satisfied = true;
                 // Check if the newly wrapped tuple + rest of the arguments are compatible.
                 for ((_, expected_ty), provided_ty) in std::iter::zip(
-                    formal_and_expected_inputs.iter().skip(mismatch_idx),
+                    formal_and_expected_inputs[mismatch_idx.to_expected_idx()..].iter(),
                     [provided_as_tuple].into_iter().chain(
-                        provided_arg_tys.iter().map(|(ty, _)| *ty).skip(mismatch_idx + tys.len()),
+                        provided_arg_tys[mismatch_idx.plus(tys.len())..].iter().map(|&(ty, _)| ty),
                     ),
                 ) {
                     if !self.may_coerce(provided_ty, *expected_ty) {
@@ -814,10 +816,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Take some care with spans, so we don't suggest wrapping a macro's
                 // innards in parenthesis, for example.
                 if satisfied
-                    && let Some((_, lo)) =
-                        provided_arg_tys.get(ProvidedIdx::from_usize(mismatch_idx))
-                    && let Some((_, hi)) =
-                        provided_arg_tys.get(ProvidedIdx::from_usize(mismatch_idx + tys.len() - 1))
+                    && let Some((_, lo)) = provided_arg_tys.get(mismatch_idx)
+                    // Note: `tys` is not an empty slice at this point
+                    && let Some((_, hi)) = provided_arg_tys.get(mismatch_idx.plus(tys.len() - 1))
                 {
                     let mut err;
                     if tys.len() == 1 {
@@ -826,8 +827,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err = self.err_ctxt().report_and_explain_type_error(
                             mk_trace(
                                 *lo,
-                                formal_and_expected_inputs[mismatch_idx.into()],
-                                provided_arg_tys[mismatch_idx.into()].0,
+                                formal_and_expected_inputs[mismatch_idx.to_expected_idx()],
+                                provided_arg_tys[mismatch_idx].0,
                             ),
                             self.param_env,
                             terr,
@@ -866,7 +867,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         callee_ty,
                         call_expr,
                         None,
-                        Some(mismatch_idx),
+                        Some(mismatch_idx.as_usize()),
                         &matched_inputs,
                         &formal_and_expected_inputs,
                         is_method,
@@ -2648,7 +2649,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 let expected_display_type = self
-                    .resolve_vars_if_possible(formal_and_expected_inputs[idx.into()].1)
+                    .resolve_vars_if_possible(formal_and_expected_inputs[idx].1)
                     .sort_string(self.tcx);
                 let label = if idxs_matched == params_with_generics.len() - 1 {
                     format!(

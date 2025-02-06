@@ -42,7 +42,7 @@ impl CoverageGraph {
         // `SwitchInt` to have multiple targets to the same destination `BasicBlock`, so
         // de-duplication is required. This is done without reordering the successors.
 
-        let successors = IndexVec::from_fn_n(
+        let successors = IndexVec::<BasicCoverageBlock, _>::from_fn_n(
             |bcb| {
                 let mut seen_bcbs = FxHashSet::default();
                 let terminator = mir_body[bcbs[bcb].last_bb()].terminator();

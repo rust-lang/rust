@@ -22,6 +22,12 @@ impl ExpectedIdx {
     }
 }
 
+impl ProvidedIdx {
+    pub(crate) fn to_expected_idx(self) -> ExpectedIdx {
+        ExpectedIdx::from_u32(self.as_u32())
+    }
+}
+
 // An issue that might be found in the compatibility matrix
 #[derive(Debug)]
 enum Issue {

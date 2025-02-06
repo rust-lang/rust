@@ -2,6 +2,7 @@
 #![cfg_attr(all(feature = "nightly", test), feature(stmt_expr_attributes))]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 #![cfg_attr(feature = "nightly", feature(extend_one, step_trait, test))]
+#![cfg_attr(feature = "nightly", feature(new_range_api))]
 #![cfg_attr(feature = "nightly", feature(new_zeroed_alloc))]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
@@ -14,7 +15,7 @@ mod idx;
 mod slice;
 mod vec;
 
-pub use idx::Idx;
+pub use idx::{Idx, IntoSliceIdx};
 pub use rustc_index_macros::newtype_index;
 pub use slice::IndexSlice;
 #[doc(no_inline)]
