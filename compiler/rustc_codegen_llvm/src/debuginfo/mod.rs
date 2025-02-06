@@ -40,6 +40,7 @@ use crate::llvm::debuginfo::{
 use crate::value::Value;
 
 mod create_scope_map;
+mod di_builder;
 mod dwarf_const;
 mod gdb;
 pub(crate) mod metadata;
@@ -325,9 +326,9 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let loc = self.lookup_debug_loc(span.lo());
         let file_metadata = file_metadata(self, &loc.file);
 
-        let function_type_metadata = unsafe {
+        let function_type_metadata = {
             let fn_signature = get_function_signature(self, fn_abi);
-            llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(self), fn_signature)
+            DIB(self).create_subroutine_type(&fn_signature, DIFlags::FlagZero)
         };
 
         let mut name = String::with_capacity(64);
@@ -420,9 +421,9 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         fn get_function_signature<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
             fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        ) -> &'ll DIArray {
+        ) -> Vec<Option<&'ll llvm::Metadata>> {
             if cx.sess().opts.debuginfo != DebugInfo::Full {
-                return create_DIArray(DIB(cx), &[]);
+                return vec![];
             }
 
             let mut signature = Vec::with_capacity(fn_abi.args.len() + 1);
@@ -463,7 +464,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     .extend(fn_abi.args.iter().map(|arg| Some(type_di_node(cx, arg.layout.ty))));
             }
 
-            create_DIArray(DIB(cx), &signature[..])
+            signature
         }
 
         fn get_template_parameters<'ll, 'tcx>(
