@@ -1,8 +1,8 @@
 use super::from_utf8_unchecked;
 use super::validations::utf8_char_width;
-use crate::fmt;
 use crate::fmt::{Formatter, Write};
 use crate::iter::FusedIterator;
+use crate::{fmt, slice};
 
 impl [u8] {
     /// Creates an iterator over the contiguous valid UTF-8 ranges of this
@@ -152,7 +152,7 @@ impl fmt::Debug for Debug<'_> {
 ///
 /// See the [`Utf8Chunk`] type for documentation of the items yielded by this iterator.
 ///
-/// [byteslice]: slice
+/// [byteslice]: prim@slice
 /// [`from_utf8`]: super::from_utf8
 ///
 /// # Examples
@@ -197,86 +197,29 @@ impl<'a> Iterator for Utf8Chunks<'a> {
             return None;
         }
 
-        const TAG_CONT_U8: u8 = 128;
-        fn safe_get(xs: &[u8], i: usize) -> u8 {
-            *xs.get(i).unwrap_or(&0)
-        }
-
-        let mut i = 0;
-        let mut valid_up_to = 0;
-        while i < self.source.len() {
-            // SAFETY: `i < self.source.len()` per previous line.
-            // For some reason the following are both significantly slower:
-            // while let Some(&byte) = self.source.get(i) {
-            // while let Some(byte) = self.source.get(i).copied() {
-            let byte = unsafe { *self.source.get_unchecked(i) };
-            i += 1;
-
-            if byte < 128 {
-                // This could be a `1 => ...` case in the match below, but for
-                // the common case of all-ASCII inputs, we bypass loading the
-                // sizeable UTF8_CHAR_WIDTH table into cache.
-            } else {
-                let w = utf8_char_width(byte);
-
-                match w {
-                    2 => {
-                        if safe_get(self.source, i) & 192 != TAG_CONT_U8 {
-                            break;
-                        }
-                        i += 1;
-                    }
-                    3 => {
-                        match (byte, safe_get(self.source, i)) {
-                            (0xE0, 0xA0..=0xBF) => (),
-                            (0xE1..=0xEC, 0x80..=0xBF) => (),
-                            (0xED, 0x80..=0x9F) => (),
-                            (0xEE..=0xEF, 0x80..=0xBF) => (),
-                            _ => break,
-                        }
-                        i += 1;
-                        if safe_get(self.source, i) & 192 != TAG_CONT_U8 {
-                            break;
-                        }
-                        i += 1;
-                    }
-                    4 => {
-                        match (byte, safe_get(self.source, i)) {
-                            (0xF0, 0x90..=0xBF) => (),
-                            (0xF1..=0xF3, 0x80..=0xBF) => (),
-                            (0xF4, 0x80..=0x8F) => (),
-                            _ => break,
-                        }
-                        i += 1;
-                        if safe_get(self.source, i) & 192 != TAG_CONT_U8 {
-                            break;
-                        }
-                        i += 1;
-                        if safe_get(self.source, i) & 192 != TAG_CONT_U8 {
-                            break;
-                        }
-                        i += 1;
-                    }
-                    _ => break,
-                }
+        let mut iter = self.source.iter();
+        let mut len_after_valid = iter.len();
+        while !iter.is_empty() {
+            if !advance_utf8(&mut iter) {
+                // Stop at the first invalid sequence.
+                break;
             }
-
-            valid_up_to = i;
+            len_after_valid = iter.len();
         }
+        let valid_up_to = self.source.len() - len_after_valid;
+        let inspected_len = self.source.len() - iter.len();
 
-        // SAFETY: `i <= self.source.len()` because it is only ever incremented
-        // via `i += 1` and in between every single one of those increments, `i`
-        // is compared against `self.source.len()`. That happens either
-        // literally by `i < self.source.len()` in the while-loop's condition,
-        // or indirectly by `safe_get(self.source, i) & 192 != TAG_CONT_U8`. The
-        // loop is terminated as soon as the latest `i += 1` has made `i` no
-        // longer less than `self.source.len()`, which means it'll be at most
-        // equal to `self.source.len()`.
-        let (inspected, remaining) = unsafe { self.source.split_at_unchecked(i) };
+        // SAFETY: The length of the remaining bytes in `iter` only decreases,
+        // so `iter.len() <= self.source.len()`. The length of inspected bytes,
+        // `self.source.len() - iter.len()`, then only increases and can be at
+        // most `self.source.len()`.
+        let (inspected, remaining) = unsafe { self.source.split_at_unchecked(inspected_len) };
         self.source = remaining;
 
-        // SAFETY: `valid_up_to <= i` because it is only ever assigned via
-        // `valid_up_to = i` and `i` only increases.
+        // SAFETY: Since `iter.len()` only decreases and `len_after_valid` is
+        // the value of `iter.len()` from the previous iteration, it follows
+        // that `len_after_valid <= iter.len()`, which is equivalent to
+        // `valid_up_to <= inspected_len` by simple substitution.
         let (valid, invalid) = unsafe { inspected.split_at_unchecked(valid_up_to) };
 
         Some(Utf8Chunk {
@@ -295,4 +238,66 @@ impl fmt::Debug for Utf8Chunks<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("Utf8Chunks").field("source", &self.debug()).finish()
     }
+}
+
+/// Advances the byte iterator by one UTF-8 scalar value, allowing invalid UTF-8
+/// sequences. When the current sequence is invalid, the maximal prefix of a
+/// valid UTF-8 code unit sequence is consumed. Returns whether the sequence is
+/// a valid Unicode scalar value.
+#[inline]
+fn advance_utf8(bytes: &mut slice::Iter<'_, u8>) -> bool {
+    const TAG_CONT_U8: u8 = 128;
+    #[inline]
+    fn peek(bytes: &slice::Iter<'_, u8>) -> u8 {
+        *bytes.clone().next().unwrap_or(&0)
+    }
+
+    let Some(&byte) = bytes.next() else { return false };
+    if byte < 128 {
+        // This could be a `1 => ...` case in the match below, but for the
+        // common case of all-ASCII inputs, we bypass loading the sizeable
+        // UTF8_CHAR_WIDTH table into cache.
+    } else {
+        match utf8_char_width(byte) {
+            2 => {
+                if peek(bytes) & 192 != TAG_CONT_U8 {
+                    return false;
+                }
+                bytes.next();
+            }
+            3 => {
+                match (byte, peek(bytes)) {
+                    (0xE0, 0xA0..=0xBF) => {}
+                    (0xE1..=0xEC, 0x80..=0xBF) => {}
+                    (0xED, 0x80..=0x9F) => {}
+                    (0xEE..=0xEF, 0x80..=0xBF) => {}
+                    _ => return false,
+                }
+                bytes.next();
+                if peek(bytes) & 192 != TAG_CONT_U8 {
+                    return false;
+                }
+                bytes.next();
+            }
+            4 => {
+                match (byte, peek(bytes)) {
+                    (0xF0, 0x90..=0xBF) => {}
+                    (0xF1..=0xF3, 0x80..=0xBF) => {}
+                    (0xF4, 0x80..=0x8F) => {}
+                    _ => return false,
+                }
+                bytes.next();
+                if peek(bytes) & 192 != TAG_CONT_U8 {
+                    return false;
+                }
+                bytes.next();
+                if peek(bytes) & 192 != TAG_CONT_U8 {
+                    return false;
+                }
+                bytes.next();
+            }
+            _ => return false,
+        }
+    }
+    true
 }
