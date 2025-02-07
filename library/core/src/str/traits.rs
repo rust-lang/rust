@@ -765,6 +765,12 @@ unsafe impl SliceIndex<str> for ops::RangeToInclusive<usize> {
 /// mistake, unless the type has provided and documented additional guarantees about its `Display`
 /// and `FromStr` implementations.
 ///
+/// If a type happens to have a lossless `Display` implementation whose output is meant to be
+/// conveniently machine-parseable and not just meant for human consumption, then the type may wish
+/// to accept the same format in `FromStr`, and document that usage. Having both `Display` and
+/// `FromStr` implementations where the result of `Display` cannot be parsed with `FromStr` may
+/// surprise users. (However, the result of such parsing may not have the same value as the input.)
+///
 /// # Examples
 ///
 /// Basic implementation of `FromStr` on an example `Point` type:
