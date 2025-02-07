@@ -16,8 +16,8 @@ index 7165c3e48af..968552ad435 100644
  
  [dependencies]
  core = { path = "../core" }
--compiler_builtins = { version = "=0.1.145", features = ['rustc-dep-of-std'] }
-+compiler_builtins = { version = "=0.1.145", features = ['rustc-dep-of-std', 'no-f16-f128'] }
+-compiler_builtins = { version = "=0.1.146", features = ['rustc-dep-of-std'] }
++compiler_builtins = { version = "=0.1.146", features = ['rustc-dep-of-std', 'no-f16-f128'] }
  
  [dev-dependencies]
  rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
