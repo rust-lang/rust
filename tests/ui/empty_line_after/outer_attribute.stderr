@@ -9,7 +9,7 @@ LL |   fn first_in_crate() {}
    |
    = note: `-D clippy::empty-line-after-outer-attr` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::empty_line_after_outer_attr)]`
-   = help: if the empty line is unintentional remove it
+   = help: if the empty line is unintentional, remove it
 help: if the attribute should apply to the crate use an inner attribute
    |
 LL | #![crate_type = "lib"]
@@ -25,7 +25,7 @@ LL |   /// some comment
 LL |   fn with_one_newline_and_comment() {}
    |   ------------------------------- the attribute applies to this function
    |
-   = help: if the empty line is unintentional remove it
+   = help: if the empty line is unintentional, remove it
 
 error: empty line after outer attribute
   --> tests/ui/empty_line_after/outer_attribute.rs:23:1
@@ -36,7 +36,7 @@ LL | |
 LL |   fn with_one_newline() {}
    |   ------------------- the attribute applies to this function
    |
-   = help: if the empty line is unintentional remove it
+   = help: if the empty line is unintentional, remove it
 
 error: empty lines after outer attribute
   --> tests/ui/empty_line_after/outer_attribute.rs:30:5
@@ -48,7 +48,7 @@ LL | |
 LL |       fn with_two_newlines() {}
    |       -------------------- the attribute applies to this function
    |
-   = help: if the empty lines are unintentional remove them
+   = help: if the empty lines are unintentional, remove them
 help: if the attribute should apply to the parent module use an inner attribute
    |
 LL |     #![crate_type = "lib"]
@@ -63,7 +63,7 @@ LL | |
 LL |   enum Baz {
    |   -------- the attribute applies to this enum
    |
-   = help: if the empty line is unintentional remove it
+   = help: if the empty line is unintentional, remove it
 
 error: empty line after outer attribute
   --> tests/ui/empty_line_after/outer_attribute.rs:45:1
@@ -74,7 +74,7 @@ LL | |
 LL |   struct Foo {
    |   ---------- the attribute applies to this struct
    |
-   = help: if the empty line is unintentional remove it
+   = help: if the empty line is unintentional, remove it
 
 error: empty line after outer attribute
   --> tests/ui/empty_line_after/outer_attribute.rs:53:1
@@ -85,7 +85,7 @@ LL | |
 LL |   mod foo {}
    |   ------- the attribute applies to this module
    |
-   = help: if the empty line is unintentional remove it
+   = help: if the empty line is unintentional, remove it
 
 error: empty line after outer attribute
   --> tests/ui/empty_line_after/outer_attribute.rs:58:1
@@ -97,7 +97,7 @@ LL | |
 LL |   fn comment_before_empty_line() {}
    |   ---------------------------- the attribute applies to this function
    |
-   = help: if the empty line is unintentional remove it
+   = help: if the empty line is unintentional, remove it
 
 error: empty lines after outer attribute
   --> tests/ui/empty_line_after/outer_attribute.rs:64:1
@@ -109,7 +109,7 @@ LL | |
 LL |   pub fn isolated_comment() {}
    |   ----------------------- the attribute applies to this function
    |
-   = help: if the empty lines are unintentional remove them
+   = help: if the empty lines are unintentional, remove them
 
 error: aborting due to 9 previous errors
 
