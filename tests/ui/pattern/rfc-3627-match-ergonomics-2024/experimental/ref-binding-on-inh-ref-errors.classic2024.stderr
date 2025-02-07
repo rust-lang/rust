@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:60:10
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:54:10
    |
 LL |     let [&mut ref x] = &[&mut 0];
    |          ^^^^^
@@ -10,55 +10,75 @@ help: replace this `&mut` pattern with `&`
 LL |     let [&ref x] = &[&mut 0];
    |          ~
 
-error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:74:10
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:67:10
    |
 LL |     let [ref mut x] = &[0];
-   |          ^^^^^^^ cannot override to bind by-reference when that is the implicit default
+   |          ^^^^^^^ binding modifier not allowed under `ref` default binding mode
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+note: matching on a reference type with a non-reference pattern changes the default binding mode
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:67:9
+   |
+LL |     let [ref mut x] = &[0];
+   |         ^^^^^^^^^^^ this matches on type `&_`
 help: make the implied reference pattern explicit
    |
 LL |     let &[ref mut x] = &[0];
    |         +
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:74:10
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:67:10
    |
 LL |     let [ref mut x] = &[0];
    |          ^^^^^^^^^ cannot borrow as mutable
 
-error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:83:10
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:75:10
    |
 LL |     let [ref x] = &[0];
-   |          ^^^ cannot override to bind by-reference when that is the implicit default
+   |          ^^^ binding modifier not allowed under `ref` default binding mode
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+note: matching on a reference type with a non-reference pattern changes the default binding mode
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:75:9
+   |
+LL |     let [ref x] = &[0];
+   |         ^^^^^^^ this matches on type `&_`
 help: make the implied reference pattern explicit
    |
 LL |     let &[ref x] = &[0];
    |         +
 
-error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:88:10
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:79:10
    |
 LL |     let [ref x] = &mut [0];
-   |          ^^^ cannot override to bind by-reference when that is the implicit default
+   |          ^^^ binding modifier not allowed under `ref mut` default binding mode
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+note: matching on a reference type with a non-reference pattern changes the default binding mode
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:79:9
+   |
+LL |     let [ref x] = &mut [0];
+   |         ^^^^^^^ this matches on type `&mut _`
 help: make the implied reference pattern explicit
    |
 LL |     let &mut [ref x] = &mut [0];
    |         ++++
 
-error: this pattern relies on behavior which may change in edition 2024
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:93:10
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:83:10
    |
 LL |     let [ref mut x] = &mut [0];
-   |          ^^^^^^^ cannot override to bind by-reference when that is the implicit default
+   |          ^^^^^^^ binding modifier not allowed under `ref mut` default binding mode
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+note: matching on a reference type with a non-reference pattern changes the default binding mode
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:83:9
+   |
+LL |     let [ref mut x] = &mut [0];
+   |         ^^^^^^^^^^^ this matches on type `&mut _`
 help: make the implied reference pattern explicit
    |
 LL |     let &mut [ref mut x] = &mut [0];
