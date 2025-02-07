@@ -297,3 +297,9 @@ fn issue13776() {
     let x;
     issue13776_mac!(x, 10); // should not lint
 }
+
+fn issue9895() {
+    
+    //~^ needless_late_init
+    let r = 5;
+}
