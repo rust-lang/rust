@@ -853,6 +853,8 @@ macro_rules! make_mir_visitor {
                     local_info: _,
                 } = local_decl;
 
+                self.visit_source_info(source_info);
+
                 self.visit_ty($(& $mutability)? *ty, TyContext::LocalDecl {
                     local,
                     source_info: *source_info,
@@ -862,7 +864,6 @@ macro_rules! make_mir_visitor {
                         self.visit_user_type_projection(user_ty);
                     }
                 }
-                self.visit_source_info(source_info);
             }
 
             fn super_var_debug_info(
