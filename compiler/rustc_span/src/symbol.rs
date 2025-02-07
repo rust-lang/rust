@@ -1512,7 +1512,7 @@ symbols! {
         path_main_separator,
         path_to_pathbuf,
         pathbuf_as_path,
-        pattern_complexity,
+        pattern_complexity_limit,
         pattern_parentheses,
         pattern_type,
         pattern_types,

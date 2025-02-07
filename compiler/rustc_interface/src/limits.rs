@@ -36,7 +36,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         pattern_complexity_limit: get_limit(
             tcx.hir().krate_attrs(),
             tcx.sess,
-            sym::pattern_complexity,
+            sym::pattern_complexity_limit,
             Limit::unlimited(),
         ),
     }
