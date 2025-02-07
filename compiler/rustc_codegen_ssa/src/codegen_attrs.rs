@@ -41,7 +41,6 @@ fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
     // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
     // and don't have to be, LLVM treats them as no-ops.
     match name {
-        "appending" => Appending,
         "available_externally" => AvailableExternally,
         "common" => Common,
         "extern_weak" => ExternalWeak,
