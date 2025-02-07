@@ -141,27 +141,14 @@ pub const AbiDatas: &[AbiData] = &[
 ];
 
 #[derive(Copy, Clone, Debug)]
-pub enum AbiUnsupported {
-    Unrecognized,
-    Reason { explain: &'static str },
-}
-
+pub struct AbiUnsupported {}
 /// Returns the ABI with the given name (if any).
 pub fn lookup(name: &str) -> Result<Abi, AbiUnsupported> {
-    AbiDatas.iter().find(|abi_data| name == abi_data.name).map(|&x| x.abi).ok_or_else(|| match name {
-        "riscv-interrupt" => AbiUnsupported::Reason {
-            explain: "please use one of riscv-interrupt-m or riscv-interrupt-s for machine- or supervisor-level interrupts, respectively",
-        },
-        "riscv-interrupt-u" => AbiUnsupported::Reason {
-            explain: "user-mode interrupt handlers have been removed from LLVM pending standardization, see: https://reviews.llvm.org/D149314",
-        },
-        "wasm" => AbiUnsupported::Reason {
-            explain: "non-standard wasm ABI is no longer supported",
-        },
-
-        _ => AbiUnsupported::Unrecognized,
-
-    })
+    AbiDatas
+        .iter()
+        .find(|abi_data| name == abi_data.name)
+        .map(|&x| x.abi)
+        .ok_or_else(|| AbiUnsupported {})
 }
 
 pub fn all_names() -> Vec<&'static str> {

@@ -17,8 +17,7 @@ use thin_vec::ThinVec;
 use tracing::instrument;
 
 use super::errors::{
-    InvalidAbi, InvalidAbiReason, InvalidAbiSuggestion, MisplacedRelaxTraitBound,
-    TupleStructWithDefault,
+    InvalidAbi, InvalidAbiSuggestion, MisplacedRelaxTraitBound, TupleStructWithDefault,
 };
 use super::stability::{enabled_names, gate_unstable_abi};
 use super::{
@@ -1482,8 +1481,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_abi(&mut self, abi_str: StrLit) -> ExternAbi {
         let ast::StrLit { symbol_unescaped, span, .. } = abi_str;
-        let extern_abi = rustc_abi::lookup(symbol_unescaped.as_str()).unwrap_or_else(|err| {
-            self.error_on_invalid_abi(abi_str, err);
+        let extern_abi = rustc_abi::lookup(symbol_unescaped.as_str()).unwrap_or_else(|_| {
+            self.error_on_invalid_abi(abi_str);
             ExternAbi::Rust
         });
         let sess = self.tcx.sess;
@@ -1500,7 +1499,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn error_on_invalid_abi(&self, abi: StrLit, err: rustc_abi::AbiUnsupported) {
+    fn error_on_invalid_abi(&self, abi: StrLit) {
         let abi_names = enabled_names(self.tcx.features(), abi.span)
             .iter()
             .map(|s| Symbol::intern(s))
@@ -1509,10 +1508,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.dcx().emit_err(InvalidAbi {
             abi: abi.symbol_unescaped,
             span: abi.span,
-            explain: match err {
-                rustc_abi::AbiUnsupported::Reason { explain } => Some(InvalidAbiReason(explain)),
-                _ => None,
-            },
             suggestion: suggested_name.map(|suggested_name| InvalidAbiSuggestion {
                 span: abi.span,
                 suggestion: format!("\"{suggested_name}\""),
