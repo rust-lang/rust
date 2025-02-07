@@ -59,6 +59,15 @@ pub trait Float:
     /// The exponent bias value
     const EXP_BIAS: u32 = Self::EXP_SAT >> 1;
 
+    /// Maximum unbiased exponent value.
+    const EXP_MAX: i32 = Self::EXP_BIAS as i32;
+
+    /// Minimum *NORMAL* unbiased exponent value.
+    const EXP_MIN: i32 = -(Self::EXP_MAX - 1);
+
+    /// Minimum subnormal exponent value.
+    const EXP_MIN_SUBNORM: i32 = Self::EXP_MIN - Self::SIG_BITS as i32;
+
     /// A mask for the sign bit
     const SIGN_MASK: Self::Int;
 
@@ -274,6 +283,9 @@ mod tests {
         // Constants
         assert_eq!(f16::EXP_SAT, 0b11111);
         assert_eq!(f16::EXP_BIAS, 15);
+        assert_eq!(f16::EXP_MAX, 15);
+        assert_eq!(f16::EXP_MIN, -14);
+        assert_eq!(f16::EXP_MIN_SUBNORM, -24);
 
         // `exp_unbiased`
         assert_eq!(f16::FRAC_PI_2.exp_unbiased(), 0);
@@ -296,6 +308,9 @@ mod tests {
         // Constants
         assert_eq!(f32::EXP_SAT, 0b11111111);
         assert_eq!(f32::EXP_BIAS, 127);
+        assert_eq!(f32::EXP_MAX, 127);
+        assert_eq!(f32::EXP_MIN, -126);
+        assert_eq!(f32::EXP_MIN_SUBNORM, -149);
 
         // `exp_unbiased`
         assert_eq!(f32::FRAC_PI_2.exp_unbiased(), 0);
@@ -319,6 +334,9 @@ mod tests {
         // Constants
         assert_eq!(f64::EXP_SAT, 0b11111111111);
         assert_eq!(f64::EXP_BIAS, 1023);
+        assert_eq!(f64::EXP_MAX, 1023);
+        assert_eq!(f64::EXP_MIN, -1022);
+        assert_eq!(f64::EXP_MIN_SUBNORM, -1074);
 
         // `exp_unbiased`
         assert_eq!(f64::FRAC_PI_2.exp_unbiased(), 0);
@@ -343,6 +361,9 @@ mod tests {
         // Constants
         assert_eq!(f128::EXP_SAT, 0b111111111111111);
         assert_eq!(f128::EXP_BIAS, 16383);
+        assert_eq!(f128::EXP_MAX, 16383);
+        assert_eq!(f128::EXP_MIN, -16382);
+        assert_eq!(f128::EXP_MIN_SUBNORM, -16494);
 
         // `exp_unbiased`
         assert_eq!(f128::FRAC_PI_2.exp_unbiased(), 0);

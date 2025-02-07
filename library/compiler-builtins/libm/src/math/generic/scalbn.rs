@@ -28,8 +28,8 @@ where
     let sig_total_bits = F::SIG_BITS + 1;
 
     // Maximum and minimum values when biased
-    let exp_max: i32 = F::EXP_BIAS as i32;
-    let exp_min = -(exp_max - 1);
+    let exp_max = F::EXP_MAX;
+    let exp_min = F::EXP_MIN;
 
     // 2 ^ Emax, maximum positive with null significand (0x1p1023 for f64)
     let f_exp_max = F::from_parts(false, F::EXP_BIAS << 1, zero);
