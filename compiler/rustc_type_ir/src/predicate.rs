@@ -469,6 +469,17 @@ impl AliasTermKind {
     }
 }
 
+impl From<ty::AliasTyKind> for AliasTermKind {
+    fn from(value: ty::AliasTyKind) -> Self {
+        match value {
+            ty::Projection => AliasTermKind::ProjectionTy,
+            ty::Opaque => AliasTermKind::OpaqueTy,
+            ty::Weak => AliasTermKind::WeakTy,
+            ty::Inherent => AliasTermKind::InherentTy,
+        }
+    }
+}
+
 /// Represents the unprojected term of a projection goal.
 ///
 /// * For a projection, this would be `<Ty as Trait<...>>::N<...>`.
