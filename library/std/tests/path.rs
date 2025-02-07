@@ -1822,6 +1822,20 @@ fn display_format_flags() {
     assert_eq!(format!("a{:^10}e", Path::new("bcd").display()), "a   bcd    e");
 }
 
+#[cfg(unix)]
+#[test]
+fn display_invalid_utf8_unix() {
+    use std::ffi::OsString;
+    use std::os::unix::ffi::OsStringExt;
+
+    let path_buf = PathBuf::from(OsString::from_vec(b"b\xFFd".to_vec()));
+    assert_eq!(format!("a{:^10}e", path_buf.display()), "a   b�d    e");
+    assert_eq!(format!("a{:^10}e", path_buf.as_path().display()), "a   b�d    e");
+    let path_buf = PathBuf::from(OsString::from_vec(b"b\xE1\xBAd".to_vec()));
+    assert_eq!(format!("a{:^10}e", path_buf.display()), "a   b�d    e");
+    assert_eq!(format!("a{:^10}e", path_buf.as_path().display()), "a   b�d    e");
+}
+
 #[cfg(windows)]
 #[test]
 fn display_invalid_wtf8_windows() {
