@@ -1,4 +1,3 @@
-#![feature(trait_upcasting)]
 // Check that super-traits are callable.
 
 //@ revisions: cfi kcfi
