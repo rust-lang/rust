@@ -133,6 +133,36 @@ macro_rules! iterator {
                     },
                 )
             }
+
+            unsafe fn iter_next_zst(&mut self) -> Option<$elem> {
+                // SAFETY: todo
+                let len_ref = unsafe { &mut *(&raw mut self.end_or_len).cast::<usize>() };
+                if *len_ref == 0 {
+                    None
+                } else {
+                    // SAFETY: todo
+                    Some(unsafe {
+                        *len_ref = crate::intrinsics::unchecked_sub(*len_ref, 1);
+                        self.ptr.$into_ref()
+                    })
+                }
+            }
+
+            unsafe fn iter_next_pst(&mut self) -> Option<$elem> {
+                // SAFETY: todo
+                let end_ref = unsafe { &mut *(&raw mut self.end_or_len).cast::<NonNull<T>>() };
+                if self.ptr == *end_ref {
+                    None
+                } else {
+                    // SAFETY: todo
+                    Some(unsafe {
+                        let $( $mut_ )? old = self.ptr;
+                        self.ptr = self.ptr.add(1);
+                        old.$into_ref()
+                    })
+                }
+            }
+
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -154,17 +184,9 @@ macro_rules! iterator {
 
             #[inline]
             fn next(&mut self) -> Option<$elem> {
-                // could be implemented with slices, but this avoids bounds checks
-
-                // SAFETY: The call to `next_unchecked` is
-                // safe since we check if the iterator is empty first.
-                unsafe {
-                    if is_empty!(self) {
-                        None
-                    } else {
-                        Some(self.next_unchecked())
-                    }
-                }
+                let fun = const { if T::IS_ZST { Self::iter_next_zst } else { Self::iter_next_pst } };
+                // SAFETY: todo
+                unsafe { fun(self) }
             }
 
             #[inline]
