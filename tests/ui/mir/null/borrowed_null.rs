@@ -1,6 +1,6 @@
 //@ run-fail
 //@ compile-flags: -C debug-assertions
-//@ error-pattern: null pointer dereference occured
+//@ error-pattern: null pointer dereference occurred
 
 fn main() {
     let ptr: *const u32 = std::ptr::null();
