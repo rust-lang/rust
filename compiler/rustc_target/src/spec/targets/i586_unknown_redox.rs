@@ -2,7 +2,7 @@ use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::redox::opts();
-    base.cpu = "pentiumpro".into();
+    base.cpu = "pentium".into();
     base.plt_by_default = false;
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32"]);
@@ -10,7 +10,7 @@ pub(crate) fn target() -> Target {
     base.stack_probes = StackProbeType::Call;
 
     Target {
-        llvm_target: "i686-unknown-redox".into(),
+        llvm_target: "i586-unknown-redox".into(),
         metadata: crate::spec::TargetMetadata {
             description: None,
             tier: None,
