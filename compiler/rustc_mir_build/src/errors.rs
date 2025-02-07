@@ -1,3 +1,4 @@
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
@@ -1097,41 +1098,70 @@ pub(crate) enum MiscPatternSuggestion {
 
 #[derive(LintDiagnostic)]
 #[diag(mir_build_rust_2024_incompatible_pat)]
-pub(crate) struct Rust2024IncompatiblePat<'a> {
+pub(crate) struct Rust2024IncompatiblePat {
     #[subdiagnostic]
-    pub(crate) sugg: Rust2024IncompatiblePatSugg<'a>,
+    pub(crate) sugg: Rust2024IncompatiblePatSugg,
+    pub(crate) bad_modifiers: bool,
+    pub(crate) bad_ref_pats: bool,
+    pub(crate) is_hard_error: bool,
 }
 
-pub(crate) struct Rust2024IncompatiblePatSugg<'a> {
+pub(crate) struct Rust2024IncompatiblePatSugg {
+    /// If true, our suggestion is to elide explicit binding modifiers.
+    /// If false, our suggestion is to make the pattern fully explicit.
+    pub(crate) suggest_eliding_modes: bool,
     pub(crate) suggestion: Vec<(Span, String)>,
     pub(crate) ref_pattern_count: usize,
     pub(crate) binding_mode_count: usize,
-    /// Labeled spans for subpatterns invalid in Rust 2024.
-    pub(crate) labels: &'a [(Span, String)],
+    /// Internal state: the ref-mutability of the default binding mode at the subpattern being
+    /// lowered, with the span where it was introduced. `None` for a by-value default mode.
+    pub(crate) default_mode_span: Option<(Span, ty::Mutability)>,
+    /// Labels for where incompatibility-causing by-ref default binding modes were introduced.
+    pub(crate) default_mode_labels: FxIndexMap<Span, ty::Mutability>,
 }
 
-impl<'a> Subdiagnostic for Rust2024IncompatiblePatSugg<'a> {
+impl Subdiagnostic for Rust2024IncompatiblePatSugg {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: &F,
     ) {
+        // Format and emit explanatory notes about default binding modes. Reversing the spans' order
+        // means if we have nested spans, the innermost ones will be visited first.
+        for (span, def_br_mutbl) in self.default_mode_labels.into_iter().rev() {
+            // Don't point to a macro call site.
+            if !span.from_expansion() {
+                let note_msg = "matching on a reference type with a non-reference pattern changes the default binding mode";
+                let label_msg =
+                    format!("this matches on type `{}_`", def_br_mutbl.ref_prefix_str());
+                let mut label = MultiSpan::from(span);
+                label.push_span_label(span, label_msg);
+                diag.span_note(label, note_msg);
+            }
+        }
+
+        // Format and emit the suggestion.
         let applicability =
             if self.suggestion.iter().all(|(span, _)| span.can_be_used_for_suggestions()) {
                 Applicability::MachineApplicable
             } else {
                 Applicability::MaybeIncorrect
             };
-        let plural_derefs = pluralize!(self.ref_pattern_count);
-        let and_modes = if self.binding_mode_count > 0 {
-            format!(" and variable binding mode{}", pluralize!(self.binding_mode_count))
+        let msg = if self.suggest_eliding_modes {
+            let plural_modes = pluralize!(self.binding_mode_count);
+            format!("remove the unnecessary binding modifier{plural_modes}")
         } else {
-            String::new()
+            let plural_derefs = pluralize!(self.ref_pattern_count);
+            let and_modes = if self.binding_mode_count > 0 {
+                format!(" and variable binding mode{}", pluralize!(self.binding_mode_count))
+            } else {
+                String::new()
+            };
+            format!("make the implied reference pattern{plural_derefs}{and_modes} explicit")
         };
-        diag.multipart_suggestion_verbose(
-            format!("make the implied reference pattern{plural_derefs}{and_modes} explicit"),
-            self.suggestion,
-            applicability,
-        );
+        // FIXME(dianne): for peace of mind, don't risk emitting a 0-part suggestion (that panics!)
+        if !self.suggestion.is_empty() {
+            diag.multipart_suggestion_verbose(msg, self.suggestion, applicability);
+        }
     }
 }
