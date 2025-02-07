@@ -12,22 +12,35 @@ This is a GCC codegen for rustc, which means it can be loaded by the existing ru
 The primary goal of this project is to be able to compile Rust code on platforms unsupported by LLVM.
 A secondary goal is to check if using the gcc backend will provide any run-time speed improvement for the programs compiled using rustc.
 
+## Getting Started
+
+Note: **This requires a patched libgccjit in order to work.
+You need to use my [fork of gcc](https://github.com/antoyo/gcc) which already includes these patches.**
+
 ### Dependencies
+  - rustup: follow instructions on the [official website](https://rustup.rs)
+  - consider to install DejaGnu which is necessary for running the libgccjit test suite. [website](https://www.gnu.org/software/dejagnu/#downloading)
+  - additional packages: `flex`, `libmpfr-dev`, `libgmp-dev`, `libmpc3`, `libmpc-dev`
+  
+### Quick start
+1. Clone and configure the repository:
+   ```bash
+   git clone https://github.com/rust-lang/rust_codegen_gcc
+   cd rust_codegen_gcc
+   cp config.example.toml config.toml
+   ```
 
-**rustup:** Follow the instructions on the official [website](https://www.rust-lang.org/tools/install)
-
-**DejaGnu:** Consider to install DejaGnu which is necessary for running the libgccjit test suite. [website](https://www.gnu.org/software/dejagnu/#downloading)
-
-
-
-## Building
-
-**This requires a patched libgccjit in order to work.
-You need to use my [fork of gcc](https://github.com/rust-lang/gcc) which already includes these patches.**
-
-```bash
-$ cp config.example.toml config.toml
-```
+2. Build and test:
+   ```bash
+   ./y.sh prepare  # downloads and patches sysroot
+   ./y.sh build --sysroot --release
+   
+   # Verify setup with a simple test
+   ./y.sh cargo build --manifest-path tests/hello-world/Cargo.toml
+   
+   # Run full test suite (expect ~100 failing UI tests)
+   ./y.sh test --release
+   ```
 
 If don't need to test GCC patches you wrote in our GCC fork, then the default configuration should
 be all you need. You can update the `rustc_codegen_gcc` without worrying about GCC.
@@ -40,7 +53,7 @@ to do a few more things.
 To build it (most of these instructions come from [here](https://gcc.gnu.org/onlinedocs/jit/internals/index.html), so don't hesitate to take a look there if you encounter an issue):
 
 ```bash
-$ git clone https://github.com/rust-lang/gcc
+$ git clone https://github.com/antoyo/gcc
 $ sudo apt install flex libmpfr-dev libgmp-dev libmpc3 libmpc-dev
 $ mkdir gcc-build gcc-install
 $ cd gcc-build

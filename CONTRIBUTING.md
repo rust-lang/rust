@@ -1,39 +1,19 @@
 # Contributing to rust_codegen_gcc
 
-Welcome to the rust_codegen_gcc project! This guide will help you get started as a contributor. The project aims to provide a GCC codegen backend for rustc, allowing Rust compilation on platforms unsupported by LLVM and potentially improving runtime performance through GCC's optimizations.
+Welcome to the `rust_codegen_gcc` project! This guide will help you get started as a contributor. The project aims to provide a GCC codegen backend for rustc, allowing Rust compilation on platforms unsupported by LLVM and potentially improving runtime performance through GCC's optimizations.
 
 ## Getting Started
 
 ### Setting Up Your Development Environment
 
-1. Install the required dependencies:
-   - rustup (follow instructions on the [official website](https://rustup.rs))
-   - DejaGnu (for running libgccjit test suite)
-   - Additional packages: `flex`, `libmpfr-dev`, `libgmp-dev`, `libmpc3`, `libmpc-dev`
+For detailed setup instructions including dependencies, build steps, and initial testing, please refer to our [README](https://github.com/rust-lang/rustc_codegen_gcc/blob/master/Readme.md). The README contains the most up-to-date information on:
 
-2. Clone and configure the repository:
-   ```bash
-   git clone https://github.com/rust-lang/rust_codegen_gcc
-   cd rust_codegen_gcc
-   cp config.example.toml config.toml
-   ```
+- Required dependencies and system packages
+- Repository setup and configuration
+- Build process
+- Basic test verification
 
-3. Build the project:
-   ```bash
-   ./y.sh prepare  # downloads and patches sysroot
-   ./y.sh build --sysroot --release
-   ```
-
-### Running Tests
-
-To verify your setup:
-```bash
-# Run the full test suite
-./y.sh test --release
-
-# Test with a simple program
-./y.sh cargo build --manifest-path tests/hello-world/Cargo.toml
-```
+Once you've completed the setup process outlined in the README, you can proceed with the contributor-specific information below.
 
 ## Communication Channels
 
@@ -45,31 +25,28 @@ We encourage new contributors to join our communication channels and introduce t
 
 ## Understanding Core Concepts
 
-### Project Structure
-
-The project consists of several key components:
-- The GCC backend integration through libgccjit
-- Rust compiler interface
-- Test infrastructure
-
 ### Common Development Tasks
 
 #### Running Specific Tests
-To run a specific test:
-1. Individual test: `./y.sh test --test <test_name>`
-2. libgccjit tests: 
-   ```bash
-   cd gcc-build/gcc
-   make check-jit
-   # For a specific test:
-   make check-jit RUNTESTFLAGS="-v -v -v jit.exp=jit.dg/test-asm.cc"
-   ```
+To run specific tests, use appropriate flags such as:
+- `./y.sh test --test-libcore`
+- `./y.sh test --std-tests`
+
+Additional test running options:
+```bash
+# libgccjit tests
+cd gcc-build/gcc
+make check-jit
+# For a specific test:
+make check-jit RUNTESTFLAGS="-v -v -v jit.exp=jit.dg/test-asm.cc"
+```
 
 #### Debugging Tools
 The project provides several environment variables for debugging:
+- `CG_GCCJIT_DUMP_GIMPLE`: Most commonly used debug dump
+- `CG_RUSTFLAGS`: Additional Rust compiler flags
 - `CG_GCCJIT_DUMP_MODULE`: Dumps a specific module
 - `CG_GCCJIT_DUMP_TO_FILE`: Creates C-like representation
-- `CG_GCCJIT_DUMP_RTL`: Shows Register Transfer Language output
 
 Full list of debugging options can be found in the README.
 
@@ -77,8 +54,8 @@ Full list of debugging options can be found in the README.
 
 ### Finding Issues to Work On
 1. Look for issues labeled with `good-first-issue` or `help-wanted`
-2. Check the project roadmap for larger initiatives
-3. Consider improving documentation or tests
+2. Check the [progress report](https://blog.antoyo.xyz/rustc_codegen_gcc-progress-report-34#state_of_rustc_codegen_gcc) for larger initiatives
+3. Consider improving documentation or investigate [failing tests](https://github.com/rust-lang/rustc_codegen_gcc/tree/master/tests)(except failing-ui-tests12.txt)
 
 ### Pull Request Process
 1. Fork the repository and create a new branch
@@ -97,10 +74,12 @@ Full list of debugging options can be found in the README.
 - [Rustc Dev Guide](https://rustc-dev-guide.rust-lang.org/)
 - [GCC Internals Documentation](https://gcc.gnu.org/onlinedocs/gccint/)
 - Project-specific documentation in the `doc/` directory:
-  - Common errors
-  - Debugging GCC LTO
-  - Git subtree sync
-  - Sending patches to GCC
+  - [Common errors](./doc/errors.md)
+  - [Debugging GCC LTO](./doc/debugging-gcc-lto.md)
+  - [Debugging libgccjit](./doc/debugging-libgccjit.md)
+  - [Git subtree sync](./doc/subtree.md)
+  - [List of useful commands](./doc/tips.md)
+  - [Send a patch to GCC](./doc/sending-gcc-patch.md)
 
 ## Getting Help
 
