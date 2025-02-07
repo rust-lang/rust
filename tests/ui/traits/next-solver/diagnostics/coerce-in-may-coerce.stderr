@@ -10,7 +10,7 @@ note: function defined here
   --> $DIR/coerce-in-may-coerce.rs:12:4
    |
 LL | fn arg_error(x: <fn() as Mirror>::Assoc, y: ()) { todo!() }
-   |    ^^^^^^^^^ --------------------------  -----
+   |    ^^^^^^^^^
 help: swap these arguments
    |
 LL |     arg_error(|| (), ());

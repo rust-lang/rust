@@ -1048,8 +1048,8 @@ impl<'a> DiagCtxtHandle<'a> {
     /// bad results, such as spurious/uninteresting additional errors -- when
     /// returning an error `Result` is difficult.
     pub fn abort_if_errors(&self) {
-        if self.has_errors().is_some() {
-            FatalError.raise();
+        if let Some(guar) = self.has_errors() {
+            guar.raise_fatal();
         }
     }
 

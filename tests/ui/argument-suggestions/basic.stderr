@@ -57,7 +57,7 @@ note: function defined here
   --> $DIR/basic.rs:16:4
    |
 LL | fn swapped(_i: u32, _s: &str) {}
-   |    ^^^^^^^ -------  --------
+   |    ^^^^^^^
 help: swap these arguments
    |
 LL |     swapped(1, "");
@@ -76,7 +76,7 @@ note: function defined here
   --> $DIR/basic.rs:17:4
    |
 LL | fn permuted(_x: X, _y: Y, _z: Z) {}
-   |    ^^^^^^^^ -----  -----  -----
+   |    ^^^^^^^^
 help: reorder these arguments
    |
 LL |     permuted(X {}, Y {}, Z {});

@@ -2,11 +2,12 @@
 //! It also serves as an input to the parser itself.
 
 use std::str;
+use std::sync::Arc;
 
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
-use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
+use rustc_data_structures::sync::{AppendOnlyVec, Lock};
 use rustc_errors::emitter::{HumanEmitter, SilentEmitter, stderr_destination};
 use rustc_errors::{
     ColorConfig, Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, EmissionGuarantee, MultiSpan,
@@ -218,7 +219,7 @@ pub struct ParseSess {
     /// should be. Useful to avoid bad tokenization when encountering emoji. We group them to
     /// provide a single error per unique incorrect identifier.
     pub bad_unicode_identifiers: Lock<FxIndexMap<Symbol, Vec<Span>>>,
-    source_map: Lrc<SourceMap>,
+    source_map: Arc<SourceMap>,
     pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
     /// Contains the spans of block expressions that could have been incomplete based on the
     /// operation token that followed it, but that the parser cannot identify without further
@@ -243,16 +244,16 @@ impl ParseSess {
     /// Used for testing.
     pub fn new(locale_resources: Vec<&'static str>) -> Self {
         let fallback_bundle = fallback_fluent_bundle(locale_resources, false);
-        let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+        let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
         let emitter = Box::new(
             HumanEmitter::new(stderr_destination(ColorConfig::Auto), fallback_bundle)
-                .sm(Some(Lrc::clone(&sm))),
+                .sm(Some(Arc::clone(&sm))),
         );
         let dcx = DiagCtxt::new(emitter);
         ParseSess::with_dcx(dcx, sm)
     }
 
-    pub fn with_dcx(dcx: DiagCtxt, source_map: Lrc<SourceMap>) -> Self {
+    pub fn with_dcx(dcx: DiagCtxt, source_map: Arc<SourceMap>) -> Self {
         Self {
             dcx,
             unstable_features: UnstableFeatures::from_environment(None),
@@ -281,7 +282,7 @@ impl ParseSess {
         emit_fatal_diagnostic: bool,
     ) -> Self {
         let fallback_bundle = fallback_fluent_bundle(locale_resources, false);
-        let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+        let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
         let fatal_emitter =
             Box::new(HumanEmitter::new(stderr_destination(ColorConfig::Auto), fallback_bundle));
         let dcx = DiagCtxt::new(Box::new(SilentEmitter {
@@ -298,8 +299,8 @@ impl ParseSess {
         &self.source_map
     }
 
-    pub fn clone_source_map(&self) -> Lrc<SourceMap> {
-        Lrc::clone(&self.source_map)
+    pub fn clone_source_map(&self) -> Arc<SourceMap> {
+        Arc::clone(&self.source_map)
     }
 
     pub fn buffer_lint(

@@ -71,14 +71,9 @@ mod debuginfo;
 mod declare;
 mod errors;
 mod intrinsic;
-
-// The following is a workaround that replaces `pub mod llvm;` and that fixes issue 53912.
-#[path = "llvm/mod.rs"]
-mod llvm_;
-pub mod llvm {
-    pub use super::llvm_::*;
-}
-
+// FIXME(Zalathar): Fix all the unreachable-pub warnings that would occur if
+// this isn't pub, then make it not pub.
+pub mod llvm;
 mod llvm_util;
 mod mono_item;
 mod type_;

@@ -88,7 +88,11 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
 ) -> FulfillmentError<'tcx> {
     let (code, refine_obligation) = infcx.probe(|_| {
         match <&SolverDelegate<'tcx>>::from(infcx)
-            .evaluate_root_goal(root_obligation.clone().into(), GenerateProofTree::No)
+            .evaluate_root_goal(
+                root_obligation.clone().into(),
+                GenerateProofTree::No,
+                root_obligation.cause.span,
+            )
             .0
         {
             Ok((_, Certainty::Maybe(MaybeCause::Ambiguity))) => {

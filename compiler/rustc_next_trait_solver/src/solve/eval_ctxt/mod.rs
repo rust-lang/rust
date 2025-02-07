@@ -78,6 +78,8 @@ where
 
     nested_goals: NestedGoals<I>,
 
+    pub(super) origin_span: I::Span,
+
     // Has this `EvalCtxt` errored out with `NoSolution` in `try_evaluate_added_goals`?
     //
     // If so, then it can no longer be used to make a canonical query response,
@@ -134,6 +136,7 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         generate_proof_tree: GenerateProofTree,
+        span: <Self::Interner as Interner>::Span,
     ) -> (
         Result<(HasChanged, Certainty), NoSolution>,
         Option<inspect::GoalEvaluation<Self::Interner>>,
@@ -174,8 +177,9 @@ where
         &self,
         goal: Goal<I, I::Predicate>,
         generate_proof_tree: GenerateProofTree,
+        span: I::Span,
     ) -> (Result<(HasChanged, Certainty), NoSolution>, Option<inspect::GoalEvaluation<I>>) {
-        EvalCtxt::enter_root(self, self.cx().recursion_limit(), generate_proof_tree, |ecx| {
+        EvalCtxt::enter_root(self, self.cx().recursion_limit(), generate_proof_tree, span, |ecx| {
             ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal)
         })
     }
@@ -186,7 +190,7 @@ where
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
     ) -> bool {
         self.probe(|| {
-            EvalCtxt::enter_root(self, root_depth, GenerateProofTree::No, |ecx| {
+            EvalCtxt::enter_root(self, root_depth, GenerateProofTree::No, I::Span::dummy(), |ecx| {
                 ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal)
             })
             .0
@@ -203,9 +207,13 @@ where
         Result<(NestedNormalizationGoals<I>, HasChanged, Certainty), NoSolution>,
         Option<inspect::GoalEvaluation<I>>,
     ) {
-        EvalCtxt::enter_root(self, self.cx().recursion_limit(), generate_proof_tree, |ecx| {
-            ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal)
-        })
+        EvalCtxt::enter_root(
+            self,
+            self.cx().recursion_limit(),
+            generate_proof_tree,
+            I::Span::dummy(),
+            |ecx| ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal),
+        )
     }
 }
 
@@ -229,6 +237,7 @@ where
         delegate: &D,
         root_depth: usize,
         generate_proof_tree: GenerateProofTree,
+        origin_span: I::Span,
         f: impl FnOnce(&mut EvalCtxt<'_, D>) -> R,
     ) -> (R, Option<inspect::GoalEvaluation<I>>) {
         let mut search_graph = SearchGraph::new(root_depth);
@@ -248,6 +257,7 @@ where
             variables: Default::default(),
             var_values: CanonicalVarValues::dummy(),
             is_normalizes_to_goal: false,
+            origin_span,
             tainted: Ok(()),
         };
         let result = f(&mut ecx);
@@ -289,12 +299,13 @@ where
             max_input_universe: canonical_input.canonical.max_universe,
             search_graph,
             nested_goals: NestedGoals::new(),
+            origin_span: I::Span::dummy(),
             tainted: Ok(()),
             inspect: canonical_goal_evaluation.new_goal_evaluation_step(var_values),
         };
 
         for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
-            ecx.delegate.inject_new_hidden_type_unchecked(key, ty);
+            ecx.delegate.inject_new_hidden_type_unchecked(key, ty, ecx.origin_span);
         }
 
         if !ecx.nested_goals.is_empty() {
@@ -822,8 +833,12 @@ where
             let identity_args = self.fresh_args_for_item(alias.def_id);
             let rigid_ctor = ty::AliasTerm::new_from_args(cx, alias.def_id, identity_args);
             let ctor_term = rigid_ctor.to_term(cx);
-            let obligations =
-                self.delegate.eq_structurally_relating_aliases(param_env, term, ctor_term)?;
+            let obligations = self.delegate.eq_structurally_relating_aliases(
+                param_env,
+                term,
+                ctor_term,
+                self.origin_span,
+            )?;
             debug_assert!(obligations.is_empty());
             self.relate(param_env, alias, variance, rigid_ctor)
         } else {
@@ -841,7 +856,12 @@ where
         lhs: T,
         rhs: T,
     ) -> Result<(), NoSolution> {
-        let result = self.delegate.eq_structurally_relating_aliases(param_env, lhs, rhs)?;
+        let result = self.delegate.eq_structurally_relating_aliases(
+            param_env,
+            lhs,
+            rhs,
+            self.origin_span,
+        )?;
         assert_eq!(result, vec![]);
         Ok(())
     }
@@ -864,7 +884,7 @@ where
         variance: ty::Variance,
         rhs: T,
     ) -> Result<(), NoSolution> {
-        let goals = self.delegate.relate(param_env, lhs, variance, rhs)?;
+        let goals = self.delegate.relate(param_env, lhs, variance, rhs, self.origin_span)?;
         self.add_goals(GoalSource::Misc, goals);
         Ok(())
     }
@@ -881,7 +901,7 @@ where
         lhs: T,
         rhs: T,
     ) -> Result<Vec<Goal<I, I::Predicate>>, NoSolution> {
-        Ok(self.delegate.relate(param_env, lhs, ty::Variance::Invariant, rhs)?)
+        Ok(self.delegate.relate(param_env, lhs, ty::Variance::Invariant, rhs, self.origin_span)?)
     }
 
     pub(super) fn instantiate_binder_with_infer<T: TypeFoldable<I> + Copy>(
@@ -917,12 +937,12 @@ where
     }
 
     pub(super) fn register_ty_outlives(&self, ty: I::Ty, lt: I::Region) {
-        self.delegate.register_ty_outlives(ty, lt);
+        self.delegate.register_ty_outlives(ty, lt, self.origin_span);
     }
 
     pub(super) fn register_region_outlives(&self, a: I::Region, b: I::Region) {
         // `b : a` ==> `a <= b`
-        self.delegate.sub_regions(b, a);
+        self.delegate.sub_regions(b, a, self.origin_span);
     }
 
     /// Computes the list of goals required for `arg` to be well-formed

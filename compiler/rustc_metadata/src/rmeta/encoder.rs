@@ -3,11 +3,12 @@ use std::collections::hash_map::Entry;
 use std::fs::File;
 use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
-use rustc_data_structures::sync::{Lrc, join, par_for_each_in};
+use rustc_data_structures::sync::{join, par_for_each_in};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::format_with_underscores;
 use rustc_feature::Features;
@@ -52,7 +53,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     // This is used to speed up Span encoding.
     // The `usize` is an index into the `MonotonicVec`
     // that stores the `SourceFile`
-    source_file_cache: (Lrc<SourceFile>, usize),
+    source_file_cache: (Arc<SourceFile>, usize),
     // The indices (into the `SourceMap`'s `MonotonicVec`)
     // of all of the `SourceFiles` that we need to serialize.
     // When we serialize a `Span`, we insert the index of its
@@ -278,7 +279,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
             let source_map = s.tcx.sess.source_map();
             let source_file_index = source_map.lookup_source_file_idx(self.lo);
             s.source_file_cache =
-                (Lrc::clone(&source_map.files()[source_file_index]), source_file_index);
+                (Arc::clone(&source_map.files()[source_file_index]), source_file_index);
         }
         let (ref source_file, source_file_index) = s.source_file_cache;
         debug_assert!(source_file.contains(self.lo));
@@ -2306,7 +2307,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     encoder.emit_raw_bytes(&0u64.to_le_bytes());
 
     let source_map_files = tcx.sess.source_map().files();
-    let source_file_cache = (Lrc::clone(&source_map_files[0]), 0);
+    let source_file_cache = (Arc::clone(&source_map_files[0]), 0);
     let required_source_files = Some(FxIndexSet::default());
     drop(source_map_files);
 

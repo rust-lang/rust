@@ -1367,16 +1367,17 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     fn simplify_cast(
         &mut self,
-        kind: &mut CastKind,
-        operand: &mut Operand<'tcx>,
+        initial_kind: &mut CastKind,
+        initial_operand: &mut Operand<'tcx>,
         to: Ty<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
         use CastKind::*;
         use rustc_middle::ty::adjustment::PointerCoercion::*;
 
-        let mut from = operand.ty(self.local_decls, self.tcx);
-        let mut value = self.simplify_operand(operand, location)?;
+        let mut from = initial_operand.ty(self.local_decls, self.tcx);
+        let mut kind = *initial_kind;
+        let mut value = self.simplify_operand(initial_operand, location)?;
         if from == to {
             return Some(value);
         }
@@ -1400,7 +1401,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 && to.is_unsafe_ptr()
                 && self.pointers_have_same_metadata(from, to)
             {
-                *kind = PtrToPtr;
+                kind = PtrToPtr;
                 was_updated_this_iteration = true;
             }
 
@@ -1443,7 +1444,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 to: inner_to,
             } = *self.get(value)
             {
-                let new_kind = match (inner_kind, *kind) {
+                let new_kind = match (inner_kind, kind) {
                     // Even if there's a narrowing cast in here that's fine, because
                     // things like `*mut [i32] -> *mut i32 -> *const i32` and
                     // `*mut [i32] -> *const [i32] -> *const i32` can skip the middle in MIR.
@@ -1471,7 +1472,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     _ => None,
                 };
                 if let Some(new_kind) = new_kind {
-                    *kind = new_kind;
+                    kind = new_kind;
                     from = inner_from;
                     value = inner_value;
                     was_updated_this_iteration = true;
@@ -1489,10 +1490,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
 
         if was_ever_updated && let Some(op) = self.try_as_operand(value, location) {
-            *operand = op;
+            *initial_operand = op;
+            *initial_kind = kind;
         }
 
-        Some(self.insert(Value::Cast { kind: *kind, value, from, to }))
+        Some(self.insert(Value::Cast { kind, value, from, to }))
     }
 
     fn simplify_len(&mut self, place: &mut Place<'tcx>, location: Location) -> Option<VnIndex> {

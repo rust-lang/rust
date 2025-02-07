@@ -89,10 +89,10 @@ pub mod pretty;
 #[macro_use]
 mod print;
 mod session_diagnostics;
-#[cfg(all(unix, any(target_env = "gnu", target_os = "macos")))]
+#[cfg(all(not(miri), unix, any(target_env = "gnu", target_os = "macos")))]
 mod signal_handler;
 
-#[cfg(not(all(unix, any(target_env = "gnu", target_os = "macos"))))]
+#[cfg(not(all(not(miri), unix, any(target_env = "gnu", target_os = "macos"))))]
 mod signal_handler {
     /// On platforms which don't support our signal handler's requirements,
     /// simply use the default signal handler provided by std.
@@ -1024,7 +1024,7 @@ pub fn describe_flag_categories(early_dcx: &EarlyDiagCtxt, matches: &Matches) ->
     let wall = matches.opt_strs("W");
     if wall.iter().any(|x| *x == "all") {
         print_wall_help();
-        rustc_errors::FatalError.raise();
+        return true;
     }
 
     // Don't handle -W help here, because we might first load additional lints.
@@ -1474,7 +1474,7 @@ pub fn init_logger(early_dcx: &EarlyDiagCtxt, cfg: rustc_log::LoggerConfig) {
 /// Install our usual `ctrlc` handler, which sets [`rustc_const_eval::CTRL_C_RECEIVED`].
 /// Making this handler optional lets tools can install a different handler, if they wish.
 pub fn install_ctrlc_handler() {
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(miri), not(target_family = "wasm")))]
     ctrlc::set_handler(move || {
         // Indicate that we have been signaled to stop, then give the rest of the compiler a bit of
         // time to check CTRL_C_RECEIVED and run its own shutdown logic, but after a short amount

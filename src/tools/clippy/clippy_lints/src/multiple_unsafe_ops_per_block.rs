@@ -152,16 +152,19 @@ fn collect_unsafe_exprs<'tcx>(
             ExprKind::AssignOp(_, lhs, rhs) | ExprKind::Assign(lhs, rhs, _) => {
                 if matches!(
                     lhs.kind,
-                    ExprKind::Path(QPath::Resolved(_, hir::Path {
-                        res: Res::Def(
-                            DefKind::Static {
-                                mutability: Mutability::Mut,
-                                ..
-                            },
-                            _
-                        ),
-                        ..
-                    }))
+                    ExprKind::Path(QPath::Resolved(
+                        _,
+                        hir::Path {
+                            res: Res::Def(
+                                DefKind::Static {
+                                    mutability: Mutability::Mut,
+                                    ..
+                                },
+                                _
+                            ),
+                            ..
+                        }
+                    ))
                 ) {
                     unsafe_ops.push(("modification of a mutable static occurs here", expr.span));
                     collect_unsafe_exprs(cx, rhs, unsafe_ops);

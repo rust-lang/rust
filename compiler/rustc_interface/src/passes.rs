@@ -9,7 +9,7 @@ use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, Lrc, OnceLock, WorkerLocal};
+use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, OnceLock, WorkerLocal};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
@@ -602,7 +602,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 fn resolver_for_lowering_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
-) -> (&'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
+) -> (&'tcx Steal<(ty::ResolverAstLowering, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
@@ -624,7 +624,7 @@ fn resolver_for_lowering_raw<'tcx>(
     } = resolver.into_outputs();
 
     let resolutions = tcx.arena.alloc(untracked_resolutions);
-    (tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Lrc::new(krate)))), resolutions)
+    (tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Arc::new(krate)))), resolutions)
 }
 
 pub fn write_dep_info(tcx: TyCtxt<'_>) {
@@ -908,6 +908,11 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 tcx.ensure_ok().mir_coroutine_witnesses(def_id);
                 tcx.ensure_ok().check_coroutine_obligations(
                     tcx.typeck_root_def_id(def_id.to_def_id()).expect_local(),
+                );
+                // Eagerly check the unsubstituted layout for cycles.
+                tcx.ensure_ok().layout_of(
+                    ty::TypingEnv::post_analysis(tcx, def_id.to_def_id())
+                        .as_query_input(tcx.type_of(def_id).instantiate_identity()),
                 );
             }
         });

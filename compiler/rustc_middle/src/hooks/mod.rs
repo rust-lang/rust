@@ -98,6 +98,10 @@ declare_hooks! {
     hook save_dep_graph() -> ();
 
     hook query_key_hash_verify_all() -> ();
+
+    /// Ensure the given scalar is valid for the given type.
+    /// This checks non-recursive runtime validity.
+    hook validate_scalar_in_layout(scalar: crate::ty::ScalarInt, ty: Ty<'tcx>) -> bool;
 }
 
 #[cold]

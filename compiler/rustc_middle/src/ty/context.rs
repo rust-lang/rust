@@ -10,7 +10,7 @@ use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::{Bound, Deref};
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 use std::{fmt, iter, mem};
 
 use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
@@ -24,7 +24,7 @@ use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
-    self, DynSend, DynSync, FreezeReadGuard, Lock, Lrc, RwLock, WorkerLocal,
+    self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
 };
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
@@ -76,11 +76,11 @@ use crate::traits::solve::{
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, BoundConstness, Clause, Clauses, Const, GenericArg,
-    GenericArgs, GenericArgsRef, GenericParamDefKind, ImplPolarity, List, ListWithCachedTypeInfo,
-    ParamConst, ParamTy, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate,
-    PredicateKind, PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty,
-    TyKind, TyVid, Visibility,
+    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericArg, GenericArgs,
+    GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst, ParamTy,
+    Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
+    PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
+    Visibility,
 };
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -1406,7 +1406,7 @@ impl<'tcx> GlobalCtxt<'tcx> {
 pub struct CurrentGcx {
     /// This stores a pointer to a `GlobalCtxt`. This is set to `Some` inside `GlobalCtxt::enter`
     /// and reset to `None` when that function returns or unwinds.
-    value: Lrc<RwLock<Option<*const ()>>>,
+    value: Arc<RwLock<Option<*const ()>>>,
 }
 
 unsafe impl DynSend for CurrentGcx {}
@@ -1414,7 +1414,7 @@ unsafe impl DynSync for CurrentGcx {}
 
 impl CurrentGcx {
     pub fn new() -> Self {
-        Self { value: Lrc::new(RwLock::new(None)) }
+        Self { value: Arc::new(RwLock::new(None)) }
     }
 
     pub fn access<R>(&self, f: impl for<'tcx> FnOnce(&'tcx GlobalCtxt<'tcx>) -> R) -> R {
@@ -2243,21 +2243,23 @@ macro_rules! nop_list_lift {
     };
 }
 
-nop_lift! {type_; Ty<'a> => Ty<'tcx>}
-nop_lift! {region; Region<'a> => Region<'tcx>}
-nop_lift! {const_; Const<'a> => Const<'tcx>}
-nop_lift! {pat; Pattern<'a> => Pattern<'tcx>}
-nop_lift! {const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx>}
-nop_lift! {predicate; Predicate<'a> => Predicate<'tcx>}
-nop_lift! {predicate; Clause<'a> => Clause<'tcx>}
-nop_lift! {layout; Layout<'a> => Layout<'tcx>}
+nop_lift! { type_; Ty<'a> => Ty<'tcx> }
+nop_lift! { region; Region<'a> => Region<'tcx> }
+nop_lift! { const_; Const<'a> => Const<'tcx> }
+nop_lift! { pat; Pattern<'a> => Pattern<'tcx> }
+nop_lift! { const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx> }
+nop_lift! { predicate; Predicate<'a> => Predicate<'tcx> }
+nop_lift! { predicate; Clause<'a> => Clause<'tcx> }
+nop_lift! { layout; Layout<'a> => Layout<'tcx> }
 
-nop_list_lift! {type_lists; Ty<'a> => Ty<'tcx>}
-nop_list_lift! {poly_existential_predicates; PolyExistentialPredicate<'a> => PolyExistentialPredicate<'tcx>}
-nop_list_lift! {bound_variable_kinds; ty::BoundVariableKind => ty::BoundVariableKind}
+nop_list_lift! { type_lists; Ty<'a> => Ty<'tcx> }
+nop_list_lift! {
+    poly_existential_predicates; PolyExistentialPredicate<'a> => PolyExistentialPredicate<'tcx>
+}
+nop_list_lift! { bound_variable_kinds; ty::BoundVariableKind => ty::BoundVariableKind }
 
 // This is the impl for `&'a GenericArgs<'a>`.
-nop_list_lift! {args; GenericArg<'a> => GenericArg<'tcx>}
+nop_list_lift! { args; GenericArg<'a> => GenericArg<'tcx> }
 
 macro_rules! nop_slice_lift {
     ($ty:ty => $lifted:ty) => {
@@ -2277,11 +2279,7 @@ macro_rules! nop_slice_lift {
     };
 }
 
-nop_slice_lift! {ty::ValTree<'a> => ty::ValTree<'tcx>}
-
-TrivialLiftImpls! {
-    ImplPolarity, PredicatePolarity, Promoted, BoundConstness,
-}
+nop_slice_lift! { ty::ValTree<'a> => ty::ValTree<'tcx> }
 
 macro_rules! sty_debug_print {
     ($fmt: expr, $ctxt: expr, $($variant: ident),*) => {{
@@ -3224,7 +3222,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
     }
 
-    pub fn resolver_for_lowering(self) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
+    pub fn resolver_for_lowering(self) -> &'tcx Steal<(ty::ResolverAstLowering, Arc<ast::Crate>)> {
         self.resolver_for_lowering_raw(()).0
     }
 

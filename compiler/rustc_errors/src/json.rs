@@ -16,7 +16,7 @@ use std::sync::{Arc, Mutex};
 use std::vec;
 
 use derive_setters::Setters;
-use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
+use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_error_messages::FluentArgs;
 use rustc_lint_defs::Applicability;
 use rustc_span::Span;
@@ -45,8 +45,8 @@ pub struct JsonEmitter {
     #[setters(skip)]
     dst: IntoDynSyncSend<Box<dyn Write + Send>>,
     #[setters(skip)]
-    sm: Option<Lrc<SourceMap>>,
-    fluent_bundle: Option<Lrc<FluentBundle>>,
+    sm: Option<Arc<SourceMap>>,
+    fluent_bundle: Option<Arc<FluentBundle>>,
     #[setters(skip)]
     fallback_bundle: LazyFallbackBundle,
     #[setters(skip)]
@@ -65,7 +65,7 @@ pub struct JsonEmitter {
 impl JsonEmitter {
     pub fn new(
         dst: Box<dyn Write + Send>,
-        sm: Option<Lrc<SourceMap>>,
+        sm: Option<Arc<SourceMap>>,
         fallback_bundle: LazyFallbackBundle,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
@@ -369,7 +369,7 @@ impl Diagnostic {
             ColorConfig::Always | ColorConfig::Auto => dst = Box::new(termcolor::Ansi::new(dst)),
             ColorConfig::Never => {}
         }
-        HumanEmitter::new(dst, Lrc::clone(&je.fallback_bundle))
+        HumanEmitter::new(dst, Arc::clone(&je.fallback_bundle))
             .short_message(short)
             .sm(je.sm.clone())
             .fluent_bundle(je.fluent_bundle.clone())

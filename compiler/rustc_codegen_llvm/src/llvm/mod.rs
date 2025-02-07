@@ -10,13 +10,9 @@ use libc::c_uint;
 use rustc_abi::{Align, Size, WrappingRange};
 use rustc_llvm::RustString;
 
-pub use self::AtomicRmwBinOp::*;
 pub use self::CallConv::*;
 pub use self::CodeGenOptSize::*;
-pub use self::IntPredicate::*;
-pub use self::Linkage::*;
 pub use self::MetadataType::*;
-pub use self::RealPredicate::*;
 pub use self::ffi::*;
 use crate::common::AsCCharPtr;
 
