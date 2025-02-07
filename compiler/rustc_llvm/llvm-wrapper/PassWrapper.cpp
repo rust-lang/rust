@@ -688,6 +688,8 @@ struct LLVMRustSanitizerOptions {
   bool SanitizeKernelAddressRecover;
 };
 
+extern "C" void registerEnzyme(llvm::PassBuilder &PB);
+
 extern "C" LLVMRustResult LLVMRustOptimize(
     LLVMModuleRef ModuleRef, LLVMTargetMachineRef TMRef,
     LLVMRustPassBuilderOptLevel OptLevelRust, LLVMRustOptStage OptStage,
@@ -1008,6 +1010,14 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   if (NeedThinLTOBufferPasses) {
     MPM.addPass(CanonicalizeAliasesPass());
     MPM.addPass(NameAnonGlobalPass());
+  }
+
+  // now load "-enzyme" pass:
+  registerEnzyme(PB);
+  if (auto Err = PB.parsePassPipeline(MPM, "enzyme")) {
+    std::string ErrMsg = toString(std::move(Err));
+    LLVMRustSetLastError(ErrMsg.c_str());
+    return LLVMRustResult::Failure;
   }
 
   // Upgrade all calls to old intrinsics first.

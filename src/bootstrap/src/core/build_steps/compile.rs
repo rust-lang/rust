@@ -1052,9 +1052,9 @@ pub fn rustc_cargo(
     // We temporarily disable linking here as part of some refactoring.
     // This way, people can manually use -Z llvm-plugins and -C passes=enzyme for now.
     // In a follow-up PR, we will re-enable linking here and load the pass for them.
-    //if builder.config.llvm_enzyme {
-    //    cargo.rustflag("-l").rustflag("Enzyme-19");
-    //}
+    if builder.config.llvm_enzyme {
+        cargo.rustflag("-l").rustflag("Enzyme-19");
+    }
 
     // Building with protected visibility reduces the number of dynamic relocations needed, giving
     // us a faster startup time. However GNU ld < 2.40 will error if we try to link a shared object
