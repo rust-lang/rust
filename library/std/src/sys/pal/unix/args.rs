@@ -147,7 +147,7 @@ mod imp {
     /// This allows `std::env::args` to work even in a `cdylib`, as it does on macOS and Windows.
     #[cfg(all(target_os = "linux", target_env = "gnu"))]
     #[used]
-    #[link_section = ".init_array.00099"]
+    #[unsafe(link_section = ".init_array.00099")]
     static ARGV_INIT_ARRAY: extern "C" fn(
         crate::os::raw::c_int,
         *const *const u8,

@@ -52,7 +52,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 #[cfg(all(target_os = "windows", target_arch = "x86", target_env = "gnu"))]
 pub mod eh_frames {
     #[no_mangle]
-    #[link_section = ".eh_frame"]
+    #[unsafe(link_section = ".eh_frame")]
     // Marks beginning of the stack frame unwind info section
     pub static __EH_FRAME_BEGIN__: [u8; 0] = [];
 
@@ -101,10 +101,10 @@ pub mod eh_frames {
         // end of the list. Since constructors are run in reverse order, this ensures that our
         // callbacks are the first and last ones executed.
 
-        #[link_section = ".ctors.65535"] // .ctors.* : C initialization callbacks
+        #[unsafe(link_section = ".ctors.65535")] // .ctors.* : C initialization callbacks
         pub static P_INIT: unsafe extern "C" fn() = super::init;
 
-        #[link_section = ".dtors.65535"] // .dtors.* : C termination callbacks
+        #[unsafe(link_section = ".dtors.65535")] // .dtors.* : C termination callbacks
         pub static P_UNINIT: unsafe extern "C" fn() = super::uninit;
     }
 }
