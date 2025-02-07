@@ -4067,7 +4067,7 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
 /// Returns whether we should perform contract-checking at runtime.
 ///
 /// This is meant to be similar to the ub_checks intrinsic, in terms
-/// of not prematurely commiting at compile-time to whether contract
+/// of not prematurely committing at compile-time to whether contract
 /// checking is turned on, so that we can specify contracts in libstd
 /// and let an end user opt into turning them on.
 #[cfg(not(bootstrap))]
