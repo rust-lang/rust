@@ -1,7 +1,6 @@
-use rustc_abi::{BackendRepr, Float, Integer, Primitive};
+use rustc_abi::{BackendRepr, Float, HasDataLayout, Integer, Primitive, TyAbiInterface};
 
 use crate::abi::call::{ArgAbi, FnAbi};
-use crate::abi::{HasDataLayout, TyAbiInterface};
 
 fn unwrap_trivial_aggregate<'a, Ty, C>(cx: &C, val: &mut ArgAbi<'a, Ty>) -> bool
 where

@@ -236,6 +236,15 @@ trigger_files = [
     "src/tools/jsondoclint",
 ]
 
+[autolabel."A-attributes"]
+trigger_files = [
+    "compiler/rustc_codegen_ssa/src/codegen_attrs.rs",
+    "compiler/rustc_passes/src/check_attr.rs",
+    "compiler/rustc_attr_parsing",
+    "compiler/rustc_attr_data_structures",
+    "compiler/rustc_attr_validation",
+]
+
 [autolabel."T-compiler"]
 trigger_files = [
     # Source code
@@ -1016,6 +1025,17 @@ cc = ["@ehuss"]
 [mentions."src/doc/rustc-dev-guide"]
 message = "The rustc-dev-guide subtree was changed. If this PR *only* touches the dev guide consider submitting a PR directly to [rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide/pulls) otherwise thank you for updating the dev guide with your changes."
 cc = ["@BoxyUwU", "@jieyouxu", "@kobzol"]
+
+[mentions."compiler/rustc_codegen_ssa/src/codegen_attrs.rs"]
+cc = ["@jdonszelmann"]
+[mentions."compiler/rustc_passes/src/check_attr.rs"]
+cc = ["@jdonszelmann"]
+[mentions."compiler/rustc_attr_parsing"]
+cc = ["@jdonszelmann"]
+[mentions."compiler/rustc_attr_data_structures"]
+cc = ["@jdonszelmann"]
+[mentions."compiler/rustc_attr_validation"]
+cc = ["@jdonszelmann"]
 
 [assign]
 warn_non_default_branch.enable = true

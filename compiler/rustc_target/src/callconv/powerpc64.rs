@@ -2,8 +2,9 @@
 // Alignment of 128 bit types is not currently handled, this will
 // need to be fixed when PowerPC vector support is added.
 
+use rustc_abi::{Endian, HasDataLayout, TyAbiInterface};
+
 use crate::abi::call::{Align, ArgAbi, FnAbi, Reg, RegKind, Uniform};
-use crate::abi::{Endian, HasDataLayout, TyAbiInterface};
 use crate::spec::HasTargetSpec;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
