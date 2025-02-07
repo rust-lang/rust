@@ -198,6 +198,11 @@ fn issue_12528() {
     let _ = opt.as_ref().map(RcWeak::clone);
 }
 
+fn issue_14088() {
+    let s = Some("foo");
+    let _: Option<&str> = s.as_ref().map(|x| x.as_ref());
+}
+
 fn main() {
     not_ok();
     ok();
