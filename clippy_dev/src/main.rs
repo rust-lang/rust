@@ -68,7 +68,7 @@ fn main() {
             RemoveSubcommand::VscodeTasks => setup::vscode::remove_tasks(),
         },
         DevCommand::Serve { port, lint } => serve::run(port, lint),
-        DevCommand::Lint { path, args } => lint::run(&path, args.iter()),
+        DevCommand::Lint { path, edition, args } => lint::run(&path, &edition, args.iter()),
         DevCommand::RenameLint {
             old_name,
             new_name,
@@ -206,6 +206,9 @@ enum DevCommand {
     ///     cargo dev lint file.rs -- -W clippy::pedantic {n}
     ///     cargo dev lint ~/my-project -- -- -W clippy::pedantic
     Lint {
+        /// The Rust edition to use
+        #[arg(long, default_value = "2024")]
+        edition: String,
         /// The path to a file or package directory to lint
         path: String,
         /// Pass extra arguments to cargo/clippy-driver
