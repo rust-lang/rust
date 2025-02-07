@@ -7,7 +7,6 @@
 //! some of them support an alternate format that emits text, but that should
 //! not be used external to this module.
 
-use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
@@ -36,115 +35,6 @@ use crate::html::escape::{Escape, EscapeBodyText};
 use crate::html::render::Context;
 use crate::joined::Joined as _;
 use crate::passes::collect_intra_doc_links::UrlFragment;
-
-pub(crate) trait Print {
-    fn print(self, buffer: &mut Buffer);
-}
-
-impl<F> Print for F
-where
-    F: FnOnce(&mut Buffer),
-{
-    fn print(self, buffer: &mut Buffer) {
-        (self)(buffer)
-    }
-}
-
-impl Print for String {
-    fn print(self, buffer: &mut Buffer) {
-        buffer.write_str(&self);
-    }
-}
-
-impl Print for &'_ str {
-    fn print(self, buffer: &mut Buffer) {
-        buffer.write_str(self);
-    }
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct Buffer {
-    for_html: bool,
-    buffer: String,
-}
-
-impl core::fmt::Write for Buffer {
-    #[inline]
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        self.buffer.write_str(s)
-    }
-
-    #[inline]
-    fn write_char(&mut self, c: char) -> fmt::Result {
-        self.buffer.write_char(c)
-    }
-
-    #[inline]
-    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> fmt::Result {
-        self.buffer.write_fmt(args)
-    }
-}
-
-impl Buffer {
-    pub(crate) fn empty_from(v: &Buffer) -> Buffer {
-        Buffer { for_html: v.for_html, buffer: String::new() }
-    }
-
-    pub(crate) fn html() -> Buffer {
-        Buffer { for_html: true, buffer: String::new() }
-    }
-
-    pub(crate) fn new() -> Buffer {
-        Buffer { for_html: false, buffer: String::new() }
-    }
-
-    pub(crate) fn is_empty(&self) -> bool {
-        self.buffer.is_empty()
-    }
-
-    pub(crate) fn into_inner(self) -> String {
-        self.buffer
-    }
-
-    pub(crate) fn push(&mut self, c: char) {
-        self.buffer.push(c);
-    }
-
-    pub(crate) fn push_str(&mut self, s: &str) {
-        self.buffer.push_str(s);
-    }
-
-    pub(crate) fn push_buffer(&mut self, other: Buffer) {
-        self.buffer.push_str(&other.buffer);
-    }
-
-    // Intended for consumption by write! and writeln! (std::fmt) but without
-    // the fmt::Result return type imposed by fmt::Write (and avoiding the trait
-    // import).
-    pub(crate) fn write_str(&mut self, s: &str) {
-        self.buffer.push_str(s);
-    }
-
-    // Intended for consumption by write! and writeln! (std::fmt) but without
-    // the fmt::Result return type imposed by fmt::Write (and avoiding the trait
-    // import).
-    pub(crate) fn write_fmt(&mut self, v: fmt::Arguments<'_>) {
-        self.buffer.write_fmt(v).unwrap();
-    }
-
-    pub(crate) fn to_display<T: Print>(mut self, t: T) -> String {
-        t.print(&mut self);
-        self.into_inner()
-    }
-
-    pub(crate) fn reserve(&mut self, additional: usize) {
-        self.buffer.reserve(additional)
-    }
-
-    pub(crate) fn len(&self) -> usize {
-        self.buffer.len()
-    }
-}
 
 pub(crate) fn print_generic_bounds<'a, 'tcx: 'a>(
     bounds: &'a [clean::GenericBound],
@@ -772,27 +662,29 @@ pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Cont
     else {
         return String::new();
     };
-    let mut buf = Buffer::new();
     let fqp = if *shortty == ItemType::Primitive {
         // primitives are documented in a crate, but not actually part of it
         &fqp[fqp.len() - 1..]
     } else {
         fqp
     };
-    if let &Some(UrlFragment::Item(id)) = fragment {
-        write!(buf, "{} ", cx.tcx().def_descr(id));
-        for component in fqp {
-            write!(buf, "{component}::");
+    fmt::from_fn(|f| {
+        if let &Some(UrlFragment::Item(id)) = fragment {
+            write!(f, "{} ", cx.tcx().def_descr(id))?;
+            for component in fqp {
+                write!(f, "{component}::")?;
+            }
+            write!(f, "{}", cx.tcx().item_name(id))?;
+        } else if !fqp.is_empty() {
+            let mut fqp_it = fqp.iter();
+            write!(f, "{shortty} {}", fqp_it.next().unwrap())?;
+            for component in fqp_it {
+                write!(f, "::{component}")?;
+            }
         }
-        write!(buf, "{}", cx.tcx().item_name(id));
-    } else if !fqp.is_empty() {
-        let mut fqp_it = fqp.iter();
-        write!(buf, "{shortty} {}", fqp_it.next().unwrap());
-        for component in fqp_it {
-            write!(buf, "::{component}");
-        }
-    }
-    buf.into_inner()
+        Ok(())
+    })
+    .to_string()
 }
 
 /// Used to render a [`clean::Path`].
@@ -954,7 +846,7 @@ pub(crate) fn anchor<'a: 'cx, 'cx>(
                 text = EscapeBodyText(text.as_str()),
             )
         } else {
-            f.write_str(text.as_str())
+            write!(f, "{text}")
         }
     })
 }
@@ -1533,53 +1425,51 @@ impl clean::FnDecl {
 }
 
 pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a>(
-    item: &clean::Item,
+    item: &'a clean::Item,
     cx: &'a Context<'tcx>,
 ) -> impl Display + 'a + Captures<'tcx> {
-    use std::fmt::Write as _;
-    let vis: Cow<'static, str> = match item.visibility(cx.tcx()) {
-        None => "".into(),
-        Some(ty::Visibility::Public) => "pub ".into(),
-        Some(ty::Visibility::Restricted(vis_did)) => {
-            // FIXME(camelid): This may not work correctly if `item_did` is a module.
-            //                 However, rustdoc currently never displays a module's
-            //                 visibility, so it shouldn't matter.
-            let parent_module = find_nearest_parent_module(cx.tcx(), item.item_id.expect_def_id());
-
-            if vis_did.is_crate_root() {
-                "pub(crate) ".into()
-            } else if parent_module == Some(vis_did) {
-                // `pub(in foo)` where `foo` is the parent module
-                // is the same as no visibility modifier
-                "".into()
-            } else if parent_module.and_then(|parent| find_nearest_parent_module(cx.tcx(), parent))
-                == Some(vis_did)
-            {
-                "pub(super) ".into()
-            } else {
-                let path = cx.tcx().def_path(vis_did);
-                debug!("path={path:?}");
-                // modified from `resolved_path()` to work with `DefPathData`
-                let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
-                let anchor = anchor(vis_did, last_name, cx);
-
-                let mut s = "pub(in ".to_owned();
-                for seg in &path.data[..path.data.len() - 1] {
-                    let _ = write!(s, "{}::", seg.data.get_opt_name().unwrap());
-                }
-                let _ = write!(s, "{anchor}) ");
-                s.into()
-            }
-        }
-    };
-
     let is_doc_hidden = item.is_doc_hidden();
     fmt::from_fn(move |f| {
         if is_doc_hidden {
             f.write_str("#[doc(hidden)] ")?;
         }
 
-        f.write_str(&vis)
+        match item.visibility(cx.tcx()) {
+            None => Ok(()),
+            Some(ty::Visibility::Public) => f.write_str("pub "),
+            Some(ty::Visibility::Restricted(vis_did)) => {
+                // FIXME(camelid): This may not work correctly if `item_did` is a module.
+                //                 However, rustdoc currently never displays a module's
+                //                 visibility, so it shouldn't matter.
+                let parent_module =
+                    find_nearest_parent_module(cx.tcx(), item.item_id.expect_def_id());
+
+                if vis_did.is_crate_root() {
+                    f.write_str("pub(crate) ")
+                } else if parent_module == Some(vis_did) {
+                    // `pub(in foo)` where `foo` is the parent module
+                    // is the same as no visibility modifier
+                    Ok(())
+                } else if parent_module
+                    .and_then(|parent| find_nearest_parent_module(cx.tcx(), parent))
+                    == Some(vis_did)
+                {
+                    f.write_str("pub(super) ")
+                } else {
+                    let path = cx.tcx().def_path(vis_did);
+                    debug!("path={path:?}");
+                    // modified from `resolved_path()` to work with `DefPathData`
+                    let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
+                    let anchor = anchor(vis_did, last_name, cx);
+
+                    f.write_str("pub(in ")?;
+                    for seg in &path.data[..path.data.len() - 1] {
+                        write!(f, "{}::", seg.data.get_opt_name().unwrap())?;
+                    }
+                    write!(f, "{anchor}) ")
+                }
+            }
+        }
     })
 }
 

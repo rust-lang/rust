@@ -1,10 +1,12 @@
 use std::cell::RefCell;
 use std::ffi::OsStr;
+use std::fmt::Display as _;
 use std::ops::RangeInclusive;
 use std::path::{Component, Path, PathBuf};
 use std::{fmt, fs};
 
 use rinja::Template;
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
@@ -238,21 +240,19 @@ impl SourceCollector<'_, '_> {
             resource_suffix: &shared.resource_suffix,
             rust_logo: has_doc_flag(self.cx.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
         };
+        let source_context = SourceContext::Standalone { file_path };
         let v = layout::render(
             &shared.layout,
             &page,
             "",
-            |buf: &mut _| {
-                print_src(
-                    buf,
-                    contents,
-                    file_span,
-                    self.cx,
-                    &root_path,
-                    &highlight::DecorationInfo::default(),
-                    SourceContext::Standalone { file_path },
-                )
-            },
+            print_src(
+                contents,
+                file_span,
+                self.cx,
+                &root_path,
+                &highlight::DecorationInfo::default(),
+                &source_context,
+            ),
             &shared.style_files,
         );
         shared.fs.write(cur, v)?;
@@ -302,7 +302,7 @@ pub(crate) struct ScrapedInfo<'a> {
 #[derive(Template)]
 #[template(path = "scraped_source.html")]
 struct ScrapedSource<'a, Code: std::fmt::Display> {
-    info: ScrapedInfo<'a>,
+    info: &'a ScrapedInfo<'a>,
     lines: RangeInclusive<usize>,
     code_html: Code,
 }
@@ -322,45 +322,46 @@ pub(crate) enum SourceContext<'a> {
 
 /// Wrapper struct to render the source code of a file. This will do things like
 /// adding line numbers to the left-hand side.
-pub(crate) fn print_src(
-    mut writer: impl fmt::Write,
-    s: &str,
+pub(crate) fn print_src<'a, 'tcx>(
+    s: &'a str,
     file_span: rustc_span::Span,
-    context: &Context<'_>,
-    root_path: &str,
-    decoration_info: &highlight::DecorationInfo,
-    source_context: SourceContext<'_>,
-) {
-    let code = fmt::from_fn(move |fmt| {
-        let current_href = context
-            .href_from_span(clean::Span::new(file_span), false)
-            .expect("only local crates should have sources emitted");
-        highlight::write_code(
-            fmt,
-            s,
-            Some(highlight::HrefContext { context, file_span, root_path, current_href }),
-            Some(decoration_info),
-        );
+    context: &'a Context<'tcx>,
+    root_path: &'a str,
+    decoration_info: &'a highlight::DecorationInfo,
+    source_context: &'a SourceContext<'a>,
+) -> impl fmt::Display + 'a + Captures<'tcx> {
+    fmt::from_fn(move |f| {
+        let code = fmt::from_fn(move |fmt| {
+            let current_href = context
+                .href_from_span(clean::Span::new(file_span), false)
+                .expect("only local crates should have sources emitted");
+            highlight::write_code(
+                s,
+                Some(highlight::HrefContext { context, file_span, root_path, current_href }),
+                Some(decoration_info),
+            )
+            .fmt(fmt)
+        });
+        let lines = s.lines().count();
+        match source_context {
+            SourceContext::Standalone { file_path } => Source {
+                lines: (1..=lines),
+                code_html: code,
+                file_path: if let Some(file_name) = file_path.file_name()
+                    && let Some(file_path) = file_path.parent()
+                {
+                    Some((file_path.display().to_string(), file_name.display().to_string()))
+                } else {
+                    None
+                },
+            }
+            .render_into(&mut *f)
+            .unwrap(),
+            SourceContext::Embedded(info) => {
+                let lines = (1 + info.offset)..=(lines + info.offset);
+                ScrapedSource { info, lines, code_html: code }.render_into(&mut *f).unwrap();
+            }
+        }
         Ok(())
-    });
-    let lines = s.lines().count();
-    match source_context {
-        SourceContext::Standalone { file_path } => Source {
-            lines: (1..=lines),
-            code_html: code,
-            file_path: if let Some(file_name) = file_path.file_name()
-                && let Some(file_path) = file_path.parent()
-            {
-                Some((file_path.display().to_string(), file_name.display().to_string()))
-            } else {
-                None
-            },
-        }
-        .render_into(&mut writer)
-        .unwrap(),
-        SourceContext::Embedded(info) => {
-            let lines = (1 + info.offset)..=(lines + info.offset);
-            ScrapedSource { info, lines, code_html: code }.render_into(&mut writer).unwrap();
-        }
-    };
+    })
 }

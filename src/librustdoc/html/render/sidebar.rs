@@ -1,6 +1,8 @@
 use std::borrow::Cow;
+use std::fmt;
 
 use rinja::Template;
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefIdMap, DefIdSet};
@@ -11,7 +13,6 @@ use super::{Context, ItemSection, item_ty_to_section};
 use crate::clean;
 use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
-use crate::html::format::Buffer;
 use crate::html::markdown::{IdMap, MarkdownWithToc};
 
 #[derive(Clone, Copy)]
@@ -114,67 +115,75 @@ pub(crate) mod filters {
     }
 }
 
-pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
-    let mut ids = IdMap::new();
-    let mut blocks: Vec<LinkBlock<'_>> = docblock_toc(cx, it, &mut ids).into_iter().collect();
-    let deref_id_map = cx.deref_id_map.borrow();
-    match it.kind {
-        clean::StructItem(ref s) => sidebar_struct(cx, it, s, &mut blocks, &deref_id_map),
-        clean::TraitItem(ref t) => sidebar_trait(cx, it, t, &mut blocks, &deref_id_map),
-        clean::PrimitiveItem(_) => sidebar_primitive(cx, it, &mut blocks, &deref_id_map),
-        clean::UnionItem(ref u) => sidebar_union(cx, it, u, &mut blocks, &deref_id_map),
-        clean::EnumItem(ref e) => sidebar_enum(cx, it, e, &mut blocks, &deref_id_map),
-        clean::TypeAliasItem(ref t) => sidebar_type_alias(cx, it, t, &mut blocks, &deref_id_map),
-        clean::ModuleItem(ref m) => {
-            blocks.push(sidebar_module(&m.items, &mut ids, ModuleLike::from(it)))
+pub(super) fn print_sidebar<'a, 'tcx>(
+    cx: &'a Context<'tcx>,
+    it: &'a clean::Item,
+) -> impl fmt::Display + 'a + Captures<'tcx> {
+    fmt::from_fn(move |f| {
+        let mut ids = IdMap::new();
+        let mut blocks: Vec<LinkBlock<'_>> = docblock_toc(cx, it, &mut ids).into_iter().collect();
+        let deref_id_map = cx.deref_id_map.borrow();
+        match it.kind {
+            clean::StructItem(ref s) => sidebar_struct(cx, it, s, &mut blocks, &deref_id_map),
+            clean::TraitItem(ref t) => sidebar_trait(cx, it, t, &mut blocks, &deref_id_map),
+            clean::PrimitiveItem(_) => sidebar_primitive(cx, it, &mut blocks, &deref_id_map),
+            clean::UnionItem(ref u) => sidebar_union(cx, it, u, &mut blocks, &deref_id_map),
+            clean::EnumItem(ref e) => sidebar_enum(cx, it, e, &mut blocks, &deref_id_map),
+            clean::TypeAliasItem(ref t) => {
+                sidebar_type_alias(cx, it, t, &mut blocks, &deref_id_map)
+            }
+            clean::ModuleItem(ref m) => {
+                blocks.push(sidebar_module(&m.items, &mut ids, ModuleLike::from(it)))
+            }
+            clean::ForeignTypeItem => sidebar_foreign_type(cx, it, &mut blocks, &deref_id_map),
+            _ => {}
         }
-        clean::ForeignTypeItem => sidebar_foreign_type(cx, it, &mut blocks, &deref_id_map),
-        _ => {}
-    }
-    // The sidebar is designed to display sibling functions, modules and
-    // other miscellaneous information. since there are lots of sibling
-    // items (and that causes quadratic growth in large modules),
-    // we refactor common parts into a shared JavaScript file per module.
-    // still, we don't move everything into JS because we want to preserve
-    // as much HTML as possible in order to allow non-JS-enabled browsers
-    // to navigate the documentation (though slightly inefficiently).
-    //
-    // crate title is displayed as part of logo lockup
-    let (title_prefix, title) = if !blocks.is_empty() && !it.is_crate() {
-        (
-            match it.kind {
-                clean::ModuleItem(..) => "Module ",
-                _ => "",
-            },
-            it.name.as_ref().unwrap().as_str(),
-        )
-    } else {
-        ("", "")
-    };
-    // need to show parent path header if:
-    //   - it's a child module, instead of the crate root
-    //   - there's a sidebar section for the item itself
-    //
-    // otherwise, the parent path header is redundant with the big crate
-    // branding area at the top of the sidebar
-    let sidebar_path =
-        if it.is_mod() { &cx.current[..cx.current.len() - 1] } else { &cx.current[..] };
-    let path: String = if sidebar_path.len() > 1 || !title.is_empty() {
-        let path = sidebar_path.iter().map(|s| s.as_str()).intersperse("::").collect();
-        if sidebar_path.len() == 1 { format!("crate {path}") } else { path }
-    } else {
-        "".into()
-    };
-    let sidebar = Sidebar {
-        title_prefix,
-        title,
-        is_mod: it.is_mod(),
-        is_crate: it.is_crate(),
-        parent_is_crate: sidebar_path.len() == 1,
-        blocks,
-        path,
-    };
-    sidebar.render_into(buffer).unwrap();
+        // The sidebar is designed to display sibling functions, modules and
+        // other miscellaneous information. since there are lots of sibling
+        // items (and that causes quadratic growth in large modules),
+        // we refactor common parts into a shared JavaScript file per module.
+        // still, we don't move everything into JS because we want to preserve
+        // as much HTML as possible in order to allow non-JS-enabled browsers
+        // to navigate the documentation (though slightly inefficiently).
+        //
+        // crate title is displayed as part of logo lockup
+        let (title_prefix, title) = if !blocks.is_empty() && !it.is_crate() {
+            (
+                match it.kind {
+                    clean::ModuleItem(..) => "Module ",
+                    _ => "",
+                },
+                it.name.as_ref().unwrap().as_str(),
+            )
+        } else {
+            ("", "")
+        };
+        // need to show parent path header if:
+        //   - it's a child module, instead of the crate root
+        //   - there's a sidebar section for the item itself
+        //
+        // otherwise, the parent path header is redundant with the big crate
+        // branding area at the top of the sidebar
+        let sidebar_path =
+            if it.is_mod() { &cx.current[..cx.current.len() - 1] } else { &cx.current[..] };
+        let path: String = if sidebar_path.len() > 1 || !title.is_empty() {
+            let path = sidebar_path.iter().map(|s| s.as_str()).intersperse("::").collect();
+            if sidebar_path.len() == 1 { format!("crate {path}") } else { path }
+        } else {
+            "".into()
+        };
+        let sidebar = Sidebar {
+            title_prefix,
+            title,
+            is_mod: it.is_mod(),
+            is_crate: it.is_crate(),
+            parent_is_crate: sidebar_path.len() == 1,
+            blocks,
+            path,
+        };
+        sidebar.render_into(f).unwrap();
+        Ok(())
+    })
 }
 
 fn get_struct_fields_name<'a>(fields: &'a [clean::Item]) -> Vec<Link<'a>> {
