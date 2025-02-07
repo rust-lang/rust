@@ -51,17 +51,6 @@ fn get_limit(
     name: Symbol,
     default: Limit,
 ) -> Limit {
-    match get_limit_size(krate_attrs, sess, name) {
-        Some(size) => Limit::new(size),
-        None => default,
-    }
-}
-
-pub fn get_limit_size(
-    krate_attrs: &[impl AttributeExt],
-    sess: &Session,
-    name: Symbol,
-) -> Option<usize> {
     for attr in krate_attrs {
         if !attr.has_name(name) {
             continue;
@@ -69,7 +58,7 @@ pub fn get_limit_size(
 
         if let Some(sym) = attr.value_str() {
             match sym.as_str().parse() {
-                Ok(n) => return Some(n),
+                Ok(n) => return Limit::new(n),
                 Err(e) => {
                     let error_str = match e.kind() {
                         IntErrorKind::PosOverflow => "`limit` is too large",
@@ -90,5 +79,5 @@ pub fn get_limit_size(
             }
         }
     }
-    None
+    default
 }
