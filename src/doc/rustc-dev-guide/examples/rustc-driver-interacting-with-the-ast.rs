@@ -15,9 +15,9 @@ extern crate rustc_span;
 
 use std::io;
 use std::path::Path;
+use std::sync::Arc;
 
 use rustc_ast_pretty::pprust::item_to_string;
-use rustc_data_structures::sync::Lrc;
 use rustc_driver::{Compilation, run_compiler};
 use rustc_interface::interface::{Compiler, Config};
 use rustc_middle::ty::TyCtxt;
@@ -43,7 +43,7 @@ fn main() {
         }
     }
 
-    fn read_binary_file(&self, _path: &Path) -> io::Result<Lrc<[u8]>> {
+    fn read_binary_file(&self, _path: &Path) -> io::Result<Arc<[u8]>> {
         Err(io::Error::other("oops"))
     }
 }

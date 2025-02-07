@@ -10,7 +10,7 @@ note: function defined here
   --> $DIR/issue-96638.rs:1:4
    |
 LL | fn f(_: usize, _: &usize, _: usize) {}
-   |    ^ --------  ---------  --------
+   |    ^ --------             --------
 help: provide the argument
    |
 LL |     f(/* usize */, &x, /* usize */);

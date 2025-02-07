@@ -29,11 +29,12 @@ use std::collections::hash_map::Entry;
 use std::collections::hash_set::Entry as SetEntry;
 use std::fmt;
 use std::hash::Hash;
+use std::sync::Arc;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, HashingControls, StableHasher};
-use rustc_data_structures::sync::{Lock, Lrc, WorkerLocal};
+use rustc_data_structures::sync::{Lock, WorkerLocal};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
@@ -904,7 +905,7 @@ impl Span {
     /// allowed inside this span.
     pub fn mark_with_reason(
         self,
-        allow_internal_unstable: Option<Lrc<[Symbol]>>,
+        allow_internal_unstable: Option<Arc<[Symbol]>>,
         reason: DesugaringKind,
         edition: Edition,
         ctx: impl HashStableContext,
@@ -959,7 +960,7 @@ pub struct ExpnData {
     /// List of `#[unstable]`/feature-gated features that the macro is allowed to use
     /// internally without forcing the whole crate to opt-in
     /// to them.
-    pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
+    pub allow_internal_unstable: Option<Arc<[Symbol]>>,
     /// Edition of the crate in which the macro is defined.
     pub edition: Edition,
     /// The `DefId` of the macro being invoked,
@@ -985,7 +986,7 @@ impl ExpnData {
         parent: ExpnId,
         call_site: Span,
         def_site: Span,
-        allow_internal_unstable: Option<Lrc<[Symbol]>>,
+        allow_internal_unstable: Option<Arc<[Symbol]>>,
         edition: Edition,
         macro_def_id: Option<DefId>,
         parent_module: Option<DefId>,
@@ -1037,7 +1038,7 @@ impl ExpnData {
         kind: ExpnKind,
         call_site: Span,
         edition: Edition,
-        allow_internal_unstable: Lrc<[Symbol]>,
+        allow_internal_unstable: Arc<[Symbol]>,
         macro_def_id: Option<DefId>,
         parent_module: Option<DefId>,
     ) -> ExpnData {

@@ -345,6 +345,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_pat_expr(&mut self, expr: &'v PatExpr<'v>) -> Self::Result {
         walk_pat_expr(self, expr)
     }
+    fn visit_lit(&mut self, _hir_id: HirId, _lit: &'v Lit, _negated: bool) -> Self::Result {
+        Self::Result::output()
+    }
     fn visit_anon_const(&mut self, c: &'v AnonConst) -> Self::Result {
         walk_anon_const(self, c)
     }
@@ -764,7 +767,7 @@ pub fn walk_pat_field<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v PatField<'
 pub fn walk_pat_expr<'v, V: Visitor<'v>>(visitor: &mut V, expr: &'v PatExpr<'v>) -> V::Result {
     try_visit!(visitor.visit_id(expr.hir_id));
     match &expr.kind {
-        PatExprKind::Lit { .. } => V::Result::output(),
+        PatExprKind::Lit { lit, negated } => visitor.visit_lit(expr.hir_id, lit, *negated),
         PatExprKind::ConstBlock(c) => visitor.visit_inline_const(c),
         PatExprKind::Path(qpath) => visitor.visit_qpath(qpath, expr.hir_id, expr.span),
     }
@@ -912,7 +915,8 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             try_visit!(visitor.visit_expr(expr));
             visit_opt!(visitor, visit_ty_unambig, ty);
         }
-        ExprKind::Lit(_) | ExprKind::Err(_) => {}
+        ExprKind::Lit(lit) => try_visit!(visitor.visit_lit(expression.hir_id, lit, false)),
+        ExprKind::Err(_) => {}
     }
     V::Result::output()
 }

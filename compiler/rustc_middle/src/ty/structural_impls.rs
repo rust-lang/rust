@@ -6,15 +6,18 @@
 use std::fmt::{self, Debug};
 
 use rustc_abi::TyAndLayout;
+use rustc_ast::InlineAsmTemplatePiece;
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_hir::def::Namespace;
+use rustc_hir::def_id::LocalDefId;
+use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 use rustc_type_ir::ConstKind;
 
 use super::print::PrettyPrinter;
 use super::{GenericArg, GenericArgKind, Pattern, Region};
-use crate::mir::interpret;
+use crate::mir::PlaceElem;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{FmtPrinter, Printer, with_no_trimmed_paths};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
@@ -221,76 +224,89 @@ impl<'tcx> fmt::Debug for Region<'tcx> {
 // copy...), just add them to one of these lists as appropriate.
 
 // For things for which the type library provides traversal implementations
-// for all Interners, we only need to provide a Lift implementation:
+// for all Interners, we only need to provide a Lift implementation.
 TrivialLiftImpls! {
-     (),
-     bool,
-     usize,
-     u64,
+    (),
+    bool,
+    usize,
+    u64,
+    // tidy-alphabetical-start
+    crate::mir::interpret::AllocId,
+    crate::mir::interpret::Scalar,
+    crate::mir::Promoted,
+    rustc_abi::ExternAbi,
+    rustc_abi::Size,
+    rustc_hir::Safety,
+    rustc_type_ir::BoundConstness,
+    rustc_type_ir::PredicatePolarity,
+    // tidy-alphabetical-end
 }
 
 // For some things about which the type library does not know, or does not
 // provide any traversal implementations, we need to provide a traversal
 // implementation (only for TyCtxt<'_> interners).
 TrivialTypeTraversalImpls! {
-    ::rustc_abi::FieldIdx,
-    ::rustc_abi::VariantIdx,
-    crate::middle::region::Scope,
-    ::rustc_ast::InlineAsmOptions,
-    ::rustc_ast::InlineAsmTemplatePiece,
-    ::rustc_ast::NodeId,
-    ::rustc_hir::def::Res,
-    ::rustc_hir::def_id::LocalDefId,
-    ::rustc_hir::ByRef,
-    ::rustc_hir::HirId,
-    ::rustc_hir::MatchSource,
-    ::rustc_target::asm::InlineAsmRegOrRegClass,
-    crate::mir::coverage::BlockMarkerId,
-    crate::mir::coverage::CounterId,
-    crate::mir::coverage::ExpressionId,
-    crate::mir::coverage::ConditionId,
+    // tidy-alphabetical-start
+    crate::infer::canonical::Certainty,
+    crate::mir::BasicBlock,
+    crate::mir::BindingForm<'tcx>,
+    crate::mir::BlockTailInfo,
+    crate::mir::BorrowKind,
+    crate::mir::CastKind,
+    crate::mir::ConstValue<'tcx>,
+    crate::mir::CoroutineSavedLocal,
+    crate::mir::FakeReadCause,
     crate::mir::Local,
+    crate::mir::MirPhase,
+    crate::mir::NullOp<'tcx>,
     crate::mir::Promoted,
+    crate::mir::RawPtrKind,
+    crate::mir::RetagKind,
+    crate::mir::SourceInfo,
+    crate::mir::SourceScope,
+    crate::mir::SourceScopeLocalData,
+    crate::mir::SwitchTargets,
+    crate::traits::IsConstable,
+    crate::traits::OverflowError,
+    crate::ty::abstract_const::NotConstEvaluatable,
     crate::ty::adjustment::AutoBorrowMutability,
+    crate::ty::adjustment::PointerCoercion,
     crate::ty::AdtKind,
-    crate::ty::BoundRegion,
-    // Including `BoundRegionKind` is a *bit* dubious, but direct
-    // references to bound region appear in `ty::Error`, and aren't
-    // really meant to be folded. In general, we can only fold a fully
-    // general `Region`.
-    crate::ty::BoundRegionKind,
     crate::ty::AssocItem,
     crate::ty::AssocKind,
+    crate::ty::BoundRegion,
+    crate::ty::BoundVar,
     crate::ty::Placeholder<crate::ty::BoundRegion>,
     crate::ty::Placeholder<crate::ty::BoundTy>,
     crate::ty::Placeholder<ty::BoundVar>,
-    crate::ty::LateParamRegion,
-    crate::ty::adjustment::PointerCoercion,
-    ::rustc_span::Ident,
-    ::rustc_span::Span,
-    ::rustc_span::Symbol,
-    ty::BoundVar,
-    ty::ValTree<'tcx>,
+    crate::ty::UserTypeAnnotationIndex,
+    crate::ty::ValTree<'tcx>,
+    rustc_abi::FieldIdx,
+    rustc_abi::VariantIdx,
+    rustc_ast::InlineAsmOptions,
+    rustc_ast::InlineAsmTemplatePiece,
+    rustc_hir::CoroutineKind,
+    rustc_hir::def_id::LocalDefId,
+    rustc_hir::HirId,
+    rustc_hir::MatchSource,
+    rustc_span::Ident,
+    rustc_span::Span,
+    rustc_span::Symbol,
+    rustc_target::asm::InlineAsmRegOrRegClass,
+    // tidy-alphabetical-end
 }
+
 // For some things about which the type library does not know, or does not
 // provide any traversal implementations, we need to provide a traversal
 // implementation and a lift implementation (the former only for TyCtxt<'_>
 // interners).
 TrivialTypeTraversalAndLiftImpls! {
-    ::rustc_hir::def_id::DefId,
-    crate::ty::ClosureKind,
+    // tidy-alphabetical-start
+    crate::ty::instance::ReifyReason,
     crate::ty::ParamConst,
     crate::ty::ParamTy,
-    crate::ty::instance::ReifyReason,
-    interpret::AllocId,
-    interpret::CtfeProvenance,
-    interpret::Scalar,
-    rustc_abi::Size,
-}
-
-TrivialLiftImpls! {
-    ::rustc_hir::Safety,
-    ::rustc_abi::ExternAbi,
+    rustc_hir::def_id::DefId,
+    // tidy-alphabetical-end
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -670,5 +686,41 @@ impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Debug + Clone> TypeFoldable<TyCtxt<'t
             node: self.node.try_fold_with(folder)?,
             span: self.span.try_fold_with(folder)?,
         })
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx [InlineAsmTemplatePiece] {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        _folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        Ok(self)
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx [Span] {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        _folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        Ok(self)
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<LocalDefId> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        _folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        Ok(self)
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<PlaceElem<'tcx>> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_place_elems(v))
     }
 }

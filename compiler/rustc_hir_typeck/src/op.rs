@@ -306,6 +306,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     lang_item_for_op(self.tcx, Op::Binary(op, is_assign), op.span);
                 let missing_trait = trait_def_id
                     .map(|def_id| with_no_trimmed_paths!(self.tcx.def_path_str(def_id)));
+                let mut path = None;
+                let lhs_ty_str = self.tcx.short_string(lhs_ty, &mut path);
+                let rhs_ty_str = self.tcx.short_string(rhs_ty, &mut path);
                 let (mut err, output_def_id) = match is_assign {
                     IsAssign::Yes => {
                         let mut err = struct_span_code_err!(
@@ -314,11 +317,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             E0368,
                             "binary assignment operation `{}=` cannot be applied to type `{}`",
                             op.node.as_str(),
-                            lhs_ty,
+                            lhs_ty_str,
                         );
                         err.span_label(
                             lhs_expr.span,
-                            format!("cannot use `{}=` on type `{}`", op.node.as_str(), lhs_ty),
+                            format!("cannot use `{}=` on type `{}`", op.node.as_str(), lhs_ty_str),
                         );
                         self.note_unmet_impls_on_type(&mut err, errors, false);
                         (err, None)
@@ -326,41 +329,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     IsAssign::No => {
                         let message = match op.node {
                             hir::BinOpKind::Add => {
-                                format!("cannot add `{rhs_ty}` to `{lhs_ty}`")
+                                format!("cannot add `{rhs_ty_str}` to `{lhs_ty_str}`")
                             }
                             hir::BinOpKind::Sub => {
-                                format!("cannot subtract `{rhs_ty}` from `{lhs_ty}`")
+                                format!("cannot subtract `{rhs_ty_str}` from `{lhs_ty_str}`")
                             }
                             hir::BinOpKind::Mul => {
-                                format!("cannot multiply `{lhs_ty}` by `{rhs_ty}`")
+                                format!("cannot multiply `{lhs_ty_str}` by `{rhs_ty_str}`")
                             }
                             hir::BinOpKind::Div => {
-                                format!("cannot divide `{lhs_ty}` by `{rhs_ty}`")
+                                format!("cannot divide `{lhs_ty_str}` by `{rhs_ty_str}`")
                             }
                             hir::BinOpKind::Rem => {
                                 format!(
-                                    "cannot calculate the remainder of `{lhs_ty}` divided by `{rhs_ty}`"
+                                    "cannot calculate the remainder of `{lhs_ty_str}` divided by \
+                                     `{rhs_ty_str}`"
                                 )
                             }
                             hir::BinOpKind::BitAnd => {
-                                format!("no implementation for `{lhs_ty} & {rhs_ty}`")
+                                format!("no implementation for `{lhs_ty_str} & {rhs_ty_str}`")
                             }
                             hir::BinOpKind::BitXor => {
-                                format!("no implementation for `{lhs_ty} ^ {rhs_ty}`")
+                                format!("no implementation for `{lhs_ty_str} ^ {rhs_ty_str}`")
                             }
                             hir::BinOpKind::BitOr => {
-                                format!("no implementation for `{lhs_ty} | {rhs_ty}`")
+                                format!("no implementation for `{lhs_ty_str} | {rhs_ty_str}`")
                             }
                             hir::BinOpKind::Shl => {
-                                format!("no implementation for `{lhs_ty} << {rhs_ty}`")
+                                format!("no implementation for `{lhs_ty_str} << {rhs_ty_str}`")
                             }
                             hir::BinOpKind::Shr => {
-                                format!("no implementation for `{lhs_ty} >> {rhs_ty}`")
+                                format!("no implementation for `{lhs_ty_str} >> {rhs_ty_str}`")
                             }
                             _ => format!(
                                 "binary operation `{}` cannot be applied to type `{}`",
                                 op.node.as_str(),
-                                lhs_ty
+                                lhs_ty_str,
                             ),
                         };
                         let output_def_id = trait_def_id.and_then(|def_id| {
@@ -375,14 +379,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let mut err =
                             struct_span_code_err!(self.dcx(), op.span, E0369, "{message}");
                         if !lhs_expr.span.eq(&rhs_expr.span) {
-                            err.span_label(lhs_expr.span, lhs_ty.to_string());
-                            err.span_label(rhs_expr.span, rhs_ty.to_string());
+                            err.span_label(lhs_expr.span, lhs_ty_str.clone());
+                            err.span_label(rhs_expr.span, rhs_ty_str);
                         }
                         let suggest_derive = self.can_eq(self.param_env, lhs_ty, rhs_ty);
                         self.note_unmet_impls_on_type(&mut err, errors, suggest_derive);
                         (err, output_def_id)
                     }
                 };
+                *err.long_ty_path() = path;
 
                 // Try to suggest a semicolon if it's `A \n *B` where `B` is a place expr
                 let maybe_missing_semi = self.check_for_missing_semi(expr, &mut err);
@@ -417,7 +422,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 IsAssign::Yes => "=",
                                 IsAssign::No => "",
                             },
-                            lhs_deref_ty,
+                            self.tcx.short_string(lhs_deref_ty, err.long_ty_path()),
                         );
                         err.span_suggestion_verbose(
                             lhs_expr.span.shrink_to_lo(),
@@ -443,8 +448,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             )
                             .is_ok()
                         {
-                            let op_str = op.node.as_str();
-                            err.note(format!("an implementation for `{lhs_adjusted_ty} {op_str} {rhs_adjusted_ty}` exists"));
+                            let lhs = self.tcx.short_string(lhs_adjusted_ty, err.long_ty_path());
+                            let rhs = self.tcx.short_string(rhs_adjusted_ty, err.long_ty_path());
+                            let op = op.node.as_str();
+                            err.note(format!("an implementation for `{lhs} {op} {rhs}` exists"));
 
                             if let Some(lhs_new_mutbl) = lhs_new_mutbl
                                 && let Some(rhs_new_mutbl) = rhs_new_mutbl
@@ -628,7 +635,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // When we know that a missing bound is responsible, we don't show
                             // this note as it is redundant.
                             err.note(format!(
-                                "the trait `{missing_trait}` is not implemented for `{lhs_ty}`"
+                                "the trait `{missing_trait}` is not implemented for `{lhs_ty_str}`"
                             ));
                         }
                     }
@@ -654,24 +661,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         hir::BinOpKind::Sub => {
                             if lhs_ty.is_unsafe_ptr() && rhs_ty.is_integral() {
                                 err.multipart_suggestion(
-                                    "consider using `wrapping_sub` or `sub` for pointer - {integer}",
+                                    "consider using `wrapping_sub` or `sub` for \
+                                     pointer - {integer}",
                                     vec![
-                                        (lhs_expr.span.between(rhs_expr.span), ".wrapping_sub(".to_owned()),
+                                        (
+                                            lhs_expr.span.between(rhs_expr.span),
+                                            ".wrapping_sub(".to_owned(),
+                                        ),
                                         (rhs_expr.span.shrink_to_hi(), ")".to_owned()),
                                     ],
-                                    Applicability::MaybeIncorrect
+                                    Applicability::MaybeIncorrect,
                                 );
                             }
 
                             if lhs_ty.is_unsafe_ptr() && rhs_ty.is_unsafe_ptr() {
                                 err.multipart_suggestion(
-                                    "consider using `offset_from` for pointer - pointer if the pointers point to the same allocation",
+                                    "consider using `offset_from` for pointer - pointer if the \
+                                     pointers point to the same allocation",
                                     vec![
                                         (lhs_expr.span.shrink_to_lo(), "unsafe { ".to_owned()),
-                                        (lhs_expr.span.between(rhs_expr.span), ".offset_from(".to_owned()),
+                                        (
+                                            lhs_expr.span.between(rhs_expr.span),
+                                            ".offset_from(".to_owned(),
+                                        ),
                                         (rhs_expr.span.shrink_to_hi(), ") }".to_owned()),
                                     ],
-                                    Applicability::MaybeIncorrect
+                                    Applicability::MaybeIncorrect,
                                 );
                             }
                         }
@@ -793,14 +808,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(errors) => {
                 let actual = self.resolve_vars_if_possible(operand_ty);
                 let guar = actual.error_reported().err().unwrap_or_else(|| {
+                    let mut file = None;
+                    let ty_str = self.tcx.short_string(actual, &mut file);
                     let mut err = struct_span_code_err!(
                         self.dcx(),
                         ex.span,
                         E0600,
-                        "cannot apply unary operator `{}` to type `{}`",
+                        "cannot apply unary operator `{}` to type `{ty_str}`",
                         op.as_str(),
-                        actual
                     );
+                    *err.long_ty_path() = file;
                     err.span_label(
                         ex.span,
                         format!("cannot apply unary operator `{}`", op.as_str()),

@@ -18,7 +18,6 @@
 //!
 //! | Type                    | Serial version      | Parallel version                |
 //! | ----------------------- | ------------------- | ------------------------------- |
-//! | `Lrc<T>`                | `rc::Rc<T>`         | `sync::Arc<T>`                  |
 //! |` Weak<T>`               | `rc::Weak<T>`       | `sync::Weak<T>`                 |
 //! | `LRef<'a, T>` [^2]      | `&'a mut T`         | `&'a T`                         |
 //! |                         |                     |                                 |
@@ -109,7 +108,7 @@ pub use std::marker::{Send, Sync};
 #[cfg(target_has_atomic = "64")]
 pub use std::sync::atomic::AtomicU64;
 pub use std::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize};
-pub use std::sync::{Arc as Lrc, OnceLock, Weak};
+pub use std::sync::{OnceLock, Weak};
 
 pub use mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
 pub use parking_lot::{

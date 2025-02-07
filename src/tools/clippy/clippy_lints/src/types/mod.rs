@@ -386,22 +386,30 @@ impl<'tcx> LateLintPass<'tcx> for Types {
 
         let is_exported = cx.effective_visibilities.is_exported(def_id);
 
-        self.check_fn_decl(cx, decl, CheckTyContext {
-            is_in_trait_impl,
-            in_body: matches!(fn_kind, FnKind::Closure),
-            is_exported,
-            ..CheckTyContext::default()
-        });
+        self.check_fn_decl(
+            cx,
+            decl,
+            CheckTyContext {
+                is_in_trait_impl,
+                in_body: matches!(fn_kind, FnKind::Closure),
+                is_exported,
+                ..CheckTyContext::default()
+            },
+        );
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         let is_exported = cx.effective_visibilities.is_exported(item.owner_id.def_id);
 
         match item.kind {
-            ItemKind::Static(ty, _, _) | ItemKind::Const(ty, _, _) => self.check_ty(cx, ty, CheckTyContext {
-                is_exported,
-                ..CheckTyContext::default()
-            }),
+            ItemKind::Static(ty, _, _) | ItemKind::Const(ty, _, _) => self.check_ty(
+                cx,
+                ty,
+                CheckTyContext {
+                    is_exported,
+                    ..CheckTyContext::default()
+                },
+            ),
             // functions, enums, structs, impls and traits are covered
             _ => (),
         }
@@ -419,10 +427,14 @@ impl<'tcx> LateLintPass<'tcx> for Types {
                     false
                 };
 
-                self.check_ty(cx, ty, CheckTyContext {
-                    is_in_trait_impl,
-                    ..CheckTyContext::default()
-                });
+                self.check_ty(
+                    cx,
+                    ty,
+                    CheckTyContext {
+                        is_in_trait_impl,
+                        ..CheckTyContext::default()
+                    },
+                );
             },
             // Methods are covered by check_fn.
             // Type aliases are ignored because oftentimes it's impossible to
@@ -438,10 +450,14 @@ impl<'tcx> LateLintPass<'tcx> for Types {
 
         let is_exported = cx.effective_visibilities.is_exported(field.def_id);
 
-        self.check_ty(cx, field.ty, CheckTyContext {
-            is_exported,
-            ..CheckTyContext::default()
-        });
+        self.check_ty(
+            cx,
+            field.ty,
+            CheckTyContext {
+                is_exported,
+                ..CheckTyContext::default()
+            },
+        );
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &TraitItem<'tcx>) {
@@ -469,10 +485,14 @@ impl<'tcx> LateLintPass<'tcx> for Types {
 
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &LetStmt<'tcx>) {
         if let Some(ty) = local.ty {
-            self.check_ty(cx, ty, CheckTyContext {
-                in_body: true,
-                ..CheckTyContext::default()
-            });
+            self.check_ty(
+                cx,
+                ty,
+                CheckTyContext {
+                    in_body: true,
+                    ..CheckTyContext::default()
+                },
+            );
         }
     }
 }

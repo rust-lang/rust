@@ -5,7 +5,7 @@ fn main() -> () {
     scope 1 {
         debug x => const 2_u32 is 1..=;
         scope 2 {
-            debug y => const 0_u32 is 1..=;
+            debug y => const {transmute(0x00000000): (u32) is 1..=};
         }
     }
 

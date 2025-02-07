@@ -60,7 +60,7 @@ note: function defined here
   --> $DIR/issue-34264.rs:1:4
    |
 LL | fn foo(Option<i32>, String) {}
-   |    ^^^ -----------  ------
+   |    ^^^
 help: remove the extra argument
    |
 LL -     foo(Some(42), 2, "");
@@ -91,7 +91,7 @@ note: function defined here
   --> $DIR/issue-34264.rs:3:4
    |
 LL | fn bar(x, y: usize) {}
-   |    ^^^ -  --------
+   |    ^^^
 help: remove the extra argument
    |
 LL -     bar(1, 2, 3);
