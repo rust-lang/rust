@@ -80,7 +80,7 @@ use crate::ty::{
     GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst, ParamTy,
     Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
     PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
-    Visibility,
+    ValTree, ValTreeKind, Visibility,
 };
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -806,6 +806,7 @@ pub struct CtxtInterners<'tcx> {
     local_def_ids: InternedSet<'tcx, List<LocalDefId>>,
     captures: InternedSet<'tcx, List<&'tcx ty::CapturedPlace<'tcx>>>,
     offset_of: InternedSet<'tcx, List<(VariantIdx, FieldIdx)>>,
+    valtree: InternedSet<'tcx, ty::ValTreeKind<'tcx>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -835,6 +836,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             local_def_ids: Default::default(),
             captures: Default::default(),
             offset_of: Default::default(),
+            valtree: Default::default(),
         }
     }
 
@@ -1026,6 +1028,8 @@ pub struct CommonConsts<'tcx> {
     pub unit: Const<'tcx>,
     pub true_: Const<'tcx>,
     pub false_: Const<'tcx>,
+    /// Use [`ty::ValTree::zst`] instead.
+    pub(crate) valtree_zst: ValTree<'tcx>,
 }
 
 impl<'tcx> CommonTypes<'tcx> {
@@ -1129,19 +1133,30 @@ impl<'tcx> CommonConsts<'tcx> {
             )
         };
 
+        let mk_valtree = |v| {
+            ty::ValTree(Interned::new_unchecked(
+                interners.valtree.intern(v, |v| InternedInSet(interners.arena.alloc(v))).0,
+            ))
+        };
+
+        let valtree_zst = mk_valtree(ty::ValTreeKind::Branch(Box::default()));
+        let valtree_true = mk_valtree(ty::ValTreeKind::Leaf(ty::ScalarInt::TRUE));
+        let valtree_false = mk_valtree(ty::ValTreeKind::Leaf(ty::ScalarInt::FALSE));
+
         CommonConsts {
             unit: mk_const(ty::ConstKind::Value(ty::Value {
                 ty: types.unit,
-                valtree: ty::ValTree::zst(),
+                valtree: valtree_zst,
             })),
             true_: mk_const(ty::ConstKind::Value(ty::Value {
                 ty: types.bool,
-                valtree: ty::ValTree::Leaf(ty::ScalarInt::TRUE),
+                valtree: valtree_true,
             })),
             false_: mk_const(ty::ConstKind::Value(ty::Value {
                 ty: types.bool,
-                valtree: ty::ValTree::Leaf(ty::ScalarInt::FALSE),
+                valtree: valtree_false,
             })),
+            valtree_zst,
         }
     }
 }
@@ -2259,6 +2274,7 @@ nop_lift! { const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx> }
 nop_lift! { predicate; Predicate<'a> => Predicate<'tcx> }
 nop_lift! { predicate; Clause<'a> => Clause<'tcx> }
 nop_lift! { layout; Layout<'a> => Layout<'tcx> }
+nop_lift! { valtree; ValTree<'a> => ValTree<'tcx> }
 
 nop_list_lift! { type_lists; Ty<'a> => Ty<'tcx> }
 nop_list_lift! {
@@ -2268,26 +2284,6 @@ nop_list_lift! { bound_variable_kinds; ty::BoundVariableKind => ty::BoundVariabl
 
 // This is the impl for `&'a GenericArgs<'a>`.
 nop_list_lift! { args; GenericArg<'a> => GenericArg<'tcx> }
-
-macro_rules! nop_slice_lift {
-    ($ty:ty => $lifted:ty) => {
-        impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for &'a [$ty] {
-            type Lifted = &'tcx [$lifted];
-            fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-                if self.is_empty() {
-                    return Some(&[]);
-                }
-                tcx.interners
-                    .arena
-                    .dropless
-                    .contains_slice(self)
-                    .then(|| unsafe { mem::transmute(self) })
-            }
-        }
-    };
-}
-
-nop_slice_lift! { ty::ValTree<'a> => ty::ValTree<'tcx> }
 
 macro_rules! sty_debug_print {
     ($fmt: expr, $ctxt: expr, $($variant: ident),*) => {{
@@ -2533,6 +2529,7 @@ macro_rules! direct_interners {
 // crate only, and have a corresponding `mk_` function.
 direct_interners! {
     region: pub(crate) intern_region(RegionKind<'tcx>): Region -> Region<'tcx>,
+    valtree: pub(crate) intern_valtree(ValTreeKind<'tcx>): ValTree -> ValTree<'tcx>,
     pat: pub mk_pat(PatternKind<'tcx>): Pattern -> Pattern<'tcx>,
     const_allocation: pub mk_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
     layout: pub mk_layout(LayoutData<FieldIdx, VariantIdx>): Layout -> Layout<'tcx>,

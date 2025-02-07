@@ -2,7 +2,7 @@ use rustc_abi::{BackendRepr, VariantIdx};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId, ReportedErrorInfo};
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::DUMMY_SP;
 use tracing::{debug, instrument, trace};
@@ -29,7 +29,8 @@ fn branches<'tcx>(
         Some(variant) => ecx.project_downcast(place, variant).unwrap(),
         None => place.clone(),
     };
-    let variant = variant.map(|variant| Some(ty::ValTree::Leaf(ScalarInt::from(variant.as_u32()))));
+    let variant = variant
+        .map(|variant| Some(ty::ValTree::from_scalar_int(*ecx.tcx, variant.as_u32().into())));
     debug!(?place, ?variant);
 
     let mut fields = Vec::with_capacity(n);
@@ -52,7 +53,7 @@ fn branches<'tcx>(
         *num_nodes += 1;
     }
 
-    Ok(ty::ValTree::Branch(ecx.tcx.arena.alloc_from_iter(branches)))
+    Ok(ty::ValTree::from_branches(*ecx.tcx, branches))
 }
 
 #[instrument(skip(ecx), level = "debug")]
@@ -70,7 +71,7 @@ fn slice_branches<'tcx>(
         elems.push(valtree);
     }
 
-    Ok(ty::ValTree::Branch(ecx.tcx.arena.alloc_from_iter(elems)))
+    Ok(ty::ValTree::from_branches(*ecx.tcx, elems))
 }
 
 #[instrument(skip(ecx), level = "debug")]
@@ -79,6 +80,7 @@ fn const_to_valtree_inner<'tcx>(
     place: &MPlaceTy<'tcx>,
     num_nodes: &mut usize,
 ) -> ValTreeCreationResult<'tcx> {
+    let tcx = *ecx.tcx;
     let ty = place.layout.ty;
     debug!("ty kind: {:?}", ty.kind());
 
@@ -89,14 +91,14 @@ fn const_to_valtree_inner<'tcx>(
     match ty.kind() {
         ty::FnDef(..) => {
             *num_nodes += 1;
-            Ok(ty::ValTree::zst())
+            Ok(ty::ValTree::zst(tcx))
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
             let val = ecx.read_immediate(place).unwrap();
             let val = val.to_scalar_int().unwrap();
             *num_nodes += 1;
 
-            Ok(ty::ValTree::Leaf(val))
+            Ok(ty::ValTree::from_scalar_int(tcx, val))
         }
 
         ty::Pat(base, ..) => {
@@ -127,7 +129,7 @@ fn const_to_valtree_inner<'tcx>(
                 return Err(ValTreeCreationError::NonSupportedType(ty));
             };
             // It's just a ScalarInt!
-            Ok(ty::ValTree::Leaf(val))
+            Ok(ty::ValTree::from_scalar_int(tcx, val))
         }
 
         // Technically we could allow function pointers (represented as `ty::Instance`), but this is not guaranteed to
@@ -287,16 +289,11 @@ pub fn valtree_to_const_value<'tcx>(
     // FIXME: Does this need an example?
     match *cv.ty.kind() {
         ty::FnDef(..) => {
-            assert!(cv.valtree.unwrap_branch().is_empty());
+            assert!(cv.valtree.is_zst());
             mir::ConstValue::ZeroSized
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char | ty::RawPtr(_, _) => {
-            match cv.valtree {
-                ty::ValTree::Leaf(scalar_int) => mir::ConstValue::Scalar(Scalar::Int(scalar_int)),
-                ty::ValTree::Branch(_) => bug!(
-                    "ValTrees for Bool, Int, Uint, Float, Char or RawPtr should have the form ValTree::Leaf"
-                ),
-            }
+            mir::ConstValue::Scalar(Scalar::Int(cv.valtree.unwrap_leaf()))
         }
         ty::Pat(ty, _) => {
             let cv = ty::Value { valtree: cv.valtree, ty };

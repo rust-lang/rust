@@ -146,6 +146,12 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Pattern<'tcx> {
     }
 }
 
+impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::ValTree<'tcx> {
+    fn encode(&self, e: &mut E) {
+        self.0.0.encode(e);
+    }
+}
+
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ConstAllocation<'tcx> {
     fn encode(&self, e: &mut E) {
         self.inner().encode(e)
@@ -355,12 +361,9 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Pattern<'tcx> {
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for [ty::ValTree<'tcx>] {
-    fn decode(decoder: &mut D) -> &'tcx Self {
-        decoder
-            .interner()
-            .arena
-            .alloc_from_iter((0..decoder.read_usize()).map(|_| Decodable::decode(decoder)))
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::ValTree<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
+        decoder.interner().intern_valtree(Decodable::decode(decoder))
     }
 }
 

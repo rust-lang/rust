@@ -2161,7 +2161,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     did,
                     path.segments.last().unwrap(),
                 );
-                ty::Const::new_value(tcx, ty::ValTree::zst(), Ty::new_fn_def(tcx, did, args))
+                ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, args))
             }
 
             // Exhaustive match to be clear about what exactly we're considering to be
