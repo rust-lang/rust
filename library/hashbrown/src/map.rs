@@ -4690,9 +4690,9 @@ mod test_map {
     use super::Entry::{Occupied, Vacant};
     use super::EntryRef;
     use super::HashMap;
+    use crate::raw::{AllocError, Allocator, Global};
     use alloc::string::{String, ToString};
     use alloc::sync::Arc;
-    use allocator_api2::alloc::{AllocError, Allocator, Global};
     use core::alloc::Layout;
     use core::ptr::NonNull;
     use core::sync::atomic::{AtomicI8, Ordering};

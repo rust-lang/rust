@@ -12,6 +12,8 @@ use core::slice;
 use core::{hint, ptr};
 
 mod alloc;
+#[cfg(test)]
+pub(crate) use self::alloc::AllocError;
 pub(crate) use self::alloc::{do_alloc, Allocator, Global};
 
 #[inline]
@@ -4238,9 +4240,9 @@ mod test_map {
     /// ARE ZERO, EVEN IF WE HAVE `FULL` CONTROL BYTES.
     #[test]
     fn test_catch_panic_clone_from() {
+        use super::{AllocError, Allocator, Global};
         use ::alloc::sync::Arc;
         use ::alloc::vec::Vec;
-        use allocator_api2::alloc::{AllocError, Allocator, Global};
         use core::sync::atomic::{AtomicI8, Ordering};
         use std::thread;
 
