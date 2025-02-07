@@ -14,7 +14,7 @@ note: function defined here
   --> $DIR/variadic-ffi-1.rs:15:8
    |
 LL |     fn foo(f: isize, x: u8, ...);
-   |        ^^^
+   |        ^^^ -         -
 help: provide the arguments
    |
 LL |         foo(/* isize */, /* u8 */);
@@ -30,7 +30,7 @@ note: function defined here
   --> $DIR/variadic-ffi-1.rs:15:8
    |
 LL |     fn foo(f: isize, x: u8, ...);
-   |        ^^^
+   |        ^^^           -
 help: provide the argument
    |
 LL |         foo(1, /* u8 */);
