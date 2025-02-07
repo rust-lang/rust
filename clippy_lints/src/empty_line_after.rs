@@ -295,7 +295,7 @@ impl EmptyLineAfter {
                 });
 
                 diag.multipart_suggestion_with_style(
-                    format!("if the empty {lines} {are} unintentional remove {them}"),
+                    format!("if the empty {lines} {are} unintentional, remove {them}"),
                     contiguous_empty_lines()
                         .map(|empty_lines| (empty_lines, String::new()))
                         .collect(),
