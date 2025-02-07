@@ -142,7 +142,7 @@ where
         // Remove any trivial region constraints once we've resolved regions
         external_constraints
             .region_constraints
-            .retain(|outlives| outlives.0.as_region().map_or(true, |re| re != outlives.1));
+            .retain(|outlives| outlives.0.as_region().is_none_or(|re| re != outlives.1));
 
         let canonical = Canonicalizer::canonicalize_response(
             self.delegate,
