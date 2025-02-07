@@ -33,6 +33,10 @@ interface_ignoring_out_dir = ignoring --out-dir flag due to -o flag
 interface_input_file_would_be_overwritten =
     the input file "{$path}" would be overwritten by the generated executable
 
+interface_limit_invalid =
+    `limit` must be a non-negative integer
+    .label = {$error_str}
+
 interface_mixed_bin_crate =
     cannot mix `bin` crate type with others
 

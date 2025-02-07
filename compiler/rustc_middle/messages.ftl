@@ -81,10 +81,6 @@ middle_failed_writing_file =
 middle_layout_references_error =
     the type has an unknown layout
 
-middle_limit_invalid =
-    `limit` must be a non-negative integer
-    .label = {$error_str}
-
 middle_opaque_hidden_type_mismatch =
     concrete type differs from previous defining opaque type use
     .label = expected `{$self_ty}`, got `{$other_ty}`

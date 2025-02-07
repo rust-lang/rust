@@ -11,13 +11,14 @@
 use std::num::IntErrorKind;
 
 use rustc_ast::attr::AttributeExt;
+use rustc_middle::bug;
+use rustc_middle::query::Providers;
 use rustc_session::{Limit, Limits, Session};
 use rustc_span::{Symbol, sym};
 
-use crate::error::LimitInvalid;
-use crate::query::Providers;
+use crate::errors::LimitInvalid;
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.limits = |tcx, ()| Limits {
         recursion_limit: get_recursion_limit(tcx.hir().krate_attrs(), tcx.sess),
         move_size_limit: get_limit(
@@ -42,7 +43,7 @@ pub fn provide(providers: &mut Providers) {
 }
 
 // This one is separate because it must be read prior to macro expansion.
-pub fn get_recursion_limit(krate_attrs: &[impl AttributeExt], sess: &Session) -> Limit {
+pub(crate) fn get_recursion_limit(krate_attrs: &[impl AttributeExt], sess: &Session) -> Limit {
     get_limit(krate_attrs, sess, sym::recursion_limit, Limit::new(128))
 }
 
