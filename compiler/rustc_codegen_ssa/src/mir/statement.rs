@@ -1,8 +1,8 @@
-use rustc_middle::mir::{self, NonDivergingIntrinsic, PlaceKind};
+use rustc_middle::mir::{self, NonDivergingIntrinsic /* , PlaceKind*/};
 use rustc_middle::span_bug;
 use tracing::instrument;
 
-use super::operand::OperandValue;
+//use super::operand::OperandValue;
 use super::{FunctionCx, LocalRef};
 use crate::traits::*;
 
@@ -89,7 +89,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.memcpy(dst, align, src, align, bytes, crate::MemFlags::empty());
             }
 
-            mir::StatementKind::Retag(retag_kind, box ref place) => {
+            /*mir::StatementKind::Retag(retag_kind, box ref place) => {
+
                 if self.cx.sess().emit_retags() {
                     let place_value = if let Some(index) = place.as_local() {
                         match self.locals[index] {
@@ -102,21 +103,27 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     place
                                 );
                             }
-                            LocalRef::Operand(op) => {
-                                if let OperandValue::Ref(r) = op.val {
-                                    r
-                                } else {
-                                    op.deref(bx.cx()).val
+                            LocalRef::Operand(op) => match op.val {
+                                OperandValue::Ref(r) => r,
+                                OperandValue::Immediate(_) | OperandValue::Pair(_, _) => {
+                                    let mono_ty = self.monomorphized_place_ty(place.as_ref());
+                                    if mono_ty.is_any_ptr() {
+                                        op.deref(bx.cx()).val
+                                    } else {
+                                        return;
+                                    }
                                 }
-                            }
+                                OperandValue::ZeroSized => return,
+                            },
                         }
                     } else {
                         self.codegen_place(bx, place.as_ref()).val
                     };
                     bx.retag(place_value, PlaceKind::Default, retag_kind);
                 }
-            }
+            }*/
             mir::StatementKind::FakeRead(..)
+            | mir::StatementKind::Retag(..)
             | mir::StatementKind::AscribeUserType(..)
             | mir::StatementKind::ConstEvalCounter
             | mir::StatementKind::PlaceMention(..)

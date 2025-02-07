@@ -6,9 +6,27 @@ use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use cargo_metadata::MetadataCommand;
+use cargo_metadata::{Metadata, MetadataCommand};
 
-use crate::arg::get_arg_flag_values;
+use crate::arg::*;
+
+#[derive(Clone, Debug)]
+pub enum BSANCommand {
+    /// Our own special 'setup' command.
+    Setup,
+    /// A command to be forwarded to cargo.
+    Forward(String),
+    /// Clean the cache
+    Clean,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum RustcPhase {
+    /// Sysroot build
+    Setup,
+    /// Regular build
+    Build,
+}
 
 pub fn show_error_(msg: &impl std::fmt::Display) -> ! {
     eprintln!("fatal error: {msg}");
@@ -19,6 +37,8 @@ macro_rules! show_error {
     ($($tt:tt)*) => { crate::util::show_error_(&format_args!($($tt)*)) };
 }
 
+pub(crate) use show_error;
+
 /// Debug-print a command that is going to be run.
 pub fn debug_cmd(prefix: &str, verbose: usize, cmd: &Command) {
     if verbose == 0 {
@@ -26,11 +46,6 @@ pub fn debug_cmd(prefix: &str, verbose: usize, cmd: &Command) {
     }
     eprintln!("{prefix} running command: {cmd:?}");
 }
-
-use cargo_metadata::Metadata;
-pub(crate) use show_error;
-
-use crate::arg::get_arg_flag_value;
 
 pub fn cargo() -> Command {
     Command::new(env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo")))
@@ -48,12 +63,17 @@ pub fn find_bsan() -> PathBuf {
 }
 
 pub fn bsan() -> Command {
-    Command::new(find_bsan())
+    let mut cmd = Command::new(find_bsan());
+    // We never want to inherit this from the environment.
+    // However, this is sometimes set in the environment to work around build scripts that don't
+    // honor RUSTC_WRAPPER. So remove it again in case it is set.
+    cmd.env_remove("BSAN_BE_RUSTC");
+    cmd
 }
 
 pub fn bsan_for_host() -> Command {
     let mut cmd = bsan();
-    cmd.env("BSAN_BE_RUSTC", "1");
+    cmd.env("BSAN_BE_RUSTC", "host");
     cmd
 }
 

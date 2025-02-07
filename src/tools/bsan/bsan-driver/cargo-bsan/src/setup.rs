@@ -1,15 +1,21 @@
+//! Implements `cargo bsan setup`.
+//! This was copied directly from cargo-miri, with only small changes
+//! to comments and the names of environment variables.
+
 use std::ffi::OsStr;
 use std::path::PathBuf;
-use std::process;
-use std::process::Command;
+use std::process::{self, Command};
 
 use rustc_build_sysroot::{BuildMode, SysrootBuilder, SysrootConfig, SysrootStatus};
 use rustc_version::VersionMeta;
 
-use crate::BSANCommand;
 use crate::arg::*;
 use crate::util::*;
+use crate::*;
 
+/// Performs the setup required to make `cargo bsan` work: Getting a custom-built libstd. Then sets
+/// `BSAN_SYSROOT`. Skipped if `BSAN_SYSROOT` is already set, in which case we expect the user has
+/// done all this already.
 pub fn setup(
     subcommand: &BSANCommand,
     target: &str,
@@ -23,13 +29,12 @@ pub fn setup(
     let show_setup = only_setup && !print_sysroot;
     if !only_setup {
         if let Some(sysroot) = std::env::var_os("BSAN_SYSROOT") {
-            // Skip setup step if BSAN_SYSROOT is explicitly set, *unless* we are `cargo bsan setup`.
+            // Skip setup step if MIRI_SYSROOT is explicitly set, *unless* we are `cargo bsan setup`.
             return sysroot.into();
         }
     }
 
-    // Determine where the rust sources are located.
-    // The env var trumps auto-detection.
+    // Determine where the rust sources are located.  The env var trumps auto-detection.
     let rust_src_env_var = std::env::var_os("BSAN_LIB_SRC");
     let rust_src = match rust_src_env_var {
         Some(path) => {
@@ -90,10 +95,33 @@ pub fn setup(
     };
     let cargo_cmd = {
         let mut command = cargo();
+        // Use Miri as rustc to build a libstd compatible with us (and use the right flags).
+        // We set ourselves (`cargo-bsan`) instead of bsan directly to be able to patch the flags
+        // for `libpanic_abort` (usually this is done by bootstrap but we have to do it ourselves).
+        // The `BSAN_CALLED_FROM_SETUP` will mean we dispatch to `phase_setup_rustc`.
+        // However, when we are running in bootstrap, we cannot just overwrite `RUSTC`,
+        // because we still need bootstrap to distinguish between host and target crates.
+        // In that case we overwrite `RUSTC_REAL` instead which determines the rustc used
+        // for target crates.
+        let cargo_bsan_path = std::env::current_exe().expect("current executable path invalid");
+        if env::var_os("RUSTC_STAGE").is_some() {
+            assert!(
+                env::var_os("RUSTC").is_some() && env::var_os("RUSTC_WRAPPER").is_some(),
+                "cargo-bsan setup is running inside rustc bootstrap but RUSTC or RUST_WRAPPER is not set"
+            );
+            command.env("RUSTC_REAL", &cargo_bsan_path);
+        } else {
+            command.env("RUSTC", &cargo_bsan_path);
+        }
+        command.env("BSAN_CALLED_FROM_SETUP", "1");
+        // Miri expects `BSAN_SYSROOT` to be set when invoked in target mode. Even if that directory is empty.
         command.env("BSAN_SYSROOT", &sysroot_dir);
-
-        // Ensure that the standard library is also instrumented.
-        command.env("RUSTC_WRAPPER", find_bsan());
+        // Make sure there are no other wrappers getting in our way (Cc
+        // https://github.com/rust-lang/miri/issues/1421,
+        // https://github.com/rust-lang/miri/issues/2429). Looks like setting
+        // `RUSTC_WRAPPER` to the empty string overwrites `build.rustc-wrapper` set via
+        // `config.toml`.
+        command.env("RUSTC_WRAPPER", "");
 
         if show_setup {
             // Forward output. Even make it verbose, if requested.
@@ -106,9 +134,10 @@ pub fn setup(
                 command.arg("--quiet");
             }
         }
+
         command
     };
-    // Disable debug assertions in the standard library
+    // Disable debug assertions in the standard library -- Miri is already slow enough.
     // But keep the overflow checks, they are cheap. This completely overwrites flags
     // the user might have set, which is consistent with normal `cargo build` that does
     // not apply `RUSTFLAGS` to the sysroot either.
@@ -131,21 +160,20 @@ pub fn setup(
             } else {
                 // Keep all output on a single line.
                 eprint!("... ");
-                after_build_output = "done\n".to_string();
+                after_build_output = format!("done\n");
             }
         }
     };
 
     // Do the build.
     let status = SysrootBuilder::new(&sysroot_dir, target)
-        .build_mode(BuildMode::Build)
+        .build_mode(BuildMode::Check)
         .rustc_version(rustc_version.clone())
         .sysroot_config(sysroot_config)
         .rustflags(rustflags)
         .cargo(cargo_cmd)
         .when_build_required(notify)
         .build_from_source(&rust_src);
-
     match status {
         Ok(SysrootStatus::AlreadyCached) => {
             if !quiet && show_setup {
@@ -166,5 +194,6 @@ pub fn setup(
         // Print just the sysroot and nothing else to stdout; this way we do not need any escaping.
         println!("{}", sysroot_dir.display());
     }
+
     sysroot_dir
 }
