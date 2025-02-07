@@ -1072,6 +1072,7 @@ impl flags::AnalysisStats {
                     param_names_for_lifetime_elision_hints: true,
                     hide_named_constructor_hints: false,
                     hide_closure_initialization_hints: false,
+                    hide_closure_parameter_hints: false,
                     closure_style: hir::ClosureStyle::ImplFn,
                     max_length: Some(25),
                     closing_brace_hints_min_lines: Some(20),
