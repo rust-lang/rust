@@ -1,5 +1,5 @@
 warning: this `Deref` implementation is covered by an implicit supertrait coercion
-  --> $DIR/migrate-lint-different-substs.rs:12:1
+  --> $DIR/deref-upcast-shadowing-lint.rs:8:1
    |
 LL | impl<'a> Deref for dyn Foo + 'a {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `dyn Foo` implements `Deref<Target = dyn Bar<u32>>` which conflicts with supertrait `Bar<i32>`
@@ -8,7 +8,7 @@ LL |     type Target = dyn Bar<u32> + 'a;
    |     -------------------------------- target type is a supertrait of `dyn Foo`
    |
 note: the lint level is defined here
-  --> $DIR/migrate-lint-different-substs.rs:2:9
+  --> $DIR/deref-upcast-shadowing-lint.rs:2:9
    |
 LL | #![warn(deref_into_dyn_supertrait)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
