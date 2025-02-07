@@ -155,8 +155,6 @@ cp $(../dist/rustc-clif --print target-libdir)/libstd-*.so ../dist/lib/
 
 # prevent $(RUSTDOC) from picking up the sysroot built by x.py. It conflicts with the one used by
 # rustdoc-clif
-# FIXME remove the bootstrap changes once it is no longer necessary to revert rust-lang/rust#130642
-# to avoid building rustc when testing stage0 run-make.
 cat <<EOF | git apply -
 diff --git a/tests/run-make/tools.mk b/tests/run-make/tools.mk
 index ea06b620c4c..b969d0009c6 100644
