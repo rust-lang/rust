@@ -146,6 +146,7 @@ where
         // exact +/- 0.0
         return x * y + z;
     }
+
     e -= d;
 
     // Use int->float conversion to populate the significand.
@@ -174,7 +175,7 @@ where
 
             if r == c {
                 // Min normal after rounding,
-                return r.raise_underflow_ret_self();
+                return r.raise_underflow_as_min_positive();
             }
 
             if (rhi << (F::SIG_BITS + 1)) != zero {
@@ -275,12 +276,14 @@ impl<F: Float> Norm<F> {
 
 /// Type-specific helpers that are not needed outside of fma.
 pub trait FmaHelper {
-    fn raise_underflow_ret_self(self) -> Self;
+    /// Raise underflow and return the minimum positive normal value with the sign of `self`.
+    fn raise_underflow_as_min_positive(self) -> Self;
+    /// Raise underflow and return zero.
     fn raise_underflow_ret_zero(self) -> Self;
 }
 
 impl FmaHelper for f64 {
-    fn raise_underflow_ret_self(self) -> Self {
+    fn raise_underflow_as_min_positive(self) -> Self {
         /* min normal after rounding, underflow depends
          * on arch behaviour which can be imitated by
          * a double to float conversion */
@@ -298,8 +301,8 @@ impl FmaHelper for f64 {
 
 #[cfg(f128_enabled)]
 impl FmaHelper for f128 {
-    fn raise_underflow_ret_self(self) -> Self {
-        self
+    fn raise_underflow_as_min_positive(self) -> Self {
+        f128::MIN_POSITIVE.copysign(self)
     }
 
     fn raise_underflow_ret_zero(self) -> Self {
