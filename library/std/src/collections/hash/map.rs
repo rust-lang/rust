@@ -969,7 +969,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_many_mut)]
     /// use std::collections::HashMap;
     ///
     /// let mut libraries = HashMap::new();
@@ -979,13 +978,13 @@ where
     /// libraries.insert("Library of Congress".to_string(), 1800);
     ///
     /// // Get Athenæum and Bodleian Library
-    /// let [Some(a), Some(b)] = libraries.get_many_mut([
+    /// let [Some(a), Some(b)] = libraries.get_disjoint_mut([
     ///     "Athenæum",
     ///     "Bodleian Library",
     /// ]) else { panic!() };
     ///
     /// // Assert values of Athenæum and Library of Congress
-    /// let got = libraries.get_many_mut([
+    /// let got = libraries.get_disjoint_mut([
     ///     "Athenæum",
     ///     "Library of Congress",
     /// ]);
@@ -998,7 +997,7 @@ where
     /// );
     ///
     /// // Missing keys result in None
-    /// let got = libraries.get_many_mut([
+    /// let got = libraries.get_disjoint_mut([
     ///     "Athenæum",
     ///     "New York Public Library",
     /// ]);
@@ -1012,21 +1011,24 @@ where
     /// ```
     ///
     /// ```should_panic
-    /// #![feature(map_many_mut)]
     /// use std::collections::HashMap;
     ///
     /// let mut libraries = HashMap::new();
     /// libraries.insert("Athenæum".to_string(), 1807);
     ///
     /// // Duplicate keys panic!
-    /// let got = libraries.get_many_mut([
+    /// let got = libraries.get_disjoint_mut([
     ///     "Athenæum",
     ///     "Athenæum",
     /// ]);
     /// ```
     #[inline]
-    #[unstable(feature = "map_many_mut", issue = "97601")]
-    pub fn get_many_mut<Q: ?Sized, const N: usize>(&mut self, ks: [&Q; N]) -> [Option<&'_ mut V>; N]
+    #[doc(alias = "get_many_mut")]
+    #[stable(feature = "map_many_mut", since = "CURRENT_RUSTC_VERSION")]
+    pub fn get_disjoint_mut<Q: ?Sized, const N: usize>(
+        &mut self,
+        ks: [&Q; N],
+    ) -> [Option<&'_ mut V>; N]
     where
         K: Borrow<Q>,
         Q: Hash + Eq,
@@ -1040,7 +1042,7 @@ where
     /// Returns an array of length `N` with the results of each query. `None` will be used if
     /// the key is missing.
     ///
-    /// For a safe alternative see [`get_many_mut`](`HashMap::get_many_mut`).
+    /// For a safe alternative see [`get_disjoint_mut`](`HashMap::get_disjoint_mut`).
     ///
     /// # Safety
     ///
@@ -1052,7 +1054,6 @@ where
     /// # Examples
     ///
     /// ```
-    /// #![feature(map_many_mut)]
     /// use std::collections::HashMap;
     ///
     /// let mut libraries = HashMap::new();
@@ -1062,13 +1063,13 @@ where
     /// libraries.insert("Library of Congress".to_string(), 1800);
     ///
     /// // SAFETY: The keys do not overlap.
-    /// let [Some(a), Some(b)] = (unsafe { libraries.get_many_unchecked_mut([
+    /// let [Some(a), Some(b)] = (unsafe { libraries.get_disjoint_unchecked_mut([
     ///     "Athenæum",
     ///     "Bodleian Library",
     /// ]) }) else { panic!() };
     ///
     /// // SAFETY: The keys do not overlap.
-    /// let got = unsafe { libraries.get_many_unchecked_mut([
+    /// let got = unsafe { libraries.get_disjoint_unchecked_mut([
     ///     "Athenæum",
     ///     "Library of Congress",
     /// ]) };
@@ -1081,7 +1082,7 @@ where
     /// );
     ///
     /// // SAFETY: The keys do not overlap.
-    /// let got = unsafe { libraries.get_many_unchecked_mut([
+    /// let got = unsafe { libraries.get_disjoint_unchecked_mut([
     ///     "Athenæum",
     ///     "New York Public Library",
     /// ]) };
@@ -1089,8 +1090,9 @@ where
     /// assert_eq!(got, [Some(&mut 1807), None]);
     /// ```
     #[inline]
-    #[unstable(feature = "map_many_mut", issue = "97601")]
-    pub unsafe fn get_many_unchecked_mut<Q: ?Sized, const N: usize>(
+    #[doc(alias = "get_many_unchecked_mut")]
+    #[stable(feature = "map_many_mut", since = "CURRENT_RUSTC_VERSION")]
+    pub unsafe fn get_disjoint_unchecked_mut<Q: ?Sized, const N: usize>(
         &mut self,
         ks: [&Q; N],
     ) -> [Option<&'_ mut V>; N]

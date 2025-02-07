@@ -168,7 +168,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
                         TOPLEVEL_REF_ARG,
                         arg.hir_id,
                         arg.pat.span,
-                        "`ref` directly on a function argument is ignored. \
+                        "`ref` directly on a function parameter does not prevent taking ownership of the passed argument. \
                         Consider using a reference type instead",
                     );
                 }

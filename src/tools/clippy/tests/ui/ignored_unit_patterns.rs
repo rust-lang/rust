@@ -21,12 +21,15 @@ fn main() {
     let _ = foo().map_err(|_| todo!());
     //~^ ERROR: matching over `()` is more explicit
 
-    println!("{:?}", match foo() {
-        Ok(_) => {},
-        //~^ ERROR: matching over `()` is more explicit
-        Err(_) => {},
-        //~^ ERROR: matching over `()` is more explicit
-    });
+    println!(
+        "{:?}",
+        match foo() {
+            Ok(_) => {},
+            //~^ ERROR: matching over `()` is more explicit
+            Err(_) => {},
+            //~^ ERROR: matching over `()` is more explicit
+        }
+    );
 }
 
 // ignored_unit_patterns in derive macro should be ok
