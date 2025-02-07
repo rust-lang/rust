@@ -1,7 +1,5 @@
 //! Utilities for working with hex float formats.
 
-#![allow(dead_code)] // FIXME: remove once this gets used
-
 use core::fmt;
 
 use super::{Float, f32_from_bits, f64_from_bits};
@@ -13,6 +11,7 @@ pub const fn hf16(s: &str) -> f16 {
 }
 
 /// Construct a 32-bit float from hex float representation (C-style)
+#[allow(unused)]
 pub const fn hf32(s: &str) -> f32 {
     f32_from_bits(parse_any(s, 32, 23) as u32)
 }
@@ -548,14 +547,12 @@ mod parse_tests {
 
     #[test]
     fn test_macros() {
-        // FIXME(msrv): enable once parsing works
-        // #[cfg(f16_enabled)]
-        // assert_eq!(hf16!("0x1.ffp+8").to_bits(), 0x5ffc_u16);
+        #[cfg(f16_enabled)]
+        assert_eq!(hf16!("0x1.ffp+8").to_bits(), 0x5ffc_u16);
         assert_eq!(hf32!("0x1.ffep+8").to_bits(), 0x43fff000_u32);
         assert_eq!(hf64!("0x1.ffep+8").to_bits(), 0x407ffe0000000000_u64);
-        // FIXME(msrv): enable once parsing works
-        // #[cfg(f128_enabled)]
-        // assert_eq!(hf128!("0x1.ffep+8").to_bits(), 0x4007ffe0000000000000000000000000_u128);
+        #[cfg(f128_enabled)]
+        assert_eq!(hf128!("0x1.ffep+8").to_bits(), 0x4007ffe0000000000000000000000000_u128);
     }
 }
 
