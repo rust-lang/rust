@@ -150,7 +150,7 @@
         },
         {
           "path": "compiler/rustc_ty_utils/src/instance.rs",
-          "hash": "a51a6022efb405c5ee86acdf49ec222d",
+          "hash": "3da2773f10aef680bf9880a5adba29c6",
           "tag": "tidy-ticket-resolve_associated_item-UserDefined"
         }
       ]
@@ -164,7 +164,7 @@
           "tag": "tidy-ticket-static_assert_expected_bounds_for_metadata"
         },
         {
-          "path": "library/core/tests/ptr.rs",
+          "path": "library/coretests/tests/ptr.rs",
           "hash": "d8c47e54b871d72dfdce56e6a89b5c31",
           "tag": "tidy-ticket-static_assert_expected_bounds_for_metadata"
         }
