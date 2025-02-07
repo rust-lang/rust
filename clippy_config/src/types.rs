@@ -40,9 +40,11 @@ impl<'de, const REPLACEMENT_ALLOWED: bool> Deserialize<'de> for DisallowedPath<R
     }
 }
 
+// `DisallowedPathEnum` is an implementation detail to enable the `Deserialize` implementation just
+// above. `DisallowedPathEnum` is not meant to be used outside of this file.
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
-pub enum DisallowedPathEnum {
+enum DisallowedPathEnum {
     Simple(String),
     WithReason {
         path: String,

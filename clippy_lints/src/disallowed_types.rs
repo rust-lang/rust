@@ -33,7 +33,8 @@ declare_clippy_lint! {
     ///     # is disallowed.
     ///     { path = "std::net::Ipv4Addr", reason = "no IPv4 allowed" },
     ///     # Can also add a `replacement` that will be offered as a suggestion.
-    ///     { path = "std::sync::Mutex", reason = "prefer faster & simpler non-poisonable mutex", replacement = "parking_lot::Mutex" },    /// ]
+    ///     { path = "std::sync::Mutex", reason = "prefer faster & simpler non-poisonable mutex", replacement = "parking_lot::Mutex" },
+    /// ]
     /// ```
     ///
     /// ```rust,ignore
