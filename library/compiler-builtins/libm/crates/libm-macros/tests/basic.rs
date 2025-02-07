@@ -18,20 +18,14 @@ macro_rules! basic {
         fn_extra: $fn_extra:expr,
     ) => {
         $(#[$attr])*
-        mod $fn_name {
-            #[allow(unused)]
+        #[allow(dead_code)]
+        pub mod $fn_name {
             type FTy= $FTy;
-            #[allow(unused)]
             type CFnTy<'a> = $CFn;
-            #[allow(unused)]
             type RustFnTy = $RustFn;
-            #[allow(unused)]
             type RustArgsTy = $RustArgs;
-            #[allow(unused)]
             type RustRetTy = $RustRet;
-            #[allow(unused)]
             const A: &[&str] = &[$($extra_tt)*];
-            #[allow(unused)]
             fn foo(a: f32) -> f32 {
                 $fn_extra(a)
             }
@@ -92,10 +86,9 @@ macro_rules! specified_types {
         attrs: [$($attr:meta),*],
     ) => {
         $(#[$attr])*
+        #[allow(dead_code)]
         mod $fn_name {
-            #[allow(unused)]
             type RustFnTy = $RustFn;
-            #[allow(unused)]
             type RustArgsTy = $RustArgs;
         }
     };

@@ -1,11 +1,9 @@
 //! Integers used for wide operations, larger than `u128`.
 
-#![allow(unused)]
-
 #[cfg(test)]
 mod tests;
 
-use core::{fmt, ops};
+use core::ops;
 
 use super::{DInt, HInt, Int, MinInt};
 
@@ -13,7 +11,6 @@ const WORD_LO_MASK: u64 = 0x00000000ffffffff;
 const WORD_HI_MASK: u64 = 0xffffffff00000000;
 const WORD_FULL_MASK: u64 = 0xffffffffffffffff;
 const U128_LO_MASK: u128 = u64::MAX as u128;
-const U128_HI_MASK: u128 = (u64::MAX as u128) << 64;
 
 /// A 256-bit unsigned integer represented as 4 64-bit limbs.
 ///
@@ -23,6 +20,7 @@ const U128_HI_MASK: u128 = (u64::MAX as u128) << 64;
 pub struct u256(pub [u64; 4]);
 
 impl u256 {
+    #[cfg(test)]
     pub const MAX: Self = Self([u64::MAX, u64::MAX, u64::MAX, u64::MAX]);
 
     /// Reinterpret as a signed integer
@@ -40,6 +38,7 @@ pub struct i256(pub [u64; 4]);
 
 impl i256 {
     /// Reinterpret as an unsigned integer
+    #[cfg(test)]
     pub fn unsigned(self) -> u256 {
         u256(self.0)
     }
@@ -96,7 +95,7 @@ macro_rules! impl_common {
         impl ops::Shl<u32> for $ty {
             type Output = Self;
 
-            fn shl(self, rhs: u32) -> Self::Output {
+            fn shl(self, _rhs: u32) -> Self::Output {
                 unimplemented!("only used to meet trait bounds")
             }
         }
@@ -256,7 +255,7 @@ impl HInt for i128 {
         self.unsigned().zero_widen_mul(rhs.unsigned()).signed()
     }
 
-    fn widen_mul(self, rhs: Self) -> Self::D {
+    fn widen_mul(self, _rhs: Self) -> Self::D {
         unimplemented!("signed i128 widening multiply is not used")
     }
 

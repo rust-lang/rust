@@ -3,7 +3,7 @@ use core::{fmt, mem, ops};
 use super::int_traits::{CastFrom, Int, MinInt};
 
 /// Trait for some basic operations on floats
-#[allow(dead_code)]
+// #[allow(dead_code)]
 pub trait Float:
     Copy
     + fmt::Debug
@@ -84,11 +84,13 @@ pub trait Float:
     fn to_bits(self) -> Self::Int;
 
     /// Returns `self` transmuted to `Self::SignedInt`
+    #[allow(dead_code)]
     fn to_bits_signed(self) -> Self::SignedInt {
         self.to_bits().signed()
     }
 
     /// Check bitwise equality.
+    #[allow(dead_code)]
     fn biteq(self, rhs: Self) -> bool {
         self.to_bits() == rhs.to_bits()
     }
@@ -98,6 +100,7 @@ pub trait Float:
     ///
     /// This method returns `true` if two NaNs are compared. Use [`biteq`](Self::biteq) instead
     /// if `NaN` should not be treated separately.
+    #[allow(dead_code)]
     fn eq_repr(self, rhs: Self) -> bool {
         if self.is_nan() && rhs.is_nan() { true } else { self.biteq(rhs) }
     }
@@ -117,6 +120,7 @@ pub trait Float:
     }
 
     /// Returns if `self` is subnormal.
+    #[allow(dead_code)]
     fn is_subnormal(self) -> bool {
         (self.to_bits() & Self::EXP_MASK) == Self::Int::ZERO
     }
@@ -132,13 +136,9 @@ pub trait Float:
     }
 
     /// Returns the significand with no implicit bit (or the "fractional" part)
+    #[allow(dead_code)]
     fn frac(self) -> Self::Int {
         self.to_bits() & Self::SIG_MASK
-    }
-
-    /// Returns the significand with implicit bit.
-    fn imp_frac(self) -> Self::Int {
-        self.frac() | Self::IMPLICIT_BIT
     }
 
     /// Returns a `Self::Int` transmuted back to `Self`
@@ -154,22 +154,25 @@ pub trait Float:
         )
     }
 
+    #[allow(dead_code)]
     fn abs(self) -> Self;
 
     /// Returns a number composed of the magnitude of self and the sign of sign.
+    #[allow(dead_code)]
     fn copysign(self, other: Self) -> Self;
 
     /// Returns (normalized exponent, normalized significand)
+    #[allow(dead_code)]
     fn normalize(significand: Self::Int) -> (i32, Self::Int);
 
     /// Returns a number that represents the sign of self.
+    #[allow(dead_code)]
     fn signum(self) -> Self {
         if self.is_nan() { self } else { Self::ONE.copysign(self) }
     }
 }
 
 /// Access the associated `Int` type from a float (helper to avoid ambiguous associated types).
-#[allow(dead_code)]
 pub type IntTy<F> = <F as Float>::Int;
 
 macro_rules! float_impl {
