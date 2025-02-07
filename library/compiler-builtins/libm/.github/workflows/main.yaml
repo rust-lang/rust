@@ -158,6 +158,8 @@ jobs:
 
     - name: Set up dependencies
       run: |
+        sudo apt update
+        sudo apt install -y valgrind gdb libc6-dbg # Needed for iai-callgrind
         rustup update "$BENCHMARK_RUSTC" --no-self-update
         rustup default "$BENCHMARK_RUSTC"
         # Install the version of iai-callgrind-runner that is specified in Cargo.toml
