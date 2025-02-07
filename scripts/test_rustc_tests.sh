@@ -83,7 +83,6 @@ rm tests/ui/match/match-float.rs
 # ==================
 rm tests/ui/codegen/issue-28950.rs # depends on stack size optimizations
 rm tests/ui/codegen/init-large-type.rs # same
-rm tests/ui/issues/issue-40883.rs # same
 rm -r tests/run-make/fmt-write-bloat/ # tests an optimization
 rm tests/ui/statics/const_generics.rs # same
 
