@@ -36,7 +36,7 @@ pub(super) fn hints(
                 if it.ty().is_some() {
                     return None;
                 }
-                if config.hide_closure_parameter_hints && it.syntax().ancestors().any(|n| matches!(ast::Expr::cast(n), Some(ast::Expr::ClosureExpr(_)))) {
+                if config.hide_closure_parameter_hints && it.syntax().ancestors().nth(2).is_none_or(|n| matches!(ast::Expr::cast(n), Some(ast::Expr::ClosureExpr(_)))) {
                     return None;
                 }
                 Some(it.colon_token())
