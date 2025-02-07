@@ -236,28 +236,14 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
                 ExpectedFound::new(a, b)
             }))
         } else {
-            let args = match a.kind(relation.cx()) {
-                ty::Opaque => relate_args_with_variances(
-                    relation,
-                    a.def_id,
-                    relation.cx().variances_of(a.def_id),
-                    a.args,
-                    b.args,
+            let cx = relation.cx();
+            let args = if let Some(variances) = cx.opt_alias_variances(a.kind(cx), a.def_id) {
+                relate_args_with_variances(
+                    relation, a.def_id, variances, a.args, b.args,
                     false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
-                )?,
-                ty::Projection if relation.cx().is_impl_trait_in_trait(a.def_id) => {
-                    relate_args_with_variances(
-                        relation,
-                        a.def_id,
-                        relation.cx().variances_of(a.def_id),
-                        a.args,
-                        b.args,
-                        false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
-                    )?
-                }
-                ty::Projection | ty::Weak | ty::Inherent => {
-                    relate_args_invariantly(relation, a.args, b.args)?
-                }
+                )?
+            } else {
+                relate_args_invariantly(relation, a.args, b.args)?
             };
             Ok(ty::AliasTy::new_from_args(relation.cx(), a.def_id, args))
         }
