@@ -34,7 +34,7 @@ fn what() {
     let i = &Cell::new(false);
     let dont = {||the(i)};
     dont();
-    assert!((i.get()));
+    assert!(i.get());
 }
 
 fn zombiejesus() {
@@ -69,8 +69,8 @@ fn notsure() {
 
 fn canttouchthis() -> usize {
     fn p() -> bool { true }
-    let _a = (assert!((true)) == (assert!(p())));
-    let _c = (assert!((p())) == ());
+    let _a = (assert!(true) == (assert!(p())));
+    let _c = (assert!(p()) == ());
     let _b: bool = (println!("{}", 0) == (return 0));
 }
 
