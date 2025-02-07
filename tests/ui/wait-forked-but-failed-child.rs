@@ -31,8 +31,17 @@ fn find_zombies() {
     // https://pubs.opengroup.org/onlinepubs/9699919799/utilities/ps.html
     let ps_cmd_output = Command::new("ps").args(&["-A", "-o", "pid,ppid,args"]).output().unwrap();
     let ps_output = String::from_utf8_lossy(&ps_cmd_output.stdout);
+    // On AIX, the PPID is not always present, such as when a process is blocked
+    // (marked as <exiting>), or if a process is idle. In these situations,
+    // the PPID column contains a "-" for the respective process.
+    // Filter out any lines that have a "-" as the PPID as the PPID is
+    // expected to be an integer.
+    let filtered_ps: Vec<_> = ps_output
+        .lines()
+        .filter(|line| line.split_whitespace().nth(1) != Some("-"))
+        .collect();
 
-    for (line_no, line) in ps_output.split('\n').enumerate() {
+    for (line_no, line) in filtered_ps.into_iter().enumerate() {
         if 0 < line_no && 0 < line.len() &&
            my_pid == line.split(' ').filter(|w| 0 < w.len()).nth(1)
                          .expect("1st column should be PPID")
