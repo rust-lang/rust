@@ -5,7 +5,8 @@ mod float_traits;
 pub mod hex_float;
 mod int_traits;
 
-pub use float_traits::{Float, IntTy};
+#[allow(unused_imports)]
+pub use float_traits::{DFloat, Float, HFloat, IntTy};
 pub(crate) use float_traits::{f32_from_bits, f64_from_bits};
 #[cfg(f16_enabled)]
 #[allow(unused_imports)]

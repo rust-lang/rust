@@ -276,6 +276,64 @@ pub const fn f64_from_bits(bits: u64) -> f64 {
     unsafe { mem::transmute::<u64, f64>(bits) }
 }
 
+/// Trait for floats twice the bit width of another integer.
+pub trait DFloat: Float {
+    /// Float that is half the bit width of the floatthis trait is implemented for.
+    type H: HFloat<D = Self>;
+
+    /// Narrow the float type.
+    fn narrow(self) -> Self::H;
+}
+
+/// Trait for floats half the bit width of another float.
+pub trait HFloat: Float {
+    /// Float that is double the bit width of the float this trait is implemented for.
+    type D: DFloat<H = Self>;
+
+    /// Widen the float type.
+    fn widen(self) -> Self::D;
+}
+
+macro_rules! impl_d_float {
+    ($($X:ident $D:ident),*) => {
+        $(
+            impl DFloat for $D {
+                type H = $X;
+
+                fn narrow(self) -> Self::H {
+                    self as $X
+                }
+            }
+        )*
+    };
+}
+
+macro_rules! impl_h_float {
+    ($($H:ident $X:ident),*) => {
+        $(
+            impl HFloat for $H {
+                type D = $X;
+
+                fn widen(self) -> Self::D {
+                    self as $X
+                }
+            }
+        )*
+    };
+}
+
+impl_d_float!(f32 f64);
+#[cfg(f16_enabled)]
+impl_d_float!(f16 f32);
+#[cfg(f128_enabled)]
+impl_d_float!(f64 f128);
+
+impl_h_float!(f32 f64);
+#[cfg(f16_enabled)]
+impl_h_float!(f16 f32);
+#[cfg(f128_enabled)]
+impl_h_float!(f64 f128);
+
 #[cfg(test)]
 mod tests {
     use super::*;

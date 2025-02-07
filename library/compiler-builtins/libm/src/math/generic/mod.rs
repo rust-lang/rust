@@ -18,7 +18,7 @@ pub use copysign::copysign;
 pub use fabs::fabs;
 pub use fdim::fdim;
 pub use floor::floor;
-pub use fma::fma;
+pub use fma::{fma, fma_wide};
 pub use fmax::fmax;
 pub use fmin::fmin;
 pub use fmod::fmod;
