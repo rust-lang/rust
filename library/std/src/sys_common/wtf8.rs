@@ -388,7 +388,7 @@ impl Wtf8Buf {
             _ => {
                 // If we'll be pushing a string containing a surrogate, we may
                 // no longer have UTF-8.
-                if other.next_surrogate(0).is_some() {
+                if self.is_known_utf8 && other.next_surrogate(0).is_some() {
                     self.is_known_utf8 = false;
                 }
 
