@@ -2521,7 +2521,7 @@ written to standard error output)"),
 
         #[cfg(not(bootstrap))]
         {
-            4
+            8
         }
     }, parse_threads, [UNTRACKED],
         "use a thread pool with N threads"),
