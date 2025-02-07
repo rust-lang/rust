@@ -5,7 +5,7 @@ use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys::fd::FileDesc;
-use crate::sys::net::{getsockopt, setsockopt, sockaddr_to_addr};
+use crate::sys::net::{getsockopt, setsockopt};
 use crate::sys::pal::IsMinusOne;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::{Duration, Instant};
@@ -19,8 +19,9 @@ cfg_if::cfg_if! {
     }
 }
 
-pub(crate) use libc as netc;
+pub(super) use libc as netc;
 
+use super::{socket_addr_from_c, socket_addr_to_c};
 pub use crate::sys::{cvt, cvt_r};
 
 #[expect(non_camel_case_types)]
@@ -150,7 +151,7 @@ impl Socket {
     }
 
     pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
-        let (addr, len) = addr.into_inner();
+        let (addr, len) = socket_addr_to_c(addr);
         loop {
             let result = unsafe { libc::connect(self.as_raw_fd(), addr.as_ptr(), len) };
             if result.is_minus_one() {
@@ -168,7 +169,7 @@ impl Socket {
     pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
         self.set_nonblocking(true)?;
         let r = unsafe {
-            let (addr, len) = addr.into_inner();
+            let (addr, len) = socket_addr_to_c(addr);
             cvt(libc::connect(self.as_raw_fd(), addr.as_ptr(), len))
         };
         self.set_nonblocking(false)?;
@@ -334,7 +335,7 @@ impl Socket {
                 &mut addrlen,
             )
         })?;
-        Ok((n as usize, sockaddr_to_addr(&storage, addrlen as usize)?))
+        Ok((n as usize, unsafe { socket_addr_from_c(&storage, addrlen as usize)? }))
     }
 
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
