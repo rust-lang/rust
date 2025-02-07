@@ -1,8 +1,9 @@
 // Reference: ELF Application Binary Interface s390x Supplement
 // https://github.com/IBM/s390x-abi
 
+use rustc_abi::{BackendRepr, HasDataLayout, TyAbiInterface};
+
 use crate::abi::call::{ArgAbi, FnAbi, Reg, RegKind};
-use crate::abi::{BackendRepr, HasDataLayout, TyAbiInterface};
 use crate::spec::HasTargetSpec;
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
