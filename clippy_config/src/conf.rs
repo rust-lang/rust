@@ -617,6 +617,7 @@ define_Conf! {
         manual_is_ascii_check,
         manual_let_else,
         manual_non_exhaustive,
+        manual_option_as_slice,
         manual_pattern_char_comparison,
         manual_range_contains,
         manual_rem_euclid,
