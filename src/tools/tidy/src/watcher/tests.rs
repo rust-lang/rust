@@ -35,10 +35,10 @@ fn test_span_hash_has_some_text_in_line_before_second_tag() {
     let source = r#"
 RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
-# tidy-ticket-perf-commit
+# tidy-keep-sync-with=tidy-ticket-perf-commit
 # rustc-perf version from 2023-05-30
 ENV PERF_COMMIT 8b2ac3042e1ff2c0074455a0a3618adef97156b1
-# tidy-ticket-perf-commit
+# tidy-keep-sync-with=tidy-ticket-perf-commit
 RUN curl -LS -o perf.zip https://github.com/rust-lang/rustc-perf/archive/$PERF_COMMIT.zip && \
     unzip perf.zip && \
     mv rustc-perf-$PERF_COMMIT rustc-perf && \
