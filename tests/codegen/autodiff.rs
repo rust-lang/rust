@@ -1,4 +1,4 @@
-//@ compile-flags: -C opt-level=3  -Clto=fat  -Zllvm-plugins=/home/manuel/prog/rust-middle/build/x86_64-unknown-linux-gnu/enzyme/build/Enzyme/libEnzyme-19.so -Cpasses=enzyme
+//@ compile-flags: -C opt-level=3  -Clto=fat
 //@ no-prefer-dynamic
 //@ needs-enzyme
 #![feature(autodiff)]
