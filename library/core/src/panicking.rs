@@ -59,7 +59,7 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
 
     // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
     // that gets resolved to the `#[panic_handler]` function.
-    extern "Rust" {
+    unsafe extern "Rust" {
         #[lang = "panic_impl"]
         fn panic_impl(pi: &PanicInfo<'_>) -> !;
     }
@@ -100,7 +100,7 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
 
             // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
             // that gets resolved to the `#[panic_handler]` function.
-            extern "Rust" {
+            unsafe extern "Rust" {
                 #[lang = "panic_impl"]
                 fn panic_impl(pi: &PanicInfo<'_>) -> !;
             }

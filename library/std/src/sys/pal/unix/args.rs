@@ -204,7 +204,7 @@ mod imp {
     }
 
     pub fn argc_argv() -> (isize, *const *const c_char) {
-        extern "C" {
+        unsafe extern "C" {
             // These functions are in crt_externs.h.
             fn _NSGetArgc() -> *mut c_int;
             fn _NSGetArgv() -> *mut *mut *mut c_char;

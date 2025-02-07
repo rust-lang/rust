@@ -76,7 +76,7 @@ pub mod eh_frames {
     }
 
     // Unwind info registration/deregistration routines.
-    extern "C" {
+    unsafe extern "C" {
         fn __register_frame_info(eh_frame_begin: *const u8, object: *mut u8);
         fn __deregister_frame_info(eh_frame_begin: *const u8, object: *mut u8);
     }
