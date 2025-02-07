@@ -329,7 +329,6 @@ pub enum Linkage {
     WeakODR,
     Appending,
     Internal,
-    Private,
     ExternalWeak,
     Common,
 }

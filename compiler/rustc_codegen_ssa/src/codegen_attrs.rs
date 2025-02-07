@@ -49,7 +49,6 @@ fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
         "internal" => Internal,
         "linkonce" => LinkOnceAny,
         "linkonce_odr" => LinkOnceODR,
-        "private" => Private,
         "weak" => WeakAny,
         "weak_odr" => WeakODR,
         _ => tcx.dcx().span_fatal(tcx.def_span(def_id), "invalid linkage specified"),

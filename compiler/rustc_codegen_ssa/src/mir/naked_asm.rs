@@ -187,7 +187,7 @@ fn prefix_and_suffix<'tcx>(
                     }
                 }
             }
-            Linkage::Internal | Linkage::Private => {
+            Linkage::Internal => {
                 // write nothing
             }
             Linkage::Appending => emit_fatal("Only global variables can have appending linkage!"),
