@@ -2,6 +2,7 @@
 //! systems: just a `Vec<u8>`/`[u8]`.
 
 use core::clone::CloneToUninit;
+use core::str::advance_utf8;
 
 use crate::borrow::Cow;
 use crate::collections::TryReserveError;
@@ -64,25 +65,37 @@ impl fmt::Debug for Slice {
 
 impl fmt::Display for Slice {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // If we're the empty string then our iterator won't actually yield
-        // anything, so perform the formatting manually
-        if self.inner.is_empty() {
-            return "".fmt(f);
+        // Corresponds to `Formatter::pad`, but for `OsStr` instead of `str`.
+
+        // Make sure there's a fast path up front.
+        if f.options().get_width().is_none() && f.options().get_precision().is_none() {
+            return self.write_lossy(f);
         }
 
-        for chunk in self.inner.utf8_chunks() {
-            let valid = chunk.valid();
-            // If we successfully decoded the whole chunk as a valid string then
-            // we can return a direct formatting of the string which will also
-            // respect various formatting flags if possible.
-            if chunk.invalid().is_empty() {
-                return valid.fmt(f);
-            }
+        // The `precision` field can be interpreted as a maximum width for the
+        // string being formatted.
+        let max_char_count = f.options().get_precision().unwrap_or(usize::MAX);
+        let (truncated, char_count) = truncate_chars(&self.inner, max_char_count);
 
-            f.write_str(valid)?;
-            f.write_char(char::REPLACEMENT_CHARACTER)?;
+        // If our string is longer than the maximum width, truncate it and
+        // handle other flags in terms of the truncated string.
+        // SAFETY: The truncation splits at Unicode scalar value boundaries.
+        let s = unsafe { Slice::from_encoded_bytes_unchecked(truncated) };
+
+        // The `width` field is more of a minimum width parameter at this point.
+        if let Some(width) = f.options().get_width()
+            && char_count < width
+        {
+            // If we're under the minimum width, then fill up the minimum width
+            // with the specified string + some alignment.
+            let post_padding = f.padding(width - char_count, fmt::Alignment::Left)?;
+            s.write_lossy(f)?;
+            post_padding.write(f)
+        } else {
+            // If we're over the minimum width or there is no minimum width, we
+            // can just emit the string.
+            s.write_lossy(f)
         }
-        Ok(())
     }
 }
 
@@ -297,6 +310,18 @@ impl Slice {
         String::from_utf8_lossy(&self.inner)
     }
 
+    /// Writes the string as lossy UTF-8 like [`String::from_utf8_lossy`].
+    /// It ignores formatter flags.
+    fn write_lossy(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for chunk in self.inner.utf8_chunks() {
+            f.write_str(chunk.valid())?;
+            if !chunk.invalid().is_empty() {
+                f.write_char(char::REPLACEMENT_CHARACTER)?;
+            }
+        }
+        Ok(())
+    }
+
     #[inline]
     pub fn to_owned(&self) -> Buf {
         Buf { inner: self.inner.to_vec() }
@@ -370,4 +395,20 @@ unsafe impl CloneToUninit for Slice {
         // SAFETY: we're just a transparent wrapper around [u8]
         unsafe { self.inner.clone_to_uninit(dst) }
     }
+}
+
+/// Counts the number of Unicode scalar values in the byte string, allowing
+/// invalid UTF-8 sequences. For invalid sequences, the maximal prefix of a
+/// valid UTF-8 code unit counts as one. Only up to `max_chars` scalar values
+/// are scanned. Returns the character count and the byte length.
+fn truncate_chars(bytes: &[u8], max_chars: usize) -> (&[u8], usize) {
+    let mut iter = bytes.iter();
+    let mut char_count = 0;
+    while !iter.is_empty() && char_count < max_chars {
+        advance_utf8(&mut iter);
+        char_count += 1;
+    }
+    let byte_len = bytes.len() - iter.len();
+    let truncated = unsafe { bytes.get_unchecked(..byte_len) };
+    (truncated, char_count)
 }

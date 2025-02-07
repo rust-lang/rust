@@ -111,6 +111,19 @@ fn display() {
     assert_eq!(format!("a{:^10}e", os_string.display()), "a   bcd    e");
 }
 
+#[cfg(unix)]
+#[test]
+fn display_invalid_utf8_unix() {
+    use crate::os::unix::ffi::OsStringExt;
+
+    let os_string = OsString::from_vec(b"b\xFFd".to_vec());
+    assert_eq!(format!("a{:^10}e", os_string.display()), "a   b�d    e");
+    assert_eq!(format!("a{:^10}e", os_string.as_os_str().display()), "a   b�d    e");
+    let os_string = OsString::from_vec(b"b\xE1\xBAd".to_vec());
+    assert_eq!(format!("a{:^10}e", os_string.display()), "a   b�d    e");
+    assert_eq!(format!("a{:^10}e", os_string.as_os_str().display()), "a   b�d    e");
+}
+
 #[cfg(windows)]
 #[test]
 fn display_invalid_wtf8_windows() {

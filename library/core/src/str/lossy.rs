@@ -244,8 +244,10 @@ impl fmt::Debug for Utf8Chunks<'_> {
 /// sequences. When the current sequence is invalid, the maximal prefix of a
 /// valid UTF-8 code unit sequence is consumed. Returns whether the sequence is
 /// a valid Unicode scalar value.
+#[doc(hidden)]
+#[unstable(feature = "str_internals", issue = "none")]
 #[inline]
-fn advance_utf8(bytes: &mut slice::Iter<'_, u8>) -> bool {
+pub fn advance_utf8(bytes: &mut slice::Iter<'_, u8>) -> bool {
     const TAG_CONT_U8: u8 = 128;
     #[inline]
     fn peek(bytes: &slice::Iter<'_, u8>) -> u8 {
