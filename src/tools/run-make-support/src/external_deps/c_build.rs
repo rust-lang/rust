@@ -6,7 +6,8 @@ use crate::external_deps::llvm::llvm_ar;
 use crate::path_helpers::path;
 use crate::targets::{is_darwin, is_msvc, is_windows};
 
-// FIXME(Oneirical): These native build functions should take a Path-based generic.
+// FIXME(jieyouxu): figure out a way to improve the usability of these helpers... They are really
+// messy.
 
 /// Builds a static lib (`.lib` on Windows MSVC and `.a` for the rest) with the given name.
 /// Built from a C file.
@@ -75,8 +76,8 @@ pub fn build_native_dynamic_lib(lib_name: &str) -> PathBuf {
     path(lib_path)
 }
 
-/// Builds a static lib (`.lib` on Windows MSVC and `.a` for the rest) with the given name.
-/// Built from a C++ file.
+/// Builds a static lib (`.lib` on Windows MSVC and `.a` for the rest) with the given name. Built
+/// from a C++ file. Unoptimized.
 #[track_caller]
 pub fn build_native_static_lib_cxx(lib_name: &str) -> PathBuf {
     let obj_file = if is_msvc() { format!("{lib_name}") } else { format!("{lib_name}.o") };
@@ -86,6 +87,38 @@ pub fn build_native_static_lib_cxx(lib_name: &str) -> PathBuf {
         cxx().arg("-EHs").arg("-c").out_exe(&obj_file).input(src).run();
     } else {
         cxx().arg("-c").out_exe(&obj_file).input(src).run();
+    };
+    let obj_file = if is_msvc() {
+        PathBuf::from(format!("{lib_name}.obj"))
+    } else {
+        PathBuf::from(format!("{lib_name}.o"))
+    };
+    llvm_ar().obj_to_ar().output_input(&lib_path, &obj_file).run();
+    path(lib_path)
+}
+
+/// Builds a static lib (`.lib` on Windows MSVC and `.a` for the rest) with the given name. Built
+/// from a C++ file. Optimized with the provided `opt_level` flag. Note that the `opt_level_flag`
+/// can differ between different C++ compilers! Consult relevant docs for `g++`/`clang++`/MSVC.
+#[track_caller]
+pub fn build_native_static_lib_cxx_optimized(lib_name: &str, opt_level_flag: &str) -> PathBuf {
+    let obj_file = if is_msvc() { format!("{lib_name}") } else { format!("{lib_name}.o") };
+    let src = format!("{lib_name}.cpp");
+    let lib_path = static_lib_name(lib_name);
+
+    // NOTE: generate debuginfo
+    if is_msvc() {
+        cxx()
+            .arg(opt_level_flag)
+            .arg("-Zi")
+            .arg("-debug")
+            .arg("-EHs")
+            .arg("-c")
+            .out_exe(&obj_file)
+            .input(src)
+            .run();
+    } else {
+        cxx().arg(opt_level_flag).arg("-g").arg("-c").out_exe(&obj_file).input(src).run();
     };
     let obj_file = if is_msvc() {
         PathBuf::from(format!("{lib_name}.obj"))

@@ -37,6 +37,7 @@ pub mod rfs {
 // Re-exports of third-party library crates.
 // tidy-alphabetical-start
 pub use bstr;
+pub use cc as crate_cc; // NOTE: aliased to avoid being confused with `c_cxx_compiler::cc`.
 pub use gimli;
 pub use libc;
 pub use object;
@@ -55,7 +56,7 @@ pub use external_deps::{
 pub use c_cxx_compiler::{Cc, Gcc, cc, cxx, extra_c_flags, extra_cxx_flags, gcc};
 pub use c_build::{
     build_native_dynamic_lib, build_native_static_lib, build_native_static_lib_cxx,
-    build_native_static_lib_optimized,
+    build_native_static_lib_optimized, build_native_static_lib_cxx_optimized,
 };
 pub use cargo::cargo;
 pub use clang::{clang, Clang};
