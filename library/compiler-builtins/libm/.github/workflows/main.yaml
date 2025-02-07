@@ -273,6 +273,9 @@ jobs:
             exit
           fi
 
+          # Run the non-extensive tests first to catch any easy failures
+          cargo t --profile release-checked -- "$CHANGED"
+
           LIBM_EXTENSIVE_TESTS="$CHANGED" cargo t \
             --features build-mpfr,unstable,force-soft-floats \
             --profile release-checked \

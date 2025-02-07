@@ -1,9 +1,10 @@
 //! A generator that checks a handful of cases near infinities, zeros, asymptotes, and NaNs.
 
-use libm::support::{CastInto, Float, Int};
+use libm::support::{CastInto, Float, Int, MinInt};
 
 use crate::domain::get_domain;
 use crate::gen::KnownSize;
+use crate::op::OpITy;
 use crate::run_cfg::{check_near_count, check_point_count};
 use crate::{BaseName, CheckCtx, FloatExt, FloatTy, MathOp, test_log};
 
@@ -21,6 +22,7 @@ where
     Op: MathOp,
 {
     let mut ret = Vec::new();
+    let one = OpITy::<Op>::ONE;
     let values = &mut ret;
     let domain = get_domain::<_, i8>(ctx.fn_ident, argnum).unwrap_float();
     let domain_start = domain.range_start();
@@ -50,6 +52,22 @@ where
     // Check some special values that aren't included in the above ranges
     values.push(Op::FTy::NAN);
     values.extend(Op::FTy::consts().iter());
+
+    // Check around the maximum subnormal value
+    let sub_max = Op::FTy::from_bits(Op::FTy::SIG_MASK);
+    count_up(sub_max, near_points, values);
+    count_down(sub_max, near_points, values);
+    count_up(-sub_max, near_points, values);
+    count_down(-sub_max, near_points, values);
+
+    // Check a few values around the subnormal range
+    for shift in (0..Op::FTy::SIG_BITS).step_by(Op::FTy::SIG_BITS as usize / 5) {
+        let v = Op::FTy::from_bits(one << shift);
+        count_up(v, 2, values);
+        count_down(v, 2, values);
+        count_up(-v, 2, values);
+        count_down(-v, 2, values);
+    }
 
     // Check around asymptotes
     if let Some(f) = domain.check_points {

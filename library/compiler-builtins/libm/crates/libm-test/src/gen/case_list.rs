@@ -269,15 +269,26 @@ fn fmaf128_cases() -> Vec<TestCase<op::fmaf128::Routine>> {
     let mut v = vec![];
     TestCase::append_pairs(
         &mut v,
-        &[(
-            // Tricky rounding case that previously failed in extensive tests
+        &[
             (
-                hf128!("-0x1.1966cc01966cc01966cc01966f06p-25"),
-                hf128!("-0x1.669933fe69933fe69933fe6997c9p-16358"),
-                hf128!("-0x0.000000000000000000000000048ap-16382"),
+                // Tricky rounding case that previously failed in extensive tests
+                (
+                    hf128!("-0x1.1966cc01966cc01966cc01966f06p-25"),
+                    hf128!("-0x1.669933fe69933fe69933fe6997c9p-16358"),
+                    hf128!("-0x0.000000000000000000000000048ap-16382"),
+                ),
+                Some(hf128!("0x0.c5171470a3ff5e0f68d751491b18p-16382")),
             ),
-            Some(hf128!("0x0.c5171470a3ff5e0f68d751491b18p-16382")),
-        )],
+            (
+                // Subnormal edge case that caused a failure
+                (
+                    hf128!("0x0.7ffffffffffffffffffffffffff7p-16382"),
+                    hf128!("0x1.ffffffffffffffffffffffffffffp-1"),
+                    hf128!("0x0.8000000000000000000000000009p-16382"),
+                ),
+                Some(hf128!("0x1.0000000000000000000000000000p-16382")),
+            ),
+        ],
     );
     v
 }

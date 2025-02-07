@@ -342,7 +342,7 @@ pub fn check_near_count(ctx: &CheckCtx) -> u64 {
             x => panic!("unexpected argument count {x}"),
         }
     } else {
-        10
+        8
     }
 }
 
