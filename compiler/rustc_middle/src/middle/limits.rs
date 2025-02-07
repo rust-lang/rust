@@ -1,12 +1,12 @@
 //! Registering limits:
-//! * recursion_limit,
-//! * move_size_limit, and
-//! * type_length_limit
+//! - recursion_limit: there are various parts of the compiler that must impose arbitrary limits
+//!   on how deeply they recurse to prevent stack overflow.
+//! - move_size_limit
+//! - type_length_limit
+//! - pattern_complexity_limit
 //!
-//! There are various parts of the compiler that must impose arbitrary limits
-//! on how deeply they recurse to prevent stack overflow. Users can override
-//! this via an attribute on the crate like `#![recursion_limit="22"]`. This pass
-//! just peeks and looks for that attribute.
+//! Users can override these limits via an attribute on the crate like
+//! `#![recursion_limit="22"]`. This pass just looks for those attributes.
 
 use std::num::IntErrorKind;
 
@@ -41,6 +41,7 @@ pub fn provide(providers: &mut Providers) {
     }
 }
 
+// This one is separate because it must be read prior to macro expansion.
 pub fn get_recursion_limit(krate_attrs: &[impl AttributeExt], sess: &Session) -> Limit {
     get_limit(krate_attrs, sess, sym::recursion_limit, Limit::new(128))
 }
