@@ -1,5 +1,6 @@
-//@ revisions: NO-OPT SIZE-OPT SPEED-OPT
+//@ revisions: NO-OPT DEBUGINFO SIZE-OPT SPEED-OPT
 //@[NO-OPT] compile-flags: -Copt-level=0 -Ccodegen-units=1
+//@[DEBUGINFO] compile-flags: -Copt-level=1 -Ccodegen-units=1 -Cdebuginfo=full -Zmir_strip_debuginfo=all-locals
 //@[SIZE-OPT] compile-flags: -Copt-level=s -Ccodegen-units=1
 //@[SPEED-OPT] compile-flags: -Copt-level=3 -Ccodegen-units=1
 
@@ -27,6 +28,7 @@ pub fn size() -> i32 {
 
 // CHECK-LABEL: define{{.*}}i32 @speed
 // NO-OPT-SAME: [[NOTHING_ATTRS]]
+// DEBUGINFO-SAME: [[NOTHING_ATTRS]]
 // SPEED-OPT-SAME: [[NOTHING_ATTRS]]
 // SIZE-OPT-SAME: [[SPEED_ATTRS:#[0-9]+]]
 // SIZE-OPT: ret i32 8
@@ -41,14 +43,16 @@ pub fn speed() -> i32 {
 // CHECK-SAME: [[NONE_ATTRS:#[0-9]+]]
 // SIZE-OPT: alloca
 // SPEED-OPT: alloca
+// DEBUGINFO-DAG: !DILocalVariable(name: "some_local_variable"
 #[no_mangle]
 #[optimize(none)]
 pub fn none() -> i32 {
-    let arr = [0, 1, 2, 3, 4];
-    arr[4]
+    let some_local_variable = [0, 1, 2, 3, 4];
+    some_local_variable[4]
 }
 
 // NO-OPT-DAG: attributes [[SIZE_ATTRS]] = {{.*}}minsize{{.*}}optsize{{.*}}
+// DEBUGINFO-DAG: attributes [[SIZE_ATTRS]] = {{.*}}minsize{{.*}}optsize{{.*}}
 // SPEED-OPT-DAG: attributes [[SIZE_ATTRS]] = {{.*}}minsize{{.*}}optsize{{.*}}
 // SIZE-OPT-DAG: attributes [[NOTHING_ATTRS]] = {{.*}}optsize{{.*}}
 // SIZE-OPT-DAG: attributes [[SIZE_ATTRS]] = {{.*}}minsize{{.*}}optsize{{.*}}
