@@ -688,7 +688,8 @@ struct LLVMRustSanitizerOptions {
   bool SanitizeKernelAddressRecover;
 };
 
-extern "C" void registerEnzyme(llvm::PassBuilder &PB);
+// This symbol won't be available or used when Enzyme is not enabled
+extern "C" void registerEnzyme(llvm::PassBuilder &PB) __attribute__((weak));
 
 extern "C" LLVMRustResult LLVMRustOptimize(
     LLVMModuleRef ModuleRef, LLVMTargetMachineRef TMRef,
@@ -696,7 +697,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     bool IsLinkerPluginLTO, bool NoPrepopulatePasses, bool VerifyIR,
     bool LintIR, bool UseThinLTOBuffers, bool MergeFunctions, bool UnrollLoops,
     bool SLPVectorize, bool LoopVectorize, bool DisableSimplifyLibCalls,
-    bool EmitLifetimeMarkers, LLVMRustSanitizerOptions *SanitizerOptions,
+    bool EmitLifetimeMarkers, bool RunEnzyme, LLVMRustSanitizerOptions *SanitizerOptions,
     const char *PGOGenPath, const char *PGOUsePath, bool InstrumentCoverage,
     const char *InstrProfileOutput, const char *PGOSampleUsePath,
     bool DebugInfoForProfiling, void *LlvmSelfProfiler,
@@ -1013,11 +1014,13 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   }
 
   // now load "-enzyme" pass:
-  registerEnzyme(PB);
-  if (auto Err = PB.parsePassPipeline(MPM, "enzyme")) {
-    std::string ErrMsg = toString(std::move(Err));
-    LLVMRustSetLastError(ErrMsg.c_str());
-    return LLVMRustResult::Failure;
+  if (RunEnzyme) {
+    registerEnzyme(PB);
+    if (auto Err = PB.parsePassPipeline(MPM, "enzyme")) {
+      std::string ErrMsg = toString(std::move(Err));
+      LLVMRustSetLastError(ErrMsg.c_str());
+      return LLVMRustResult::Failure;
+    }
   }
 
   // Upgrade all calls to old intrinsics first.

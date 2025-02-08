@@ -551,11 +551,12 @@ pub(crate) unsafe fn llvm_optimize(
     let vectorize_slp;
     let vectorize_loop;
 
+    let run_enzyme = cfg!(llvm_enzyme);
     // When we build rustc with enzyme/autodiff support, we want to postpone size-increasing
     // optimizations until after differentiation. FIXME(ZuseZ4): Before shipping on nightly,
     // we should make this more granular, or at least check that the user has at least one autodiff
     // call in their code, to justify altering the compilation pipeline.
-    if skip_size_increasing_opts && cfg!(llvm_enzyme) {
+    if skip_size_increasing_opts && run_enzyme {
         unroll_loops = false;
         vectorize_slp = false;
         vectorize_loop = false;
@@ -633,6 +634,7 @@ pub(crate) unsafe fn llvm_optimize(
             vectorize_loop,
             config.no_builtins,
             config.emit_lifetime_markers,
+            run_enzyme,
             sanitizer_options.as_ref(),
             pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
             pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
