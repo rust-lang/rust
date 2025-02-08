@@ -23,7 +23,6 @@ pub mod env;
 pub mod fd;
 pub mod fs;
 pub mod futex;
-pub mod io;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;

@@ -23,7 +23,6 @@ pub mod env;
 // `crate::sys::error`
 pub(crate) mod error;
 pub mod fs;
-pub mod io;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
