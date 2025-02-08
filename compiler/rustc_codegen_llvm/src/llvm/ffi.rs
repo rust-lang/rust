@@ -972,7 +972,6 @@ unsafe extern "C" {
 
     // Create modules.
     pub fn LLVMModuleCreateWithNameInContext(ModuleID: *const c_char, C: &Context) -> &Module;
-    pub fn LLVMGetModuleContext(M: &Module) -> &Context;
     pub fn LLVMCloneModule(M: &Module) -> &Module;
 
     /// Data layout. See Module::getDataLayout.
