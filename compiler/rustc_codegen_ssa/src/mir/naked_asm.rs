@@ -187,10 +187,9 @@ fn prefix_and_suffix<'tcx>(
                     }
                 }
             }
-            Linkage::Internal | Linkage::Private => {
+            Linkage::Internal => {
                 // write nothing
             }
-            Linkage::Appending => emit_fatal("Only global variables can have appending linkage!"),
             Linkage::Common => emit_fatal("Functions may not have common linkage"),
             Linkage::AvailableExternally => {
                 // this would make the function equal an extern definition
