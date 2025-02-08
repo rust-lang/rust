@@ -12,7 +12,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{
     self as hir, BindingMode, ByRef, ExprKind, HirId, LangItem, Mutability, Pat, PatExpr,
-    PatExprKind, PatKind, expr_needs_parens,
+    PatExprKind, PatKind, Pinnedness, expr_needs_parens,
 };
 use rustc_infer::infer;
 use rustc_middle::traits::PatternOriginExpr;
@@ -824,7 +824,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Determine the binding mode...
         let bm = match user_bind_annot {
-            BindingMode(ByRef::No, Mutability::Mut) if let ByRef::Yes(def_br_mutbl) = def_br => {
+            BindingMode(ByRef::No, pin, Mutability::Mut)
+                if let ByRef::Yes(def_br_mutbl) = def_br =>
+            {
                 // Only mention the experimental `mut_ref` feature if if we're in edition 2024 and
                 // using other experimental matching features compatible with it.
                 if pat.span.at_least_rust_2024()
@@ -841,7 +843,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .emit();
                     }
 
-                    BindingMode(def_br, Mutability::Mut)
+                    BindingMode(def_br, pin, Mutability::Mut)
                 } else {
                     // `mut` resets the binding mode on edition <= 2021
                     self.add_rust_2024_migration_desugared_pat(
@@ -850,11 +852,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         't', // last char of `mut`
                         def_br_mutbl,
                     );
-                    BindingMode(ByRef::No, Mutability::Mut)
+                    BindingMode(ByRef::No, pin, Mutability::Mut)
                 }
             }
-            BindingMode(ByRef::No, mutbl) => BindingMode(def_br, mutbl),
-            BindingMode(ByRef::Yes(user_br_mutbl), _) => {
+            BindingMode(ByRef::No, pin, mutbl) => BindingMode(def_br, pin, mutbl),
+            BindingMode(ByRef::Yes(user_br_mutbl), _, _) => {
                 if let ByRef::Yes(def_br_mutbl) = def_br {
                     // `ref`/`ref mut` overrides the binding mode on edition <= 2021
                     self.add_rust_2024_migration_desugared_pat(
@@ -1079,7 +1081,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let PatKind::Ref(the_ref, _) = i.kind
                             && let PatKind::Binding(mt, _, ident, _) = the_ref.kind
                         {
-                            let BindingMode(_, mtblty) = mt;
+                            let BindingMode(_, _, mtblty) = mt;
                             err.span_suggestion_verbose(
                                 i.span,
                                 format!("consider removing `&{mutability}` from the pattern"),
@@ -2872,8 +2874,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If the user-provided binding modifier doesn't match the default binding mode, we'll
             // need to suggest reference patterns, which can affect other bindings.
             // For simplicity, we opt to suggest making the pattern fully explicit.
-            info.suggest_eliding_modes &=
-                user_bind_annot == BindingMode(ByRef::Yes(def_br_mutbl), Mutability::Not);
+            info.suggest_eliding_modes &= user_bind_annot
+                == BindingMode(ByRef::Yes(def_br_mutbl), Pinnedness::Not, Mutability::Not);
             "binding modifier"
         } else {
             info.bad_ref_pats = true;

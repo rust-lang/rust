@@ -1628,7 +1628,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             implicit_self: decl.inputs.get(0).map_or(hir::ImplicitSelfKind::None, |arg| {
                 let is_mutable_pat = matches!(
                     arg.pat.kind,
-                    PatKind::Ident(hir::BindingMode(_, Mutability::Mut), ..)
+                    PatKind::Ident(hir::BindingMode(_, _, Mutability::Mut), ..)
                 );
 
                 match &arg.ty.kind {

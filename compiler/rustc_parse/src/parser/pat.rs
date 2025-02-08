@@ -7,7 +7,8 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
     self as ast, Arm, AttrVec, BindingMode, ByRef, Expr, ExprKind, LocalKind, MacCall, Mutability,
-    Pat, PatField, PatFieldsRest, PatKind, Path, QSelf, RangeEnd, RangeSyntax, Stmt, StmtKind,
+    Pat, PatField, PatFieldsRest, PatKind, Path, Pinnedness, QSelf, RangeEnd, RangeSyntax, Stmt,
+    StmtKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, DiagArgValue, PResult, StashKey};
@@ -22,12 +23,12 @@ use crate::errors::{
     DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed, DotDotDotRestPattern,
     EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt, ExpectedCommaAfterPatternField,
     GenericArgsInPatRequireTurbofishSyntax, InclusiveRangeExtraEquals, InclusiveRangeMatchArrow,
-    InclusiveRangeNoEnd, InvalidMutInPattern, ParenRangeSuggestion, PatternOnWrongSideOfAt,
-    RemoveLet, RepeatedMutInPattern, SwitchRefBoxOrder, TopLevelOrPatternNotAllowed,
-    TopLevelOrPatternNotAllowedSugg, TrailingVertNotAllowed, UnexpectedExpressionInPattern,
-    UnexpectedExpressionInPatternSugg, UnexpectedLifetimeInPattern, UnexpectedParenInRangePat,
-    UnexpectedParenInRangePatSugg, UnexpectedVertVertBeforeFunctionParam,
-    UnexpectedVertVertInPattern, WrapInParens,
+    InclusiveRangeNoEnd, InvalidMutInPattern, InvalidPinInPattern, ParenRangeSuggestion,
+    PatternOnWrongSideOfAt, RemoveLet, RepeatedMutInPattern, SwitchRefBoxOrder,
+    TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg, TrailingVertNotAllowed,
+    UnexpectedExpressionInPattern, UnexpectedExpressionInPatternSugg, UnexpectedLifetimeInPattern,
+    UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
+    UnexpectedVertVertBeforeFunctionParam, UnexpectedVertVertInPattern, WrapInParens,
 };
 use crate::parser::expr::{DestructuredFloat, could_be_unclosed_char_literal};
 use crate::{exp, maybe_recover_from_interpolated_ty_qpath, maybe_whole};
@@ -745,6 +746,8 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(exp!(Underscore)) {
             // Parse `_`
             PatKind::Wild
+        } else if let Some((pinned, mutability)) = self.parse_pin_and_mut() {
+            self.parse_pat_ident_pin(pinned, mutability, lo.to(self.prev_token.span))?
         } else if self.eat_keyword(exp!(Mut)) {
             self.parse_pat_ident_mut()?
         } else if self.eat_keyword(exp!(Ref)) {
@@ -756,7 +759,10 @@ impl<'a> Parser<'a> {
             }
             // Parse ref ident @ pat / ref mut ident @ pat
             let mutbl = self.parse_mutability();
-            self.parse_pat_ident(BindingMode(ByRef::Yes(mutbl), Mutability::Not), syntax_loc)?
+            self.parse_pat_ident(
+                BindingMode(ByRef::Yes(mutbl), Pinnedness::Not, Mutability::Not),
+                syntax_loc,
+            )?
         } else if self.eat_keyword(exp!(Box)) {
             self.parse_pat_box()?
         } else if self.check_inline_const(0) {
@@ -1032,6 +1038,38 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Parse a pinned binding with the `pin mut` or `pin const` token already eaten.
+    fn parse_pat_ident_pin(
+        &mut self,
+        pin: Pinnedness,
+        mutbl: Mutability,
+        // span of `pin mut` or `pin const`
+        span: Span,
+    ) -> PResult<'a, PatKind> {
+        // Parse the pattern we hope to be an identifier.
+        let mut pat = self.parse_pat_no_top_alt(Some(Expected::Identifier), None)?;
+
+        // If we don't have `pin mut $ident (@ pat)?`, error.
+        if let PatKind::Ident(
+            BindingMode(ByRef::No, p @ Pinnedness::Not, m @ Mutability::Not),
+            ..,
+        ) = &mut pat.kind
+        {
+            *p = pin;
+            *m = mutbl;
+        } else {
+            // Add `pin` to any binding in the parsed pattern.
+            let mut changed_any_binding = Self::make_all_value_bindings_pinned(&mut pat);
+            if let Mutability::Mut = mutbl {
+                // Add `mut` to any binding in the parsed pattern.
+                changed_any_binding |= Self::make_all_value_bindings_mutable(&mut pat);
+            }
+            self.ban_pin_general_pat(span, &pat, mutbl, changed_any_binding);
+        }
+
+        Ok(pat.into_inner().kind)
+    }
+
     /// Parse a mutable binding with the `mut` token already eaten.
     fn parse_pat_ident_mut(&mut self) -> PResult<'a, PatKind> {
         let mut_span = self.prev_token.span;
@@ -1053,7 +1091,8 @@ impl<'a> Parser<'a> {
         let mut pat = self.parse_pat_no_top_alt(Some(Expected::Identifier), None)?;
 
         // If we don't have `mut $ident (@ pat)?`, error.
-        if let PatKind::Ident(BindingMode(br @ ByRef::No, m @ Mutability::Not), ..) = &mut pat.kind
+        if let PatKind::Ident(BindingMode(br @ ByRef::No, _, m @ Mutability::Not), ..) =
+            &mut pat.kind
         {
             // Don't recurse into the subpattern.
             // `mut` on the outer binding doesn't affect the inner bindings.
@@ -1065,19 +1104,40 @@ impl<'a> Parser<'a> {
             self.ban_mut_general_pat(mut_span, &pat, changed_any_binding);
         }
 
-        if matches!(pat.kind, PatKind::Ident(BindingMode(ByRef::Yes(_), Mutability::Mut), ..)) {
+        if matches!(pat.kind, PatKind::Ident(BindingMode(ByRef::Yes(_), _, Mutability::Mut), ..)) {
             self.psess.gated_spans.gate(sym::mut_ref, pat.span);
         }
         Ok(pat.into_inner().kind)
     }
 
-    /// Turn all by-value immutable bindings in a pattern into mutable bindings.
+    /// Turn all by-value immutable bindings in a pattern into pinned bindings.
+    /// Returns `true` if any change was made.
+    fn make_all_value_bindings_pinned(pat: &mut P<Pat>) -> bool {
+        struct AddPin(bool);
+        impl MutVisitor for AddPin {
+            fn visit_pat(&mut self, pat: &mut P<Pat>) {
+                if let PatKind::Ident(BindingMode(ByRef::No, p @ Pinnedness::Not, _), ..) =
+                    &mut pat.kind
+                {
+                    self.0 = true;
+                    *p = Pinnedness::Pinned;
+                }
+                mut_visit::walk_pat(self, pat);
+            }
+        }
+
+        let mut add_pin = AddPin(false);
+        add_pin.visit_pat(pat);
+        add_pin.0
+    }
+
+    /// Turn all by-value immutable bindings in a pattern into mutable bindings if specified.
     /// Returns `true` if any change was made.
     fn make_all_value_bindings_mutable(pat: &mut P<Pat>) -> bool {
         struct AddMut(bool);
         impl MutVisitor for AddMut {
             fn visit_pat(&mut self, pat: &mut P<Pat>) {
-                if let PatKind::Ident(BindingMode(ByRef::No, m @ Mutability::Not), ..) =
+                if let PatKind::Ident(BindingMode(ByRef::No, _, m @ Mutability::Not), ..) =
                     &mut pat.kind
                 {
                     self.0 = true;
@@ -1090,6 +1150,25 @@ impl<'a> Parser<'a> {
         let mut add_mut = AddMut(false);
         add_mut.visit_pat(pat);
         add_mut.0
+    }
+
+    /// Error on `pin mut $pat` or `pin const $pat` where `$pat` is not an ident.
+    fn ban_pin_general_pat(
+        &self,
+        lo: Span,
+        pat: &Pat,
+        mutbl: Mutability,
+        changed_any_binding: bool,
+    ) {
+        self.dcx().emit_err(if changed_any_binding {
+            InvalidPinInPattern::NestedIdent {
+                span: lo.to(pat.span),
+                mutbl: mutbl.ptr_str(),
+                pat: pprust::pat_to_string(pat),
+            }
+        } else {
+            InvalidPinInPattern::NonIdent { span: lo.until(pat.span), mutbl: mutbl.ptr_str() }
+        });
     }
 
     /// Error on `mut $pat` where `$pat` is not an ident.
@@ -1714,7 +1793,7 @@ impl<'a> Parser<'a> {
 
             let fieldname = self.parse_field_name()?;
             hi = self.prev_token.span;
-            let ann = BindingMode(by_ref, mutability);
+            let ann = BindingMode(by_ref, Pinnedness::Not, mutability);
             let fieldpat = self.mk_pat_ident(boxed_span.to(hi), ann, fieldname);
             let subpat =
                 if is_box { self.mk_pat(lo.to(hi), PatKind::Box(fieldpat)) } else { fieldpat };

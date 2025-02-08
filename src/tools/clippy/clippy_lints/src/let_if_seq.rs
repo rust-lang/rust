@@ -104,7 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                 };
 
                 let mutability = match mode {
-                    BindingMode(_, Mutability::Mut) => "<mut> ",
+                    BindingMode(_, _, Mutability::Mut) => "<mut> ",
                     _ => "",
                 };
 

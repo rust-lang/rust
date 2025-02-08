@@ -28,6 +28,26 @@ LL | fn baz_sugar(_: &pin const Foo) {}
    = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:31:9
+   |
+LL |     let pin mut x = Foo;
+   |         ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: pinned reference syntax is experimental
+  --> $DIR/feature-gate-pin_ergonomics.rs:32:9
+   |
+LL |     let pin const y = Foo;
+   |         ^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0382]: use of moved value: `x`
   --> $DIR/feature-gate-pin_ergonomics.rs:20:9
    |
@@ -66,7 +86,21 @@ help: consider reborrowing the `Pin` instead of moving it
 LL |     x.as_mut().foo();
    |      +++++++++
 
-error: aborting due to 5 previous errors
+error[E0384]: cannot assign twice to immutable variable `y`
+  --> $DIR/feature-gate-pin_ergonomics.rs:34:5
+   |
+LL |     let pin const y = Foo;
+   |         ----------- first assignment to `y`
+LL |     x = Foo; // FIXME: this should be an error
+LL |     y = Foo;
+   |     ^^^^^^^ cannot assign twice to immutable variable
+   |
+help: consider making this binding mutable
+   |
+LL |     let mut pin const y = Foo;
+   |         +++
 
-Some errors have detailed explanations: E0382, E0658.
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0382, E0384, E0658.
 For more information about an error, try `rustc --explain E0382`.

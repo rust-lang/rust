@@ -27,4 +27,11 @@ fn baz(mut x: Pin<&mut Foo>) {
 
 fn baz_sugar(_: &pin const Foo) {} //~ ERROR pinned reference syntax is experimental
 
+fn pinned_locals() {
+    let pin mut x = Foo; //~ ERROR pinned reference syntax is experimental
+    let pin const y = Foo; //~ ERROR pinned reference syntax is experimental
+    x = Foo; // FIXME: this should be an error
+    y = Foo; //~ ERROR cannot assign twice to immutable variable `y`
+}
+
 fn main() {}
