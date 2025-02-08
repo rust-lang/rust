@@ -1,4 +1,5 @@
 use crate::io;
+use crate::mem::MaybeUninit;
 use crate::os::xous::ffi::{Connection, lend, try_lend, try_scalar};
 use crate::os::xous::services::{LogLend, LogScalar, log_server, try_connect};
 
@@ -14,22 +15,15 @@ impl Stdout {
 
 impl io::Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        #[repr(C, align(4096))]
-        struct LendBuffer([u8; 4096]);
-        let mut lend_buffer = LendBuffer([0u8; 4096]);
-        let connection = log_server();
-        for chunk in buf.chunks(lend_buffer.0.len()) {
-            for (dest, src) in lend_buffer.0.iter_mut().zip(chunk) {
-                *dest = *src;
-            }
-            lend(connection, LogLend::StandardOutput.into(), &lend_buffer.0, 0, chunk.len())
-                .unwrap();
-        }
-        Ok(buf.len())
+        write(LogLend::StandardOutput, buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        write_all(LogLend::StandardOutput, buf)
     }
 }
 
@@ -41,23 +35,51 @@ impl Stderr {
 
 impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        #[repr(C, align(4096))]
-        struct LendBuffer([u8; 4096]);
-        let mut lend_buffer = LendBuffer([0u8; 4096]);
-        let connection = log_server();
-        for chunk in buf.chunks(lend_buffer.0.len()) {
-            for (dest, src) in lend_buffer.0.iter_mut().zip(chunk) {
-                *dest = *src;
-            }
-            lend(connection, LogLend::StandardError.into(), &lend_buffer.0, 0, chunk.len())
-                .unwrap();
-        }
-        Ok(buf.len())
+        write(LogLend::StandardError, buf)
     }
 
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
+
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        write_all(LogLend::StandardError, buf)
+    }
+}
+
+#[repr(C, align(4096))]
+struct AlignedBuffer([MaybeUninit<u8>; 4096]);
+
+impl AlignedBuffer {
+    #[inline]
+    fn new() -> Self {
+        AlignedBuffer([MaybeUninit::uninit(); 4096])
+    }
+
+    #[inline]
+    fn fill(&mut self, buf: &[u8]) -> &[u8] {
+        let len = buf.len().min(self.0.len());
+        self.0[..len].write_copy_of_slice(&buf[..len]);
+        // SAFETY: This range was just initialized.
+        unsafe { self.0[..len].assume_init_ref() }
+    }
+}
+
+fn write(opcode: LogLend, buf: &[u8]) -> io::Result<usize> {
+    let mut aligned_buffer = AlignedBuffer::new();
+    let aligned = aligned_buffer.fill(buf);
+    lend(log_server(), opcode.into(), aligned, 0, aligned.len()).unwrap();
+    Ok(aligned.len())
+}
+
+fn write_all(opcode: LogLend, buf: &[u8]) -> io::Result<()> {
+    let mut aligned_buffer = AlignedBuffer::new();
+    let connection = log_server();
+    for chunk in buf.chunks(aligned_buffer.0.len()) {
+        let aligned = aligned_buffer.fill(chunk);
+        lend(connection, opcode.into(), aligned, 0, aligned.len()).unwrap();
+    }
+    Ok(())
 }
 
 pub const STDIN_BUF_SIZE: usize = super::unsupported_stdio::STDIN_BUF_SIZE;
@@ -86,13 +108,9 @@ impl io::Write for PanicWriter {
         // the data itself in the buffer. Typically several messages are require to
         // fully transmit the entire panic message.
         if let Some(gfx) = self.gfx {
-            #[repr(C, align(4096))]
-            struct Request([u8; 4096]);
-            let mut request = Request([0u8; 4096]);
-            for (&s, d) in s.iter().zip(request.0.iter_mut()) {
-                *d = s;
-            }
-            try_lend(gfx, 0 /* AppendPanicText */, &request.0, 0, s.len()).ok();
+            let mut request = AlignedBuffer::new();
+            let request = request.fill(s);
+            _ = try_lend(gfx, 0 /* AppendPanicText */, request, 0, request.len());
         }
         Ok(s.len())
     }
