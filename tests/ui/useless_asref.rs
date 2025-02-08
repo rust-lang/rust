@@ -8,6 +8,7 @@
 )]
 
 use std::fmt::Debug;
+use std::ops::Deref;
 use std::rc::{Rc, Weak as RcWeak};
 use std::sync::{Arc, Weak as ArcWeak};
 
@@ -216,6 +217,35 @@ fn issue_12528() {
 fn issue_14088() {
     let s = Some("foo");
     let _: Option<&str> = s.as_ref().map(|x| x.as_ref());
+}
+
+pub struct Wrap<T> {
+    inner: T,
+}
+
+impl<T> Deref for Wrap<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+struct NonCloneableError;
+
+pub struct Issue12357 {
+    current: Option<Wrap<Arc<u32>>>,
+}
+
+impl Issue12357 {
+    fn f(&self) -> Option<Arc<u32>> {
+        self.current.as_ref().map(|p| Arc::clone(p))
+    }
+
+    fn g(&self) {
+        let result: Result<String, NonCloneableError> = Ok("Hello".to_string());
+        let cloned = result.as_ref().map(|s| s.clone());
+    }
 }
 
 fn main() {
