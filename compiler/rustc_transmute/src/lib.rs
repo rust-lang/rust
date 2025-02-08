@@ -84,7 +84,7 @@ mod rustc {
     use rustc_infer::infer::InferCtxt;
     use rustc_macros::TypeVisitable;
     use rustc_middle::traits::ObligationCause;
-    use rustc_middle::ty::{Const, ParamEnv, Ty, TyCtxt, ValTree};
+    use rustc_middle::ty::{Const, ParamEnv, Ty, TyCtxt};
 
     use super::*;
 
@@ -139,25 +139,21 @@ mod rustc {
 
             let adt_def = cv.ty.ty_adt_def()?;
 
-            assert_eq!(
-                tcx.require_lang_item(LangItem::TransmuteOpts, None),
-                adt_def.did(),
-                "The given `Const` was not marked with the `{}` lang item.",
-                LangItem::TransmuteOpts.name(),
-            );
+            if !tcx.is_lang_item(adt_def.did(), LangItem::TransmuteOpts) {
+                tcx.dcx().delayed_bug(format!(
+                    "The given `const` was not marked with the `{}` lang item.",
+                    LangItem::TransmuteOpts.name()
+                ));
+                return Some(Self {
+                    alignment: true,
+                    lifetimes: true,
+                    safety: true,
+                    validity: true,
+                });
+            }
 
             let variant = adt_def.non_enum_variant();
-            let fields = match cv.valtree {
-                ValTree::Branch(branch) => branch,
-                _ => {
-                    return Some(Self {
-                        alignment: true,
-                        lifetimes: true,
-                        safety: true,
-                        validity: true,
-                    });
-                }
-            };
+            let fields = cv.valtree.unwrap_branch();
 
             let get_field = |name| {
                 let (field_idx, _) = variant
