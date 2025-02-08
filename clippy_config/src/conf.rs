@@ -613,6 +613,7 @@ define_Conf! {
         manual_bits,
         manual_c_str_literals,
         manual_clamp,
+        manual_flatten,
         manual_hash_one,
         manual_is_ascii_check,
         manual_let_else,
