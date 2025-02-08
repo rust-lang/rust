@@ -1,7 +1,6 @@
 //! Benchmarks that use `iai-cachegrind` to be reasonably CI-stable.
 
 use std::hint::black_box;
-use std::ops::Shr;
 
 use iai_callgrind::{library_benchmark, library_benchmark_group, main};
 use libm::support::{HInt, u256};
@@ -107,9 +106,8 @@ fn setup_u256_shift() -> Vec<(u256, u32)> {
 #[library_benchmark]
 #[bench::linspace(setup_u128_mul())]
 fn icount_bench_u128_widen_mul(cases: Vec<(u128, u128)>) {
-    let f = black_box(u128::zero_widen_mul);
     for (x, y) in cases.iter().copied() {
-        f(x, y);
+        black_box(black_box(x).zero_widen_mul(black_box(y)));
     }
 }
 
@@ -122,9 +120,8 @@ library_benchmark_group!(
 #[library_benchmark]
 #[bench::linspace(setup_u256_add())]
 fn icount_bench_u256_add(cases: Vec<(u256, u256)>) {
-    let f = black_box(u256::add);
     for (x, y) in cases.iter().copied() {
-        f(x, y);
+        black_box(black_box(x) + black_box(y));
     }
 }
 
@@ -137,9 +134,8 @@ library_benchmark_group!(
 #[library_benchmark]
 #[bench::linspace(setup_u256_shift())]
 fn icount_bench_u256_shr(cases: Vec<(u256, u32)>) {
-    let f = black_box(u256::shr);
     for (x, y) in cases.iter().copied() {
-        f(x, y);
+        black_box(black_box(x) >> black_box(y));
     }
 }
 
