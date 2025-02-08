@@ -81,7 +81,6 @@
 #![feature(strict_provenance_atomic_ptr)]
 #![feature(strict_provenance_lints)]
 #![feature(test)]
-#![feature(trait_upcasting)]
 #![feature(trusted_len)]
 #![feature(trusted_random_access)]
 #![feature(try_blocks)]

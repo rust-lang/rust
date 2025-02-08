@@ -812,7 +812,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Determine the binding mode...
         let bm = match user_bind_annot {
-            BindingMode(ByRef::No, Mutability::Mut) if matches!(def_br, ByRef::Yes(_)) => {
+            BindingMode(ByRef::No, Mutability::Mut) if let ByRef::Yes(def_br_mutbl) = def_br => {
                 // Only mention the experimental `mut_ref` feature if if we're in edition 2024 and
                 // using other experimental matching features compatible with it.
                 if pat.span.at_least_rust_2024()
@@ -834,22 +834,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // `mut` resets the binding mode on edition <= 2021
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
-                        pat.span,
+                        pat,
                         ident.span,
-                        "requires binding by-value, but the implicit default is by-reference",
+                        def_br_mutbl,
                     );
                     BindingMode(ByRef::No, Mutability::Mut)
                 }
             }
             BindingMode(ByRef::No, mutbl) => BindingMode(def_br, mutbl),
             BindingMode(ByRef::Yes(_), _) => {
-                if matches!(def_br, ByRef::Yes(_)) {
+                if let ByRef::Yes(def_br_mutbl) = def_br {
                     // `ref`/`ref mut` overrides the binding mode on edition <= 2021
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
-                        pat.span,
+                        pat,
                         ident.span,
-                        "cannot override to bind by-reference when that is the implicit default",
+                        def_br_mutbl,
                     );
                 }
                 user_bind_annot
@@ -2386,9 +2386,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     pat_info.binding_mode = ByRef::No;
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
-                        pat.span,
+                        pat,
                         inner.span,
-                        "cannot implicitly match against multiple layers of reference",
+                        inh_mut,
                     )
                 }
             }
@@ -2778,33 +2778,65 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn add_rust_2024_migration_desugared_pat(
         &self,
         pat_id: HirId,
-        subpat_span: Span,
+        subpat: &'tcx Pat<'tcx>,
         cutoff_span: Span,
-        detailed_label: &str,
+        def_br_mutbl: Mutability,
     ) {
         // Try to trim the span we're labeling to just the `&` or binding mode that's an issue.
         // If the subpattern's span is is from an expansion, the emitted label will not be trimmed.
         let source_map = self.tcx.sess.source_map();
         let cutoff_span = source_map
-            .span_extend_prev_while(cutoff_span, char::is_whitespace)
+            .span_extend_prev_while(cutoff_span, |c| c.is_whitespace() || c == '(')
             .unwrap_or(cutoff_span);
-        // Ensure we use the syntax context and thus edition of `subpat_span`; this will be a hard
+        // Ensure we use the syntax context and thus edition of `subpat.span`; this will be a hard
         // error if the subpattern is of edition >= 2024.
-        let trimmed_span = subpat_span.until(cutoff_span).with_ctxt(subpat_span.ctxt());
+        let trimmed_span = subpat.span.until(cutoff_span).with_ctxt(subpat.span.ctxt());
+
+        let mut typeck_results = self.typeck_results.borrow_mut();
+        let mut table = typeck_results.rust_2024_migration_desugared_pats_mut();
+        // FIXME(ref_pat_eat_one_layer_2024): The migration diagnostic doesn't know how to track the
+        // default binding mode in the presence of Rule 3 or Rule 5. As a consequence, the labels it
+        // gives for default binding modes are wrong, as well as suggestions based on the default
+        // binding mode. This keeps it from making those suggestions, as doing so could panic.
+        let info = table.entry(pat_id).or_insert_with(|| ty::Rust2024IncompatiblePatInfo {
+            primary_labels: Vec::new(),
+            bad_modifiers: false,
+            bad_ref_pats: false,
+            suggest_eliding_modes: !self.tcx.features().ref_pat_eat_one_layer_2024()
+                && !self.tcx.features().ref_pat_eat_one_layer_2024_structural(),
+        });
 
         // Only provide a detailed label if the problematic subpattern isn't from an expansion.
         // In the case that it's from a macro, we'll add a more detailed note in the emitter.
-        let desc = if subpat_span.from_expansion() {
-            "default binding mode is reset within expansion"
+        let from_expansion = subpat.span.from_expansion();
+        let primary_label = if from_expansion {
+            // NB: This wording assumes the only expansions that can produce problematic reference
+            // patterns and bindings are macros. If a desugaring or AST pass is added that can do
+            // so, we may want to inspect the span's source callee or macro backtrace.
+            "occurs within macro expansion".to_owned()
         } else {
-            detailed_label
+            let pat_kind = if let PatKind::Binding(user_bind_annot, _, _, _) = subpat.kind {
+                info.bad_modifiers |= true;
+                // If the user-provided binding modifier doesn't match the default binding mode, we'll
+                // need to suggest reference patterns, which can affect other bindings.
+                // For simplicity, we opt to suggest making the pattern fully explicit.
+                info.suggest_eliding_modes &=
+                    user_bind_annot == BindingMode(ByRef::Yes(def_br_mutbl), Mutability::Not);
+                "binding modifier"
+            } else {
+                info.bad_ref_pats |= true;
+                // For simplicity, we don't try to suggest eliding reference patterns. Thus, we'll
+                // suggest adding them instead, which can affect the types assigned to bindings.
+                // As such, we opt to suggest making the pattern fully explicit.
+                info.suggest_eliding_modes = false;
+                "reference pattern"
+            };
+            let dbm_str = match def_br_mutbl {
+                Mutability::Not => "ref",
+                Mutability::Mut => "ref mut",
+            };
+            format!("{pat_kind} not allowed under `{dbm_str}` default binding mode")
         };
-
-        self.typeck_results
-            .borrow_mut()
-            .rust_2024_migration_desugared_pats_mut()
-            .entry(pat_id)
-            .or_default()
-            .push((trimmed_span, desc.to_owned()));
+        info.primary_labels.push((trimmed_span, primary_label));
     }
 }

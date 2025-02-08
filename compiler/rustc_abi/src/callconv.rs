@@ -1,73 +1,10 @@
-mod abi {
-    pub(crate) use crate::Primitive::*;
-    pub(crate) use crate::Variants;
-}
-
-#[cfg(feature = "nightly")]
-use rustc_macros::HashStable_Generic;
-
-use crate::{Align, HasDataLayout, Size};
 #[cfg(feature = "nightly")]
 use crate::{BackendRepr, FieldsShape, TyAbiInterface, TyAndLayout};
+use crate::{Primitive, Size, Variants};
 
-#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum RegKind {
-    Integer,
-    Float,
-    Vector,
-}
+mod reg;
 
-#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct Reg {
-    pub kind: RegKind,
-    pub size: Size,
-}
-
-macro_rules! reg_ctor {
-    ($name:ident, $kind:ident, $bits:expr) => {
-        pub fn $name() -> Reg {
-            Reg { kind: RegKind::$kind, size: Size::from_bits($bits) }
-        }
-    };
-}
-
-impl Reg {
-    reg_ctor!(i8, Integer, 8);
-    reg_ctor!(i16, Integer, 16);
-    reg_ctor!(i32, Integer, 32);
-    reg_ctor!(i64, Integer, 64);
-    reg_ctor!(i128, Integer, 128);
-
-    reg_ctor!(f32, Float, 32);
-    reg_ctor!(f64, Float, 64);
-}
-
-impl Reg {
-    pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
-        let dl = cx.data_layout();
-        match self.kind {
-            RegKind::Integer => match self.size.bits() {
-                1 => dl.i1_align.abi,
-                2..=8 => dl.i8_align.abi,
-                9..=16 => dl.i16_align.abi,
-                17..=32 => dl.i32_align.abi,
-                33..=64 => dl.i64_align.abi,
-                65..=128 => dl.i128_align.abi,
-                _ => panic!("unsupported integer: {self:?}"),
-            },
-            RegKind::Float => match self.size.bits() {
-                16 => dl.f16_align.abi,
-                32 => dl.f32_align.abi,
-                64 => dl.f64_align.abi,
-                128 => dl.f128_align.abi,
-                _ => panic!("unsupported float: {self:?}"),
-            },
-            RegKind::Vector => dl.vector_align(self.size).abi,
-        }
-    }
-}
+pub use reg::{Reg, RegKind};
 
 /// Return value from the `homogeneous_aggregate` test function.
 #[derive(Copy, Clone, Debug)]
@@ -134,8 +71,8 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             // The primitive for this algorithm.
             BackendRepr::Scalar(scalar) => {
                 let kind = match scalar.primitive() {
-                    abi::Int(..) | abi::Pointer(_) => RegKind::Integer,
-                    abi::Float(_) => RegKind::Float,
+                    Primitive::Int(..) | Primitive::Pointer(_) => RegKind::Integer,
+                    Primitive::Float(_) => RegKind::Float,
                 };
                 Ok(HomogeneousAggregate::Homogeneous(Reg { kind, size: self.size }))
             }
@@ -206,8 +143,8 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 let (mut result, mut total) = from_fields_at(*self, Size::ZERO)?;
 
                 match &self.variants {
-                    abi::Variants::Single { .. } | abi::Variants::Empty => {}
-                    abi::Variants::Multiple { variants, .. } => {
+                    Variants::Single { .. } | Variants::Empty => {}
+                    Variants::Multiple { variants, .. } => {
                         // Treat enum variants like union members.
                         // HACK(eddyb) pretend the `enum` field (discriminant)
                         // is at the start of every variant (otherwise the gap

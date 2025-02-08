@@ -1,6 +1,5 @@
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::ty;
-use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 use rustc_trait_selection::traits::supertraits;
@@ -9,11 +8,12 @@ use crate::lints::{SupertraitAsDerefTarget, SupertraitAsDerefTargetLabel};
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
-    /// The `deref_into_dyn_supertrait` lint is output whenever there is a use of the
-    /// `Deref` implementation with a `dyn SuperTrait` type as `Output`.
+    /// The `deref_into_dyn_supertrait` lint is emitted whenever there is a `Deref` implementation
+    /// for `dyn SubTrait` with a `dyn SuperTrait` type as the `Output` type.
     ///
-    /// These implementations will become shadowed when the `trait_upcasting` feature is stabilized.
-    /// The `deref` functions will no longer be called implicitly, so there might be behavior change.
+    /// These implementations are "shadowed" by trait upcasting (stabilized since
+    /// CURRENT_RUSTC_VERSION). The `deref` functions is no longer called implicitly, which might
+    /// change behavior compared to previous rustc versions.
     ///
     /// ### Example
     ///
@@ -43,15 +43,14 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// The dyn upcasting coercion feature adds new coercion rules, taking priority
-    /// over certain other coercion rules, which will cause some behavior change.
+    /// The trait upcasting coercion added a new coercion rule, taking priority over certain other
+    /// coercion rules, which causes some behavior change compared to older `rustc` versions.
+    ///
+    /// `deref` can be still called explicitly, it just isn't called as part of a deref coercion
+    /// (since trait upcasting coercion takes priority).
     pub DEREF_INTO_DYN_SUPERTRAIT,
-    Warn,
-    "`Deref` implementation usage with a supertrait trait object for output might be shadowed in the future",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
-        reference: "issue #89460 <https://github.com/rust-lang/rust/issues/89460>",
-    };
+    Allow,
+    "`Deref` implementation with a supertrait trait object for output is shadowed by trait upcasting",
 }
 
 declare_lint_pass!(DerefIntoDynSupertrait => [DEREF_INTO_DYN_SUPERTRAIT]);
