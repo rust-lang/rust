@@ -289,7 +289,7 @@ fn build_isa(sess: &Session) -> Arc<dyn TargetIsa + 'static> {
             flags_builder.set("opt_level", "none").unwrap();
         }
         OptLevel::Less
-        | OptLevel::Default
+        | OptLevel::More
         | OptLevel::Size
         | OptLevel::SizeMin
         | OptLevel::Aggressive => {

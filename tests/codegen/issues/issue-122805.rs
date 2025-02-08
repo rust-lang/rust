@@ -1,5 +1,5 @@
 //@ revisions: OPT2 OPT3WINX64 OPT3LINX64
-//@ [OPT2] compile-flags: -O
+//@ [OPT2] compile-flags: -C opt-level=2
 //@ [OPT3LINX64] compile-flags: -C opt-level=3
 //@ [OPT3WINX64] compile-flags: -C opt-level=3
 //@ [OPT3LINX64] only-linux
