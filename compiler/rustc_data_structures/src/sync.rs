@@ -204,12 +204,6 @@ impl<T> RwLock<T> {
     }
 
     #[inline(always)]
-    #[track_caller]
-    pub fn with_read_lock<F: FnOnce(&T) -> R, R>(&self, f: F) -> R {
-        f(&*self.read())
-    }
-
-    #[inline(always)]
     pub fn try_write(&self) -> Result<WriteGuard<'_, T>, ()> {
         self.0.try_write().ok_or(())
     }
@@ -225,12 +219,6 @@ impl<T> RwLock<T> {
 
     #[inline(always)]
     #[track_caller]
-    pub fn with_write_lock<F: FnOnce(&mut T) -> R, R>(&self, f: F) -> R {
-        f(&mut *self.write())
-    }
-
-    #[inline(always)]
-    #[track_caller]
     pub fn borrow(&self) -> ReadGuard<'_, T> {
         self.read()
     }
@@ -239,14 +227,6 @@ impl<T> RwLock<T> {
     #[track_caller]
     pub fn borrow_mut(&self) -> WriteGuard<'_, T> {
         self.write()
-    }
-
-    #[inline(always)]
-    pub fn leak(&self) -> &T {
-        let guard = self.read();
-        let ret = unsafe { &*(&raw const *guard) };
-        std::mem::forget(guard);
-        ret
     }
 }
 
