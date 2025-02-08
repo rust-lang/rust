@@ -18,9 +18,6 @@ pub static TEST4: bool = true;
 #[linkage = "linkonce_odr"]
 pub static TEST5: bool = true;
 
-#[linkage = "private"]
-pub static TEST6: bool = true;
-
 #[linkage = "weak"]
 pub static TEST7: bool = true;
 
