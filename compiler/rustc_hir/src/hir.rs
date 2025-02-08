@@ -11,7 +11,7 @@ use rustc_ast::{
 };
 pub use rustc_ast::{
     BinOp, BinOpKind, BindingMode, BorrowKind, BoundConstness, BoundPolarity, ByRef, CaptureBy,
-    ImplPolarity, IsAuto, Movability, Mutability, UnOp, UnsafeBinderCastKind,
+    ImplPolarity, IsAuto, Movability, Mutability, Pinnedness, UnOp, UnsafeBinderCastKind,
 };
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;

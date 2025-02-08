@@ -95,7 +95,7 @@ impl hir::Pat<'_> {
 
     pub fn simple_ident(&self) -> Option<Ident> {
         match self.kind {
-            PatKind::Binding(BindingMode(ByRef::No, _), _, ident, None) => Some(ident),
+            PatKind::Binding(BindingMode(ByRef::No, _, _), _, ident, None) => Some(ident),
             _ => None,
         }
     }

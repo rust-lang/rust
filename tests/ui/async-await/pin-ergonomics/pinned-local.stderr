@@ -1,0 +1,35 @@
+error[E0384]: cannot assign twice to immutable variable `y`
+  --> $DIR/pinned-local.rs:12:5
+   |
+LL |     let pin const y = Foo;
+   |         ----------- first assignment to `y`
+LL |     x = Foo; // FIXME: this should be an error
+LL |     y = Foo;
+   |     ^^^^^^^ cannot assign twice to immutable variable
+   |
+help: consider making this binding mutable
+   |
+LL |     let mut pin const y = Foo;
+   |         +++
+
+error[E0384]: cannot assign twice to immutable variable `y`
+  --> $DIR/pinned-local.rs:16:5
+   |
+LL |     let (pin mut x, pin const y) = (Foo, Foo);
+   |                     ----------- first assignment to `y`
+LL |     x = Foo; // FIXME: this should be an error
+LL |     y = Foo;
+   |     ^^^^^^^ cannot assign twice to immutable variable
+   |
+help: consider making this binding mutable
+   |
+LL |     let (pin mut x, mut pin const y) = (Foo, Foo);
+   |                     +++
+help: to modify the original value, take a borrow instead
+   |
+LL |     let (pin mut x, ref mut pin const y) = (Foo, Foo);
+   |                     +++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0384`.
