@@ -41,7 +41,7 @@ impl<T> Future for AsyncDropOwning<T> {
             let dtor = Pin::new_unchecked(
                 this.dtor.get_or_insert_with(|| async_drop_in_place(this.value.as_mut_ptr())),
             );
-            // AsyncDestuctors are idempotent so Self gets idempotency as well
+            // AsyncDestructors are idempotent so Self gets idempotency as well
             dtor.poll(cx)
         }
     }
@@ -247,7 +247,7 @@ async unsafe fn either<O: IntoFuture<Output = ()>, M: IntoFuture<Output = ()>, T
     this: *mut T,
     discr: <T as DiscriminantKind>::Discriminant,
 ) {
-    // SAFETY: Guaranteed by the safety section of this funtion's documentation
+    // SAFETY: Guaranteed by the safety section of this function's documentation
     if unsafe { discriminant_value(&*this) } == discr {
         drop(other);
         matched.await

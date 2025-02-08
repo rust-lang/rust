@@ -210,7 +210,7 @@ pub struct ParseSess {
     pub edition: Edition,
     /// Places where contract attributes were expanded into unstable AST forms.
     /// This is used to allowlist those spans (so that we only check them against the feature
-    /// gate for the externally visible interface, and not internal implmentation machinery).
+    /// gate for the externally visible interface, and not internal implementation machinery).
     pub contract_attribute_spans: AppendOnlyVec<Span>,
     /// Places where raw identifiers were used. This is used to avoid complaining about idents
     /// clashing with keywords in new editions.

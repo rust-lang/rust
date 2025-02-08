@@ -46,7 +46,7 @@ where
         }
 
         if arg.layout.is_single_vector_element(cx, size) {
-            // pass non-transparant wrappers around a vector as `PassMode::Cast`
+            // pass non-transparent wrappers around a vector as `PassMode::Cast`
             arg.cast_to(Reg { kind: RegKind::Vector, size });
             return;
         }

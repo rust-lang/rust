@@ -69,7 +69,7 @@ fn check_validity_requirement_strict<'tcx>(
     // require dereferenceability also require non-null, we don't actually get any false negatives
     // due to this.
     // The value we are validating is temporary and discarded at the end of this function, so
-    // there is no point in reseting provenance and padding.
+    // there is no point in resetting provenance and padding.
     cx.validate_operand(
         &allocated.into(),
         /*recursive*/ false,

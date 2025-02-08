@@ -2430,7 +2430,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 if !mismatched_params.is_empty() {
-                    // For each mismatched paramter, create a two-way link to each matched parameter
+                    // For each mismatched parameter, create a two-way link to each matched parameter
                     // of the same type.
                     let mut dependants = IndexVec::<ExpectedIdx, _>::from_fn_n(
                         |_| SmallVec::<[u32; 4]>::new(),
@@ -2473,7 +2473,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             spans.push_span_label(param.param.span(), "");
                         }
                     }
-                    // Highligh each parameter being depended on for a generic type.
+                    // Highlight each parameter being depended on for a generic type.
                     for ((&(_, param), deps), &(_, expected_ty)) in
                         params_with_generics.iter().zip(&dependants).zip(formal_and_expected_inputs)
                     {
@@ -2642,7 +2642,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Returns the parameters of a function, with their generic parameters if those are the full
     /// type of that parameter. Returns `None` if the function has no generics or the body is
-    /// unavailable (eg is an instrinsic).
+    /// unavailable (eg is an intrinsic).
     fn get_hir_param_info(
         &self,
         def_id: DefId,

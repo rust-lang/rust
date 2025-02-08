@@ -289,7 +289,7 @@ codegen_ssa_thorin_missing_referenced_unit = unit {$unit} referenced by executab
 
 codegen_ssa_thorin_missing_required_section = input object missing required section `{$section}`
 
-codegen_ssa_thorin_mixed_input_encodings = input objects haved mixed encodings
+codegen_ssa_thorin_mixed_input_encodings = input objects have mixed encodings
 
 codegen_ssa_thorin_multiple_debug_info_section = multiple `.debug_info.dwo` sections
 

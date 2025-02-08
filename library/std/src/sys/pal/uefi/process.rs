@@ -757,7 +757,7 @@ mod uefi_command_internal {
 }
 
 /// Create a map of environment variable changes. Allows efficient setting and rolling back of
-/// enviroment variable changes.
+/// environment variable changes.
 ///
 /// Entry: (Old Value, New Value)
 fn env_changes(env: &CommandEnv) -> Option<BTreeMap<EnvKey, (Option<OsString>, Option<OsString>)>> {
