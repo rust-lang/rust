@@ -166,7 +166,11 @@ const ST_ACCEPT: u32 = OFFSETS[1];
 // See the end of `./solve_dfa.py`.
 const OFFSETS: [u32; STATE_CNT] = [0, 6, 16, 19, 1, 25, 11, 18, 24];
 
-static TRANS_TABLE: [u32; 256] = {
+// Keep the whole table in a single page.
+#[repr(align(1024))]
+struct TransitionTable([u32; 256]);
+
+static TRANS_TABLE: TransitionTable = {
     let mut table = [0u32; 256];
     let mut b = 0;
     while b < 256 {
@@ -187,12 +191,12 @@ static TRANS_TABLE: [u32; 256] = {
         };
         b += 1;
     }
-    table
+    TransitionTable(table)
 };
 
 #[inline(always)]
 const fn next_state(st: u32, byte: u8) -> u32 {
-    TRANS_TABLE[byte as usize].wrapping_shr(st)
+    TRANS_TABLE.0[byte as usize].wrapping_shr(st)
 }
 
 /// Check if `byte` is a valid UTF-8 first byte, assuming it must be a valid first or
