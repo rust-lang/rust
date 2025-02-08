@@ -272,7 +272,7 @@ impl<O> AssertKind<O> {
                     "\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\", {required:?}, {found:?}"
                 )
             }
-            NullPointerDereference => write!(f, "\"null pointer dereference occured\""),
+            NullPointerDereference => write!(f, "\"null pointer dereference occurred\""),
             ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
                 write!(f, "\"coroutine resumed after completion\"")
             }
