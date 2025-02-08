@@ -1,7 +1,4 @@
-#![forbid(unsafe_op_in_unsafe_fn)]
-
 use crate::marker::PhantomData;
-use crate::os::fd::{AsFd, AsRawFd};
 use crate::slice;
 
 #[derive(Copy, Clone)]
@@ -76,9 +73,4 @@ impl<'a> IoSliceMut<'a> {
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         unsafe { slice::from_raw_parts_mut(self.vec.buf as *mut u8, self.vec.buf_len) }
     }
-}
-
-pub fn is_terminal(fd: &impl AsFd) -> bool {
-    let fd = fd.as_fd();
-    unsafe { libc::isatty(fd.as_raw_fd()) != 0 }
 }
