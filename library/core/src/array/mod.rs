@@ -17,6 +17,7 @@ use crate::ops::{
     ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
 };
 use crate::ptr::{null, null_mut};
+use crate::random::{Random, RandomSource};
 use crate::slice::{Iter, IterMut};
 
 mod ascii;
@@ -423,6 +424,18 @@ impl<T: Clone, const N: usize> Clone for [T; N] {
     #[inline]
     fn clone_from(&mut self, other: &Self) {
         self.clone_from_slice(other);
+    }
+}
+
+#[unstable(feature = "random", issue = "130703")]
+impl<T: Random, const N: usize> Random for [T; N] {
+    fn random(source: &mut (impl RandomSource + ?Sized)) -> Self {
+        let mut buf = [const { MaybeUninit::uninit() }; N];
+        for elem in &mut buf {
+            elem.write(T::random(source));
+        }
+        // SAFETY: all elements of the array were initialized.
+        unsafe { mem::transmute_copy(&buf) }
     }
 }
 
