@@ -171,6 +171,7 @@ declare_passes! {
     mod required_consts : RequiredConstsVisitor;
     mod post_analysis_normalize : PostAnalysisNormalize;
     mod sanity_check : SanityCheck;
+    mod streamline_iter : StreamlineIter;
     // This pass is public to allow external drivers to perform MIR cleanup
     pub mod simplify :
         SimplifyCfg {
@@ -646,6 +647,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             // Add some UB checks before any UB gets optimized away.
             &check_alignment::CheckAlignment,
             &check_null::CheckNull,
+            // Done as early as possible: this is a cheap(?) pass which reduces the ammount of MIR by a fair bit.
+            &streamline_iter::StreamlineIter::new(tcx),
             // Before inlining: trim down MIR with passes to reduce inlining work.
 
             // Has to be done before inlining, otherwise actual call will be almost always inlined.

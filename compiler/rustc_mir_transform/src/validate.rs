@@ -950,7 +950,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             .tcx
                             .normalize_erasing_regions(self.typing_env, dest.ty(self.tcx, args));
                         if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest_ty) {
-                            self.fail(location, "adt field has the wrong type");
+                            self.fail(location, &format!("adt field has the wrong type. src:{:?} dest_ty:{dest_ty:?} src:{src:?}",src.ty(self.body, self.tcx)));
                         }
                     }
                 }
