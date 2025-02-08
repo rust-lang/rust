@@ -109,7 +109,10 @@ impl ops::Shr<u32> for u256 {
     type Output = Self;
 
     fn shr(self, rhs: u32) -> Self::Output {
-        assert!(rhs < Self::BITS, "attempted to shift right with overflow");
+        debug_assert!(rhs < Self::BITS, "attempted to shift right with overflow");
+        if rhs >= Self::BITS {
+            return Self::ZERO;
+        }
 
         if rhs == 0 {
             return self;

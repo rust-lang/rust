@@ -108,3 +108,22 @@ fn shr_u128() {
     }
     assert!(errors.is_empty());
 }
+
+#[test]
+#[should_panic]
+#[cfg(debug_assertions)]
+// FIXME(ppc): ppc64le seems to have issues with `should_panic` tests.
+#[cfg(not(all(target_arch = "powerpc64", target_endian = "little")))]
+fn shr_u256_overflow() {
+    // Like regular shr, panic on overflow with debug assertions
+    let _ = u256::MAX >> 256;
+}
+
+#[test]
+#[cfg(not(debug_assertions))]
+fn shr_u256_overflow() {
+    // No panic without debug assertions
+    assert_eq!(u256::MAX >> 256, u256::ZERO);
+    assert_eq!(u256::MAX >> 257, u256::ZERO);
+    assert_eq!(u256::MAX >> u32::MAX, u256::ZERO);
+}
