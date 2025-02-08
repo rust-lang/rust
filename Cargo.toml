@@ -45,7 +45,6 @@ members = [
   "src/tools/rustdoc-gui-test",
   "src/tools/opt-dist",
   "src/tools/coverage-dump",
-  "src/tools/rustc-perf-wrapper",
   "src/tools/wasm-component-ld",
   "src/tools/features-status-dump",
 ]
