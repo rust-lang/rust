@@ -370,9 +370,11 @@ pub unsafe fn check_issue_110005(x: (usize, bool)) -> Option<Box<[u8]>> {
 #[no_mangle]
 pub unsafe fn check_pair_to_dst_ref<'a>(x: (usize, usize)) -> &'a [u8] {
     // CHECK: %_0.0 = getelementptr i8, ptr null, i64 %x.0
-    // CHECK: %0 = insertvalue { ptr, i64 } poison, ptr %_0.0, 0
-    // CHECK: %1 = insertvalue { ptr, i64 } %0, i64 %x.1, 1
-    // CHECK: ret { ptr, i64 } %1
+    // CHECK: %0 = icmp ne ptr %_0.0, null
+    // CHECK: call void @llvm.assume(i1 %0)
+    // CHECK: %1 = insertvalue { ptr, i64 } poison, ptr %_0.0, 0
+    // CHECK: %2 = insertvalue { ptr, i64 } %1, i64 %x.1, 1
+    // CHECK: ret { ptr, i64 } %2
     transmute(x)
 }
 

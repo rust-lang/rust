@@ -6,6 +6,7 @@
 
 use std::mem::transmute;
 use std::num::NonZero;
+use std::ptr::NonNull;
 
 #[repr(u8)]
 pub enum SmallEnum {
@@ -189,6 +190,34 @@ pub unsafe fn check_bool_to_ordering(x: bool) -> std::cmp::Ordering {
     // CHECK-NOT: icmp
     // CHECK-NOT: assume
     // CHECK: ret i8 %_0
+
+    transmute(x)
+}
+
+// CHECK-LABEL: @check_nonnull_to_ptr(
+#[no_mangle]
+pub unsafe fn check_nonnull_to_ptr(x: NonNull<u8>) -> *const u8 {
+    // CHECK-NOT: icmp
+    // CHECK-NOT: assume
+    // OPT: %0 = icmp ne ptr %x, null
+    // OPT: call void @llvm.assume(i1 %0)
+    // CHECK-NOT: icmp
+    // CHECK-NOT: assume
+    // CHECK: ret ptr %x
+
+    transmute(x)
+}
+
+// CHECK-LABEL: @check_ptr_to_nonnull(
+#[no_mangle]
+pub unsafe fn check_ptr_to_nonnull(x: *const u8) -> NonNull<u8> {
+    // CHECK-NOT: icmp
+    // CHECK-NOT: assume
+    // OPT: %0 = icmp ne ptr %x, null
+    // OPT: call void @llvm.assume(i1 %0)
+    // CHECK-NOT: icmp
+    // CHECK-NOT: assume
+    // CHECK: ret ptr %x
 
     transmute(x)
 }
