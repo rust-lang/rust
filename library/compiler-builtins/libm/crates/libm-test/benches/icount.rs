@@ -1,8 +1,10 @@
 //! Benchmarks that use `iai-cachegrind` to be reasonably CI-stable.
 
 use std::hint::black_box;
+use std::ops::Shr;
 
 use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use libm::support::{HInt, u256};
 use libm_test::gen::spaced;
 use libm_test::{CheckBasis, CheckCtx, GeneratorKind, MathOp, OpRustArgs, TupleCall, op};
 
@@ -51,8 +53,107 @@ libm_macros::for_each_function! {
     callback: icount_benches,
 }
 
+fn setup_u128_mul() -> Vec<(u128, u128)> {
+    let step = u128::MAX / 300;
+    let mut x = 0u128;
+    let mut y = 0u128;
+    let mut v = Vec::new();
+
+    loop {
+        'inner: loop {
+            match y.checked_add(step) {
+                Some(new) => y = new,
+                None => break 'inner,
+            }
+
+            v.push((x, y))
+        }
+
+        match x.checked_add(step) {
+            Some(new) => x = new,
+            None => break,
+        }
+    }
+
+    v
+}
+
+/*
+fn setup_u256_add() -> Vec<(u256, u256)> {
+    let mut v = Vec::new();
+    for (x, y) in setup_u128_mul() {
+        // square the u128 inputs to cover most of the u256 range
+        v.push((x.widen_mul(x), y.widen_mul(y)));
+    }
+    // Doesn't get covered by `u128:MAX^2`
+    v.push((u256::MAX, u256::MAX));
+    v
+}
+*/
+
+fn setup_u256_shift() -> Vec<(u256, u32)> {
+    let mut v = Vec::new();
+
+    for (x, _) in setup_u128_mul() {
+        let x2 = x.widen_mul(x);
+        for y in 0u32..256 {
+            v.push((x2, y));
+        }
+    }
+
+    v
+}
+
+#[library_benchmark]
+#[bench::linspace(setup_u128_mul())]
+fn icount_bench_u128_widen_mul(cases: Vec<(u128, u128)>) {
+    let f = black_box(u128::zero_widen_mul);
+    for (x, y) in cases.iter().copied() {
+        f(x, y);
+    }
+}
+
+library_benchmark_group!(
+    name = icount_bench_u128_widen_mul_group;
+    benchmarks = icount_bench_u128_widen_mul
+);
+
+/* Not yet implemented
+#[library_benchmark]
+#[bench::linspace(setup_u256_add())]
+fn icount_bench_u256_add(cases: Vec<(u256, u256)>) {
+    let f = black_box(u256::add);
+    for (x, y) in cases.iter().copied() {
+        f(x, y);
+    }
+}
+
+library_benchmark_group!(
+    name = icount_bench_u256_add_group;
+    benchmarks = icount_bench_u256_add
+);
+*/
+
+#[library_benchmark]
+#[bench::linspace(setup_u256_shift())]
+fn icount_bench_u256_shr(cases: Vec<(u256, u32)>) {
+    let f = black_box(u256::shr);
+    for (x, y) in cases.iter().copied() {
+        f(x, y);
+    }
+}
+
+library_benchmark_group!(
+    name = icount_bench_u256_shr_group;
+    benchmarks = icount_bench_u256_shr
+);
+
 main!(
     library_benchmark_groups =
+    // u256-related benchmarks
+    icount_bench_u128_widen_mul_group,
+    // icount_bench_u256_add_group,
+    icount_bench_u256_shr_group,
     // verify-apilist-start
     // verify-sorted-start
     icount_bench_acos_group,

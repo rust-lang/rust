@@ -20,7 +20,7 @@ const U128_LO_MASK: u128 = u64::MAX as u128;
 pub struct u256(pub [u64; 4]);
 
 impl u256 {
-    #[cfg(test)]
+    #[allow(unused)]
     pub const MAX: Self = Self([u64::MAX, u64::MAX, u64::MAX, u64::MAX]);
 
     /// Reinterpret as a signed integer
