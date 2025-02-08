@@ -7,6 +7,7 @@
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
 
+use rustc_abi::{ExternAbi, Size};
 use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, MetaItemLit, ast};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
@@ -32,8 +33,6 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::parse::feature_err;
 use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, kw, sym};
-use rustc_target::abi::Size;
-use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -1519,7 +1518,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if target == Target::ForeignMod
             && let hir::Node::Item(item) = self.tcx.hir_node(hir_id)
             && let Item { kind: ItemKind::ForeignMod { abi, .. }, .. } = item
-            && !matches!(abi, Abi::Rust | Abi::RustIntrinsic)
+            && !matches!(abi, ExternAbi::Rust | ExternAbi::RustIntrinsic)
         {
             return;
         }
@@ -2445,7 +2444,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             token_stream,
             false,
             Safety::Safe,
-            Abi::Rust,
+            ExternAbi::Rust,
         );
 
         if let Err(terr) = ocx.eq(&cause, param_env, expected_sig, sig) {

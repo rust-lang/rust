@@ -1,6 +1,6 @@
 use rustc_abi::{HasDataLayout, TyAbiInterface};
 
-use crate::abi::call::{ArgAbi, Conv, FnAbi, Reg, RegKind, Uniform};
+use crate::callconv::{ArgAbi, Conv, FnAbi, Reg, RegKind, Uniform};
 use crate::spec::HasTargetSpec;
 
 fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>) -> Option<Uniform>

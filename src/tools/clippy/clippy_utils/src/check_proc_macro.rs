@@ -12,6 +12,7 @@
 //! code was written, and check if the span contains that text. Note this will only work correctly
 //! if the span is not from a `macro_rules` based macro.
 
+use rustc_abi::ExternAbi;
 use rustc_ast::AttrStyle;
 use rustc_ast::ast::{AttrKind, Attribute, IntTy, LitIntType, LitKind, StrStyle, TraitObjectSyntax, UintTy};
 use rustc_ast::token::CommentKind;
@@ -26,7 +27,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::symbol::{Ident, kw};
 use rustc_span::{Span, Symbol};
-use rustc_target::spec::abi::Abi;
 
 /// The search pattern to look for. Used by `span_matches_pat`
 #[derive(Clone)]
@@ -233,7 +233,7 @@ fn fn_header_search_pat(header: FnHeader) -> Pat {
         Pat::Str("const")
     } else if header.is_unsafe() {
         Pat::Str("unsafe")
-    } else if header.abi != Abi::Rust {
+    } else if header.abi != ExternAbi::Rust {
         Pat::Str("extern")
     } else {
         Pat::MultiStr(&["fn", "extern"])
@@ -375,7 +375,7 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
         TyKind::BareFn(bare_fn) => (
             if bare_fn.safety.is_unsafe() {
                 Pat::Str("unsafe")
-            } else if bare_fn.abi != Abi::Rust {
+            } else if bare_fn.abi != ExternAbi::Rust {
                 Pat::Str("extern")
             } else {
                 Pat::MultiStr(&["fn", "extern"])
