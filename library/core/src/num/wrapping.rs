@@ -5,6 +5,7 @@ use crate::ops::{
     Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div, DivAssign,
     Mul, MulAssign, Neg, Not, Rem, RemAssign, Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign,
 };
+use crate::random::{Random, RandomSource};
 
 /// Provides intentionally-wrapped arithmetic on `T`.
 ///
@@ -81,6 +82,13 @@ impl<T: fmt::LowerHex> fmt::LowerHex for Wrapping<T> {
 impl<T: fmt::UpperHex> fmt::UpperHex for Wrapping<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+#[unstable(feature = "random", issue = "130703")]
+impl<T: Random> Random for Wrapping<T> {
+    fn random(source: &mut (impl RandomSource + ?Sized)) -> Self {
+        Self(T::random(source))
     }
 }
 
