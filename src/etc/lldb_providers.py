@@ -1,17 +1,18 @@
+from __future__ import annotations
 import sys
-from typing import List
+from typing import List, TYPE_CHECKING
 
 from lldb import (
     SBData,
     SBError,
-    SBType,
-    SBTypeStaticField,
-    SBValue,
     eBasicTypeLong,
     eBasicTypeUnsignedLong,
     eBasicTypeUnsignedChar,
     eFormatChar,
 )
+
+if TYPE_CHECKING:
+    from lldb import SBValue, SBType, SBTypeStaticField
 
 # from lldb.formatters import Logger
 
@@ -497,9 +498,18 @@ class MSVCEnumSyntheticProvider:
                     continue
 
                 variant_type: SBType = child.GetType()
-                exact: SBTypeStaticField = variant_type.GetStaticFieldWithName(
-                    "DISCR_EXACT"
-                )
+                try:
+                    exact: SBTypeStaticField = variant_type.GetStaticFieldWithName(
+                        "DISCR_EXACT"
+                    )
+                except AttributeError:
+                    # LLDB versions prior to 19.0.0 do not have the `SBTypeGetStaticField` API.
+                    # With current DI generation there's not a great way to provide a "best effort"
+                    # evaluation either, so we just return the object itself with no further
+                    # attempts to inspect the type information
+                    self.variant = self.valobj
+                    self.value = self.valobj
+                    return
 
                 if exact.IsValid():
                     discr: int = exact.GetConstantValue(
@@ -648,12 +658,32 @@ def MSVCEnumSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     variant_names: SBType = valobj.target.FindFirstType(
         f"{enum_synth.valobj.GetTypeName()}::VariantNames"
     )
-    name_idx = (
-        enum_synth.variant.GetType()
-        .GetStaticFieldWithName("NAME")
-        .GetConstantValue(valobj.target)
-        .GetValueAsUnsigned()
-    )
+    try:
+        name_idx = (
+            enum_synth.variant.GetType()
+            .GetStaticFieldWithName("NAME")
+            .GetConstantValue(valobj.target)
+            .GetValueAsUnsigned()
+        )
+    except AttributeError:
+        # LLDB versions prior to 19 do not have the `SBTypeGetStaticField` API, and have no way
+        # to determine the value based on the tag field.
+        tag: SBValue = valobj.GetChildMemberWithName("tag")
+
+        if tag.IsValid():
+            discr: int = tag.GetValueAsUnsigned()
+            return "".join(["{tag = ", str(tag.unsigned), "}"])
+        else:
+            tag_lo: int = valobj.GetChildMemberWithName(
+                "tag128_lo"
+            ).GetValueAsUnsigned()
+            tag_hi: int = valobj.GetChildMemberWithName(
+                "tag128_hi"
+            ).GetValueAsUnsigned()
+
+            discr: int = (tag_hi << 64) | tag_lo
+
+        return "".join(["{tag = ", str(discr), "}"])
 
     name: str = variant_names.enum_members[name_idx].name
 
