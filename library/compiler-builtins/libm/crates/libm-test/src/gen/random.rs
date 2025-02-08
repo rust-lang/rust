@@ -14,7 +14,7 @@ use crate::run_cfg::{int_range, iteration_count};
 
 pub(crate) const SEED_ENV: &str = "LIBM_SEED";
 
-pub(crate) static SEED: LazyLock<[u8; 32]> = LazyLock::new(|| {
+pub static SEED: LazyLock<[u8; 32]> = LazyLock::new(|| {
     let s = env::var(SEED_ENV).unwrap_or_else(|_| {
         let mut rng = rand::thread_rng();
         (0..32).map(|_| rng.sample(Alphanumeric) as char).collect()

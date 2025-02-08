@@ -29,7 +29,10 @@ pub use op::{
 };
 pub use precision::{MaybeOverride, SpecialCase, default_ulp};
 use run_cfg::extensive_max_iterations;
-pub use run_cfg::{CheckBasis, CheckCtx, EXTENSIVE_ENV, GeneratorKind, skip_extensive_test};
+pub use run_cfg::{
+    CheckBasis, CheckCtx, EXTENSIVE_ENV, GeneratorKind, bigint_fuzz_iteration_count,
+    skip_extensive_test,
+};
 pub use test_traits::{CheckOutput, Hex, TupleCall};
 
 /// Result type for tests is usually from `anyhow`. Most times there is no success value to

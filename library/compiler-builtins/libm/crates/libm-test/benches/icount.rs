@@ -77,7 +77,6 @@ fn setup_u128_mul() -> Vec<(u128, u128)> {
     v
 }
 
-/*
 fn setup_u256_add() -> Vec<(u256, u256)> {
     let mut v = Vec::new();
     for (x, y) in setup_u128_mul() {
@@ -88,7 +87,6 @@ fn setup_u256_add() -> Vec<(u256, u256)> {
     v.push((u256::MAX, u256::MAX));
     v
 }
-*/
 
 fn setup_u256_shift() -> Vec<(u256, u32)> {
     let mut v = Vec::new();
@@ -116,7 +114,6 @@ library_benchmark_group!(
     benchmarks = icount_bench_u128_widen_mul
 );
 
-/* Not yet implemented
 #[library_benchmark]
 #[bench::linspace(setup_u256_add())]
 fn icount_bench_u256_add(cases: Vec<(u256, u256)>) {
@@ -129,7 +126,6 @@ library_benchmark_group!(
     name = icount_bench_u256_add_group;
     benchmarks = icount_bench_u256_add
 );
-*/
 
 #[library_benchmark]
 #[bench::linspace(setup_u256_shift())]
@@ -148,7 +144,7 @@ main!(
     library_benchmark_groups =
     // u256-related benchmarks
     icount_bench_u128_widen_mul_group,
-    // icount_bench_u256_add_group,
+    icount_bench_u256_add_group,
     icount_bench_u256_shr_group,
     // verify-apilist-start
     // verify-sorted-start

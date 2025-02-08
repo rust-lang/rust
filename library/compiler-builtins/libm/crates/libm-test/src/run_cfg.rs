@@ -158,14 +158,6 @@ impl TestEnv {
         let op = id.math_op();
 
         let will_run_mp = cfg!(feature = "build-mpfr");
-
-        // Tests are pretty slow on non-64-bit targets, x86 MacOS, and targets that run in QEMU. Start
-        // with a reduced number on these platforms.
-        let slow_on_ci = crate::emulated()
-            || usize::BITS < 64
-            || cfg!(all(target_arch = "x86_64", target_vendor = "apple"));
-        let slow_platform = slow_on_ci && crate::ci();
-
         let large_float_ty = match op.float_ty {
             FloatTy::F16 | FloatTy::F32 => false,
             FloatTy::F64 | FloatTy::F128 => true,
@@ -176,13 +168,24 @@ impl TestEnv {
         let input_count = op.rust_sig.args.len();
 
         Self {
-            slow_platform,
+            slow_platform: slow_platform(),
             large_float_ty,
             should_run_extensive: will_run_extensive,
             mp_tests_enabled: will_run_mp,
             input_count,
         }
     }
+}
+
+/// Tests are pretty slow on non-64-bit targets, x86 MacOS, and targets that run in QEMU. Start
+/// with a reduced number on these platforms.
+fn slow_platform() -> bool {
+    let slow_on_ci = crate::emulated()
+        || usize::BITS < 64
+        || cfg!(all(target_arch = "x86_64", target_vendor = "apple"));
+
+    // If not running in CI, there is no need to reduce iteration count.
+    slow_on_ci && crate::ci()
 }
 
 /// The number of iterations to run for a given test.
@@ -350,4 +353,13 @@ pub fn check_near_count(ctx: &CheckCtx) -> u64 {
 pub fn skip_extensive_test(ctx: &CheckCtx) -> bool {
     let t_env = TestEnv::from_env(ctx);
     !t_env.should_run_extensive
+}
+
+/// The number of iterations to run for `u256` fuzz tests.
+pub fn bigint_fuzz_iteration_count() -> u64 {
+    if !cfg!(optimizations_enabled) {
+        return 1000;
+    }
+
+    if slow_platform() { 100_000 } else { 5_000_000 }
 }
