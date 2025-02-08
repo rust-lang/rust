@@ -582,7 +582,7 @@ impl Step for Rustdoc {
             if !target_compiler.is_snapshot(builder) {
                 panic!("rustdoc in stage 0 must be snapshot rustdoc");
             }
-            return builder.initial_rustc.with_file_name(exe("rustdoc", target_compiler.host));
+            return builder.initial_rustdoc.clone();
         }
         let target = target_compiler.host;
 
