@@ -651,6 +651,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
         if let Some(ty) = self.fcx.typeck_results.borrow().node_type_opt(inf_id)
             && let Some(vid) = self.fcx.root_vid(ty)
             && self.reachable_vids.contains(&vid)
+            && inf_span.can_be_used_for_suggestions()
         {
             return ControlFlow::Break(errors::SuggestAnnotation::Unit(inf_span));
         }
@@ -662,7 +663,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
         &mut self,
         qpath: &'tcx rustc_hir::QPath<'tcx>,
         id: HirId,
-        _span: Span,
+        span: Span,
     ) -> Self::Result {
         let arg_segment = match qpath {
             hir::QPath::Resolved(_, path) => {
@@ -674,13 +675,21 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
             }
         };
         // Alternatively, try to turbofish `::<_, (), _>`.
-        if let Some(def_id) = self.fcx.typeck_results.borrow().qpath_res(qpath, id).opt_def_id() {
+        if let Some(def_id) = self.fcx.typeck_results.borrow().qpath_res(qpath, id).opt_def_id()
+            && span.can_be_used_for_suggestions()
+        {
             self.suggest_for_segment(arg_segment, def_id, id)?;
         }
         hir::intravisit::walk_qpath(self, qpath, id)
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Self::Result {
+        if let hir::ExprKind::Closure(&hir::Closure { body, .. })
+        | hir::ExprKind::ConstBlock(hir::ConstBlock { body, .. }) = expr.kind
+        {
+            self.visit_body(self.fcx.tcx.hir().body(body))?;
+        }
+
         // Try to suggest adding an explicit qself `()` to a trait method path.
         // i.e. changing `Default::default()` to `<() as Default>::default()`.
         if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
@@ -691,17 +700,21 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
             && let Some(vid) = self.fcx.root_vid(self_ty)
             && self.reachable_vids.contains(&vid)
             && let [.., trait_segment, _method_segment] = path.segments
+            && expr.span.can_be_used_for_suggestions()
         {
             let span = path.span.shrink_to_lo().to(trait_segment.ident.span);
             return ControlFlow::Break(errors::SuggestAnnotation::Path(span));
         }
+
         // Or else, try suggesting turbofishing the method args.
         if let hir::ExprKind::MethodCall(segment, ..) = expr.kind
             && let Some(def_id) =
                 self.fcx.typeck_results.borrow().type_dependent_def_id(expr.hir_id)
+            && expr.span.can_be_used_for_suggestions()
         {
             self.suggest_for_segment(segment, def_id, expr.hir_id)?;
         }
+
         hir::intravisit::walk_expr(self, expr)
     }
 
@@ -712,6 +725,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
             && let Some(ty) = self.fcx.typeck_results.borrow().node_type_opt(local.hir_id)
             && let Some(vid) = self.fcx.root_vid(ty)
             && self.reachable_vids.contains(&vid)
+            && local.span.can_be_used_for_suggestions()
         {
             return ControlFlow::Break(errors::SuggestAnnotation::Local(
                 local.pat.span.shrink_to_hi(),

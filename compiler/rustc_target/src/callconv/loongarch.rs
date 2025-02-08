@@ -1,9 +1,10 @@
-use crate::abi::call::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Reg, RegKind, Uniform};
-use crate::abi::{
-    self, BackendRepr, FieldsShape, HasDataLayout, Size, TyAbiInterface, TyAndLayout,
+use rustc_abi::{
+    BackendRepr, ExternAbi, FieldsShape, HasDataLayout, Primitive, Reg, RegKind, Size,
+    TyAbiInterface, TyAndLayout, Variants,
 };
+
+use crate::callconv::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
 use crate::spec::HasTargetSpec;
-use crate::spec::abi::Abi as SpecAbi;
 
 #[derive(Copy, Clone)]
 enum RegPassKind {
@@ -42,7 +43,7 @@ where
 {
     match arg_layout.backend_repr {
         BackendRepr::Scalar(scalar) => match scalar.primitive() {
-            abi::Int(..) | abi::Pointer(_) => {
+            Primitive::Int(..) | Primitive::Pointer(_) => {
                 if arg_layout.size.bits() > xlen {
                     return Err(CannotUseFpConv);
                 }
@@ -62,7 +63,7 @@ where
                     _ => return Err(CannotUseFpConv),
                 }
             }
-            abi::Float(_) => {
+            Primitive::Float(_) => {
                 if arg_layout.size.bits() > flen {
                     return Err(CannotUseFpConv);
                 }
@@ -115,8 +116,8 @@ where
             }
             FieldsShape::Arbitrary { .. } => {
                 match arg_layout.variants {
-                    abi::Variants::Multiple { .. } => return Err(CannotUseFpConv),
-                    abi::Variants::Single { .. } | abi::Variants::Empty => (),
+                    Variants::Multiple { .. } => return Err(CannotUseFpConv),
+                    Variants::Single { .. } | Variants::Empty => (),
                 }
                 for i in arg_layout.fields.index_by_increasing_offset() {
                     let field = arg_layout.field(cx, i);
@@ -314,7 +315,7 @@ fn classify_arg<'a, Ty, C>(
 
 fn extend_integer_width<Ty>(arg: &mut ArgAbi<'_, Ty>, xlen: u64) {
     if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
-        if let abi::Int(i, _) = scalar.primitive() {
+        if let Primitive::Int(i, _) = scalar.primitive() {
             // 32-bit integers are always sign-extended
             if i.size().bits() == 32 && xlen > 32 {
                 if let PassMode::Direct(ref mut attrs) = arg.mode {
@@ -363,12 +364,12 @@ where
     }
 }
 
-pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, abi: SpecAbi)
+pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, abi: ExternAbi)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    if abi == SpecAbi::RustIntrinsic {
+    if abi == ExternAbi::RustIntrinsic {
         return;
     }
 

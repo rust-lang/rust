@@ -69,19 +69,6 @@ pub enum LLVMRustResult {
     Failure,
 }
 
-/// Translation of LLVM's MachineTypes enum, defined in llvm\include\llvm\BinaryFormat\COFF.h.
-///
-/// We include only architectures supported on Windows.
-#[derive(Copy, Clone, PartialEq)]
-#[repr(C)]
-pub enum LLVMMachineType {
-    AMD64 = 0x8664,
-    I386 = 0x14c,
-    ARM64 = 0xaa64,
-    ARM64EC = 0xa641,
-    ARM = 0x01c0,
-}
-
 /// Must match the layout of `LLVMRustModuleFlagMergeBehavior`.
 ///
 /// When merging modules (e.g. during LTO), their metadata flags are combined. Conflicts are
@@ -645,16 +632,6 @@ pub enum ThreadLocalMode {
     LocalExec,
 }
 
-/// LLVMRustTailCallKind
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub enum TailCallKind {
-    None,
-    Tail,
-    MustTail,
-    NoTail,
-}
-
 /// LLVMRustChecksumKind
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -773,7 +750,6 @@ pub struct Builder<'a>(InvariantOpaque<'a>);
 #[repr(C)]
 pub struct PassManager<'a>(InvariantOpaque<'a>);
 unsafe extern "C" {
-    pub type Pass;
     pub type TargetMachine;
     pub type Archive;
 }
@@ -799,7 +775,6 @@ unsafe extern "C" {
 }
 
 pub type DiagnosticHandlerTy = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
-pub type InlineAsmDiagHandlerTy = unsafe extern "C" fn(&SMDiagnostic, *const c_void, c_uint);
 
 pub mod debuginfo {
     use std::ptr;
@@ -853,7 +828,6 @@ pub mod debuginfo {
     pub type DIFile = DIScope;
     pub type DILexicalBlock = DIScope;
     pub type DISubprogram = DIScope;
-    pub type DINameSpace = DIScope;
     pub type DIType = DIDescriptor;
     pub type DIBasicType = DIType;
     pub type DIDerivedType = DIType;
@@ -1809,7 +1783,6 @@ unsafe extern "C" {
         Name: *const c_char,
         NameLen: size_t,
     ) -> Option<&Value>;
-    pub fn LLVMRustSetTailCallKind(CallInst: &Value, TKC: TailCallKind);
 
     // Operations on attributes
     pub fn LLVMRustCreateAttrNoValue(C: &Context, attr: AttributeKind) -> &Attribute;
@@ -2585,8 +2558,6 @@ unsafe extern "C" {
     pub fn LLVMRustGetMangledName(V: &Value, out: &RustString);
 
     pub fn LLVMRustGetElementTypeArgIndex(CallSite: &Value) -> i32;
-
-    pub fn LLVMRustIsBitcode(ptr: *const u8, len: usize) -> bool;
 
     pub fn LLVMRustLLVMHasZlibCompressionForDebugSymbols() -> bool;
 

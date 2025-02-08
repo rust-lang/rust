@@ -42,6 +42,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{fmt, io};
 
+use rustc_abi::{Endian, ExternAbi, Integer, Size, TargetDataLayout, TargetDataLayoutErrors};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_fs_util::try_canonicalize;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
@@ -51,9 +52,7 @@ use serde_json::Value;
 use tracing::debug;
 
 use crate::abi::call::Conv;
-use crate::abi::{Endian, Integer, Size, TargetDataLayout, TargetDataLayoutErrors};
 use crate::json::{Json, ToJson};
-use crate::spec::abi::Abi;
 use crate::spec::crt_objects::CrtObjects;
 
 pub mod crt_objects;
@@ -1651,7 +1650,7 @@ macro_rules! supported_targets {
         }
 
         /// List of supported targets
-        pub const TARGETS: &[&str] = &[$($tuple),+];
+        pub static TARGETS: &[&str] = &[$($tuple),+];
 
         fn load_builtin(target: &str) -> Option<Target> {
             let t = match target {
@@ -2845,44 +2844,40 @@ impl DerefMut for Target {
 
 impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
-    pub fn adjust_abi(&self, abi: Abi, c_variadic: bool) -> Abi {
+    pub fn adjust_abi(&self, abi: ExternAbi, c_variadic: bool) -> ExternAbi {
+        use ExternAbi::*;
         match abi {
             // On Windows, `extern "system"` behaves like msvc's `__stdcall`.
             // `__stdcall` only applies on x86 and on non-variadic functions:
             // https://learn.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-170
-            Abi::System { unwind } if self.is_like_windows && self.arch == "x86" && !c_variadic => {
-                Abi::Stdcall { unwind }
+            System { unwind } if self.is_like_windows && self.arch == "x86" && !c_variadic => {
+                Stdcall { unwind }
             }
-            Abi::System { unwind } => Abi::C { unwind },
-            Abi::EfiApi if self.arch == "arm" => Abi::Aapcs { unwind: false },
-            Abi::EfiApi if self.arch == "x86_64" => Abi::Win64 { unwind: false },
-            Abi::EfiApi => Abi::C { unwind: false },
+            System { unwind } => C { unwind },
+            EfiApi if self.arch == "arm" => Aapcs { unwind: false },
+            EfiApi if self.arch == "x86_64" => Win64 { unwind: false },
+            EfiApi => C { unwind: false },
 
-            // See commentary in `is_abi_supported`: we map these ABIs to "C" when they do not make sense.
-            Abi::Stdcall { .. } | Abi::Thiscall { .. } | Abi::Fastcall { .. }
-                if self.arch == "x86" =>
-            {
-                abi
-            }
-            Abi::Vectorcall { .. } if ["x86", "x86_64"].contains(&&self.arch[..]) => abi,
-            Abi::Stdcall { unwind }
-            | Abi::Thiscall { unwind }
-            | Abi::Fastcall { unwind }
-            | Abi::Vectorcall { unwind } => Abi::C { unwind },
+            // See commentary in `is_abi_supported`.
+            Stdcall { .. } | Thiscall { .. } if self.arch == "x86" => abi,
+            Stdcall { unwind } | Thiscall { unwind } => C { unwind },
+            Fastcall { .. } if self.arch == "x86" => abi,
+            Vectorcall { .. } if ["x86", "x86_64"].contains(&&self.arch[..]) => abi,
+            Fastcall { unwind } | Vectorcall { unwind } => C { unwind },
 
             // The Windows x64 calling convention we use for `extern "Rust"`
             // <https://learn.microsoft.com/en-us/cpp/build/x64-software-conventions#register-volatility-and-preservation>
             // expects the callee to save `xmm6` through `xmm15`, but `PreserveMost`
             // (that we use by default for `extern "rust-cold"`) doesn't save any of those.
             // So to avoid bloating callers, just use the Rust convention here.
-            Abi::RustCold if self.is_like_windows && self.arch == "x86_64" => Abi::Rust,
+            RustCold if self.is_like_windows && self.arch == "x86_64" => Rust,
 
             abi => abi,
         }
     }
 
-    pub fn is_abi_supported(&self, abi: Abi) -> bool {
-        use Abi::*;
+    pub fn is_abi_supported(&self, abi: ExternAbi) -> bool {
+        use ExternAbi::*;
         match abi {
             Rust
             | C { .. }

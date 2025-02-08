@@ -1,9 +1,7 @@
+// Test for <https://github.com/rust-lang/rust/issues/135316>.
+//
 //@ run-pass
 //@ check-run-results
-
-// Test for <https://github.com/rust-lang/rust/issues/135316>.
-
-#![feature(trait_upcasting)]
 
 trait Supertrait<T> {
     fn _print_numbers(&self, mem: &[usize; 100]) {

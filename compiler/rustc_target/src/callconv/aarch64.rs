@@ -1,9 +1,8 @@
 use std::iter;
 
-use rustc_abi::{BackendRepr, Primitive};
+use rustc_abi::{BackendRepr, HasDataLayout, Primitive, TyAbiInterface};
 
 use crate::abi::call::{ArgAbi, FnAbi, Reg, RegKind, Uniform};
-use crate::abi::{HasDataLayout, TyAbiInterface};
 use crate::spec::{HasTargetSpec, Target};
 
 /// Indicates the variant of the AArch64 ABI we are compiling for.

@@ -15,12 +15,12 @@ pub fn main() {
     let j = 3.1e+9f64;
     let k = 3.2e-10f64;
     assert_eq!(a, b);
-    assert!((c < b));
+    assert!(c < b);
     assert_eq!(c, d);
-    assert!((e < g));
-    assert!((f < h));
+    assert!(e < g);
+    assert!(f < h);
     assert_eq!(g, 1000000.0f32);
     assert_eq!(h, i);
-    assert!((j > k));
-    assert!((k < a));
+    assert!(j > k);
+    assert!(k < a);
 }
