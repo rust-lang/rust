@@ -5,8 +5,6 @@ pub mod args;
 pub mod env;
 #[path = "../unsupported/fs.rs"]
 pub mod fs;
-#[path = "../unsupported/io.rs"]
-pub mod io;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;

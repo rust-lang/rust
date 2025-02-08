@@ -1,8 +1,13 @@
-use hermit_abi::{c_void, iovec};
+#[cfg(target_os = "hermit")]
+use hermit_abi::iovec;
+#[cfg(target_family = "unix")]
+use libc::iovec;
 
+use crate::ffi::c_void;
 use crate::marker::PhantomData;
-use crate::os::hermit::io::{AsFd, AsRawFd};
 use crate::slice;
+#[cfg(target_os = "solid_asp3")]
+use crate::sys::pal::abi::sockets::iovec;
 
 #[derive(Copy, Clone)]
 #[repr(transparent)]
@@ -79,9 +84,4 @@ impl<'a> IoSliceMut<'a> {
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         unsafe { slice::from_raw_parts_mut(self.vec.iov_base as *mut u8, self.vec.iov_len) }
     }
-}
-
-pub fn is_terminal(fd: &impl AsFd) -> bool {
-    let fd = fd.as_fd();
-    hermit_abi::isatty(fd.as_raw_fd())
 }
