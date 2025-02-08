@@ -21,7 +21,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
 ) {
     // If the `'a` region is bound within the field type itself, we
     // don't want to propagate this constraint to the header.
-    if !is_free_region(outlived_region) {
+    if !is_early_bound_region(outlived_region) {
         return;
     }
 
@@ -132,7 +132,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
         }
 
         GenericArgKind::Lifetime(r) => {
-            if !is_free_region(r) {
+            if !is_early_bound_region(r) {
                 return;
             }
             required_predicates.entry(ty::OutlivesPredicate(kind, outlived_region)).or_insert(span);
@@ -144,7 +144,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
     }
 }
 
-fn is_free_region(region: Region<'_>) -> bool {
+fn is_early_bound_region(region: Region<'_>) -> bool {
     // First, screen for regions that might appear in a type header.
     match *region {
         // These correspond to `T: 'a` relationships:
