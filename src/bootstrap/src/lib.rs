@@ -154,6 +154,7 @@ pub struct Build {
     targets: Vec<TargetSelection>,
 
     initial_rustc: PathBuf,
+    initial_rustdoc: PathBuf,
     initial_cargo: PathBuf,
     initial_lld: PathBuf,
     initial_relative_libdir: PathBuf,
@@ -354,6 +355,7 @@ impl Build {
             initial_lld,
             initial_relative_libdir,
             initial_rustc: config.initial_rustc.clone(),
+            initial_rustdoc: config.initial_rustc.with_file_name(exe("rustdoc", config.build)),
             initial_cargo: config.initial_cargo.clone(),
             initial_sysroot: config.initial_sysroot.clone(),
             local_rebuild: config.local_rebuild,

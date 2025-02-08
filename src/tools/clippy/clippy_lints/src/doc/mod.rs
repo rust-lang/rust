@@ -33,7 +33,6 @@ use rustc_span::{Span, sym};
 use std::ops::Range;
 use url::Url;
 
-mod empty_line_after;
 mod include_in_doc_without_cfg;
 mod link_with_quotes;
 mod markdown;
@@ -493,82 +492,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for empty lines after outer attributes
-    ///
-    /// ### Why is this bad?
-    /// The attribute may have meant to be an inner attribute (`#![attr]`). If
-    /// it was meant to be an outer attribute (`#[attr]`) then the empty line
-    /// should be removed
-    ///
-    /// ### Example
-    /// ```no_run
-    /// #[allow(dead_code)]
-    ///
-    /// fn not_quite_good_code() {}
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// // Good (as inner attribute)
-    /// #![allow(dead_code)]
-    ///
-    /// fn this_is_fine() {}
-    ///
-    /// // or
-    ///
-    /// // Good (as outer attribute)
-    /// #[allow(dead_code)]
-    /// fn this_is_fine_too() {}
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub EMPTY_LINE_AFTER_OUTER_ATTR,
-    suspicious,
-    "empty line after outer attribute"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for empty lines after doc comments.
-    ///
-    /// ### Why is this bad?
-    /// The doc comment may have meant to be an inner doc comment, regular
-    /// comment or applied to some old code that is now commented out. If it was
-    /// intended to be a doc comment, then the empty line should be removed.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// /// Some doc comment with a blank line after it.
-    ///
-    /// fn f() {}
-    ///
-    /// /// Docs for `old_code`
-    /// // fn old_code() {}
-    ///
-    /// fn new_code() {}
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// //! Convert it to an inner doc comment
-    ///
-    /// // Or a regular comment
-    ///
-    /// /// Or remove the empty line
-    /// fn f() {}
-    ///
-    /// // /// Docs for `old_code`
-    /// // fn old_code() {}
-    ///
-    /// fn new_code() {}
-    /// ```
-    #[clippy::version = "1.70.0"]
-    pub EMPTY_LINE_AFTER_DOC_COMMENTS,
-    suspicious,
-    "empty line after doc comments"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks if included files in doc comments are included only for `cfg(doc)`.
     ///
     /// ### Why restrict this?
@@ -650,8 +573,6 @@ impl_lint_pass!(Documentation => [
     EMPTY_DOCS,
     DOC_LAZY_CONTINUATION,
     DOC_OVERINDENTED_LIST_ITEMS,
-    EMPTY_LINE_AFTER_OUTER_ATTR,
-    EMPTY_LINE_AFTER_DOC_COMMENTS,
     TOO_LONG_FIRST_DOC_PARAGRAPH,
     DOC_INCLUDE_WITHOUT_CFG,
 ]);
@@ -784,7 +705,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
     }
 
     include_in_doc_without_cfg::check(cx, attrs);
-    if suspicious_doc_comments::check(cx, attrs) || empty_line_after::check(cx, attrs) || is_doc_hidden(attrs) {
+    if suspicious_doc_comments::check(cx, attrs) || is_doc_hidden(attrs) {
         return None;
     }
 

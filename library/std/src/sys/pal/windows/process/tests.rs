@@ -158,7 +158,7 @@ fn windows_exe_resolver() {
     use super::resolve_exe;
     use crate::io;
     use crate::sys::fs::symlink;
-    use crate::sys_common::io::test::tmpdir;
+    use crate::test_helpers::tmpdir;
 
     let env_paths = || env::var_os("PATH");
 
