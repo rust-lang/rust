@@ -157,12 +157,16 @@ pub fn prebuilt_llvm_config(
 /// This retrieves the LLVM sha we *want* to use, according to git history.
 pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
     let llvm_sha = if is_git {
-        get_closest_merge_commit(Some(&config.src), &config.git_config(), &[
-            config.src.join("src/llvm-project"),
-            config.src.join("src/bootstrap/download-ci-llvm-stamp"),
-            // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
-            config.src.join("src/version"),
-        ])
+        get_closest_merge_commit(
+            Some(&config.src),
+            &config.git_config(),
+            &[
+                config.src.join("src/llvm-project"),
+                config.src.join("src/bootstrap/download-ci-llvm-stamp"),
+                // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
+                config.src.join("src/version"),
+            ],
+        )
         .unwrap()
     } else if let Some(info) = crate::utils::channel::read_commit_info_file(&config.src) {
         info.sha.trim().to_owned()

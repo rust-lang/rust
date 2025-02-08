@@ -98,11 +98,14 @@ pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     if exception.is_null() {
         return uw::_URC_FATAL_PHASE1_ERROR as u32;
     }
-    ptr::write(exception, Exception {
-        canary: &EXCEPTION_TYPE_INFO,
-        caught: AtomicBool::new(false),
-        data: Some(data),
-    });
+    ptr::write(
+        exception,
+        Exception {
+            canary: &EXCEPTION_TYPE_INFO,
+            caught: AtomicBool::new(false),
+            data: Some(data),
+        },
+    );
     __cxa_throw(exception as *mut _, &EXCEPTION_TYPE_INFO, exception_cleanup);
 }
 

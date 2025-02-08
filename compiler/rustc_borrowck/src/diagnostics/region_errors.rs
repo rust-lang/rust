@@ -1100,12 +1100,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let closure_ty = Ty::new_closure(
             tcx,
             closure_def_id.to_def_id(),
-            ty::ClosureArgs::new(tcx, ty::ClosureArgsParts {
-                parent_args: args.parent_args(),
-                closure_kind_ty: args.kind_ty(),
-                tupled_upvars_ty: args.tupled_upvars_ty(),
-                closure_sig_as_fn_ptr_ty,
-            })
+            ty::ClosureArgs::new(
+                tcx,
+                ty::ClosureArgsParts {
+                    parent_args: args.parent_args(),
+                    closure_kind_ty: args.kind_ty(),
+                    tupled_upvars_ty: args.tupled_upvars_ty(),
+                    closure_sig_as_fn_ptr_ty,
+                },
+            )
             .args,
         );
 

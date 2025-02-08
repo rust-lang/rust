@@ -155,14 +155,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // NOTE: not sure why, but we have the wrong type here.
         let int_type = compare_exchange.get_param(2).to_rvalue().get_type();
         let src = self.context.new_bitcast(self.location, src, int_type);
-        self.context.new_call(self.location, compare_exchange, &[
-            dst,
-            expected,
-            src,
-            weak,
-            order,
-            failure_order,
-        ])
+        self.context.new_call(
+            self.location,
+            compare_exchange,
+            &[dst, expected, src, weak, order, failure_order],
+        )
     }
 
     pub fn assign(&self, lvalue: LValue<'gcc>, value: RValue<'gcc>) {
@@ -1076,9 +1073,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let align = dest.val.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
         cg_elem.val.store(self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
 
-        let next = self.inbounds_gep(self.backend_type(cg_elem.layout), current.to_rvalue(), &[
-            self.const_usize(1),
-        ]);
+        let next = self.inbounds_gep(
+            self.backend_type(cg_elem.layout),
+            current.to_rvalue(),
+            &[self.const_usize(1)],
+        );
         self.llbb().add_assignment(self.location, current, next);
         self.br(header_bb);
 

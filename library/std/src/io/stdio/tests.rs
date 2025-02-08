@@ -159,7 +159,8 @@ where
     assert_eq!(rx2.recv().unwrap(), Release2); // release th2
     th2.join().unwrap();
     th1.join().unwrap();
-    assert_eq!(*log.lock().unwrap(), [
-        Start1, Acquire1, Start2, Release1, Acquire2, Release2, Acquire1, Release1
-    ]);
+    assert_eq!(
+        *log.lock().unwrap(),
+        [Start1, Acquire1, Start2, Release1, Acquire2, Release2, Acquire1, Release1]
+    );
 }

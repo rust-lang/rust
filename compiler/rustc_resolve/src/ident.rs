@@ -1181,21 +1181,25 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                             }
                                             Some(_) => None,
                                         };
-                                        (rib_ident.span, AttemptToUseNonConstantValueInConstant {
-                                            ident: original_rib_ident_def,
-                                            suggestion: "const",
-                                            current: "let",
-                                            type_span,
-                                        })
+                                        (
+                                            rib_ident.span,
+                                            AttemptToUseNonConstantValueInConstant {
+                                                ident: original_rib_ident_def,
+                                                suggestion: "const",
+                                                current: "let",
+                                                type_span,
+                                            },
+                                        )
                                     }
-                                    Some((ident, kind)) => {
-                                        (span, AttemptToUseNonConstantValueInConstant {
+                                    Some((ident, kind)) => (
+                                        span,
+                                        AttemptToUseNonConstantValueInConstant {
                                             ident,
                                             suggestion: "let",
                                             current: kind.as_str(),
                                             type_span: None,
-                                        })
-                                    }
+                                        },
+                                    ),
                                 };
                                 self.report_error(span, resolution_error);
                             }
@@ -1203,10 +1207,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                         RibKind::ConstParamTy => {
                             if let Some(span) = finalize {
-                                self.report_error(span, ParamInTyOfConstParam {
-                                    name: rib_ident.name,
-                                    param_kind: None,
-                                });
+                                self.report_error(
+                                    span,
+                                    ParamInTyOfConstParam {
+                                        name: rib_ident.name,
+                                        param_kind: None,
+                                    },
+                                );
                             }
                             return Res::Err;
                         }
@@ -1287,10 +1294,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                         RibKind::ConstParamTy => {
                             if let Some(span) = finalize {
-                                self.report_error(span, ResolutionError::ParamInTyOfConstParam {
-                                    name: rib_ident.name,
-                                    param_kind: Some(errors::ParamKindInTyOfConstParam::Type),
-                                });
+                                self.report_error(
+                                    span,
+                                    ResolutionError::ParamInTyOfConstParam {
+                                        name: rib_ident.name,
+                                        param_kind: Some(errors::ParamKindInTyOfConstParam::Type),
+                                    },
+                                );
                             }
                             return Res::Err;
                         }
@@ -1353,10 +1363,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                         RibKind::ConstParamTy => {
                             if let Some(span) = finalize {
-                                self.report_error(span, ResolutionError::ParamInTyOfConstParam {
-                                    name: rib_ident.name,
-                                    param_kind: Some(errors::ParamKindInTyOfConstParam::Const),
-                                });
+                                self.report_error(
+                                    span,
+                                    ResolutionError::ParamInTyOfConstParam {
+                                        name: rib_ident.name,
+                                        param_kind: Some(errors::ParamKindInTyOfConstParam::Const),
+                                    },
+                                );
                             }
                             return Res::Err;
                         }

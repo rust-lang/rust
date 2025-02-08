@@ -448,11 +448,11 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 // LLVM also rejects full range.
                 && !scalar.is_always_valid(cx)
             {
-                attributes::apply_to_llfn(llfn, idx, &[llvm::CreateRangeAttr(
-                    cx.llcx,
-                    scalar.size(cx),
-                    scalar.valid_range(cx),
-                )]);
+                attributes::apply_to_llfn(
+                    llfn,
+                    idx,
+                    &[llvm::CreateRangeAttr(cx.llcx, scalar.size(cx), scalar.valid_range(cx))],
+                );
             }
         };
 
@@ -472,10 +472,14 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 );
                 attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[sret]);
                 if cx.sess().opts.optimize != config::OptLevel::No {
-                    attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[
-                        llvm::AttributeKind::Writable.create_attr(cx.llcx),
-                        llvm::AttributeKind::DeadOnUnwind.create_attr(cx.llcx),
-                    ]);
+                    attributes::apply_to_llfn(
+                        llfn,
+                        llvm::AttributePlace::Argument(i),
+                        &[
+                            llvm::AttributeKind::Writable.create_attr(cx.llcx),
+                            llvm::AttributeKind::DeadOnUnwind.create_attr(cx.llcx),
+                        ],
+                    );
                 }
             }
             PassMode::Cast { cast, pad_i32: _ } => {
@@ -593,9 +597,11 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                         bx.cx.llcx,
                         bx.cx.type_array(bx.cx.type_i8(), arg.layout.size.bytes()),
                     );
-                    attributes::apply_to_callsite(callsite, llvm::AttributePlace::Argument(i), &[
-                        byval,
-                    ]);
+                    attributes::apply_to_callsite(
+                        callsite,
+                        llvm::AttributePlace::Argument(i),
+                        &[byval],
+                    );
                 }
                 PassMode::Direct(attrs)
                 | PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
@@ -627,9 +633,11 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             // This will probably get ignored on all targets but those supporting the TrustZone-M
             // extension (thumbv8m targets).
             let cmse_nonsecure_call = llvm::CreateAttrString(bx.cx.llcx, "cmse_nonsecure_call");
-            attributes::apply_to_callsite(callsite, llvm::AttributePlace::Function, &[
-                cmse_nonsecure_call,
-            ]);
+            attributes::apply_to_callsite(
+                callsite,
+                llvm::AttributePlace::Function,
+                &[cmse_nonsecure_call],
+            );
         }
 
         // Some intrinsics require that an elementtype attribute (with the pointee type of a

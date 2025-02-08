@@ -704,13 +704,17 @@ pub fn create_metadata_file_for_wasm(sess: &Session, data: &[u8], section_name: 
     let mut imports = wasm_encoder::ImportSection::new();
 
     if sess.target.pointer_width == 64 {
-        imports.import("env", "__linear_memory", wasm_encoder::MemoryType {
-            minimum: 0,
-            maximum: None,
-            memory64: true,
-            shared: false,
-            page_size_log2: None,
-        });
+        imports.import(
+            "env",
+            "__linear_memory",
+            wasm_encoder::MemoryType {
+                minimum: 0,
+                maximum: None,
+                memory64: true,
+                shared: false,
+                page_size_log2: None,
+            },
+        );
     }
 
     if imports.len() > 0 {

@@ -1048,12 +1048,15 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         debug!("smart_resolve_path_fragment: E0424, source={:?}", source);
         err.code(E0424);
-        err.span_label(span, match source {
-            PathSource::Pat => {
-                "`self` value is a keyword and may not be bound to variables or shadowed"
-            }
-            _ => "`self` value is a keyword only available in methods with a `self` parameter",
-        });
+        err.span_label(
+            span,
+            match source {
+                PathSource::Pat => {
+                    "`self` value is a keyword and may not be bound to variables or shadowed"
+                }
+                _ => "`self` value is a keyword only available in methods with a `self` parameter",
+            },
+        );
         let is_assoc_fn = self.self_type_is_available();
         let self_from_macro = "a `self` parameter, but a macro invocation can only \
                                access identifiers it receives from parameters";
@@ -2399,15 +2402,18 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     if module_def_id == def_id {
                         let path =
                             Path { span: name_binding.span, segments: path_segments, tokens: None };
-                        result = Some((module, ImportSuggestion {
-                            did: Some(def_id),
-                            descr: "module",
-                            path,
-                            accessible: true,
-                            doc_visible,
-                            note: None,
-                            via_import: false,
-                        }));
+                        result = Some((
+                            module,
+                            ImportSuggestion {
+                                did: Some(def_id),
+                                descr: "module",
+                                path,
+                                accessible: true,
+                                doc_visible,
+                                note: None,
+                                via_import: false,
+                            },
+                        ));
                     } else {
                         // add the module to the lookup
                         if seen_modules.insert(module_def_id) {

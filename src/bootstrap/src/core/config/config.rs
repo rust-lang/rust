@@ -1928,11 +1928,14 @@ impl Config {
             config.rustc_default_linker = default_linker;
             config.musl_root = musl_root.map(PathBuf::from);
             config.save_toolstates = save_toolstates.map(PathBuf::from);
-            set(&mut config.deny_warnings, match flags.warnings {
-                Warnings::Deny => Some(true),
-                Warnings::Warn => Some(false),
-                Warnings::Default => deny_warnings,
-            });
+            set(
+                &mut config.deny_warnings,
+                match flags.warnings {
+                    Warnings::Deny => Some(true),
+                    Warnings::Warn => Some(false),
+                    Warnings::Default => deny_warnings,
+                },
+            );
             set(&mut config.backtrace_on_ice, backtrace_on_ice);
             set(&mut config.rust_verify_llvm_ir, verify_llvm_ir);
             config.rust_thin_lto_import_instr_limit = thin_lto_import_instr_limit;

@@ -60,13 +60,16 @@ where
             (goal, opaque_types).fold_with(&mut EagerResolver::new(self.delegate));
 
         let mut orig_values = Default::default();
-        let canonical =
-            Canonicalizer::canonicalize_input(self.delegate, &mut orig_values, QueryInput {
+        let canonical = Canonicalizer::canonicalize_input(
+            self.delegate,
+            &mut orig_values,
+            QueryInput {
                 goal,
                 predefined_opaques_in_body: self
                     .cx()
                     .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
-            });
+            },
+        );
         let query_input = ty::CanonicalQueryInput { canonical, typing_mode: self.typing_mode() };
         (orig_values, query_input)
     }

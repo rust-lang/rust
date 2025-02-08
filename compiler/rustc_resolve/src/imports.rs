@@ -914,12 +914,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             } => {
                 if no_ambiguity {
                     assert!(import.imported_module.get().is_none());
-                    self.report_error(span, ResolutionError::FailedToResolve {
-                        segment: Some(segment_name),
-                        label,
-                        suggestion,
-                        module,
-                    });
+                    self.report_error(
+                        span,
+                        ResolutionError::FailedToResolve {
+                            segment: Some(segment_name),
+                            label,
+                            suggestion,
+                            module,
+                        },
+                    );
                 }
                 return None;
             }

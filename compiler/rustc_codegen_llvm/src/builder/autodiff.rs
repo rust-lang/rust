@@ -291,20 +291,26 @@ pub(crate) fn differentiate<'ll>(
         let name = item.source.clone();
         let fn_def: Option<&llvm::Value> = cx.get_function(&name);
         let Some(fn_def) = fn_def else {
-            return Err(llvm_err(diag_handler.handle(), LlvmError::PrepareAutoDiff {
-                src: item.source.clone(),
-                target: item.target.clone(),
-                error: "could not find source function".to_owned(),
-            }));
+            return Err(llvm_err(
+                diag_handler.handle(),
+                LlvmError::PrepareAutoDiff {
+                    src: item.source.clone(),
+                    target: item.target.clone(),
+                    error: "could not find source function".to_owned(),
+                },
+            ));
         };
         debug!(?item.target);
         let fn_target: Option<&llvm::Value> = cx.get_function(&item.target);
         let Some(fn_target) = fn_target else {
-            return Err(llvm_err(diag_handler.handle(), LlvmError::PrepareAutoDiff {
-                src: item.source.clone(),
-                target: item.target.clone(),
-                error: "could not find target function".to_owned(),
-            }));
+            return Err(llvm_err(
+                diag_handler.handle(),
+                LlvmError::PrepareAutoDiff {
+                    src: item.source.clone(),
+                    target: item.target.clone(),
+                    error: "could not find target function".to_owned(),
+                },
+            ));
         };
 
         generate_enzyme_call(&cx, fn_def, fn_target, item.attrs.clone());

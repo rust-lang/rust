@@ -1668,9 +1668,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             match elem {
                 ProjectionElem::Deref => match place_ty.ty.kind() {
                     ty::Ref(..) | ty::RawPtr(..) => {
-                        self.move_errors.push(MoveError::new(place, location, BorrowedContent {
-                            target_place: place_ref.project_deeper(&[elem], tcx),
-                        }));
+                        self.move_errors.push(MoveError::new(
+                            place,
+                            location,
+                            BorrowedContent {
+                                target_place: place_ref.project_deeper(&[elem], tcx),
+                            },
+                        ));
                         return;
                     }
                     ty::Adt(adt, _) => {

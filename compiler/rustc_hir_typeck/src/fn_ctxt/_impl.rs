@@ -290,10 +290,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let autoborrow_mut = adj.iter().any(|adj| {
-            matches!(adj, &Adjustment {
-                kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })),
-                ..
-            })
+            matches!(
+                adj,
+                &Adjustment {
+                    kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })),
+                    ..
+                }
+            )
         });
 
         match self.typeck_results.borrow_mut().adjustments_mut().entry(expr.hir_id) {
@@ -972,11 +975,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut sp = MultiSpan::from_span(path_segment.ident.span);
         sp.push_span_label(
             path_segment.ident.span,
-            format!("this call modifies {} in-place", match rcvr.kind {
-                ExprKind::Path(QPath::Resolved(None, hir::Path { segments: [segment], .. })) =>
-                    format!("`{}`", segment.ident),
-                _ => "its receiver".to_string(),
-            }),
+            format!(
+                "this call modifies {} in-place",
+                match rcvr.kind {
+                    ExprKind::Path(QPath::Resolved(
+                        None,
+                        hir::Path { segments: [segment], .. },
+                    )) => format!("`{}`", segment.ident),
+                    _ => "its receiver".to_string(),
+                }
+            ),
         );
 
         let modifies_rcvr_note =

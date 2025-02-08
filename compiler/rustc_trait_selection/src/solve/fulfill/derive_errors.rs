@@ -153,10 +153,10 @@ fn find_best_leaf_obligation<'tcx>(
     infcx
         .fudge_inference_if_ok(|| {
             infcx
-                .visit_proof_tree(obligation.clone().into(), &mut BestObligation {
-                    obligation: obligation.clone(),
-                    consider_ambiguities,
-                })
+                .visit_proof_tree(
+                    obligation.clone().into(),
+                    &mut BestObligation { obligation: obligation.clone(), consider_ambiguities },
+                )
                 .break_value()
                 .ok_or(())
         })

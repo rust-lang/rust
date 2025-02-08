@@ -131,7 +131,9 @@ fn check_lexing(src: &str, expect: Expect) {
 
 #[test]
 fn smoke_test() {
-    check_lexing("/* my source file */ fn main() { println!(\"zebra\"); }\n", expect![[r#"
+    check_lexing(
+        "/* my source file */ fn main() { println!(\"zebra\"); }\n",
+        expect![[r#"
             Token { kind: BlockComment { doc_style: None, terminated: true }, len: 20 }
             Token { kind: Whitespace, len: 1 }
             Token { kind: Ident, len: 2 }
@@ -151,7 +153,8 @@ fn smoke_test() {
             Token { kind: Whitespace, len: 1 }
             Token { kind: CloseBrace, len: 1 }
             Token { kind: Whitespace, len: 1 }
-        "#]])
+        "#]],
+    )
 }
 
 #[test]
@@ -194,35 +197,47 @@ fn comment_flavors() {
 
 #[test]
 fn nested_block_comments() {
-    check_lexing("/* /* */ */'a'", expect![[r#"
+    check_lexing(
+        "/* /* */ */'a'",
+        expect![[r#"
             Token { kind: BlockComment { doc_style: None, terminated: true }, len: 11 }
             Token { kind: Literal { kind: Char { terminated: true }, suffix_start: 3 }, len: 3 }
-        "#]])
+        "#]],
+    )
 }
 
 #[test]
 fn characters() {
-    check_lexing("'a' ' ' '\\n'", expect![[r#"
+    check_lexing(
+        "'a' ' ' '\\n'",
+        expect![[r#"
             Token { kind: Literal { kind: Char { terminated: true }, suffix_start: 3 }, len: 3 }
             Token { kind: Whitespace, len: 1 }
             Token { kind: Literal { kind: Char { terminated: true }, suffix_start: 3 }, len: 3 }
             Token { kind: Whitespace, len: 1 }
             Token { kind: Literal { kind: Char { terminated: true }, suffix_start: 4 }, len: 4 }
-        "#]]);
+        "#]],
+    );
 }
 
 #[test]
 fn lifetime() {
-    check_lexing("'abc", expect![[r#"
+    check_lexing(
+        "'abc",
+        expect![[r#"
             Token { kind: Lifetime { starts_with_number: false }, len: 4 }
-        "#]]);
+        "#]],
+    );
 }
 
 #[test]
 fn raw_string() {
-    check_lexing("r###\"\"#a\\b\x00c\"\"###", expect![[r#"
+    check_lexing(
+        "r###\"\"#a\\b\x00c\"\"###",
+        expect![[r#"
             Token { kind: Literal { kind: RawStr { n_hashes: Some(3) }, suffix_start: 17 }, len: 17 }
-        "#]])
+        "#]],
+    )
 }
 
 #[test]

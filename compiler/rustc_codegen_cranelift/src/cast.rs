@@ -96,9 +96,12 @@ pub(crate) fn clif_int_or_float_cast(
                 },
             );
 
-            fx.lib_call(&name, vec![AbiParam::new(from_ty)], vec![AbiParam::new(types::I128)], &[
-                from,
-            ])[0]
+            fx.lib_call(
+                &name,
+                vec![AbiParam::new(from_ty)],
+                vec![AbiParam::new(types::I128)],
+                &[from],
+            )[0]
         } else if to_ty == types::I8 || to_ty == types::I16 {
             // FIXME implement fcvt_to_*int_sat.i8/i16
             let val = if to_signed {

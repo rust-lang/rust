@@ -647,10 +647,10 @@ impl Target {
 
         // Each field should have been read using `Json::remove` so any keys remaining are unused.
         let remaining_keys = obj.keys();
-        Ok((base, TargetWarnings {
-            unused_fields: remaining_keys.cloned().collect(),
-            incorrect_type,
-        }))
+        Ok((
+            base,
+            TargetWarnings { unused_fields: remaining_keys.cloned().collect(), incorrect_type },
+        ))
     }
 }
 

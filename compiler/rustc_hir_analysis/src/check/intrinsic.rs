@@ -185,14 +185,19 @@ pub fn check_intrinsic_type(
     ]);
     let mk_va_list_ty = |mutbl| {
         tcx.lang_items().va_list().map(|did| {
-            let region = ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
-                var: ty::BoundVar::ZERO,
-                kind: ty::BoundRegionKind::Anon,
-            });
-            let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
-                var: ty::BoundVar::from_u32(2),
-                kind: ty::BoundRegionKind::ClosureEnv,
-            });
+            let region = ty::Region::new_bound(
+                tcx,
+                ty::INNERMOST,
+                ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon },
+            );
+            let env_region = ty::Region::new_bound(
+                tcx,
+                ty::INNERMOST,
+                ty::BoundRegion {
+                    var: ty::BoundVar::from_u32(2),
+                    kind: ty::BoundRegionKind::ClosureEnv,
+                },
+            );
             let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]);
             (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
         })

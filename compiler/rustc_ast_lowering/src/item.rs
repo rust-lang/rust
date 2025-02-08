@@ -304,12 +304,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             );
                             this.arena.alloc(this.ty(span, hir::TyKind::Err(guar)))
                         }
-                        Some(ty) => this.lower_ty(ty, ImplTraitContext::OpaqueTy {
-                            origin: hir::OpaqueTyOrigin::TyAlias {
-                                parent: this.local_def_id(id),
-                                in_assoc_ty: false,
+                        Some(ty) => this.lower_ty(
+                            ty,
+                            ImplTraitContext::OpaqueTy {
+                                origin: hir::OpaqueTyOrigin::TyAlias {
+                                    parent: this.local_def_id(id),
+                                    in_assoc_ty: false,
+                                },
                             },
-                        }),
+                        ),
                     },
                 );
                 hir::ItemKind::TyAlias(ty, generics)
@@ -966,12 +969,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             hir::ImplItemKind::Type(ty)
                         }
                         Some(ty) => {
-                            let ty = this.lower_ty(ty, ImplTraitContext::OpaqueTy {
-                                origin: hir::OpaqueTyOrigin::TyAlias {
-                                    parent: this.local_def_id(i.id),
-                                    in_assoc_ty: true,
+                            let ty = this.lower_ty(
+                                ty,
+                                ImplTraitContext::OpaqueTy {
+                                    origin: hir::OpaqueTyOrigin::TyAlias {
+                                        parent: this.local_def_id(i.id),
+                                        in_assoc_ty: true,
+                                    },
                                 },
-                            });
+                            );
                             hir::ImplItemKind::Type(ty)
                         }
                     },
@@ -1152,10 +1158,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_const_body(&mut self, span: Span, expr: Option<&Expr>) -> hir::BodyId {
         self.lower_body(|this| {
-            (&[], match expr {
-                Some(expr) => this.lower_expr_mut(expr),
-                None => this.expr_err(span, this.dcx().span_delayed_bug(span, "no block")),
-            })
+            (
+                &[],
+                match expr {
+                    Some(expr) => this.lower_expr_mut(expr),
+                    None => this.expr_err(span, this.dcx().span_delayed_bug(span, "no block")),
+                },
+            )
         })
     }
 

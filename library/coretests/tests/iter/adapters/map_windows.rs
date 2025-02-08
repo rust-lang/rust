@@ -159,11 +159,10 @@ fn output_n2() {
         <Vec<[char; 2]>>::new(),
     );
     assert_eq!("ab".chars().map_windows(|a: &[_; 2]| *a).collect::<Vec<_>>(), vec![['a', 'b']]);
-    assert_eq!("abcd".chars().map_windows(|a: &[_; 2]| *a).collect::<Vec<_>>(), vec![
-        ['a', 'b'],
-        ['b', 'c'],
-        ['c', 'd']
-    ],);
+    assert_eq!(
+        "abcd".chars().map_windows(|a: &[_; 2]| *a).collect::<Vec<_>>(),
+        vec![['a', 'b'], ['b', 'c'], ['c', 'd']],
+    );
 }
 
 #[test]

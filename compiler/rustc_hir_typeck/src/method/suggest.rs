@@ -3922,11 +3922,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 };
 
                             let all_suggs = candidate_strs.iter().map(|cand| {
-                                let suggestion = format!("{} {cand}", match introducer {
-                                    Introducer::Plus => " +",
-                                    Introducer::Colon => ":",
-                                    Introducer::Nothing => "",
-                                },);
+                                let suggestion = format!(
+                                    "{} {cand}",
+                                    match introducer {
+                                        Introducer::Plus => " +",
+                                        Introducer::Colon => ":",
+                                        Introducer::Nothing => "",
+                                    },
+                                );
 
                                 let mut suggs = vec![];
 
