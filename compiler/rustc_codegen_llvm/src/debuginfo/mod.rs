@@ -633,7 +633,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 true,
                 DIFlags::FlagZero,
                 argument_index,
-                align.bytes() as u32,
+                align.bits() as u32,
             )
         }
     }
