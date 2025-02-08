@@ -27,6 +27,7 @@
 #![feature(duration_constructors)]
 #![feature(error_generic_member_access)]
 #![feature(exact_size_is_empty)]
+#![feature(extend_one)]
 #![feature(extern_types)]
 #![feature(float_minimum_maximum)]
 #![feature(flt2dec)]
