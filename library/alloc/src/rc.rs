@@ -2369,7 +2369,9 @@ impl Default for Rc<str> {
     /// This may or may not share an allocation with other Rcs on the same thread.
     #[inline]
     fn default() -> Self {
-        Rc::from("")
+        let rc = Rc::<[u8]>::default();
+        // `[u8]` has the same layout as `str`.
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const str) }
     }
 }
 
