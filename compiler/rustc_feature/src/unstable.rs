@@ -474,6 +474,8 @@ declare_features! (
     (unstable, diagnostic_on_const, "1.93.0", Some(143874)),
     /// Allows giving on-move borrowck custom diagnostic messages for a type
     (unstable, diagnostic_on_move, "CURRENT_RUSTC_VERSION", Some(154181)),
+    /// Allows giving unresolved imports a custom diagnostic message
+    (unstable, diagnostic_on_unknown_item, "CURRENT_RUSTC_VERSION", Some(152900)),
     /// Allows `#[doc(cfg(...))]`.
     (unstable, doc_cfg, "1.21.0", Some(43781)),
     /// Allows `#[doc(masked)]`.
