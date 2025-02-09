@@ -4,6 +4,7 @@
 
 use core::ops::ControlFlow;
 use itertools::Itertools;
+use rustc_abi::VariantIdx;
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -23,7 +24,6 @@ use rustc_middle::ty::{
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
-use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};

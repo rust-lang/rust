@@ -1,6 +1,6 @@
 use rustc_abi::{HasDataLayout, TyAbiInterface};
 
-use crate::abi::call::{ArgAbi, FnAbi};
+use crate::callconv::{ArgAbi, FnAbi};
 
 fn classify_ret<'a, Ty, C>(_cx: &C, ret: &mut ArgAbi<'a, Ty>)
 where

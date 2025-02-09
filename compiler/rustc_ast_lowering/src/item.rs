@@ -1,3 +1,4 @@
+use rustc_abi::ExternAbi;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
@@ -11,7 +12,6 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{DesugaringKind, Ident, Span, Symbol, kw, sym};
-use rustc_target::spec::abi;
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::instrument;
@@ -275,7 +275,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ModKind::Unloaded => panic!("`mod` items should have been loaded by now"),
             },
             ItemKind::ForeignMod(fm) => hir::ItemKind::ForeignMod {
-                abi: fm.abi.map_or(abi::Abi::FALLBACK, |abi| self.lower_abi(abi)),
+                abi: fm.abi.map_or(ExternAbi::FALLBACK, |abi| self.lower_abi(abi)),
                 items: self
                     .arena
                     .alloc_from_iter(fm.items.iter().map(|x| self.lower_foreign_item_ref(x))),
@@ -1470,23 +1470,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    pub(super) fn lower_abi(&mut self, abi: StrLit) -> abi::Abi {
-        abi::lookup(abi.symbol_unescaped.as_str()).unwrap_or_else(|err| {
+    pub(super) fn lower_abi(&mut self, abi: StrLit) -> ExternAbi {
+        rustc_abi::lookup(abi.symbol_unescaped.as_str()).unwrap_or_else(|err| {
             self.error_on_invalid_abi(abi, err);
-            abi::Abi::Rust
+            ExternAbi::Rust
         })
     }
 
-    pub(super) fn lower_extern(&mut self, ext: Extern) -> abi::Abi {
+    pub(super) fn lower_extern(&mut self, ext: Extern) -> ExternAbi {
         match ext {
-            Extern::None => abi::Abi::Rust,
-            Extern::Implicit(_) => abi::Abi::FALLBACK,
+            Extern::None => ExternAbi::Rust,
+            Extern::Implicit(_) => ExternAbi::FALLBACK,
             Extern::Explicit(abi, _) => self.lower_abi(abi),
         }
     }
 
-    fn error_on_invalid_abi(&self, abi: StrLit, err: abi::AbiUnsupported) {
-        let abi_names = abi::enabled_names(self.tcx.features(), abi.span)
+    fn error_on_invalid_abi(&self, abi: StrLit, err: rustc_abi::AbiUnsupported) {
+        let abi_names = rustc_abi::enabled_names(self.tcx.features(), abi.span)
             .iter()
             .map(|s| Symbol::intern(s))
             .collect::<Vec<_>>();
@@ -1495,7 +1495,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             abi: abi.symbol_unescaped,
             span: abi.span,
             explain: match err {
-                abi::AbiUnsupported::Reason { explain } => Some(InvalidAbiReason(explain)),
+                rustc_abi::AbiUnsupported::Reason { explain } => Some(InvalidAbiReason(explain)),
                 _ => None,
             },
             suggestion: suggested_name.map(|suggested_name| InvalidAbiSuggestion {

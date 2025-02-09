@@ -4,7 +4,7 @@
 
 use rustc_abi::{Endian, HasDataLayout, TyAbiInterface};
 
-use crate::abi::call::{Align, ArgAbi, FnAbi, Reg, RegKind, Uniform};
+use crate::callconv::{Align, ArgAbi, FnAbi, Reg, RegKind, Uniform};
 use crate::spec::HasTargetSpec;
 
 #[derive(Debug, Clone, Copy, PartialEq)]

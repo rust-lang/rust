@@ -29,6 +29,7 @@
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
+extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr_parsing;
@@ -48,7 +49,6 @@ extern crate rustc_middle;
 extern crate rustc_mir_dataflow;
 extern crate rustc_session;
 extern crate rustc_span;
-extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate smallvec;
 
@@ -123,7 +123,7 @@ use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
 use rustc_span::{InnerSpan, Span, sym};
-use rustc_target::abi::Integer;
+use rustc_abi::Integer;
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
 use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};
