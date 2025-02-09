@@ -1,3 +1,4 @@
+use std::fmt::{self, Display};
 use std::path::PathBuf;
 
 use rinja::Template;
@@ -5,7 +6,6 @@ use rustc_data_structures::fx::FxIndexMap;
 
 use super::static_files::{STATIC_FILES, StaticFiles};
 use crate::externalfiles::ExternalHtml;
-use crate::html::format::{Buffer, Print};
 use crate::html::render::{StylePath, ensure_trailing_slash};
 
 #[derive(Clone)]
@@ -71,7 +71,24 @@ struct PageLayout<'a> {
 
 pub(crate) use crate::html::render::sidebar::filters;
 
-pub(crate) fn render<T: Print, S: Print>(
+/// Implements [`Display`] for a function that accepts a mutable reference to a [`String`], and (optionally) writes to it.
+///
+/// The wrapped function will receive an empty string, and can modify it,
+/// and the `Display` implementation will write the contents of the string after the function has finished.
+pub(crate) struct BufDisplay<F>(pub F);
+
+impl<F> Display for BufDisplay<F>
+where
+    F: Fn(&mut String),
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut buf = String::new();
+        self.0(&mut buf);
+        f.write_str(&buf)
+    }
+}
+
+pub(crate) fn render<T: Display, S: Display>(
     layout: &Layout,
     page: &Page<'_>,
     sidebar: S,
@@ -98,8 +115,8 @@ pub(crate) fn render<T: Print, S: Print>(
     let mut themes: Vec<String> = style_files.iter().map(|s| s.basename().unwrap()).collect();
     themes.sort();
 
-    let content = Buffer::html().to_display(t); // Note: This must happen before making the sidebar.
-    let sidebar = Buffer::html().to_display(sidebar);
+    let content = t.to_string(); // Note: This must happen before making the sidebar.
+    let sidebar = sidebar.to_string();
     PageLayout {
         static_root_path,
         page,

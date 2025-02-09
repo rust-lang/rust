@@ -11,12 +11,13 @@ use rustc_session::Session;
 use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, sym};
 use tracing::info;
 
+use super::highlight;
+use super::layout::{self, BufDisplay};
+use super::render::Context;
 use crate::clean;
 use crate::clean::utils::has_doc_flag;
 use crate::docfs::PathError;
 use crate::error::Error;
-use crate::html::render::Context;
-use crate::html::{highlight, layout};
 use crate::visit::DocVisitor;
 
 pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error> {
@@ -237,11 +238,12 @@ impl SourceCollector<'_, '_> {
             resource_suffix: &shared.resource_suffix,
             rust_logo: has_doc_flag(self.cx.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
         };
+        let source_context = SourceContext::Standalone { file_path };
         let v = layout::render(
             &shared.layout,
             &page,
             "",
-            |buf: &mut _| {
+            BufDisplay(|buf: &mut String| {
                 print_src(
                     buf,
                     contents,
@@ -249,9 +251,9 @@ impl SourceCollector<'_, '_> {
                     self.cx,
                     &root_path,
                     &highlight::DecorationInfo::default(),
-                    SourceContext::Standalone { file_path },
-                )
-            },
+                    &source_context,
+                );
+            }),
             &shared.style_files,
         );
         shared.fs.write(cur, v)?;
@@ -301,7 +303,7 @@ pub(crate) struct ScrapedInfo<'a> {
 #[derive(Template)]
 #[template(path = "scraped_source.html")]
 struct ScrapedSource<'a, Code: std::fmt::Display> {
-    info: ScrapedInfo<'a>,
+    info: &'a ScrapedInfo<'a>,
     code_html: Code,
     max_nb_digits: u32,
 }
@@ -328,7 +330,7 @@ pub(crate) fn print_src(
     context: &Context<'_>,
     root_path: &str,
     decoration_info: &highlight::DecorationInfo,
-    source_context: SourceContext<'_>,
+    source_context: &SourceContext<'_>,
 ) {
     let mut lines = s.lines().count();
     let line_info = if let SourceContext::Embedded(ref info) = source_context {
