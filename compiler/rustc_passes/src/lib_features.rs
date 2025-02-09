@@ -68,10 +68,14 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                             | sym::rustc_default_body_unstable
                     );
                     if is_unstable {
-                        return Some((feature, FeatureStability::Unstable, attr.span));
+                        return Some((feature, FeatureStability::Unstable, attr.span()));
                     }
                     if let Some(since) = since {
-                        return Some((feature, FeatureStability::AcceptedSince(since), attr.span));
+                        return Some((
+                            feature,
+                            FeatureStability::AcceptedSince(since),
+                            attr.span(),
+                        ));
                     }
                 }
                 // We need to iterate over the other attributes, because
