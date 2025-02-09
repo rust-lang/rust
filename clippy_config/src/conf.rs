@@ -737,7 +737,8 @@ define_Conf! {
     /// The maximum allowed size of a bit mask before suggesting to use 'trailing_zeros'
     #[lints(verbose_bit_mask)]
     verbose_bit_mask_threshold: u64 = 1,
-    /// Whether to allow certain wildcard imports (prelude, super in tests).
+    /// Whether to emit warnings on all wildcard imports, including those from `prelude`, from `super` in tests,
+    /// or for `pub use` reexports.
     #[lints(wildcard_imports)]
     warn_on_all_wildcard_imports: bool = false,
     /// Whether to also emit warnings for unsafe blocks with metavariable expansions in **private** macros.

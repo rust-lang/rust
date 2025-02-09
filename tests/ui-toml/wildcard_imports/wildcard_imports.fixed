@@ -15,7 +15,7 @@ mod my_crate {
     }
 }
 
-use utils::{BAR, print};
+pub use utils::{BAR, print};
 //~^ ERROR: usage of wildcard import
 use my_crate::utils::my_util_fn;
 //~^ ERROR: usage of wildcard import
