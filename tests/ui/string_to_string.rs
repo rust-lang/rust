@@ -1,10 +1,10 @@
-#![warn(clippy::string_to_string)]
+#![warn(clippy::implicit_clone, clippy::string_to_string)]
 #![allow(clippy::redundant_clone, clippy::unnecessary_literal_unwrap)]
 
 fn main() {
     let mut message = String::from("Hello");
     let mut v = message.to_string();
-    //~^ string_to_string
+    //~^ ERROR: implicitly cloning a `String` by calling `to_string` on its dereferenced type
 
     let variable1 = String::new();
     let v = &variable1;

@@ -135,4 +135,10 @@ fn main() {
     }
     let no_clone = &NoClone;
     let _ = no_clone.to_owned();
+
+    let s = String::from("foo");
+    let _ = s.clone();
+    //~^ implicit_clone
+    let _ = s.clone();
+    //~^ implicit_clone
 }
