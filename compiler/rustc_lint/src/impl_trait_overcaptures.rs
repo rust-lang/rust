@@ -86,8 +86,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
-    /// # #![feature(lifetime_capture_rules_2024)]
+    /// ```rust,edition2024,compile_fail
     /// # #![deny(impl_trait_redundant_captures)]
     /// fn test<'a>(x: &'a i32) -> impl Sized + use<'a> { x }
     /// ```
@@ -268,8 +267,7 @@ where
             && parent == self.parent_def_id
         {
             let opaque_span = self.tcx.def_span(opaque_def_id);
-            let new_capture_rules = opaque_span.at_least_rust_2024()
-                || self.tcx.features().lifetime_capture_rules_2024();
+            let new_capture_rules = opaque_span.at_least_rust_2024();
             if !new_capture_rules
                 && !opaque.bounds.iter().any(|bound| matches!(bound, hir::GenericBound::Use(..)))
             {

@@ -1,13 +1,13 @@
-//@ known-bug: #117647
+//@ edition: 2024
 
-#![feature(lifetime_capture_rules_2024)]
 #![feature(rustc_attrs)]
 #![allow(internal_features)]
 #![rustc_variance_of_opaques]
 
 use std::ops::Deref;
 
-fn foo(x: Vec<i32>) -> Box<dyn for<'a> Deref<Target = impl ?Sized>> {
+fn foo(x: Vec<i32>) -> Box<dyn for<'a> Deref<Target = impl ?Sized>> { //~ ['a: o]
+    //~^ ERROR cannot capture higher-ranked lifetime
     Box::new(x)
 }
 
