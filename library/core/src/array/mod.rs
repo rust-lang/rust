@@ -429,7 +429,19 @@ impl<T: Clone, const N: usize> Clone for [T; N] {
 
 #[unstable(feature = "random", issue = "130703")]
 impl<T: Random, const N: usize> Random for [T; N] {
-    default fn random(source: &mut (impl RandomSource + ?Sized)) -> Self {
+    fn random(source: &mut (impl RandomSource + ?Sized)) -> Self {
+        SpecArrayRandom::random(source)
+    }
+}
+
+#[unstable(feature = "random", issue = "130703")]
+trait SpecArrayRandom: Sized {
+    fn random<const N: usize>(source: &mut (impl RandomSource + ?Sized)) -> [Self; N];
+}
+
+#[unstable(feature = "random", issue = "130703")]
+impl<T: Random> SpecArrayRandom for T {
+    default fn random<const N: usize>(source: &mut (impl RandomSource + ?Sized)) -> [T; N] {
         from_fn(|_| T::random(source))
     }
 }
@@ -437,8 +449,8 @@ impl<T: Random, const N: usize> Random for [T; N] {
 macro_rules! impl_random_for_integer_array {
     ($t:ty) => {
         #[unstable(feature = "random", issue = "130703")]
-        impl<const N: usize> Random for [$t; N] {
-            fn random(source: &mut (impl RandomSource + ?Sized)) -> Self {
+        impl SpecArrayRandom for $t {
+            fn random<const N: usize>(source: &mut (impl RandomSource + ?Sized)) -> [$t; N] {
                 let mut buf = [const { MaybeUninit::<$t>::uninit() }; N];
                 // SAFETY: all elements in the buffer were initialized with
                 // random bytes.
