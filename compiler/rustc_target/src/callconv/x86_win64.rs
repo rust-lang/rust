@@ -1,6 +1,6 @@
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind, Size};
 
-use crate::abi::call::{ArgAbi, FnAbi, Reg};
+use crate::callconv::{ArgAbi, FnAbi, Reg};
 use crate::spec::HasTargetSpec;
 
 // Win64 ABI: https://docs.microsoft.com/en-us/cpp/build/parameter-passing

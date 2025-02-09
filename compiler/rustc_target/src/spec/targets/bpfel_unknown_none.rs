@@ -1,4 +1,5 @@
-use crate::abi::Endian;
+use rustc_abi::Endian;
+
 use crate::spec::{Target, base};
 
 pub(crate) fn target() -> Target {

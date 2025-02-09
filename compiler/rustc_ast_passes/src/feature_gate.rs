@@ -6,7 +6,6 @@ use rustc_session::Session;
 use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, Symbol, sym};
-use rustc_target::spec::abi;
 use thin_vec::ThinVec;
 
 use crate::errors;
@@ -77,12 +76,12 @@ impl<'a> PostExpansionVisitor<'a> {
     fn check_abi(&self, abi: ast::StrLit) {
         let ast::StrLit { symbol_unescaped, span, .. } = abi;
 
-        match abi::is_enabled(self.features, span, symbol_unescaped.as_str()) {
+        match rustc_abi::is_enabled(self.features, span, symbol_unescaped.as_str()) {
             Ok(()) => (),
-            Err(abi::AbiDisabled::Unstable { feature, explain }) => {
+            Err(rustc_abi::AbiDisabled::Unstable { feature, explain }) => {
                 feature_err_issue(&self.sess, feature, span, GateIssue::Language, explain).emit();
             }
-            Err(abi::AbiDisabled::Unrecognized) => {
+            Err(rustc_abi::AbiDisabled::Unrecognized) => {
                 if self.sess.opts.pretty.is_none_or(|ppm| ppm.needs_hir()) {
                     self.sess.dcx().span_delayed_bug(
                         span,

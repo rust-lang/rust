@@ -3225,7 +3225,7 @@ pub enum Extern {
     ///
     /// E.g. `extern fn foo() {}`.
     ///
-    /// This is just `extern "C"` (see `rustc_target::spec::abi::Abi::FALLBACK`).
+    /// This is just `extern "C"` (see `rustc_abi::ExternAbi::FALLBACK`).
     Implicit(Span),
     /// An explicit extern keyword was used with an explicit ABI.
     ///

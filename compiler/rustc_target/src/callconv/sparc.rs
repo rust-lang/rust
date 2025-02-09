@@ -1,6 +1,6 @@
 use rustc_abi::{HasDataLayout, Size};
 
-use crate::abi::call::{ArgAbi, FnAbi, Reg, Uniform};
+use crate::callconv::{ArgAbi, FnAbi, Reg, Uniform};
 
 fn classify_ret<Ty, C>(cx: &C, ret: &mut ArgAbi<'_, Ty>, offset: &mut Size)
 where

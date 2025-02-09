@@ -1,6 +1,7 @@
 //! A target tuple for OpenWrt MIPS64 targets.
 
-use crate::abi::Endian;
+use rustc_abi::Endian;
+
 use crate::spec::{Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
