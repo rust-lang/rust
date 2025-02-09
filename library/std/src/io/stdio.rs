@@ -120,6 +120,20 @@ impl Read for StdinRaw {
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
         handle_ebadf(self.0.read_to_string(buf), 0)
     }
+
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        if buf.is_empty() {
+            return Ok(());
+        }
+        handle_ebadf_err(self.0.read_exact(buf), io::Error::READ_EXACT_EOF)
+    }
+
+    fn read_buf_exact(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        if buf.capacity() == 0 {
+            return Ok(());
+        }
+        handle_ebadf_err(self.0.read_buf_exact(buf), io::Error::READ_EXACT_EOF)
+    }
 }
 
 impl Write for StdoutRaw {
@@ -196,6 +210,13 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
 fn handle_ebadf_lazy<T>(r: io::Result<T>, default: impl FnOnce() -> T) -> io::Result<T> {
     match r {
         Err(ref e) if stdio::is_ebadf(e) => Ok(default()),
+        r => r,
+    }
+}
+
+fn handle_ebadf_err<T>(r: io::Result<T>, default_err: io::Error) -> io::Result<T> {
+    match r {
+        Err(ref e) if stdio::is_ebadf(e) => Err(default_err),
         r => r,
     }
 }
