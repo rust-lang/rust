@@ -8,31 +8,31 @@ LL |     true.then_some("a").unwrap_or("b");
    = help: to override `-D warnings` add `#[allow(clippy::obfuscated_if_else)]`
 
 error: this method chain can be written more clearly with `if .. else ..`
-  --> tests/ui/obfuscated_if_else.rs:6:5
+  --> tests/ui/obfuscated_if_else.rs:7:5
    |
 LL |     true.then(|| "a").unwrap_or("b");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { "a" } else { "b" }`
 
 error: this method chain can be written more clearly with `if .. else ..`
-  --> tests/ui/obfuscated_if_else.rs:9:5
+  --> tests/ui/obfuscated_if_else.rs:11:5
    |
 LL |     (a == 1).then_some("a").unwrap_or("b");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if a == 1 { "a" } else { "b" }`
 
 error: this method chain can be written more clearly with `if .. else ..`
-  --> tests/ui/obfuscated_if_else.rs:10:5
+  --> tests/ui/obfuscated_if_else.rs:13:5
    |
 LL |     (a == 1).then(|| "a").unwrap_or("b");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if a == 1 { "a" } else { "b" }`
 
 error: this method chain can be written more clearly with `if .. else ..`
-  --> tests/ui/obfuscated_if_else.rs:16:5
+  --> tests/ui/obfuscated_if_else.rs:20:5
    |
 LL |     true.then_some(a += 1).unwrap_or(());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { a += 1 } else { () }`
 
 error: this method chain can be written more clearly with `if .. else ..`
-  --> tests/ui/obfuscated_if_else.rs:17:5
+  --> tests/ui/obfuscated_if_else.rs:22:5
    |
 LL |     true.then_some(()).unwrap_or(a += 2);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { () } else { a += 2 }`

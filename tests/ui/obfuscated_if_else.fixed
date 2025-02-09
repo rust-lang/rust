@@ -3,16 +3,22 @@
 
 fn main() {
     if true { "a" } else { "b" };
+    //~^ ERROR: this method chain can be written more clearly with `if .. else ..`
     if true { "a" } else { "b" };
+    //~^ ERROR: this method chain can be written more clearly with `if .. else ..`
 
     let a = 1;
     if a == 1 { "a" } else { "b" };
+    //~^ ERROR: this method chain can be written more clearly with `if .. else ..`
     if a == 1 { "a" } else { "b" };
+    //~^ ERROR: this method chain can be written more clearly with `if .. else ..`
 
     let partial = (a == 1).then_some("a");
     partial.unwrap_or("b"); // not lint
 
     let mut a = 0;
     if true { a += 1 } else { () };
+    //~^ ERROR: this method chain can be written more clearly with `if .. else ..`
     if true { () } else { a += 2 };
+    //~^ ERROR: this method chain can be written more clearly with `if .. else ..`
 }
