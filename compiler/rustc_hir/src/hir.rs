@@ -1151,6 +1151,9 @@ impl AttributeExt for Attribute {
     fn span(&self) -> Span {
         match &self {
             Attribute::Unparsed(u) => u.span,
+            // FIXME: should not be needed anymore when all attrs are parsed
+            Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
+            Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
             a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
     }
@@ -1193,6 +1196,7 @@ impl AttributeExt for Attribute {
     fn style(&self) -> AttrStyle {
         match &self {
             Attribute::Unparsed(u) => u.style,
+            Attribute::Parsed(AttributeKind::DocComment { style, .. }) => *style,
             _ => panic!(),
         }
     }

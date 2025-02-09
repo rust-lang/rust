@@ -4,6 +4,6 @@
 fn requires_alignment() {}
 
 trait MyTrait {
-    #[repr(align)] //~ ERROR `repr(align)` attributes on functions are unstable
+    #[repr(align)] //~ ERROR invalid `repr(align)` attribute: `align` needs an argument
     fn myfun();
 }
