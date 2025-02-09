@@ -9,7 +9,7 @@ use rustc_abi::{
     TyAbiInterface, TyAndLayout, Variants,
 };
 
-use crate::abi::call::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
+use crate::callconv::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
 use crate::spec::HasTargetSpec;
 
 #[derive(Copy, Clone)]

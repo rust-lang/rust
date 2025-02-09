@@ -1,4 +1,5 @@
-use crate::abi::Endian;
+use rustc_abi::Endian;
+
 use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub(crate) fn target() -> Target {

@@ -6,7 +6,7 @@ use rustc_abi::{
     Variants,
 };
 
-use crate::abi::call::{ArgAbi, CastTarget, FnAbi};
+use crate::callconv::{ArgAbi, CastTarget, FnAbi};
 
 /// Classification of "eightbyte" components.
 // N.B., the order of the variants is from general to specific,
