@@ -1334,6 +1334,14 @@ pub enum AttributeKind {
         /// None if the directive was malformed in some way.
         directive: Option<Box<Directive>>,
     },
+
+    /// Represents `#[diagnostic::on_unknown_item]`
+    OnUnknownItem {
+        span: Span,
+        /// None if the directive was malformed in some way.
+        directive: Option<Box<Directive>>,
+    },
+
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
 

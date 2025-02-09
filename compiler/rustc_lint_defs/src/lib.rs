@@ -764,6 +764,9 @@ pub enum AttributeLintKind {
     MalformedOnUnimplementedAttr {
         span: Span,
     },
+    MalformedOnUnknownItemdAttr {
+        span: Span,
+    },
     MalformedOnConstAttr {
         span: Span,
     },
@@ -785,6 +788,7 @@ pub enum AttributeLintKind {
     },
     MissingOptionsForOnUnimplemented,
     MissingOptionsForOnConst,
+    MissingOptionsForOnUnknownItem,
     MissingOptionsForOnMove,
     OnMoveMalformedFormatLiterals {
         name: Symbol,
@@ -819,6 +823,7 @@ pub enum AttributeLintKind {
 pub enum FormatWarning {
     PositionalArgument { span: Span, help: String },
     InvalidSpecifier { name: String, span: Span },
+    DisallowedPlaceholder { span: Span },
 }
 
 #[derive(Debug)]
