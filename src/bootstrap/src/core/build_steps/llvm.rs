@@ -494,7 +494,7 @@ impl Step for Llvm {
         }
 
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
-        if target != builder.config.build {
+        if !builder.is_host_target(&target) {
             let LlvmResult { llvm_config, .. } =
                 builder.ensure(Llvm { target: builder.config.build });
             if !builder.config.dry_run() {
@@ -639,7 +639,7 @@ fn configure_cmake(
     }
     cfg.target(&target.triple).host(&builder.config.build.triple);
 
-    if target != builder.config.build {
+    if !builder.is_host_target(&target) {
         cfg.define("CMAKE_CROSSCOMPILING", "True");
 
         if target.contains("netbsd") {
@@ -1081,7 +1081,7 @@ impl Step for Lld {
             .define("LLVM_CMAKE_DIR", llvm_cmake_dir)
             .define("LLVM_INCLUDE_TESTS", "OFF");
 
-        if target != builder.config.build {
+        if !builder.is_host_target(&target) {
             // Use the host llvm-tblgen binary.
             cfg.define(
                 "LLVM_TABLEGEN_EXE",
