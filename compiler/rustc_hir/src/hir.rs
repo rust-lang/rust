@@ -1145,6 +1145,7 @@ impl AttributeExt for Attribute {
     }
 
     fn is_doc_comment(&self) -> bool {
+        // FIXME(jdonszelmann): make the 2nd check unnecessary here
         matches!(self, Attribute::Parsed(AttributeKind::DocComment { .. }))
     }
 
