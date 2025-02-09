@@ -129,11 +129,6 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// Duplicate code is less maintainable.
     ///
-    /// ### Known problems
-    /// * The lint doesn't check if the moved expressions modify values that are being used in
-    ///   the if condition. The suggestion can in that case modify the behavior of the program.
-    ///   See [rust-clippy#7452](https://github.com/rust-lang/rust-clippy/issues/7452)
-    ///
     /// ### Example
     /// ```ignore
     /// let foo = if … {
