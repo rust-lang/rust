@@ -1,5 +1,6 @@
 use rustc_abi::Align;
-use rustc_ast as ast;
+use rustc_ast::token::CommentKind;
+use rustc_ast::{self as ast, AttrStyle};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::{Span, Symbol};
 
@@ -54,7 +55,7 @@ impl OptimizeAttr {
     }
 }
 
-#[derive(Clone, Debug, Encodable, Decodable)]
+#[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum DiagnosticAttribute {
     // tidy-alphabetical-start
     DoNotRecommend,
@@ -62,7 +63,7 @@ pub enum DiagnosticAttribute {
     // tidy-alphabetical-end
 }
 
-#[derive(PartialEq, Debug, Encodable, Decodable, Copy, Clone)]
+#[derive(PartialEq, Debug, Encodable, Decodable, Copy, Clone, HashStable_Generic)]
 pub enum ReprAttr {
     ReprInt(IntType),
     ReprRust,
@@ -80,7 +81,7 @@ pub enum TransparencyError {
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
-#[derive(Encodable, Decodable)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy),
@@ -131,4 +132,28 @@ impl Deprecation {
     pub fn is_since_rustc_version(&self) -> bool {
         matches!(self.since, DeprecatedSince::RustcVersion(_))
     }
+}
+
+/// Attributes represent parsed, *built in*, inert attributes. That means,
+/// attributes that are not actually ever expanded.
+/// For more information on this, see the module docs on the rustc_attr_parsing crate.
+/// They're instead used as markers, to guide the compilation process in various way in most every stage of the compiler.
+/// These are kept around after the AST, into the HIR and further on.
+///
+/// The word parsed could be a little misleading here, because the parser already parses
+/// attributes early on. However, the result, an [`ast::Attribute`]
+/// is only parsed at a high level, still containing a token stream in many cases. That is
+/// because the structure of the contents varies from attribute to attribute.
+/// With a parsed attribute I mean that each attribute is processed individually into a
+/// final structure, which on-site (the place where the attribute is useful for, think the
+/// the place where `must_use` is checked) little to no extra parsing or validating needs to
+/// happen.
+///
+/// For more docs, look in [`rustc_attr`](https://doc.rust-lang.org/stable/nightly-rustc/rustc_attr/index.html)
+// FIXME(jdonszelmann): rename to AttributeKind once hir::AttributeKind is dissolved
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
+pub enum AttributeKind {
+    // tidy-alphabetical-start
+    DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
+    // tidy-alphabetical-end
 }

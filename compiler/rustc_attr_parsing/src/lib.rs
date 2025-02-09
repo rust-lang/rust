@@ -10,11 +10,49 @@
 //! These were then parsed or validated or both in places distributed all over the compiler.
 //! This was a mess...
 //!
-//! Attributes are markers on items. Most are actually attribute-like proc-macros, and are expanded
-//! but some remain as the so-called built-in attributes. These are not macros at all, and really
-//! are just markers to guide the compilation process. An example is `#[inline(...)]` which changes
-//! how code for functions is generated. Built-in attributes aren't macros because there's no rust
-//! syntax they could expand to.
+//! Attributes are markers on items.
+//! Many of them are actually attribute-like proc-macros, and are expanded to some other rust syntax.
+//! This could either be a user provided proc macro, or something compiler provided.
+//! `derive` is an example of one that the compiler provides.
+//! These are built-in, but they have a valid expansion to Rust tokens and are thus called "active".
+//! I personally like calling these *active* compiler-provided attributes, built-in *macros*,
+//! because they still expand, and this helps to differentiate them from built-in *attributes*.
+//! However, I'll be the first to admit that the naming here can be confusing.
+//!
+//! The alternative to active attributes, are inert attributes.
+//! These can occur in user code (proc-macro helper attributes).
+//! But what's important is, many built-in attributes are inert like this.
+//! There is nothing they expand to during the macro expansion process,
+//! sometimes because they literally cannot expand to something that is valid Rust.
+//! They are really just markers to guide the compilation process.
+//! An example is `#[inline(...)]` which changes how code for functions is generated.
+//!
+//! ```text
+//!                      Active                 Inert
+//!              ┌──────────────────────┬──────────────────────┐
+//!              │     (mostly in)      │    these are parsed  │
+//!              │ rustc_builtin_macros │        here!         │
+//!              │                      │                      │
+//!              │                      │                      │
+//!              │    #[derive(...)]    │    #[stable()]       │
+//!     Built-in │    #[cfg()]          │    #[inline()]       │
+//!              │    #[cfg_attr()]     │    #[repr()]         │
+//!              │                      │                      │
+//!              │                      │                      │
+//!              │                      │                      │
+//!              ├──────────────────────┼──────────────────────┤
+//!              │                      │                      │
+//!              │                      │                      │
+//!              │                      │       `b` in         │
+//!              │                      │ #[proc_macro_derive( │
+//! User created │ #[proc_macro_attr()] │    a,                │
+//!              │                      │    attributes(b)     │
+//!              │                      │ ]                    │
+//!              │                      │                      │
+//!              │                      │                      │
+//!              │                      │                      │
+//!              └──────────────────────┴──────────────────────┘
+//! ```
 //!
 //! In this crate, syntactical attributes (sequences of tokens that look like
 //! `#[something(something else)]`) are parsed into more semantic attributes, markers on items.
@@ -46,9 +84,12 @@
 // tidy-alphabetical-end
 
 mod attributes;
+mod context;
+pub mod parser;
 mod session_diagnostics;
 
 pub use attributes::*;
+pub use context::{AttributeParser, OmitDoc};
 pub use rustc_attr_data_structures::*;
 pub use util::{find_crate_name, is_builtin_attr, parse_version};
 
