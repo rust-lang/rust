@@ -1,6 +1,6 @@
 use std::collections::hash_map::Entry::*;
 
-use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE};
+use rustc_ast::expand::allocator::NO_ALLOC_SHIM_IS_UNSTABLE;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
@@ -16,7 +16,7 @@ use rustc_session::config::{CrateType, OomStrategy};
 use rustc_target::spec::{SanitizerSet, TlsModel};
 use tracing::debug;
 
-use crate::base::allocator_kind_for_codegen;
+use crate::base::needs_allocator_shim;
 
 fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(tcx.crate_types())
@@ -206,20 +206,13 @@ fn exported_symbols_provider_local(
     }
 
     // Mark allocator shim symbols as exported only if they were generated.
-    if allocator_kind_for_codegen(tcx).is_some() {
-        for symbol_name in ALLOCATOR_METHODS
-            .iter()
-            .map(|method| format!("__rust_{}", method.name))
-            .chain(["__rust_alloc_error_handler".to_string(), OomStrategy::SYMBOL.to_string()])
-        {
-            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
-
-            symbols.push((exported_symbol, SymbolExportInfo {
-                level: SymbolExportLevel::Rust,
-                kind: SymbolExportKind::Text,
-                used: false,
-            }));
-        }
+    if needs_allocator_shim(tcx) {
+        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &OomStrategy::SYMBOL));
+        symbols.push((exported_symbol, SymbolExportInfo {
+            level: SymbolExportLevel::Rust,
+            kind: SymbolExportKind::Text,
+            used: false,
+        }));
 
         let exported_symbol =
             ExportedSymbol::NoDefId(SymbolName::new(tcx, NO_ALLOC_SHIM_IS_UNSTABLE));
