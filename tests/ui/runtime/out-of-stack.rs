@@ -56,13 +56,10 @@ fn check_status(status: std::process::ExitStatus)
     use std::os::unix::process::ExitStatusExt;
 
     assert!(!status.success());
+    // Apple's libc has a bug where calling abort in a TLS destructor on a thread
+    // other than the main thread doesn't always result in SIGTRAP.
     #[cfg(not(target_vendor = "apple"))]
     assert_eq!(status.signal(), Some(libc::SIGABRT));
-
-    // Apple's libc has a bug where calling abort in a TLS destructor on a thread
-    // other than the main thread results in a SIGTRAP instead of a SIGABRT.
-    #[cfg(target_vendor = "apple")]
-    assert!(matches!(status.signal(), Some(libc::SIGABRT | libc::SIGTRAP)));
 }
 
 #[cfg(not(unix))]
