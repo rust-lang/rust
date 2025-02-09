@@ -9,6 +9,8 @@ use std::path::{Path, PathBuf};
 use std::{env, fs, iter};
 
 use clap_complete::shells;
+#[cfg(feature = "tracing")]
+use tracing::instrument;
 
 use crate::core::build_steps::compile::run_cargo;
 use crate::core::build_steps::doc::DocumentationFormat;
@@ -29,7 +31,7 @@ use crate::utils::helpers::{
     linker_flags, t, target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, DocTests, GitRepo, Mode, PathSet, envify};
+use crate::{CLang, DocTests, GitRepo, Mode, PathSet, debug, envify};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
 
@@ -355,50 +357,136 @@ impl Step for RustAnalyzer {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/rust-analyzer")
+        run.path("src/tools/rust-analyzer").alias("rust-analyzer")
     }
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Self { stage: run.builder.top_stage, host: run.target });
     }
 
-    /// Runs `cargo test` for rust-analyzer
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "debug",
+            name = "RustAnalyzer::run",
+            skip_all,
+            fields(stage = self.stage, host = ?self.host),
+        ),
+    )]
+    fn run(self, builder: &Builder<'_>) {
+        debug!(stage = self.stage, host = ?self.host, "ensuring compiler");
+        let compiler = builder.compiler(self.stage, self.host);
+
+        debug!(stage = self.stage, host = ?self.host, "ensuring std");
+        builder.ensure(compile::Rustc::new(compiler, self.host));
+
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolRustc,
+            self.host,
+            Kind::Test,
+            "src/tools/rust-analyzer",
+            SourceType::InTree,
+            &["in-rust-tree".to_owned()],
+        );
+        cargo.allow_features(tool::RustAnalyzer::ALLOW_FEATURES);
+
+        // RA's test suite tries to write to the source directory, that can't work in Rust CI.
+        cargo.env("SKIP_SLOW_TESTS", "1");
+
+        // NOTE: unlike `proc-macro-srv` step, we must **not** set `CARGO_WORKSPACE_DIR` because I
+        // believe `src/tools/rust-analyzer/.cargo/config.toml`'s relative `CARGO_WORKSPACE_DIR`
+        // takes effect,
+
+        cargo.add_rustc_lib_path(builder);
+        run_cargo_test(
+            cargo,
+            &[
+                // FIXME: may need a fix from https://github.com/rust-lang/rust-analyzer/pull/19124.
+                "--skip=config::tests::cargo_target_dir_subdir",
+            ],
+            &[],
+            "rust-analyzer",
+            "rust-analyzer",
+            self.host,
+            builder,
+        );
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RustAnalyzerProcMacroSrv {
+    stage: u32,
+    host: TargetSelection,
+}
+
+impl Step for RustAnalyzerProcMacroSrv {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/rust-analyzer/crates/proc-macro-srv").alias("rust-analyzer")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Self { stage: run.builder.top_stage, host: run.target });
+    }
+
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "debug",
+            name = "RustAnalyzerProcMacroSrv::run",
+            skip_all,
+            fields(stage = self.stage, host = ?self.host),
+        ),
+    )]
     fn run(self, builder: &Builder<'_>) {
         let stage = self.stage;
         let host = self.host;
+
+        debug!(stage, ?host, "ensuring compiler");
         let compiler = builder.compiler(stage, host);
 
         // We don't need to build the whole Rust Analyzer for the proc-macro-srv test suite,
         // but we do need the standard library to be present.
+        debug!(stage, ?compiler, "ensuring std");
         builder.ensure(compile::Rustc::new(compiler, host));
 
-        let workspace_path = "src/tools/rust-analyzer";
-        // until the whole RA test suite runs on `i686`, we only run
-        // `proc-macro-srv` tests
-        let crate_path = "src/tools/rust-analyzer/crates/proc-macro-srv";
+        debug!("running `cargo test` on `src/tools/rust-analyzer/crates/proc-macro-srv`");
+
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
             Mode::ToolRustc,
             host,
             Kind::Test,
-            crate_path,
+            "src/tools/rust-analyzer/crates/proc-macro-srv",
             SourceType::InTree,
             &["in-rust-tree".to_owned()],
         );
         cargo.allow_features(tool::RustAnalyzer::ALLOW_FEATURES);
 
-        let dir = builder.src.join(workspace_path);
-        // needed by rust-analyzer to find its own text fixtures, cf.
-        // https://github.com/rust-analyzer/expect-test/issues/33
+        let dir = builder.src.join("src/tools/rust-analyzer");
+        // Needed by rust-analyzer to find its own text fixtures, cf.
+        // https://github.com/rust-analyzer/expect-test/issues/33.
         cargo.env("CARGO_WORKSPACE_DIR", &dir);
 
-        // RA's test suite tries to write to the source directory, that can't
-        // work in Rust CI
+        // RA's test suite tries to write to the source directory, that can't work in Rust CI.
         cargo.env("SKIP_SLOW_TESTS", "1");
 
         cargo.add_rustc_lib_path(builder);
-        run_cargo_test(cargo, &[], &[], "rust-analyzer", "rust-analyzer", host, builder);
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "rust-analyzer/crates/proc-macro-srv",
+            "rust-analyzer proc-macro-srv",
+            host,
+            builder,
+        );
     }
 }
 
@@ -2623,14 +2711,14 @@ fn prepare_cargo_test(
         cargo.arg("--quiet");
     }
 
-    // The tests are going to run with the *target* libraries, so we need to
-    // ensure that those libraries show up in the LD_LIBRARY_PATH equivalent.
+    // The tests are going to run with the *target* libraries, so we need to ensure that those
+    // libraries show up in the LD_LIBRARY_PATH equivalent.
     //
-    // Note that to run the compiler we need to run with the *host* libraries,
-    // but our wrapper scripts arrange for that to be the case anyway.
+    // Note that to run the compiler we need to run with the *host* libraries, but our wrapper
+    // scripts arrange for that to be the case anyway.
     //
-    // We skip everything on Miri as then this overwrites the libdir set up
-    // by `Cargo::new` and that actually makes things go wrong.
+    // We skip everything on Miri as then this overwrites the libdir set up by `Cargo::new` and that
+    // actually makes things go wrong.
     if builder.kind != Kind::Miri {
         let mut dylib_path = dylib_path();
         dylib_path.insert(0, PathBuf::from(&*builder.sysroot_target_libdir(compiler, target)));

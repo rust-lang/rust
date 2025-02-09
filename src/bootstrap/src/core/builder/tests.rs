@@ -352,9 +352,9 @@ mod defaults {
         assert_eq!(
             first(cache.all::<compile::Assemble>()),
             &[
-                compile::Assemble { target_compiler: Compiler { host: a, stage: 0 } },
-                compile::Assemble { target_compiler: Compiler { host: a, stage: 1 } },
-                compile::Assemble { target_compiler: Compiler { host: b, stage: 1 } },
+                compile::Assemble { output_compiler: Compiler { host: a, stage: 0 } },
+                compile::Assemble { output_compiler: Compiler { host: a, stage: 1 } },
+                compile::Assemble { output_compiler: Compiler { host: b, stage: 1 } },
             ]
         );
         assert_eq!(
@@ -632,10 +632,10 @@ mod dist {
         assert_eq!(
             first(cache.all::<compile::Assemble>()),
             &[
-                compile::Assemble { target_compiler: Compiler { host: a, stage: 0 } },
-                compile::Assemble { target_compiler: Compiler { host: a, stage: 1 } },
-                compile::Assemble { target_compiler: Compiler { host: a, stage: 2 } },
-                compile::Assemble { target_compiler: Compiler { host: b, stage: 2 } },
+                compile::Assemble { output_compiler: Compiler { host: a, stage: 0 } },
+                compile::Assemble { output_compiler: Compiler { host: a, stage: 1 } },
+                compile::Assemble { output_compiler: Compiler { host: a, stage: 2 } },
+                compile::Assemble { output_compiler: Compiler { host: b, stage: 2 } },
             ]
         );
     }
@@ -713,9 +713,9 @@ mod dist {
         assert_eq!(
             first(builder.cache.all::<compile::Assemble>()),
             &[
-                compile::Assemble { target_compiler: Compiler { host: a, stage: 0 } },
-                compile::Assemble { target_compiler: Compiler { host: a, stage: 1 } },
-                compile::Assemble { target_compiler: Compiler { host: a, stage: 2 } },
+                compile::Assemble { output_compiler: Compiler { host: a, stage: 0 } },
+                compile::Assemble { output_compiler: Compiler { host: a, stage: 1 } },
+                compile::Assemble { output_compiler: Compiler { host: a, stage: 2 } },
             ]
         );
         assert_eq!(
