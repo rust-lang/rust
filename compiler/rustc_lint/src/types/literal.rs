@@ -250,12 +250,11 @@ fn lint_int_literal<'tcx>(
     lit: &hir::Lit,
     t: ty::IntTy,
     v: u128,
-    negated: bool,
 ) {
     let int_type = t.normalize(cx.sess().target.pointer_width);
     let (min, max) = int_ty_range(int_type);
     let max = max as u128;
-    let negative = negated ^ (type_limits.negated_expr_id == Some(hir_id));
+    let negative = type_limits.negated_expr_id == Some(hir_id);
 
     // Detect literal value out of range [min, max] inclusive
     // avoiding use of -min to prevent overflow/panic
@@ -374,7 +373,7 @@ pub(crate) fn lint_literal<'tcx>(
         ty::Int(t) => {
             match lit.node {
                 ast::LitKind::Int(v, ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed) => {
-                    lint_int_literal(cx, type_limits, hir_id, span, lit, t, v.get(), negated)
+                    lint_int_literal(cx, type_limits, hir_id, span, lit, t, v.get())
                 }
                 _ => bug!(),
             };

@@ -543,7 +543,11 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
         lit: &'tcx hir::Lit,
         negated: bool,
     ) {
-        lint_literal(cx, self, hir_id, lit.span, lit, negated)
+        if negated {
+            self.negated_expr_id = Some(hir_id);
+            self.negated_expr_span = Some(lit.span);
+        }
+        lint_literal(cx, self, hir_id, lit.span, lit, negated);
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
