@@ -108,3 +108,9 @@ macro_rules! stringify {
         /* compiler built-in */
     };
 }
+#[lang = "coerce_pointee_validated"]
+pub trait CoercePointeeValidated {
+    /* compiler built-in */
+    #[lang = "coerce_pointee_validated_pointee"]
+    type Pointee: ?Sized;
+}

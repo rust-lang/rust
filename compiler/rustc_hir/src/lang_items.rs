@@ -371,6 +371,7 @@ language_item_table! {
     PointerLike,             sym::pointer_like,        pointer_like,               Target::Trait,          GenericRequirement::Exact(0);
 
     CoercePointeeValidated, sym::coerce_pointee_validated, coerce_pointee_validated_trait, Target::Trait,     GenericRequirement::Exact(0);
+    CoercePointeeValidatedPointee, sym::coerce_pointee_validated_pointee, coerce_pointee_validated_pointee, Target::AssocTy, GenericRequirement::Exact(0);
 
     ConstParamTy,            sym::const_param_ty,      const_param_ty_trait,       Target::Trait,          GenericRequirement::Exact(0);
     UnsizedConstParamTy,     sym::unsized_const_param_ty, unsized_const_param_ty_trait, Target::Trait, GenericRequirement::Exact(0);

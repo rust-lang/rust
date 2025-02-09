@@ -2233,6 +2233,35 @@ pub struct DestructuredConst<'tcx> {
     pub fields: &'tcx [ty::Const<'tcx>],
 }
 
+/// Information collected on `CoercePointee` data for diagnostics and coherence checks
+#[derive(Clone, Copy, Debug, TyEncodable, TyDecodable, HashStable)]
+pub enum CoercePointeeInfo<'tcx> {
+    Validated {
+        pointee_index_in_args: usize,
+        /// The `DefId` of the implementation of `CoercePointeeValidated` trait
+        impl_def_id: DefId,
+    },
+    /// `#[pointee]` cannot be resolved to a specific type generic
+    PointeeUnnormalized {
+        ty: Ty<'tcx>,
+        impl_def_id: DefId,
+    },
+    /// `#[pointee]` is pointing to a const generic
+    PointeeIsConst {
+        konst: ty::Const<'tcx>,
+        impl_def_id: DefId,
+    },
+    /// Duplicated CoercePointee validation requests.
+    /// The case that probably hints at an internal compiler issue.
+    Duplicated {
+        impls: &'tcx [DefId],
+    },
+    PointeeNotFound {
+        ty: Ty<'tcx>,
+        impl_def_id: DefId,
+    },
+}
+
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {

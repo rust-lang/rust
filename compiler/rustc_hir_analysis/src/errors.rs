@@ -1217,6 +1217,37 @@ pub(crate) struct CoercePointeeNoField {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_pointee_multiple_targets, code = E0802)]
+pub(crate) struct CoercePointeeMultipleTargets {
+    #[primary_span]
+    pub spans: Vec<Span>,
+    pub diag_trait: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_pointee_no_pointee, code = E0802)]
+pub(crate) struct CoercePointeeNoPointee {
+    #[primary_span]
+    pub span: Span,
+    pub ty: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_pointee_no_generic_pointee, code = E0802)]
+pub(crate) struct CoercePointeePointeeNotGenericPointee {
+    #[primary_span]
+    pub span: Span,
+    pub got: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_pointee_multiple_derive, code = E0802)]
+pub(crate) struct CoercePointeePointeeMultipleDerive {
+    #[primary_span]
+    pub spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_inherent_ty_outside_relevant, code = E0390)]
 #[help]
 pub(crate) struct InherentTyOutsideRelevant {

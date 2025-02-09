@@ -18,6 +18,7 @@ struct MyPointer<'a, #[pointee] T: ?Sized> {
 #[automatically_derived]
 impl<'a, T: ?Sized> ::core::marker::CoercePointeeValidated for
     MyPointer<'a, T> {
+    type Pointee = T;
 }
 #[automatically_derived]
 impl<'a, T: ?Sized + ::core::marker::Unsize<__S>, __S: ?Sized>
@@ -38,6 +39,7 @@ pub struct MyPointer2<'a, Y, Z: MyTrait<T>, #[pointee] T: ?Sized + MyTrait<T>,
 impl<'a, Y, Z: MyTrait<T>, T: ?Sized + MyTrait<T>, X: MyTrait<T>>
     ::core::marker::CoercePointeeValidated for MyPointer2<'a, Y, Z, T, X>
     where Y: MyTrait<T> {
+    type Pointee = T;
 }
 #[automatically_derived]
 impl<'a, Y, Z: MyTrait<T> + MyTrait<__S>, T: ?Sized + MyTrait<T> +
@@ -59,6 +61,7 @@ struct MyPointerWithoutPointee<'a, T: ?Sized> {
 #[automatically_derived]
 impl<'a, T: ?Sized> ::core::marker::CoercePointeeValidated for
     MyPointerWithoutPointee<'a, T> {
+    type Pointee = T;
 }
 #[automatically_derived]
 impl<'a, T: ?Sized + ::core::marker::Unsize<__S>, __S: ?Sized>

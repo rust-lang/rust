@@ -85,7 +85,20 @@ hir_analysis_cmse_output_stack_spill =
     .note1 = functions with the `"{$abi_name}"` ABI must pass their result via the available return registers
     .note2 = the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
-hir_analysis_coerce_pointee_no_field = `CoercePointee` can only be derived on `struct`s with at least one field
+hir_analysis_coerce_pointee_multiple_derive = `derive(CoercePointee)` is derived multiple times
+    .label = another derivation originates from here
+
+hir_analysis_coerce_pointee_multiple_targets = `derive(CoercePointee)` only admits exactly one data field, {$diag_trait ->
+    [DispatchFromDyn] to which `dyn` methods shall be dispatched
+    *[CoerceUnsized] on which unsize coercion shall be performed
+    }
+
+hir_analysis_coerce_pointee_no_field = `CoercePointee` can only be derived on `struct`s with at least one field with a `pointee` type
+
+hir_analysis_coerce_pointee_no_generic_pointee = `CoercePointee` requires a `#[pointee]` generic type, but `{$got}` is designated as one
+
+hir_analysis_coerce_pointee_no_pointee = `CoercePointee` requires a `#[pointee]` generic type
+    .label = it was set to `{$ty}` but it is among the generic parameters
 
 hir_analysis_coerce_pointee_no_user_validity_assertion = asserting applicability of `derive(CoercePointee)` on a target data is forbidden
 

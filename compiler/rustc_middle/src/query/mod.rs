@@ -1096,6 +1096,10 @@ rustc_queries! {
         separate_provide_extern
         return_result_from_ensure_ok
     }
+    /// Caches `CoercePointee` data types
+    query coerce_pointee_data(key: ()) -> &'tcx DefIdMap<ty::CoercePointeeInfo<'tcx>> {
+        desc { |tcx| "computing CoercePointee data types" }
+    }
 
     query typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
         desc { |tcx| "type-checking `{}`", tcx.def_path_str(key) }

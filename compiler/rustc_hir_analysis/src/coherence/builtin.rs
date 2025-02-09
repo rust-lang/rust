@@ -1,30 +1,35 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
+mod diagnostics;
+
 use std::assert_matches::assert_matches;
 use std::collections::BTreeMap;
+use std::u32;
 
-use rustc_data_structures::fx::FxHashSet;
+use diagnostics::redact_fulfillment_err_for_coerce_pointee;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::ItemKind;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, DefIdMap, DefIdMapEntry, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{self, RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
+use rustc_middle::bug;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeVisitableExt, TypingMode, suggest_constraining_type_params,
 };
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::misc::{
     ConstParamTyImplementationError, CopyImplementationError, InfringingFieldsReason,
     type_allowed_to_implement_const_param_ty, type_allowed_to_implement_copy,
 };
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::errors;
 
@@ -187,10 +192,10 @@ fn visit_implementation_of_const_param_ty(
     }
 }
 
+#[instrument(level = "debug", skip(checker), fields(impl_did = ?checker.impl_def_id))]
 fn visit_implementation_of_coerce_unsized(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
     let tcx = checker.tcx;
     let impl_did = checker.impl_def_id;
-    debug!("visit_implementation_of_coerce_unsized: impl_did={:?}", impl_did);
 
     // Just compute this for the side-effects, in particular reporting
     // errors; other parts of the code may demand it for the info of
@@ -199,11 +204,11 @@ fn visit_implementation_of_coerce_unsized(checker: &Checker<'_>) -> Result<(), E
     tcx.at(span).ensure_ok().coerce_unsized_info(impl_did)
 }
 
+#[instrument(level = "debug", skip(checker), fields(impl_did = ?checker.impl_def_id))]
 fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
     let tcx = checker.tcx;
     let impl_did = checker.impl_def_id;
     let trait_ref = checker.impl_header.trait_ref.instantiate_identity();
-    debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}", impl_did);
 
     let span = tcx.def_span(impl_did);
 
@@ -216,18 +221,34 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
 
         trait_ref.args.type_at(1)
     };
+    let coerce_pointee_data = if let ty::Adt(def, source_args) = trait_ref.self_ty().kind()
+        && let ty::Adt(_, target_args) = target.kind()
+        && let Some(coerce_pointee_info) = tcx.coerce_pointee_data(()).get(&def.did())
+    {
+        let (pointee_idx, impl_def_id) =
+            try_extract_coerce_pointee_data(tcx, span, coerce_pointee_info)?;
 
-    debug!("visit_implementation_of_dispatch_from_dyn: {:?} -> {:?}", source, target);
+        let source_pointee_ty = source_args.type_at(pointee_idx);
+        let target_pointee_ty = target_args.type_at(pointee_idx);
+        Some((source_pointee_ty, target_pointee_ty, impl_def_id.expect_local()))
+    } else {
+        None
+    };
+
+    debug!("{:?} -> {:?}", source, target);
 
     let param_env = tcx.param_env(impl_did);
 
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
-    let cause = ObligationCause::misc(span, impl_did);
+    let cause = ObligationCause::misc(
+        span,
+        coerce_pointee_data.map_or(impl_did, |(_, _, impl_did)| impl_did),
+    );
 
     // Later parts of the compiler rely on all DispatchFromDyn types to be ABI-compatible with raw
     // pointers. This is enforced here: we only allow impls for references, raw pointers, and things
     // that are effectively repr(transparent) newtypes around types that already hav a
-    // DispatchedFromDyn impl. We cannot literally use repr(transparent) on those types since some
+    // DispatchFromDyn impl. We cannot literally use repr(transparent) on those types since some
     // of them support an allocator, but we ensure that for the cases where the type implements this
     // trait, they *do* satisfy the repr(transparent) rules, and then we assume that everything else
     // in the compiler (in particular, all the call ABI logic) will treat them as repr(transparent)
@@ -307,29 +328,39 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                 .collect::<Vec<_>>();
 
             if coerced_fields.is_empty() {
+                // `CoercePointeeValidated` will report a more specific error
                 res = Err(tcx.dcx().emit_err(errors::DispatchFromDynSingle {
                     span,
                     trait_name: "DispatchFromDyn",
                     note: true,
                 }));
             } else if coerced_fields.len() > 1 {
-                res = Err(tcx.dcx().emit_err(errors::DispatchFromDynMulti {
-                    span,
-                    coercions_note: true,
-                    number: coerced_fields.len(),
-                    coercions: coerced_fields
-                        .iter()
-                        .map(|field| {
-                            format!(
-                                "`{}` (`{}` to `{}`)",
-                                field.name,
-                                field.ty(tcx, args_a),
-                                field.ty(tcx, args_b),
-                            )
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                }));
+                if coerce_pointee_data.is_some() {
+                    let spans =
+                        coerced_fields.iter().map(|field| tcx.def_span(field.did)).collect();
+                    res = Err(tcx.dcx().emit_err(errors::CoercePointeeMultipleTargets {
+                        spans,
+                        diag_trait: "DispatchFromDyn",
+                    }));
+                } else {
+                    res = Err(tcx.dcx().emit_err(errors::DispatchFromDynMulti {
+                        span,
+                        coercions_note: true,
+                        number: coerced_fields.len(),
+                        coercions: coerced_fields
+                            .iter()
+                            .map(|field| {
+                                format!(
+                                    "`{}` (`{}` to `{}`)",
+                                    field.name,
+                                    field.ty(tcx, args_a),
+                                    field.ty(tcx, args_b),
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                    }));
+                }
             } else {
                 let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
                 for field in coerced_fields {
@@ -343,8 +374,29 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                         ]),
                     ));
                 }
-                let errors = ocx.select_all_or_error();
+                let mut errors = ocx.select_all_or_error();
                 if !errors.is_empty() {
+                    // Redact over `Unsize` bound errors if the origin of this impl is CoercePointee
+                    if let Some((source_pointee_ty, target_pointee_ty, _impl_did)) =
+                        coerce_pointee_data
+                    {
+                        let new_pointee_ty = Ty::new_param(
+                            tcx,
+                            u32::MAX,
+                            Symbol::intern(&format!("{source_pointee_ty} {{coerced}}")),
+                        );
+                        errors = errors
+                            .into_iter()
+                            .map(|err| {
+                                redact_fulfillment_err_for_coerce_pointee(
+                                    tcx,
+                                    err,
+                                    target_pointee_ty,
+                                    new_pointee_ty,
+                                )
+                            })
+                            .collect();
+                    }
                     res = Err(infcx.err_ctxt().report_fulfillment_errors(errors));
                 }
 
@@ -359,11 +411,11 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     }
 }
 
+#[instrument(level = "debug", skip(tcx))]
 pub(crate) fn coerce_unsized_info<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_did: LocalDefId,
 ) -> Result<CoerceUnsizedInfo, ErrorGuaranteed> {
-    debug!("compute_coerce_unsized_info(impl_did={:?})", impl_did);
     let span = tcx.def_span(impl_did);
 
     let coerce_unsized_trait = tcx.require_lang_item(LangItem::CoerceUnsized, Some(span));
@@ -374,12 +426,25 @@ pub(crate) fn coerce_unsized_info<'tcx>(
     let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().instantiate_identity();
     assert_eq!(trait_ref.def_id, coerce_unsized_trait);
     let target = trait_ref.args.type_at(1);
-    debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (bound)", source, target);
+    let coerce_pointee_data = if let ty::Adt(def, source_args) = trait_ref.self_ty().kind()
+        && let ty::Adt(_, target_args) = target.kind()
+        && let Some(coerce_pointee_info) = tcx.coerce_pointee_data(()).get(&def.did())
+    {
+        let (pointee_idx, impl_def_id) =
+            try_extract_coerce_pointee_data(tcx, span, coerce_pointee_info)?;
+
+        let source_pointee_ty = source_args.type_at(pointee_idx);
+        let target_pointee_ty = target_args.type_at(pointee_idx);
+        Some((def.did(), source_pointee_ty, target_pointee_ty, impl_def_id.expect_local()))
+    } else {
+        None
+    };
+    debug!("{:?} -> {:?} (bound)", source, target);
 
     let param_env = tcx.param_env(impl_did);
     assert!(!source.has_escaping_bound_vars());
 
-    debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (free)", source, target);
+    debug!("{:?} -> {:?} (free)", source, target);
 
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let cause = ObligationCause::misc(span, impl_did);
@@ -508,12 +573,30 @@ pub(crate) fn coerce_unsized_info<'tcx>(
                 .collect::<Vec<_>>();
 
             if diff_fields.is_empty() {
-                return Err(tcx.dcx().emit_err(errors::CoerceUnsizedOneField {
-                    span,
-                    trait_name: "CoerceUnsized",
-                    note: true,
-                }));
+                if let Some((did, _source_ty, _target_ty, _impl_did)) = coerce_pointee_data {
+                    // This is the case when `pointee` is not used in *one* data field
+                    return Err(tcx
+                        .dcx()
+                        .emit_err(errors::CoercePointeeNoField { span: tcx.def_span(did) }));
+                } else {
+                    return Err(tcx.dcx().emit_err(errors::CoerceUnsizedOneField {
+                        span,
+                        trait_name: "CoerceUnsized",
+                        note: true,
+                    }));
+                }
             } else if diff_fields.len() > 1 {
+                if coerce_pointee_data.is_some() {
+                    let spans = diff_fields
+                        .iter()
+                        .map(|&(idx, _, _)| tcx.def_span(fields[idx].did))
+                        .collect();
+                    return Err(tcx.dcx().emit_err(errors::CoercePointeeMultipleTargets {
+                        spans,
+                        diag_trait: "CoerceUnsized",
+                    }));
+                }
+
                 let item = tcx.hir().expect_item(impl_did);
                 let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(t), .. }) = &item.kind {
                     t.path.span
@@ -545,9 +628,15 @@ pub(crate) fn coerce_unsized_info<'tcx>(
         }
     };
 
-    // Register an obligation for `A: Trait<B>`.
+    // Register an obligation for `A: Trait<B>` where
+    // - `A` is the source
+    // - `B` is the target
+    // - `Trait` is either `Unsize` or `CoerceUnsized` itself again
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-    let cause = traits::ObligationCause::misc(span, impl_did);
+    let cause = ObligationCause::misc(
+        span,
+        coerce_pointee_data.map_or(impl_did, |(_, _, _, impl_did)| impl_did),
+    );
     let obligation = Obligation::new(
         tcx,
         cause,
@@ -555,8 +644,26 @@ pub(crate) fn coerce_unsized_info<'tcx>(
         ty::TraitRef::new(tcx, trait_def_id, [source, target]),
     );
     ocx.register_obligation(obligation);
-    let errors = ocx.select_all_or_error();
+    let mut errors = ocx.select_all_or_error();
     if !errors.is_empty() {
+        if let Some((_did, source_pointee_ty, target_pointee_ty, _impl_did)) = coerce_pointee_data {
+            let new_pointee_ty = Ty::new_param(
+                tcx,
+                u32::MAX,
+                Symbol::intern(&format!("{source_pointee_ty} {{coerced}}")),
+            );
+            errors = errors
+                .into_iter()
+                .map(|err| {
+                    redact_fulfillment_err_for_coerce_pointee(
+                        tcx,
+                        err,
+                        target_pointee_ty,
+                        new_pointee_ty,
+                    )
+                })
+                .collect();
+        }
         infcx.err_ctxt().report_fulfillment_errors(errors);
     }
 
@@ -800,6 +907,14 @@ fn visit_implementation_of_coerce_pointee_validity(
         return Err(tcx.dcx().emit_err(errors::CoercePointeeNotConcreteType { span }));
     };
     let did = def.did();
+    let Some(info) = tcx.coerce_pointee_data(()).get(&did) else {
+        return Err(tcx.dcx().emit_err(errors::CoercePointeeNoUserValidityAssertion { span }));
+    };
+    if let &ty::CoercePointeeInfo::Duplicated { impls } = info {
+        return Err(tcx.dcx().emit_err(errors::CoercePointeePointeeMultipleDerive {
+            spans: impls.iter().copied().map(|did| tcx.def_span(did)).collect(),
+        }));
+    }
     // Now get a more precise span of the `struct`.
     let span = tcx.def_span(did);
     if !def.is_struct() {
@@ -814,4 +929,115 @@ fn visit_implementation_of_coerce_pointee_validity(
         return Err(tcx.dcx().emit_err(errors::CoercePointeeNoField { span }));
     }
     Ok(())
+}
+
+fn try_extract_coerce_pointee_data<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    span: Span,
+    info: &ty::CoercePointeeInfo<'tcx>,
+) -> Result<(usize, DefId), ErrorGuaranteed> {
+    match info {
+        ty::CoercePointeeInfo::PointeeUnnormalized { ty, .. } => Err(tcx
+            .dcx()
+            .emit_err(errors::CoercePointeePointeeNotGenericPointee { span, got: ty.to_string() })),
+        ty::CoercePointeeInfo::PointeeIsConst { konst, .. } => {
+            Err(tcx.dcx().emit_err(errors::CoercePointeePointeeNotGenericPointee {
+                span,
+                got: konst.to_string(),
+            }))
+        }
+        ty::CoercePointeeInfo::Validated { pointee_index_in_args, impl_def_id } => {
+            Ok((*pointee_index_in_args, *impl_def_id))
+        }
+        ty::CoercePointeeInfo::Duplicated { .. } => Err(tcx
+            .dcx()
+            .span_delayed_bug(span, "a special error for duplicated CoercePointee is expected")),
+        ty::CoercePointeeInfo::PointeeNotFound { ty, .. } => {
+            Err(tcx.dcx().emit_err(errors::CoercePointeeNoPointee { span, ty: ty.to_string() }))
+        }
+    }
+}
+
+#[instrument(level = "debug", skip(tcx))]
+pub(super) fn coerce_pointee_data<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    _: (),
+) -> &'tcx DefIdMap<ty::CoercePointeeInfo<'tcx>> {
+    let mut infos: DefIdMap<ty::CoercePointeeInfo<'tcx>> = <_>::default();
+    let mut dups: FxIndexMap<DefId, Vec<DefId>> = <_>::default();
+    let coerce_pointee_validated = tcx.require_lang_item(LangItem::CoercePointeeValidated, None);
+    let coerce_pointee_validated_pointee =
+        tcx.require_lang_item(LangItem::CoercePointeeValidatedPointee, None);
+    'impls: for impl_did in tcx.all_impls(coerce_pointee_validated) {
+        let ty = tcx.impl_trait_ref(impl_did).unwrap().instantiate_identity().self_ty();
+        let ty::Adt(def, struct_args) = ty.kind() else { continue };
+        let did = def.did();
+        let mut insert_once = |info| {
+            fn extract_impl_did(info: &ty::CoercePointeeInfo<'_>) -> DefId {
+                use ty::CoercePointeeInfo::*;
+                match info {
+                    PointeeIsConst { impl_def_id, .. }
+                    | PointeeNotFound { impl_def_id, .. }
+                    | PointeeUnnormalized { impl_def_id, .. }
+                    | Validated { impl_def_id, .. } => *impl_def_id,
+                    Duplicated { .. } => {
+                        bug!("we shouldn't report duplicates yet")
+                    }
+                }
+            }
+            if dups.contains_key(&did) {
+                dups.entry(did).or_default().push(impl_did)
+            } else {
+                match infos.entry(did) {
+                    DefIdMapEntry::Occupied(entry) => {
+                        let one_impl_did = extract_impl_did(&info);
+                        let another_impl_did = extract_impl_did(&entry.remove());
+                        dups.insert(did, vec![one_impl_did, another_impl_did]);
+                    }
+                    DefIdMapEntry::Vacant(entry) => {
+                        entry.insert(info);
+                    }
+                }
+            }
+        };
+
+        let pointee = match tcx.try_normalize_erasing_regions(
+            ty::TypingEnv::non_body_analysis(tcx, did),
+            Ty::new_projection(tcx, coerce_pointee_validated_pointee, [ty]),
+        ) {
+            Ok(ty) => ty,
+            Err(ty::normalize_erasing_regions::NormalizationError::Type(ty)) => {
+                insert_once(ty::CoercePointeeInfo::PointeeUnnormalized {
+                    ty,
+                    impl_def_id: impl_did,
+                });
+                continue;
+            }
+            Err(ty::normalize_erasing_regions::NormalizationError::Const(konst)) => {
+                insert_once(ty::CoercePointeeInfo::PointeeIsConst { konst, impl_def_id: impl_did });
+                continue;
+            }
+        };
+        for (idx, arg) in struct_args.iter().enumerate() {
+            if let Some(arg) = arg.as_type()
+                && arg == pointee
+            {
+                insert_once(ty::CoercePointeeInfo::Validated {
+                    pointee_index_in_args: idx,
+                    impl_def_id: impl_did,
+                });
+                continue 'impls;
+            }
+        }
+        debug!(?struct_args, ?pointee, "pointee not found");
+        insert_once(ty::CoercePointeeInfo::PointeeNotFound { ty: pointee, impl_def_id: impl_did });
+    }
+
+    for (did, impls) in dups {
+        infos.insert(did, ty::CoercePointeeInfo::Duplicated {
+            impls: tcx.arena.alloc_from_iter(impls),
+        });
+    }
+
+    tcx.arena.alloc(infos)
 }

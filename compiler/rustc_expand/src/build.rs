@@ -682,6 +682,28 @@ impl<'a> ExtCtxt<'a> {
         })
     }
 
+    pub fn assoc_item(
+        &self,
+        span: Span,
+        name: Ident,
+        attrs: ast::AttrVec,
+        kind: ast::AssocItemKind,
+    ) -> P<ast::AssocItem> {
+        P(ast::Item {
+            ident: name,
+            attrs,
+            id: ast::DUMMY_NODE_ID,
+            kind,
+            vis: ast::Visibility {
+                span: span.shrink_to_lo(),
+                kind: ast::VisibilityKind::Inherited,
+                tokens: None,
+            },
+            span,
+            tokens: None,
+        })
+    }
+
     pub fn item_static(
         &self,
         span: Span,
