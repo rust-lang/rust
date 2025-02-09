@@ -3,6 +3,7 @@
 use std::cell::Cell;
 use std::mem;
 
+use rustc_ast as ast;
 use rustc_ast::NodeId;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
@@ -140,6 +141,57 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub(crate) struct OnUnknownItemData {
+    pub(crate) message: Option<String>,
+    pub(crate) label: Option<String>,
+    pub(crate) notes: Option<Vec<String>>,
+}
+
+impl OnUnknownItemData {
+    pub(crate) fn from_attrs(attrs: &[ast::Attribute]) -> Option<OnUnknownItemData> {
+        // the attribute syntax is checked in the check_attr
+        // ast pass, so we just consume any valid
+        // options here and ignore everything else
+        let mut out = OnUnknownItemData::default();
+        for attr in
+            attrs.iter().filter(|a| a.path_matches(&[sym::diagnostic, sym::on_unknown_item]))
+        {
+            if let Some(meta) = attr.meta_item_list() {
+                for item in meta {
+                    if item.has_name(sym::message) {
+                        if out.message.is_none()
+                            && let Some(message) = item.value_str()
+                        {
+                            out.message = Some(message.as_str().to_owned());
+                        }
+                    } else if item.has_name(sym::label) {
+                        if out.label.is_none()
+                            && let Some(label) = item.value_str()
+                        {
+                            out.label = Some(label.as_str().to_owned());
+                        }
+                    } else if item.has_name(sym::note) {
+                        if let Some(note) = item.value_str() {
+                            out.notes = Some(out.notes.unwrap_or_default());
+                            out.notes
+                                .as_mut()
+                                .expect("We initialized it above")
+                                .push(note.as_str().to_owned());
+                        }
+                    }
+                }
+            }
+        }
+
+        if out.message.is_none() && out.label.is_none() && out.notes.is_none() {
+            None
+        } else {
+            Some(out)
+        }
+    }
+}
+
 /// One import.
 #[derive(Debug, Clone)]
 pub(crate) struct ImportData<'ra> {
@@ -176,6 +228,8 @@ pub(crate) struct ImportData<'ra> {
     /// The resolution of `module_path`.
     pub imported_module: Cell<Option<ModuleOrUniformRoot<'ra>>>,
     pub vis: ty::Visibility,
+
+    pub on_unknown_item_attr: Option<OnUnknownItemData>,
 }
 
 /// All imports are unique and allocated on a same arena,
@@ -251,6 +305,7 @@ struct UnresolvedImportError {
     segment: Option<Symbol>,
     /// comes from `PathRes::Failed { module }`
     module: Option<DefId>,
+    on_unknown_item_attr: Option<OnUnknownItemData>,
 }
 
 // Reexports of the form `pub use foo as bar;` where `foo` is `extern crate foo;`
@@ -589,6 +644,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     candidates: None,
                     segment: None,
                     module: None,
+                    on_unknown_item_attr: import.on_unknown_item_attr.clone(),
                 };
                 errors.push((*import, err))
             }
@@ -693,16 +749,34 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 format!("`{path}`")
             })
             .collect::<Vec<_>>();
-        let msg = format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
+        let msg = if errors.len() == 1
+            && let Some(message) =
+                errors[0].1.on_unknown_item_attr.as_mut().and_then(|a| a.message.take())
+        {
+            message
+        } else {
+            format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),)
+        };
 
         let mut diag = struct_span_code_err!(self.dcx(), span, E0432, "{msg}");
 
-        if let Some((_, UnresolvedImportError { note: Some(note), .. })) = errors.iter().last() {
+        if errors.len() == 1
+            && let Some(notes) =
+                errors[0].1.on_unknown_item_attr.as_mut().and_then(|a| a.notes.take())
+        {
+            for note in notes {
+                diag.note(note);
+            }
+        } else if let Some((_, UnresolvedImportError { note: Some(note), .. })) =
+            errors.iter().last()
+        {
             diag.note(note.clone());
         }
 
-        for (import, err) in errors.into_iter().take(MAX_LABEL_COUNT) {
-            if let Some(label) = err.label {
+        for (import, mut err) in errors.into_iter().take(MAX_LABEL_COUNT) {
+            if let Some(label) =
+                err.on_unknown_item_attr.as_mut().and_then(|a| a.label.take()).or(err.label)
+            {
                 diag.span_label(err.span, label);
             }
 
@@ -956,6 +1030,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             candidates: None,
                             segment: Some(segment_name),
                             module,
+                            on_unknown_item_attr: import.on_unknown_item_attr.clone(),
                         },
                         None => UnresolvedImportError {
                             span,
@@ -965,6 +1040,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             candidates: None,
                             segment: Some(segment_name),
                             module,
+                            on_unknown_item_attr: import.on_unknown_item_attr.clone(),
                         },
                     };
                     return Some(err);
@@ -1014,6 +1090,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             candidates: None,
                             segment: None,
                             module: None,
+                            on_unknown_item_attr: import.on_unknown_item_attr.clone(),
                         });
                     }
                     if !is_prelude
@@ -1229,6 +1306,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                     }),
                     segment: Some(ident.name),
+                    on_unknown_item_attr: import.on_unknown_item_attr.clone(),
                 })
             } else {
                 // `resolve_ident_in_module` reported a privacy error.

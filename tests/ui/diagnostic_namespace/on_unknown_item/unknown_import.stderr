@@ -1,0 +1,12 @@
+error[E0432]: first message
+  --> $DIR/unknown_import.rs:11:5
+   |
+LL | use foo::Foo;
+   |     ^^^^^^^^ first label
+   |
+   = note: custom note
+   = note: custom note 2
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

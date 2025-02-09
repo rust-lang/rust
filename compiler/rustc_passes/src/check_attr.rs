@@ -44,6 +44,38 @@ use crate::{errors, fluent_generated as fluent};
 #[diag(passes_diagnostic_diagnostic_on_unimplemented_only_for_traits)]
 struct DiagnosticOnUnimplementedOnlyForTraits;
 
+#[derive(LintDiagnostic)]
+#[diag(passes_diagnostic_diagnostic_on_unknown_item_only_for_imports)]
+struct DiagnosticOnUnknownItemOnlyForImports;
+
+#[derive(LintDiagnostic)]
+#[diag(passes_malformed_on_unknown_item_attr)]
+#[help]
+pub(crate) struct MalformedOnUnknownItemAttr {
+    #[label]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(passes_unknown_option_for_on_unknown_item)]
+#[help]
+pub(crate) struct UnknownOptionForOnUnknownItemAttr {
+    pub option_name: String,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(passes_ignored_diagnostic_option)]
+#[help]
+pub(crate) struct IgnoredDiagnositcOption {
+    pub option_name: &'static str,
+    #[label]
+    pub span: Span,
+    #[label(passes_other_label)]
+    pub prev_span: Span,
+}
+
 fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
@@ -119,6 +151,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 [sym::diagnostic, sym::on_unimplemented, ..] => {
                     self.check_diagnostic_on_unimplemented(attr.span, hir_id, target)
+                }
+                [sym::diagnostic, sym::on_unknown_item, ..] => {
+                    self.check_diagnostic_on_unknown_item(attr.span, hir_id, target, attr)
                 }
                 [sym::inline, ..] => self.check_inline(hir_id, attr, span, target),
                 [sym::coverage, ..] => self.check_coverage(attr, span, target),
@@ -389,6 +424,78 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 hir_id,
                 attr_span,
                 DiagnosticOnUnimplementedOnlyForTraits,
+            );
+        }
+    }
+
+    /// Checks if `#[diagnostic::on_unknown_item]` is applied to an import definition
+    fn check_diagnostic_on_unknown_item(
+        &self,
+        attr_span: Span,
+        hir_id: HirId,
+        target: Target,
+        attr: &Attribute,
+    ) {
+        if !matches!(target, Target::Use) {
+            self.tcx.emit_node_span_lint(
+                UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                hir_id,
+                attr_span,
+                DiagnosticOnUnknownItemOnlyForImports,
+            );
+        }
+        if let Some(meta) = attr.meta_item_list() {
+            let mut message = None;
+            let mut label = None;
+            for item in meta {
+                if item.has_name(sym::message) {
+                    if let Some(message_span) = message {
+                        self.tcx.emit_node_span_lint(
+                            UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                            hir_id,
+                            item.span(),
+                            IgnoredDiagnositcOption {
+                                option_name: "message",
+                                span: item.span(),
+                                prev_span: message_span,
+                            },
+                        );
+                    }
+                    message = Some(item.span());
+                } else if item.has_name(sym::label) {
+                    if let Some(label_span) = label {
+                        self.tcx.emit_node_span_lint(
+                            UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                            hir_id,
+                            item.span(),
+                            IgnoredDiagnositcOption {
+                                option_name: "label",
+                                span: item.span(),
+                                prev_span: label_span,
+                            },
+                        );
+                    }
+                    label = Some(item.span());
+                } else if item.has_name(sym::note) {
+                    // accept any number of notes
+                } else {
+                    self.tcx.emit_node_span_lint(
+                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        hir_id,
+                        item.span(),
+                        UnknownOptionForOnUnknownItemAttr {
+                            option_name: item.name_or_empty().to_string(),
+                            span: item.span(),
+                        },
+                    );
+                }
+            }
+        } else {
+            self.tcx.emit_node_span_lint(
+                UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                hir_id,
+                attr_span,
+                MalformedOnUnknownItemAttr { span: attr_span },
             );
         }
     }

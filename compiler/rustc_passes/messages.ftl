@@ -152,6 +152,9 @@ passes_deprecated_attribute =
 passes_diagnostic_diagnostic_on_unimplemented_only_for_traits =
     `#[diagnostic::on_unimplemented]` can only be applied to trait definitions
 
+passes_diagnostic_diagnostic_on_unknown_item_only_for_imports =
+    `#[diagnostic::on_unknown_item]` can only be applied to `use` statements
+
 passes_diagnostic_item_first_defined =
     the diagnostic item is first defined here
 
@@ -356,6 +359,11 @@ passes_ignored_derived_impls =
      *[other] traits {$trait_list}, but these are
     } intentionally ignored during dead code analysis
 
+passes_ignored_diagnostic_option = `{$option_name}` is ignored due to previous definition of `{$option_name}`
+    .other_label = `{$option_name}` is first declared here
+    .label = `{$option_name}` is already declared here
+    .help = consider removing the second `{$option_name}` as it is ignored anyway
+
 passes_implied_feature_not_exist =
     feature `{$implied_by}` implying `{$feature}` does not exist
 
@@ -473,6 +481,11 @@ passes_macro_export_on_decl_macro =
 
 passes_macro_use =
     `#[{$name}]` only has an effect on `extern crate` and modules
+
+passes_malformed_on_unknown_item_attr =
+    malformed `#[diagnostic::on_unknown_item]` attribute
+    .label = the `#[diagnostic::on_unknown_item]` attribute expects at least one option
+    .help = at least one of the following options is required: `message`, `label` or `note`
 
 passes_may_dangle =
     `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
@@ -751,6 +764,11 @@ passes_unknown_feature =
 passes_unknown_lang_item =
     definition of an unknown lang item: `{$name}`
     .label = definition of unknown lang item `{$name}`
+
+passes_unknown_option_for_on_unknown_item =
+    unknown `{$option_name}` option for `#[diagnostic::on_unknown_item]` attribute
+    .help = only `message`, `note` and `label` are allowed as options
+    .label = invalid option found here
 
 passes_unlabeled_cf_in_while_condition =
     `break` or `continue` with no label in the condition of a `while` loop

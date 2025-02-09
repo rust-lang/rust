@@ -1431,6 +1431,7 @@ symbols! {
         omit_gdb_pretty_printer_section,
         on,
         on_unimplemented,
+        on_unknown_item,
         opaque,
         opaque_module_name_placeholder: "<opaque>",
         open_options_new,

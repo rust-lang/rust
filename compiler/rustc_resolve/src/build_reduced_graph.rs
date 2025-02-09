@@ -28,7 +28,7 @@ use tracing::debug;
 
 use crate::Namespace::{MacroNS, TypeNS, ValueNS};
 use crate::def_collector::collect_definitions;
-use crate::imports::{ImportData, ImportKind};
+use crate::imports::{ImportData, ImportKind, OnUnknownItemData};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use crate::{
     BindingKey, Determinacy, ExternPreludeEntry, Finalize, MacroData, Module, ModuleKind,
@@ -446,6 +446,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             root_span,
             root_id,
             vis,
+            on_unknown_item_attr: OnUnknownItemData::from_attrs(&item.attrs),
         });
 
         self.r.indeterminate_imports.push(import);
@@ -939,6 +940,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             span: item.span,
             module_path: Vec::new(),
             vis,
+            on_unknown_item_attr: OnUnknownItemData::from_attrs(&item.attrs),
         });
         if used {
             self.r.import_use_map.insert(import, Used::Other);
@@ -1071,7 +1073,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
         }
 
-        let macro_use_import = |this: &Self, span, warn_private| {
+        let macro_use_import = |this: &mut Self, span, warn_private| {
             this.r.arenas.alloc_import(ImportData {
                 kind: ImportKind::MacroUse { warn_private },
                 root_id: item.id,
@@ -1084,6 +1086,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 span,
                 module_path: Vec::new(),
                 vis: ty::Visibility::Restricted(CRATE_DEF_ID),
+                on_unknown_item_attr: OnUnknownItemData::from_attrs(&item.attrs),
             })
         };
 
@@ -1252,6 +1255,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     span,
                     module_path: Vec::new(),
                     vis,
+                    on_unknown_item_attr: OnUnknownItemData::from_attrs(&item.attrs),
                 });
                 self.r.import_use_map.insert(import, Used::Other);
                 let import_binding = self.r.import(binding, import);
