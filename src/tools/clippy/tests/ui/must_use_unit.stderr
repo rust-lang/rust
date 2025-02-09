@@ -25,23 +25,5 @@ LL | #[must_use = "With note"]
 LL | pub fn must_use_with_note() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-[Unparsed(AttrItem { path: AttrPath { segments: [must_use#0], span: tests/ui/must_use_unit.rs:30:19: 30:27 (#0) }, args: Empty, id: HashIgnoredAttrId { attr_id: AttrId(9) }, style: Outer, span: tests/ui/must_use_unit.rs:30:19: 30:27 (#0) }), Parsed(Deprecation { deprecation: Deprecation { since: Unspecified, note: None, suggestion: None }, span: tests/ui/must_use_unit.rs:30:29: 30:39 (#0) })]
-error: this unit-returning function has a `#[must_use]` attribute
-  --> tests/ui/must_use_unit.rs:31:1
-   |
-LL | #[cfg_attr(all(), must_use, deprecated)]
-   |                   -------------------- help: change these attributes to
-LL | fn issue_12320() {}
-   | ^^^^^^^^^^^^^^^^
-
-[Unparsed(AttrItem { path: AttrPath { segments: [doc#0], span: tests/ui/must_use_unit.rs:33:31: 33:34 (#0) }, args: Eq { eq_span: tests/ui/must_use_unit.rs:33:35: 33:36 (#0), expr: MetaItemLit { symbol: "foo", suffix: None, kind: Str("foo", Cooked), span: tests/ui/must_use_unit.rs:33:37: 33:42 (#0) } }, id: HashIgnoredAttrId { attr_id: AttrId(12) }, style: Outer, span: tests/ui/must_use_unit.rs:33:31: 33:42 (#0) }), Unparsed(AttrItem { path: AttrPath { segments: [must_use#0], span: tests/ui/must_use_unit.rs:33:44: 33:52 (#0) }, args: Empty, id: HashIgnoredAttrId { attr_id: AttrId(13) }, style: Outer, span: tests/ui/must_use_unit.rs:33:44: 33:52 (#0) }), Parsed(Deprecation { deprecation: Deprecation { since: Unspecified, note: None, suggestion: None }, span: tests/ui/must_use_unit.rs:33:19: 33:29 (#0) })]
-error: this unit-returning function has a `#[must_use]` attribute
-  --> tests/ui/must_use_unit.rs:34:1
-   |
-LL | #[cfg_attr(all(), deprecated, doc = "foo", must_use)]
-   |                             -- help: change these attributes to: `doc = "foo",`
-LL | fn issue_12320_2() {}
-   | ^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 
