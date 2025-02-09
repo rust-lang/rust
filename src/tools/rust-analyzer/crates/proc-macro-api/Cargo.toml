@@ -29,5 +29,9 @@ span = { path = "../span", version = "0.0.0", default-features = false}
 
 intern.workspace = true
 
+[features]
+default = []
+in-rust-tree = []
+
 [lints]
 workspace = true
