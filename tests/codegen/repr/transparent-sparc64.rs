@@ -1,4 +1,4 @@
-//@ compile-flags: -O -C no-prepopulate-passes --target sparc64-unknown-linux-gnu
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes --target sparc64-unknown-linux-gnu
 //@ needs-llvm-components: sparc
 
 // See ./transparent.rs

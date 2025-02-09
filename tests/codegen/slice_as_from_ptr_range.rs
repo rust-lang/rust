@@ -1,4 +1,4 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@ only-64bit (because we're using [ui]size)
 
 #![crate_type = "lib"]
