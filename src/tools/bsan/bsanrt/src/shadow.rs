@@ -145,6 +145,17 @@ impl<T: Provenance> DerefMut for ShadowHeap<T> {
     }
 }
 
+impl ShadowHeap<T: Provenance> {
+    unsafe fn malloc(&mut self, ptr: *mut u8, size: usize) {
+        if size == 0 { return }
+        let (l1_addr, l2_addr) = table_indices(ptr);
+        let l2 = match self.l1.lookup_mut(l1_addr) {
+            None =>&mut L2<T>{}, // if there is no valid L2, it will initialize
+            Some(x) => x,
+        };
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
