@@ -18,7 +18,7 @@ use crate::ops::{
 };
 use crate::ptr::{null, null_mut};
 use crate::random::{Random, RandomSource};
-use crate::slice::{Iter, IterMut};
+use crate::slice::{self, Iter, IterMut};
 
 mod ascii;
 mod drain;
@@ -429,10 +429,44 @@ impl<T: Clone, const N: usize> Clone for [T; N] {
 
 #[unstable(feature = "random", issue = "130703")]
 impl<T: Random, const N: usize> Random for [T; N] {
-    fn random(source: &mut (impl RandomSource + ?Sized)) -> Self {
+    default fn random(source: &mut (impl RandomSource + ?Sized)) -> Self {
         from_fn(|_| T::random(source))
     }
 }
+
+macro_rules! impl_random_for_integer_array {
+    ($t:ty) => {
+        #[unstable(feature = "random", issue = "130703")]
+        impl<const N: usize> Random for [$t; N] {
+            fn random(source: &mut (impl RandomSource + ?Sized)) -> Self {
+                let mut buf = [const { MaybeUninit::<$t>::uninit() }; N];
+                // SAFETY: all elements in the buffer were initialized with
+                // random bytes.
+                unsafe {
+                    let bytes = slice::from_raw_parts_mut(
+                        &raw mut buf as *mut u8,
+                        N * (<$t>::BITS as usize / 8),
+                    );
+                    source.fill_bytes(bytes);
+                    mem::transmute_copy(&buf)
+                }
+            }
+        }
+    };
+}
+
+impl_random_for_integer_array!(u8);
+impl_random_for_integer_array!(u16);
+impl_random_for_integer_array!(u32);
+impl_random_for_integer_array!(u64);
+impl_random_for_integer_array!(u128);
+impl_random_for_integer_array!(usize);
+impl_random_for_integer_array!(i8);
+impl_random_for_integer_array!(i16);
+impl_random_for_integer_array!(i32);
+impl_random_for_integer_array!(i64);
+impl_random_for_integer_array!(i128);
+impl_random_for_integer_array!(isize);
 
 trait SpecArrayClone: Clone {
     fn clone<const N: usize>(array: &[Self; N]) -> [Self; N];
