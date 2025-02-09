@@ -43,9 +43,14 @@ fn main() {
         None => None,
     };
 
-    // Lint. `s` is captured by reference, so no lifetime issues.
     let s = Some(String::new());
+    // Lint. `s` is captured by reference, so no lifetime issues.
     let _ = match &s {
+        Some(x) => Some({ if let Some(ref s) = s { (x.clone(), s) } else { panic!() } }),
+        None => None,
+    };
+    // Don't lint this, type of `s` is coercioned from `&String` to `&str`
+    let x: Option<(String, &str)> = match &s {
         Some(x) => Some({ if let Some(ref s) = s { (x.clone(), s) } else { panic!() } }),
         None => None,
     };
@@ -68,4 +73,96 @@ fn main() {
         Some(x) => Some(unsafe { f(x) }),
         None => None,
     };
+}
+
+// issue #12659
+mod with_type_coercion {
+    trait DummyTrait {}
+
+    fn foo<T: DummyTrait, F: Fn() -> Result<T, ()>>(f: F) {
+        // Don't lint
+        let _: Option<Result<Box<dyn DummyTrait>, ()>> = match Some(0) {
+            Some(_) => Some(match f() {
+                Ok(res) => Ok(Box::new(res)),
+                _ => Err(()),
+            }),
+            None => None,
+        };
+
+        let _: Option<Box<&[u8]>> = match Some(()) {
+            Some(_) => Some(Box::new(b"1234")),
+            None => None,
+        };
+
+        let x = String::new();
+        let _: Option<Box<&str>> = match Some(()) {
+            Some(_) => Some(Box::new(&x)),
+            None => None,
+        };
+
+        let _: Option<&str> = match Some(()) {
+            Some(_) => Some(&x),
+            None => None,
+        };
+
+        //~v ERROR: manual implementation of `Option::map`
+        let _ = match Some(0) {
+            Some(_) => Some(match f() {
+                Ok(res) => Ok(Box::new(res)),
+                _ => Err(()),
+            }),
+            None => None,
+        };
+    }
+
+    #[allow(clippy::redundant_allocation)]
+    fn bar() {
+        fn f(_: Option<Box<&[u8]>>) {}
+        fn g(b: &[u8]) -> Box<&[u8]> {
+            Box::new(b)
+        }
+
+        let x: &[u8; 4] = b"1234";
+        f(match Some(()) {
+            Some(_) => Some(Box::new(x)),
+            None => None,
+        });
+
+        //~v ERROR: manual implementation of `Option::map`
+        let _: Option<Box<&[u8]>> = match Some(0) {
+            Some(_) => Some(g(x)),
+            None => None,
+        };
+    }
+
+    fn with_fn_ret(s: &Option<String>) -> Option<(String, &str)> {
+        // Don't lint, `map` doesn't work as the return type is adjusted.
+        match s {
+            Some(x) => Some({ if let Some(ref s) = s { (x.clone(), s) } else { panic!() } }),
+            None => None,
+        }
+    }
+
+    fn with_fn_ret_2(s: &Option<String>) -> Option<(String, &str)> {
+        if true {
+            // Don't lint, `map` doesn't work as the return type is adjusted.
+            return match s {
+                Some(x) => Some({ if let Some(ref s) = s { (x.clone(), s) } else { panic!() } }),
+                None => None,
+            };
+        }
+        None
+    }
+
+    #[allow(clippy::needless_late_init)]
+    fn with_fn_ret_3<'a>(s: &'a Option<String>) -> Option<(String, &'a str)> {
+        let x: Option<(String, &'a str)>;
+        x = {
+            match s {
+                Some(x) => Some({ if let Some(ref s) = s { (x.clone(), s) } else { panic!() } }),
+                None => None,
+            }
+        };
+        x
+    }
 }

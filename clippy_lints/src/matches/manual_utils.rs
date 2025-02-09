@@ -4,8 +4,8 @@ use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item, peel_mid_ty_refs_is_mutable, type_is_unsafe_function};
 use clippy_utils::{
-    CaptureKind, can_move_expr_to_closure, is_else_clause, is_lint_allowed, is_res_lang_ctor, path_res,
-    path_to_local_id, peel_blocks, peel_hir_expr_refs, peel_hir_expr_while,
+    CaptureKind, can_move_expr_to_closure, expr_requires_coercion, is_else_clause, is_lint_allowed, is_res_lang_ctor,
+    path_res, path_to_local_id, peel_blocks, peel_hir_expr_refs, peel_hir_expr_while,
 };
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
@@ -73,7 +73,7 @@ where
     }
 
     // `map` won't perform any adjustments.
-    if !cx.typeck_results().expr_adjustments(some_expr.expr).is_empty() {
+    if expr_requires_coercion(cx, expr) {
         return None;
     }
 
@@ -124,6 +124,12 @@ where
     };
 
     let closure_expr_snip = some_expr.to_snippet_with_context(cx, expr_ctxt, &mut app);
+    let closure_body = if some_expr.needs_unsafe_block {
+        format!("unsafe {}", closure_expr_snip.blockify())
+    } else {
+        closure_expr_snip.to_string()
+    };
+
     let body_str = if let PatKind::Binding(annotation, id, some_binding, None) = some_pat.kind {
         if !some_expr.needs_unsafe_block
             && let Some(func) = can_pass_as_func(cx, id, some_expr.expr)
@@ -145,20 +151,12 @@ where
                 ""
             };
 
-            if some_expr.needs_unsafe_block {
-                format!("|{annotation}{some_binding}| unsafe {{ {closure_expr_snip} }}")
-            } else {
-                format!("|{annotation}{some_binding}| {closure_expr_snip}")
-            }
+            format!("|{annotation}{some_binding}| {closure_body}")
         }
     } else if !is_wild_none && explicit_ref.is_none() {
         // TODO: handle explicit reference annotations.
         let pat_snip = snippet_with_context(cx, some_pat.span, expr_ctxt, "..", &mut app).0;
-        if some_expr.needs_unsafe_block {
-            format!("|{pat_snip}| unsafe {{ {closure_expr_snip} }}")
-        } else {
-            format!("|{pat_snip}| {closure_expr_snip}")
-        }
+        format!("|{pat_snip}| {closure_body}")
     } else {
         // Refutable bindings and mixed reference annotations can't be handled by `map`.
         return None;

@@ -156,16 +156,7 @@ LL | |     };
    | |_____^ help: try: `Some((String::new(), "test")).as_ref().map(|(x, y)| (y, x))`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:168:5
-   |
-LL | /     match Some(0) {
-LL | |         Some(x) => Some(vec![x]),
-LL | |         None => None,
-LL | |     };
-   | |_____^ help: try: `Some(0).map(|x| vec![x])`
-
-error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:173:5
+  --> tests/ui/manual_map_option.rs:179:5
    |
 LL | /     match option_env!("") {
 LL | |         Some(x) => Some(String::from(x)),
@@ -174,7 +165,7 @@ LL | |     };
    | |_____^ help: try: `option_env!("").map(String::from)`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:193:12
+  --> tests/ui/manual_map_option.rs:199:12
    |
 LL |       } else if let Some(x) = Some(0) {
    |  ____________^
@@ -185,7 +176,7 @@ LL | |     };
    | |_____^ help: try: `{ Some(0).map(|x| x + 1) }`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option.rs:201:12
+  --> tests/ui/manual_map_option.rs:207:12
    |
 LL |       } else if let Some(x) = Some(0) {
    |  ____________^
@@ -195,5 +186,5 @@ LL | |         None
 LL | |     };
    | |_____^ help: try: `{ Some(0).map(|x| x + 1) }`
 
-error: aborting due to 21 previous errors
+error: aborting due to 20 previous errors
 
