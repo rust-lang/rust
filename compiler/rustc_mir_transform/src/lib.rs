@@ -125,7 +125,7 @@ declare_passes! {
     mod check_undefined_transmutes : CheckUndefinedTransmutes;
     // This pass is public to allow external drivers to perform MIR cleanup
     pub mod cleanup_post_borrowck : CleanupPostBorrowck;
-
+    mod prop_trivial_locals : PropTrivialLocals;
     mod copy_prop : CopyProp;
     mod coroutine : StateTransform;
     mod coverage : InstrumentCoverage;
@@ -654,6 +654,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             // Perform instsimplify before inline to eliminate some trivial calls (like clone
             // shims).
             &instsimplify::InstSimplify::BeforeInline,
+            &prop_trivial_locals::PropTrivialLocals,
             // Perform inlining of `#[rustc_force_inline]`-annotated callees.
             &inline::ForceInline,
             // Perform inlining, which may add a lot of code.
