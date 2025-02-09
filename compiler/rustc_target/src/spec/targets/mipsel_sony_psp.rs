@@ -4,10 +4,10 @@ use crate::spec::{Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions, cvs}
 const LINKER_SCRIPT: &str = include_str!("./mipsel_sony_psp_linker_script.ld");
 
 pub(crate) fn target() -> Target {
-    let pre_link_args = TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &[
-        "--emit-relocs",
-        "--nmagic",
-    ]);
+    let pre_link_args = TargetOptions::link_args(
+        LinkerFlavor::Gnu(Cc::No, Lld::No),
+        &["--emit-relocs", "--nmagic"],
+    );
 
     Target {
         llvm_target: "mipsel-sony-psp".into(),

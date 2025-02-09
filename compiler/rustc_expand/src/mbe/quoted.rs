@@ -179,10 +179,10 @@ fn parse_tree<'a>(
                 Some(&tokenstream::TokenTree::Delimited(delim_span, _, delim, ref tts)) => {
                     if parsing_patterns {
                         if delim != Delimiter::Parenthesis {
-                            span_dollar_dollar_or_metavar_in_the_lhs_err(sess, &Token {
-                                kind: token::OpenDelim(delim),
-                                span: delim_span.entire(),
-                            });
+                            span_dollar_dollar_or_metavar_in_the_lhs_err(
+                                sess,
+                                &Token { kind: token::OpenDelim(delim), span: delim_span.entire() },
+                            );
                         }
                     } else {
                         match delim {
@@ -235,12 +235,10 @@ fn parse_tree<'a>(
                     // Count the number of captured "names" (i.e., named metavars)
                     let num_captures =
                         if parsing_patterns { count_metavar_decls(&sequence) } else { 0 };
-                    TokenTree::Sequence(delim_span, SequenceRepetition {
-                        tts: sequence,
-                        separator,
-                        kleene,
-                        num_captures,
-                    })
+                    TokenTree::Sequence(
+                        delim_span,
+                        SequenceRepetition { tts: sequence, separator, kleene, num_captures },
+                    )
                 }
 
                 // `tree` is followed by an `ident`. This could be `$meta_var` or the `$crate`
@@ -261,10 +259,10 @@ fn parse_tree<'a>(
                     _,
                 )) => {
                     if parsing_patterns {
-                        span_dollar_dollar_or_metavar_in_the_lhs_err(sess, &Token {
-                            kind: token::Dollar,
-                            span: dollar_span2,
-                        });
+                        span_dollar_dollar_or_metavar_in_the_lhs_err(
+                            sess,
+                            &Token { kind: token::Dollar, span: dollar_span2 },
+                        );
                     } else {
                         maybe_emit_macro_metavar_expr_feature(features, sess, dollar_span2);
                     }
@@ -289,12 +287,14 @@ fn parse_tree<'a>(
 
         // `tree` is the beginning of a delimited set of tokens (e.g., `(` or `{`). We need to
         // descend into the delimited set and further parse it.
-        &tokenstream::TokenTree::Delimited(span, spacing, delim, ref tts) => {
-            TokenTree::Delimited(span, spacing, Delimited {
+        &tokenstream::TokenTree::Delimited(span, spacing, delim, ref tts) => TokenTree::Delimited(
+            span,
+            spacing,
+            Delimited {
                 delim,
                 tts: parse(tts, parsing_patterns, sess, node_id, features, edition),
-            })
-        }
+            },
+        ),
     }
 }
 

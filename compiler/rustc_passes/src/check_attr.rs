@@ -344,8 +344,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn inline_attr_str_error_without_macro_def(&self, hir_id: HirId, attr: &Attribute, sym: &str) {
-        self.tcx
-            .emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, errors::IgnoredAttr { sym });
+        self.tcx.emit_node_span_lint(
+            UNUSED_ATTRIBUTES,
+            hir_id,
+            attr.span,
+            errors::IgnoredAttr { sym },
+        );
     }
 
     /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl.
@@ -1505,10 +1509,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             _ => {
                 // FIXME: #[cold] was previously allowed on non-functions and some crates used
                 // this, so only emit a warning.
-                self.tcx.emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, errors::Cold {
-                    span,
-                    on_crate: hir_id == CRATE_HIR_ID,
-                });
+                self.tcx.emit_node_span_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr.span,
+                    errors::Cold { span, on_crate: hir_id == CRATE_HIR_ID },
+                );
             }
         }
     }
@@ -1523,9 +1529,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         }
 
-        self.tcx.emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, errors::Link {
-            span: (target != Target::ForeignMod).then_some(span),
-        });
+        self.tcx.emit_node_span_lint(
+            UNUSED_ATTRIBUTES,
+            hir_id,
+            attr.span,
+            errors::Link { span: (target != Target::ForeignMod).then_some(span) },
+        );
     }
 
     /// Checks if `#[link_name]` is applied to an item other than a foreign function or static.
@@ -2392,10 +2401,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         };
 
-        self.tcx.emit_node_span_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, errors::Unused {
-            attr_span: attr.span,
-            note,
-        });
+        self.tcx.emit_node_span_lint(
+            UNUSED_ATTRIBUTES,
+            hir_id,
+            attr.span,
+            errors::Unused { attr_span: attr.span, note },
+        );
     }
 
     /// A best effort attempt to create an error for a mismatching proc macro signature.

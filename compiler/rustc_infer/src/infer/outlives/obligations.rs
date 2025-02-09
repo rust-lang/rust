@@ -100,16 +100,20 @@ impl<'tcx> InferCtxt<'tcx> {
     ) {
         debug!(?sup_type, ?sub_region, ?cause);
         let origin = SubregionOrigin::from_obligation_cause(cause, || {
-            infer::RelateParamBound(cause.span, sup_type, match cause.code().peel_derives() {
-                ObligationCauseCode::WhereClause(_, span)
-                | ObligationCauseCode::WhereClauseInExpr(_, span, ..)
-                | ObligationCauseCode::OpaqueTypeBound(span, _)
-                    if !span.is_dummy() =>
-                {
-                    Some(*span)
-                }
-                _ => None,
-            })
+            infer::RelateParamBound(
+                cause.span,
+                sup_type,
+                match cause.code().peel_derives() {
+                    ObligationCauseCode::WhereClause(_, span)
+                    | ObligationCauseCode::WhereClauseInExpr(_, span, ..)
+                    | ObligationCauseCode::OpaqueTypeBound(span, _)
+                        if !span.is_dummy() =>
+                    {
+                        Some(*span)
+                    }
+                    _ => None,
+                },
+            )
         });
 
         self.register_region_obligation(RegionObligation { sup_type, sub_region, origin });

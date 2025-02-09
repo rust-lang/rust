@@ -578,10 +578,13 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             }
             ShiftOverflow { intrinsic, shift_amount } => {
                 diag.arg("intrinsic", intrinsic);
-                diag.arg("shift_amount", match shift_amount {
-                    Either::Left(v) => v.to_string(),
-                    Either::Right(v) => v.to_string(),
-                });
+                diag.arg(
+                    "shift_amount",
+                    match shift_amount {
+                        Either::Left(v) => v.to_string(),
+                        Either::Right(v) => v.to_string(),
+                    },
+                );
             }
             BoundsCheckFailed { len, index } => {
                 diag.arg("len", len);

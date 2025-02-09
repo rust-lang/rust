@@ -666,11 +666,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         };
         let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
         let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-        fcx.tcx.emit_node_span_lint(lint, self.expr.hir_id, self.span, errors::TrivialCast {
-            numeric,
-            expr_ty,
-            cast_ty,
-        });
+        fcx.tcx.emit_node_span_lint(
+            lint,
+            self.expr.hir_id,
+            self.span,
+            errors::TrivialCast { numeric, expr_ty, cast_ty },
+        );
     }
 
     #[instrument(skip(fcx), level = "debug")]

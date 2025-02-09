@@ -248,10 +248,11 @@ where
 
         let pred = inputs_and_output
             .map_bound(|(inputs, _)| {
-                ty::TraitRef::new(cx, goal.predicate.def_id(), [
-                    goal.predicate.self_ty(),
-                    Ty::new_tup(cx, inputs.as_slice()),
-                ])
+                ty::TraitRef::new(
+                    cx,
+                    goal.predicate.def_id(),
+                    [goal.predicate.self_ty(), Ty::new_tup(cx, inputs.as_slice())],
+                )
             })
             .to_host_effect_clause(cx, goal.predicate.constness);
 

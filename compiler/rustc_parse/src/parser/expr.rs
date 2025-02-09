@@ -807,17 +807,20 @@ impl<'a> Parser<'a> {
         // Check if an illegal postfix operator has been added after the cast.
         // If the resulting expression is not a cast, it is an illegal postfix operator.
         if !matches!(with_postfix.kind, ExprKind::Cast(_, _)) {
-            let msg = format!("cast cannot be followed by {}", match with_postfix.kind {
-                ExprKind::Index(..) => "indexing",
-                ExprKind::Try(_) => "`?`",
-                ExprKind::Field(_, _) => "a field access",
-                ExprKind::MethodCall(_) => "a method call",
-                ExprKind::Call(_, _) => "a function call",
-                ExprKind::Await(_, _) => "`.await`",
-                ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
-                ExprKind::Err(_) => return Ok(with_postfix),
-                _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
-            });
+            let msg = format!(
+                "cast cannot be followed by {}",
+                match with_postfix.kind {
+                    ExprKind::Index(..) => "indexing",
+                    ExprKind::Try(_) => "`?`",
+                    ExprKind::Field(_, _) => "a field access",
+                    ExprKind::MethodCall(_) => "a method call",
+                    ExprKind::Call(_, _) => "a function call",
+                    ExprKind::Await(_, _) => "`.await`",
+                    ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
+                    ExprKind::Err(_) => return Ok(with_postfix),
+                    _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
+                }
+            );
             let mut err = self.dcx().struct_span_err(span, msg);
 
             let suggest_parens = |err: &mut Diag<'_>| {
@@ -2862,13 +2865,10 @@ impl<'a> Parser<'a> {
                 .emit_err(errors::MissingExpressionInForLoop { span: expr.span.shrink_to_lo() });
             let err_expr = self.mk_expr(expr.span, ExprKind::Err(guar));
             let block = self.mk_block(thin_vec![], BlockCheckMode::Default, self.prev_token.span);
-            return Ok(self.mk_expr(lo.to(self.prev_token.span), ExprKind::ForLoop {
-                pat,
-                iter: err_expr,
-                body: block,
-                label: opt_label,
-                kind,
-            }));
+            return Ok(self.mk_expr(
+                lo.to(self.prev_token.span),
+                ExprKind::ForLoop { pat, iter: err_expr, body: block, label: opt_label, kind },
+            ));
         }
 
         let (attrs, loop_block) = self.parse_inner_attrs_and_block()?;

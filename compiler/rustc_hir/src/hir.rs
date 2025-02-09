@@ -3101,10 +3101,10 @@ impl<'hir> Ty<'hir> {
             fn visit_ty(&mut self, t: &'v Ty<'v, AmbigArg>) {
                 if matches!(
                     &t.kind,
-                    TyKind::Path(QPath::Resolved(_, Path {
-                        res: crate::def::Res::SelfTyAlias { .. },
-                        ..
-                    },))
+                    TyKind::Path(QPath::Resolved(
+                        _,
+                        Path { res: crate::def::Res::SelfTyAlias { .. }, .. },
+                    ))
                 ) {
                     self.0.push(t.span);
                     return;
@@ -3446,11 +3446,10 @@ impl<'hir> InlineAsmOperand<'hir> {
     }
 
     pub fn is_clobber(&self) -> bool {
-        matches!(self, InlineAsmOperand::Out {
-            reg: InlineAsmRegOrRegClass::Reg(_),
-            late: _,
-            expr: None
-        })
+        matches!(
+            self,
+            InlineAsmOperand::Out { reg: InlineAsmRegOrRegClass::Reg(_), late: _, expr: None }
+        )
     }
 }
 

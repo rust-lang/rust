@@ -548,14 +548,17 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 }
             }
 
-            let scope = namespace::item_namespace(cx, DefId {
-                krate: instance.def_id().krate,
-                index: cx
-                    .tcx
-                    .def_key(instance.def_id())
-                    .parent
-                    .expect("get_containing_scope: missing parent?"),
-            });
+            let scope = namespace::item_namespace(
+                cx,
+                DefId {
+                    krate: instance.def_id().krate,
+                    index: cx
+                        .tcx
+                        .def_key(instance.def_id())
+                        .parent
+                        .expect("get_containing_scope: missing parent?"),
+                },
+            );
             (scope, false)
         }
     }

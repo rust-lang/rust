@@ -184,18 +184,22 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         let mut op_warned = false;
 
         if let Some(must_use_op) = must_use_op {
-            cx.emit_span_lint(UNUSED_MUST_USE, expr.span, UnusedOp {
-                op: must_use_op,
-                label: expr.span,
-                suggestion: if expr_is_from_block {
-                    UnusedOpSuggestion::BlockTailExpr {
-                        before_span: expr.span.shrink_to_lo(),
-                        after_span: expr.span.shrink_to_hi(),
-                    }
-                } else {
-                    UnusedOpSuggestion::NormalExpr { span: expr.span.shrink_to_lo() }
+            cx.emit_span_lint(
+                UNUSED_MUST_USE,
+                expr.span,
+                UnusedOp {
+                    op: must_use_op,
+                    label: expr.span,
+                    suggestion: if expr_is_from_block {
+                        UnusedOpSuggestion::BlockTailExpr {
+                            before_span: expr.span.shrink_to_lo(),
+                            after_span: expr.span.shrink_to_hi(),
+                        }
+                    } else {
+                        UnusedOpSuggestion::NormalExpr { span: expr.span.shrink_to_lo() }
+                    },
                 },
-            });
+            );
             op_warned = true;
         }
 
@@ -489,35 +493,39 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     );
                 }
                 MustUsePath::Closure(span) => {
-                    cx.emit_span_lint(UNUSED_MUST_USE, *span, UnusedClosure {
-                        count: plural_len,
-                        pre: descr_pre,
-                        post: descr_post,
-                    });
+                    cx.emit_span_lint(
+                        UNUSED_MUST_USE,
+                        *span,
+                        UnusedClosure { count: plural_len, pre: descr_pre, post: descr_post },
+                    );
                 }
                 MustUsePath::Coroutine(span) => {
-                    cx.emit_span_lint(UNUSED_MUST_USE, *span, UnusedCoroutine {
-                        count: plural_len,
-                        pre: descr_pre,
-                        post: descr_post,
-                    });
+                    cx.emit_span_lint(
+                        UNUSED_MUST_USE,
+                        *span,
+                        UnusedCoroutine { count: plural_len, pre: descr_pre, post: descr_post },
+                    );
                 }
                 MustUsePath::Def(span, def_id, reason) => {
-                    cx.emit_span_lint(UNUSED_MUST_USE, *span, UnusedDef {
-                        pre: descr_pre,
-                        post: descr_post,
-                        cx,
-                        def_id: *def_id,
-                        note: *reason,
-                        suggestion: (!is_inner).then_some(if expr_is_from_block {
-                            UnusedDefSuggestion::BlockTailExpr {
-                                before_span: span.shrink_to_lo(),
-                                after_span: span.shrink_to_hi(),
-                            }
-                        } else {
-                            UnusedDefSuggestion::NormalExpr { span: span.shrink_to_lo() }
-                        }),
-                    });
+                    cx.emit_span_lint(
+                        UNUSED_MUST_USE,
+                        *span,
+                        UnusedDef {
+                            pre: descr_pre,
+                            post: descr_post,
+                            cx,
+                            def_id: *def_id,
+                            note: *reason,
+                            suggestion: (!is_inner).then_some(if expr_is_from_block {
+                                UnusedDefSuggestion::BlockTailExpr {
+                                    before_span: span.shrink_to_lo(),
+                                    after_span: span.shrink_to_hi(),
+                                }
+                            } else {
+                                UnusedDefSuggestion::NormalExpr { span: span.shrink_to_lo() }
+                            }),
+                        },
+                    );
                 }
             }
         }
@@ -867,11 +875,11 @@ trait UnusedDelimLint {
                 end_replace: hi_replace,
             }
         });
-        cx.emit_span_lint(self.lint(), primary_span, UnusedDelim {
-            delim: Self::DELIM_STR,
-            item: msg,
-            suggestion,
-        });
+        cx.emit_span_lint(
+            self.lint(),
+            primary_span,
+            UnusedDelim { delim: Self::DELIM_STR, item: msg, suggestion },
+        );
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
@@ -1558,9 +1566,11 @@ impl UnusedImportBraces {
                 ast::UseTreeKind::Nested { .. } => return,
             };
 
-            cx.emit_span_lint(UNUSED_IMPORT_BRACES, item.span, UnusedImportBracesDiag {
-                node: node_name,
-            });
+            cx.emit_span_lint(
+                UNUSED_IMPORT_BRACES,
+                item.span,
+                UnusedImportBracesDiag { node: node_name },
+            );
         }
     }
 }

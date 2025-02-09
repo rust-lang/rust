@@ -599,13 +599,16 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
         }
 
         fn rev_binop(binop: hir::BinOp) -> hir::BinOp {
-            source_map::respan(binop.span, match binop.node {
-                hir::BinOpKind::Lt => hir::BinOpKind::Gt,
-                hir::BinOpKind::Le => hir::BinOpKind::Ge,
-                hir::BinOpKind::Gt => hir::BinOpKind::Lt,
-                hir::BinOpKind::Ge => hir::BinOpKind::Le,
-                _ => return binop,
-            })
+            source_map::respan(
+                binop.span,
+                match binop.node {
+                    hir::BinOpKind::Lt => hir::BinOpKind::Gt,
+                    hir::BinOpKind::Le => hir::BinOpKind::Ge,
+                    hir::BinOpKind::Gt => hir::BinOpKind::Lt,
+                    hir::BinOpKind::Ge => hir::BinOpKind::Le,
+                    _ => return binop,
+                },
+            )
         }
 
         fn check_limits(
@@ -1386,14 +1389,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         } else {
             None
         };
-        self.cx.emit_span_lint(lint, sp, ImproperCTypes {
-            ty,
-            desc,
-            label: sp,
-            help,
-            note,
-            span_note,
-        });
+        self.cx.emit_span_lint(
+            lint,
+            sp,
+            ImproperCTypes { ty, desc, label: sp, help, note, span_note },
+        );
     }
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
@@ -1930,11 +1930,11 @@ impl InvalidAtomicOrdering {
     }
 
     fn check_atomic_compare_exchange(cx: &LateContext<'_>, expr: &Expr<'_>) {
-        let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr, &[
-            sym::fetch_update,
-            sym::compare_exchange,
-            sym::compare_exchange_weak,
-        ]) else {
+        let Some((method, args)) = Self::inherent_atomic_method_call(
+            cx,
+            expr,
+            &[sym::fetch_update, sym::compare_exchange, sym::compare_exchange_weak],
+        ) else {
             return;
         };
 

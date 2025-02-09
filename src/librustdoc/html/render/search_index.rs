@@ -1265,13 +1265,14 @@ fn simplify_fn_type<'a, 'tcx>(
                                 *stored_bounds = type_bounds;
                             }
                         }
-                        ty_constraints.push((RenderTypeId::AssociatedType(name), vec![
-                            RenderType {
+                        ty_constraints.push((
+                            RenderTypeId::AssociatedType(name),
+                            vec![RenderType {
                                 id: Some(RenderTypeId::Index(idx)),
                                 generics: None,
                                 bindings: None,
-                            },
-                        ]))
+                            }],
+                        ))
                     }
                 }
             }

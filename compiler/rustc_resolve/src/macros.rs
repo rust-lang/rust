@@ -888,12 +888,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 None,
                             )
                         };
-                    self.report_error(span, ResolutionError::FailedToResolve {
-                        segment: path.last().map(|segment| segment.ident.name),
-                        label,
-                        suggestion,
-                        module,
-                    });
+                    self.report_error(
+                        span,
+                        ResolutionError::FailedToResolve {
+                            segment: path.last().map(|segment| segment.ident.name),
+                            label,
+                            suggestion,
+                            module,
+                        },
+                    );
                 }
                 PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
             }

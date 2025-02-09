@@ -20,10 +20,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         source_info: SourceInfo,
     ) {
         if imaginary_target != real_target {
-            self.cfg.terminate(from_block, source_info, TerminatorKind::FalseEdge {
-                real_target,
-                imaginary_target,
-            });
+            self.cfg.terminate(
+                from_block,
+                source_info,
+                TerminatorKind::FalseEdge { real_target, imaginary_target },
+            );
         } else {
             self.cfg.goto(from_block, source_info, real_target)
         }

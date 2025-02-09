@@ -1524,18 +1524,14 @@ fn test_lines() {
     t("bare\r", &["bare\r"]);
     t("bare\rcr", &["bare\rcr"]);
     t("Text\n\r", &["Text", "\r"]);
-    t("\nMäry häd ä little lämb\n\r\nLittle lämb\n", &[
-        "",
-        "Märy häd ä little lämb",
-        "",
-        "Little lämb",
-    ]);
-    t("\r\nMäry häd ä little lämb\n\nLittle lämb", &[
-        "",
-        "Märy häd ä little lämb",
-        "",
-        "Little lämb",
-    ]);
+    t(
+        "\nMäry häd ä little lämb\n\r\nLittle lämb\n",
+        &["", "Märy häd ä little lämb", "", "Little lämb"],
+    );
+    t(
+        "\r\nMäry häd ä little lämb\n\nLittle lämb",
+        &["", "Märy häd ä little lämb", "", "Little lämb"],
+    );
 }
 
 #[test]
@@ -1978,73 +1974,88 @@ mod pattern {
         assert_eq!(v, right);
     }
 
-    make_test!(str_searcher_ascii_haystack, "bb", "abbcbbd", [
-        Reject(0, 1),
-        Match(1, 3),
-        Reject(3, 4),
-        Match(4, 6),
-        Reject(6, 7),
-    ]);
-    make_test!(str_searcher_ascii_haystack_seq, "bb", "abbcbbbbd", [
-        Reject(0, 1),
-        Match(1, 3),
-        Reject(3, 4),
-        Match(4, 6),
-        Match(6, 8),
-        Reject(8, 9),
-    ]);
-    make_test!(str_searcher_empty_needle_ascii_haystack, "", "abbcbbd", [
-        Match(0, 0),
-        Reject(0, 1),
-        Match(1, 1),
-        Reject(1, 2),
-        Match(2, 2),
-        Reject(2, 3),
-        Match(3, 3),
-        Reject(3, 4),
-        Match(4, 4),
-        Reject(4, 5),
-        Match(5, 5),
-        Reject(5, 6),
-        Match(6, 6),
-        Reject(6, 7),
-        Match(7, 7),
-    ]);
-    make_test!(str_searcher_multibyte_haystack, " ", "├──", [
-        Reject(0, 3),
-        Reject(3, 6),
-        Reject(6, 9),
-    ]);
-    make_test!(str_searcher_empty_needle_multibyte_haystack, "", "├──", [
-        Match(0, 0),
-        Reject(0, 3),
-        Match(3, 3),
-        Reject(3, 6),
-        Match(6, 6),
-        Reject(6, 9),
-        Match(9, 9),
-    ]);
+    make_test!(
+        str_searcher_ascii_haystack,
+        "bb",
+        "abbcbbd",
+        [Reject(0, 1), Match(1, 3), Reject(3, 4), Match(4, 6), Reject(6, 7),]
+    );
+    make_test!(
+        str_searcher_ascii_haystack_seq,
+        "bb",
+        "abbcbbbbd",
+        [Reject(0, 1), Match(1, 3), Reject(3, 4), Match(4, 6), Match(6, 8), Reject(8, 9),]
+    );
+    make_test!(
+        str_searcher_empty_needle_ascii_haystack,
+        "",
+        "abbcbbd",
+        [
+            Match(0, 0),
+            Reject(0, 1),
+            Match(1, 1),
+            Reject(1, 2),
+            Match(2, 2),
+            Reject(2, 3),
+            Match(3, 3),
+            Reject(3, 4),
+            Match(4, 4),
+            Reject(4, 5),
+            Match(5, 5),
+            Reject(5, 6),
+            Match(6, 6),
+            Reject(6, 7),
+            Match(7, 7),
+        ]
+    );
+    make_test!(
+        str_searcher_multibyte_haystack,
+        " ",
+        "├──",
+        [Reject(0, 3), Reject(3, 6), Reject(6, 9),]
+    );
+    make_test!(
+        str_searcher_empty_needle_multibyte_haystack,
+        "",
+        "├──",
+        [
+            Match(0, 0),
+            Reject(0, 3),
+            Match(3, 3),
+            Reject(3, 6),
+            Match(6, 6),
+            Reject(6, 9),
+            Match(9, 9),
+        ]
+    );
     make_test!(str_searcher_empty_needle_empty_haystack, "", "", [Match(0, 0),]);
     make_test!(str_searcher_nonempty_needle_empty_haystack, "├", "", []);
-    make_test!(char_searcher_ascii_haystack, 'b', "abbcbbd", [
-        Reject(0, 1),
-        Match(1, 2),
-        Match(2, 3),
-        Reject(3, 4),
-        Match(4, 5),
-        Match(5, 6),
-        Reject(6, 7),
-    ]);
-    make_test!(char_searcher_multibyte_haystack, ' ', "├──", [
-        Reject(0, 3),
-        Reject(3, 6),
-        Reject(6, 9),
-    ]);
-    make_test!(char_searcher_short_haystack, '\u{1F4A9}', "* \t", [
-        Reject(0, 1),
-        Reject(1, 2),
-        Reject(2, 3),
-    ]);
+    make_test!(
+        char_searcher_ascii_haystack,
+        'b',
+        "abbcbbd",
+        [
+            Reject(0, 1),
+            Match(1, 2),
+            Match(2, 3),
+            Reject(3, 4),
+            Match(4, 5),
+            Match(5, 6),
+            Reject(6, 7),
+        ]
+    );
+    make_test!(
+        char_searcher_multibyte_haystack,
+        ' ',
+        "├──",
+        [Reject(0, 3), Reject(3, 6), Reject(6, 9),]
+    );
+    make_test!(
+        char_searcher_short_haystack,
+        '\u{1F4A9}',
+        "* \t",
+        [Reject(0, 1), Reject(1, 2), Reject(2, 3),]
+    );
 
     // See #85462
     #[test]

@@ -9,11 +9,10 @@ pub(crate) fn target() -> Target {
 
     // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
     // space available to x86 Windows binaries on x86_64.
-    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &[
-        "-m",
-        "i386pe",
-        "--large-address-aware",
-    ]);
+    base.add_pre_link_args(
+        LinkerFlavor::Gnu(Cc::No, Lld::No),
+        &["-m", "i386pe", "--large-address-aware"],
+    );
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-Wl,--large-address-aware"]);
 
     Target {

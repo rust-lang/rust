@@ -2350,11 +2350,10 @@ impl<T: Default> Default for Rc<T> {
     fn default() -> Rc<T> {
         unsafe {
             Self::from_inner(
-                Box::leak(Box::write(Box::new_uninit(), RcInner {
-                    strong: Cell::new(1),
-                    weak: Cell::new(1),
-                    value: T::default(),
-                }))
+                Box::leak(Box::write(
+                    Box::new_uninit(),
+                    RcInner { strong: Cell::new(1), weak: Cell::new(1), value: T::default() },
+                ))
                 .into(),
             )
         }

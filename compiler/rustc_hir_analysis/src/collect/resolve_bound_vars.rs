@@ -1143,20 +1143,23 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             .params
             .iter()
             .map(|param| {
-                (param.def_id, match param.kind {
-                    GenericParamKind::Lifetime { .. } => {
-                        if self.tcx.is_late_bound(param.hir_id) {
-                            let late_bound_idx = named_late_bound_vars;
-                            named_late_bound_vars += 1;
-                            ResolvedArg::late(late_bound_idx, param)
-                        } else {
+                (
+                    param.def_id,
+                    match param.kind {
+                        GenericParamKind::Lifetime { .. } => {
+                            if self.tcx.is_late_bound(param.hir_id) {
+                                let late_bound_idx = named_late_bound_vars;
+                                named_late_bound_vars += 1;
+                                ResolvedArg::late(late_bound_idx, param)
+                            } else {
+                                ResolvedArg::early(param)
+                            }
+                        }
+                        GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
                             ResolvedArg::early(param)
                         }
-                    }
-                    GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
-                        ResolvedArg::early(param)
-                    }
-                })
+                    },
+                )
             })
             .collect();
 
