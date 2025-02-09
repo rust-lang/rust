@@ -7,7 +7,7 @@ authors = ["Luca Vizzarro <luca.vizzarro@arm.com>",
         "Jacob Bramley <jacob.bramley@arm.com>",
         "James Barford-Evans <james.barford-evans@arm.com>"]
 license = "MIT OR Apache-2.0"
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
