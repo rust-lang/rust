@@ -154,16 +154,26 @@ macro_rules! iterator {
 
             #[inline]
             fn next(&mut self) -> Option<$elem> {
-                // could be implemented with slices, but this avoids bounds checks
+                // intentionally not using the helpers because this is
+                // one of the most mono'd things in the library.
 
-                // SAFETY: The call to `next_unchecked` is
-                // safe since we check if the iterator is empty first.
+                let ptr = self.ptr;
+                let end_or_len = self.end_or_len;
+                // SAFETY: Type invariants.
                 unsafe {
-                    if is_empty!(self) {
-                        None
+                    if T::IS_ZST {
+                        let byte_end = end_or_len as *const u8;
+                        if byte_end == null() {
+                            return None;
+                        }
+                        self.end_or_len = byte_end.wrapping_sub(1) as _;
                     } else {
-                        Some(self.next_unchecked())
+                        if ptr == crate::intrinsics::transmute::<*const T, NonNull<T>>(end_or_len) {
+                            return None;
+                        }
+                        self.ptr = ptr.add(1);
                     }
+                    crate::intrinsics::transmute::<NonNull<T>, Option<$elem>>(ptr)
                 }
             }
 

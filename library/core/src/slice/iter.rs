@@ -11,7 +11,7 @@ use crate::iter::{
 use crate::marker::PhantomData;
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZero;
-use crate::ptr::{NonNull, without_provenance, without_provenance_mut};
+use crate::ptr::{NonNull, null, without_provenance, without_provenance_mut};
 use crate::{cmp, fmt};
 
 #[stable(feature = "boxed_slice_into_iter", since = "1.80.0")]

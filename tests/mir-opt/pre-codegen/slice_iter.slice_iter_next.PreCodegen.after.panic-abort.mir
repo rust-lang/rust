@@ -3,12 +3,134 @@
 fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
     debug it => _1;
     let mut _0: std::option::Option<&T>;
+    scope 1 (inlined <std::slice::Iter<'_, T> as Iterator>::next) {
+        let _2: std::ptr::NonNull<T>;
+        let _4: std::ptr::NonNull<T>;
+        let mut _7: bool;
+        let mut _10: std::ptr::NonNull<T>;
+        let mut _12: bool;
+        let mut _13: *const u8;
+        let mut _14: *const T;
+        scope 2 {
+            let _3: *const T;
+            scope 3 {
+                let _11: *const u8;
+                scope 4 {
+                    scope 5 (inlined null::<u8>) {
+                        scope 6 (inlined without_provenance::<()>) {
+                            scope 7 (inlined without_provenance_mut::<()>) {
+                            }
+                        }
+                        scope 8 (inlined std::ptr::from_raw_parts::<u8, ()>) {
+                        }
+                    }
+                    scope 9 (inlined std::ptr::const_ptr::<impl *const u8>::wrapping_sub) {
+                        scope 10 (inlined core::num::<impl isize>::wrapping_neg) {
+                            scope 11 (inlined core::num::<impl isize>::wrapping_sub) {
+                            }
+                        }
+                        scope 12 (inlined std::ptr::const_ptr::<impl *const u8>::wrapping_offset) {
+                        }
+                    }
+                }
+                scope 13 (inlined <NonNull<T> as PartialEq>::eq) {
+                    let mut _5: *mut T;
+                    let mut _6: *mut T;
+                    scope 14 (inlined NonNull::<T>::as_ptr) {
+                    }
+                    scope 15 (inlined NonNull::<T>::as_ptr) {
+                    }
+                }
+                scope 16 (inlined NonNull::<T>::add) {
+                    let mut _8: *const T;
+                    let mut _9: *const T;
+                    scope 17 (inlined NonNull::<T>::as_ptr) {
+                    }
+                }
+            }
+        }
+    }
 
     bb0: {
-        _0 = <std::slice::Iter<'_, T> as Iterator>::next(move _1) -> [return: bb1, unwind unreachable];
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_11);
+        StorageLive(_4);
+        _2 = copy ((*_1).0: std::ptr::NonNull<T>);
+        _3 = copy ((*_1).1: *const T);
+        switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb4];
     }
 
     bb1: {
+        StorageLive(_7);
+        _4 = copy _3 as std::ptr::NonNull<T> (Transmute);
+        StorageLive(_5);
+        _5 = copy _2 as *mut T (Transmute);
+        StorageLive(_6);
+        _6 = copy _4 as *mut T (Transmute);
+        _7 = Eq(move _5, move _6);
+        StorageDead(_6);
+        StorageDead(_5);
+        switchInt(move _7) -> [0: bb2, otherwise: bb3];
+    }
+
+    bb2: {
+        StorageDead(_7);
+        StorageLive(_10);
+        StorageLive(_9);
+        StorageLive(_8);
+        _8 = copy _2 as *const T (Transmute);
+        _9 = Offset(move _8, const 1_usize);
+        StorageDead(_8);
+        _10 = NonNull::<T> { pointer: move _9 };
+        StorageDead(_9);
+        ((*_1).0: std::ptr::NonNull<T>) = move _10;
+        StorageDead(_10);
+        goto -> bb7;
+    }
+
+    bb3: {
+        _0 = const {transmute(0x0000000000000000): Option<&T>};
+        StorageDead(_7);
+        goto -> bb9;
+    }
+
+    bb4: {
+        _11 = copy _3 as *const u8 (PtrToPtr);
+        StorageLive(_12);
+        _12 = Eq(copy _11, const {0x0 as *const u8});
+        switchInt(move _12) -> [0: bb5, otherwise: bb8];
+    }
+
+    bb5: {
+        StorageDead(_12);
+        StorageLive(_13);
+        _13 = arith_offset::<u8>(move _11, const -1_isize) -> [return: bb6, unwind unreachable];
+    }
+
+    bb6: {
+        _14 = move _13 as *const T (PtrToPtr);
+        StorageDead(_13);
+        ((*_1).1: *const T) = copy _14;
+        goto -> bb7;
+    }
+
+    bb7: {
+        _0 = copy _2 as std::option::Option<&T> (Transmute);
+        goto -> bb9;
+    }
+
+    bb8: {
+        _0 = const {transmute(0x0000000000000000): Option<&T>};
+        StorageDead(_12);
+        goto -> bb9;
+    }
+
+    bb9: {
+        StorageDead(_4);
+        StorageDead(_11);
+        StorageDead(_3);
+        StorageDead(_2);
         return;
     }
 }
