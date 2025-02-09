@@ -2284,7 +2284,8 @@ fn run_rustfmt(
                 cmd.arg(
                     json!([{
                         "file": "stdin",
-                        "range": [start_line, end_line]
+                        // LineCol is 0-based, but rustfmt is 1-based.
+                        "range": [start_line + 1, end_line + 1]
                     }])
                     .to_string(),
                 );
