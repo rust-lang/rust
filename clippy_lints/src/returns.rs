@@ -21,6 +21,7 @@ use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::edition::Edition;
 use rustc_span::{BytePos, Pos, Span, sym};
 use std::borrow::Cow;
 use std::fmt::Display;
@@ -235,7 +236,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             && let Some(initexpr) = &local.init
             && let PatKind::Binding(_, local_id, _, _) = local.pat.kind
             && path_to_local_id(retexpr, local_id)
-            && !last_statement_borrows(cx, initexpr)
+            && (cx.sess().edition() >= Edition::Edition2024 || !last_statement_borrows(cx, initexpr))
             && !initexpr.span.in_external_macro(cx.sess().source_map())
             && !retexpr.span.in_external_macro(cx.sess().source_map())
             && !local.span.from_expansion()

@@ -9,16 +9,16 @@ use std::cell::RefCell;
 
 fn test() -> i32 {
     let _y = 0; // no warning
-    let x = 5;
-    x
+    
+    5
     //~^ ERROR: returning the result of a `let` binding from a block
     //~| NOTE: `-D clippy::let-and-return` implied by `-D warnings`
 }
 
 fn test_inner() -> i32 {
     if true {
-        let x = 5;
-        x
+        
+        5
         //~^ ERROR: returning the result of a `let` binding from a block
     } else {
         0
@@ -80,8 +80,8 @@ fn issue_3792() -> String {
     let stdin = io::stdin();
     // `Stdin::lock` returns `StdinLock<'static>` so `line` doesn't borrow from `stdin`
     // https://github.com/rust-lang/rust/pull/93965
-    let line = stdin.lock().lines().next().unwrap().unwrap();
-    line
+    
+    stdin.lock().lines().next().unwrap().unwrap()
     //~^ ERROR: returning the result of a `let` binding from a block
 }
 
@@ -103,8 +103,8 @@ mod no_lint_if_stmt_borrows {
 
     fn issue_3324(value: Weak<RefCell<Bar>>) -> u32 {
         let value = value.upgrade().unwrap();
-        let ret = value.borrow().baz();
-        ret
+        
+        value.borrow().baz()
         //~[edition2024]^ ERROR: returning the result of a `let` binding from a block
     }
 
@@ -114,8 +114,8 @@ mod no_lint_if_stmt_borrows {
         }
 
         let value = value.upgrade().unwrap();
-        let ret = f(|| value.borrow().baz())();
-        ret
+        
+        f(|| value.borrow().baz())()
         //~[edition2024]^ ERROR: returning the result of a `let` binding from a block
     }
 
@@ -146,15 +146,15 @@ mod no_lint_if_stmt_borrows {
 
         fn test() -> i32 {
             let x = Inner {};
-            let value = some_foo(&x).value();
-            value
+            
+            some_foo(&x).value()
             //~[edition2024]^ ERROR: returning the result of a `let` binding from a block
         }
 
         fn test2() -> i32 {
             let x = Inner {};
-            let value = Foo::new(&x).value();
-            value
+            
+            Foo::new(&x).value()
             //~[edition2024]^ ERROR: returning the result of a `let` binding from a block
         }
     }
@@ -175,8 +175,8 @@ mod issue_5729 {
 
     impl<T: Foo + 'static> FooStorage for FooStorageImpl<T> {
         fn foo_cloned(&self) -> Arc<dyn Foo> {
-            let clone = Arc::clone(&self.foo);
-            clone
+            
+            (Arc::clone(&self.foo)) as _
             //~^ ERROR: returning the result of a `let` binding from a block
         }
     }
@@ -190,12 +190,12 @@ mod issue_11335 {
 
     impl<T> E<T> {
         pub fn inner(&self) -> &T {
-            let result = match self {
+            
+
+            (match self {
                 E::A(x) => x,
                 E::B(x) => x,
-            };
-
-            result
+            }) as _
             //~^ ERROR: returning the result of a `let` binding from a block
         }
     }
@@ -220,33 +220,33 @@ fn issue9150() -> usize {
 
 fn issue12801() {
     fn left_is_if() -> String {
-        let s = if true { "a".to_string() } else { "b".to_string() } + "c";
-        s
+        
+        (if true { "a".to_string() } else { "b".to_string() } + "c")
         //~^ ERROR: returning the result of a `let` binding from a block
     }
 
     fn no_par_needed() -> String {
-        let s = "c".to_string() + if true { "a" } else { "b" };
-        s
+        
+        "c".to_string() + if true { "a" } else { "b" }
         //~^ ERROR: returning the result of a `let` binding from a block
     }
 
     fn conjunctive_blocks() -> String {
-        let s = { "a".to_string() } + "b" + { "c" } + "d";
-        s
+        
+        ({ "a".to_string() } + "b" + { "c" } + "d")
         //~^ ERROR: returning the result of a `let` binding from a block
     }
 
     #[allow(clippy::overly_complex_bool_expr)]
     fn other_ops() {
         let _ = || {
-            let s = if true { 2 } else { 3 } << 4;
-            s
+            
+            (if true { 2 } else { 3 } << 4)
             //~^ ERROR: returning the result of a `let` binding from a block
         };
         let _ = || {
-            let s = { true } || { false } && { 2 <= 3 };
-            s
+            
+            ({ true } || { false } && { 2 <= 3 })
             //~^ ERROR: returning the result of a `let` binding from a block
         };
     }
@@ -254,11 +254,11 @@ fn issue12801() {
 
 fn issue14164() -> Result<u32, ()> {
     let v = std::cell::RefCell::new(Some(vec![1]));
-    let r = match &*v.borrow() {
+    
+    match &*v.borrow() {
         Some(v) => Ok(Ok(v[0])),
         None => Ok(Ok(0)),
-    }?;
-    r
+    }?
     //~[edition2024]^ ERROR: returning the result of a `let` binding from a block
 }
 
