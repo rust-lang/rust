@@ -28,7 +28,6 @@ pub mod os;
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
-pub mod stdio;
 pub use self::itron::{thread, thread_parking};
 pub mod time;
 
