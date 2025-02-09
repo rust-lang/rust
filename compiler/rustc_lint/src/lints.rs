@@ -3543,6 +3543,11 @@ pub(crate) struct UnknownCrateTypesSuggestion {
 pub(crate) struct DisallowedPositionalArgument;
 
 #[derive(Diagnostic)]
+#[diag("format arguments are not allowed here")]
+#[help("consider removing this format argument")]
+pub(crate) struct DisallowedPlaceholder;
+
+#[derive(Diagnostic)]
 #[diag("invalid format specifier")]
 #[help("no format specifier are supported in this position")]
 pub(crate) struct InvalidFormatSpecifier;
@@ -3572,6 +3577,11 @@ pub(crate) struct IgnoredDiagnosticOption {
 pub(crate) struct MissingOptionsForOnUnimplementedAttr;
 
 #[derive(Diagnostic)]
+#[diag("missing options for `on_unknown_item` attribute")]
+#[help("at least one of the `message`, `note` and `label` options are expected")]
+pub(crate) struct MissingOptionsForOnUnknownItemAttr;
+
+#[derive(Diagnostic)]
 #[diag("missing options for `on_const` attribute")]
 #[help("at least one of the `message`, `note` and `label` options are expected")]
 pub(crate) struct MissingOptionsForOnConstAttr;
@@ -3585,6 +3595,14 @@ pub(crate) struct MissingOptionsForOnMoveAttr;
 #[diag("malformed `on_unimplemented` attribute")]
 #[help("only `message`, `note` and `label` are allowed as options")]
 pub(crate) struct MalformedOnUnimplementedAttrLint {
+    #[label("invalid option found here")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("malformed `on_unknown_item` attribute")]
+#[help("only `message`, `note` and `label` are allowed as options")]
+pub(crate) struct MalformedOnUnknownItemAttrLint {
     #[label("invalid option found here")]
     pub span: Span,
 }
