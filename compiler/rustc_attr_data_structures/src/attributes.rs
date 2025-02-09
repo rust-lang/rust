@@ -2,9 +2,11 @@ use rustc_abi::Align;
 use rustc_ast::token::CommentKind;
 use rustc_ast::{self as ast, AttrStyle};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_span::hygiene::Transparency;
 use rustc_span::{Span, Symbol};
+use thin_vec::ThinVec;
 
-use crate::RustcVersion;
+use crate::{DefaultBodyStability, PartialConstStability, RustcVersion, Stability};
 
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum InlineAttr {
@@ -72,6 +74,8 @@ pub enum ReprAttr {
     ReprSimd,
     ReprTransparent,
     ReprAlign(Align),
+    // this one is just so we can emit a lint for it
+    ReprEmpty,
 }
 pub use ReprAttr::*;
 
@@ -150,10 +154,44 @@ impl Deprecation {
 /// happen.
 ///
 /// For more docs, look in [`rustc_attr`](https://doc.rust-lang.org/stable/nightly-rustc/rustc_attr/index.html)
-// FIXME(jdonszelmann): rename to AttributeKind once hir::AttributeKind is dissolved
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
 pub enum AttributeKind {
     // tidy-alphabetical-start
-    DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
+    AllowConstFnUnstable(ThinVec<Symbol>),
+    AllowInternalUnstable(ThinVec<(Symbol, Span)>),
+    BodyStability {
+        stability: DefaultBodyStability,
+        /// Span of the `#[rustc_default_body_unstable(...)]` attribute
+        span: Span,
+    },
+    Confusables {
+        symbols: ThinVec<Symbol>,
+        // FIXME(jdonszelmann): remove when target validation code is moved
+        first_span: Span,
+    },
+    ConstStability {
+        stability: PartialConstStability,
+        /// Span of the `#[rustc_const_stable(...)]` or `#[rustc_const_unstable(...)]` attribute
+        span: Span,
+    },
+    ConstStabilityIndirect,
+    Deprecation {
+        deprecation: Deprecation,
+        span: Span,
+    },
+    Diagnostic(DiagnosticAttribute),
+    DocComment {
+        style: AttrStyle,
+        kind: CommentKind,
+        span: Span,
+        comment: Symbol,
+    },
+    MacroTransparency(Transparency),
+    Repr(ThinVec<(ReprAttr, Span)>),
+    Stability {
+        stability: Stability,
+        /// Span of the `#[stable(...)]` or `#[unstable(...)]` attribute
+        span: Span,
+    },
     // tidy-alphabetical-end
 }

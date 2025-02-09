@@ -874,9 +874,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
             debug_assert_eq!(id.owner, self.current_hir_id_owner);
             let ret = self.arena.alloc_from_iter(lowered_attrs);
-            debug_assert!(!ret.is_empty());
-            self.attrs.insert(id.local_id, ret);
-            ret
+
+            // this is possible if an item contained syntactical attribute,
+            // but none of them parse succesfully or all of them were ignored
+            // for not being built-in attributes at all. They could be remaining
+            // unexpanded attributes used as markers in proc-macro derives for example.
+            // This will have emitted some diagnostics for the misparse, but will then
+            // not emit the attribute making the list empty.
+            if ret.is_empty() {
+                &[]
+            } else {
+                self.attrs.insert(id.local_id, ret);
+                ret
+            }
         }
     }
 

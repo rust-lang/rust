@@ -32,14 +32,6 @@ pub(crate) mod stability;
 pub(crate) mod transparency;
 pub(crate) mod util;
 
-pub use allow_unstable::*;
-pub use cfg::*;
-pub use confusables::*;
-pub use deprecation::*;
-pub use repr::*;
-pub use stability::*;
-pub use transparency::*;
-
 type AcceptFn<T> = fn(&mut T, &AcceptContext<'_>, &ArgParser<'_>);
 type AcceptMapping<T> = &'static [(&'static [rustc_span::Symbol], AcceptFn<T>)];
 

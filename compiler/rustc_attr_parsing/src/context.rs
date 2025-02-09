@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::sync::LazyLock;
@@ -11,7 +12,15 @@ use rustc_session::Session;
 use rustc_span::symbol::kw;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
-use crate::attributes::AttributeParser as _;
+use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInternalUnstableParser};
+use crate::attributes::confusables::ConfusablesParser;
+use crate::attributes::deprecation::DeprecationParser;
+use crate::attributes::repr::ReprParser;
+use crate::attributes::stability::{
+    BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
+};
+use crate::attributes::transparency::TransparencyParser;
+use crate::attributes::{AttributeParser as _, Combine, Single};
 use crate::parser::{ArgParser, MetaItemParser};
 
 macro_rules! attribute_groups {
@@ -52,6 +61,24 @@ macro_rules! attribute_groups {
 
 attribute_groups!(
     pub(crate) static ATTRIBUTE_MAPPING = [
+        // tidy-alphabetical-start
+        BodyStabilityParser,
+        ConfusablesParser,
+        ConstStabilityParser,
+        StabilityParser,
+        // tidy-alphabetical-end
+
+        // tidy-alphabetical-start
+        Combine<AllowConstFnUnstableParser>,
+        Combine<AllowInternalUnstableParser>,
+        Combine<ReprParser>,
+        // tidy-alphabetical-end
+
+        // tidy-alphabetical-start
+        Single<ConstStabilityIndirectParser>,
+        Single<DeprecationParser>,
+        Single<TransparencyParser>,
+        // tidy-alphabetical-end
     ];
 );
 
