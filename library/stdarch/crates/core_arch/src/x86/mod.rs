@@ -47,11 +47,11 @@ types! {
     ///
     /// # fn main() {
     /// # #[target_feature(enable = "sse2")]
-    /// # unsafe fn foo() {
+    /// # unsafe fn foo() { unsafe {
     /// let all_bytes_zero = _mm_setzero_si128();
     /// let all_bytes_one = _mm_set1_epi8(1);
     /// let four_i32 = _mm_set_epi32(1, 2, 3, 4);
-    /// # }
+    /// # }}
     /// # if is_x86_feature_detected!("sse2") { unsafe { foo() } }
     /// # }
     /// ```
@@ -89,11 +89,11 @@ types! {
     ///
     /// # fn main() {
     /// # #[target_feature(enable = "sse")]
-    /// # unsafe fn foo() {
+    /// # unsafe fn foo() { unsafe {
     /// let four_zeros = _mm_setzero_ps();
     /// let four_ones = _mm_set1_ps(1.0);
     /// let four_floats = _mm_set_ps(1.0, 2.0, 3.0, 4.0);
-    /// # }
+    /// # }}
     /// # if is_x86_feature_detected!("sse") { unsafe { foo() } }
     /// # }
     /// ```
@@ -131,11 +131,11 @@ types! {
     ///
     /// # fn main() {
     /// # #[target_feature(enable = "sse")]
-    /// # unsafe fn foo() {
+    /// # unsafe fn foo() { unsafe {
     /// let two_zeros = _mm_setzero_pd();
     /// let two_ones = _mm_set1_pd(1.0);
     /// let two_floats = _mm_set_pd(1.0, 2.0);
-    /// # }
+    /// # }}
     /// # if is_x86_feature_detected!("sse") { unsafe { foo() } }
     /// # }
     /// ```
@@ -177,11 +177,11 @@ types! {
     ///
     /// # fn main() {
     /// # #[target_feature(enable = "avx")]
-    /// # unsafe fn foo() {
+    /// # unsafe fn foo() { unsafe {
     /// let all_bytes_zero = _mm256_setzero_si256();
     /// let all_bytes_one = _mm256_set1_epi8(1);
     /// let eight_i32 = _mm256_set_epi32(1, 2, 3, 4, 5, 6, 7, 8);
-    /// # }
+    /// # }}
     /// # if is_x86_feature_detected!("avx") { unsafe { foo() } }
     /// # }
     /// ```
@@ -219,11 +219,11 @@ types! {
     ///
     /// # fn main() {
     /// # #[target_feature(enable = "avx")]
-    /// # unsafe fn foo() {
+    /// # unsafe fn foo() { unsafe {
     /// let eight_zeros = _mm256_setzero_ps();
     /// let eight_ones = _mm256_set1_ps(1.0);
     /// let eight_floats = _mm256_set_ps(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
-    /// # }
+    /// # }}
     /// # if is_x86_feature_detected!("avx") { unsafe { foo() } }
     /// # }
     /// ```
@@ -261,11 +261,11 @@ types! {
     ///
     /// # fn main() {
     /// # #[target_feature(enable = "avx")]
-    /// # unsafe fn foo() {
+    /// # unsafe fn foo() { unsafe {
     /// let four_zeros = _mm256_setzero_pd();
     /// let four_ones = _mm256_set1_pd(1.0);
     /// let four_floats = _mm256_set_pd(1.0, 2.0, 3.0, 4.0);
-    /// # }
+    /// # }}
     /// # if is_x86_feature_detected!("avx") { unsafe { foo() } }
     /// # }
     /// ```
