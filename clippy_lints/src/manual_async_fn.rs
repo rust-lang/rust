@@ -83,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                             format!("{} async {}", vis_snip, &header_snip[vis_snip.len() + 1..ret_pos])
                         };
 
-                        let body_snip = snippet_block(cx, closure_body.value.span, "..", Some(block.span)).to_string();
+                        let body_snip = snippet_block(cx, closure_body.value.span, "..", Some(block.span));
 
                         diag.multipart_suggestion(
                             "make the function `async` and return the output of the future directly",
