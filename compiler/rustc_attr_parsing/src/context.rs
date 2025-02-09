@@ -30,6 +30,7 @@ use crate::attributes::deprecation::*;
 use crate::attributes::diagnostic::do_not_recommend::*;
 use crate::attributes::diagnostic::on_const::*;
 use crate::attributes::diagnostic::on_unimplemented::*;
+use crate::attributes::diagnostic::on_unknown_item::*;
 use crate::attributes::doc::*;
 use crate::attributes::dummy::*;
 use crate::attributes::inline::*;
@@ -150,6 +151,7 @@ attribute_parsers!(
         NakedParser,
         OnConstParser,
         OnUnimplementedParser,
+        OnUnknownItemParser,
         RustcAlignParser,
         RustcAlignStaticParser,
         RustcCguTestAttributeParser,

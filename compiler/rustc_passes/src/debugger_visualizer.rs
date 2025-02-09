@@ -25,7 +25,7 @@ impl DebuggerVisualizerCollector<'_> {
             AttributeParser::parse_limited(
                 &self.sess,
                 attrs,
-                sym::debugger_visualizer,
+                &[sym::debugger_visualizer],
                 span,
                 node_id,
                 None,

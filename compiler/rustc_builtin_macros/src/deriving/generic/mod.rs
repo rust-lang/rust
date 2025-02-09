@@ -493,7 +493,7 @@ impl<'a> TraitDef<'a> {
         match item {
             Annotatable::Item(item) => {
                 let is_packed = matches!(
-                    AttributeParser::parse_limited(cx.sess, &item.attrs, sym::repr, item.span, item.id, None),
+                    AttributeParser::parse_limited(cx.sess, &item.attrs, &[sym::repr], item.span, item.id, None),
                     Some(Attribute::Parsed(AttributeKind::Repr { reprs, .. })) if reprs.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
                 );
 

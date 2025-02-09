@@ -96,10 +96,10 @@ impl Directive {
         }
 
         OnUnimplementedNote {
-            label: label.map(|l| l.1.format(args)),
-            message: message.map(|m| m.1.format(args)),
-            notes: notes.into_iter().map(|n| n.format(args)).collect(),
-            parent_label: parent_label.map(|e_s| e_s.format(args)),
+            label: label.map(|l| l.1.format(Some(args))),
+            message: message.map(|m| m.1.format(Some(args))),
+            notes: notes.into_iter().map(|n| n.format(Some(args))).collect(),
+            parent_label: parent_label.map(|e_s| e_s.format(Some(args))),
             append_const_msg,
         }
     }
@@ -133,7 +133,7 @@ pub struct FormatString {
     pub pieces: ThinVec<Piece>,
 }
 impl FormatString {
-    pub fn format(&self, args: &FormatArgs) -> String {
+    pub fn format(&self, args: Option<&FormatArgs>) -> String {
         let mut ret = String::new();
         for piece in &self.pieces {
             match piece {
@@ -141,7 +141,9 @@ impl FormatString {
 
                 // `A` if we have `trait Trait<A> {}` and `note = "i'm the actual type of {A}"`
                 Piece::Arg(FormatArg::GenericParam { generic_param, .. }) => {
-                    match args.generic_args.iter().find(|(p, _)| p == generic_param) {
+                    match args
+                        .and_then(|args| args.generic_args.iter().find(|(p, _)| p == generic_param))
+                    {
                         Some((_, val)) => ret.push_str(val.as_str()),
 
                         None => {
@@ -153,7 +155,9 @@ impl FormatString {
                 }
                 // `{Self}`
                 Piece::Arg(FormatArg::SelfUpper) => {
-                    let slf = match args.generic_args.iter().find(|(p, _)| *p == kw::SelfUpper) {
+                    let slf = match args.and_then(|args| {
+                        args.generic_args.iter().find(|(p, _)| *p == kw::SelfUpper)
+                    }) {
                         Some((_, val)) => val.to_string(),
                         None => "Self".to_string(),
                     };
@@ -161,11 +165,21 @@ impl FormatString {
                 }
 
                 // It's only `rustc_onunimplemented` from here
-                Piece::Arg(FormatArg::This) => ret.push_str(&args.this),
-                Piece::Arg(FormatArg::Trait) => {
-                    let _ = fmt::write(&mut ret, format_args!("{}", &args.trait_sugared));
+                Piece::Arg(FormatArg::This) => {
+                    ret.push_str(&args.map(|args| args.this.as_str()).unwrap_or_default())
                 }
-                Piece::Arg(FormatArg::ItemContext) => ret.push_str(args.item_context),
+                Piece::Arg(FormatArg::Trait) => {
+                    let _ = fmt::write(
+                        &mut ret,
+                        format_args!(
+                            "{}",
+                            &args.map(|args| args.trait_sugared.as_str()).unwrap_or_default()
+                        ),
+                    );
+                }
+                Piece::Arg(FormatArg::ItemContext) => {
+                    ret.push_str(args.map(|args| args.item_context).unwrap_or_default())
+                }
             }
         }
         ret

@@ -837,6 +837,9 @@ pub enum AttributeLintKind {
     MalformedOnUnimplementedAttr {
         span: Span,
     },
+    MalformedOnUnknownItemdAttr {
+        span: Span,
+    },
     MalformedOnConstAttr {
         span: Span,
     },
@@ -855,12 +858,14 @@ pub enum AttributeLintKind {
     },
     MissingOptionsForOnUnimplemented,
     MissingOptionsForOnConst,
+    MissingOptionsForOnUnknownItem,
 }
 
 #[derive(Debug, Clone, HashStable_Generic)]
 pub enum FormatWarning {
     PositionalArgument { span: Span, help: String },
     InvalidSpecifier { name: String, span: Span },
+    DisallowedPlaceholder { span: Span },
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;

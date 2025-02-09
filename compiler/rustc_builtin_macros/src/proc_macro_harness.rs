@@ -108,7 +108,7 @@ impl<'a> CollectProcMacros<'a> {
         })) = AttributeParser::parse_limited(
             self.session,
             slice::from_ref(attr),
-            sym::proc_macro_derive,
+            &[sym::proc_macro_derive],
             item.span,
             item.node_id(),
             None,

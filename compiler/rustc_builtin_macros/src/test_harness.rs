@@ -391,7 +391,7 @@ fn get_test_runner(sess: &Session, features: &Features, krate: &ast::Crate) -> O
     match AttributeParser::parse_limited(
         sess,
         &krate.attrs,
-        sym::test_runner,
+        &[sym::test_runner],
         krate.spans.inner_span,
         krate.id,
         Some(features),
