@@ -427,10 +427,9 @@ impl<'a> MetaItemListParserContext<'a> {
                 let span = span.with_hi(segments.last().unwrap().span.hi());
                 Some(AttrPath { segments: segments.into_boxed_slice(), span })
             }
-            TokenTree::Token(
-                Token { kind: token::OpenDelim(_) | token::CloseDelim(_), .. },
-                _,
-            ) => None,
+            TokenTree::Token(Token { kind: token::OpenDelim(_) | token::CloseDelim(_), .. }, _) => {
+                None
+            }
             _ => {
                 // malformed attributes can get here. We can't crash, but somewhere else should've
                 // already warned for this.
