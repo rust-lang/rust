@@ -1,6 +1,7 @@
 //! A simple slab allocator for pages in wasm
 
 #![cfg(target_arch = "wasm32")]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 use std::ptr;
 

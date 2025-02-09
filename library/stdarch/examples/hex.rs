@@ -29,6 +29,7 @@
     clippy::cast_sign_loss,
     clippy::missing_docs_in_private_items
 )]
+#![allow(unsafe_op_in_unsafe_fn)]
 
 use std::{
     io::{self, Read},

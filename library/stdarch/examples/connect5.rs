@@ -29,6 +29,7 @@
 //! each move.
 
 #![allow(internal_features)]
+#![allow(unsafe_op_in_unsafe_fn)]
 #![feature(avx512_target_feature)]
 #![cfg_attr(target_arch = "x86", feature(stdarch_x86_avx512, stdarch_internal))]
 #![cfg_attr(target_arch = "x86_64", feature(stdarch_x86_avx512, stdarch_internal))]

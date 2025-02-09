@@ -18,6 +18,7 @@
 #![feature(staged_api, doc_cfg, allow_internal_unstable)]
 #![deny(rust_2018_idioms)]
 #![allow(clippy::shadow_reuse)]
+#![allow(unsafe_op_in_unsafe_fn)]
 #![cfg_attr(test, allow(unused_imports))]
 #![no_std]
 #![allow(internal_features)]
