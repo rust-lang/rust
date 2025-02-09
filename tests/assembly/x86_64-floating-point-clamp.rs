@@ -3,7 +3,7 @@
 
 //@ assembly-output: emit-asm
 // Set the base cpu explicitly, in case the default has been changed.
-//@ compile-flags: --crate-type=lib -O -C llvm-args=-x86-asm-syntax=intel -C target-cpu=x86-64
+//@ compile-flags: --crate-type=lib -Copt-level=3 -C llvm-args=-x86-asm-syntax=intel -C target-cpu=x86-64
 //@ only-x86_64
 //@ ignore-sgx
 

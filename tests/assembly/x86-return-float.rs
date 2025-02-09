@@ -6,7 +6,7 @@
 // Use the same target CPU as `i686` so that LLVM orders the instructions in the same order.
 //@ compile-flags: -Ctarget-feature=+sse2 -Ctarget-cpu=pentium4
 // Force frame pointers to make ASM more consistent between targets
-//@ compile-flags: -O -C force-frame-pointers
+//@ compile-flags: -Copt-level=3 -C force-frame-pointers
 //@ filecheck-flags: --implicit-check-not fld --implicit-check-not fst
 //@ revisions: normal win
 //@[normal] ignore-windows
