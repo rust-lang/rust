@@ -1,7 +1,7 @@
 use rustc_abi::ExternAbi;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{AttrArgs, AttrItem, AttrKind, GenericParamKind, PatExprKind, PatKind};
+use rustc_hir::{AttrArgs, AttrItem, Attribute, GenericParamKind, PatExprKind, PatKind};
 use rustc_middle::ty;
 use rustc_session::config::CrateType;
 use rustc_session::{declare_lint, declare_lint_pass};
@@ -343,7 +343,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         } else {
             ast::attr::find_by_name(cx.tcx.hir().attrs(hir::CRATE_HIR_ID), sym::crate_name)
                 .and_then(|attr| {
-                    if let AttrKind::Normal(n) = &attr.kind
+                    if let Attribute::Unparsed(n) = attr
                         && let AttrItem { args: AttrArgs::Eq { eq_span: _, expr: lit }, .. } =
                             n.as_ref()
                         && let ast::LitKind::Str(name, ..) = lit.kind

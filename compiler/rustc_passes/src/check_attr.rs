@@ -15,8 +15,8 @@ use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, B
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, self, AssocItemKind, AttrKind, Attribute, CRATE_HIR_ID, CRATE_OWNER_ID, FnSig,
-    ForeignItem, HirId, Item, ItemKind, MethodKind, Safety, Target, TraitItem,
+    self as hir, self, AssocItemKind, Attribute, CRATE_HIR_ID, CRATE_OWNER_ID, FnSig, ForeignItem,
+    HirId, Item, ItemKind, MethodKind, Safety, Target, TraitItem,
 };
 use rustc_macros::LintDiagnostic;
 use rustc_middle::hir::nested_filter;
@@ -1471,7 +1471,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.tcx.emit_node_span_lint(
             UNUSED_ATTRIBUTES,
             hir_id,
-            attr.span,
+            attr.span(),
             errors::MustUseNoEffect { article, target },
         );
     }
@@ -1880,7 +1880,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         feature_err(
                             &self.tcx.sess,
                             sym::fn_align,
-                            attr.span,
+                            attr.span(),
                             fluent::passes_repr_align_function,
                         )
                         .emit();
@@ -1888,7 +1888,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     _ => {
                         self.dcx().emit_err(
                             errors::AttrApplication::StructEnumFunctionMethodUnion {
-                                hint_span: attr.span,
+                                hint_span: attr.span(),
                                 span,
                             },
                         );
@@ -2380,17 +2380,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             })
         {
             if hir_id != CRATE_HIR_ID {
-                match attr.style {
+                match attr.style() {
                     ast::AttrStyle::Outer => self.tcx.emit_node_span_lint(
                         UNUSED_ATTRIBUTES,
                         hir_id,
-                        attr.span,
+                        attr.span(),
                         errors::OuterCrateLevelAttr,
                     ),
                     ast::AttrStyle::Inner => self.tcx.emit_node_span_lint(
                         UNUSED_ATTRIBUTES,
                         hir_id,
-                        attr.span,
+                        attr.span(),
                         errors::InnerCrateLevelAttr,
                     ),
                 };
@@ -2417,7 +2417,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             UNUSED_ATTRIBUTES,
             hir_id,
             attr.span(),
-            errors::Unused { attr_span: attr.span, note },
+            errors::Unused { attr_span: attr.span(), note },
         );
     }
 
@@ -2760,23 +2760,23 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
                             kind: item.kind.descr(),
                         });
                     let err = tcx.dcx().create_err(errors::InvalidAttrAtCrateLevel {
-                        span: attr.span,
+                        span: attr.span(),
                         sugg_span: tcx
                             .sess
                             .source_map()
-                            .span_to_snippet(attr.span)
+                            .span_to_snippet(attr.span())
                             .ok()
                             .filter(|src| src.starts_with("#!["))
                             .map(|_| {
-                                attr.span
-                                    .with_lo(attr.span.lo() + BytePos(1))
-                                    .with_hi(attr.span.lo() + BytePos(2))
+                                attr.span()
+                                    .with_lo(attr.span().lo() + BytePos(1))
+                                    .with_hi(attr.span().lo() + BytePos(2))
                             }),
                         name: *attr_to_check,
                         item,
                     });
 
-                    if let AttrKind::Normal(ref p) = attr.kind {
+                    if let Attribute::Unparsed(p) = attr {
                         tcx.dcx().try_steal_replace_and_emit_err(
                             p.path.span,
                             StashKey::UndeterminedMacroResolution,

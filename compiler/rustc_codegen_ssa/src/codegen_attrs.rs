@@ -872,7 +872,7 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
         _ => {
             //FIXME(ZuseZ4): Once we fixed our parser, we should also prohibit the two-attribute
             //branch above.
-            span_bug!(attrs[1].span, "cg_ssa: rustc_autodiff should only exist once per source");
+            span_bug!(attrs[1].span(), "cg_ssa: rustc_autodiff should only exist once per source");
         }
     };
 
@@ -884,12 +884,12 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
     }
 
     let [mode, input_activities @ .., ret_activity] = &list[..] else {
-        span_bug!(attr.span, "rustc_autodiff attribute must contain mode and activities");
+        span_bug!(attr.span(), "rustc_autodiff attribute must contain mode and activities");
     };
     let mode = if let MetaItemInner::MetaItem(MetaItem { path: p1, .. }) = mode {
         p1.segments.first().unwrap().ident
     } else {
-        span_bug!(attr.span, "rustc_autodiff attribute must contain mode");
+        span_bug!(attr.span(), "rustc_autodiff attribute must contain mode");
     };
 
     // parse mode
@@ -905,7 +905,7 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
     let ret_symbol = if let MetaItemInner::MetaItem(MetaItem { path: p1, .. }) = ret_activity {
         p1.segments.first().unwrap().ident
     } else {
-        span_bug!(attr.span, "rustc_autodiff attribute must contain the return activity");
+        span_bug!(attr.span(), "rustc_autodiff attribute must contain the return activity");
     };
 
     // Then parse it into an actual DiffActivity
@@ -940,11 +940,11 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
 
     for &input in &arg_activities {
         if !valid_input_activity(mode, input) {
-            span_bug!(attr.span, "Invalid input activity {} for {} mode", input, mode);
+            span_bug!(attr.span(), "Invalid input activity {} for {} mode", input, mode);
         }
     }
     if !valid_ret_activity(mode, ret_activity) {
-        span_bug!(attr.span, "Invalid return activity {} for {} mode", ret_activity, mode);
+        span_bug!(attr.span(), "Invalid return activity {} for {} mode", ret_activity, mode);
     }
 
     Some(AutoDiffAttrs { mode, ret_activity, input_activity: arg_activities })
