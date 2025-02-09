@@ -68,7 +68,8 @@ jobs:
           os: windows-2025
         - target: i686-pc-windows-gnu
           os: windows-2025
-          channel: nightly-i686-gnu
+          # FIXME: pinned due to https://github.com/rust-lang/rust/issues/136795
+          channel: nightly-2025-02-07-i686-gnu
         - target: x86_64-pc-windows-gnu
           os: windows-2025
           channel: nightly-x86_64-gnu
