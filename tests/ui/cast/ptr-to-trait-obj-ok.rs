@@ -1,5 +1,3 @@
-//@ check-pass
-
 trait Trait<'a> {}
 
 fn remove_auto<'a>(x: *mut (dyn Trait<'a> + Send)) -> *mut dyn Trait<'a> {
@@ -8,6 +6,7 @@ fn remove_auto<'a>(x: *mut (dyn Trait<'a> + Send)) -> *mut dyn Trait<'a> {
 
 fn cast_inherent_lt<'a, 'b>(x: *mut (dyn Trait<'static> + 'a)) -> *mut (dyn Trait<'static> + 'b) {
     x as _
+    //~^ ERROR: lifetime may not live long enough
 }
 
 fn cast_away_higher_ranked<'a>(x: *mut dyn for<'b> Trait<'b>) -> *mut dyn Trait<'a> {
@@ -33,6 +32,7 @@ fn cast_inherent_lt_wrap<'a, 'b>(
     x: *mut (dyn Trait<'static> + 'a),
 ) -> *mut Wrapper<dyn Trait<'static> + 'b> {
     x as _
+    //~^ ERROR: lifetime may not live long enough
 }
 
 fn cast_away_higher_ranked_wrap<'a>(x: *mut dyn for<'b> Trait<'b>) -> *mut Wrapper<dyn Trait<'a>> {
