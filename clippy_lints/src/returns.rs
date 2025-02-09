@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{SpanRangeExt, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::visitors::{Descend, for_each_expr};
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
     binary_expr_needs_parentheses, fn_def_id, is_from_proc_macro, is_inside_let_else, is_res_lang_ctor,
     leaks_droppable_temporary_with_limited_lifetime, path_res, path_to_local_id, span_contains_cfg,
@@ -483,7 +483,7 @@ fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) 
         {
             ControlFlow::Break(())
         } else {
-            ControlFlow::Continue(Descend::from(!e.span.from_expansion()))
+            ControlFlow::Continue(())
         }
     })
     .is_some()
