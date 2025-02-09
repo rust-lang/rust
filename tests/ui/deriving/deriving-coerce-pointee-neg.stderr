@@ -6,22 +6,6 @@ LL | #[derive(CoercePointee)]
    |
    = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0802]: `CoercePointee` can only be derived on `struct`s with at least one field
-  --> $DIR/deriving-coerce-pointee-neg.rs:16:10
-   |
-LL | #[derive(CoercePointee)]
-   |          ^^^^^^^^^^^^^
-   |
-   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0802]: `CoercePointee` can only be derived on `struct`s with at least one field
-  --> $DIR/deriving-coerce-pointee-neg.rs:23:10
-   |
-LL | #[derive(CoercePointee)]
-   |          ^^^^^^^^^^^^^
-   |
-   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
-
 error[E0802]: `CoercePointee` can only be derived on `struct`s that are generic over at least one type
   --> $DIR/deriving-coerce-pointee-neg.rs:30:10
    |
@@ -43,12 +27,6 @@ error[E0802]: only one type parameter can be marked as `#[pointee]` when derivin
    |
 LL | struct TooManyPointees<'a, #[pointee] A: ?Sized, #[pointee] B: ?Sized>((&'a A, &'a B));
    |                                       ^                     - here another type parameter is marked as `#[pointee]`
-
-error[E0802]: `derive(CoercePointee)` requires `T` to be marked `?Sized`
-  --> $DIR/deriving-coerce-pointee-neg.rs:55:36
-   |
-LL | struct NoMaybeSized<'a, #[pointee] T> {
-   |                                    ^
 
 error: the `#[pointee]` attribute may only be used on generic parameters
   --> $DIR/deriving-coerce-pointee-neg.rs:63:5
@@ -75,7 +53,7 @@ LL |             struct UhOh<#[pointee] T>(T);
    |                         ^^^^^^^^^^
 
 error[E0392]: lifetime parameter `'a` is never used
-  --> $DIR/deriving-coerce-pointee-neg.rs:19:16
+  --> $DIR/deriving-coerce-pointee-neg.rs:18:16
    |
 LL | struct NoField<'a, #[pointee] T: ?Sized> {}
    |                ^^ unused lifetime parameter
@@ -83,26 +61,10 @@ LL | struct NoField<'a, #[pointee] T: ?Sized> {}
    = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
 
 error[E0392]: type parameter `T` is never used
-  --> $DIR/deriving-coerce-pointee-neg.rs:19:31
+  --> $DIR/deriving-coerce-pointee-neg.rs:18:31
    |
 LL | struct NoField<'a, #[pointee] T: ?Sized> {}
    |                               ^ unused type parameter
-   |
-   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
-
-error[E0392]: lifetime parameter `'a` is never used
-  --> $DIR/deriving-coerce-pointee-neg.rs:26:20
-   |
-LL | struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
-   |                    ^^ unused lifetime parameter
-   |
-   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
-
-error[E0392]: type parameter `T` is never used
-  --> $DIR/deriving-coerce-pointee-neg.rs:26:35
-   |
-LL | struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
-   |                                   ^ unused type parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
@@ -111,6 +73,12 @@ error[E0802]: `derive(CoercePointee)` is only applicable to `struct` with `repr(
    |
 LL | struct NotTransparent<'a, #[pointee] T: ?Sized> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0802]: `derive(CoercePointee)` requires the `#[pointee]` to be `?Sized`
+  --> $DIR/deriving-coerce-pointee-neg.rs:55:1
+   |
+LL | struct NoMaybeSized<'a, #[pointee] T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0802]: `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout
   --> $DIR/deriving-coerce-pointee-neg.rs:141:1
@@ -144,6 +112,18 @@ LL | #[derive(CoercePointee)]
    = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
    = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
+error[E0802]: `CoercePointee` can only be derived on `struct`s with at least one field with a `pointee` type
+  --> $DIR/deriving-coerce-pointee-neg.rs:18:1
+   |
+LL | struct NoField<'a, #[pointee] T: ?Sized> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0802]: `CoercePointee` can only be derived on `struct`s with at least one field with a `pointee` type
+  --> $DIR/deriving-coerce-pointee-neg.rs:25:1
+   |
+LL | struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0277]: the trait bound `Box<T>: Unsize<Box<T {coerced}>>` is not satisfied
   --> $DIR/deriving-coerce-pointee-neg.rs:155:10
    |
@@ -153,6 +133,22 @@ LL | #[derive(CoercePointee)]
    = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
    = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/deriving-coerce-pointee-neg.rs:25:20
+   |
+LL | struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
+   |                    ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/deriving-coerce-pointee-neg.rs:25:35
+   |
+LL | struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
+   |                                   ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
 error: aborting due to 21 previous errors
 

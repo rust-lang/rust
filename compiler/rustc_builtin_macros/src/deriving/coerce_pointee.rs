@@ -4,7 +4,7 @@ use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::visit::BoundKind;
 use rustc_ast::{
     self as ast, GenericArg, GenericBound, GenericParamKind, Generics, ItemKind, MetaItem,
-    TraitBoundModifiers, TyAlias, VariantData, WherePredicate,
+    TraitBoundModifiers, TyAlias, WherePredicate,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::E0802;
@@ -30,16 +30,8 @@ pub(crate) fn expand_deriving_coerce_pointee(
     item.visit_with(&mut DetectNonGenericPointeeAttr { cx });
 
     let (name_ident, generics) = if let Annotatable::Item(aitem) = item
-        && let ItemKind::Struct(struct_data, g) = &aitem.kind
+        && let ItemKind::Struct(_struct_data, g) = &aitem.kind
     {
-        if !matches!(
-            struct_data,
-            VariantData::Struct { fields, recovered: _ } | VariantData::Tuple(fields, _)
-                if !fields.is_empty())
-        {
-            cx.dcx().emit_err(RequireOneField { span });
-            return;
-        }
         (aitem.ident, g)
     } else {
         cx.dcx().emit_err(RequireTransparent { span });
@@ -206,10 +198,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
                 pointee_ty_ident.name,
             )
         {
-            cx.dcx().emit_err(RequiresMaybeSized {
-                span: pointee_ty_ident.span,
-                name: pointee_ty_ident,
-            });
+            cx.dcx().span_delayed_bug(pointee_ty_ident.span, "?Sized should be checked");
             return;
         }
         let arg = GenericArg::Type(s_ty.clone());
@@ -488,13 +477,6 @@ struct RequireTransparent {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_coerce_pointee_requires_one_field, code = E0802)]
-struct RequireOneField {
-    #[primary_span]
-    span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(builtin_macros_coerce_pointee_requires_one_generic, code = E0802)]
 struct RequireOneGeneric {
     #[primary_span]
@@ -515,12 +497,4 @@ struct TooManyPointees {
     one: Span,
     #[label]
     another: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_coerce_pointee_requires_maybe_sized, code = E0802)]
-struct RequiresMaybeSized {
-    #[primary_span]
-    span: Span,
-    name: Ident,
 }

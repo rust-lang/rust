@@ -328,12 +328,19 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                 .collect::<Vec<_>>();
 
             if coerced_fields.is_empty() {
-                // `CoercePointeeValidated` will report a more specific error
-                res = Err(tcx.dcx().emit_err(errors::DispatchFromDynSingle {
-                    span,
-                    trait_name: "DispatchFromDyn",
-                    note: true,
-                }));
+                if coerce_pointee_data.is_some() {
+                    // `CoercePointeeValidated` will report a more specific error
+                    res = Err(tcx.dcx().span_delayed_bug(
+                        span,
+                        "a more specific error from CoercePointee is expected",
+                    ))
+                } else {
+                    res = Err(tcx.dcx().emit_err(errors::DispatchFromDynSingle {
+                        span,
+                        trait_name: "DispatchFromDyn",
+                        note: true,
+                    }));
+                }
             } else if coerced_fields.len() > 1 {
                 if coerce_pointee_data.is_some() {
                     let spans =
@@ -404,6 +411,9 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                 res = res.and(ocx.resolve_regions_and_report_errors(impl_did, param_env, []));
             }
             res
+        }
+        (&Adt(def, _), _) if tcx.coerce_pointee_data(()).contains_key(&def.did()) => {
+            Err(tcx.dcx().span_delayed_bug(span, "a specific error for CoercePointee is expected"))
         }
         _ => Err(tcx
             .dcx()
@@ -898,23 +908,44 @@ fn visit_implementation_of_coerce_pointee_validity(
     checker: &Checker<'_>,
 ) -> Result<(), ErrorGuaranteed> {
     let tcx = checker.tcx;
-    let self_ty = tcx.impl_trait_ref(checker.impl_def_id).unwrap().instantiate_identity().self_ty();
-    let span = tcx.def_span(checker.impl_def_id);
-    if !tcx.is_builtin_derived(checker.impl_def_id.into()) {
+    let impl_did = checker.impl_def_id;
+    let self_ty = tcx.impl_trait_ref(impl_did).unwrap().instantiate_identity().self_ty();
+    let span = tcx.def_span(impl_did);
+    if !tcx.is_builtin_derived(impl_did.into()) {
         return Err(tcx.dcx().emit_err(errors::CoercePointeeNoUserValidityAssertion { span }));
     }
-    let ty::Adt(def, _args) = self_ty.kind() else {
+    let ty::Adt(def, args) = self_ty.kind() else {
         return Err(tcx.dcx().emit_err(errors::CoercePointeeNotConcreteType { span }));
     };
     let did = def.did();
     let Some(info) = tcx.coerce_pointee_data(()).get(&did) else {
         return Err(tcx.dcx().emit_err(errors::CoercePointeeNoUserValidityAssertion { span }));
     };
-    if let &ty::CoercePointeeInfo::Duplicated { impls } = info {
-        return Err(tcx.dcx().emit_err(errors::CoercePointeePointeeMultipleDerive {
-            spans: impls.iter().copied().map(|did| tcx.def_span(did)).collect(),
-        }));
-    }
+    let pointee_idx = match info {
+        &ty::CoercePointeeInfo::Validated { pointee_index_in_args, .. } => pointee_index_in_args,
+        ty::CoercePointeeInfo::PointeeUnnormalized { ty, .. } => {
+            return Err(tcx.dcx().emit_err(errors::CoercePointeePointeeNotGenericPointee {
+                span,
+                got: ty.to_string(),
+            }));
+        }
+        ty::CoercePointeeInfo::PointeeIsConst { konst, .. } => {
+            return Err(tcx.dcx().emit_err(errors::CoercePointeePointeeNotGenericPointee {
+                span,
+                got: konst.to_string(),
+            }));
+        }
+        ty::CoercePointeeInfo::Duplicated { impls } => {
+            return Err(tcx.dcx().emit_err(errors::CoercePointeePointeeMultipleDerive {
+                spans: impls.iter().copied().map(|did| tcx.def_span(did)).collect(),
+            }));
+        }
+        ty::CoercePointeeInfo::PointeeNotFound { ty, .. } => {
+            return Err(tcx
+                .dcx()
+                .emit_err(errors::CoercePointeeNoPointee { span, ty: ty.to_string() }));
+        }
+    };
     // Now get a more precise span of the `struct`.
     let span = tcx.def_span(did);
     if !def.is_struct() {
@@ -926,8 +957,28 @@ fn visit_implementation_of_coerce_pointee_validity(
         return Err(tcx.dcx().emit_err(errors::CoercePointeeNotTransparent { span }));
     }
     if def.all_fields().next().is_none() {
-        return Err(tcx.dcx().emit_err(errors::CoercePointeeNoField { span }));
+        return Err(tcx.dcx().span_delayed_bug(
+            span,
+            "a specific error from CoercePointee is expected in CoerceUnsized coherence check",
+        ));
     }
+
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+    let param_env = tcx.param_env(impl_did);
+    let ocx = ObligationCtxt::new(&infcx);
+    let cause = ObligationCause::misc(span, impl_did);
+    let pointee_ty = args.type_at(pointee_idx);
+    let obligation = Obligation::new(
+        tcx,
+        cause,
+        param_env,
+        ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, None), [pointee_ty]),
+    );
+    ocx.register_obligation(obligation);
+    if ocx.select_all_or_error().is_empty() {
+        return Err(tcx.dcx().emit_err(errors::CoercePointeePointeeMissingMaybeSized { span }));
+    }
+
     Ok(())
 }
 
@@ -937,24 +988,16 @@ fn try_extract_coerce_pointee_data<'tcx>(
     info: &ty::CoercePointeeInfo<'tcx>,
 ) -> Result<(usize, DefId), ErrorGuaranteed> {
     match info {
-        ty::CoercePointeeInfo::PointeeUnnormalized { ty, .. } => Err(tcx
-            .dcx()
-            .emit_err(errors::CoercePointeePointeeNotGenericPointee { span, got: ty.to_string() })),
-        ty::CoercePointeeInfo::PointeeIsConst { konst, .. } => {
-            Err(tcx.dcx().emit_err(errors::CoercePointeePointeeNotGenericPointee {
-                span,
-                got: konst.to_string(),
-            }))
+        &ty::CoercePointeeInfo::Validated { pointee_index_in_args, impl_def_id } => {
+            Ok((pointee_index_in_args, impl_def_id))
         }
-        ty::CoercePointeeInfo::Validated { pointee_index_in_args, impl_def_id } => {
-            Ok((*pointee_index_in_args, *impl_def_id))
-        }
-        ty::CoercePointeeInfo::Duplicated { .. } => Err(tcx
-            .dcx()
-            .span_delayed_bug(span, "a special error for duplicated CoercePointee is expected")),
-        ty::CoercePointeeInfo::PointeeNotFound { ty, .. } => {
-            Err(tcx.dcx().emit_err(errors::CoercePointeeNoPointee { span, ty: ty.to_string() }))
-        }
+        ty::CoercePointeeInfo::PointeeUnnormalized { .. }
+        | ty::CoercePointeeInfo::PointeeIsConst { .. }
+        | ty::CoercePointeeInfo::PointeeNotFound { .. }
+        | ty::CoercePointeeInfo::Duplicated { .. } => Err(tcx.dcx().span_delayed_bug(
+            span,
+            "a more specific error for malformed CoercePointee is expected",
+        )),
     }
 }
 

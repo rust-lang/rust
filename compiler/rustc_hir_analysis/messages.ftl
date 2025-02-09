@@ -85,6 +85,8 @@ hir_analysis_cmse_output_stack_spill =
     .note1 = functions with the `"{$abi_name}"` ABI must pass their result via the available return registers
     .note2 = the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
+hir_analysis_coerce_pointee_missing_maybe_sized = `derive(CoercePointee)` requires the `#[pointee]` to be `?Sized`
+
 hir_analysis_coerce_pointee_multiple_derive = `derive(CoercePointee)` is derived multiple times
     .label = another derivation originates from here
 

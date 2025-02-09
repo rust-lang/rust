@@ -29,6 +29,13 @@ pub trait Unsize<T: ?Sized> {}
 #[lang = "coerce_unsized"]
 pub trait CoerceUnsized<T> {}
 
+#[lang = "coerce_pointee_validated"]
+pub trait CoercePointeeValidated {
+    /* compiler built-in */
+    #[lang = "coerce_pointee_validated_pointee"]
+    type Pointee: ?Sized;
+}
+
 impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
 impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a mut U> for &'a mut T {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}

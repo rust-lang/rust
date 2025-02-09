@@ -1248,6 +1248,13 @@ pub(crate) struct CoercePointeePointeeMultipleDerive {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_pointee_missing_maybe_sized, code = E0802)]
+pub(crate) struct CoercePointeePointeeMissingMaybeSized {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_inherent_ty_outside_relevant, code = E0390)]
 #[help]
 pub(crate) struct InherentTyOutsideRelevant {
