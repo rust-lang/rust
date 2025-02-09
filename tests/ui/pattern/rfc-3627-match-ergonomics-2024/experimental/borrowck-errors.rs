@@ -32,6 +32,8 @@ pub fn main() {
     let &ref mut x = &0;
     //~^ cannot borrow data in a `&` reference as mutable [E0596]
 
+    // For 2021 edition, this is also a regression test for #136223
+    // since the maximum mutability is downgraded during the pattern check process.
     if let &Some(Some(x)) = &Some(&mut Some(0)) {
         //[stable2021,classic2024]~^ ERROR: cannot borrow data in a `&` reference as mutable
         let _: &u32 = x;
