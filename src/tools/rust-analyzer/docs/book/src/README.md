@@ -10,7 +10,7 @@ implement semantic features like completion or goto definition by
 talking to an external language server process.
 
 To improve this document, send a pull request:
-[https://github.com/rust-lang/rust-analyzer](https://github.com/rust-lang/rust-analyzer/blob/docs/book/README.md)
+[https://github.com/rust-lang/rust-analyzer](https://github.com/rust-lang/rust-analyzer/blob/master/docs/book/README.md)
 
 The manual is written in markdown and includes
 some extra files which are generated from the source code. Run
