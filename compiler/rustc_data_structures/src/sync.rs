@@ -229,11 +229,3 @@ impl<T> RwLock<T> {
         self.write()
     }
 }
-
-// FIXME: Probably a bad idea
-impl<T: Clone> Clone for RwLock<T> {
-    #[inline]
-    fn clone(&self) -> Self {
-        RwLock::new(self.borrow().clone())
-    }
-}
