@@ -1058,7 +1058,6 @@ branch = "stable"
 [assign.adhoc_groups]
 compiler = [
     "@BoxyUwU",
-    "@chenyukang",
     "@cjgillot",
     "@compiler-errors",
     "@davidtwco",
