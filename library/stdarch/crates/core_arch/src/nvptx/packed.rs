@@ -7,7 +7,7 @@
 use crate::intrinsics::simd::*;
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.minnum.v2f16"]
     fn llvm_f16x2_minnum(a: f16x2, b: f16x2) -> f16x2;
     #[link_name = "llvm.minimum.v2f16"]

@@ -6,7 +6,7 @@ use crate::core_arch::{simd::*, x86::*};
 use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.sse4a.extrq"]
     fn extrq(x: i64x2, y: i8x16) -> i64x2;
     #[link_name = "llvm.x86.sse4a.extrqi"]

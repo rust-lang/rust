@@ -14,7 +14,7 @@ use crate::core_arch::x86::__m512i;
 use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.aesni.aesenc.256"]
     fn aesenc_256(a: __m256i, round_key: __m256i) -> __m256i;
     #[link_name = "llvm.x86.aesni.aesenclast.256"]

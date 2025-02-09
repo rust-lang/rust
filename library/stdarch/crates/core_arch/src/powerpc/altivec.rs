@@ -48,7 +48,7 @@ types! {
 }
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.ppc.altivec.lvx"]
     fn lvx(p: *const i8) -> vector_unsigned_int;
 
@@ -688,7 +688,7 @@ mod sealed {
                 let addr = (b as *const u8).offset(a);
 
                 // Workaround ptr::copy_nonoverlapping not being inlined
-                extern "rust-intrinsic" {
+                unsafe extern "rust-intrinsic" {
                     #[rustc_nounwind]
                     pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
                 }
@@ -743,7 +743,7 @@ mod sealed {
                 let addr = (b as *mut u8).offset(a);
 
                 // Workaround ptr::copy_nonoverlapping not being inlined
-                extern "rust-intrinsic" {
+                unsafe extern "rust-intrinsic" {
                     #[rustc_nounwind]
                     pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
                 }

@@ -23,7 +23,7 @@ use crate::mem::transmute;
 use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.vgf2p8affineinvqb.512"]
     fn vgf2p8affineinvqb_512(x: i8x64, a: i8x64, imm8: u8) -> i8x64;
     #[link_name = "llvm.x86.vgf2p8affineinvqb.256"]

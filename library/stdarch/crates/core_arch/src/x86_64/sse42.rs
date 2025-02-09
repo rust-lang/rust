@@ -4,7 +4,7 @@
 use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.sse42.crc32.64.64"]
     fn crc32_64_64(crc: u64, v: u64) -> u64;
 }

@@ -53,7 +53,7 @@ types! {
 
 #[allow(improper_ctypes)]
 #[rustfmt::skip]
-extern "unadjusted" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.smax.v16i8"] fn vmxb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
     #[link_name = "llvm.smax.v8i16"] fn vmxh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short;
     #[link_name = "llvm.smax.v4i32"] fn vmxf(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;

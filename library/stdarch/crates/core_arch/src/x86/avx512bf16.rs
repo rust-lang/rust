@@ -10,7 +10,7 @@ use crate::intrinsics::simd::*;
 use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.avx512bf16.cvtne2ps2bf16.128"]
     fn cvtne2ps2bf16(a: f32x4, b: f32x4) -> i16x8;
     #[link_name = "llvm.x86.avx512bf16.cvtne2ps2bf16.256"]

@@ -1,7 +1,7 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.wasm.memory.grow"]
     fn llvm_memory_grow(mem: u32, pages: usize) -> usize;
     #[link_name = "llvm.wasm.memory.size"]

@@ -148,7 +148,7 @@ pub unsafe fn _mm_moveldup_ps(a: __m128) -> __m128 {
 }
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.sse3.hadd.pd"]
     fn haddpd(a: __m128d, b: __m128d) -> __m128d;
     #[link_name = "llvm.x86.sse3.hadd.ps"]

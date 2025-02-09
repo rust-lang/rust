@@ -27,7 +27,7 @@ use crate::mem::transmute;
 use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.avx512.mask.vpshufbitqmb.512"]
     fn bitshuffle_512(data: i8x64, indices: i8x64, mask: __mmask64) -> __mmask64;
     #[link_name = "llvm.x86.avx512.mask.vpshufbitqmb.256"]

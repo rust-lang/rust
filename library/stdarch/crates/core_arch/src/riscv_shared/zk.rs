@@ -1,7 +1,7 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-extern "unadjusted" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.riscv.sm4ed"]
     fn _sm4ed(rs1: i32, rs2: i32, bs: i32) -> i32;
 
@@ -28,7 +28,7 @@ extern "unadjusted" {
 }
 
 #[cfg(target_arch = "riscv32")]
-extern "unadjusted" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.riscv.xperm8.i32"]
     fn _xperm8_32(rs1: i32, rs2: i32) -> i32;
 
@@ -37,7 +37,7 @@ extern "unadjusted" {
 }
 
 #[cfg(target_arch = "riscv64")]
-extern "unadjusted" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.riscv.xperm8.i64"]
     fn _xperm8_64(rs1: i64, rs2: i64) -> i64;
 

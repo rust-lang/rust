@@ -163,7 +163,7 @@ use super::types::*;
     out.push_str(
         r#"
 #[allow(improper_ctypes)]
-extern "unadjusted" {
+unsafe extern "unadjusted" {
 "#,
     );
 

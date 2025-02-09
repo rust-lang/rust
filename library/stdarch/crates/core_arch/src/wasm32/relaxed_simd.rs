@@ -5,7 +5,7 @@ use crate::core_arch::simd;
 use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.wasm.relaxed.swizzle"]
     fn llvm_relaxed_swizzle(a: simd::i8x16, b: simd::i8x16) -> simd::i8x16;
     #[link_name = "llvm.wasm.relaxed.trunc.signed"]

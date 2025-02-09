@@ -2,7 +2,7 @@
 use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
-extern "unadjusted" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.addcarry.64"]
     fn llvm_addcarry_u64(a: u8, b: u64, c: u64) -> (u8, u64);
     #[link_name = "llvm.x86.addcarryx.u64"]

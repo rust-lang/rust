@@ -140,7 +140,7 @@ cfg_if::cfg_if! {
                 if #[cfg(windows)] {
                     use alloc::vec;
                     #[link(name = "kernel32")]
-                    extern "system" {
+                    unsafe extern "system" {
                         fn GetEnvironmentVariableA(name: *const u8, buffer: *mut u8, size: u32) -> u32;
                     }
                     let len = unsafe { GetEnvironmentVariableA(RUST_STD_DETECT_UNSTABLE.as_ptr().cast::<u8>(), core::ptr::null_mut(), 0) };

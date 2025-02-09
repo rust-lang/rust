@@ -15990,7 +15990,7 @@ pub unsafe fn _mm_cvtsi16_si128(a: i16) -> __m128i {
 }
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.avx512fp16.mask.cmp.sh"]
     fn vcmpsh(a: __m128h, b: __m128h, imm8: i32, mask: __mmask8, sae: i32) -> __mmask8;
     #[link_name = "llvm.x86.avx512fp16.vcomi.sh"]

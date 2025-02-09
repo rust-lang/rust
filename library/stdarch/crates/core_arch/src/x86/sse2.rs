@@ -2945,7 +2945,7 @@ pub unsafe fn _mm_unpacklo_pd(a: __m128d, b: __m128d) -> __m128d {
 }
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.sse2.pause"]
     fn pause();
     #[link_name = "llvm.x86.sse2.clflush"]

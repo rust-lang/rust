@@ -1011,7 +1011,7 @@ pub unsafe fn _mm256_dpwuuds_epi32(src: __m256i, a: __m256i, b: __m256i) -> __m2
 }
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.avx512.vpdpwssd.512"]
     fn vpdpwssd(src: i32x16, a: i32x16, b: i32x16) -> i32x16;
     #[link_name = "llvm.x86.avx512.vpdpwssd.256"]

@@ -40275,7 +40275,7 @@ pub const _MM_PERM_DDDC: _MM_PERM_ENUM = 0xFE;
 pub const _MM_PERM_DDDD: _MM_PERM_ENUM = 0xFF;
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.avx512.sqrt.ps.512"]
     fn vsqrtps(a: f32x16, rounding: i32) -> f32x16;
     #[link_name = "llvm.x86.avx512.sqrt.pd.512"]

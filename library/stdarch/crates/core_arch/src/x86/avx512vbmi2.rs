@@ -2053,7 +2053,7 @@ pub unsafe fn _mm_maskz_shrdi_epi16<const IMM8: i32>(
 }
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.avx512.mask.compress.store.w.512"]
     fn vcompressstorew(mem: *mut i8, data: i16x32, mask: u32);
     #[link_name = "llvm.x86.avx512.mask.compress.store.w.256"]

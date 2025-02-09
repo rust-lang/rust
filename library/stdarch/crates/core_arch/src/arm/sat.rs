@@ -27,7 +27,7 @@ pub unsafe fn __usat<const WIDTH: u32>(x: i32) -> u32 {
     arm_usat(x, WIDTH as i32)
 }
 
-extern "unadjusted" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.arm.ssat"]
     fn arm_ssat(x: i32, y: i32) -> i32;
 

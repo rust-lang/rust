@@ -1,7 +1,7 @@
 use crate::core_arch::arm_shared::{uint32x4_t, uint8x16_t};
 
 #[allow(improper_ctypes)]
-extern "unadjusted" {
+unsafe extern "unadjusted" {
     #[cfg_attr(
         any(target_arch = "aarch64", target_arch = "arm64ec"),
         link_name = "llvm.aarch64.crypto.aese"

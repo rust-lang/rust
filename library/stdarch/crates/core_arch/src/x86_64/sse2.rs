@@ -6,7 +6,7 @@ use crate::core_arch::x86::*;
 use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.sse2.cvtsd2si64"]
     fn cvtsd2si64(a: __m128d) -> i64;
     #[link_name = "llvm.x86.sse2.cvttsd2si64"]

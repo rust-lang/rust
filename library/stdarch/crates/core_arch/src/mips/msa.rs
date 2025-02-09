@@ -45,7 +45,7 @@ types! {
 }
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.mips.add.a.b"]
     fn msa_add_a_b(a: v16i8, b: v16i8) -> v16i8;
     #[link_name = "llvm.mips.add.a.h"]

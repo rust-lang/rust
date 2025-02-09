@@ -199,7 +199,7 @@ pub unsafe fn _mm_cvtt_roundsh_u64<const SAE: i32>(a: __m128h) -> u64 {
 }
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.avx512fp16.vcvtsi642sh"]
     fn vcvtsi642sh(a: __m128h, b: i64, rounding: i32) -> __m128h;
     #[link_name = "llvm.x86.avx512fp16.vcvtusi642sh"]

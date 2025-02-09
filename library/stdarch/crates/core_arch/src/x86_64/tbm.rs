@@ -13,7 +13,7 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.tbm.bextri.u64"]
     fn bextri_u64(a: u64, control: u64) -> u64;
 }

@@ -35,7 +35,7 @@ types! {
 }
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.ppc.altivec.vperm"]
     fn vperm(
         a: vector_signed_int,

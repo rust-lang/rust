@@ -1,4 +1,4 @@
-extern "unadjusted" {
+unsafe extern "unadjusted" {
     #[cfg_attr(
         any(target_arch = "aarch64", target_arch = "arm64ec"),
         link_name = "llvm.aarch64.crc32b"

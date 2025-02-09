@@ -293,7 +293,7 @@ pub unsafe fn _mm_sign_epi32(a: __m128i, b: __m128i) -> __m128i {
 }
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.ssse3.pshuf.b.128"]
     fn pshufb128(a: u8x16, b: u8x16) -> u8x16;
 

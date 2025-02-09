@@ -1145,7 +1145,7 @@ impl_sign_conversions_neon! {
 }
 
 #[allow(improper_ctypes)]
-extern "unadjusted" {
+unsafe extern "unadjusted" {
     // absolute value (64-bit)
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v8i8")]
     #[cfg_attr(
@@ -9921,7 +9921,7 @@ pub unsafe fn vpadalq_u32(a: uint64x2_t, b: uint32x4_t) -> uint64x2_t {
 )]
 pub unsafe fn vmmlaq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "unadjusted" {
+    unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.smmla.v4i32.v16i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -9951,7 +9951,7 @@ pub unsafe fn vmmlaq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t 
 )]
 pub unsafe fn vmmlaq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
-    extern "unadjusted" {
+    unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.ummla.v4i32.v16i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -9981,7 +9981,7 @@ pub unsafe fn vmmlaq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x
 )]
 pub unsafe fn vusmmlaq_s32(a: int32x4_t, b: uint8x16_t, c: int8x16_t) -> int32x4_t {
     #[allow(improper_ctypes)]
-    extern "unadjusted" {
+    unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.usmmla.v4i32.v16i8")]
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),

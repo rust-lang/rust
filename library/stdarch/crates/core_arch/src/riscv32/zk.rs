@@ -1,7 +1,7 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-extern "unadjusted" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.riscv.aes32esi"]
     fn _aes32esi(rs1: i32, rs2: i32, bs: i32) -> i32;
 

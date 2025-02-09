@@ -17,7 +17,7 @@ use stdarch_test::assert_instr;
 use crate::mem::transmute;
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.ppc.vsx.lxvl"]
     fn lxvl(a: *const u8, l: usize) -> vector_signed_int;
 

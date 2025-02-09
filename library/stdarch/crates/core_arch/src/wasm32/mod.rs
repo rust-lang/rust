@@ -174,7 +174,7 @@ pub fn f64_sqrt(a: f64) -> f64 {
     unsafe { crate::intrinsics::sqrtf64(a) }
 }
 
-extern "C-unwind" {
+unsafe extern "C-unwind" {
     #[link_name = "llvm.wasm.throw"]
     fn wasm_throw(tag: i32, ptr: *mut u8) -> !;
 }

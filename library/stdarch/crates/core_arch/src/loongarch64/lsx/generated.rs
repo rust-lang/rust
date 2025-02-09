@@ -9,7 +9,7 @@
 use super::types::*;
 
 #[allow(improper_ctypes)]
-extern "unadjusted" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.loongarch.lsx.vsll.b"]
     fn __lsx_vsll_b(a: v16i8, b: v16i8) -> v16i8;
     #[link_name = "llvm.loongarch.lsx.vsll.h"]

@@ -399,7 +399,7 @@ pub unsafe fn _mm_maskz_madd52lo_epu64(k: __mmask8, a: __m128i, b: __m128i, c: _
 }
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.avx512.vpmadd52l.uq.128"]
     fn vpmadd52luq_128(z: __m128i, x: __m128i, y: __m128i) -> __m128i;
     #[link_name = "llvm.x86.avx512.vpmadd52h.uq.128"]

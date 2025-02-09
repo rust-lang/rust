@@ -1,7 +1,7 @@
 use crate::core_arch::{simd::*, x86::*};
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.sha1msg1"]
     fn sha1msg1(a: i32x4, b: i32x4) -> i32x4;
     #[link_name = "llvm.x86.sha1msg2"]

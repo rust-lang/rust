@@ -16,7 +16,7 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.xbegin"]
     fn x86_xbegin() -> i32;
     #[link_name = "llvm.x86.xend"]

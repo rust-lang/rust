@@ -19,7 +19,7 @@ mod packed;
 pub use packed::*;
 
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.nvvm.barrier0"]
     fn syncthreads() -> ();
     #[link_name = "llvm.nvvm.read.ptx.sreg.ntid.x"]
@@ -147,7 +147,7 @@ pub unsafe fn trap() -> ! {
 }
 
 // Basic CUDA syscall declarations.
-extern "C" {
+unsafe extern "C" {
     /// Print formatted output from a kernel to a host-side output stream.
     ///
     /// Syscall arguments:

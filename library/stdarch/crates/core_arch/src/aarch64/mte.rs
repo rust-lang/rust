@@ -2,7 +2,7 @@
 //!
 //! [ACLE documentation](https://arm-software.github.io/acle/main/acle.html#markdown-toc-mte-intrinsics)
 
-extern "unadjusted" {
+unsafe extern "unadjusted" {
     #[cfg_attr(
         any(target_arch = "aarch64", target_arch = "arm64ec"),
         link_name = "llvm.aarch64.irg"

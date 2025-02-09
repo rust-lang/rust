@@ -124,7 +124,7 @@ pub unsafe fn _mm_tzcnt_32(x: u32) -> i32 {
     x.trailing_zeros() as i32
 }
 
-extern "C" {
+unsafe extern "C" {
     #[link_name = "llvm.x86.bmi.bextr.32"]
     fn x86_bmi_bextr_32(x: u32, y: u32) -> u32;
 }

@@ -72,7 +72,7 @@ pub struct float64x2x4_t(
 );
 
 #[allow(improper_ctypes)]
-extern "unadjusted" {
+unsafe extern "unadjusted" {
     // absolute value
     #[link_name = "llvm.aarch64.neon.abs.i64"]
     fn vabsd_s64_(a: i64) -> i64;
@@ -3423,7 +3423,7 @@ pub unsafe fn vsm3tt1aq_u32<const IMM2: i32>(
 ) -> uint32x4_t {
     static_assert_uimm_bits!(IMM2, 2);
     #[allow(improper_ctypes)]
-    extern "unadjusted" {
+    unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sm3tt1a"
@@ -3446,7 +3446,7 @@ pub unsafe fn vsm3tt1bq_u32<const IMM2: i32>(
 ) -> uint32x4_t {
     static_assert_uimm_bits!(IMM2, 2);
     #[allow(improper_ctypes)]
-    extern "unadjusted" {
+    unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sm3tt1b"
@@ -3469,7 +3469,7 @@ pub unsafe fn vsm3tt2aq_u32<const IMM2: i32>(
 ) -> uint32x4_t {
     static_assert_uimm_bits!(IMM2, 2);
     #[allow(improper_ctypes)]
-    extern "unadjusted" {
+    unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sm3tt2a"
@@ -3492,7 +3492,7 @@ pub unsafe fn vsm3tt2bq_u32<const IMM2: i32>(
 ) -> uint32x4_t {
     static_assert_uimm_bits!(IMM2, 2);
     #[allow(improper_ctypes)]
-    extern "unadjusted" {
+    unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sm3tt2b"
@@ -3511,7 +3511,7 @@ pub unsafe fn vsm3tt2bq_u32<const IMM2: i32>(
 pub unsafe fn vxarq_u64<const IMM6: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(IMM6, 6);
     #[allow(improper_ctypes)]
-    extern "unadjusted" {
+    unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.xar"

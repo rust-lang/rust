@@ -8,7 +8,7 @@ use crate::core_arch::{simd::*, x86::*};
 use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
-extern "unadjusted" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.x86.vcvtph2ps.128"]
     fn llvm_vcvtph2ps_128(a: i16x8) -> f32x4;
     #[link_name = "llvm.x86.vcvtph2ps.256"]
