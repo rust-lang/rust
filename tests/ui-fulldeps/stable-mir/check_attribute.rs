@@ -39,7 +39,7 @@ fn test_stable_mir() -> ControlFlow<()> {
 fn test_builtins(items: &CrateItems) {
     let target_fn = *get_item(&items, "builtins_fn").unwrap();
     let allow_attrs = target_fn.attrs_by_path(&["allow".to_string()]);
-    assert_eq!(allow_attrs[0].as_str(), "#![allow(unused_variables)]");
+    assert_eq!(allow_attrs[0].as_str(), "#[allow(unused_variables)]");
 
     let inline_attrs = target_fn.attrs_by_path(&["inline".to_string()]);
     assert_eq!(inline_attrs[0].as_str(), "#[inline]");
