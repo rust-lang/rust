@@ -21,7 +21,7 @@ use crate::interpret::{
 fn branches<'tcx>(
     ecx: &CompileTimeInterpCx<'tcx>,
     place: &MPlaceTy<'tcx>,
-    n: usize,
+    field_count: usize,
     variant: Option<VariantIdx>,
     num_nodes: &mut usize,
 ) -> ValTreeCreationResult<'tcx> {
@@ -29,24 +29,21 @@ fn branches<'tcx>(
         Some(variant) => ecx.project_downcast(place, variant).unwrap(),
         None => place.clone(),
     };
-    let variant = variant
-        .map(|variant| Some(ty::ValTree::from_scalar_int(*ecx.tcx, variant.as_u32().into())));
-    debug!(?place, ?variant);
+    debug!(?place);
 
-    let mut fields = Vec::with_capacity(n);
-    for i in 0..n {
-        let field = ecx.project_field(&place, i).unwrap();
-        let valtree = const_to_valtree_inner(ecx, &field, num_nodes)?;
-        fields.push(Some(valtree));
-    }
+    let mut branches = Vec::with_capacity(field_count + variant.is_some() as usize);
 
     // For enums, we prepend their variant index before the variant's fields so we can figure out
     // the variant again when just seeing a valtree.
-    let branches = variant
-        .into_iter()
-        .chain(fields.into_iter())
-        .collect::<Option<Vec<_>>>()
-        .expect("should have already checked for errors in ValTree creation");
+    if let Some(variant) = variant {
+        branches.push(ty::ValTree::from_scalar_int(*ecx.tcx, variant.as_u32().into()));
+    }
+
+    for i in 0..field_count {
+        let field = ecx.project_field(&place, i).unwrap();
+        let valtree = const_to_valtree_inner(ecx, &field, num_nodes)?;
+        branches.push(valtree);
+    }
 
     // Have to account for ZSTs here
     if branches.len() == 0 {
