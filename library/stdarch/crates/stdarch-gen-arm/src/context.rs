@@ -240,7 +240,9 @@ impl LocalContext {
                         format!("{variable}, 0, {max}"),
                     ))
                 } else {
-                    Err(format!("can't make an assertion out of constraint {self:?}: no types are being used"))
+                    Err(format!(
+                        "can't make an assertion out of constraint {self:?}: no types are being used"
+                    ))
                 }
             }
             _ => unreachable!("constraints were not built successfully!"),

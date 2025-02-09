@@ -6836,7 +6836,7 @@ unsafe extern "C" {
     fn vrangeps_256(a: f32x8, b: f32x8, imm8: i32, src: f32x8, k: __mmask8) -> f32x8;
     #[link_name = "llvm.x86.avx512.mask.range.ps.512"]
     fn vrangeps_512(a: f32x16, b: f32x16, imm8: i32, src: f32x16, k: __mmask16, sae: i32)
-        -> f32x16;
+    -> f32x16;
 
     #[link_name = "llvm.x86.avx512.mask.range.sd"]
     fn vrangesd(a: f64x2, b: f64x2, src: f64x2, k: __mmask8, imm8: i32, sae: i32) -> f64x2;

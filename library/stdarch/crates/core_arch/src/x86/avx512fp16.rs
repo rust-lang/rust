@@ -10866,7 +10866,9 @@ pub unsafe fn _mm512_reduce_add_ph(a: __m512h) -> f16 {
     let q = simd_shuffle!(
         a,
         a,
-        [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+        [
+            16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+        ]
     );
     _mm256_reduce_add_ph(_mm256_add_ph(p, q))
 }
@@ -10911,7 +10913,9 @@ pub unsafe fn _mm512_reduce_mul_ph(a: __m512h) -> f16 {
     let q = simd_shuffle!(
         a,
         a,
-        [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+        [
+            16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+        ]
     );
     _mm256_reduce_mul_ph(_mm256_mul_ph(p, q))
 }
@@ -10957,7 +10961,9 @@ pub unsafe fn _mm512_reduce_min_ph(a: __m512h) -> f16 {
     let q = simd_shuffle!(
         a,
         a,
-        [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+        [
+            16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+        ]
     );
     _mm256_reduce_min_ph(_mm256_min_ph(p, q))
 }
@@ -11003,7 +11009,9 @@ pub unsafe fn _mm512_reduce_max_ph(a: __m512h) -> f16 {
     let q = simd_shuffle!(
         a,
         a,
-        [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+        [
+            16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+        ]
     );
     _mm256_reduce_max_ph(_mm256_max_ph(p, q))
 }
@@ -16059,10 +16067,10 @@ unsafe extern "C" {
     fn vfcmaddcph_maskz_256(a: __m256, b: __m256, c: __m256, k: __mmask8) -> __m256;
     #[link_name = "llvm.x86.avx512fp16.mask.vfcmadd.cph.512"]
     fn vfcmaddcph_mask3_512(a: __m512, b: __m512, c: __m512, k: __mmask16, rounding: i32)
-        -> __m512;
+    -> __m512;
     #[link_name = "llvm.x86.avx512fp16.maskz.vfcmadd.cph.512"]
     fn vfcmaddcph_maskz_512(a: __m512, b: __m512, c: __m512, k: __mmask16, rounding: i32)
-        -> __m512;
+    -> __m512;
     #[link_name = "llvm.x86.avx512fp16.mask.vfcmadd.csh"]
     fn vfcmaddcsh_mask(a: __m128, b: __m128, c: __m128, k: __mmask8, rounding: i32) -> __m128;
     #[link_name = "llvm.x86.avx512fp16.maskz.vfcmadd.csh"]
@@ -16179,7 +16187,7 @@ unsafe extern "C" {
     fn vreduceph_512(a: __m512h, imm8: i32, src: __m512h, k: __mmask32, sae: i32) -> __m512h;
     #[link_name = "llvm.x86.avx512fp16.mask.reduce.sh"]
     fn vreducesh(a: __m128h, b: __m128h, src: __m128h, k: __mmask8, imm8: i32, sae: i32)
-        -> __m128h;
+    -> __m128h;
 
     #[link_name = "llvm.x86.avx512fp16.mask.fpclass.sh"]
     fn vfpclasssh(a: __m128h, imm8: i32, k: __mmask8) -> __mmask8;

@@ -244,7 +244,7 @@ pub unsafe fn __smlawt(a: i32, b: i32, c: i32) -> i32 {
 mod tests {
     use crate::core_arch::{
         arm::*,
-        simd::{i16x2, i8x4, u8x4},
+        simd::{i8x4, i16x2, u8x4},
     };
     use std::mem::transmute;
     use stdarch_test::simd_test;

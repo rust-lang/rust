@@ -7,19 +7,19 @@
 //!
 //! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 
-use crate::core_arch::simd::i16x16;
-use crate::core_arch::simd::i16x32;
-use crate::core_arch::simd::i16x8;
 use crate::core_arch::simd::i8x16;
 use crate::core_arch::simd::i8x32;
 use crate::core_arch::simd::i8x64;
+use crate::core_arch::simd::i16x8;
+use crate::core_arch::simd::i16x16;
+use crate::core_arch::simd::i16x32;
 use crate::core_arch::x86::__m128i;
 use crate::core_arch::x86::__m256i;
 use crate::core_arch::x86::__m512i;
+use crate::core_arch::x86::__mmask8;
 use crate::core_arch::x86::__mmask16;
 use crate::core_arch::x86::__mmask32;
 use crate::core_arch::x86::__mmask64;
-use crate::core_arch::x86::__mmask8;
 use crate::intrinsics::simd::{simd_ctpop, simd_select_bitmask};
 use crate::mem::transmute;
 

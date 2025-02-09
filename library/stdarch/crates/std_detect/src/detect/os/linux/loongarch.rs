@@ -1,7 +1,7 @@
 //! Run-time feature detection for LoongArch on Linux.
 
 use super::auxvec;
-use crate::detect::{bit, cache, Feature};
+use crate::detect::{Feature, bit, cache};
 use core::arch::asm;
 
 /// Try to read the features from the auxiliary vector.

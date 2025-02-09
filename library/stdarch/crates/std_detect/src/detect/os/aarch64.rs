@@ -17,7 +17,7 @@
 //! - [Linux documentation](https://www.kernel.org/doc/Documentation/arm64/cpu-feature-registers.txt)
 //! - [ARM documentation](https://developer.arm.com/documentation/ddi0601/2022-12/AArch64-Registers?lang=en)
 
-use crate::detect::{cache, Feature};
+use crate::detect::{Feature, cache};
 use core::arch::asm;
 
 /// Try to read the features from the system registers.

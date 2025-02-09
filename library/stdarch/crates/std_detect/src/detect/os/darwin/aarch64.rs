@@ -2,7 +2,7 @@
 //!
 //! <https://developer.apple.com/documentation/kernel/1387446-sysctlbyname/determining_instruction_set_characteristics>
 
-use crate::detect::{cache, Feature};
+use crate::detect::{Feature, cache};
 use core::ffi::CStr;
 
 #[inline]

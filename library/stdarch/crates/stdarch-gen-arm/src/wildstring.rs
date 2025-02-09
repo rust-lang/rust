@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens, TokenStreamExt};
+use quote::{ToTokens, TokenStreamExt, quote};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::str::pattern::Pattern;
 use std::{fmt, str::FromStr};

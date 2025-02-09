@@ -1,7 +1,7 @@
 //! Run-time feature detection for PowerPC on FreeBSD.
 
 use super::auxvec;
-use crate::detect::{cache, Feature};
+use crate::detect::{Feature, cache};
 
 pub(crate) fn detect_features() -> cache::Initializer {
     let mut value = cache::Initializer::default();

@@ -1,7 +1,7 @@
 //! Run-time feature detection for s390x on Linux.
 
 use super::auxvec;
-use crate::detect::{bit, cache, Feature};
+use crate::detect::{Feature, bit, cache};
 
 /// Try to read the features from the auxiliary vector
 pub(crate) fn detect_features() -> cache::Initializer {

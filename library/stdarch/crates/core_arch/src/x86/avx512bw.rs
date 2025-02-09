@@ -9572,7 +9572,7 @@ pub unsafe fn _mm512_movepi8_mask(a: __m512i) -> __mmask64 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovmskb))] // should be vpmovb2m but compiled to vpmovmskb in the test shim because that takes less cycles than
-                                           // using vpmovb2m plus converting the mask register to a standard register.
+// using vpmovb2m plus converting the mask register to a standard register.
 pub unsafe fn _mm256_movepi8_mask(a: __m256i) -> __mmask32 {
     let filter = _mm256_set1_epi8(1 << 7);
     let a = _mm256_and_si256(a, filter);
@@ -9586,7 +9586,7 @@ pub unsafe fn _mm256_movepi8_mask(a: __m256i) -> __mmask32 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 #[cfg_attr(test, assert_instr(vpmovmskb))] // should be vpmovb2m but compiled to vpmovmskb in the test shim because that takes less cycles than
-                                           // using vpmovb2m plus converting the mask register to a standard register.
+// using vpmovb2m plus converting the mask register to a standard register.
 pub unsafe fn _mm_movepi8_mask(a: __m128i) -> __mmask16 {
     let filter = _mm_set1_epi8(1 << 7);
     let a = _mm_and_si128(a, filter);

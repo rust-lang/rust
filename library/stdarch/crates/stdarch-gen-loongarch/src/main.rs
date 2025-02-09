@@ -495,7 +495,10 @@ fn gen_bind_body(
         };
     } else if para_num == 2 && in_t[0] == "CVPOINTER" && in_t[1] == "SI" {
         call_params = if asm_fmts[2].starts_with("si") {
-            format!("static_assert_simm_bits!(IMM_S{0}, {0});\n    __{current_name}(mem_addr, IMM_S{0})", asm_fmts[2].get(2..).unwrap())
+            format!(
+                "static_assert_simm_bits!(IMM_S{0}, {0});\n    __{current_name}(mem_addr, IMM_S{0})",
+                asm_fmts[2].get(2..).unwrap()
+            )
         } else {
             panic!("unsupported assembly format: {}", asm_fmts[2])
         }
@@ -515,7 +518,9 @@ fn gen_bind_body(
         }
     } else if para_num == 3 && in_t[1] == "CVPOINTER" && in_t[2] == "SI" {
         call_params = match asm_fmts[2].as_str() {
-            "si12" => format!("static_assert_simm_bits!(IMM_S12, 12);\n    __{current_name}(a, mem_addr, IMM_S12)"),
+            "si12" => format!(
+                "static_assert_simm_bits!(IMM_S12, 12);\n    __{current_name}(a, mem_addr, IMM_S12)"
+            ),
             _ => panic!("unsupported assembly format: {}", asm_fmts[2]),
         };
     } else if para_num == 3 && in_t[1] == "CVPOINTER" && in_t[2] == "DI" {
@@ -525,8 +530,14 @@ fn gen_bind_body(
         };
     } else if para_num == 4 {
         call_params = match (asm_fmts[2].as_str(), current_name.chars().last().unwrap()) {
-            ("si8", t) => format!("static_assert_simm_bits!(IMM_S8, 8);\n    static_assert_uimm_bits!(IMM{0}, {0});\n    __{current_name}(a, mem_addr, IMM_S8, IMM{0})", type_to_imm(t)),
-            (_, _) => panic!("unsupported assembly format: {} for {}", asm_fmts[2], current_name),
+            ("si8", t) => format!(
+                "static_assert_simm_bits!(IMM_S8, 8);\n    static_assert_uimm_bits!(IMM{0}, {0});\n    __{current_name}(a, mem_addr, IMM_S8, IMM{0})",
+                type_to_imm(t)
+            ),
+            (_, _) => panic!(
+                "unsupported assembly format: {} for {}",
+                asm_fmts[2], current_name
+            ),
         }
     }
     let function = if !rustc_legacy_const_generics.is_empty() {
@@ -1186,7 +1197,10 @@ fn gen_test_body(
             "UQI" => "    printf(\"    let r: u32 = %u;\\n\", o);",
             "QI" => "    printf(\"    let r: i32 = %d;\\n\", o);",
             "HI" => "    printf(\"    let r: i32 = %d;\\n\", o);",
-            "V32QI" | "V16HI" | "V8SI" | "V4DI" | "UV32QI" | "UV16HI" | "UV8SI" | "UV4DI" | "V8SF" | "V4DF" => "    printf(\"    let r = i64x4::new(%ld, %ld, %ld, %ld);\\n\", o.i64[0], o.i64[1], o.i64[2], o.i64[3]);",
+            "V32QI" | "V16HI" | "V8SI" | "V4DI" | "UV32QI" | "UV16HI" | "UV8SI" | "UV4DI"
+            | "V8SF" | "V4DF" => {
+                "    printf(\"    let r = i64x4::new(%ld, %ld, %ld, %ld);\\n\", o.i64[0], o.i64[1], o.i64[2], o.i64[3]);"
+            }
             _ => "    printf(\"    let r = i64x2::new(%ld, %ld);\\n\", o.i64[0], o.i64[1]);",
         }
     };
@@ -1480,9 +1494,13 @@ fn gen_test_body(
         };
         let fn_assert = {
             if out_t.to_lowercase() == "void" {
-                format!("    printf(\"\\n    {current_name}{as_params};\\n    assert_eq!(r, transmute(o));\\n\"{as_args});")
+                format!(
+                    "    printf(\"\\n    {current_name}{as_params};\\n    assert_eq!(r, transmute(o));\\n\"{as_args});"
+                )
             } else {
-                format!("    printf(\"\\n    assert_eq!(r, transmute({current_name}{as_params}));\\n\"{as_args});")
+                format!(
+                    "    printf(\"\\n    assert_eq!(r, transmute({current_name}{as_params}));\\n\"{as_args});"
+                )
             }
         };
         format!(

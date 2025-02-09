@@ -1,7 +1,7 @@
 //! Run-time feature detection for ARM on Linux.
 
 use super::auxvec;
-use crate::detect::{bit, cache, Feature};
+use crate::detect::{Feature, bit, cache};
 
 /// Try to read the features from the auxiliary vector, and if that fails, try
 /// to read them from /proc/cpuinfo.

@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use serde::{de, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de};
 
 use crate::{
     context::{self, GlobalContext},
@@ -87,7 +87,7 @@ impl Ord for InputType {
 }
 
 mod many_or_one {
-    use serde::{de::Deserializer, ser::Serializer, Deserialize, Serialize};
+    use serde::{Deserialize, Serialize, de::Deserializer, ser::Serializer};
 
     pub fn serialize<T, S>(vec: &Vec<T>, serializer: S) -> Result<S::Ok, S::Error>
     where

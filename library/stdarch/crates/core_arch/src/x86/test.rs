@@ -133,7 +133,7 @@ mod x86_polyfill {
 
 #[cfg(target_arch = "x86_64")]
 mod x86_polyfill {
-    pub use crate::core_arch::x86_64::{_mm256_insert_epi64, _mm_insert_epi64};
+    pub use crate::core_arch::x86_64::{_mm_insert_epi64, _mm256_insert_epi64};
 }
 pub use self::x86_polyfill::*;
 

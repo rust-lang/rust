@@ -300,7 +300,7 @@ unsafe extern "unadjusted" {
 
     #[link_name = "llvm.aarch64.neon.tbl4.v8i8"]
     fn vqtbl4(a0: int8x16_t, a1: int8x16_t, a2: int8x16_t, a3: int8x16_t, b: uint8x8_t)
-        -> int8x8_t;
+    -> int8x8_t;
     #[link_name = "llvm.aarch64.neon.tbl4.v16i8"]
     fn vqtbl4q(
         a0: int8x16_t,
@@ -4448,26 +4448,14 @@ mod tests {
     unsafe fn test_vceq_u64() {
         test_cmp_u64(
             |i, j| vceq_u64(i, j),
-            |a: u64, b: u64| -> u64 {
-                if a == b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u64, b: u64| -> u64 { if a == b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vceqq_u64() {
         testq_cmp_u64(
             |i, j| vceqq_u64(i, j),
-            |a: u64, b: u64| -> u64 {
-                if a == b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u64, b: u64| -> u64 { if a == b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
 
@@ -4475,26 +4463,14 @@ mod tests {
     unsafe fn test_vceq_s64() {
         test_cmp_s64(
             |i, j| vceq_s64(i, j),
-            |a: i64, b: i64| -> u64 {
-                if a == b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i64, b: i64| -> u64 { if a == b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vceqq_s64() {
         testq_cmp_s64(
             |i, j| vceqq_s64(i, j),
-            |a: i64, b: i64| -> u64 {
-                if a == b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i64, b: i64| -> u64 { if a == b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
 
@@ -4502,26 +4478,14 @@ mod tests {
     unsafe fn test_vceq_p64() {
         test_cmp_p64(
             |i, j| vceq_p64(i, j),
-            |a: u64, b: u64| -> u64 {
-                if a == b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u64, b: u64| -> u64 { if a == b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vceqq_p64() {
         testq_cmp_p64(
             |i, j| vceqq_p64(i, j),
-            |a: u64, b: u64| -> u64 {
-                if a == b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u64, b: u64| -> u64 { if a == b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
 
@@ -4529,26 +4493,14 @@ mod tests {
     unsafe fn test_vceq_f64() {
         test_cmp_f64(
             |i, j| vceq_f64(i, j),
-            |a: f64, b: f64| -> u64 {
-                if a == b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f64, b: f64| -> u64 { if a == b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vceqq_f64() {
         testq_cmp_f64(
             |i, j| vceqq_f64(i, j),
-            |a: f64, b: f64| -> u64 {
-                if a == b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f64, b: f64| -> u64 { if a == b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
 
@@ -4556,26 +4508,14 @@ mod tests {
     unsafe fn test_vcgt_s64() {
         test_cmp_s64(
             |i, j| vcgt_s64(i, j),
-            |a: i64, b: i64| -> u64 {
-                if a > b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i64, b: i64| -> u64 { if a > b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgtq_s64() {
         testq_cmp_s64(
             |i, j| vcgtq_s64(i, j),
-            |a: i64, b: i64| -> u64 {
-                if a > b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i64, b: i64| -> u64 { if a > b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
 
@@ -4583,26 +4523,14 @@ mod tests {
     unsafe fn test_vcgt_u64() {
         test_cmp_u64(
             |i, j| vcgt_u64(i, j),
-            |a: u64, b: u64| -> u64 {
-                if a > b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u64, b: u64| -> u64 { if a > b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgtq_u64() {
         testq_cmp_u64(
             |i, j| vcgtq_u64(i, j),
-            |a: u64, b: u64| -> u64 {
-                if a > b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u64, b: u64| -> u64 { if a > b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
 
@@ -4610,26 +4538,14 @@ mod tests {
     unsafe fn test_vcgt_f64() {
         test_cmp_f64(
             |i, j| vcgt_f64(i, j),
-            |a: f64, b: f64| -> u64 {
-                if a > b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f64, b: f64| -> u64 { if a > b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgtq_f64() {
         testq_cmp_f64(
             |i, j| vcgtq_f64(i, j),
-            |a: f64, b: f64| -> u64 {
-                if a > b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f64, b: f64| -> u64 { if a > b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
 
@@ -4637,26 +4553,14 @@ mod tests {
     unsafe fn test_vclt_s64() {
         test_cmp_s64(
             |i, j| vclt_s64(i, j),
-            |a: i64, b: i64| -> u64 {
-                if a < b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i64, b: i64| -> u64 { if a < b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcltq_s64() {
         testq_cmp_s64(
             |i, j| vcltq_s64(i, j),
-            |a: i64, b: i64| -> u64 {
-                if a < b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i64, b: i64| -> u64 { if a < b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
 
@@ -4664,26 +4568,14 @@ mod tests {
     unsafe fn test_vclt_u64() {
         test_cmp_u64(
             |i, j| vclt_u64(i, j),
-            |a: u64, b: u64| -> u64 {
-                if a < b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u64, b: u64| -> u64 { if a < b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcltq_u64() {
         testq_cmp_u64(
             |i, j| vcltq_u64(i, j),
-            |a: u64, b: u64| -> u64 {
-                if a < b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u64, b: u64| -> u64 { if a < b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
 
@@ -4691,26 +4583,14 @@ mod tests {
     unsafe fn test_vltq_f64() {
         test_cmp_f64(
             |i, j| vclt_f64(i, j),
-            |a: f64, b: f64| -> u64 {
-                if a < b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f64, b: f64| -> u64 { if a < b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcltq_f64() {
         testq_cmp_f64(
             |i, j| vcltq_f64(i, j),
-            |a: f64, b: f64| -> u64 {
-                if a < b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f64, b: f64| -> u64 { if a < b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
 
@@ -4718,26 +4598,14 @@ mod tests {
     unsafe fn test_vcle_s64() {
         test_cmp_s64(
             |i, j| vcle_s64(i, j),
-            |a: i64, b: i64| -> u64 {
-                if a <= b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i64, b: i64| -> u64 { if a <= b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcleq_s64() {
         testq_cmp_s64(
             |i, j| vcleq_s64(i, j),
-            |a: i64, b: i64| -> u64 {
-                if a <= b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i64, b: i64| -> u64 { if a <= b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
 
@@ -4745,26 +4613,14 @@ mod tests {
     unsafe fn test_vcle_u64() {
         test_cmp_u64(
             |i, j| vcle_u64(i, j),
-            |a: u64, b: u64| -> u64 {
-                if a <= b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u64, b: u64| -> u64 { if a <= b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcleq_u64() {
         testq_cmp_u64(
             |i, j| vcleq_u64(i, j),
-            |a: u64, b: u64| -> u64 {
-                if a <= b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u64, b: u64| -> u64 { if a <= b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
 
@@ -4772,26 +4628,14 @@ mod tests {
     unsafe fn test_vleq_f64() {
         test_cmp_f64(
             |i, j| vcle_f64(i, j),
-            |a: f64, b: f64| -> u64 {
-                if a <= b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f64, b: f64| -> u64 { if a <= b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcleq_f64() {
         testq_cmp_f64(
             |i, j| vcleq_f64(i, j),
-            |a: f64, b: f64| -> u64 {
-                if a <= b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f64, b: f64| -> u64 { if a <= b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
 
@@ -4799,26 +4643,14 @@ mod tests {
     unsafe fn test_vcge_s64() {
         test_cmp_s64(
             |i, j| vcge_s64(i, j),
-            |a: i64, b: i64| -> u64 {
-                if a >= b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i64, b: i64| -> u64 { if a >= b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgeq_s64() {
         testq_cmp_s64(
             |i, j| vcgeq_s64(i, j),
-            |a: i64, b: i64| -> u64 {
-                if a >= b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i64, b: i64| -> u64 { if a >= b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
 
@@ -4826,26 +4658,14 @@ mod tests {
     unsafe fn test_vcge_u64() {
         test_cmp_u64(
             |i, j| vcge_u64(i, j),
-            |a: u64, b: u64| -> u64 {
-                if a >= b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u64, b: u64| -> u64 { if a >= b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgeq_u64() {
         testq_cmp_u64(
             |i, j| vcgeq_u64(i, j),
-            |a: u64, b: u64| -> u64 {
-                if a >= b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u64, b: u64| -> u64 { if a >= b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
 
@@ -4853,26 +4673,14 @@ mod tests {
     unsafe fn test_vgeq_f64() {
         test_cmp_f64(
             |i, j| vcge_f64(i, j),
-            |a: f64, b: f64| -> u64 {
-                if a >= b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f64, b: f64| -> u64 { if a >= b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgeq_f64() {
         testq_cmp_f64(
             |i, j| vcgeq_f64(i, j),
-            |a: f64, b: f64| -> u64 {
-                if a >= b {
-                    0xFFFFFFFFFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f64, b: f64| -> u64 { if a >= b { 0xFFFFFFFFFFFFFFFF } else { 0 } },
         );
     }
 

@@ -72,8 +72,8 @@ pub mod arch {
     #[doc(cfg(any(target_arch = "riscv32")))]
     #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
     pub mod riscv32 {
-        pub use crate::core_arch::riscv32::*;
         pub use crate::core_arch::riscv_shared::*;
+        pub use crate::core_arch::riscv32::*;
     }
 
     /// Platform-specific intrinsics for the `riscv64` platform.

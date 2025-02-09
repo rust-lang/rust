@@ -1,6 +1,6 @@
 use lazy_static::lazy_static;
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens, TokenStreamExt};
+use quote::{ToTokens, TokenStreamExt, quote};
 use regex::Regex;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::fmt;

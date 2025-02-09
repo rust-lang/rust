@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, ToTokens, TokenStreamExt};
+use quote::{ToTokens, TokenStreamExt, format_ident, quote};
 use serde::de::{self, MapAccess, Visitor};
-use serde::{ser::SerializeSeq, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, ser::SerializeSeq};
 use std::fmt;
 
 use crate::{

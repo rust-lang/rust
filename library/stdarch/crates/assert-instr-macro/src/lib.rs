@@ -202,7 +202,7 @@ struct Invoc {
 
 impl syn::parse::Parse for Invoc {
     fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
-        use syn::{ext::IdentExt, Token};
+        use syn::{Token, ext::IdentExt};
 
         let mut instr = String::new();
         while !input.is_empty() {

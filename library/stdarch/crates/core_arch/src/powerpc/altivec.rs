@@ -4720,7 +4720,9 @@ mod tests {
             let v: u8x16 = transmute(vec_ld(0, (pat.as_ptr() as *const u8).offset(off)));
             assert_eq!(
                 v,
-                u8x16::new(16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31)
+                u8x16::new(
+                    16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+                )
             );
         }
     }
@@ -4778,7 +4780,9 @@ mod tests {
             let v: u8x16 = transmute(vec_ldl(0, (pat.as_ptr() as *const u8).offset(off)));
             assert_eq!(
                 v,
-                u8x16::new(16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31)
+                u8x16::new(
+                    16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+                )
             );
         }
     }

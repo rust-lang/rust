@@ -1,7 +1,7 @@
 //! Run-time feature detection for RISC-V on Linux.
 
 use super::auxvec;
-use crate::detect::{bit, cache, Feature};
+use crate::detect::{Feature, bit, cache};
 
 /// Read list of supported features from the auxiliary vector.
 pub(crate) fn detect_features() -> cache::Initializer {

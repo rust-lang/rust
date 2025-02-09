@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use proc_macro2::{Delimiter, Group, Punct, Spacing, TokenStream};
-use quote::{format_ident, quote, ToTokens, TokenStreamExt};
+use quote::{ToTokens, TokenStreamExt, format_ident, quote};
 use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::collections::{HashMap, HashSet};
@@ -17,7 +17,7 @@ use crate::{
     assert_instr::InstructionAssertionMethod,
     context::{self, ArchitectureSettings, Context, LocalContext, VariableType},
     expression::{Expression, FnCall, IdentifierType},
-    fn_suffix::{type_to_size, SuffixKind},
+    fn_suffix::{SuffixKind, type_to_size},
     input::IntrinsicInput,
     matching::{KindMatchable, SizeMatchable},
     typekinds::*,
@@ -995,7 +995,10 @@ impl Intrinsic {
         };
 
         if variant.attr.is_none() && variant.assert_instr.is_none() {
-            panic!("Error: {} is missing both 'attr' and 'assert_instr' fields. You must either manually declare the attributes using the 'attr' field or use 'assert_instr'!", variant.signature.name.to_string());
+            panic!(
+                "Error: {} is missing both 'attr' and 'assert_instr' fields. You must either manually declare the attributes using the 'attr' field or use 'assert_instr'!",
+                variant.signature.name.to_string()
+            );
         }
 
         if variant.attr.is_some() {
@@ -1181,7 +1184,10 @@ impl Intrinsic {
             .any(|w| matches!(w, Wildcard::NVariant));
 
         if !has_n_wildcard {
-            return Err(format!("cannot generate `_n` variant for {}, no wildcard {{_n}} was specified in the intrinsic's name", variant.signature.name));
+            return Err(format!(
+                "cannot generate `_n` variant for {}, no wildcard {{_n}} was specified in the intrinsic's name",
+                variant.signature.name
+            ));
         }
 
         // Build signature
@@ -1205,9 +1211,9 @@ impl Intrinsic {
             }
             _ => {
                 return Err(format!(
-                "cannot generate `_n` variant for {}, the given operand is not a valid SVE type",
-                variant.signature.name
-            ))
+                    "cannot generate `_n` variant for {}, the given operand is not a valid SVE type",
+                    variant.signature.name
+                ));
             }
         };
 
@@ -1434,7 +1440,9 @@ impl Intrinsic {
                             (Some(BaseTypeKind::Poly), Some(BaseTypeKind::Poly)) => ex,
 
                             (None, None) => ex,
-                            _ => unreachable!("unsupported conversion case from {from_base_type:?} to {to_base_type:?} hit"),
+                            _ => unreachable!(
+                                "unsupported conversion case from {from_base_type:?} to {to_base_type:?} hit"
+                            ),
                         }
                     } else {
                         ex

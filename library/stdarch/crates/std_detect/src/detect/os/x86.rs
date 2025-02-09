@@ -7,7 +7,7 @@ use core::arch::x86_64::*;
 
 use core::mem;
 
-use crate::detect::{bit, cache, Feature};
+use crate::detect::{Feature, bit, cache};
 
 /// Run-time feature detection on x86 works by using the CPUID instruction.
 ///

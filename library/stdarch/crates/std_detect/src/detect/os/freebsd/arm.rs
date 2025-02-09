@@ -1,7 +1,7 @@
 //! Run-time feature detection for ARM on FreeBSD
 
 use super::auxvec;
-use crate::detect::{cache, Feature};
+use crate::detect::{Feature, cache};
 
 // Defined in machine/elf.h.
 // https://github.com/freebsd/freebsd-src/blob/deb63adf945d446ed91a9d84124c71f15ae571d1/sys/arm/include/elf.h

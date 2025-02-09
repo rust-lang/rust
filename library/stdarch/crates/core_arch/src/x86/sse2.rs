@@ -449,11 +449,7 @@ pub unsafe fn _mm_slli_si128<const IMM8: i32>(a: __m128i) -> __m128i {
 unsafe fn _mm_slli_si128_impl<const IMM8: i32>(a: __m128i) -> __m128i {
     const fn mask(shift: i32, i: u32) -> u32 {
         let shift = shift as u32 & 0xff;
-        if shift > 15 {
-            i
-        } else {
-            16 - shift + i
-        }
+        if shift > 15 { i } else { 16 - shift + i }
     }
     transmute::<i8x16, _>(simd_shuffle!(
         i8x16::ZERO,

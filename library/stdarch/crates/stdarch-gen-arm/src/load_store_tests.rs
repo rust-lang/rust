@@ -76,7 +76,10 @@ pub fn generate_load_store_tests(
         })
         .try_collect()?;
 
-    assert!(used_stores.into_iter().all(|b| b), "Not all store tests have been paired with a load. Consider generating specifc store-only tests");
+    assert!(
+        used_stores.into_iter().all(|b| b),
+        "Not all store tests have been paired with a load. Consider generating specifc store-only tests"
+    );
 
     let preamble =
         TokenStream::from_str(&PREAMBLE).map_err(|e| format!("Preamble is invalid: {e}"))?;

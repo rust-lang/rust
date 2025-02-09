@@ -292,7 +292,7 @@ mod tests {
     use core::mem::transmute;
     use stdarch_test::simd_test;
     #[cfg(target_os = "linux")]
-    use syscalls::{syscall, Sysno};
+    use syscalls::{Sysno, syscall};
 
     #[allow(non_camel_case_types)]
     #[repr(packed)]
