@@ -42,10 +42,10 @@ impl<'tcx> LateLintPass<'tcx> for InlineFnWithoutBody {
             span_lint_and_then(
                 cx,
                 INLINE_FN_WITHOUT_BODY,
-                attr.span,
+                attr.span(),
                 format!("use of `#[inline]` on trait method `{}` which has no body", item.ident),
                 |diag| {
-                    diag.suggest_remove_item(cx, attr.span, "remove", Applicability::MachineApplicable);
+                    diag.suggest_remove_item(cx, attr.span(), "remove", Applicability::MachineApplicable);
                 },
             );
         }
