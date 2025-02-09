@@ -15,7 +15,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
-use rustc_target::spec::abi::Abi;
+use rustc_abi::ExternAbi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt as _;
 
 declare_clippy_lint! {
@@ -172,7 +172,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                         && let output = typeck.expr_ty(body.value)
                         && let ty::Tuple(tys) = *subs.type_at(1).kind()
                     {
-                        cx.tcx.mk_fn_sig(tys, output, false, Safety::Safe, Abi::Rust)
+                        cx.tcx.mk_fn_sig(tys, output, false, Safety::Safe, ExternAbi::Rust)
                     } else {
                         return;
                     }

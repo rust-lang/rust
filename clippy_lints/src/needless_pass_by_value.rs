@@ -19,7 +19,7 @@ use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
 use rustc_span::{Span, sym};
-use rustc_target::spec::abi::Abi;
+use rustc_abi::ExternAbi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
 
@@ -89,7 +89,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         match kind {
             FnKind::ItemFn(.., header) => {
                 let attrs = cx.tcx.hir().attrs(hir_id);
-                if header.abi != Abi::Rust || requires_exact_signature(attrs) {
+                if header.abi != ExternAbi::Rust || requires_exact_signature(attrs) {
                     return;
                 }
             },
