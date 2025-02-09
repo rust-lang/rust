@@ -13,6 +13,9 @@ pub mod process;
 pub mod stdio;
 pub mod thread;
 pub mod time;
+#[allow(dead_code)]
+#[path = "../unsupported/stdio.rs"]
+mod unsupported_stdio;
 
 #[path = "../unsupported/common.rs"]
 mod common;

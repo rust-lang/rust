@@ -31,6 +31,9 @@ pub mod process;
 pub mod stdio;
 pub use self::itron::{thread, thread_parking};
 pub mod time;
+#[allow(dead_code)]
+#[path = "../unsupported/stdio.rs"]
+mod unsupported_stdio;
 
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.

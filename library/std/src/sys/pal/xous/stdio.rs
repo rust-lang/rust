@@ -1,23 +1,10 @@
 use crate::io;
-
-pub struct Stdin;
-pub struct Stdout {}
-pub struct Stderr;
-
 use crate::os::xous::ffi::{Connection, lend, try_lend, try_scalar};
 use crate::os::xous::services::{LogLend, LogScalar, log_server, try_connect};
 
-impl Stdin {
-    pub const fn new() -> Stdin {
-        Stdin
-    }
-}
-
-impl io::Read for Stdin {
-    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
-        Ok(0)
-    }
-}
+pub type Stdin = super::unsupported_stdio::Stdin;
+pub struct Stdout;
+pub struct Stderr;
 
 impl Stdout {
     pub const fn new() -> Stdout {
@@ -73,7 +60,7 @@ impl io::Write for Stderr {
     }
 }
 
-pub const STDIN_BUF_SIZE: usize = 0;
+pub const STDIN_BUF_SIZE: usize = super::unsupported_stdio::STDIN_BUF_SIZE;
 
 pub fn is_ebadf(_err: &io::Error) -> bool {
     true
