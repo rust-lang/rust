@@ -1,40 +1,28 @@
-error: multiple `deprecated` attributes
-  --> $DIR/deprecation-sanity.rs:27:1
-   |
-LL | #[deprecated(since = "a", note = "b")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/deprecation-sanity.rs:26:1
-   |
-LL | #[deprecated(since = "a", note = "b")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0541]: unknown meta item 'reason'
   --> $DIR/deprecation-sanity.rs:4:43
    |
 LL |     #[deprecated(since = "a", note = "a", reason)]
    |                                           ^^^^^^ expected one of `since`, `note`
 
-error[E0539]: incorrect meta item
+error[E0539]: expected a quoted string literal
   --> $DIR/deprecation-sanity.rs:7:31
    |
 LL |     #[deprecated(since = "a", note)]
    |                               ^^^^
 
-error[E0539]: incorrect meta item
+error[E0539]: expected a quoted string literal
   --> $DIR/deprecation-sanity.rs:10:18
    |
 LL |     #[deprecated(since, note = "a")]
    |                  ^^^^^
 
-error[E0539]: incorrect meta item
+error[E0539]: expected a quoted string literal
   --> $DIR/deprecation-sanity.rs:13:31
    |
 LL |     #[deprecated(since = "a", note(b))]
    |                               ^^^^^^^
 
-error[E0539]: incorrect meta item
+error[E0539]: expected a quoted string literal
   --> $DIR/deprecation-sanity.rs:16:18
    |
 LL |     #[deprecated(since(b), note = "a")]
@@ -53,6 +41,18 @@ error[E0565]: item in `deprecated` must be a key/value pair
    |
 LL |     #[deprecated("test")]
    |                  ^^^^^^
+
+error: multiple `deprecated` attributes
+  --> $DIR/deprecation-sanity.rs:27:1
+   |
+LL | #[deprecated(since = "a", note = "b")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/deprecation-sanity.rs:26:1
+   |
+LL | #[deprecated(since = "a", note = "b")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0538]: multiple 'since' items
   --> $DIR/deprecation-sanity.rs:30:27
