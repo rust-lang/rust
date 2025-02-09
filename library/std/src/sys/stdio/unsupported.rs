@@ -2,7 +2,7 @@ use crate::io;
 
 pub struct Stdin;
 pub struct Stdout;
-pub struct Stderr;
+pub type Stderr = Stdout;
 
 impl Stdin {
     pub const fn new() -> Stdin {
@@ -23,22 +23,6 @@ impl Stdout {
 }
 
 impl io::Write for Stdout {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-impl Stderr {
-    pub const fn new() -> Stderr {
-        Stderr
-    }
-}
-
-impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         Ok(buf.len())
     }
