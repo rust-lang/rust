@@ -255,7 +255,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         tcx.get_attrs_by_path(did, &attr_name)
             .map(|attribute| {
                 let attr_str = rustc_hir_pretty::attribute_to_string(&tcx, attribute);
-                let span = attribute.span;
+                let span = attribute.span();
                 stable_mir::crate_def::Attribute::new(attr_str, span.stable(&mut *tables))
             })
             .collect()
@@ -265,8 +265,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
         let did = tables[def_id];
-        let filter_fn =
-            move |a: &&rustc_hir::Attribute| matches!(a.kind, rustc_hir::AttrKind::Normal(_));
+        let filter_fn = move |a: &&rustc_hir::Attribute| !a.is_doc_comment();
         let attrs_iter = if let Some(did) = did.as_local() {
             tcx.hir().attrs(tcx.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else {
@@ -275,7 +274,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         attrs_iter
             .map(|attribute| {
                 let attr_str = rustc_hir_pretty::attribute_to_string(&tcx, attribute);
-                let span = attribute.span;
+                let span = attribute.span();
                 stable_mir::crate_def::Attribute::new(attr_str, span.stable(&mut *tables))
             })
             .collect()

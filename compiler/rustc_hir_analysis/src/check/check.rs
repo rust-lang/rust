@@ -1114,7 +1114,7 @@ fn check_impl_items_against_trait<'tcx>(
         if let Some(missing_items) = must_implement_one_of {
             let attr_span = tcx
                 .get_attr(trait_ref.def_id, sym::rustc_must_implement_one_of)
-                .map(|attr| attr.span);
+                .map(|attr| attr.span());
 
             missing_items_must_implement_one_of_err(
                 tcx,
@@ -1422,7 +1422,7 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         if let Some(attr) = tcx.get_attrs(def_id, sym::repr).next() {
             struct_span_code_err!(
                 tcx.dcx(),
-                attr.span,
+                attr.span(),
                 E0084,
                 "unsupported representation for zero-variant enum"
             )
