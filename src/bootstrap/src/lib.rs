@@ -573,8 +573,8 @@ impl Build {
                 Subcommand::Suggest { run } => {
                     return core::build_steps::suggest::suggest(&builder::Builder::new(self), *run);
                 }
-                Subcommand::Perf { .. } => {
-                    return core::build_steps::perf::perf(&builder::Builder::new(self));
+                Subcommand::Perf(args) => {
+                    return core::build_steps::perf::perf(&builder::Builder::new(self), args);
                 }
                 _cmd => {
                     debug!(cmd = ?_cmd, "not a hardcoded subcommand; returning to normal handling");
