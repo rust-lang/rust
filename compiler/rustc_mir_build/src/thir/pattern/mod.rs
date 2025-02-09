@@ -11,7 +11,7 @@ use rustc_abi::{FieldIdx, Integer};
 use rustc_errors::codes::*;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
-use rustc_hir::{self as hir, ByRef, Mutability, RangeEnd};
+use rustc_hir::{self as hir, RangeEnd};
 use rustc_index::Idx;
 use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::thir::{
@@ -65,31 +65,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let adjustments: &[Ty<'tcx>] =
             self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
 
+        // Track the default binding mode for the Rust 2024 migration suggestion.
         let mut opt_old_mode_span = None;
         if let Some(s) = &mut self.rust_2024_migration
             && !adjustments.is_empty()
         {
-            let implicit_deref_mutbls = adjustments.iter().map(|ref_ty| {
-                let &ty::Ref(_, _, mutbl) = ref_ty.kind() else {
-                    span_bug!(pat.span, "pattern implicitly dereferences a non-ref type");
-                };
-                mutbl
-            });
-
-            if !s.info.suggest_eliding_modes {
-                let suggestion_str: String =
-                    implicit_deref_mutbls.clone().map(|mutbl| mutbl.ref_prefix_str()).collect();
-                s.suggestion.push((pat.span.shrink_to_lo(), suggestion_str));
-                s.ref_pattern_count += adjustments.len();
-            }
-
-            // Remember if this changed the default binding mode, in case we want to label it.
-            let min_mutbl = implicit_deref_mutbls.min().unwrap();
-            if s.default_mode_span.is_none_or(|(_, old_mutbl)| min_mutbl < old_mutbl) {
-                opt_old_mode_span = Some(s.default_mode_span);
-                s.default_mode_span = Some((pat.span, min_mutbl));
-            }
-        };
+            opt_old_mode_span = s.visit_implicit_derefs(pat.span, adjustments);
+        }
 
         // When implicit dereferences have been inserted in this pattern, the unadjusted lowered
         // pattern has the type that results *after* dereferencing. For example, in this code:
@@ -129,9 +111,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         });
 
         if let Some(s) = &mut self.rust_2024_migration
-            && let Some(old_mode_span) = opt_old_mode_span
+            && !adjustments.is_empty()
         {
-            s.default_mode_span = old_mode_span;
+            s.leave_ref(opt_old_mode_span);
         }
 
         adjusted_pat
@@ -327,16 +309,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
             hir::PatKind::Ref(subpattern, _) => {
                 // Track the default binding mode for the Rust 2024 migration suggestion.
-                let old_mode_span = self.rust_2024_migration.as_mut().and_then(|s| {
-                    if let Some((default_mode_span, default_ref_mutbl)) = s.default_mode_span {
-                        // If this eats a by-ref default binding mode, label the binding mode.
-                        s.default_mode_labels.insert(default_mode_span, default_ref_mutbl);
-                    }
-                    s.default_mode_span.take()
-                });
+                let opt_old_mode_span =
+                    self.rust_2024_migration.as_mut().and_then(|s| s.visit_explicit_deref());
                 let subpattern = self.lower_pattern(subpattern);
                 if let Some(s) = &mut self.rust_2024_migration {
-                    s.default_mode_span = old_mode_span;
+                    s.leave_ref(opt_old_mode_span);
                 }
                 PatKind::Deref { subpattern }
             }
@@ -368,31 +345,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     .expect("missing binding mode");
 
                 if let Some(s) = &mut self.rust_2024_migration {
-                    if explicit_ba != hir::BindingMode::NONE
-                        && let Some((default_mode_span, default_ref_mutbl)) = s.default_mode_span
-                    {
-                        // If this overrides a by-ref default binding mode, label the binding mode.
-                        s.default_mode_labels.insert(default_mode_span, default_ref_mutbl);
-                        // If our suggestion is to elide redundnt modes, this will be one of them.
-                        if s.info.suggest_eliding_modes {
-                            s.suggestion.push((pat.span.with_hi(ident.span.lo()), String::new()));
-                            s.binding_mode_count += 1;
-                        }
-                    }
-                    if !s.info.suggest_eliding_modes
-                        && explicit_ba.0 == ByRef::No
-                        && let ByRef::Yes(mutbl) = mode.0
-                    {
-                        let sugg_str = match mutbl {
-                            Mutability::Not => "ref ",
-                            Mutability::Mut => "ref mut ",
-                        };
-                        s.suggestion.push((
-                            pat.span.with_lo(ident.span.lo()).shrink_to_lo(),
-                            sugg_str.to_owned(),
-                        ));
-                        s.binding_mode_count += 1;
-                    }
+                    s.visit_binding(pat.span, mode, explicit_ba, ident);
                 }
 
                 // A ref x pattern is the same node used for x, and as such it has
