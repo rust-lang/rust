@@ -4,7 +4,7 @@ use crate::intrinsics::const_eval_select;
 use crate::mem::{self, SizedTypeProperties};
 use crate::slice::{self, SliceIndex};
 
-impl<T: ?Sized> *const T {
+impl<T: ?Sized + PointeeSized> *const T {
     /// Returns `true` if the pointer is null.
     ///
     /// Note that unsized types have many possible null pointers, as only the
@@ -120,7 +120,7 @@ impl<T: ?Sized> *const T {
     #[inline]
     pub const fn with_metadata_of<U>(self, meta: *const U) -> *const U
     where
-        U: ?Sized,
+        U: ?Sized + PointeeSized,
     {
         from_raw_parts::<U>(self as *const (), metadata(meta))
     }
@@ -1678,7 +1678,7 @@ impl<T, const N: usize> *const [T; N] {
 
 /// Pointer equality is by address, as produced by the [`<*const T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> PartialEq for *const T {
+impl<T: ?Sized + PointeeSized> PartialEq for *const T {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn eq(&self, other: &*const T) -> bool {
@@ -1688,11 +1688,11 @@ impl<T: ?Sized> PartialEq for *const T {
 
 /// Pointer equality is an equivalence relation.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Eq for *const T {}
+impl<T: ?Sized + PointeeSized> Eq for *const T {}
 
 /// Pointer comparison is by address, as produced by the `[`<*const T>::addr`](pointer::addr)` method.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Ord for *const T {
+impl<T: ?Sized + PointeeSized> Ord for *const T {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn cmp(&self, other: &*const T) -> Ordering {
@@ -1708,7 +1708,7 @@ impl<T: ?Sized> Ord for *const T {
 
 /// Pointer comparison is by address, as produced by the `[`<*const T>::addr`](pointer::addr)` method.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> PartialOrd for *const T {
+impl<T: ?Sized + PointeeSized> PartialOrd for *const T {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
     fn partial_cmp(&self, other: &*const T) -> Option<Ordering> {

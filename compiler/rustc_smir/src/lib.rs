@@ -16,6 +16,7 @@
 )]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
+#![feature(sized_hierarchy)]
 // tidy-alphabetical-end
 
 pub mod rustc_internal;

@@ -7,6 +7,7 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
+use std::marker::PointeeSized;
 use std::ops::RangeInclusive;
 
 use rustc_hir::def::DefKind;
@@ -158,7 +159,7 @@ pub(crate) fn new_item_kind(kind: DefKind) -> ItemKind {
 }
 
 /// Trait used to convert between an internal MIR type to a Stable MIR type.
-pub trait Stable<'cx> {
+pub trait Stable<'cx>: PointeeSized {
     /// The stable representation of the type implementing Stable.
     type T;
     /// Converts an object to the equivalent Stable MIR representation.

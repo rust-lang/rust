@@ -61,7 +61,7 @@
 )]
 #![allow(missing_docs)]
 
-use crate::marker::{DiscriminantKind, Tuple};
+use crate::marker::{DiscriminantKind, PointeeSized, Tuple};
 use crate::mem::SizedTypeProperties;
 use crate::{ptr, ub_checks};
 
@@ -3564,10 +3564,10 @@ pub const fn aggregate_raw_ptr<P: AggregateRawPtr<D, Metadata = M>, D, M>(data: 
 pub trait AggregateRawPtr<D> {
     type Metadata: Copy;
 }
-impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*const T> for *const P {
+impl<P: ?Sized + PointeeSized, T: ptr::Thin> AggregateRawPtr<*const T> for *const P {
     type Metadata = <P as ptr::Pointee>::Metadata;
 }
-impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*mut T> for *mut P {
+impl<P: ?Sized + PointeeSized, T: ptr::Thin> AggregateRawPtr<*mut T> for *mut P {
     type Metadata = <P as ptr::Pointee>::Metadata;
 }
 
@@ -3578,7 +3578,9 @@ impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*mut T> for *mut P {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(ptr: *const P) -> M;
+pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized + PointeeSized, M>(
+    ptr: *const P,
+) -> M;
 
 // Some functions are defined here because they accidentally got made
 // available in this module on stable. See <https://github.com/rust-lang/rust/issues/15702>.

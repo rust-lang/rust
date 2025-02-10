@@ -10,7 +10,7 @@ use std::cmp::Ordering;
 use std::env::VarError;
 use std::ffi::OsStr;
 use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
+use std::marker::{PhantomData, PointeeSized};
 use std::ops::{Bound, Deref};
 use std::sync::{Arc, OnceLock};
 use std::{fmt, iter, mem};
@@ -2472,17 +2472,17 @@ impl<'tcx> TyCtxt<'tcx> {
 // this type just holds a pointer to it, but it still effectively owns it. It
 // impls `Borrow` so that it can be looked up using the original
 // (non-arena-memory-owning) types.
-struct InternedInSet<'tcx, T: ?Sized>(&'tcx T);
+struct InternedInSet<'tcx, T: ?Sized + PointeeSized>(&'tcx T);
 
-impl<'tcx, T: 'tcx + ?Sized> Clone for InternedInSet<'tcx, T> {
+impl<'tcx, T: 'tcx + ?Sized + PointeeSized> Clone for InternedInSet<'tcx, T> {
     fn clone(&self) -> Self {
         InternedInSet(self.0)
     }
 }
 
-impl<'tcx, T: 'tcx + ?Sized> Copy for InternedInSet<'tcx, T> {}
+impl<'tcx, T: 'tcx + ?Sized + PointeeSized> Copy for InternedInSet<'tcx, T> {}
 
-impl<'tcx, T: 'tcx + ?Sized> IntoPointer for InternedInSet<'tcx, T> {
+impl<'tcx, T: 'tcx + ?Sized + PointeeSized> IntoPointer for InternedInSet<'tcx, T> {
     fn into_pointer(&self) -> *const () {
         self.0 as *const _ as *const ()
     }
