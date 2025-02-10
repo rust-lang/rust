@@ -25,7 +25,11 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         | Bn::Floor
         | Bn::Fma
         | Bn::Fmax
+        | Bn::Fmaximum
+        | Bn::FmaximumNum
         | Bn::Fmin
+        | Bn::Fminimum
+        | Bn::FminimumNum
         | Bn::Fmod
         | Bn::Frexp
         | Bn::Ilogb

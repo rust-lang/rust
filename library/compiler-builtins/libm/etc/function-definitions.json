@@ -391,6 +391,62 @@
         ],
         "type": "f16"
     },
+    "fmaximum": {
+        "sources": [
+            "src/math/fminimum_fmaximum.rs",
+            "src/math/generic/fmaximum.rs"
+        ],
+        "type": "f64"
+    },
+    "fmaximum_num": {
+        "sources": [
+            "src/math/fminimum_fmaximum_num.rs",
+            "src/math/generic/fmaximum_num.rs"
+        ],
+        "type": "f64"
+    },
+    "fmaximum_numf": {
+        "sources": [
+            "src/math/fminimum_fmaximum_num.rs",
+            "src/math/generic/fmaximum_num.rs"
+        ],
+        "type": "f32"
+    },
+    "fmaximum_numf128": {
+        "sources": [
+            "src/math/fminimum_fmaximum_num.rs",
+            "src/math/generic/fmaximum_num.rs"
+        ],
+        "type": "f128"
+    },
+    "fmaximum_numf16": {
+        "sources": [
+            "src/math/fminimum_fmaximum_num.rs",
+            "src/math/generic/fmaximum_num.rs"
+        ],
+        "type": "f16"
+    },
+    "fmaximumf": {
+        "sources": [
+            "src/math/fminimum_fmaximum.rs",
+            "src/math/generic/fmaximum.rs"
+        ],
+        "type": "f32"
+    },
+    "fmaximumf128": {
+        "sources": [
+            "src/math/fminimum_fmaximum.rs",
+            "src/math/generic/fmaximum.rs"
+        ],
+        "type": "f128"
+    },
+    "fmaximumf16": {
+        "sources": [
+            "src/math/fminimum_fmaximum.rs",
+            "src/math/generic/fmaximum.rs"
+        ],
+        "type": "f16"
+    },
     "fmin": {
         "sources": [
             "src/math/fmin_fmax.rs",
@@ -416,6 +472,62 @@
         "sources": [
             "src/math/fmin_fmax.rs",
             "src/math/generic/fmin.rs"
+        ],
+        "type": "f16"
+    },
+    "fminimum": {
+        "sources": [
+            "src/math/fminimum_fmaximum.rs",
+            "src/math/generic/fminimum.rs"
+        ],
+        "type": "f64"
+    },
+    "fminimum_num": {
+        "sources": [
+            "src/math/fminimum_fmaximum_num.rs",
+            "src/math/generic/fminimum_num.rs"
+        ],
+        "type": "f64"
+    },
+    "fminimum_numf": {
+        "sources": [
+            "src/math/fminimum_fmaximum_num.rs",
+            "src/math/generic/fminimum_num.rs"
+        ],
+        "type": "f32"
+    },
+    "fminimum_numf128": {
+        "sources": [
+            "src/math/fminimum_fmaximum_num.rs",
+            "src/math/generic/fminimum_num.rs"
+        ],
+        "type": "f128"
+    },
+    "fminimum_numf16": {
+        "sources": [
+            "src/math/fminimum_fmaximum_num.rs",
+            "src/math/generic/fminimum_num.rs"
+        ],
+        "type": "f16"
+    },
+    "fminimumf": {
+        "sources": [
+            "src/math/fminimum_fmaximum.rs",
+            "src/math/generic/fminimum.rs"
+        ],
+        "type": "f32"
+    },
+    "fminimumf128": {
+        "sources": [
+            "src/math/fminimum_fmaximum.rs",
+            "src/math/generic/fminimum.rs"
+        ],
+        "type": "f128"
+    },
+    "fminimumf16": {
+        "sources": [
+            "src/math/fminimum_fmaximum.rs",
+            "src/math/generic/fminimum.rs"
         ],
         "type": "f16"
     },

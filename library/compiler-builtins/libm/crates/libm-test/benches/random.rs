@@ -130,8 +130,24 @@ libm_macros::for_each_function! {
         | fmaf128
         | fmaxf128
         | fmaxf16
+        | fmaximum
+        | fmaximum_num
+        | fmaximum_numf
+        | fmaximum_numf128
+        | fmaximum_numf16
+        | fmaximumf
+        | fmaximumf128
+        | fmaximumf16
         | fminf128
         | fminf16
+        | fminimum
+        | fminimum_num
+        | fminimum_numf
+        | fminimum_numf128
+        | fminimum_numf16
+        | fminimumf
+        | fminimumf128
+        | fminimumf16
         | fmodf128
         | fmodf16
         | ldexpf128

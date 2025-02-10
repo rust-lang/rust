@@ -293,11 +293,16 @@ fn fmaf128_cases() -> Vec<TestCase<op::fmaf128::Routine>> {
     v
 }
 
-fn fmax_cases() -> Vec<TestCase<op::fmax::Routine>> {
+#[cfg(f16_enabled)]
+fn fmaxf16_cases() -> Vec<TestCase<op::fmaxf16::Routine>> {
     vec![]
 }
 
 fn fmaxf_cases() -> Vec<TestCase<op::fmaxf::Routine>> {
+    vec![]
+}
+
+fn fmax_cases() -> Vec<TestCase<op::fmax::Routine>> {
     vec![]
 }
 
@@ -307,15 +312,51 @@ fn fmaxf128_cases() -> Vec<TestCase<op::fmaxf128::Routine>> {
 }
 
 #[cfg(f16_enabled)]
-fn fmaxf16_cases() -> Vec<TestCase<op::fmaxf16::Routine>> {
+fn fmaximumf16_cases() -> Vec<TestCase<op::fmaximumf16::Routine>> {
     vec![]
 }
 
-fn fmin_cases() -> Vec<TestCase<op::fmin::Routine>> {
+fn fmaximumf_cases() -> Vec<TestCase<op::fmaximumf::Routine>> {
+    vec![]
+}
+
+fn fmaximum_cases() -> Vec<TestCase<op::fmaximum::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn fmaximumf128_cases() -> Vec<TestCase<op::fmaximumf128::Routine>> {
+    vec![]
+}
+
+#[cfg(f16_enabled)]
+fn fmaximum_numf16_cases() -> Vec<TestCase<op::fmaximum_numf16::Routine>> {
+    vec![]
+}
+
+fn fmaximum_numf_cases() -> Vec<TestCase<op::fmaximum_numf::Routine>> {
+    vec![]
+}
+
+fn fmaximum_num_cases() -> Vec<TestCase<op::fmaximum_num::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn fmaximum_numf128_cases() -> Vec<TestCase<op::fmaximum_numf128::Routine>> {
+    vec![]
+}
+
+#[cfg(f16_enabled)]
+fn fminf16_cases() -> Vec<TestCase<op::fminf16::Routine>> {
     vec![]
 }
 
 fn fminf_cases() -> Vec<TestCase<op::fminf::Routine>> {
+    vec![]
+}
+
+fn fmin_cases() -> Vec<TestCase<op::fmin::Routine>> {
     vec![]
 }
 
@@ -325,7 +366,38 @@ fn fminf128_cases() -> Vec<TestCase<op::fminf128::Routine>> {
 }
 
 #[cfg(f16_enabled)]
-fn fminf16_cases() -> Vec<TestCase<op::fminf16::Routine>> {
+fn fminimumf16_cases() -> Vec<TestCase<op::fminimumf16::Routine>> {
+    vec![]
+}
+
+fn fminimumf_cases() -> Vec<TestCase<op::fminimumf::Routine>> {
+    vec![]
+}
+
+fn fminimum_cases() -> Vec<TestCase<op::fminimum::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn fminimumf128_cases() -> Vec<TestCase<op::fminimumf128::Routine>> {
+    vec![]
+}
+
+#[cfg(f16_enabled)]
+fn fminimum_numf16_cases() -> Vec<TestCase<op::fminimum_numf16::Routine>> {
+    vec![]
+}
+
+fn fminimum_numf_cases() -> Vec<TestCase<op::fminimum_numf::Routine>> {
+    vec![]
+}
+
+fn fminimum_num_cases() -> Vec<TestCase<op::fminimum_num::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn fminimum_numf128_cases() -> Vec<TestCase<op::fminimum_numf128::Routine>> {
     vec![]
 }
 

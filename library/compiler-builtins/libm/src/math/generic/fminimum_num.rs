@@ -1,23 +1,26 @@
 /* SPDX-License-Identifier: MIT OR Apache-2.0 */
-//! IEEE 754-2008 `minNum`. This has been superseded by IEEE 754-2019 `minimumNumber`.
+//! IEEE 754-2019 `minimum`.
 //!
-//! Per the spec, returns the canonicalized result of:
+//! Per the spec, returns:
 //! - `x` if `x < y`
 //! - `y` if `y < x`
-//! - The other number if one is NaN
-//! - Otherwise, either `x` or `y`, canonicalized
-//! - -0.0 and +0.0 may be disregarded (unlike newer operations)
+//! - Non-NaN if one operand is NaN
+//! - Logic following +0.0 > -0.0
+//! - Either `x` or `y` if `x == y` and the signs are the same
+//! - qNaN if either operand is a NaN
 //!
 //! Excluded from our implementation is sNaN handling.
-//!
-//! More on the differences: [link].
-//!
-//! [link]: https://grouper.ieee.org/groups/msc/ANSI_IEEE-Std-754-2019/background/minNum_maxNum_Removal_Demotion_v3.pdf
 
 use super::super::Float;
 
-pub fn fmin<F: Float>(x: F, y: F) -> F {
-    let res = if y.is_nan() || x < y { x } else { y };
+pub fn fminimum_num<F: Float>(x: F, y: F) -> F {
+    let res =
+        if y.is_nan() || x < y || (x.to_bits() == F::NEG_ZERO.to_bits() && y.is_sign_positive()) {
+            x
+        } else {
+            y
+        };
+
     // Canonicalize
     res * F::ONE
 }
@@ -40,11 +43,13 @@ mod tests {
             (F::NAN, F::ZERO, F::ZERO),
             (F::ZERO, F::NAN, F::ZERO),
             (F::NAN, F::NAN, F::NAN),
+            (F::ZERO, F::NEG_ZERO, F::NEG_ZERO),
+            (F::NEG_ZERO, F::ZERO, F::NEG_ZERO),
         ];
 
         for (x, y, res) in cases {
-            let val = fmin(x, y);
-            assert_biteq!(val, res, "fmin({}, {})", Hexf(x), Hexf(y));
+            let val = fminimum_num(x, y);
+            assert_biteq!(val, res, "fminimum_num({}, {})", Hexf(x), Hexf(y));
         }
     }
 

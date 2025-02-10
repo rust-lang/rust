@@ -148,6 +148,14 @@ libm_macros::for_each_function! {
         floorf,
         floorf128,
         floorf16,
+        fmaximum,
+        fmaximumf,
+        fmaximumf128,
+        fmaximumf16,
+        fminimum,
+        fminimumf,
+        fminimumf128,
+        fminimumf16,
         fmod,
         fmodf,
         fmodf128,
@@ -197,8 +205,10 @@ libm_macros::for_each_function! {
         fabs | fabsf => abs,
         fdim | fdimf | fdimf16 | fdimf128  => positive_diff,
         fma | fmaf | fmaf128 => mul_add,
-        fmax | fmaxf | fmaxf16 | fmaxf128 => max,
-        fmin | fminf | fminf16 | fminf128 => min,
+        fmax | fmaxf | fmaxf16 | fmaxf128 |
+        fmaximum_num | fmaximum_numf | fmaximum_numf16 | fmaximum_numf128 => max,
+        fmin | fminf | fminf16 | fminf128 |
+        fminimum_num | fminimum_numf | fminimum_numf16 | fminimum_numf128 => min,
         lgamma | lgammaf => ln_gamma,
         log | logf => ln,
         log1p | log1pf => ln_1p,
@@ -443,6 +453,46 @@ macro_rules! impl_op_for_ty_all {
                     let ord = this.0.rem_assign_round(&this.1, Nearest);
                     prep_retval::<Self::RustRet>(&mut this.0, ord)
 
+                }
+            }
+
+            impl MpOp for crate::op::[< fmaximum $suffix >]::Routine {
+                type MpTy = (MpFloat, MpFloat);
+
+                fn new_mp() -> Self::MpTy {
+                    (new_mpfloat::<Self::FTy>(), new_mpfloat::<Self::FTy>())
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.0.assign(input.0);
+                    this.1.assign(input.1);
+                    let ord = if this.0.is_nan() || this.1.is_nan() {
+                        this.0.assign($fty::NAN);
+                        Ordering::Equal
+                    } else {
+                        this.0.max_round(&this.1, Nearest)
+                    };
+                    prep_retval::<Self::RustRet>(&mut this.0, ord)
+                }
+            }
+
+            impl MpOp for crate::op::[< fminimum $suffix >]::Routine {
+                type MpTy = (MpFloat, MpFloat);
+
+                fn new_mp() -> Self::MpTy {
+                    (new_mpfloat::<Self::FTy>(), new_mpfloat::<Self::FTy>())
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.0.assign(input.0);
+                    this.1.assign(input.1);
+                    let ord = if this.0.is_nan() || this.1.is_nan() {
+                        this.0.assign($fty::NAN);
+                        Ordering::Equal
+                    } else {
+                        this.0.min_round(&this.1, Nearest)
+                    };
+                    prep_retval::<Self::RustRet>(&mut this.0, ord)
                 }
             }
 
