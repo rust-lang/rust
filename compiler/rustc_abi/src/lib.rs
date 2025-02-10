@@ -66,9 +66,7 @@ mod extern_abi;
 
 pub use callconv::{Heterogeneous, HomogeneousAggregate, Reg, RegKind};
 #[cfg(feature = "nightly")]
-pub use extern_abi::{
-    AbiDisabled, AbiUnsupported, ExternAbi, all_names, enabled_names, is_enabled, is_stable, lookup,
-};
+pub use extern_abi::{AbiDatas, AbiUnsupported, ExternAbi, all_names, lookup};
 #[cfg(feature = "nightly")]
 pub use layout::{FIRST_VARIANT, FieldIdx, Layout, TyAbiInterface, TyAndLayout, VariantIdx};
 pub use layout::{LayoutCalculator, LayoutCalculatorError};
