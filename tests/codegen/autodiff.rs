@@ -15,9 +15,9 @@ fn square(x: &f64) -> f64 {
 // CHECK-NEXT:invertstart:
 // CHECK-NEXT:  %_0 = fmul double %x.0.val, %x.0.val
 // CHECK-NEXT:  %0 = fadd fast double %x.0.val, %x.0.val
-// CHECK-NEXT:  %1 = load double, ptr %"x'", align 8, !alias.scope !17816, !noalias !17819
+// CHECK-NEXT:  %1 = load double, ptr %"x'", align 8
 // CHECK-NEXT:  %2 = fadd fast double %1, %0
-// CHECK-NEXT:  store double %2, ptr %"x'", align 8, !alias.scope !17816, !noalias !17819
+// CHECK-NEXT:  store double %2, ptr %"x'", align 8
 // CHECK-NEXT:  ret double %_0
 // CHECK-NEXT:}
 
