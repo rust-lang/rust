@@ -371,16 +371,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let previous_arg_count = args.len();
         let orig_args = args;
         let args = {
-            let function_address_names = self.function_address_names.borrow();
-            let original_function_name = function_address_names.get(&func_ptr);
             func_ptr = llvm::adjust_function(self.context, &func_name, func_ptr, args);
-            llvm::adjust_intrinsic_arguments(
-                self,
-                gcc_func,
-                args.into(),
-                &func_name,
-                original_function_name,
-            )
+            llvm::adjust_intrinsic_arguments(self, gcc_func, args.into(), &func_name)
         };
         let args_adjusted = args.len() != previous_arg_count;
         let args = self.check_ptr_call("call", func_ptr, &args);
