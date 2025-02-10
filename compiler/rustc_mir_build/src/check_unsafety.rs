@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::mem;
 use std::ops::Bound;
 
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::DiagArgValue;
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability};
@@ -476,7 +477,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::Scope { value, lint_level: LintLevel::Explicit(hir_id), region_scope: _ } => {
                 let prev_id = self.hir_context;
                 self.hir_context = hir_id;
-                self.visit_expr(&self.thir[value]);
+                ensure_sufficient_stack(|| {
+                    self.visit_expr(&self.thir[value]);
+                });
                 self.hir_context = prev_id;
                 return; // don't visit the whole expression
             }
@@ -522,11 +525,10 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                             .copied()
                             .filter(|feature| missing.contains(feature))
                             .collect();
-                        self.requires_unsafe(expr.span, CallToFunctionWith {
-                            function: func_did,
-                            missing,
-                            build_enabled,
-                        });
+                        self.requires_unsafe(
+                            expr.span,
+                            CallToFunctionWith { function: func_did, missing, build_enabled },
+                        );
                     }
                 }
             }
@@ -1183,9 +1185,11 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     warnings.sort_by_key(|w| w.block_span);
     for UnusedUnsafeWarning { hir_id, block_span, enclosing_unsafe } in warnings {
         let block_span = tcx.sess.source_map().guess_head_span(block_span);
-        tcx.emit_node_span_lint(UNUSED_UNSAFE, hir_id, block_span, UnusedUnsafe {
-            span: block_span,
-            enclosing: enclosing_unsafe,
-        });
+        tcx.emit_node_span_lint(
+            UNUSED_UNSAFE,
+            hir_id,
+            block_span,
+            UnusedUnsafe { span: block_span, enclosing: enclosing_unsafe },
+        );
     }
 }

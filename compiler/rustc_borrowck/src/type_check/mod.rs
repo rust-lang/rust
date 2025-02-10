@@ -48,8 +48,8 @@ use crate::borrow_set::BorrowSet;
 use crate::constraints::{OutlivesConstraint, OutlivesConstraintSet};
 use crate::diagnostics::UniverseInfo;
 use crate::member_constraints::MemberConstraintSet;
-use crate::polonius::PoloniusContext;
 use crate::polonius::legacy::{PoloniusFacts, PoloniusLocationTable};
+use crate::polonius::{PoloniusContext, PoloniusLivenessContext};
 use crate::region_infer::TypeTest;
 use crate::region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderIndices};
 use crate::renumber::RegionCtxt;
@@ -148,8 +148,8 @@ pub(crate) fn type_check<'a, 'tcx>(
 
     debug!(?normalized_inputs_and_output);
 
-    let mut polonius_context = if infcx.tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
-        Some(PoloniusContext::new())
+    let polonius_liveness = if infcx.tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
+        Some(PoloniusLivenessContext::default())
     } else {
         None
     };
@@ -168,7 +168,7 @@ pub(crate) fn type_check<'a, 'tcx>(
         polonius_facts,
         borrow_set,
         constraints: &mut constraints,
-        polonius_context: &mut polonius_context,
+        polonius_liveness,
     };
 
     typeck.check_user_type_annotations();
@@ -185,11 +185,14 @@ pub(crate) fn type_check<'a, 'tcx>(
     let opaque_type_values =
         opaque_types::take_opaques_and_register_member_constraints(&mut typeck);
 
-    if let Some(polonius_context) = typeck.polonius_context.as_mut() {
-        let num_regions = infcx.num_region_vars();
-        let points_per_live_region = typeck.constraints.liveness_constraints.points();
-        polonius_context.record_live_regions_per_point(num_regions, points_per_live_region);
-    }
+    // We're done with typeck, we can finalize the polonius liveness context for region inference.
+    let polonius_context = typeck.polonius_liveness.take().map(|liveness_context| {
+        PoloniusContext::create_from_liveness(
+            liveness_context,
+            infcx.num_region_vars(),
+            typeck.constraints.liveness_constraints.points(),
+        )
+    });
 
     MirTypeckResults {
         constraints,
@@ -408,10 +411,10 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 } else {
                     self.typeck.ascribe_user_type(
                         constant.const_.ty(),
-                        ty::UserType::new(ty::UserTypeKind::TypeOf(uv.def, UserArgs {
-                            args: uv.args,
-                            user_self_ty: None,
-                        })),
+                        ty::UserType::new(ty::UserTypeKind::TypeOf(
+                            uv.def,
+                            UserArgs { args: uv.args, user_self_ty: None },
+                        )),
                         locations.span(self.typeck.body),
                     );
                 }
@@ -583,8 +586,8 @@ struct TypeChecker<'a, 'tcx> {
     polonius_facts: &'a mut Option<PoloniusFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
-    /// When using `-Zpolonius=next`, the helper data used to create polonius constraints.
-    polonius_context: &'a mut Option<PoloniusContext>,
+    /// When using `-Zpolonius=next`, the liveness helper data used to create polonius constraints.
+    polonius_liveness: Option<PoloniusLivenessContext>,
 }
 
 /// Holder struct for passing results from MIR typeck to the rest of the non-lexical regions
@@ -1639,10 +1642,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             &Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, ty) => {
-                let trait_ref =
-                    ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, Some(span)), [
-                        ty,
-                    ]);
+                let trait_ref = ty::TraitRef::new(
+                    tcx,
+                    tcx.require_lang_item(LangItem::Sized, Some(span)),
+                    [ty],
+                );
 
                 self.prove_trait_ref(
                     trait_ref,
@@ -1650,15 +1654,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     ConstraintCategory::SizedBound,
                 );
             }
+            &Rvalue::NullaryOp(NullOp::ContractChecks, _) => {}
             &Rvalue::NullaryOp(NullOp::UbChecks, _) => {}
 
             Rvalue::ShallowInitBox(operand, ty) => {
                 self.check_operand(operand, location);
 
-                let trait_ref =
-                    ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, Some(span)), [
-                        *ty,
-                    ]);
+                let trait_ref = ty::TraitRef::new(
+                    tcx,
+                    tcx.require_lang_item(LangItem::Sized, Some(span)),
+                    [*ty],
+                );
 
                 self.prove_trait_ref(
                     trait_ref,

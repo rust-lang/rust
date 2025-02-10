@@ -979,6 +979,19 @@ impl<T> RangeBounds<T> for RangeToInclusive<&T> {
     }
 }
 
+/// An internal helper for `split_off` functions indicating
+/// which end a `OneSidedRange` is bounded on.
+#[unstable(feature = "one_sided_range", issue = "69780")]
+#[allow(missing_debug_implementations)]
+pub enum OneSidedRangeBound {
+    /// The range is bounded inclusively from below and is unbounded above.
+    StartInclusive,
+    /// The range is bounded exclusively from above and is unbounded below.
+    End,
+    /// The range is bounded inclusively from above and is unbounded below.
+    EndInclusive,
+}
+
 /// `OneSidedRange` is implemented for built-in range types that are unbounded
 /// on one side. For example, `a..`, `..b` and `..=c` implement `OneSidedRange`,
 /// but `..`, `d..e`, and `f..=g` do not.
@@ -986,13 +999,38 @@ impl<T> RangeBounds<T> for RangeToInclusive<&T> {
 /// Types that implement `OneSidedRange<T>` must return `Bound::Unbounded`
 /// from one of `RangeBounds::start_bound` or `RangeBounds::end_bound`.
 #[unstable(feature = "one_sided_range", issue = "69780")]
-pub trait OneSidedRange<T: ?Sized>: RangeBounds<T> {}
+pub trait OneSidedRange<T: ?Sized>: RangeBounds<T> {
+    /// An internal-only helper function for `split_off` and
+    /// `split_off_mut` that returns the bound of the one-sided range.
+    fn bound(self) -> (OneSidedRangeBound, T);
+}
 
 #[unstable(feature = "one_sided_range", issue = "69780")]
-impl<T> OneSidedRange<T> for RangeTo<T> where Self: RangeBounds<T> {}
+impl<T> OneSidedRange<T> for RangeTo<T>
+where
+    Self: RangeBounds<T>,
+{
+    fn bound(self) -> (OneSidedRangeBound, T) {
+        (OneSidedRangeBound::End, self.end)
+    }
+}
 
 #[unstable(feature = "one_sided_range", issue = "69780")]
-impl<T> OneSidedRange<T> for RangeFrom<T> where Self: RangeBounds<T> {}
+impl<T> OneSidedRange<T> for RangeFrom<T>
+where
+    Self: RangeBounds<T>,
+{
+    fn bound(self) -> (OneSidedRangeBound, T) {
+        (OneSidedRangeBound::StartInclusive, self.start)
+    }
+}
 
 #[unstable(feature = "one_sided_range", issue = "69780")]
-impl<T> OneSidedRange<T> for RangeToInclusive<T> where Self: RangeBounds<T> {}
+impl<T> OneSidedRange<T> for RangeToInclusive<T>
+where
+    Self: RangeBounds<T>,
+{
+    fn bound(self) -> (OneSidedRangeBound, T) {
+        (OneSidedRangeBound::EndInclusive, self.end)
+    }
+}

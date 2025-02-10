@@ -201,17 +201,20 @@ pub trait InferCtxtLike: Sized {
         &self,
         sub: <Self::Interner as Interner>::Region,
         sup: <Self::Interner as Interner>::Region,
+        span: <Self::Interner as Interner>::Span,
     );
 
     fn equate_regions(
         &self,
         a: <Self::Interner as Interner>::Region,
         b: <Self::Interner as Interner>::Region,
+        span: <Self::Interner as Interner>::Span,
     );
 
     fn register_ty_outlives(
         &self,
         ty: <Self::Interner as Interner>::Ty,
         r: <Self::Interner as Interner>::Region,
+        span: <Self::Interner as Interner>::Span,
     );
 }

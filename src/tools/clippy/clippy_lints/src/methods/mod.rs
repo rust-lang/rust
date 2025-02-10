@@ -95,6 +95,7 @@ mod readonly_write_lock;
 mod redundant_as_str;
 mod repeat_once;
 mod result_map_or_else_none;
+mod return_and_then;
 mod search_is_some;
 mod seek_from_current;
 mod seek_to_start_instead_of_rewind;
@@ -148,6 +149,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty};
 pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
+use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::{Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
@@ -3517,7 +3519,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.73.0"]
     pub FORMAT_COLLECT,
-    perf,
+    pedantic,
     "`format!`ing every element in a collection, then collecting the strings into a new `String`"
 }
 
@@ -4365,7 +4367,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for string slices immediantly followed by `as_bytes`.
+    /// Checks for string slices immediately followed by `as_bytes`.
     ///
     /// ### Why is this bad?
     /// It involves doing an unnecessary UTF-8 alignment check which is less efficient, and can cause a panic.
@@ -4389,6 +4391,46 @@ declare_clippy_lint! {
      pub SLICED_STRING_AS_BYTES,
      perf,
      "slicing a string and immediately calling as_bytes is less efficient and can lead to panics"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Detect functions that end with `Option::and_then` or `Result::and_then`, and suggest using a question mark (`?`) instead.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// The `and_then` method is used to chain a computation that returns an `Option` or a `Result`.
+    /// This can be replaced with the `?` operator, which is more concise and idiomatic.
+    ///
+    /// ### Example
+    ///
+    /// ```no_run
+    /// fn test(opt: Option<i32>) -> Option<i32> {
+    ///     opt.and_then(|n| {
+    ///         if n > 1 {
+    ///             Some(n + 1)
+    ///         } else {
+    ///             None
+    ///        }
+    ///     })
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn test(opt: Option<i32>) -> Option<i32> {
+    ///     let n = opt?;
+    ///     if n > 1 {
+    ///         Some(n + 1)
+    ///     } else {
+    ///         None
+    ///     }
+    /// }
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub RETURN_AND_THEN,
+    restriction,
+    "using `Option::and_then` or `Result::and_then` to chain a computation that returns an `Option` or a `Result`"
 }
 
 pub struct Methods {
@@ -4560,6 +4602,7 @@ impl_lint_pass!(Methods => [
     USELESS_NONZERO_NEW_UNCHECKED,
     MANUAL_REPEAT_N,
     SLICED_STRING_AS_BYTES,
+    RETURN_AND_THEN,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4789,7 +4832,10 @@ impl Methods {
                     let biom_option_linted = bind_instead_of_map::check_and_then_some(cx, expr, recv, arg);
                     let biom_result_linted = bind_instead_of_map::check_and_then_ok(cx, expr, recv, arg);
                     if !biom_option_linted && !biom_result_linted {
-                        unnecessary_lazy_eval::check(cx, expr, recv, arg, "and");
+                        let ule_and_linted = unnecessary_lazy_eval::check(cx, expr, recv, arg, "and");
+                        if !ule_and_linted {
+                            return_and_then::check(cx, expr, recv, arg);
+                        }
                     }
                 },
                 ("any", [arg]) => {
@@ -5003,7 +5049,9 @@ impl Methods {
                     get_first::check(cx, expr, recv, arg);
                     get_last_with_len::check(cx, expr, recv, arg);
                 },
-                ("get_or_insert_with", [arg]) => unnecessary_lazy_eval::check(cx, expr, recv, arg, "get_or_insert"),
+                ("get_or_insert_with", [arg]) => {
+                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "get_or_insert");
+                },
                 ("hash", [arg]) => {
                     unit_hash::check(cx, expr, recv, arg);
                 },
@@ -5144,7 +5192,9 @@ impl Methods {
                     },
                     _ => iter_nth_zero::check(cx, expr, recv, n_arg),
                 },
-                ("ok_or_else", [arg]) => unnecessary_lazy_eval::check(cx, expr, recv, arg, "ok_or"),
+                ("ok_or_else", [arg]) => {
+                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "ok_or");
+                },
                 ("open", [_]) => {
                     open_options::check(cx, expr, recv);
                 },
@@ -5398,7 +5448,7 @@ const FN_HEADER: hir::FnHeader = hir::FnHeader {
     safety: hir::HeaderSafety::Normal(hir::Safety::Safe),
     constness: hir::Constness::NotConst,
     asyncness: hir::IsAsync::NotAsync,
-    abi: rustc_target::spec::abi::Abi::Rust,
+    abi: ExternAbi::Rust,
 };
 
 struct ShouldImplTraitCase {
@@ -5437,9 +5487,12 @@ impl ShouldImplTraitCase {
     fn lifetime_param_cond(&self, impl_item: &hir::ImplItem<'_>) -> bool {
         self.lint_explicit_lifetime
             || !impl_item.generics.params.iter().any(|p| {
-                matches!(p.kind, hir::GenericParamKind::Lifetime {
-                    kind: hir::LifetimeParamKind::Explicit
-                })
+                matches!(
+                    p.kind,
+                    hir::GenericParamKind::Lifetime {
+                        kind: hir::LifetimeParamKind::Explicit
+                    }
+                )
             })
     }
 }

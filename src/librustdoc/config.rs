@@ -9,8 +9,8 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_session::config::{
     self, CodegenOptions, CrateType, ErrorOutputType, Externs, Input, JsonUnusedExterns,
-    UnstableOptions, get_cmd_lint_options, nightly_options, parse_crate_types_from_list,
-    parse_externs, parse_target_triple,
+    OptionsTargetModifiers, UnstableOptions, get_cmd_lint_options, nightly_options,
+    parse_crate_types_from_list, parse_externs, parse_target_triple,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -389,8 +389,9 @@ impl Options {
             config::parse_error_format(early_dcx, matches, color, json_color, json_rendered);
         let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_default();
 
-        let codegen_options = CodegenOptions::build(early_dcx, matches);
-        let unstable_opts = UnstableOptions::build(early_dcx, matches);
+        let mut target_modifiers = BTreeMap::<OptionsTargetModifiers, String>::new();
+        let codegen_options = CodegenOptions::build(early_dcx, matches, &mut target_modifiers);
+        let unstable_opts = UnstableOptions::build(early_dcx, matches, &mut target_modifiers);
 
         let remap_path_prefix = match parse_remap_path_prefix(matches) {
             Ok(prefix_mappings) => prefix_mappings,
@@ -488,7 +489,7 @@ impl Options {
         let to_check = matches.opt_strs("check-theme");
         if !to_check.is_empty() {
             let mut content =
-                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.bytes).unwrap();
+                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.src_bytes).unwrap();
             if let Some((_, inside)) = content.split_once("/* Begin theme: light */") {
                 content = inside;
             }
@@ -637,7 +638,7 @@ impl Options {
         let mut themes = Vec::new();
         if matches.opt_present("theme") {
             let mut content =
-                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.bytes).unwrap();
+                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.src_bytes).unwrap();
             if let Some((_, inside)) = content.split_once("/* Begin theme: light */") {
                 content = inside;
             }

@@ -1,5 +1,5 @@
 warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/specialization-transmute.rs:3:12
+  --> $DIR/specialization-transmute.rs:2:12
    |
 LL | #![feature(specialization)]
    |            ^^^^^^^^^^^^^^
@@ -9,9 +9,13 @@ LL | #![feature(specialization)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error: cannot normalize `<T as Default>::Id: '_`
+  --> $DIR/specialization-transmute.rs:14:5
+   |
+LL |     fn intu(&self) -> &Self::Id {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0282]: type annotations needed
-  --> $DIR/specialization-transmute.rs:15:23
+  --> $DIR/specialization-transmute.rs:14:23
    |
 LL |     fn intu(&self) -> &Self::Id {
    |                       ^^^^^^^^^ cannot infer type for reference `&<T as Default>::Id`

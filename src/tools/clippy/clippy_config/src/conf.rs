@@ -621,6 +621,7 @@ define_Conf! {
         manual_rem_euclid,
         manual_repeat_n,
         manual_retain,
+        manual_slice_fill,
         manual_split_once,
         manual_str_repeat,
         manual_strip,

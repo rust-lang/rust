@@ -9,10 +9,10 @@
 
 use std::ops::DerefMut;
 use std::panic;
+use std::sync::Arc;
 
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::Lrc;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Ident, Span};
 use smallvec::{Array, SmallVec, smallvec};
@@ -141,6 +141,10 @@ pub trait MutVisitor: Sized {
         ctxt: AssocCtxt,
     ) -> SmallVec<[P<AssocItem>; 1]> {
         walk_flat_map_assoc_item(self, i, ctxt)
+    }
+
+    fn visit_contract(&mut self, c: &mut P<FnContract>) {
+        walk_contract(self, c);
     }
 
     fn visit_fn_decl(&mut self, d: &mut P<FnDecl>) {
@@ -789,14 +793,14 @@ fn visit_tt<T: MutVisitor>(vis: &mut T, tt: &mut TokenTree) {
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 fn visit_tts<T: MutVisitor>(vis: &mut T, TokenStream(tts): &mut TokenStream) {
     if T::VISIT_TOKENS && !tts.is_empty() {
-        let tts = Lrc::make_mut(tts);
+        let tts = Arc::make_mut(tts);
         visit_vec(tts, |tree| visit_tt(vis, tree));
     }
 }
 
 fn visit_attr_tts<T: MutVisitor>(vis: &mut T, AttrTokenStream(tts): &mut AttrTokenStream) {
     if T::VISIT_TOKENS && !tts.is_empty() {
-        let tts = Lrc::make_mut(tts);
+        let tts = Arc::make_mut(tts);
         visit_vec(tts, |tree| visit_attr_tt(vis, tree));
     }
 }
@@ -836,7 +840,7 @@ pub fn visit_token<T: MutVisitor>(vis: &mut T, t: &mut Token) {
             vis.visit_ident(ident);
         }
         token::Interpolated(nt) => {
-            let nt = Lrc::make_mut(nt);
+            let nt = Arc::make_mut(nt);
             visit_nonterminal(vis, nt);
         }
         _ => {}
@@ -958,13 +962,16 @@ fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
             _ctxt,
             _ident,
             _vis,
-            Fn { defaultness, generics, body, sig: FnSig { header, decl, span } },
+            Fn { defaultness, generics, contract, body, sig: FnSig { header, decl, span } },
         ) => {
             // Identifier and visibility are visited as a part of the item.
             visit_defaultness(vis, defaultness);
             vis.visit_fn_header(header);
             vis.visit_generics(generics);
             vis.visit_fn_decl(decl);
+            if let Some(contract) = contract {
+                vis.visit_contract(contract);
+            }
             if let Some(body) = body {
                 vis.visit_block(body);
             }
@@ -976,6 +983,16 @@ fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
             vis.visit_fn_decl(decl);
             vis.visit_expr(body);
         }
+    }
+}
+
+fn walk_contract<T: MutVisitor>(vis: &mut T, contract: &mut P<FnContract>) {
+    let FnContract { requires, ensures } = contract.deref_mut();
+    if let Some(pred) = requires {
+        vis.visit_expr(pred);
+    }
+    if let Some(pred) = ensures {
+        vis.visit_expr(pred);
     }
 }
 

@@ -20,6 +20,12 @@ pub struct LocalCrate;
 /// The `Key` trait controls what types can legally be used as the key
 /// for a query.
 pub trait Key: Sized {
+    /// The type of in-memory cache to use for queries with this key type.
+    ///
+    /// In practice the cache type must implement [`QueryCache`], though that
+    /// constraint is not enforced here.
+    ///
+    /// [`QueryCache`]: rustc_query_system::query::QueryCache
     // N.B. Most of the keys down below have `type Cache<V> = DefaultCache<Self, V>;`,
     //      it would be reasonable to use associated type defaults, to remove the duplication...
     //

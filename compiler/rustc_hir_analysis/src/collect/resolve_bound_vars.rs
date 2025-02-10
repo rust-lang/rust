@@ -831,8 +831,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn visit_pattern_type_pattern(&mut self, p: &'tcx hir::Pat<'tcx>) {
-        intravisit::walk_pat(self, p)
+    fn visit_pattern_type_pattern(&mut self, p: &'tcx hir::TyPat<'tcx>) {
+        intravisit::walk_ty_pat(self, p)
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1143,20 +1143,23 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             .params
             .iter()
             .map(|param| {
-                (param.def_id, match param.kind {
-                    GenericParamKind::Lifetime { .. } => {
-                        if self.tcx.is_late_bound(param.hir_id) {
-                            let late_bound_idx = named_late_bound_vars;
-                            named_late_bound_vars += 1;
-                            ResolvedArg::late(late_bound_idx, param)
-                        } else {
+                (
+                    param.def_id,
+                    match param.kind {
+                        GenericParamKind::Lifetime { .. } => {
+                            if self.tcx.is_late_bound(param.hir_id) {
+                                let late_bound_idx = named_late_bound_vars;
+                                named_late_bound_vars += 1;
+                                ResolvedArg::late(late_bound_idx, param)
+                            } else {
+                                ResolvedArg::early(param)
+                            }
+                        }
+                        GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
                             ResolvedArg::early(param)
                         }
-                    }
-                    GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
-                        ResolvedArg::early(param)
-                    }
-                })
+                    },
+                )
             })
             .collect();
 

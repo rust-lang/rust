@@ -1034,6 +1034,7 @@ impl<'a> MethodDef<'a> {
                 defaultness,
                 sig,
                 generics: fn_generics,
+                contract: None,
                 body: Some(body_block),
             })),
             tokens: None,
@@ -1219,10 +1220,12 @@ impl<'a> MethodDef<'a> {
 
             let discr_let_stmts: ThinVec<_> = iter::zip(&discr_idents, &selflike_args)
                 .map(|(&ident, selflike_arg)| {
-                    let variant_value =
-                        deriving::call_intrinsic(cx, span, sym::discriminant_value, thin_vec![
-                            selflike_arg.clone()
-                        ]);
+                    let variant_value = deriving::call_intrinsic(
+                        cx,
+                        span,
+                        sym::discriminant_value,
+                        thin_vec![selflike_arg.clone()],
+                    );
                     cx.stmt_let(span, false, ident, variant_value)
                 })
                 .collect();

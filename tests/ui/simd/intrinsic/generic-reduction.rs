@@ -15,16 +15,26 @@ pub struct f32x4(pub [f32; 4]);
 #[derive(Copy, Clone)]
 pub struct u32x4(pub [u32; 4]);
 
+#[rustc_intrinsic]
+unsafe fn simd_reduce_add_ordered<T, U>(x: T, y: U) -> U;
 
-extern "rust-intrinsic" {
-    fn simd_reduce_add_ordered<T, U>(x: T, y: U) -> U;
-    fn simd_reduce_mul_ordered<T, U>(x: T, y: U) -> U;
-    fn simd_reduce_and<T, U>(x: T) -> U;
-    fn simd_reduce_or<T, U>(x: T) -> U;
-    fn simd_reduce_xor<T, U>(x: T) -> U;
-    fn simd_reduce_all<T>(x: T) -> bool;
-    fn simd_reduce_any<T>(x: T) -> bool;
-}
+#[rustc_intrinsic]
+unsafe fn simd_reduce_mul_ordered<T, U>(x: T, y: U) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_reduce_and<T, U>(x: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_reduce_or<T, U>(x: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_reduce_xor<T, U>(x: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_reduce_all<T>(x: T) -> bool;
+
+#[rustc_intrinsic]
+unsafe fn simd_reduce_any<T>(x: T) -> bool;
 
 fn main() {
     let x = u32x4([0, 0, 0, 0]);

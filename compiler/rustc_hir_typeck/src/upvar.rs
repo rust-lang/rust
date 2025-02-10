@@ -288,11 +288,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     bug!();
                 };
                 let place = self.place_for_root_variable(closure_def_id, local_id);
-                delegate.capture_information.push((place, ty::CaptureInfo {
-                    capture_kind_expr_id: Some(init.hir_id),
-                    path_expr_id: Some(init.hir_id),
-                    capture_kind: UpvarCapture::ByValue,
-                }));
+                delegate.capture_information.push((
+                    place,
+                    ty::CaptureInfo {
+                        capture_kind_expr_id: Some(init.hir_id),
+                        path_expr_id: Some(init.hir_id),
+                        capture_kind: UpvarCapture::ByValue,
+                    },
+                ));
             }
         }
 
@@ -379,11 +382,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let UpvarArgs::CoroutineClosure(args) = args
             && !args.references_error()
         {
-            let closure_env_region: ty::Region<'_> =
-                ty::Region::new_bound(self.tcx, ty::INNERMOST, ty::BoundRegion {
-                    var: ty::BoundVar::ZERO,
-                    kind: ty::BoundRegionKind::ClosureEnv,
-                });
+            let closure_env_region: ty::Region<'_> = ty::Region::new_bound(
+                self.tcx,
+                ty::INNERMOST,
+                ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::ClosureEnv },
+            );
 
             let num_args = args
                 .as_coroutine_closure()
@@ -2009,11 +2012,14 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
         let PlaceBase::Upvar(upvar_id) = place_with_id.place.base else { return };
         assert_eq!(self.closure_def_id, upvar_id.closure_expr_id);
 
-        self.capture_information.push((place_with_id.place.clone(), ty::CaptureInfo {
-            capture_kind_expr_id: Some(diag_expr_id),
-            path_expr_id: Some(diag_expr_id),
-            capture_kind: ty::UpvarCapture::ByValue,
-        }));
+        self.capture_information.push((
+            place_with_id.place.clone(),
+            ty::CaptureInfo {
+                capture_kind_expr_id: Some(diag_expr_id),
+                path_expr_id: Some(diag_expr_id),
+                capture_kind: ty::UpvarCapture::ByValue,
+            },
+        ));
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -2040,11 +2046,14 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
             capture_kind = ty::UpvarCapture::ByRef(ty::BorrowKind::Immutable);
         }
 
-        self.capture_information.push((place, ty::CaptureInfo {
-            capture_kind_expr_id: Some(diag_expr_id),
-            path_expr_id: Some(diag_expr_id),
-            capture_kind,
-        }));
+        self.capture_information.push((
+            place,
+            ty::CaptureInfo {
+                capture_kind_expr_id: Some(diag_expr_id),
+                path_expr_id: Some(diag_expr_id),
+                capture_kind,
+            },
+        ));
     }
 
     #[instrument(skip(self), level = "debug")]

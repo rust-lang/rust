@@ -20,6 +20,28 @@ declare global {
          * As a multi-page application, we know this never changes once set.
          */
         currentCrate: string|null;
+        /**
+         * Hide popovers, tooltips, or the mobile sidebar.
+         */
+        hideAllModals: function(boolean),
+        /**
+         * Hide popovers, but leave other modals alone.
+         */
+        hidePopoverMenus: function(),
+        /**
+         * Hide the source page sidebar. If it's already closed,
+         * or if this is a docs page, this function does nothing.
+         */
+        rustdocCloseSourceSidebar: function(),
+        /**
+         * Show the source page sidebar. If it's already opened,
+         * or if this is a docs page, this function does nothing.
+         */
+        rustdocShowSourceSidebar: function(),
+        /**
+         * Set up event listeners for a scraped source example.
+         */
+        updateScrapedExample?: function(HTMLElement, HTMLElement),
     }
     interface HTMLElement {
         /** Used by the popover tooltip code. */

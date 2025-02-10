@@ -19,6 +19,7 @@
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
 use std::borrow::Cow;
+use std::sync::Arc;
 use std::{cmp, fmt};
 
 pub use GenericArgs::*;
@@ -27,7 +28,6 @@ pub use rustc_ast_ir::{Movability, Mutability, Pinnedness};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 pub use rustc_span::AttrId;
@@ -1611,7 +1611,7 @@ pub enum ExprKind {
     /// Added for optimization purposes to avoid the need to escape
     /// large binary blobs - should always behave like [`ExprKind::Lit`]
     /// with a `ByteStr` literal.
-    IncludedBytes(Lrc<[u8]>),
+    IncludedBytes(Arc<[u8]>),
 
     /// A `format_args!()` expression.
     FormatArgs(P<FormatArgs>),
@@ -1904,9 +1904,9 @@ pub enum LitKind {
     Str(Symbol, StrStyle),
     /// A byte string (`b"foo"`). Not stored as a symbol because it might be
     /// non-utf8, and symbols only allow utf8 strings.
-    ByteStr(Lrc<[u8]>, StrStyle),
+    ByteStr(Arc<[u8]>, StrStyle),
     /// A C String (`c"foo"`). Guaranteed to only have `\0` at the end.
-    CStr(Lrc<[u8]>, StrStyle),
+    CStr(Arc<[u8]>, StrStyle),
     /// A byte char (`b'f'`).
     Byte(u8),
     /// A character literal (`'a'`).
@@ -3225,7 +3225,7 @@ pub enum Extern {
     ///
     /// E.g. `extern fn foo() {}`.
     ///
-    /// This is just `extern "C"` (see `rustc_target::spec::abi::Abi::FALLBACK`).
+    /// This is just `extern "C"` (see `rustc_abi::ExternAbi::FALLBACK`).
     Implicit(Span),
     /// An explicit extern keyword was used with an explicit ABI.
     ///
@@ -3348,11 +3348,18 @@ pub struct Impl {
     pub items: ThinVec<P<AssocItem>>,
 }
 
+#[derive(Clone, Encodable, Decodable, Debug, Default)]
+pub struct FnContract {
+    pub requires: Option<P<Expr>>,
+    pub ensures: Option<P<Expr>>,
+}
+
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Fn {
     pub defaultness: Defaultness,
     pub generics: Generics,
     pub sig: FnSig,
+    pub contract: Option<P<FnContract>>,
     pub body: Option<P<Block>>,
 }
 
@@ -3650,7 +3657,7 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 160);
+    static_assert_size!(Fn, 168);
     static_assert_size!(ForeignItem, 88);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);

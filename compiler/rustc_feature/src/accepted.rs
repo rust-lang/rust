@@ -9,7 +9,7 @@ macro_rules! declare_features {
         $(#[doc = $doc:tt])* (accepted, $feature:ident, $ver:expr, $issue:expr),
     )+) => {
         /// Formerly unstable features that have now been accepted (stabilized).
-        pub const ACCEPTED_LANG_FEATURES: &[Feature] = &[
+        pub static ACCEPTED_LANG_FEATURES: &[Feature] = &[
             $(Feature {
                 name: sym::$feature,
                 since: $ver,
@@ -400,6 +400,9 @@ declare_features! (
     /// Allows `#[track_caller]` to be used which provides
     /// accurate caller location reporting during panic (RFC 2091).
     (accepted, track_caller, "1.46.0", Some(47809)),
+    /// Allows dyn upcasting trait objects via supertraits.
+    /// Dyn upcasting is casting, e.g., `dyn Foo -> dyn Bar` where `Foo: Bar`.
+    (accepted, trait_upcasting, "CURRENT_RUSTC_VERSION", Some(65991)),
     /// Allows #[repr(transparent)] on univariant enums (RFC 2645).
     (accepted, transparent_enums, "1.42.0", Some(60405)),
     /// Allows indexing tuples.

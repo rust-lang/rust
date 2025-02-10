@@ -2422,9 +2422,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 } else {
                     // If this is an ill-formed auto/built-in trait, then synthesize
                     // new error args for the missing generics.
-                    let err_args = ty::GenericArgs::extend_with_error(tcx, trait_def_id, &[
-                        normalized_ty.into(),
-                    ]);
+                    let err_args = ty::GenericArgs::extend_with_error(
+                        tcx,
+                        trait_def_id,
+                        &[normalized_ty.into()],
+                    );
                     ty::TraitRef::new_from_args(tcx, trait_def_id, err_args)
                 };
 

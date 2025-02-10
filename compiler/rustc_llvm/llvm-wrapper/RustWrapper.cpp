@@ -195,33 +195,6 @@ LLVMRustVerifyFunction(LLVMValueRef Fn, LLVMRustVerifierFailureAction Action) {
   return LLVMVerifyFunction(Fn, fromRust(Action));
 }
 
-enum class LLVMRustTailCallKind {
-  None,
-  Tail,
-  MustTail,
-  NoTail,
-};
-
-static CallInst::TailCallKind fromRust(LLVMRustTailCallKind Kind) {
-  switch (Kind) {
-  case LLVMRustTailCallKind::None:
-    return CallInst::TailCallKind::TCK_None;
-  case LLVMRustTailCallKind::Tail:
-    return CallInst::TailCallKind::TCK_Tail;
-  case LLVMRustTailCallKind::MustTail:
-    return CallInst::TailCallKind::TCK_MustTail;
-  case LLVMRustTailCallKind::NoTail:
-    return CallInst::TailCallKind::TCK_NoTail;
-  default:
-    report_fatal_error("bad CallInst::TailCallKind.");
-  }
-}
-
-extern "C" void LLVMRustSetTailCallKind(LLVMValueRef Call,
-                                        LLVMRustTailCallKind TCK) {
-  unwrap<CallInst>(Call)->setTailCallKind(fromRust(TCK));
-}
-
 extern "C" LLVMValueRef LLVMRustGetOrInsertFunction(LLVMModuleRef M,
                                                     const char *Name,
                                                     size_t NameLen,
@@ -1003,10 +976,6 @@ extern "C" void LLVMRustDIBuilderDispose(LLVMDIBuilderRef Builder) {
   delete unwrap(Builder);
 }
 
-extern "C" void LLVMRustDIBuilderFinalize(LLVMDIBuilderRef Builder) {
-  unwrap(Builder)->finalize();
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateCompileUnit(
     LLVMDIBuilderRef Builder, unsigned Lang, LLVMMetadataRef FileRef,
     const char *Producer, size_t ProducerLen, bool isOptimized,
@@ -1183,20 +1152,6 @@ LLVMRustDIBuilderCreateQualifiedType(LLVMDIBuilderRef Builder, unsigned Tag,
       unwrap(Builder)->createQualifiedType(Tag, unwrapDI<DIType>(Type)));
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateLexicalBlock(LLVMDIBuilderRef Builder,
-                                    LLVMMetadataRef Scope, LLVMMetadataRef File,
-                                    unsigned Line, unsigned Col) {
-  return wrap(unwrap(Builder)->createLexicalBlock(
-      unwrapDI<DIDescriptor>(Scope), unwrapDI<DIFile>(File), Line, Col));
-}
-
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateLexicalBlockFile(
-    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, LLVMMetadataRef File) {
-  return wrap(unwrap(Builder)->createLexicalBlockFile(
-      unwrapDI<DIDescriptor>(Scope), unwrapDI<DIFile>(File)));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Context, const char *Name,
     size_t NameLen, const char *LinkageName, size_t LinkageNameLen,
@@ -1325,30 +1280,12 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateTemplateTypeParameter(
       unwrapDI<DIType>(Ty), IsDefault));
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateNameSpace(LLVMDIBuilderRef Builder,
-                                 LLVMMetadataRef Scope, const char *Name,
-                                 size_t NameLen, bool ExportSymbols) {
-  return wrap(unwrap(Builder)->createNameSpace(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen), ExportSymbols));
-}
-
 extern "C" void LLVMRustDICompositeTypeReplaceArrays(
     LLVMDIBuilderRef Builder, LLVMMetadataRef CompositeTy,
     LLVMMetadataRef Elements, LLVMMetadataRef Params) {
   DICompositeType *Tmp = unwrapDI<DICompositeType>(CompositeTy);
   unwrap(Builder)->replaceArrays(Tmp, DINodeArray(unwrap<MDTuple>(Elements)),
                                  DINodeArray(unwrap<MDTuple>(Params)));
-}
-
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateDebugLocation(unsigned Line, unsigned Column,
-                                     LLVMMetadataRef ScopeRef,
-                                     LLVMMetadataRef InlinedAt) {
-  MDNode *Scope = unwrapDIPtr<MDNode>(ScopeRef);
-  DILocation *Loc = DILocation::get(Scope->getContext(), Line, Column, Scope,
-                                    unwrapDIPtr<MDNode>(InlinedAt));
-  return wrap(Loc);
 }
 
 extern "C" LLVMMetadataRef
@@ -2010,10 +1947,6 @@ extern "C" int32_t LLVMRustGetElementTypeArgIndex(LLVMValueRef CallSite) {
     return 1;
   }
   return -1;
-}
-
-extern "C" bool LLVMRustIsBitcode(char *ptr, size_t len) {
-  return identify_magic(StringRef(ptr, len)) == file_magic::bitcode;
 }
 
 extern "C" bool LLVMRustIsNonGVFunctionPointerTy(LLVMValueRef V) {

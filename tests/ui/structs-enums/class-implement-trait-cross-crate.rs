@@ -53,7 +53,7 @@ fn cat(in_x : usize, in_y : isize, in_name: String) -> cat {
 pub fn main() {
   let mut nyan = cat(0_usize, 2, "nyan".to_string());
   nyan.eat();
-  assert!((!nyan.eat()));
+  assert!(!nyan.eat());
   for _ in 1_usize..10_usize { nyan.speak(); };
-  assert!((nyan.eat()));
+  assert!(nyan.eat());
 }

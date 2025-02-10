@@ -40,7 +40,7 @@ note: function defined here
   --> $DIR/missing_arguments.rs:2:4
    |
 LL | fn two_same(_a: i32, _b: i32) {}
-   |    ^^^^^^^^ -------  -------
+   |    ^^^^^^^^          -------
 help: provide the argument
    |
 LL |   two_same(1, /* i32 */);
@@ -72,7 +72,7 @@ note: function defined here
   --> $DIR/missing_arguments.rs:3:4
    |
 LL | fn two_diff(_a: i32, _b: f32) {}
-   |    ^^^^^^^^ -------  -------
+   |    ^^^^^^^^          -------
 help: provide the argument
    |
 LL |   two_diff(1, /* f32 */);
@@ -88,7 +88,7 @@ note: function defined here
   --> $DIR/missing_arguments.rs:3:4
    |
 LL | fn two_diff(_a: i32, _b: f32) {}
-   |    ^^^^^^^^ -------  -------
+   |    ^^^^^^^^ -------
 help: provide the argument
    |
 LL |   two_diff(/* i32 */, 1.0);
@@ -120,7 +120,7 @@ note: function defined here
   --> $DIR/missing_arguments.rs:4:4
    |
 LL | fn three_same(_a: i32, _b: i32, _c: i32) {}
-   |    ^^^^^^^^^^ -------  -------  -------
+   |    ^^^^^^^^^^          -------  -------
 help: provide the arguments
    |
 LL |   three_same(1, /* i32 */, /* i32 */);
@@ -136,7 +136,7 @@ note: function defined here
   --> $DIR/missing_arguments.rs:4:4
    |
 LL | fn three_same(_a: i32, _b: i32, _c: i32) {}
-   |    ^^^^^^^^^^ -------  -------  -------
+   |    ^^^^^^^^^^                   -------
 help: provide the argument
    |
 LL |   three_same(1, 1, /* i32 */);
@@ -152,7 +152,7 @@ note: function defined here
   --> $DIR/missing_arguments.rs:5:4
    |
 LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^ -------  -------  --------
+   |    ^^^^^^^^^^ -------
 help: provide the argument
    |
 LL |   three_diff(/* i32 */, 1.0, "");
@@ -168,7 +168,7 @@ note: function defined here
   --> $DIR/missing_arguments.rs:5:4
    |
 LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^ -------  -------  --------
+   |    ^^^^^^^^^^          -------
 help: provide the argument
    |
 LL |   three_diff(1, /* f32 */, "");
@@ -184,7 +184,7 @@ note: function defined here
   --> $DIR/missing_arguments.rs:5:4
    |
 LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^ -------  -------  --------
+   |    ^^^^^^^^^^                   --------
 help: provide the argument
    |
 LL |   three_diff(1, 1.0, /* &str */);
@@ -200,7 +200,7 @@ note: function defined here
   --> $DIR/missing_arguments.rs:5:4
    |
 LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^ -------  -------  --------
+   |    ^^^^^^^^^^ -------  -------
 help: provide the arguments
    |
 LL |   three_diff(/* i32 */, /* f32 */, "");
@@ -219,7 +219,7 @@ note: function defined here
   --> $DIR/missing_arguments.rs:5:4
    |
 LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^ -------  -------  --------
+   |    ^^^^^^^^^^ -------           --------
 help: provide the arguments
    |
 LL |   three_diff(/* i32 */, 1.0, /* &str */);
@@ -235,7 +235,7 @@ note: function defined here
   --> $DIR/missing_arguments.rs:5:4
    |
 LL | fn three_diff(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^ -------  -------  --------
+   |    ^^^^^^^^^^          -------  --------
 help: provide the arguments
    |
 LL |   three_diff(1, /* f32 */, /* &str */);
@@ -267,7 +267,7 @@ note: function defined here
   --> $DIR/missing_arguments.rs:6:4
    |
 LL | fn four_repeated(_a: i32, _b: f32, _c: f32, _d: &str) {}
-   |    ^^^^^^^^^^^^^ -------  -------  -------  --------
+   |    ^^^^^^^^^^^^^          -------  -------
 help: provide the arguments
    |
 LL |   four_repeated(1, /* f32 */, /* f32 */, "");
@@ -299,7 +299,7 @@ note: function defined here
   --> $DIR/missing_arguments.rs:7:4
    |
 LL | fn complex(_a: i32, _b: f32, _c: i32, _d: f32, _e: &str) {}
-   |    ^^^^^^^ -------  -------  -------  -------  --------
+   |    ^^^^^^^          -------  -------  -------
 help: provide the arguments
    |
 LL |   complex(1, /* f32 */, /* i32 */, /* f32 */, "");

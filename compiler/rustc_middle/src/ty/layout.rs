@@ -1369,10 +1369,11 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
                     // `def_span` unconditionally (which may have a perf penalty).
                     let span =
                         if !span.is_dummy() { span } else { tcx.def_span(instance.def_id()) };
-                    self.handle_fn_abi_err(*err, span, FnAbiRequest::OfInstance {
-                        instance,
-                        extra_args,
-                    })
+                    self.handle_fn_abi_err(
+                        *err,
+                        span,
+                        FnAbiRequest::OfInstance { instance, extra_args },
+                    )
                 }),
         )
     }

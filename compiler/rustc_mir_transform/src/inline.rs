@@ -1111,10 +1111,13 @@ fn new_call_temp<'tcx>(
     });
 
     if let Some(block) = return_block {
-        caller_body[block].statements.insert(0, Statement {
-            source_info: callsite.source_info,
-            kind: StatementKind::StorageDead(local),
-        });
+        caller_body[block].statements.insert(
+            0,
+            Statement {
+                source_info: callsite.source_info,
+                kind: StatementKind::StorageDead(local),
+            },
+        );
     }
 
     local

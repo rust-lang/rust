@@ -92,7 +92,7 @@ impl<A: ToJson> ToJson for Option<A> {
     }
 }
 
-impl ToJson for crate::abi::call::Conv {
+impl ToJson for crate::callconv::Conv {
     fn to_json(&self) -> Json {
         let buf: String;
         let s = match self {

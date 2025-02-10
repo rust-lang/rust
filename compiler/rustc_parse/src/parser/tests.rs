@@ -13,7 +13,6 @@ use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{self as ast, PatKind, visit};
 use rustc_ast_pretty::pprust::item_to_string;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::{HumanEmitter, OutputTheme};
 use rustc_errors::{DiagCtxt, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
@@ -27,7 +26,7 @@ use crate::parser::{ForceCollect, Parser};
 use crate::{new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
 
 fn psess() -> ParseSess {
-    ParseSess::new(vec![crate::DEFAULT_LOCALE_RESOURCE, crate::DEFAULT_LOCALE_RESOURCE])
+    ParseSess::new(vec![crate::DEFAULT_LOCALE_RESOURCE])
 }
 
 /// Map string to parser (via tts).
@@ -39,13 +38,11 @@ fn string_to_parser(psess: &ParseSess, source_str: String) -> Parser<'_> {
     ))
 }
 
-fn create_test_handler(theme: OutputTheme) -> (DiagCtxt, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
+fn create_test_handler(theme: OutputTheme) -> (DiagCtxt, Arc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
     let output = Arc::new(Mutex::new(Vec::new()));
-    let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-    let fallback_bundle = rustc_errors::fallback_fluent_bundle(
-        vec![crate::DEFAULT_LOCALE_RESOURCE, crate::DEFAULT_LOCALE_RESOURCE],
-        false,
-    );
+    let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
+    let fallback_bundle =
+        rustc_errors::fallback_fluent_bundle(vec![crate::DEFAULT_LOCALE_RESOURCE], false);
     let mut emitter = HumanEmitter::new(Box::new(Shared { data: output.clone() }), fallback_bundle)
         .sm(Some(source_map.clone()))
         .diagnostic_width(Some(140));

@@ -150,11 +150,11 @@ impl NonCamelCaseTypes {
             } else {
                 NonCamelCaseTypeSub::Label { span: ident.span }
             };
-            cx.emit_span_lint(NON_CAMEL_CASE_TYPES, ident.span, NonCamelCaseType {
-                sort,
-                name,
-                sub,
-            });
+            cx.emit_span_lint(
+                NON_CAMEL_CASE_TYPES,
+                ident.span,
+                NonCamelCaseType { sort, name, sub },
+            );
         }
     }
 }
@@ -488,11 +488,11 @@ impl NonUpperCaseGlobals {
             } else {
                 NonUpperCaseGlobalSub::Label { span: ident.span }
             };
-            cx.emit_span_lint(NON_UPPER_CASE_GLOBALS, ident.span, NonUpperCaseGlobal {
-                sort,
-                name,
-                sub,
-            });
+            cx.emit_span_lint(
+                NON_UPPER_CASE_GLOBALS,
+                ident.span,
+                NonUpperCaseGlobal { sort, name, sub },
+            );
         }
     }
 }

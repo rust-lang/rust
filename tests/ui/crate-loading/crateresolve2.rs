@@ -4,7 +4,7 @@
 //@ aux-build:crateresolve2-2.rs
 //@ aux-build:crateresolve2-3.rs
 
-//@ normalize-stderr: "\.nll/" -> "/"
+//@ normalize-stderr: "crateresolve2\..+/auxiliary/" -> "crateresolve2/auxiliary/"
 //@ normalize-stderr: "\\\?\\" -> ""
 
 extern crate crateresolve2;

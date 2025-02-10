@@ -186,7 +186,7 @@ fn init_git_repo(repo_dir: &Path) {
     spawn_and_wait(git_add_cmd);
 
     let mut git_commit_cmd = git_command(repo_dir, "commit");
-    git_commit_cmd.arg("-m").arg("Initial commit").arg("-q");
+    git_commit_cmd.arg("-m").arg("Initial commit").arg("-q").arg("--no-verify");
     spawn_and_wait(git_commit_cmd);
 }
 

@@ -100,16 +100,20 @@ impl<'tcx> InferCtxt<'tcx> {
     ) {
         debug!(?sup_type, ?sub_region, ?cause);
         let origin = SubregionOrigin::from_obligation_cause(cause, || {
-            infer::RelateParamBound(cause.span, sup_type, match cause.code().peel_derives() {
-                ObligationCauseCode::WhereClause(_, span)
-                | ObligationCauseCode::WhereClauseInExpr(_, span, ..)
-                | ObligationCauseCode::OpaqueTypeBound(span, _)
-                    if !span.is_dummy() =>
-                {
-                    Some(*span)
-                }
-                _ => None,
-            })
+            infer::RelateParamBound(
+                cause.span,
+                sup_type,
+                match cause.code().peel_derives() {
+                    ObligationCauseCode::WhereClause(_, span)
+                    | ObligationCauseCode::WhereClauseInExpr(_, span, ..)
+                    | ObligationCauseCode::OpaqueTypeBound(span, _)
+                        if !span.is_dummy() =>
+                    {
+                        Some(*span)
+                    }
+                    _ => None,
+                },
+            )
         });
 
         self.register_region_obligation(RegionObligation { sup_type, sub_region, origin });
@@ -392,13 +396,13 @@ where
         // the problem is to add `T: 'r`, which isn't true. So, if there are no
         // inference variables, we use a verify constraint instead of adding
         // edges, which winds up enforcing the same condition.
-        let is_opaque = alias_ty.kind(self.tcx) == ty::Opaque;
+        let kind = alias_ty.kind(self.tcx);
         if approx_env_bounds.is_empty()
             && trait_bounds.is_empty()
-            && (alias_ty.has_infer_regions() || is_opaque)
+            && (alias_ty.has_infer_regions() || kind == ty::Opaque)
         {
             debug!("no declared bounds");
-            let opt_variances = is_opaque.then(|| self.tcx.variances_of(alias_ty.def_id));
+            let opt_variances = self.tcx.opt_alias_variances(kind, alias_ty.def_id);
             self.args_must_outlive(alias_ty.args, origin, region, opt_variances);
             return;
         }

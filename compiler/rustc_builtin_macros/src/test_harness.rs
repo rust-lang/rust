@@ -344,6 +344,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
         defaultness,
         sig,
         generics: ast::Generics::default(),
+        contract: None,
         body: Some(main_body),
     }));
 

@@ -1,17 +1,17 @@
 use std::ops::Range;
+use std::sync::Arc;
 
 use gccjit::{Location, RValue};
+use rustc_abi::Size;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_codegen_ssa::traits::{DebugInfoBuilderMethods, DebugInfoCodegenMethods};
-use rustc_data_structures::sync::Lrc;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::{self, Body, SourceScope};
 use rustc_middle::ty::{ExistentialTraitRef, Instance, Ty};
 use rustc_session::config::DebugInfo;
 use rustc_span::{BytePos, Pos, SourceFile, SourceFileAndLine, Span, Symbol};
-use rustc_target::abi::Size;
-use rustc_target::abi::call::FnAbi;
+use rustc_target::callconv::FnAbi;
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
@@ -172,7 +172,7 @@ fn make_mir_scope<'gcc, 'tcx>(
 // `lookup_char_pos` return the right information instead.
 pub struct DebugLoc {
     /// Information about the original source file.
-    pub file: Lrc<SourceFile>,
+    pub file: Arc<SourceFile>,
     /// The (1-based) line number.
     pub line: u32,
     /// The (1-based) column number.

@@ -1,6 +1,6 @@
 use std::cmp;
 
-use rustc_abi::{self as abi, ExternAbi, HasDataLayout, WrappingRange};
+use rustc_abi::{BackendRepr, ExternAbi, HasDataLayout, Reg, WrappingRange};
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::lang_items::LangItem;
@@ -14,7 +14,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, sym};
-use rustc_target::callconv::{ArgAbi, FnAbi, PassMode, Reg};
+use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
@@ -1545,7 +1545,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // the load would just produce `OperandValue::Ref` instead
                 // of the `OperandValue::Immediate` we need for the call.
                 llval = bx.load(bx.backend_type(arg.layout), llval, align);
-                if let abi::BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
+                if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
                     if scalar.is_bool() {
                         bx.range_metadata(llval, WrappingRange { start: 0, end: 1 });
                     }
@@ -1604,10 +1604,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let Some(slot) = self.personality_slot {
             slot
         } else {
-            let layout = cx.layout_of(Ty::new_tup(cx.tcx(), &[
-                Ty::new_mut_ptr(cx.tcx(), cx.tcx().types.u8),
-                cx.tcx().types.i32,
-            ]));
+            let layout = cx.layout_of(Ty::new_tup(
+                cx.tcx(),
+                &[Ty::new_mut_ptr(cx.tcx(), cx.tcx().types.u8), cx.tcx().types.i32],
+            ));
             let slot = PlaceRef::alloca(bx, layout);
             self.personality_slot = Some(slot);
             slot
@@ -1708,15 +1708,32 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let mut cs_bx = Bx::build(self.cx, llbb);
             let cs = cs_bx.catch_switch(None, None, &[cp_llbb]);
 
-            // The "null" here is actually a RTTI type descriptor for the
-            // C++ personality function, but `catch (...)` has no type so
-            // it's null. The 64 here is actually a bitfield which
-            // represents that this is a catch-all block.
             bx = Bx::build(self.cx, cp_llbb);
             let null =
                 bx.const_null(bx.type_ptr_ext(bx.cx().data_layout().instruction_address_space));
-            let sixty_four = bx.const_i32(64);
-            funclet = Some(bx.catch_pad(cs, &[null, sixty_four, null]));
+
+            // The `null` in first argument here is actually a RTTI type
+            // descriptor for the C++ personality function, but `catch (...)`
+            // has no type so it's null.
+            let args = if base::wants_msvc_seh(self.cx.sess()) {
+                // This bitmask is a single `HT_IsStdDotDot` flag, which
+                // represents that this is a C++-style `catch (...)` block that
+                // only captures programmatic exceptions, not all SEH
+                // exceptions. The second `null` points to a non-existent
+                // `alloca` instruction, which an LLVM pass would inline into
+                // the initial SEH frame allocation.
+                let adjectives = bx.const_i32(0x40);
+                &[null, adjectives, null] as &[_]
+            } else {
+                // Specifying more arguments than necessary usually doesn't
+                // hurt, but the `WasmEHPrepare` LLVM pass does not recognize
+                // anything other than a single `null` as a `catch (...)` block,
+                // leading to problems down the line during instruction
+                // selection.
+                &[null] as &[_]
+            };
+
+            funclet = Some(bx.catch_pad(cs, args));
         } else {
             llbb = Bx::append_block(self.cx, self.llfn, "terminate");
             bx = Bx::build(self.cx, llbb);

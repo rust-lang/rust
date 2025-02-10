@@ -436,9 +436,6 @@ hir_analysis_paren_sugar_attribute = the `#[rustc_paren_sugar]` attribute is a t
 hir_analysis_parenthesized_fn_trait_expansion =
     parenthesized trait syntax expands to `{$expanded_type}`
 
-hir_analysis_pattern_type_non_const_range = range patterns must have constant range start and end
-hir_analysis_pattern_type_wild_pat = wildcard patterns are not permitted for pattern types
-    .label = this type is the same as the inner type without a pattern
 hir_analysis_placeholder_not_allowed_item_signatures = the placeholder `_` is not allowed within types on item signatures for {$kind}
     .label = not allowed in type signatures
 hir_analysis_precise_capture_self_alias = `Self` can't be captured in `use<...>` precise captures list, since it is an alias

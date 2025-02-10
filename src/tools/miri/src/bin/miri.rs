@@ -29,7 +29,7 @@ use std::num::NonZero;
 use std::ops::Range;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::Once;
+use std::sync::{Arc, Once};
 use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
 
 use miri::{
@@ -38,7 +38,6 @@ use miri::{
 };
 use rustc_abi::ExternAbi;
 use rustc_data_structures::sync;
-use rustc_data_structures::sync::Lrc;
 use rustc_driver::Compilation;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir, Node};
@@ -134,7 +133,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 // HACK: rustc will emit "crate ... required to be available in rlib format, but
                 // was not found in this form" errors once we use `tcx.dependency_formats()` if
                 // there's no rlib provided, so setting a dummy path here to workaround those errors.
-                Lrc::make_mut(&mut crate_source).rlib = Some((PathBuf::new(), PathKind::All));
+                Arc::make_mut(&mut crate_source).rlib = Some((PathBuf::new(), PathKind::All));
                 crate_source
             };
         });

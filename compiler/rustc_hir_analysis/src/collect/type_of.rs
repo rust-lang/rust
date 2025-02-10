@@ -18,9 +18,10 @@ use crate::hir_ty_lowering::HirTyLowerer;
 
 mod opaque;
 
-fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
+fn anon_const_type_of<'tcx>(icx: &ItemCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
     use hir::*;
     use rustc_middle::ty::Ty;
+    let tcx = icx.tcx;
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
     let node = tcx.hir_node(hir_id);
@@ -54,7 +55,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
             hir_id: arg_hir_id,
             kind: ConstArgKind::Anon(&AnonConst { hir_id: anon_hir_id, .. }),
             ..
-        }) if anon_hir_id == hir_id => const_arg_anon_type_of(tcx, arg_hir_id, span),
+        }) if anon_hir_id == hir_id => const_arg_anon_type_of(icx, arg_hir_id, span),
 
         // Anon consts outside the type system.
         Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
@@ -138,9 +139,11 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
     }
 }
 
-fn const_arg_anon_type_of<'tcx>(tcx: TyCtxt<'tcx>, arg_hir_id: HirId, span: Span) -> Ty<'tcx> {
+fn const_arg_anon_type_of<'tcx>(icx: &ItemCtxt<'tcx>, arg_hir_id: HirId, span: Span) -> Ty<'tcx> {
     use hir::*;
     use rustc_middle::ty::Ty;
+
+    let tcx = icx.tcx;
 
     match tcx.parent_hir_node(arg_hir_id) {
         // Array length const arguments do not have `type_of` fed as there is never a corresponding
@@ -149,7 +152,15 @@ fn const_arg_anon_type_of<'tcx>(tcx: TyCtxt<'tcx>, arg_hir_id: HirId, span: Span
         | Node::Expr(&Expr { kind: ExprKind::Repeat(_, ref constant), .. })
             if constant.hir_id == arg_hir_id =>
         {
-            return tcx.types.usize;
+            tcx.types.usize
+        }
+
+        Node::TyPat(pat) => {
+            let hir::TyKind::Pat(ty, p) = tcx.parent_hir_node(pat.hir_id).expect_ty().kind else {
+                bug!()
+            };
+            assert_eq!(p.hir_id, pat.hir_id);
+            icx.lower_ty(ty)
         }
 
         // This is not a `bug!` as const arguments in path segments that did not resolve to anything
@@ -344,7 +355,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             tcx.typeck(def_id).node_type(hir_id)
         }
 
-        Node::AnonConst(_) => anon_const_type_of(tcx, def_id),
+        Node::AnonConst(_) => anon_const_type_of(&icx, def_id),
 
         Node::ConstBlock(_) => {
             let args = ty::GenericArgs::identity_for_item(tcx, def_id.to_def_id());

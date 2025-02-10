@@ -990,14 +990,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             VisResolutionError::AncestorOnly(span) => {
                 self.dcx().create_err(errs::AncestorOnly(span))
             }
-            VisResolutionError::FailedToResolve(span, label, suggestion) => {
-                self.into_struct_error(span, ResolutionError::FailedToResolve {
-                    segment: None,
-                    label,
-                    suggestion,
-                    module: None,
-                })
-            }
+            VisResolutionError::FailedToResolve(span, label, suggestion) => self.into_struct_error(
+                span,
+                ResolutionError::FailedToResolve { segment: None, label, suggestion, module: None },
+            ),
             VisResolutionError::ExpectedFound(span, path_str, res) => {
                 self.dcx().create_err(errs::ExpectedModuleFound { span, res, path_str })
             }

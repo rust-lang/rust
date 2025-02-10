@@ -124,42 +124,41 @@ fn write_str_macro_debug_ascii(bh: &mut Bencher) {
 #[bench]
 fn write_u128_max(bh: &mut Bencher) {
     bh.iter(|| {
-        test::black_box(format!("{}", u128::MAX));
+        black_box(format!("{}", black_box(u128::MAX)));
     });
 }
 
 #[bench]
 fn write_u128_min(bh: &mut Bencher) {
     bh.iter(|| {
-        let s = format!("{}", 0u128);
-        test::black_box(s);
+        black_box(format!("{}", black_box(u128::MIN)));
     });
 }
 
 #[bench]
 fn write_u64_max(bh: &mut Bencher) {
     bh.iter(|| {
-        test::black_box(format!("{}", u64::MAX));
+        black_box(format!("{}", black_box(u64::MAX)));
     });
 }
 
 #[bench]
 fn write_u64_min(bh: &mut Bencher) {
     bh.iter(|| {
-        test::black_box(format!("{}", 0u64));
+        black_box(format!("{}", black_box(u64::MIN)));
     });
 }
 
 #[bench]
 fn write_u8_max(bh: &mut Bencher) {
     bh.iter(|| {
-        test::black_box(format!("{}", u8::MAX));
+        black_box(format!("{}", black_box(u8::MAX)));
     });
 }
 
 #[bench]
 fn write_u8_min(bh: &mut Bencher) {
     bh.iter(|| {
-        test::black_box(format!("{}", 0u8));
+        black_box(format!("{}", black_box(u8::MIN)));
     });
 }

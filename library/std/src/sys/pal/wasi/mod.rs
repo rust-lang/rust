@@ -20,9 +20,7 @@ pub mod fs;
 #[allow(unused)]
 #[path = "../wasm/atomics/futex.rs"]
 pub mod futex;
-pub mod io;
 
-pub mod net;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
@@ -45,5 +43,4 @@ mod helpers;
 // import conflict rules. If we glob export `helpers` and `common` together,
 // then the compiler complains about conflicts.
 
-use helpers::err2io;
-pub use helpers::{abort_internal, decode_error_kind, is_interrupted};
+pub(crate) use helpers::{abort_internal, decode_error_kind, err2io, is_interrupted};

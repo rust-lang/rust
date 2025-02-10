@@ -417,7 +417,11 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             | Rvalue::Discriminant(..)
             | Rvalue::Len(..)
             | Rvalue::NullaryOp(
-                NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..) | NullOp::UbChecks,
+                NullOp::SizeOf
+                | NullOp::AlignOf
+                | NullOp::OffsetOf(..)
+                | NullOp::UbChecks
+                | NullOp::ContractChecks,
                 _,
             ) => {}
         }

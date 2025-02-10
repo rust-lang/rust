@@ -18,7 +18,6 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, DocLinkResMap};
@@ -125,7 +124,7 @@ rustc_queries! {
         desc { "getting the resolver outputs" }
     }
 
-    query resolver_for_lowering_raw(_: ()) -> (&'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
+    query resolver_for_lowering_raw(_: ()) -> (&'tcx Steal<(ty::ResolverAstLowering, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
         eval_always
         no_hash
         desc { "getting the resolver for lowering" }
@@ -1628,7 +1627,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query dependency_formats(_: ()) -> &'tcx Lrc<crate::middle::dependency_format::Dependencies> {
+    query dependency_formats(_: ()) -> &'tcx Arc<crate::middle::dependency_format::Dependencies> {
         arena_cache
         desc { "getting the linkage format of all dependencies" }
     }
@@ -2077,7 +2076,7 @@ rustc_queries! {
         desc { "seeing if we're missing an `extern crate` item for this crate" }
         separate_provide_extern
     }
-    query used_crate_source(_: CrateNum) -> &'tcx Lrc<CrateSource> {
+    query used_crate_source(_: CrateNum) -> &'tcx Arc<CrateSource> {
         arena_cache
         eval_always
         desc { "looking at the source for a crate" }

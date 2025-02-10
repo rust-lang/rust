@@ -1988,17 +1988,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr.kind,
             hir::ExprKind::Call(
                 hir::Expr {
-                    kind: hir::ExprKind::Path(hir::QPath::Resolved(None, hir::Path {
-                        res: Res::Def(hir::def::DefKind::Ctor(_, _), _),
-                        ..
-                    },)),
+                    kind: hir::ExprKind::Path(hir::QPath::Resolved(
+                        None,
+                        hir::Path { res: Res::Def(hir::def::DefKind::Ctor(_, _), _), .. },
+                    )),
                     ..
                 },
                 ..,
-            ) | hir::ExprKind::Path(hir::QPath::Resolved(None, hir::Path {
-                res: Res::Def(hir::def::DefKind::Ctor(_, _), _),
-                ..
-            },)),
+            ) | hir::ExprKind::Path(hir::QPath::Resolved(
+                None,
+                hir::Path { res: Res::Def(hir::def::DefKind::Ctor(_, _), _), .. },
+            )),
         );
 
         let (article, kind, variant, sugg_operator) =

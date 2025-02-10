@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use rustc_ast::HasTokens;
 use rustc_ast::ptr::P;
 use rustc_ast::token::Nonterminal::*;
@@ -7,7 +9,6 @@ use rustc_ast::token::{
     self, Delimiter, InvisibleOrigin, MetaVarKind, Nonterminal, NonterminalKind, Token,
 };
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
 use rustc_span::{Ident, kw};
 
@@ -235,7 +236,7 @@ impl<'a> Parser<'a> {
             );
         }
 
-        Ok(ParseNtResult::Nt(Lrc::new(nt)))
+        Ok(ParseNtResult::Nt(Arc::new(nt)))
     }
 }
 

@@ -30,7 +30,7 @@
 //! compatible with AVR-GCC - Rust and AVR-GCC only differ in the small amount
 //! of compiler frontend specific calling convention logic implemented here.
 
-use crate::abi::call::{ArgAbi, FnAbi};
+use crate::callconv::{ArgAbi, FnAbi};
 
 fn classify_ret_ty<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     if ret.layout.is_aggregate() {

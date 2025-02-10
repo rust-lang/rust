@@ -19,7 +19,7 @@ use rustc_middle::ty::{self, RegionKind, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
-use rustc_target::spec::abi::Abi;
+use rustc_abi::ExternAbi;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -277,7 +277,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         let hir_id = cx.tcx.local_def_id_to_hir_id(def_id);
         match kind {
             FnKind::ItemFn(.., header) => {
-                if header.abi != Abi::Rust {
+                if header.abi != ExternAbi::Rust {
                     return;
                 }
                 let attrs = cx.tcx.hir().attrs(hir_id);

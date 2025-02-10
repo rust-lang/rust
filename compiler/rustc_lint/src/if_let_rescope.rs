@@ -221,20 +221,25 @@ impl IfLetRescope {
             }
         }
         if let Some((span, hir_id)) = first_if_to_lint {
-            tcx.emit_node_span_lint(IF_LET_RESCOPE, hir_id, span, IfLetRescopeLint {
-                significant_droppers,
-                lifetime_ends,
-                rewrite: first_if_to_rewrite.then_some(IfLetRescopeRewrite {
-                    match_heads,
-                    consequent_heads,
-                    closing_brackets: ClosingBrackets {
-                        span: expr_end,
-                        count: closing_brackets,
-                        empty_alt,
-                    },
-                    alt_heads,
-                }),
-            });
+            tcx.emit_node_span_lint(
+                IF_LET_RESCOPE,
+                hir_id,
+                span,
+                IfLetRescopeLint {
+                    significant_droppers,
+                    lifetime_ends,
+                    rewrite: first_if_to_rewrite.then_some(IfLetRescopeRewrite {
+                        match_heads,
+                        consequent_heads,
+                        closing_brackets: ClosingBrackets {
+                            span: expr_end,
+                            count: closing_brackets,
+                            empty_alt,
+                        },
+                        alt_heads,
+                    }),
+                },
+            );
         }
     }
 }

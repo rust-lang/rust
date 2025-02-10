@@ -88,7 +88,11 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
 ) -> FulfillmentError<'tcx> {
     let (code, refine_obligation) = infcx.probe(|_| {
         match <&SolverDelegate<'tcx>>::from(infcx)
-            .evaluate_root_goal(root_obligation.clone().into(), GenerateProofTree::No)
+            .evaluate_root_goal(
+                root_obligation.clone().into(),
+                GenerateProofTree::No,
+                root_obligation.cause.span,
+            )
             .0
         {
             Ok((_, Certainty::Maybe(MaybeCause::Ambiguity))) => {
@@ -149,10 +153,10 @@ fn find_best_leaf_obligation<'tcx>(
     infcx
         .fudge_inference_if_ok(|| {
             infcx
-                .visit_proof_tree(obligation.clone().into(), &mut BestObligation {
-                    obligation: obligation.clone(),
-                    consider_ambiguities,
-                })
+                .visit_proof_tree(
+                    obligation.clone().into(),
+                    &mut BestObligation { obligation: obligation.clone(), consider_ambiguities },
+                )
                 .break_value()
                 .ok_or(())
         })

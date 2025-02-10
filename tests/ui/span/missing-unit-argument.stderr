@@ -37,7 +37,7 @@ note: function defined here
   --> $DIR/missing-unit-argument.rs:1:4
    |
 LL | fn foo(():(), ():()) {}
-   |    ^^^ -----  -----
+   |    ^^^        -----
 help: provide the argument
    |
 LL |     foo((), ());

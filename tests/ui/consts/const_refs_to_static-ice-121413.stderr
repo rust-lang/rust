@@ -31,16 +31,7 @@ LL |     static FOO: Sync = AtomicUsize::new(0);
    |
    = help: the trait `Sized` is not implemented for `(dyn Sync + 'static)`
 
-error[E0277]: the size for values of type `(dyn Sync + 'static)` cannot be known at compilation time
-  --> $DIR/const_refs_to_static-ice-121413.rs:8:24
-   |
-LL |     static FOO: Sync = AtomicUsize::new(0);
-   |                        ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `(dyn Sync + 'static)`
-   = note: constant expressions must have a statically known size
-
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0277, E0433.
 For more information about an error, try `rustc --explain E0277`.

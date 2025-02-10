@@ -703,7 +703,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         self.note_obligation_cause(&mut err, &obligation);
-        self.point_at_returns_when_relevant(&mut err, &obligation);
         err.emit()
     }
 }
@@ -806,7 +805,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "Async",
                 );
                 self.note_obligation_cause(&mut err, &obligation);
-                self.point_at_returns_when_relevant(&mut err, &obligation);
                 return Some(err.emit());
             }
         }
@@ -852,7 +850,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "",
                 );
                 self.note_obligation_cause(&mut err, &obligation);
-                self.point_at_returns_when_relevant(&mut err, &obligation);
                 return Some(err.emit());
             }
 
@@ -868,7 +865,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     kind: expected_kind.as_str(),
                 });
                 self.note_obligation_cause(&mut err, &obligation);
-                self.point_at_returns_when_relevant(&mut err, &obligation);
                 return Some(err.emit());
             }
         }
@@ -1841,13 +1837,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
             span.push_span_label(self.tcx.def_span(other_trait_def_id), "this is the found trait");
-            err.highlighted_span_note(span, vec![
-                StringPart::normal("there are ".to_string()),
-                StringPart::highlighted("multiple different versions".to_string()),
-                StringPart::normal(" of crate `".to_string()),
-                StringPart::highlighted(format!("{crate_name}")),
-                StringPart::normal("` in the dependency graph\n".to_string()),
-            ]);
+            err.highlighted_span_note(
+                span,
+                vec![
+                    StringPart::normal("there are ".to_string()),
+                    StringPart::highlighted("multiple different versions".to_string()),
+                    StringPart::normal(" of crate `".to_string()),
+                    StringPart::highlighted(format!("{crate_name}")),
+                    StringPart::normal("` in the dependency graph\n".to_string()),
+                ],
+            );
             if points_at_type {
                 // We only clarify that the same type from different crate versions are not the
                 // same when we *find* the same type coming from different crate versions, otherwise
@@ -2826,7 +2825,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err.span_note(self.tcx.def_span(def_id), "opaque type is declared here");
 
         self.note_obligation_cause(&mut err, &obligation);
-        self.point_at_returns_when_relevant(&mut err, &obligation);
         self.dcx().try_steal_replace_and_emit_err(self.tcx.def_span(def_id), StashKey::Cycle, err)
     }
 
@@ -2982,12 +2980,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .inputs
                     .iter()
                     .map(|arg| match arg.kind {
-                        hir::TyKind::Tup(tys) => {
-                            ArgKind::Tuple(Some(arg.span), vec![
-                                ("_".to_owned(), "_".to_owned());
-                                tys.len()
-                            ])
-                        }
+                        hir::TyKind::Tup(tys) => ArgKind::Tuple(
+                            Some(arg.span),
+                            vec![("_".to_owned(), "_".to_owned()); tys.len()],
+                        ),
                         _ => ArgKind::empty(),
                     })
                     .collect::<Vec<ArgKind>>(),

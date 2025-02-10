@@ -54,7 +54,7 @@ Lints are registered via the [`LintStore::register_lint`] function. This should
 happen just once for any lint, or an ICE will occur.
 
 Once the registration is complete, we "freeze" the lint store by placing it in
-an `Lrc`.
+an `Arc`.
 
 Lint passes are registered separately into one of the categories
 (pre-expansion, early, late, late module). Passes are registered as a closure

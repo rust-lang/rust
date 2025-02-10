@@ -41,7 +41,6 @@ fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
     // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
     // and don't have to be, LLVM treats them as no-ops.
     match name {
-        "appending" => Appending,
         "available_externally" => AvailableExternally,
         "common" => Common,
         "extern_weak" => ExternalWeak,
@@ -49,7 +48,6 @@ fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
         "internal" => Internal,
         "linkonce" => LinkOnceAny,
         "linkonce_odr" => LinkOnceODR,
-        "private" => Private,
         "weak" => WeakAny,
         "weak_odr" => WeakODR,
         _ => tcx.dcx().span_fatal(tcx.def_span(def_id), "invalid linkage specified"),

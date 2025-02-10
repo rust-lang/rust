@@ -23,17 +23,23 @@ pub(crate) fn target() -> Target {
     options.cpu = "mvp".into();
     options.features = "+mutable-globals".into();
 
-    options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::No), &[
-        // For now this target just never has an entry symbol no matter the output
-        // type, so unconditionally pass this.
-        "--no-entry",
-    ]);
-    options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::Yes), &[
-        // Make sure clang uses LLD as its linker and is configured appropriately
-        // otherwise
-        "--target=wasm32-unknown-unknown",
-        "-Wl,--no-entry",
-    ]);
+    options.add_pre_link_args(
+        LinkerFlavor::WasmLld(Cc::No),
+        &[
+            // For now this target just never has an entry symbol no matter the output
+            // type, so unconditionally pass this.
+            "--no-entry",
+        ],
+    );
+    options.add_pre_link_args(
+        LinkerFlavor::WasmLld(Cc::Yes),
+        &[
+            // Make sure clang uses LLD as its linker and is configured appropriately
+            // otherwise
+            "--target=wasm32-unknown-unknown",
+            "-Wl,--no-entry",
+        ],
+    );
 
     Target {
         llvm_target: "wasm32-unknown-unknown".into(),

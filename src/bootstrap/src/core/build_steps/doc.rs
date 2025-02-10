@@ -830,7 +830,8 @@ impl Step for Rustc {
         cargo.rustdocflag("--show-type-layout");
         // FIXME: `--generate-link-to-definition` tries to resolve cfged out code
         // see https://github.com/rust-lang/rust/pull/122066#issuecomment-1983049222
-        // cargo.rustdocflag("--generate-link-to-definition");
+        // If there is any bug, please comment out the next line.
+        cargo.rustdocflag("--generate-link-to-definition");
 
         compile::rustc_cargo(builder, &mut cargo, target, &compiler, &self.crates);
         cargo.arg("-Zskip-rustdoc-fingerprint");

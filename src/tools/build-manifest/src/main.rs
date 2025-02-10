@@ -603,11 +603,14 @@ impl Builder {
             })
             .collect();
 
-        dst.insert(pkg.manifest_component_name(), Package {
-            version: version_info.version.unwrap_or_default(),
-            git_commit_hash: version_info.git_commit,
-            target: targets,
-        });
+        dst.insert(
+            pkg.manifest_component_name(),
+            Package {
+                version: version_info.version.unwrap_or_default(),
+                git_commit_hash: version_info.git_commit,
+                target: targets,
+            },
+        );
     }
 
     fn url(&self, path: &Path) -> String {

@@ -10,8 +10,8 @@ mod structural_impls;
 
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::HirId;
@@ -21,13 +21,12 @@ use rustc_macros::{
 };
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_span::{DUMMY_SP, Span, Symbol};
-// FIXME: Remove this import and import via `solve::`
-pub use rustc_type_ir::solve::BuiltinImplSource;
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
 use crate::mir::ConstraintCategory;
+pub use crate::traits::solve::BuiltinImplSource;
 use crate::ty::abstract_const::NotConstEvaluatable;
 use crate::ty::{self, AdtKind, GenericArgsRef, Ty};
 
@@ -158,7 +157,7 @@ pub struct UnifyReceiverContext<'tcx> {
 pub struct InternedObligationCauseCode<'tcx> {
     /// `None` for `ObligationCauseCode::Misc` (a common case, occurs ~60% of
     /// the time). `Some` otherwise.
-    code: Option<Lrc<ObligationCauseCode<'tcx>>>,
+    code: Option<Arc<ObligationCauseCode<'tcx>>>,
 }
 
 impl<'tcx> std::fmt::Debug for InternedObligationCauseCode<'tcx> {
@@ -172,7 +171,7 @@ impl<'tcx> ObligationCauseCode<'tcx> {
     #[inline(always)]
     fn into(self) -> InternedObligationCauseCode<'tcx> {
         InternedObligationCauseCode {
-            code: if let ObligationCauseCode::Misc = self { None } else { Some(Lrc::new(self)) },
+            code: if let ObligationCauseCode::Misc = self { None } else { Some(Arc::new(self)) },
         }
     }
 }
@@ -426,10 +425,6 @@ pub enum IsConstable {
     Fn,
     /// Use of a const ctor
     Ctor,
-}
-
-TrivialTypeTraversalAndLiftImpls! {
-    IsConstable,
 }
 
 /// The 'location' at which we try to perform HIR-based wf checking.

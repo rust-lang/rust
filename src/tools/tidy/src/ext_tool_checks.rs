@@ -95,10 +95,14 @@ fn check_impl(
         if res.is_err() && show_diff {
             eprintln!("\npython linting failed! Printing diff suggestions:");
 
-            let _ = run_ruff(root_path, outdir, py_path, &cfg_args, &file_args, &[
-                "check".as_ref(),
-                "--diff".as_ref(),
-            ]);
+            let _ = run_ruff(
+                root_path,
+                outdir,
+                py_path,
+                &cfg_args,
+                &file_args,
+                &["check".as_ref(), "--diff".as_ref()],
+            );
         }
         // Rethrow error
         let _ = res?;
@@ -120,10 +124,14 @@ fn check_impl(
             if show_diff {
                 eprintln!("\npython formatting does not match! Printing diff:");
 
-                let _ = run_ruff(root_path, outdir, py_path, &cfg_args, &file_args, &[
-                    "format".as_ref(),
-                    "--diff".as_ref(),
-                ]);
+                let _ = run_ruff(
+                    root_path,
+                    outdir,
+                    py_path,
+                    &cfg_args,
+                    &file_args,
+                    &["format".as_ref(), "--diff".as_ref()],
+                );
             }
             eprintln!("rerun tidy with `--extra-checks=py:fmt --bless` to reformat Python code");
         }
@@ -148,10 +156,11 @@ fn check_impl(
         let files;
         if file_args_clang_format.is_empty() {
             let llvm_wrapper = root_path.join("compiler/rustc_llvm/llvm-wrapper");
-            files = find_with_extension(root_path, Some(llvm_wrapper.as_path()), &[
-                OsStr::new("h"),
-                OsStr::new("cpp"),
-            ])?;
+            files = find_with_extension(
+                root_path,
+                Some(llvm_wrapper.as_path()),
+                &[OsStr::new("h"), OsStr::new("cpp")],
+            )?;
             file_args_clang_format.extend(files.iter().map(|p| p.as_os_str()));
         }
         let args = merge_args(&cfg_args_clang_format, &file_args_clang_format);
