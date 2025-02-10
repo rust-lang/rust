@@ -213,5 +213,11 @@ error: this boolean expression can be simplified
 LL |     if !b != !c {}
    |        ^^^^^^^^ help: try: `b != c`
 
-error: aborting due to 29 previous errors
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:188:8
+   |
+LL |     if !(a < 2.0 && !b) {
+   |        ^^^^^^^^^^^^^^^^ help: try: `!(a < 2.0) || b`
+
+error: aborting due to 30 previous errors
 

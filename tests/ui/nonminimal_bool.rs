@@ -183,3 +183,9 @@ fn issue_12371(x: usize) -> bool {
 fn many_ops(a: bool, b: bool, c: bool, d: bool, e: bool, f: bool) -> bool {
     (a && c && f) || (!a && b && !d) || (!b && !c && !e) || (d && e && !f)
 }
+
+fn issue14184(a: f32, b: bool) {
+    if !(a < 2.0 && !b) {
+        println!("Hi");
+    }
+}
