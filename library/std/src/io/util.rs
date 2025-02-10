@@ -188,6 +188,13 @@ impl Read for Repeat {
         Ok(buf.len())
     }
 
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        for slot in &mut *buf {
+            *slot = self.byte;
+        }
+        Ok(())
+    }
+
     fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
         // SAFETY: No uninit bytes are being written
         for slot in unsafe { buf.as_mut() } {
@@ -202,6 +209,10 @@ impl Read for Repeat {
         }
 
         Ok(())
+    }
+
+    fn read_buf_exact(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        self.read_buf(buf)
     }
 
     /// This function is not supported by `io::Repeat`, because there's no end of its data
