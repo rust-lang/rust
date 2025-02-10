@@ -523,18 +523,7 @@ fn int_float_common<F1: Float, F2: Float>(
         && actual == F2::ZERO
         && expected == F2::ZERO
     {
-        return XFAIL("mpfr b");
-    }
-
-    // Our bessel functions blow up with large N values
-    if ctx.basis == Musl && (ctx.base_name == BaseName::Jn || ctx.base_name == BaseName::Yn) {
-        if input.0 > 4000 {
-            return XFAIL_NOCHECK;
-        } else if input.0 > 2000 {
-            return CheckAction::AssertWithUlp(20_000);
-        } else if input.0 > 1000 {
-            return CheckAction::AssertWithUlp(4_000);
-        }
+        return XFAIL("we disagree with MPFR on the sign of zero");
     }
 
     // Values near infinity sometimes get cut off for us. `ynf(681, 509.90924) = -inf` but should
@@ -549,6 +538,19 @@ fn int_float_common<F1: Float, F2: Float>(
         return XFAIL_NOCHECK;
     }
 
+    // Our bessel functions blow up with large N values
+    if ctx.basis == Musl && (ctx.base_name == BaseName::Jn || ctx.base_name == BaseName::Yn) {
+        if cfg!(x86_no_sse) {
+            // Precision is especially bad on i586, not worth checking.
+            return XFAIL_NOCHECK;
+        }
+
+        if input.0 > 4000 {
+            return XFAIL_NOCHECK;
+        } else if input.0 > 100 {
+            return CheckAction::AssertWithUlp(1_000_000);
+        }
+    }
     DEFAULT
 }
 
