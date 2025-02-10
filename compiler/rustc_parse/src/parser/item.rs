@@ -209,7 +209,9 @@ impl<'a> Parser<'a> {
         let check_pub = def == &Defaultness::Final;
         let mut def_ = || mem::replace(def, Defaultness::Final);
 
-        let info = if self.eat_keyword_case(exp!(Use), case) {
+        let info = if !self.look_ahead(1, |t| [token::OrOr, token::Or].contains(&t.kind))
+            && self.eat_keyword_case(exp!(Use), case)
+        {
             self.parse_use_item()?
         } else if self.check_fn_front_matter(check_pub, case) {
             // FUNCTION ITEM
