@@ -565,6 +565,11 @@ impl<A: Allocator> Write for VecDeque<u8, A> {
         Ok(len)
     }
 
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        self.write_vectored(bufs)?;
+        Ok(())
+    }
+
     #[inline]
     fn is_write_vectored(&self) -> bool {
         true
