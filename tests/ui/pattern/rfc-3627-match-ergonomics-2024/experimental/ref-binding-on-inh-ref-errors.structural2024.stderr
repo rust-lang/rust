@@ -10,10 +10,11 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL |     let [&ref x] = &[&0];
    |         ^^^^^^^^ this matches on type `&_`
-help: make the implied reference pattern explicit
+help: rewrite the pattern
    |
-LL |     let &[&ref x] = &[&0];
-   |         +
+LL -     let [&ref x] = &[&0];
+LL +     let &[x] = &[&0];
+   |
 
 error: binding modifiers may only be written when the default binding mode is `move`
   --> $DIR/ref-binding-on-inh-ref-errors.rs:20:11
@@ -27,10 +28,11 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL |     let [&ref x] = &mut [&0];
    |         ^^^^^^^^ this matches on type `&mut _`
-help: make the implied reference pattern explicit
+help: rewrite the pattern
    |
-LL |     let &mut [&ref x] = &mut [&0];
-   |         ++++
+LL -     let [&ref x] = &mut [&0];
+LL +     let &mut [x] = &mut [&0];
+   |
 
 error: binding modifiers may only be written when the default binding mode is `move`
   --> $DIR/ref-binding-on-inh-ref-errors.rs:25:15
@@ -61,10 +63,11 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL |     let [&mut ref mut x] = &mut [&mut 0];
    |         ^^^^^^^^^^^^^^^^ this matches on type `&mut _`
-help: make the implied reference pattern explicit
+help: rewrite the pattern
    |
-LL |     let &mut [&mut ref mut x] = &mut [&mut 0];
-   |         ++++
+LL -     let [&mut ref mut x] = &mut [&mut 0];
+LL +     let &mut [x] = &mut [&mut 0];
+   |
 
 error: binding modifiers may only be written when the default binding mode is `move`
   --> $DIR/ref-binding-on-inh-ref-errors.rs:39:11
@@ -78,10 +81,11 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL |     let [&ref x] = &[&mut 0];
    |         ^^^^^^^^ this matches on type `&_`
-help: make the implied reference pattern explicit
+help: rewrite the pattern
    |
-LL |     let &[&ref x] = &[&mut 0];
-   |         +
+LL -     let [&ref x] = &[&mut 0];
+LL +     let &[x] = &[&mut 0];
+   |
 
 error: binding modifiers may only be written when the default binding mode is `move`
   --> $DIR/ref-binding-on-inh-ref-errors.rs:45:11
@@ -95,10 +99,11 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL |     let [&ref x] = &mut [&mut 0];
    |         ^^^^^^^^ this matches on type `&mut _`
-help: make the implied reference pattern explicit
+help: rewrite the pattern
    |
-LL |     let &mut [&ref x] = &mut [&mut 0];
-   |         ++++
+LL -     let [&ref x] = &mut [&mut 0];
+LL +     let &mut [x] = &mut [&mut 0];
+   |
 
 error: binding modifiers may only be written when the default binding mode is `move`
   --> $DIR/ref-binding-on-inh-ref-errors.rs:54:15

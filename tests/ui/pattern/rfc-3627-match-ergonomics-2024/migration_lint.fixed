@@ -175,7 +175,7 @@ fn main() {
     assert_type_eq(c, &0u32);
 
     // Test that we don't change bindings' types when removing reference patterns.
-    let &Foo(&ref a) = &Foo(&0);
+    let &Foo(a) = &Foo(&0);
     //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(a, &0u32);
@@ -221,7 +221,7 @@ fn main() {
     assert_type_eq(b, 0u32);
 
     // Test that we respect bindings' subpatterns' types when rewriting `&ref x` to `x`.
-    let [&Foo(&ref a @ ref b), &Foo(&ref c @ d)] = [&Foo(&0); 2];
+    let [&Foo(a @ b), &Foo(&ref c @ d)] = [&Foo(&0); 2];
     //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(a, &0u32);
@@ -230,7 +230,7 @@ fn main() {
     assert_type_eq(d, 0u32);
 
     // Test that we respect bindings' subpatterns' modes when rewriting `&ref x` to `x`.
-    let [&Foo(&ref a @ [ref b]), &Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
+    let [&Foo(a @ [b]), &Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
     //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(a, &[0u32]);
