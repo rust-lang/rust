@@ -1,9 +1,7 @@
 use std::collections::BTreeSet;
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::IndexVec;
-use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::coverage::{
     BlockMarkerId, BranchSpan, ConditionId, ConditionInfo, CoverageInfoHi, CoverageKind,
 };
@@ -63,10 +61,6 @@ const MCDC_MAX_BITMAP_SIZE: usize = i32::MAX as usize;
 
 #[derive(Default)]
 pub(super) struct ExtractedMappings {
-    /// Store our own copy of [`CoverageGraph::num_nodes`], so that we don't
-    /// need access to the whole graph when allocating per-BCB data. This is
-    /// only public so that other code can still use exhaustive destructuring.
-    pub(super) num_bcbs: usize,
     pub(super) code_mappings: Vec<CodeMapping>,
     pub(super) branch_pairs: Vec<BranchPair>,
     pub(super) mcdc_bitmap_bits: usize,
@@ -118,66 +112,11 @@ pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
     );
 
     ExtractedMappings {
-        num_bcbs: graph.num_nodes(),
         code_mappings,
         branch_pairs,
         mcdc_bitmap_bits,
         mcdc_degraded_branches,
         mcdc_mappings,
-    }
-}
-
-impl ExtractedMappings {
-    pub(super) fn all_bcbs_with_counter_mappings(&self) -> DenseBitSet<BasicCoverageBlock> {
-        // Fully destructure self to make sure we don't miss any fields that have mappings.
-        let Self {
-            num_bcbs,
-            code_mappings,
-            branch_pairs,
-            mcdc_bitmap_bits: _,
-            mcdc_degraded_branches,
-            mcdc_mappings,
-        } = self;
-
-        // Identify which BCBs have one or more mappings.
-        let mut bcbs_with_counter_mappings = DenseBitSet::new_empty(*num_bcbs);
-        let mut insert = |bcb| {
-            bcbs_with_counter_mappings.insert(bcb);
-        };
-
-        for &CodeMapping { span: _, bcb } in code_mappings {
-            insert(bcb);
-        }
-        for &BranchPair { true_bcb, false_bcb, .. } in branch_pairs {
-            insert(true_bcb);
-            insert(false_bcb);
-        }
-        for &MCDCBranch { true_bcb, false_bcb, .. } in mcdc_degraded_branches
-            .iter()
-            .chain(mcdc_mappings.iter().map(|(_, branches)| branches.into_iter()).flatten())
-        {
-            insert(true_bcb);
-            insert(false_bcb);
-        }
-
-        // MC/DC decisions refer to BCBs, but don't require those BCBs to have counters.
-        if bcbs_with_counter_mappings.is_empty() {
-            debug_assert!(
-                mcdc_mappings.is_empty(),
-                "A function with no counter mappings shouldn't have any decisions: {mcdc_mappings:?}",
-            );
-        }
-
-        bcbs_with_counter_mappings
-    }
-
-    /// Returns the set of BCBs that have one or more `Code` mappings.
-    pub(super) fn bcbs_with_ordinary_code_mappings(&self) -> DenseBitSet<BasicCoverageBlock> {
-        let mut bcbs = DenseBitSet::new_empty(self.num_bcbs);
-        for &CodeMapping { span: _, bcb } in &self.code_mappings {
-            bcbs.insert(bcb);
-        }
-        bcbs
     }
 }
 
