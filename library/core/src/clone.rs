@@ -36,6 +36,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::marker::PointeeSized;
+
 mod uninit;
 
 /// A common trait for the ability to explicitly duplicate an object.
@@ -248,7 +250,7 @@ impl_use_cloned! {
     reason = "deriving hack, should not be public",
     issue = "none"
 )]
-pub struct AssertParamIsClone<T: Clone + ?Sized> {
+pub struct AssertParamIsClone<T: Clone + ?Sized + PointeeSized> {
     _field: crate::marker::PhantomData<T>,
 }
 #[doc(hidden)]
@@ -258,7 +260,7 @@ pub struct AssertParamIsClone<T: Clone + ?Sized> {
     reason = "deriving hack, should not be public",
     issue = "none"
 )]
-pub struct AssertParamIsCopy<T: Copy + ?Sized> {
+pub struct AssertParamIsCopy<T: Copy + ?Sized + PointeeSized> {
     _field: crate::marker::PhantomData<T>,
 }
 
@@ -495,6 +497,8 @@ unsafe impl CloneToUninit for crate::bstr::ByteStr {
 /// are implemented in `traits::SelectionContext::copy_clone_conditions()`
 /// in `rustc_trait_selection`.
 mod impls {
+    use crate::marker::PointeeSized;
+
     macro_rules! impl_clone {
         ($($t:ty)*) => {
             $(
@@ -525,7 +529,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: ?Sized> Clone for *const T {
+    impl<T: ?Sized + PointeeSized> Clone for *const T {
         #[inline(always)]
         fn clone(&self) -> Self {
             *self
@@ -533,7 +537,7 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: ?Sized> Clone for *mut T {
+    impl<T: ?Sized + PointeeSized> Clone for *mut T {
         #[inline(always)]
         fn clone(&self) -> Self {
             *self
@@ -542,7 +546,7 @@ mod impls {
 
     /// Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: ?Sized> Clone for &T {
+    impl<T: ?Sized + PointeeSized> Clone for &T {
         #[inline(always)]
         #[rustc_diagnostic_item = "noop_method_clone"]
         fn clone(&self) -> Self {
@@ -552,5 +556,5 @@ mod impls {
 
     /// Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: ?Sized> !Clone for &mut T {}
+    impl<T: ?Sized + PointeeSized> !Clone for &mut T {}
 }
