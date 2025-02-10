@@ -63,6 +63,7 @@ pub(crate) use self::context::*;
 pub(crate) use self::span_map::{LinkFromSrc, collect_spans_and_sources};
 pub(crate) use self::write_shared::*;
 use crate::clean::{self, ItemId, RenderedLink};
+use crate::display::MaybeDisplay as _;
 use crate::error::Error;
 use crate::formats::Impl;
 use crate::formats::cache::Cache;
@@ -569,7 +570,8 @@ fn document_short<'a, 'cx: 'a>(
                 MarkdownSummaryLine(&s, &item.links(cx)).into_string_with_has_more_content();
 
             if has_more_content {
-                let link = format!(" <a{}>Read more</a>", assoc_href_attr(item, link, cx));
+                let link =
+                    format!(" <a{}>Read more</a>", assoc_href_attr(item, link, cx).maybe_display());
 
                 if let Some(idx) = summary_html.rfind("</p>") {
                     summary_html.insert_str(idx, &link);
@@ -788,13 +790,23 @@ pub(crate) fn render_impls(
 }
 
 /// Build a (possibly empty) `href` attribute (a key-value pair) for the given associated item.
-fn assoc_href_attr(it: &clean::Item, link: AssocItemLink<'_>, cx: &Context<'_>) -> String {
+fn assoc_href_attr<'a, 'tcx>(
+    it: &clean::Item,
+    link: AssocItemLink<'a>,
+    cx: &Context<'tcx>,
+) -> Option<impl fmt::Display + 'a + Captures<'tcx>> {
     let name = it.name.unwrap();
     let item_type = it.type_();
 
+    enum Href<'a> {
+        AnchorId(&'a str),
+        Anchor(ItemType),
+        Url(String, ItemType),
+    }
+
     let href = match link {
-        AssocItemLink::Anchor(Some(ref id)) => Some(format!("#{id}")),
-        AssocItemLink::Anchor(None) => Some(format!("#{item_type}.{name}")),
+        AssocItemLink::Anchor(Some(ref id)) => Href::AnchorId(id),
+        AssocItemLink::Anchor(None) => Href::Anchor(item_type),
         AssocItemLink::GotoSource(did, provided_methods) => {
             // We're creating a link from the implementation of an associated item to its
             // declaration in the trait declaration.
@@ -814,7 +826,7 @@ fn assoc_href_attr(it: &clean::Item, link: AssocItemLink<'_>, cx: &Context<'_>) 
             };
 
             match href(did.expect_def_id(), cx) {
-                Ok((url, ..)) => Some(format!("{url}#{item_type}.{name}")),
+                Ok((url, ..)) => Href::Url(url, item_type),
                 // The link is broken since it points to an external crate that wasn't documented.
                 // Do not create any link in such case. This is better than falling back to a
                 // dummy anchor like `#{item_type}.{name}` representing the `id` of *this* impl item
@@ -826,15 +838,25 @@ fn assoc_href_attr(it: &clean::Item, link: AssocItemLink<'_>, cx: &Context<'_>) 
                 // those two items are distinct!
                 // In this scenario, the actual `id` of this impl item would be
                 // `#{item_type}.{name}-{n}` for some number `n` (a disambiguator).
-                Err(HrefError::DocumentationNotBuilt) => None,
-                Err(_) => Some(format!("#{item_type}.{name}")),
+                Err(HrefError::DocumentationNotBuilt) => return None,
+                Err(_) => Href::Anchor(item_type),
             }
         }
     };
 
+    let href = fmt::from_fn(move |f| match &href {
+        Href::AnchorId(id) => write!(f, "#{id}"),
+        Href::Url(url, item_type) => {
+            write!(f, "{url}#{item_type}.{name}")
+        }
+        Href::Anchor(item_type) => {
+            write!(f, "#{item_type}.{name}")
+        }
+    });
+
     // If there is no `href` for the reason explained above, simply do not render it which is valid:
     // https://html.spec.whatwg.org/multipage/links.html#links-created-by-a-and-area-elements
-    href.map(|href| format!(" href=\"{href}\"")).unwrap_or_default()
+    Some(fmt::from_fn(move |f| write!(f, " href=\"{href}\"")))
 }
 
 #[derive(Debug)]
@@ -865,7 +887,7 @@ fn assoc_const(
             "{indent}{vis}const <a{href} class=\"constant\">{name}</a>{generics}: {ty}",
             indent = " ".repeat(indent),
             vis = visibility_print_with_space(it, cx),
-            href = assoc_href_attr(it, link, cx),
+            href = assoc_href_attr(it, link, cx).maybe_display(),
             name = it.name.as_ref().unwrap(),
             generics = generics.print(cx),
             ty = ty.print(cx),
@@ -905,7 +927,7 @@ fn assoc_type(
             "{indent}{vis}type <a{href} class=\"associatedtype\">{name}</a>{generics}",
             indent = " ".repeat(indent),
             vis = visibility_print_with_space(it, cx),
-            href = assoc_href_attr(it, link, cx),
+            href = assoc_href_attr(it, link, cx).maybe_display(),
             name = it.name.as_ref().unwrap(),
             generics = generics.print(cx),
         ),
@@ -948,7 +970,7 @@ fn assoc_method(
     let asyncness = header.asyncness.print_with_space();
     let safety = header.safety.print_with_space();
     let abi = print_abi_with_space(header.abi).to_string();
-    let href = assoc_href_attr(meth, link, cx);
+    let href = assoc_href_attr(meth, link, cx).maybe_display();
 
     // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
     let generics_len = format!("{:#}", g.print(cx)).len();
