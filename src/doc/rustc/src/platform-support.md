@@ -310,7 +310,7 @@ target | std | host | notes
 [`i386-apple-ios`](platform-support/apple-ios.md) | ✓ |  | 32-bit x86 iOS (Penryn) [^x86_32-floats-return-ABI]
 [`i586-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS (Pentium 4) [^x86_32-floats-return-ABI]
 [`i586-unknown-netbsd`](platform-support/netbsd.md) | ✓ |  | 32-bit x86 (original Pentium) [^x86_32-floats-x87]
-[`i586-unknown-redox`](platform-support/redox.md) | ✓ |  | 32-bit x86 Redox OS (original Pentium) [^x86_32-floats-x87]
+[`i586-unknown-redox`](platform-support/redox.md) | ✓ |  | 32-bit x86 Redox OS (PentiumPro) [^x86_32-floats-x87]
 [`i686-apple-darwin`](platform-support/apple-darwin.md) | ✓ | ✓ | 32-bit macOS (10.12+, Sierra+, Penryn) [^x86_32-floats-return-ABI]
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku (Pentium 4) [^x86_32-floats-return-ABI]
 [`i686-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 32-bit GNU/Hurd (PentiumPro) [^x86_32-floats-x87]
