@@ -443,8 +443,49 @@ fn compiler_rt_for_profiler(builder: &Builder<'_>) -> PathBuf {
 /// Configure cargo to compile the standard library, adding appropriate env vars
 /// and such.
 pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, cargo: &mut Cargo) {
-    if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
-        cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
+    // rustc already ensures that it builds with the minimum deployment
+    // target, so ideally we shouldn't need to do anything here.
+    //
+    // However, `cc` currently defaults to a higher version for backwards
+    // compatibility, which means that compiler-rt, which is built via
+    // compiler-builtins' build script, gets built with a higher deployment
+    // target. This in turn causes warnings while linking, and is generally
+    // a compatibility hazard.
+    //
+    // So, at least until https://github.com/rust-lang/cc-rs/issues/1171, or
+    // perhaps https://github.com/rust-lang/cargo/issues/13115 is resolved, we
+    // explicitly set the deployment target environment variables to avoid
+    // this issue.
+    //
+    // This place also serves as an extension point if we ever wanted to raise
+    // rustc's default deployment target while keeping the prebuilt `std` at
+    // a lower version, so it's kinda nice to have in any case.
+    if target.contains("apple") && !builder.config.dry_run() {
+        // Query rustc for the deployment target, and the associated env var.
+        // The env var is one of the standard `*_DEPLOYMENT_TARGET` vars, i.e.
+        // `MACOSX_DEPLOYMENT_TARGET`, `IPHONEOS_DEPLOYMENT_TARGET`, etc.
+        let mut cmd = command(builder.rustc(cargo.compiler()));
+        cmd.arg("--target").arg(target.rustc_target_arg());
+        cmd.arg("--print=deployment-target");
+        let output = cmd.run_capture_stdout(builder).stdout();
+
+        let (env_var, value) = output.split_once('=').unwrap();
+        // Unconditionally set the env var (if it was set in the environment
+        // already, rustc should've picked that up).
+        cargo.env(env_var.trim(), value.trim());
+
+        // Allow CI to override the deployment target for `std` on macOS.
+        //
+        // This is useful because we might want the host tooling LLVM, `rustc`
+        // and Cargo to have a different deployment target than `std` itself
+        // (currently, these two versions are the same, but in the past, we
+        // supported macOS 10.7 for user code and macOS 10.8 in host tooling).
+        //
+        // It is not necessary on the other platforms, since only macOS has
+        // support for host tooling.
+        if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
+            cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
+        }
     }
 
     // Paths needed by `library/profiler_builtins/build.rs`.
@@ -1547,7 +1588,8 @@ pub fn compiler_file(
         return PathBuf::new();
     }
     let mut cmd = command(compiler);
-    cmd.args(builder.cflags(target, GitRepo::Rustc, c));
+    cmd.args(builder.cc_handled_clags(target, c));
+    cmd.args(builder.cc_unhandled_cflags(target, GitRepo::Rustc, c));
     cmd.arg(format!("-print-file-name={file}"));
     let out = cmd.run_capture_stdout(builder).stdout();
     PathBuf::from(out.trim())

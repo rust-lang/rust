@@ -779,9 +779,15 @@ fn configure_cmake(
     }
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
+    // FIXME(madsmtm): Allow `cmake-rs` to select flags by itself by passing
+    // our flags via `.cflag`/`.cxxflag` instead.
+    //
+    // Needs `suppressed_compiler_flag_prefixes` to be gone, and hence
+    // https://github.com/llvm/llvm-project/issues/88780 to be fixed.
     let mut cflags: OsString = builder
-        .cflags(target, GitRepo::Llvm, CLang::C)
+        .cc_handled_clags(target, CLang::C)
         .into_iter()
+        .chain(builder.cc_unhandled_cflags(target, GitRepo::Llvm, CLang::C))
         .filter(|flag| {
             !suppressed_compiler_flag_prefixes
                 .iter()
@@ -800,8 +806,9 @@ fn configure_cmake(
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags: OsString = builder
-        .cflags(target, GitRepo::Llvm, CLang::Cxx)
+        .cc_handled_clags(target, CLang::Cxx)
         .into_iter()
+        .chain(builder.cc_unhandled_cflags(target, GitRepo::Llvm, CLang::Cxx))
         .filter(|flag| {
             !suppressed_compiler_flag_prefixes
                 .iter()

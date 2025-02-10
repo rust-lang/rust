@@ -142,7 +142,8 @@ pub fn find_target(build: &Build, target: TargetSelection) {
     };
 
     build.cc.borrow_mut().insert(target, compiler.clone());
-    let cflags = build.cflags(target, GitRepo::Rustc, CLang::C);
+    let mut cflags = build.cc_handled_clags(target, CLang::C);
+    cflags.extend(build.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C));
 
     // If we use llvm-libunwind, we will need a C++ compiler as well for all targets
     // We'll need one anyways if the target triple is also a host triple
@@ -168,7 +169,8 @@ pub fn find_target(build: &Build, target: TargetSelection) {
     build.verbose(|| println!("CC_{} = {:?}", target.triple, build.cc(target)));
     build.verbose(|| println!("CFLAGS_{} = {cflags:?}", target.triple));
     if let Ok(cxx) = build.cxx(target) {
-        let cxxflags = build.cflags(target, GitRepo::Rustc, CLang::Cxx);
+        let mut cxxflags = build.cc_handled_clags(target, CLang::Cxx);
+        cxxflags.extend(build.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx));
         build.verbose(|| println!("CXX_{} = {cxx:?}", target.triple));
         build.verbose(|| println!("CXXFLAGS_{} = {cxxflags:?}", target.triple));
     }
