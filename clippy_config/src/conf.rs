@@ -298,7 +298,7 @@ define_Conf! {
     #[lints(uninlined_format_args)]
     allow_mixed_uninlined_format_args: bool = true,
     /// Whether to allow `r#""#` when `r""` can be used
-    #[lints(unnecessary_raw_string_hashes)]
+    #[lints(needless_raw_string_hashes)]
     allow_one_hash_in_raw_strings: bool = false,
     /// Whether `panic` should be allowed in test functions or `#[cfg(test)]`
     #[lints(panic)]
