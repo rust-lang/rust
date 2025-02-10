@@ -83,17 +83,17 @@ cfg_match! {
 
                 // For character in the chunk, see if its byte value is < 0, which
                 // indicates that it's part of a UTF-8 char.
-                let multibyte_test = unsafe { _mm_cmplt_epi8(chunk, _mm_set1_epi8(0)) };
+                let multibyte_test = _mm_cmplt_epi8(chunk, _mm_set1_epi8(0));
                 // Create a bit mask from the comparison results.
-                let multibyte_mask = unsafe { _mm_movemask_epi8(multibyte_test) };
+                let multibyte_mask = _mm_movemask_epi8(multibyte_test);
 
                 // If the bit mask is all zero, we only have ASCII chars here:
                 if multibyte_mask == 0 {
                     assert!(intra_chunk_offset == 0);
 
                     // Check for newlines in the chunk
-                    let newlines_test = unsafe { _mm_cmpeq_epi8(chunk, _mm_set1_epi8(b'\n' as i8)) };
-                    let mut newlines_mask = unsafe { _mm_movemask_epi8(newlines_test) };
+                    let newlines_test = _mm_cmpeq_epi8(chunk, _mm_set1_epi8(b'\n' as i8));
+                    let mut newlines_mask = _mm_movemask_epi8(newlines_test);
 
                     let output_offset = RelativeBytePos::from_usize(chunk_index * CHUNK_SIZE + 1);
 
