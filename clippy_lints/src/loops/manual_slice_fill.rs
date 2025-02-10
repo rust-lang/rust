@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
-use clippy_utils::macros::span_is_local;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{HasSession, snippet_with_applicability};
 use clippy_utils::ty::implements_trait;
@@ -55,7 +54,6 @@ pub(super) fn check<'tcx>(
         && !assignval.span.from_expansion()
         // It is generally not equivalent to use the `fill` method if `assignval` can have side effects
         && switch_to_eager_eval(cx, assignval)
-        && span_is_local(assignval.span)
         // The `fill` method requires that the slice's element type implements the `Clone` trait.
         && let Some(clone_trait) = cx.tcx.lang_items().clone_trait()
         && implements_trait(cx, cx.typeck_results().expr_ty(slice), clone_trait, &[])
@@ -78,7 +76,6 @@ pub(super) fn check<'tcx>(
         && local == pat.hir_id
         && !assignval.span.from_expansion()
         && switch_to_eager_eval(cx, assignval)
-        && span_is_local(assignval.span)
         // The `fill` method cannot be used if the slice's element type does not implement the `Clone` trait.
         && let Some(clone_trait) = cx.tcx.lang_items().clone_trait()
         && implements_trait(cx, cx.typeck_results().expr_ty(recv), clone_trait, &[])
