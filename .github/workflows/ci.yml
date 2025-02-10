@@ -83,6 +83,10 @@ jobs:
       - if: contains(matrix.os, 'windows')
         uses: msys2/setup-msys2@v2.22.0
         with:
+          # FIXME(#136795): this mingw installation seems to be needed for
+          # `i686-pc-windows-gnu`, otherwise we somehow incorrectly ship the
+          # 64-bit `libwinpthread-1.dll` and then `rustc` explodes.
+          #
           # i686 jobs use mingw32. x86_64 and cross-compile jobs use mingw64.
           msystem: ${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}
           # don't try to download updates for already installed packages
