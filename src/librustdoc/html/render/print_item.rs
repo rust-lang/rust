@@ -619,7 +619,7 @@ fn item_function(w: &mut String, cx: &Context<'_>, it: &clean::Item, f: &clean::
         + name.as_str().len()
         + generics_len;
 
-    let notable_traits = notable_traits_button(&f.decl.output, cx);
+    let notable_traits = notable_traits_button(&f.decl.output, cx).maybe_display();
 
     wrap_item(w, |w| {
         w.reserve(header_len);
@@ -638,7 +638,6 @@ fn item_function(w: &mut String, cx: &Context<'_>, it: &clean::Item, f: &clean::
                 generics = f.generics.print(cx),
                 where_clause = print_where_clause(&f.generics, cx, 0, Ending::Newline),
                 decl = f.decl.full_print(header_len, 0, cx),
-                notable_traits = notable_traits.unwrap_or_default(),
             ),
         );
     });

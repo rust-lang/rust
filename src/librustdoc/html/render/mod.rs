@@ -984,7 +984,7 @@ fn assoc_method(
         + name.as_str().len()
         + generics_len;
 
-    let notable_traits = notable_traits_button(&d.output, cx);
+    let notable_traits = notable_traits_button(&d.output, cx).maybe_display();
 
     let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
         header_len += 4;
@@ -1012,7 +1012,6 @@ fn assoc_method(
             name = name,
             generics = g.print(cx),
             decl = d.full_print(header_len, indent, cx),
-            notable_traits = notable_traits.unwrap_or_default(),
             where_clause = print_where_clause(g, cx, indent, end_newline),
         ),
     );
@@ -1460,7 +1459,10 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
     }
 }
 
-pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Option<String> {
+pub(crate) fn notable_traits_button<'a, 'tcx>(
+    ty: &'a clean::Type,
+    cx: &'a Context<'tcx>,
+) -> Option<impl fmt::Display + 'a + Captures<'tcx>> {
     let mut has_notable_trait = false;
 
     if ty.is_unit() {
@@ -1502,15 +1504,16 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Optio
         }
     }
 
-    if has_notable_trait {
+    has_notable_trait.then(|| {
         cx.types_with_notable_traits.borrow_mut().insert(ty.clone());
-        Some(format!(
-            " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
-            ty = Escape(&format!("{:#}", ty.print(cx))),
-        ))
-    } else {
-        None
-    }
+        fmt::from_fn(|f| {
+            write!(
+                f,
+                " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
+                ty = Escape(&format!("{:#}", ty.print(cx))),
+            )
+        })
+    })
 }
 
 fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
