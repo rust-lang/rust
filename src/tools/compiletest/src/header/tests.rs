@@ -72,6 +72,7 @@ struct ConfigBuilder {
     channel: Option<String>,
     host: Option<String>,
     target: Option<String>,
+    stage: Option<u32>,
     stage_id: Option<String>,
     llvm_version: Option<String>,
     git_hash: bool,
@@ -99,6 +100,11 @@ impl ConfigBuilder {
 
     fn target(&mut self, s: &str) -> &mut Self {
         self.target = Some(s.to_owned());
+        self
+    }
+
+    fn stage(&mut self, n: u32) -> &mut Self {
+        self.stage = Some(n);
         self
     }
 
@@ -156,6 +162,8 @@ impl ConfigBuilder {
             "--cxxflags=",
             "--llvm-components=",
             "--android-cross-path=",
+            "--stage",
+            &self.stage.unwrap_or(2).to_string(),
             "--stage-id",
             self.stage_id.as_deref().unwrap_or("stage2-x86_64-unknown-linux-gnu"),
             "--channel",
@@ -388,7 +396,7 @@ fn std_debug_assertions() {
 
 #[test]
 fn stage() {
-    let config: Config = cfg().stage_id("stage1-x86_64-unknown-linux-gnu").build();
+    let config: Config = cfg().stage(1).stage_id("stage1-x86_64-unknown-linux-gnu").build();
 
     assert!(check_ignore(&config, "//@ ignore-stage1"));
     assert!(!check_ignore(&config, "//@ ignore-stage2"));
