@@ -1776,6 +1776,7 @@ fn exported_symbols_for_non_proc_macro(tcx: TyCtxt<'_>, crate_type: CrateType) -
             symbols.push(symbol_export::exporting_symbol_name_for_instance_in_crate(
                 tcx, symbol, cnum,
             ));
+            symbol_export::extend_exported_symbols(&mut symbols, tcx, symbol, cnum);
         }
     });
 
