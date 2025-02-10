@@ -141,28 +141,6 @@ pub(crate) struct IncorrectAwait {
     pub suggestion: AwaitSuggestion,
 }
 
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    parse_incorrect_use_of_use_postfix_suggestion,
-    applicability = "machine-applicable"
-)]
-pub(crate) struct UseSuggestion {
-    #[suggestion_part(code = "")]
-    pub removal: Span,
-    #[suggestion_part(code = ".use{question_mark}")]
-    pub dot_use: Span,
-    pub question_mark: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag(parse_incorrect_use_of_use)]
-pub(crate) struct IncorrectUse {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub suggestion: UseSuggestion,
-}
-
 #[derive(Diagnostic)]
 #[diag(parse_in_in_typo)]
 pub(crate) struct InInTypo {

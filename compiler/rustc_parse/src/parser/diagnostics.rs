@@ -40,13 +40,12 @@ use crate::errors::{
     DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
-    IncorrectSemicolon, IncorrectUse, IncorrectUseOfAwait, IncorrectUseOfUse,
-    PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
-    StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens,
-    StructLiteralNeedingParensSugg, SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma,
-    TernaryOperator, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
-    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, UseSuggestion,
-    WrapType,
+    IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, PatternMethodParamWithoutBody,
+    QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
+    StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens, StructLiteralNeedingParensSugg,
+    SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator,
+    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
 };
 use crate::parser::attr::InnerAttrPolicy;
 use crate::{exp, fluent_generated as fluent};
@@ -1968,20 +1967,6 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr)
     }
 
-    /// Consumes alternative use syntaxes like `use!(<expr>)`, `use <expr>`,
-    /// `use? <expr>`, `use(<expr>)`, and `use { <expr> }`.
-    pub(super) fn recover_incorrect_use_syntax(&mut self, use_sp: Span) -> PResult<'a, P<Expr>> {
-        let (hi, expr, is_question) = if self.token == token::Not {
-            // Handle `use!(<expr>)`.
-            self.recover_macro()?
-        } else {
-            self.recover_prefix(use_sp, "use")?
-        };
-        let (sp, guar) = self.error_on_incorrect_use(use_sp, hi, &expr, is_question);
-        let expr = self.mk_expr_err(use_sp.to(sp), guar);
-        self.maybe_recover_from_bad_qpath(expr)
-    }
-
     fn recover_macro(&mut self) -> PResult<'a, (Span, P<Expr>, bool)> {
         self.expect(exp!(Not))?;
         self.expect(exp!(OpenParen))?;
@@ -2027,25 +2012,6 @@ impl<'a> Parser<'a> {
             suggestion: AwaitSuggestion {
                 removal: lo.until(expr.span),
                 dot_await: expr.span.shrink_to_hi(),
-                question_mark: if is_question { "?" } else { "" },
-            },
-        });
-        (span, guar)
-    }
-
-    fn error_on_incorrect_use(
-        &self,
-        lo: Span,
-        hi: Span,
-        expr: &Expr,
-        is_question: bool,
-    ) -> (Span, ErrorGuaranteed) {
-        let span = lo.to(hi);
-        let guar = self.dcx().emit_err(IncorrectUse {
-            span,
-            suggestion: UseSuggestion {
-                removal: lo.until(expr.span),
-                dot_use: expr.span.shrink_to_hi(),
                 question_mark: if is_question { "?" } else { "" },
             },
         });
