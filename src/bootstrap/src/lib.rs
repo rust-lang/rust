@@ -249,6 +249,7 @@ impl Mode {
     }
 }
 
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CLang {
     C,
     Cxx,
@@ -1178,9 +1179,9 @@ Executed at: {executed_at}"#,
         self.cc.borrow()[&target].path().into()
     }
 
-    /// Returns a list of flags to pass to the C compiler for the target
-    /// specified.
-    fn cflags(&self, target: TargetSelection, which: GitRepo, c: CLang) -> Vec<String> {
+    /// Returns C flags that `cc-rs` thinks should be enabled for the
+    /// specified target by default.
+    fn cc_handled_clags(&self, target: TargetSelection, c: CLang) -> Vec<String> {
         if self.config.dry_run() {
             return Vec::new();
         }
@@ -1189,14 +1190,23 @@ Executed at: {executed_at}"#,
             CLang::Cxx => self.cxx.borrow()[&target].clone(),
         };
 
-        // Filter out -O and /O (the optimization flags) that we picked up from
-        // cc-rs because the build scripts will determine that for themselves.
-        let mut base = base
-            .args()
+        // Filter out -O and /O (the optimization flags) that we picked up
+        // from cc-rs, that's up to the caller to figure out.
+        base.args()
             .iter()
             .map(|s| s.to_string_lossy().into_owned())
             .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))
-            .collect::<Vec<String>>();
+            .collect::<Vec<String>>()
+    }
+
+    /// Returns extra C flags that `cc-rs` doesn't handle.
+    fn cc_unhandled_cflags(
+        &self,
+        target: TargetSelection,
+        which: GitRepo,
+        c: CLang,
+    ) -> Vec<String> {
+        let mut base = Vec::new();
 
         // If we're compiling C++ on macOS then we add a flag indicating that
         // we want libc++ (more filled out than libstdc++), ensuring that
