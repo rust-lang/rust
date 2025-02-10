@@ -210,6 +210,12 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 bx.mcdc_tvbitmap_update(fn_name, hash, bitmap_index, cond_bitmap);
                 bx.mcdc_condbitmap_reset(cond_bitmap);
             }
+            CoverageKind::CondBitmapReset { decision_depth } => {
+                let cond_bitmap = bx.coverage_cx()
+                                    .try_get_mcdc_condition_bitmap(&instance, decision_depth)
+                                    .expect("mcdc cond bitmap should have been allocated for merging into the global bitmap");
+                bx.mcdc_condbitmap_reset(cond_bitmap);
+            }
         }
     }
 }

@@ -93,9 +93,9 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
         return;
     }
 
-    let coverage_counters = counters::make_bcb_counters(&graph, &bcbs_with_counter_mappings);
+    let mut coverage_counters = counters::make_bcb_counters(&graph, &bcbs_with_counter_mappings);
 
-    let mappings = create_mappings(&extracted_mappings, &coverage_counters);
+    let mappings = create_mappings(&extracted_mappings, &mut coverage_counters);
     if mappings.is_empty() {
         // No spans could be converted into valid mappings, so skip this function.
         debug!("no spans could be converted into valid mappings; skipping");
@@ -131,7 +131,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 /// coverage counters.
 fn create_mappings(
     extracted_mappings: &ExtractedMappings,
-    coverage_counters: &CoverageCounters,
+    coverage_counters: &mut CoverageCounters,
 ) -> Vec<Mapping> {
     let term_for_bcb =
         |bcb| coverage_counters.term_for_bcb(bcb).expect("all BCBs with spans were given counters");
@@ -164,21 +164,25 @@ fn create_mappings(
         },
     ));
 
-    let term_for_bcb =
-        |bcb| coverage_counters.term_for_bcb(bcb).expect("all BCBs with spans were given counters");
+    let mut term_for_sum_of_bcbs = |bcbs| {
+        // Some patterns may have folded conditions. E.g The first `true` in the second part of `(false, false) | (true, true)` is
+        // always matched if tested (If the first value of the tuple was `false`, this `true` is never tested).
+        // Such condition has no counter for one branch hence we treat it as folded.
+        coverage_counters.term_for_sum_of_bcbs(bcbs).unwrap_or(mir::coverage::CovTerm::Zero)
+    };
 
     // MCDC branch mappings are appended with their decisions in case decisions were ignored.
     mappings.extend(mcdc_degraded_branches.iter().map(
         |&mappings::MCDCBranch {
              span,
-             true_bcb,
-             false_bcb,
+             ref true_bcbs,
+             ref false_bcbs,
              condition_info: _,
              true_index: _,
              false_index: _,
          }| {
-            let true_term = term_for_bcb(true_bcb);
-            let false_term = term_for_bcb(false_bcb);
+            let true_term = term_for_sum_of_bcbs(true_bcbs);
+            let false_term = term_for_sum_of_bcbs(false_bcbs);
             Mapping { kind: MappingKind::Branch { true_term, false_term }, span }
         },
     ));
@@ -195,14 +199,14 @@ fn create_mappings(
             .map(
                 |&mappings::MCDCBranch {
                      span,
-                     true_bcb,
-                     false_bcb,
+                     ref true_bcbs,
+                     ref false_bcbs,
                      condition_info,
                      true_index: _,
                      false_index: _,
                  }| {
-                    let true_term = term_for_bcb(true_bcb);
-                    let false_term = term_for_bcb(false_bcb);
+                    let true_term = term_for_sum_of_bcbs(true_bcbs);
+                    let false_term = term_for_sum_of_bcbs(false_bcbs);
                     Mapping {
                         kind: MappingKind::MCDCBranch {
                             true_term,
@@ -274,7 +278,7 @@ fn inject_mcdc_statements<'tcx>(
 ) {
     for (decision, conditions) in &extracted_mappings.mcdc_mappings {
         // Inject test vector update first because `inject_statement` always insert new statement at head.
-        for &end in &decision.end_bcbs {
+        for &end in &decision.update_end_bcbs {
             let end_bb = graph[end].leader_bb();
             inject_statement(
                 mir_body,
@@ -286,25 +290,36 @@ fn inject_mcdc_statements<'tcx>(
             );
         }
 
-        for &mappings::MCDCBranch {
+        for &discard in &decision.discard_end_bcbs {
+            let discard_bb = graph[discard].leader_bb();
+            inject_statement(
+                mir_body,
+                CoverageKind::CondBitmapReset { decision_depth: decision.decision_depth },
+                discard_bb,
+            );
+        }
+
+        for mappings::MCDCBranch {
             span: _,
-            true_bcb,
-            false_bcb,
+            true_bcbs,
+            false_bcbs,
             condition_info: _,
             true_index,
             false_index,
         } in conditions
         {
-            for (index, bcb) in [(false_index, false_bcb), (true_index, true_bcb)] {
-                let bb = graph[bcb].leader_bb();
-                inject_statement(
-                    mir_body,
-                    CoverageKind::CondBitmapUpdate {
-                        index: index as u32,
-                        decision_depth: decision.decision_depth,
-                    },
-                    bb,
-                );
+            for (&index, bcbs) in [(false_index, false_bcbs), (true_index, true_bcbs)] {
+                for &bcb in bcbs {
+                    let bb = graph[bcb].leader_bb();
+                    inject_statement(
+                        mir_body,
+                        CoverageKind::CondBitmapUpdate {
+                            index: index as u32,
+                            decision_depth: decision.decision_depth,
+                        },
+                        bb,
+                    );
+                }
             }
         }
     }

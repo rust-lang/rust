@@ -1,0 +1,195 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |//@ min-llvm-version: 19
+   LL|       |//@ compile-flags: -Zcoverage-options=mcdc
+   LL|       |//@ llvm-cov-flags: --show-branches=count --show-mcdc
+   LL|       |
+   LL|       |use core::hint::black_box;
+   LL|       |
+   LL|      3|fn assign_nested_if(a: bool, b: bool, c: bool) {
+   LL|      3|    let x = a || if b && c { false } else { true };
+                                  ^2   ^1  ^1             ^1
+  ------------------
+  |  Branch (LL:13): [True: 1, False: 2]
+  |  Branch (LL:18): [True: 1, False: 1]
+  |  Branch (LL:21): [True: 1, False: 1]
+  |  Branch (LL:26): [True: 1, False: 0]
+  ------------------
+  |---> MC/DC Decision Region (LL:13) to (LL:51)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:13)
+  |     Condition C2 --> (LL:18)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  F  = F      }
+  |  2 { F,  T  = T      }
+  |  3 { T,  -  = T      }
+  |
+  |  C1-Pair: covered: (1,3)
+  |  C2-Pair: covered: (1,2)
+  |  MC/DC Coverage for Decision: 100.00%
+  |
+  |---> MC/DC Decision Region (LL:21) to (LL:27)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:21)
+  |     Condition C2 --> (LL:26)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  -  = F      }
+  |  2 { T,  T  = T      }
+  |
+  |  C1-Pair: covered: (1,2)
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 50.00%
+  |
+  ------------------
+   LL|      3|    black_box(x);
+   LL|      3|}
+   LL|       |
+   LL|      6|fn foo(a: bool) -> bool {
+   LL|      6|    black_box(a)
+   LL|      6|}
+   LL|       |
+   LL|      3|fn assign_nested_func_call(a: bool, b: bool, c: bool) {
+   LL|      3|    let x = a || foo(b && c);
+                                   ^2   ^1
+  ------------------
+  |  Branch (LL:13): [True: 1, False: 2]
+  |  Branch (LL:18): [True: 1, False: 1]
+  |  Branch (LL:22): [True: 1, False: 1]
+  |  Branch (LL:27): [True: 1, False: 0]
+  ------------------
+  |---> MC/DC Decision Region (LL:13) to (LL:29)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:13)
+  |     Condition C2 --> (LL:18)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  F  = F      }
+  |  2 { F,  T  = T      }
+  |  3 { T,  -  = T      }
+  |
+  |  C1-Pair: covered: (1,3)
+  |  C2-Pair: covered: (1,2)
+  |  MC/DC Coverage for Decision: 100.00%
+  |
+  |---> MC/DC Decision Region (LL:22) to (LL:28)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:22)
+  |     Condition C2 --> (LL:27)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  -  = F      }
+  |  2 { T,  T  = T      }
+  |
+  |  C1-Pair: covered: (1,2)
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 50.00%
+  |
+  ------------------
+   LL|      3|    black_box(x);
+   LL|      3|}
+   LL|       |
+   LL|      3|fn func_call_nested_if(a: bool, b: bool, c: bool) {
+   LL|      3|    let x = foo(a || if b && c { false } else { true });
+                                      ^2   ^1  ^1             ^1
+  ------------------
+  |  Branch (LL:17): [True: 1, False: 2]
+  |  Branch (LL:22): [True: 1, False: 1]
+  |  Branch (LL:25): [True: 1, False: 1]
+  |  Branch (LL:30): [True: 1, False: 0]
+  ------------------
+  |---> MC/DC Decision Region (LL:17) to (LL:55)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:17)
+  |     Condition C2 --> (LL:22)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  F  = F      }
+  |  2 { F,  T  = T      }
+  |  3 { T,  -  = T      }
+  |
+  |  C1-Pair: covered: (1,3)
+  |  C2-Pair: covered: (1,2)
+  |  MC/DC Coverage for Decision: 100.00%
+  |
+  |---> MC/DC Decision Region (LL:25) to (LL:31)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:25)
+  |     Condition C2 --> (LL:30)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  -  = F      }
+  |  2 { T,  T  = T      }
+  |
+  |  C1-Pair: covered: (1,2)
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 50.00%
+  |
+  ------------------
+   LL|      3|    black_box(x);
+   LL|      3|}
+   LL|       |
+   LL|      2|fn func_call_with_unary_not(a: bool, b: bool) {
+   LL|      2|    let x = a || foo(!b);
+                               ^1
+  ------------------
+  |  Branch (LL:13): [True: 1, False: 1]
+  |  Branch (LL:18): [True: 0, False: 1]
+  ------------------
+  |---> MC/DC Decision Region (LL:13) to (LL:25)
+  |
+  |  Number of Conditions: 2
+  |     Condition C1 --> (LL:13)
+  |     Condition C2 --> (LL:18)
+  |
+  |  Executed MC/DC Test Vectors:
+  |
+  |     C1, C2    Result
+  |  1 { F,  F  = F      }
+  |  2 { T,  -  = T      }
+  |
+  |  C1-Pair: covered: (1,2)
+  |  C2-Pair: not covered
+  |  MC/DC Coverage for Decision: 50.00%
+  |
+  ------------------
+   LL|      2|    black_box(x);
+   LL|      2|}
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    assign_nested_if(true, false, true);
+   LL|       |    assign_nested_if(false, false, true);
+   LL|       |    assign_nested_if(false, true, true);
+   LL|       |
+   LL|       |    assign_nested_func_call(true, false, true);
+   LL|       |    assign_nested_func_call(false, false, true);
+   LL|       |    assign_nested_func_call(false, true, true);
+   LL|       |
+   LL|       |    func_call_nested_if(true, false, true);
+   LL|       |    func_call_nested_if(false, false, true);
+   LL|       |    func_call_nested_if(false, true, true);
+   LL|       |
+   LL|       |    func_call_with_unary_not(true, false);
+   LL|       |    func_call_with_unary_not(false, true);
+   LL|       |}
+

@@ -266,6 +266,7 @@ impl<'tcx> MatchPairTree<'tcx> {
             subpairs,
             pattern_ty: pattern.ty,
             pattern_span: pattern.span,
+            coverage_id: Default::default(),
         }
     }
 }
