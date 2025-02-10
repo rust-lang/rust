@@ -32,4 +32,5 @@ pub enum GenericArgsProhibitedReason {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum PathLoweringDiagnostic {
     GenericArgsProhibited { segment: u32, reason: GenericArgsProhibitedReason },
+    ParenthesizedGenericArgsWithoutFnTrait { segment: u32 },
 }

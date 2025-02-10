@@ -564,9 +564,17 @@ impl InferenceContext<'_> {
             | Pat::Range { .. }
             | Pat::Slice { .. } => true,
             Pat::Or(pats) => pats.iter().all(|p| self.is_non_ref_pat(body, *p)),
-            Pat::Path(p) => {
-                let v = self.resolve_value_path_inner(p, pat.into());
-                v.is_some_and(|x| !matches!(x.0, hir_def::resolver::ValueNs::ConstId(_)))
+            Pat::Path(path) => {
+                // A const is a reference pattern, but other value ns things aren't (see #16131). We don't need more than
+                // the hir-def resolver for this, because if there are segments left, this can only be an (associated) const.
+                //
+                // Do not use `TyLoweringContext`'s resolution, we want to ignore errors here (they'll be reported elsewhere).
+                let resolution = self.resolver.resolve_path_in_value_ns_fully(
+                    self.db.upcast(),
+                    path,
+                    body.pat_path_hygiene(pat),
+                );
+                resolution.is_some_and(|it| !matches!(it, hir_def::resolver::ValueNs::ConstId(_)))
             }
             Pat::ConstBlock(..) => false,
             Pat::Lit(expr) => !matches!(

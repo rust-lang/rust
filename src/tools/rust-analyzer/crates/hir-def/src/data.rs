@@ -250,6 +250,7 @@ bitflags::bitflags! {
         const RUSTC_HAS_INCOHERENT_INHERENT_IMPLS = 1 << 3;
         const SKIP_ARRAY_DURING_METHOD_DISPATCH = 1 << 4;
         const SKIP_BOXED_SLICE_DURING_METHOD_DISPATCH = 1 << 5;
+        const RUSTC_PAREN_SUGAR = 1 << 6;
     }
 }
 
@@ -293,6 +294,9 @@ impl TraitData {
         }
         if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
             flags |= TraitFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS;
+        }
+        if attrs.by_key(&sym::rustc_paren_sugar).exists() {
+            flags |= TraitFlags::RUSTC_PAREN_SUGAR;
         }
 
         let mut skip_array_during_method_dispatch =

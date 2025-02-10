@@ -136,21 +136,10 @@ use self::foo as bar;
 fn test_highlighting() {
     check_highlighting(
         r#"
-//- minicore: derive, copy
+//- minicore: derive, copy, fn
 //- /main.rs crate:main deps:foo
 use inner::{self as inner_mod};
 mod inner {}
-
-pub mod ops {
-    #[lang = "fn_once"]
-    pub trait FnOnce<Args> {}
-
-    #[lang = "fn_mut"]
-    pub trait FnMut<Args>: FnOnce<Args> {}
-
-    #[lang = "fn"]
-    pub trait Fn<Args>: FnMut<Args> {}
-}
 
 struct Foo {
     x: u32,
@@ -218,7 +207,7 @@ fn const_param<const FOO: usize>() -> usize {
     FOO
 }
 
-use ops::Fn;
+use core::ops::Fn;
 fn baz<F: Fn() -> ()>(f: F) {
     f()
 }
