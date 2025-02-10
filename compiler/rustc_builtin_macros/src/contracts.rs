@@ -1,11 +1,9 @@
-#![allow(unused_imports, unused_variables)]
-
 use rustc_ast::token;
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_errors::ErrorGuaranteed;
 use rustc_expand::base::{AttrProcMacro, ExtCtxt};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DesugaringKind, Span};
+use rustc_span::Span;
+use rustc_span::symbol::{Ident, Symbol, kw};
 
 pub(crate) struct ExpandRequires;
 
