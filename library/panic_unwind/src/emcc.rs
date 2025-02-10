@@ -21,7 +21,7 @@ struct TypeInfo {
 }
 unsafe impl Sync for TypeInfo {}
 
-extern "C" {
+unsafe extern "C" {
     // The leading `\x01` byte here is actually a magical signal to LLVM to
     // *not* apply any other mangling like prefixing with a `_` character.
     //
@@ -119,7 +119,7 @@ extern "C" fn exception_cleanup(ptr: *mut libc::c_void) -> *mut libc::c_void {
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     fn __cxa_allocate_exception(thrown_size: libc::size_t) -> *mut libc::c_void;
     fn __cxa_begin_catch(thrown_exception: *mut libc::c_void) -> *mut libc::c_void;
     fn __cxa_end_catch();

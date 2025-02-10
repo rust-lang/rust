@@ -78,7 +78,7 @@ pub unsafe extern "C" fn runtime_entry(
     argv: *const *const c_char,
     env: *const *const c_char,
 ) -> ! {
-    extern "C" {
+    unsafe extern "C" {
         fn main(argc: isize, argv: *const *const c_char) -> i32;
     }
 

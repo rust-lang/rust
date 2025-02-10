@@ -75,7 +75,7 @@ cfg_if::cfg_if! {
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     /// Handler in std called when a panic object is dropped outside of
     /// `catch_unwind`.
     fn __rust_drop_panic() -> !;

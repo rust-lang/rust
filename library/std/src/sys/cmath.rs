@@ -2,7 +2,7 @@
 
 // These symbols are all defined by `libm`,
 // or by `compiler-builtins` on unsupported platforms.
-extern "C" {
+unsafe extern "C" {
     pub fn acos(n: f64) -> f64;
     pub fn asin(n: f64) -> f64;
     pub fn atan(n: f64) -> f64;

@@ -787,7 +787,7 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
             }
         }
 
-        extern "C" {
+        unsafe extern "C" {
             pub fn __wasilibc_find_relpath(
                 path: *const libc::c_char,
                 abs_prefix: *mut *const libc::c_char,
