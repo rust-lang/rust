@@ -10,9 +10,7 @@ use crate::hir_id::{HirId, ItemLocalId};
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in `rustc_middle`.
-pub trait HashStableContext:
-    rustc_ast::HashStableContext + rustc_target::HashStableContext
-{
+pub trait HashStableContext: rustc_ast::HashStableContext + rustc_abi::HashStableContext {
     fn hash_attr(&mut self, _: &Attribute, hasher: &mut StableHasher);
 }
 
