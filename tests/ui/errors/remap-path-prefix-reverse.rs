@@ -1,8 +1,8 @@
 //@ aux-build:remapped_dep.rs
-//@ compile-flags: --remap-path-prefix={{src-base}}/errors/auxiliary=remapped-aux
+//@ compile-flags: --remap-path-prefix={{test-suite-src-base}}/errors/auxiliary=remapped-aux
 
 //@ revisions: local-self remapped-self
-// [local-self] no-remap-src-base: The hack should work regardless of remapping.
+// The hack should work regardless of remapping.
 //@ [remapped-self] remap-src-base
 
 // Verify that the expected source code is shown.
