@@ -1,7 +1,7 @@
 #!/bin/sh
 set -ex
 
-CT_NG=1.26.0
+CT_NG=1.27.0
 
 url="https://github.com/crosstool-ng/crosstool-ng/archive/crosstool-ng-$CT_NG.tar.gz"
 curl -Lf $url | tar xzf -

@@ -193,6 +193,10 @@ fn main() {
         cfg.define(&flag, None);
     }
 
+    if tracked_env_var_os("LLVM_ENZYME").is_some() {
+        cfg.define("ENZYME", None);
+    }
+
     if tracked_env_var_os("LLVM_RUSTLLVM").is_some() {
         cfg.define("LLVM_RUSTLLVM", None);
     }

@@ -54,6 +54,14 @@ impl LlvmBuildStatus {
             LlvmBuildStatus::ShouldBuild(_) => true,
         }
     }
+
+    #[cfg(test)]
+    pub fn llvm_result(&self) -> &LlvmResult {
+        match self {
+            LlvmBuildStatus::AlreadyBuilt(res) => res,
+            LlvmBuildStatus::ShouldBuild(meta) => &meta.res,
+        }
+    }
 }
 
 /// Linker flags to pass to LLVM's CMake invocation.
@@ -120,9 +128,19 @@ pub fn prebuilt_llvm_config(
     let root = "src/llvm-project/llvm";
     let out_dir = builder.llvm_out(target);
 
-    let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
-    llvm_config_ret_dir.push("bin");
-    let build_llvm_config = llvm_config_ret_dir.join(exe("llvm-config", builder.config.build));
+    let build_llvm_config = if let Some(build_llvm_config) = builder
+        .config
+        .target_config
+        .get(&builder.config.build)
+        .and_then(|config| config.llvm_config.clone())
+    {
+        build_llvm_config
+    } else {
+        let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
+        llvm_config_ret_dir.push("bin");
+        llvm_config_ret_dir.join(exe("llvm-config", builder.config.build))
+    };
+
     let llvm_cmake_dir = out_dir.join("lib/cmake/llvm");
     let res = LlvmResult { llvm_config: build_llvm_config, llvm_cmake_dir };
 
@@ -968,6 +986,7 @@ impl Step for Enzyme {
             .env("LLVM_CONFIG_REAL", &llvm_config)
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("ENZYME_EXTERNAL_SHARED_LIB", "ON")
+            .define("ENZYME_RUNPASS", "ON")
             .define("LLVM_DIR", builder.llvm_out(target));
 
         cfg.build();

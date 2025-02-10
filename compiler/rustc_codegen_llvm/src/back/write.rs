@@ -530,6 +530,16 @@ fn get_instr_profile_output_path(config: &ModuleConfig) -> Option<CString> {
     config.instrument_coverage.then(|| c"default_%m_%p.profraw".to_owned())
 }
 
+// PreAD will run llvm opts but disable size increasing opts (vectorization, loop unrolling)
+// DuringAD is the same as above, but also runs the enzyme opt and autodiff passes.
+// PostAD will run all opts, including size increasing opts.
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) enum AutodiffStage {
+    PreAD,
+    DuringAD,
+    PostAD,
+}
+
 pub(crate) unsafe fn llvm_optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     dcx: DiagCtxtHandle<'_>,
@@ -537,7 +547,7 @@ pub(crate) unsafe fn llvm_optimize(
     config: &ModuleConfig,
     opt_level: config::OptLevel,
     opt_stage: llvm::OptStage,
-    skip_size_increasing_opts: bool,
+    autodiff_stage: AutodiffStage,
 ) -> Result<(), FatalError> {
     // Enzyme:
     // The whole point of compiler based AD is to differentiate optimized IR instead of unoptimized
@@ -550,12 +560,16 @@ pub(crate) unsafe fn llvm_optimize(
     let unroll_loops;
     let vectorize_slp;
     let vectorize_loop;
+    let run_enzyme = cfg!(llvm_enzyme) && autodiff_stage == AutodiffStage::DuringAD;
 
     // When we build rustc with enzyme/autodiff support, we want to postpone size-increasing
-    // optimizations until after differentiation. FIXME(ZuseZ4): Before shipping on nightly,
+    // optimizations until after differentiation. Our pipeline is thus: (opt + enzyme), (full opt).
+    // We therefore have two calls to llvm_optimize, if autodiff is used.
+    //
+    // FIXME(ZuseZ4): Before shipping on nightly,
     // we should make this more granular, or at least check that the user has at least one autodiff
     // call in their code, to justify altering the compilation pipeline.
-    if skip_size_increasing_opts && cfg!(llvm_enzyme) {
+    if cfg!(llvm_enzyme) && autodiff_stage != AutodiffStage::PostAD {
         unroll_loops = false;
         vectorize_slp = false;
         vectorize_loop = false;
@@ -565,7 +579,7 @@ pub(crate) unsafe fn llvm_optimize(
         vectorize_slp = config.vectorize_slp;
         vectorize_loop = config.vectorize_loop;
     }
-    trace!(?unroll_loops, ?vectorize_slp, ?vectorize_loop);
+    trace!(?unroll_loops, ?vectorize_slp, ?vectorize_loop, ?run_enzyme);
     let using_thin_buffers = opt_stage == llvm::OptStage::PreLinkThinLTO || config.bitcode_needed();
     let pgo_gen_path = get_pgo_gen_path(config);
     let pgo_use_path = get_pgo_use_path(config);
@@ -633,6 +647,7 @@ pub(crate) unsafe fn llvm_optimize(
             vectorize_loop,
             config.no_builtins,
             config.emit_lifetime_markers,
+            run_enzyme,
             sanitizer_options.as_ref(),
             pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
             pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
@@ -684,18 +699,14 @@ pub(crate) unsafe fn optimize(
             _ => llvm::OptStage::PreLinkNoLTO,
         };
 
-        // If we know that we will later run AD, then we disable vectorization and loop unrolling
-        let skip_size_increasing_opts = cfg!(llvm_enzyme);
+        // If we know that we will later run AD, then we disable vectorization and loop unrolling.
+        // Otherwise we pretend AD is already done and run the normal opt pipeline (=PostAD).
+        // FIXME(ZuseZ4): Make this more granular, only set PreAD if we actually have autodiff
+        // usages, not just if we build rustc with autodiff support.
+        let autodiff_stage =
+            if cfg!(llvm_enzyme) { AutodiffStage::PreAD } else { AutodiffStage::PostAD };
         return unsafe {
-            llvm_optimize(
-                cgcx,
-                dcx,
-                module,
-                config,
-                opt_level,
-                opt_stage,
-                skip_size_increasing_opts,
-            )
+            llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage, autodiff_stage)
         };
     }
     Ok(())
