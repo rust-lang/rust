@@ -1477,42 +1477,55 @@ pub(crate) fn notable_traits_button<'a, 'tcx>(
         return None;
     }
 
-    let did = ty.def_id(cx.cache())?;
+    let has_notable_trait = || {
+        let Some(did) = ty.def_id(cx.cache()) else {
+            return false;
+        };
 
-    // Box has pass-through impls for Read, Write, Iterator, and Future when the
-    // boxed type implements one of those. We don't want to treat every Box return
-    // as being notably an Iterator (etc), though, so we exempt it. Pin has the same
-    // issue, with a pass-through impl for Future.
-    if Some(did) == cx.tcx().lang_items().owned_box()
-        || Some(did) == cx.tcx().lang_items().pin_type()
-    {
-        return None;
+        // Box has pass-through impls for Read, Write, Iterator, and Future when the
+        // boxed type implements one of those. We don't want to treat every Box return
+        // as being notably an Iterator (etc), though, so we exempt it. Pin has the same
+        // issue, with a pass-through impl for Future.
+        if Some(did) == cx.tcx().lang_items().owned_box()
+            || Some(did) == cx.tcx().lang_items().pin_type()
+        {
+            return false;
+        }
+
+        let Some(impls) = cx.cache().impls.get(&did) else {
+            return false;
+        };
+
+        impls
+            .iter()
+            .map(Impl::inner_impl)
+            .filter(|impl_| {
+                impl_.polarity == ty::ImplPolarity::Positive
+                    // Two different types might have the same did,
+                    // without actually being the same.
+                    && ty.is_doc_subtype_of(&impl_.for_, cx.cache())
+            })
+            .filter_map(|impl_| impl_.trait_.as_ref())
+            .filter_map(|trait_| cx.cache().traits.get(&trait_.def_id()))
+            .any(|t| t.is_notable_trait(cx.tcx()))
+    };
+
+    let mut types_with_notable_traits = cx.types_with_notable_traits.borrow_mut();
+    if !types_with_notable_traits.contains(ty) {
+        if has_notable_trait() {
+            types_with_notable_traits.insert(ty.clone());
+        } else {
+            return None;
+        }
     }
 
-    let impls = cx.cache().impls.get(&did)?;
-    let has_notable_trait = impls
-        .iter()
-        .map(Impl::inner_impl)
-        .filter(|impl_| {
-            impl_.polarity == ty::ImplPolarity::Positive
-                // Two different types might have the same did,
-                // without actually being the same.
-                && ty.is_doc_subtype_of(&impl_.for_, cx.cache())
-        })
-        .filter_map(|impl_| impl_.trait_.as_ref())
-        .filter_map(|trait_| cx.cache().traits.get(&trait_.def_id()))
-        .any(|t| t.is_notable_trait(cx.tcx()));
-
-    has_notable_trait.then(|| {
-        cx.types_with_notable_traits.borrow_mut().insert(ty.clone());
-        fmt::from_fn(|f| {
-            write!(
-                f,
-                " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
-                ty = Escape(&format!("{:#}", ty.print(cx))),
-            )
-        })
-    })
+    Some(fmt::from_fn(|f| {
+        write!(
+            f,
+            " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
+            ty = Escape(&format!("{:#}", ty.print(cx))),
+        )
+    }))
 }
 
 fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
