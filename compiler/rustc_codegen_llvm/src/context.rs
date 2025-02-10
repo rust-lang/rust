@@ -21,10 +21,10 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_session::Session;
 use rustc_session::config::{
     BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, FunctionReturn, PAuthKey, PacRet,
 };
+use rustc_session::{Session, config};
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_target::spec::{HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel};
@@ -288,6 +288,11 @@ pub(crate) unsafe fn create_module<'ll>(
             "EnableSplitLTOUnit",
             1,
         );
+    }
+
+    // If fat lto is requested, lld still defaults to thin lto. Set ThinLTO=0 to force fat lto in lld.
+    if sess.lto() == config::Lto::Fat {
+        llvm::add_module_flag_u32(llmod, llvm::ModuleFlagMergeBehavior::Override, "ThinLTO", 0);
     }
 
     // Add "kcfi" module flag if KCFI is enabled. (See https://reviews.llvm.org/D119296.)
