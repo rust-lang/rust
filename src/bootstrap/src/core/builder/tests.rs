@@ -1066,7 +1066,8 @@ fn test_prebuilt_llvm_config_path_resolution() {
     assert_eq!(expected, actual);
 }
 
-fn test_is_host_target() {
+#[test]
+fn test_is_builder_target() {
     let target1 = TargetSelection::from_user(TEST_TRIPLE_1);
     let target2 = TargetSelection::from_user(TEST_TRIPLE_2);
 
@@ -1076,7 +1077,7 @@ fn test_is_host_target() {
         let build = Build::new(config);
         let builder = Builder::new(&build);
 
-        assert!(builder.is_host_target(&target1));
-        assert!(!builder.is_host_target(&target2));
+        assert!(builder.is_builder_target(&target1));
+        assert!(!builder.is_builder_target(&target2));
     }
 }
