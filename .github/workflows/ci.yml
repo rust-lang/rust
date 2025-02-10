@@ -149,6 +149,9 @@ jobs:
 
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
+      
+      - name: show the current environment
+        run: src/ci/scripts/dump-environment.sh
 
       - name: install ninja
         run: src/ci/scripts/install-ninja.sh
@@ -172,6 +175,12 @@ jobs:
 
       - name: ensure the stable version number is correct
         run: src/ci/scripts/verify-stable-version-number.sh
+      
+      - name: show the current environment
+        run: src/ci/scripts/dump-environment.sh
+      
+      - name: exit
+        run: exit 1
 
       - name: run the build
         # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.

@@ -37,7 +37,6 @@ if isWindows && isKnownToBeMingwBuild; then
             exit 1
             ;;
     esac
-    exit 1
 
     mingw_dir="mingw${bits}"
 
