@@ -1500,8 +1500,6 @@ impl<'a> Parser<'a> {
                 this.parse_expr_let(restrictions)
             } else if this.eat_keyword(exp!(Underscore)) {
                 Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
-            } else if this.eat_keyword_noexpect(kw::Use) {
-                this.recover_incorrect_use_syntax(lo)
             } else if this.token.uninterpolated_span().at_least_rust_2018() {
                 // `Span::at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
                 if this.token.uninterpolated_span().at_least_rust_2024()
