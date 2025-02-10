@@ -266,12 +266,12 @@ impl<'tcx> Context<'tcx> {
                     // preventing an infinite redirection loop in the generated
                     // documentation.
 
-                    let mut path = String::new();
-                    for name in &names[..names.len() - 1] {
-                        path.push_str(name.as_str());
-                        path.push('/');
-                    }
-                    let _ = write!(path, "{}", item_path(ty, names.last().unwrap().as_str()));
+                    let path = fmt::from_fn(|f| {
+                        for name in &names[..names.len() - 1] {
+                            write!(f, "{name}/")?;
+                        }
+                        write!(f, "{}", item_path(ty, names.last().unwrap().as_str()))
+                    });
                     match self.shared.redirections {
                         Some(ref redirections) => {
                             let mut current_path = String::new();
