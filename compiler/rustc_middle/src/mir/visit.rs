@@ -527,8 +527,9 @@ macro_rules! make_mir_visitor {
                         target: _,
                         unwind: _,
                         call_source: _,
-                        fn_span: _
+                        fn_span,
                     } => {
+                        self.visit_span($(& $mutability)? *fn_span);
                         self.visit_operand(func, location);
                         for arg in args {
                             self.visit_operand(&$($mutability)? arg.node, location);
@@ -543,8 +544,9 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::TailCall {
                         func,
                         args,
-                        fn_span: _,
+                        fn_span,
                     } => {
+                        self.visit_span($(& $mutability)? *fn_span);
                         self.visit_operand(func, location);
                         for arg in args {
                             self.visit_operand(&$($mutability)? arg.node, location);
@@ -853,6 +855,8 @@ macro_rules! make_mir_visitor {
                     local_info: _,
                 } = local_decl;
 
+                self.visit_source_info(source_info);
+
                 self.visit_ty($(& $mutability)? *ty, TyContext::LocalDecl {
                     local,
                     source_info: *source_info,
@@ -862,7 +866,6 @@ macro_rules! make_mir_visitor {
                         self.visit_user_type_projection(user_ty);
                     }
                 }
-                self.visit_source_info(source_info);
             }
 
             fn super_var_debug_info(

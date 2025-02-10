@@ -1257,6 +1257,8 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
         // replaced down below anyways).
         if !matches!(terminator.kind, TerminatorKind::Return) {
             self.super_terminator(terminator, loc);
+        } else {
+            self.visit_source_info(&mut terminator.source_info);
         }
 
         match terminator.kind {
