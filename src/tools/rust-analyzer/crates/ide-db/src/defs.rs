@@ -986,6 +986,7 @@ impl From<GenericDef> for Definition {
             GenericDef::TypeAlias(it) => it.into(),
             GenericDef::Impl(it) => it.into(),
             GenericDef::Const(it) => it.into(),
+            GenericDef::Static(it) => it.into(),
         }
     }
 }

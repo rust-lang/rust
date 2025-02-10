@@ -1,4 +1,4 @@
-//! Implementation of "closure return type" inlay hints.
+//! Implementation of "closure captures" inlay hints.
 //!
 //! Tests live in [`bind_pat`][super::bind_pat] module.
 use ide_db::famous_defs::FamousDefs;

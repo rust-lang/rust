@@ -43,9 +43,9 @@ use crate::{
     primitive::{self, UintTy},
     static_lifetime, to_chalk_trait_id,
     traits::FnTrait,
-    Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, CallableSig, FnAbi, FnPointer,
-    FnSig, FnSubst, Interner, Rawness, Scalar, Substitution, TraitEnvironment, TraitRef, Ty,
-    TyBuilder, TyExt, TyKind,
+    Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, CallableSig, DeclContext,
+    DeclOrigin, FnAbi, FnPointer, FnSig, FnSubst, Interner, Rawness, Scalar, Substitution,
+    TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
 use super::{
@@ -334,7 +334,11 @@ impl InferenceContext<'_> {
                     ExprIsRead::No
                 };
                 let input_ty = self.infer_expr(expr, &Expectation::none(), child_is_read);
-                self.infer_top_pat(pat, &input_ty);
+                self.infer_top_pat(
+                    pat,
+                    &input_ty,
+                    Some(DeclContext { origin: DeclOrigin::LetExpr }),
+                );
                 self.result.standard_types.bool_.clone()
             }
             Expr::Block { statements, tail, label, id } => {
@@ -461,7 +465,7 @@ impl InferenceContext<'_> {
 
                 // Now go through the argument patterns
                 for (arg_pat, arg_ty) in args.iter().zip(&sig_tys) {
-                    self.infer_top_pat(*arg_pat, arg_ty);
+                    self.infer_top_pat(*arg_pat, arg_ty, None);
                 }
 
                 // FIXME: lift these out into a struct
@@ -582,7 +586,7 @@ impl InferenceContext<'_> {
                     let mut all_arms_diverge = Diverges::Always;
                     for arm in arms.iter() {
                         let input_ty = self.resolve_ty_shallow(&input_ty);
-                        self.infer_top_pat(arm.pat, &input_ty);
+                        self.infer_top_pat(arm.pat, &input_ty, None);
                     }
 
                     let expected = expected.adjust_for_branches(&mut self.table);
@@ -927,7 +931,7 @@ impl InferenceContext<'_> {
                     let resolver_guard =
                         self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, tgt_expr);
                     self.inside_assignment = true;
-                    self.infer_top_pat(target, &rhs_ty);
+                    self.infer_top_pat(target, &rhs_ty, None);
                     self.inside_assignment = false;
                     self.resolver.reset_to_guard(resolver_guard);
                 }
@@ -1632,8 +1636,11 @@ impl InferenceContext<'_> {
                                 decl_ty
                             };
 
-                            this.infer_top_pat(*pat, &ty);
+                            let decl = DeclContext {
+                                origin: DeclOrigin::LocalDecl { has_else: else_branch.is_some() },
+                            };
 
+                            this.infer_top_pat(*pat, &ty, Some(decl));
                             if let Some(expr) = else_branch {
                                 let previous_diverges =
                                     mem::replace(&mut this.diverges, Diverges::Maybe);

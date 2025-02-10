@@ -258,15 +258,7 @@ impl ChangeFixture {
                 let to_id = crates[&to];
                 let sysroot = crate_graph[to_id].origin.is_lang();
                 crate_graph
-                    .add_dep(
-                        from_id,
-                        Dependency::with_prelude(
-                            CrateName::new(&to).unwrap(),
-                            to_id,
-                            prelude,
-                            sysroot,
-                        ),
-                    )
+                    .add_dep(from_id, Dependency::with_prelude(to.clone(), to_id, prelude, sysroot))
                     .unwrap();
             }
         }

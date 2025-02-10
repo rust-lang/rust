@@ -519,7 +519,7 @@ mod tests {
                 crate_graph[krate]
                     .display_name
                     .as_ref()
-                    .is_some_and(|it| &**it.crate_name() == crate_name)
+                    .is_some_and(|it| it.crate_name().as_str() == crate_name)
             })
             .expect("could not find crate");
 

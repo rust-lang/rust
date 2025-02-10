@@ -337,7 +337,7 @@ impl DefMap {
     pub(crate) fn crate_def_map_query(db: &dyn DefDatabase, crate_id: CrateId) -> Arc<DefMap> {
         let crate_graph = db.crate_graph();
         let krate = &crate_graph[crate_id];
-        let name = krate.display_name.as_deref().unwrap_or_default();
+        let name = krate.display_name.as_deref().map(Symbol::as_str).unwrap_or_default();
         let _p = tracing::info_span!("crate_def_map_query", ?name).entered();
 
         let module_data = ModuleData::new(

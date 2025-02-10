@@ -701,8 +701,7 @@ impl GlobalState {
 
         let (crate_graph, proc_macro_paths, ws_data) = {
             // Create crate graph from all the workspaces
-            let vfs = &mut self.vfs.write().0;
-
+            let vfs = &self.vfs.read().0;
             let load = |path: &AbsPath| {
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
                 self.crate_graph_file_dependencies.insert(vfs_path.clone());

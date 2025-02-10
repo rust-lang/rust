@@ -18,8 +18,8 @@ use std::sync::LazyLock;
 use base_db::SourceDatabaseFileInputExt as _;
 use expect_test::Expect;
 use hir_def::{
-    body::{Body, BodySourceMap},
     db::DefDatabase,
+    expr_store::{Body, BodySourceMap},
     hir::{ExprId, Pat, PatId},
     item_scope::ItemScope,
     nameres::DefMap,
