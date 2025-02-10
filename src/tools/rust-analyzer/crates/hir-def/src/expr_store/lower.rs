@@ -29,11 +29,14 @@ use triomphe::Arc;
 
 use crate::{
     attr::Attrs,
-    body::{Body, BodyDiagnostic, BodySourceMap, ExprPtr, HygieneId, LabelPtr, PatPtr},
     builtin_type::BuiltinUint,
     data::adt::StructKind,
     db::DefDatabase,
     expander::Expander,
+    expr_store::{
+        Body, BodySourceMap, ExprPtr, ExpressionStore, ExpressionStoreBuilder,
+        ExpressionStoreDiagnostics, ExpressionStoreSourceMap, HygieneId, LabelPtr, PatPtr,
+    },
     hir::{
         format_args::{
             self, FormatAlignment, FormatArgs, FormatArgsPiece, FormatArgument, FormatArgumentKind,
@@ -55,11 +58,11 @@ use crate::{
 
 type FxIndexSet<K> = indexmap::IndexSet<K, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
 
-pub(super) fn lower(
+pub(super) fn lower_body(
     db: &dyn DefDatabase,
     owner: DefWithBodyId,
     expander: Expander,
-    params: Option<(ast::ParamList, impl Iterator<Item = bool>)>,
+    parameters: Option<(ast::ParamList, impl Iterator<Item = bool>)>,
     body: Option<ast::Expr>,
     krate: CrateId,
     is_async_fn: bool,
@@ -75,35 +78,146 @@ pub(super) fn lower(
         };
         Arc::clone(span_map)
     });
-    ExprCollector {
-        db,
-        owner,
-        krate,
-        def_map: expander.module.def_map(db),
-        source_map: BodySourceMap::default(),
-        ast_id_map: db.ast_id_map(expander.current_file_id()),
-        body: Body::default(),
-        expander,
-        current_try_block_label: None,
-        is_lowering_coroutine: false,
-        label_ribs: Vec::new(),
-        current_binding_owner: None,
-        awaitable_context: None,
-        current_span_map: span_map,
-        current_block_legacy_macro_defs_count: FxHashMap::default(),
+
+    let mut self_param = None;
+    let mut source_map_self_param = None;
+    let mut params = vec![];
+    let mut collector = ExprCollector::new(db, owner, expander, krate, span_map);
+
+    let skip_body = match owner {
+        DefWithBodyId::FunctionId(it) => db.attrs(it.into()),
+        DefWithBodyId::StaticId(it) => db.attrs(it.into()),
+        DefWithBodyId::ConstId(it) => db.attrs(it.into()),
+        DefWithBodyId::InTypeConstId(_) => Attrs::EMPTY,
+        DefWithBodyId::VariantId(it) => db.attrs(it.into()),
     }
-    .collect(params, body, is_async_fn)
+    .rust_analyzer_tool()
+    .any(|attr| *attr.path() == tool_path![skip]);
+    // If #[rust_analyzer::skip] annotated, only construct enough information for the signature
+    // and skip the body.
+    if skip_body {
+        if let Some((param_list, mut attr_enabled)) = parameters {
+            if let Some(self_param_syn) =
+                param_list.self_param().filter(|_| attr_enabled.next().unwrap_or(false))
+            {
+                let is_mutable =
+                    self_param_syn.mut_token().is_some() && self_param_syn.amp_token().is_none();
+                let binding_id: la_arena::Idx<Binding> = collector.alloc_binding(
+                    Name::new_symbol_root(sym::self_.clone()),
+                    BindingAnnotation::new(is_mutable, false),
+                );
+                self_param = Some(binding_id);
+                source_map_self_param =
+                    Some(collector.expander.in_file(AstPtr::new(&self_param_syn)));
+            }
+            params = param_list
+                .params()
+                .zip(attr_enabled)
+                .filter(|(_, enabled)| *enabled)
+                .map(|_| collector.missing_pat())
+                .collect();
+        };
+        let body_expr = collector.missing_expr();
+        return (
+            Body {
+                store: collector.store.finish(),
+                params: params.into_boxed_slice(),
+                self_param,
+                body_expr,
+            },
+            BodySourceMap { self_param: source_map_self_param, store: collector.source_map },
+        );
+    }
+
+    if let Some((param_list, mut attr_enabled)) = parameters {
+        if let Some(self_param_syn) =
+            param_list.self_param().filter(|_| attr_enabled.next().unwrap_or(false))
+        {
+            let is_mutable =
+                self_param_syn.mut_token().is_some() && self_param_syn.amp_token().is_none();
+            let binding_id: la_arena::Idx<Binding> = collector.alloc_binding(
+                Name::new_symbol_root(sym::self_.clone()),
+                BindingAnnotation::new(is_mutable, false),
+            );
+            let hygiene = self_param_syn
+                .name()
+                .map(|name| collector.hygiene_id_for(name.syntax().text_range().start()))
+                .unwrap_or(HygieneId::ROOT);
+            if !hygiene.is_root() {
+                collector.store.binding_hygiene.insert(binding_id, hygiene);
+            }
+            self_param = Some(binding_id);
+            source_map_self_param = Some(collector.expander.in_file(AstPtr::new(&self_param_syn)));
+        }
+
+        for (param, _) in param_list.params().zip(attr_enabled).filter(|(_, enabled)| *enabled) {
+            let param_pat = collector.collect_pat_top(param.pat());
+            params.push(param_pat);
+        }
+    };
+
+    let body_expr = collector.collect(
+        body,
+        if is_async_fn {
+            Awaitable::Yes
+        } else {
+            match owner {
+                DefWithBodyId::FunctionId(..) => Awaitable::No("non-async function"),
+                DefWithBodyId::StaticId(..) => Awaitable::No("static"),
+                DefWithBodyId::ConstId(..) | DefWithBodyId::InTypeConstId(..) => {
+                    Awaitable::No("constant")
+                }
+                DefWithBodyId::VariantId(..) => Awaitable::No("enum variant"),
+            }
+        },
+    );
+
+    (
+        Body {
+            store: collector.store.finish(),
+            params: params.into_boxed_slice(),
+            self_param,
+            body_expr,
+        },
+        BodySourceMap { self_param: source_map_self_param, store: collector.source_map },
+    )
 }
+
+#[allow(dead_code)]
+pub(super) fn lower(
+    db: &dyn DefDatabase,
+    owner: ExprStoreOwnerId,
+    expander: Expander,
+    body: Option<ast::Expr>,
+    krate: CrateId,
+) -> (ExpressionStore, ExpressionStoreSourceMap) {
+    // We cannot leave the root span map empty and let any identifier from it be treated as root,
+    // because when inside nested macros `SyntaxContextId`s from the outer macro will be interleaved
+    // with the inner macro, and that will cause confusion because they won't be the same as `ROOT`
+    // even though they should be the same. Also, when the body comes from multiple expansions, their
+    // hygiene is different.
+    let span_map = expander.current_file_id().macro_file().map(|_| {
+        let SpanMap::ExpansionSpanMap(span_map) = expander.span_map(db) else {
+            panic!("in a macro file there should be `ExpansionSpanMap`");
+        };
+        Arc::clone(span_map)
+    });
+    let mut expr_collector = ExprCollector::new(db, owner, expander, krate, span_map);
+    expr_collector.collect(body, Awaitable::No("?"));
+    (expr_collector.store.finish(), expr_collector.source_map)
+}
+
+type ExprStoreOwnerId = DefWithBodyId;
 
 struct ExprCollector<'a> {
     db: &'a dyn DefDatabase,
     expander: Expander,
-    owner: DefWithBodyId,
+    owner: ExprStoreOwnerId,
     def_map: Arc<DefMap>,
     ast_id_map: Arc<AstIdMap>,
     krate: CrateId,
-    body: Body,
-    source_map: BodySourceMap,
+    store: ExpressionStoreBuilder,
+    source_map: ExpressionStoreSourceMap,
 
     is_lowering_coroutine: bool,
 
@@ -157,6 +271,7 @@ impl RibKind {
     }
 }
 
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 enum Awaitable {
     Yes,
     No(&'static str),
@@ -180,12 +295,12 @@ impl BindingList {
         let id = *self.map.entry((name, hygiene)).or_insert_with_key(|(name, _)| {
             let id = ec.alloc_binding(name.clone(), mode);
             if !hygiene.is_root() {
-                ec.body.binding_hygiene.insert(id, hygiene);
+                ec.store.binding_hygiene.insert(id, hygiene);
             }
             id
         });
-        if ec.body.bindings[id].mode != mode {
-            ec.body.bindings[id].problems = Some(BindingProblems::BoundInconsistently);
+        if ec.store.bindings[id].mode != mode {
+            ec.store.bindings[id].problems = Some(BindingProblems::BoundInconsistently);
         }
         self.check_is_used(ec, id);
         id
@@ -195,11 +310,11 @@ impl BindingList {
         match self.is_used.get(&id) {
             None => {
                 if self.reject_new {
-                    ec.body.bindings[id].problems = Some(BindingProblems::NotBoundAcrossAll);
+                    ec.store.bindings[id].problems = Some(BindingProblems::NotBoundAcrossAll);
                 }
             }
             Some(true) => {
-                ec.body.bindings[id].problems = Some(BindingProblems::BoundMoreThanOnce);
+                ec.store.bindings[id].problems = Some(BindingProblems::BoundMoreThanOnce);
             }
             Some(false) => {}
         }
@@ -208,93 +323,37 @@ impl BindingList {
 }
 
 impl ExprCollector<'_> {
-    fn collect(
-        mut self,
-        param_list: Option<(ast::ParamList, impl Iterator<Item = bool>)>,
-        body: Option<ast::Expr>,
-        is_async_fn: bool,
-    ) -> (Body, BodySourceMap) {
-        let skip_body = match self.owner {
-            DefWithBodyId::FunctionId(it) => self.db.attrs(it.into()),
-            DefWithBodyId::StaticId(it) => self.db.attrs(it.into()),
-            DefWithBodyId::ConstId(it) => self.db.attrs(it.into()),
-            DefWithBodyId::InTypeConstId(_) => Attrs::EMPTY,
-            DefWithBodyId::VariantId(it) => self.db.attrs(it.into()),
+    fn new(
+        db: &dyn DefDatabase,
+        owner: ExprStoreOwnerId,
+        expander: Expander,
+        krate: CrateId,
+        span_map: Option<Arc<ExpansionSpanMap>>,
+    ) -> ExprCollector<'_> {
+        ExprCollector {
+            db,
+            owner,
+            krate,
+            def_map: expander.module.def_map(db),
+            source_map: ExpressionStoreSourceMap::default(),
+            ast_id_map: db.ast_id_map(expander.current_file_id()),
+            store: ExpressionStoreBuilder::default(),
+            expander,
+            current_try_block_label: None,
+            is_lowering_coroutine: false,
+            label_ribs: Vec::new(),
+            current_binding_owner: None,
+            awaitable_context: None,
+            current_span_map: span_map,
+            current_block_legacy_macro_defs_count: FxHashMap::default(),
         }
-        .rust_analyzer_tool()
-        .any(|attr| *attr.path() == tool_path![skip]);
-        // If #[rust_analyzer::skip] annotated, only construct enough information for the signature
-        // and skip the body.
-        if skip_body {
-            self.body.body_expr = self.missing_expr();
-            if let Some((param_list, mut attr_enabled)) = param_list {
-                if let Some(self_param) =
-                    param_list.self_param().filter(|_| attr_enabled.next().unwrap_or(false))
-                {
-                    let is_mutable =
-                        self_param.mut_token().is_some() && self_param.amp_token().is_none();
-                    let binding_id: la_arena::Idx<Binding> = self.alloc_binding(
-                        Name::new_symbol_root(sym::self_.clone()),
-                        BindingAnnotation::new(is_mutable, false),
-                    );
-                    self.body.self_param = Some(binding_id);
-                    self.source_map.self_param =
-                        Some(self.expander.in_file(AstPtr::new(&self_param)));
-                }
-                self.body.params = param_list
-                    .params()
-                    .zip(attr_enabled)
-                    .filter(|(_, enabled)| *enabled)
-                    .map(|_| self.missing_pat())
-                    .collect();
-            };
-            return (self.body, self.source_map);
-        }
+    }
 
-        self.awaitable_context.replace(if is_async_fn {
-            Awaitable::Yes
-        } else {
-            match self.owner {
-                DefWithBodyId::FunctionId(..) => Awaitable::No("non-async function"),
-                DefWithBodyId::StaticId(..) => Awaitable::No("static"),
-                DefWithBodyId::ConstId(..) | DefWithBodyId::InTypeConstId(..) => {
-                    Awaitable::No("constant")
-                }
-                DefWithBodyId::VariantId(..) => Awaitable::No("enum variant"),
-            }
-        });
-        if let Some((param_list, mut attr_enabled)) = param_list {
-            let mut params = vec![];
-            if let Some(self_param) =
-                param_list.self_param().filter(|_| attr_enabled.next().unwrap_or(false))
-            {
-                let is_mutable =
-                    self_param.mut_token().is_some() && self_param.amp_token().is_none();
-                let binding_id: la_arena::Idx<Binding> = self.alloc_binding(
-                    Name::new_symbol_root(sym::self_.clone()),
-                    BindingAnnotation::new(is_mutable, false),
-                );
-                let hygiene = self_param
-                    .name()
-                    .map(|name| self.hygiene_id_for(name.syntax().text_range().start()))
-                    .unwrap_or(HygieneId::ROOT);
-                if !hygiene.is_root() {
-                    self.body.binding_hygiene.insert(binding_id, hygiene);
-                }
-                self.body.self_param = Some(binding_id);
-                self.source_map.self_param = Some(self.expander.in_file(AstPtr::new(&self_param)));
-            }
-
-            for (param, _) in param_list.params().zip(attr_enabled).filter(|(_, enabled)| *enabled)
-            {
-                let param_pat = self.collect_pat_top(param.pat());
-                params.push(param_pat);
-            }
-            self.body.params = params.into_boxed_slice();
-        };
-        self.body.body_expr = self.with_label_rib(RibKind::Closure, |this| {
-            if is_async_fn {
-                match body {
+    fn collect(&mut self, expr: Option<ast::Expr>, awaitable: Awaitable) -> ExprId {
+        self.awaitable_context.replace(awaitable);
+        self.with_label_rib(RibKind::Closure, |this| {
+            if awaitable == Awaitable::Yes {
+                match expr {
                     Some(e) => {
                         let syntax_ptr = AstPtr::new(&e);
                         let expr = this.collect_expr(e);
@@ -306,15 +365,13 @@ impl ExprCollector<'_> {
                     None => this.missing_expr(),
                 }
             } else {
-                this.collect_expr_opt(body)
+                this.collect_expr_opt(expr)
             }
-        });
-
-        (self.body, self.source_map)
+        })
     }
 
     fn ctx(&mut self) -> LowerCtx<'_> {
-        self.expander.ctx(self.db, &mut self.body.types, &mut self.source_map.types)
+        self.expander.ctx(self.db, &mut self.store.types, &mut self.source_map.types)
     }
 
     fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {
@@ -390,7 +447,7 @@ impl ExprCollector<'_> {
                                 parent: this.owner,
                                 root: inner_expr,
                             });
-                            this.body.exprs[result_expr_id] = Expr::Const(it);
+                            this.store.exprs[result_expr_id] = Expr::Const(it);
                             this.current_binding_owner = prev_binding_owner;
                             result_expr_id
                         })
@@ -480,7 +537,7 @@ impl ExprCollector<'_> {
                     .unwrap_or((Expr::Missing, HygieneId::ROOT));
                 let expr_id = self.alloc_expr(path, syntax_ptr);
                 if !hygiene.is_root() {
-                    self.body.expr_hygiene.insert(expr_id, hygiene);
+                    self.store.ident_hygiene.insert(expr_id.into(), hygiene);
                 }
                 expr_id
             }
@@ -562,10 +619,12 @@ impl ExprCollector<'_> {
             ast::Expr::AwaitExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
                 if let Awaitable::No(location) = self.is_lowering_awaitable_block() {
-                    self.source_map.diagnostics.push(BodyDiagnostic::AwaitOutsideOfAsync {
-                        node: InFile::new(self.expander.current_file_id(), AstPtr::new(&e)),
-                        location: location.to_string(),
-                    });
+                    self.source_map.diagnostics.push(
+                        ExpressionStoreDiagnostics::AwaitOutsideOfAsync {
+                            node: InFile::new(self.expander.current_file_id(), AstPtr::new(&e)),
+                            location: location.to_string(),
+                        },
+                    );
                 }
                 self.alloc_expr(Expr::Await { expr }, syntax_ptr)
             }
@@ -646,7 +705,7 @@ impl ExprCollector<'_> {
                 this.is_lowering_coroutine = prev_is_lowering_coroutine;
                 this.current_binding_owner = prev_binding_owner;
                 this.current_try_block_label = prev_try_block_label;
-                this.body.exprs[result_expr_id] = Expr::Closure {
+                this.store.exprs[result_expr_id] = Expr::Closure {
                     args: args.into(),
                     arg_types: arg_types.into(),
                     ret_type,
@@ -752,7 +811,7 @@ impl ExprCollector<'_> {
     }
 
     fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
-        self.expander.parse_path(self.db, path, &mut self.body.types, &mut self.source_map.types)
+        self.expander.parse_path(self.db, path, &mut self.store.types, &mut self.source_map.types)
     }
 
     fn collect_expr_path(&mut self, e: ast::PathExpr) -> Option<(Path, HygieneId)> {
@@ -781,7 +840,7 @@ impl ExprCollector<'_> {
             let src = self.expander.in_file(AstPtr::new(&expr).wrap_left());
             let expr = self.collect_expr(expr);
             // Do not use `alloc_pat_from_expr()` here, it will override the entry in `expr_map`.
-            let id = self.body.pats.alloc(Pat::Expr(expr));
+            let id = self.store.pats.alloc(Pat::Expr(expr));
             self.source_map.pat_map_back.insert(id, src);
             id
         })
@@ -835,7 +894,7 @@ impl ExprCollector<'_> {
                     .unwrap_or((Pat::Missing, HygieneId::ROOT));
                 let pat_id = self.alloc_pat_from_expr(path, syntax_ptr);
                 if !hygiene.is_root() {
-                    self.body.pat_hygiene.insert(pat_id, hygiene);
+                    self.store.ident_hygiene.insert(pat_id.into(), hygiene);
                 }
                 pat_id
             }
@@ -967,7 +1026,7 @@ impl ExprCollector<'_> {
     ) -> ExprId {
         let (id, prev_owner) = self.initialize_binding_owner(syntax_ptr);
         let tmp = job(self);
-        self.body.exprs[id] = mem::replace(&mut self.body.exprs[tmp], Expr::Missing);
+        self.store.exprs[id] = mem::replace(&mut self.store.exprs[tmp], Expr::Missing);
         self.current_binding_owner = prev_owner;
         id
     }
@@ -979,8 +1038,9 @@ impl ExprCollector<'_> {
         let Some(try_from_output) = self.lang_path(LangItem::TryTraitFromOutput) else {
             return self.collect_block(e);
         };
-        let label = self
-            .alloc_label_desugared(Label { name: Name::generate_new_name(self.body.labels.len()) });
+        let label = self.alloc_label_desugared(Label {
+            name: Name::generate_new_name(self.store.labels.len()),
+        });
         let old_label = self.current_try_block_label.replace(label);
 
         let ptr = AstPtr::new(&e).upcast();
@@ -1006,7 +1066,7 @@ impl ExprCollector<'_> {
                 )
             }
         };
-        let Expr::Block { tail, .. } = &mut self.body.exprs[expr_id] else {
+        let Expr::Block { tail, .. } = &mut self.store.exprs[expr_id] else {
             unreachable!("block was lowered to non-block");
         };
         *tail = Some(next_tail);
@@ -1112,7 +1172,7 @@ impl ExprCollector<'_> {
                 this.collect_expr_opt(e.loop_body().map(|it| it.into()))
             }),
         };
-        let iter_name = Name::generate_new_name(self.body.exprs.len());
+        let iter_name = Name::generate_new_name(self.store.exprs.len());
         let iter_expr = self.alloc_expr(Expr::Path(Path::from(iter_name.clone())), syntax_ptr);
         let iter_expr_mut = self.alloc_expr(
             Expr::Ref { expr: iter_expr, rawness: Rawness::Ref, mutability: Mutability::Mut },
@@ -1177,7 +1237,7 @@ impl ExprCollector<'_> {
         let try_branch = self.alloc_expr(Expr::Path(try_branch), syntax_ptr);
         let expr = self
             .alloc_expr(Expr::Call { callee: try_branch, args: Box::new([operand]) }, syntax_ptr);
-        let continue_name = Name::generate_new_name(self.body.bindings.len());
+        let continue_name = Name::generate_new_name(self.store.bindings.len());
         let continue_binding =
             self.alloc_binding(continue_name.clone(), BindingAnnotation::Unannotated);
         let continue_bpat =
@@ -1192,7 +1252,7 @@ impl ExprCollector<'_> {
             guard: None,
             expr: self.alloc_expr(Expr::Path(Path::from(continue_name)), syntax_ptr),
         };
-        let break_name = Name::generate_new_name(self.body.bindings.len());
+        let break_name = Name::generate_new_name(self.store.bindings.len());
         let break_binding = self.alloc_binding(break_name.clone(), BindingAnnotation::Unannotated);
         let break_bpat = self.alloc_pat_desugared(Pat::Bind { id: break_binding, subpat: None });
         self.add_definition_to_binding(break_binding, break_bpat);
@@ -1261,17 +1321,19 @@ impl ExprCollector<'_> {
             Ok(res) => res,
             Err(UnresolvedMacro { path }) => {
                 if record_diagnostics {
-                    self.source_map.diagnostics.push(BodyDiagnostic::UnresolvedMacroCall {
-                        node: InFile::new(outer_file, syntax_ptr),
-                        path,
-                    });
+                    self.source_map.diagnostics.push(
+                        ExpressionStoreDiagnostics::UnresolvedMacroCall {
+                            node: InFile::new(outer_file, syntax_ptr),
+                            path,
+                        },
+                    );
                 }
                 return collector(self, None);
             }
         };
         if record_diagnostics {
             if let Some(err) = res.err {
-                self.source_map.diagnostics.push(BodyDiagnostic::MacroError {
+                self.source_map.diagnostics.push(ExpressionStoreDiagnostics::MacroError {
                     node: InFile::new(outer_file, syntax_ptr),
                     err,
                 });
@@ -1464,7 +1526,7 @@ impl ExprCollector<'_> {
         let (module, def_map) =
             match block_id.map(|block_id| (self.db.block_def_map(block_id), block_id)) {
                 Some((def_map, block_id)) => {
-                    self.body.block_scopes.push(block_id);
+                    self.store.block_scopes.push(block_id);
                     (def_map.module_id(DefMap::ROOT), def_map)
                 }
                 None => (self.expander.module, self.def_map.clone()),
@@ -1621,7 +1683,7 @@ impl ExprCollector<'_> {
                     pats.push(self.collect_pat(rest, binding_list));
                     for (&id, &is_used) in binding_list.is_used.iter() {
                         if !is_used {
-                            self.body.bindings[id].problems =
+                            self.store.bindings[id].problems =
                                 Some(BindingProblems::NotBoundAcrossAll);
                         }
                     }
@@ -1825,7 +1887,7 @@ impl ExprCollector<'_> {
                     return Some(());
                 }
 
-                self.source_map.diagnostics.push(BodyDiagnostic::InactiveCode {
+                self.source_map.diagnostics.push(ExpressionStoreDiagnostics::InactiveCode {
                     node: self.expander.in_file(SyntaxNodePtr::new(owner.syntax())),
                     cfg,
                     opts: self.expander.cfg_options().clone(),
@@ -1853,7 +1915,7 @@ impl ExprCollector<'_> {
     fn resolve_label(
         &self,
         lifetime: Option<ast::Lifetime>,
-    ) -> Result<Option<LabelId>, BodyDiagnostic> {
+    ) -> Result<Option<LabelId>, ExpressionStoreDiagnostics> {
         let Some(lifetime) = lifetime else { return Ok(None) };
         let (mut hygiene_id, mut hygiene_info) = match &self.current_span_map {
             None => (HygieneId::ROOT, None),
@@ -1877,7 +1939,7 @@ impl ExprCollector<'_> {
                         return if self.is_label_valid_from_rib(rib_idx) {
                             Ok(Some(*id))
                         } else {
-                            Err(BodyDiagnostic::UnreachableLabel {
+                            Err(ExpressionStoreDiagnostics::UnreachableLabel {
                                 name,
                                 node: self.expander.in_file(AstPtr::new(&lifetime)),
                             })
@@ -1903,7 +1965,7 @@ impl ExprCollector<'_> {
             }
         }
 
-        Err(BodyDiagnostic::UndeclaredLabel {
+        Err(ExpressionStoreDiagnostics::UndeclaredLabel {
             name,
             node: self.expander.in_file(AstPtr::new(&lifetime)),
         })
@@ -1934,7 +1996,7 @@ impl ExprCollector<'_> {
         f: impl FnOnce(&mut Self) -> T,
     ) -> T {
         self.label_ribs.push(LabelRib::new(RibKind::Normal(
-            self.body[label].name.clone(),
+            self.store.labels[label].name.clone(),
             label,
             hygiene,
         )));
@@ -2023,7 +2085,7 @@ impl ExprCollector<'_> {
                                 );
                         }
                         if !hygiene.is_root() {
-                            self.body.expr_hygiene.insert(expr_id, hygiene);
+                            self.store.ident_hygiene.insert(expr_id.into(), hygiene);
                         }
                         expr_id
                     },
@@ -2171,17 +2233,27 @@ impl ExprCollector<'_> {
         let unsafe_arg_new = self.alloc_expr_desugared(Expr::Path(unsafe_arg_new));
         let unsafe_arg_new =
             self.alloc_expr_desugared(Expr::Call { callee: unsafe_arg_new, args: Box::default() });
-        let unsafe_arg_new = self.alloc_expr_desugared(Expr::Unsafe {
+        let mut unsafe_arg_new = self.alloc_expr_desugared(Expr::Unsafe {
             id: None,
-            // We collect the unused expressions here so that we still infer them instead of
-            // dropping them out of the expression tree
-            statements: fmt
-                .orphans
-                .into_iter()
-                .map(|expr| Statement::Expr { expr, has_semi: true })
-                .collect(),
+            statements: Box::new([]),
             tail: Some(unsafe_arg_new),
         });
+        if !fmt.orphans.is_empty() {
+            unsafe_arg_new = self.alloc_expr_desugared(Expr::Block {
+                id: None,
+                // We collect the unused expressions here so that we still infer them instead of
+                // dropping them out of the expression tree. We cannot store them in the `Unsafe`
+                // block because then unsafe blocks within them will get a false "unused unsafe"
+                // diagnostic (rustc has a notion of builtin unsafe blocks, but we don't).
+                statements: fmt
+                    .orphans
+                    .into_iter()
+                    .map(|expr| Statement::Expr { expr, has_semi: true })
+                    .collect(),
+                tail: Some(unsafe_arg_new),
+                label: None,
+            });
+        }
 
         let idx = self.alloc_expr(
             Expr::Call {
@@ -2417,7 +2489,7 @@ fn pat_literal_to_hir(lit: &ast::LiteralPat) -> Option<(Literal, ast::Literal)> 
 impl ExprCollector<'_> {
     fn alloc_expr(&mut self, expr: Expr, ptr: ExprPtr) -> ExprId {
         let src = self.expander.in_file(ptr);
-        let id = self.body.exprs.alloc(expr);
+        let id = self.store.exprs.alloc(expr);
         self.source_map.expr_map_back.insert(id, src);
         self.source_map.expr_map.insert(src, id.into());
         id
@@ -2425,11 +2497,11 @@ impl ExprCollector<'_> {
     // FIXME: desugared exprs don't have ptr, that's wrong and should be fixed.
     // Migrate to alloc_expr_desugared_with_ptr and then rename back
     fn alloc_expr_desugared(&mut self, expr: Expr) -> ExprId {
-        self.body.exprs.alloc(expr)
+        self.store.exprs.alloc(expr)
     }
     fn alloc_expr_desugared_with_ptr(&mut self, expr: Expr, ptr: ExprPtr) -> ExprId {
         let src = self.expander.in_file(ptr);
-        let id = self.body.exprs.alloc(expr);
+        let id = self.store.exprs.alloc(expr);
         self.source_map.expr_map_back.insert(id, src);
         // We intentionally don't fill this as it could overwrite a non-desugared entry
         // self.source_map.expr_map.insert(src, id);
@@ -2440,45 +2512,45 @@ impl ExprCollector<'_> {
     }
 
     fn alloc_binding(&mut self, name: Name, mode: BindingAnnotation) -> BindingId {
-        let binding = self.body.bindings.alloc(Binding { name, mode, problems: None });
+        let binding = self.store.bindings.alloc(Binding { name, mode, problems: None });
         if let Some(owner) = self.current_binding_owner {
-            self.body.binding_owners.insert(binding, owner);
+            self.store.binding_owners.insert(binding, owner);
         }
         binding
     }
 
     fn alloc_pat_from_expr(&mut self, pat: Pat, ptr: ExprPtr) -> PatId {
         let src = self.expander.in_file(ptr);
-        let id = self.body.pats.alloc(pat);
+        let id = self.store.pats.alloc(pat);
         self.source_map.expr_map.insert(src, id.into());
         self.source_map.pat_map_back.insert(id, src.map(AstPtr::wrap_left));
         id
     }
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
         let src = self.expander.in_file(ptr);
-        let id = self.body.pats.alloc(pat);
+        let id = self.store.pats.alloc(pat);
         self.source_map.pat_map_back.insert(id, src.map(AstPtr::wrap_right));
         self.source_map.pat_map.insert(src, id);
         id
     }
     // FIXME: desugared pats don't have ptr, that's wrong and should be fixed somehow.
     fn alloc_pat_desugared(&mut self, pat: Pat) -> PatId {
-        self.body.pats.alloc(pat)
+        self.store.pats.alloc(pat)
     }
     fn missing_pat(&mut self) -> PatId {
-        self.body.pats.alloc(Pat::Missing)
+        self.store.pats.alloc(Pat::Missing)
     }
 
     fn alloc_label(&mut self, label: Label, ptr: LabelPtr) -> LabelId {
         let src = self.expander.in_file(ptr);
-        let id = self.body.labels.alloc(label);
+        let id = self.store.labels.alloc(label);
         self.source_map.label_map_back.insert(id, src);
         self.source_map.label_map.insert(src, id);
         id
     }
     // FIXME: desugared labels don't have ptr, that's wrong and should be fixed somehow.
     fn alloc_label_desugared(&mut self, label: Label) -> LabelId {
-        self.body.labels.alloc(label)
+        self.store.labels.alloc(label)
     }
 
     fn is_lowering_awaitable_block(&self) -> &Awaitable {

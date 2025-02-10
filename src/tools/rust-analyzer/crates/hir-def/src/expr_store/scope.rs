@@ -4,8 +4,8 @@ use la_arena::{Arena, ArenaMap, Idx, IdxRange, RawIdx};
 use triomphe::Arc;
 
 use crate::{
-    body::{Body, HygieneId},
     db::DefDatabase,
+    expr_store::{Body, ExpressionStore, HygieneId},
     hir::{Binding, BindingId, Expr, ExprId, Item, LabelId, Pat, PatId, Statement},
     BlockId, ConstBlockId, DefWithBodyId,
 };
@@ -53,7 +53,7 @@ pub struct ScopeData {
 impl ExprScopes {
     pub(crate) fn expr_scopes_query(db: &dyn DefDatabase, def: DefWithBodyId) -> Arc<ExprScopes> {
         let body = db.body(def);
-        let mut scopes = ExprScopes::new(&body, |const_block| {
+        let mut scopes = ExprScopes::new_body(&body, |const_block| {
             db.lookup_intern_anonymous_const(const_block).root
         });
         scopes.shrink_to_fit();
@@ -104,7 +104,7 @@ fn empty_entries(idx: usize) -> IdxRange<ScopeEntry> {
 }
 
 impl ExprScopes {
-    fn new(
+    fn new_body(
         body: &Body,
         resolve_const_block: impl (Fn(ConstBlockId) -> ExprId) + Copy,
     ) -> ExprScopes {
@@ -179,28 +179,28 @@ impl ExprScopes {
 
     fn add_bindings(
         &mut self,
-        body: &Body,
+        store: &ExpressionStore,
         scope: ScopeId,
         binding: BindingId,
         hygiene: HygieneId,
     ) {
-        let Binding { name, .. } = &body.bindings[binding];
+        let Binding { name, .. } = &store.bindings[binding];
         let entry = self.scope_entries.alloc(ScopeEntry { name: name.clone(), binding, hygiene });
         self.scopes[scope].entries =
             IdxRange::new_inclusive(self.scopes[scope].entries.start()..=entry);
     }
 
-    fn add_pat_bindings(&mut self, body: &Body, scope: ScopeId, pat: PatId) {
-        let pattern = &body[pat];
+    fn add_pat_bindings(&mut self, store: &ExpressionStore, scope: ScopeId, pat: PatId) {
+        let pattern = &store[pat];
         if let Pat::Bind { id, .. } = *pattern {
-            self.add_bindings(body, scope, id, body.binding_hygiene(id));
+            self.add_bindings(store, scope, id, store.binding_hygiene(id));
         }
 
-        pattern.walk_child_pats(|pat| self.add_pat_bindings(body, scope, pat));
+        pattern.walk_child_pats(|pat| self.add_pat_bindings(store, scope, pat));
     }
 
-    fn add_params_bindings(&mut self, body: &Body, scope: ScopeId, params: &[PatId]) {
-        params.iter().for_each(|pat| self.add_pat_bindings(body, scope, *pat));
+    fn add_params_bindings(&mut self, store: &ExpressionStore, scope: ScopeId, params: &[PatId]) {
+        params.iter().for_each(|pat| self.add_pat_bindings(store, scope, *pat));
     }
 
     fn set_scope(&mut self, node: ExprId, scope: ScopeId) {
@@ -218,7 +218,7 @@ impl ExprScopes {
 fn compute_block_scopes(
     statements: &[Statement],
     tail: Option<ExprId>,
-    body: &Body,
+    store: &ExpressionStore,
     scopes: &mut ExprScopes,
     scope: &mut ScopeId,
     resolve_const_block: impl (Fn(ConstBlockId) -> ExprId) + Copy,
@@ -227,17 +227,17 @@ fn compute_block_scopes(
         match stmt {
             Statement::Let { pat, initializer, else_branch, .. } => {
                 if let Some(expr) = initializer {
-                    compute_expr_scopes(*expr, body, scopes, scope, resolve_const_block);
+                    compute_expr_scopes(*expr, store, scopes, scope, resolve_const_block);
                 }
                 if let Some(expr) = else_branch {
-                    compute_expr_scopes(*expr, body, scopes, scope, resolve_const_block);
+                    compute_expr_scopes(*expr, store, scopes, scope, resolve_const_block);
                 }
 
                 *scope = scopes.new_scope(*scope);
-                scopes.add_pat_bindings(body, *scope, *pat);
+                scopes.add_pat_bindings(store, *scope, *pat);
             }
             Statement::Expr { expr, .. } => {
-                compute_expr_scopes(*expr, body, scopes, scope, resolve_const_block);
+                compute_expr_scopes(*expr, store, scopes, scope, resolve_const_block);
             }
             Statement::Item(Item::MacroDef(macro_id)) => {
                 *scope = scopes.new_macro_def_scope(*scope, macro_id.clone());
@@ -246,32 +246,32 @@ fn compute_block_scopes(
         }
     }
     if let Some(expr) = tail {
-        compute_expr_scopes(expr, body, scopes, scope, resolve_const_block);
+        compute_expr_scopes(expr, store, scopes, scope, resolve_const_block);
     }
 }
 
 fn compute_expr_scopes(
     expr: ExprId,
-    body: &Body,
+    store: &ExpressionStore,
     scopes: &mut ExprScopes,
     scope: &mut ScopeId,
     resolve_const_block: impl (Fn(ConstBlockId) -> ExprId) + Copy,
 ) {
     let make_label =
-        |label: &Option<LabelId>| label.map(|label| (label, body.labels[label].name.clone()));
+        |label: &Option<LabelId>| label.map(|label| (label, store.labels[label].name.clone()));
 
     let compute_expr_scopes = |scopes: &mut ExprScopes, expr: ExprId, scope: &mut ScopeId| {
-        compute_expr_scopes(expr, body, scopes, scope, resolve_const_block)
+        compute_expr_scopes(expr, store, scopes, scope, resolve_const_block)
     };
 
     scopes.set_scope(expr, *scope);
-    match &body[expr] {
+    match &store[expr] {
         Expr::Block { statements, tail, id, label } => {
             let mut scope = scopes.new_block_scope(*scope, *id, make_label(label));
             // Overwrite the old scope for the block expr, so that every block scope can be found
             // via the block itself (important for blocks that only contain items, no expressions).
             scopes.set_scope(expr, scope);
-            compute_block_scopes(statements, *tail, body, scopes, &mut scope, resolve_const_block);
+            compute_block_scopes(statements, *tail, store, scopes, &mut scope, resolve_const_block);
         }
         Expr::Const(id) => {
             let mut scope = scopes.root_scope();
@@ -282,7 +282,7 @@ fn compute_expr_scopes(
             // Overwrite the old scope for the block expr, so that every block scope can be found
             // via the block itself (important for blocks that only contain items, no expressions).
             scopes.set_scope(expr, scope);
-            compute_block_scopes(statements, *tail, body, scopes, &mut scope, resolve_const_block);
+            compute_block_scopes(statements, *tail, store, scopes, &mut scope, resolve_const_block);
         }
         Expr::Loop { body: body_expr, label } => {
             let mut scope = scopes.new_labeled_scope(*scope, make_label(label));
@@ -290,14 +290,14 @@ fn compute_expr_scopes(
         }
         Expr::Closure { args, body: body_expr, .. } => {
             let mut scope = scopes.new_scope(*scope);
-            scopes.add_params_bindings(body, scope, args);
+            scopes.add_params_bindings(store, scope, args);
             compute_expr_scopes(scopes, *body_expr, &mut scope);
         }
         Expr::Match { expr, arms } => {
             compute_expr_scopes(scopes, *expr, scope);
             for arm in arms.iter() {
                 let mut scope = scopes.new_scope(*scope);
-                scopes.add_pat_bindings(body, scope, arm.pat);
+                scopes.add_pat_bindings(store, scope, arm.pat);
                 if let Some(guard) = arm.guard {
                     scope = scopes.new_scope(scope);
                     compute_expr_scopes(scopes, guard, &mut scope);
@@ -316,9 +316,9 @@ fn compute_expr_scopes(
         &Expr::Let { pat, expr } => {
             compute_expr_scopes(scopes, expr, scope);
             *scope = scopes.new_scope(*scope);
-            scopes.add_pat_bindings(body, *scope, pat);
+            scopes.add_pat_bindings(store, *scope, pat);
         }
-        _ => body.walk_child_exprs(expr, |e| compute_expr_scopes(scopes, e, scope)),
+        _ => store.walk_child_exprs(expr, |e| compute_expr_scopes(scopes, e, scope)),
     };
 }
 

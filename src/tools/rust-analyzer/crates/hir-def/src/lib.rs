@@ -42,7 +42,7 @@ pub mod lang_item;
 
 pub mod hir;
 pub use self::hir::type_ref;
-pub mod body;
+pub mod expr_store;
 pub mod resolver;
 
 pub mod nameres;
@@ -693,6 +693,7 @@ impl TypeOwnerId {
         Some(match self {
             TypeOwnerId::FunctionId(it) => GenericDefId::FunctionId(it),
             TypeOwnerId::ConstId(it) => GenericDefId::ConstId(it),
+            TypeOwnerId::StaticId(it) => GenericDefId::StaticId(it),
             TypeOwnerId::AdtId(it) => GenericDefId::AdtId(it),
             TypeOwnerId::TraitId(it) => GenericDefId::TraitId(it),
             TypeOwnerId::TraitAliasId(it) => GenericDefId::TraitAliasId(it),
@@ -701,7 +702,7 @@ impl TypeOwnerId {
             TypeOwnerId::EnumVariantId(it) => {
                 GenericDefId::AdtId(AdtId::EnumId(it.lookup(db).parent))
             }
-            TypeOwnerId::InTypeConstId(_) | TypeOwnerId::StaticId(_) => return None,
+            TypeOwnerId::InTypeConstId(_) => return None,
         })
     }
 }
@@ -743,6 +744,7 @@ impl From<GenericDefId> for TypeOwnerId {
             GenericDefId::TypeAliasId(it) => it.into(),
             GenericDefId::ImplId(it) => it.into(),
             GenericDefId::ConstId(it) => it.into(),
+            GenericDefId::StaticId(it) => it.into(),
         }
     }
 }
@@ -851,7 +853,7 @@ impl GeneralConstId {
     pub fn generic_def(self, db: &dyn DefDatabase) -> Option<GenericDefId> {
         match self {
             GeneralConstId::ConstId(it) => Some(it.into()),
-            GeneralConstId::StaticId(_) => None,
+            GeneralConstId::StaticId(it) => Some(it.into()),
             GeneralConstId::ConstBlockId(it) => it.lookup(db).parent.as_generic_def_id(db),
             GeneralConstId::InTypeConstId(it) => it.lookup(db).owner.as_generic_def_id(db),
         }
@@ -897,7 +899,7 @@ impl DefWithBodyId {
     pub fn as_generic_def_id(self, db: &dyn DefDatabase) -> Option<GenericDefId> {
         match self {
             DefWithBodyId::FunctionId(f) => Some(f.into()),
-            DefWithBodyId::StaticId(_) => None,
+            DefWithBodyId::StaticId(s) => Some(s.into()),
             DefWithBodyId::ConstId(c) => Some(c.into()),
             DefWithBodyId::VariantId(c) => Some(c.lookup(db).parent.into()),
             // FIXME: stable rust doesn't allow generics in constants, but we should
@@ -922,23 +924,28 @@ impl_from!(FunctionId, ConstId, TypeAliasId for AssocItemId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum GenericDefId {
-    FunctionId(FunctionId),
     AdtId(AdtId),
-    TraitId(TraitId),
-    TraitAliasId(TraitAliasId),
-    TypeAliasId(TypeAliasId),
-    ImplId(ImplId),
     // consts can have type parameters from their parents (i.e. associated consts of traits)
     ConstId(ConstId),
+    FunctionId(FunctionId),
+    ImplId(ImplId),
+    // can't actually have generics currently, but they might in the future
+    // More importantly, this completes the set of items that contain type references
+    // which is to be used by the signature expression store in the future.
+    StaticId(StaticId),
+    TraitAliasId(TraitAliasId),
+    TraitId(TraitId),
+    TypeAliasId(TypeAliasId),
 }
 impl_from!(
-    FunctionId,
     AdtId(StructId, EnumId, UnionId),
-    TraitId,
-    TraitAliasId,
-    TypeAliasId,
+    ConstId,
+    FunctionId,
     ImplId,
-    ConstId
+    StaticId,
+    TraitAliasId,
+    TraitId,
+    TypeAliasId
     for GenericDefId
 );
 
@@ -969,6 +976,7 @@ impl GenericDefId {
             GenericDefId::TraitAliasId(it) => file_id_and_params_of_item_loc(db, it),
             GenericDefId::ImplId(it) => file_id_and_params_of_item_loc(db, it),
             GenericDefId::ConstId(it) => (it.lookup(db).id.file_id(), None),
+            GenericDefId::StaticId(it) => (it.lookup(db).id.file_id(), None),
         }
     }
 
@@ -1350,6 +1358,7 @@ impl HasModule for GenericDefId {
             GenericDefId::TypeAliasId(it) => it.module(db),
             GenericDefId::ImplId(it) => it.module(db),
             GenericDefId::ConstId(it) => it.module(db),
+            GenericDefId::StaticId(it) => it.module(db),
         }
     }
 }

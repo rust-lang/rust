@@ -396,6 +396,7 @@ impl GlobalState {
             || !self.config.same_source_root_parent_map(&self.local_roots_parent_map)
         {
             let config_change = {
+                let _p = span!(Level::INFO, "GlobalState::process_changes/config_change").entered();
                 let user_config_path = (|| {
                     let mut p = Config::user_config_dir_path()?;
                     p.push("rust-analyzer.toml");
@@ -569,12 +570,12 @@ impl GlobalState {
         if let Some((method, start)) = self.req_queue.incoming.complete(&response.id) {
             if let Some(err) = &response.error {
                 if err.message.starts_with("server panicked") {
-                    self.poke_rust_analyzer_developer(format!("{}, check the log", err.message))
+                    self.poke_rust_analyzer_developer(format!("{}, check the log", err.message));
                 }
             }
 
             let duration = start.elapsed();
-            tracing::debug!("handled {} - ({}) in {:0.2?}", method, response.id, duration);
+            tracing::debug!(name: "message response", method, %response.id, duration = format_args!("{:0.2?}", duration));
             self.send(response.into());
         }
     }

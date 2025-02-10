@@ -6,9 +6,9 @@ use base_db::CrateId;
 use chalk_ir::{cast::Cast, Mutability};
 use either::Either;
 use hir_def::{
-    body::HygieneId,
     builtin_type::BuiltinType,
     data::adt::{StructFlags, VariantData},
+    expr_store::HygieneId,
     lang_item::LangItem,
     layout::{TagEncoding, Variants},
     resolver::{HasResolver, TypeNs, ValueNs},
@@ -1644,14 +1644,15 @@ impl Evaluator<'_> {
             Variants::Multiple { tag, tag_encoding, variants, .. } => {
                 let size = tag.size(&*self.target_data_layout).bytes_usize();
                 let offset = layout.fields.offset(0).bytes_usize(); // The only field on enum variants is the tag field
+                let is_signed = tag.is_signed();
                 match tag_encoding {
                     TagEncoding::Direct => {
                         let tag = &bytes[offset..offset + size];
-                        Ok(i128::from_le_bytes(pad16(tag, false)))
+                        Ok(i128::from_le_bytes(pad16(tag, is_signed)))
                     }
                     TagEncoding::Niche { untagged_variant, niche_start, .. } => {
                         let tag = &bytes[offset..offset + size];
-                        let candidate_tag = i128::from_le_bytes(pad16(tag, false))
+                        let candidate_tag = i128::from_le_bytes(pad16(tag, is_signed))
                             .wrapping_sub(*niche_start as i128)
                             as usize;
                         let idx = variants
@@ -2943,10 +2944,10 @@ pub fn render_const_using_debug_impl(
     // a3 = ::core::fmt::Arguments::new_v1(a1, a2)
     // FIXME: similarly, we should call function here, not directly working with memory.
     let a3 = evaluator.heap_allocate(evaluator.ptr_size() * 6, evaluator.ptr_size())?;
-    evaluator.write_memory(a3.offset(2 * evaluator.ptr_size()), &a1.to_bytes())?;
+    evaluator.write_memory(a3, &a1.to_bytes())?;
+    evaluator.write_memory(a3.offset(evaluator.ptr_size()), &[1])?;
+    evaluator.write_memory(a3.offset(2 * evaluator.ptr_size()), &a2.to_bytes())?;
     evaluator.write_memory(a3.offset(3 * evaluator.ptr_size()), &[1])?;
-    evaluator.write_memory(a3.offset(4 * evaluator.ptr_size()), &a2.to_bytes())?;
-    evaluator.write_memory(a3.offset(5 * evaluator.ptr_size()), &[1])?;
     let Some(ValueNs::FunctionId(format_fn)) = resolver.resolve_path_in_value_ns_fully(
         db.upcast(),
         &hir_def::path::Path::from_known_path_with_no_generic(path![std::fmt::format]),

@@ -241,7 +241,7 @@ RecordFieldList =
 
 RecordField =
   Attr* Visibility?
-  Name ':' Type
+  Name ':' Type ('=' Expr)?
 
 TupleFieldList =
   '(' fields:(TupleField (',' TupleField)* ','?)? ')'

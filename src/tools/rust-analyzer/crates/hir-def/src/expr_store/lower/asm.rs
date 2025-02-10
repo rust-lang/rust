@@ -9,7 +9,7 @@ use syntax::{
 use tt::TextRange;
 
 use crate::{
-    body::lower::{ExprCollector, FxIndexSet},
+    expr_store::lower::{ExprCollector, FxIndexSet},
     hir::{AsmOperand, AsmOptions, Expr, ExprId, InlineAsm, InlineAsmRegOrRegClass},
 };
 

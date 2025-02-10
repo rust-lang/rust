@@ -230,7 +230,7 @@ fn rust_project_is_proc_macro_has_proc_macro_dep() {
     let crate_data = &crate_graph[crate_id];
     // Assert that the project crate with `is_proc_macro` has a dependency
     // on the proc_macro sysroot crate.
-    crate_data.dependencies.iter().find(|&dep| dep.name.deref() == "proc_macro").unwrap();
+    crate_data.dependencies.iter().find(|&dep| *dep.name.deref() == sym::proc_macro).unwrap();
 }
 
 #[test]

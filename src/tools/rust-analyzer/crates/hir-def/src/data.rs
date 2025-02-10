@@ -95,10 +95,14 @@ impl FunctionData {
             .map(Box::new);
         let rustc_allow_incoherent_impl = attrs.by_key(&sym::rustc_allow_incoherent_impl).exists();
         if flags.contains(FnFlags::HAS_UNSAFE_KW)
-            && !crate_graph[krate].edition.at_least_2024()
             && attrs.by_key(&sym::rustc_deprecated_safe_2024).exists()
         {
             flags.remove(FnFlags::HAS_UNSAFE_KW);
+            flags.insert(FnFlags::DEPRECATED_SAFE_2024);
+        }
+
+        if attrs.by_key(&sym::target_feature).exists() {
+            flags.insert(FnFlags::HAS_TARGET_FEATURE);
         }
 
         Arc::new(FunctionData {
@@ -148,12 +152,20 @@ impl FunctionData {
         self.flags.contains(FnFlags::HAS_UNSAFE_KW)
     }
 
+    pub fn is_deprecated_safe_2024(&self) -> bool {
+        self.flags.contains(FnFlags::DEPRECATED_SAFE_2024)
+    }
+
     pub fn is_safe(&self) -> bool {
         self.flags.contains(FnFlags::HAS_SAFE_KW)
     }
 
     pub fn is_varargs(&self) -> bool {
         self.flags.contains(FnFlags::IS_VARARGS)
+    }
+
+    pub fn has_target_feature(&self) -> bool {
+        self.flags.contains(FnFlags::HAS_TARGET_FEATURE)
     }
 }
 

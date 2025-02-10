@@ -262,7 +262,8 @@ fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<Generic
         GenericDefId::FunctionId(it) => it.lookup(db).container,
         GenericDefId::TypeAliasId(it) => it.lookup(db).container,
         GenericDefId::ConstId(it) => it.lookup(db).container,
-        GenericDefId::AdtId(_)
+        GenericDefId::StaticId(_)
+        | GenericDefId::AdtId(_)
         | GenericDefId::TraitId(_)
         | GenericDefId::ImplId(_)
         | GenericDefId::TraitAliasId(_) => return None,
