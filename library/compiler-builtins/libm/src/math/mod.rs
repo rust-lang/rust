@@ -94,7 +94,6 @@ cfg_if! {
 // Private modules
 mod arch;
 mod expo2;
-mod fenv;
 mod k_cos;
 mod k_cosf;
 mod k_expo2;

@@ -5,12 +5,15 @@
  */
 
 use super::Float;
-use super::fenv::Rounding;
-use super::support::cold_path;
+use super::support::{FpResult, Round, cold_path};
 
 /// Compute the cube root of the argument.
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn cbrt(x: f64) -> f64 {
+    cbrt_round(x, Round::Nearest).val
+}
+
+pub fn cbrt_round(x: f64, round: Round) -> FpResult<f64> {
     const ESCALE: [f64; 3] = [
         1.0,
         hf64!("0x1.428a2f98d728bp+0"), /* 2^(1/3) */
@@ -33,8 +36,6 @@ pub fn cbrt(x: f64) -> f64 {
 
     let off = [hf64!("0x1p-53"), 0.0, 0.0, 0.0];
 
-    let rm = Rounding::get();
-
     /* rm=0 for rounding to nearest, and other values for directed roundings */
     let hx: u64 = x.to_bits();
     let mut mant: u64 = hx & f64::SIG_MASK;
@@ -51,7 +52,7 @@ pub fn cbrt(x: f64) -> f64 {
         to that for x a signaling NaN, it correctly triggers
         the invalid exception. */
         if e == f64::EXP_SAT || ix == 0 {
-            return x + x;
+            return FpResult::ok(x + x);
         }
 
         let nz = ix.leading_zeros() - 11; /* subnormal */
@@ -124,8 +125,8 @@ pub fn cbrt(x: f64) -> f64 {
      * from ulp(1);
      * for rounding to nearest, ady0 is tiny when dy is near from 1/2 ulp(1),
      * or from 3/2 ulp(1). */
-    let mut ady0: f64 = (ady - off[rm as usize]).abs();
-    let mut ady1: f64 = (ady - (hf64!("0x1p-52") + off[rm as usize])).abs();
+    let mut ady0: f64 = (ady - off[round as usize]).abs();
+    let mut ady1: f64 = (ady - (hf64!("0x1p-52") + off[round as usize])).abs();
 
     if ady0 < hf64!("0x1p-75") || ady1 < hf64!("0x1p-75") {
         cold_path();
@@ -140,8 +141,8 @@ pub fn cbrt(x: f64) -> f64 {
         dy = (y1 - y) - dy;
         y1 = y;
         ady = dy.abs();
-        ady0 = (ady - off[rm as usize]).abs();
-        ady1 = (ady - (hf64!("0x1p-52") + off[rm as usize])).abs();
+        ady0 = (ady - off[round as usize]).abs();
+        ady1 = (ady - (hf64!("0x1p-52") + off[round as usize])).abs();
 
         if ady0 < hf64!("0x1p-98") || ady1 < hf64!("0x1p-98") {
             cold_path();
@@ -157,7 +158,7 @@ pub fn cbrt(x: f64) -> f64 {
                 y1 = hf64!("0x1.de87aa837820fp+0").copysign(zz);
             }
 
-            if rm != Rounding::Nearest {
+            if round != Round::Nearest {
                 let wlist = [
                     (hf64!("0x1.3a9ccd7f022dbp+0"), hf64!("0x1.1236160ba9b93p+0")), // ~ 0x1.1236160ba9b930000000000001e7e8fap+0
                     (hf64!("0x1.7845d2faac6fep+0"), hf64!("0x1.23115e657e49cp+0")), // ~ 0x1.23115e657e49c0000000000001d7a799p+0
@@ -170,7 +171,7 @@ pub fn cbrt(x: f64) -> f64 {
 
                 for (a, b) in wlist {
                     if azz == a {
-                        let tmp = if rm as u64 + sign == 2 { hf64!("0x1p-52") } else { 0.0 };
+                        let tmp = if round as u64 + sign == 2 { hf64!("0x1p-52") } else { 0.0 };
                         y1 = (b + tmp).copysign(zz);
                     }
                 }
@@ -194,7 +195,7 @@ pub fn cbrt(x: f64) -> f64 {
         }
     }
 
-    f64::from_bits(cvt3)
+    FpResult::ok(f64::from_bits(cvt3))
 }
 
 fn fmaf64(x: f64, y: f64, z: f64) -> f64 {

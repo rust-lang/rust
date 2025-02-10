@@ -41,10 +41,23 @@
 //! Goldschmidt has the advantage over Newton-Raphson that `sqrt(x)` and `1/sqrt(x)` are
 //! computed at the same time, i.e. there is no need to calculate `1/sqrt(x)` and invert it.
 
-use super::super::support::{IntTy, cold_path, raise_invalid};
+use super::super::support::{FpResult, IntTy, Round, Status, cold_path};
 use super::super::{CastFrom, CastInto, DInt, Float, HInt, Int, MinInt};
 
 pub fn sqrt<F>(x: F) -> F
+where
+    F: Float + SqrtHelper,
+    F::Int: HInt,
+    F::Int: From<u8>,
+    F::Int: From<F::ISet2>,
+    F::Int: CastInto<F::ISet1>,
+    F::Int: CastInto<F::ISet2>,
+    u32: CastInto<F::Int>,
+{
+    sqrt_round(x, Round::Nearest).val
+}
+
+pub fn sqrt_round<F>(x: F, _round: Round) -> FpResult<F>
 where
     F: Float + SqrtHelper,
     F::Int: HInt,
@@ -78,17 +91,17 @@ where
 
         // +/-0
         if ix << 1 == zero {
-            return x;
+            return FpResult::ok(x);
         }
 
         // Positive infinity
         if ix == F::EXP_MASK {
-            return x;
+            return FpResult::ok(x);
         }
 
         // NaN or negative
         if ix > F::EXP_MASK {
-            return raise_invalid(x);
+            return FpResult::new(F::NAN, Status::INVALID);
         }
 
         // Normalize subnormals by multiplying by 1.0 << SIG_BITS (e.g. 0x1p52 for doubles).
@@ -215,7 +228,7 @@ where
         y = y + t;
     }
 
-    y
+    FpResult::ok(y)
 }
 
 /// Multiply at the wider integer size, returning the high half.
@@ -329,7 +342,7 @@ impl SqrtHelper for f128 {
 
 /// A U0.16 representation of `1/sqrt(x)`.
 ///
-// / The index is a 7-bit number consisting of a single exponent bit and 6 bits of significand.
+/// The index is a 7-bit number consisting of a single exponent bit and 6 bits of significand.
 #[rustfmt::skip]
 static RSQRT_TAB: [u16; 128] = [
     0xb451, 0xb2f0, 0xb196, 0xb044, 0xaef9, 0xadb6, 0xac79, 0xab43,
@@ -354,7 +367,7 @@ static RSQRT_TAB: [u16; 128] = [
 mod tests {
     use super::*;
 
-    /// Test against edge cases from https://en.cppreference.com/w/cpp/numeric/math/sqrt
+    /// Test behavior specified in IEEE 754 `squareRoot`.
     fn spec_test<F>()
     where
         F: Float + SqrtHelper,
@@ -365,11 +378,22 @@ mod tests {
         F::Int: CastInto<F::ISet2>,
         u32: CastInto<F::Int>,
     {
-        // Not Asserted: FE_INVALID exception is raised if argument is negative.
-        assert!(sqrt(F::NEG_ONE).is_nan());
-        assert!(sqrt(F::NAN).is_nan());
-        for f in [F::ZERO, F::NEG_ZERO, F::INFINITY].iter().copied() {
-            assert_biteq!(sqrt(f), f);
+        // Values that should return a NaN and raise invalid
+        let nan = [F::NEG_INFINITY, F::NEG_ONE, F::NAN, F::MIN];
+
+        // Values that return unaltered
+        let roundtrip = [F::ZERO, F::NEG_ZERO, F::INFINITY];
+
+        for x in nan {
+            let FpResult { val, status } = sqrt_round(x, Round::Nearest);
+            assert!(val.is_nan());
+            assert!(status == Status::INVALID);
+        }
+
+        for x in roundtrip {
+            let FpResult { val, status } = sqrt_round(x, Round::Nearest);
+            assert_biteq!(val, x);
+            assert!(status == Status::OK);
         }
     }
 
