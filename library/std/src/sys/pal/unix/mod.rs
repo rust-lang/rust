@@ -163,6 +163,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_vendor = "unikraft",
         )))]
         {
+            // tidy-keep-sync-with=tidy-ticket-sigpipe
             // We don't want to add this as a public type to std, nor do we
             // want to `include!` a file from the compiler (which would break
             // Miri and xargo for example), so we choose to duplicate these
@@ -175,6 +176,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
                 pub const SIG_IGN: u8 = 2;
                 pub const SIG_DFL: u8 = 3;
             }
+            // tidy-keep-sync-with=tidy-ticket-sigpipe
 
             let (sigpipe_attr_specified, handler) = match sigpipe {
                 sigpipe::DEFAULT => (false, Some(libc::SIG_IGN)),

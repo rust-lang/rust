@@ -3186,6 +3186,7 @@ fn num_decimal_digits(num: usize) -> usize {
 
 // We replace some characters so the CLI output is always consistent and underlines aligned.
 // Keep the following list in sync with `rustc_span::char_width`.
+// FIXME: sync me
 const OUTPUT_REPLACEMENTS: &[(char, &str)] = &[
     // In terminals without Unicode support the following will be garbled, but in *all* terminals
     // the underlying codepoint will be as well. We could gate this replacement behind a "unicode

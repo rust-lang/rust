@@ -209,6 +209,7 @@ impl Lit {
         }
     }
 
+    // tidy-keep-sync-with=tidy-ticket-ast-from_token
     /// Keep this in sync with `Token::can_begin_literal_maybe_minus` excluding unary negation.
     pub fn from_token(token: &Token) -> Option<Lit> {
         match token.uninterpolate().kind {
@@ -223,6 +224,7 @@ impl Lit {
             _ => None,
         }
     }
+    // tidy-keep-sync-with=tidy-ticket-ast-from_token
 }
 
 impl fmt::Display for Lit {
@@ -748,6 +750,7 @@ impl Token {
     ///
     /// In other words, would this token be a valid start of `parse_literal_maybe_minus`?
     ///
+    // tidy-keep-sync-with=tidy-ticket-ast-can_begin_literal_maybe_minus
     /// Keep this in sync with and `Lit::from_token`, excluding unary negation.
     pub fn can_begin_literal_maybe_minus(&self) -> bool {
         match self.uninterpolate().kind {
@@ -774,6 +777,7 @@ impl Token {
             _ => false,
         }
     }
+    // tidy-keep-sync-with=tidy-ticket-ast-can_begin_literal_maybe_minus
 
     pub fn can_begin_string_literal(&self) -> bool {
         match self.uninterpolate().kind {

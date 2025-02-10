@@ -333,10 +333,12 @@ pub(crate) fn run_global_ctxt(
     // typeck function bodies or run the default rustc lints.
     // (see `override_queries` in the `config`)
 
+    // tidy-keep-sync-with=tidy-ticket-sess-time-item_types_checking
     // NOTE: These are copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
     let _ = tcx.sess.time("wf_checking", || {
         tcx.hir().try_par_for_each_module(|module| tcx.ensure_ok().check_mod_type_wf(module))
     });
+    // tidy-keep-sync-with=tidy-ticket-sess-time-item_types_checking
 
     tcx.dcx().abort_if_errors();
 

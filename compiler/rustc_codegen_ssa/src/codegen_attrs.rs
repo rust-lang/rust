@@ -290,6 +290,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         //
                         // This exception needs to be kept in sync with allowing
                         // `#[target_feature]` on `main` and `start`.
+                        // FIXME: sync me
                     } else if !tcx.features().target_feature_11() {
                         feature_err(
                             &tcx.sess,

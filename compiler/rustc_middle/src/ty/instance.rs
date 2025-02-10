@@ -900,6 +900,7 @@ impl<'tcx> Instance<'tcx> {
 
     #[inline(always)]
     // Keep me in sync with try_instantiate_mir_and_normalize_erasing_regions
+    // FIXME: sync me
     pub fn instantiate_mir_and_normalize_erasing_regions<T>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -918,6 +919,7 @@ impl<'tcx> Instance<'tcx> {
 
     #[inline(always)]
     // Keep me in sync with instantiate_mir_and_normalize_erasing_regions
+    // FIXME: sync me
     pub fn try_instantiate_mir_and_normalize_erasing_regions<T>(
         &self,
         tcx: TyCtxt<'tcx>,

@@ -2276,6 +2276,7 @@ pub fn char_width(ch: char) -> usize {
         // Keep the following list in sync with `rustc_errors::emitter::OUTPUT_REPLACEMENTS`. These
         // are control points that we replace before printing with a visible codepoint for the sake
         // of being able to point at them with underlines.
+        // FIXME: sync me
         '\u{0000}' | '\u{0001}' | '\u{0002}' | '\u{0003}' | '\u{0004}' | '\u{0005}'
         | '\u{0006}' | '\u{0007}' | '\u{0008}' | '\u{000B}' | '\u{000C}' | '\u{000D}'
         | '\u{000E}' | '\u{000F}' | '\u{0010}' | '\u{0011}' | '\u{0012}' | '\u{0013}'

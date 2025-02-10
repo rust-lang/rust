@@ -48,6 +48,7 @@ pub fn walk_native_lib_search_dirs<R>(
         f(&sess.target_tlib_path.dir.join("self-contained"), false)?;
     }
 
+    // tidy-keep-sync-with=tidy-ticket-copy_third_party_objects
     // Toolchains for some targets may ship `libunwind.a`, but place it into the main sysroot
     // library directory instead of the self-contained directories.
     // Sanitizer libraries have the same issue and are also linked by name on Apple targets.
@@ -76,6 +77,7 @@ pub fn walk_native_lib_search_dirs<R>(
     }
 
     ControlFlow::Continue(())
+    // tidy-keep-sync-with=tidy-ticket-copy_third_party_objects
 }
 
 pub fn try_find_native_static_library(

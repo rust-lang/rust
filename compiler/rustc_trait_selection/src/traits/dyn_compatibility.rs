@@ -428,6 +428,7 @@ fn virtual_call_violations_for_method<'tcx>(
         } else {
             // We confirm that the `receiver_is_dispatchable` is accurate later,
             // see `check_receiver_correct`. It should be kept in sync with this code.
+            // FIXME: sync me
         }
     }
 

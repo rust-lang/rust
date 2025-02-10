@@ -1,0 +1,256 @@
+{
+  "tag_groups": [
+    {
+      "name": "group_1",
+      "tags": [
+        {
+          "path": "compiler/rustc_ast/src/token.rs",
+          "hash": "2df3e863dc4caffb31a7ddf001517232",
+          "tag": "tidy-ticket-ast-from_token"
+        },
+        {
+          "path": "compiler/rustc_ast/src/token.rs",
+          "hash": "3279df5da05e0455f45630917fe2a797",
+          "tag": "tidy-ticket-ast-can_begin_literal_maybe_minus"
+        },
+        {
+          "path": "compiler/rustc_parse/src/parser/expr.rs",
+          "hash": "479655a8587512fc26f7361d7bbd75a5",
+          "tag": "tidy-ticket-rustc_parse-can_begin_literal_maybe_minus"
+        }
+      ]
+    },
+    {
+      "name": "group_2",
+      "tags": [
+        {
+          "path": "compiler/rustc_builtin_macros/src/assert/context.rs",
+          "hash": "dbac73cc47a451d4822ccd3010c40a0f",
+          "tag": "tidy-ticket-all-expr-kinds"
+        },
+        {
+          "path": "tests/ui/macros/rfc-2011-nicer-assert-messages/all-expr-kinds.rs",
+          "hash": "78ce54cc25baeac3ae07c876db25180c",
+          "tag": "tidy-ticket-all-expr-kinds"
+        }
+      ]
+    },
+    {
+      "name": "group_3",
+      "tags": [
+        {
+          "path": "compiler/rustc_const_eval/src/interpret/validity.rs",
+          "hash": "c4e96ecd3f81dcb54541b8ea41042e8f",
+          "tag": "tidy-ticket-try_visit_primitive"
+        },
+        {
+          "path": "compiler/rustc_const_eval/src/interpret/validity.rs",
+          "hash": "cbe69005510c1a87ab07db601c0d36b8",
+          "tag": "tidy-ticket-visit_value"
+        }
+      ]
+    },
+    {
+      "name": "group_4",
+      "tags": [
+        {
+          "path": "compiler/rustc_data_structures/src/profiling.rs",
+          "hash": "881e7899c7d6904af1bc000594ee0418",
+          "tag": "tidy-ticket-self-profile-events"
+        },
+        {
+          "path": "compiler/rustc_session/src/options.rs",
+          "hash": "012ee5a3b61ee1377744e5c6913fa00a",
+          "tag": "tidy-ticket-self-profile-events"
+        }
+      ]
+    },
+    {
+      "name": "group_5",
+      "tags": [
+        {
+          "path": "compiler/rustc_errors/src/json.rs",
+          "hash": "3963a8c4eee7f87eeb076622b8a92891",
+          "tag": "tidy-ticket-UnusedExterns"
+        },
+        {
+          "path": "src/librustdoc/doctest.rs",
+          "hash": "14da85663568149c9b21686f4b7fa7b0",
+          "tag": "tidy-ticket-UnusedExterns"
+        }
+      ]
+    },
+    {
+      "name": "group_6",
+      "tags": [
+        {
+          "path": "compiler/rustc_middle/src/ty/util.rs",
+          "hash": "cae64b1bc854e7ee81894212facb5bfa",
+          "tag": "tidy-ticket-static_ptr_ty"
+        },
+        {
+          "path": "compiler/rustc_middle/src/ty/util.rs",
+          "hash": "6f5ead08474b4d3e358db5d3c7aef970",
+          "tag": "tidy-ticket-thread_local_ptr_ty"
+        }
+      ]
+    },
+    {
+      "name": "group_7",
+      "tags": [
+        {
+          "path": "compiler/rustc_monomorphize/src/partitioning.rs",
+          "hash": "f4f33e9c14f4e0c3a20b5240ae36a7c8",
+          "tag": "tidy-ticket-short_description"
+        },
+        {
+          "path": "compiler/rustc_codegen_ssa/src/back/write.rs",
+          "hash": "5286f7f76fcf564c98d7a8eaeec39b18",
+          "tag": "tidy-ticket-short_description"
+        }
+      ]
+    },
+    {
+      "name": "group_8",
+      "tags": [
+        {
+          "path": "compiler/rustc_session/src/config/sigpipe.rs",
+          "hash": "330e0776ba5a6c0a7439a5235297f08f",
+          "tag": "tidy-ticket-sigpipe"
+        },
+        {
+          "path": "library/std/src/sys/pal/unix/mod.rs",
+          "hash": "2cdc37081831cdcf44f3331efbe440af",
+          "tag": "tidy-ticket-sigpipe"
+        }
+      ]
+    },
+    {
+      "name": "group_9",
+      "tags": [
+        {
+          "path": "compiler/rustc_next_trait_solver/src/solve/assembly/structural_traits.rs",
+          "hash": "8726918d084e0ac5bb07184008403f88",
+          "tag": "tidy-ticket-extract_tupled_inputs_and_output_from_callable"
+        },
+        {
+          "path": "compiler/rustc_trait_selection/src/traits/select/candidate_assembly.rs",
+          "hash": "be2967d323633c7458533c6cec228273",
+          "tag": "tidy-ticket-assemble_fn_pointer_candidates"
+        }
+      ]
+    },
+    {
+      "name": "group_10",
+      "tags": [
+        {
+          "path": "compiler/rustc_trait_selection/src/traits/project.rs",
+          "hash": "262d10feb1b7ba8d3ffb4a95314bf404",
+          "tag": "tidy-ticket-assemble_candidates_from_impls-UserDefined"
+        },
+        {
+          "path": "compiler/rustc_ty_utils/src/instance.rs",
+          "hash": "3da2773f10aef680bf9880a5adba29c6",
+          "tag": "tidy-ticket-resolve_associated_item-UserDefined"
+        }
+      ]
+    },
+    {
+      "name": "group_11",
+      "tags": [
+        {
+          "path": "library/core/src/ptr/metadata.rs",
+          "hash": "357c958a096c33bed67cfc7212d940a2",
+          "tag": "tidy-ticket-static_assert_expected_bounds_for_metadata"
+        },
+        {
+          "path": "library/coretests/tests/ptr.rs",
+          "hash": "d8c47e54b871d72dfdce56e6a89b5c31",
+          "tag": "tidy-ticket-static_assert_expected_bounds_for_metadata"
+        }
+      ]
+    },
+    {
+      "name": "group_12",
+      "is_off": true,
+      "tags": [
+        {
+          "path": "compiler/rustc_pattern_analysis/src/constructor.rs",
+          "hash": "c17706947fc814aa5648972a5b3dc143",
+          "tag": "tidy-ticket-arity"
+        },
+        {
+          "path": "compiler/rustc_mir_build/src/thir/pattern/deconstruct_pat.rs",
+          "hash": "7ce77b84c142c22530b047703ef209f0",
+          "tag": "tidy-ticket-wildcards"
+        }
+      ]
+    },
+    {
+      "name": "group_13",
+      "is_off": true,
+      "tags": [
+        {
+          "path": "compiler/rustc_hir_analysis/src/lib.rs",
+          "hash": "842e23fb65caf3a96681686131093316",
+          "tag": "tidy-ticket-sess-time-item_types_checking"
+        },
+        {
+          "path": "src/librustdoc/core.rs",
+          "hash": "85d9dd0cbb94fd521e2d15a8ed38a75f",
+          "tag": "tidy-ticket-sess-time-item_types_checking"
+        }
+      ]
+    },
+    {
+      "name": "group_14",
+      "tags": [
+        {
+          "path": "library/core/src/panicking.rs",
+          "hash": "b5387987dd6c927acf5ddfa33fdf3090",
+          "tag": "tidy-ticket-panic-message-nounwind"
+        },
+        {
+          "path": "library/core/src/panicking.rs",
+          "hash": "f07f9a5af83a08e7287cd81226be8834",
+          "tag": "tidy-ticket-panic-message-nobacktrace"
+        },
+        {
+          "path": "compiler/rustc_middle/src/mir/terminator.rs",
+          "hash": "110baa63da1da4d6ae54938b4bbd070f",
+          "tag": "tidy-ticket-panic-message"
+        }
+      ]
+    },
+    {
+      "name": "group_15",
+      "tags": [
+        {
+          "path": "compiler/rustc_next_trait_solver/src/solve/assembly/structural_traits.rs",
+          "hash": "50a549340456169ab3119d1dfecb6f96",
+          "tag": "tidy-ticket-evaluate_host_effect_for_destruct_goal"
+        },
+        {
+          "path": "compiler/rustc_trait_selection/src/traits/effects.rs",
+          "hash": "a280510e2a7424dd874f14ad2180a938",
+          "tag": "tidy-ticket-evaluate_host_effect_for_destruct_goal"
+        }
+      ]
+    },
+    {
+      "name": "group_16",
+      "tags": [
+        {
+          "path": "compiler/rustc_metadata/src/native_libs.rs",
+          "hash": "332941877827af57790ac82c2a40177f",
+          "tag": "tidy-ticket-copy_third_party_objects"
+        },
+        {
+          "path": "src/bootstrap/src/core/build_steps/compile.rs",
+          "hash": "ea843d88787238a509fdc5cb4ad3915b",
+          "tag": "tidy-ticket-copy_third_party_objects"
+        }
+      ]
+    }
+  ]
+}

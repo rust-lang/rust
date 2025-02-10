@@ -255,6 +255,7 @@ where
     }
 }
 
+// tidy-keep-sync-with=tidy-ticket-extract_tupled_inputs_and_output_from_callable
 // Returns a binder of the tupled inputs types and output type from a builtin callable type.
 pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Interner>(
     cx: I,
@@ -393,6 +394,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
         }
     }
 }
+// tidy-keep-sync-with=tidy-ticket-extract_tupled_inputs_and_output_from_callable
 
 /// Relevant types for an async callable, including its inputs, output,
 /// and the return type you get from awaiting the output.
@@ -717,6 +719,7 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
     }
 }
 
+// tidy-keep-sync-with=tidy-ticket-evaluate_host_effect_for_destruct_goal
 // NOTE: Keep this in sync with `evaluate_host_effect_for_destruct_goal` in
 // the old solver, for as long as that exists.
 pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
@@ -794,6 +797,7 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
         }
     }
 }
+// tidy-keep-sync-with=tidy-ticket-evaluate_host_effect_for_destruct_goal
 
 /// Assemble a list of predicates that would be present on a theoretical
 /// user impl for an object type. These predicates must be checked any time
