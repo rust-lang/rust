@@ -41,6 +41,8 @@ pub trait Float:
     const NEG_PI: Self;
     const FRAC_PI_2: Self;
 
+    const MIN_POSITIVE_NORMAL: Self;
+
     /// The bitwidth of the float type
     const BITS: u32;
 
@@ -200,6 +202,9 @@ macro_rules! float_impl {
             const MIN: Self = $from_bits(Self::Int::MAX & !(1 << Self::SIG_BITS));
             const EPSILON: Self = <$ty>::EPSILON;
 
+            // Exponent is a 1 in the LSB
+            const MIN_POSITIVE_NORMAL: Self = $from_bits(1 << Self::SIG_BITS);
+
             const PI: Self = core::$ty::consts::PI;
             const NEG_PI: Self = -Self::PI;
             const FRAC_PI_2: Self = core::$ty::consts::FRAC_PI_2;
@@ -358,6 +363,7 @@ mod tests {
         // results for zero and subnormals.
         assert_eq!(f16::ZERO.exp_unbiased(), -15);
         assert_eq!(f16::from_bits(0x1).exp_unbiased(), -15);
+        assert_eq!(f16::MIN_POSITIVE, f16::MIN_POSITIVE_NORMAL);
 
         // `from_parts`
         assert_biteq!(f16::from_parts(true, f16::EXP_BIAS, 0), -1.0f16);
@@ -383,6 +389,7 @@ mod tests {
         // results for zero and subnormals.
         assert_eq!(f32::ZERO.exp_unbiased(), -127);
         assert_eq!(f32::from_bits(0x1).exp_unbiased(), -127);
+        assert_eq!(f32::MIN_POSITIVE, f32::MIN_POSITIVE_NORMAL);
 
         // `from_parts`
         assert_biteq!(f32::from_parts(true, f32::EXP_BIAS, 0), -1.0f32);
@@ -409,6 +416,7 @@ mod tests {
         // results for zero and subnormals.
         assert_eq!(f64::ZERO.exp_unbiased(), -1023);
         assert_eq!(f64::from_bits(0x1).exp_unbiased(), -1023);
+        assert_eq!(f64::MIN_POSITIVE, f64::MIN_POSITIVE_NORMAL);
 
         // `from_parts`
         assert_biteq!(f64::from_parts(true, f64::EXP_BIAS, 0), -1.0f64);
@@ -436,6 +444,7 @@ mod tests {
         // results for zero and subnormals.
         assert_eq!(f128::ZERO.exp_unbiased(), -16383);
         assert_eq!(f128::from_bits(0x1).exp_unbiased(), -16383);
+        assert_eq!(f128::MIN_POSITIVE, f128::MIN_POSITIVE_NORMAL);
 
         // `from_parts`
         assert_biteq!(f128::from_parts(true, f128::EXP_BIAS, 0), -1.0f128);
