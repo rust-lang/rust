@@ -400,6 +400,15 @@ impl Step for RustAnalyzer {
         // takes effect,
 
         cargo.add_rustc_lib_path(builder);
+
+        // NOTE: we need to skip `src/tools/rust-analyzer/xtask` as they seem to exercise rustup /
+        // stable rustfmt.
+        //
+        // NOTE: you can only skip a specific workspace package via `--skip=...` if you *also*
+        // specify `--workspace`.
+        cargo.arg("--workspace");
+        cargo.arg("--exclude=xtask");
+
         run_cargo_test(
             cargo,
             &[
