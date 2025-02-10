@@ -2115,11 +2115,11 @@ pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
     s
 }
 
-pub(super) fn item_path(ty: ItemType, name: &str) -> String {
-    match ty {
-        ItemType::Module => format!("{}index.html", ensure_trailing_slash(name)),
-        _ => format!("{ty}.{name}.html"),
-    }
+pub(super) fn item_path(ty: ItemType, name: &str) -> impl Display + '_ {
+    fmt::from_fn(move |f| match ty {
+        ItemType::Module => write!(f, "{}index.html", ensure_trailing_slash(name)),
+        _ => write!(f, "{ty}.{name}.html"),
+    })
 }
 
 fn bounds<'a, 'tcx>(
