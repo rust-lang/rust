@@ -49,8 +49,9 @@ impl Thread {
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
         let mut native: libc::pthread_t = mem::zeroed();
-        let mut attr: libc::pthread_attr_t = mem::zeroed();
-        assert_eq!(libc::pthread_attr_init(&mut attr), 0);
+        let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = mem::MaybeUninit::uninit();
+        assert_eq!(libc::pthread_attr_init((&raw mut attr) as *mut _), 0);
+        let mut attr: libc::pthread_attr_t = unsafe { attr.assume_init() };
 
         #[cfg(target_os = "espidf")]
         if stack > 0 {

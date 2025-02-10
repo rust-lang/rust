@@ -319,9 +319,14 @@ mod imp {
     ))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         let mut ret = None;
-        let mut attr: libc::pthread_attr_t = crate::mem::zeroed();
-        #[cfg(target_os = "freebsd")]
-        assert_eq!(libc::pthread_attr_init(&mut attr), 0);
+        let attr: mem::MaybeUninit<libc::pthread_attr_t> = if cfg!(target_os = "freebsd") {
+            let mut attr = mem::MaybeUninit::uninit();
+            assert_eq!(libc::pthread_attr_init((&raw mut attr) as *mut _), 0);
+            attr
+        } else {
+            mem::MaybeUninit::zeroed()
+        };
+        let mut attr = unsafe { attr.assume_init() };
         #[cfg(target_os = "freebsd")]
         let e = libc::pthread_attr_get_np(libc::pthread_self(), &mut attr);
         #[cfg(not(target_os = "freebsd"))]
@@ -509,9 +514,15 @@ mod imp {
     // FIXME: I am probably not unsafe.
     unsafe fn current_guard() -> Option<Range<usize>> {
         let mut ret = None;
-        let mut attr: libc::pthread_attr_t = crate::mem::zeroed();
-        #[cfg(target_os = "freebsd")]
-        assert_eq!(libc::pthread_attr_init(&mut attr), 0);
+        let attr: mem::MaybeUninit<libc::pthread_attr_t> = if cfg!(target_os = "freebsd") {
+            let mut attr = mem::MaybeUninit::uninit();
+            assert_eq!(libc::pthread_attr_init((&raw mut attr) as *mut _), 0);
+            attr
+        } else {
+            mem::MaybeUninit::zeroed()
+        };
+
+        let mut attr = unsafe { attr.assume_init() };
         #[cfg(target_os = "freebsd")]
         let e = libc::pthread_attr_get_np(libc::pthread_self(), &mut attr);
         #[cfg(not(target_os = "freebsd"))]
