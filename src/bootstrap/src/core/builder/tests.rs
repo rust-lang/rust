@@ -954,3 +954,19 @@ fn test_test_coverage() {
         assert_eq!(modes, expected);
     }
 }
+
+#[test]
+fn test_is_builder_target() {
+    let target1 = TargetSelection::from_user(TEST_TRIPLE_1);
+    let target2 = TargetSelection::from_user(TEST_TRIPLE_2);
+
+    for (target1, target2) in [(target1, target2), (target2, target1)] {
+        let mut config = configure("build", &[], &[]);
+        config.build = target1;
+        let build = Build::new(config);
+        let builder = Builder::new(&build);
+
+        assert!(builder.is_builder_target(&target1));
+        assert!(!builder.is_builder_target(&target2));
+    }
+}
