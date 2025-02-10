@@ -513,6 +513,8 @@ declare_features! (
     (incomplete, generic_const_exprs, "1.56.0", Some(76560)),
     /// Allows generic parameters and where-clauses on free & associated const items.
     (incomplete, generic_const_items, "1.73.0", Some(113521)),
+    /// Allows any generic constants being used as pattern type range ends
+    (incomplete, generic_pattern_types, "CURRENT_RUSTC_VERSION", Some(136574)),
     /// Allows registering static items globally, possibly across crates, to iterate over at runtime.
     (unstable, global_registration, "1.80.0", Some(125119)),
     /// Allows using guards in patterns.
