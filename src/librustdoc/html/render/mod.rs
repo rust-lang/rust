@@ -1593,10 +1593,10 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
     (format!("{:#}", ty.print(cx)), out)
 }
 
-pub(crate) fn notable_traits_json<'a>(
-    tys: impl Iterator<Item = &'a clean::Type>,
-    cx: &Context<'_>,
-) -> String {
+pub(crate) fn notable_traits_json(tys: &FxHashSet<clean::Type>, cx: &Context<'_>) -> String {
+    #[expect(rustc::potential_query_instability, reason = "items are sorted by name")]
+    let tys = tys.iter();
+
     let mut mp: Vec<(String, String)> = tys.map(|ty| notable_traits_decl(ty, cx)).collect();
     mp.sort_by(|(name1, _html1), (name2, _html2)| name1.cmp(name2));
     struct NotableTraitsMap(Vec<(String, String)>);

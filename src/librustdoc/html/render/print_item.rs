@@ -284,7 +284,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut String)
             buf,
             format_args!(
                 r#"<script type="text/json" id="notable-traits-data">{}</script>"#,
-                notable_traits_json(types_with_notable_traits.iter(), cx)
+                notable_traits_json(&types_with_notable_traits, cx)
             ),
         );
         types_with_notable_traits.clear();
