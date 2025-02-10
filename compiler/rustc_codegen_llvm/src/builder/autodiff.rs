@@ -52,8 +52,6 @@ fn generate_enzyme_call<'ll>(
     let mut ad_name: String = match attrs.mode {
         DiffMode::Forward => "__enzyme_fwddiff",
         DiffMode::Reverse => "__enzyme_autodiff",
-        DiffMode::ForwardFirst => "__enzyme_fwddiff",
-        DiffMode::ReverseFirst => "__enzyme_autodiff",
         _ => panic!("logic bug in autodiff, unrecognized mode"),
     }
     .to_string();
