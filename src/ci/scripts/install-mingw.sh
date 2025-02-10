@@ -36,8 +36,7 @@ if isWindows && isKnownToBeMingwBuild; then
     esac
 
     msys2Path="c:/msys64"
-    mkdir -p "${msys2Path}/home/${USERNAME}"
-    ciCommandAddPath "/usr/bin"
+    ciCommandAddPath "${msys2Path}/usr/bin"
 
     mingw_dir="mingw${bits}"
 
