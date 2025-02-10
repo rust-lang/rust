@@ -224,7 +224,9 @@ pub struct Config {
     /// The directory containing the compiler sysroot
     pub sysroot_base: PathBuf,
 
-    /// The name of the stage being built (stage1, etc)
+    /// The number of the stage under test.
+    pub stage: u32,
+    /// The id of the stage under test (stage1-xxx, etc).
     pub stage_id: String,
 
     /// The test mode, e.g. ui or debuginfo.

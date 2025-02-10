@@ -33,7 +33,7 @@ fn test_thread_handle() {
     assert!(p.is_ok());
     let mut p = p.unwrap();
 
-    extern "system" {
+    unsafe extern "system" {
         fn ResumeThread(_: BorrowedHandle<'_>) -> u32;
     }
     unsafe {

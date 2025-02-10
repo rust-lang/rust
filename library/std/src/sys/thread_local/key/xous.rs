@@ -59,7 +59,7 @@ static TLS_KEY_INDEX: AtomicUsize = AtomicUsize::new(1);
 static DTORS: AtomicPtr<Node> = AtomicPtr::new(ptr::null_mut());
 
 #[cfg(test)]
-extern "Rust" {
+unsafe extern "Rust" {
     #[link_name = "_ZN16__rust_internals3std3sys4xous16thread_local_key13TLS_KEY_INDEXE"]
     static TLS_KEY_INDEX: AtomicUsize;
 

@@ -4855,7 +4855,7 @@ pub const unsafe fn copysignf128(_x: f128, _y: f128) -> f128 {
 #[cfg(miri)]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize) {
-    extern "Rust" {
+    unsafe extern "Rust" {
         /// Miri-provided extern function to promise that a given pointer is properly aligned for
         /// "symbolic" alignment checks. Will fail if the pointer is not actually aligned or `align` is
         /// not a power of two. Has no effect when alignment checks are concrete (which is the default).

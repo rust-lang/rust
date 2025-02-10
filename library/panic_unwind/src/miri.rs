@@ -7,7 +7,7 @@ use core::any::Any;
 // Must be pointer-sized.
 type Payload = Box<Box<dyn Any + Send>>;
 
-extern "Rust" {
+unsafe extern "Rust" {
     /// Miri-provided extern function to begin unwinding.
     fn miri_start_unwind(payload: *mut u8) -> !;
 }

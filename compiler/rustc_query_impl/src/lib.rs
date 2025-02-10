@@ -11,7 +11,6 @@
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
-use field_offset::offset_of;
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
@@ -89,7 +88,13 @@ where
     where
         QueryCtxt<'tcx>: 'a,
     {
-        self.dynamic.query_state.apply(&qcx.tcx.query_system.states)
+        // Safety:
+        // This is just manually doing the subfield referencing through pointer math.
+        unsafe {
+            &*(&qcx.tcx.query_system.states as *const QueryStates<'tcx>)
+                .byte_add(self.dynamic.query_state)
+                .cast::<QueryState<Self::Key>>()
+        }
     }
 
     #[inline(always)]
@@ -97,7 +102,13 @@ where
     where
         'tcx: 'a,
     {
-        self.dynamic.query_cache.apply(&qcx.tcx.query_system.caches)
+        // Safety:
+        // This is just manually doing the subfield referencing through pointer math.
+        unsafe {
+            &*(&qcx.tcx.query_system.caches as *const QueryCaches<'tcx>)
+                .byte_add(self.dynamic.query_cache)
+                .cast::<Self::Cache>()
+        }
     }
 
     #[inline(always)]

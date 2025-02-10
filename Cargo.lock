@@ -420,9 +420,9 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.2.7"
+version = "1.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a012a0df96dd6d06ba9a1b29d6402d1a5d77c6befd2566afdc26e10603dc93d7"
+checksum = "c7777341816418c02e033934a09f20dc0ccaf65a5201ef8a450ae0105a573fda"
 dependencies = [
  "shlex",
 ]
@@ -1207,16 +1207,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tidy",
-]
-
-[[package]]
-name = "field-offset"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38e2275cc4e4fc009b0669731a1e5ab7ebf11f469eaede2bab9309a5b4d6057f"
-dependencies = [
- "memoffset",
- "rustc_version",
 ]
 
 [[package]]
@@ -2293,15 +2283,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "723e3ebdcdc5c023db1df315364573789f8857c11b631a2fdfad7c00f5c046b4"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "memoffset"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
-dependencies = [
- "autocfg",
 ]
 
 [[package]]
@@ -4173,7 +4154,6 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "either",
- "field-offset",
  "gsgdt",
  "polonius-engine",
  "rustc-rayon-core",
@@ -4421,7 +4401,6 @@ dependencies = [
 name = "rustc_query_impl"
 version = "0.0.0"
 dependencies = [
- "field-offset",
  "measureme",
  "rustc_data_structures",
  "rustc_errors",
