@@ -108,7 +108,7 @@ Whether to allow `r#""#` when `r""` can be used
 
 ---
 **Affected lints:**
-* [`unnecessary_raw_string_hashes`](https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_raw_string_hashes)
+* [`needless_raw_string_hashes`](https://rust-lang.github.io/rust-clippy/master/index.html#needless_raw_string_hashes)
 
 
 ## `allow-panic-in-tests`
