@@ -27,3 +27,11 @@ fn indices_are_correct() {
         assert_eq!(i, abi_data.abi.index());
     }
 }
+
+#[test]
+fn guarantee_lexicographic_ordering() {
+    let abis = ExternAbi::ALL_VARIANTS;
+    let mut sorted_abis = abis.to_vec();
+    sorted_abis.sort_unstable();
+    assert_eq!(abis, sorted_abis);
+}

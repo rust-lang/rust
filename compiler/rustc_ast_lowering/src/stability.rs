@@ -54,17 +54,12 @@ enum GateReason {
 impl fmt::Display for UnstableAbi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Self { abi, .. } = self;
-        let name = abi.to_string();
-        let name = name.trim_matches('"');
         match self.explain {
             GateReason::Experimental => {
-                write!(f, r#"the extern "{name}" ABI is experimental and subject to change"#)
+                write!(f, "the extern {abi} ABI is experimental and subject to change")
             }
             GateReason::ImplDetail => {
-                write!(
-                    f,
-                    r#"the extern "{name}" ABI is an implementation detail and perma-unstable"#
-                )
+                write!(f, "the extern {abi} ABI is an implementation detail and perma-unstable")
             }
         }
     }

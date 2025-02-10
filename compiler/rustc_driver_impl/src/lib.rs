@@ -747,8 +747,7 @@ fn print_crate_info(
                 }
             }
             CallingConventions => {
-                let mut calling_conventions = rustc_abi::all_names();
-                calling_conventions.sort_unstable();
+                let calling_conventions = rustc_abi::all_names();
                 println_info!("{}", calling_conventions.join("\n"));
             }
             RelocationModels
