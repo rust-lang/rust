@@ -40,4 +40,18 @@ fn ergonomic_clone_closure_use_cloned() -> Foo {
     f
 }
 
+fn ergonomic_clone_closure_copy() -> i32 {
+    let i = 1;
+
+    let i1 = use || {
+        i
+    };
+
+    let i2 = use || {
+        i
+    };
+
+    i
+}
+
 fn main() {}

@@ -1,0 +1,23 @@
+#![feature(ergonomic_clones)]
+
+fn parse1() {
+    || use {
+        //~^ ERROR expected one of `async`, `|`, or `||`, found `{`
+    };
+}
+
+fn parse2() {
+    move use || {
+        //~^ ERROR expected one of `async`, `|`, or `||`, found keyword `use`
+    };
+}
+
+fn parse3() {
+    use move || {
+        //~^ ERROR expected identifier, found keyword `move`
+        //~| ERROR expected one of `::`, `;`, or `as`, found `||`
+        // FIXME ideally we should error like in the previous example
+    };
+}
+
+fn main() {}
