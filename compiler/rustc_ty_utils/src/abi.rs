@@ -290,7 +290,7 @@ fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: ExternAbi, c_variadic: bool) -> Conv
         Aapcs { .. } => Conv::ArmAapcs,
         CCmseNonSecureCall => Conv::CCmseNonSecureCall,
         CCmseNonSecureEntry => Conv::CCmseNonSecureEntry,
-        PtxKernel => Conv::PtxKernel,
+        PtxKernel => Conv::GpuKernel,
         Msp430Interrupt => Conv::Msp430Intr,
         X86Interrupt => Conv::X86Intr,
         GpuKernel => Conv::GpuKernel,

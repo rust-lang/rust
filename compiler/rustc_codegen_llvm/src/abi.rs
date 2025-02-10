@@ -687,7 +687,6 @@ impl llvm::CallConv {
             Conv::AvrNonBlockingInterrupt => llvm::AvrNonBlockingInterrupt,
             Conv::ArmAapcs => llvm::ArmAapcsCallConv,
             Conv::Msp430Intr => llvm::Msp430Intr,
-            Conv::PtxKernel => llvm::PtxKernel,
             Conv::X86Fastcall => llvm::X86FastcallCallConv,
             Conv::X86Intr => llvm::X86_Intr,
             Conv::X86Stdcall => llvm::X86StdcallCallConv,

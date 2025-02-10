@@ -543,8 +543,6 @@ pub enum Conv {
 
     Msp430Intr,
 
-    PtxKernel,
-
     GpuKernel,
 
     X86Fastcall,
@@ -701,7 +699,8 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),
             "nvptx64" => {
-                if cx.target_spec().adjust_abi(abi, self.c_variadic) == ExternAbi::PtxKernel {
+                let abi = cx.target_spec().adjust_abi(abi, self.c_variadic);
+                if abi == ExternAbi::PtxKernel || abi == ExternAbi::GpuKernel {
                     nvptx64::compute_ptx_kernel_abi_info(cx, self)
                 } else {
                     nvptx64::compute_abi_info(self)
@@ -860,7 +859,6 @@ impl FromStr for Conv {
             "CCmseNonSecureCall" => Ok(Conv::CCmseNonSecureCall),
             "CCmseNonSecureEntry" => Ok(Conv::CCmseNonSecureEntry),
             "Msp430Intr" => Ok(Conv::Msp430Intr),
-            "PtxKernel" => Ok(Conv::PtxKernel),
             "X86Fastcall" => Ok(Conv::X86Fastcall),
             "X86Intr" => Ok(Conv::X86Intr),
             "X86Stdcall" => Ok(Conv::X86Stdcall),
