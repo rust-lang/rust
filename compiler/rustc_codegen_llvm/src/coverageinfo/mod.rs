@@ -160,21 +160,12 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             CoverageKind::SpanMarker | CoverageKind::BlockMarker { .. } => unreachable!(
                 "marker statement {kind:?} should have been removed by CleanupPostBorrowck"
             ),
-            CoverageKind::CounterIncrement { id } => {
-                // The number of counters passed to `llvm.instrprof.increment` might
-                // be smaller than the number originally inserted by the instrumentor,
-                // if some high-numbered counters were removed by MIR optimizations.
-                // If so, LLVM's profiler runtime will use fewer physical counters.
-                let num_counters = ids_info.num_counters_after_mir_opts();
-                assert!(
-                    num_counters as usize <= function_coverage_info.num_counters,
-                    "num_counters disagreement: query says {num_counters} but function info only has {}",
-                    function_coverage_info.num_counters
-                );
-
+            CoverageKind::VirtualCounter { bcb }
+                if let Some(&id) = ids_info.phys_counter_for_node.get(&bcb) =>
+            {
                 let fn_name = bx.get_pgo_func_name_var(instance);
                 let hash = bx.const_u64(function_coverage_info.function_source_hash);
-                let num_counters = bx.const_u32(num_counters);
+                let num_counters = bx.const_u32(ids_info.num_counters);
                 let index = bx.const_u32(id.as_u32());
                 debug!(
                     "codegen intrinsic instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?}, index={:?})",
@@ -182,10 +173,8 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 );
                 bx.instrprof_increment(fn_name, hash, num_counters, index);
             }
-            CoverageKind::ExpressionUsed { id: _ } => {
-                // Expression-used statements are markers that are handled by
-                // `coverage_ids_info`, so there's nothing to codegen here.
-            }
+            // If a BCB doesn't have an associated physical counter, there's nothing to codegen.
+            CoverageKind::VirtualCounter { .. } => {}
             CoverageKind::CondBitmapUpdate { index, decision_depth } => {
                 let cond_bitmap = coverage_cx
                     .try_get_mcdc_condition_bitmap(&instance, decision_depth)
