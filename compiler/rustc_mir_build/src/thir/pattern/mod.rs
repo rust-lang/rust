@@ -306,10 +306,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
                 PatKind::DerefPattern { subpattern: self.lower_pattern(subpattern), mutability }
             }
-            hir::PatKind::Ref(subpattern, _) => {
+            hir::PatKind::Ref(subpattern, mutbl) => {
                 // Track the default binding mode for the Rust 2024 migration suggestion.
                 if let Some(s) = &mut self.rust_2024_migration {
-                    s.visit_explicit_deref(pat.span);
+                    s.visit_explicit_deref(pat.span, mutbl);
                 }
                 let subpattern = self.lower_pattern(subpattern);
                 if let Some(s) = &mut self.rust_2024_migration {

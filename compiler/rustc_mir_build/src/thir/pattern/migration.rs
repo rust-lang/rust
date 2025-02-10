@@ -228,14 +228,10 @@ impl<'a, 'tcx> PatMigration<'a, 'tcx> {
     /// This should only be called when the pattern type adjustments list `ref_tys` is non-empty.
     /// This should be followed by a call to [`PatMigration::leave_ref`] when we leave the pattern.
     pub(super) fn visit_implicit_derefs(&mut self, pat: &hir::Pat<'_>, ref_tys: &'a [Ty<'tcx>]) {
-        // Remember if this changed the default binding mode, in case we want to label it.
-        let new_real_ref_mutbl = match self.real_default_mode() {
-            ByRef::Yes(Mutability::Not) => Mutability::Not,
-            _ => iter_ref_mutbls(pat.span, ref_tys).min().unwrap(),
-        };
-        self.push_deref(pat.span, ByRef::Yes(new_real_ref_mutbl), PatDerefKind::Implicit {
-            ref_tys,
-        });
+        let mutbl = iter_ref_mutbls(pat.span, ref_tys)
+            .min()
+            .expect("`ref_tys` should have at least one element");
+        self.push_deref(pat.span, mutbl, PatDerefKind::Implicit { ref_tys });
     }
 
     /// Tracks the default binding mode when we're lowering a `&` or `&mut` pattern.
@@ -244,17 +240,25 @@ impl<'a, 'tcx> PatMigration<'a, 'tcx> {
     // dereferences. If reference patterns can match the default binding mode alone, we may need to
     // check `TypeckResults::skipped_ref_pats` to tell if this pattern corresponds to an implicit
     // dereference we've already visited.
-    pub(super) fn visit_explicit_deref(&mut self, pat_span: Span) {
+    pub(super) fn visit_explicit_deref(&mut self, pat_span: Span, mutbl: Mutability) {
         // If this eats a by-ref default binding mode, label the binding mode.
         self.add_default_mode_label_if_needed();
         // Set the default binding mode to by-value.
-        self.push_deref(pat_span, ByRef::No, PatDerefKind::Explicit);
+        self.push_deref(pat_span, mutbl, PatDerefKind::Explicit);
     }
 
     /// Adds a deref to our deref-forest, so that we can track the default binding mode.
     // TODO: this is also for propagating binding mode changes when we suggest adding patterns
-    fn push_deref(&mut self, span: Span, real_default_mode: ByRef, kind: PatDerefKind<'a, 'tcx>) {
+    fn push_deref(&mut self, span: Span, mutbl: Mutability, kind: PatDerefKind<'a, 'tcx>) {
         let parent = self.innermost_deref;
+        // Get the new default binding mode in the pattern the user wrote.
+        let real_default_mode = match kind {
+            PatDerefKind::Implicit { .. } => match self.real_default_mode() {
+                ByRef::Yes(old_mutbl) => ByRef::Yes(Ord::min(mutbl, old_mutbl)),
+                ByRef::No => ByRef::Yes(mutbl),
+            },
+            PatDerefKind::Explicit => ByRef::No,
+        };
         // If this keeps the default binding mode the same, it shares a mode origin with its
         // parent. If it changes the default binding mode, its mode origin is itself.
         let default_mode_origin = if real_default_mode == self.real_default_mode() {
