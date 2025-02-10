@@ -1,3 +1,24 @@
+error[E0658]: wraparound pattern type ranges cause monomorphization time errors
+  --> $DIR/assoc_const.rs:17:19
+   |
+LL | fn foo<T: Foo>(_: pattern_type!(u32 is <T as Foo>::START..=<T as Foo>::END)) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #136574 <https://github.com/rust-lang/rust/issues/136574> for more information
+   = help: add `#![feature(generic_pattern_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: wraparound pattern type ranges cause monomorphization time errors
+  --> $DIR/assoc_const.rs:17:19
+   |
+LL | fn foo<T: Foo>(_: pattern_type!(u32 is <T as Foo>::START..=<T as Foo>::END)) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #136574 <https://github.com/rust-lang/rust/issues/136574> for more information
+   = help: add `#![feature(generic_pattern_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: constant expression depends on a generic parameter
   --> $DIR/assoc_const.rs:17:19
    |
@@ -15,8 +36,29 @@ LL | fn foo<T: Foo>(_: pattern_type!(u32 is <T as Foo>::START..=<T as Foo>::END)
    = note: this may fail depending on what value the parameter takes
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
+error[E0658]: wraparound pattern type ranges cause monomorphization time errors
+  --> $DIR/assoc_const.rs:22:19
+   |
+LL | fn bar<T: Foo>(_: pattern_type!(u32 is T::START..=T::END)) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #136574 <https://github.com/rust-lang/rust/issues/136574> for more information
+   = help: add `#![feature(generic_pattern_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: wraparound pattern type ranges cause monomorphization time errors
+  --> $DIR/assoc_const.rs:22:19
+   |
+LL | fn bar<T: Foo>(_: pattern_type!(u32 is T::START..=T::END)) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #136574 <https://github.com/rust-lang/rust/issues/136574> for more information
+   = help: add `#![feature(generic_pattern_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: constant expression depends on a generic parameter
-  --> $DIR/assoc_const.rs:20:19
+  --> $DIR/assoc_const.rs:22:19
    |
 LL | fn bar<T: Foo>(_: pattern_type!(u32 is T::START..=T::END)) {}
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +66,7 @@ LL | fn bar<T: Foo>(_: pattern_type!(u32 is T::START..=T::END)) {}
    = note: this may fail depending on what value the parameter takes
 
 error: constant expression depends on a generic parameter
-  --> $DIR/assoc_const.rs:20:19
+  --> $DIR/assoc_const.rs:22:19
    |
 LL | fn bar<T: Foo>(_: pattern_type!(u32 is T::START..=T::END)) {}
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -32,5 +74,6 @@ LL | fn bar<T: Foo>(_: pattern_type!(u32 is T::START..=T::END)) {}
    = note: this may fail depending on what value the parameter takes
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 4 previous errors
+error: aborting due to 8 previous errors
 
+For more information about this error, try `rustc --explain E0658`.
