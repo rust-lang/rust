@@ -1,6 +1,6 @@
 // Verify linkage of external symbols in the static relocation model on MSVC.
 //
-//@ compile-flags: -O -C relocation-model=static
+//@ compile-flags: -Copt-level=3 -C relocation-model=static
 //@ aux-build: extern_decl.rs
 //@ only-x86_64-pc-windows-msvc
 

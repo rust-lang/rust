@@ -1,4 +1,4 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 
 // On x86 the closure is inlined in foo() producing something like
 // define i32 @foo() [...] {

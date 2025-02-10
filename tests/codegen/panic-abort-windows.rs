@@ -1,7 +1,7 @@
 // This test is for *-windows only.
 //@ only-windows
 
-//@ compile-flags: -C no-prepopulate-passes -C panic=abort -O
+//@ compile-flags: -C no-prepopulate-passes -C panic=abort -Copt-level=3
 
 #![crate_type = "lib"]
 

@@ -1,4 +1,4 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 #![crate_type = "lib"]
 
 type Demo = [u8; 3];
