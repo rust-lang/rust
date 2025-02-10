@@ -747,7 +747,7 @@ fn print_crate_info(
                 }
             }
             CallingConventions => {
-                let mut calling_conventions = rustc_target::spec::abi::all_names();
+                let mut calling_conventions = rustc_abi::all_names();
                 calling_conventions.sort_unstable();
                 println_info!("{}", calling_conventions.join("\n"));
             }
