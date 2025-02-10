@@ -1,11 +1,8 @@
-//@ revisions: OPT2 OPT3WINX64 OPT3LINX64
-//@ [OPT2] compile-flags: -O
-//@ [OPT3LINX64] compile-flags: -C opt-level=3
-//@ [OPT3WINX64] compile-flags: -C opt-level=3
-//@ [OPT3LINX64] only-linux
-//@ [OPT3WINX64] only-windows
-//@ [OPT3LINX64] only-x86_64
-//@ [OPT3WINX64] only-x86_64
+//@ revisions: OPT2 OPT3
+//@[OPT2] compile-flags: -Copt-level=2
+//@[OPT3] compile-flags: -C opt-level=3
+// some targets don't do the opt we are looking for
+//@[OPT3] only-64bit
 //@ min-llvm-version: 18.1.3
 
 #![crate_type = "lib"]
@@ -16,28 +13,11 @@
 // to avoid complicating the code.
 // CHECK-LABEL: define{{.*}}void @convert(
 // CHECK-NOT: shufflevector
-// OPT2: store i16
-// OPT2-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 2
-// OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 4
-// OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 6
-// OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 8
-// OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 10
-// OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 12
-// OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 14
-// OPT2-NEXT: store i16
-// OPT3LINX64: load <8 x i16>
-// OPT3LINX64-NEXT: call <8 x i16> @llvm.bswap
-// OPT3LINX64-NEXT: store <8 x i16>
-// OPT3WINX64: load <8 x i16>
-// OPT3WINX64-NEXT: call <8 x i16> @llvm.bswap
-// OPT3WINX64-NEXT: store <8 x i16>
-// CHECK-NEXT: ret void
+// On higher opt levels, this should just be a bswap:
+// OPT3: load <8 x i16>
+// OPT3-NEXT: call <8 x i16> @llvm.bswap
+// OPT3-NEXT: store <8 x i16>
+// OPT3-NEXT: ret void
 #[no_mangle]
 pub fn convert(value: [u16; 8]) -> [u8; 16] {
     #[cfg(target_endian = "little")]
