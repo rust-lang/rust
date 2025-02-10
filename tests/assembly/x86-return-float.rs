@@ -1,19 +1,31 @@
 //@ assembly-output: emit-asm
-//@ only-x86
-// FIXME(#114479): LLVM miscompiles loading and storing `f32` and `f64` when SSE is disabled.
-// There's no compiletest directive to ignore a test on i586 only, so just always explicitly enable
-// SSE2.
-// Use the same target CPU as `i686` so that LLVM orders the instructions in the same order.
-//@ compile-flags: -Ctarget-feature=+sse2 -Ctarget-cpu=pentium4
+//@ revisions: sse nosse
+//@[sse] compile-flags: --target i686-unknown-linux-gnu
+//@[sse] needs-llvm-components: x86
+// We make SSE available but don't use it for the ABI.
+//@[nosse] compile-flags: --target i586-unknown-linux-gnu -Ctarget-feature=+sse2 -Ctarget-cpu=pentium4
+//@[nosse] needs-llvm-components: x86
+
 // Force frame pointers to make ASM more consistent between targets
 //@ compile-flags: -O -C force-frame-pointers
 //@ filecheck-flags: --implicit-check-not fld --implicit-check-not fst
-//@ revisions: normal win
-//@[normal] ignore-windows
-//@[win] only-windows
 
-#![crate_type = "lib"]
 #![feature(f16, f128)]
+#![feature(no_core, lang_items, rustc_attrs, repr_simd)]
+#![no_core]
+#![crate_type = "lib"]
+
+#[lang = "sized"]
+trait Sized {}
+
+#[lang = "copy"]
+trait Copy {}
+
+impl Copy for f16 {}
+impl Copy for f32 {}
+impl Copy for f64 {}
+impl Copy for f128 {}
+impl Copy for usize {}
 
 // Tests that returning `f32` and `f64` with the "Rust" ABI on 32-bit x86 doesn't use the x87
 // floating point stack, as loading and storing `f32`s and `f64`s to and from the x87 stack quietens
@@ -24,7 +36,8 @@
 // CHECK-LABEL: return_f32:
 #[no_mangle]
 pub fn return_f32(x: f32) -> f32 {
-    // CHECK: movl {{.*}}(%ebp), %eax
+    // sse: movss {{.*}}(%ebp), %xmm0
+    // nosse: movl {{.*}}(%ebp), %eax
     // CHECK-NOT: ax
     // CHECK: retl
     x
@@ -33,9 +46,11 @@ pub fn return_f32(x: f32) -> f32 {
 // CHECK-LABEL: return_f64:
 #[no_mangle]
 pub fn return_f64(x: f64) -> f64 {
-    // CHECK: movl [[#%d,OFFSET:]](%ebp), %[[PTR:.*]]
-    // CHECK-NEXT: movsd [[#%d,OFFSET+4]](%ebp), %[[VAL:.*]]
-    // CHECK-NEXT: movsd %[[VAL]], (%[[PTR]])
+    // nosse: movl [[#%d,OFFSET:]](%ebp), %[[PTR:.*]]
+    // nosse-NEXT: movsd [[#%d,OFFSET+4]](%ebp), %[[VAL:.*]]
+    // nosse-NEXT: movsd %[[VAL]], (%[[PTR]])
+    // sse: movsd {{.*}}(%ebp), %xmm0
+    // sse-NOT: ax
     // CHECK: retl
     x
 }
@@ -148,7 +163,8 @@ pub unsafe fn call_f32(x: &mut f32) {
     }
     // CHECK: movl {{.*}}(%ebp), %[[PTR:.*]]
     // CHECK: calll {{()|_}}get_f32
-    // CHECK-NEXT: movl %eax, (%[[PTR]])
+    // sse-NEXT: movss %xmm0, (%[[PTR]])
+    // nosse-NEXT: movl %eax, (%[[PTR]])
     *x = get_f32();
 }
 
@@ -160,8 +176,9 @@ pub unsafe fn call_f64(x: &mut f64) {
     }
     // CHECK: movl {{.*}}(%ebp), %[[PTR:.*]]
     // CHECK: calll {{()|_}}get_f64
-    // CHECK: movsd {{.*}}(%{{ebp|esp}}), %[[VAL:.*]]
-    // CHECK-NEXT: movsd %[[VAL:.*]], (%[[PTR]])
+    // sse: movlps %xmm0, (%[[PTR]])
+    // nosse: movsd {{.*}}(%{{ebp|esp}}), %[[VAL:.*]]
+    // nosse-NEXT: movsd %[[VAL:.*]], (%[[PTR]])
     *x = get_f64();
 }
 
@@ -190,10 +207,8 @@ pub unsafe fn call_f64_f64(x: &mut (f64, f64)) {
     }
     // CHECK: movl {{.*}}(%ebp), %[[PTR:.*]]
     // CHECK: calll {{()|_}}get_f64_f64
-    // normal: movsd [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
-    // normal-NEXT: movsd [[#%d,OFFSET+8]](%ebp), %[[VAL2:.*]]
-    // win: movsd (%esp), %[[VAL1:.*]]
-    // win-NEXT: movsd 8(%esp), %[[VAL2:.*]]
+    // CHECK: movsd [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
+    // CHECK-NEXT: movsd [[#%d,OFFSET+8]](%ebp), %[[VAL2:.*]]
     // CHECK-NEXT: movsd %[[VAL1]], (%[[PTR]])
     // CHECK-NEXT: movsd %[[VAL2]], 8(%[[PTR]])
     *x = get_f64_f64();
@@ -207,13 +222,10 @@ pub unsafe fn call_f32_f64(x: &mut (f32, f64)) {
     }
     // CHECK: movl {{.*}}(%ebp), %[[PTR:.*]]
     // CHECK: calll {{()|_}}get_f32_f64
-    // normal: movss [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
-    // normal-NEXT: movsd [[#%d,OFFSET+4]](%ebp), %[[VAL2:.*]]
-    // win: movss (%esp), %[[VAL1:.*]]
-    // win-NEXT: movsd 8(%esp), %[[VAL2:.*]]
+    // CHECK: movss [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
+    // CHECK-NEXT: movsd [[#%d,OFFSET+4]](%ebp), %[[VAL2:.*]]
     // CHECK-NEXT: movss %[[VAL1]], (%[[PTR]])
-    // normal-NEXT: movsd %[[VAL2]], 4(%[[PTR]])
-    // win-NEXT: movsd %[[VAL2]], 8(%[[PTR]])
+    // CHECK-NEXT: movsd %[[VAL2]], 4(%[[PTR]])
     *x = get_f32_f64();
 }
 
@@ -225,10 +237,8 @@ pub unsafe fn call_f64_f32(x: &mut (f64, f32)) {
     }
     // CHECK: movl {{.*}}(%ebp), %[[PTR:.*]]
     // CHECK: calll {{()|_}}get_f64_f32
-    // normal: movsd [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
-    // normal-NEXT: movss [[#%d,OFFSET+8]](%ebp), %[[VAL2:.*]]
-    // win: movsd (%esp), %[[VAL1:.*]]
-    // win-NEXT: movss 8(%esp), %[[VAL2:.*]]
+    // CHECK: movsd [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
+    // CHECK-NEXT: movss [[#%d,OFFSET+8]](%ebp), %[[VAL2:.*]]
     // CHECK-NEXT: movsd %[[VAL1]], (%[[PTR]])
     // CHECK-NEXT: movss %[[VAL2]], 8(%[[PTR]])
     *x = get_f64_f32();
@@ -257,10 +267,8 @@ pub unsafe fn call_f64_other(x: &mut (f64, usize)) {
     }
     // CHECK: movl {{.*}}(%ebp), %[[PTR:.*]]
     // CHECK: calll {{()|_}}get_f64_other
-    // normal: movsd [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
-    // normal-NEXT: movl [[#%d,OFFSET+8]](%ebp), %[[VAL2:.*]]
-    // win: movsd (%esp), %[[VAL1:.*]]
-    // win-NEXT: movl 8(%esp), %[[VAL2:.*]]
+    // CHECK: movsd [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
+    // CHECK-NEXT: movl [[#%d,OFFSET+8]](%ebp), %[[VAL2:.*]]
     // CHECK-NEXT: movsd %[[VAL1]], (%[[PTR]])
     // CHECK-NEXT: movl %[[VAL2]], 8(%[[PTR]])
     *x = get_f64_other();
@@ -289,13 +297,10 @@ pub unsafe fn call_other_f64(x: &mut (usize, f64)) {
     }
     // CHECK: movl {{.*}}(%ebp), %[[PTR:.*]]
     // CHECK: calll {{()|_}}get_other_f64
-    // normal: movl [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
-    // normal-NEXT: movsd [[#%d,OFFSET+4]](%ebp), %[[VAL2:.*]]
-    // win: movl (%esp), %[[VAL1:.*]]
-    // win-NEXT: movsd 8(%esp), %[[VAL2:.*]]
+    // CHECK: movl [[#%d,OFFSET:]](%ebp), %[[VAL1:.*]]
+    // CHECK-NEXT: movsd [[#%d,OFFSET+4]](%ebp), %[[VAL2:.*]]
     // CHECK-NEXT: movl %[[VAL1]], (%[[PTR]])
-    // normal-NEXT: movsd %[[VAL2]], 4(%[[PTR]])
-    // win-NEXT: movsd %[[VAL2]], 8(%[[PTR]])
+    // CHECK-NEXT: movsd %[[VAL2]], 4(%[[PTR]])
     *x = get_other_f64();
 }
 
@@ -307,7 +312,8 @@ pub unsafe fn call_other_f64(x: &mut (usize, f64)) {
 pub fn return_f16(x: f16) -> f16 {
     // CHECK: pushl %ebp
     // CHECK: movl %esp, %ebp
-    // CHECK: movzwl 8(%ebp), %eax
+    // nosse: movzwl 8(%ebp), %eax
+    // sse: pinsrw $0, 8(%ebp), %xmm0
     // CHECK: popl %ebp
     // CHECK: retl
     x
@@ -316,15 +322,18 @@ pub fn return_f16(x: f16) -> f16 {
 // CHECK-LABEL: return_f128:
 #[no_mangle]
 pub fn return_f128(x: f128) -> f128 {
-    // CHECK: movl [[#%d,OFFSET:]](%ebp), %[[PTR:.*]]
-    // CHECK-NEXT: movl [[#%d,OFFSET+4]](%ebp), %[[VAL1:.*]]
-    // CHECK-NEXT: movl [[#%d,OFFSET+8]](%ebp), %[[VAL2:.*]]
-    // CHECK-NEXT: movl [[#%d,OFFSET+12]](%ebp), %[[VAL3:.*]]
-    // CHECK-NEXT: movl [[#%d,OFFSET+16]](%ebp), %[[VAL4:.*]]
-    // CHECK-NEXT: movl %[[VAL4:.*]] 12(%[[PTR]])
-    // CHECK-NEXT: movl %[[VAL3:.*]] 8(%[[PTR]])
-    // CHECK-NEXT: movl %[[VAL2:.*]] 4(%[[PTR]])
-    // CHECK-NEXT: movl %[[VAL1:.*]] (%[[PTR]])
+    // CHECK: pushl %ebp
+    // sse: movaps [[#%d,OFFSET:]](%ebp), %xmm0
+    // nosse: movl [[#%d,OFFSET:]](%ebp), %[[PTR:.*]]
+    // nosse-NEXT: movl [[#%d,OFFSET+4]](%ebp), %[[VAL1:.*]]
+    // nosse-NEXT: movl [[#%d,OFFSET+8]](%ebp), %[[VAL2:.*]]
+    // nosse-NEXT: movl [[#%d,OFFSET+12]](%ebp), %[[VAL3:.*]]
+    // nosse-NEXT: movl [[#%d,OFFSET+16]](%ebp), %[[VAL4:.*]]
+    // nosse-NEXT: movl %[[VAL4:.*]] 12(%[[PTR]])
+    // nosse-NEXT: movl %[[VAL3:.*]] 8(%[[PTR]])
+    // nosse-NEXT: movl %[[VAL2:.*]] 4(%[[PTR]])
+    // nosse-NEXT: movl %[[VAL1:.*]] (%[[PTR]])
+    // CHECK: popl %ebp
     // CHECK: retl
     x
 }

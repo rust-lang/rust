@@ -789,6 +789,13 @@ impl Target {
                         // x87 must be enabled, soft-float must be disabled.
                         FeatureConstraints { required: &["x87"], incompatible: &["soft-float"] }
                     }
+                    Some(RustcAbi::X86Sse2) => {
+                        // Extended hardfloat ABI. x87 and SSE2 must be enabled, soft-float must be disabled.
+                        FeatureConstraints {
+                            required: &["x87", "sse2"],
+                            incompatible: &["soft-float"],
+                        }
+                    }
                     Some(RustcAbi::X86Softfloat) => {
                         // Softfloat ABI, requires corresponding target feature. That feature trumps
                         // `x87` and all other FPU features so those do not matter.
@@ -816,6 +823,7 @@ impl Target {
                         // LLVM handles the rest.
                         FeatureConstraints { required: &["soft-float"], incompatible: &[] }
                     }
+                    Some(r) => panic!("invalid Rust ABI for x86_64: {r:?}"),
                 }
             }
             "arm" => {
