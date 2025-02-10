@@ -10,7 +10,6 @@ MINGW_ARCHIVE_32="i686-14.1.0-release-posix-dwarf-msvcrt-rt_v12-rev0.7z"
 MINGW_ARCHIVE_64="x86_64-14.1.0-release-posix-seh-msvcrt-rt_v12-rev0.7z"
 
 if isWindows && isKnownToBeMingwBuild; then
-
     case "${CI_JOB_NAME}" in
         *i686*)
             bits=32
@@ -40,6 +39,5 @@ if isWindows && isKnownToBeMingwBuild; then
 
     curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
     7z x -y mingw.7z > /dev/null
-    ciCommandAddPath "/usr/bin"
     ciCommandAddPath "$(pwd)/${mingw_dir}/bin"
 fi

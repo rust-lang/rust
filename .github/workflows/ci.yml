@@ -40,7 +40,6 @@ env:
   TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
   # This will be empty in PR jobs.
   TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
-  MSYS2_PATH_TYPE: inherit
 jobs:
   # The job matrix for `calculate_matrix` is defined in src/ci/github-actions/jobs.yml.
   # It calculates which jobs should be executed, based on the data of the ${{ github }} context.
@@ -150,9 +149,6 @@ jobs:
 
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
-      
-      - name: show the current environment
-        run: src/ci/scripts/dump-environment.sh
 
       - name: install ninja
         run: src/ci/scripts/install-ninja.sh
@@ -176,10 +172,10 @@ jobs:
 
       - name: ensure the stable version number is correct
         run: src/ci/scripts/verify-stable-version-number.sh
-      
+
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
-      
+
       - name: exit
         run: exit 1
 
