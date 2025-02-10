@@ -914,8 +914,6 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
     let mode = match mode.as_str() {
         "Forward" => DiffMode::Forward,
         "Reverse" => DiffMode::Reverse,
-        "ForwardFirst" => DiffMode::ForwardFirst,
-        "ReverseFirst" => DiffMode::ReverseFirst,
         _ => {
             span_bug!(mode.span, "rustc_autodiff attribute contains invalid mode");
         }

@@ -1049,12 +1049,12 @@ pub fn rustc_cargo(
     // <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Internal.20lint.20for.20raw.20.60print!.60.20and.20.60println!.60.3F>.
     cargo.rustflag("-Zon-broken-pipe=kill");
 
-    // We temporarily disable linking here as part of some refactoring.
-    // This way, people can manually use -Z llvm-plugins and -C passes=enzyme for now.
-    // In a follow-up PR, we will re-enable linking here and load the pass for them.
-    //if builder.config.llvm_enzyme {
-    //    cargo.rustflag("-l").rustflag("Enzyme-19");
-    //}
+    // We want to link against registerEnzyme and in the future we want to use additional
+    // functionality from Enzyme core. For that we need to link against Enzyme.
+    // FIXME(ZuseZ4): Get the LLVM version number automatically instead of hardcoding it.
+    if builder.config.llvm_enzyme {
+        cargo.rustflag("-l").rustflag("Enzyme-19");
+    }
 
     // Building with protected visibility reduces the number of dynamic relocations needed, giving
     // us a faster startup time. However GNU ld < 2.40 will error if we try to link a shared object
@@ -1233,6 +1233,9 @@ pub fn rustc_cargo_env(
 fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
     if builder.is_rust_llvm(target) {
         cargo.env("LLVM_RUSTLLVM", "1");
+    }
+    if builder.config.llvm_enzyme {
+        cargo.env("LLVM_ENZYME", "1");
     }
     let llvm::LlvmResult { llvm_config, .. } = builder.ensure(llvm::Llvm { target });
     cargo.env("LLVM_CONFIG", &llvm_config);
