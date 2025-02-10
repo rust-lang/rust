@@ -76,6 +76,8 @@ pub(super) fn check<'tcx>(
         && local == pat.hir_id
         && !assignval.span.from_expansion()
         && switch_to_eager_eval(cx, assignval)
+        // `assignval` must not reference the iterator
+        && !is_local_used(cx, assignval, local)
         // The `fill` method cannot be used if the slice's element type does not implement the `Clone` trait.
         && let Some(clone_trait) = cx.tcx.lang_items().clone_trait()
         && implements_trait(cx, cx.typeck_results().expr_ty(recv), clone_trait, &[])

@@ -115,3 +115,11 @@ fn issue_14192() {
         tmp[0] = i;
     }
 }
+
+fn issue14189() {
+    // Should not lint because `!*b` is not constant
+    let mut tmp = vec![1, 2, 3];
+    for b in &mut tmp {
+        *b = !*b;
+    }
+}
