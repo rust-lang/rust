@@ -150,7 +150,7 @@ note: function defined here
   --> $DIR/invalid_arguments.rs:8:4
    |
 LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^^^^^ -------  -------  --------
+   |    ^^^^^^^^^^^^^^ -------  -------
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:29:3
@@ -164,7 +164,7 @@ note: function defined here
   --> $DIR/invalid_arguments.rs:8:4
    |
 LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^^^^^ -------  -------  --------
+   |    ^^^^^^^^^^^^^^ -------           --------
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:30:3
@@ -178,7 +178,7 @@ note: function defined here
   --> $DIR/invalid_arguments.rs:8:4
    |
 LL | fn three_arg_diff(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^^^^^ -------  -------  --------
+   |    ^^^^^^^^^^^^^^          -------  --------
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:32:3
@@ -249,7 +249,7 @@ note: function defined here
   --> $DIR/invalid_arguments.rs:9:4
    |
 LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
-   |    ^^^^^^^^^^^^^^^^ -------  -------  --------
+   |    ^^^^^^^^^^^^^^^^ -------  -------
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:39:3
@@ -263,7 +263,7 @@ note: function defined here
   --> $DIR/invalid_arguments.rs:9:4
    |
 LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
-   |    ^^^^^^^^^^^^^^^^ -------  -------  --------
+   |    ^^^^^^^^^^^^^^^^ -------           --------
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:40:3
@@ -277,7 +277,7 @@ note: function defined here
   --> $DIR/invalid_arguments.rs:9:4
    |
 LL | fn three_arg_repeat(_a: i32, _b: i32, _c: &str) {}
-   |    ^^^^^^^^^^^^^^^^ -------  -------  --------
+   |    ^^^^^^^^^^^^^^^^          -------  --------
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/invalid_arguments.rs:42:3

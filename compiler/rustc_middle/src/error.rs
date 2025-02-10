@@ -37,6 +37,20 @@ pub struct OpaqueHiddenTypeMismatch<'tcx> {
     pub sub: TypeMismatchReason,
 }
 
+#[derive(Diagnostic)]
+#[diag(middle_unsupported_union)]
+pub struct UnsupportedUnion {
+    pub ty_name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_autodiff_unsafe_inner_const_ref)]
+pub struct AutodiffUnsafeInnerConstRef {
+    #[primary_span]
+    pub span: Span,
+    pub ty: String,
+}
+
 #[derive(Subdiagnostic)]
 pub enum TypeMismatchReason {
     #[label(middle_conflict_types)]
@@ -128,6 +142,9 @@ impl fmt::Debug for CustomSubdiagnostic<'_> {
 pub enum LayoutError<'tcx> {
     #[diag(middle_unknown_layout)]
     Unknown { ty: Ty<'tcx> },
+
+    #[diag(middle_too_generic)]
+    TooGeneric { ty: Ty<'tcx> },
 
     #[diag(middle_values_too_big)]
     Overflow { ty: Ty<'tcx> },

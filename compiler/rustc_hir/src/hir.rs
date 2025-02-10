@@ -15,6 +15,7 @@ pub use rustc_ast::{
 };
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::LocalDefId;
@@ -30,7 +31,7 @@ use crate::LangItem;
 use crate::def::{CtorKind, DefKind, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
 pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
-use crate::intravisit::FnKind;
+use crate::intravisit::{FnKind, VisitorExt};
 
 #[derive(Debug, Copy, Clone, HashStable_Generic)]
 pub struct Lifetime {
@@ -205,7 +206,7 @@ pub type UsePath<'hir> = Path<'hir, SmallVec<[Res; 3]>>;
 
 impl Path<'_> {
     pub fn is_global(&self) -> bool {
-        !self.segments.is_empty() && self.segments[0].ident.name == kw::PathRoot
+        self.segments.first().is_some_and(|segment| segment.ident.name == kw::PathRoot)
     }
 }
 
@@ -263,14 +264,58 @@ impl<'hir> PathSegment<'hir> {
 /// So, `ConstArg` (specifically, [`ConstArgKind`]) distinguishes between const args
 /// that are [just paths](ConstArgKind::Path) (currently just bare const params)
 /// versus const args that are literals or have arbitrary computations (e.g., `{ 1 + 3 }`).
+///
+/// The `Unambig` generic parameter represents whether the position this const is from is
+/// unambiguously a const or ambiguous as to whether it is a type or a const. When in an
+/// ambiguous context the parameter is instantiated with an uninhabited type making the
+/// [`ConstArgKind::Infer`] variant unusable and [`GenericArg::Infer`] is used instead.
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
-pub struct ConstArg<'hir> {
+#[repr(C)]
+pub struct ConstArg<'hir, Unambig = ()> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
-    pub kind: ConstArgKind<'hir>,
+    pub kind: ConstArgKind<'hir, Unambig>,
+}
+
+impl<'hir> ConstArg<'hir, AmbigArg> {
+    /// Converts a `ConstArg` in an ambiguous position to one in an unambiguous position.
+    ///
+    /// Functions accepting an unambiguous consts may expect the [`ConstArgKind::Infer`] variant
+    /// to be used. Care should be taken to separately handle infer consts when calling this
+    /// function as it cannot be handled by downstream code making use of the returned const.
+    ///
+    /// In practice this may mean overriding the [`Visitor::visit_infer`][visit_infer] method on hir visitors, or
+    /// specifically matching on [`GenericArg::Infer`] when handling generic arguments.
+    ///
+    /// [visit_infer]: [rustc_hir::intravisit::Visitor::visit_infer]
+    pub fn as_unambig_ct(&self) -> &ConstArg<'hir> {
+        // SAFETY: `ConstArg` is `repr(C)` and `ConstArgKind` is marked `repr(u8)` so that the
+        // layout is the same across different ZST type arguments.
+        let ptr = self as *const ConstArg<'hir, AmbigArg> as *const ConstArg<'hir, ()>;
+        unsafe { &*ptr }
+    }
 }
 
 impl<'hir> ConstArg<'hir> {
+    /// Converts a `ConstArg` in an unambigous position to one in an ambiguous position. This is
+    /// fallible as the [`ConstArgKind::Infer`] variant is not present in ambiguous positions.
+    ///
+    /// Functions accepting ambiguous consts will not handle the [`ConstArgKind::Infer`] variant, if
+    /// infer consts are relevant to you then care should be taken to handle them separately.
+    pub fn try_as_ambig_ct(&self) -> Option<&ConstArg<'hir, AmbigArg>> {
+        if let ConstArgKind::Infer(_, ()) = self.kind {
+            return None;
+        }
+
+        // SAFETY: `ConstArg` is `repr(C)` and `ConstArgKind` is marked `repr(u8)` so that the layout is
+        // the same across different ZST type arguments. We also asserted that the `self` is
+        // not a `ConstArgKind::Infer` so there is no risk of transmuting a `()` to `AmbigArg`.
+        let ptr = self as *const ConstArg<'hir> as *const ConstArg<'hir, AmbigArg>;
+        Some(unsafe { &*ptr })
+    }
+}
+
+impl<'hir, Unambig> ConstArg<'hir, Unambig> {
     pub fn anon_const_hir_id(&self) -> Option<HirId> {
         match self.kind {
             ConstArgKind::Anon(ac) => Some(ac.hir_id),
@@ -282,14 +327,15 @@ impl<'hir> ConstArg<'hir> {
         match self.kind {
             ConstArgKind::Path(path) => path.span(),
             ConstArgKind::Anon(anon) => anon.span,
-            ConstArgKind::Infer(span) => span,
+            ConstArgKind::Infer(span, _) => span,
         }
     }
 }
 
 /// See [`ConstArg`].
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
-pub enum ConstArgKind<'hir> {
+#[repr(u8, C)]
+pub enum ConstArgKind<'hir, Unambig = ()> {
     /// **Note:** Currently this is only used for bare const params
     /// (`N` where `fn foo<const N: usize>(...)`),
     /// not paths to any const (`N` where `const N: usize = ...`).
@@ -297,11 +343,9 @@ pub enum ConstArgKind<'hir> {
     /// However, in the future, we'll be using it for all of those.
     Path(QPath<'hir>),
     Anon(&'hir AnonConst),
-    /// **Note:** Not all inferred consts are represented as
-    /// `ConstArgKind::Infer`. In cases where it is ambiguous whether
-    /// a generic arg is a type or a const, inference variables are
-    /// represented as `GenericArg::Infer` instead.
-    Infer(Span),
+    /// This variant is not always used to represent inference consts, sometimes
+    /// [`GenericArg::Infer`] is used instead.
+    Infer(Span, Unambig),
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -313,19 +357,24 @@ pub struct InferArg {
 
 impl InferArg {
     pub fn to_ty(&self) -> Ty<'static> {
-        Ty { kind: TyKind::Infer, span: self.span, hir_id: self.hir_id }
+        Ty { kind: TyKind::Infer(()), span: self.span, hir_id: self.hir_id }
     }
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum GenericArg<'hir> {
     Lifetime(&'hir Lifetime),
-    Type(&'hir Ty<'hir>),
-    Const(&'hir ConstArg<'hir>),
-    /// **Note:** Inference variables are only represented as
-    /// `GenericArg::Infer` in cases where it is ambiguous whether
-    /// a generic arg is a type or a const. Otherwise, inference variables
-    /// are represented as `TyKind::Infer` or `ConstArgKind::Infer`.
+    Type(&'hir Ty<'hir, AmbigArg>),
+    Const(&'hir ConstArg<'hir, AmbigArg>),
+    /// Inference variables in [`GenericArg`] are always represnted by
+    /// `GenericArg::Infer` instead of the `Infer` variants on [`TyKind`] and
+    /// [`ConstArgKind`] as it is not clear until hir ty lowering whether a
+    /// `_` argument is a type or const argument.
+    ///
+    /// However, some builtin types' generic arguments are represented by [`TyKind`]
+    /// without a [`GenericArg`], instead directly storing a [`Ty`] or [`ConstArg`]. In
+    /// such cases they *are* represented by the `Infer` variants on [`TyKind`] and
+    /// [`ConstArgKind`] as it is not ambiguous whether the argument is a type or const.
     Infer(InferArg),
 }
 
@@ -353,7 +402,7 @@ impl GenericArg<'_> {
             GenericArg::Lifetime(_) => "lifetime",
             GenericArg::Type(_) => "type",
             GenericArg::Const(_) => "constant",
-            GenericArg::Infer(_) => "inferred",
+            GenericArg::Infer(_) => "placeholder",
         }
     }
 
@@ -764,11 +813,8 @@ impl<'hir> Generics<'hir> {
                     && let [.., segment] = trait_ref.path.segments
                     && let Some(ret_ty) = segment.args().paren_sugar_output()
                     && let ret_ty = ret_ty.peel_refs()
-                    && let TyKind::TraitObject(
-                        _,
-                        _,
-                        TraitObjectSyntax::Dyn | TraitObjectSyntax::DynStar,
-                    ) = ret_ty.kind
+                    && let TyKind::TraitObject(_, tagged_ptr) = ret_ty.kind
+                    && let TraitObjectSyntax::Dyn | TraitObjectSyntax::DynStar = tagged_ptr.tag()
                     && ret_ty.span.can_be_used_for_suggestions()
                 {
                     Some(ret_ty.span)
@@ -1015,10 +1061,7 @@ impl Attribute {
 
     pub fn value_lit(&self) -> Option<&MetaItemLit> {
         match &self.kind {
-            AttrKind::Normal(n) => match n.as_ref() {
-                AttrItem { args: AttrArgs::Eq { expr, .. }, .. } => Some(expr),
-                _ => None,
-            },
+            AttrKind::Normal(box AttrItem { args: AttrArgs::Eq { expr, .. }, .. }) => Some(expr),
             _ => None,
         }
     }
@@ -1031,12 +1074,9 @@ impl AttributeExt for Attribute {
 
     fn meta_item_list(&self) -> Option<ThinVec<ast::MetaItemInner>> {
         match &self.kind {
-            AttrKind::Normal(n) => match n.as_ref() {
-                AttrItem { args: AttrArgs::Delimited(d), .. } => {
-                    ast::MetaItemKind::list_from_tokens(d.tokens.clone())
-                }
-                _ => None,
-            },
+            AttrKind::Normal(box AttrItem { args: AttrArgs::Delimited(d), .. }) => {
+                ast::MetaItemKind::list_from_tokens(d.tokens.clone())
+            }
             _ => None,
         }
     }
@@ -1052,23 +1092,16 @@ impl AttributeExt for Attribute {
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     fn ident(&self) -> Option<Ident> {
         match &self.kind {
-            AttrKind::Normal(n) => {
-                if let [ident] = n.path.segments.as_ref() {
-                    Some(*ident)
-                } else {
-                    None
-                }
-            }
-            AttrKind::DocComment(..) => None,
+            AttrKind::Normal(box AttrItem {
+                path: AttrPath { segments: box [ident], .. }, ..
+            }) => Some(*ident),
+            _ => None,
         }
     }
 
     fn path_matches(&self, name: &[Symbol]) -> bool {
         match &self.kind {
-            AttrKind::Normal(n) => {
-                n.path.segments.len() == name.len()
-                    && n.path.segments.iter().zip(name).all(|(s, n)| s.name == *n)
-            }
+            AttrKind::Normal(n) => n.path.segments.iter().map(|segment| &segment.name).eq(name),
             AttrKind::DocComment(..) => false,
         }
     }
@@ -1082,12 +1115,7 @@ impl AttributeExt for Attribute {
     }
 
     fn is_word(&self) -> bool {
-        match &self.kind {
-            AttrKind::Normal(n) => {
-                matches!(n.args, AttrArgs::Empty)
-            }
-            AttrKind::DocComment(..) => false,
-        }
+        matches!(self.kind, AttrKind::Normal(box AttrItem { args: AttrArgs::Empty, .. }))
     }
 
     fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
@@ -1239,13 +1267,13 @@ impl fmt::Debug for OwnerNodes<'_> {
             .field("node", &self.nodes[ItemLocalId::ZERO])
             .field(
                 "parents",
-                &self
-                    .nodes
-                    .iter_enumerated()
-                    .map(|(id, parented_node)| {
-                        debug_fn(move |f| write!(f, "({id:?}, {:?})", parented_node.parent))
-                    })
-                    .collect::<Vec<_>>(),
+                &fmt::from_fn(|f| {
+                    f.debug_list()
+                        .entries(self.nodes.iter_enumerated().map(|(id, parented_node)| {
+                            fmt::from_fn(move |f| write!(f, "({id:?}, {:?})", parented_node.parent))
+                        }))
+                        .finish()
+                }),
             )
             .field("bodies", &self.bodies)
             .field("opt_hash_including_bodies", &self.opt_hash_including_bodies)
@@ -1373,6 +1401,14 @@ impl<'hir> Block<'hir> {
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub struct TyPat<'hir> {
+    #[stable_hasher(ignore)]
+    pub hir_id: HirId,
+    pub kind: TyPatKind<'hir>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Pat<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
@@ -1391,7 +1427,7 @@ impl<'hir> Pat<'hir> {
 
         use PatKind::*;
         match self.kind {
-            Wild | Never | Expr(_) | Range(..) | Binding(.., None) | Path(_) | Err(_) => true,
+            Wild | Never | Expr(_) | Range(..) | Binding(.., None) | Err(_) => true,
             Box(s) | Deref(s) | Ref(s, _) | Binding(.., Some(s)) | Guard(s, _) => s.walk_short_(it),
             Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk_short_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().all(|p| p.walk_short_(it)),
@@ -1418,7 +1454,7 @@ impl<'hir> Pat<'hir> {
 
         use PatKind::*;
         match self.kind {
-            Wild | Never | Expr(_) | Range(..) | Binding(.., None) | Path(_) | Err(_) => {}
+            Wild | Never | Expr(_) | Range(..) | Binding(.., None) | Err(_) => {}
             Box(s) | Deref(s) | Ref(s, _) | Binding(.., Some(s)) | Guard(s, _) => s.walk_(it),
             Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().for_each(|p| p.walk_(it)),
@@ -1546,6 +1582,15 @@ pub enum PatExprKind<'hir> {
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub enum TyPatKind<'hir> {
+    /// A range pattern (e.g., `1..=2` or `1..2`).
+    Range(Option<&'hir ConstArg<'hir>>, Option<&'hir ConstArg<'hir>>, RangeEnd),
+
+    /// A placeholder for a pattern that wasn't well formed in some way.
+    Err(ErrorGuaranteed),
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum PatKind<'hir> {
     /// Represents a wildcard pattern (i.e., `_`).
     Wild,
@@ -1571,9 +1616,6 @@ pub enum PatKind<'hir> {
 
     /// A never pattern `!`.
     Never,
-
-    /// A path pattern for a unit struct/variant or a (maybe-associated) constant.
-    Path(QPath<'hir>),
 
     /// A tuple pattern (e.g., `(a, b)`).
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
@@ -1930,7 +1972,7 @@ impl fmt::Display for ConstContext {
 }
 
 // NOTE: `IntoDiagArg` impl for `ConstContext` lives in `rustc_errors`
-// due to a cyclical dependency between hir that crate.
+// due to a cyclical dependency between hir and that crate.
 
 /// A literal.
 pub type Lit = Spanned<LitKind>;
@@ -2270,6 +2312,18 @@ impl Expr<'_> {
                     [val2],
                     StructTailExpr::None,
                 ),
+            )
+            | (
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeFromCopy, _),
+                    [val1],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeFromCopy, _),
+                    [val2],
+                    StructTailExpr::None,
+                ),
             ) => val1.expr.equivalent_for_indexing(val2.expr),
             (
                 ExprKind::Struct(
@@ -2279,6 +2333,30 @@ impl Expr<'_> {
                 ),
                 ExprKind::Struct(
                     QPath::LangItem(LangItem::Range, _),
+                    [val2, val4],
+                    StructTailExpr::None,
+                ),
+            )
+            | (
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeCopy, _),
+                    [val1, val3],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeCopy, _),
+                    [val2, val4],
+                    StructTailExpr::None,
+                ),
+            )
+            | (
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeInclusiveCopy, _),
+                    [val1, val3],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeInclusiveCopy, _),
                     [val2, val4],
                     StructTailExpr::None,
                 ),
@@ -2311,7 +2389,10 @@ pub fn is_range_literal(expr: &Expr<'_>) -> bool {
                     | LangItem::RangeTo
                     | LangItem::RangeFrom
                     | LangItem::RangeFull
-                    | LangItem::RangeToInclusive,
+                    | LangItem::RangeToInclusive
+                    | LangItem::RangeCopy
+                    | LangItem::RangeFromCopy
+                    | LangItem::RangeInclusiveCopy,
                 ..
             )
         ),
@@ -2555,6 +2636,8 @@ pub enum LocalSource {
     /// A desugared `expr = expr`, where the LHS is a tuple, struct, array or underscore expression.
     /// The span is that of the `=` sign.
     AssignDesugar(Span),
+    /// A contract `#[ensures(..)]` attribute injects a let binding for the check that runs at point of return.
+    Contract,
 }
 
 /// Hints at the original code for a `match _ { .. }`.
@@ -2917,15 +3000,84 @@ impl<'hir> AssocItemConstraintKind<'hir> {
     }
 }
 
+/// An uninhabited enum used to make `Infer` variants on [`Ty`] and [`ConstArg`] be
+/// unreachable. Zero-Variant enums are guaranteed to have the same layout as the never
+/// type.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub struct Ty<'hir> {
+pub enum AmbigArg {}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+#[repr(C)]
+/// Represents a type in the `HIR`.
+///
+/// The `Unambig` generic parameter represents whether the position this type is from is
+/// unambiguously a type or ambiguous as to whether it is a type or a const. When in an
+/// ambiguous context the parameter is instantiated with an uninhabited type making the
+/// [`TyKind::Infer`] variant unusable and [`GenericArg::Infer`] is used instead.
+pub struct Ty<'hir, Unambig = ()> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
-    pub kind: TyKind<'hir>,
     pub span: Span,
+    pub kind: TyKind<'hir, Unambig>,
+}
+
+impl<'hir> Ty<'hir, AmbigArg> {
+    /// Converts a `Ty` in an ambiguous position to one in an unambiguous position.
+    ///
+    /// Functions accepting an unambiguous types may expect the [`TyKind::Infer`] variant
+    /// to be used. Care should be taken to separately handle infer types when calling this
+    /// function as it cannot be handled by downstream code making use of the returned ty.
+    ///
+    /// In practice this may mean overriding the [`Visitor::visit_infer`][visit_infer] method on hir visitors, or
+    /// specifically matching on [`GenericArg::Infer`] when handling generic arguments.
+    ///
+    /// [visit_infer]: [rustc_hir::intravisit::Visitor::visit_infer]
+    pub fn as_unambig_ty(&self) -> &Ty<'hir> {
+        // SAFETY: `Ty` is `repr(C)` and `TyKind` is marked `repr(u8)` so that the layout is
+        // the same across different ZST type arguments.
+        let ptr = self as *const Ty<'hir, AmbigArg> as *const Ty<'hir, ()>;
+        unsafe { &*ptr }
+    }
 }
 
 impl<'hir> Ty<'hir> {
+    /// Converts a `Ty` in an unambigous position to one in an ambiguous position. This is
+    /// fallible as the [`TyKind::Infer`] variant is not present in ambiguous positions.
+    ///
+    /// Functions accepting ambiguous types will not handle the [`TyKind::Infer`] variant, if
+    /// infer types are relevant to you then care should be taken to handle them separately.
+    pub fn try_as_ambig_ty(&self) -> Option<&Ty<'hir, AmbigArg>> {
+        if let TyKind::Infer(()) = self.kind {
+            return None;
+        }
+
+        // SAFETY: `Ty` is `repr(C)` and `TyKind` is marked `repr(u8)` so that the layout is
+        // the same across different ZST type arguments. We also asserted that the `self` is
+        // not a `TyKind::Infer` so there is no risk of transmuting a `()` to `AmbigArg`.
+        let ptr = self as *const Ty<'hir> as *const Ty<'hir, AmbigArg>;
+        Some(unsafe { &*ptr })
+    }
+}
+
+impl<'hir> Ty<'hir, AmbigArg> {
+    pub fn peel_refs(&self) -> &Ty<'hir> {
+        let mut final_ty = self.as_unambig_ty();
+        while let TyKind::Ref(_, MutTy { ty, .. }) = &final_ty.kind {
+            final_ty = ty;
+        }
+        final_ty
+    }
+}
+
+impl<'hir> Ty<'hir> {
+    pub fn peel_refs(&self) -> &Self {
+        let mut final_ty = self;
+        while let TyKind::Ref(_, MutTy { ty, .. }) = &final_ty.kind {
+            final_ty = ty;
+        }
+        final_ty
+    }
+
     /// Returns `true` if `param_def_id` matches the `bounded_ty` of this predicate.
     pub fn as_generic_param(&self) -> Option<(DefId, Ident)> {
         let TyKind::Path(QPath::Resolved(None, path)) = self.kind else {
@@ -2942,25 +3094,17 @@ impl<'hir> Ty<'hir> {
         }
     }
 
-    pub fn peel_refs(&self) -> &Self {
-        let mut final_ty = self;
-        while let TyKind::Ref(_, MutTy { ty, .. }) = &final_ty.kind {
-            final_ty = ty;
-        }
-        final_ty
-    }
-
     pub fn find_self_aliases(&self) -> Vec<Span> {
         use crate::intravisit::Visitor;
         struct MyVisitor(Vec<Span>);
         impl<'v> Visitor<'v> for MyVisitor {
-            fn visit_ty(&mut self, t: &'v Ty<'v>) {
+            fn visit_ty(&mut self, t: &'v Ty<'v, AmbigArg>) {
                 if matches!(
                     &t.kind,
-                    TyKind::Path(QPath::Resolved(_, Path {
-                        res: crate::def::Res::SelfTyAlias { .. },
-                        ..
-                    },))
+                    TyKind::Path(QPath::Resolved(
+                        _,
+                        Path { res: crate::def::Res::SelfTyAlias { .. }, .. },
+                    ))
                 ) {
                     self.0.push(t.span);
                     return;
@@ -2970,7 +3114,7 @@ impl<'hir> Ty<'hir> {
         }
 
         let mut my_visitor = MyVisitor(vec![]);
-        my_visitor.visit_ty(self);
+        my_visitor.visit_ty_unambig(self);
         my_visitor.0
     }
 
@@ -2979,14 +3123,14 @@ impl<'hir> Ty<'hir> {
     pub fn is_suggestable_infer_ty(&self) -> bool {
         fn are_suggestable_generic_args(generic_args: &[GenericArg<'_>]) -> bool {
             generic_args.iter().any(|arg| match arg {
-                GenericArg::Type(ty) => ty.is_suggestable_infer_ty(),
+                GenericArg::Type(ty) => ty.as_unambig_ty().is_suggestable_infer_ty(),
                 GenericArg::Infer(_) => true,
                 _ => false,
             })
         }
         debug!(?self);
         match &self.kind {
-            TyKind::Infer => true,
+            TyKind::Infer(()) => true,
             TyKind::Slice(ty) => ty.is_suggestable_infer_ty(),
             TyKind::Array(ty, length) => {
                 ty.is_suggestable_infer_ty() || matches!(length.kind, ConstArgKind::Infer(..))
@@ -3200,7 +3344,9 @@ pub enum InferDelegationKind {
 
 /// The various kinds of types recognized by the compiler.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub enum TyKind<'hir> {
+// SAFETY: `repr(u8)` is required so that `TyKind<()>` and `TyKind<!>` are layout compatible
+#[repr(u8, C)]
+pub enum TyKind<'hir, Unambig = ()> {
     /// Actual type should be inherited from `DefId` signature
     InferDelegation(DefId, InferDelegationKind),
     /// A variable length slice (i.e., `[T]`).
@@ -3230,21 +3376,22 @@ pub enum TyKind<'hir> {
     TraitAscription(GenericBounds<'hir>),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TraitObject(&'hir [PolyTraitRef<'hir>], &'hir Lifetime, TraitObjectSyntax),
+    ///
+    /// We use pointer tagging to represent a `&'hir Lifetime` and `TraitObjectSyntax` pair
+    /// as otherwise this type being `repr(C)` would result in `TyKind` increasing in size.
+    TraitObject(&'hir [PolyTraitRef<'hir>], TaggedRef<'hir, Lifetime, TraitObjectSyntax>),
     /// Unused for now.
     Typeof(&'hir AnonConst),
-    /// `TyKind::Infer` means the type should be inferred instead of it having been
-    /// specified. This can appear anywhere in a type.
-    ///
-    /// **Note:** Not all inferred types are represented as
-    /// `TyKind::Infer`. In cases where it is ambiguous whether
-    /// a generic arg is a type or a const, inference variables are
-    /// represented as `GenericArg::Infer` instead.
-    Infer,
     /// Placeholder for a type that has failed to be defined.
     Err(rustc_span::ErrorGuaranteed),
     /// Pattern types (`pattern_type!(u32 is 1..)`)
-    Pat(&'hir Ty<'hir>, &'hir Pat<'hir>),
+    Pat(&'hir Ty<'hir>, &'hir TyPat<'hir>),
+    /// `TyKind::Infer` means the type should be inferred instead of it having been
+    /// specified. This can appear anywhere in a type.
+    ///
+    /// This variant is not always used to represent inference types, sometimes
+    /// [`GenericArg::Infer`] is used instead.
+    Infer(Unambig),
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -3299,11 +3446,10 @@ impl<'hir> InlineAsmOperand<'hir> {
     }
 
     pub fn is_clobber(&self) -> bool {
-        matches!(self, InlineAsmOperand::Out {
-            reg: InlineAsmRegOrRegClass::Reg(_),
-            late: _,
-            expr: None
-        })
+        matches!(
+            self,
+            InlineAsmOperand::Out { reg: InlineAsmRegOrRegClass::Reg(_), late: _, expr: None }
+        )
     }
 }
 
@@ -3439,10 +3585,10 @@ impl<'hir> FnRetTy<'hir> {
     }
 
     pub fn is_suggestable_infer_ty(&self) -> Option<&'hir Ty<'hir>> {
-        if let Self::Return(ty) = self {
-            if ty.is_suggestable_infer_ty() {
-                return Some(*ty);
-            }
+        if let Self::Return(ty) = self
+            && ty.is_suggestable_infer_ty()
+        {
+            return Some(*ty);
         }
         None
     }
@@ -3811,11 +3957,11 @@ pub struct FnHeader {
 
 impl FnHeader {
     pub fn is_async(&self) -> bool {
-        matches!(&self.asyncness, IsAsync::Async(_))
+        matches!(self.asyncness, IsAsync::Async(_))
     }
 
     pub fn is_const(&self) -> bool {
-        matches!(&self.constness, Constness::Const)
+        matches!(self.constness, Constness::Const)
     }
 
     pub fn is_unsafe(&self) -> bool {
@@ -3911,16 +4057,16 @@ pub struct Impl<'hir> {
 
 impl ItemKind<'_> {
     pub fn generics(&self) -> Option<&Generics<'_>> {
-        Some(match *self {
-            ItemKind::Fn { ref generics, .. }
-            | ItemKind::TyAlias(_, ref generics)
-            | ItemKind::Const(_, ref generics, _)
-            | ItemKind::Enum(_, ref generics)
-            | ItemKind::Struct(_, ref generics)
-            | ItemKind::Union(_, ref generics)
-            | ItemKind::Trait(_, _, ref generics, _, _)
-            | ItemKind::TraitAlias(ref generics, _)
-            | ItemKind::Impl(Impl { ref generics, .. }) => generics,
+        Some(match self {
+            ItemKind::Fn { generics, .. }
+            | ItemKind::TyAlias(_, generics)
+            | ItemKind::Const(_, generics, _)
+            | ItemKind::Enum(_, generics)
+            | ItemKind::Struct(_, generics)
+            | ItemKind::Union(_, generics)
+            | ItemKind::Trait(_, _, generics, _, _)
+            | ItemKind::TraitAlias(generics, _)
+            | ItemKind::Impl(Impl { generics, .. }) => generics,
             _ => return None,
         })
     }
@@ -4224,6 +4370,7 @@ pub enum Node<'hir> {
     AssocItemConstraint(&'hir AssocItemConstraint<'hir>),
     TraitRef(&'hir TraitRef<'hir>),
     OpaqueTy(&'hir OpaqueTy<'hir>),
+    TyPat(&'hir TyPat<'hir>),
     Pat(&'hir Pat<'hir>),
     PatField(&'hir PatField<'hir>),
     /// Needed as its own node with its own HirId for tracking
@@ -4286,6 +4433,7 @@ impl<'hir> Node<'hir> {
             | Node::Block(..)
             | Node::Ctor(..)
             | Node::Pat(..)
+            | Node::TyPat(..)
             | Node::PatExpr(..)
             | Node::Arm(..)
             | Node::LetStmt(..)
@@ -4317,16 +4465,14 @@ impl<'hir> Node<'hir> {
 
     /// Get a `hir::Impl` if the node is an impl block for the given `trait_def_id`.
     pub fn impl_block_of_trait(self, trait_def_id: DefId) -> Option<&'hir Impl<'hir>> {
-        match self {
-            Node::Item(Item { kind: ItemKind::Impl(impl_block), .. })
-                if impl_block
-                    .of_trait
-                    .and_then(|trait_ref| trait_ref.trait_def_id())
-                    .is_some_and(|trait_id| trait_id == trait_def_id) =>
-            {
-                Some(impl_block)
-            }
-            _ => None,
+        if let Node::Item(Item { kind: ItemKind::Impl(impl_block), .. }) = self
+            && let Some(trait_ref) = impl_block.of_trait
+            && let Some(trait_id) = trait_ref.trait_def_id()
+            && trait_id == trait_def_id
+        {
+            Some(impl_block)
+        } else {
+            None
         }
     }
 
@@ -4528,12 +4674,5 @@ mod size_asserts {
     // tidy-alphabetical-end
 }
 
-fn debug_fn(f: impl Fn(&mut fmt::Formatter<'_>) -> fmt::Result) -> impl fmt::Debug {
-    struct DebugFn<F>(F);
-    impl<F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result> fmt::Debug for DebugFn<F> {
-        fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-            (self.0)(fmt)
-        }
-    }
-    DebugFn(f)
-}
+#[cfg(test)]
+mod tests;

@@ -130,7 +130,7 @@ pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>,
 fn find_elem_explicit_type_span(fn_decl: &FnDecl<'_>) -> Option<Span> {
     if let [tuple_ty] = fn_decl.inputs
         && let TyKind::Tup([_idx_ty, elem_ty]) = tuple_ty.kind
-        && !matches!(elem_ty.kind, TyKind::Err(..) | TyKind::Infer)
+        && !matches!(elem_ty.kind, TyKind::Err(..) | TyKind::Infer(()))
     {
         Some(elem_ty.span)
     } else {

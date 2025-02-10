@@ -6,7 +6,6 @@ use rustc_middle::mir::coverage::{
     FunctionCoverageInfo, MappingKind, Op,
 };
 use rustc_middle::mir::{Body, Statement, StatementKind};
-use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_span::def_id::LocalDefId;
@@ -15,8 +14,7 @@ use tracing::trace;
 
 /// Registers query/hook implementations related to coverage.
 pub(crate) fn provide(providers: &mut Providers) {
-    providers.hooks.is_eligible_for_coverage =
-        |TyCtxtAt { tcx, .. }, def_id| is_eligible_for_coverage(tcx, def_id);
+    providers.hooks.is_eligible_for_coverage = is_eligible_for_coverage;
     providers.queries.coverage_attr_on = coverage_attr_on;
     providers.queries.coverage_ids_info = coverage_ids_info;
 }
@@ -87,15 +85,9 @@ fn coverage_attr_on(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 fn coverage_ids_info<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance_def: ty::InstanceKind<'tcx>,
-) -> CoverageIdsInfo {
+) -> Option<CoverageIdsInfo> {
     let mir_body = tcx.instance_mir(instance_def);
-
-    let Some(fn_cov_info) = mir_body.function_coverage_info.as_deref() else {
-        return CoverageIdsInfo {
-            counters_seen: DenseBitSet::new_empty(0),
-            zero_expressions: DenseBitSet::new_empty(0),
-        };
-    };
+    let fn_cov_info = mir_body.function_coverage_info.as_deref()?;
 
     let mut counters_seen = DenseBitSet::new_empty(fn_cov_info.num_counters);
     let mut expressions_seen = DenseBitSet::new_filled(fn_cov_info.expressions.len());
@@ -129,7 +121,7 @@ fn coverage_ids_info<'tcx>(
     let zero_expressions =
         identify_zero_expressions(fn_cov_info, &counters_seen, &expressions_seen);
 
-    CoverageIdsInfo { counters_seen, zero_expressions }
+    Some(CoverageIdsInfo { counters_seen, zero_expressions })
 }
 
 fn all_coverage_in_mir_body<'a, 'tcx>(

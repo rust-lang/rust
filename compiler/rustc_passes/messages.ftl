@@ -502,11 +502,6 @@ passes_multiple_rustc_main =
     .first = first `#[rustc_main]` function
     .additional = additional `#[rustc_main]` function
 
-passes_multiple_start_functions =
-    multiple `start` functions
-    .label = multiple `start` functions
-    .previous = previous `#[start]` function here
-
 passes_must_not_suspend =
     `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
     .label = is not a struct, enum, union, or trait
@@ -816,6 +811,9 @@ passes_unused_duplicate =
 
 passes_unused_empty_lints_note =
     attribute `{$name}` with an empty list has no effect
+
+passes_unused_linker_warnings_note =
+    the `linker_warnings` lint can only be controlled at the root of a crate that needs to be linked
 
 passes_unused_multiple =
     multiple `{$name}` attributes

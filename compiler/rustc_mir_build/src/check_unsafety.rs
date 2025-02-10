@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::mem;
 use std::ops::Bound;
 
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::DiagArgValue;
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability};
@@ -200,7 +201,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
     fn visit_inner_body(&mut self, def: LocalDefId) {
         if let Ok((inner_thir, expr)) = self.tcx.thir_body(def) {
             // Runs all other queries that depend on THIR.
-            self.tcx.ensure_with_value().mir_built(def);
+            self.tcx.ensure_done().mir_built(def);
             let inner_thir = &inner_thir.steal();
             let hir_context = self.tcx.local_def_id_to_hir_id(def);
             let safety_context = mem::replace(&mut self.safety_context, SafetyContext::Safe);
@@ -266,7 +267,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for LayoutConstrainedPlaceVisitor<'a, 'tcx> {
             // place, i.e. the expression is a place expression and not a dereference
             // (since dereferencing something leads us to a different place).
             ExprKind::Deref { .. } => {}
-            ref kind if ExprCategory::of(kind).map_or(true, |cat| cat == ExprCategory::Place) => {
+            ref kind if ExprCategory::of(kind).is_none_or(|cat| cat == ExprCategory::Place) => {
                 visit::walk_expr(self, expr);
             }
 
@@ -439,6 +440,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::NeverToAny { .. }
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. }
+            | ExprKind::PlaceUnwrapUnsafeBinder { .. }
+            | ExprKind::ValueUnwrapUnsafeBinder { .. }
+            | ExprKind::WrapUnsafeBinder { .. }
             | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::StaticRef { .. }
@@ -473,7 +477,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::Scope { value, lint_level: LintLevel::Explicit(hir_id), region_scope: _ } => {
                 let prev_id = self.hir_context;
                 self.hir_context = hir_id;
-                self.visit_expr(&self.thir[value]);
+                ensure_sufficient_stack(|| {
+                    self.visit_expr(&self.thir[value]);
+                });
                 self.hir_context = prev_id;
                 return; // don't visit the whole expression
             }
@@ -519,11 +525,10 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                             .copied()
                             .filter(|feature| missing.contains(feature))
                             .collect();
-                        self.requires_unsafe(expr.span, CallToFunctionWith {
-                            function: func_did,
-                            missing,
-                            build_enabled,
-                        });
+                        self.requires_unsafe(
+                            expr.span,
+                            CallToFunctionWith { function: func_did, missing, build_enabled },
+                        );
                     }
                 }
             }
@@ -680,6 +685,11 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     }
                 }
             }
+            ExprKind::PlaceUnwrapUnsafeBinder { .. }
+            | ExprKind::ValueUnwrapUnsafeBinder { .. }
+            | ExprKind::WrapUnsafeBinder { .. } => {
+                self.requires_unsafe(expr.span, UnsafeBinderCast);
+            }
             _ => {}
         }
         visit::walk_expr(self, expr);
@@ -728,6 +738,7 @@ enum UnsafeOpKind {
         /// (e.g., with `-C target-feature`).
         build_enabled: Vec<Symbol>,
     },
+    UnsafeBinderCast,
 }
 
 use UnsafeOpKind::*;
@@ -888,6 +899,15 @@ impl UnsafeOpKind {
                             .collect(),
                     ),
                     build_target_features_count: build_enabled.len(),
+                    unsafe_not_inherited_note,
+                },
+            ),
+            UnsafeBinderCast => tcx.emit_node_span_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeFnUnsafeBinderCastRequiresUnsafe {
+                    span,
                     unsafe_not_inherited_note,
                 },
             ),
@@ -1099,6 +1119,15 @@ impl UnsafeOpKind {
                     function: tcx.def_path_str(*function),
                 });
             }
+            UnsafeBinderCast if unsafe_op_in_unsafe_fn_allowed => {
+                dcx.emit_err(UnsafeBinderCastRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                    span,
+                    unsafe_not_inherited_note,
+                });
+            }
+            UnsafeBinderCast => {
+                dcx.emit_err(UnsafeBinderCastRequiresUnsafe { span, unsafe_not_inherited_note });
+            }
         }
     }
 }
@@ -1112,7 +1141,7 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
 
     let Ok((thir, expr)) = tcx.thir_body(def) else { return };
     // Runs all other queries that depend on THIR.
-    tcx.ensure_with_value().mir_built(def);
+    tcx.ensure_done().mir_built(def);
     let thir = &thir.steal();
 
     let hir_id = tcx.local_def_id_to_hir_id(def);
@@ -1156,9 +1185,11 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     warnings.sort_by_key(|w| w.block_span);
     for UnusedUnsafeWarning { hir_id, block_span, enclosing_unsafe } in warnings {
         let block_span = tcx.sess.source_map().guess_head_span(block_span);
-        tcx.emit_node_span_lint(UNUSED_UNSAFE, hir_id, block_span, UnusedUnsafe {
-            span: block_span,
-            enclosing: enclosing_unsafe,
-        });
+        tcx.emit_node_span_lint(
+            UNUSED_UNSAFE,
+            hir_id,
+            block_span,
+            UnusedUnsafe { span: block_span, enclosing: enclosing_unsafe },
+        );
     }
 }

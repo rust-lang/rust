@@ -8,5 +8,5 @@ fn main() {
     //~| ERROR: binding for associated type `Y` references lifetime
     //~| ERROR: binding for associated type `Y` references lifetime
     //~| ERROR: binding for associated type `Y` references lifetime
-    //~| ERROR: the trait `X` cannot be made into an object
+    //~| ERROR: the trait `X` is not dyn compatible
 }

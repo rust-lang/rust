@@ -1,3 +1,4 @@
+use rustc_abi::ExternAbi;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
@@ -11,7 +12,6 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{DesugaringKind, Ident, Span, Symbol, kw, sym};
-use rustc_target::spec::abi;
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::instrument;
@@ -207,9 +207,40 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 sig: FnSig { decl, header, span: fn_sig_span },
                 generics,
                 body,
+                contract,
                 ..
             }) => {
                 self.with_new_scopes(*fn_sig_span, |this| {
+                    assert!(this.contract.is_none());
+                    if let Some(contract) = contract {
+                        let requires = contract.requires.clone();
+                        let ensures = contract.ensures.clone();
+                        let ensures = ensures.map(|ens| {
+                            // FIXME: this needs to be a fresh (or illegal) identifier to prevent
+                            // accidental capture of a parameter or global variable.
+                            let checker_ident: Ident =
+                                Ident::from_str_and_span("__ensures_checker", ens.span);
+                            let (checker_pat, checker_hir_id) = this.pat_ident_binding_mode_mut(
+                                ens.span,
+                                checker_ident,
+                                hir::BindingMode::NONE,
+                            );
+
+                            crate::FnContractLoweringEnsures {
+                                expr: ens,
+                                fresh_ident: (checker_ident, checker_pat, checker_hir_id),
+                            }
+                        });
+
+                        // Note: `with_new_scopes` will reinstall the outer
+                        // item's contract (if any) after its callback finishes.
+                        this.contract.replace(crate::FnContractLoweringInfo {
+                            span,
+                            requires,
+                            ensures,
+                        });
+                    }
+
                     // Note: we don't need to change the return type from `T` to
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
@@ -244,7 +275,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ModKind::Unloaded => panic!("`mod` items should have been loaded by now"),
             },
             ItemKind::ForeignMod(fm) => hir::ItemKind::ForeignMod {
-                abi: fm.abi.map_or(abi::Abi::FALLBACK, |abi| self.lower_abi(abi)),
+                abi: fm.abi.map_or(ExternAbi::FALLBACK, |abi| self.lower_abi(abi)),
                 items: self
                     .arena
                     .alloc_from_iter(fm.items.iter().map(|x| self.lower_foreign_item_ref(x))),
@@ -273,12 +304,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             );
                             this.arena.alloc(this.ty(span, hir::TyKind::Err(guar)))
                         }
-                        Some(ty) => this.lower_ty(ty, ImplTraitContext::OpaqueTy {
-                            origin: hir::OpaqueTyOrigin::TyAlias {
-                                parent: this.local_def_id(id),
-                                in_assoc_ty: false,
+                        Some(ty) => this.lower_ty(
+                            ty,
+                            ImplTraitContext::OpaqueTy {
+                                origin: hir::OpaqueTyOrigin::TyAlias {
+                                    parent: this.local_def_id(id),
+                                    in_assoc_ty: false,
+                                },
                             },
-                        }),
+                        ),
                     },
                 );
                 hir::ItemKind::TyAlias(ty, generics)
@@ -935,12 +969,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             hir::ImplItemKind::Type(ty)
                         }
                         Some(ty) => {
-                            let ty = this.lower_ty(ty, ImplTraitContext::OpaqueTy {
-                                origin: hir::OpaqueTyOrigin::TyAlias {
-                                    parent: this.local_def_id(i.id),
-                                    in_assoc_ty: true,
+                            let ty = this.lower_ty(
+                                ty,
+                                ImplTraitContext::OpaqueTy {
+                                    origin: hir::OpaqueTyOrigin::TyAlias {
+                                        parent: this.local_def_id(i.id),
+                                        in_assoc_ty: true,
+                                    },
                                 },
-                            });
+                            );
                             hir::ImplItemKind::Type(ty)
                         }
                     },
@@ -1054,10 +1091,64 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::BodyId {
         self.lower_body(|this| {
-            (
-                this.arena.alloc_from_iter(decl.inputs.iter().map(|x| this.lower_param(x))),
-                body(this),
-            )
+            let params =
+                this.arena.alloc_from_iter(decl.inputs.iter().map(|x| this.lower_param(x)));
+            let result = body(this);
+
+            let opt_contract = this.contract.take();
+
+            // { body }
+            // ==>
+            // { contract_requires(PRECOND); { body } }
+            let Some(contract) = opt_contract else { return (params, result) };
+            let result_ref = this.arena.alloc(result);
+            let lit_unit = |this: &mut LoweringContext<'_, 'hir>| {
+                this.expr(contract.span, hir::ExprKind::Tup(&[]))
+            };
+
+            let precond: hir::Stmt<'hir> = if let Some(req) = contract.requires {
+                let lowered_req = this.lower_expr_mut(&req);
+                let precond = this.expr_call_lang_item_fn_mut(
+                    req.span,
+                    hir::LangItem::ContractCheckRequires,
+                    &*arena_vec![this; lowered_req],
+                );
+                this.stmt_expr(req.span, precond)
+            } else {
+                let u = lit_unit(this);
+                this.stmt_expr(contract.span, u)
+            };
+
+            let (postcond_checker, result) = if let Some(ens) = contract.ensures {
+                let crate::FnContractLoweringEnsures { expr: ens, fresh_ident } = ens;
+                let lowered_ens: hir::Expr<'hir> = this.lower_expr_mut(&ens);
+                let postcond_checker = this.expr_call_lang_item_fn(
+                    ens.span,
+                    hir::LangItem::ContractBuildCheckEnsures,
+                    &*arena_vec![this; lowered_ens],
+                );
+                let checker_binding_pat = fresh_ident.1;
+                (
+                    this.stmt_let_pat(
+                        None,
+                        ens.span,
+                        Some(postcond_checker),
+                        this.arena.alloc(checker_binding_pat),
+                        hir::LocalSource::Contract,
+                    ),
+                    this.inject_ensures_check(result_ref, ens.span, fresh_ident.0, fresh_ident.2),
+                )
+            } else {
+                let u = lit_unit(this);
+                (this.stmt_expr(contract.span, u), &*result_ref)
+            };
+
+            let block = this.block_all(
+                contract.span,
+                arena_vec![this; precond, postcond_checker],
+                Some(result),
+            );
+            (params, this.expr_block(block))
         })
     }
 
@@ -1067,10 +1158,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_const_body(&mut self, span: Span, expr: Option<&Expr>) -> hir::BodyId {
         self.lower_body(|this| {
-            (&[], match expr {
-                Some(expr) => this.lower_expr_mut(expr),
-                None => this.expr_err(span, this.dcx().span_delayed_bug(span, "no block")),
-            })
+            (
+                &[],
+                match expr {
+                    Some(expr) => this.lower_expr_mut(expr),
+                    None => this.expr_err(span, this.dcx().span_delayed_bug(span, "no block")),
+                },
+            )
         })
     }
 
@@ -1092,6 +1186,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // this as a special case.
             return self.lower_fn_body(decl, |this| {
                 if attrs.iter().any(|a| a.name_or_empty() == sym::rustc_intrinsic) {
+                    let span = this.lower_span(span);
                     let empty_block = hir::Block {
                         hir_id: this.next_id(),
                         stmts: &[],
@@ -1384,23 +1479,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    pub(super) fn lower_abi(&mut self, abi: StrLit) -> abi::Abi {
-        abi::lookup(abi.symbol_unescaped.as_str()).unwrap_or_else(|err| {
+    pub(super) fn lower_abi(&mut self, abi: StrLit) -> ExternAbi {
+        rustc_abi::lookup(abi.symbol_unescaped.as_str()).unwrap_or_else(|err| {
             self.error_on_invalid_abi(abi, err);
-            abi::Abi::Rust
+            ExternAbi::Rust
         })
     }
 
-    pub(super) fn lower_extern(&mut self, ext: Extern) -> abi::Abi {
+    pub(super) fn lower_extern(&mut self, ext: Extern) -> ExternAbi {
         match ext {
-            Extern::None => abi::Abi::Rust,
-            Extern::Implicit(_) => abi::Abi::FALLBACK,
+            Extern::None => ExternAbi::Rust,
+            Extern::Implicit(_) => ExternAbi::FALLBACK,
             Extern::Explicit(abi, _) => self.lower_abi(abi),
         }
     }
 
-    fn error_on_invalid_abi(&self, abi: StrLit, err: abi::AbiUnsupported) {
-        let abi_names = abi::enabled_names(self.tcx.features(), abi.span)
+    fn error_on_invalid_abi(&self, abi: StrLit, err: rustc_abi::AbiUnsupported) {
+        let abi_names = rustc_abi::enabled_names(self.tcx.features(), abi.span)
             .iter()
             .map(|s| Symbol::intern(s))
             .collect::<Vec<_>>();
@@ -1409,7 +1504,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             abi: abi.symbol_unescaped,
             span: abi.span,
             explain: match err {
-                abi::AbiUnsupported::Reason { explain } => Some(InvalidAbiReason(explain)),
+                rustc_abi::AbiUnsupported::Reason { explain } => Some(InvalidAbiReason(explain)),
                 _ => None,
             },
             suggestion: suggested_name.map(|suggested_name| InvalidAbiSuggestion {

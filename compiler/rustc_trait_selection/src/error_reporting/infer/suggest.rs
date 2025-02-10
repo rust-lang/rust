@@ -12,6 +12,7 @@ use rustc_middle::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
     StatementAsExpression,
 };
+use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
 use rustc_span::{Span, sym};
@@ -20,7 +21,7 @@ use tracing::debug;
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::hir::Path;
 use crate::errors::{
-    ConsiderAddingAwait, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
+    ConsiderAddingAwait, FnConsiderCasting, FnConsiderCastingBoth, FnItemsAreDistinct, FnUniqTypes,
     FunctionPointerSuggestion, SuggestAccessingField, SuggestRemoveSemiOrReturnBinding,
     SuggestTuplePatternMany, SuggestTuplePatternOne, TypeErrorAdditionalDiags,
 };
@@ -166,6 +167,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             "suggest_await_on_expect_found: exp_span={:?}, expected_ty={:?}, found_ty={:?}",
             exp_span, exp_found.expected, exp_found.found,
         );
+
+        match self.tcx.coroutine_kind(cause.body_id) {
+            Some(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async | hir::CoroutineDesugaring::AsyncGen,
+                _,
+            )) => (),
+            None
+            | Some(
+                hir::CoroutineKind::Coroutine(_)
+                | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _),
+            ) => return,
+        }
 
         if let ObligationCauseCode::CompareImplItem { .. } = cause.code() {
             return;
@@ -369,14 +382,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
     }
 
-    pub(super) fn suggest_function_pointers(
+    pub fn suggest_function_pointers_impl(
         &self,
-        cause: &ObligationCause<'tcx>,
-        span: Span,
+        span: Option<Span>,
         exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
         diag: &mut Diag<'_>,
     ) {
-        debug!("suggest_function_pointers(cause={:?}, exp_found={:?})", cause, exp_found);
         let ty::error::ExpectedFound { expected, found } = exp_found;
         let expected_inner = expected.peel_refs();
         let found_inner = found.peel_refs();
@@ -399,8 +410,17 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     return;
                 }
 
+                let Some(span) = span else {
+                    let casting = format!("{fn_name} as {sig}");
+                    diag.subdiagnostic(FnItemsAreDistinct);
+                    diag.subdiagnostic(FnConsiderCasting { casting });
+                    return;
+                };
+
                 let sugg = match (expected.is_ref(), found.is_ref()) {
-                    (true, false) => FunctionPointerSuggestion::UseRef { span, fn_name },
+                    (true, false) => {
+                        FunctionPointerSuggestion::UseRef { span: span.shrink_to_lo() }
+                    }
                     (false, true) => FunctionPointerSuggestion::RemoveRef { span, fn_name },
                     (true, true) => {
                         diag.subdiagnostic(FnItemsAreDistinct);
@@ -408,7 +428,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                     (false, false) => {
                         diag.subdiagnostic(FnItemsAreDistinct);
-                        FunctionPointerSuggestion::Cast { span, fn_name, sig }
+                        FunctionPointerSuggestion::Cast { span: span.shrink_to_hi(), sig }
                     }
                 };
                 diag.subdiagnostic(sugg);
@@ -433,6 +453,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
 
                 let fn_name = self.tcx.def_path_str_with_args(*did2, args2);
+
+                let Some(span) = span else {
+                    diag.subdiagnostic(FnConsiderCastingBoth { sig: *expected_sig });
+                    return;
+                };
+
                 let sug = if found.is_ref() {
                     FunctionPointerSuggestion::CastBothRef {
                         span,
@@ -442,8 +468,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                 } else {
                     FunctionPointerSuggestion::CastBoth {
-                        span,
-                        fn_name,
+                        span: span.shrink_to_hi(),
                         found_sig: *found_sig,
                         expected_sig: *expected_sig,
                     }
@@ -474,6 +499,23 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 return;
             }
         };
+    }
+
+    pub(super) fn suggest_function_pointers(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        span: Span,
+        exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
+        terr: TypeError<'tcx>,
+        diag: &mut Diag<'_>,
+    ) {
+        debug!("suggest_function_pointers(cause={:?}, exp_found={:?})", cause, exp_found);
+
+        if exp_found.expected.peel_refs().is_fn() && exp_found.found.peel_refs().is_fn() {
+            self.suggest_function_pointers_impl(Some(span), exp_found, diag);
+        } else if let TypeError::Sorts(exp_found) = terr {
+            self.suggest_function_pointers_impl(None, &exp_found, diag);
+        }
     }
 
     pub fn should_suggest_as_ref_kind(
@@ -643,7 +685,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     && let ty::Ref(found_region, _, _) = found.kind()
                     && expected_region.is_bound()
                     && !found_region.is_bound()
-                    && let hir::TyKind::Infer = arg_hir.kind
+                    && let hir::TyKind::Infer(()) = arg_hir.kind
                 {
                     // If the expected region is late bound, the found region is not, and users are asking compiler
                     // to infer the type, we can suggest adding `: &_`.

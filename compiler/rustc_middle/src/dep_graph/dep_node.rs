@@ -1,61 +1,3 @@
-//! Nodes in the dependency graph.
-//!
-//! A node in the [dependency graph] is represented by a [`DepNode`].
-//! A `DepNode` consists of a [`DepKind`] (which
-//! specifies the kind of thing it represents, like a piece of HIR, MIR, etc.)
-//! and a [`Fingerprint`], a 128-bit hash value, the exact meaning of which
-//! depends on the node's `DepKind`. Together, the kind and the fingerprint
-//! fully identify a dependency node, even across multiple compilation sessions.
-//! In other words, the value of the fingerprint does not depend on anything
-//! that is specific to a given compilation session, like an unpredictable
-//! interning key (e.g., `NodeId`, `DefId`, `Symbol`) or the numeric value of a
-//! pointer. The concept behind this could be compared to how git commit hashes
-//! uniquely identify a given commit. The fingerprinting approach has
-//! a few advantages:
-//!
-//! * A `DepNode` can simply be serialized to disk and loaded in another session
-//!   without the need to do any "rebasing" (like we have to do for Spans and
-//!   NodeIds) or "retracing" (like we had to do for `DefId` in earlier
-//!   implementations of the dependency graph).
-//! * A `Fingerprint` is just a bunch of bits, which allows `DepNode` to
-//!   implement `Copy`, `Sync`, `Send`, `Freeze`, etc.
-//! * Since we just have a bit pattern, `DepNode` can be mapped from disk into
-//!   memory without any post-processing (e.g., "abomination-style" pointer
-//!   reconstruction).
-//! * Because a `DepNode` is self-contained, we can instantiate `DepNodes` that
-//!   refer to things that do not exist anymore. In previous implementations
-//!   `DepNode` contained a `DefId`. A `DepNode` referring to something that
-//!   had been removed between the previous and the current compilation session
-//!   could not be instantiated because the current compilation session
-//!   contained no `DefId` for thing that had been removed.
-//!
-//! `DepNode` definition happens in the `define_dep_nodes!()` macro. This macro
-//! defines the `DepKind` enum. Each `DepKind` has its own parameters that are
-//! needed at runtime in order to construct a valid `DepNode` fingerprint.
-//! However, only `CompileCodegenUnit` and `CompileMonoItem` are constructed
-//! explicitly (with `make_compile_codegen_unit` cq `make_compile_mono_item`).
-//!
-//! Because the macro sees what parameters a given `DepKind` requires, it can
-//! "infer" some properties for each kind of `DepNode`:
-//!
-//! * Whether a `DepNode` of a given kind has any parameters at all. Some
-//!   `DepNode`s could represent global concepts with only one value.
-//! * Whether it is possible, in principle, to reconstruct a query key from a
-//!   given `DepNode`. Many `DepKind`s only require a single `DefId` parameter,
-//!   in which case it is possible to map the node's fingerprint back to the
-//!   `DefId` it was computed from. In other cases, too much information gets
-//!   lost during fingerprint computation.
-//!
-//! `make_compile_codegen_unit` and `make_compile_mono_items`, together with
-//! `DepNode::new()`, ensures that only valid `DepNode` instances can be
-//! constructed. For example, the API does not allow for constructing
-//! parameterless `DepNode`s with anything other than a zeroed out fingerprint.
-//! More generally speaking, it relieves the user of the `DepNode` API of
-//! having to know how to compute the expected fingerprint for a given set of
-//! node parameters.
-//!
-//! [dependency graph]: https://rustc-dev-guide.rust-lang.org/query.html
-
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId, ModDefId};
 use rustc_hir::definitions::DefPathHash;
@@ -158,26 +100,14 @@ pub(crate) fn make_compile_mono_item<'tcx>(
 }
 
 pub trait DepNodeExt: Sized {
-    /// Extracts the DefId corresponding to this DepNode. This will work
-    /// if two conditions are met:
-    ///
-    /// 1. The Fingerprint of the DepNode actually is a DefPathHash, and
-    /// 2. the item that the DefPath refers to exists in the current tcx.
-    ///
-    /// Condition (1) is determined by the DepKind variant of the
-    /// DepNode. Condition (2) might not be fulfilled if a DepNode
-    /// refers to something from the previous compilation session that
-    /// has been removed.
     fn extract_def_id(&self, tcx: TyCtxt<'_>) -> Option<DefId>;
 
-    /// Used in testing
     fn from_label_string(
         tcx: TyCtxt<'_>,
         label: &str,
         def_path_hash: DefPathHash,
     ) -> Result<Self, ()>;
 
-    /// Used in testing
     fn has_label_string(label: &str) -> bool;
 }
 
@@ -399,52 +329,46 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for HirId {
     }
 }
 
-macro_rules! impl_for_typed_def_id {
-    ($Name:ident, $LocalName:ident) => {
-        impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for $Name {
-            #[inline(always)]
-            fn fingerprint_style() -> FingerprintStyle {
-                FingerprintStyle::DefPathHash
-            }
+impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for ModDefId {
+    #[inline(always)]
+    fn fingerprint_style() -> FingerprintStyle {
+        FingerprintStyle::DefPathHash
+    }
 
-            #[inline(always)]
-            fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
-                self.to_def_id().to_fingerprint(tcx)
-            }
+    #[inline(always)]
+    fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
+        self.to_def_id().to_fingerprint(tcx)
+    }
 
-            #[inline(always)]
-            fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
-                self.to_def_id().to_debug_str(tcx)
-            }
+    #[inline(always)]
+    fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
+        self.to_def_id().to_debug_str(tcx)
+    }
 
-            #[inline(always)]
-            fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
-                DefId::recover(tcx, dep_node).map($Name::new_unchecked)
-            }
-        }
-
-        impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for $LocalName {
-            #[inline(always)]
-            fn fingerprint_style() -> FingerprintStyle {
-                FingerprintStyle::DefPathHash
-            }
-
-            #[inline(always)]
-            fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
-                self.to_def_id().to_fingerprint(tcx)
-            }
-
-            #[inline(always)]
-            fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
-                self.to_def_id().to_debug_str(tcx)
-            }
-
-            #[inline(always)]
-            fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
-                LocalDefId::recover(tcx, dep_node).map($LocalName::new_unchecked)
-            }
-        }
-    };
+    #[inline(always)]
+    fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
+        DefId::recover(tcx, dep_node).map(ModDefId::new_unchecked)
+    }
 }
 
-impl_for_typed_def_id! { ModDefId, LocalModDefId }
+impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for LocalModDefId {
+    #[inline(always)]
+    fn fingerprint_style() -> FingerprintStyle {
+        FingerprintStyle::DefPathHash
+    }
+
+    #[inline(always)]
+    fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
+        self.to_def_id().to_fingerprint(tcx)
+    }
+
+    #[inline(always)]
+    fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
+        self.to_def_id().to_debug_str(tcx)
+    }
+
+    #[inline(always)]
+    fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
+        LocalDefId::recover(tcx, dep_node).map(LocalModDefId::new_unchecked)
+    }
+}

@@ -7,6 +7,7 @@ use rustc_ast_pretty::pprust as pprust_ast;
 use rustc_middle::bug;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_mir_build::thir::print::{thir_flat, thir_tree};
 use rustc_session::Session;
 use rustc_session::config::{OutFileName, PpHirMode, PpMode, PpSourceMode};
 use rustc_smir::rustc_internal::pretty::write_smir_pretty;
@@ -99,6 +100,10 @@ impl<'tcx> pprust_hir::PpAnn for HirIdentifiedAnn<'tcx> {
             pprust_hir::AnnNode::Pat(pat) => {
                 s.s.space();
                 s.synth_comment(format!("pat hir_id: {}", pat.hir_id));
+            }
+            pprust_hir::AnnNode::TyPat(pat) => {
+                s.s.space();
+                s.synth_comment(format!("ty pat hir_id: {}", pat.hir_id));
             }
             pprust_hir::AnnNode::Arm(arm) => {
                 s.s.space();
@@ -221,7 +226,7 @@ impl<'tcx> PrintExtra<'tcx> {
 
 pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
     if ppm.needs_analysis() {
-        ex.tcx().ensure().analysis(());
+        ex.tcx().ensure_ok().analysis(());
     }
 
     let (src, src_name) = get_source(sess);
@@ -313,7 +318,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
             tcx.dcx().abort_if_errors();
             debug!("pretty printing THIR tree");
             for did in tcx.hir().body_owners() {
-                let _ = writeln!(out, "{:?}:\n{}\n", did, tcx.thir_tree(did));
+                let _ = writeln!(out, "{:?}:\n{}\n", did, thir_tree(tcx, did));
             }
             out
         }
@@ -324,7 +329,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
             tcx.dcx().abort_if_errors();
             debug!("pretty printing THIR flat");
             for did in tcx.hir().body_owners() {
-                let _ = writeln!(out, "{:?}:\n{}\n", did, tcx.thir_flat(did));
+                let _ = writeln!(out, "{:?}:\n{}\n", did, thir_flat(tcx, did));
             }
             out
         }

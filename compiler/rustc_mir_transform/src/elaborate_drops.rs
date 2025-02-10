@@ -88,6 +88,10 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
         elaborate_patch.apply(body);
         deref_finder(tcx, body);
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
 /// Records unwind edges which are known to be unreachable, because they are in `drop` terminators

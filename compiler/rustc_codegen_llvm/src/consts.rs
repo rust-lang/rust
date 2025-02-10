@@ -210,6 +210,14 @@ impl<'ll> CodegenCx<'ll, '_> {
         unsafe { llvm::LLVMConstBitCast(val, ty) }
     }
 
+    pub(crate) fn const_pointercast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
+        unsafe { llvm::LLVMConstPointerCast(val, ty) }
+    }
+
+    /// Create a global variable.
+    ///
+    /// The returned global variable is a pointer in the default address space for globals.
+    /// Fails if a symbol with the given name already exists.
     pub(crate) fn static_addr_of_mut(
         &self,
         cv: &'ll Value,
@@ -230,6 +238,34 @@ impl<'ll> CodegenCx<'ll, '_> {
         unsafe { llvm::LLVMSetInitializer(gv, cv) };
         set_global_alignment(self, gv, align);
         llvm::SetUnnamedAddress(gv, llvm::UnnamedAddr::Global);
+        gv
+    }
+
+    /// Create a global constant.
+    ///
+    /// The returned global variable is a pointer in the default address space for globals.
+    pub(crate) fn static_addr_of_impl(
+        &self,
+        cv: &'ll Value,
+        align: Align,
+        kind: Option<&str>,
+    ) -> &'ll Value {
+        if let Some(&gv) = self.const_globals.borrow().get(&cv) {
+            unsafe {
+                // Upgrade the alignment in cases where the same constant is used with different
+                // alignment requirements
+                let llalign = align.bytes() as u32;
+                if llalign > llvm::LLVMGetAlignment(gv) {
+                    llvm::LLVMSetAlignment(gv, llalign);
+                }
+            }
+            return gv;
+        }
+        let gv = self.static_addr_of_mut(cv, align, kind);
+        unsafe {
+            llvm::LLVMSetGlobalConstant(gv, True);
+        }
+        self.const_globals.borrow_mut().insert(cv, gv);
         gv
     }
 
@@ -384,8 +420,14 @@ impl<'ll> CodegenCx<'ll, '_> {
             let g = if val_llty == llty {
                 g
             } else {
-                // If we created the global with the wrong type,
-                // correct the type.
+                // codegen_static_initializer creates the global value just from the
+                // `Allocation` data by generating one big struct value that is just
+                // all the bytes and pointers after each other. This will almost never
+                // match the type that the static was declared with. Unfortunately
+                // we can't just LLVMConstBitCast our way out of it because that has very
+                // specific rules on what can be cast. So instead of adding a new way to
+                // generate static initializers that match the static's type, we picked
+                // the easier option and retroactively change the type of the static item itself.
                 let name = llvm::get_value_name(g).to_vec();
                 llvm::set_value_name(g, b"");
 
@@ -505,24 +547,15 @@ impl<'ll> CodegenCx<'ll, '_> {
 }
 
 impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
+    /// Get a pointer to a global variable.
+    ///
+    /// The pointer will always be in the default address space. If global variables default to a
+    /// different address space, an addrspacecast is inserted.
     fn static_addr_of(&self, cv: &'ll Value, align: Align, kind: Option<&str>) -> &'ll Value {
-        if let Some(&gv) = self.const_globals.borrow().get(&cv) {
-            unsafe {
-                // Upgrade the alignment in cases where the same constant is used with different
-                // alignment requirements
-                let llalign = align.bytes() as u32;
-                if llalign > llvm::LLVMGetAlignment(gv) {
-                    llvm::LLVMSetAlignment(gv, llalign);
-                }
-            }
-            return gv;
-        }
-        let gv = self.static_addr_of_mut(cv, align, kind);
-        unsafe {
-            llvm::LLVMSetGlobalConstant(gv, True);
-        }
-        self.const_globals.borrow_mut().insert(cv, gv);
-        gv
+        let gv = self.static_addr_of_impl(cv, align, kind);
+        // static_addr_of_impl returns the bare global variable, which might not be in the default
+        // address space. Cast to the default address space if necessary.
+        self.const_pointercast(gv, self.type_ptr())
     }
 
     fn codegen_static(&self, def_id: DefId) {

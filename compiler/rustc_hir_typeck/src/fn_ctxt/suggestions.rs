@@ -4,17 +4,16 @@ use core::iter;
 use hir::def_id::LocalDefId;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::packed::Pu128;
-use rustc_errors::{Applicability, Diag, MultiSpan};
-use rustc_hir as hir;
+use rustc_errors::{Applicability, Diag, MultiSpan, listify};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
-    Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId,
-    Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicateKind, expr_needs_parens,
+    self as hir, Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind,
+    GenericBound, HirId, Node, PatExpr, PatExprKind, Path, QPath, Stmt, StmtKind, TyKind,
+    WherePredicateKind, expr_needs_parens,
 };
-use rustc_hir_analysis::collect::suggest_impl_trait;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
-use rustc_middle::lint::in_external_macro;
+use rustc_hir_analysis::suggest_impl_trait;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -185,6 +184,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs_ty: Ty<'tcx>,
         can_satisfy: impl FnOnce(Ty<'tcx>, Ty<'tcx>) -> bool,
     ) -> bool {
+        if lhs_expr.span.in_derive_expansion() || rhs_expr.span.in_derive_expansion() {
+            return false;
+        }
         let Some((_, lhs_output_ty, lhs_inputs)) = self.extract_callable_info(lhs_ty) else {
             return false;
         };
@@ -767,7 +769,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // If the expression is from an external macro, then do not suggest
                         // adding a semicolon, because there's nowhere to put it.
                         // See issue #81943.
-                        && !in_external_macro(self.tcx.sess, expression.span) =>
+                        && !expression.span.in_external_macro(self.tcx.sess.source_map()) =>
                 {
                     if needs_block {
                         err.multipart_suggestion(
@@ -1143,7 +1145,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.may_coerce(found, ty)
             }
             hir::FnRetTy::DefaultReturn(_) if in_closure => {
-                self.ret_coercion.as_ref().map_or(false, |ret| {
+                self.ret_coercion.as_ref().is_some_and(|ret| {
                     let ret_ty = ret.borrow().expected_ty();
                     self.may_coerce(found, ret_ty)
                 })
@@ -1419,8 +1421,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // since the user probably just misunderstood how `let else`
         // and `&&` work together.
         if let Some((_, hir::Node::LetStmt(local))) = cond_parent
-            && let hir::PatKind::Path(qpath) | hir::PatKind::TupleStruct(qpath, _, _) =
-                &local.pat.kind
+            && let hir::PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), .. })
+            | hir::PatKind::TupleStruct(qpath, _, _) = &local.pat.kind
             && let hir::QPath::Resolved(None, path) = qpath
             && let Some(did) = path
                 .res
@@ -1784,14 +1786,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let results = self.typeck_results.borrow();
         // First, look for a `Clone::clone` call
         if segment.ident.name == sym::clone
-            && results.type_dependent_def_id(expr.hir_id).map_or(
-                false,
-                |did| {
+            && results.type_dependent_def_id(expr.hir_id).is_some_and(|did| {
                     let assoc_item = self.tcx.associated_item(did);
                     assoc_item.container == ty::AssocItemContainer::Trait
                         && assoc_item.container_id(self.tcx) == clone_trait_did
-                },
-            )
+                })
             // If that clone call hasn't already dereferenced the self type (i.e. don't give this
             // diagnostic in cases where we have `(&&T).clone()` and we expect `T`).
             && !results.expr_adjustments(callee_expr).iter().any(|adj| matches!(adj.kind, ty::adjustment::Adjust::Deref(..)))
@@ -1836,16 +1835,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 error.obligation.predicate,
                             ));
                         }
-                        [errors @ .., last] => {
+                        _ => {
                             diag.help(format!(
                                 "`Clone` is not implemented because the following trait bounds \
-                                 could not be satisfied: {} and `{}`",
-                                errors
-                                    .iter()
-                                    .map(|e| format!("`{}`", e.obligation.predicate))
-                                    .collect::<Vec<_>>()
-                                    .join(", "),
-                                last.obligation.predicate,
+                                 could not be satisfied: {}",
+                                listify(&errors, |e| format!("`{}`", e.obligation.predicate))
+                                    .unwrap(),
                             ));
                         }
                     }
@@ -1993,17 +1988,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr.kind,
             hir::ExprKind::Call(
                 hir::Expr {
-                    kind: hir::ExprKind::Path(hir::QPath::Resolved(None, hir::Path {
-                        res: Res::Def(hir::def::DefKind::Ctor(_, _), _),
-                        ..
-                    },)),
+                    kind: hir::ExprKind::Path(hir::QPath::Resolved(
+                        None,
+                        hir::Path { res: Res::Def(hir::def::DefKind::Ctor(_, _), _), .. },
+                    )),
                     ..
                 },
                 ..,
-            ) | hir::ExprKind::Path(hir::QPath::Resolved(None, hir::Path {
-                res: Res::Def(hir::def::DefKind::Ctor(_, _), _),
-                ..
-            },)),
+            ) | hir::ExprKind::Path(hir::QPath::Resolved(
+                None,
+                hir::Path { res: Res::Def(hir::def::DefKind::Ctor(_, _), _), .. },
+            )),
         );
 
         let (article, kind, variant, sugg_operator) =
@@ -2265,7 +2260,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         expr_ty: Ty<'tcx>,
     ) -> bool {
-        if in_external_macro(self.tcx.sess, expr.span) {
+        if expr.span.in_external_macro(self.tcx.sess.source_map()) {
             return false;
         }
         if let ty::Adt(expected_adt, args) = expected.kind() {
@@ -2593,13 +2588,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     )> {
         let sess = self.sess();
         let sp = expr.span;
+        let sm = sess.source_map();
 
         // If the span is from an external macro, there's no suggestion we can make.
-        if in_external_macro(sess, sp) {
+        if sp.in_external_macro(sm) {
             return None;
         }
-
-        let sm = sess.source_map();
 
         let replace_prefix = |s: &str, old: &str, new: &str| {
             s.strip_prefix(old).map(|stripped| new.to_string() + stripped)

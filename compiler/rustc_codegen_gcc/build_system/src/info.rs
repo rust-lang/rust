@@ -14,6 +14,8 @@ pub fn run() -> Result<(), String> {
     }
     config.no_download = true;
     config.setup_gcc_path()?;
-    println!("{}", config.gcc_path);
+    if let Some(gcc_path) = config.gcc_path {
+        println!("{}", gcc_path);
+    }
     Ok(())
 }

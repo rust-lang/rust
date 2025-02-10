@@ -66,7 +66,6 @@
       bb6: {
 +         _8 = const false;
           StorageDead(_4);
-          StorageDead(_3);
           drop(_2) -> [return: bb7, unwind: bb12];
       }
   

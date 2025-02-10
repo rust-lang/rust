@@ -45,6 +45,11 @@ impl GitSync {
         let josh_url =
             format!("http://localhost:{JOSH_PORT}/{UPSTREAM_REPO}.git@{commit}{JOSH_FILTER}.git");
 
+        let previous_base_commit = sh.read_file("rust-version")?.trim().to_string();
+        if previous_base_commit == commit {
+            return Err(anyhow::anyhow!("No changes since last pull"));
+        }
+
         // Update rust-version file. As a separate commit, since making it part of
         // the merge has confused the heck out of josh in the past.
         // We pass `--no-verify` to avoid running git hooks.
@@ -76,11 +81,21 @@ impl GitSync {
         };
         let num_roots_before = num_roots()?;
 
+        let sha = cmd!(sh, "git rev-parse HEAD").output().context("FAILED to get current commit")?.stdout;
+
         // Merge the fetched commit.
         const MERGE_COMMIT_MESSAGE: &str = "Merge from rustc";
         cmd!(sh, "git merge FETCH_HEAD --no-verify --no-ff -m {MERGE_COMMIT_MESSAGE}")
             .run()
             .context("FAILED to merge new commits, something went wrong")?;
+
+        let current_sha = cmd!(sh, "git rev-parse HEAD").output().context("FAILED to get current commit")?.stdout;
+        if current_sha == sha {
+            cmd!(sh, "git reset --hard HEAD^")
+                .run()
+                .expect("FAILED to clean up after creating the preparation commit");
+            return Err(anyhow::anyhow!("No merge was performed, nothing to pull. Rolled back the preparation commit."));
+        }
 
         // Check that the number of roots did not increase.
         if num_roots()? != num_roots_before {

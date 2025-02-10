@@ -812,10 +812,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 if start == 1 && end == max_value {
                     // Only null is the niche. So make sure the ptr is NOT null.
                     if self.ecx.scalar_may_be_null(scalar)? {
-                        throw_validation_failure!(self.path, NullablePtrOutOfRange {
-                            range: valid_range,
-                            max_value
-                        })
+                        throw_validation_failure!(
+                            self.path,
+                            NullablePtrOutOfRange { range: valid_range, max_value }
+                        )
                     } else {
                         return interp_ok(());
                     }
@@ -825,10 +825,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 } else {
                     // Conservatively, we reject, because the pointer *could* have a bad
                     // value.
-                    throw_validation_failure!(self.path, PtrOutOfRange {
-                        range: valid_range,
-                        max_value
-                    })
+                    throw_validation_failure!(
+                        self.path,
+                        PtrOutOfRange { range: valid_range, max_value }
+                    )
                 }
             }
         };
@@ -836,11 +836,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         if valid_range.contains(bits) {
             interp_ok(())
         } else {
-            throw_validation_failure!(self.path, OutOfRange {
-                value: format!("{bits}"),
-                range: valid_range,
-                max_value
-            })
+            throw_validation_failure!(
+                self.path,
+                OutOfRange { value: format!("{bits}"), range: valid_range, max_value }
+            )
         }
     }
 
@@ -1238,6 +1237,17 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 // Validate just the first element (if any).
                 if val.len(self.ecx)? > 0 {
                     self.visit_field(val, 0, &self.ecx.project_index(val, 0)?)?;
+                }
+            }
+            ty::Pat(base, pat) => {
+                // First check that the base type is valid
+                self.visit_value(&val.transmute(self.ecx.layout_of(*base)?, self.ecx)?)?;
+                // When you extend this match, make sure to also add tests to
+                // tests/ui/type/pattern_types/validity.rs((
+                match **pat {
+                    // Range patterns are precisely reflected into `valid_range` and thus
+                    // handled fully by `visit_scalar` (called below).
+                    ty::PatternKind::Range { .. } => {},
                 }
             }
             _ => {

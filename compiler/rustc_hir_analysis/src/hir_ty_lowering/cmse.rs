@@ -201,7 +201,7 @@ fn should_emit_generic_error<'tcx>(abi: ExternAbi, layout_err: &'tcx LayoutError
     use LayoutError::*;
 
     match layout_err {
-        Unknown(ty) => {
+        TooGeneric(ty) => {
             match abi {
                 ExternAbi::CCmseNonSecureCall => {
                     // prevent double reporting of this error
@@ -211,7 +211,11 @@ fn should_emit_generic_error<'tcx>(abi: ExternAbi, layout_err: &'tcx LayoutError
                 _ => bug!("invalid ABI: {abi}"),
             }
         }
-        SizeOverflow(..) | NormalizationFailure(..) | ReferencesError(..) | Cycle(..) => {
+        Unknown(..)
+        | SizeOverflow(..)
+        | NormalizationFailure(..)
+        | ReferencesError(..)
+        | Cycle(..) => {
             false // not our job to report these
         }
     }

@@ -349,10 +349,14 @@ fn visit_clone_usage(cloned: mir::Local, clone: mir::Local, mir: &mir::Body<'_>,
             local_use_locs: _,
             local_consume_or_mutate_locs: clone_consume_or_mutate_locs,
         },
-    )) = visit_local_usage(&[cloned, clone], mir, mir::Location {
-        block: bb,
-        statement_index: mir.basic_blocks[bb].statements.len(),
-    })
+    )) = visit_local_usage(
+        &[cloned, clone],
+        mir,
+        mir::Location {
+            block: bb,
+            statement_index: mir.basic_blocks[bb].statements.len(),
+        },
+    )
     .map(|mut vec| (vec.remove(0), vec.remove(0)))
     {
         CloneUsage {

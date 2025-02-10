@@ -12,9 +12,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
-#[cfg(test)]
-mod tests;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::f32::{
@@ -306,8 +303,9 @@ impl f32 {
     /// ```
     /// let x = 2.0_f32;
     /// let abs_difference = (x.powi(2) - (x * x)).abs();
-    ///
     /// assert!(abs_difference <= f32::EPSILON);
+    ///
+    /// assert_eq!(f32::powi(f32::NAN, 0), 1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -329,8 +327,10 @@ impl f32 {
     /// ```
     /// let x = 2.0_f32;
     /// let abs_difference = (x.powf(2.0) - (x * x)).abs();
-    ///
     /// assert!(abs_difference <= f32::EPSILON);
+    ///
+    /// assert_eq!(f32::powf(1.0, f32::NAN), 1.0);
+    /// assert_eq!(f32::powf(f32::NAN, 0.0), 1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]

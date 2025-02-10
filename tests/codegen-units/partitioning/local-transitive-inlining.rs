@@ -1,10 +1,12 @@
-// We specify incremental here because we want to test the partitioning for incremental compilation
 //@ incremental
-//@ compile-flags:-Zprint-mono-items=lazy
-//@ compile-flags:-Zinline-in-all-cgus
+//@ compile-flags: -Zprint-mono-items=lazy -Copt-level=0
 
-#![allow(dead_code)]
 #![crate_type = "rlib"]
+
+// This test checks that a monomorphic inline(always) function is instantiated in every CGU that
+// references it, even if it is only referenced via another module.
+// The modules `inline` and `direct_user` do not get CGUs because they only define inline(always)
+// functions, which always get lazy codegen.
 
 mod inline {
 
@@ -13,7 +15,7 @@ mod inline {
     pub fn inlined_function() {}
 }
 
-mod direct_user {
+pub mod direct_user {
     use super::inline;
 
     //~ MONO_ITEM fn direct_user::foo @@ local_transitive_inlining-indirect_user[Internal]

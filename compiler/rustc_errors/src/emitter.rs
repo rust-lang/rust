@@ -14,10 +14,11 @@ use std::io::prelude::*;
 use std::io::{self, IsTerminal};
 use std::iter;
 use std::path::Path;
+use std::sync::Arc;
 
 use derive_setters::Setters;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
-use rustc_data_structures::sync::{DynSend, IntoDynSyncSend, Lrc};
+use rustc_data_structures::sync::{DynSend, IntoDynSyncSend};
 use rustc_error_messages::{FluentArgs, SpanLabel};
 use rustc_lexer;
 use rustc_lint_defs::pluralize;
@@ -35,8 +36,8 @@ use crate::snippet::{
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{Translate, to_fluent_args};
 use crate::{
-    CodeSuggestion, DiagCtxt, DiagInner, DiagMessage, ErrCode, FluentBundle, LazyFallbackBundle,
-    Level, MultiSpan, Subdiag, SubstitutionHighlight, SuggestionStyle, TerminalUrl,
+    CodeSuggestion, DiagInner, DiagMessage, ErrCode, FluentBundle, LazyFallbackBundle, Level,
+    MultiSpan, Subdiag, SubstitutionHighlight, SuggestionStyle, TerminalUrl,
 };
 
 /// Default column width, used in tests and when terminal dimensions cannot be determined.
@@ -537,11 +538,10 @@ impl Emitter for HumanEmitter {
 }
 
 /// An emitter that does nothing when emitting a non-fatal diagnostic.
-/// Fatal diagnostics are forwarded to `fatal_dcx` to avoid silent
+/// Fatal diagnostics are forwarded to `fatal_emitter` to avoid silent
 /// failures of rustc, as witnessed e.g. in issue #89358.
 pub struct SilentEmitter {
-    pub fallback_bundle: LazyFallbackBundle,
-    pub fatal_dcx: DiagCtxt,
+    pub fatal_emitter: Box<dyn Emitter + DynSend>,
     pub fatal_note: Option<String>,
     pub emit_fatal_diagnostic: bool,
 }
@@ -552,9 +552,7 @@ impl Translate for SilentEmitter {
     }
 
     fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        // Ideally this field wouldn't be necessary and the fallback bundle in `fatal_dcx` would be
-        // used but the lock prevents this.
-        &self.fallback_bundle
+        self.fatal_emitter.fallback_fluent_bundle()
     }
 }
 
@@ -563,12 +561,12 @@ impl Emitter for SilentEmitter {
         None
     }
 
-    fn emit_diagnostic(&mut self, mut diag: DiagInner, _registry: &Registry) {
+    fn emit_diagnostic(&mut self, mut diag: DiagInner, registry: &Registry) {
         if self.emit_fatal_diagnostic && diag.level == Level::Fatal {
             if let Some(fatal_note) = &self.fatal_note {
                 diag.sub(Level::Note, fatal_note.clone(), MultiSpan::new());
             }
-            self.fatal_dcx.handle().emit_diagnostic(diag);
+            self.fatal_emitter.emit_diagnostic(diag, registry);
         }
     }
 }
@@ -613,8 +611,8 @@ pub enum OutputTheme {
 pub struct HumanEmitter {
     #[setters(skip)]
     dst: IntoDynSyncSend<Destination>,
-    sm: Option<Lrc<SourceMap>>,
-    fluent_bundle: Option<Lrc<FluentBundle>>,
+    sm: Option<Arc<SourceMap>>,
+    fluent_bundle: Option<Arc<FluentBundle>>,
     #[setters(skip)]
     fallback_bundle: LazyFallbackBundle,
     short_message: bool,
@@ -631,7 +629,7 @@ pub struct HumanEmitter {
 
 #[derive(Debug)]
 pub(crate) struct FileWithAnnotatedLines {
-    pub(crate) file: Lrc<SourceFile>,
+    pub(crate) file: Arc<SourceFile>,
     pub(crate) lines: Vec<Line>,
     multiline_depth: usize,
 }
@@ -715,7 +713,7 @@ impl HumanEmitter {
     fn render_source_line(
         &self,
         buffer: &mut StyledBuffer,
-        file: Lrc<SourceFile>,
+        file: Arc<SourceFile>,
         line: &Line,
         width_offset: usize,
         code_offset: usize,
@@ -1694,7 +1692,7 @@ impl HumanEmitter {
                 // Get the left-side margin to remove it
                 let mut whitespace_margin = usize::MAX;
                 for line_idx in 0..annotated_file.lines.len() {
-                    let file = Lrc::clone(&annotated_file.file);
+                    let file = Arc::clone(&annotated_file.file);
                     let line = &annotated_file.lines[line_idx];
                     if let Some(source_string) =
                         line.line_index.checked_sub(1).and_then(|l| file.get_line(l))
@@ -1767,7 +1765,7 @@ impl HumanEmitter {
 
                 let column_width = if let Some(width) = self.diagnostic_width {
                     width.saturating_sub(code_offset)
-                } else if self.ui_testing {
+                } else if self.ui_testing || cfg!(miri) {
                     DEFAULT_COLUMN_WIDTH
                 } else {
                     termize::dimensions()
@@ -1790,7 +1788,7 @@ impl HumanEmitter {
 
                     let depths = self.render_source_line(
                         &mut buffer,
-                        Lrc::clone(&annotated_file.file),
+                        Arc::clone(&annotated_file.file),
                         &annotated_file.lines[line_idx],
                         width_offset,
                         code_offset,
@@ -2979,7 +2977,7 @@ impl FileWithAnnotatedLines {
     ) -> Vec<FileWithAnnotatedLines> {
         fn add_annotation_to_file(
             file_vec: &mut Vec<FileWithAnnotatedLines>,
-            file: Lrc<SourceFile>,
+            file: Arc<SourceFile>,
             line_index: usize,
             ann: Annotation,
         ) {
@@ -3116,7 +3114,7 @@ impl FileWithAnnotatedLines {
                 //  |        baz
                 add_annotation_to_file(
                     &mut output,
-                    Lrc::clone(&file),
+                    Arc::clone(&file),
                     ann.line_start,
                     ann.as_start(),
                 );
@@ -3143,12 +3141,12 @@ impl FileWithAnnotatedLines {
                     .unwrap_or(ann.line_start);
                 for line in ann.line_start + 1..until {
                     // Every `|` that joins the beginning of the span (`___^`) to the end (`|__^`).
-                    add_annotation_to_file(&mut output, Lrc::clone(&file), line, ann.as_line());
+                    add_annotation_to_file(&mut output, Arc::clone(&file), line, ann.as_line());
                 }
                 let line_end = ann.line_end - 1;
-                let end_is_empty = file.get_line(line_end - 1).map_or(false, |s| !filter(&s));
+                let end_is_empty = file.get_line(line_end - 1).is_some_and(|s| !filter(&s));
                 if middle < line_end && !end_is_empty {
-                    add_annotation_to_file(&mut output, Lrc::clone(&file), line_end, ann.as_line());
+                    add_annotation_to_file(&mut output, Arc::clone(&file), line_end, ann.as_line());
                 }
             } else {
                 end_ann.annotation_type = AnnotationType::Singleline;

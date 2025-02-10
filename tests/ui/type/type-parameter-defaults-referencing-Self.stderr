@@ -7,7 +7,7 @@ LL | trait Foo<T=Self> {
 LL | fn foo(x: &dyn Foo) { }
    |                ^^^
    |
-   = note: because of the default `Self` reference, type parameters must be specified on object types
+   = note: because the parameter default references `Self`, the parameter must be specified on the object type
 help: set the type parameter to the desired type
    |
 LL | fn foo(x: &dyn Foo<T>) { }

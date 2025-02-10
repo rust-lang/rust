@@ -235,6 +235,12 @@ fn parse_cfg_name_directive<'a>(
         message: "when the test mode is {name}",
     }
 
+    condition! {
+        name: "dist",
+        condition: std::env::var("COMPILETEST_ENABLE_DIST_TESTS") == Ok("1".to_string()),
+        message: "when performing tests on dist toolchain"
+    }
+
     if prefix == "ignore" && outcome == MatchOutcome::Invalid {
         // Don't error out for ignore-tidy-* diretives, as those are not handled by compiletest.
         if name.starts_with("tidy-") {

@@ -9,6 +9,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, MissingLifetimeKind};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::inhabitedness::InhabitedPredicate;
@@ -177,19 +178,6 @@ pub(crate) enum BuiltinDeprecatedAttrLinkSuggestion<'a> {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_builtin_deprecated_attr_used)]
-pub(crate) struct BuiltinDeprecatedAttrUsed {
-    pub name: String,
-    #[suggestion(
-        lint_builtin_deprecated_attr_default_suggestion,
-        style = "short",
-        code = "",
-        applicability = "machine-applicable"
-    )]
-    pub suggestion: Span,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_builtin_unused_doc_comment)]
 pub(crate) struct BuiltinUnusedDocComment<'a> {
     pub kind: &'a str,
@@ -293,7 +281,7 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
         // avoid doing throwaway work in case the lint ends up getting suppressed.
         let mut collector = ShorthandAssocTyCollector { qselves: Vec::new() };
         if let Some(ty) = self.ty {
-            hir::intravisit::Visitor::visit_ty(&mut collector, ty);
+            collector.visit_ty_unambig(ty);
         }
 
         let affect_object_lifetime_defaults = self
@@ -341,6 +329,24 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
 pub(crate) struct BuiltinTrivialBounds<'a> {
     pub predicate_kind_name: &'a str,
     pub predicate: Clause<'a>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_double_negations)]
+#[note(lint_note)]
+#[note(lint_note_decrement)]
+pub(crate) struct BuiltinDoubleNegations {
+    #[subdiagnostic]
+    pub add_parens: BuiltinDoubleNegationsAddParens,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(lint_add_parens_suggestion, applicability = "maybe-incorrect")]
+pub(crate) struct BuiltinDoubleNegationsAddParens {
+    #[suggestion_part(code = "(")]
+    pub start_span: Span,
+    #[suggestion_part(code = ")")]
+    pub end_span: Span,
 }
 
 #[derive(LintDiagnostic)]
@@ -1139,10 +1145,12 @@ pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
 #[derive(LintDiagnostic)]
 #[diag(lint_dangling_pointers_from_temporaries)]
 #[note]
-#[help]
+#[help(lint_help_bind)]
+#[help(lint_help_returned)]
+#[help(lint_help_visit)]
 // FIXME: put #[primary_span] on `ptr_span` once it does not cause conflicts
 pub(crate) struct DanglingPointersFromTemporaries<'tcx> {
-    pub callee: Symbol,
+    pub callee: Ident,
     pub ty: Ty<'tcx>,
     #[label(lint_label_ptr)]
     pub ptr_span: Span,
@@ -1343,7 +1351,7 @@ pub(crate) enum NonUpperCaseGlobalSub {
 #[diag(lint_noop_method_call)]
 #[note]
 pub(crate) struct NoopMethodCallDiag<'a> {
-    pub method: Symbol,
+    pub method: Ident,
     pub orig_ty: Ty<'a>,
     pub trait_: Symbol,
     #[suggestion(code = "", applicability = "machine-applicable")]
@@ -1691,6 +1699,10 @@ pub(crate) struct OverflowingLiteral<'a> {
     pub ty: &'a str,
     pub lit: String,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_uses_power_alignment)]
+pub(crate) struct UsesPowerAlignment;
 
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_comparisons)]
@@ -2558,10 +2570,6 @@ pub(crate) struct UnusedCrateDependency {
     pub extern_crate: Symbol,
     pub local_crate: Symbol,
 }
-
-#[derive(LintDiagnostic)]
-#[diag(lint_wasm_c_abi)]
-pub(crate) struct WasmCAbi;
 
 #[derive(LintDiagnostic)]
 #[diag(lint_ill_formed_attribute_input)]

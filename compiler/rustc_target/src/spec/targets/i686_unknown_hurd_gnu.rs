@@ -2,7 +2,7 @@ use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::hurd_gnu::opts();
-    base.cpu = "pentiumpro".into();
+    base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32"]);
     base.stack_probes = StackProbeType::Inline;

@@ -8,7 +8,6 @@ use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::solve::CanonicalResponse;
 use rustc_type_ir::visit::TypeVisitableExt as _;
 use rustc_type_ir::{self as ty, Interner, TraitPredicate, TypingMode, Upcast as _, elaborate};
-use smallvec::SmallVec;
 use tracing::{instrument, trace};
 
 use crate::delegate::SolverDelegate;
@@ -343,18 +342,21 @@ where
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
         let output_is_sized_pred = tupled_inputs_and_output_and_coroutine.map_bound(
             |AsyncCallableRelevantTypes { output_coroutine_ty, .. }| {
-                ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [
-                    output_coroutine_ty,
-                ])
+                ty::TraitRef::new(
+                    cx,
+                    cx.require_lang_item(TraitSolverLangItem::Sized),
+                    [output_coroutine_ty],
+                )
             },
         );
 
         let pred = tupled_inputs_and_output_and_coroutine
             .map_bound(|AsyncCallableRelevantTypes { tupled_inputs_ty, .. }| {
-                ty::TraitRef::new(cx, goal.predicate.def_id(), [
-                    goal.predicate.self_ty(),
-                    tupled_inputs_ty,
-                ])
+                ty::TraitRef::new(
+                    cx,
+                    goal.predicate.def_id(),
+                    [goal.predicate.self_ty(), tupled_inputs_ty],
+                )
             })
             .upcast(cx);
         Self::probe_and_consider_implied_clause(
@@ -976,9 +978,11 @@ where
             GoalSource::ImplWhereBound,
             goal.with(
                 cx,
-                ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Unsize), [
-                    a_tail_ty, b_tail_ty,
-                ]),
+                ty::TraitRef::new(
+                    cx,
+                    cx.require_lang_item(TraitSolverLangItem::Unsize),
+                    [a_tail_ty, b_tail_ty],
+                ),
             ),
         );
         self.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
@@ -1016,9 +1020,11 @@ where
             GoalSource::ImplWhereBound,
             goal.with(
                 cx,
-                ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Unsize), [
-                    a_last_ty, b_last_ty,
-                ]),
+                ty::TraitRef::new(
+                    cx,
+                    cx.require_lang_item(TraitSolverLangItem::Unsize),
+                    [a_last_ty, b_last_ty],
+                ),
             ),
         );
         self.probe_builtin_trait_candidate(BuiltinImplSource::TupleUnsizing)
@@ -1199,33 +1205,42 @@ where
         // nested requirements, over all others. This is a fix for #53123 and
         // prevents where-bounds from accidentally extending the lifetime of a
         // variable.
-        if candidates
-            .iter()
-            .any(|c| matches!(c.source, CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial)))
-        {
-            let trivial_builtin_impls: SmallVec<[_; 1]> = candidates
-                .iter()
-                .filter(|c| {
-                    matches!(c.source, CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial))
-                })
-                .map(|c| c.result)
-                .collect();
+        let mut trivial_builtin_impls = candidates.iter().filter(|c| {
+            matches!(c.source, CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial))
+        });
+        if let Some(candidate) = trivial_builtin_impls.next() {
             // There should only ever be a single trivial builtin candidate
             // as they would otherwise overlap.
-            assert_eq!(trivial_builtin_impls.len(), 1);
-            return if let Some(response) = self.try_merge_responses(&trivial_builtin_impls) {
-                Ok((response, Some(TraitGoalProvenVia::Misc)))
-            } else {
-                Ok((self.bail_with_ambiguity(&trivial_builtin_impls), None))
-            };
+            assert!(trivial_builtin_impls.next().is_none());
+            return Ok((candidate.result, Some(TraitGoalProvenVia::Misc)));
         }
 
         // If there are non-global where-bounds, prefer where-bounds
         // (including global ones) over everything else.
         let has_non_global_where_bounds = candidates.iter().any(|c| match c.source {
             CandidateSource::ParamEnv(idx) => {
-                let where_bound = goal.param_env.caller_bounds().get(idx);
-                where_bound.has_bound_vars() || !where_bound.is_global()
+                let where_bound = goal.param_env.caller_bounds().get(idx).unwrap();
+                let ty::ClauseKind::Trait(trait_pred) = where_bound.kind().skip_binder() else {
+                    unreachable!("expected trait-bound: {where_bound:?}");
+                };
+
+                if trait_pred.has_bound_vars() || !trait_pred.is_global() {
+                    return true;
+                }
+
+                // We don't consider a trait-bound global if it has a projection bound.
+                //
+                // See ui/traits/next-solver/normalization-shadowing/global-trait-with-project.rs
+                // for an example where this is necessary.
+                for p in goal.param_env.caller_bounds().iter() {
+                    if let ty::ClauseKind::Projection(proj) = p.kind().skip_binder() {
+                        if proj.projection_term.trait_ref(self.cx()) == trait_pred.trait_ref {
+                            return true;
+                        }
+                    }
+                }
+
+                false
             }
             _ => false,
         });

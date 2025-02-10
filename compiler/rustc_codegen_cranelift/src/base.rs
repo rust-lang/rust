@@ -417,6 +417,16 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             Some(source_info.span),
                         );
                     }
+                    AssertKind::NullPointerDereference => {
+                        let location = fx.get_caller_location(source_info).load_scalar(fx);
+
+                        codegen_panic_inner(
+                            fx,
+                            rustc_hir::LangItem::PanicNullPointerDereference,
+                            &[location],
+                            Some(source_info.span),
+                        )
+                    }
                     _ => {
                         let location = fx.get_caller_location(source_info).load_scalar(fx);
 
@@ -858,7 +868,16 @@ fn codegen_stmt<'tcx>(
                         NullOp::UbChecks => {
                             let val = fx.tcx.sess.ub_checks();
                             let val = CValue::by_val(
-                                fx.bcx.ins().iconst(types::I8, i64::try_from(val).unwrap()),
+                                fx.bcx.ins().iconst(types::I8, i64::from(val)),
+                                fx.layout_of(fx.tcx.types.bool),
+                            );
+                            lval.write_cvalue(fx, val);
+                            return;
+                        }
+                        NullOp::ContractChecks => {
+                            let val = fx.tcx.sess.contract_checks();
+                            let val = CValue::by_val(
+                                fx.bcx.ins().iconst(types::I8, i64::from(val)),
                                 fx.layout_of(fx.tcx.types.bool),
                             );
                             lval.write_cvalue(fx, val);
@@ -914,6 +933,10 @@ fn codegen_stmt<'tcx>(
                         to.write_cvalue(fx, operand);
                     }
                     crate::discriminant::codegen_set_discriminant(fx, lval, variant_index);
+                }
+                Rvalue::WrapUnsafeBinder(ref operand, _to_ty) => {
+                    let operand = codegen_operand(fx, operand);
+                    lval.write_cvalue_transmute(fx, operand);
                 }
             }
         }
@@ -983,7 +1006,9 @@ pub(crate) fn codegen_place<'tcx>(
                 cplace = cplace.place_deref(fx);
             }
             PlaceElem::OpaqueCast(ty) => bug!("encountered OpaqueCast({ty}) in codegen"),
-            PlaceElem::Subtype(ty) => cplace = cplace.place_transmute_type(fx, fx.monomorphize(ty)),
+            PlaceElem::Subtype(ty) | PlaceElem::UnwrapUnsafeBinder(ty) => {
+                cplace = cplace.place_transmute_type(fx, fx.monomorphize(ty));
+            }
             PlaceElem::Field(field, _ty) => {
                 cplace = cplace.place_field(fx, field);
             }

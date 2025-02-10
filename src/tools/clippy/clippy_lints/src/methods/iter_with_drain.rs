@@ -25,5 +25,5 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span
             "into_iter()".to_string(),
             Applicability::MaybeIncorrect,
         );
-    };
+    }
 }

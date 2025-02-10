@@ -32,8 +32,8 @@ extern "rust-intrinsic" {
 // CHECK-LABEL: scatter_f64x4
 #[no_mangle]
 pub unsafe extern "C" fn scatter_f64x4(values: f64x4, ptrs: pf64x4, mask: m64x4) {
-    // x86-avx512: vpsllq ymm2, ymm2, 63
-    // x86-avx512-NEXT: vpmovq2m k1, ymm2
+    // x86-avx512-NOT: vpsllq
+    // x86-avx512: vpmovq2m k1, ymm2
     // x86-avx512-NEXT: vscatterqpd {{(ymmword)|(qword)}} ptr [1*ymm1] {k1}, ymm0
     simd_scatter(values, ptrs, mask)
 }

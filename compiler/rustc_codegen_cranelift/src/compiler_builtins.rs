@@ -44,6 +44,7 @@ builtin_functions! {
     fn __umodti3(n: u128, d: u128) -> u128;
     fn __modti3(n: i128, d: i128) -> i128;
     fn __rust_u128_mulo(a: u128, b: u128, oflow: &mut i32) -> u128;
+    fn __rust_i128_mulo(a: i128, b: i128, oflow: &mut i32) -> i128;
 
     // floats
     fn __floattisf(i: i128) -> f32;

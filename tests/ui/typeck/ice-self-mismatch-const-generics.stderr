@@ -8,8 +8,8 @@ LL |     pub fn new(thing: T) -> GenericStruct<1, T> {
 LL |         Self { thing }
    |         ^^^^^^^^^^^^^^ expected `1`, found `0`
    |
-   = note: expected struct `GenericStruct<_, 1>`
-              found struct `GenericStruct<_, 0>`
+   = note: expected struct `GenericStruct<1, _>`
+              found struct `GenericStruct<0, _>`
 help: use the type name directly
    |
 LL |         GenericStruct::<1, T> { thing }
@@ -25,8 +25,8 @@ LL |     pub fn new(thing: T) -> GenericStruct2<1, T> {
 LL |         Self { 0: thing }
    |         ^^^^^^^^^^^^^^^^^ expected `1`, found `0`
    |
-   = note: expected struct `GenericStruct2<_, 1>`
-              found struct `GenericStruct2<_, 0>`
+   = note: expected struct `GenericStruct2<1, _>`
+              found struct `GenericStruct2<0, _>`
 help: use the type name directly
    |
 LL |         GenericStruct2::<1, T> { 0: thing }

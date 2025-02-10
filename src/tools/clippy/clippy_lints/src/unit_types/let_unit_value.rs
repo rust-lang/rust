@@ -7,7 +7,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_body};
 use rustc_hir::{Expr, ExprKind, HirId, HirIdSet, LetStmt, MatchSource, Node, PatKind, QPath, TyKind};
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::lint::{in_external_macro, is_from_async_await};
 use rustc_middle::ty;
 
 use super::LET_UNIT_VALUE;
@@ -22,8 +21,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, local: &'tcx LetStmt<'_>) {
 
     if let Some(init) = local.init
         && !local.pat.span.from_expansion()
-        && !in_external_macro(cx.sess(), local.span)
-        && !is_from_async_await(local.span)
+        && !local.span.in_external_macro(cx.sess().source_map())
+        && !local.span.is_from_async_await()
         && cx.typeck_results().pat_ty(local.pat).is_unit()
     {
         // skip `let awa = ()`
@@ -38,7 +37,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, local: &'tcx LetStmt<'_>) {
             return;
         }
 
-        if (local.ty.is_some_and(|ty| !matches!(ty.kind, TyKind::Infer))
+        if (local.ty.is_some_and(|ty| !matches!(ty.kind, TyKind::Infer(())))
             || matches!(local.pat.kind, PatKind::Tuple([], ddpos) if ddpos.as_opt_usize().is_none()))
             && expr_needs_inferred_result(cx, init)
         {
@@ -158,7 +157,7 @@ fn expr_needs_inferred_result<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -
     }
     while let Some(id) = locals_to_check.pop() {
         if let Node::LetStmt(l) = cx.tcx.parent_hir_node(id) {
-            if !l.ty.is_none_or(|ty| matches!(ty.kind, TyKind::Infer)) {
+            if !l.ty.is_none_or(|ty| matches!(ty.kind, TyKind::Infer(()))) {
                 return false;
             }
             if let Some(e) = l.init {

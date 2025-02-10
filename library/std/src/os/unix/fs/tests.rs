@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn read_vectored_at() {
     let msg = b"preadv is working!";
-    let dir = crate::sys_common::io::test::tmpdir();
+    let dir = crate::test_helpers::tmpdir();
 
     let filename = dir.join("preadv.txt");
     {
@@ -31,7 +31,7 @@ fn read_vectored_at() {
 #[test]
 fn write_vectored_at() {
     let msg = b"pwritev is not working!";
-    let dir = crate::sys_common::io::test::tmpdir();
+    let dir = crate::test_helpers::tmpdir();
 
     let filename = dir.join("preadv.txt");
     {

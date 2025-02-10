@@ -1,5 +1,5 @@
 error[E0283]: type annotations needed
-  --> $DIR/issue-77982.rs:10:10
+  --> $DIR/issue-77982.rs:11:10
    |
 LL |     opts.get(opt.as_ref());
    |          ^^^ ------------ type must be known at this point
@@ -18,7 +18,7 @@ LL |     opts.get::<Q>(opt.as_ref());
    |             +++++
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-77982.rs:10:10
+  --> $DIR/issue-77982.rs:11:10
    |
 LL |     opts.get(opt.as_ref());
    |          ^^^     ------ type must be known at this point
@@ -36,7 +36,7 @@ LL |     opts.get::<Q>(opt.as_ref());
    |             +++++
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-77982.rs:15:59
+  --> $DIR/issue-77982.rs:16:59
    |
 LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect();
    |                                            ---            ^^^^
@@ -56,13 +56,13 @@ LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(<u32 as Into<T>>::into
    |                                                      +++++++++++++++++++++++    ~
 
 error[E0283]: type annotations needed for `Box<_>`
-  --> $DIR/issue-77982.rs:38:9
+  --> $DIR/issue-77982.rs:39:9
    |
 LL |     let _ = ().foo();
    |         ^      --- type must be known at this point
    |
 note: multiple `impl`s satisfying `(): Foo<'_, _>` found
-  --> $DIR/issue-77982.rs:31:1
+  --> $DIR/issue-77982.rs:32:1
    |
 LL | impl Foo<'static, u32> for () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -74,13 +74,13 @@ LL |     let _: Box<T> = ().foo();
    |          ++++++++
 
 error[E0283]: type annotations needed for `Box<_>`
-  --> $DIR/issue-77982.rs:42:9
+  --> $DIR/issue-77982.rs:43:9
    |
 LL |     let _ = (&()).bar();
    |         ^         --- type must be known at this point
    |
 note: multiple `impl`s satisfying `&(): Bar<'_, _>` found
-  --> $DIR/issue-77982.rs:34:1
+  --> $DIR/issue-77982.rs:35:1
    |
 LL | impl<'a> Bar<'static, u32> for &'a () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,10 +1,11 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{SpanRangeExt, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::visitors::{Descend, for_each_expr, for_each_unconsumed_temporary};
+use clippy_utils::visitors::{Descend, for_each_expr};
 use clippy_utils::{
-    binary_expr_needs_parentheses, fn_def_id, is_from_proc_macro, is_inside_let_else, is_res_lang_ctor, path_res,
-    path_to_local_id, span_contains_cfg, span_find_starting_semi,
+    binary_expr_needs_parentheses, fn_def_id, is_from_proc_macro, is_inside_let_else, is_res_lang_ctor,
+    leaks_droppable_temporary_with_limited_lifetime, path_res, path_to_local_id, span_contains_cfg,
+    span_find_starting_semi,
 };
 use core::ops::ControlFlow;
 use rustc_ast::MetaItemInner;
@@ -16,7 +17,6 @@ use rustc_hir::{
     StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass, Level, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_session::declare_lint_pass;
@@ -190,7 +190,7 @@ fn stmt_needs_never_type(cx: &LateContext<'_>, stmt_hir_id: HirId) -> bool {
 
 impl<'tcx> LateLintPass<'tcx> for Return {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
-        if !in_external_macro(cx.sess(), stmt.span)
+        if !stmt.span.in_external_macro(cx.sess().source_map())
             && let StmtKind::Semi(expr) = stmt.kind
             && let ExprKind::Ret(Some(ret)) = expr.kind
             // return Err(...)? desugars to a match
@@ -236,8 +236,8 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             && let PatKind::Binding(_, local_id, _, _) = local.pat.kind
             && path_to_local_id(retexpr, local_id)
             && !last_statement_borrows(cx, initexpr)
-            && !in_external_macro(cx.sess(), initexpr.span)
-            && !in_external_macro(cx.sess(), retexpr.span)
+            && !initexpr.span.in_external_macro(cx.sess().source_map())
+            && !retexpr.span.in_external_macro(cx.sess().source_map())
             && !local.span.from_expansion()
             && !span_contains_cfg(cx, stmt.span.between(retexpr.span))
         {
@@ -389,22 +389,8 @@ fn check_final_expr<'tcx>(
                 }
             };
 
-            if let Some(inner) = inner {
-                if for_each_unconsumed_temporary(cx, inner, |temporary_ty| {
-                    if temporary_ty.has_significant_drop(cx.tcx, cx.typing_env())
-                        && temporary_ty
-                            .walk()
-                            .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(re) if !re.is_static()))
-                    {
-                        ControlFlow::Break(())
-                    } else {
-                        ControlFlow::Continue(())
-                    }
-                })
-                .is_break()
-                {
-                    return;
-                }
+            if inner.is_some_and(|inner| leaks_droppable_temporary_with_limited_lifetime(cx, inner)) {
+                return;
             }
 
             if ret_span.from_expansion() || is_from_proc_macro(cx, expr) {

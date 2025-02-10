@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Diag;
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{
-    Expr, ExprKind, ForeignItem, HirId, ImplItem, Item, ItemKind, OwnerId, Pat, Path, Stmt, TraitItem, Ty,
+    AmbigArg, Expr, ExprKind, ForeignItem, HirId, ImplItem, Item, ItemKind, OwnerId, Pat, Path, Stmt, TraitItem, Ty,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
@@ -140,7 +140,7 @@ impl LateLintPass<'_> for DisallowedMacros {
         self.check(cx, stmt.span, None);
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &Ty<'_>) {
+    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &Ty<'_, AmbigArg>) {
         self.check(cx, ty.span, None);
     }
 

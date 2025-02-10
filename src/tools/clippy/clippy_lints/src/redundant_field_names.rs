@@ -4,7 +4,6 @@ use clippy_utils::msrvs::{self, Msrv};
 use rustc_ast::ast::{Expr, ExprKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -56,7 +55,7 @@ impl EarlyLintPass for RedundantFieldNames {
             return;
         }
 
-        if in_external_macro(cx.sess(), expr.span) {
+        if expr.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
         if let ExprKind::Struct(ref se) = expr.kind {

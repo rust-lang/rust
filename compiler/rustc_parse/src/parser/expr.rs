@@ -807,17 +807,20 @@ impl<'a> Parser<'a> {
         // Check if an illegal postfix operator has been added after the cast.
         // If the resulting expression is not a cast, it is an illegal postfix operator.
         if !matches!(with_postfix.kind, ExprKind::Cast(_, _)) {
-            let msg = format!("cast cannot be followed by {}", match with_postfix.kind {
-                ExprKind::Index(..) => "indexing",
-                ExprKind::Try(_) => "`?`",
-                ExprKind::Field(_, _) => "a field access",
-                ExprKind::MethodCall(_) => "a method call",
-                ExprKind::Call(_, _) => "a function call",
-                ExprKind::Await(_, _) => "`.await`",
-                ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
-                ExprKind::Err(_) => return Ok(with_postfix),
-                _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
-            });
+            let msg = format!(
+                "cast cannot be followed by {}",
+                match with_postfix.kind {
+                    ExprKind::Index(..) => "indexing",
+                    ExprKind::Try(_) => "`?`",
+                    ExprKind::Field(_, _) => "a field access",
+                    ExprKind::MethodCall(_) => "a method call",
+                    ExprKind::Call(_, _) => "a function call",
+                    ExprKind::Await(_, _) => "`.await`",
+                    ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
+                    ExprKind::Err(_) => return Ok(with_postfix),
+                    _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
+                }
+            );
             let mut err = self.dcx().struct_span_err(span, msg);
 
             let suggest_parens = |err: &mut Diag<'_>| {
@@ -1958,7 +1961,7 @@ impl<'a> Parser<'a> {
         } else {
             let err = self.dcx().create_err(errors::UnknownBuiltinConstruct {
                 span: lo.to(ident.span),
-                name: ident.name,
+                name: ident,
             });
             return Err(err);
         };
@@ -2095,7 +2098,7 @@ impl<'a> Parser<'a> {
                     // point literal here, since there's no use of the exponent
                     // syntax that also constitutes a valid integer, so we need
                     // not check for that.
-                    if suffix.map_or(true, |s| s == sym::f32 || s == sym::f64)
+                    if suffix.is_none_or(|s| s == sym::f32 || s == sym::f64)
                         && symbol.as_str().chars().all(|c| c.is_numeric() || c == '_')
                         && self.token.span.hi() == next_token.span.lo()
                     {
@@ -2862,13 +2865,10 @@ impl<'a> Parser<'a> {
                 .emit_err(errors::MissingExpressionInForLoop { span: expr.span.shrink_to_lo() });
             let err_expr = self.mk_expr(expr.span, ExprKind::Err(guar));
             let block = self.mk_block(thin_vec![], BlockCheckMode::Default, self.prev_token.span);
-            return Ok(self.mk_expr(lo.to(self.prev_token.span), ExprKind::ForLoop {
-                pat,
-                iter: err_expr,
-                body: block,
-                label: opt_label,
-                kind,
-            }));
+            return Ok(self.mk_expr(
+                lo.to(self.prev_token.span),
+                ExprKind::ForLoop { pat, iter: err_expr, body: block, label: opt_label, kind },
+            ));
         }
 
         let (attrs, loop_block) = self.parse_inner_attrs_and_block()?;
@@ -3114,9 +3114,8 @@ impl<'a> Parser<'a> {
             let span_before_body = this.prev_token.span;
             let arm_body;
             let is_fat_arrow = this.check(exp!(FatArrow));
-            let is_almost_fat_arrow = TokenKind::FatArrow
-                .similar_tokens()
-                .is_some_and(|similar_tokens| similar_tokens.contains(&this.token.kind));
+            let is_almost_fat_arrow =
+                TokenKind::FatArrow.similar_tokens().contains(&this.token.kind);
 
             // this avoids the compiler saying that a `,` or `}` was expected even though
             // the pattern isn't a never pattern (and thus an arm body is required)

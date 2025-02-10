@@ -1,9 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_hir};
 use clippy_utils::higher;
-use rustc_hir as hir;
-use rustc_hir::intravisit;
+use rustc_hir::{self as hir, AmbigArg, intravisit};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 
@@ -34,12 +32,12 @@ impl<'tcx> LateLintPass<'tcx> for MutMut {
         intravisit::walk_block(&mut MutVisitor { cx }, block);
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'_>) {
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'_, AmbigArg>) {
         if let hir::TyKind::Ref(_, mty) = ty.kind
             && mty.mutbl == hir::Mutability::Mut
             && let hir::TyKind::Ref(_, mty) = mty.ty.kind
             && mty.mutbl == hir::Mutability::Mut
-            && !in_external_macro(cx.sess(), ty.span)
+            && !ty.span.in_external_macro(cx.sess().source_map())
         {
             span_lint(
                 cx,
@@ -57,7 +55,7 @@ pub struct MutVisitor<'a, 'tcx> {
 
 impl<'tcx> intravisit::Visitor<'tcx> for MutVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
-        if in_external_macro(self.cx.sess(), expr.span) {
+        if expr.span.in_external_macro(self.cx.sess().source_map()) {
             return;
         }
 

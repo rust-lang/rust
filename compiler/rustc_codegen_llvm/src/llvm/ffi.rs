@@ -1,3 +1,15 @@
+//! Bindings to the LLVM-C API (`LLVM*`), and to our own `extern "C"` wrapper
+//! functions around the unstable LLVM C++ API (`LLVMRust*`).
+//!
+//! ## Passing pointer/length strings as `*const c_uchar`
+//!
+//! Normally it's a good idea for Rust-side bindings to match the corresponding
+//! C-side function declarations as closely as possible. But when passing `&str`
+//! or `&[u8]` data as a pointer/length pair, it's more convenient to declare
+//! the Rust-side pointer as `*const c_uchar` instead of `*const c_char`.
+//! Both pointer types have the same ABI, and using `*const c_uchar` avoids
+//! the need for an extra cast from `*const u8` on the Rust side.
+
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
@@ -5,17 +17,18 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ptr;
 
-use libc::{c_char, c_int, c_uint, c_ulonglong, c_void, size_t};
+use bitflags::bitflags;
+use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, c_void, size_t};
 use rustc_macros::TryFromU32;
 use rustc_target::spec::SymbolVisibility;
 
 use super::RustString;
 use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
-    DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DILocation, DINameSpace,
-    DISPFlags, DIScope, DISubprogram, DISubrange, DITemplateTypeParameter, DIType, DIVariable,
-    DebugEmissionKind, DebugNameTableKind,
+    DIFile, DIFlags, DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram,
+    DISubrange, DITemplateTypeParameter, DIType, DIVariable, DebugEmissionKind, DebugNameTableKind,
 };
+use crate::llvm;
 
 /// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
 /// which has a different ABI from Rust or C++ `bool`.
@@ -54,19 +67,6 @@ impl<T: TryFrom<u32>> RawEnum<T> {
 pub enum LLVMRustResult {
     Success,
     Failure,
-}
-
-/// Translation of LLVM's MachineTypes enum, defined in llvm\include\llvm\BinaryFormat\COFF.h.
-///
-/// We include only architectures supported on Windows.
-#[derive(Copy, Clone, PartialEq)]
-#[repr(C)]
-pub enum LLVMMachineType {
-    AMD64 = 0x8664,
-    I386 = 0x14c,
-    ARM64 = 0xaa64,
-    ARM64EC = 0xa641,
-    ARM = 0x01c0,
 }
 
 /// Must match the layout of `LLVMRustModuleFlagMergeBehavior`.
@@ -632,16 +632,6 @@ pub enum ThreadLocalMode {
     LocalExec,
 }
 
-/// LLVMRustTailCallKind
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub enum TailCallKind {
-    None,
-    Tail,
-    MustTail,
-    NoTail,
-}
-
 /// LLVMRustChecksumKind
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -659,6 +649,79 @@ pub enum MemoryEffects {
     None,
     ReadOnly,
     InaccessibleMemOnly,
+}
+
+/// LLVMOpcode
+#[derive(Copy, Clone, PartialEq, Eq)]
+#[repr(C)]
+pub enum Opcode {
+    Ret = 1,
+    Br = 2,
+    Switch = 3,
+    IndirectBr = 4,
+    Invoke = 5,
+    Unreachable = 7,
+    CallBr = 67,
+    FNeg = 66,
+    Add = 8,
+    FAdd = 9,
+    Sub = 10,
+    FSub = 11,
+    Mul = 12,
+    FMul = 13,
+    UDiv = 14,
+    SDiv = 15,
+    FDiv = 16,
+    URem = 17,
+    SRem = 18,
+    FRem = 19,
+    Shl = 20,
+    LShr = 21,
+    AShr = 22,
+    And = 23,
+    Or = 24,
+    Xor = 25,
+    Alloca = 26,
+    Load = 27,
+    Store = 28,
+    GetElementPtr = 29,
+    Trunc = 30,
+    ZExt = 31,
+    SExt = 32,
+    FPToUI = 33,
+    FPToSI = 34,
+    UIToFP = 35,
+    SIToFP = 36,
+    FPTrunc = 37,
+    FPExt = 38,
+    PtrToInt = 39,
+    IntToPtr = 40,
+    BitCast = 41,
+    AddrSpaceCast = 60,
+    ICmp = 42,
+    FCmp = 43,
+    PHI = 44,
+    Call = 45,
+    Select = 46,
+    UserOp1 = 47,
+    UserOp2 = 48,
+    VAArg = 49,
+    ExtractElement = 50,
+    InsertElement = 51,
+    ShuffleVector = 52,
+    ExtractValue = 53,
+    InsertValue = 54,
+    Freeze = 68,
+    Fence = 55,
+    AtomicCmpXchg = 56,
+    AtomicRMW = 57,
+    Resume = 58,
+    LandingPad = 59,
+    CleanupRet = 61,
+    CatchRet = 62,
+    CatchPad = 63,
+    CleanupPad = 64,
+    CatchSwitch = 65,
 }
 
 unsafe extern "C" {
@@ -687,7 +750,6 @@ pub struct Builder<'a>(InvariantOpaque<'a>);
 #[repr(C)]
 pub struct PassManager<'a>(InvariantOpaque<'a>);
 unsafe extern "C" {
-    pub type Pass;
     pub type TargetMachine;
     pub type Archive;
 }
@@ -713,15 +775,52 @@ unsafe extern "C" {
 }
 
 pub type DiagnosticHandlerTy = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
-pub type InlineAsmDiagHandlerTy = unsafe extern "C" fn(&SMDiagnostic, *const c_void, c_uint);
 
 pub mod debuginfo {
+    use std::ptr;
+
     use bitflags::bitflags;
 
     use super::{InvariantOpaque, Metadata};
+    use crate::llvm::{self, Module};
 
+    /// Opaque target type for references to an LLVM debuginfo builder.
+    ///
+    /// `&'_ DIBuilder<'ll>` corresponds to `LLVMDIBuilderRef`, which is the
+    /// LLVM-C wrapper for `DIBuilder *`.
+    ///
+    /// Debuginfo builders are created and destroyed during codegen, so the
+    /// builder reference typically has a shorter lifetime than the LLVM
+    /// session (`'ll`) that it participates in.
     #[repr(C)]
-    pub struct DIBuilder<'a>(InvariantOpaque<'a>);
+    pub struct DIBuilder<'ll>(InvariantOpaque<'ll>);
+
+    /// Owning pointer to a `DIBuilder<'ll>` that will dispose of the builder
+    /// when dropped. Use `.as_ref()` to get the underlying `&DIBuilder`
+    /// needed for debuginfo FFI calls.
+    pub(crate) struct DIBuilderBox<'ll> {
+        raw: ptr::NonNull<DIBuilder<'ll>>,
+    }
+
+    impl<'ll> DIBuilderBox<'ll> {
+        pub(crate) fn new(llmod: &'ll Module) -> Self {
+            let raw = unsafe { llvm::LLVMCreateDIBuilder(llmod) };
+            let raw = ptr::NonNull::new(raw).unwrap();
+            Self { raw }
+        }
+
+        pub(crate) fn as_ref(&self) -> &DIBuilder<'ll> {
+            // SAFETY: This is an owning pointer, so `&DIBuilder` is valid
+            // for as long as `&self` is.
+            unsafe { self.raw.as_ref() }
+        }
+    }
+
+    impl<'ll> Drop for DIBuilderBox<'ll> {
+        fn drop(&mut self) {
+            unsafe { llvm::LLVMDisposeDIBuilder(self.raw) };
+        }
+    }
 
     pub type DIDescriptor = Metadata;
     pub type DILocation = Metadata;
@@ -729,7 +828,6 @@ pub mod debuginfo {
     pub type DIFile = DIScope;
     pub type DILexicalBlock = DIScope;
     pub type DISubprogram = DIScope;
-    pub type DINameSpace = DIScope;
     pub type DIType = DIDescriptor;
     pub type DIBasicType = DIType;
     pub type DIDerivedType = DIType;
@@ -741,8 +839,11 @@ pub mod debuginfo {
     pub type DIEnumerator = DIDescriptor;
     pub type DITemplateTypeParameter = DIDescriptor;
 
-    // These values **must** match with LLVMRustDIFlags!!
     bitflags! {
+        /// Must match the layout of `LLVMDIFlags` in the LLVM-C API.
+        ///
+        /// Each value declared here must also be covered by the static
+        /// assertions in `RustWrapper.cpp` used by `fromRust(LLVMDIFlags)`.
         #[repr(transparent)]
         #[derive(Clone, Copy, Default)]
         pub struct DIFlags: u32 {
@@ -752,7 +853,7 @@ pub mod debuginfo {
             const FlagPublic              = 3;
             const FlagFwdDecl             = (1 << 2);
             const FlagAppleBlock          = (1 << 3);
-            const FlagBlockByrefStruct    = (1 << 4);
+            const FlagReservedBit4        = (1 << 4);
             const FlagVirtual             = (1 << 5);
             const FlagArtificial          = (1 << 6);
             const FlagExplicit            = (1 << 7);
@@ -763,10 +864,21 @@ pub mod debuginfo {
             const FlagStaticMember        = (1 << 12);
             const FlagLValueReference     = (1 << 13);
             const FlagRValueReference     = (1 << 14);
-            const FlagExternalTypeRef     = (1 << 15);
+            const FlagReserved            = (1 << 15);
+            const FlagSingleInheritance   = (1 << 16);
+            const FlagMultipleInheritance = (2 << 16);
+            const FlagVirtualInheritance  = (3 << 16);
             const FlagIntroducedVirtual   = (1 << 18);
             const FlagBitField            = (1 << 19);
             const FlagNoReturn            = (1 << 20);
+            // The bit at (1 << 21) is unused, but was `LLVMDIFlagMainSubprogram`.
+            const FlagTypePassByValue     = (1 << 22);
+            const FlagTypePassByReference = (1 << 23);
+            const FlagEnumClass           = (1 << 24);
+            const FlagThunk               = (1 << 25);
+            const FlagNonTrivial          = (1 << 26);
+            const FlagBigEndian           = (1 << 27);
+            const FlagLittleEndian        = (1 << 28);
         }
     }
 
@@ -827,7 +939,6 @@ pub mod debuginfo {
     }
 }
 
-use bitflags::bitflags;
 // These values **must** match with LLVMRustAllocKindFlags
 bitflags! {
     #[repr(transparent)]
@@ -918,6 +1029,7 @@ unsafe extern "C" {
     pub fn LLVMMetadataTypeInContext(C: &Context) -> &Type;
 
     // Operations on all values
+    pub fn LLVMIsUndef(Val: &Value) -> Bool;
     pub fn LLVMTypeOf(Val: &Value) -> &Type;
     pub fn LLVMGetValueName2(Val: &Value, Length: *mut size_t) -> *const c_char;
     pub fn LLVMSetValueName2(Val: &Value, Name: *const c_char, NameLen: size_t);
@@ -976,7 +1088,10 @@ unsafe extern "C" {
     pub fn LLVMConstPtrToInt<'a>(ConstantVal: &'a Value, ToType: &'a Type) -> &'a Value;
     pub fn LLVMConstIntToPtr<'a>(ConstantVal: &'a Value, ToType: &'a Type) -> &'a Value;
     pub fn LLVMConstBitCast<'a>(ConstantVal: &'a Value, ToType: &'a Type) -> &'a Value;
+    pub fn LLVMConstPointerCast<'a>(ConstantVal: &'a Value, ToType: &'a Type) -> &'a Value;
     pub fn LLVMGetAggregateElement(ConstantVal: &Value, Idx: c_uint) -> Option<&Value>;
+    pub fn LLVMGetConstOpcode(ConstantVal: &Value) -> Opcode;
+    pub fn LLVMIsAConstantExpr(Val: &Value) -> Option<&Value>;
 
     // Operations on global variables, functions, and aliases (globals)
     pub fn LLVMIsDeclaration(Global: &Value) -> Bool;
@@ -1033,6 +1148,7 @@ unsafe extern "C" {
     // Operations on instructions
     pub fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
     pub fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
+    pub fn LLVMGetOperand(Val: &Value, Index: c_uint) -> Option<&Value>;
 
     // Operations on call sites
     pub fn LLVMSetInstructionCallConv(Instr: &Value, CC: c_uint);
@@ -1287,6 +1403,9 @@ unsafe extern "C" {
     pub fn LLVMBuildNeg<'a>(B: &Builder<'a>, V: &'a Value, Name: *const c_char) -> &'a Value;
     pub fn LLVMBuildFNeg<'a>(B: &Builder<'a>, V: &'a Value, Name: *const c_char) -> &'a Value;
     pub fn LLVMBuildNot<'a>(B: &Builder<'a>, V: &'a Value, Name: *const c_char) -> &'a Value;
+
+    // Extra flags on arithmetic
+    pub fn LLVMSetIsDisjoint(Instr: &Value, IsDisjoint: Bool);
 
     // Memory
     pub fn LLVMBuildAlloca<'a>(B: &Builder<'a>, Ty: &'a Type, Name: *const c_char) -> &'a Value;
@@ -1580,6 +1699,50 @@ unsafe extern "C" {
     ) -> &'a Value;
 }
 
+// FFI bindings for `DIBuilder` functions in the LLVM-C API.
+// Try to keep these in the same order as in `llvm/include/llvm-c/DebugInfo.h`.
+//
+// FIXME(#134001): Audit all `Option` parameters, especially in lists, to check
+// that they really are nullable on the C/C++ side. LLVM doesn't appear to
+// actually document which ones are nullable.
+unsafe extern "C" {
+    pub(crate) fn LLVMCreateDIBuilder<'ll>(M: &'ll Module) -> *mut DIBuilder<'ll>;
+    pub(crate) fn LLVMDisposeDIBuilder<'ll>(Builder: ptr::NonNull<DIBuilder<'ll>>);
+
+    pub(crate) fn LLVMDIBuilderFinalize<'ll>(Builder: &DIBuilder<'ll>);
+
+    pub(crate) fn LLVMDIBuilderCreateNameSpace<'ll>(
+        Builder: &DIBuilder<'ll>,
+        ParentScope: Option<&'ll Metadata>,
+        Name: *const c_uchar,
+        NameLen: size_t,
+        ExportSymbols: llvm::Bool,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateLexicalBlock<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: &'ll Metadata,
+        File: &'ll Metadata,
+        Line: c_uint,
+        Column: c_uint,
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateLexicalBlockFile<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: &'ll Metadata,
+        File: &'ll Metadata,
+        Discriminator: c_uint, // (optional "DWARF path discriminator"; default is 0)
+    ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateDebugLocation<'ll>(
+        Ctx: &'ll Context,
+        Line: c_uint,
+        Column: c_uint,
+        Scope: &'ll Metadata,
+        InlinedAt: Option<&'ll Metadata>,
+    ) -> &'ll Metadata;
+}
+
 #[link(name = "llvm-wrapper", kind = "static")]
 unsafe extern "C" {
     pub fn LLVMRustInstallErrorHandlers();
@@ -1620,7 +1783,6 @@ unsafe extern "C" {
         Name: *const c_char,
         NameLen: size_t,
     ) -> Option<&Value>;
-    pub fn LLVMRustSetTailCallKind(CallInst: &Value, TKC: TailCallKind);
 
     // Operations on attributes
     pub fn LLVMRustCreateAttrNoValue(C: &Context, attr: AttributeKind) -> &Attribute;
@@ -1847,12 +2009,6 @@ unsafe extern "C" {
         ValueLen: size_t,
     );
 
-    pub fn LLVMRustDIBuilderCreate(M: &Module) -> &mut DIBuilder<'_>;
-
-    pub fn LLVMRustDIBuilderDispose<'a>(Builder: &'a mut DIBuilder<'a>);
-
-    pub fn LLVMRustDIBuilderFinalize(Builder: &DIBuilder<'_>);
-
     pub fn LLVMRustDIBuilderCreateCompileUnit<'a>(
         Builder: &DIBuilder<'a>,
         Lang: c_uint,
@@ -2015,20 +2171,6 @@ unsafe extern "C" {
         Type: &'a DIType,
     ) -> &'a DIDerivedType;
 
-    pub fn LLVMRustDIBuilderCreateLexicalBlock<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: &'a DIScope,
-        File: &'a DIFile,
-        Line: c_uint,
-        Col: c_uint,
-    ) -> &'a DILexicalBlock;
-
-    pub fn LLVMRustDIBuilderCreateLexicalBlockFile<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: &'a DIScope,
-        File: &'a DIFile,
-    ) -> &'a DILexicalBlock;
-
     pub fn LLVMRustDIBuilderCreateStaticVariable<'a>(
         Builder: &DIBuilder<'a>,
         Context: Option<&'a DIScope>,
@@ -2153,14 +2295,6 @@ unsafe extern "C" {
         Ty: &'a DIType,
     ) -> &'a DITemplateTypeParameter;
 
-    pub fn LLVMRustDIBuilderCreateNameSpace<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: Option<&'a DIScope>,
-        Name: *const c_char,
-        NameLen: size_t,
-        ExportSymbols: bool,
-    ) -> &'a DINameSpace;
-
     pub fn LLVMRustDICompositeTypeReplaceArrays<'a>(
         Builder: &DIBuilder<'a>,
         CompositeType: &'a DIType,
@@ -2168,12 +2302,6 @@ unsafe extern "C" {
         Params: Option<&'a DIArray>,
     );
 
-    pub fn LLVMRustDIBuilderCreateDebugLocation<'a>(
-        Line: c_uint,
-        Column: c_uint,
-        Scope: &'a DIScope,
-        InlinedAt: Option<&'a DILocation>,
-    ) -> &'a DILocation;
     pub fn LLVMRustDILocationCloneWithBaseDiscriminator<'a>(
         Location: &'a DILocation,
         BD: c_uint,
@@ -2430,8 +2558,6 @@ unsafe extern "C" {
     pub fn LLVMRustGetMangledName(V: &Value, out: &RustString);
 
     pub fn LLVMRustGetElementTypeArgIndex(CallSite: &Value) -> i32;
-
-    pub fn LLVMRustIsBitcode(ptr: *const u8, len: usize) -> bool;
 
     pub fn LLVMRustLLVMHasZlibCompressionForDebugSymbols() -> bool;
 

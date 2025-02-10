@@ -41,7 +41,7 @@ note: method defined here
   --> $DIR/method-call-err-msg.rs:7:8
    |
 LL |     fn two(self, _: isize, _: isize) -> Foo { self }
-   |        ^^^       --------  --------
+   |        ^^^                 --------
 help: provide the argument
    |
 LL |      .two(0, /* isize */);

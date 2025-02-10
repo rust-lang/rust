@@ -18,6 +18,8 @@ use build_helper::exit;
 use build_helper::git::{GitConfig, get_closest_merge_commit, output_result};
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
+#[cfg(feature = "tracing")]
+use tracing::{instrument, span};
 
 use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
 use crate::core::build_steps::llvm;
@@ -573,6 +575,10 @@ impl TargetSelection {
         env::var("OSTYPE").is_ok_and(|v| v.to_lowercase().contains("cygwin"))
     }
 
+    pub fn needs_crt_begin_end(&self) -> bool {
+        self.contains("musl") && !self.contains("unikraft")
+    }
+
     /// Path to the file defining the custom target, if any.
     pub fn filepath(&self) -> Option<&Path> {
         self.file.as_ref().map(Path::new)
@@ -698,7 +704,7 @@ trait Merge {
 impl Merge for TomlConfig {
     fn merge(
         &mut self,
-        TomlConfig { build, install, llvm, rust, dist, target, profile: _, change_id }: Self,
+        TomlConfig { build, install, llvm, rust, dist, target, profile, change_id }: Self,
         replace: ReplaceOpt,
     ) {
         fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>, replace: ReplaceOpt) {
@@ -710,7 +716,10 @@ impl Merge for TomlConfig {
                 }
             }
         }
+
         self.change_id.inner.merge(change_id.inner, replace);
+        self.profile.merge(profile, replace);
+
         do_merge(&mut self.build, build, replace);
         do_merge(&mut self.install, install, replace);
         do_merge(&mut self.llvm, llvm, replace);
@@ -1227,7 +1236,14 @@ define_config! {
 }
 
 impl Config {
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(target = "CONFIG_HANDLING", level = "trace", name = "Config::default_opts")
+    )]
     pub fn default_opts() -> Config {
+        #[cfg(feature = "tracing")]
+        span!(target: "CONFIG_HANDLING", tracing::Level::TRACE, "constructing default config");
+
         Config {
             bypass_bootstrap_lock: false,
             llvm_optimize: true,
@@ -1311,10 +1327,23 @@ impl Config {
             })
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(target = "CONFIG_HANDLING", level = "trace", name = "Config::parse", skip_all)
+    )]
     pub fn parse(flags: Flags) -> Config {
         Self::parse_inner(flags, Self::get_toml)
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            target = "CONFIG_HANDLING",
+            level = "trace",
+            name = "Config::parse_inner",
+            skip_all
+        )
+    )]
     pub(crate) fn parse_inner(
         mut flags: Flags,
         get_toml: impl Fn(&Path) -> Result<TomlConfig, toml::de::Error>,
@@ -1323,6 +1352,17 @@ impl Config {
 
         // Set flags.
         config.paths = std::mem::take(&mut flags.paths);
+
+        #[cfg(feature = "tracing")]
+        span!(
+            target: "CONFIG_HANDLING",
+            tracing::Level::TRACE,
+            "collecting paths and path exclusions",
+            "flags.paths" = ?flags.paths,
+            "flags.skip" = ?flags.skip,
+            "flags.exclude" = ?flags.exclude
+        );
+
         config.skip = flags
             .skip
             .into_iter()
@@ -1338,6 +1378,14 @@ impl Config {
                 }
             })
             .collect();
+
+        #[cfg(feature = "tracing")]
+        span!(
+            target: "CONFIG_HANDLING",
+            tracing::Level::TRACE,
+            "normalizing and combining `flag.skip`/`flag.exclude` paths",
+            "config.skip" = ?config.skip,
+        );
 
         config.include_default_paths = flags.include_default_paths;
         config.rustc_error_format = flags.rustc_error_format;
@@ -1418,7 +1466,11 @@ impl Config {
 
         config.stage0_metadata = build_helper::stage0_parser::parse_stage0_file();
 
-        // Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`, then `config.toml` in the root directory.
+        // Find configuration file, with the following cascading fallback (first match wins):
+        // - `--config <path>`
+        // - `RUST_BOOTSTRAP_CONFIG`
+        // - `./config.toml`
+        // - `config.toml` in the root directory.
         let toml_path = flags
             .config
             .clone()
@@ -1458,6 +1510,10 @@ impl Config {
             let build = toml.build.get_or_insert_with(Default::default);
             build.rustc = build.rustc.take().or(std::env::var_os("RUSTC").map(|p| p.into()));
             build.cargo = build.cargo.take().or(std::env::var_os("CARGO").map(|p| p.into()));
+        }
+
+        if GitInfo::new(false, &config.src).is_from_tarball() && toml.profile.is_none() {
+            toml.profile = Some("dist".into());
         }
 
         if let Some(include) = &toml.profile {
@@ -1872,11 +1928,14 @@ impl Config {
             config.rustc_default_linker = default_linker;
             config.musl_root = musl_root.map(PathBuf::from);
             config.save_toolstates = save_toolstates.map(PathBuf::from);
-            set(&mut config.deny_warnings, match flags.warnings {
-                Warnings::Deny => Some(true),
-                Warnings::Warn => Some(false),
-                Warnings::Default => deny_warnings,
-            });
+            set(
+                &mut config.deny_warnings,
+                match flags.warnings {
+                    Warnings::Deny => Some(true),
+                    Warnings::Warn => Some(false),
+                    Warnings::Default => deny_warnings,
+                },
+            );
             set(&mut config.backtrace_on_ice, backtrace_on_ice);
             set(&mut config.rust_verify_llvm_ir, verify_llvm_ir);
             config.rust_thin_lto_import_instr_limit = thin_lto_import_instr_limit;
@@ -2875,21 +2934,26 @@ impl Config {
             allowed_paths.push(":!library");
         }
 
-        // Look for a version to compare to based on the current commit.
-        // Only commits merged by bors will have CI artifacts.
-        let commit = match self.last_modified_commit(&allowed_paths, "download-rustc", if_unchanged)
-        {
-            Some(commit) => commit,
-            None => {
-                if if_unchanged {
-                    return None;
+        let commit = if self.rust_info.is_managed_git_subrepository() {
+            // Look for a version to compare to based on the current commit.
+            // Only commits merged by bors will have CI artifacts.
+            match self.last_modified_commit(&allowed_paths, "download-rustc", if_unchanged) {
+                Some(commit) => commit,
+                None => {
+                    if if_unchanged {
+                        return None;
+                    }
+                    println!("ERROR: could not find commit hash for downloading rustc");
+                    println!("HELP: maybe your repository history is too shallow?");
+                    println!("HELP: consider setting `rust.download-rustc=false` in config.toml");
+                    println!("HELP: or fetch enough history to include one upstream commit");
+                    crate::exit!(1);
                 }
-                println!("ERROR: could not find commit hash for downloading rustc");
-                println!("HELP: maybe your repository history is too shallow?");
-                println!("HELP: consider setting `rust.download-rustc=false` in config.toml");
-                println!("HELP: or fetch enough history to include one upstream commit");
-                crate::exit!(1);
             }
+        } else {
+            channel::read_commit_info_file(&self.src)
+                .map(|info| info.sha.trim().to_owned())
+                .expect("git-commit-info is missing in the project root")
         };
 
         if CiEnv::is_ci() && {
@@ -2926,10 +2990,8 @@ impl Config {
         let if_unchanged = || {
             if self.rust_info.is_from_tarball() {
                 // Git is needed for running "if-unchanged" logic.
-                println!(
-                    "WARNING: 'if-unchanged' has no effect on tarball sources; ignoring `download-ci-llvm`."
-                );
-                return false;
+                println!("ERROR: 'if-unchanged' is only compatible with Git managed sources.");
+                crate::exit!(1);
             }
 
             // Fetching the LLVM submodule is unnecessary for self-tests.
@@ -2971,6 +3033,11 @@ impl Config {
         option_name: &str,
         if_unchanged: bool,
     ) -> Option<String> {
+        assert!(
+            self.rust_info.is_managed_git_subrepository(),
+            "Can't run `Config::last_modified_commit` on a non-git source."
+        );
+
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
         let commit = get_closest_merge_commit(Some(&self.src), &self.git_config(), &[]).unwrap();

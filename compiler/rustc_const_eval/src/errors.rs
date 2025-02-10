@@ -122,6 +122,14 @@ pub(crate) struct UnstableConstFn {
 }
 
 #[derive(Diagnostic)]
+#[diag(const_eval_unstable_const_trait)]
+pub(crate) struct UnstableConstTrait {
+    #[primary_span]
+    pub span: Span,
+    pub def_path: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(const_eval_unstable_intrinsic)]
 pub(crate) struct UnstableIntrinsic {
     #[primary_span]
@@ -139,9 +147,9 @@ pub(crate) struct UnstableIntrinsic {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unmarked_const_fn_exposed)]
+#[diag(const_eval_unmarked_const_item_exposed)]
 #[help]
-pub(crate) struct UnmarkedConstFnExposed {
+pub(crate) struct UnmarkedConstItemExposed {
     #[primary_span]
     pub span: Span,
     pub def_path: String,
@@ -570,10 +578,13 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             }
             ShiftOverflow { intrinsic, shift_amount } => {
                 diag.arg("intrinsic", intrinsic);
-                diag.arg("shift_amount", match shift_amount {
-                    Either::Left(v) => v.to_string(),
-                    Either::Right(v) => v.to_string(),
-                });
+                diag.arg(
+                    "shift_amount",
+                    match shift_amount {
+                        Either::Left(v) => v.to_string(),
+                        Either::Right(v) => v.to_string(),
+                    },
+                );
             }
             BoundsCheckFailed { len, index } => {
                 diag.arg("len", len);

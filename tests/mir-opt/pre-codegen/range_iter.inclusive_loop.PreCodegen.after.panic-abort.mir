@@ -19,16 +19,16 @@ fn inclusive_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
         scope 2 {
             debug x => _9;
         }
-        scope 5 (inlined iter::range::<impl Iterator for RangeInclusive<u32>>::next) {
+        scope 5 (inlined iter::range::<impl Iterator for std::ops::RangeInclusive<u32>>::next) {
         }
     }
-    scope 3 (inlined RangeInclusive::<u32>::new) {
+    scope 3 (inlined std::ops::RangeInclusive::<u32>::new) {
     }
-    scope 4 (inlined <RangeInclusive<u32> as IntoIterator>::into_iter) {
+    scope 4 (inlined <std::ops::RangeInclusive<u32> as IntoIterator>::into_iter) {
     }
 
     bb0: {
-        _4 = RangeInclusive::<u32> { start: copy _1, end: copy _2, exhausted: const false };
+        _4 = std::ops::RangeInclusive::<u32> { start: copy _1, end: copy _2, exhausted: const false };
         StorageLive(_5);
         _5 = copy _4;
         goto -> bb1;
@@ -37,7 +37,7 @@ fn inclusive_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     bb1: {
         StorageLive(_7);
         _6 = &mut _5;
-        _7 = <RangeInclusive<u32> as iter::range::RangeInclusiveIteratorImpl>::spec_next(move _6) -> [return: bb2, unwind unreachable];
+        _7 = <std::ops::RangeInclusive<u32> as iter::range::RangeInclusiveIteratorImpl>::spec_next(move _6) -> [return: bb2, unwind unreachable];
     }
 
     bb2: {

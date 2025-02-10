@@ -10,9 +10,8 @@ struct i8x4([i8; 4]);
 #[derive(Copy, Clone)]
 struct u8x4([u8; 4]);
 
-extern "rust-intrinsic" {
-    fn simd_bswap<T>(x: T) -> T;
-}
+#[rustc_intrinsic]
+unsafe fn simd_bswap<T>(x: T) -> T;
 
 fn main() {
     unsafe {

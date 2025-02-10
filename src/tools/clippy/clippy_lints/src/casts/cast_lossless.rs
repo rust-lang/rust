@@ -38,7 +38,7 @@ pub(super) fn check(
                 return;
             };
             match cast_to_hir.kind {
-                TyKind::Infer => {
+                TyKind::Infer(()) => {
                     diag.span_suggestion_verbose(
                         expr.span,
                         "use `Into::into` instead",

@@ -92,7 +92,7 @@ fn detect_src_and_out() {
             //     `{build-dir}/bootstrap/debug/deps/bootstrap-c7ee91d5661e2804`
             // `{build-dir}` can be anywhere, not just in the rust project directory.
             let dep = Path::new(args.first().unwrap());
-            let expected_out = dep.ancestors().nth(4).unwrap();
+            let expected_out = dep.ancestors().nth(5).unwrap();
 
             assert_eq!(&cfg.out, expected_out);
         }

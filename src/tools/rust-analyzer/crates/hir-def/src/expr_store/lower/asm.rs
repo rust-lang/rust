@@ -229,7 +229,7 @@ impl ExprCollector<'_> {
                     };
                     for piece in unverified_pieces {
                         match piece {
-                            rustc_parse_format::Piece::String(_) => {}
+                            rustc_parse_format::Piece::Lit(_) => {}
                             rustc_parse_format::Piece::NextArgument(arg) => {
                                 // let span = arg_spans.next();
 

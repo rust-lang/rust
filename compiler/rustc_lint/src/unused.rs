@@ -184,18 +184,22 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         let mut op_warned = false;
 
         if let Some(must_use_op) = must_use_op {
-            cx.emit_span_lint(UNUSED_MUST_USE, expr.span, UnusedOp {
-                op: must_use_op,
-                label: expr.span,
-                suggestion: if expr_is_from_block {
-                    UnusedOpSuggestion::BlockTailExpr {
-                        before_span: expr.span.shrink_to_lo(),
-                        after_span: expr.span.shrink_to_hi(),
-                    }
-                } else {
-                    UnusedOpSuggestion::NormalExpr { span: expr.span.shrink_to_lo() }
+            cx.emit_span_lint(
+                UNUSED_MUST_USE,
+                expr.span,
+                UnusedOp {
+                    op: must_use_op,
+                    label: expr.span,
+                    suggestion: if expr_is_from_block {
+                        UnusedOpSuggestion::BlockTailExpr {
+                            before_span: expr.span.shrink_to_lo(),
+                            after_span: expr.span.shrink_to_hi(),
+                        }
+                    } else {
+                        UnusedOpSuggestion::NormalExpr { span: expr.span.shrink_to_lo() }
+                    },
                 },
-            });
+            );
             op_warned = true;
         }
 
@@ -289,25 +293,22 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 }
                 ty::Adt(def, _) => is_def_must_use(cx, def.did(), span),
                 ty::Alias(ty::Opaque | ty::Projection, ty::AliasTy { def_id: def, .. }) => {
-                    elaborate(
-                        cx.tcx,
-                        cx.tcx.explicit_item_super_predicates(def).iter_identity_copied(),
-                    )
-                    // We only care about self bounds for the impl-trait
-                    .filter_only_self()
-                    .find_map(|(pred, _span)| {
-                        // We only look at the `DefId`, so it is safe to skip the binder here.
-                        if let ty::ClauseKind::Trait(ref poly_trait_predicate) =
-                            pred.kind().skip_binder()
-                        {
-                            let def_id = poly_trait_predicate.trait_ref.def_id;
+                    elaborate(cx.tcx, cx.tcx.explicit_item_self_bounds(def).iter_identity_copied())
+                        // We only care about self bounds for the impl-trait
+                        .filter_only_self()
+                        .find_map(|(pred, _span)| {
+                            // We only look at the `DefId`, so it is safe to skip the binder here.
+                            if let ty::ClauseKind::Trait(ref poly_trait_predicate) =
+                                pred.kind().skip_binder()
+                            {
+                                let def_id = poly_trait_predicate.trait_ref.def_id;
 
-                            is_def_must_use(cx, def_id, span)
-                        } else {
-                            None
-                        }
-                    })
-                    .map(|inner| MustUsePath::Opaque(Box::new(inner)))
+                                is_def_must_use(cx, def_id, span)
+                            } else {
+                                None
+                            }
+                        })
+                        .map(|inner| MustUsePath::Opaque(Box::new(inner)))
                 }
                 ty::Dynamic(binders, _, _) => binders.iter().find_map(|predicate| {
                     if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder()
@@ -492,35 +493,39 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     );
                 }
                 MustUsePath::Closure(span) => {
-                    cx.emit_span_lint(UNUSED_MUST_USE, *span, UnusedClosure {
-                        count: plural_len,
-                        pre: descr_pre,
-                        post: descr_post,
-                    });
+                    cx.emit_span_lint(
+                        UNUSED_MUST_USE,
+                        *span,
+                        UnusedClosure { count: plural_len, pre: descr_pre, post: descr_post },
+                    );
                 }
                 MustUsePath::Coroutine(span) => {
-                    cx.emit_span_lint(UNUSED_MUST_USE, *span, UnusedCoroutine {
-                        count: plural_len,
-                        pre: descr_pre,
-                        post: descr_post,
-                    });
+                    cx.emit_span_lint(
+                        UNUSED_MUST_USE,
+                        *span,
+                        UnusedCoroutine { count: plural_len, pre: descr_pre, post: descr_post },
+                    );
                 }
                 MustUsePath::Def(span, def_id, reason) => {
-                    cx.emit_span_lint(UNUSED_MUST_USE, *span, UnusedDef {
-                        pre: descr_pre,
-                        post: descr_post,
-                        cx,
-                        def_id: *def_id,
-                        note: *reason,
-                        suggestion: (!is_inner).then_some(if expr_is_from_block {
-                            UnusedDefSuggestion::BlockTailExpr {
-                                before_span: span.shrink_to_lo(),
-                                after_span: span.shrink_to_hi(),
-                            }
-                        } else {
-                            UnusedDefSuggestion::NormalExpr { span: span.shrink_to_lo() }
-                        }),
-                    });
+                    cx.emit_span_lint(
+                        UNUSED_MUST_USE,
+                        *span,
+                        UnusedDef {
+                            pre: descr_pre,
+                            post: descr_post,
+                            cx,
+                            def_id: *def_id,
+                            note: *reason,
+                            suggestion: (!is_inner).then_some(if expr_is_from_block {
+                                UnusedDefSuggestion::BlockTailExpr {
+                                    before_span: span.shrink_to_lo(),
+                                    after_span: span.shrink_to_hi(),
+                                }
+                            } else {
+                                UnusedDefSuggestion::NormalExpr { span: span.shrink_to_lo() }
+                            }),
+                        },
+                    );
                 }
             }
         }
@@ -870,11 +875,11 @@ trait UnusedDelimLint {
                 end_replace: hi_replace,
             }
         });
-        cx.emit_span_lint(self.lint(), primary_span, UnusedDelim {
-            delim: Self::DELIM_STR,
-            item: msg,
-            suggestion,
-        });
+        cx.emit_span_lint(
+            self.lint(),
+            primary_span,
+            UnusedDelim { delim: Self::DELIM_STR, item: msg, suggestion },
+        );
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
@@ -1561,9 +1566,11 @@ impl UnusedImportBraces {
                 ast::UseTreeKind::Nested { .. } => return,
             };
 
-            cx.emit_span_lint(UNUSED_IMPORT_BRACES, item.span, UnusedImportBracesDiag {
-                node: node_name,
-            });
+            cx.emit_span_lint(
+                UNUSED_IMPORT_BRACES,
+                item.span,
+                UnusedImportBracesDiag { node: node_name },
+            );
         }
     }
 }

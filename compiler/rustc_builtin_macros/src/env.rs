@@ -77,11 +77,11 @@ pub(crate) fn expand_option_env<'cx>(
             let guar = cx.dcx().emit_err(errors::EnvNotUnicode { span: sp, var: *symbol });
             return ExpandResult::Ready(DummyResult::any(sp, guar));
         }
-        Ok(value) => {
-            cx.expr_call_global(sp, cx.std_path(&[sym::option, sym::Option, sym::Some]), thin_vec![
-                cx.expr_str(sp, value)
-            ])
-        }
+        Ok(value) => cx.expr_call_global(
+            sp,
+            cx.std_path(&[sym::option, sym::Option, sym::Some]),
+            thin_vec![cx.expr_str(sp, value)],
+        ),
     };
     ExpandResult::Ready(MacEager::expr(e))
 }

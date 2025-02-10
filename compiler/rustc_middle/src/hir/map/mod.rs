@@ -12,7 +12,7 @@ use rustc_hir::*;
 use rustc_hir_pretty as pprust_hir;
 use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym, with_metavar_spans};
 
 use crate::hir::ModuleItems;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
@@ -937,6 +937,7 @@ impl<'hir> Map<'hir> {
             Node::TraitRef(tr) => tr.path.span,
             Node::OpaqueTy(op) => op.span,
             Node::Pat(pat) => pat.span,
+            Node::TyPat(pat) => pat.span,
             Node::PatField(field) => field.span,
             Node::PatExpr(lit) => lit.span,
             Node::Arm(arm) => arm.span,
@@ -1117,6 +1118,9 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
         // the fly in the resolver, storing only their accumulated hash in `ResolverGlobalCtxt`,
         // and combining it with other hashes here.
         resolutions.visibilities_for_hashing.hash_stable(&mut hcx, &mut stable_hasher);
+        with_metavar_spans(|mspans| {
+            mspans.freeze_and_get_read_spans().hash_stable(&mut hcx, &mut stable_hasher);
+        });
         stable_hasher.finish()
     });
 
@@ -1209,6 +1213,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         Node::TraitRef(_) => node_str("trait ref"),
         Node::OpaqueTy(_) => node_str("opaque type"),
         Node::Pat(_) => node_str("pat"),
+        Node::TyPat(_) => node_str("pat ty"),
         Node::PatField(_) => node_str("pattern field"),
         Node::PatExpr(_) => node_str("pattern literal"),
         Node::Param(_) => node_str("param"),
