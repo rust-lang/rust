@@ -1,12 +1,14 @@
 #[macro_use]
 pub mod macros;
 mod big;
+mod env;
 mod float_traits;
 pub mod hex_float;
 mod int_traits;
 
 #[allow(unused_imports)]
 pub use big::{i256, u256};
+pub use env::{FpResult, Round, Status};
 #[allow(unused_imports)]
 pub use float_traits::{DFloat, Float, HFloat, IntTy};
 pub(crate) use float_traits::{f32_from_bits, f64_from_bits};
@@ -24,9 +26,4 @@ pub use int_traits::{CastFrom, CastInto, DInt, HInt, Int, MinInt};
 pub fn cold_path() {
     #[cfg(intrinsics_enabled)]
     core::intrinsics::cold_path();
-}
-
-/// Return `x`, first raising `FE_INVALID`.
-pub fn raise_invalid<F: Float>(x: F) -> F {
-    (x - x) / (x - x)
 }

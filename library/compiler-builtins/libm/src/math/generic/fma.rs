@@ -1,12 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /* origin: musl src/math/{fma,fmaf}.c. Ported to generic Rust algorithm in 2025, TG. */
 
-use core::{f32, f64};
-
-use super::super::fenv::{
-    FE_INEXACT, FE_TONEAREST, FE_UNDERFLOW, feclearexcept, fegetround, feraiseexcept, fetestexcept,
-};
-use super::super::support::{DInt, HInt, IntTy};
+use super::super::support::{DInt, FpResult, HInt, IntTy, Round, Status};
 use super::super::{CastFrom, CastInto, DFloat, Float, HFloat, Int, MinInt};
 
 /// Fused multiply-add that works when there is not a larger float size available. Currently this
@@ -14,7 +9,18 @@ use super::super::{CastFrom, CastInto, DFloat, Float, HFloat, Int, MinInt};
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn fma<F>(x: F, y: F, z: F) -> F
 where
-    F: Float + FmaHelper,
+    F: Float,
+    F: CastFrom<F::SignedInt>,
+    F: CastFrom<i8>,
+    F::Int: HInt,
+    u32: CastInto<F::Int>,
+{
+    fma_round(x, y, z, Round::Nearest).val
+}
+
+pub fn fma_round<F>(x: F, y: F, z: F, _round: Round) -> FpResult<F>
+where
+    F: Float,
     F: CastFrom<F::SignedInt>,
     F: CastFrom<i8>,
     F::Int: HInt,
@@ -30,16 +36,16 @@ where
 
     if nx.is_zero_nan_inf() || ny.is_zero_nan_inf() {
         // Value will overflow, defer to non-fused operations.
-        return x * y + z;
+        return FpResult::ok(x * y + z);
     }
 
     if nz.is_zero_nan_inf() {
         if nz.is_zero() {
             // Empty add component means we only need to multiply.
-            return x * y;
+            return FpResult::ok(x * y);
         }
         // `z` is NaN or infinity, which sets the result.
-        return z;
+        return FpResult::ok(z);
     }
 
     // multiply: r = x * y
@@ -147,7 +153,7 @@ where
         }
     } else {
         // exact +/- 0.0
-        return x * y + z;
+        return FpResult::ok(x * y + z);
     }
 
     e -= d;
@@ -168,6 +174,8 @@ where
     // Unbiased exponent for the maximum value of `r`
     let max_pow = F::BITS - 1 + F::EXP_BIAS;
 
+    let mut status = Status::OK;
+
     if e < -(max_pow as i32 - 2) {
         // Result is subnormal before rounding
         if e == -(max_pow as i32 - 1) {
@@ -178,7 +186,9 @@ where
 
             if r == c {
                 // Min normal after rounding,
-                return r.raise_underflow_as_min_positive();
+                status.set_underflow(true);
+                r = F::MIN_POSITIVE_NORMAL.copysign(r);
+                return FpResult::new(r, status);
             }
 
             if (rhi << (F::SIG_BITS + 1)) != zero {
@@ -195,7 +205,7 @@ where
 
                 // Remove the top bit
                 r = F::cast_from(2i8) * r - c;
-                r += r.raise_underflow_ret_zero();
+                status.set_underflow(true);
             }
         } else {
             // Only round once when scaled
@@ -212,12 +222,22 @@ where
     }
 
     // Use our exponent to scale the final value.
-    super::scalbn(r, e)
+    FpResult::new(super::scalbn(r, e), status)
 }
 
 /// Fma implementation when a hardware-backed larger float type is available. For `f32` and `f64`,
 /// `f64` has enough precision to represent the `f32` in its entirety, except for double rounding.
 pub fn fma_wide<F, B>(x: F, y: F, z: F) -> F
+where
+    F: Float + HFloat<D = B>,
+    B: Float + DFloat<H = F>,
+    B::Int: CastInto<i32>,
+    i32: CastFrom<i32>,
+{
+    fma_wide_round(x, y, z, Round::Nearest).val
+}
+
+pub fn fma_wide_round<F, B>(x: F, y: F, z: F, round: Round) -> FpResult<F>
 where
     F: Float + HFloat<D = B>,
     B: Float + DFloat<H = F>,
@@ -244,24 +264,26 @@ where
         // Or the result is exact
         || (result - xy == zb && result - zb == xy)
         // Or the mode is something other than round to nearest
-        || fegetround() != FE_TONEAREST
+        || round != Round::Nearest
     {
         let min_inexact_exp = (B::EXP_BIAS as i32 + F::EXP_MIN_SUBNORM) as u32;
         let max_inexact_exp = (B::EXP_BIAS as i32 + F::EXP_MIN) as u32;
 
-        if (min_inexact_exp..max_inexact_exp).contains(&re) && fetestexcept(FE_INEXACT) != 0 {
-            feclearexcept(FE_INEXACT);
-            // prevent `xy + vz` from being CSE'd with `xy + z` above
-            let vz: F = force_eval!(z);
-            result = xy + vz.widen();
-            if fetestexcept(FE_INEXACT) != 0 {
-                feraiseexcept(FE_UNDERFLOW);
+        let mut status = Status::OK;
+
+        if (min_inexact_exp..max_inexact_exp).contains(&re) && status.inexact() {
+            // This branch is never hit; requires previous operations to set a status
+            status.set_inexact(false);
+
+            result = xy + z.widen();
+            if status.inexact() {
+                status.set_underflow(true);
             } else {
-                feraiseexcept(FE_INEXACT);
+                status.set_inexact(true);
             }
         }
 
-        return result.narrow();
+        return FpResult { val: result.narrow(), status };
     }
 
     let neg = ui >> (B::BITS - 1) != IntTy::<B>::ZERO;
@@ -272,7 +294,7 @@ where
         ui -= one;
     }
 
-    B::from_bits(ui).narrow()
+    FpResult::ok(B::from_bits(ui).narrow())
 }
 
 /// Representation of `F` that has handled subnormals.
@@ -337,49 +359,13 @@ impl<F: Float> Norm<F> {
     }
 }
 
-/// Type-specific helpers that are not needed outside of fma.
-pub trait FmaHelper {
-    /// Raise underflow and return the minimum positive normal value with the sign of `self`.
-    fn raise_underflow_as_min_positive(self) -> Self;
-    /// Raise underflow and return zero.
-    fn raise_underflow_ret_zero(self) -> Self;
-}
-
-impl FmaHelper for f64 {
-    fn raise_underflow_as_min_positive(self) -> Self {
-        /* min normal after rounding, underflow depends
-         * on arch behaviour which can be imitated by
-         * a double to float conversion */
-        let fltmin: f32 = (hf64!("0x0.ffffff8p-63") * f32::MIN_POSITIVE as f64 * self) as f32;
-        f64::MIN_POSITIVE / f32::MIN_POSITIVE as f64 * fltmin as f64
-    }
-
-    fn raise_underflow_ret_zero(self) -> Self {
-        /* raise underflow portably, such that it
-         * cannot be optimized away */
-        let tiny: f64 = f64::MIN_POSITIVE / f32::MIN_POSITIVE as f64 * self;
-        (tiny * tiny) * (self - self)
-    }
-}
-
-#[cfg(f128_enabled)]
-impl FmaHelper for f128 {
-    fn raise_underflow_as_min_positive(self) -> Self {
-        f128::MIN_POSITIVE.copysign(self)
-    }
-
-    fn raise_underflow_ret_zero(self) -> Self {
-        f128::ZERO
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn spec_test<F>()
     where
-        F: Float + FmaHelper,
+        F: Float,
         F: CastFrom<F::SignedInt>,
         F: CastFrom<i8>,
         F::Int: HInt,
@@ -401,6 +387,29 @@ mod tests {
     #[test]
     fn spec_test_f64() {
         spec_test::<f64>();
+
+        let expect_underflow = [
+            (
+                hf64!("0x1.0p-1070"),
+                hf64!("0x1.0p-1070"),
+                hf64!("0x1.ffffffffffffp-1023"),
+                hf64!("0x0.ffffffffffff8p-1022"),
+            ),
+            (
+                // FIXME: we raise underflow but this should only be inexact (based on C and
+                // `rustc_apfloat`).
+                hf64!("0x1.0p-1070"),
+                hf64!("0x1.0p-1070"),
+                hf64!("-0x1.0p-1022"),
+                hf64!("-0x1.0p-1022"),
+            ),
+        ];
+
+        for (x, y, z, res) in expect_underflow {
+            let FpResult { val, status } = fma_round(x, y, z, Round::Nearest);
+            assert_biteq!(val, res);
+            assert_eq!(status, Status::UNDERFLOW);
+        }
     }
 
     #[test]
