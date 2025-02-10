@@ -27,6 +27,7 @@ use super::{
 };
 use crate::clean;
 use crate::config::ModuleSorting;
+use crate::display::Joined as _;
 use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::{Escape, EscapeBodyTextWithWbr};
@@ -37,7 +38,6 @@ use crate::html::format::{
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
-use crate::joined::Joined as _;
 
 /// Generates a Rinja template struct for rendering items with common methods.
 ///

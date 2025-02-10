@@ -30,11 +30,11 @@ use super::url_parts_builder::{UrlPartsBuilder, estimate_item_path_byte_length};
 use crate::clean::types::ExternalLocation;
 use crate::clean::utils::find_nearest_parent_module;
 use crate::clean::{self, ExternalCrate, PrimitiveType};
+use crate::display::Joined as _;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::{Escape, EscapeBodyText};
 use crate::html::render::Context;
-use crate::joined::Joined as _;
 use crate::passes::collect_intra_doc_links::UrlFragment;
 
 pub(crate) fn write_str(s: &mut String, f: fmt::Arguments<'_>) {
