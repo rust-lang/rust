@@ -1290,13 +1290,12 @@ pub macro CoercePointee($item:item) {
     /* compiler built-in */
 }
 
-/// A validation trait that is implemented on data with `derive(CoercePointee)`
-/// so that the compiler can enforce a set of rules that the target data must
-/// conform to in order for the derived behaviours are safe and useful for
-/// the purpose of the said macro.
+/// A trait that is implemented for ADTs with `derive(CoercePointee)` so that
+/// the compiler can enforce the derive impls are valid post-expansion, since
+/// the derive has stricter requirements than if the impls were written by hand.
 ///
-/// This trait will not ever be exposed for use as public part of the library
-/// and shall not ever be stabilised.
+/// This trait is not intended to be implemented by users or used other than
+/// validation, so it should never be stabilized.
 #[cfg(not(bootstrap))]
 #[lang = "coerce_pointee_validated"]
 #[unstable(feature = "coerce_pointee_validated", issue = "none")]
