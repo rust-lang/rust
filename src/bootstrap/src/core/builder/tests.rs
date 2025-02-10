@@ -863,7 +863,7 @@ fn test_test_coverage() {
 }
 
 #[test]
-fn test_is_host_target() {
+fn test_is_builder_target() {
     let target1 = TargetSelection::from_user(TEST_TRIPLE_1);
     let target2 = TargetSelection::from_user(TEST_TRIPLE_2);
 
@@ -873,7 +873,7 @@ fn test_is_host_target() {
         let build = Build::new(config);
         let builder = Builder::new(&build);
 
-        assert!(builder.is_host_target(&target1));
-        assert!(!builder.is_host_target(&target2));
+        assert!(builder.is_builder_target(&target1));
+        assert!(!builder.is_builder_target(&target2));
     }
 }
