@@ -3,14 +3,15 @@ use std::borrow::Cow;
 use crate::spec::{Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
-    let mut pre_link_args = TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &[
-        "--disable-dynamicbase",
-        "--enable-auto-image-base",
-    ]);
-    crate::spec::add_link_args(&mut pre_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), &[
-        "-Wl,--disable-dynamicbase",
-        "-Wl,--enable-auto-image-base",
-    ]);
+    let mut pre_link_args = TargetOptions::link_args(
+        LinkerFlavor::Gnu(Cc::No, Lld::No),
+        &["--disable-dynamicbase", "--enable-auto-image-base"],
+    );
+    crate::spec::add_link_args(
+        &mut pre_link_args,
+        LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+        &["-Wl,--disable-dynamicbase", "-Wl,--enable-auto-image-base"],
+    );
     let cygwin_libs = &["-lcygwin", "-lgcc", "-lcygwin", "-luser32", "-lkernel32", "-lgcc_s"];
     let mut late_link_args =
         TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), cygwin_libs);
