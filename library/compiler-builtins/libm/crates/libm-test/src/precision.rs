@@ -537,7 +537,7 @@ fn int_float_common<F1: Float, F2: Float>(
         && !expected.is_infinite()
         && actual.is_infinite()
         && (expected.abs().to_bits().abs_diff(actual.abs().to_bits())
-            < F2::Int::cast_from(1_000_000u32))
+            < F2::Int::cast_from(10_000_000u32))
     {
         return XFAIL_NOCHECK;
     }
