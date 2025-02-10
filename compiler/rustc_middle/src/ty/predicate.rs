@@ -51,10 +51,6 @@ impl<'tcx> rustc_type_ir::inherent::Predicate<TyCtxt<'tcx>> for Predicate<'tcx> 
         self.as_clause()
     }
 
-    fn is_coinductive(self, interner: TyCtxt<'tcx>) -> bool {
-        self.is_coinductive(interner)
-    }
-
     fn allow_normalization(self) -> bool {
         self.allow_normalization()
     }
@@ -119,6 +115,8 @@ impl<'tcx> Predicate<'tcx> {
         Some(tcx.mk_predicate(kind))
     }
 
+    /// Only used by the old solver to decide whether a predicate is accepted
+    /// in a coinductive trait solver cycle.
     #[instrument(level = "debug", skip(tcx), ret)]
     pub fn is_coinductive(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind().skip_binder() {
