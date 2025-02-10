@@ -35,6 +35,10 @@ if isWindows && isKnownToBeMingwBuild; then
             ;;
     esac
 
+    msys2Path="c:/msys64"
+    mkdir -p "${msys2Path}/home/${USERNAME}"
+    ciCommandAddPath "/usr/bin"
+
     mingw_dir="mingw${bits}"
 
     curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
