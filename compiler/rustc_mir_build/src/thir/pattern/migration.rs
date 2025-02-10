@@ -3,6 +3,7 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::MultiSpan;
 use rustc_hir::{BindingMode, ByRef, HirId, Mutability};
+use rustc_index::IndexVec;
 use rustc_lint as lint;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Rust2024IncompatiblePatInfo, Ty, TyCtxt};
@@ -17,9 +18,11 @@ pub(super) struct PatMigration<'a> {
     suggestion: Vec<(Span, String)>,
     ref_pattern_count: usize,
     binding_mode_count: usize,
-    /// Internal state: the ref-mutability of the default binding mode at the subpattern being
-    /// lowered, with the span where it was introduced. `None` for a by-value default mode.
-    default_mode_span: Option<(Span, ty::Mutability)>,
+    /// All the dereferences encountered in lowering the pattern, along with how their corresponding
+    /// patterns affect the default binding mode.
+    derefs: IndexVec<PatDerefIdx, PatDeref>,
+    /// Internal state: the innermost deref above the pattern currently being lowered.
+    innermost_deref: Option<PatDerefIdx>,
     /// Labels for where incompatibility-causing by-ref default binding modes were introduced.
     // FIXME(ref_pat_eat_one_layer_2024_structural): To track the default binding mode, we duplicate
     // logic from HIR typeck (in order to avoid needing to store all changes to the dbm in
@@ -30,13 +33,31 @@ pub(super) struct PatMigration<'a> {
     info: &'a Rust2024IncompatiblePatInfo,
 }
 
+rustc_index::newtype_index! {
+    struct PatDerefIdx {}
+}
+
+struct PatDeref {
+    /// The default binding mode for variables under this deref.
+    real_default_mode: ByRef,
+    /// The span that introduced the current default binding mode, or `None` for the top-level pat.
+    default_mode_origin: Option<Span>,
+    /// The next deref above this. Since we can't suggest using `&` or `&mut` on a by-ref default
+    /// binding mode, a suggested deref's ancestors must also all be suggested.
+    // FIXME(ref_pat_eat_one_layer_2024): By suggesting `&` and `&mut` patterns that can eat the
+    // default binding mode, we'll be able to make more local suggestions. That may make this forest
+    // structure unnecessary.
+    parent: Option<PatDerefIdx>,
+}
+
 impl<'a> PatMigration<'a> {
     pub(super) fn new(info: &'a Rust2024IncompatiblePatInfo) -> Self {
         PatMigration {
             suggestion: Vec::new(),
             ref_pattern_count: 0,
             binding_mode_count: 0,
-            default_mode_span: None,
+            derefs: IndexVec::new(),
+            innermost_deref: None,
             default_mode_labels: Default::default(),
             info,
         }
@@ -86,15 +107,39 @@ impl<'a> PatMigration<'a> {
         }
     }
 
+    /// When lowering a reference pattern or a binding with a modifier, this checks if the default
+    /// binding mode is by-ref, and if so, adds a labeled note to the diagnostic with the origin of
+    /// the current default binding mode.
+    fn add_default_mode_label_if_needed(&mut self) {
+        if let ByRef::Yes(ref_mutbl) = self.real_default_mode() {
+            // The by-ref default binding mode must have come from an implicit deref. If there was a
+            // problem in tracking that for the diagnostic, try to avoid ICE on release builds.
+            debug_assert!(
+                self.innermost_deref
+                    .is_some_and(|ix| self.derefs[ix].default_mode_origin.is_some())
+            );
+            if let Some(ix) = self.innermost_deref
+                && let Some(span) = self.derefs[ix].default_mode_origin
+            {
+                self.default_mode_labels.insert(span, ref_mutbl);
+            }
+        }
+    }
+
+    /// The default binding mode at the current pattern.
+    fn real_default_mode(&self) -> ByRef {
+        if let Some(current_ix) = self.innermost_deref {
+            self.derefs[current_ix].real_default_mode
+        } else {
+            ByRef::No
+        }
+    }
+
     /// Tracks when we're lowering a pattern that implicitly dereferences the scrutinee.
     /// This should only be called when the pattern type adjustments list `adjustments` is
-    /// non-empty. Returns the prior default binding mode; this should be followed by a call to
-    /// [`PatMigration::leave_ref`] to restore it when we leave the pattern.
-    pub(super) fn visit_implicit_derefs<'tcx>(
-        &mut self,
-        pat_span: Span,
-        adjustments: &[Ty<'tcx>],
-    ) -> Option<(Span, Mutability)> {
+    /// non-empty.
+    /// This should be followed by a call to [`PatMigration::leave_ref`] when we leave the pattern.
+    pub(super) fn visit_implicit_derefs<'tcx>(&mut self, pat_span: Span, adjustments: &[Ty<'tcx>]) {
         let implicit_deref_mutbls = adjustments.iter().map(|ref_ty| {
             let &ty::Ref(_, _, mutbl) = ref_ty.kind() else {
                 span_bug!(pat_span, "pattern implicitly dereferences a non-ref type");
@@ -112,35 +157,49 @@ impl<'a> PatMigration<'a> {
         }
 
         // Remember if this changed the default binding mode, in case we want to label it.
-        let min_mutbl = implicit_deref_mutbls.min().unwrap();
-        if self.default_mode_span.is_none_or(|(_, old_mutbl)| min_mutbl < old_mutbl) {
-            // This changes the default binding mode to `ref` or `ref mut`. Return the old mode so
-            // it can be reinstated when we leave the pattern.
-            self.default_mode_span.replace((pat_span, min_mutbl))
-        } else {
-            // This does not change the default binding mode; it was already `ref` or `ref mut`.
-            self.default_mode_span
-        }
+        let new_real_ref_mutbl = match self.real_default_mode() {
+            ByRef::Yes(Mutability::Not) => Mutability::Not,
+            _ => implicit_deref_mutbls.min().unwrap(),
+        };
+        self.push_deref(pat_span, ByRef::Yes(new_real_ref_mutbl));
     }
 
     /// Tracks the default binding mode when we're lowering a `&` or `&mut` pattern.
-    /// Returns the prior default binding mode; this should be followed by a call to
-    /// [`PatMigration::leave_ref`] to restore it when we leave the pattern.
-    pub(super) fn visit_explicit_deref(&mut self) -> Option<(Span, Mutability)> {
-        if let Some((default_mode_span, default_ref_mutbl)) = self.default_mode_span {
-            // If this eats a by-ref default binding mode, label the binding mode.
-            self.default_mode_labels.insert(default_mode_span, default_ref_mutbl);
-        }
-        // Set the default binding mode to by-value and return the old default binding mode so it
-        // can be reinstated when we leave the pattern.
-        self.default_mode_span.take()
+    /// This should be followed by a call to [`PatMigration::leave_ref`] when we leave the pattern.
+    // FIXME(ref_pat_eat_one_layer_2024): This assumes reference patterns correspond to real
+    // dereferences. If reference patterns can match the default binding mode alone, we may need to
+    // check `TypeckResults::skipped_ref_pats` to tell if this pattern corresponds to an implicit
+    // dereference we've already visited.
+    pub(super) fn visit_explicit_deref(&mut self, pat_span: Span) {
+        // If this eats a by-ref default binding mode, label the binding mode.
+        self.add_default_mode_label_if_needed();
+        // Set the default binding mode to by-value.
+        self.push_deref(pat_span, ByRef::No);
+    }
+
+    /// Adds a deref to our deref-forest, so that we can track the default binding mode.
+    // TODO: this is also for propagating binding mode changes when we suggest adding patterns
+    fn push_deref(&mut self, span: Span, real_default_mode: ByRef) {
+        let parent = self.innermost_deref;
+        // If this keeps the default binding mode the same, it shares a mode origin with its
+        // parent. If it changes the default binding mode, its mode origin is itself.
+        let default_mode_origin = if real_default_mode == self.real_default_mode() {
+            parent.and_then(|p| self.derefs[p].default_mode_origin)
+        } else {
+            Some(span)
+        };
+        let my_ix = self.derefs.push(PatDeref { real_default_mode, default_mode_origin, parent });
+        self.innermost_deref = Some(my_ix);
     }
 
     /// Restores the default binding mode after lowering a pattern that could change it.
     /// This should follow a call to either [`PatMigration::visit_explicit_deref`] or
     /// [`PatMigration::visit_implicit_derefs`].
-    pub(super) fn leave_ref(&mut self, old_mode_span: Option<(Span, Mutability)>) {
-        self.default_mode_span = old_mode_span
+    pub(super) fn leave_ref(&mut self) {
+        debug_assert!(self.innermost_deref.is_some(), "entering/leaving refs should be paired");
+        if let Some(child_ix) = self.innermost_deref {
+            self.innermost_deref = self.derefs[child_ix].parent;
+        }
     }
 
     /// Determines if a binding is relevant to the diagnostic and adjusts the notes/suggestion if
@@ -153,13 +212,11 @@ impl<'a> PatMigration<'a> {
         explicit_ba: BindingMode,
         ident: Ident,
     ) {
-        if explicit_ba != BindingMode::NONE
-            && let Some((default_mode_span, default_ref_mutbl)) = self.default_mode_span
-        {
+        if explicit_ba != BindingMode::NONE {
             // If this overrides a by-ref default binding mode, label the binding mode.
-            self.default_mode_labels.insert(default_mode_span, default_ref_mutbl);
-            // If our suggestion is to elide redundnt modes, this will be one of them.
-            if self.info.suggest_eliding_modes {
+            self.add_default_mode_label_if_needed();
+            if self.info.suggest_eliding_modes && matches!(mode.0, ByRef::Yes(_)) {
+                // If our suggestion is to elide redundant modes, this will be one of them.
                 self.suggestion.push((pat_span.with_hi(ident.span.lo()), String::new()));
                 self.binding_mode_count += 1;
             }

@@ -66,11 +66,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
 
         // Track the default binding mode for the Rust 2024 migration suggestion.
-        let mut opt_old_mode_span = None;
         if let Some(s) = &mut self.rust_2024_migration
             && !adjustments.is_empty()
         {
-            opt_old_mode_span = s.visit_implicit_derefs(pat.span, adjustments);
+            s.visit_implicit_derefs(pat.span, adjustments);
         }
 
         // When implicit dereferences have been inserted in this pattern, the unadjusted lowered
@@ -113,7 +112,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         if let Some(s) = &mut self.rust_2024_migration
             && !adjustments.is_empty()
         {
-            s.leave_ref(opt_old_mode_span);
+            s.leave_ref();
         }
 
         adjusted_pat
@@ -309,11 +308,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
             hir::PatKind::Ref(subpattern, _) => {
                 // Track the default binding mode for the Rust 2024 migration suggestion.
-                let opt_old_mode_span =
-                    self.rust_2024_migration.as_mut().and_then(|s| s.visit_explicit_deref());
+                if let Some(s) = &mut self.rust_2024_migration {
+                    s.visit_explicit_deref(pat.span);
+                }
                 let subpattern = self.lower_pattern(subpattern);
                 if let Some(s) = &mut self.rust_2024_migration {
-                    s.leave_ref(opt_old_mode_span);
+                    s.leave_ref();
                 }
                 PatKind::Deref { subpattern }
             }
