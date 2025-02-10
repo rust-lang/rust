@@ -30,26 +30,28 @@ fn propagate_operand<'tcx>(
         Operand::Copy(place) | Operand::Move(place) => place,
         _ => return false,
     };
-    if place.local != local {
-        return false;
-    }
-    if place.projection.is_empty() {
+    if place.local == local && place.projection.is_empty() {
         *operand = local_replacement.clone();
-        return true;
+        true
+    } else {
+        false
     }
-    return false;
 }
 impl<'tcx> crate::MirPass<'tcx> for PropTrivialLocals {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 1
     }
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        use std::fs::OpenOptions;
+        use std::io::Write;
+        use std::time::Instant;
         trace!("Running PropTrivialLocals on {:?}", body.source);
-        loop {
+        // Cap the number of check iterations.
+        for _ in 0..2 {
             let mut dead_candidates = false;
             for (bid, block) in body.basic_blocks.as_mut().iter_enumerated_mut() {
                 let mut iter = StatementPairIterator::new(bid, &mut block.statements);
-                while let Some(StatementPair((a_idx, a), (b_idx, b))) = iter.next() {
+                while let Some(StatementPair(a, b)) = iter.next() {
                     let (StatementKind::Assign(tmp_a), StatementKind::Assign(tmp_b)) =
                         (&a.kind, &mut b.kind)
                     else {
@@ -58,7 +60,7 @@ impl<'tcx> crate::MirPass<'tcx> for PropTrivialLocals {
                     let Some(loc_a) = tmp_a.0.as_local() else {
                         continue;
                     };
-                    let Rvalue::Use(ref src_a) = tmp_a.1 else {
+                    let Rvalue::Use(src_a) = &tmp_a.1 else {
                         continue;
                     };
                     match &mut tmp_b.1 {
@@ -93,13 +95,7 @@ impl<'tcx> crate::MirPass<'tcx> for PropTrivialLocals {
         false
     }
 }
-struct DeadLocalCandidates {
-    dead: Local,
-}
-struct StatementPair<'a, 'tcx>(
-    (StatmentPos, &'a mut Statement<'tcx>),
-    (StatmentPos, &'a mut Statement<'tcx>),
-);
+struct StatementPair<'a, 'tcx>(&'a mut Statement<'tcx>, &'a mut Statement<'tcx>);
 struct StatementPairIterator<'a, 'tcx> {
     curr_block: BasicBlock,
     curr_idx: usize,
@@ -114,13 +110,10 @@ impl<'a, 'tcx> StatementPairIterator<'a, 'tcx> {
         assert!(idx_a < idx_b);
         assert!(idx_b < self.statements.len());
         let (part_a, reminder) = self.statements.split_at_mut(idx_a + 1);
-        let (part_b, reminder) = reminder.split_at_mut((idx_b - part_a.len()) + 1);
+        let b_rel_idx = idx_b - part_a.len();
         let a = &mut part_a[part_a.len() - 1];
-        let b = &mut part_b[part_b.len() - 1];
-        StatementPair(
-            (StatmentPos(self.curr_block, idx_a), a),
-            (StatmentPos(self.curr_block, idx_b), b),
-        )
+        let b = &mut reminder[b_rel_idx];
+        StatementPair(a, b)
     }
     fn is_statement_irrelevant(statement: &Statement<'_>) -> bool {
         match statement.kind {
@@ -141,19 +134,19 @@ impl<'a, 'tcx> StatementPairIterator<'a, 'tcx> {
         }
     }
     fn next<'s>(&'s mut self) -> Option<StatementPair<'s, 'tcx>> {
-        // Skip irrelevant statements
+        // If iter exchausted, quit.
         if self.curr_idx >= self.statements.len() {
             return None;
         }
-        while Self::is_statement_irrelevant(&self.statements[self.curr_idx]) {
+        // 1st  Try finding the start point
+        while !matches!(&self.statements[self.curr_idx].kind, StatementKind::Assign(..)) {
             self.curr_idx += 1;
             if self.curr_idx >= self.statements.len() {
                 return None;
             }
         }
         let curr = self.curr_idx;
-        self.curr_idx += 1;
-        let mut next_idx = self.curr_idx;
+        let mut next_idx = curr + 1;
         if next_idx >= self.statements.len() {
             return None;
         }
@@ -163,6 +156,8 @@ impl<'a, 'tcx> StatementPairIterator<'a, 'tcx> {
                 return None;
             }
         }
+        // We known all statments in range self.curr_idx..next_idx will not benefit from this optimization. Skip them next time.
+        self.curr_idx = next_idx;
         Some(self.get_at(curr, next_idx))
     }
 }
