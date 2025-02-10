@@ -1,5 +1,6 @@
 use std::fmt;
 
+#[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 
 #[cfg(test)]
@@ -8,7 +9,7 @@ mod tests;
 use ExternAbi as Abi;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Debug)]
-#[derive(HashStable_Generic, Encodable, Decodable)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic, Encodable, Decodable))]
 pub enum ExternAbi {
     // Some of the ABIs come first because every time we add a new ABI, we have to re-bless all the
     // hashing tests. These are used in many places, so giving them stable values reduces test
