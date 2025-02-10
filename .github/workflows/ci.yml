@@ -29,8 +29,6 @@ defaults:
     # shell. (This should only make a difference on Windows, where the default
     # shell is PowerShell.)
     shell: bash
-    env:
-      MSYS2_PATH_TYPE: inherit
 
 concurrency:
   # For a given workflow, if we push to the same branch, cancel all previous builds on that branch.
@@ -42,6 +40,7 @@ env:
   TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
   # This will be empty in PR jobs.
   TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
+  MSYS2_PATH_TYPE: inherit
 jobs:
   # The job matrix for `calculate_matrix` is defined in src/ci/github-actions/jobs.yml.
   # It calculates which jobs should be executed, based on the data of the ${{ github }} context.
