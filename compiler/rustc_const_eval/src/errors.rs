@@ -16,7 +16,6 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::ty::{self, Mutability, Ty};
 use rustc_span::{Span, Symbol};
-use rustc_target::callconv::AdjustForForeignAbiError;
 
 use crate::interpret::InternKind;
 
@@ -936,9 +935,6 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
             InvalidProgramInfo::TooGeneric => const_eval_too_generic,
             InvalidProgramInfo::AlreadyReported(_) => const_eval_already_reported,
             InvalidProgramInfo::Layout(e) => e.diagnostic_message(),
-            InvalidProgramInfo::FnAbiAdjustForForeignAbi(_) => {
-                rustc_middle::error::middle_adjust_for_foreign_abi_error
-            }
         }
     }
     fn add_args<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
@@ -952,12 +948,6 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
                     diag.arg(name.clone(), val.clone());
                 }
                 dummy_diag.cancel();
-            }
-            InvalidProgramInfo::FnAbiAdjustForForeignAbi(
-                AdjustForForeignAbiError::Unsupported { arch, abi },
-            ) => {
-                diag.arg("arch", arch);
-                diag.arg("abi", abi.name());
             }
         }
     }

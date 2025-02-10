@@ -216,10 +216,6 @@ pub enum InvalidProgramInfo<'tcx> {
     AlreadyReported(ReportedErrorInfo),
     /// An error occurred during layout computation.
     Layout(layout::LayoutError<'tcx>),
-    /// An error occurred during FnAbi computation: the passed --target lacks FFI support
-    /// (which unfortunately typeck does not reject).
-    /// Not using `FnAbiError` as that contains a nested `LayoutError`.
-    FnAbiAdjustForForeignAbi(rustc_target::callconv::AdjustForForeignAbiError),
 }
 
 /// Details of why a pointer had to be in-bounds.
