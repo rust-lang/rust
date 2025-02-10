@@ -16,7 +16,7 @@ analysis, including with tools such as [flamegraph][flamegraph-perf]
 (or [`flamegraph-rs`][flamegraph-rs]).
 
 Currently, we only measure instruction count, as it's the most reproducible metric
-and rustc-perf also considers it the main number to focus on.
+and [rustc-perf][rustc-perf] also considers it the main number to focus on.
 
 ## Benchmarking a PR
 
@@ -52,4 +52,4 @@ perf diff ./target/lintcheck/sources/CRATE/perf.data ./target/lintcheck/sources/
 [perf]: https://perfwiki.github.io/main/
 [flamegraph-perf]: https://github.com/brendangregg/FlameGraph
 [flamegraph-rs]: https://github.com/flamegraph-rs/flamegraph
-[rustc-perf]: 
+[rustc-perf]: https://github.com/rust-lang/rustc-perf
