@@ -569,18 +569,27 @@ fn document_short<'a, 'cx: 'a>(
             let (mut summary_html, has_more_content) =
                 MarkdownSummaryLine(&s, &item.links(cx)).into_string_with_has_more_content();
 
-            if has_more_content {
-                let link =
-                    format!(" <a{}>Read more</a>", assoc_href_attr(item, link, cx).maybe_display());
+            let link = if has_more_content {
+                let link = fmt::from_fn(|f| {
+                    write!(
+                        f,
+                        " <a{}>Read more</a>",
+                        assoc_href_attr(item, link, cx).maybe_display()
+                    )
+                });
 
                 if let Some(idx) = summary_html.rfind("</p>") {
-                    summary_html.insert_str(idx, &link);
+                    summary_html.insert_str(idx, &link.to_string());
+                    None
                 } else {
-                    summary_html.push_str(&link);
+                    Some(link)
                 }
+            } else {
+                None
             }
+            .maybe_display();
 
-            write!(f, "<div class='docblock'>{summary_html}</div>")?;
+            write!(f, "<div class='docblock'>{summary_html}{link}</div>")?;
         }
         Ok(())
     })
