@@ -11,7 +11,7 @@ bitflags = "2.4.1"
 bstr = "1.11.3"
 # Pinned so `cargo update` bumps don't cause breakage. Please also update the
 # `cc` in `rustc_llvm` if you update the `cc` here.
-cc = "=1.2.7"
+cc = "=1.2.13"
 either = "1.5.0"
 itertools = "0.12"
 pathdiff = "0.2.0"
