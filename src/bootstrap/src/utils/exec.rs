@@ -1,3 +1,8 @@
+//! Command Execution Module
+//!
+//! This module provides a structured way to execute and manage commands efficiently,
+//! ensuring controlled failure handling and output management.
+
 use std::ffi::OsStr;
 use std::fmt::{Debug, Formatter};
 use std::path::Path;

@@ -81,11 +81,11 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
     mut has_self: bool,
     owner: DefId,
-) -> Vec<GenericArg> {
+) -> ThinVec<GenericArg> {
     let (args, bound_vars) = (args.skip_binder(), args.bound_vars());
     if args.is_empty() {
         // Fast path which avoids executing the query `generics_of`.
-        return Vec::new();
+        return ThinVec::new();
     }
 
     // If the container is a trait object type, the arguments won't contain the self type but the
@@ -144,7 +144,7 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     };
 
     let offset = if has_self { 1 } else { 0 };
-    let mut clean_args = Vec::with_capacity(args.len().saturating_sub(offset));
+    let mut clean_args = ThinVec::with_capacity(args.len().saturating_sub(offset));
     clean_args.extend(args.iter().enumerate().rev().filter_map(clean_arg));
     clean_args.reverse();
     clean_args
@@ -588,9 +588,9 @@ pub(crate) fn attrs_have_doc_flag<'a>(
 /// so that the channel is consistent.
 ///
 /// Set by `bootstrap::Builder::doc_rust_lang_org_channel` in order to keep tests passing on beta/stable.
-pub(crate) const DOC_RUST_LANG_ORG_CHANNEL: &str = env!("DOC_RUST_LANG_ORG_CHANNEL");
-pub(crate) static DOC_CHANNEL: Lazy<&'static str> =
-    Lazy::new(|| DOC_RUST_LANG_ORG_CHANNEL.rsplit('/').find(|c| !c.is_empty()).unwrap());
+pub(crate) const DOC_RUST_LANG_ORG_VERSION: &str = env!("DOC_RUST_LANG_ORG_CHANNEL");
+pub(crate) static RUSTDOC_VERSION: Lazy<&'static str> =
+    Lazy::new(|| DOC_RUST_LANG_ORG_VERSION.rsplit('/').find(|c| !c.is_empty()).unwrap());
 
 /// Render a sequence of macro arms in a format suitable for displaying to the user
 /// as part of an item declaration.

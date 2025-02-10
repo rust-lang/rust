@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::fmt;
+use std::sync::Arc;
 
 pub use BinOpToken::*;
 pub use LitKind::*;
@@ -8,7 +9,6 @@ pub use NtExprKind::*;
 pub use NtPatKind::*;
 pub use TokenKind::*;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::Lrc;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, kw, sym};
@@ -451,7 +451,7 @@ pub enum TokenKind {
     /// The span in the surrounding `Token` is that of the metavariable in the
     /// macro's RHS. The span within the Nonterminal is that of the fragment
     /// passed to the macro at the call site.
-    Interpolated(Lrc<Nonterminal>),
+    Interpolated(Arc<Nonterminal>),
 
     /// A doc comment token.
     /// `Symbol` is the doc comment's data excluding its "quotes" (`///`, `/**`, etc)
@@ -469,7 +469,7 @@ impl Clone for TokenKind {
         // a copy. This is faster than the `derive(Clone)` version which has a
         // separate path for every variant.
         match self {
-            Interpolated(nt) => Interpolated(Lrc::clone(nt)),
+            Interpolated(nt) => Interpolated(Arc::clone(nt)),
             _ => unsafe { std::ptr::read(self) },
         }
     }

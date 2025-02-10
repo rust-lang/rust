@@ -166,10 +166,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
                 prev.span = prev.span.substitute_dummy(concrete_type.span);
             } else {
-                result.insert(opaque_type_key.def_id, OpaqueHiddenType {
-                    ty,
-                    span: concrete_type.span,
-                });
+                result.insert(
+                    opaque_type_key.def_id,
+                    OpaqueHiddenType { ty, span: concrete_type.span },
+                );
             }
 
             // Check that all opaque types have the same region parameters if they have the same

@@ -167,6 +167,11 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn unchecked_umul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn and(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn or(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    /// Defaults to [`Self::or`], but guarantees `(lhs & rhs) == 0` so some backends
+    /// can emit something more helpful for optimizations.
+    fn or_disjoint(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.or(lhs, rhs)
+    }
     fn xor(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn neg(&mut self, v: Self::Value) -> Self::Value;
     fn fneg(&mut self, v: Self::Value) -> Self::Value;

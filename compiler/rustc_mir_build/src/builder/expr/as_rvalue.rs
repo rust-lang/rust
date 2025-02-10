@@ -151,19 +151,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 let storage = this.temp(Ty::new_mut_ptr(tcx, tcx.types.u8), expr_span);
                 let success = this.cfg.start_new_block();
-                this.cfg.terminate(block, source_info, TerminatorKind::Call {
-                    func: exchange_malloc,
-                    args: [Spanned { node: Operand::Move(size), span: DUMMY_SP }, Spanned {
-                        node: Operand::Move(align),
-                        span: DUMMY_SP,
-                    }]
-                    .into(),
-                    destination: storage,
-                    target: Some(success),
-                    unwind: UnwindAction::Continue,
-                    call_source: CallSource::Misc,
-                    fn_span: expr_span,
-                });
+                this.cfg.terminate(
+                    block,
+                    source_info,
+                    TerminatorKind::Call {
+                        func: exchange_malloc,
+                        args: [
+                            Spanned { node: Operand::Move(size), span: DUMMY_SP },
+                            Spanned { node: Operand::Move(align), span: DUMMY_SP },
+                        ]
+                        .into(),
+                        destination: storage,
+                        target: Some(success),
+                        unwind: UnwindAction::Continue,
+                        call_source: CallSource::Misc,
+                        fn_span: expr_span,
+                    },
+                );
                 this.diverge_from(block);
                 block = success;
 
@@ -171,10 +175,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // and therefore is not considered during coroutine auto-trait
                 // determination. See the comment about `box` at `yield_in_scope`.
                 let result = this.local_decls.push(LocalDecl::new(expr.ty, expr_span));
-                this.cfg.push(block, Statement {
-                    source_info,
-                    kind: StatementKind::StorageLive(result),
-                });
+                this.cfg.push(
+                    block,
+                    Statement { source_info, kind: StatementKind::StorageLive(result) },
+                );
                 if let Some(scope) = scope.temp_lifetime {
                     // schedule a shallow free of that memory, lest we unwind:
                     this.schedule_drop_storage_and_value(expr_span, scope, result);
@@ -272,12 +276,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             );
                             merge_place
                         };
-                        this.cfg.push(block, Statement {
-                            source_info,
-                            kind: StatementKind::Intrinsic(Box::new(
-                                NonDivergingIntrinsic::Assume(Operand::Move(assert_place)),
-                            )),
-                        });
+                        this.cfg.push(
+                            block,
+                            Statement {
+                                source_info,
+                                kind: StatementKind::Intrinsic(Box::new(
+                                    NonDivergingIntrinsic::Assume(Operand::Move(assert_place)),
+                                )),
+                            },
+                        );
                     }
 
                     (op, ty)
@@ -739,12 +746,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             );
             if let Operand::Move(to_drop) = value_operand {
                 let success = this.cfg.start_new_block();
-                this.cfg.terminate(block, outer_source_info, TerminatorKind::Drop {
-                    place: to_drop,
-                    target: success,
-                    unwind: UnwindAction::Continue,
-                    replace: false,
-                });
+                this.cfg.terminate(
+                    block,
+                    outer_source_info,
+                    TerminatorKind::Drop {
+                        place: to_drop,
+                        target: success,
+                        unwind: UnwindAction::Continue,
+                        replace: false,
+                    },
+                );
                 this.diverge_from(block);
                 block = success;
             }

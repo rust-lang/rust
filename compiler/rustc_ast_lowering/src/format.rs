@@ -362,13 +362,16 @@ fn make_format_spec<'hir>(
         debug_hex,
     } = &placeholder.format_options;
     let fill = ctx.expr_char(sp, fill.unwrap_or(' '));
-    let align =
-        ctx.expr_lang_item_type_relative(sp, hir::LangItem::FormatAlignment, match alignment {
+    let align = ctx.expr_lang_item_type_relative(
+        sp,
+        hir::LangItem::FormatAlignment,
+        match alignment {
             Some(FormatAlignment::Left) => sym::Left,
             Some(FormatAlignment::Right) => sym::Right,
             Some(FormatAlignment::Center) => sym::Center,
             None => sym::Unknown,
-        });
+        },
+    );
     // This needs to match `Flag` in library/core/src/fmt/rt.rs.
     let flags: u32 = ((sign == Some(FormatSign::Plus)) as u32)
         | ((sign == Some(FormatSign::Minus)) as u32) << 1

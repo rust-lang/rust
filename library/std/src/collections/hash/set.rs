@@ -374,7 +374,7 @@ impl<T, S> HashSet<T, S> {
     /// manually using this function can expose a DoS attack vector.
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the HashMap to be useful, see its documentation for details.
+    /// the `HashSet` to be useful, see its documentation for details.
     ///
     /// # Examples
     ///
@@ -406,7 +406,7 @@ impl<T, S> HashSet<T, S> {
     /// manually using this function can expose a DoS attack vector.
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the HashMap to be useful, see its documentation for details.
+    /// the `HashSet` to be useful, see its documentation for details.
     ///
     /// # Examples
     ///

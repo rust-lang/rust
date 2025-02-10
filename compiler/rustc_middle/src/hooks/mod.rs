@@ -6,11 +6,9 @@
 use rustc_hir::def_id::{DefId, DefPathHash};
 use rustc_session::StableCrateId;
 use rustc_span::def_id::{CrateNum, LocalDefId};
-use rustc_span::{DUMMY_SP, ExpnHash, ExpnId};
-use tracing::instrument;
+use rustc_span::{ExpnHash, ExpnId};
 
 use crate::mir;
-use crate::query::TyCtxtAt;
 use crate::ty::{Ty, TyCtxt};
 
 macro_rules! declare_hooks {
@@ -22,26 +20,14 @@ macro_rules! declare_hooks {
             #[inline(always)]
             pub fn $name(self, $($arg: $K,)*) -> $V
             {
-                self.at(DUMMY_SP).$name($($arg,)*)
-            }
-            )*
-        }
-
-        impl<'tcx> TyCtxtAt<'tcx> {
-            $(
-            $(#[$attr])*
-            #[inline(always)]
-            #[instrument(level = "debug", skip(self), ret)]
-            pub fn $name(self, $($arg: $K,)*) -> $V
-            {
-                (self.tcx.hooks.$name)(self, $($arg,)*)
+                (self.hooks.$name)(self, $($arg,)*)
             }
             )*
         }
 
         pub struct Providers {
             $(pub $name: for<'tcx> fn(
-                TyCtxtAt<'tcx>,
+                TyCtxt<'tcx>,
                 $($arg: $K,)*
             ) -> $V,)*
         }
@@ -112,6 +98,10 @@ declare_hooks! {
     hook save_dep_graph() -> ();
 
     hook query_key_hash_verify_all() -> ();
+
+    /// Ensure the given scalar is valid for the given type.
+    /// This checks non-recursive runtime validity.
+    hook validate_scalar_in_layout(scalar: crate::ty::ScalarInt, ty: Ty<'tcx>) -> bool;
 }
 
 #[cold]

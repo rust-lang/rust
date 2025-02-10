@@ -34,7 +34,6 @@ use self::visit::TyContext;
 use crate::mir::interpret::{AllocRange, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{
@@ -59,7 +58,6 @@ pub mod tcx;
 mod terminator;
 
 pub mod traversal;
-mod type_foldable;
 pub mod visit;
 
 pub use consts::*;
@@ -927,8 +925,6 @@ pub enum BindingForm<'tcx> {
     RefForGuard,
 }
 
-TrivialTypeTraversalImpls! { BindingForm<'tcx> }
-
 mod binding_form_impl {
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
     use rustc_query_system::ich::StableHashingContext;
@@ -1414,10 +1410,10 @@ impl<'tcx> BasicBlockData<'tcx> {
         // existing elements from before the gap to the end of the gap.
         // For now, this is safe code, emulating a gap but initializing it.
         let mut gap = self.statements.len()..self.statements.len() + extra_stmts;
-        self.statements.resize(gap.end, Statement {
-            source_info: SourceInfo::outermost(DUMMY_SP),
-            kind: StatementKind::Nop,
-        });
+        self.statements.resize(
+            gap.end,
+            Statement { source_info: SourceInfo::outermost(DUMMY_SP), kind: StatementKind::Nop },
+        );
         for (splice_start, new_stmts) in splices.into_iter().rev() {
             let splice_end = splice_start + new_stmts.size_hint().0;
             while gap.end > splice_end {

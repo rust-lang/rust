@@ -5,7 +5,7 @@ fn test_stack_assign() {
     let t: String = "a".to_string();
     assert_eq!(s, t);
     let u: String = "b".to_string();
-    assert!((s != u));
+    assert!(s != u);
 }
 
 #[test]
@@ -19,7 +19,7 @@ fn test_heap_assign() {
     let t: String = "a big ol' string".to_string();
     assert_eq!(s, t);
     let u: String = "a bad ol' string".to_string();
-    assert!((s != u));
+    assert!(s != u);
 }
 
 #[test]

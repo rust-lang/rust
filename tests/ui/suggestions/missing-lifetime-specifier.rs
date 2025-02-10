@@ -1,6 +1,5 @@
 // The specific errors produced depend the thread-local implementation.
 // Run only on platforms with "fast" TLS.
-//@ ignore-windows FIXME(#84933)
 //@ ignore-wasm globals are used instead of thread locals
 //@ ignore-emscripten globals are used instead of thread locals
 //@ ignore-android does not use #[thread_local]

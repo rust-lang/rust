@@ -10,7 +10,7 @@ use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
-use rustc_target::spec::abi::Abi;
+use rustc_abi::ExternAbi;
 
 pub struct BoxedLocal {
     too_large_for_stack: u64,
@@ -73,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
         fn_def_id: LocalDefId,
     ) {
         if let Some(header) = fn_kind.header() {
-            if header.abi != Abi::Rust {
+            if header.abi != ExternAbi::Rust {
                 return;
             }
         }

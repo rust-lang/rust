@@ -7,8 +7,8 @@ use clippy_utils::macros::macro_backtrace;
 use clippy_utils::source::snippet;
 use rustc_hir::{Expr, ExprKind, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, sym};
 

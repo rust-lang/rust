@@ -14,6 +14,7 @@ use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
 
 use crate::html::escape::Escape;
+use crate::joined::Joined as _;
 
 #[cfg(test)]
 mod tests;
@@ -396,6 +397,8 @@ impl Display<'_> {
         sub_cfgs: &[Cfg],
         separator: &str,
     ) -> fmt::Result {
+        use fmt::Display as _;
+
         let short_longhand = self.1.is_long() && {
             let all_crate_features =
                 sub_cfgs.iter().all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::feature, Some(_))));
@@ -414,20 +417,29 @@ impl Display<'_> {
             }
         };
 
-        for (i, sub_cfg) in sub_cfgs.iter().enumerate() {
-            if i != 0 {
-                fmt.write_str(separator)?;
-            }
-            if let (true, Cfg::Cfg(_, Some(feat))) = (short_longhand, sub_cfg) {
-                if self.1.is_html() {
-                    write!(fmt, "<code>{feat}</code>")?;
-                } else {
-                    write!(fmt, "`{feat}`")?;
-                }
-            } else {
-                write_with_opt_paren(fmt, !sub_cfg.is_all(), Display(sub_cfg, self.1))?;
-            }
-        }
+        fmt::from_fn(|f| {
+            sub_cfgs
+                .iter()
+                .map(|sub_cfg| {
+                    fmt::from_fn(move |fmt| {
+                        if let Cfg::Cfg(_, Some(feat)) = sub_cfg
+                            && short_longhand
+                        {
+                            if self.1.is_html() {
+                                write!(fmt, "<code>{feat}</code>")?;
+                            } else {
+                                write!(fmt, "`{feat}`")?;
+                            }
+                        } else {
+                            write_with_opt_paren(fmt, !sub_cfg.is_all(), Display(sub_cfg, self.1))?;
+                        }
+                        Ok(())
+                    })
+                })
+                .joined(separator, f)
+        })
+        .fmt(fmt)?;
+
         Ok(())
     }
 }
@@ -439,11 +451,20 @@ impl fmt::Display for Display<'_> {
                 Cfg::Any(ref sub_cfgs) => {
                     let separator =
                         if sub_cfgs.iter().all(Cfg::is_simple) { " nor " } else { ", nor " };
-                    for (i, sub_cfg) in sub_cfgs.iter().enumerate() {
-                        fmt.write_str(if i == 0 { "neither " } else { separator })?;
-                        write_with_opt_paren(fmt, !sub_cfg.is_all(), Display(sub_cfg, self.1))?;
-                    }
-                    Ok(())
+                    fmt.write_str("neither ")?;
+
+                    sub_cfgs
+                        .iter()
+                        .map(|sub_cfg| {
+                            fmt::from_fn(|fmt| {
+                                write_with_opt_paren(
+                                    fmt,
+                                    !sub_cfg.is_all(),
+                                    Display(sub_cfg, self.1),
+                                )
+                            })
+                        })
+                        .joined(separator, fmt)
                 }
                 ref simple @ Cfg::Cfg(..) => write!(fmt, "non-{}", Display(simple, self.1)),
                 ref c => write!(fmt, "not ({})", Display(c, self.1)),

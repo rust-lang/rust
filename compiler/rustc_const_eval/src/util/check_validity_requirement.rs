@@ -1,9 +1,10 @@
 use rustc_abi::{BackendRepr, FieldsShape, Scalar, Variants};
-use rustc_middle::bug;
 use rustc_middle::ty::layout::{
     HasTyCtxt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, ValidityRequirement,
 };
-use rustc_middle::ty::{PseudoCanonicalInput, Ty, TyCtxt};
+use rustc_middle::ty::{PseudoCanonicalInput, ScalarInt, Ty, TyCtxt};
+use rustc_middle::{bug, ty};
+use rustc_span::DUMMY_SP;
 
 use crate::const_eval::{CanAccessMutGlobal, CheckAlignment, CompileTimeMachine};
 use crate::interpret::{InterpCx, MemoryKind};
@@ -34,7 +35,7 @@ pub fn check_validity_requirement<'tcx>(
 
     let layout_cx = LayoutCx::new(tcx, input.typing_env);
     if kind == ValidityRequirement::Uninit || tcx.sess.opts.unstable_opts.strict_init_checks {
-        check_validity_requirement_strict(layout, &layout_cx, kind)
+        Ok(check_validity_requirement_strict(layout, &layout_cx, kind))
     } else {
         check_validity_requirement_lax(layout, &layout_cx, kind)
     }
@@ -46,10 +47,10 @@ fn check_validity_requirement_strict<'tcx>(
     ty: TyAndLayout<'tcx>,
     cx: &LayoutCx<'tcx>,
     kind: ValidityRequirement,
-) -> Result<bool, &'tcx LayoutError<'tcx>> {
+) -> bool {
     let machine = CompileTimeMachine::new(CanAccessMutGlobal::No, CheckAlignment::Error);
 
-    let mut cx = InterpCx::new(cx.tcx(), rustc_span::DUMMY_SP, cx.typing_env, machine);
+    let mut cx = InterpCx::new(cx.tcx(), DUMMY_SP, cx.typing_env, machine);
 
     let allocated = cx
         .allocate(ty, MemoryKind::Machine(crate::const_eval::MemoryKind::Heap))
@@ -69,14 +70,13 @@ fn check_validity_requirement_strict<'tcx>(
     // due to this.
     // The value we are validating is temporary and discarded at the end of this function, so
     // there is no point in reseting provenance and padding.
-    Ok(cx
-        .validate_operand(
-            &allocated.into(),
-            /*recursive*/ false,
-            /*reset_provenance_and_padding*/ false,
-        )
-        .discard_err()
-        .is_some())
+    cx.validate_operand(
+        &allocated.into(),
+        /*recursive*/ false,
+        /*reset_provenance_and_padding*/ false,
+    )
+    .discard_err()
+    .is_some()
 }
 
 /// Implements the 'lax' (default) version of the [`check_validity_requirement`] checks; see that
@@ -167,4 +167,32 @@ fn check_validity_requirement_lax<'tcx>(
     }
 
     Ok(true)
+}
+
+pub(crate) fn validate_scalar_in_layout<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    scalar: ScalarInt,
+    ty: Ty<'tcx>,
+) -> bool {
+    let machine = CompileTimeMachine::new(CanAccessMutGlobal::No, CheckAlignment::Error);
+
+    let typing_env = ty::TypingEnv::fully_monomorphized();
+    let mut cx = InterpCx::new(tcx, DUMMY_SP, typing_env, machine);
+
+    let Ok(layout) = cx.layout_of(ty) else {
+        bug!("could not compute layout of {scalar:?}:{ty:?}")
+    };
+    let allocated = cx
+        .allocate(layout, MemoryKind::Machine(crate::const_eval::MemoryKind::Heap))
+        .expect("OOM: failed to allocate for uninit check");
+
+    cx.write_scalar(scalar, &allocated).unwrap();
+
+    cx.validate_operand(
+        &allocated.into(),
+        /*recursive*/ false,
+        /*reset_provenance_and_padding*/ false,
+    )
+    .discard_err()
+    .is_some()
 }

@@ -403,7 +403,7 @@ fn generate_lto_work<B: ExtraBackendMethods>(
         assert!(needs_thin_lto.is_empty());
         let mut module =
             B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
-        if cgcx.lto == Lto::Fat {
+        if cgcx.lto == Lto::Fat && !autodiff.is_empty() {
             let config = cgcx.config(ModuleKind::Regular);
             module = unsafe { module.autodiff(cgcx, autodiff, config).unwrap() };
         }

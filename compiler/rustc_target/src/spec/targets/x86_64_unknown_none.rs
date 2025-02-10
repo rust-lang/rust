@@ -5,8 +5,8 @@
 // features.
 
 use crate::spec::{
-    Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelroLevel, SanitizerSet, StackProbeType,
-    Target, TargetOptions,
+    Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelroLevel, RustcAbi, SanitizerSet,
+    StackProbeType, Target, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -20,6 +20,7 @@ pub(crate) fn target() -> Target {
         relro_level: RelroLevel::Full,
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
+        rustc_abi: Some(RustcAbi::X86Softfloat),
         features: "-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-avx,-avx2,+soft-float".into(),
         supported_sanitizers: SanitizerSet::KCFI | SanitizerSet::KERNELADDRESS,
         disable_redzone: true,

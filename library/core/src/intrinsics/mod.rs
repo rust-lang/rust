@@ -3248,6 +3248,26 @@ pub const fn three_way_compare<T: Copy>(_lhs: T, _rhss: T) -> crate::cmp::Orderi
     unimplemented!()
 }
 
+/// Combine two values which have no bits in common.
+///
+/// This allows the backend to implement it as `a + b` *or* `a | b`,
+/// depending which is easier to implement on a specific target.
+///
+/// # Safety
+///
+/// Requires that `(a & b) == 0`, or equivalently that `(a | b) == (a + b)`.
+///
+/// Otherwise it's immediate UB.
+#[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
+#[rustc_nounwind]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[miri::intrinsic_fallback_is_spec] // the fallbacks all `assume` to tell Miri
+pub const unsafe fn disjoint_bitor<T: ~const fallback::DisjointBitOr>(a: T, b: T) -> T {
+    // SAFETY: same preconditions as this function.
+    unsafe { fallback::DisjointBitOr::disjoint_bitor(a, b) }
+}
+
 /// Performs checked integer addition.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
@@ -4042,6 +4062,52 @@ pub const unsafe fn const_allocate(_size: usize, _align: usize) -> *mut u8 {
 #[miri::intrinsic_fallback_is_spec]
 pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {
     // Runtime NOP
+}
+
+/// Returns whether we should perform contract-checking at runtime.
+///
+/// This is meant to be similar to the ub_checks intrinsic, in terms
+/// of not prematurely commiting at compile-time to whether contract
+/// checking is turned on, so that we can specify contracts in libstd
+/// and let an end user opt into turning them on.
+#[cfg(not(bootstrap))]
+#[rustc_const_unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
+#[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
+#[inline(always)]
+#[rustc_intrinsic]
+pub const fn contract_checks() -> bool {
+    // FIXME: should this be `false` or `cfg!(contract_checks)`?
+
+    // cfg!(contract_checks)
+    false
+}
+
+/// Check if the pre-condition `cond` has been met.
+///
+/// By default, if `contract_checks` is enabled, this will panic with no unwind if the condition
+/// returns false.
+#[cfg(not(bootstrap))]
+#[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
+#[lang = "contract_check_requires"]
+#[rustc_intrinsic]
+pub fn contract_check_requires<C: Fn() -> bool>(cond: C) {
+    if contract_checks() && !cond() {
+        // Emit no unwind panic in case this was a safety requirement.
+        crate::panicking::panic_nounwind("failed requires check");
+    }
+}
+
+/// Check if the post-condition `cond` has been met.
+///
+/// By default, if `contract_checks` is enabled, this will panic with no unwind if the condition
+/// returns false.
+#[cfg(not(bootstrap))]
+#[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
+#[rustc_intrinsic]
+pub fn contract_check_ensures<'a, Ret, C: Fn(&'a Ret) -> bool>(ret: &'a Ret, cond: C) {
+    if contract_checks() && !cond(ret) {
+        crate::panicking::panic_nounwind("failed ensures check");
+    }
 }
 
 /// The intrinsic will return the size stored in that vtable.

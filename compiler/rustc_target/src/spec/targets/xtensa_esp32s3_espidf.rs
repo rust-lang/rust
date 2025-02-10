@@ -1,4 +1,5 @@
-use crate::abi::Endian;
+use rustc_abi::Endian;
+
 use crate::spec::base::xtensa;
 use crate::spec::{Target, TargetOptions, cvs};
 

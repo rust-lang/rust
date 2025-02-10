@@ -1394,11 +1394,15 @@ pub(crate) struct DuplicateLangItem {
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for DuplicateLangItem {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag = Diag::new(dcx, level, match self.duplicate {
-            Duplicate::Plain => fluent::passes_duplicate_lang_item,
-            Duplicate::Crate => fluent::passes_duplicate_lang_item_crate,
-            Duplicate::CrateDepends => fluent::passes_duplicate_lang_item_crate_depends,
-        });
+        let mut diag = Diag::new(
+            dcx,
+            level,
+            match self.duplicate {
+                Duplicate::Plain => fluent::passes_duplicate_lang_item,
+                Duplicate::Crate => fluent::passes_duplicate_lang_item_crate,
+                Duplicate::CrateDepends => fluent::passes_duplicate_lang_item_crate_depends,
+            },
+        );
         diag.code(E0152);
         diag.arg("lang_item_name", self.lang_item_name);
         diag.arg("crate_name", self.crate_name);

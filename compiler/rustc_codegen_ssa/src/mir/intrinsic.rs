@@ -225,6 +225,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 args[1].val.unaligned_volatile_store(bx, dst);
                 return Ok(());
             }
+            sym::disjoint_bitor => {
+                let a = args[0].immediate();
+                let b = args[1].immediate();
+                bx.or_disjoint(a, b)
+            }
             sym::exact_div => {
                 let ty = arg_tys[0];
                 match int_type_width_signed(ty, bx.tcx()) {

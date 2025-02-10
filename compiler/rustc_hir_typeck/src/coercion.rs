@@ -555,18 +555,24 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // the reborrow in coerce_borrowed_ptr will pick it up.
                 let mutbl = AutoBorrowMutability::new(mutbl_b, AllowTwoPhase::No);
 
-                Some((Adjustment { kind: Adjust::Deref(None), target: ty_a }, Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
-                    target: Ty::new_ref(self.tcx, r_borrow, ty_a, mutbl_b),
-                }))
+                Some((
+                    Adjustment { kind: Adjust::Deref(None), target: ty_a },
+                    Adjustment {
+                        kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
+                        target: Ty::new_ref(self.tcx, r_borrow, ty_a, mutbl_b),
+                    },
+                ))
             }
             (&ty::Ref(_, ty_a, mt_a), &ty::RawPtr(_, mt_b)) => {
                 coerce_mutbls(mt_a, mt_b)?;
 
-                Some((Adjustment { kind: Adjust::Deref(None), target: ty_a }, Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::RawPtr(mt_b)),
-                    target: Ty::new_ptr(self.tcx, ty_a, mt_b),
-                }))
+                Some((
+                    Adjustment { kind: Adjust::Deref(None), target: ty_a },
+                    Adjustment {
+                        kind: Adjust::Borrow(AutoBorrow::RawPtr(mt_b)),
+                        target: Ty::new_ptr(self.tcx, ty_a, mt_b),
+                    },
+                ))
             }
             _ => None,
         };
@@ -605,7 +611,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         )];
 
         let mut has_unsized_tuple_coercion = false;
-        let mut has_trait_upcasting_coercion = None;
 
         // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
@@ -690,13 +695,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     // these here and emit a feature error if coercion doesn't fail
                     // due to another reason.
                     match impl_source {
-                        traits::ImplSource::Builtin(
-                            BuiltinImplSource::TraitUpcasting { .. },
-                            _,
-                        ) => {
-                            has_trait_upcasting_coercion =
-                                Some((trait_pred.self_ty(), trait_pred.trait_ref.args.type_at(1)));
-                        }
                         traits::ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, _) => {
                             has_unsized_tuple_coercion = true;
                         }
@@ -705,21 +703,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     queue.extend(impl_source.nested_obligations())
                 }
             }
-        }
-
-        if let Some((sub, sup)) = has_trait_upcasting_coercion
-            && !self.tcx().features().trait_upcasting()
-        {
-            // Renders better when we erase regions, since they're not really the point here.
-            let (sub, sup) = self.tcx.erase_regions((sub, sup));
-            let mut err = feature_err(
-                &self.tcx.sess,
-                sym::trait_upcasting,
-                self.cause.span,
-                format!("cannot cast `{sub}` to `{sup}`, trait upcasting coercion is experimental"),
-            );
-            err.note(format!("required when coercing `{source}` into `{target}`"));
-            err.emit();
         }
 
         if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion() {
@@ -1056,10 +1039,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // regionck knows that the region for `a` must be valid here.
         if is_ref {
             self.unify_and(a_unsafe, b, |target| {
-                vec![Adjustment { kind: Adjust::Deref(None), target: mt_a.ty }, Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::RawPtr(mutbl_b)),
-                    target,
-                }]
+                vec![
+                    Adjustment { kind: Adjust::Deref(None), target: mt_a.ty },
+                    Adjustment { kind: Adjust::Borrow(AutoBorrow::RawPtr(mutbl_b)), target },
+                ]
             })
         } else if mt_a.mutbl != mutbl_b {
             self.unify_and(a_unsafe, b, simple(Adjust::Pointer(PointerCoercion::MutToConstPointer)))
@@ -1311,10 +1294,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => span_bug!(new.span, "should not try to coerce a {new_ty} to a fn pointer"),
             };
             for expr in exprs.iter().map(|e| e.as_coercion_site()) {
-                self.apply_adjustments(expr, vec![Adjustment {
-                    kind: prev_adjustment.clone(),
-                    target: fn_ptr,
-                }]);
+                self.apply_adjustments(
+                    expr,
+                    vec![Adjustment { kind: prev_adjustment.clone(), target: fn_ptr }],
+                );
             }
             self.apply_adjustments(new, vec![Adjustment { kind: next_adjustment, target: fn_ptr }]);
             return Ok(fn_ptr);

@@ -13,18 +13,6 @@ note: function defined here
    |
 LL | fn f(
    |    ^
-LL |     a1: A,
-   |     -----
-LL |     a2: A,
-   |     -----
-LL |     b1: B,
-   |     -----
-LL |     b2: B,
-   |     -----
-LL |     c1: C,
-   |     -----
-LL |     c2: C,
-   |     -----
 help: did you mean
    |
 LL |     f(A, A, B, B, C, C);
@@ -41,18 +29,6 @@ note: function defined here
    |
 LL | fn f(
    |    ^
-LL |     a1: A,
-   |     -----
-LL |     a2: A,
-   |     -----
-LL |     b1: B,
-   |     -----
-LL |     b2: B,
-   |     -----
-LL |     c1: C,
-   |     -----
-LL |     c2: C,
-   |     -----
 help: did you mean
    |
 LL |     f(A, A, B, B, C, C);
@@ -72,14 +48,7 @@ note: function defined here
    |
 LL | fn f(
    |    ^
-LL |     a1: A,
-   |     -----
-LL |     a2: A,
-   |     -----
-LL |     b1: B,
-   |     -----
-LL |     b2: B,
-   |     -----
+...
 LL |     c1: C,
    |     -----
 LL |     c2: C,
@@ -104,18 +73,6 @@ note: function defined here
    |
 LL | fn f(
    |    ^
-LL |     a1: A,
-   |     -----
-LL |     a2: A,
-   |     -----
-LL |     b1: B,
-   |     -----
-LL |     b2: B,
-   |     -----
-LL |     c1: C,
-   |     -----
-LL |     c2: C,
-   |     -----
 help: did you mean
    |
 LL |     f(A, A, B, B, C, C);
@@ -137,17 +94,8 @@ note: function defined here
    |
 LL | fn f(
    |    ^
-LL |     a1: A,
-   |     -----
-LL |     a2: A,
-   |     -----
+...
 LL |     b1: B,
-   |     -----
-LL |     b2: B,
-   |     -----
-LL |     c1: C,
-   |     -----
-LL |     c2: C,
    |     -----
 help: did you mean
    |

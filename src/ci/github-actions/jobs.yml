@@ -50,7 +50,7 @@ runners:
   - &job-aarch64-linux
     # Free some disk space to avoid running out of space during the build.
     free_disk: true
-    os: ubuntu-24.04-arm
+    os: ubuntu-22.04-arm
 
   - &job-aarch64-linux-8c
     os: ubuntu-22.04-arm64-8core-32gb
@@ -167,10 +167,10 @@ auto:
     <<: *job-linux-4c
 
   - name: dist-loongarch64-linux
-    <<: *job-linux-4c
+    <<: *job-linux-4c-largedisk
 
   - name: dist-loongarch64-musl
-    <<: *job-linux-4c
+    <<: *job-linux-4c-largedisk
 
   - name: dist-ohos
     <<: *job-linux-4c
@@ -558,7 +558,7 @@ auto:
       SCRIPT: python x.py build --set rust.debug=true opt-dist && PGO_HOST=x86_64-pc-windows-msvc ./build/x86_64-pc-windows-msvc/stage0-tools-bin/opt-dist windows-ci -- python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-windows-8c
+    <<: *job-windows-25-8c
 
   - name: dist-i686-msvc
     env:

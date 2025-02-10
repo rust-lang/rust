@@ -291,6 +291,7 @@ impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
                 indices.iter().map(|idx| idx.stable(tables)).collect(),
             ),
             UbChecks => stable_mir::mir::NullOp::UbChecks,
+            ContractChecks => stable_mir::mir::NullOp::ContractChecks,
         }
     }
 }

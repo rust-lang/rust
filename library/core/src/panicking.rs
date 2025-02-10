@@ -302,7 +302,7 @@ fn panic_null_pointer_dereference() -> ! {
     }
 
     panic_nounwind_fmt(
-        format_args!("null pointer dereference occured"),
+        format_args!("null pointer dereference occurred"),
         /* force_no_backtrace */ false,
     )
 }

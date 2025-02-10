@@ -317,10 +317,13 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         Ok(Allocation {
             bytes,
             provenance: ProvenanceMap::new(),
-            init_mask: InitMask::new(size, match init {
-                AllocInit::Uninit => false,
-                AllocInit::Zero => true,
-            }),
+            init_mask: InitMask::new(
+                size,
+                match init {
+                    AllocInit::Uninit => false,
+                    AllocInit::Zero => true,
+                },
+            ),
             align,
             mutability: Mutability::Mut,
             extra: (),

@@ -319,19 +319,16 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
     // This is actually a function pointer, so wrap it in pointer DI.
     let name = compute_debuginfo_type_name(cx.tcx, fn_ty, false);
     let (size, align) = match fn_ty.kind() {
-        ty::FnDef(..) => (0, 1),
-        ty::FnPtr(..) => (
-            cx.tcx.data_layout.pointer_size.bits(),
-            cx.tcx.data_layout.pointer_align.abi.bits() as u32,
-        ),
+        ty::FnDef(..) => (Size::ZERO, Align::ONE),
+        ty::FnPtr(..) => (cx.tcx.data_layout.pointer_size, cx.tcx.data_layout.pointer_align.abi),
         _ => unreachable!(),
     };
     let di_node = unsafe {
         llvm::LLVMRustDIBuilderCreatePointerType(
             DIB(cx),
             fn_di_node,
-            size,
-            align,
+            size.bits(),
+            align.bits() as u32,
             0, // Ignore DWARF address space.
             name.as_c_char_ptr(),
             name.len(),
@@ -931,7 +928,7 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
 
     unsafe {
         let compile_unit_file = llvm::LLVMRustDIBuilderCreateFile(
-            debug_context.builder,
+            debug_context.builder.as_ref(),
             name_in_debuginfo.as_c_char_ptr(),
             name_in_debuginfo.len(),
             work_dir.as_c_char_ptr(),
@@ -944,7 +941,7 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
         );
 
         let unit_metadata = llvm::LLVMRustDIBuilderCreateCompileUnit(
-            debug_context.builder,
+            debug_context.builder.as_ref(),
             dwarf_const::DW_LANG_Rust,
             compile_unit_file,
             producer.as_c_char_ptr(),
@@ -1641,7 +1638,14 @@ pub(crate) fn extend_scope_to_file<'ll>(
     file: &SourceFile,
 ) -> &'ll DILexicalBlock {
     let file_metadata = file_metadata(cx, file);
-    unsafe { llvm::LLVMRustDIBuilderCreateLexicalBlockFile(DIB(cx), scope_metadata, file_metadata) }
+    unsafe {
+        llvm::LLVMDIBuilderCreateLexicalBlockFile(
+            DIB(cx),
+            scope_metadata,
+            file_metadata,
+            /* Discriminator (default) */ 0u32,
+        )
+    }
 }
 
 fn tuple_field_name(field_index: usize) -> Cow<'static, str> {

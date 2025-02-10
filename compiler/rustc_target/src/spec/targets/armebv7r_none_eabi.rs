@@ -1,6 +1,7 @@
 // Targets the Big endian Cortex-R4/R5 processor (ARMv7-R)
 
-use crate::abi::Endian;
+use rustc_abi::Endian;
+
 use crate::spec::{
     Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions,
 };

@@ -10,7 +10,7 @@ note: function defined here
   --> $DIR/swapped_arguments.rs:3:4
    |
 LL | fn two_args(_a: i32, _b: f32) {}
-   |    ^^^^^^^^ -------  -------
+   |    ^^^^^^^^
 help: swap these arguments
    |
 LL |   two_args(1, 1.0);
@@ -28,7 +28,7 @@ note: function defined here
   --> $DIR/swapped_arguments.rs:4:4
    |
 LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^ -------  -------  --------
+   |    ^^^^^^^^^^
 help: swap these arguments
    |
 LL |   three_args(1, 1.0, "");
@@ -46,7 +46,7 @@ note: function defined here
   --> $DIR/swapped_arguments.rs:4:4
    |
 LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^ -------  -------  --------
+   |    ^^^^^^^^^^
 help: swap these arguments
    |
 LL |   three_args(1, 1.0, "");
@@ -64,7 +64,7 @@ note: function defined here
   --> $DIR/swapped_arguments.rs:4:4
    |
 LL | fn three_args(_a: i32, _b: f32, _c: &str) {}
-   |    ^^^^^^^^^^ -------  -------  --------
+   |    ^^^^^^^^^^
 help: swap these arguments
    |
 LL |   three_args(1, 1.0, "");
@@ -84,7 +84,7 @@ note: function defined here
   --> $DIR/swapped_arguments.rs:5:4
    |
 LL | fn four_args(_a: i32, _b: f32, _c: &str, _d: X) {}
-   |    ^^^^^^^^^ -------  -------  --------  -----
+   |    ^^^^^^^^^
 help: did you mean
    |
 LL |   four_args(1, 1.0, "", X {});

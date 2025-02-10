@@ -333,10 +333,11 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                         tcx,
                         cause.clone(),
                         param_env,
-                        ty::TraitRef::new(tcx, dispatch_from_dyn_trait, [
-                            field.ty(tcx, args_a),
-                            field.ty(tcx, args_b),
-                        ]),
+                        ty::TraitRef::new(
+                            tcx,
+                            dispatch_from_dyn_trait,
+                            [field.ty(tcx, args_a), field.ty(tcx, args_b)],
+                        ),
                     ));
                 }
                 let errors = ocx.select_all_or_error();

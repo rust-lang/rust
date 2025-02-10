@@ -345,6 +345,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_pat_expr(&mut self, expr: &'v PatExpr<'v>) -> Self::Result {
         walk_pat_expr(self, expr)
     }
+    fn visit_lit(&mut self, _hir_id: HirId, _lit: &'v Lit, _negated: bool) -> Self::Result {
+        Self::Result::output()
+    }
     fn visit_anon_const(&mut self, c: &'v AnonConst) -> Self::Result {
         walk_anon_const(self, c)
     }
@@ -393,10 +396,8 @@ pub trait Visitor<'v>: Sized {
     fn visit_expr_field(&mut self, field: &'v ExprField<'v>) -> Self::Result {
         walk_expr_field(self, field)
     }
-    fn visit_pattern_type_pattern(&mut self, _p: &'v Pat<'v>) {
-        // Do nothing. Only a few visitors need to know the details of the pattern type,
-        // and they opt into it. All other visitors will just choke on our fake patterns
-        // because they aren't in a body.
+    fn visit_pattern_type_pattern(&mut self, p: &'v TyPat<'v>) -> Self::Result {
+        walk_ty_pat(self, p)
     }
     fn visit_generic_param(&mut self, p: &'v GenericParam<'v>) -> Self::Result {
         walk_generic_param(self, p)
@@ -702,6 +703,18 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm<'v>) -> V::Res
     visitor.visit_expr(arm.body)
 }
 
+pub fn walk_ty_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v TyPat<'v>) -> V::Result {
+    try_visit!(visitor.visit_id(pattern.hir_id));
+    match pattern.kind {
+        TyPatKind::Range(lower_bound, upper_bound, _) => {
+            visit_opt!(visitor, visit_const_arg_unambig, lower_bound);
+            visit_opt!(visitor, visit_const_arg_unambig, upper_bound);
+        }
+        TyPatKind::Err(_) => (),
+    }
+    V::Result::output()
+}
+
 pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) -> V::Result {
     try_visit!(visitor.visit_id(pattern.hir_id));
     match pattern.kind {
@@ -754,7 +767,7 @@ pub fn walk_pat_field<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v PatField<'
 pub fn walk_pat_expr<'v, V: Visitor<'v>>(visitor: &mut V, expr: &'v PatExpr<'v>) -> V::Result {
     try_visit!(visitor.visit_id(expr.hir_id));
     match &expr.kind {
-        PatExprKind::Lit { .. } => V::Result::output(),
+        PatExprKind::Lit { lit, negated } => visitor.visit_lit(expr.hir_id, lit, *negated),
         PatExprKind::ConstBlock(c) => visitor.visit_inline_const(c),
         PatExprKind::Path(qpath) => visitor.visit_qpath(qpath, expr.hir_id, expr.span),
     }
@@ -902,7 +915,8 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             try_visit!(visitor.visit_expr(expr));
             visit_opt!(visitor, visit_ty_unambig, ty);
         }
-        ExprKind::Lit(_) | ExprKind::Err(_) => {}
+        ExprKind::Lit(lit) => try_visit!(visitor.visit_lit(expression.hir_id, lit, false)),
+        ExprKind::Err(_) => {}
     }
     V::Result::output()
 }

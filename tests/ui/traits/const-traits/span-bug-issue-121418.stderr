@@ -8,17 +8,6 @@ LL | impl const dyn T {
    |
    = note: only trait implementations may be annotated with `const`
 
-error[E0308]: mismatched types
-  --> $DIR/span-bug-issue-121418.rs:8:27
-   |
-LL |     pub const fn new() -> std::sync::Mutex<dyn T> {}
-   |                  ---      ^^^^^^^^^^^^^^^^^^^^^^^ expected `Mutex<dyn T>`, found `()`
-   |                  |
-   |                  implicitly returns `()` as its body has no tail or `return` expression
-   |
-   = note: expected struct `Mutex<(dyn T + 'static)>`
-           found unit type `()`
-
 error[E0277]: the size for values of type `(dyn T + 'static)` cannot be known at compilation time
   --> $DIR/span-bug-issue-121418.rs:8:27
    |
@@ -29,6 +18,17 @@ LL |     pub const fn new() -> std::sync::Mutex<dyn T> {}
 note: required because it appears within the type `Mutex<(dyn T + 'static)>`
   --> $SRC_DIR/std/src/sync/poison/mutex.rs:LL:COL
    = note: the return type of a function must have a statically known size
+
+error[E0308]: mismatched types
+  --> $DIR/span-bug-issue-121418.rs:8:27
+   |
+LL |     pub const fn new() -> std::sync::Mutex<dyn T> {}
+   |                  ---      ^^^^^^^^^^^^^^^^^^^^^^^ expected `Mutex<dyn T>`, found `()`
+   |                  |
+   |                  implicitly returns `()` as its body has no tail or `return` expression
+   |
+   = note: expected struct `Mutex<(dyn T + 'static)>`
+           found unit type `()`
 
 error: aborting due to 3 previous errors
 

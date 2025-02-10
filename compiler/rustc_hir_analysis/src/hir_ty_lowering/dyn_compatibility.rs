@@ -107,12 +107,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut needed_associated_types = FxIndexSet::default();
         if let Some((principal_trait, spans)) = &principal_trait {
             let pred: ty::Predicate<'tcx> = (*principal_trait).upcast(tcx);
-            for ClauseWithSupertraitSpan { pred, supertrait_span } in
-                traits::elaborate(tcx, [ClauseWithSupertraitSpan::new(
-                    pred,
-                    *spans.last().unwrap(),
-                )])
-                .filter_only_self()
+            for ClauseWithSupertraitSpan { pred, supertrait_span } in traits::elaborate(
+                tcx,
+                [ClauseWithSupertraitSpan::new(pred, *spans.last().unwrap())],
+            )
+            .filter_only_self()
             {
                 debug!("observing object predicate `{pred:?}`");
 

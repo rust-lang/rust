@@ -1,4 +1,5 @@
-use crate::abi::Endian;
+use rustc_abi::Endian;
+
 use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
@@ -18,6 +19,11 @@ pub(crate) fn target() -> Target {
         pointer_width: 32,
         data_layout: "E-m:e-p:32:32-Fn32-i64:64-n32".into(),
         arch: "powerpc".into(),
-        options: TargetOptions { endian: Endian::Big, mcount: "_mcount".into(), ..base },
+        options: TargetOptions {
+            endian: Endian::Big,
+            features: "+secure-plt".into(),
+            mcount: "_mcount".into(),
+            ..base
+        },
     }
 }

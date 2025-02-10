@@ -1,7 +1,7 @@
 use crate::fmt;
 
 /// Creates an iterator with the provided closure
-/// `F: FnMut() -> Option<T>` as its `[next](Iterator::next)` method.
+/// `F: FnMut() -> Option<T>` as its [`next`](Iterator::next) method.
 ///
 /// The iterator will yield the `T`s returned from the closure.
 ///
