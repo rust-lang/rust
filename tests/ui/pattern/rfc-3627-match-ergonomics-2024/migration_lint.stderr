@@ -215,10 +215,11 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL |     if let Some(&mut Some(Some(x))) = &mut Some(&mut Some(&mut Some(0u8))) {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&mut _`
-help: make the implied reference patterns and variable binding mode explicit
+help: remove the unnecessary reference pattern
    |
-LL |     if let &mut Some(&mut Some(&mut Some(ref mut x))) = &mut Some(&mut Some(&mut Some(0u8))) {
-   |            ++++                ++++      +++++++
+LL -     if let Some(&mut Some(Some(x))) = &mut Some(&mut Some(&mut Some(0u8))) {
+LL +     if let Some(Some(Some(x))) = &mut Some(&mut Some(&mut Some(0u8))) {
+   |
 
 error: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:111:21
@@ -273,10 +274,10 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL |     if let Struct { a: &Some(a), b: Some(&b), c: Some(c) } =
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
-help: make the implied reference patterns and variable binding mode explicit
+help: make the implied reference patterns explicit
    |
-LL |     if let &Struct { a: &Some(a), b: &Some(&b), c: &Some(ref c) } =
-   |            +                         +             +     +++
+LL |     if let &Struct { a: &Some(a), b: &Some(&b), c: Some(c) } =
+   |            +                         +
 
 error: binding modifiers may only be written when the default binding mode is `move`
   --> $DIR/migration_lint.rs:137:15
@@ -318,10 +319,11 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL |     let [&mut [ref a]] = &mut [&mut &[0]];
    |         ^^^^^^^^^^^^^^ this matches on type `&mut _`
-help: make the implied reference patterns explicit
+help: remove the unnecessary reference pattern and binding modifier
    |
-LL |     let &mut [&mut &[ref a]] = &mut [&mut &[0]];
-   |         ++++       +
+LL -     let [&mut [ref a]] = &mut [&mut &[0]];
+LL +     let [[a]] = &mut [&mut &[0]];
+   |
 
 error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:150:10
@@ -336,10 +338,11 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL |     let [&(_)] = &[&0];
    |         ^^^^^^ this matches on type `&_`
-help: make the implied reference pattern explicit
+help: remove the unnecessary reference pattern
    |
-LL |     let &[&(_)] = &[&0];
-   |         +
+LL -     let [&(_)] = &[&0];
+LL +     let [(_)] = &[&0];
+   |
 
 error: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:155:18
@@ -397,10 +400,11 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL |     let Struct { a: &[ref a], b: &mut [[b]], c } = &mut &Struct { a: &[0], b: &mut [&[0]], c: 0 };
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
-help: make the implied reference patterns and variable binding modes explicit
+help: remove the unnecessary reference patterns and binding modifier
    |
-LL |     let &mut &Struct { a: &[ref a], b: &mut [&[ref b]], ref c } = &mut &Struct { a: &[0], b: &mut [&[0]], c: 0 };
-   |         ++++++                               + +++      +++
+LL -     let Struct { a: &[ref a], b: &mut [[b]], c } = &mut &Struct { a: &[0], b: &mut [&[0]], c: 0 };
+LL +     let Struct { a: [a], b: [[b]], c } = &mut &Struct { a: &[0], b: &mut [&[0]], c: 0 };
+   |
 
 error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:178:13
@@ -435,8 +439,8 @@ LL |     let (&a, b, [c], [(d, [e])]) = &(&0, 0, &[0], &mut [&mut (0, &[0])]);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
 help: make the implied reference patterns and variable binding modes explicit
    |
-LL |     let &(&a, ref b, &[ref c], &mut [&mut (ref d, &[ref e])]) = &(&0, 0, &[0], &mut [&mut (0, &[0])]);
-   |         +     +++    + +++     ++++  ++++  +++    + +++
+LL |     let &(&a, ref b, [c], &mut [&mut (ref d, [e])]) = &(&0, 0, &[0], &mut [&mut (0, &[0])]);
+   |         +     +++         ++++  ++++  +++
 
 error: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:194:19
@@ -471,10 +475,11 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL |     let (&a, (b, &[ref c])) = &(&0, &mut (0, &[0]));
    |         ^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
-help: make the implied reference patterns and variable binding mode explicit
+help: rewrite the pattern
    |
-LL |     let &(&a, &mut (ref b, &[ref c])) = &(&0, &mut (0, &[0]));
-   |         +     ++++  +++
+LL -     let (&a, (b, &[ref c])) = &(&0, &mut (0, &[0]));
+LL +     let &(&a, &mut (ref b, [c])) = &(&0, &mut (0, &[0]));
+   |
 
 error: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:210:10
@@ -563,22 +568,18 @@ LL |     let [&Foo(&ref a @ [ref b]), &Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
    |          +                       +
 
 error: binding modifiers may only be written when the default binding mode is `move`
-  --> $DIR/migration_lint.rs:244:10
+  --> $DIR/migration_lint.rs:242:10
    |
 LL |     let [migration_lint_macros::bind_ref!(a)] = &[0];
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ occurs within macro expansion
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/migration_lint.rs:244:9
+  --> $DIR/migration_lint.rs:242:9
    |
 LL |     let [migration_lint_macros::bind_ref!(a)] = &[0];
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
    = note: this error originates in the macro `migration_lint_macros::bind_ref` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: make the implied reference pattern explicit
-   |
-LL |     let &[migration_lint_macros::bind_ref!(a)] = &[0];
-   |         +
 
 error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:249:10

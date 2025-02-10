@@ -2798,36 +2798,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // FIXME(ref_pat_eat_one_layer_2024): The migration diagnostic doesn't know how to track the
         // default binding mode in the presence of Rule 3 or Rule 5. As a consequence, the labels it
         // gives for default binding modes are wrong, as well as suggestions based on the default
-        // binding mode. This keeps it from making those suggestions, as doing so could panic.
-        let info = table.entry(pat_id).or_insert_with(|| ty::Rust2024IncompatiblePatInfo {
-            primary_labels: Vec::new(),
-            bad_modifiers: false,
-            bad_ref_pats: false,
-            suggest_eliding_modes: !self.tcx.features().ref_pat_eat_one_layer_2024()
-                && !self.tcx.features().ref_pat_eat_one_layer_2024_structural(),
-        });
+        // binding mode.
+        let info = table.entry(pat_id).or_default();
 
-        let pat_kind = if let PatKind::Binding(user_bind_annot, _, _, _) = subpat.kind {
+        let pat_kind = if matches!(subpat.kind, PatKind::Binding(..)) {
             info.bad_modifiers = true;
-            // If the user-provided binding modifier doesn't match the default binding mode, we'll
-            // need to suggest reference patterns, which can affect other bindings.
-            // For simplicity, we opt to suggest making the pattern fully explicit.
-            info.suggest_eliding_modes &=
-                user_bind_annot == BindingMode(ByRef::Yes(def_br_mutbl), Mutability::Not);
             "binding modifier"
         } else {
             info.bad_ref_pats = true;
-            // For simplicity, we don't try to suggest eliding reference patterns. Thus, we'll
-            // suggest adding them instead, which can affect the types assigned to bindings.
-            // As such, we opt to suggest making the pattern fully explicit.
-            info.suggest_eliding_modes = false;
             "reference pattern"
         };
         // Only provide a detailed label if the problematic subpattern isn't from an expansion.
         // In the case that it's from a macro, we'll add a more detailed note in the emitter.
         let primary_label = if from_expansion {
-            // We can't suggest eliding modifiers within expansions.
-            info.suggest_eliding_modes = false;
             // NB: This wording assumes the only expansions that can produce problematic reference
             // patterns and bindings are macros. If a desugaring or AST pass is added that can do
             // so, we may want to inspect the span's source callee or macro backtrace.

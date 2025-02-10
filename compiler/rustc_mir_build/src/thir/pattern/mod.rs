@@ -309,7 +309,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             hir::PatKind::Ref(subpattern, mutbl) => {
                 // Track the default binding mode for the Rust 2024 migration suggestion.
                 if let Some(s) = &mut self.rust_2024_migration {
-                    s.visit_explicit_deref(pat.span, mutbl);
+                    s.visit_explicit_deref(pat.span, mutbl, subpattern);
                 }
                 let subpattern = self.lower_pattern(subpattern);
                 if let Some(s) = &mut self.rust_2024_migration {

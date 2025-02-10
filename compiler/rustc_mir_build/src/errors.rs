@@ -1106,14 +1106,19 @@ pub(crate) struct Rust2024IncompatiblePat<'m> {
 }
 
 pub(crate) struct Rust2024IncompatiblePatSugg<'m> {
-    /// If true, our suggestion is to elide explicit binding modifiers.
-    /// If false, our suggestion is to make the pattern fully explicit.
-    pub(crate) suggest_eliding_modes: bool,
     pub(crate) suggestion: Vec<(Span, String)>,
+    /// If `Some(..)`, we provide a suggestion about either adding or removing syntax.
+    /// If `None`, we suggest both additions and removals; use a generic wording for simplicity.
+    pub(crate) kind: Option<Rust2024IncompatiblePatSuggKind>,
     pub(crate) ref_pattern_count: usize,
     pub(crate) binding_mode_count: usize,
     /// Labels for where incompatibility-causing by-ref default binding modes were introduced.
     pub(crate) default_mode_labels: &'m FxIndexMap<Span, ty::Mutability>,
+}
+
+pub(crate) enum Rust2024IncompatiblePatSuggKind {
+    Subtractive,
+    Additive,
 }
 
 impl<'m> Subdiagnostic for Rust2024IncompatiblePatSugg<'m> {
@@ -1122,6 +1127,8 @@ impl<'m> Subdiagnostic for Rust2024IncompatiblePatSugg<'m> {
         diag: &mut Diag<'_, G>,
         _f: &F,
     ) {
+        use Rust2024IncompatiblePatSuggKind::*;
+
         // Format and emit explanatory notes about default binding modes. Reversing the spans' order
         // means if we have nested spans, the innermost ones will be visited first.
         for (&span, &def_br_mutbl) in self.default_mode_labels.iter().rev() {
@@ -1143,17 +1150,33 @@ impl<'m> Subdiagnostic for Rust2024IncompatiblePatSugg<'m> {
             } else {
                 Applicability::MaybeIncorrect
             };
-        let msg = if self.suggest_eliding_modes {
-            let plural_modes = pluralize!(self.binding_mode_count);
-            format!("remove the unnecessary binding modifier{plural_modes}")
-        } else {
-            let plural_derefs = pluralize!(self.ref_pattern_count);
-            let and_modes = if self.binding_mode_count > 0 {
-                format!(" and variable binding mode{}", pluralize!(self.binding_mode_count))
+        let msg = if let Some(kind) = self.kind {
+            let derefs = if self.ref_pattern_count > 0 {
+                format!("reference pattern{}", pluralize!(self.ref_pattern_count))
             } else {
                 String::new()
             };
-            format!("make the implied reference pattern{plural_derefs}{and_modes} explicit")
+            let modes = if self.binding_mode_count > 0 {
+                match kind {
+                    Subtractive => {
+                        format!("binding modifier{}", pluralize!(self.binding_mode_count))
+                    }
+                    Additive => {
+                        format!("variable binding mode{}", pluralize!(self.binding_mode_count))
+                    }
+                }
+            } else {
+                String::new()
+            };
+            let and = if !derefs.is_empty() && !modes.is_empty() { " and " } else { "" };
+            match kind {
+                Subtractive => format!("remove the unnecessary {derefs}{and}{modes}"),
+                Additive => {
+                    format!("make the implied {derefs}{and}{modes} explicit")
+                }
+            }
+        } else {
+            "rewrite the pattern".to_owned()
         };
         // FIXME(dianne): for peace of mind, don't risk emitting a 0-part suggestion (that panics!)
         if !self.suggestion.is_empty() {
