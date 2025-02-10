@@ -2350,11 +2350,10 @@ impl<T: Default> Default for Rc<T> {
     fn default() -> Rc<T> {
         unsafe {
             Self::from_inner(
-                Box::leak(Box::write(Box::new_uninit(), RcInner {
-                    strong: Cell::new(1),
-                    weak: Cell::new(1),
-                    value: T::default(),
-                }))
+                Box::leak(Box::write(
+                    Box::new_uninit(),
+                    RcInner { strong: Cell::new(1), weak: Cell::new(1), value: T::default() },
+                ))
                 .into(),
             )
         }
@@ -2369,7 +2368,9 @@ impl Default for Rc<str> {
     /// This may or may not share an allocation with other Rcs on the same thread.
     #[inline]
     fn default() -> Self {
-        Rc::from("")
+        let rc = Rc::<[u8]>::default();
+        // `[u8]` has the same layout as `str`.
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const str) }
     }
 }
 

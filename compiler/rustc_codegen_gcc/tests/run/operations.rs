@@ -6,10 +6,11 @@
 //     10
 
 #![allow(internal_features, unused_attributes)]
-#![feature(auto_traits, lang_items, no_core, start, intrinsics, arbitrary_self_types, rustc_attrs)]
+#![feature(auto_traits, lang_items, no_core, intrinsics, arbitrary_self_types, rustc_attrs)]
 
 #![no_std]
 #![no_core]
+#![no_main]
 
 /*
  * Core
@@ -231,8 +232,8 @@ pub fn panic_const_mul_overflow() -> ! {
  * Code
  */
 
-#[start]
-fn main(mut argc: isize, _argv: *const *const u8) -> isize {
+#[no_mangle]
+extern "C" fn main(argc: i32, _argv: *const *const u8) -> i32 {
     unsafe {
         libc::printf(b"%ld\n\0" as *const u8 as *const i8, 40 + argc);
         libc::printf(b"%ld\n\0" as *const u8 as *const i8, 40 - argc);

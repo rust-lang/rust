@@ -20,6 +20,12 @@ pub struct LocalCrate;
 /// The `Key` trait controls what types can legally be used as the key
 /// for a query.
 pub trait Key: Sized {
+    /// The type of in-memory cache to use for queries with this key type.
+    ///
+    /// In practice the cache type must implement [`QueryCache`], though that
+    /// constraint is not enforced here.
+    ///
+    /// [`QueryCache`]: rustc_query_system::query::QueryCache
     // N.B. Most of the keys down below have `type Cache<V> = DefaultCache<Self, V>;`,
     //      it would be reasonable to use associated type defaults, to remove the duplication...
     //
@@ -95,7 +101,7 @@ impl<'tcx> Key for mir::interpret::GlobalId<'tcx> {
     }
 }
 
-impl<'tcx> Key for (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>) {
+impl<'tcx> Key for (Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>) {
     type Cache<V> = DefaultCache<Self, V>;
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
@@ -550,7 +556,7 @@ impl<'tcx> Key for (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>) {
     }
 }
 
-impl<'tcx> Key for (Ty<'tcx>, ty::ValTree<'tcx>) {
+impl<'tcx> Key for ty::Value<'tcx> {
     type Cache<V> = DefaultCache<Self, V>;
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {

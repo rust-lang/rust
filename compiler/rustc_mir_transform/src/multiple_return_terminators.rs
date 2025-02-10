@@ -36,4 +36,8 @@ impl<'tcx> crate::MirPass<'tcx> for MultipleReturnTerminators {
 
         simplify::remove_dead_blocks(body)
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }

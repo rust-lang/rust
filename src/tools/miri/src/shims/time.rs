@@ -132,16 +132,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.assert_target_os_is_unix("localtime_r");
         this.check_no_isolation("`localtime_r`")?;
 
-        let timep = this.deref_pointer(timep)?;
+        let time_layout = this.libc_ty_layout("time_t");
+        let timep = this.deref_pointer_as(timep, time_layout)?;
         let result = this.deref_pointer_as(result_op, this.libc_ty_layout("tm"))?;
 
         // The input "represents the number of seconds elapsed since the Epoch,
         // 1970-01-01 00:00:00 +0000 (UTC)".
-        let sec_since_epoch: i64 = this
-            .read_scalar(&timep)?
-            .to_int(this.libc_ty_layout("time_t").size)?
-            .try_into()
-            .unwrap();
+        let sec_since_epoch: i64 =
+            this.read_scalar(&timep)?.to_int(time_layout.size)?.try_into().unwrap();
         let dt_utc: DateTime<Utc> =
             DateTime::from_timestamp(sec_since_epoch, 0).expect("Invalid timestamp");
 
@@ -254,7 +252,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let qpc = i64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^63 nanoseconds are not supported")
         })?;
-        this.write_scalar(Scalar::from_i64(qpc), &this.deref_pointer(lpPerformanceCount_op)?)?;
+        this.write_scalar(
+            Scalar::from_i64(qpc),
+            &this.deref_pointer_as(lpPerformanceCount_op, this.machine.layouts.i64)?,
+        )?;
         interp_ok(Scalar::from_i32(-1)) // return non-zero on success
     }
 

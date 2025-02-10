@@ -712,8 +712,8 @@ impl String {
         }
     }
 
-    /// Decode a UTF-16–encoded vector `v` into a `String`, returning [`Err`]
-    /// if `v` contains any invalid data.
+    /// Decode a native endian UTF-16–encoded vector `v` into a `String`,
+    /// returning [`Err`] if `v` contains any invalid data.
     ///
     /// # Examples
     ///
@@ -745,8 +745,8 @@ impl String {
         Ok(ret)
     }
 
-    /// Decode a UTF-16–encoded slice `v` into a `String`, replacing
-    /// invalid data with [the replacement character (`U+FFFD`)][U+FFFD].
+    /// Decode a native endian UTF-16–encoded slice `v` into a `String`,
+    /// replacing invalid data with [the replacement character (`U+FFFD`)][U+FFFD].
     ///
     /// Unlike [`from_utf8_lossy`] which returns a [`Cow<'a, str>`],
     /// `from_utf16_lossy` returns a `String` since the UTF-16 to UTF-8
@@ -777,8 +777,8 @@ impl String {
             .collect()
     }
 
-    /// Decode a UTF-16LE–encoded vector `v` into a `String`, returning [`Err`]
-    /// if `v` contains any invalid data.
+    /// Decode a UTF-16LE–encoded vector `v` into a `String`,
+    /// returning [`Err`] if `v` contains any invalid data.
     ///
     /// # Examples
     ///
@@ -852,8 +852,8 @@ impl String {
         }
     }
 
-    /// Decode a UTF-16BE–encoded vector `v` into a `String`, returning [`Err`]
-    /// if `v` contains any invalid data.
+    /// Decode a UTF-16BE–encoded vector `v` into a `String`,
+    /// returning [`Err`] if `v` contains any invalid data.
     ///
     /// # Examples
     ///

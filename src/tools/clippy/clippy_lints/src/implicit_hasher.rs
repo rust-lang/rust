@@ -2,9 +2,8 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use rustc_errors::{Applicability, Diag};
-use rustc_hir as hir;
-use rustc_hir::intravisit::{Visitor, walk_body, walk_expr, walk_inf, walk_ty};
-use rustc_hir::{Body, Expr, ExprKind, GenericArg, Item, ItemKind, QPath, TyKind};
+use rustc_hir::intravisit::{Visitor, VisitorExt, walk_body, walk_expr, walk_ty};
+use rustc_hir::{self as hir, AmbigArg, Body, Expr, ExprKind, GenericArg, Item, ItemKind, QPath, TyKind};
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
@@ -112,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
         match item.kind {
             ItemKind::Impl(impl_) => {
                 let mut vis = ImplicitHasherTypeVisitor::new(cx);
-                vis.visit_ty(impl_.self_ty);
+                vis.visit_ty_unambig(impl_.self_ty);
 
                 for target in &vis.found {
                     if !item.span.eq_ctxt(target.span()) {
@@ -159,7 +158,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
 
                 for ty in sig.decl.inputs {
                     let mut vis = ImplicitHasherTypeVisitor::new(cx);
-                    vis.visit_ty(ty);
+                    vis.visit_ty_unambig(ty);
 
                     for target in &vis.found {
                         if generics.span.from_expansion() {
@@ -287,20 +286,12 @@ impl<'a, 'tcx> ImplicitHasherTypeVisitor<'a, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for ImplicitHasherTypeVisitor<'_, 'tcx> {
-    fn visit_ty(&mut self, t: &'tcx hir::Ty<'_>) {
-        if let Some(target) = ImplicitHasherType::new(self.cx, t) {
+    fn visit_ty(&mut self, t: &'tcx hir::Ty<'_, AmbigArg>) {
+        if let Some(target) = ImplicitHasherType::new(self.cx, t.as_unambig_ty()) {
             self.found.push(target);
         }
 
         walk_ty(self, t);
-    }
-
-    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
-        if let Some(target) = ImplicitHasherType::new(self.cx, &inf.to_ty()) {
-            self.found.push(target);
-        }
-
-        walk_inf(self, inf);
     }
 }
 

@@ -133,7 +133,8 @@ session_unstable_virtual_function_elimination = `-Zvirtual-function-elimination`
 session_unsupported_crate_type_for_target =
     dropping unsupported crate type `{$crate_type}` for target `{$target_triple}`
 
-session_unsupported_dwarf_version = requested DWARF version {$dwarf_version} is greater than 5
+session_unsupported_dwarf_version = requested DWARF version {$dwarf_version} is not supported
+session_unsupported_dwarf_version_help = supported DWARF versions are 2, 3, 4 and 5
 
 session_unsupported_reg_struct_return_arch = `-Zreg-struct-return` is only supported on x86
 session_unsupported_regparm = `-Zregparm={$regparm}` is unsupported (valid values 0-3)

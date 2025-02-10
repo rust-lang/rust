@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::fmt;
+use std::fmt::{Display, Write};
 
 use itertools::Itertools;
 use rinja::Template;
@@ -30,12 +31,13 @@ use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::{Escape, EscapeBodyTextWithWbr};
 use crate::html::format::{
-    Buffer, Ending, PrintWithSpace, display_fn, join_with_double_colon, print_abi_with_space,
+    Buffer, Ending, PrintWithSpace, join_with_double_colon, print_abi_with_space,
     print_constness_with_space, print_where_clause, visibility_print_with_space,
 };
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
+use crate::joined::Joined as _;
 
 /// Generates a Rinja template struct for rendering items with common methods.
 ///
@@ -92,7 +94,7 @@ macro_rules! item_template_methods {
     () => {};
     (document $($rest:tt)*) => {
         fn document<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
+            fmt::from_fn(move |f| {
                 let (item, cx) = self.item_and_cx();
                 let v = document(cx, item, None, HeadingOffset::H2);
                 write!(f, "{v}")
@@ -102,7 +104,7 @@ macro_rules! item_template_methods {
     };
     (document_type_layout $($rest:tt)*) => {
         fn document_type_layout<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
+            fmt::from_fn(move |f| {
                 let (item, cx) = self.item_and_cx();
                 let def_id = item.item_id.expect_def_id();
                 let v = document_type_layout(cx, def_id);
@@ -113,7 +115,7 @@ macro_rules! item_template_methods {
     };
     (render_attributes_in_pre $($rest:tt)*) => {
         fn render_attributes_in_pre<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
+            fmt::from_fn(move |f| {
                 let (item, cx) = self.item_and_cx();
                 let v = render_attributes_in_pre(item, "", cx);
                 write!(f, "{v}")
@@ -123,7 +125,7 @@ macro_rules! item_template_methods {
     };
     (render_assoc_items $($rest:tt)*) => {
         fn render_assoc_items<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
+            fmt::from_fn(move |f| {
                 let (item, cx) = self.item_and_cx();
                 let def_id = item.item_id.expect_def_id();
                 let v = render_assoc_items(cx, item, def_id, AssocItemRender::All);
@@ -290,7 +292,7 @@ fn should_hide_fields(n_fields: usize) -> bool {
     n_fields > 12
 }
 
-fn toggle_open(mut w: impl fmt::Write, text: impl fmt::Display) {
+fn toggle_open(mut w: impl fmt::Write, text: impl Display) {
     write!(
         w,
         "<details class=\"toggle type-contents-toggle\">\
@@ -305,7 +307,7 @@ fn toggle_close(mut w: impl fmt::Write) {
     w.write_str("</details>").unwrap();
 }
 
-trait ItemTemplate<'a, 'cx: 'a>: rinja::Template + fmt::Display {
+trait ItemTemplate<'a, 'cx: 'a>: rinja::Template + Display {
     fn item_and_cx(&self) -> (&'a clean::Item, &'a Context<'cx>);
 }
 
@@ -519,14 +521,10 @@ fn extra_info_tags<'a, 'tcx: 'a>(
     item: &'a clean::Item,
     parent: &'a clean::Item,
     import_def_id: Option<DefId>,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
-    display_fn(move |f| {
-        fn tag_html<'a>(
-            class: &'a str,
-            title: &'a str,
-            contents: &'a str,
-        ) -> impl fmt::Display + 'a {
-            display_fn(move |f| {
+) -> impl Display + 'a + Captures<'tcx> {
+    fmt::from_fn(move |f| {
+        fn tag_html<'a>(class: &'a str, title: &'a str, contents: &'a str) -> impl Display + 'a {
+            fmt::from_fn(move |f| {
                 write!(
                     f,
                     r#"<wbr><span class="stab {class}" title="{title}">{contents}</span>"#,
@@ -914,7 +912,6 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
     let mut extern_crates = FxIndexSet::default();
 
     if !t.is_dyn_compatible(cx.tcx()) {
-        // FIXME(dyn_compat_renaming): Update the URL once the Reference is updated.
         write_section_heading(
             w,
             "Dyn Compatibility",
@@ -922,10 +919,10 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             None,
             format!(
                 "<div class=\"dyn-compatibility-info\"><p>This trait is <b>not</b> \
-                <a href=\"{base}/reference/items/traits.html#object-safety\">dyn compatible</a>.</p>\
+                <a href=\"{base}/reference/items/traits.html#dyn-compatibility\">dyn compatible</a>.</p>\
                 <p><i>In older versions of Rust, dyn compatibility was called \"object safety\", \
                 so this trait is not object safe.</i></p></div>",
-                base = crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL
+                base = crate::clean::utils::DOC_RUST_LANG_ORG_VERSION
             ),
         );
     }
@@ -1375,8 +1372,8 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
     );
 
     impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
-        fn render_union<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
+        fn render_union<'b>(&'b self) -> impl Display + Captures<'a> + 'b + Captures<'cx> {
+            fmt::from_fn(move |f| {
                 let v = render_union(self.it, Some(&self.s.generics), &self.s.fields, self.cx);
                 write!(f, "{v}")
             })
@@ -1385,8 +1382,8 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
         fn document_field<'b>(
             &'b self,
             field: &'a clean::Item,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
+        ) -> impl Display + Captures<'a> + 'b + Captures<'cx> {
+            fmt::from_fn(move |f| {
                 let v = document(self.cx, field, Some(self.it), HeadingOffset::H3);
                 write!(f, "{v}")
             })
@@ -1399,8 +1396,8 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
         fn print_ty<'b>(
             &'b self,
             ty: &'a clean::Type,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            display_fn(move |f| {
+        ) -> impl Display + Captures<'a> + 'b + Captures<'cx> {
+            fmt::from_fn(move |f| {
                 let v = ty.print(self.cx);
                 write!(f, "{v}")
             })
@@ -1426,8 +1423,8 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
 fn print_tuple_struct_fields<'a, 'cx: 'a>(
     cx: &'a Context<'cx>,
     s: &'a [clean::Item],
-) -> impl fmt::Display + 'a + Captures<'cx> {
-    display_fn(|f| {
+) -> impl Display + 'a + Captures<'cx> {
+    fmt::from_fn(|f| {
         if !s.is_empty()
             && s.iter().all(|field| {
                 matches!(field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
@@ -1436,17 +1433,15 @@ fn print_tuple_struct_fields<'a, 'cx: 'a>(
             return f.write_str("<span class=\"comment\">/* private fields */</span>");
         }
 
-        for (i, ty) in s.iter().enumerate() {
-            if i > 0 {
-                f.write_str(", ")?;
-            }
-            match ty.kind {
-                clean::StrippedItem(box clean::StructFieldItem(_)) => f.write_str("_")?,
-                clean::StructFieldItem(ref ty) => write!(f, "{}", ty.print(cx))?,
-                _ => unreachable!(),
-            }
-        }
-        Ok(())
+        s.iter()
+            .map(|ty| {
+                fmt::from_fn(|f| match ty.kind {
+                    clean::StrippedItem(box clean::StructFieldItem(_)) => f.write_str("_"),
+                    clean::StructFieldItem(ref ty) => write!(f, "{}", ty.print(cx)),
+                    _ => unreachable!(),
+                })
+            })
+            .joined(", ", f)
     })
 }
 
@@ -2069,12 +2064,12 @@ fn bounds(t_bounds: &[clean::GenericBound], trait_alias: bool, cx: &Context<'_>)
             bounds.push_str(": ");
         }
     }
-    for (i, p) in t_bounds.iter().enumerate() {
-        if i > 0 {
-            bounds.push_str(inter_str);
-        }
-        bounds.push_str(&p.print(cx).to_string());
-    }
+    write!(
+        bounds,
+        "{}",
+        fmt::from_fn(|f| t_bounds.iter().map(|p| p.print(cx)).joined(inter_str, f))
+    )
+    .unwrap();
     bounds
 }
 
@@ -2151,8 +2146,8 @@ fn render_union<'a, 'cx: 'a>(
     g: Option<&'a clean::Generics>,
     fields: &'a [clean::Item],
     cx: &'a Context<'cx>,
-) -> impl fmt::Display + 'a + Captures<'cx> {
-    display_fn(move |mut f| {
+) -> impl Display + 'a + Captures<'cx> {
+    fmt::from_fn(move |mut f| {
         write!(f, "{}union {}", visibility_print_with_space(it, cx), it.name.unwrap(),)?;
 
         let where_displayed = g
@@ -2331,8 +2326,8 @@ fn document_non_exhaustive_header(item: &clean::Item) -> &str {
     if item.is_non_exhaustive() { " (Non-exhaustive)" } else { "" }
 }
 
-fn document_non_exhaustive(item: &clean::Item) -> impl fmt::Display + '_ {
-    display_fn(|f| {
+fn document_non_exhaustive(item: &clean::Item) -> impl Display + '_ {
+    fmt::from_fn(|f| {
         if item.is_non_exhaustive() {
             write!(
                 f,

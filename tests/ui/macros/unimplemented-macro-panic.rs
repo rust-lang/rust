@@ -1,6 +1,6 @@
 //@ run-fail
 //@ error-pattern:not implemented
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 fn main() {
     unimplemented!()

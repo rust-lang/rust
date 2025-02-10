@@ -1,5 +1,10 @@
+use std::str::FromStr;
+
 use rustc_ast::attr::list_contains_name;
-use rustc_ast::{MetaItemInner, attr};
+use rustc_ast::expand::autodiff_attrs::{
+    AutoDiffAttrs, DiffActivity, DiffMode, valid_input_activity, valid_ret_activity,
+};
+use rustc_ast::{MetaItem, MetaItemInner, attr};
 use rustc_attr_parsing::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
@@ -13,6 +18,7 @@ use rustc_middle::middle::codegen_fn_attrs::{
 };
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
+use rustc_middle::span_bug;
 use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::parse::feature_err;
 use rustc_session::{Session, lint};
@@ -35,7 +41,6 @@ fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
     // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
     // and don't have to be, LLVM treats them as no-ops.
     match name {
-        "appending" => Appending,
         "available_externally" => AvailableExternally,
         "common" => Common,
         "extern_weak" => ExternalWeak,
@@ -43,7 +48,6 @@ fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
         "internal" => Internal,
         "linkonce" => LinkOnceAny,
         "linkonce_odr" => LinkOnceODR,
-        "private" => Private,
         "weak" => WeakAny,
         "weak_odr" => WeakODR,
         _ => tcx.dcx().span_fatal(tcx.def_span(def_id), "invalid linkage specified"),
@@ -63,6 +67,13 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     let mut codegen_fn_attrs = CodegenFnAttrs::new();
     if tcx.should_inherit_track_caller(did) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
+    }
+
+    // If our rustc version supports autodiff/enzyme, then we call our handler
+    // to check for any `#[rustc_autodiff(...)]` attributes.
+    if cfg!(llvm_enzyme) {
+        let ad = autodiff_attrs(tcx, did.into());
+        codegen_fn_attrs.autodiff_item = ad;
     }
 
     // When `no_builtins` is applied at the crate level, we should add the
@@ -575,7 +586,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         codegen_fn_attrs.inline = InlineAttr::Never;
     }
 
-    codegen_fn_attrs.optimize = attrs.iter().fold(OptimizeAttr::None, |ia, attr| {
+    codegen_fn_attrs.optimize = attrs.iter().fold(OptimizeAttr::Default, |ia, attr| {
         if !attr.has_name(sym::optimize) {
             return ia;
         }
@@ -587,17 +598,19 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             inline_span = Some(attr.span);
             if items.len() != 1 {
                 err(attr.span, "expected one argument");
-                OptimizeAttr::None
+                OptimizeAttr::Default
             } else if list_contains_name(items, sym::size) {
                 OptimizeAttr::Size
             } else if list_contains_name(items, sym::speed) {
                 OptimizeAttr::Speed
+            } else if list_contains_name(items, sym::none) {
+                OptimizeAttr::DoNotOptimize
             } else {
                 err(items[0].span(), "invalid argument");
-                OptimizeAttr::None
+                OptimizeAttr::Default
             }
         } else {
-            OptimizeAttr::None
+            OptimizeAttr::Default
         }
     });
 
@@ -852,6 +865,109 @@ impl<'a> MixedExportNameAndNoMangleState<'a> {
             );
         }
     }
+}
+
+/// We now check the #\[rustc_autodiff\] attributes which we generated from the #[autodiff(...)]
+/// macros. There are two forms. The pure one without args to mark primal functions (the functions
+/// being differentiated). The other form is #[rustc_autodiff(Mode, ActivityList)] on top of the
+/// placeholder functions. We wrote the rustc_autodiff attributes ourself, so this should never
+/// panic, unless we introduced a bug when parsing the autodiff macro.
+fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
+    let attrs = tcx.get_attrs(id, sym::rustc_autodiff);
+
+    let attrs =
+        attrs.filter(|attr| attr.name_or_empty() == sym::rustc_autodiff).collect::<Vec<_>>();
+
+    // check for exactly one autodiff attribute on placeholder functions.
+    // There should only be one, since we generate a new placeholder per ad macro.
+    // FIXME(ZuseZ4): re-enable this check. Currently we add multiple, which doesn't cause harm but
+    // looks strange e.g. under cargo-expand.
+    let attr = match &attrs[..] {
+        [] => return None,
+        [attr] => attr,
+        // These two attributes are the same and unfortunately duplicated due to a previous bug.
+        [attr, _attr2] => attr,
+        _ => {
+            //FIXME(ZuseZ4): Once we fixed our parser, we should also prohibit the two-attribute
+            //branch above.
+            span_bug!(attrs[1].span, "cg_ssa: rustc_autodiff should only exist once per source");
+        }
+    };
+
+    let list = attr.meta_item_list().unwrap_or_default();
+
+    // empty autodiff attribute macros (i.e. `#[autodiff]`) are used to mark source functions
+    if list.is_empty() {
+        return Some(AutoDiffAttrs::source());
+    }
+
+    let [mode, input_activities @ .., ret_activity] = &list[..] else {
+        span_bug!(attr.span, "rustc_autodiff attribute must contain mode and activities");
+    };
+    let mode = if let MetaItemInner::MetaItem(MetaItem { path: ref p1, .. }) = mode {
+        p1.segments.first().unwrap().ident
+    } else {
+        span_bug!(attr.span, "rustc_autodiff attribute must contain mode");
+    };
+
+    // parse mode
+    let mode = match mode.as_str() {
+        "Forward" => DiffMode::Forward,
+        "Reverse" => DiffMode::Reverse,
+        "ForwardFirst" => DiffMode::ForwardFirst,
+        "ReverseFirst" => DiffMode::ReverseFirst,
+        _ => {
+            span_bug!(mode.span, "rustc_autodiff attribute contains invalid mode");
+        }
+    };
+
+    // First read the ret symbol from the attribute
+    let ret_symbol = if let MetaItemInner::MetaItem(MetaItem { path: ref p1, .. }) = ret_activity {
+        p1.segments.first().unwrap().ident
+    } else {
+        span_bug!(attr.span, "rustc_autodiff attribute must contain the return activity");
+    };
+
+    // Then parse it into an actual DiffActivity
+    let Ok(ret_activity) = DiffActivity::from_str(ret_symbol.as_str()) else {
+        span_bug!(ret_symbol.span, "invalid return activity");
+    };
+
+    // Now parse all the intermediate (input) activities
+    let mut arg_activities: Vec<DiffActivity> = vec![];
+    for arg in input_activities {
+        let arg_symbol = if let MetaItemInner::MetaItem(MetaItem { path: ref p2, .. }) = arg {
+            match p2.segments.first() {
+                Some(x) => x.ident,
+                None => {
+                    span_bug!(
+                        arg.span(),
+                        "rustc_autodiff attribute must contain the input activity"
+                    );
+                }
+            }
+        } else {
+            span_bug!(arg.span(), "rustc_autodiff attribute must contain the input activity");
+        };
+
+        match DiffActivity::from_str(arg_symbol.as_str()) {
+            Ok(arg_activity) => arg_activities.push(arg_activity),
+            Err(_) => {
+                span_bug!(arg_symbol.span, "invalid input activity");
+            }
+        }
+    }
+
+    for &input in &arg_activities {
+        if !valid_input_activity(mode, input) {
+            span_bug!(attr.span, "Invalid input activity {} for {} mode", input, mode);
+        }
+    }
+    if !valid_ret_activity(mode, ret_activity) {
+        span_bug!(attr.span, "Invalid return activity {} for {} mode", ret_activity, mode);
+    }
+
+    Some(AutoDiffAttrs { mode, ret_activity, input_activity: arg_activities })
 }
 
 pub(crate) fn provide(providers: &mut Providers) {

@@ -70,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for UnportableVariant {
                             var.span,
                             "C-like enum variant discriminant is not portable to 32-bit targets",
                         );
-                    };
+                    }
                 }
             }
         }

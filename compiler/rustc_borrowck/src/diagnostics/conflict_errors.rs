@@ -39,7 +39,9 @@ use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use rustc_trait_selection::error_reporting::traits::call_kind::CallKind;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::{Obligation, ObligationCause, ObligationCtxt};
+use rustc_trait_selection::traits::{
+    Obligation, ObligationCause, ObligationCtxt, supertrait_def_ids,
+};
 use tracing::{debug, instrument};
 
 use super::explain_borrow::{BorrowExplanation, LaterUseKind};
@@ -145,10 +147,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 span,
                 desired_action.as_noun(),
                 partially_str,
-                self.describe_place_with_options(moved_place, DescribePlaceOpt {
-                    including_downcast: true,
-                    including_tuple_field: true,
-                }),
+                self.describe_place_with_options(
+                    moved_place,
+                    DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
+                ),
             );
 
             let reinit_spans = maybe_reinitialized_locations
@@ -278,15 +280,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 self.suggest_adding_bounds(&mut err, ty, copy_did, span);
             }
 
-            let opt_name = self.describe_place_with_options(place.as_ref(), DescribePlaceOpt {
-                including_downcast: true,
-                including_tuple_field: true,
-            });
+            let opt_name = self.describe_place_with_options(
+                place.as_ref(),
+                DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
+            );
             let note_msg = match opt_name {
                 Some(name) => format!("`{name}`"),
                 None => "value".to_owned(),
             };
             if needs_note {
+                let ty = self.infcx.tcx.short_string(ty, err.long_ty_path());
                 if let Some(local) = place.as_local() {
                     let span = self.body.local_decls[local].source_info.span;
                     err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
@@ -658,8 +661,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             clause.as_trait_clause().is_some_and(|tc| {
                 tc.self_ty().skip_binder().is_param(param.index)
                     && tc.polarity() == ty::PredicatePolarity::Positive
-                    && tcx
-                        .supertrait_def_ids(tc.def_id())
+                    && supertrait_def_ids(tcx, tc.def_id())
                         .flat_map(|trait_did| tcx.associated_items(trait_did).in_definition_order())
                         .any(|item| item.fn_has_self_parameter)
             })
@@ -763,17 +765,17 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
         let spans: Vec<_> = spans_set.into_iter().collect();
 
-        let (name, desc) = match self.describe_place_with_options(moved_place, DescribePlaceOpt {
-            including_downcast: true,
-            including_tuple_field: true,
-        }) {
+        let (name, desc) = match self.describe_place_with_options(
+            moved_place,
+            DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
+        ) {
             Some(name) => (format!("`{name}`"), format!("`{name}` ")),
             None => ("the variable".to_string(), String::new()),
         };
-        let path = match self.describe_place_with_options(used_place, DescribePlaceOpt {
-            including_downcast: true,
-            including_tuple_field: true,
-        }) {
+        let path = match self.describe_place_with_options(
+            used_place,
+            DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
+        ) {
             Some(name) => format!("`{name}`"),
             None => "value".to_string(),
         };
@@ -2480,7 +2482,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     // To support cases like `|| { v.call(|this| v.get()) }`
                     // FIXME: actually support such cases (need to figure out how to move from the
                     // capture place to original local).
-                    && self.res.as_ref().map_or(true, |(prev_res, _)| prev_res.span.contains(ex.span))
+                    && self.res.as_ref().is_none_or(|(prev_res, _)| prev_res.span.contains(ex.span))
                 {
                     self.res = Some((ex, closure));
                 }
@@ -3110,12 +3112,24 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             drop_span, borrow_span
         );
 
+        // `TerminatorKind::Return`'s span (the `drop_span` here) `lo` can be subtly wrong and point
+        // at a single character after the end of the function. This is somehow relied upon in
+        // existing diagnostics, and changing this in `rustc_mir_build` makes diagnostics worse in
+        // general. We fix these here.
+        let sm = self.infcx.tcx.sess.source_map();
+        let end_of_function = if drop_span.is_empty()
+            && let Ok(adjusted_span) = sm.span_extend_prev_while(drop_span, |c| c == '}')
+        {
+            adjusted_span
+        } else {
+            drop_span
+        };
         self.thread_local_value_does_not_live_long_enough(borrow_span)
             .with_span_label(
                 borrow_span,
                 "thread-local variables cannot be borrowed beyond the end of the function",
             )
-            .with_span_label(drop_span, "end of enclosing function is here")
+            .with_span_label(end_of_function, "end of enclosing function is here")
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -3769,7 +3783,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let tcx = self.infcx.tcx;
         if let Some(Terminator { kind: TerminatorKind::Call { call_source, fn_span, .. }, .. }) =
             &self.body[loan.reserve_location.block].terminator
-            && let Some((method_did, method_args)) = rustc_middle::util::find_self_call(
+            && let Some((method_did, method_args)) = mir::find_self_call(
                 tcx,
                 self.body,
                 loan.assigned_place.local,
@@ -3907,7 +3921,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         ProjectionElem::ConstantIndex { .. }
                         | ProjectionElem::Subslice { .. }
                         | ProjectionElem::Subtype(_)
-                        | ProjectionElem::Index(_) => kind,
+                        | ProjectionElem::Index(_)
+                        | ProjectionElem::UnwrapUnsafeBinder(_) => kind,
                     },
                     place_ty.projection_ty(tcx, elem),
                 )

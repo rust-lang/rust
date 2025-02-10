@@ -2,7 +2,7 @@
 name = "clippy_dev"
 description = "Clippy developer tooling"
 version = "0.0.1"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 aho-corasick = "1.0"

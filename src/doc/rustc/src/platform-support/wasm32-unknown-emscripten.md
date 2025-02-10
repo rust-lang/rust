@@ -118,7 +118,7 @@ This target is not extensively tested in CI for the rust-lang/rust repository. I
 can be tested locally, for example, with:
 
 ```sh
-./x.py test --target wasm32-unknown-emscripten --skip src/tools/linkchecker
+EMCC_CFLAGS="-s MAXIMUM_MEMORY=2GB" ./x.py test --target wasm32-unknown-emscripten --skip src/tools/linkchecker
 ```
 
 To run these tests, both `emcc` and `node` need to be in your `$PATH`. You can

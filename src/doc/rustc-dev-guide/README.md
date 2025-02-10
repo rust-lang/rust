@@ -74,6 +74,13 @@ including the `<!-- toc -->` marker at the place where you want the TOC.
 
 This repository is linked to `rust-lang/rust` as a [josh](https://josh-project.github.io/josh/intro.html) subtree. You can use the following commands to synchronize the subtree in both directions.
 
+You'll need to install `josh-proxy` locally via
+
+```
+cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r24.10.04
+```
+Older versions of `josh-proxy` may not round trip commits losslessly so it is important to install this exact version.
+
 ### Pull changes from `rust-lang/rust` into this repository
 1) Checkout a new branch that will be used to create a PR into `rust-lang/rustc-dev-guide`
 2) Run the pull command

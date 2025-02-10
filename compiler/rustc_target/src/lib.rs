@@ -30,15 +30,6 @@ pub mod target_features;
 #[cfg(test)]
 mod tests;
 
-pub mod abi {
-    pub(crate) use Float::*;
-    pub(crate) use Primitive::*;
-    // Explicitly import `Float` to avoid ambiguity with `Primitive::Float`.
-    pub use rustc_abi::{Float, *};
-
-    pub use crate::callconv as call;
-}
-
 pub use rustc_abi::HashStableContext;
 
 /// The name of rustc's own place to organize libraries.

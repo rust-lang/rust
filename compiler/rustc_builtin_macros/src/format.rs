@@ -8,7 +8,9 @@ use rustc_ast::{
     token,
 };
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, Diag, MultiSpan, PResult, SingleLabelManySpans};
+use rustc_errors::{
+    Applicability, Diag, MultiSpan, PResult, SingleLabelManySpans, listify, pluralize,
+};
 use rustc_expand::base::*;
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, LintId};
@@ -101,15 +103,14 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
 
             match p.expect(exp!(Comma)) {
                 Err(err) => {
-                    match token::TokenKind::Comma.similar_tokens() {
-                        Some(tks) if tks.contains(&p.token.kind) => {
-                            // If a similar token is found, then it may be a typo. We
-                            // consider it as a comma, and continue parsing.
-                            err.emit();
-                            p.bump();
-                        }
+                    if token::TokenKind::Comma.similar_tokens().contains(&p.token.kind) {
+                        // If a similar token is found, then it may be a typo. We
+                        // consider it as a comma, and continue parsing.
+                        err.emit();
+                        p.bump();
+                    } else {
                         // Otherwise stop the parsing and return the error.
-                        _ => return Err(err),
+                        return Err(err);
                     }
                 }
                 Ok(Recovered::Yes(_)) => (),
@@ -406,7 +407,7 @@ fn make_format_args(
 
     for piece in &pieces {
         match *piece {
-            parse::Piece::String(s) => {
+            parse::Piece::Lit(s) => {
                 unfinished_literal.push_str(s);
             }
             parse::Piece::NextArgument(box parse::Argument { position, position_span, format }) => {
@@ -976,15 +977,11 @@ fn report_invalid_references(
         } else {
             MultiSpan::from_spans(invalid_refs.iter().filter_map(|&(_, span, _, _)| span).collect())
         };
-        let arg_list = if let &[index] = &indexes[..] {
-            format!("argument {index}")
-        } else {
-            let tail = indexes.pop().unwrap();
-            format!(
-                "arguments {head} and {tail}",
-                head = indexes.into_iter().map(|i| i.to_string()).collect::<Vec<_>>().join(", ")
-            )
-        };
+        let arg_list = format!(
+            "argument{} {}",
+            pluralize!(indexes.len()),
+            listify(&indexes, |i: &usize| i.to_string()).unwrap_or_default()
+        );
         e = ecx.dcx().struct_span_err(
             span,
             format!("invalid reference to positional {arg_list} ({num_args_desc})"),

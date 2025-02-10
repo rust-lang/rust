@@ -29,10 +29,12 @@ struct f32x4(pub [f32; 4]);
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct b8x4(pub [i8; 4]);
 
-extern "rust-intrinsic" {
-    fn simd_select<T, U>(x: T, a: U, b: U) -> U;
-    fn simd_select_bitmask<T, U>(x: T, a: U, b: U) -> U;
-}
+#[rustc_intrinsic]
+unsafe fn simd_select<T, U>(x: T, a: U, b: U) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_select_bitmask<T, U>(x: T, a: U, b: U) -> U;
+
 
 fn main() {
     let m0 = b8x4([!0, !0, !0, !0]);

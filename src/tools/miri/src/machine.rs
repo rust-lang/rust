@@ -11,6 +11,7 @@ use std::{fmt, process};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rustc_abi::{Align, ExternAbi, Size};
+use rustc_apfloat::{Float, FloatConvert};
 use rustc_attr_parsing::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
@@ -1111,10 +1112,13 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         // Call the lang item.
         let panic = ecx.tcx.lang_items().get(reason.lang_item()).unwrap();
         let panic = ty::Instance::mono(ecx.tcx.tcx, panic);
-        ecx.call_function(panic, ExternAbi::Rust, &[], None, StackPopCleanup::Goto {
-            ret: None,
-            unwind: mir::UnwindAction::Unreachable,
-        })?;
+        ecx.call_function(
+            panic,
+            ExternAbi::Rust,
+            &[],
+            None,
+            StackPopCleanup::Goto { ret: None, unwind: mir::UnwindAction::Unreachable },
+        )?;
         interp_ok(())
     }
 
@@ -1129,20 +1133,29 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     }
 
     #[inline(always)]
-    fn generate_nan<
-        F1: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F2>,
-        F2: rustc_apfloat::Float,
-    >(
+    fn generate_nan<F1: Float + FloatConvert<F2>, F2: Float>(
         ecx: &InterpCx<'tcx, Self>,
         inputs: &[F1],
     ) -> F2 {
         ecx.generate_nan(inputs)
     }
 
+    #[inline(always)]
+    fn equal_float_min_max<F: Float>(ecx: &MiriInterpCx<'tcx>, a: F, b: F) -> F {
+        ecx.equal_float_min_max(a, b)
+    }
+
+    #[inline(always)]
     fn ub_checks(ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool> {
         interp_ok(ecx.tcx.sess.ub_checks())
     }
 
+    #[inline(always)]
+    fn contract_checks(ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool> {
+        interp_ok(ecx.tcx.sess.contract_checks())
+    }
+
+    #[inline(always)]
     fn thread_local_static_pointer(
         ecx: &mut MiriInterpCx<'tcx>,
         def_id: DefId,
@@ -1496,7 +1509,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             catch_unwind: None,
             timing,
             is_user_relevant: ecx.machine.is_user_relevant(&frame),
-            salt: ecx.machine.rng.borrow_mut().gen::<usize>() % ADDRS_PER_ANON_GLOBAL,
+            salt: ecx.machine.rng.borrow_mut().random_range(0..ADDRS_PER_ANON_GLOBAL),
             data_race: ecx.machine.data_race.as_ref().map(|_| data_race::FrameState::default()),
         };
 
@@ -1711,7 +1724,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if unique {
             CTFE_ALLOC_SALT
         } else {
-            ecx.machine.rng.borrow_mut().gen::<usize>() % ADDRS_PER_ANON_GLOBAL
+            ecx.machine.rng.borrow_mut().random_range(0..ADDRS_PER_ANON_GLOBAL)
         }
     }
 

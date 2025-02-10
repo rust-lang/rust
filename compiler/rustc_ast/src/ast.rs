@@ -19,6 +19,7 @@
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
 use std::borrow::Cow;
+use std::sync::Arc;
 use std::{cmp, fmt};
 
 pub use GenericArgs::*;
@@ -27,7 +28,7 @@ pub use rustc_ast_ir::{Movability, Mutability, Pinnedness};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 pub use rustc_span::AttrId;
 use rustc_span::source_map::{Spanned, respan};
@@ -99,7 +100,7 @@ pub struct Path {
 impl PartialEq<Symbol> for Path {
     #[inline]
     fn eq(&self, symbol: &Symbol) -> bool {
-        self.segments.len() == 1 && { self.segments[0].ident.name == *symbol }
+        matches!(&self.segments[..], [segment] if segment.ident.name == *symbol)
     }
 }
 
@@ -120,13 +121,13 @@ impl Path {
     }
 
     pub fn is_global(&self) -> bool {
-        !self.segments.is_empty() && self.segments[0].ident.name == kw::PathRoot
+        self.segments.first().is_some_and(|segment| segment.ident.name == kw::PathRoot)
     }
 
     /// If this path is a single identifier with no arguments, does not ensure
     /// that the path resolves to a const param, the caller should check this.
     pub fn is_potential_trivial_const_arg(&self) -> bool {
-        self.segments.len() == 1 && self.segments[0].args.is_none()
+        matches!(self.segments[..], [PathSegment { args: None, .. }])
     }
 }
 
@@ -287,6 +288,7 @@ impl ParenthesizedArgs {
     }
 }
 
+use crate::AstDeref;
 pub use crate::node_id::{CRATE_NODE_ID, DUMMY_NODE_ID, NodeId};
 
 /// Modifiers on a trait bound like `~const`, `?` and `!`.
@@ -1609,7 +1611,7 @@ pub enum ExprKind {
     /// Added for optimization purposes to avoid the need to escape
     /// large binary blobs - should always behave like [`ExprKind::Lit`]
     /// with a `ByteStr` literal.
-    IncludedBytes(Lrc<[u8]>),
+    IncludedBytes(Arc<[u8]>),
 
     /// A `format_args!()` expression.
     FormatArgs(P<FormatArgs>),
@@ -1655,7 +1657,7 @@ impl GenBlockKind {
 }
 
 /// Whether we're unwrapping or wrapping an unsafe binder
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum UnsafeBinderCastKind {
     // e.g. `&i32` -> `unsafe<'a> &'a i32`
@@ -1902,9 +1904,9 @@ pub enum LitKind {
     Str(Symbol, StrStyle),
     /// A byte string (`b"foo"`). Not stored as a symbol because it might be
     /// non-utf8, and symbols only allow utf8 strings.
-    ByteStr(Lrc<[u8]>, StrStyle),
+    ByteStr(Arc<[u8]>, StrStyle),
     /// A C String (`c"foo"`). Guaranteed to only have `\0` at the end.
-    CStr(Lrc<[u8]>, StrStyle),
+    CStr(Arc<[u8]>, StrStyle),
     /// A byte char (`b'f'`).
     Byte(u8),
     /// A character literal (`'a'`).
@@ -2165,6 +2167,14 @@ impl Ty {
         }
         final_ty
     }
+
+    pub fn is_maybe_parenthesised_infer(&self) -> bool {
+        match &self.kind {
+            TyKind::Infer => true,
+            TyKind::Paren(inner) => inner.ast_deref().is_maybe_parenthesised_infer(),
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -2269,10 +2279,32 @@ impl TyKind {
 
 /// Syntax used to declare a trait object.
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[repr(u8)]
 pub enum TraitObjectSyntax {
-    Dyn,
-    DynStar,
-    None,
+    // SAFETY: When adding new variants make sure to update the `Tag` impl.
+    Dyn = 0,
+    DynStar = 1,
+    None = 2,
+}
+
+/// SAFETY: `TraitObjectSyntax` only has 3 data-less variants which means
+/// it can be represented with a `u2`. We use `repr(u8)` to guarantee the
+/// discriminants of the variants are no greater than `3`.
+unsafe impl Tag for TraitObjectSyntax {
+    const BITS: u32 = 2;
+
+    fn into_usize(self) -> usize {
+        self as u8 as usize
+    }
+
+    unsafe fn from_usize(tag: usize) -> Self {
+        match tag {
+            0 => TraitObjectSyntax::Dyn,
+            1 => TraitObjectSyntax::DynStar,
+            2 => TraitObjectSyntax::None,
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -3193,7 +3225,7 @@ pub enum Extern {
     ///
     /// E.g. `extern fn foo() {}`.
     ///
-    /// This is just `extern "C"` (see `rustc_target::spec::abi::Abi::FALLBACK`).
+    /// This is just `extern "C"` (see `rustc_abi::ExternAbi::FALLBACK`).
     Implicit(Span),
     /// An explicit extern keyword was used with an explicit ABI.
     ///
@@ -3316,11 +3348,18 @@ pub struct Impl {
     pub items: ThinVec<P<AssocItem>>,
 }
 
+#[derive(Clone, Encodable, Decodable, Debug, Default)]
+pub struct FnContract {
+    pub requires: Option<P<Expr>>,
+    pub ensures: Option<P<Expr>>,
+}
+
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Fn {
     pub defaultness: Defaultness,
     pub generics: Generics,
     pub sig: FnSig,
+    pub contract: Option<P<FnContract>>,
     pub body: Option<P<Block>>,
 }
 
@@ -3618,7 +3657,7 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 160);
+    static_assert_size!(Fn, 168);
     static_assert_size!(ForeignItem, 88);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);

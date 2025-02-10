@@ -233,12 +233,15 @@ where
                     .patch_terminator(bb, TerminatorKind::Goto { target: self.succ });
             }
             DropStyle::Static => {
-                self.elaborator.patch().patch_terminator(bb, TerminatorKind::Drop {
-                    place: self.place,
-                    target: self.succ,
-                    unwind: self.unwind.into_action(),
-                    replace: false,
-                });
+                self.elaborator.patch().patch_terminator(
+                    bb,
+                    TerminatorKind::Drop {
+                        place: self.place,
+                        target: self.succ,
+                        unwind: self.unwind.into_action(),
+                        replace: false,
+                    },
+                );
             }
             DropStyle::Conditional => {
                 let drop_bb = self.complete_drop(self.succ, self.unwind);
@@ -700,7 +703,7 @@ where
             statements: vec![
                 self.assign(
                     ptr,
-                    Rvalue::RawPtr(Mutability::Mut, tcx.mk_place_index(self.place, cur)),
+                    Rvalue::RawPtr(RawPtrKind::Mut, tcx.mk_place_index(self.place, cur)),
                 ),
                 self.assign(
                     cur.into(),
@@ -729,12 +732,15 @@ where
         };
         let loop_block = self.elaborator.patch().new_block(loop_block);
 
-        self.elaborator.patch().patch_terminator(drop_block, TerminatorKind::Drop {
-            place: tcx.mk_place_deref(ptr),
-            target: loop_block,
-            unwind: unwind.into_action(),
-            replace: false,
-        });
+        self.elaborator.patch().patch_terminator(
+            drop_block,
+            TerminatorKind::Drop {
+                place: tcx.mk_place_deref(ptr),
+                target: loop_block,
+                unwind: unwind.into_action(),
+                replace: false,
+            },
+        );
 
         loop_block
     }
@@ -816,7 +822,7 @@ where
 
         let mut delegate_block = BasicBlockData {
             statements: vec![
-                self.assign(Place::from(array_ptr), Rvalue::RawPtr(Mutability::Mut, self.place)),
+                self.assign(Place::from(array_ptr), Rvalue::RawPtr(RawPtrKind::Mut, self.place)),
                 self.assign(
                     Place::from(slice_ptr),
                     Rvalue::Cast(

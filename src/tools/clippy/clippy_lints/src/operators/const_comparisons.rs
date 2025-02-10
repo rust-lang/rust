@@ -127,7 +127,7 @@ pub(super) fn check<'tcx>(
                 None,
                 note,
             );
-        };
+        }
     }
 }
 

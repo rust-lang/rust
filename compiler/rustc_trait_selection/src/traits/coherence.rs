@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::bug;
@@ -27,7 +27,6 @@ use tracing::{debug, instrument, warn};
 use super::ObligationCtxt;
 use crate::error_reporting::traits::suggest_new_overflow_limit;
 use crate::infer::InferOk;
-use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
 use crate::solve::{SolverDelegate, deeply_normalize_for_diagnostics, inspect};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
@@ -369,9 +368,10 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
                 overflowing_predicates: ambiguities
                     .into_iter()
                     .filter(|error| {
-                        matches!(error.code, FulfillmentErrorCode::Ambiguity {
-                            overflow: Some(true)
-                        })
+                        matches!(
+                            error.code,
+                            FulfillmentErrorCode::Ambiguity { overflow: Some(true) }
+                        )
                     })
                     .map(|e| infcx.resolve_vars_if_possible(e.obligation.predicate))
                     .collect(),
@@ -492,13 +492,16 @@ fn plug_infer_with_placeholders<'tcx>(
                         // Comparing against a type variable never registers hidden types anyway
                         DefineOpaqueTypes::Yes,
                         ty,
-                        Ty::new_placeholder(self.infcx.tcx, ty::Placeholder {
-                            universe: self.universe,
-                            bound: ty::BoundTy {
-                                var: self.next_var(),
-                                kind: ty::BoundTyKind::Anon,
+                        Ty::new_placeholder(
+                            self.infcx.tcx,
+                            ty::Placeholder {
+                                universe: self.universe,
+                                bound: ty::BoundTy {
+                                    var: self.next_var(),
+                                    kind: ty::BoundTyKind::Anon,
+                                },
                             },
-                        }),
+                        ),
                     )
                 else {
                     bug!("we always expect to be able to plug an infer var with placeholder")
@@ -518,10 +521,10 @@ fn plug_infer_with_placeholders<'tcx>(
                         // registration happening anyway.
                         DefineOpaqueTypes::Yes,
                         ct,
-                        ty::Const::new_placeholder(self.infcx.tcx, ty::Placeholder {
-                            universe: self.universe,
-                            bound: self.next_var(),
-                        }),
+                        ty::Const::new_placeholder(
+                            self.infcx.tcx,
+                            ty::Placeholder { universe: self.universe, bound: self.next_var() },
+                        ),
                     )
                 else {
                     bug!("we always expect to be able to plug an infer var with placeholder")
@@ -546,13 +549,16 @@ fn plug_infer_with_placeholders<'tcx>(
                             // Lifetimes don't contain opaque types (or any types for that matter).
                             DefineOpaqueTypes::Yes,
                             r,
-                            ty::Region::new_placeholder(self.infcx.tcx, ty::Placeholder {
-                                universe: self.universe,
-                                bound: ty::BoundRegion {
-                                    var: self.next_var(),
-                                    kind: ty::BoundRegionKind::Anon,
+                            ty::Region::new_placeholder(
+                                self.infcx.tcx,
+                                ty::Placeholder {
+                                    universe: self.universe,
+                                    bound: ty::BoundRegion {
+                                        var: self.next_var(),
+                                        kind: ty::BoundRegionKind::Anon,
+                                    },
                                 },
-                            }),
+                            ),
                         )
                     else {
                         bug!("we always expect to be able to plug an infer var with placeholder")
@@ -596,8 +602,7 @@ fn try_prove_negated_where_clause<'tcx>(
     // FIXME: We could use the assumed_wf_types from both impls, I think,
     // if that wasn't implemented just for LocalDefId, and we'd need to do
     // the normalization ourselves since this is totally fallible...
-    let outlives_env = OutlivesEnvironment::new(param_env);
-    let errors = ocx.resolve_regions(&outlives_env);
+    let errors = ocx.resolve_regions(CRATE_DEF_ID, param_env, []);
     if !errors.is_empty() {
         return false;
     }
@@ -709,7 +714,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
             if matches!(ty.kind(), ty::Alias(..)) {
                 let ocx = ObligationCtxt::new(infcx);
                 ty = ocx
-                    .structurally_normalize(&ObligationCause::dummy(), param_env, ty)
+                    .structurally_normalize_ty(&ObligationCause::dummy(), param_env, ty)
                     .map_err(|_| ())?;
                 if !ocx.select_where_possible().is_empty() {
                     return Err(());
@@ -765,9 +770,9 @@ fn search_ambiguity_causes<'tcx>(
     causes: &mut FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
 ) {
     infcx.probe(|_| {
-        infcx.visit_proof_tree(goal, &mut AmbiguityCausesVisitor {
-            cache: Default::default(),
-            causes,
-        })
+        infcx.visit_proof_tree(
+            goal,
+            &mut AmbiguityCausesVisitor { cache: Default::default(), causes },
+        )
     });
 }

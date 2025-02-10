@@ -1,3 +1,62 @@
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:66:13
+   |
+LL | fn hat() -> dyn std::fmt::Display {
+   |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL | fn hat() -> impl std::fmt::Display {
+   |             ~~~~
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn hat() -> Box<dyn std::fmt::Display> {
+LL |     match 13 {
+LL |         0 => {
+LL ~             return Box::new(0i32);
+LL |         }
+LL |         _ => {
+LL ~             Box::new(1u32)
+   |
+
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:77:13
+   |
+LL | fn pug() -> dyn std::fmt::Display {
+   |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL | fn pug() -> impl std::fmt::Display {
+   |             ~~~~
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn pug() -> Box<dyn std::fmt::Display> {
+LL |     match 13 {
+LL ~         0 => Box::new(0i32),
+LL ~         1 => Box::new(1u32),
+LL ~         _ => Box::new(2u32),
+   |
+
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:85:13
+   |
+LL | fn man() -> dyn std::fmt::Display {
+   |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL | fn man() -> impl std::fmt::Display {
+   |             ~~~~
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn man() -> Box<dyn std::fmt::Display> {
+LL |     if false {
+LL ~         Box::new(0i32)
+LL |     } else {
+LL ~         Box::new(1u32)
+   |
+
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:5:5
    |
@@ -164,62 +223,6 @@ help: change the type of the numeric literal from `u32` to `i32`
    |
 LL |         1i32
    |          ~~~
-
-error[E0746]: return type cannot have an unboxed trait object
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:66:13
-   |
-LL | fn hat() -> dyn std::fmt::Display {
-   |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-help: consider returning an `impl Trait` instead of a `dyn Trait`
-   |
-LL | fn hat() -> impl std::fmt::Display {
-   |             ~~~~
-help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
-   |
-LL ~ fn hat() -> Box<dyn std::fmt::Display> {
-LL |     match 13 {
-LL |         0 => {
-LL ~             return Box::new(0i32);
-LL |         }
-LL |         _ => {
-LL ~             Box::new(1u32)
-   |
-
-error[E0746]: return type cannot have an unboxed trait object
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:77:13
-   |
-LL | fn pug() -> dyn std::fmt::Display {
-   |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-help: consider returning an `impl Trait` instead of a `dyn Trait`
-   |
-LL | fn pug() -> impl std::fmt::Display {
-   |             ~~~~
-help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
-   |
-LL ~ fn pug() -> Box<dyn std::fmt::Display> {
-LL |     match 13 {
-LL ~         0 => Box::new(0i32),
-LL ~         1 => Box::new(1u32),
-LL ~         _ => Box::new(2u32),
-   |
-
-error[E0746]: return type cannot have an unboxed trait object
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:85:13
-   |
-LL | fn man() -> dyn std::fmt::Display {
-   |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: if there were a single returned type, you could use `impl Trait` instead
-help: box the return type, and wrap all of the returned values in `Box::new`
-   |
-LL ~ fn man() -> Box<dyn std::fmt::Display> {
-LL |     if false {
-LL ~         Box::new(0i32)
-LL |     } else {
-LL ~         Box::new(1u32)
-   |
 
 error: aborting due to 12 previous errors
 

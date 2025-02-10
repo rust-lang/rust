@@ -231,11 +231,11 @@ impl FromClean<clean::GenericArgs> for GenericArgs {
         use clean::GenericArgs::*;
         match args {
             AngleBracketed { args, constraints } => GenericArgs::AngleBracketed {
-                args: args.into_vec().into_json(renderer),
+                args: args.into_json(renderer),
                 constraints: constraints.into_json(renderer),
             },
             Parenthesized { inputs, output } => GenericArgs::Parenthesized {
-                inputs: inputs.into_vec().into_json(renderer),
+                inputs: inputs.into_json(renderer),
                 output: output.map(|a| (*a).into_json(renderer)),
             },
         }
@@ -622,7 +622,7 @@ impl FromClean<clean::Type> for Type {
 impl FromClean<clean::Path> for Path {
     fn from_clean(path: clean::Path, renderer: &JsonRenderer<'_>) -> Path {
         Path {
-            name: path.last_opt().map_or(String::from(""), |s| String::from(s.as_str())),
+            path: path.whole_name(),
             id: renderer.id_from_item_default(path.def_id().into()),
             args: path.segments.last().map(|args| Box::new(args.clone().args.into_json(renderer))),
         }

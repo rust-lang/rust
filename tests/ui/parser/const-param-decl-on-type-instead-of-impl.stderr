@@ -21,11 +21,13 @@ error: unexpected `const` parameter declaration
 LL |     path::path::Struct::<const N: usize>()
    |                          ^^^^^^^^^^^^^^ expected a `const` expression, not a parameter declaration
 
-error[E0433]: failed to resolve: use of undeclared crate or module `path`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `path`
   --> $DIR/const-param-decl-on-type-instead-of-impl.rs:12:5
    |
 LL |     path::path::Struct::<const N: usize>()
-   |     ^^^^ use of undeclared crate or module `path`
+   |     ^^^^ use of unresolved module or unlinked crate `path`
+   |
+   = help: you might be missing a crate named `path`
 
 error[E0412]: cannot find type `T` in this scope
   --> $DIR/const-param-decl-on-type-instead-of-impl.rs:8:15

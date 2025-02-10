@@ -111,7 +111,7 @@ Here are a few examples:
   their crate, making this a hard error would make refactoring and development
   very painful.
 - [future-incompatible lints]:
-  these are silencable lints.
+  these are silenceable lints.
   It was decided that making them fixed errors would cause too much breakage,
   so warnings are instead emitted,
   and will eventually be turned into fixed (hard) errors.
@@ -602,7 +602,7 @@ as the linter walks the AST. You can then choose to emit lints in a
 very similar way to compile errors.
 
 You also declare the metadata of a particular lint via the `declare_lint!`
-macro. This includes the name, the default level, a short description, and some
+macro. [This macro](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/macro.declare_lint.html) includes the name, the default level, a short description, and some
 more details.
 
 Note that the lint and the lint pass must be registered with the compiler.

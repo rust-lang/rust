@@ -15,11 +15,11 @@ extern crate rustc_span;
 
 use std::io;
 use std::path::Path;
+use std::sync::Arc;
 
 use rustc_ast_pretty::pprust::item_to_string;
-use rustc_data_structures::sync::Lrc;
-use rustc_driver::{Compilation, RunCompiler};
-use rustc_interface::interface::Compiler;
+use rustc_driver::{Compilation, run_compiler};
+use rustc_interface::interface::{Compiler, Config};
 use rustc_middle::ty::TyCtxt;
 
 struct MyFileLoader;
@@ -43,7 +43,7 @@ fn main() {
         }
     }
 
-    fn read_binary_file(&self, _path: &Path) -> io::Result<Lrc<[u8]>> {
+    fn read_binary_file(&self, _path: &Path) -> io::Result<Arc<[u8]>> {
         Err(io::Error::other("oops"))
     }
 }
@@ -51,10 +51,14 @@ fn main() {
 struct MyCallbacks;
 
 impl rustc_driver::Callbacks for MyCallbacks {
+    fn config(&mut self, config: &mut Config) {
+        config.file_loader = Some(Box::new(MyFileLoader));
+    }
+
     fn after_crate_root_parsing(
         &mut self,
         _compiler: &Compiler,
-        krate: &rustc_ast::Crate,
+        krate: &mut rustc_ast::Crate,
     ) -> Compilation {
         for item in &krate.items {
             println!("{}", item_to_string(&item));
@@ -90,10 +94,5 @@ impl rustc_driver::Callbacks for MyCallbacks {
 }
 
 fn main() {
-    match RunCompiler::new(&["main.rs".to_string()], &mut MyCallbacks) {
-        mut compiler => {
-            compiler.set_file_loader(Some(Box::new(MyFileLoader)));
-            compiler.run();
-        }
-    }
+    run_compiler(&["main.rs".to_string()], &mut MyCallbacks);
 }

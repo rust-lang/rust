@@ -157,7 +157,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
         {
             cx.dcx().emit_err(RequiresMaybeSized {
                 span: pointee_ty_ident.span,
-                name: pointee_ty_ident.name.to_ident_string(),
+                name: pointee_ty_ident,
             });
             return;
         }
@@ -471,5 +471,5 @@ struct TooManyPointees {
 struct RequiresMaybeSized {
     #[primary_span]
     span: Span,
-    name: String,
+    name: Ident,
 }

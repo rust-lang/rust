@@ -140,7 +140,7 @@ where
         // Don't emit a new diagnostic for these errors, they are already reported elsewhere or
         // should remain silent.
         err_inval!(AlreadyReported(info)) => ErrorHandled::Reported(info, span),
-        err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
+        err_inval!(Layout(LayoutError::TooGeneric(_))) | err_inval!(TooGeneric) => {
             ErrorHandled::TooGeneric(span)
         }
         err_inval!(Layout(LayoutError::ReferencesError(guar))) => {

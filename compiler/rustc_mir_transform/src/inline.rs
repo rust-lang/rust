@@ -4,7 +4,7 @@ use std::iter;
 use std::ops::{Range, RangeFrom};
 
 use rustc_abi::{ExternAbi, FieldIdx};
-use rustc_attr_parsing::InlineAttr;
+use rustc_attr_parsing::{InlineAttr, OptimizeAttr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
@@ -66,6 +66,10 @@ impl<'tcx> crate::MirPass<'tcx> for Inline {
             deref_finder(tcx, body);
         }
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 pub struct ForceInline;
@@ -83,6 +87,10 @@ impl<'tcx> crate::MirPass<'tcx> for ForceInline {
 
     fn can_be_overridden(&self) -> bool {
         false
+    }
+
+    fn is_required(&self) -> bool {
+        true
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -762,6 +770,10 @@ fn check_codegen_attributes<'tcx, I: Inliner<'tcx>>(
         return Err("never inline attribute");
     }
 
+    if let OptimizeAttr::DoNotOptimize = callee_attrs.optimize {
+        return Err("has DoNotOptimize attribute");
+    }
+
     // Reachability pass defines which functions are eligible for inlining. Generally inlining
     // other functions is incorrect because they could reference symbols that aren't exported.
     let is_generic = callsite.callee.args.non_erasable_generics().next().is_some();
@@ -1099,10 +1111,13 @@ fn new_call_temp<'tcx>(
     });
 
     if let Some(block) = return_block {
-        caller_body[block].statements.insert(0, Statement {
-            source_info: callsite.source_info,
-            kind: StatementKind::StorageDead(local),
-        });
+        caller_body[block].statements.insert(
+            0,
+            Statement {
+                source_info: callsite.source_info,
+                kind: StatementKind::StorageDead(local),
+            },
+        );
     }
 
     local
@@ -1242,6 +1257,8 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
         // replaced down below anyways).
         if !matches!(terminator.kind, TerminatorKind::Return) {
             self.super_terminator(terminator, loc);
+        } else {
+            self.visit_source_info(&mut terminator.source_info);
         }
 
         match terminator.kind {

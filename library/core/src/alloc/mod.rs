@@ -49,26 +49,26 @@ impl fmt::Display for AllocError {
 /// An implementation of `Allocator` can allocate, grow, shrink, and deallocate arbitrary blocks of
 /// data described via [`Layout`][].
 ///
-/// `Allocator` is designed to be implemented on ZSTs, references, or smart pointers because having
-/// an allocator like `MyAlloc([u8; N])` cannot be moved, without updating the pointers to the
+/// `Allocator` is designed to be implemented on ZSTs, references, or smart pointers.
+/// An allocator for `MyAlloc([u8; N])` cannot be moved, without updating the pointers to the
 /// allocated memory.
 ///
-/// Unlike [`GlobalAlloc`][], zero-sized allocations are allowed in `Allocator`. If an underlying
-/// allocator does not support this (like jemalloc) or return a null pointer (such as
-/// `libc::malloc`), this must be caught by the implementation.
+/// In contrast to [`GlobalAlloc`][], `Allocator` allows zero-sized allocations. If an underlying
+/// allocator does not support this (like jemalloc) or responds by returning a null pointer
+/// (such as `libc::malloc`), this must be caught by the implementation.
 ///
 /// ### Currently allocated memory
 ///
-/// Some of the methods require that a memory block be *currently allocated* via an allocator. This
-/// means that:
+/// Some of the methods require that a memory block is *currently allocated* by an allocator.
+/// This means that:
+///  * the starting address for that memory block was previously
+///    returned by [`allocate`], [`grow`], or [`shrink`], and
+///  * the memory block has not subsequently been deallocated.
 ///
-/// * the starting address for that memory block was previously returned by [`allocate`], [`grow`], or
-///   [`shrink`], and
-///
-/// * the memory block has not been subsequently deallocated, where blocks are either deallocated
-///   directly by being passed to [`deallocate`] or were changed by being passed to [`grow`] or
-///   [`shrink`] that returns `Ok`. If `grow` or `shrink` have returned `Err`, the passed pointer
-///   remains valid.
+/// A memory block is deallocated by a call to [`deallocate`],
+/// or by a call to [`grow`] or [`shrink`] that returns `Ok`.
+/// A call to `grow` or `shrink` that returns `Err`,
+/// does not deallocate the memory block passed to it.
 ///
 /// [`allocate`]: Allocator::allocate
 /// [`grow`]: Allocator::grow
@@ -77,32 +77,28 @@ impl fmt::Display for AllocError {
 ///
 /// ### Memory fitting
 ///
-/// Some of the methods require that a layout *fit* a memory block. What it means for a layout to
-/// "fit" a memory block means (or equivalently, for a memory block to "fit" a layout) is that the
+/// Some of the methods require that a `layout` *fit* a memory block or vice versa. This means that the
 /// following conditions must hold:
-///
-/// * The block must be allocated with the same alignment as [`layout.align()`], and
-///
-/// * The provided [`layout.size()`] must fall in the range `min ..= max`, where:
-///   - `min` is the size of the layout most recently used to allocate the block, and
-///   - `max` is the latest actual size returned from [`allocate`], [`grow`], or [`shrink`].
+///  * the memory block must be *currently allocated* with alignment of [`layout.align()`], and
+///  * [`layout.size()`] must fall in the range `min ..= max`, where:
+///    - `min` is the size of the layout used to allocate the block, and
+///    - `max` is the actual size returned from [`allocate`], [`grow`], or [`shrink`].
 ///
 /// [`layout.align()`]: Layout::align
 /// [`layout.size()`]: Layout::size
 ///
 /// # Safety
 ///
-/// * Memory blocks returned from an allocator that are [*currently allocated*] must point to
-///   valid memory and retain their validity while they are [*currently allocated*] and the shorter
-///   of:
-///   - the borrow-checker lifetime of the allocator type itself.
-///   - as long as at least one of the instance and all of its clones has not been dropped.
+/// Memory blocks that are [*currently allocated*] by an allocator,
+/// must point to valid memory, and retain their validity while until either:
+///  - the memory block is deallocated, or
+///  - the allocator is dropped.
 ///
-/// * copying, cloning, or moving the allocator must not invalidate memory blocks returned from this
-///   allocator. A copied or cloned allocator must behave like the same allocator, and
+/// Copying, cloning, or moving the allocator must not invalidate memory blocks returned from it
+/// A copied or cloned allocator must behave like the original allocator.
 ///
-/// * any pointer to a memory block which is [*currently allocated*] may be passed to any other
-///   method of the allocator.
+/// A memory block which is [*currently allocated*] may be passed to
+/// any method of the allocator that accepts such an argument.
 ///
 /// [*currently allocated*]: #currently-allocated-memory
 #[unstable(feature = "allocator_api", issue = "32838")]

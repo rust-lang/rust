@@ -17,6 +17,9 @@ middle_assert_gen_resume_after_panic = `gen` fn or block cannot be further itera
 middle_assert_misaligned_ptr_deref =
     misaligned pointer dereference: address must be a multiple of {$required} but is {$found}
 
+middle_assert_null_ptr_deref =
+    null pointer dereference occurred
+
 middle_assert_op_overflow =
     attempt to compute `{$left} {$op} {$right}`, which would overflow
 
@@ -31,6 +34,8 @@ middle_assert_shl_overflow =
 
 middle_assert_shr_overflow =
     attempt to shift right by `{$val}`, which would overflow
+
+middle_autodiff_unsafe_inner_const_ref = reading from a `Duplicated` const {$ty} is unsafe
 
 middle_bounds_check =
     index out of bounds: the length is {$len} but the index is {$index}
@@ -100,11 +105,16 @@ middle_strict_coherence_needs_negative_coherence =
     to use `strict_coherence` on this trait, the `with_negative_coherence` feature must be enabled
     .label = due to this attribute
 
+middle_too_generic = `{$ty}` does not have a fixed size
+
 middle_type_length_limit = reached the type-length limit while instantiating `{$shrunk}`
 
 middle_unknown_layout =
     the type `{$ty}` has an unknown layout
 
+middle_unsupported_union = we don't support unions yet: '{$ty_name}'
+
 middle_values_too_big =
     values of the type `{$ty}` are too big for the target architecture
+
 middle_written_to_path = the full type name has been written to '{$path}'

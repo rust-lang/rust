@@ -414,6 +414,8 @@ impl TestCx<'_> {
             // Provide path to checkout root. This is the top-level directory containing
             // rust-lang/rust checkout.
             .env("SOURCE_ROOT", &source_root)
+            // Path to the build directory. This is usually the same as `source_root.join("build").join("host")`.
+            .env("BUILD_ROOT", &build_root)
             // Provide path to stage-corresponding rustc.
             .env("RUSTC", &self.config.rustc_path)
             // Provide the directory to libraries that are needed to run the *compiler*. This is not

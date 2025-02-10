@@ -10,11 +10,10 @@ use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_abi::FieldIdx;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::MultiSpan;
-use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{Node, PatKind, TyKind};
+use rustc_hir::{self as hir, Node, PatKind, TyKind};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
@@ -460,7 +459,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                             }
 
                             // mark self_ty live
-                            intravisit::walk_ty(self, impl_ref.self_ty);
+                            intravisit::walk_unambig_ty(self, impl_ref.self_ty);
                             if let Some(&impl_item_id) =
                                 self.tcx.impl_item_implementor_ids(impl_id).get(&trait_item_id)
                             {
@@ -637,10 +636,6 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                 let res = self.typeck_results().qpath_res(path, pat.hir_id);
                 self.handle_field_pattern_match(pat, res, fields);
             }
-            PatKind::Path(ref qpath) => {
-                let res = self.typeck_results().qpath_res(qpath, pat.hir_id);
-                self.handle_res(res);
-            }
             PatKind::TupleStruct(ref qpath, fields, dotdot) => {
                 let res = self.typeck_results().qpath_res(qpath, pat.hir_id);
                 self.handle_tuple_field_pattern_match(pat, res, fields, dotdot);
@@ -650,6 +645,17 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
 
         intravisit::walk_pat(self, pat);
         self.in_pat = false;
+    }
+
+    fn visit_pat_expr(&mut self, expr: &'tcx rustc_hir::PatExpr<'tcx>) {
+        match &expr.kind {
+            rustc_hir::PatExprKind::Path(qpath) => {
+                let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
+                self.handle_res(res);
+            }
+            _ => {}
+        }
+        intravisit::walk_pat_expr(self, expr);
     }
 
     fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) {
@@ -1231,7 +1237,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
                     continue;
                 }
 
-                let is_positional = variant.fields.raw.first().map_or(false, |field| {
+                let is_positional = variant.fields.raw.first().is_some_and(|field| {
                     field.name.as_str().starts_with(|c: char| c.is_ascii_digit())
                 });
                 let report_on =

@@ -9,7 +9,7 @@
 //@[sparc_feature_v8plus] needs-llvm-components: sparc
 //@[sparc_cpu_v9_feature_v8plus] compile-flags: --target sparc-unknown-none-elf -C target-cpu=v9 -C target-feature=+v8plus
 //@[sparc_cpu_v9_feature_v8plus] needs-llvm-components: sparc
-//@ min-llvm-version: 19
+//@ min-llvm-version: 20
 
 #![crate_type = "rlib"]
 #![feature(no_core, rustc_attrs, lang_items)]
@@ -29,10 +29,9 @@ macro_rules! compile_error {
 compile_error!("-v8plus,-v9");
 //[sparc]~^ ERROR -v8plus,-v9
 
-// FIXME: sparc_cpu_v9 should be in "-v8plus,+v9" group (fixed in LLVM 20)
 #[cfg(all(target_feature = "v8plus", target_feature = "v9"))]
 compile_error!("+v8plus,+v9");
-//[sparcv8plus,sparc_cpu_v9_feature_v8plus,sparc_cpu_v9]~^ ERROR +v8plus,+v9
+//[sparcv8plus,sparc_cpu_v9_feature_v8plus]~^ ERROR +v8plus,+v9
 
 // FIXME: should be rejected
 #[cfg(all(target_feature = "v8plus", not(target_feature = "v9")))]
@@ -41,3 +40,4 @@ compile_error!("+v8plus,-v9 (FIXME)");
 
 #[cfg(all(not(target_feature = "v8plus"), target_feature = "v9"))]
 compile_error!("-v8plus,+v9");
+//[sparc_cpu_v9]~^ ERROR -v8plus,+v9

@@ -44,6 +44,8 @@ pub use core::builder::PathSet;
 pub use core::config::Config;
 pub use core::config::flags::{Flags, Subcommand};
 
+#[cfg(feature = "tracing")]
+use tracing::{instrument, span};
 pub use utils::change_tracker::{
     CONFIG_CHANGE_HISTORY, find_recent_config_change_ids, human_readable_changes,
 };
@@ -152,6 +154,7 @@ pub struct Build {
     targets: Vec<TargetSelection>,
 
     initial_rustc: PathBuf,
+    initial_rustdoc: PathBuf,
     initial_cargo: PathBuf,
     initial_lld: PathBuf,
     initial_relative_libdir: PathBuf,
@@ -352,6 +355,7 @@ impl Build {
             initial_lld,
             initial_relative_libdir,
             initial_rustc: config.initial_rustc.clone(),
+            initial_rustdoc: config.initial_rustc.with_file_name(exe("rustdoc", config.build)),
             initial_cargo: config.initial_cargo.clone(),
             initial_sysroot: config.initial_sysroot.clone(),
             local_rebuild: config.local_rebuild,
@@ -537,48 +541,83 @@ impl Build {
     }
 
     /// Executes the entire build, as configured by the flags and configuration.
+    #[cfg_attr(feature = "tracing", instrument(level = "debug", name = "Build::build", skip_all))]
     pub fn build(&mut self) {
+        trace!("setting up job management");
         unsafe {
             crate::utils::job::setup(self);
         }
 
         // Download rustfmt early so that it can be used in rust-analyzer configs.
+        trace!("downloading rustfmt early");
         let _ = &builder::Builder::new(self).initial_rustfmt();
 
-        // hardcoded subcommands
-        match &self.config.cmd {
-            Subcommand::Format { check, all } => {
-                return core::build_steps::format::format(
-                    &builder::Builder::new(self),
-                    *check,
-                    *all,
-                    &self.config.paths,
-                );
+        // Handle hard-coded subcommands.
+        {
+            #[cfg(feature = "tracing")]
+            let _hardcoded_span = span!(
+                tracing::Level::DEBUG,
+                "handling hardcoded subcommands (Format, Suggest, Perf)"
+            )
+            .entered();
+
+            match &self.config.cmd {
+                Subcommand::Format { check, all } => {
+                    return core::build_steps::format::format(
+                        &builder::Builder::new(self),
+                        *check,
+                        *all,
+                        &self.config.paths,
+                    );
+                }
+                Subcommand::Suggest { run } => {
+                    return core::build_steps::suggest::suggest(&builder::Builder::new(self), *run);
+                }
+                Subcommand::Perf(args) => {
+                    return core::build_steps::perf::perf(&builder::Builder::new(self), args);
+                }
+                _cmd => {
+                    debug!(cmd = ?_cmd, "not a hardcoded subcommand; returning to normal handling");
+                }
             }
-            Subcommand::Suggest { run } => {
-                return core::build_steps::suggest::suggest(&builder::Builder::new(self), *run);
-            }
-            Subcommand::Perf { .. } => {
-                return core::build_steps::perf::perf(&builder::Builder::new(self));
-            }
-            _ => (),
+
+            debug!("handling subcommand normally");
         }
 
         if !self.config.dry_run() {
+            #[cfg(feature = "tracing")]
+            let _real_run_span = span!(tracing::Level::DEBUG, "executing real run").entered();
+
+            // We first do a dry-run. This is a sanity-check to ensure that
+            // steps don't do anything expensive in the dry-run.
             {
-                // We first do a dry-run. This is a sanity-check to ensure that
-                // steps don't do anything expensive in the dry-run.
+                #[cfg(feature = "tracing")]
+                let _sanity_check_span =
+                    span!(tracing::Level::DEBUG, "(1) executing dry-run sanity-check").entered();
                 self.config.dry_run = DryRun::SelfCheck;
                 let builder = builder::Builder::new(self);
                 builder.execute_cli();
             }
-            self.config.dry_run = DryRun::Disabled;
-            let builder = builder::Builder::new(self);
-            builder.execute_cli();
+
+            // Actual run.
+            {
+                #[cfg(feature = "tracing")]
+                let _actual_run_span =
+                    span!(tracing::Level::DEBUG, "(2) executing actual run").entered();
+                self.config.dry_run = DryRun::Disabled;
+                let builder = builder::Builder::new(self);
+                builder.execute_cli();
+            }
         } else {
+            #[cfg(feature = "tracing")]
+            let _dry_run_span = span!(tracing::Level::DEBUG, "executing dry run").entered();
+
             let builder = builder::Builder::new(self);
             builder.execute_cli();
         }
+
+        #[cfg(feature = "tracing")]
+        debug!("checking for postponed test failures from `test  --no-fail-fast`");
 
         // Check for postponed failures from `test --no-fail-fast`.
         let failures = self.delayed_failures.borrow();

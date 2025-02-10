@@ -12,9 +12,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
-#[cfg(test)]
-mod tests;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::f64::{
@@ -306,8 +303,9 @@ impl f64 {
     /// ```
     /// let x = 2.0_f64;
     /// let abs_difference = (x.powi(2) - (x * x)).abs();
+    /// assert!(abs_difference <= f64::EPSILON);
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert_eq!(f64::powi(f64::NAN, 0), 1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -329,8 +327,10 @@ impl f64 {
     /// ```
     /// let x = 2.0_f64;
     /// let abs_difference = (x.powf(2.0) - (x * x)).abs();
+    /// assert!(abs_difference <= f64::EPSILON);
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert_eq!(f64::powf(1.0, f64::NAN), 1.0);
+    /// assert_eq!(f64::powf(f64::NAN, 0.0), 1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]

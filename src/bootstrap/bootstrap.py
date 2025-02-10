@@ -1268,6 +1268,11 @@ def bootstrap(args):
         config_toml = ""
 
     profile = RustBuild.get_toml_static(config_toml, "profile")
+    is_non_git_source = not os.path.exists(os.path.join(rust_root, ".git"))
+
+    if profile is None and is_non_git_source:
+        profile = "dist"
+
     if profile is not None:
         # Allows creating alias for profile names, allowing
         # profiles to be renamed while maintaining back compatibility
@@ -1305,9 +1310,6 @@ def bootstrap(args):
     args = [build.bootstrap_binary()]
     args.extend(sys.argv[1:])
     env = os.environ.copy()
-    # The Python process ID is used when creating a Windows job object
-    # (see src\bootstrap\src\utils\job.rs)
-    env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     env["BOOTSTRAP_PYTHON"] = sys.executable
     run(args, env=env, verbose=build.verbose, is_bootstrap=True)
 

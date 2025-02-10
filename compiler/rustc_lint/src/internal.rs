@@ -5,8 +5,8 @@ use rustc_ast as ast;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
-    BinOp, BinOpKind, Expr, ExprKind, GenericArg, HirId, Impl, Item, ItemKind, Node, Pat, PatKind,
-    Path, PathSegment, QPath, Ty, TyKind,
+    AmbigArg, BinOp, BinOpKind, Expr, ExprKind, GenericArg, HirId, Impl, Item, ItemKind, Node, Pat,
+    PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, Ty, TyKind,
 };
 use rustc_middle::ty::{self, GenericArgsRef, Ty as MiddleTy};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -48,10 +48,11 @@ impl LateLintPass<'_> for DefaultHashTypes {
             Some(sym::HashSet) => "FxHashSet",
             _ => return,
         };
-        cx.emit_span_lint(DEFAULT_HASH_TYPES, path.span, DefaultHashTypesDiag {
-            preferred,
-            used: cx.tcx.item_name(def_id),
-        });
+        cx.emit_span_lint(
+            DEFAULT_HASH_TYPES,
+            path.span,
+            DefaultHashTypesDiag { preferred, used: cx.tcx.item_name(def_id) },
+        );
     }
 }
 
@@ -107,14 +108,18 @@ impl LateLintPass<'_> for QueryStability {
         {
             let def_id = instance.def_id();
             if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
-                cx.emit_span_lint(POTENTIAL_QUERY_INSTABILITY, span, QueryInstability {
-                    query: cx.tcx.item_name(def_id),
-                });
+                cx.emit_span_lint(
+                    POTENTIAL_QUERY_INSTABILITY,
+                    span,
+                    QueryInstability { query: cx.tcx.item_name(def_id) },
+                );
             }
             if cx.tcx.has_attr(def_id, sym::rustc_lint_untracked_query_information) {
-                cx.emit_span_lint(UNTRACKED_QUERY_INFORMATION, span, QueryUntracked {
-                    method: cx.tcx.item_name(def_id),
-                });
+                cx.emit_span_lint(
+                    UNTRACKED_QUERY_INFORMATION,
+                    span,
+                    QueryUntracked { method: cx.tcx.item_name(def_id) },
+                );
             }
         }
     }
@@ -159,16 +164,14 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
         }
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx Ty<'tcx>) {
+    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx Ty<'tcx, AmbigArg>) {
         match &ty.kind {
             TyKind::Path(QPath::Resolved(_, path)) => {
                 if lint_ty_kind_usage(cx, &path.res) {
                     let span = match cx.tcx.parent_hir_node(ty.hir_id) {
-                        Node::Pat(Pat {
-                            kind:
-                                PatKind::Path(qpath)
-                                | PatKind::TupleStruct(qpath, ..)
-                                | PatKind::Struct(qpath, ..),
+                        Node::PatExpr(PatExpr { kind: PatExprKind::Path(qpath), .. })
+                        | Node::Pat(Pat {
+                            kind: PatKind::TupleStruct(qpath, ..) | PatKind::Struct(qpath, ..),
                             ..
                         })
                         | Node::Expr(
@@ -188,9 +191,11 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
 
                     match span {
                         Some(span) => {
-                            cx.emit_span_lint(USAGE_OF_TY_TYKIND, path.span, TykindKind {
-                                suggestion: span,
-                            });
+                            cx.emit_span_lint(
+                                USAGE_OF_TY_TYKIND,
+                                path.span,
+                                TykindKind { suggestion: span },
+                            );
                         }
                         None => cx.emit_span_lint(USAGE_OF_TY_TYKIND, path.span, TykindDiag),
                     }
@@ -198,10 +203,11 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                     && path.segments.len() > 1
                     && let Some(ty) = is_ty_or_ty_ctxt(cx, path)
                 {
-                    cx.emit_span_lint(USAGE_OF_QUALIFIED_TY, path.span, TyQualified {
-                        ty,
-                        suggestion: path.span,
-                    });
+                    cx.emit_span_lint(
+                        USAGE_OF_QUALIFIED_TY,
+                        path.span,
+                        TyQualified { ty, suggestion: path.span },
+                    );
                 }
             }
             _ => {}
@@ -555,9 +561,11 @@ impl LateLintPass<'_> for BadOptAccess {
                 && let Some(lit) = item.lit()
                 && let ast::LitKind::Str(val, _) = lit.kind
             {
-                cx.emit_span_lint(BAD_OPT_ACCESS, expr.span, BadOptAccessDiag {
-                    msg: val.as_str(),
-                });
+                cx.emit_span_lint(
+                    BAD_OPT_ACCESS,
+                    expr.span,
+                    BadOptAccessDiag { msg: val.as_str() },
+                );
             }
         }
     }

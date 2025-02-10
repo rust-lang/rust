@@ -10,7 +10,6 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::ExpnKind;
@@ -138,7 +137,7 @@ fn get_parent_call_exprs<'tcx>(
 
 impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if expr.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
 
@@ -208,7 +207,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                         // avoid clippy::double_parens
                         if !is_in_fn_call_arg {
                             hint = hint.maybe_par();
-                        };
+                        }
 
                         diag.span_suggestion(full_expr.span, "try doing something like", hint, applicability);
                     }

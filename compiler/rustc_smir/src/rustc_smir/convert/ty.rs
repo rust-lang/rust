@@ -414,69 +414,20 @@ impl<'tcx> Stable<'tcx> for ty::Pattern<'tcx> {
     }
 }
 
-pub(crate) fn mir_const_from_ty_const<'tcx>(
-    tables: &mut Tables<'tcx>,
-    ty_const: ty::Const<'tcx>,
-    ty: Ty<'tcx>,
-) -> stable_mir::ty::MirConst {
-    let kind = match ty_const.kind() {
-        ty::ConstKind::Value(ty, val) => {
-            let val = match val {
-                ty::ValTree::Leaf(scalar) => ty::ValTree::Leaf(scalar),
-                ty::ValTree::Branch(branch) => {
-                    ty::ValTree::Branch(tables.tcx.lift(branch).unwrap())
-                }
-            };
-            let ty = tables.tcx.lift(ty).unwrap();
-            let const_val = tables.tcx.valtree_to_const_val((ty, val));
-            if matches!(const_val, mir::ConstValue::ZeroSized) {
-                stable_mir::ty::ConstantKind::ZeroSized
-            } else {
-                stable_mir::ty::ConstantKind::Allocated(alloc::new_allocation(
-                    ty, const_val, tables,
-                ))
-            }
-        }
-        ty::ConstKind::Param(param) => stable_mir::ty::ConstantKind::Param(param.stable(tables)),
-        ty::ConstKind::Error(_) => unreachable!(),
-        ty::ConstKind::Infer(_) => unreachable!(),
-        ty::ConstKind::Bound(_, _) => unimplemented!(),
-        ty::ConstKind::Placeholder(_) => unimplemented!(),
-        ty::ConstKind::Unevaluated(uv) => {
-            stable_mir::ty::ConstantKind::Unevaluated(stable_mir::ty::UnevaluatedConst {
-                def: tables.const_def(uv.def),
-                args: uv.args.stable(tables),
-                promoted: None,
-            })
-        }
-        ty::ConstKind::Expr(_) => unimplemented!(),
-    };
-    let stable_ty = tables.intern_ty(ty);
-    let id = tables.intern_mir_const(mir::Const::Ty(ty, ty_const));
-    stable_mir::ty::MirConst::new(kind, stable_ty, id)
-}
-
 impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
     type T = stable_mir::ty::TyConst;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        let kind = match self.kind() {
-            ty::ConstKind::Value(ty, val) => {
-                let val = match val {
-                    ty::ValTree::Leaf(scalar) => ty::ValTree::Leaf(scalar),
-                    ty::ValTree::Branch(branch) => {
-                        ty::ValTree::Branch(tables.tcx.lift(branch).unwrap())
-                    }
-                };
-
-                let ty = tables.tcx.lift(ty).unwrap();
-                let const_val = tables.tcx.valtree_to_const_val((ty, val));
+        let ct = tables.tcx.lift(*self).unwrap();
+        let kind = match ct.kind() {
+            ty::ConstKind::Value(cv) => {
+                let const_val = tables.tcx.valtree_to_const_val(cv);
                 if matches!(const_val, mir::ConstValue::ZeroSized) {
-                    stable_mir::ty::TyConstKind::ZSTValue(ty.stable(tables))
+                    stable_mir::ty::TyConstKind::ZSTValue(cv.ty.stable(tables))
                 } else {
                     stable_mir::ty::TyConstKind::Value(
-                        ty.stable(tables),
-                        alloc::new_allocation(ty, const_val, tables),
+                        cv.ty.stable(tables),
+                        alloc::new_allocation(cv.ty, const_val, tables),
                     )
                 }
             }
@@ -491,7 +442,7 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
             ty::ConstKind::Placeholder(_) => unimplemented!(),
             ty::ConstKind::Expr(_) => unimplemented!(),
         };
-        let id = tables.intern_ty_const(tables.tcx.lift(*self).unwrap());
+        let id = tables.intern_ty_const(ct);
         stable_mir::ty::TyConst::new(kind, id)
     }
 }
@@ -820,12 +771,10 @@ impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
                 index: early_reg.index,
                 name: early_reg.name.to_string(),
             }),
-            ty::ReBound(db_index, bound_reg) => {
-                RegionKind::ReBound(db_index.as_u32(), BoundRegion {
-                    var: bound_reg.var.as_u32(),
-                    kind: bound_reg.kind.stable(tables),
-                })
-            }
+            ty::ReBound(db_index, bound_reg) => RegionKind::ReBound(
+                db_index.as_u32(),
+                BoundRegion { var: bound_reg.var.as_u32(), kind: bound_reg.kind.stable(tables) },
+            ),
             ty::ReStatic => RegionKind::ReStatic,
             ty::RePlaceholder(place_holder) => {
                 RegionKind::RePlaceholder(stable_mir::ty::Placeholder {

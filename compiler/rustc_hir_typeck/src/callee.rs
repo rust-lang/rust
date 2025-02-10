@@ -49,7 +49,7 @@ pub(crate) fn check_legal_trait_for_method_call(
         };
         return Err(tcx.dcx().emit_err(errors::ExplicitDestructorCall { span, sugg }));
     }
-    tcx.ensure().coherent_trait(trait_id)
+    tcx.ensure_ok().coherent_trait(trait_id)
 }
 
 #[derive(Debug)]
@@ -153,13 +153,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     closure_sig,
                 );
                 let adjustments = self.adjust_steps(autoderef);
-                self.record_deferred_call_resolution(def_id, DeferredCallResolution {
-                    call_expr,
-                    callee_expr,
-                    closure_ty: adjusted_ty,
-                    adjustments,
-                    fn_sig: closure_sig,
-                });
+                self.record_deferred_call_resolution(
+                    def_id,
+                    DeferredCallResolution {
+                        call_expr,
+                        callee_expr,
+                        closure_ty: adjusted_ty,
+                        adjustments,
+                        fn_sig: closure_sig,
+                    },
+                );
                 return Some(CallStep::DeferredClosure(def_id, closure_sig));
             }
 
@@ -196,13 +199,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     coroutine_closure_sig.abi,
                 );
                 let adjustments = self.adjust_steps(autoderef);
-                self.record_deferred_call_resolution(def_id, DeferredCallResolution {
-                    call_expr,
-                    callee_expr,
-                    closure_ty: adjusted_ty,
-                    adjustments,
-                    fn_sig: call_sig,
-                });
+                self.record_deferred_call_resolution(
+                    def_id,
+                    DeferredCallResolution {
+                        call_expr,
+                        callee_expr,
+                        closure_ty: adjusted_ty,
+                        adjustments,
+                        fn_sig: call_sig,
+                    },
+                );
                 return Some(CallStep::DeferredClosure(def_id, call_sig));
             }
 

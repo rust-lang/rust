@@ -286,6 +286,11 @@ pub trait Const<I: Interner<Const = Self>>:
     }
 }
 
+pub trait ValueConst<I: Interner<ValueConst = Self>>: Copy + Debug + Hash + Eq {
+    fn ty(self) -> I::Ty;
+    fn valtree(self) -> I::ValTree;
+}
+
 pub trait ExprConst<I: Interner<ExprConst = Self>>: Copy + Debug + Hash + Eq + Relate<I> {
     fn args(self) -> I::GenericArgs;
 }

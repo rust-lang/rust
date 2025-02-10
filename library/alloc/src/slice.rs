@@ -85,6 +85,7 @@ use crate::vec::Vec;
 // functions are actually methods that are in `impl [T]` but not in
 // `core::slice::SliceExt` - we need to supply these functions for the
 // `test_permutations` test
+#[allow(unreachable_pub)] // cfg(test) pub above
 pub(crate) mod hack {
     use core::alloc::Allocator;
 

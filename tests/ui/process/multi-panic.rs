@@ -1,6 +1,5 @@
 //@ run-pass
-//@ ignore-wasm32 no processes
-//@ ignore-sgx no processes
+//@ needs-subprocess
 //@ needs-unwind
 
 fn check_for_no_backtrace(test: std::process::Output) {

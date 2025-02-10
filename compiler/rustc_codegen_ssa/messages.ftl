@@ -16,6 +16,8 @@ codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$erro
 
 codegen_ssa_atomic_compare_exchange = Atomic compare-exchange intrinsic missing failure memory ordering
 
+codegen_ssa_autodiff_without_lto = using the autodiff feature requires using fat-lto
+
 codegen_ssa_binary_output_to_tty = option `-o` or `--emit` is used to write binary output type `{$shorthand}` to stdout, but stdout is a tty
 
 codegen_ssa_cgu_not_recorded =
@@ -29,6 +31,8 @@ codegen_ssa_compiler_builtins_cannot_call =
 codegen_ssa_copy_path = could not copy {$from} to {$to}: {$error}
 
 codegen_ssa_copy_path_buf = unable to copy {$source_file} to {$output_path}: {$error}
+
+codegen_ssa_cpu_required = target requires explicitly specifying a cpu with `-C target-cpu`
 
 codegen_ssa_create_temp_dir = couldn't create a temp dir: {$error}
 
@@ -183,6 +187,8 @@ codegen_ssa_linker_file_stem = couldn't extract file stem from specified linker
 codegen_ssa_linker_not_found = linker `{$linker_path}` not found
     .note = {$error}
 
+codegen_ssa_linker_output = {$inner}
+
 codegen_ssa_linker_unsupported_modifier = `as-needed` modifier not supported for current linker
 
 codegen_ssa_linking_failed = linking with `{$linker_path}` failed: {$exit_status}
@@ -211,7 +217,7 @@ codegen_ssa_msvc_missing_linker = the msvc targets depend on the msvc linker but
 codegen_ssa_multiple_external_func_decl = multiple declarations of external function `{$function}` from library `{$library_name}` have different calling conventions
 
 codegen_ssa_multiple_main_functions = entry symbol `main` declared multiple times
-    .help = did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead
+    .help = did you use `#[no_mangle]` on `fn main`? Use `#![no_main]` to suppress the usual Rust-generated entry point
 
 codegen_ssa_no_field = no field `{$name}`
 

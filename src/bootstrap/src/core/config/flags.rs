@@ -6,7 +6,10 @@
 use std::path::{Path, PathBuf};
 
 use clap::{CommandFactory, Parser, ValueEnum};
+#[cfg(feature = "tracing")]
+use tracing::instrument;
 
+use crate::core::build_steps::perf::PerfArgs;
 use crate::core::build_steps::setup::Profile;
 use crate::core::builder::{Builder, Kind};
 use crate::core::config::{Config, TargetSelectionList, target_selection_list};
@@ -211,6 +214,10 @@ impl Flags {
         }
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(level = "trace", name = "Flags::parse", skip_all, fields(args = ?args))
+    )]
     pub fn parse(args: &[String]) -> Self {
         Flags::parse_from(normalize_args(args))
     }
@@ -475,11 +482,8 @@ Arguments:
         #[arg(long)]
         versioned_dirs: bool,
     },
-    /// Perform profiling and benchmarking of the compiler using the
-    /// `rustc-perf-wrapper` tool.
-    ///
-    /// You need to pass arguments after `--`, e.g.`x perf -- cachegrind`.
-    Perf {},
+    /// Perform profiling and benchmarking of the compiler using `rustc-perf`.
+    Perf(PerfArgs),
 }
 
 impl Subcommand {

@@ -2387,13 +2387,12 @@ mod async_keyword {}
 /// [`async`]: ../std/keyword.async.html
 mod await_keyword {}
 
-// FIXME(dyn_compat_renaming): Update URL and link text.
 #[doc(keyword = "dyn")]
 //
 /// `dyn` is a prefix of a [trait object]'s type.
 ///
 /// The `dyn` keyword is used to highlight that calls to methods on the associated `Trait`
-/// are [dynamically dispatched]. To use the trait this way, it must be 'dyn-compatible'[^1].
+/// are [dynamically dispatched]. To use the trait this way, it must be *dyn compatible*[^1].
 ///
 /// Unlike generic parameters or `impl Trait`, the compiler does not know the concrete type that
 /// is being passed. That is, the type has been [erased].
@@ -2406,7 +2405,7 @@ mod await_keyword {}
 /// the function pointer and then that function pointer is called.
 ///
 /// See the Reference for more information on [trait objects][ref-trait-obj]
-/// and [object safety][ref-obj-safety].
+/// and [dyn compatibility][ref-dyn-compat].
 ///
 /// ## Trade-offs
 ///
@@ -2419,9 +2418,9 @@ mod await_keyword {}
 /// [trait object]: ../book/ch17-02-trait-objects.html
 /// [dynamically dispatched]: https://en.wikipedia.org/wiki/Dynamic_dispatch
 /// [ref-trait-obj]: ../reference/types/trait-object.html
-/// [ref-obj-safety]: ../reference/items/traits.html#object-safety
+/// [ref-dyn-compat]: ../reference/items/traits.html#dyn-compatibility
 /// [erased]: https://en.wikipedia.org/wiki/Type_erasure
-/// [^1]: Formerly known as 'object safe'.
+/// [^1]: Formerly known as *object safe*.
 mod dyn_keyword {}
 
 #[doc(keyword = "union")]

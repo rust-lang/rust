@@ -11,7 +11,7 @@ use std::{env, fs};
 
 use clap::ValueEnum;
 
-pub use self::cargo::Cargo;
+pub use self::cargo::{Cargo, cargo_profile_var};
 pub use crate::Compiler;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
@@ -315,29 +315,32 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
     // actual path is `proc-macro-srv-cli`
     ("rust-analyzer-proc-macro-srv", &["src/tools/rust-analyzer/crates/proc-macro-srv-cli"]),
     // Make `x test tests` function the same as `x t tests/*`
-    ("tests", &[
-        // tidy-alphabetical-start
-        "tests/assembly",
-        "tests/codegen",
-        "tests/codegen-units",
-        "tests/coverage",
-        "tests/coverage-run-rustdoc",
-        "tests/crashes",
-        "tests/debuginfo",
-        "tests/incremental",
-        "tests/mir-opt",
-        "tests/pretty",
-        "tests/run-make",
-        "tests/rustdoc",
-        "tests/rustdoc-gui",
-        "tests/rustdoc-js",
-        "tests/rustdoc-js-std",
-        "tests/rustdoc-json",
-        "tests/rustdoc-ui",
-        "tests/ui",
-        "tests/ui-fulldeps",
-        // tidy-alphabetical-end
-    ]),
+    (
+        "tests",
+        &[
+            // tidy-alphabetical-start
+            "tests/assembly",
+            "tests/codegen",
+            "tests/codegen-units",
+            "tests/coverage",
+            "tests/coverage-run-rustdoc",
+            "tests/crashes",
+            "tests/debuginfo",
+            "tests/incremental",
+            "tests/mir-opt",
+            "tests/pretty",
+            "tests/run-make",
+            "tests/rustdoc",
+            "tests/rustdoc-gui",
+            "tests/rustdoc-js",
+            "tests/rustdoc-js-std",
+            "tests/rustdoc-json",
+            "tests/rustdoc-ui",
+            "tests/ui",
+            "tests/ui-fulldeps",
+            // tidy-alphabetical-end
+        ],
+    ),
 ];
 
 fn remap_paths(paths: &mut Vec<PathBuf>) {
@@ -938,6 +941,7 @@ impl<'a> Builder<'a> {
                 check::Bootstrap,
                 check::RunMakeSupport,
                 check::Compiletest,
+                check::FeaturesStatusDump,
             ),
             Kind::Test => describe!(
                 crate::core::build_steps::toolstate::ToolStateCheck,
@@ -1089,6 +1093,7 @@ impl<'a> Builder<'a> {
                 run::GenerateWindowsSys,
                 run::GenerateCompletions,
                 run::UnicodeTableGenerator,
+                run::FeaturesStatusDump,
             ),
             Kind::Setup => {
                 describe!(setup::Profile, setup::Hook, setup::Link, setup::Editor)

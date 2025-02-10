@@ -53,7 +53,7 @@ use tracing::{debug, instrument};
 
 use crate::bounds::Bounds;
 use crate::check::check_abi_fn_ptr;
-use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation, WildPatTy};
+use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation, InvalidBaseType};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
@@ -296,7 +296,6 @@ pub trait GenericArgsLowerer<'a, 'tcx> {
 
     fn provided_kind(
         &mut self,
-        preceding_args: &[ty::GenericArg<'tcx>],
         param: &ty::GenericParamDef,
         arg: &GenericArg<'tcx>,
     ) -> ty::GenericArg<'tcx>;
@@ -480,7 +479,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             fn provided_kind(
                 &mut self,
-                _preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
@@ -517,14 +515,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         self.lowerer.lower_lifetime(lt, RegionInferReason::Param(param)).into()
                     }
                     (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
-                        handle_ty_args(has_default, ty)
+                        // We handle the other parts of `Ty` in the match arm below
+                        handle_ty_args(has_default, ty.as_unambig_ty())
                     }
                     (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Infer(inf)) => {
                         handle_ty_args(has_default, &inf.to_ty())
                     }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.lowerer.lower_const_arg(ct, FeedConstTy::Param(param.def_id)).into()
-                    }
+                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => self
+                        .lowerer
+                        // Ambig portions of `ConstArg` are handled in the match arm below
+                        .lower_const_arg(ct.as_unambig_ct(), FeedConstTy::Param(param.def_id))
+                        .into(),
                     (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         self.lowerer.ct_infer(Some(param), inf.span).into()
                     }
@@ -2115,7 +2116,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 format!("Const::lower_const_arg: invalid qpath {qpath:?}"),
             ),
             hir::ConstArgKind::Anon(anon) => self.lower_anon_const(anon),
-            hir::ConstArgKind::Infer(span) => self.ct_infer(None, span),
+            hir::ConstArgKind::Infer(span, ()) => self.ct_infer(None, span),
         }
     }
 
@@ -2218,10 +2219,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         match self.try_lower_anon_const_lit(ty, expr) {
             Some(v) => v,
-            None => ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst {
-                def: anon.def_id.to_def_id(),
-                args: ty::GenericArgs::identity_for_item(tcx, anon.def_id.to_def_id()),
-            }),
+            None => ty::Const::new_unevaluated(
+                tcx,
+                ty::UnevaluatedConst {
+                    def: anon.def_id.to_def_id(),
+                    args: ty::GenericArgs::identity_for_item(tcx, anon.def_id.to_def_id()),
+                },
+            ),
         }
     }
 
@@ -2311,7 +2315,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     tcx.late_bound_vars(hir_ty.hir_id),
                 ),
             ),
-            hir::TyKind::TraitObject(bounds, lifetime, repr) => {
+            hir::TyKind::TraitObject(bounds, tagged_ptr) => {
+                let lifetime = tagged_ptr.pointer();
+                let repr = tagged_ptr.tag();
+
                 if let Some(guar) = self.prohibit_or_lint_bare_trait_object_ty(hir_ty) {
                     // Don't continue with type analysis if the `dyn` keyword is missing
                     // It generates confusing errors, especially if the user meant to use another
@@ -2420,7 +2427,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 Ty::new_array_with_const_len(tcx, self.lower_ty(ty), length)
             }
             hir::TyKind::Typeof(e) => tcx.type_of(e.def_id).instantiate_identity(),
-            hir::TyKind::Infer => {
+            hir::TyKind::Infer(()) => {
                 // Infer also appears as the type of arguments or return
                 // values in an ExprKind::Closure, or as
                 // the type of local variables. Both of these cases are
@@ -2428,61 +2435,24 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 self.ty_infer(None, hir_ty.span)
             }
             hir::TyKind::Pat(ty, pat) => {
+                let ty_span = ty.span;
                 let ty = self.lower_ty(ty);
                 let pat_ty = match pat.kind {
-                    hir::PatKind::Wild => {
-                        let err = self.dcx().emit_err(WildPatTy { span: pat.span });
-                        Ty::new_error(tcx, err)
-                    }
-                    hir::PatKind::Range(start, end, include_end) => {
-                        let expr_to_const = |expr: &'tcx hir::PatExpr<'tcx>| -> ty::Const<'tcx> {
-                            let (c, c_ty) = match expr.kind {
-                                hir::PatExprKind::Lit { lit, negated } => {
-                                    let lit_input =
-                                        LitToConstInput { lit: &lit.node, ty, neg: negated };
-                                    let ct = tcx.lit_to_const(lit_input);
-                                    (ct, ty)
-                                }
-
-                                hir::PatExprKind::Path(hir::QPath::Resolved(
-                                    _,
-                                    path @ &hir::Path {
-                                        res: Res::Def(DefKind::ConstParam, def_id),
-                                        ..
-                                    },
-                                )) => {
-                                    match self.prohibit_generic_args(
-                                        path.segments.iter(),
-                                        GenericsArgsErrExtend::Param(def_id),
-                                    ) {
-                                        Ok(()) => {
-                                            let ty = tcx
-                                                .type_of(def_id)
-                                                .no_bound_vars()
-                                                .expect("const parameter types cannot be generic");
-                                            let ct = self.lower_const_param(def_id, expr.hir_id);
-                                            (ct, ty)
-                                        }
-                                        Err(guar) => (
-                                            ty::Const::new_error(tcx, guar),
-                                            Ty::new_error(tcx, guar),
-                                        ),
-                                    }
-                                }
-
-                                _ => {
-                                    let err = tcx
-                                        .dcx()
-                                        .emit_err(crate::errors::NonConstRange { span: expr.span });
-                                    (ty::Const::new_error(tcx, err), Ty::new_error(tcx, err))
-                                }
-                            };
-                            self.record_ty(expr.hir_id, c_ty, expr.span);
-                            c
+                    hir::TyPatKind::Range(start, end, include_end) => {
+                        let ty = match ty.kind() {
+                            ty::Int(_) | ty::Uint(_) | ty::Char => ty,
+                            _ => Ty::new_error(
+                                tcx,
+                                self.dcx().emit_err(InvalidBaseType {
+                                    ty,
+                                    pat: "range",
+                                    ty_span,
+                                    pat_span: pat.span,
+                                }),
+                            ),
                         };
-
-                        let start = start.map(expr_to_const);
-                        let end = end.map(expr_to_const);
+                        let start = start.map(|expr| self.lower_const_arg(expr, FeedConstTy::No));
+                        let end = end.map(|expr| self.lower_const_arg(expr, FeedConstTy::No));
 
                         let include_end = match include_end {
                             hir::RangeEnd::Included => true,
@@ -2492,12 +2462,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         let pat = tcx.mk_pat(ty::PatternKind::Range { start, end, include_end });
                         Ty::new_pat(tcx, ty, pat)
                     }
-                    hir::PatKind::Err(e) => Ty::new_error(tcx, e),
-                    _ => Ty::new_error_with_message(
-                        tcx,
-                        pat.span,
-                        format!("unsupported pattern for pattern type: {pat:#?}"),
-                    ),
+                    hir::TyPatKind::Err(e) => Ty::new_error(tcx, e),
                 };
                 self.record_ty(pat.hir_id, ty, pat.span);
                 pat_ty
@@ -2553,7 +2518,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     pub fn lower_arg_ty(&self, ty: &hir::Ty<'tcx>, expected_ty: Option<Ty<'tcx>>) -> Ty<'tcx> {
         match ty.kind {
-            hir::TyKind::Infer if let Some(expected_ty) = expected_ty => {
+            hir::TyKind::Infer(()) if let Some(expected_ty) = expected_ty => {
                 self.record_ty(ty.hir_id, expected_ty, ty.span);
                 expected_ty
             }

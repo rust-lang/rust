@@ -188,12 +188,14 @@ impl Qualif for NeedsNonConstDrop {
             ObligationCause::misc(cx.body.span, cx.def_id()),
             param_env,
             ty::Binder::dummy(ty::TraitRef::new(cx.tcx, destruct_def_id, [ty]))
-                .to_host_effect_clause(cx.tcx, match cx.const_kind() {
-                    rustc_hir::ConstContext::ConstFn => ty::BoundConstness::Maybe,
-                    rustc_hir::ConstContext::Static(_) | rustc_hir::ConstContext::Const { .. } => {
-                        ty::BoundConstness::Const
-                    }
-                }),
+                .to_host_effect_clause(
+                    cx.tcx,
+                    match cx.const_kind() {
+                        rustc_hir::ConstContext::ConstFn => ty::BoundConstness::Maybe,
+                        rustc_hir::ConstContext::Static(_)
+                        | rustc_hir::ConstContext::Const { .. } => ty::BoundConstness::Const,
+                    },
+                ),
         ));
         !ocx.select_all_or_error().is_empty()
     }
@@ -258,6 +260,8 @@ where
             in_place::<Q, _>(cx, in_local, place.as_ref())
         }
 
+        Rvalue::WrapUnsafeBinder(op, _) => in_operand::<Q, _>(cx, in_local, op),
+
         Rvalue::Aggregate(kind, operands) => {
             // Return early if we know that the struct or enum being constructed is always
             // qualified.
@@ -297,7 +301,8 @@ where
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Downcast(_, _)
-            | ProjectionElem::Index(_) => {}
+            | ProjectionElem::Index(_)
+            | ProjectionElem::UnwrapUnsafeBinder(_) => {}
         }
 
         let base_ty = place_base.ty(cx.body, cx.tcx);
@@ -345,7 +350,7 @@ where
         Const::Ty(_, ct)
             if matches!(
                 ct.kind(),
-                ty::ConstKind::Param(_) | ty::ConstKind::Error(_) | ty::ConstKind::Value(_, _)
+                ty::ConstKind::Param(_) | ty::ConstKind::Error(_) | ty::ConstKind::Value(_)
             ) =>
         {
             None

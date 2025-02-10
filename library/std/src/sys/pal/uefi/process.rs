@@ -1,6 +1,7 @@
 use r_efi::protocols::simple_text_output;
 
 use super::helpers;
+use crate::collections::BTreeMap;
 pub use crate::ffi::OsString as EnvKey;
 use crate::ffi::{OsStr, OsString};
 use crate::num::{NonZero, NonZeroI32};
@@ -21,6 +22,7 @@ pub struct Command {
     args: Vec<OsString>,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
+    env: CommandEnv,
 }
 
 // passed back to std::process with the pipes connected to the child, if any
@@ -40,7 +42,13 @@ pub enum Stdio {
 
 impl Command {
     pub fn new(program: &OsStr) -> Command {
-        Command { prog: program.to_os_string(), args: Vec::new(), stdout: None, stderr: None }
+        Command {
+            prog: program.to_os_string(),
+            args: Vec::new(),
+            stdout: None,
+            stderr: None,
+            env: Default::default(),
+        }
     }
 
     pub fn arg(&mut self, arg: &OsStr) {
@@ -48,7 +56,7 @@ impl Command {
     }
 
     pub fn env_mut(&mut self) -> &mut CommandEnv {
-        panic!("unsupported")
+        &mut self.env
     }
 
     pub fn cwd(&mut self, _dir: &OsStr) {
@@ -76,7 +84,7 @@ impl Command {
     }
 
     pub fn get_envs(&self) -> CommandEnvs<'_> {
-        panic!("unsupported")
+        self.env.iter()
     }
 
     pub fn get_current_dir(&self) -> Option<&Path> {
@@ -140,7 +148,29 @@ impl Command {
             cmd.stderr_inherit()
         };
 
+        let env = env_changes(&self.env);
+
+        // Set any new vars
+        if let Some(e) = &env {
+            for (k, (_, v)) in e {
+                match v {
+                    Some(v) => crate::env::set_var(k, v),
+                    None => crate::env::remove_var(k),
+                }
+            }
+        }
+
         let stat = cmd.start_image()?;
+
+        // Rollback any env changes
+        if let Some(e) = env {
+            for (k, (v, _)) in e {
+                match v {
+                    Some(v) => crate::env::set_var(k, v),
+                    None => crate::env::remove_var(k),
+                }
+            }
+        }
 
         let stdout = cmd.stdout()?;
         let stderr = cmd.stderr()?;
@@ -460,7 +490,7 @@ mod uefi_command_internal {
                 helpers::open_protocol(self.handle, loaded_image::PROTOCOL_GUID).unwrap();
 
             let len = args.len();
-            let args_size: u32 = crate::mem::size_of_val(&args).try_into().unwrap();
+            let args_size: u32 = (len * crate::mem::size_of::<u16>()).try_into().unwrap();
             let ptr = Box::into_raw(args).as_mut_ptr();
 
             unsafe {
@@ -706,9 +736,10 @@ mod uefi_command_internal {
         res.push(QUOTE);
         res.extend(prog.encode_wide());
         res.push(QUOTE);
-        res.push(SPACE);
 
         for arg in args {
+            res.push(SPACE);
+
             // Wrap the argument in quotes to be treat as single arg
             res.push(QUOTE);
             for c in arg.encode_wide() {
@@ -719,10 +750,37 @@ mod uefi_command_internal {
                 res.push(c);
             }
             res.push(QUOTE);
-
-            res.push(SPACE);
         }
 
         res.into_boxed_slice()
     }
+}
+
+/// Create a map of environment variable changes. Allows efficient setting and rolling back of
+/// enviroment variable changes.
+///
+/// Entry: (Old Value, New Value)
+fn env_changes(env: &CommandEnv) -> Option<BTreeMap<EnvKey, (Option<OsString>, Option<OsString>)>> {
+    if env.is_unchanged() {
+        return None;
+    }
+
+    let mut result = BTreeMap::<EnvKey, (Option<OsString>, Option<OsString>)>::new();
+
+    // Check if we want to clear all prior variables
+    if env.does_clear() {
+        for (k, v) in crate::env::vars_os() {
+            result.insert(k.into(), (Some(v), None));
+        }
+    }
+
+    for (k, v) in env.iter() {
+        let v: Option<OsString> = v.map(Into::into);
+        result
+            .entry(k.into())
+            .and_modify(|cur| *cur = (cur.0.clone(), v.clone()))
+            .or_insert((crate::env::var_os(k), v));
+    }
+
+    Some(result)
 }

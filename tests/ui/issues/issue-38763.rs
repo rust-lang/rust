@@ -1,5 +1,5 @@
 //@ run-pass
-//@ ignore-emscripten
+//@ needs-threads
 
 #[repr(C)]
 pub struct Foo(i128);

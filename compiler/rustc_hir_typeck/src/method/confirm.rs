@@ -347,9 +347,17 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // yield an object-type (e.g., `&Object` or `Box<Object>`
         // etc).
 
-        // FIXME: this feels, like, super dubious
-        self.fcx
-            .autoderef(self.span, self_ty)
+        let mut autoderef = self.fcx.autoderef(self.span, self_ty);
+
+        // We don't need to gate this behind arbitrary self types
+        // per se, but it does make things a bit more gated.
+        if self.tcx.features().arbitrary_self_types()
+            || self.tcx.features().arbitrary_self_types_pointers()
+        {
+            autoderef = autoderef.use_receiver_trait();
+        }
+
+        autoderef
             .include_raw_pointers()
             .find_map(|(ty, _)| match ty.kind() {
                 ty::Dynamic(data, ..) => Some(closure(
@@ -413,7 +421,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
             fn provided_kind(
                 &mut self,
-                _preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
@@ -425,14 +432,17 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         .lower_lifetime(lt, RegionInferReason::Param(param))
                         .into(),
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
-                        self.cfcx.lower_ty(ty).raw.into()
-                    }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.cfcx.lower_const_arg(ct, FeedConstTy::Param(param.def_id)).into()
+                        // We handle the ambig portions of `Ty` in the match arms below
+                        self.cfcx.lower_ty(ty.as_unambig_ty()).raw.into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
-                        self.cfcx.ty_infer(Some(param), inf.span).into()
+                        self.cfcx.lower_ty(&inf.to_ty()).raw.into()
                     }
+                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => self
+                        .cfcx
+                        // We handle the ambig portions of `ConstArg` in the match arms below
+                        .lower_const_arg(ct.as_unambig_ct(), FeedConstTy::Param(param.def_id))
+                        .into(),
                     (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         self.cfcx.ct_infer(Some(param), inf.span).into()
                     }

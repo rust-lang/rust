@@ -5,7 +5,7 @@ runners:
     env: { }
 
   - &job-linux-4c
-    os: ubuntu-22.04
+    os: ubuntu-24.04
     # Free some disk space to avoid running out of space during the build.
     free_disk: true
     <<: *base-job
@@ -35,17 +35,25 @@ runners:
     os: windows-2022
     <<: *base-job
 
+  - &job-windows-25
+    os: windows-2025
+    <<: *base-job
+
   - &job-windows-8c
     os: windows-2022-8core-32gb
     <<: *base-job
 
-  - &job-windows-16c
-    os: windows-2022-16core-64gb
+  - &job-windows-25-8c
+    os: windows-2025-8core-32gb
     <<: *base-job
 
   - &job-aarch64-linux
+    # Free some disk space to avoid running out of space during the build.
+    free_disk: true
     os: ubuntu-22.04-arm
 
+  - &job-aarch64-linux-8c
+    os: ubuntu-22.04-arm64-8core-32gb
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
     SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc -- --exact
@@ -78,7 +86,7 @@ envs:
     #   builds)
     # - not running `opt-dist`'s post-optimization smoke tests on the resulting toolchain
     #
-    # If you *want* these to happen however, temporarily uncomment it before triggering a try build.
+    # If you *want* these to happen however, temporarily comment it before triggering a try build.
     DIST_TRY_BUILD: 1
 
   auto:
@@ -138,7 +146,7 @@ auto:
   - name: dist-aarch64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-aarch64-linux
+    <<: *job-aarch64-linux-8c
 
   - name: dist-android
     <<: *job-linux-4c
@@ -159,10 +167,10 @@ auto:
     <<: *job-linux-4c
 
   - name: dist-loongarch64-linux
-    <<: *job-linux-4c
+    <<: *job-linux-4c-largedisk
 
   - name: dist-loongarch64-musl
-    <<: *job-linux-4c
+    <<: *job-linux-4c-largedisk
 
   - name: dist-ohos
     <<: *job-linux-4c
@@ -442,23 +450,29 @@ auto:
   #  Windows Builders  #
   ######################
 
-  - name: x86_64-msvc
+  - name: x86_64-msvc-1
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
-      SCRIPT: make ci-msvc
-    <<: *job-windows-8c
+      SCRIPT: make ci-msvc-py
+    <<: *job-windows-25
+
+  - name: x86_64-msvc-2
+    env:
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+      SCRIPT: make ci-msvc-ps1
+    <<: *job-windows-25
 
   # i686-msvc is split into two jobs to run tests in parallel.
   - name: i686-msvc-1
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
-      SCRIPT: make ci-msvc-py-set1
+      SCRIPT: make ci-msvc-py
     <<: *job-windows
 
   - name: i686-msvc-2
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
-      SCRIPT: make ci-msvc-ps1-set2
+      SCRIPT: make ci-msvc-ps1
     <<: *job-windows
 
   # x86_64-msvc-ext is split into multiple jobs to run tests in parallel.
@@ -511,18 +525,16 @@ auto:
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
       SCRIPT: make ci-mingw
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
+      # There is no dist-i686-mingw-alt, so there is no prebuilt LLVM with assertions
       NO_DOWNLOAD_CI_LLVM: 1
-    <<: *job-windows-8c
+    <<: *job-windows-25-8c
 
   # x86_64-mingw is split into two jobs to run tests in parallel.
   - name: x86_64-mingw-1
     env:
       SCRIPT: make ci-mingw-x
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
+      # There is no dist-x86_64-mingw-alt, so there is no prebuilt LLVM with assertions
       NO_DOWNLOAD_CI_LLVM: 1
     <<: *job-windows
 
@@ -530,8 +542,7 @@ auto:
     env:
       SCRIPT: make ci-mingw-bootstrap
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
+      # There is no dist-x86_64-mingw-alt, so there is no prebuilt LLVM with assertions
       NO_DOWNLOAD_CI_LLVM: 1
     <<: *job-windows
 
@@ -547,7 +558,7 @@ auto:
       SCRIPT: python x.py build --set rust.debug=true opt-dist && PGO_HOST=x86_64-pc-windows-msvc ./build/x86_64-pc-windows-msvc/stage0-tools-bin/opt-dist windows-ci -- python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-windows-8c
+    <<: *job-windows-25-8c
 
   - name: dist-i686-msvc
     env:
@@ -579,9 +590,6 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --build=i686-pc-windows-gnu
         --enable-full-tools
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
-      NO_DOWNLOAD_CI_LLVM: 1
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
@@ -593,9 +601,6 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --build=x86_64-pc-windows-gnu
         --enable-full-tools
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
-      NO_DOWNLOAD_CI_LLVM: 1
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-windows

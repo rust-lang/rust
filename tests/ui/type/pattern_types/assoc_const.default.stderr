@@ -1,0 +1,36 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/assoc_const.rs:17:19
+   |
+LL | fn foo<T: Foo>(_: pattern_type!(u32 is <T as Foo>::START..=<T as Foo>::END)) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: constant expression depends on a generic parameter
+  --> $DIR/assoc_const.rs:17:19
+   |
+LL | fn foo<T: Foo>(_: pattern_type!(u32 is <T as Foo>::START..=<T as Foo>::END)) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: constant expression depends on a generic parameter
+  --> $DIR/assoc_const.rs:20:19
+   |
+LL | fn bar<T: Foo>(_: pattern_type!(u32 is T::START..=T::END)) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: constant expression depends on a generic parameter
+  --> $DIR/assoc_const.rs:20:19
+   |
+LL | fn bar<T: Foo>(_: pattern_type!(u32 is T::START..=T::END)) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+

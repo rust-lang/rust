@@ -18,7 +18,7 @@ use rustc_ast_pretty::pprust::state::MacHeader;
 use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir::{
     BindingMode, ByRef, ConstArgKind, GenericArg, GenericBound, GenericParam, GenericParamKind,
-    HirId, LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term,
+    HirId, LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term, TyPatKind,
 };
 use rustc_span::source_map::SourceMap;
 use rustc_span::{FileName, Ident, Span, Symbol, kw};
@@ -35,6 +35,7 @@ pub enum AnnNode<'a> {
     SubItem(HirId),
     Expr(&'a hir::Expr<'a>),
     Pat(&'a hir::Pat<'a>),
+    TyPat(&'a hir::TyPat<'a>),
     Arm(&'a hir::Arm<'a>),
 }
 
@@ -198,6 +199,7 @@ impl<'a> State<'a> {
             Node::TraitRef(a) => self.print_trait_ref(a),
             Node::OpaqueTy(o) => self.print_opaque_ty(o),
             Node::Pat(a) => self.print_pat(a),
+            Node::TyPat(a) => self.print_ty_pat(a),
             Node::PatField(a) => self.print_patfield(a),
             Node::PatExpr(a) => self.print_pat_expr(a),
             Node::Arm(a) => self.print_arm(a),
@@ -222,6 +224,16 @@ impl<'a> State<'a> {
             Node::WherePredicate(pred) => self.print_where_predicate(pred),
             Node::Synthetic => unreachable!(),
             Node::Err(_) => self.word("/*ERROR*/"),
+        }
+    }
+
+    fn print_generic_arg(&mut self, generic_arg: &GenericArg<'_>, elide_lifetimes: bool) {
+        match generic_arg {
+            GenericArg::Lifetime(lt) if !elide_lifetimes => self.print_lifetime(lt),
+            GenericArg::Lifetime(_) => {}
+            GenericArg::Type(ty) => self.print_type(ty.as_unambig_ty()),
+            GenericArg::Const(ct) => self.print_const_arg(ct.as_unambig_ct()),
+            GenericArg::Infer(_inf) => self.word("_"),
         }
     }
 }
@@ -307,6 +319,14 @@ pub fn qpath_to_string(ann: &dyn PpAnn, segment: &hir::QPath<'_>) -> String {
 
 pub fn pat_to_string(ann: &dyn PpAnn, pat: &hir::Pat<'_>) -> String {
     to_string(ann, |s| s.print_pat(pat))
+}
+
+pub fn expr_to_string(ann: &dyn PpAnn, pat: &hir::Expr<'_>) -> String {
+    to_string(ann, |s| s.print_expr(pat))
+}
+
+pub fn item_to_string(ann: &dyn PpAnn, pat: &hir::Item<'_>) -> String {
+    to_string(ann, |s| s.print_item(pat))
 }
 
 impl<'a> State<'a> {
@@ -402,7 +422,8 @@ impl<'a> State<'a> {
                 self.print_bounds("impl", bounds);
             }
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
-            hir::TyKind::TraitObject(bounds, lifetime, syntax) => {
+            hir::TyKind::TraitObject(bounds, lifetime) => {
+                let syntax = lifetime.tag();
                 match syntax {
                     ast::TraitObjectSyntax::Dyn => self.word_nbsp("dyn"),
                     ast::TraitObjectSyntax::DynStar => self.word_nbsp("dyn*"),
@@ -421,7 +442,7 @@ impl<'a> State<'a> {
                 if !lifetime.is_elided() {
                     self.nbsp();
                     self.word_space("+");
-                    self.print_lifetime(lifetime);
+                    self.print_lifetime(lifetime.pointer());
                 }
             }
             hir::TyKind::Array(ty, ref length) => {
@@ -441,13 +462,13 @@ impl<'a> State<'a> {
                 self.word("/*ERROR*/");
                 self.pclose();
             }
-            hir::TyKind::Infer | hir::TyKind::InferDelegation(..) => {
+            hir::TyKind::Infer(()) | hir::TyKind::InferDelegation(..) => {
                 self.word("_");
             }
             hir::TyKind::Pat(ty, pat) => {
                 self.print_type(ty);
                 self.word(" is ");
-                self.print_pat(pat);
+                self.print_ty_pat(pat);
             }
         }
         self.end()
@@ -1796,13 +1817,7 @@ impl<'a> State<'a> {
                 if nonelided_generic_args {
                     start_or_comma(self);
                     self.commasep(Inconsistent, generic_args.args, |s, generic_arg| {
-                        match generic_arg {
-                            GenericArg::Lifetime(lt) if !elide_lifetimes => s.print_lifetime(lt),
-                            GenericArg::Lifetime(_) => {}
-                            GenericArg::Type(ty) => s.print_type(ty),
-                            GenericArg::Const(ct) => s.print_const_arg(ct),
-                            GenericArg::Infer(_inf) => s.word("_"),
-                        }
+                        s.print_generic_arg(generic_arg, elide_lifetimes)
                     });
                 }
 
@@ -1863,6 +1878,33 @@ impl<'a> State<'a> {
         }
     }
 
+    fn print_ty_pat(&mut self, pat: &hir::TyPat<'_>) {
+        self.maybe_print_comment(pat.span.lo());
+        self.ann.pre(self, AnnNode::TyPat(pat));
+        // Pat isn't normalized, but the beauty of it
+        // is that it doesn't matter
+        match pat.kind {
+            TyPatKind::Range(begin, end, end_kind) => {
+                if let Some(expr) = begin {
+                    self.print_const_arg(expr);
+                }
+                match end_kind {
+                    RangeEnd::Included => self.word("..."),
+                    RangeEnd::Excluded => self.word(".."),
+                }
+                if let Some(expr) = end {
+                    self.print_const_arg(expr);
+                }
+            }
+            TyPatKind::Err(_) => {
+                self.popen();
+                self.word("/*ERROR*/");
+                self.pclose();
+            }
+        }
+        self.ann.post(self, AnnNode::TyPat(pat))
+    }
+
     fn print_pat(&mut self, pat: &hir::Pat<'_>) {
         self.maybe_print_comment(pat.span.lo());
         self.ann.pre(self, AnnNode::Pat(pat));
@@ -1904,9 +1946,6 @@ impl<'a> State<'a> {
                     self.commasep(Inconsistent, elts, |s, p| s.print_pat(p));
                 }
                 self.pclose();
-            }
-            PatKind::Path(ref qpath) => {
-                self.print_qpath(qpath, true);
             }
             PatKind::Struct(ref qpath, fields, etc) => {
                 self.print_qpath(qpath, true);
@@ -2150,7 +2189,7 @@ impl<'a> State<'a> {
             s.ann.nested(s, Nested::BodyParamPat(body_id, i));
             i += 1;
 
-            if let hir::TyKind::Infer = ty.kind {
+            if let hir::TyKind::Infer(()) = ty.kind {
                 // Print nothing.
             } else {
                 s.word(":");
@@ -2187,10 +2226,13 @@ impl<'a> State<'a> {
         let generic_params = generic_params
             .iter()
             .filter(|p| {
-                matches!(p, GenericParam {
-                    kind: GenericParamKind::Lifetime { kind: LifetimeParamKind::Explicit },
-                    ..
-                })
+                matches!(
+                    p,
+                    GenericParam {
+                        kind: GenericParamKind::Lifetime { kind: LifetimeParamKind::Explicit },
+                        ..
+                    }
+                )
             })
             .collect::<Vec<_>>();
 

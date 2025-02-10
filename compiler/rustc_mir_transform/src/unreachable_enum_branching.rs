@@ -208,4 +208,8 @@ impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
 
         patch.apply(body);
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }

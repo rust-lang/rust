@@ -46,5 +46,5 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, recv: &'tcx E
             format!("{receiver}.as_bytes().get({n}).copied()"),
             applicability,
         );
-    };
+    }
 }

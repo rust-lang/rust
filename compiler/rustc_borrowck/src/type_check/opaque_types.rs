@@ -284,7 +284,7 @@ where
             return;
         }
 
-        match ty.kind() {
+        match *ty.kind() {
             ty::Closure(_, args) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
@@ -316,10 +316,12 @@ where
                 args.as_coroutine().resume_ty().visit_with(self);
             }
 
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
-                // Skip lifetime parameters that are not captures.
-                let variances = self.tcx.variances_of(*def_id);
-
+            ty::Alias(kind, ty::AliasTy { def_id, args, .. })
+                if let Some(variances) = self.tcx.opt_alias_variances(kind, def_id) =>
+            {
+                // Skip lifetime parameters that are not captured, since they do
+                // not need member constraints registered for them; we'll erase
+                // them (and hopefully in the future replace them with placeholders).
                 for (v, s) in std::iter::zip(variances, args.iter()) {
                     if *v != ty::Bivariant {
                         s.visit_with(self);

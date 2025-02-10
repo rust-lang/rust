@@ -16,6 +16,7 @@
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![feature(rustdoc_internals)]
+#![feature(string_from_utf8_lossy_owned)]
 #![feature(try_blocks)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
@@ -54,6 +55,7 @@ mod trace_macros;
 
 pub mod asm;
 pub mod cmdline_attrs;
+pub mod contracts;
 pub mod proc_macro_harness;
 pub mod standard_library_imports;
 pub mod test_harness;
@@ -131,11 +133,13 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         Ord: ord::expand_deriving_ord,
         PartialEq: partial_eq::expand_deriving_partial_eq,
         PartialOrd: partial_ord::expand_deriving_partial_ord,
-        RustcDecodable: decodable::expand_deriving_rustc_decodable,
-        RustcEncodable: encodable::expand_deriving_rustc_encodable,
         CoercePointee: coerce_pointee::expand_deriving_coerce_pointee,
     }
 
     let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
     register(sym::quote, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })));
+    let requires = SyntaxExtensionKind::Attr(Box::new(contracts::ExpandRequires));
+    register(sym::contracts_requires, requires);
+    let ensures = SyntaxExtensionKind::Attr(Box::new(contracts::ExpandEnsures));
+    register(sym::contracts_ensures, ensures);
 }

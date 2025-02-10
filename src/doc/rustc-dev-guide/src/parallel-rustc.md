@@ -46,7 +46,6 @@ are implemented differently depending on whether `parallel-compiler` is true.
 
 | data structure                   | parallel                                            | non-parallel |
 | -------------------------------- | --------------------------------------------------- | ------------ |
-| Lrc                              | std::sync::Arc | std::rc::Rc |
 | Weak                             | std::sync::Weak                                     | std::rc::Weak |
 | Atomic{Bool}/{Usize}/{U32}/{U64} | std::sync::atomic::Atomic{Bool}/{Usize}/{U32}/{U64} | (std::cell::Cell<bool/usize/u32/u64>) |
 | OnceCell                         | std::sync::OnceLock                                 | std::cell::OnceCell |

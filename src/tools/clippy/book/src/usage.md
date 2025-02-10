@@ -33,7 +33,7 @@ You can configure lint levels on the command line by adding
 `-A/W/D clippy::lint_name` like this:
 
 ```bash
-cargo clippy -- -Aclippy::style -Wclippy::double_neg -Dclippy::perf
+cargo clippy -- -Aclippy::style -Wclippy::box_default -Dclippy::perf
 ```
 
 For [CI] all warnings can be elevated to errors which will in turn fail
@@ -101,11 +101,10 @@ You can configure lint levels in source code the same way you can configure
 ```rust,ignore
 #![allow(clippy::style)]
 
-#[warn(clippy::double_neg)]
+#[warn(clippy::box_default)]
 fn main() {
-    let x = 1;
-    let y = --x;
-    //      ^^ warning: double negation
+    let _ = Box::<String>::new(Default::default());
+    // ^ warning: `Box::new(_)` of default value
 }
 ```
 

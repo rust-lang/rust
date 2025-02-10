@@ -4,7 +4,6 @@ use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{BytePos, Loc, Symbol, hygiene};
 use rustc_target::callconv::{Conv, FnAbi};
 
-use crate::helpers::check_min_arg_count;
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -34,13 +33,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         abi: &FnAbi<'tcx, Ty<'tcx>>,
         link_name: Symbol,
         args: &[OpTy<'tcx>],
-        dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let tcx = this.tcx;
+        let ptr_ty = this.machine.layouts.mut_raw_ptr.ty;
+        let ptr_layout = this.layout_of(ptr_ty)?;
 
-        let [flags] = check_min_arg_count("miri_get_backtrace", args)?;
+        let [flags, buf] = this.check_shim(abi, Conv::Rust, link_name, args)?;
+
         let flags = this.read_scalar(flags)?.to_u64()?;
+        let buf_place = this.deref_pointer_as(buf, ptr_layout)?;
 
         let mut data = Vec::new();
         for frame in this.active_thread_stack().iter().rev() {
@@ -63,44 +64,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             })
             .collect();
 
-        let len: u64 = ptrs.len().try_into().unwrap();
-
-        let ptr_ty = this.machine.layouts.mut_raw_ptr.ty;
-        let array_layout = this.layout_of(Ty::new_array(tcx.tcx, ptr_ty, len)).unwrap();
-
         match flags {
-            // storage for pointers is allocated by miri
-            // deallocating the slice is undefined behavior with a custom global allocator
             0 => {
-                let [_flags] = this.check_shim(abi, Conv::Rust, link_name, args)?;
-
-                let alloc = this.allocate(array_layout, MiriMemoryKind::Rust.into())?;
-
-                // Write pointers into array
-                for (i, ptr) in ptrs.into_iter().enumerate() {
-                    let place = this.project_index(&alloc, i as u64)?;
-
-                    this.write_pointer(ptr, &place)?;
-                }
-
-                this.write_immediate(Immediate::new_slice(alloc.ptr(), len, this), dest)?;
+                throw_unsup_format!("miri_get_backtrace: v0 is not supported any more");
             }
-            // storage for pointers is allocated by the caller
-            1 => {
-                let [_flags, buf] = this.check_shim(abi, Conv::Rust, link_name, args)?;
-
-                let buf_place = this.deref_pointer(buf)?;
-
-                let ptr_layout = this.layout_of(ptr_ty)?;
-
+            1 =>
                 for (i, ptr) in ptrs.into_iter().enumerate() {
                     let offset = ptr_layout.size.checked_mul(i.try_into().unwrap(), this).unwrap();
 
                     let op_place = buf_place.offset(offset, ptr_layout, this)?;
 
                     this.write_pointer(ptr, &op_place)?;
-                }
-            }
+                },
             _ => throw_unsup_format!("unknown `miri_get_backtrace` flags {}", flags),
         };
 

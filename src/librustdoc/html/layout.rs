@@ -112,7 +112,7 @@ pub(crate) fn render<T: Print, S: Print>(
         display_krate_with_trailing_slash,
         display_krate_version_number,
         display_krate_version_extra,
-        rust_channel: *crate::clean::utils::DOC_CHANNEL,
+        rust_channel: *crate::clean::utils::RUSTDOC_VERSION,
         rustdoc_version,
     }
     .render()

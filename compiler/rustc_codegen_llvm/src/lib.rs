@@ -71,14 +71,9 @@ mod debuginfo;
 mod declare;
 mod errors;
 mod intrinsic;
-
-// The following is a workaround that replaces `pub mod llvm;` and that fixes issue 53912.
-#[path = "llvm/mod.rs"]
-mod llvm_;
-pub mod llvm {
-    pub use super::llvm_::*;
-}
-
+// FIXME(Zalathar): Fix all the unreachable-pub warnings that would occur if
+// this isn't pub, then make it not pub.
+pub mod llvm;
 mod llvm_util;
 mod mono_item;
 mod type_;
@@ -237,7 +232,6 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     /// Generate autodiff rules
     fn autodiff(
         cgcx: &CodegenContext<Self>,
-        tcx: TyCtxt<'_>,
         module: &ModuleCodegen<Self::Module>,
         diff_fncs: Vec<AutoDiffItem>,
         config: &ModuleConfig,
@@ -246,7 +240,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
             let dcx = cgcx.create_dcx();
             return Err(dcx.handle().emit_almost_fatal(AutoDiffWithoutLTO));
         }
-        builder::autodiff::differentiate(module, cgcx, tcx, diff_fncs, config)
+        builder::autodiff::differentiate(module, cgcx, diff_fncs, config)
     }
 }
 

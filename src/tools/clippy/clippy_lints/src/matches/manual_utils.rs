@@ -11,7 +11,7 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::def::Res;
-use rustc_hir::{BindingMode, Expr, ExprKind, HirId, Mutability, Pat, PatKind, Path, QPath};
+use rustc_hir::{BindingMode, Expr, ExprKind, HirId, Mutability, Pat, PatExpr, PatExprKind, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_span::{SyntaxContext, sym};
 
@@ -109,7 +109,7 @@ where
             }
         },
         None => return None,
-    };
+    }
 
     let mut app = Applicability::MachineApplicable;
 
@@ -256,9 +256,11 @@ pub(super) fn try_parse_pattern<'tcx>(
         match pat.kind {
             PatKind::Wild => Some(OptionPat::Wild),
             PatKind::Ref(pat, _) => f(cx, pat, ref_count + 1, ctxt),
-            PatKind::Path(ref qpath) if is_res_lang_ctor(cx, cx.qpath_res(qpath, pat.hir_id), OptionNone) => {
-                Some(OptionPat::None)
-            },
+            PatKind::Expr(PatExpr {
+                kind: PatExprKind::Path(qpath),
+                hir_id,
+                ..
+            }) if is_res_lang_ctor(cx, cx.qpath_res(qpath, *hir_id), OptionNone) => Some(OptionPat::None),
             PatKind::TupleStruct(ref qpath, [pattern], _)
                 if is_res_lang_ctor(cx, cx.qpath_res(qpath, pat.hir_id), OptionSome) && pat.span.ctxt() == ctxt =>
             {

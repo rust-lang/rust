@@ -95,10 +95,13 @@ pub(crate) fn dump_covfun_mappings(
         // has increased or decreased the number of physical counters needed.
         // (It's possible for the generated code to have more counters that
         // aren't used by any mappings, but that should hopefully be rare.)
-        println!("Highest counter ID seen: {}", match max_counter {
-            Some(id) => format!("c{id}"),
-            None => "(none)".to_owned(),
-        });
+        println!(
+            "Highest counter ID seen: {}",
+            match max_counter {
+                Some(id) => format!("c{id}"),
+                None => "(none)".to_owned(),
+            }
+        );
         println!();
     }
     Ok(())

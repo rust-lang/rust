@@ -206,6 +206,7 @@ impl<O> AssertKind<O> {
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
                 LangItem::PanicGenFnNonePanic
             }
+            NullPointerDereference => LangItem::PanicNullPointerDereference,
 
             BoundsCheck { .. } | MisalignedPointerDereference { .. } => {
                 bug!("Unexpected AssertKind")
@@ -271,6 +272,7 @@ impl<O> AssertKind<O> {
                     "\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\", {required:?}, {found:?}"
                 )
             }
+            NullPointerDereference => write!(f, "\"null pointer dereference occurred\""),
             ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
                 write!(f, "\"coroutine resumed after completion\"")
             }
@@ -341,7 +343,7 @@ impl<O> AssertKind<O> {
             ResumedAfterPanic(CoroutineKind::Coroutine(_)) => {
                 middle_assert_coroutine_resume_after_panic
             }
-
+            NullPointerDereference => middle_assert_null_ptr_deref,
             MisalignedPointerDereference { .. } => middle_assert_misaligned_ptr_deref,
         }
     }
@@ -374,7 +376,7 @@ impl<O> AssertKind<O> {
                 add!("left", format!("{left:#?}"));
                 add!("right", format!("{right:#?}"));
             }
-            ResumedAfterReturn(_) | ResumedAfterPanic(_) => {}
+            ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference => {}
             MisalignedPointerDereference { required, found } => {
                 add!("required", format!("{required:#?}"));
                 add!("found", format!("{found:#?}"));
@@ -581,9 +583,11 @@ impl<'tcx> TerminatorKind<'tcx> {
 pub enum TerminatorEdges<'mir, 'tcx> {
     /// For terminators that have no successor, like `return`.
     None,
-    /// For terminators that a single successor, like `goto`, and `assert` without cleanup block.
+    /// For terminators that have a single successor, like `goto`, and `assert` without a cleanup
+    /// block.
     Single(BasicBlock),
-    /// For terminators that two successors, `assert` with cleanup block and `falseEdge`.
+    /// For terminators that have two successors, like `assert` with a cleanup block, and
+    /// `falseEdge`.
     Double(BasicBlock, BasicBlock),
     /// Special action for `Yield`, `Call` and `InlineAsm` terminators.
     AssignOnReturn {

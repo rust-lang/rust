@@ -157,12 +157,16 @@ pub fn prebuilt_llvm_config(
 /// This retrieves the LLVM sha we *want* to use, according to git history.
 pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
     let llvm_sha = if is_git {
-        get_closest_merge_commit(Some(&config.src), &config.git_config(), &[
-            config.src.join("src/llvm-project"),
-            config.src.join("src/bootstrap/download-ci-llvm-stamp"),
-            // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
-            config.src.join("src/version"),
-        ])
+        get_closest_merge_commit(
+            Some(&config.src),
+            &config.git_config(),
+            &[
+                config.src.join("src/llvm-project"),
+                config.src.join("src/bootstrap/download-ci-llvm-stamp"),
+                // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
+                config.src.join("src/version"),
+            ],
+        )
         .unwrap()
     } else if let Some(info) = crate::utils::channel::read_commit_info_file(&config.src) {
         info.sha.trim().to_owned()
@@ -1295,7 +1299,9 @@ impl Step for CrtBeginEnd {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(CrtBeginEnd { target: run.target });
+        if run.target.needs_crt_begin_end() {
+            run.builder.ensure(CrtBeginEnd { target: run.target });
+        }
     }
 
     /// Build crtbegin.o/crtend.o for musl target.
@@ -1338,7 +1344,7 @@ impl Step for CrtBeginEnd {
             .file(crtbegin_src)
             .file(crtend_src);
 
-        // Those flags are defined in src/llvm-project/compiler-rt/lib/crt/CMakeLists.txt
+        // Those flags are defined in src/llvm-project/compiler-rt/lib/builtins/CMakeLists.txt
         // Currently only consumer of those objects is musl, which use .init_array/.fini_array
         // instead of .ctors/.dtors
         cfg.flag("-std=c11")

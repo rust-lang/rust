@@ -1,10 +1,10 @@
 //! Error Reporting for `impl` items that do not match the obligations from their `trait`.
 
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::def::{Namespace, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::Visitor;
+use rustc_hir::intravisit::{Visitor, walk_ty};
+use rustc_hir::{self as hir, AmbigArg};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::ExpectedFound;
@@ -137,11 +137,13 @@ impl<'tcx> Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx, AmbigArg>) {
         match arg.kind {
             hir::TyKind::Ref(_, ref mut_ty) => {
                 // We don't want to suggest looking into borrowing `&T` or `&Self`.
-                hir::intravisit::walk_ty(self, mut_ty.ty);
+                if let Some(ambig_ty) = mut_ty.ty.try_as_ambig_ty() {
+                    walk_ty(self, ambig_ty);
+                }
                 return;
             }
             hir::TyKind::Path(hir::QPath::Resolved(None, path)) => match &path.segments {

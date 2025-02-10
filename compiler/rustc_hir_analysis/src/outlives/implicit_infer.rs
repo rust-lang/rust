@@ -24,7 +24,7 @@ pub(super) fn infer_predicates(
 
     // If new predicates were added then we need to re-calculate
     // all crates since there could be new implied predicates.
-    'outer: loop {
+    loop {
         let mut predicates_added = false;
 
         // Visit all the crates and infer predicates
@@ -90,7 +90,7 @@ pub(super) fn infer_predicates(
         }
 
         if !predicates_added {
-            break 'outer;
+            break;
         }
     }
 

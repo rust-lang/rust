@@ -305,10 +305,11 @@ impl Direction for Forward {
                     // `exit_state`, so pass it directly to `apply_switch_int_edge_effect` to save
                     // a clone of the dataflow state.
                     let otherwise = targets.otherwise();
-                    analysis.apply_switch_int_edge_effect(&mut data, exit_state, SwitchIntTarget {
-                        value: None,
-                        target: otherwise,
-                    });
+                    analysis.apply_switch_int_edge_effect(
+                        &mut data,
+                        exit_state,
+                        SwitchIntTarget { value: None, target: otherwise },
+                    );
                     propagate(otherwise, exit_state);
                 } else {
                     for target in targets.all_targets() {

@@ -21,7 +21,7 @@ LL |         RANGE => {}
    |         `RANGE` is interpreted as a constant, not a new binding
    |
    = note: expected type `i32`
-            found struct `RangeInclusive<i32>`
+            found struct `std::ops::RangeInclusive<i32>`
 help: you may want to move the range into the match block
    |
 LL |         0..=255 => {}
@@ -43,7 +43,7 @@ LL |         RANGE2 => {}
    |         `RANGE2` is interpreted as a constant, not a new binding
    |
    = note: expected type `i32`
-            found struct `RangeInclusive<i32>`
+            found struct `std::ops::RangeInclusive<i32>`
    = note: constants only support matching by type, if you meant to match against a range of values, consider using a range pattern like `min ..= max` in the match block
 
 error: aborting due to 3 previous errors

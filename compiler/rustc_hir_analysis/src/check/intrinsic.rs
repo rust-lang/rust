@@ -132,6 +132,9 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::aggregate_raw_ptr
         | sym::ptr_metadata
         | sym::ub_checks
+        | sym::contract_checks
+        | sym::contract_check_requires
+        | sym::contract_check_ensures
         | sym::fadd_algebraic
         | sym::fsub_algebraic
         | sym::fmul_algebraic
@@ -182,14 +185,19 @@ pub fn check_intrinsic_type(
     ]);
     let mk_va_list_ty = |mutbl| {
         tcx.lang_items().va_list().map(|did| {
-            let region = ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
-                var: ty::BoundVar::ZERO,
-                kind: ty::BoundRegionKind::Anon,
-            });
-            let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
-                var: ty::BoundVar::from_u32(2),
-                kind: ty::BoundRegionKind::ClosureEnv,
-            });
+            let region = ty::Region::new_bound(
+                tcx,
+                ty::INNERMOST,
+                ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon },
+            );
+            let env_region = ty::Region::new_bound(
+                tcx,
+                ty::INNERMOST,
+                ty::BoundRegion {
+                    var: ty::BoundVar::from_u32(2),
+                    kind: ty::BoundRegionKind::ClosureEnv,
+                },
+            );
             let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]);
             (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
         })
@@ -199,7 +207,8 @@ pub fn check_intrinsic_type(
         let split: Vec<&str> = name_str.split('_').collect();
         assert!(split.len() >= 2, "Atomic intrinsic in an incorrect format");
 
-        //We only care about the operation here
+        // Each atomic op has variants with different suffixes (`_seq_cst`, `_acquire`, etc.). Use
+        // string ops to strip the suffixes, because the variants all get the same treatment here.
         let (n_tps, inputs, output) = match split[1] {
             "cxchg" | "cxchgweak" => (
                 1,
@@ -218,6 +227,16 @@ pub fn check_intrinsic_type(
             }
         };
         (n_tps, 0, 0, inputs, output, hir::Safety::Unsafe)
+    } else if intrinsic_name == sym::contract_check_ensures {
+        // contract_check_ensures::<'a, Ret, C>(&'a Ret, C)
+        // where C: impl Fn(&'a Ret) -> bool,
+        //
+        // so: two type params, one lifetime param, 0 const params, two inputs, no return
+
+        let p = generics.param_at(0, tcx);
+        let r = ty::Region::new_early_param(tcx, p.to_early_bound_region_data());
+        let ref_ret = Ty::new_imm_ref(tcx, r, param(1));
+        (2, 1, 0, vec![ref_ret, param(2)], tcx.types.unit, hir::Safety::Safe)
     } else {
         let safety = intrinsic_operation_unsafety(tcx, intrinsic_id);
         let (n_tps, n_cts, inputs, output) = match intrinsic_name {
@@ -471,7 +490,7 @@ pub fn check_intrinsic_type(
                 vec![Ty::new_imm_ptr(tcx, param(0)), Ty::new_imm_ptr(tcx, param(0))],
                 tcx.types.usize,
             ),
-            sym::unchecked_div | sym::unchecked_rem | sym::exact_div => {
+            sym::unchecked_div | sym::unchecked_rem | sym::exact_div | sym::disjoint_bitor => {
                 (1, 0, vec![param(0), param(0)], param(0))
             }
             sym::unchecked_shl | sym::unchecked_shr => (2, 0, vec![param(0), param(1)], param(0)),
@@ -608,6 +627,11 @@ pub fn check_intrinsic_type(
             sym::ub_checks => (0, 0, Vec::new(), tcx.types.bool),
 
             sym::box_new => (1, 0, vec![param(0)], Ty::new_box(tcx, param(0))),
+
+            // contract_checks() -> bool
+            sym::contract_checks => (0, 0, Vec::new(), tcx.types.bool),
+            // contract_check_requires::<C>(C) -> bool, where C: impl Fn() -> bool
+            sym::contract_check_requires => (1, 0, vec![param(0)], tcx.types.unit),
 
             sym::simd_eq
             | sym::simd_ne

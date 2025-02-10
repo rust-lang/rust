@@ -1,7 +1,5 @@
-// We specify incremental here because we want to test the partitioning for incremental compilation
 //@ incremental
-//@ compile-flags:-Zprint-mono-items=lazy
-//@ compile-flags:-Ccodegen-units=3
+//@ compile-flags: -Zprint-mono-items=lazy -Copt-level=0 -Ccodegen-units=3
 
 #![crate_type = "rlib"]
 
@@ -9,8 +7,9 @@
 // compilation but at the same time does not modify names of CGUs that were not
 // affected by merging.
 //
-// We expect CGUs `aaa` and `bbb` to be merged (because they are the smallest),
-// while `ccc` and `ddd` are supposed to stay untouched.
+// CGU partitioning creates one CGU per module, so with 4 modules and codegen-units=3,
+// two of the modules should be merged. We expect CGUs `aaa` and `bbb` to be merged
+// (because they are the smallest), while `ccc` and `ddd` should stay untouched.
 
 pub mod aaa {
     //~ MONO_ITEM fn aaa::foo @@ incremental_merging-aaa--incremental_merging-bbb[External]

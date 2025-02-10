@@ -8,6 +8,7 @@ use rustc_infer::traits::query::OutlivesBound;
 use rustc_infer::traits::query::type_op::ImpliedOutlivesBounds;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::type_op::implied_outlives_bounds::{
     compute_implied_outlives_bounds_compat_inner, compute_implied_outlives_bounds_inner,
@@ -28,7 +29,7 @@ fn implied_outlives_bounds_compat<'tcx>(
 > {
     tcx.infer_ctxt().enter_canonical_trait_query(&goal, |ocx, key| {
         let (param_env, ImpliedOutlivesBounds { ty }) = key.into_parts();
-        compute_implied_outlives_bounds_compat_inner(ocx, param_env, ty)
+        compute_implied_outlives_bounds_compat_inner(ocx, param_env, ty, DUMMY_SP)
     })
 }
 
@@ -41,6 +42,6 @@ fn implied_outlives_bounds<'tcx>(
 > {
     tcx.infer_ctxt().enter_canonical_trait_query(&goal, |ocx, key| {
         let (param_env, ImpliedOutlivesBounds { ty }) = key.into_parts();
-        compute_implied_outlives_bounds_inner(ocx, param_env, ty)
+        compute_implied_outlives_bounds_inner(ocx, param_env, ty, DUMMY_SP)
     })
 }

@@ -6,11 +6,10 @@ pub(crate) fn target() -> Target {
     base.features = "+cx16,+sse3,+sahf".into();
     base.plt_by_default = false;
     // Use high-entropy 64 bit address space for ASLR
-    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &[
-        "-m",
-        "i386pep",
-        "--high-entropy-va",
-    ]);
+    base.add_pre_link_args(
+        LinkerFlavor::Gnu(Cc::No, Lld::No),
+        &["-m", "i386pep", "--high-entropy-va"],
+    );
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64", "-Wl,--high-entropy-va"]);
     base.max_atomic_width = Some(128);
 

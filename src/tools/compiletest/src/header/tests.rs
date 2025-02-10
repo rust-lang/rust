@@ -251,9 +251,10 @@ fn revisions() {
     let config: Config = cfg().build();
 
     assert_eq!(parse_rs(&config, "//@ revisions: a b c").revisions, vec!["a", "b", "c"],);
-    assert_eq!(parse_makefile(&config, "# revisions: hello there").revisions, vec![
-        "hello", "there"
-    ],);
+    assert_eq!(
+        parse_makefile(&config, "# revisions: hello there").revisions,
+        vec!["hello", "there"],
+    );
 }
 
 #[test]

@@ -1,8 +1,7 @@
 use super::{
-    AdtExpr, Arm, Block, ClosureExpr, Expr, ExprKind, InlineAsmExpr, InlineAsmOperand, Pat,
-    PatKind, Stmt, StmtKind, Thir,
+    AdtExpr, AdtExprBase, Arm, Block, ClosureExpr, Expr, ExprKind, InlineAsmExpr, InlineAsmOperand,
+    Pat, PatKind, Stmt, StmtKind, Thir,
 };
-use crate::thir::AdtExprBase;
 
 pub trait Visitor<'thir, 'tcx: 'thir>: Sized {
     fn thir(&self) -> &'thir Thir<'tcx>;
@@ -136,6 +135,9 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
         | ValueTypeAscription { source, user_ty: _, user_ty_span: _ } => {
             visitor.visit_expr(&visitor.thir()[source])
         }
+        PlaceUnwrapUnsafeBinder { source }
+        | ValueUnwrapUnsafeBinder { source }
+        | WrapUnsafeBinder { source } => visitor.visit_expr(&visitor.thir()[source]),
         Closure(box ClosureExpr {
             closure_id: _,
             args: _,

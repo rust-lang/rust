@@ -11,7 +11,6 @@ use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::symbol::sym;
@@ -188,7 +187,7 @@ fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<
     if is_non_aggregate_primitive_type(expr_type) {
         return;
     }
-    if is_default_equivalent(cx, src) && !in_external_macro(cx.tcx.sess, expr_span) {
+    if is_default_equivalent(cx, src) && !expr_span.in_external_macro(cx.tcx.sess.source_map()) {
         let Some(top_crate) = std_or_core(cx) else { return };
         span_lint_and_then(
             cx,

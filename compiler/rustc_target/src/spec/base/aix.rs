@@ -1,4 +1,5 @@
-use crate::abi::Endian;
+use rustc_abi::Endian;
+
 use crate::spec::{Cc, CodeModel, LinkOutputKind, LinkerFlavor, TargetOptions, crt_objects, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
