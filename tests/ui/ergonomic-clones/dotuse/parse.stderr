@@ -1,0 +1,53 @@
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `!`
+  --> $DIR/parse.rs:4:10
+   |
+LL |     1.use!;
+   |          ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `!`
+  --> $DIR/parse.rs:9:10
+   |
+LL |     1.use!(2);
+   |          ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `2`
+  --> $DIR/parse.rs:14:11
+   |
+LL |     1.use 2;
+   |           ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `2`
+  --> $DIR/parse.rs:19:12
+   |
+LL |     1.use? 2;
+   |            ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: incorrect use of `use`
+  --> $DIR/parse.rs:24:10
+   |
+LL |     1.use();
+   |          ^^
+   |
+help: `use` is not a method call, remove the parentheses
+   |
+LL -     1.use();
+LL +     1.use;
+   |
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `{`
+  --> $DIR/parse.rs:34:11
+   |
+LL |     1.use { 2 };
+   |           ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error[E0618]: expected function, found `{integer}`
+  --> $DIR/parse.rs:29:5
+   |
+LL |     1.use(2);
+   |     ^^^^^---
+   |     |
+   |     call expression requires function
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0618`.
