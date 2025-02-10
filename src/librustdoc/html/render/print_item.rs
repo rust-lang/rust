@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::fmt;
-use std::fmt::{Display, Write};
+use std::fmt::Display;
 
 use itertools::Itertools;
 use rinja::Template;
@@ -27,7 +27,7 @@ use super::{
 };
 use crate::clean;
 use crate::config::ModuleSorting;
-use crate::display::Joined as _;
+use crate::display::{Joined as _, MaybeDisplay as _};
 use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::{Escape, EscapeBodyTextWithWbr};
@@ -2123,27 +2123,26 @@ pub(super) fn item_path(ty: ItemType, name: &str) -> String {
     }
 }
 
-fn bounds(t_bounds: &[clean::GenericBound], trait_alias: bool, cx: &Context<'_>) -> String {
-    let mut bounds = String::new();
-    if t_bounds.is_empty() {
-        return bounds;
-    }
-    let has_lots_of_bounds = t_bounds.len() > 2;
-    let inter_str = if has_lots_of_bounds { "\n    + " } else { " + " };
-    if !trait_alias {
-        if has_lots_of_bounds {
-            bounds.push_str(":\n    ");
-        } else {
-            bounds.push_str(": ");
-        }
-    }
-    write!(
-        bounds,
-        "{}",
-        fmt::from_fn(|f| t_bounds.iter().map(|p| p.print(cx)).joined(inter_str, f))
-    )
-    .unwrap();
-    bounds
+fn bounds<'a, 'tcx>(
+    bounds: &'a [clean::GenericBound],
+    trait_alias: bool,
+    cx: &'a Context<'tcx>,
+) -> impl Display + 'a + Captures<'tcx> {
+    (!bounds.is_empty())
+        .then_some(fmt::from_fn(move |f| {
+            let has_lots_of_bounds = bounds.len() > 2;
+            let inter_str = if has_lots_of_bounds { "\n    + " } else { " + " };
+            if !trait_alias {
+                if has_lots_of_bounds {
+                    f.write_str(":\n    ")?;
+                } else {
+                    f.write_str(": ")?;
+                }
+            }
+
+            bounds.iter().map(|p| p.print(cx)).joined(inter_str, f)
+        }))
+        .maybe_display()
 }
 
 fn wrap_item<W, F>(w: &mut W, f: F)
