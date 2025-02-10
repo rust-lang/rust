@@ -29,6 +29,8 @@ defaults:
     # shell. (This should only make a difference on Windows, where the default
     # shell is PowerShell.)
     shell: bash
+    env:
+      MSYS2_PATH_TYPE: inherit
 
 concurrency:
   # For a given workflow, if we push to the same branch, cancel all previous builds on that branch.
