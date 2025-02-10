@@ -92,15 +92,15 @@ pub unsafe auto trait Send {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !Send for *const T {}
+impl<T: ?Sized + PointeeSized> !Send for *const T {}
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !Send for *mut T {}
+impl<T: ?Sized + PointeeSized> !Send for *mut T {}
 
 // Most instances arise automatically, but this instance is needed to link up `T: Sync` with
 // `&T: Send` (and it also removes the unsound default instance `T Send` -> `&T: Send` that would
 // otherwise exist).
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Sync + ?Sized> Send for &T {}
+unsafe impl<T: Sync + ?Sized + PointeeSized> Send for &T {}
 
 /// Types with a constant size known at compile time.
 ///
@@ -231,7 +231,7 @@ impl<T: ?Sized> PointeeSized for T {}
 #[lang = "unsize"]
 #[rustc_deny_explicit_impl]
 #[rustc_do_not_implement_via_object]
-pub trait Unsize<T: ?Sized> {
+pub trait Unsize<T: ?Sized + PointeeSized>: PointeeSized {
     // Empty.
 }
 
@@ -268,7 +268,7 @@ marker_impls! {
         (),
         {T, const N: usize} [T; N],
         {T} [T],
-        {T: ?Sized} &T,
+        {T: ?Sized + PointeeSized} &T,
 }
 
 /// Types whose values can be duplicated simply by copying bits.
@@ -481,8 +481,8 @@ marker_impls! {
         isize, i8, i16, i32, i64, i128,
         f16, f32, f64, f128,
         bool, char,
-        {T: ?Sized} *const T,
-        {T: ?Sized} *mut T,
+        {T: ?Sized + PointeeSized} *const T,
+        {T: ?Sized + PointeeSized} *mut T,
 
 }
 
@@ -491,7 +491,7 @@ impl Copy for ! {}
 
 /// Shared references can be copied, but mutable references *cannot*!
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Copy for &T {}
+impl<T: ?Sized + PointeeSized> Copy for &T {}
 
 /// Marker trait for the types that are allowed in union fields and unsafe
 /// binder types.
@@ -675,9 +675,9 @@ pub unsafe auto trait Sync {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !Sync for *const T {}
+impl<T: ?Sized + PointeeSized> !Sync for *const T {}
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !Sync for *mut T {}
+impl<T: ?Sized + PointeeSized> !Sync for *mut T {}
 
 /// Zero-sized type used to mark things that "act like" they own a `T`.
 ///
@@ -814,57 +814,57 @@ impl<T: ?Sized> !Sync for *mut T {}
 /// [drop check]: Drop#drop-check
 #[lang = "phantom_data"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct PhantomData<T: ?Sized>;
+pub struct PhantomData<T: ?Sized + PointeeSized>;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Hash for PhantomData<T> {
+impl<T: ?Sized + PointeeSized> Hash for PhantomData<T> {
     #[inline]
     fn hash<H: Hasher>(&self, _: &mut H) {}
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> cmp::PartialEq for PhantomData<T> {
+impl<T: ?Sized + PointeeSized> cmp::PartialEq for PhantomData<T> {
     fn eq(&self, _other: &PhantomData<T>) -> bool {
         true
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> cmp::Eq for PhantomData<T> {}
+impl<T: ?Sized + PointeeSized> cmp::Eq for PhantomData<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> cmp::PartialOrd for PhantomData<T> {
+impl<T: ?Sized + PointeeSized> cmp::PartialOrd for PhantomData<T> {
     fn partial_cmp(&self, _other: &PhantomData<T>) -> Option<cmp::Ordering> {
         Option::Some(cmp::Ordering::Equal)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> cmp::Ord for PhantomData<T> {
+impl<T: ?Sized + PointeeSized> cmp::Ord for PhantomData<T> {
     fn cmp(&self, _other: &PhantomData<T>) -> cmp::Ordering {
         cmp::Ordering::Equal
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Copy for PhantomData<T> {}
+impl<T: ?Sized + PointeeSized> Copy for PhantomData<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Clone for PhantomData<T> {
+impl<T: ?Sized + PointeeSized> Clone for PhantomData<T> {
     fn clone(&self) -> Self {
         Self
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Default for PhantomData<T> {
+impl<T: ?Sized + PointeeSized> Default for PhantomData<T> {
     fn default() -> Self {
         Self
     }
 }
 
 #[unstable(feature = "structural_match", issue = "31434")]
-impl<T: ?Sized> StructuralPartialEq for PhantomData<T> {}
+impl<T: ?Sized + PointeeSized> StructuralPartialEq for PhantomData<T> {}
 
 /// Compiler-internal trait used to indicate the type of enum discriminants.
 ///
@@ -907,15 +907,15 @@ pub trait DiscriminantKind {
 pub unsafe auto trait Freeze {}
 
 #[unstable(feature = "freeze", issue = "121675")]
-impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
+impl<T: ?Sized + PointeeSized> !Freeze for UnsafeCell<T> {}
 marker_impls! {
     #[unstable(feature = "freeze", issue = "121675")]
     unsafe Freeze for
-        {T: ?Sized} PhantomData<T>,
-        {T: ?Sized} *const T,
-        {T: ?Sized} *mut T,
-        {T: ?Sized} &T,
-        {T: ?Sized} &mut T,
+        {T: ?Sized + PointeeSized} PhantomData<T>,
+        {T: ?Sized + PointeeSized} *const T,
+        {T: ?Sized + PointeeSized} *mut T,
+        {T: ?Sized + PointeeSized} &T,
+        {T: ?Sized + PointeeSized} &mut T,
 }
 
 /// Types that do not require any pinning guarantees.
@@ -1003,15 +1003,15 @@ impl !Unpin for PhantomPinned {}
 marker_impls! {
     #[stable(feature = "pin", since = "1.33.0")]
     Unpin for
-        {T: ?Sized} &T,
-        {T: ?Sized} &mut T,
+        {T: ?Sized + PointeeSized} &T,
+        {T: ?Sized + PointeeSized} &mut T,
 }
 
 marker_impls! {
     #[stable(feature = "pin_raw", since = "1.38.0")]
     Unpin for
-        {T: ?Sized} *const T,
-        {T: ?Sized} *mut T,
+        {T: ?Sized + PointeeSized} *const T,
+        {T: ?Sized + PointeeSized} *mut T,
 }
 
 /// A marker for types that can be dropped.
