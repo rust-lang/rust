@@ -559,10 +559,6 @@ where
             let node = *node;
             let depth = *depth;
 
-            // node is definitely in the current component, add it to the annotation.
-            if node != initial {
-                current_component_annotation.update_scc(self.annotations.new(node));
-            }
             debug!(
                 "Visiting {node:?} at depth {depth:?}, annotation: {current_component_annotation:?}"
             );
