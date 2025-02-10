@@ -866,7 +866,8 @@ impl SourceAnalyzer {
 
         // Case where path is a qualifier of another path, e.g. foo::bar::Baz where we are
         // trying to resolve foo::bar.
-        if path.parent_path().is_some() {
+        if let Some(parent_path) = path.parent_path() {
+            let parent_hir_path = Path::from_src(&mut ctx, parent_path);
             return match resolve_hir_path_qualifier(db, &self.resolver, &hir_path, &types_map) {
                 None if meta_path.is_some() => path
                     .first_segment()
@@ -876,6 +877,42 @@ impl SourceAnalyzer {
                             .map(PathResolution::ToolModule)
                     })
                     .map(|it| (it, None)),
+                // Case the type name conflict with use module,
+                // e.g.
+                // ```
+                // use std::str;
+                // fn main() {
+                //     str::from_utf8();  // as module std::str
+                //     str::len();        // as primitive type str
+                //     str::no_exist_item(); // as primitive type str
+                // }
+                // ```
+                Some(it) if matches!(it, PathResolution::Def(ModuleDef::BuiltinType(_))) => {
+                    if let (Some(mod_path), Some(parent_hir_path)) =
+                        (hir_path.mod_path(), parent_hir_path)
+                    {
+                        if let Some(ModuleDefId::ModuleId(id)) = self
+                            .resolver
+                            .resolve_module_path_in_items(db.upcast(), mod_path)
+                            .take_types()
+                        {
+                            let parent_hir_name =
+                                parent_hir_path.segments().get(1).map(|it| it.name);
+                            let module = crate::Module { id };
+                            if module
+                                .scope(db, None)
+                                .into_iter()
+                                .any(|(name, _)| Some(&name) == parent_hir_name)
+                            {
+                                return Some((
+                                    PathResolution::Def(ModuleDef::Module(module)),
+                                    None,
+                                ));
+                            };
+                        }
+                    }
+                    Some((it, None))
+                }
                 // FIXME: We do not show substitutions for parts of path, because this is really complex
                 // due to the interactions with associated items of `impl`s and associated items of associated
                 // types.
