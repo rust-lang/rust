@@ -63,7 +63,7 @@ pub(crate) use self::context::*;
 pub(crate) use self::span_map::{LinkFromSrc, collect_spans_and_sources};
 pub(crate) use self::write_shared::*;
 use crate::clean::{self, ItemId, RenderedLink};
-use crate::display::MaybeDisplay as _;
+use crate::display::{Joined as _, MaybeDisplay as _};
 use crate::error::Error;
 use crate::formats::Impl;
 use crate::formats::cache::Cache;
@@ -2142,11 +2142,11 @@ pub(crate) fn render_impl_summary(
 ) {
     let inner_impl = i.inner_impl();
     let id = cx.derive_id(get_id_for_impl(cx.tcx(), i.impl_item.item_id));
-    let aliases = if aliases.is_empty() {
-        String::new()
-    } else {
-        format!(" data-aliases=\"{}\"", aliases.join(","))
-    };
+    let aliases = (!aliases.is_empty())
+        .then_some(fmt::from_fn(|f| {
+            write!(f, " data-aliases=\"{}\"", fmt::from_fn(|f| aliases.iter().joined(",", f)))
+        }))
+        .maybe_display();
     write_str(w, format_args!("<section id=\"{id}\" class=\"impl\"{aliases}>"));
     render_rightside(w, cx, &i.impl_item, RenderMode::Normal);
     write_str(
