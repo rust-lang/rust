@@ -1,6 +1,5 @@
 extern crate std;
 use std::string::String;
-use std::vec::Vec;
 use std::{eprintln, format};
 
 use super::{HInt, MinInt, i256, u256};
@@ -36,28 +35,30 @@ fn widen_mul_u128() {
         (0, 1234, u256::ZERO),
     ];
 
-    let mut errors = Vec::new();
-    for (i, (a, b, exp)) in tests.iter().copied().enumerate() {
-        let res = a.widen_mul(b);
-        let res_z = a.zero_widen_mul(b);
-        assert_eq!(res, res_z);
-        if res != exp {
-            errors.push((i, a, b, exp, res));
-        }
-    }
-
-    for (i, a, b, exp, res) in &errors {
+    let mut has_errors = false;
+    let mut add_error = |i, a, b, expected, actual| {
+        has_errors = true;
         eprintln!(
             "\
             FAILURE ({i}): {a:#034x} * {b:#034x}\n\
             expected: {}\n\
             got:      {}\
             ",
-            hexu(*exp),
-            hexu(*res)
+            hexu(expected),
+            hexu(actual)
         );
+    };
+
+    for (i, (a, b, exp)) in tests.iter().copied().enumerate() {
+        let res = a.widen_mul(b);
+        let res_z = a.zero_widen_mul(b);
+        assert_eq!(res, res_z);
+        if res != exp {
+            add_error(i, a, b, exp, res);
+        }
     }
-    assert!(errors.is_empty());
+
+    assert!(!has_errors);
 }
 
 #[test]
@@ -68,7 +69,21 @@ fn not_u256() {
 #[test]
 fn shr_u256() {
     let only_low = [1, u16::MAX.into(), u32::MAX.into(), u64::MAX.into(), u128::MAX];
-    let mut errors = Vec::new();
+    let mut has_errors = false;
+
+    let mut add_error = |a, b, expected, actual| {
+        has_errors = true;
+        eprintln!(
+            "\
+            FAILURE:  {} >> {b}\n\
+            expected: {}\n\
+            actual:   {}\
+            ",
+            hexu(a),
+            hexu(expected),
+            hexu(actual),
+        );
+    };
 
     for a in only_low {
         for perturb in 0..10 {
@@ -77,7 +92,7 @@ fn shr_u256() {
                 let res = a.widen() >> shift;
                 let expected = (a >> shift).widen();
                 if res != expected {
-                    errors.push((a.widen(), shift, res, expected));
+                    add_error(a.widen(), shift, expected, res);
                 }
             }
         }
@@ -107,23 +122,11 @@ fn shr_u256() {
     for (input, shift, expected) in check {
         let res = input >> shift;
         if res != expected {
-            errors.push((input, shift, res, expected));
+            add_error(input, shift, expected, res);
         }
     }
 
-    for (a, b, res, expected) in &errors {
-        eprintln!(
-            "\
-            FAILURE:  {} >> {b}\n\
-            expected: {}\n\
-            got:      {}\
-            ",
-            hexu(*a),
-            hexu(*expected),
-            hexu(*res)
-        );
-    }
-    assert!(errors.is_empty());
+    assert!(!has_errors);
 }
 
 #[test]
