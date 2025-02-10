@@ -1097,15 +1097,15 @@ pub(crate) enum MiscPatternSuggestion {
 
 #[derive(LintDiagnostic)]
 #[diag(mir_build_rust_2024_incompatible_pat)]
-pub(crate) struct Rust2024IncompatiblePat {
+pub(crate) struct Rust2024IncompatiblePat<'m> {
     #[subdiagnostic]
-    pub(crate) sugg: Rust2024IncompatiblePatSugg,
+    pub(crate) sugg: Rust2024IncompatiblePatSugg<'m>,
     pub(crate) bad_modifiers: bool,
     pub(crate) bad_ref_pats: bool,
     pub(crate) is_hard_error: bool,
 }
 
-pub(crate) struct Rust2024IncompatiblePatSugg {
+pub(crate) struct Rust2024IncompatiblePatSugg<'m> {
     /// If true, our suggestion is to elide explicit binding modifiers.
     /// If false, our suggestion is to make the pattern fully explicit.
     pub(crate) suggest_eliding_modes: bool,
@@ -1113,10 +1113,10 @@ pub(crate) struct Rust2024IncompatiblePatSugg {
     pub(crate) ref_pattern_count: usize,
     pub(crate) binding_mode_count: usize,
     /// Labels for where incompatibility-causing by-ref default binding modes were introduced.
-    pub(crate) default_mode_labels: FxIndexMap<Span, ty::Mutability>,
+    pub(crate) default_mode_labels: &'m FxIndexMap<Span, ty::Mutability>,
 }
 
-impl Subdiagnostic for Rust2024IncompatiblePatSugg {
+impl<'m> Subdiagnostic for Rust2024IncompatiblePatSugg<'m> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
@@ -1124,7 +1124,7 @@ impl Subdiagnostic for Rust2024IncompatiblePatSugg {
     ) {
         // Format and emit explanatory notes about default binding modes. Reversing the spans' order
         // means if we have nested spans, the innermost ones will be visited first.
-        for (span, def_br_mutbl) in self.default_mode_labels.into_iter().rev() {
+        for (&span, &def_br_mutbl) in self.default_mode_labels.iter().rev() {
             // Don't point to a macro call site.
             if !span.from_expansion() {
                 let note_msg = "matching on a reference type with a non-reference pattern changes the default binding mode";

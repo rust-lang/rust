@@ -34,7 +34,7 @@ struct PatCtxt<'a, 'tcx> {
     typeck_results: &'a ty::TypeckResults<'tcx>,
 
     /// Used by the Rust 2024 migration lint.
-    rust_2024_migration: Option<PatMigration<'a>>,
+    rust_2024_migration: Option<PatMigration<'a, 'tcx>>,
 }
 
 pub(super) fn pat_from_hir<'a, 'tcx>(
@@ -69,7 +69,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         if let Some(s) = &mut self.rust_2024_migration
             && !adjustments.is_empty()
         {
-            s.visit_implicit_derefs(pat.span, adjustments);
+            s.visit_implicit_derefs(pat, adjustments);
         }
 
         // When implicit dereferences have been inserted in this pattern, the unadjusted lowered

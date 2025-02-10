@@ -2,7 +2,7 @@
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::MultiSpan;
-use rustc_hir::{BindingMode, ByRef, HirId, Mutability};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability};
 use rustc_index::IndexVec;
 use rustc_lint as lint;
 use rustc_middle::span_bug;
@@ -14,13 +14,13 @@ use crate::fluent_generated as fluent;
 
 /// For patterns flagged for migration during HIR typeck, this handles constructing and emitting
 /// a diagnostic suggestion.
-pub(super) struct PatMigration<'a> {
-    suggestion: Vec<(Span, String)>,
-    ref_pattern_count: usize,
-    binding_mode_count: usize,
+pub(super) struct PatMigration<'a, 'tcx> {
+    /// All the variable bindings encountered in lowering the pattern, along with whether to
+    /// suggest adding/removing them.
+    bindings: IndexVec<PatBindingIdx, PatBinding>,
     /// All the dereferences encountered in lowering the pattern, along with how their corresponding
-    /// patterns affect the default binding mode.
-    derefs: IndexVec<PatDerefIdx, PatDeref>,
+    /// patterns affect the default binding mode, and whether to suggest adding/removing them.
+    derefs: IndexVec<PatDerefIdx, PatDeref<'a, 'tcx>>,
     /// Internal state: the innermost deref above the pattern currently being lowered.
     innermost_deref: Option<PatDerefIdx>,
     /// Labels for where incompatibility-causing by-ref default binding modes were introduced.
@@ -34,10 +34,30 @@ pub(super) struct PatMigration<'a> {
 }
 
 rustc_index::newtype_index! {
+    struct PatBindingIdx {}
+}
+
+rustc_index::newtype_index! {
     struct PatDerefIdx {}
 }
 
-struct PatDeref {
+struct PatBinding {
+    /// The span of the binding modifier (empty if no explicit modifier was provided).
+    span: Span,
+    /// The actual binding mode of this binding.
+    mode: BindingMode,
+    /// Whether to include a binding modifier (e.g. `ref` or `mut`) in the suggested pattern.
+    suggest: bool,
+}
+
+struct PatDeref<'a, 'tcx> {
+    /// The span of the pattern where this deref occurs (implicitly or explicitly).
+    span: Span,
+    /// Whether this span is for a potentially-removable explicitly-provided deref, or an implicit
+    /// dereference which we can potentially suggest making explicit.
+    kind: PatDerefKind<'a, 'tcx>,
+    /// Whether to include this as a `&` or `&mut` in the suggested pattern.
+    suggest: bool,
     /// The default binding mode for variables under this deref.
     real_default_mode: ByRef,
     /// The span that introduced the current default binding mode, or `None` for the top-level pat.
@@ -50,12 +70,32 @@ struct PatDeref {
     parent: Option<PatDerefIdx>,
 }
 
-impl<'a> PatMigration<'a> {
+enum PatDerefKind<'a, 'tcx> {
+    /// For dereferences from lowering `&` and `&mut` patterns
+    Explicit,
+    /// For dereferences inserted by match ergonomics
+    Implicit { ref_tys: &'a [Ty<'tcx>] },
+}
+
+/// Assuming the input is a slice of reference types implicitly dereferenced by match ergonomics
+/// (stored in [`ty::TypeckResults::pat_adjustments`]), iterate over their reference mutabilities.
+/// A span is provided for debugging purposes.
+fn iter_ref_mutbls<'a, 'tcx>(
+    span: Span,
+    ref_tys: &'a [Ty<'tcx>],
+) -> impl Iterator<Item = Mutability> + use<'a, 'tcx> {
+    ref_tys.iter().map(move |ref_ty| {
+        let &ty::Ref(_, _, mutbl) = ref_ty.kind() else {
+            span_bug!(span, "pattern implicitly dereferences a non-ref type");
+        };
+        mutbl
+    })
+}
+
+impl<'a, 'tcx> PatMigration<'a, 'tcx> {
     pub(super) fn new(info: &'a Rust2024IncompatiblePatInfo) -> Self {
         PatMigration {
-            suggestion: Vec::new(),
-            ref_pattern_count: 0,
-            binding_mode_count: 0,
+            bindings: IndexVec::new(),
             derefs: IndexVec::new(),
             innermost_deref: None,
             default_mode_labels: Default::default(),
@@ -65,19 +105,13 @@ impl<'a> PatMigration<'a> {
 
     /// On Rust 2024, this emits a hard error. On earlier Editions, this emits the
     /// future-incompatibility lint `rust_2024_incompatible_pat`.
-    pub(super) fn emit<'tcx>(self, tcx: TyCtxt<'tcx>, pat_id: HirId) {
+    pub(super) fn emit(self, tcx: TyCtxt<'tcx>, pat_id: HirId) {
         let mut spans =
             MultiSpan::from_spans(self.info.primary_labels.iter().map(|(span, _)| *span).collect());
         for (span, label) in self.info.primary_labels.iter() {
             spans.push_span_label(*span, label.clone());
         }
-        let sugg = Rust2024IncompatiblePatSugg {
-            suggest_eliding_modes: self.info.suggest_eliding_modes,
-            suggestion: self.suggestion,
-            ref_pattern_count: self.ref_pattern_count,
-            binding_mode_count: self.binding_mode_count,
-            default_mode_labels: self.default_mode_labels,
-        };
+        let sugg = self.build_suggestion();
         // If a relevant span is from at least edition 2024, this is a hard error.
         let is_hard_error = spans.primary_spans().iter().any(|span| span.at_least_rust_2024());
         if is_hard_error {
@@ -126,6 +160,61 @@ impl<'a> PatMigration<'a> {
         }
     }
 
+    fn build_suggestion<'m>(&'m self) -> Rust2024IncompatiblePatSugg<'m> {
+        let mut removed_modifiers = 0;
+        let mut added_modifiers = 0;
+        let modes = self.bindings.iter().filter_map(|binding| {
+            if binding.mode == BindingMode::NONE {
+                // This binding mode is written as the empty string; no need to suggest.
+                None
+            } else {
+                if !binding.suggest && !binding.span.is_empty() {
+                    // This binding is in the source but not the suggestion; suggest removing it.
+                    removed_modifiers += 1;
+                    Some((binding.span, String::new()))
+                } else if binding.suggest && binding.span.is_empty() {
+                    // This binding is in the suggestion but not the source; suggest adding it.
+                    added_modifiers += 1;
+                    Some((binding.span, binding.mode.prefix_str().to_owned()))
+                } else {
+                    // This binding is as it should be.
+                    None
+                }
+            }
+        });
+
+        let mut added_ref_pats = 0;
+        let derefs = self.derefs.iter().filter_map(|deref| match deref.kind {
+            PatDerefKind::Explicit if !deref.suggest => {
+                // This is a ref pattern in the source but not the suggestion; suggest removing it.
+                // TODO: we don't yet suggest removing reference patterns
+                todo!();
+            }
+            PatDerefKind::Implicit { ref_tys } if deref.suggest => {
+                // This is a ref pattern in the suggestion but not the source; suggest adding it.
+                let ref_pat_str =
+                    iter_ref_mutbls(deref.span, ref_tys).map(Mutability::ref_prefix_str).collect();
+                added_ref_pats += ref_tys.len();
+                Some((deref.span.shrink_to_lo(), ref_pat_str))
+            }
+            _ => None,
+        });
+
+        let suggestion = modes.chain(derefs).collect();
+        let binding_mode_count = if added_modifiers == 0 && added_ref_pats == 0 {
+            removed_modifiers
+        } else {
+            added_modifiers
+        };
+        Rust2024IncompatiblePatSugg {
+            suggest_eliding_modes: self.info.suggest_eliding_modes,
+            suggestion,
+            binding_mode_count,
+            ref_pattern_count: added_ref_pats,
+            default_mode_labels: &self.default_mode_labels,
+        }
+    }
+
     /// The default binding mode at the current pattern.
     fn real_default_mode(&self) -> ByRef {
         if let Some(current_ix) = self.innermost_deref {
@@ -136,32 +225,17 @@ impl<'a> PatMigration<'a> {
     }
 
     /// Tracks when we're lowering a pattern that implicitly dereferences the scrutinee.
-    /// This should only be called when the pattern type adjustments list `adjustments` is
-    /// non-empty.
+    /// This should only be called when the pattern type adjustments list `ref_tys` is non-empty.
     /// This should be followed by a call to [`PatMigration::leave_ref`] when we leave the pattern.
-    pub(super) fn visit_implicit_derefs<'tcx>(&mut self, pat_span: Span, adjustments: &[Ty<'tcx>]) {
-        let implicit_deref_mutbls = adjustments.iter().map(|ref_ty| {
-            let &ty::Ref(_, _, mutbl) = ref_ty.kind() else {
-                span_bug!(pat_span, "pattern implicitly dereferences a non-ref type");
-            };
-            mutbl
-        });
-
-        if !self.info.suggest_eliding_modes {
-            // If we can't fix the pattern by eliding modifiers, we'll need to make the pattern
-            // fully explicit. i.e. we'll need to suggest reference patterns for this.
-            let suggestion_str: String =
-                implicit_deref_mutbls.clone().map(|mutbl| mutbl.ref_prefix_str()).collect();
-            self.suggestion.push((pat_span.shrink_to_lo(), suggestion_str));
-            self.ref_pattern_count += adjustments.len();
-        }
-
+    pub(super) fn visit_implicit_derefs(&mut self, pat: &hir::Pat<'_>, ref_tys: &'a [Ty<'tcx>]) {
         // Remember if this changed the default binding mode, in case we want to label it.
         let new_real_ref_mutbl = match self.real_default_mode() {
             ByRef::Yes(Mutability::Not) => Mutability::Not,
-            _ => implicit_deref_mutbls.min().unwrap(),
+            _ => iter_ref_mutbls(pat.span, ref_tys).min().unwrap(),
         };
-        self.push_deref(pat_span, ByRef::Yes(new_real_ref_mutbl));
+        self.push_deref(pat.span, ByRef::Yes(new_real_ref_mutbl), PatDerefKind::Implicit {
+            ref_tys,
+        });
     }
 
     /// Tracks the default binding mode when we're lowering a `&` or `&mut` pattern.
@@ -174,12 +248,12 @@ impl<'a> PatMigration<'a> {
         // If this eats a by-ref default binding mode, label the binding mode.
         self.add_default_mode_label_if_needed();
         // Set the default binding mode to by-value.
-        self.push_deref(pat_span, ByRef::No);
+        self.push_deref(pat_span, ByRef::No, PatDerefKind::Explicit);
     }
 
     /// Adds a deref to our deref-forest, so that we can track the default binding mode.
     // TODO: this is also for propagating binding mode changes when we suggest adding patterns
-    fn push_deref(&mut self, span: Span, real_default_mode: ByRef) {
+    fn push_deref(&mut self, span: Span, real_default_mode: ByRef, kind: PatDerefKind<'a, 'tcx>) {
         let parent = self.innermost_deref;
         // If this keeps the default binding mode the same, it shares a mode origin with its
         // parent. If it changes the default binding mode, its mode origin is itself.
@@ -188,7 +262,15 @@ impl<'a> PatMigration<'a> {
         } else {
             Some(span)
         };
-        let my_ix = self.derefs.push(PatDeref { real_default_mode, default_mode_origin, parent });
+        let my_ix = self.derefs.push(PatDeref {
+            span,
+            suggest: !self.info.suggest_eliding_modes
+                || matches!(kind, PatDerefKind::Explicit { .. }),
+            kind,
+            real_default_mode,
+            default_mode_origin,
+            parent,
+        });
         self.innermost_deref = Some(my_ix);
     }
 
@@ -217,23 +299,20 @@ impl<'a> PatMigration<'a> {
             self.add_default_mode_label_if_needed();
             if self.info.suggest_eliding_modes && matches!(mode.0, ByRef::Yes(_)) {
                 // If our suggestion is to elide redundant modes, this will be one of them.
-                self.suggestion.push((pat_span.with_hi(ident.span.lo()), String::new()));
-                self.binding_mode_count += 1;
+                self.bindings.push(PatBinding {
+                    span: pat_span.with_hi(ident.span.lo()),
+                    mode,
+                    suggest: false,
+                });
             }
         }
         if !self.info.suggest_eliding_modes
             && explicit_ba.0 == ByRef::No
-            && let ByRef::Yes(mutbl) = mode.0
+            && matches!(mode.0, ByRef::Yes(_))
         {
             // If we can't fix the pattern by eliding modifiers, we'll need to make the pattern
             // fully explicit. i.e. we'll need to suggest reference patterns for this.
-            let sugg_str = match mutbl {
-                Mutability::Not => "ref ",
-                Mutability::Mut => "ref mut ",
-            };
-            self.suggestion
-                .push((pat_span.with_lo(ident.span.lo()).shrink_to_lo(), sugg_str.to_owned()));
-            self.binding_mode_count += 1;
+            self.bindings.push(PatBinding { span: pat_span.shrink_to_lo(), mode, suggest: true });
         }
     }
 }
