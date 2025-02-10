@@ -144,8 +144,8 @@ jobs:
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
 
-      - name: checkout submodules
-        run: src/ci/scripts/checkout-submodules.sh
+      #- name: checkout submodules
+      #  run: src/ci/scripts/checkout-submodules.sh
 
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
