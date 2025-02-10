@@ -1,5 +1,7 @@
 use std::ptr::Alignment;
 
+use rustc_serialize::PointeeSized;
+
 /// Returns the ABI-required minimum alignment of a type in bytes.
 ///
 /// This is equivalent to [`align_of`], but also works for some unsized
@@ -17,7 +19,7 @@ pub const fn align_of<T: ?Sized + Aligned>() -> Alignment {
 /// example `[T]` has alignment of `T`.
 ///
 /// [`align_of::<Self>()`]: align_of
-pub unsafe trait Aligned {
+pub unsafe trait Aligned: PointeeSized {
     /// Alignment of `Self`.
     const ALIGN: Alignment;
 }
