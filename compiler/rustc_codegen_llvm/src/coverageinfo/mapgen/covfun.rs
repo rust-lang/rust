@@ -11,7 +11,8 @@ use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
 };
 use rustc_middle::mir::coverage::{
-    CovTerm, CoverageIdsInfo, Expression, FunctionCoverageInfo, Mapping, MappingKind, Op,
+    BasicCoverageBlock, CovTerm, CoverageIdsInfo, Expression, FunctionCoverageInfo, Mapping,
+    MappingKind, Op,
 };
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_span::Span;
@@ -53,7 +54,7 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     let fn_cov_info = tcx.instance_mir(instance.def).function_coverage_info.as_deref()?;
     let ids_info = tcx.coverage_ids_info(instance.def)?;
 
-    let expressions = prepare_expressions(fn_cov_info, ids_info, is_used);
+    let expressions = prepare_expressions(ids_info);
 
     let mut covfun = CovfunRecord {
         mangled_function_name: tcx.symbol_name(instance).name,
@@ -75,26 +76,14 @@ pub(crate) fn prepare_covfun_record<'tcx>(
 }
 
 /// Convert the function's coverage-counter expressions into a form suitable for FFI.
-fn prepare_expressions(
-    fn_cov_info: &FunctionCoverageInfo,
-    ids_info: &CoverageIdsInfo,
-    is_used: bool,
-) -> Vec<ffi::CounterExpression> {
-    // If any counters or expressions were removed by MIR opts, replace their
-    // terms with zero.
-    let counter_for_term = |term| {
-        if !is_used || ids_info.is_zero_term(term) {
-            ffi::Counter::ZERO
-        } else {
-            ffi::Counter::from_term(term)
-        }
-    };
+fn prepare_expressions(ids_info: &CoverageIdsInfo) -> Vec<ffi::CounterExpression> {
+    let counter_for_term = ffi::Counter::from_term;
 
     // We know that LLVM will optimize out any unused expressions before
     // producing the final coverage map, so there's no need to do the same
     // thing on the Rust side unless we're confident we can do much better.
     // (See `CounterExpressionsMinimizer` in `CoverageMappingWriter.cpp`.)
-    fn_cov_info
+    ids_info
         .expressions
         .iter()
         .map(move |&Expression { lhs, op, rhs }| ffi::CounterExpression {
@@ -136,11 +125,16 @@ fn fill_region_tables<'tcx>(
 
     // For each counter/region pair in this function+file, convert it to a
     // form suitable for FFI.
-    let is_zero_term = |term| !covfun.is_used || ids_info.is_zero_term(term);
     for &Mapping { ref kind, span } in &fn_cov_info.mappings {
-        // If the mapping refers to counters/expressions that were removed by
-        // MIR opts, replace those occurrences with zero.
-        let kind = kind.map_terms(|term| if is_zero_term(term) { CovTerm::Zero } else { term });
+        // If this function is unused, replace all counters with zero.
+        let counter_for_bcb = |bcb: BasicCoverageBlock| -> ffi::Counter {
+            let term = if covfun.is_used {
+                ids_info.term_for_bcb[bcb].expect("every BCB in a mapping was given a term")
+            } else {
+                CovTerm::Zero
+            };
+            ffi::Counter::from_term(term)
+        };
 
         // Convert the `Span` into coordinates that we can pass to LLVM, or
         // discard the span if conversion fails. In rare, cases _all_ of a
@@ -154,23 +148,22 @@ fn fill_region_tables<'tcx>(
             continue;
         }
 
-        match kind {
-            MappingKind::Code(term) => {
-                code_regions
-                    .push(ffi::CodeRegion { cov_span, counter: ffi::Counter::from_term(term) });
+        match *kind {
+            MappingKind::Code { bcb } => {
+                code_regions.push(ffi::CodeRegion { cov_span, counter: counter_for_bcb(bcb) });
             }
-            MappingKind::Branch { true_term, false_term } => {
+            MappingKind::Branch { true_bcb, false_bcb } => {
                 branch_regions.push(ffi::BranchRegion {
                     cov_span,
-                    true_counter: ffi::Counter::from_term(true_term),
-                    false_counter: ffi::Counter::from_term(false_term),
+                    true_counter: counter_for_bcb(true_bcb),
+                    false_counter: counter_for_bcb(false_bcb),
                 });
             }
-            MappingKind::MCDCBranch { true_term, false_term, mcdc_params } => {
+            MappingKind::MCDCBranch { true_bcb, false_bcb, mcdc_params } => {
                 mcdc_branch_regions.push(ffi::MCDCBranchRegion {
                     cov_span,
-                    true_counter: ffi::Counter::from_term(true_term),
-                    false_counter: ffi::Counter::from_term(false_term),
+                    true_counter: counter_for_bcb(true_bcb),
+                    false_counter: counter_for_bcb(false_bcb),
                     mcdc_branch_params: ffi::mcdc::BranchParameters::from(mcdc_params),
                 });
             }
