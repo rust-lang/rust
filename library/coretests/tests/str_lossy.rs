@@ -58,6 +58,9 @@ fn chunks() {
         ("foo\u{10000}bar", b""),
     );
 
+    // incomplete
+    assert_chunks!(b"bar\xF1\x80\x80", ("bar", b"\xF1\x80\x80"));
+
     // surrogates
     assert_chunks!(
         b"\xED\xA0\x80foo\xED\xBF\xBFbar",
