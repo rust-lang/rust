@@ -1,0 +1,39 @@
+error[E0658]: `cfg(os_version_min)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-os-version-min.rs:3:7
+   |
+LL | #[cfg(os_version_min("macos", "11.0"))]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #136866 <https://github.com/rust-lang/rust/issues/136866> for more information
+   = help: add `#![feature(cfg_os_version_min)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `cfg(os_version_min)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-os-version-min.rs:7:7
+   |
+LL | #[cfg(os_version_min("macos", 1.20))]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #136866 <https://github.com/rust-lang/rust/issues/136866> for more information
+   = help: add `#![feature(cfg_os_version_min)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: expected a version literal
+  --> $DIR/feature-gate-cfg-os-version-min.rs:7:31
+   |
+LL | #[cfg(os_version_min("macos", 1.20))]
+   |                               ^^^^
+
+error[E0658]: `cfg(os_version_min)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-os-version-min.rs:16:13
+   |
+LL |     if cfg!(os_version_min("macos", "11.0")) {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #136866 <https://github.com/rust-lang/rust/issues/136866> for more information
+   = help: add `#![feature(cfg_os_version_min)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

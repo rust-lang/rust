@@ -1,0 +1,8 @@
+warning: version is set unnecessarily low, the minimum supported by Rust on this platform is 10.12
+  --> $DIR/cfg-os-version-min-edges.rs:7:45
+   |
+LL |     assert_eq!(cfg!(os_version_min("macos", "10.0")), cfg!(target_os = "macos"));
+   |                     ------------------------^^^^^^- help: use `target_os` instead: `target_os = "macos"`
+
+warning: 1 warning emitted
+
