@@ -236,7 +236,9 @@ fn compile_c(
 
     let compiler_command = if target == "aarch64_be-unknown-linux-gnu" {
         let Some(cxx_toolchain_dir) = cxx_toolchain_dir else {
-            panic!("When setting `--target aarch64_be-unknown-linux-gnu` the C++ compilers toolchain directory must be set with `--cxx-toolchain-dir <dest>`");
+            panic!(
+                "When setting `--target aarch64_be-unknown-linux-gnu` the C++ compilers toolchain directory must be set with `--cxx-toolchain-dir <dest>`"
+            );
         };
 
         /* clang++ cannot link an aarch64_be object file, so we invoke

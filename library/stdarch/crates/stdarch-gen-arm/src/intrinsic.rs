@@ -1726,7 +1726,6 @@ fn create_tokens(intrinsic: &Intrinsic, endianness: Endianness, tokens: &mut Tok
         Endianness::Big => &intrinsic.big_endian_compose,
     };
 
-
     /* If we have manually defined attributes on the block of yaml with
      * 'attr:' we want to add them */
     if let Some(attr) = &intrinsic.attr {

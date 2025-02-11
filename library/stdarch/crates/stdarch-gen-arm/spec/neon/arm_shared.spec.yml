@@ -9902,7 +9902,7 @@ intrinsics:
       # Inlining seems broken for 'fn vld1_v1i64', this "fixes" it
       - Let: [a, '*const i8', 'ptr as *const i8']
       - Let: [b, i32, 'crate::mem::align_of::<p64>() as i32']
-      - 'extern "unadjusted" {{ #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v1i64")] fn _vld1_v1i64(a: *const i8, b: i32) -> int64x1_t; }} transmute(_vld1_v1i64(a, b))'
+      - 'unsafe extern "unadjusted" {{ #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v1i64")] fn _vld1_v1i64(a: *const i8, b: i32) -> int64x1_t; }} transmute(_vld1_v1i64(a, b))'
 
   - name: "vtbx1"
     visibility: private
@@ -10681,7 +10681,7 @@ intrinsics:
       - Let: [a, i32, 'crc as i32']
       - Let: [b, i32, '(data & 0xFFFFFFFF).as_signed() as i32']
       - Let: [c, i32, '(data >> 32).as_signed() as i32']
-      - 'extern "unadjusted" {{ #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32w")] fn ___crc32w(crc: i32, data: i32) -> i32;}} ___crc32w(___crc32w(a, b), c).as_unsigned()'
+      - 'unsafe extern "unadjusted" {{ #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32w")] fn ___crc32w(crc: i32, data: i32) -> i32;}} ___crc32w(___crc32w(a, b), c).as_unsigned()'
 
   - name: "__crc32cd"
     doc: "CRC32-C single round checksum for quad words (64 bits)."
@@ -10700,7 +10700,7 @@ intrinsics:
       - Let: [a, i32, 'crc as i32']
       - Let: [b, i32, '(data & 0xFFFFFFFF).as_signed() as i32']
       - Let: [c, i32, '(data >> 32).as_signed() as i32']
-      - 'extern "unadjusted" {{ #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32cw")] fn ___crc32cw(crc: i32, data: i32) -> i32;}} ___crc32cw(___crc32cw(a, b), c).as_unsigned() as u32'
+      - 'unsafe extern "unadjusted" {{ #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32cw")] fn ___crc32cw(crc: i32, data: i32) -> i32;}} ___crc32cw(___crc32cw(a, b), c).as_unsigned() as u32'
 
   - name: "vabs{neon_type.no}"
     doc: "Absolute value (wrapping)."

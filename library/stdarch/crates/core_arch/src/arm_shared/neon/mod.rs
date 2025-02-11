@@ -11029,78 +11029,42 @@ mod tests {
     unsafe fn test_vceq_s8() {
         test_cmp_s8(
             |i, j| vceq_s8(i, j),
-            |a: i8, b: i8| -> u8 {
-                if a == b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: i8, b: i8| -> u8 { if a == b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vceqq_s8() {
         testq_cmp_s8(
             |i, j| vceqq_s8(i, j),
-            |a: i8, b: i8| -> u8 {
-                if a == b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: i8, b: i8| -> u8 { if a == b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vceq_s16() {
         test_cmp_s16(
             |i, j| vceq_s16(i, j),
-            |a: i16, b: i16| -> u16 {
-                if a == b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i16, b: i16| -> u16 { if a == b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vceqq_s16() {
         testq_cmp_s16(
             |i, j| vceqq_s16(i, j),
-            |a: i16, b: i16| -> u16 {
-                if a == b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i16, b: i16| -> u16 { if a == b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vceq_s32() {
         test_cmp_s32(
             |i, j| vceq_s32(i, j),
-            |a: i32, b: i32| -> u32 {
-                if a == b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i32, b: i32| -> u32 { if a == b { 0xFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vceqq_s32() {
         testq_cmp_s32(
             |i, j| vceqq_s32(i, j),
-            |a: i32, b: i32| -> u32 {
-                if a == b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i32, b: i32| -> u32 { if a == b { 0xFFFFFFFF } else { 0 } },
         );
     }
 
@@ -11108,78 +11072,42 @@ mod tests {
     unsafe fn test_vceq_u8() {
         test_cmp_u8(
             |i, j| vceq_u8(i, j),
-            |a: u8, b: u8| -> u8 {
-                if a == b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: u8, b: u8| -> u8 { if a == b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vceqq_u8() {
         testq_cmp_u8(
             |i, j| vceqq_u8(i, j),
-            |a: u8, b: u8| -> u8 {
-                if a == b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: u8, b: u8| -> u8 { if a == b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vceq_u16() {
         test_cmp_u16(
             |i, j| vceq_u16(i, j),
-            |a: u16, b: u16| -> u16 {
-                if a == b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u16, b: u16| -> u16 { if a == b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vceqq_u16() {
         testq_cmp_u16(
             |i, j| vceqq_u16(i, j),
-            |a: u16, b: u16| -> u16 {
-                if a == b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u16, b: u16| -> u16 { if a == b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vceq_u32() {
         test_cmp_u32(
             |i, j| vceq_u32(i, j),
-            |a: u32, b: u32| -> u32 {
-                if a == b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u32, b: u32| -> u32 { if a == b { 0xFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vceqq_u32() {
         testq_cmp_u32(
             |i, j| vceqq_u32(i, j),
-            |a: u32, b: u32| -> u32 {
-                if a == b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u32, b: u32| -> u32 { if a == b { 0xFFFFFFFF } else { 0 } },
         );
     }
 
@@ -11187,26 +11115,14 @@ mod tests {
     unsafe fn test_vceq_f32() {
         test_cmp_f32(
             |i, j| vcge_f32(i, j),
-            |a: f32, b: f32| -> u32 {
-                if a == b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f32, b: f32| -> u32 { if a == b { 0xFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vceqq_f32() {
         testq_cmp_f32(
             |i, j| vcgeq_f32(i, j),
-            |a: f32, b: f32| -> u32 {
-                if a == b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f32, b: f32| -> u32 { if a == b { 0xFFFFFFFF } else { 0 } },
         );
     }
 
@@ -11214,78 +11130,42 @@ mod tests {
     unsafe fn test_vcgt_s8() {
         test_cmp_s8(
             |i, j| vcgt_s8(i, j),
-            |a: i8, b: i8| -> u8 {
-                if a > b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: i8, b: i8| -> u8 { if a > b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgtq_s8() {
         testq_cmp_s8(
             |i, j| vcgtq_s8(i, j),
-            |a: i8, b: i8| -> u8 {
-                if a > b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: i8, b: i8| -> u8 { if a > b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgt_s16() {
         test_cmp_s16(
             |i, j| vcgt_s16(i, j),
-            |a: i16, b: i16| -> u16 {
-                if a > b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i16, b: i16| -> u16 { if a > b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgtq_s16() {
         testq_cmp_s16(
             |i, j| vcgtq_s16(i, j),
-            |a: i16, b: i16| -> u16 {
-                if a > b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i16, b: i16| -> u16 { if a > b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgt_s32() {
         test_cmp_s32(
             |i, j| vcgt_s32(i, j),
-            |a: i32, b: i32| -> u32 {
-                if a > b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i32, b: i32| -> u32 { if a > b { 0xFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgtq_s32() {
         testq_cmp_s32(
             |i, j| vcgtq_s32(i, j),
-            |a: i32, b: i32| -> u32 {
-                if a > b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i32, b: i32| -> u32 { if a > b { 0xFFFFFFFF } else { 0 } },
         );
     }
 
@@ -11293,78 +11173,42 @@ mod tests {
     unsafe fn test_vcgt_u8() {
         test_cmp_u8(
             |i, j| vcgt_u8(i, j),
-            |a: u8, b: u8| -> u8 {
-                if a > b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: u8, b: u8| -> u8 { if a > b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgtq_u8() {
         testq_cmp_u8(
             |i, j| vcgtq_u8(i, j),
-            |a: u8, b: u8| -> u8 {
-                if a > b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: u8, b: u8| -> u8 { if a > b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgt_u16() {
         test_cmp_u16(
             |i, j| vcgt_u16(i, j),
-            |a: u16, b: u16| -> u16 {
-                if a > b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u16, b: u16| -> u16 { if a > b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgtq_u16() {
         testq_cmp_u16(
             |i, j| vcgtq_u16(i, j),
-            |a: u16, b: u16| -> u16 {
-                if a > b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u16, b: u16| -> u16 { if a > b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgt_u32() {
         test_cmp_u32(
             |i, j| vcgt_u32(i, j),
-            |a: u32, b: u32| -> u32 {
-                if a > b {
-                    0xFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u32, b: u32| -> u32 { if a > b { 0xFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgtq_u32() {
         testq_cmp_u32(
             |i, j| vcgtq_u32(i, j),
-            |a: u32, b: u32| -> u32 {
-                if a > b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u32, b: u32| -> u32 { if a > b { 0xFFFFFFFF } else { 0 } },
         );
     }
 
@@ -11372,26 +11216,14 @@ mod tests {
     unsafe fn test_vcgt_f32() {
         test_cmp_f32(
             |i, j| vcgt_f32(i, j),
-            |a: f32, b: f32| -> u32 {
-                if a > b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f32, b: f32| -> u32 { if a > b { 0xFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgtq_f32() {
         testq_cmp_f32(
             |i, j| vcgtq_f32(i, j),
-            |a: f32, b: f32| -> u32 {
-                if a > b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f32, b: f32| -> u32 { if a > b { 0xFFFFFFFF } else { 0 } },
         );
     }
 
@@ -11399,78 +11231,42 @@ mod tests {
     unsafe fn test_vclt_s8() {
         test_cmp_s8(
             |i, j| vclt_s8(i, j),
-            |a: i8, b: i8| -> u8 {
-                if a < b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: i8, b: i8| -> u8 { if a < b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcltq_s8() {
         testq_cmp_s8(
             |i, j| vcltq_s8(i, j),
-            |a: i8, b: i8| -> u8 {
-                if a < b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: i8, b: i8| -> u8 { if a < b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vclt_s16() {
         test_cmp_s16(
             |i, j| vclt_s16(i, j),
-            |a: i16, b: i16| -> u16 {
-                if a < b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i16, b: i16| -> u16 { if a < b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcltq_s16() {
         testq_cmp_s16(
             |i, j| vcltq_s16(i, j),
-            |a: i16, b: i16| -> u16 {
-                if a < b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i16, b: i16| -> u16 { if a < b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vclt_s32() {
         test_cmp_s32(
             |i, j| vclt_s32(i, j),
-            |a: i32, b: i32| -> u32 {
-                if a < b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i32, b: i32| -> u32 { if a < b { 0xFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcltq_s32() {
         testq_cmp_s32(
             |i, j| vcltq_s32(i, j),
-            |a: i32, b: i32| -> u32 {
-                if a < b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i32, b: i32| -> u32 { if a < b { 0xFFFFFFFF } else { 0 } },
         );
     }
 
@@ -11478,78 +11274,42 @@ mod tests {
     unsafe fn test_vclt_u8() {
         test_cmp_u8(
             |i, j| vclt_u8(i, j),
-            |a: u8, b: u8| -> u8 {
-                if a < b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: u8, b: u8| -> u8 { if a < b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcltq_u8() {
         testq_cmp_u8(
             |i, j| vcltq_u8(i, j),
-            |a: u8, b: u8| -> u8 {
-                if a < b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: u8, b: u8| -> u8 { if a < b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vclt_u16() {
         test_cmp_u16(
             |i, j| vclt_u16(i, j),
-            |a: u16, b: u16| -> u16 {
-                if a < b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u16, b: u16| -> u16 { if a < b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcltq_u16() {
         testq_cmp_u16(
             |i, j| vcltq_u16(i, j),
-            |a: u16, b: u16| -> u16 {
-                if a < b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u16, b: u16| -> u16 { if a < b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vclt_u32() {
         test_cmp_u32(
             |i, j| vclt_u32(i, j),
-            |a: u32, b: u32| -> u32 {
-                if a < b {
-                    0xFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u32, b: u32| -> u32 { if a < b { 0xFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcltq_u32() {
         testq_cmp_u32(
             |i, j| vcltq_u32(i, j),
-            |a: u32, b: u32| -> u32 {
-                if a < b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u32, b: u32| -> u32 { if a < b { 0xFFFFFFFF } else { 0 } },
         );
     }
 
@@ -11557,26 +11317,14 @@ mod tests {
     unsafe fn test_vclt_f32() {
         test_cmp_f32(
             |i, j| vclt_f32(i, j),
-            |a: f32, b: f32| -> u32 {
-                if a < b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f32, b: f32| -> u32 { if a < b { 0xFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcltq_f32() {
         testq_cmp_f32(
             |i, j| vcltq_f32(i, j),
-            |a: f32, b: f32| -> u32 {
-                if a < b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f32, b: f32| -> u32 { if a < b { 0xFFFFFFFF } else { 0 } },
         );
     }
 
@@ -11584,78 +11332,42 @@ mod tests {
     unsafe fn test_vcle_s8() {
         test_cmp_s8(
             |i, j| vcle_s8(i, j),
-            |a: i8, b: i8| -> u8 {
-                if a <= b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: i8, b: i8| -> u8 { if a <= b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcleq_s8() {
         testq_cmp_s8(
             |i, j| vcleq_s8(i, j),
-            |a: i8, b: i8| -> u8 {
-                if a <= b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: i8, b: i8| -> u8 { if a <= b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcle_s16() {
         test_cmp_s16(
             |i, j| vcle_s16(i, j),
-            |a: i16, b: i16| -> u16 {
-                if a <= b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i16, b: i16| -> u16 { if a <= b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcleq_s16() {
         testq_cmp_s16(
             |i, j| vcleq_s16(i, j),
-            |a: i16, b: i16| -> u16 {
-                if a <= b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i16, b: i16| -> u16 { if a <= b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcle_s32() {
         test_cmp_s32(
             |i, j| vcle_s32(i, j),
-            |a: i32, b: i32| -> u32 {
-                if a <= b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i32, b: i32| -> u32 { if a <= b { 0xFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcleq_s32() {
         testq_cmp_s32(
             |i, j| vcleq_s32(i, j),
-            |a: i32, b: i32| -> u32 {
-                if a <= b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i32, b: i32| -> u32 { if a <= b { 0xFFFFFFFF } else { 0 } },
         );
     }
 
@@ -11663,78 +11375,42 @@ mod tests {
     unsafe fn test_vcle_u8() {
         test_cmp_u8(
             |i, j| vcle_u8(i, j),
-            |a: u8, b: u8| -> u8 {
-                if a <= b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: u8, b: u8| -> u8 { if a <= b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcleq_u8() {
         testq_cmp_u8(
             |i, j| vcleq_u8(i, j),
-            |a: u8, b: u8| -> u8 {
-                if a <= b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: u8, b: u8| -> u8 { if a <= b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcle_u16() {
         test_cmp_u16(
             |i, j| vcle_u16(i, j),
-            |a: u16, b: u16| -> u16 {
-                if a <= b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u16, b: u16| -> u16 { if a <= b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcleq_u16() {
         testq_cmp_u16(
             |i, j| vcleq_u16(i, j),
-            |a: u16, b: u16| -> u16 {
-                if a <= b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u16, b: u16| -> u16 { if a <= b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcle_u32() {
         test_cmp_u32(
             |i, j| vcle_u32(i, j),
-            |a: u32, b: u32| -> u32 {
-                if a <= b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u32, b: u32| -> u32 { if a <= b { 0xFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcleq_u32() {
         testq_cmp_u32(
             |i, j| vcleq_u32(i, j),
-            |a: u32, b: u32| -> u32 {
-                if a <= b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u32, b: u32| -> u32 { if a <= b { 0xFFFFFFFF } else { 0 } },
         );
     }
 
@@ -11742,26 +11418,14 @@ mod tests {
     unsafe fn test_vcle_f32() {
         test_cmp_f32(
             |i, j| vcle_f32(i, j),
-            |a: f32, b: f32| -> u32 {
-                if a <= b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f32, b: f32| -> u32 { if a <= b { 0xFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcleq_f32() {
         testq_cmp_f32(
             |i, j| vcleq_f32(i, j),
-            |a: f32, b: f32| -> u32 {
-                if a <= b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f32, b: f32| -> u32 { if a <= b { 0xFFFFFFFF } else { 0 } },
         );
     }
 
@@ -11769,78 +11433,42 @@ mod tests {
     unsafe fn test_vcge_s8() {
         test_cmp_s8(
             |i, j| vcge_s8(i, j),
-            |a: i8, b: i8| -> u8 {
-                if a >= b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: i8, b: i8| -> u8 { if a >= b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgeq_s8() {
         testq_cmp_s8(
             |i, j| vcgeq_s8(i, j),
-            |a: i8, b: i8| -> u8 {
-                if a >= b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: i8, b: i8| -> u8 { if a >= b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcge_s16() {
         test_cmp_s16(
             |i, j| vcge_s16(i, j),
-            |a: i16, b: i16| -> u16 {
-                if a >= b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i16, b: i16| -> u16 { if a >= b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgeq_s16() {
         testq_cmp_s16(
             |i, j| vcgeq_s16(i, j),
-            |a: i16, b: i16| -> u16 {
-                if a >= b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i16, b: i16| -> u16 { if a >= b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcge_s32() {
         test_cmp_s32(
             |i, j| vcge_s32(i, j),
-            |a: i32, b: i32| -> u32 {
-                if a >= b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i32, b: i32| -> u32 { if a >= b { 0xFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgeq_s32() {
         testq_cmp_s32(
             |i, j| vcgeq_s32(i, j),
-            |a: i32, b: i32| -> u32 {
-                if a >= b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: i32, b: i32| -> u32 { if a >= b { 0xFFFFFFFF } else { 0 } },
         );
     }
 
@@ -11848,78 +11476,42 @@ mod tests {
     unsafe fn test_vcge_u8() {
         test_cmp_u8(
             |i, j| vcge_u8(i, j),
-            |a: u8, b: u8| -> u8 {
-                if a >= b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: u8, b: u8| -> u8 { if a >= b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgeq_u8() {
         testq_cmp_u8(
             |i, j| vcgeq_u8(i, j),
-            |a: u8, b: u8| -> u8 {
-                if a >= b {
-                    0xFF
-                } else {
-                    0
-                }
-            },
+            |a: u8, b: u8| -> u8 { if a >= b { 0xFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcge_u16() {
         test_cmp_u16(
             |i, j| vcge_u16(i, j),
-            |a: u16, b: u16| -> u16 {
-                if a >= b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u16, b: u16| -> u16 { if a >= b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgeq_u16() {
         testq_cmp_u16(
             |i, j| vcgeq_u16(i, j),
-            |a: u16, b: u16| -> u16 {
-                if a >= b {
-                    0xFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u16, b: u16| -> u16 { if a >= b { 0xFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcge_u32() {
         test_cmp_u32(
             |i, j| vcge_u32(i, j),
-            |a: u32, b: u32| -> u32 {
-                if a >= b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u32, b: u32| -> u32 { if a >= b { 0xFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgeq_u32() {
         testq_cmp_u32(
             |i, j| vcgeq_u32(i, j),
-            |a: u32, b: u32| -> u32 {
-                if a >= b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: u32, b: u32| -> u32 { if a >= b { 0xFFFFFFFF } else { 0 } },
         );
     }
 
@@ -11927,26 +11519,14 @@ mod tests {
     unsafe fn test_vcge_f32() {
         test_cmp_f32(
             |i, j| vcge_f32(i, j),
-            |a: f32, b: f32| -> u32 {
-                if a >= b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f32, b: f32| -> u32 { if a >= b { 0xFFFFFFFF } else { 0 } },
         );
     }
     #[simd_test(enable = "neon")]
     unsafe fn test_vcgeq_f32() {
         testq_cmp_f32(
             |i, j| vcgeq_f32(i, j),
-            |a: f32, b: f32| -> u32 {
-                if a >= b {
-                    0xFFFFFFFF
-                } else {
-                    0
-                }
-            },
+            |a: f32, b: f32| -> u32 { if a >= b { 0xFFFFFFFF } else { 0 } },
         );
     }
 
