@@ -153,7 +153,7 @@ impl TestContext {
         };
         let defaults = config.comment_defaults.base();
         defaults.exit_status = None.into();
-        defaults.require_annotations = None.into();
+        defaults.require_annotations = Some(Spanned::dummy(true)).into();
         defaults.diagnostic_code_prefix = Some(Spanned::dummy("clippy::".into())).into();
         defaults.set_custom("rustfix", RustfixMode::Everything);
         if let Some(collector) = self.diagnostic_collector.clone() {
