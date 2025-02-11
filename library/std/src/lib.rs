@@ -281,6 +281,8 @@
 #![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
+#![feature(cfg_boolean_literals)]
+#![cfg_attr(not(bootstrap), feature(cfg_os_version_min))]
 #![feature(concat_idents)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]

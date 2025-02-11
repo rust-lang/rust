@@ -80,10 +80,10 @@ use crate::sync::Arc;
 use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::fd::FileDesc;
 use crate::sys::time::SystemTime;
+#[cfg(target_os = "android")]
+use crate::sys::weak::maybe_weak;
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use crate::sys::weak::syscall;
-#[cfg(target_os = "android")]
-use crate::sys::weak::weak;
 use crate::sys::{cvt, cvt_r};
 pub use crate::sys_common::fs::exists;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
@@ -1508,9 +1508,13 @@ impl File {
                 Ok(())
             } else if #[cfg(target_os = "android")] {
                 let times = [to_timespec(times.accessed)?, to_timespec(times.modified)?];
-                // futimens requires Android API level 19
                 cvt(unsafe {
-                    weak!(fn futimens(c_int, *const libc::timespec) -> c_int);
+                    maybe_weak!(
+                        // FIXME: Once `os_version_min` supports Android, mark this as available on
+                        // Android API level 19.
+                        #[cfg_always_available_on(false)]
+                        fn futimens(c_int, *const libc::timespec) -> c_int;
+                    );
                     match futimens.get() {
                         Some(futimens) => futimens(self.as_raw_fd(), times.as_ptr()),
                         None => return Err(io::const_error!(
@@ -1523,10 +1527,14 @@ impl File {
             } else {
                 #[cfg(all(target_os = "linux", target_env = "gnu", target_pointer_width = "32", not(target_arch = "riscv32")))]
                 {
-                    use crate::sys::{time::__timespec64, weak::weak};
+                    use crate::sys::{time::__timespec64, weak::maybe_weak};
 
-                    // Added in glibc 2.34
-                    weak!(fn __futimens64(libc::c_int, *const __timespec64) -> libc::c_int);
+                    maybe_weak!(
+                        // FIXME: Once `os_version_min` supports glibc, mark this as availabe on
+                        // glibc 2.34.
+                        #[cfg_always_available_on(false)]
+                        fn __futimens64(libc::c_int, *const __timespec64) -> libc::c_int;
+                    );
 
                     if let Some(futimens64) = __futimens64.get() {
                         let to_timespec = |time: Option<SystemTime>| time.map(|time| time.t.to_timespec64())

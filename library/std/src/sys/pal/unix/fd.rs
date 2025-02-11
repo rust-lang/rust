@@ -252,7 +252,15 @@ impl FileDesc {
 
     #[cfg(all(target_os = "android", target_pointer_width = "32"))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
-        super::weak::weak!(fn preadv64(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
+        super::weak::maybe_weak!(
+            #[cfg_always_available_on(false)]
+            fn preadv64(
+                fd: libc::c_int,
+                iov: *const libc::iovec,
+                iovcnt: libc::c_int,
+                offset: off64_t,
+            ) -> isize;
+        );
 
         match preadv64.get() {
             Some(preadv) => {
@@ -281,7 +289,33 @@ impl FileDesc {
     // use "weak" linking.
     #[cfg(target_vendor = "apple")]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
-        super::weak::weak!(fn preadv(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
+        #[cfg(not(bootstrap))]
+        super::weak::maybe_weak!(
+            #[cfg_always_available_on(any(
+                os_version_min("macos", "11.0"),
+                os_version_min("ios", "14.0"),
+                os_version_min("tvos", "14.0"),
+                os_version_min("watchos", "7.0"),
+                os_version_min("visionos", "1.0"),
+            ))]
+            fn preadv(
+                fd: libc::c_int,
+                iov: *const libc::iovec,
+                iovcnt: libc::c_int,
+                offset: off64_t,
+            ) -> isize;
+        );
+
+        #[cfg(bootstrap)]
+        super::weak::maybe_weak!(
+            #[cfg_always_available_on(false)]
+            fn preadv(
+                fd: libc::c_int,
+                iov: *const libc::iovec,
+                iovcnt: libc::c_int,
+                offset: off64_t,
+            ) -> isize;
+        );
 
         match preadv.get() {
             Some(preadv) => {
@@ -445,7 +479,15 @@ impl FileDesc {
 
     #[cfg(all(target_os = "android", target_pointer_width = "32"))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
-        super::weak::weak!(fn pwritev64(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
+        super::weak::maybe_weak!(
+            #[cfg_always_available_on(false)]
+            fn pwritev64(
+                fd: libc::c_int,
+                iov: *const libc::iovec,
+                iovcnt: libc::c_int,
+                offset: off64_t,
+            ) -> isize;
+        );
 
         match pwritev64.get() {
             Some(pwritev) => {
@@ -463,18 +505,35 @@ impl FileDesc {
         }
     }
 
-    // We support old MacOS, iOS, watchOS, tvOS and visionOS. `pwritev` was added in the following
-    // Apple OS versions:
-    // ios 14.0
-    // tvos 14.0
-    // macos 11.0
-    // watchos 7.0
-    //
-    // These versions may be newer than the minimum supported versions of OS's we support so we must
-    // use "weak" linking.
     #[cfg(target_vendor = "apple")]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
-        super::weak::weak!(fn pwritev(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
+        #[cfg(not(bootstrap))]
+        super::weak::maybe_weak!(
+            #[cfg_always_available_on(any(
+                os_version_min("macos", "11.0"),
+                os_version_min("ios", "14.0"),
+                os_version_min("tvos", "14.0"),
+                os_version_min("watchos", "7.0"),
+                os_version_min("visionos", "1.0"),
+            ))]
+            fn pwritev(
+                fd: libc::c_int,
+                iov: *const libc::iovec,
+                iovcnt: libc::c_int,
+                offset: off64_t,
+            ) -> isize;
+        );
+
+        #[cfg(bootstrap)]
+        super::weak::maybe_weak!(
+            #[cfg_always_available_on(false)]
+            fn pwritev(
+                fd: libc::c_int,
+                iov: *const libc::iovec,
+                iovcnt: libc::c_int,
+                offset: off64_t,
+            ) -> isize;
+        );
 
         match pwritev.get() {
             Some(pwritev) => {

@@ -19,7 +19,7 @@
 // There are a variety of `#[cfg]`s controlling which targets are involved in
 // each instance of `weak!` and `syscall!`. Rather than trying to unify all of
 // that, we'll just allow that some unix targets don't use this module at all.
-#![allow(dead_code, unused_macros)]
+#![allow(dead_code, unused_macros, unused_imports)]
 
 use crate::ffi::CStr;
 use crate::marker::PhantomData;
@@ -28,11 +28,12 @@ use crate::{mem, ptr};
 
 // We can use true weak linkage on ELF targets.
 #[cfg(all(unix, not(target_vendor = "apple")))]
-pub(crate) macro weak {
-    (fn $name:ident($($t:ty),*) -> $ret:ty) => (
+pub(crate) macro weak_impl {
+    (fn $name:ident($($t:ty),*) -> $ret:ty $(, $sym:expr)?) => (
         let ref $name: ExternWeak<unsafe extern "C" fn($($t),*) -> $ret> = {
             unsafe extern "C" {
                 #[linkage = "extern_weak"]
+                $(#[link_name = $sym])?
                 static $name: Option<unsafe extern "C" fn($($t),*) -> $ret>;
             }
             #[allow(unused_unsafe)]
@@ -41,9 +42,44 @@ pub(crate) macro weak {
     )
 }
 
-// On non-ELF targets, use the dlsym approximation of weak linkage.
+// On Apple targets, we use `dlsym` instead of real weak linkage, since that requires an Xcode SDK
+// with the item available in `*.tbd` files for the linker, and we support compiling and linking
+// the standard library with older Xcode versions.
 #[cfg(target_vendor = "apple")]
-pub(crate) use self::dlsym as weak;
+pub(crate) use dlsym as weak_impl;
+
+/// Try to use the symbol directly if always available, and fall back to weak linking if not.
+pub(crate) macro maybe_weak {
+    {
+        #[cfg_always_available_on($($cfg:tt)*)]
+        $(#[link_name = $sym:expr])?
+        fn $name:ident($($param:ident : $t:ty),* $(,)?) -> $ret:ty;
+    } => {
+        // If the symbol is known to be available at compile-time, use it directly.
+        #[cfg($($cfg)*)]
+        let $name = {
+            extern "C" {
+                $(#[link_name = $sym])?
+                fn $name($($param : $t),*) -> $ret;
+            }
+            Known($name)
+        };
+
+        // Otherwise it needs to be weakly linked.
+        #[cfg(not($($cfg)*))]
+        weak_impl!(fn $name($($t),*) -> $ret $(, $sym)?);
+    }
+}
+
+/// The function is statically known here.
+pub(crate) struct Known<F>(F);
+
+impl<F: Copy> Known<F> {
+    #[inline]
+    pub(crate) fn get(&self) -> Option<F> {
+        Some(self.0)
+    }
+}
 
 pub(crate) struct ExternWeak<F: Copy> {
     weak_ptr: Option<F>,
@@ -145,7 +181,7 @@ unsafe fn fetch(name: &str) -> *mut libc::c_void {
 pub(crate) macro syscall {
     (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
         unsafe fn $name($($arg_name: $t),*) -> $ret {
-            weak! { fn $name($($t),*) -> $ret }
+            weak_impl! { fn $name($($t),*) -> $ret }
 
             if let Some(fun) = $name.get() {
                 fun($($arg_name),*)
@@ -161,7 +197,7 @@ pub(crate) macro syscall {
 pub(crate) macro syscall {
     (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
         unsafe fn $name($($arg_name:$t),*) -> $ret {
-            weak! { fn $name($($t),*) -> $ret }
+            weak_impl! { fn $name($($t),*) -> $ret }
 
             // Use a weak symbol from libc when possible, allowing `LD_PRELOAD`
             // interposition, but if it's not found just use a raw syscall.

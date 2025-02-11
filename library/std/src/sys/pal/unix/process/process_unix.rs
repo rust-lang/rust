@@ -454,20 +454,24 @@ impl Command {
 
         cfg_if::cfg_if! {
             if #[cfg(target_os = "linux")] {
-                use crate::sys::weak::weak;
+                use crate::sys::weak::maybe_weak;
 
-                weak! {
+                maybe_weak!(
+                    #[cfg_always_available_on(false)]
                     fn pidfd_spawnp(
-                        *mut libc::c_int,
-                        *const libc::c_char,
-                        *const libc::posix_spawn_file_actions_t,
-                        *const libc::posix_spawnattr_t,
-                        *const *mut libc::c_char,
-                        *const *mut libc::c_char
-                    ) -> libc::c_int
-                }
+                        pidfd: *mut libc::c_int,
+                          path: *const libc::c_char,
+                        file_actions: *const libc::posix_spawn_file_actions_t,
+                        attrp: *const libc::posix_spawnattr_t,
+                        argv: *const *mut libc::c_char,
+                        envp: *const *mut libc::c_char,
+                    ) -> libc::c_int;
+                );
 
-                weak! { fn pidfd_getpid(libc::c_int) -> libc::c_int }
+                maybe_weak!(
+                    #[cfg_always_available_on(false)]
+                    fn pidfd_getpid(fd: libc::c_int) -> libc::c_int;
+                );
 
                 static PIDFD_SUPPORTED: AtomicU8 = AtomicU8::new(0);
                 const UNKNOWN: u8 = 0;
@@ -575,36 +579,28 @@ impl Command {
         ) -> libc::c_int;
 
         /// Get the function pointer for adding a chdir action to a
-        /// `posix_spawn_file_actions_t`, if available, assuming a dynamic libc.
+        /// `posix_spawn_file_actions_t`, if available.
         ///
         /// Some platforms can set a new working directory for a spawned process in the
         /// `posix_spawn` path. This function looks up the function pointer for adding
         /// such an action to a `posix_spawn_file_actions_t` struct.
-        #[cfg(not(all(target_os = "linux", target_env = "musl")))]
         fn get_posix_spawn_addchdir() -> Option<PosixSpawnAddChdirFn> {
-            use crate::sys::weak::weak;
+            use crate::sys::weak::maybe_weak;
 
-            weak! {
+            maybe_weak!(
+                // Weak symbol lookup doesn't work with statically linked libcs, so in cases
+                // where static linking is possible we need to either check for the presence
+                // of the symbol at compile time or know about it upfront.
+                //
+                // Our minimum required musl supports this function, so we can just use it.
+                #[cfg_always_available_on(all(target_os = "linux", target_env = "musl"))]
                 fn posix_spawn_file_actions_addchdir_np(
-                    *mut libc::posix_spawn_file_actions_t,
-                    *const libc::c_char
-                ) -> libc::c_int
-            }
+                    file_actions: *mut libc::posix_spawn_file_actions_t,
+                    path: *const libc::c_char,
+                ) -> libc::c_int;
+            );
 
             posix_spawn_file_actions_addchdir_np.get()
-        }
-
-        /// Get the function pointer for adding a chdir action to a
-        /// `posix_spawn_file_actions_t`, if available, on platforms where the function
-        /// is known to exist.
-        ///
-        /// Weak symbol lookup doesn't work with statically linked libcs, so in cases
-        /// where static linking is possible we need to either check for the presence
-        /// of the symbol at compile time or know about it upfront.
-        #[cfg(all(target_os = "linux", target_env = "musl"))]
-        fn get_posix_spawn_addchdir() -> Option<PosixSpawnAddChdirFn> {
-            // Our minimum required musl supports this function, so we can just use it.
-            Some(libc::posix_spawn_file_actions_addchdir_np)
         }
 
         let addchdir = match self.get_cwd() {
