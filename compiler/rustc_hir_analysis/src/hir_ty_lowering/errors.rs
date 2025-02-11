@@ -1047,10 +1047,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             };
         });
 
-        let segments: Vec<_> = match err_extend {
-            GenericsArgsErrExtend::DefVariant(segments) => segments.iter().collect(),
-            _ => segments.collect(),
-        };
+        let segments: Vec<_> = segments.collect();
         let types_and_spans: Vec<_> = segments
             .iter()
             .flat_map(|segment| {
@@ -1511,10 +1508,10 @@ fn generics_args_err_extend<'a>(
             if args.len() > 1
                 && let Some(span) = args.into_iter().last()
             {
-                let msg = "generic arguments are not allowed on both an enum and its variant's \
-                           path segments simultaneously; they are only valid in one place or the \
-                           other";
-                err.note(msg);
+                err.note(
+                    "generic arguments are not allowed on both an enum and its variant's path \
+                     segments simultaneously; they are only valid in one place or the other",
+                );
                 err.span_suggestion_verbose(
                     span,
                     "remove the generics arguments from one of the path segments",
