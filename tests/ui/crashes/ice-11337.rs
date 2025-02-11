@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![feature(trait_alias)]
 
 trait Confusing<F> = Fn(i32) where F: Fn(u32);

@@ -2,6 +2,7 @@ error: this item has comments with 4 forward slashes (`////`). These look like d
   --> tests/ui/four_forward_slashes_first_line.rs:1:1
    |
 LL | / //// borked doc comment on the first line. doesn't combust!
+LL | |
 LL | | fn a() {}
    | |_^
    |

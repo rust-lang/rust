@@ -1,3 +1,4 @@
+//@ check-pass
 //! False-positive tests to ensure we don't suggest `const` for things where it would cause a
 //! compilation error.
 //! The .stderr output of this test should be empty. Otherwise it's a bug somewhere.

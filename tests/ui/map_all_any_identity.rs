@@ -3,8 +3,10 @@
 fn main() {
     let _ = ["foo"].into_iter().map(|s| s == "foo").any(|a| a);
     //~^ map_all_any_identity
+
     let _ = ["foo"].into_iter().map(|s| s == "foo").all(std::convert::identity);
     //~^ map_all_any_identity
+
 
     //
     // Do not lint

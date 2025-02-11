@@ -2,9 +2,7 @@ error: this is an outer doc comment and does not apply to the parent module or c
   --> tests/ui/suspicious_doc_comments_unfixable.rs:4:1
    |
 LL | / ///! a
-LL | |
-LL | |
-LL | | ///! b
+...  |
 LL | | /// c
 LL | | ///! d
    | |______^
@@ -16,15 +14,17 @@ help: use an inner doc comment to document the parent module or crate
 LL + //! a
 LL |
 LL |
+LL |
 LL + //! b
 LL | /// c
 LL + //! d
    |
 
 error: this is an outer doc comment and does not apply to the parent module or crate
-  --> tests/ui/suspicious_doc_comments_unfixable.rs:12:1
+  --> tests/ui/suspicious_doc_comments_unfixable.rs:13:1
    |
 LL | / ///! a
+LL | |
 LL | |
 LL | | ///! b
 LL | | /// c
@@ -34,6 +34,7 @@ LL | | ///! d
 help: use an inner doc comment to document the parent module or crate
    |
 LL + //! a
+LL |
 LL |
 LL + //! b
 LL | /// c

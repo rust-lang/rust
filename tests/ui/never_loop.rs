@@ -10,8 +10,9 @@
 fn test1() {
     let mut x = 0;
     loop {
-        //~^ ERROR: this loop never actually loops
-        //~| NOTE: `#[deny(clippy::never_loop)]` on by default
+    //~^ never_loop
+
+
         // clippy::never_loop
         x += 1;
         if x == 1 {
@@ -34,7 +35,8 @@ fn test2() {
 fn test3() {
     let mut x = 0;
     loop {
-        //~^ ERROR: this loop never actually loops
+    //~^ never_loop
+
         // never loops
         x += 1;
         break;
@@ -55,10 +57,12 @@ fn test4() {
 fn test5() {
     let i = 0;
     loop {
-        //~^ ERROR: this loop never actually loops
+    //~^ never_loop
+
         // never loops
         while i == 0 {
-            //~^ ERROR: this loop never actually loops
+        //~^ never_loop
+
             // never loops
             break;
         }
@@ -71,7 +75,8 @@ fn test6() {
     'outer: loop {
         x += 1;
         loop {
-            //~^ ERROR: this loop never actually loops
+        //~^ never_loop
+
             // never loops
             if x == 5 {
                 break;
@@ -108,7 +113,8 @@ fn test8() {
 fn test9() {
     let x = Some(1);
     while let Some(y) = x {
-        //~^ ERROR: this loop never actually loops
+    //~^ never_loop
+
         // never loops
         return;
     }
@@ -116,7 +122,8 @@ fn test9() {
 
 fn test10() {
     for x in 0..10 {
-        //~^ ERROR: this loop never actually loops
+    //~^ never_loop
+
         // never loops
         match x {
             1 => break,
@@ -165,7 +172,8 @@ pub fn test13() {
 pub fn test14() {
     let mut a = true;
     'outer: while a {
-        //~^ ERROR: this loop never actually loops
+    //~^ never_loop
+
         // never loops
         while a {
             if a {
@@ -181,7 +189,8 @@ pub fn test14() {
 pub fn test15() {
     'label: loop {
         while false {
-            //~^ ERROR: this loop never actually loops
+        //~^ never_loop
+
             break 'label;
         }
     }
@@ -233,7 +242,8 @@ pub fn test18() {
     };
     // never loops
     let _ = loop {
-        //~^ ERROR: this loop never actually loops
+    //~^ never_loop
+
         let Some(x) = x else {
             return;
         };
@@ -255,12 +265,14 @@ pub fn test19() {
 
 pub fn test20() {
     'a: loop {
-        //~^ ERROR: this loop never actually loops
+    //~^ never_loop
+
         'b: {
             break 'b 'c: {
                 break 'a;
-                //~^ ERROR: sub-expression diverges
-                //~| NOTE: `-D clippy::diverging-sub-expression` implied by `-D warnings`
+                //~^ diverging_sub_expression
+
+
             };
         }
     }
@@ -292,7 +304,8 @@ pub fn test23() {
     for _ in 0..10 {
         'block: {
             for _ in 0..20 {
-                //~^ ERROR: this loop never actually loops
+            //~^ never_loop
+
                 break 'block;
             }
         }
@@ -376,7 +389,8 @@ pub fn test31(b: bool) {
     'a: loop {
         'b: {
             'c: loop {
-                //~^ ERROR: this loop never actually loops
+            //~^ never_loop
+
                 if b { break 'c } else { break 'b }
             }
             continue 'a;
@@ -387,11 +401,13 @@ pub fn test31(b: bool) {
 
 pub fn test32() {
     loop {
-        //~^ ERROR: this loop never actually loops
+    //~^ never_loop
+
         panic!("oh no");
     }
     loop {
-        //~^ ERROR: this loop never actually loops
+    //~^ never_loop
+
         unimplemented!("not yet");
     }
     loop {

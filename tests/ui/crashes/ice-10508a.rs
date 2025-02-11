@@ -1,3 +1,4 @@
+//@ check-pass
 // Used to overflow in `is_normalizable`
 
 use std::marker::PhantomData;

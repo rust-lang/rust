@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![warn(clippy::undocumented_unsafe_blocks)]
 #![allow(clippy::no_effect)]
 

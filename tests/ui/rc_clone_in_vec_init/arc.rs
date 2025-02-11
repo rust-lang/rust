@@ -7,8 +7,9 @@ fn main() {}
 
 fn should_warn_simple_case() {
     let v = vec![Arc::new("x".to_string()); 2];
-    //~^ ERROR: initializing a reference-counted pointer in `vec![elem; len]`
-    //~| NOTE: each element will point to the same `Arc` instance
+    //~^ rc_clone_in_vec_init
+
+
 }
 
 fn should_warn_simple_case_with_big_indentation() {
@@ -17,16 +18,18 @@ fn should_warn_simple_case_with_big_indentation() {
         dbg!(k);
         if true {
             let v = vec![Arc::new("x".to_string()); 2];
-            //~^ ERROR: initializing a reference-counted pointer in `vec![elem; len]`
-            //~| NOTE: each element will point to the same `Arc` instance
+            //~^ rc_clone_in_vec_init
+
+
         }
     }
 }
 
 fn should_warn_complex_case() {
     let v = vec![
-    //~^ ERROR: initializing a reference-counted pointer in `vec![elem; len]`
-    //~| NOTE: each element will point to the same `Arc` instance
+    //~^ rc_clone_in_vec_init
+
+
         std::sync::Arc::new(Mutex::new({
             let x = 1;
             dbg!(x);
@@ -36,8 +39,9 @@ fn should_warn_complex_case() {
     ];
 
     let v1 = vec![
-    //~^ ERROR: initializing a reference-counted pointer in `vec![elem; len]`
-    //~| NOTE: each element will point to the same `Arc` instance
+    //~^ rc_clone_in_vec_init
+
+
         Arc::new(Mutex::new({
             let x = 1;
             dbg!(x);

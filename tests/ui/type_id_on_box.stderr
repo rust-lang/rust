@@ -12,7 +12,7 @@ LL |     let _ = any_box.type_id();
    = help: to override `-D warnings` add `#[allow(clippy::type_id_on_box)]`
 
 error: calling `.type_id()` on `Box<dyn Any>`
-  --> tests/ui/type_id_on_box.rs:40:13
+  --> tests/ui/type_id_on_box.rs:41:13
    |
 LL |     let _ = any_box.type_id();
    |             -------^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     let _ = any_box.type_id();
    = note: if this is intentional, use `TypeId::of::<Box<dyn Any>>()` instead, which makes it more clear
 
 error: calling `.type_id()` on `Box<dyn AnySubTrait>`
-  --> tests/ui/type_id_on_box.rs:47:13
+  --> tests/ui/type_id_on_box.rs:49:13
    |
 LL |     let _ = b.type_id();
    |             -^^^^^^^^^^
@@ -34,7 +34,7 @@ LL |     let _ = b.type_id();
    = note: if this is intentional, use `TypeId::of::<Box<dyn AnySubTrait>>()` instead, which makes it more clear
 
 error: calling `.type_id()` on `Box<dyn Any>`
-  --> tests/ui/type_id_on_box.rs:51:13
+  --> tests/ui/type_id_on_box.rs:54:13
    |
 LL |     let _ = b.type_id();
    |             -^^^^^^^^^^

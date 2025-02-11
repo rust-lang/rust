@@ -5,20 +5,23 @@ fn match_bool() {
     let test: bool = true;
 
     match test {
-        //~^ ERROR: `match` on a boolean expression
+    //~^ match_bool
+
         true => 0,
         false => 42,
     };
 
     let option = 1;
     match option == 1 {
-        //~^ ERROR: `match` on a boolean expression
+    //~^ match_bool
+
         true => 1,
         false => 0,
     };
 
     match test {
-        //~^ ERROR: `match` on a boolean expression
+    //~^ match_bool
+
         true => (),
         false => {
             println!("Noooo!");
@@ -26,7 +29,8 @@ fn match_bool() {
     };
 
     match test {
-        //~^ ERROR: `match` on a boolean expression
+    //~^ match_bool
+
         false => {
             println!("Noooo!");
         },
@@ -34,7 +38,8 @@ fn match_bool() {
     };
 
     match test && test {
-        //~^ ERROR: `match` on a boolean expression
+    //~^ match_bool
+
         false => {
             println!("Noooo!");
         },
@@ -42,7 +47,8 @@ fn match_bool() {
     };
 
     match test {
-        //~^ ERROR: `match` on a boolean expression
+    //~^ match_bool
+
         false => {
             println!("Noooo!");
         },
@@ -67,37 +73,43 @@ fn match_bool() {
     };
 
     let _ = match test {
-        //~^ ERROR: `match` on a boolean expression
+    //~^ match_bool
+
         true if option == 5 => 10,
         _ => 1,
     };
 
     let _ = match test {
-        //~^ ERROR: `match` on a boolean expression
+    //~^ match_bool
+
         false if option == 5 => 10,
         _ => 1,
     };
 
     match test {
-        //~^ ERROR: `match` on a boolean expression
+    //~^ match_bool
+
         true if option == 5 => println!("Hello"),
         _ => (),
     };
 
     match test {
-        //~^ ERROR: `match` on a boolean expression
+    //~^ match_bool
+
         true if option == 5 => (),
         _ => println!("Hello"),
     };
 
     match test {
-        //~^ ERROR: `match` on a boolean expression
+    //~^ match_bool
+
         false if option == 5 => println!("Hello"),
         _ => (),
     };
 
     match test {
-        //~^ ERROR: `match` on a boolean expression
+    //~^ match_bool
+
         false if option == 5 => (),
         _ => println!("Hello"),
     };
@@ -105,7 +117,8 @@ fn match_bool() {
 
 fn issue14099() {
     match true {
-        //~^ ERROR: `match` on a boolean expression
+    //~^ match_bool
+
         true => 'a: {
             break 'a;
         },

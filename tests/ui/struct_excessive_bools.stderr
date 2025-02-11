@@ -3,9 +3,9 @@ error: more than 3 bools in a struct
    |
 LL | / struct BadFoo {
 LL | |
+LL | |
 LL | |     a: bool,
-LL | |     b: bool,
-LL | |     c: bool,
+...  |
 LL | |     d: bool,
 LL | | }
    | |_^
@@ -15,13 +15,13 @@ LL | | }
    = help: to override `-D warnings` add `#[allow(clippy::struct_excessive_bools)]`
 
 error: more than 3 bools in a struct
-  --> tests/ui/struct_excessive_bools.rs:39:5
+  --> tests/ui/struct_excessive_bools.rs:40:5
    |
 LL | /     struct FooFoo {
 LL | |
+LL | |
 LL | |         a: bool,
-LL | |         b: bool,
-LL | |         c: bool,
+...  |
 LL | |         d: bool,
 LL | |     }
    | |_____^

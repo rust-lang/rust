@@ -3,6 +3,7 @@ error: match can be simplified with `.unwrap_or_default()`
    |
 LL | /     match x {
 LL | |
+LL | |
 LL | |         Some(v) => v,
 LL | |         None => Vec::default(),
 LL | |     };
@@ -12,9 +13,10 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::manual_unwrap_or_default)]`
 
 error: match can be simplified with `.unwrap_or_default()`
-  --> tests/ui/manual_unwrap_or_default.rs:13:5
+  --> tests/ui/manual_unwrap_or_default.rs:14:5
    |
 LL | /     match x {
+LL | |
 LL | |
 LL | |         Some(v) => v,
 LL | |         _ => Vec::default(),
@@ -22,9 +24,10 @@ LL | |     };
    | |_____^ help: replace it with: `x.unwrap_or_default()`
 
 error: match can be simplified with `.unwrap_or_default()`
-  --> tests/ui/manual_unwrap_or_default.rs:20:5
+  --> tests/ui/manual_unwrap_or_default.rs:22:5
    |
 LL | /     match x {
+LL | |
 LL | |
 LL | |         Some(v) => v,
 LL | |         None => String::new(),
@@ -32,9 +35,10 @@ LL | |     };
    | |_____^ help: replace it with: `x.unwrap_or_default()`
 
 error: match can be simplified with `.unwrap_or_default()`
-  --> tests/ui/manual_unwrap_or_default.rs:27:5
+  --> tests/ui/manual_unwrap_or_default.rs:30:5
    |
 LL | /     match x {
+LL | |
 LL | |
 LL | |         None => Vec::default(),
 LL | |         Some(v) => v,
@@ -42,9 +46,10 @@ LL | |     };
    | |_____^ help: replace it with: `x.unwrap_or_default()`
 
 error: if let can be simplified with `.unwrap_or_default()`
-  --> tests/ui/manual_unwrap_or_default.rs:34:5
+  --> tests/ui/manual_unwrap_or_default.rs:38:5
    |
 LL | /     if let Some(v) = x {
+LL | |
 LL | |
 LL | |         v
 LL | |     } else {
@@ -53,9 +58,10 @@ LL | |     };
    | |_____^ help: replace it with: `x.unwrap_or_default()`
 
 error: match can be simplified with `.unwrap_or_default()`
-  --> tests/ui/manual_unwrap_or_default.rs:52:5
+  --> tests/ui/manual_unwrap_or_default.rs:57:5
    |
 LL | /     match x {
+LL | |
 LL | |
 LL | |         Ok(v) => v,
 LL | |         Err(_) => String::new(),
@@ -63,9 +69,10 @@ LL | |     };
    | |_____^ help: replace it with: `x.unwrap_or_default()`
 
 error: if let can be simplified with `.unwrap_or_default()`
-  --> tests/ui/manual_unwrap_or_default.rs:59:5
+  --> tests/ui/manual_unwrap_or_default.rs:65:5
    |
 LL | /     if let Ok(v) = x {
+LL | |
 LL | |
 LL | |         v
 LL | |     } else {
@@ -74,10 +81,11 @@ LL | |     };
    | |_____^ help: replace it with: `x.unwrap_or_default()`
 
 error: match can be simplified with `.unwrap_or_default()`
-  --> tests/ui/manual_unwrap_or_default.rs:71:20
+  --> tests/ui/manual_unwrap_or_default.rs:78:20
    |
 LL |           Some(_) => match *b {
    |  ____________________^
+LL | |
 LL | |             Some(v) => v,
 LL | |             _ => 0,
 LL | |         },

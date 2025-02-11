@@ -7,7 +7,7 @@ LL | |
    |
    = help: or try changing either arm body
 note: `_` wildcard arm here
-  --> tests/ui/match_same_arms_non_exhaustive.rs:46:9
+  --> tests/ui/match_same_arms_non_exhaustive.rs:47:9
    |
 LL |         _ => repeat(),
    |         ^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |         _ => repeat(),
    = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
 
 error: this match arm has an identical body to the `_` wildcard arm
-  --> tests/ui/match_same_arms_non_exhaustive.rs:58:13
+  --> tests/ui/match_same_arms_non_exhaustive.rs:59:13
    |
 LL | /             Ordering::AcqRel | Ordering::SeqCst => repeat(),
 LL | |
@@ -23,7 +23,7 @@ LL | |
    |
    = help: or try changing either arm body
 note: `_` wildcard arm here
-  --> tests/ui/match_same_arms_non_exhaustive.rs:60:13
+  --> tests/ui/match_same_arms_non_exhaustive.rs:62:13
    |
 LL |             _ => repeat(),
    |             ^^^^^^^^^^^^^

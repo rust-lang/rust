@@ -18,7 +18,8 @@ mod should_lint {
 
         impl S {
             fn foo() {}
-            //~^ ERROR: method's name is the same as an existing method in a trait
+            //~^ same_name_method
+
         }
 
         impl T1 for S {
@@ -33,7 +34,8 @@ mod should_lint {
 
         impl S {
             fn clone() {}
-            //~^ ERROR: method's name is the same as an existing method in a trait
+            //~^ same_name_method
+
         }
     }
 
@@ -44,7 +46,8 @@ mod should_lint {
 
         impl<U> S<U> {
             fn foo() {}
-            //~^ ERROR: method's name is the same as an existing method in a trait
+            //~^ same_name_method
+
         }
 
         impl<U: Copy> T1 for S<U> {
@@ -59,7 +62,8 @@ mod should_lint {
 
         impl S {
             fn foo() {}
-            //~^ ERROR: method's name is the same as an existing method in a trait
+            //~^ same_name_method
+
         }
 
         impl T1 for S {}
@@ -72,8 +76,10 @@ mod should_lint {
 
         impl S {
             fn foo() {}
-            //~^ ERROR: method's name is the same as an existing method in a trait
-            //~| ERROR: method's name is the same as an existing method in a trait
+            //~^ same_name_method
+            //~| same_name_method
+
+
         }
 
         impl T1 for S {}

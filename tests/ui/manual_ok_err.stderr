@@ -4,6 +4,7 @@ error: manual implementation of `ok`
 LL |       let _ = match funcall() {
    |  _____________^
 LL | |
+LL | |
 LL | |         Ok(v) => Some(v),
 LL | |         Err(_) => None,
 LL | |     };
@@ -13,10 +14,11 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::manual_ok_err)]`
 
 error: manual implementation of `ok`
-  --> tests/ui/manual_ok_err.rs:14:13
+  --> tests/ui/manual_ok_err.rs:15:13
    |
 LL |       let _ = match funcall() {
    |  _____________^
+LL | |
 LL | |
 LL | |         Ok(v) => Some(v),
 LL | |         _v => None,
@@ -24,10 +26,11 @@ LL | |     };
    | |_____^ help: replace with: `funcall().ok()`
 
 error: manual implementation of `err`
-  --> tests/ui/manual_ok_err.rs:20:13
+  --> tests/ui/manual_ok_err.rs:22:13
    |
 LL |       let _ = match funcall() {
    |  _____________^
+LL | |
 LL | |
 LL | |         Err(v) => Some(v),
 LL | |         Ok(_) => None,
@@ -35,10 +38,11 @@ LL | |     };
    | |_____^ help: replace with: `funcall().err()`
 
 error: manual implementation of `err`
-  --> tests/ui/manual_ok_err.rs:26:13
+  --> tests/ui/manual_ok_err.rs:29:13
    |
 LL |       let _ = match funcall() {
    |  _____________^
+LL | |
 LL | |
 LL | |         Err(v) => Some(v),
 LL | |         _v => None,
@@ -46,10 +50,11 @@ LL | |     };
    | |_____^ help: replace with: `funcall().err()`
 
 error: manual implementation of `ok`
-  --> tests/ui/manual_ok_err.rs:32:13
+  --> tests/ui/manual_ok_err.rs:36:13
    |
 LL |       let _ = if let Ok(v) = funcall() {
    |  _____________^
+LL | |
 LL | |
 LL | |         Some(v)
 LL | |     } else {
@@ -58,10 +63,11 @@ LL | |     };
    | |_____^ help: replace with: `funcall().ok()`
 
 error: manual implementation of `err`
-  --> tests/ui/manual_ok_err.rs:39:13
+  --> tests/ui/manual_ok_err.rs:44:13
    |
 LL |       let _ = if let Err(v) = funcall() {
    |  _____________^
+LL | |
 LL | |
 LL | |         Some(v)
 LL | |     } else {
@@ -70,10 +76,11 @@ LL | |     };
    | |_____^ help: replace with: `funcall().err()`
 
 error: manual implementation of `ok`
-  --> tests/ui/manual_ok_err.rs:47:13
+  --> tests/ui/manual_ok_err.rs:53:13
    |
 LL |       let _ = match funcall() {
    |  _____________^
+LL | |
 LL | |
 LL | |         Ok(v) => Some(v),
 LL | |         _v @ _ => None,
@@ -81,10 +88,11 @@ LL | |     };
    | |_____^ help: replace with: `funcall().ok()`
 
 error: manual implementation of `ok`
-  --> tests/ui/manual_ok_err.rs:64:13
+  --> tests/ui/manual_ok_err.rs:71:13
    |
 LL |       let _ = match -S {
    |  _____________^
+LL | |
 LL | |
 LL | |         Ok(v) => Some(v),
 LL | |         _ => None,

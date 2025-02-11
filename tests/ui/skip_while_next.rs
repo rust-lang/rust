@@ -12,9 +12,11 @@ fn skip_while_next() {
 
     // Single-line case.
     let _ = v.iter().skip_while(|&x| *x < 0).next();
+    //~^ skip_while_next
 
     // Multi-line case.
     let _ = v.iter().skip_while(|&x| {
+    //~^ skip_while_next
                                 *x < 0
                             }
                    ).next();

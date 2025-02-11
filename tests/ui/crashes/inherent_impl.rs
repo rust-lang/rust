@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![deny(clippy::multiple_inherent_impl)]
 
 // Test for https://github.com/rust-lang/rust-clippy/issues/4578

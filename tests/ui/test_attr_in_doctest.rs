@@ -4,6 +4,7 @@
 ///
 /// ```
 /// #[test]
+//~^ test_attr_in_doctest
 /// fn should_be_linted() {
 ///     assert_eq!(1, 1);
 /// }
@@ -14,12 +15,14 @@
 ///
 /// ```
 /// #[test]
+//~^ test_attr_in_doctest
 /// fn should_also_be_linted() {
 ///     #[cfg(test)]
 ///     assert!(true);
 /// }
 ///
 /// #[test]
+//~^ test_attr_in_doctest
 /// fn should_be_linted_too() {
 ///     assert_eq!("#[test]", "
 ///     #[test]

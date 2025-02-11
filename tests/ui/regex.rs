@@ -1,3 +1,4 @@
+//@require-annotations-for-level: WARN
 #![allow(
     unused,
     clippy::needless_raw_strings,
@@ -27,11 +28,14 @@ fn syntax_error() {
     //~^ ERROR: regex syntax error: invalid character class range, the start must be <= th
 
     let some_regex = Regex::new(OPENING_PAREN);
+    //~^ invalid_regex
 
     let binary_pipe_in_wrong_position = BRegex::new("|");
     //~^ ERROR: trivial regex
     let some_binary_regex = BRegex::new(OPENING_PAREN);
+    //~^ invalid_regex
     let some_binary_regex_builder = BRegexBuilder::new(OPENING_PAREN);
+    //~^ invalid_regex
 
     let closing_paren = ")";
     let not_linted = Regex::new(closing_paren);
@@ -44,7 +48,9 @@ fn syntax_error() {
     ]);
 
     let set_error = RegexSet::new(&[OPENING_PAREN, r"[a-z]+\.(com|org|net)"]);
+    //~^ invalid_regex
     let bset_error = BRegexSet::new(&[OPENING_PAREN, r"[a-z]+\.(com|org|net)"]);
+    //~^ invalid_regex
 
     // These following three cases are considering valid since regex-1.8.0
     let raw_string_error = Regex::new(r"[...\/...]");
@@ -52,6 +58,7 @@ fn syntax_error() {
     let _ = Regex::new(r"(?<hi>hi)").unwrap();
 
     let escaped_string_span = Regex::new("\\b\\c");
+    //~^ invalid_regex
 
     let aux_span = Regex::new("(?ixi)");
     //~^ ERROR: regex syntax error: duplicate flag

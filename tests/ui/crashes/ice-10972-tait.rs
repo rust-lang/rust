@@ -1,3 +1,4 @@
+//@ check-pass
 // ICE: #10972
 // asked to assemble constituent types of unexpected type: Binder(Foo, [])
 #![feature(type_alias_impl_trait)]

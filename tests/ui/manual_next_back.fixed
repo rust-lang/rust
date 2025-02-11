@@ -30,5 +30,7 @@ fn main() {
 
     // should lint
     let _ = (0..10).next_back().unwrap();
+    //~^ manual_next_back
     let _ = "something".bytes().next_back();
+    //~^ manual_next_back
 }

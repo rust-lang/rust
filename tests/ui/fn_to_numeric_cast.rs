@@ -8,17 +8,28 @@ fn foo() -> String {
 
 fn test_function_to_numeric_cast() {
     let _ = foo as i8;
+    //~^ fn_to_numeric_cast_with_truncation
     let _ = foo as i16;
+    //~^ fn_to_numeric_cast_with_truncation
     let _ = foo as i32;
+    //~^ fn_to_numeric_cast_with_truncation
     let _ = foo as i64;
+    //~^ fn_to_numeric_cast
     let _ = foo as i128;
+    //~^ fn_to_numeric_cast
     let _ = foo as isize;
+    //~^ fn_to_numeric_cast
 
     let _ = foo as u8;
+    //~^ fn_to_numeric_cast_with_truncation
     let _ = foo as u16;
+    //~^ fn_to_numeric_cast_with_truncation
     let _ = foo as u32;
+    //~^ fn_to_numeric_cast_with_truncation
     let _ = foo as u64;
+    //~^ fn_to_numeric_cast
     let _ = foo as u128;
+    //~^ fn_to_numeric_cast
 
     // Casting to usize is OK and should not warn
     let _ = foo as usize;
@@ -32,17 +43,28 @@ fn test_function_var_to_numeric_cast() {
     let abc: fn() -> String = foo;
 
     let _ = abc as i8;
+    //~^ fn_to_numeric_cast_with_truncation
     let _ = abc as i16;
+    //~^ fn_to_numeric_cast_with_truncation
     let _ = abc as i32;
+    //~^ fn_to_numeric_cast_with_truncation
     let _ = abc as i64;
+    //~^ fn_to_numeric_cast
     let _ = abc as i128;
+    //~^ fn_to_numeric_cast
     let _ = abc as isize;
+    //~^ fn_to_numeric_cast
 
     let _ = abc as u8;
+    //~^ fn_to_numeric_cast_with_truncation
     let _ = abc as u16;
+    //~^ fn_to_numeric_cast_with_truncation
     let _ = abc as u32;
+    //~^ fn_to_numeric_cast_with_truncation
     let _ = abc as u64;
+    //~^ fn_to_numeric_cast
     let _ = abc as u128;
+    //~^ fn_to_numeric_cast
 
     // Casting to usize is OK and should not warn
     let _ = abc as usize;
@@ -50,6 +72,7 @@ fn test_function_var_to_numeric_cast() {
 
 fn fn_with_fn_args(f: fn(i32) -> i32) -> i32 {
     f as i32
+    //~^ fn_to_numeric_cast_with_truncation
 }
 
 fn main() {}

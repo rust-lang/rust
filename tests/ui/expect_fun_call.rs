@@ -33,12 +33,15 @@ fn main() {
     let error_code = 123_i32;
     let with_none_and_format: Option<i32> = None;
     with_none_and_format.expect(&format!("Error {}: fake error", error_code));
+    //~^ expect_fun_call
 
     let with_none_and_as_str: Option<i32> = None;
     with_none_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
+    //~^ expect_fun_call
 
     let with_none_and_format_with_macro: Option<i32> = None;
     with_none_and_format_with_macro.expect(format!("Error {}: fake error", one!()).as_str());
+    //~^ expect_fun_call
 
     let with_ok: Result<(), ()> = Ok(());
     with_ok.expect("error");
@@ -49,9 +52,11 @@ fn main() {
     let error_code = 123_i32;
     let with_err_and_format: Result<(), ()> = Err(());
     with_err_and_format.expect(&format!("Error {}: fake error", error_code));
+    //~^ expect_fun_call
 
     let with_err_and_as_str: Result<(), ()> = Err(());
     with_err_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
+    //~^ expect_fun_call
 
     let with_dummy_type = Foo::new();
     with_dummy_type.expect("another test string");
@@ -64,6 +69,7 @@ fn main() {
 
     //Issue #2937
     Some("foo").expect(format!("{} {}", 1, 2).as_ref());
+    //~^ expect_fun_call
 
     //Issue #2979 - this should not lint
     {
@@ -85,26 +91,35 @@ fn main() {
         }
 
         Some("foo").expect(&get_string());
+        //~^ expect_fun_call
         Some("foo").expect(get_string().as_ref());
+        //~^ expect_fun_call
         Some("foo").expect(get_string().as_str());
+        //~^ expect_fun_call
 
         Some("foo").expect(get_static_str());
+        //~^ expect_fun_call
         Some("foo").expect(get_non_static_str(&0));
+        //~^ expect_fun_call
     }
 
     //Issue #3839
     Some(true).expect(&format!("key {}, {}", 1, 2));
+    //~^ expect_fun_call
 
     //Issue #4912 - the receiver is a &Option
     {
         let opt = Some(1);
         let opt_ref = &opt;
         opt_ref.expect(&format!("{:?}", opt_ref));
+        //~^ expect_fun_call
     }
 
     let format_capture: Option<i32> = None;
     format_capture.expect(&format!("{error_code}"));
+    //~^ expect_fun_call
 
     let format_capture_and_value: Option<i32> = None;
     format_capture_and_value.expect(&format!("{error_code}, {}", 1));
+    //~^ expect_fun_call
 }

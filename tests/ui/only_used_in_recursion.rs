@@ -9,18 +9,22 @@ fn _simple2(x: u32) -> u32 {
 }
 
 fn _one_unused(flag: u32, a: usize) -> usize {
-    //~^ ERROR: parameter is only used in recursion
+//~^ only_used_in_recursion
+
     if flag == 0 { 0 } else { _one_unused(flag - 1, a) }
 }
 
 fn _two_unused(flag: u32, a: u32, b: i32) -> usize {
-    //~^ ERROR: parameter is only used in recursion
-    //~| ERROR: parameter is only used in recursion
+//~^ only_used_in_recursion
+//~| only_used_in_recursion
+
+
     if flag == 0 { 0 } else { _two_unused(flag - 1, a, b) }
 }
 
 fn _with_calc(flag: u32, a: i64) -> usize {
-    //~^ ERROR: parameter is only used in recursion
+//~^ only_used_in_recursion
+
     if flag == 0 {
         0
     } else {
@@ -34,8 +38,10 @@ fn _used_with_flag(flag: u32, a: u32) -> usize {
 }
 
 fn _used_with_unused(flag: u32, a: i32, b: i32) -> usize {
-    //~^ ERROR: parameter is only used in recursion
-    //~| ERROR: parameter is only used in recursion
+//~^ only_used_in_recursion
+//~| only_used_in_recursion
+
+
     if flag == 0 {
         0
     } else {
@@ -44,8 +50,10 @@ fn _used_with_unused(flag: u32, a: i32, b: i32) -> usize {
 }
 
 fn _codependent_unused(flag: u32, a: i32, b: i32) -> usize {
-    //~^ ERROR: parameter is only used in recursion
-    //~| ERROR: parameter is only used in recursion
+//~^ only_used_in_recursion
+//~| only_used_in_recursion
+
+
     if flag == 0 {
         0
     } else {
@@ -54,7 +62,8 @@ fn _codependent_unused(flag: u32, a: i32, b: i32) -> usize {
 }
 
 fn _not_primitive(flag: u32, b: String) -> usize {
-    //~^ ERROR: parameter is only used in recursion
+//~^ only_used_in_recursion
+
     if flag == 0 { 0 } else { _not_primitive(flag - 1, b) }
 }
 
@@ -62,13 +71,16 @@ struct A;
 
 impl A {
     fn _method(flag: usize, a: usize) -> usize {
-        //~^ ERROR: parameter is only used in recursion
+    //~^ only_used_in_recursion
+
         if flag == 0 { 0 } else { Self::_method(flag - 1, a) }
     }
 
     fn _method_self(&self, flag: usize, a: usize) -> usize {
-        //~^ ERROR: parameter is only used in recursion
-        //~| ERROR: parameter is only used in recursion
+    //~^ only_used_in_recursion
+    //~| only_used_in_recursion
+
+
         if flag == 0 { 0 } else { self._method_self(flag - 1, a) }
     }
 }
@@ -80,12 +92,14 @@ trait B {
 
 impl B for A {
     fn method(flag: u32, a: usize) -> usize {
-        //~^ ERROR: parameter is only used in recursion
+    //~^ only_used_in_recursion
+
         if flag == 0 { 0 } else { Self::method(flag - 1, a) }
     }
 
     fn method_self(&self, flag: u32, a: usize) -> usize {
-        //~^ ERROR: parameter is only used in recursion
+    //~^ only_used_in_recursion
+
         if flag == 0 { 0 } else { self.method_self(flag - 1, a) }
     }
 }
@@ -112,12 +126,14 @@ impl B for u32 {
 
 trait C {
     fn method(flag: u32, a: usize) -> usize {
-        //~^ ERROR: parameter is only used in recursion
+    //~^ only_used_in_recursion
+
         if flag == 0 { 0 } else { Self::method(flag - 1, a) }
     }
 
     fn method_self(&self, flag: u32, a: usize) -> usize {
-        //~^ ERROR: parameter is only used in recursion
+    //~^ only_used_in_recursion
+
         if flag == 0 { 0 } else { self.method_self(flag - 1, a) }
     }
 }

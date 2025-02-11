@@ -62,6 +62,10 @@ fn multiple_mutexes(m1: &Mutex<()>, m2: &Mutex<()>) {
     } else {
         m1.lock();
     }
+    //~^ if_let_mutex
+    //~^ if_let_mutex
+    //~^ if_let_mutex
+    //~^ if_let_mutex
 }
 
 fn main() {}

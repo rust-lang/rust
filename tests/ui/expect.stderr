@@ -9,7 +9,7 @@ LL |     let _ = opt.expect("");
    = help: to override `-D warnings` add `#[allow(clippy::expect_used)]`
 
 error: used `expect()` on a `Result` value
-  --> tests/ui/expect.rs:12:13
+  --> tests/ui/expect.rs:13:13
    |
 LL |     let _ = res.expect("");
    |             ^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     let _ = res.expect("");
    = note: if this value is an `Err`, it will panic
 
 error: used `expect_err()` on a `Result` value
-  --> tests/ui/expect.rs:14:13
+  --> tests/ui/expect.rs:16:13
    |
 LL |     let _ = res.expect_err("");
    |             ^^^^^^^^^^^^^^^^^^

@@ -31,26 +31,35 @@ fn transmute_ptr_to_ptr() {
         // pointer-to-pointer transmutes; bad
         let _: *const f32 = transmute(ptr);
         //~^ transmute_ptr_to_ptr
+
         let _: *mut f32 = transmute(mut_ptr);
         //~^ transmute_ptr_to_ptr
+
         // ref-ref transmutes; bad
         let _: &f32 = transmute(&1u32);
         //~^ transmute_ptr_to_ptr
+
         let _: &f32 = transmute(&1f64);
         //~^ transmute_ptr_to_ptr
+
         //:^ this test is here because both f32 and f64 are the same TypeVariant, but they are not
         // the same type
         let _: &mut f32 = transmute(&mut 1u32);
         //~^ transmute_ptr_to_ptr
+
         let _: &GenericParam<f32> = transmute(&GenericParam { t: 1u32 });
         //~^ transmute_ptr_to_ptr
+
         let u64_ref: &u64 = &0u64;
         let u8_ref: &u8 = transmute(u64_ref);
         //~^ transmute_ptr_to_ptr
+
         let _: *const u32 = transmute(mut_ptr);
         //~^ transmute_ptr_to_ptr
+
         let _: *mut u32 = transmute(ptr);
         //~^ transmute_ptr_to_ptr
+
     }
 
     // transmute internal lifetimes, should not lint
@@ -63,6 +72,7 @@ fn transmute_ptr_to_ptr() {
 fn lifetime_to_static(v: *mut &()) -> *const &'static () {
     unsafe { transmute(v) }
     //~^ transmute_ptr_to_ptr
+
 }
 
 // dereferencing raw pointers in const contexts, should not lint as it's unstable (issue 5959)
@@ -77,6 +87,7 @@ const _: &() = {
 fn msrv_1_37(ptr: *const u8) {
     unsafe {
         let _: *const i8 = transmute(ptr);
+        //~^ transmute_ptr_to_ptr
     }
 }
 
@@ -84,6 +95,7 @@ fn msrv_1_37(ptr: *const u8) {
 fn msrv_1_38(ptr: *const u8) {
     unsafe {
         let _: *const i8 = transmute(ptr);
+        //~^ transmute_ptr_to_ptr
     }
 }
 
@@ -91,7 +103,9 @@ fn msrv_1_38(ptr: *const u8) {
 fn msrv_1_64(ptr: *const u8, mut_ptr: *mut u8) {
     unsafe {
         let _: *mut u8 = transmute(ptr);
+        //~^ transmute_ptr_to_ptr
         let _: *const u8 = transmute(mut_ptr);
+        //~^ transmute_ptr_to_ptr
     }
 }
 
@@ -99,7 +113,9 @@ fn msrv_1_64(ptr: *const u8, mut_ptr: *mut u8) {
 fn msrv_1_65(ptr: *const u8, mut_ptr: *mut u8) {
     unsafe {
         let _: *mut u8 = transmute(ptr);
+        //~^ transmute_ptr_to_ptr
         let _: *const u8 = transmute(mut_ptr);
+        //~^ transmute_ptr_to_ptr
     }
 }
 

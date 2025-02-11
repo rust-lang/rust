@@ -1,3 +1,5 @@
+//@ check-pass
+
 use std::marker::PhantomData;
 
 struct Digit<T> {

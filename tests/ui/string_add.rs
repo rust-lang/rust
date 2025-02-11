@@ -11,10 +11,12 @@ fn main() {
 
     for _ in 1..3 {
         x = x + ".";
+        //~^ string_add
     }
 
     let y = String::new();
     let z = y + "...";
+    //~^ string_add
 
     assert_eq!(&x, &z);
 

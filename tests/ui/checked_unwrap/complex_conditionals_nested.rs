@@ -11,11 +11,11 @@ fn test_nested() {
         if x.is_some() {
             // unnecessary
             x.unwrap();
-            //~^ ERROR: called `unwrap` on `x` after checking its variant with `is_some`
+            //~^ unnecessary_unwrap
         } else {
             // will panic
             x.unwrap();
-            //~^ ERROR: this call to `unwrap()` will always panic
+            //~^ panicking_unwrap
         }
     }
 }

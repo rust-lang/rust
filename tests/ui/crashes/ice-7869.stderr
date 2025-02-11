@@ -3,6 +3,7 @@ error: all variants have the same prefix: `Työ`
    |
 LL | / enum Tila {
 LL | |
+LL | |
 LL | |     TyöAlkoi,
 LL | |     TyöKeskeytyi,
 LL | |     TyöValmis,

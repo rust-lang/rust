@@ -3,6 +3,7 @@ error: unnecessary boolean `not` operation
    |
 LL | /     if !bla() {
 LL | |
+LL | |
 LL | |         println!("Bugs");
 LL | |     } else {
 LL | |         println!("Bunny");
@@ -17,14 +18,16 @@ LL ~     if bla() {
 LL +         println!("Bunny");
 LL +     } else {
 LL +
+LL + 
 LL +         println!("Bugs");
 LL +     }
    |
 
 error: unnecessary `!=` operation
-  --> tests/ui/if_not_else.rs:18:5
+  --> tests/ui/if_not_else.rs:19:5
    |
 LL | /     if 4 != 5 {
+LL | |
 LL | |
 LL | |         println!("Bugs");
 LL | |     } else {
@@ -38,17 +41,18 @@ LL ~     if 4 == 5 {
 LL +         println!("Bunny");
 LL +     } else {
 LL +
+LL + 
 LL +         println!("Bugs");
 LL +     }
    |
 
 error: unnecessary boolean `not` operation
-  --> tests/ui/if_not_else.rs:32:5
+  --> tests/ui/if_not_else.rs:34:5
    |
 LL | /     if !(foo() && bla()) {
+LL | |
 LL | |         #[cfg(not(debug_assertions))]
 LL | |         println!("not debug");
-LL | |         #[cfg(debug_assertions)]
 ...  |
 LL | |         println!("both true");
 LL | |     }
@@ -59,6 +63,7 @@ help: try
 LL ~     if (foo() && bla()) {
 LL +         println!("both true");
 LL +     } else {
+LL +
 LL +         #[cfg(not(debug_assertions))]
 LL +         println!("not debug");
 LL +         #[cfg(debug_assertions)]
@@ -74,9 +79,10 @@ LL +     }
    |
 
 error: unnecessary boolean `not` operation
-  --> tests/ui/if_not_else.rs:50:5
+  --> tests/ui/if_not_else.rs:53:5
    |
 LL | /     if !foo() {
+LL | |
 LL | |         /* foo is false */
 LL | |         println!("foo is false");
 LL | |     } else {
@@ -89,15 +95,17 @@ help: try
 LL ~     if foo() {
 LL +         println!("foo"); /* foo */
 LL +     } else {
+LL +
 LL +         /* foo is false */
 LL +         println!("foo is false");
 LL +     }
    |
 
 error: unnecessary boolean `not` operation
-  --> tests/ui/if_not_else.rs:57:5
+  --> tests/ui/if_not_else.rs:61:5
    |
 LL | /     if !bla() {
+LL | |
 LL | |         // bla is false
 LL | |         println!("bla");
 LL | |     } else {
@@ -110,15 +118,17 @@ help: try
 LL ~     if bla() {
 LL +         println!("bla"); // bla
 LL +     } else {
+LL +
 LL +         // bla is false
 LL +         println!("bla");
 LL +     }
    |
 
 error: unnecessary boolean `not` operation
-  --> tests/ui/if_not_else.rs:67:5
+  --> tests/ui/if_not_else.rs:72:5
    |
 LL | /     if !foo() {
+LL | |
 LL | |         /* foo is false */
 LL | |         println!("foo is false");
 LL | |     } else {
@@ -131,6 +141,7 @@ help: try
 LL ~     if foo() {
 LL +         println!("foo"); /* foo */
 LL +     } else {
+LL +
 LL +         /* foo is false */
 LL +         println!("foo is false");
 LL +     }

@@ -20,7 +20,8 @@ struct Foo {
 }
 
 struct BadFoo {
-    //~^ ERROR: more than 3 bools in a struct
+//~^ struct_excessive_bools
+
     a: bool,
     b: bool,
     c: bool,
@@ -37,7 +38,8 @@ struct Bar {
 
 fn main() {
     struct FooFoo {
-        //~^ ERROR: more than 3 bools in a struct
+    //~^ struct_excessive_bools
+
         a: bool,
         b: bool,
         c: bool,

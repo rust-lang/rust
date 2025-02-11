@@ -8,43 +8,43 @@ LL |     match arr[idx] {
    = help: to override `-D warnings` add `#[allow(clippy::match_on_vec_items)]`
 
 error: indexing into a vector may panic
-  --> tests/ui/match_on_vec_items.rs:19:11
+  --> tests/ui/match_on_vec_items.rs:20:11
    |
 LL |     match arr[range] {
    |           ^^^^^^^^^^ help: try: `arr.get(range)`
 
 error: indexing into a vector may panic
-  --> tests/ui/match_on_vec_items.rs:33:11
+  --> tests/ui/match_on_vec_items.rs:35:11
    |
 LL |     match arr[idx] {
    |           ^^^^^^^^ help: try: `arr.get(idx)`
 
 error: indexing into a vector may panic
-  --> tests/ui/match_on_vec_items.rs:41:11
+  --> tests/ui/match_on_vec_items.rs:44:11
    |
 LL |     match arr[range] {
    |           ^^^^^^^^^^ help: try: `arr.get(range)`
 
 error: indexing into a vector may panic
-  --> tests/ui/match_on_vec_items.rs:55:11
+  --> tests/ui/match_on_vec_items.rs:59:11
    |
 LL |     match arr[idx] {
    |           ^^^^^^^^ help: try: `arr.get(idx)`
 
 error: indexing into a vector may panic
-  --> tests/ui/match_on_vec_items.rs:63:11
+  --> tests/ui/match_on_vec_items.rs:68:11
    |
 LL |     match arr[range] {
    |           ^^^^^^^^^^ help: try: `arr.get(range)`
 
 error: indexing into a vector may panic
-  --> tests/ui/match_on_vec_items.rs:77:11
+  --> tests/ui/match_on_vec_items.rs:83:11
    |
 LL |     match arr[idx] {
    |           ^^^^^^^^ help: try: `arr.get(idx)`
 
 error: indexing into a vector may panic
-  --> tests/ui/match_on_vec_items.rs:85:11
+  --> tests/ui/match_on_vec_items.rs:92:11
    |
 LL |     match arr[range] {
    |           ^^^^^^^^^^ help: try: `arr.get(range)`

@@ -3,6 +3,7 @@ error: this union has the default representation
    |
 LL | / union NoAttribute {
 LL | |
+LL | |
 LL | |     a: i32,
 LL | |     b: u32,
 LL | | }
@@ -13,9 +14,10 @@ LL | | }
    = help: to override `-D warnings` add `#[allow(clippy::default_union_representation)]`
 
 error: this union has the default representation
-  --> tests/ui/default_union_representation.rs:18:1
+  --> tests/ui/default_union_representation.rs:19:1
    |
 LL | / union ReprPacked {
+LL | |
 LL | |
 LL | |     a: i32,
 LL | |     b: u32,
@@ -25,9 +27,10 @@ LL | | }
    = help: consider annotating `ReprPacked` with `#[repr(C)]` to explicitly specify memory layout
 
 error: this union has the default representation
-  --> tests/ui/default_union_representation.rs:37:1
+  --> tests/ui/default_union_representation.rs:39:1
    |
 LL | / union ReprAlign {
+LL | |
 LL | |
 LL | |     a: i32,
 LL | |     b: u32,
@@ -37,9 +40,10 @@ LL | | }
    = help: consider annotating `ReprAlign` with `#[repr(C)]` to explicitly specify memory layout
 
 error: this union has the default representation
-  --> tests/ui/default_union_representation.rs:58:1
+  --> tests/ui/default_union_representation.rs:61:1
    |
 LL | / union ZSTAndTwoFields {
+LL | |
 LL | |
 LL | |     f0: u32,
 LL | |     f1: u64,

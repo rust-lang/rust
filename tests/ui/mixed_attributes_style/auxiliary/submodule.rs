@@ -3,7 +3,8 @@
 #![allow(dead_code)]
 
 #[allow(unused)]
-//~^ ERROR: item has both inner and outer attributes
+//~^ mixed_attributes_style
+
 mod foo {
     #![allow(dead_code)]
 }

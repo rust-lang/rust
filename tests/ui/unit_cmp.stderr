@@ -3,10 +3,7 @@ error: ==-comparison of unit values detected. This will always be true
    |
 LL |       if {
    |  ________^
-LL | |
-LL | |
-LL | |         true;
-LL | |     } == {
+...  |
 LL | |         false;
 LL | |     } {}
    | |_____^
@@ -15,10 +12,11 @@ LL | |     } {}
    = help: to override `-D warnings` add `#[allow(clippy::unit_cmp)]`
 
 error: >-comparison of unit values detected. This will always be false
-  --> tests/ui/unit_cmp.rs:25:8
+  --> tests/ui/unit_cmp.rs:26:8
    |
 LL |       if {
    |  ________^
+LL | |
 LL | |
 LL | |         true;
 LL | |     } > {
@@ -27,45 +25,33 @@ LL | |     } {}
    | |_____^
 
 error: `assert_eq` of unit values detected. This will always succeed
-  --> tests/ui/unit_cmp.rs:32:5
+  --> tests/ui/unit_cmp.rs:34:5
    |
 LL | /     assert_eq!(
-LL | |
-LL | |         {
-LL | |             true;
 ...  |
 LL | |     );
    | |_____^
 
 error: `debug_assert_eq` of unit values detected. This will always succeed
-  --> tests/ui/unit_cmp.rs:41:5
+  --> tests/ui/unit_cmp.rs:44:5
    |
 LL | /     debug_assert_eq!(
-LL | |
-LL | |         {
-LL | |             true;
 ...  |
 LL | |     );
    | |_____^
 
 error: `assert_ne` of unit values detected. This will always fail
-  --> tests/ui/unit_cmp.rs:51:5
+  --> tests/ui/unit_cmp.rs:55:5
    |
 LL | /     assert_ne!(
-LL | |
-LL | |         {
-LL | |             true;
 ...  |
 LL | |     );
    | |_____^
 
 error: `debug_assert_ne` of unit values detected. This will always fail
-  --> tests/ui/unit_cmp.rs:60:5
+  --> tests/ui/unit_cmp.rs:65:5
    |
 LL | /     debug_assert_ne!(
-LL | |
-LL | |         {
-LL | |             true;
 ...  |
 LL | |     );
    | |_____^

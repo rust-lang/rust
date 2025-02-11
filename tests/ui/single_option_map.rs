@@ -6,12 +6,14 @@ static ATOM: AtomicUsize = AtomicUsize::new(42);
 static MAYBE_ATOMIC: Option<&AtomicUsize> = Some(&ATOM);
 
 fn h(arg: Option<u32>) -> Option<u32> {
-    //~^ ERROR: `fn` that only maps over argument
+//~^ single_option_map
+
     arg.map(|x| x * 2)
 }
 
 fn j(arg: Option<u64>) -> Option<u64> {
-    //~^ ERROR: `fn` that only maps over argument
+//~^ single_option_map
+
     arg.map(|x| x * 2)
 }
 
@@ -20,7 +22,8 @@ fn mul_args(a: String, b: u64) -> String {
 }
 
 fn mul_args_opt(a: Option<String>, b: u64) -> Option<String> {
-    //~^ ERROR: `fn` that only maps over argument
+//~^ single_option_map
+
     a.map(|val| mul_args(val, b + 1))
 }
 

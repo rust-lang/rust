@@ -16,35 +16,48 @@ fn main() {
 
     // LINT CASES
     let _ = "hesuo worpd".replace('s', "l").replace('u', "l");
+    //~^ collapsible_str_replace
 
     let _ = "hesuo worpd".replace('s', l).replace('u', l);
+    //~^ collapsible_str_replace
 
     let _ = "hesuo worpd".replace('s', "l").replace('u', "l").replace('p', "l");
+    //~^ collapsible_str_replace
 
     let _ = "hesuo worpd"
         .replace('s', "l")
+        //~^ collapsible_str_replace
         .replace('u', "l")
         .replace('p', "l")
         .replace('d', "l");
 
     let _ = "hesuo world".replace(s, "l").replace('u', "l");
+    //~^ collapsible_str_replace
 
     let _ = "hesuo worpd".replace(s, "l").replace('u', "l").replace('p', "l");
+    //~^ collapsible_str_replace
 
     let _ = "hesuo worpd".replace(s, "l").replace(u, "l").replace('p', "l");
+    //~^ collapsible_str_replace
 
     let _ = "hesuo worpd".replace(s, "l").replace(u, "l").replace(p, "l");
+    //~^ collapsible_str_replace
 
     let _ = "hesuo worlp".replace('s', "l").replace('u', "l").replace('p', "d");
+    //~^ collapsible_str_replace
 
     let _ = "hesuo worpd".replace('s', "x").replace('u', "l").replace('p', "l");
+    //~^ collapsible_str_replace
 
     // Note: Future iterations could lint `replace(|c| matches!(c, "su" | 'd' | 'p'), "l")`
     let _ = "hesudo worpd".replace("su", "l").replace('d', "l").replace('p', "l");
+    //~^ collapsible_str_replace
 
     let _ = "hesudo worpd".replace(d, "l").replace('p', "l").replace("su", "l");
+    //~^ collapsible_str_replace
 
     let _ = "hesuo world".replace(get_filter(), "l").replace('s', "l");
+    //~^ collapsible_str_replace
 
     // NO LINT CASES
     let _ = "hesuo world".replace('s', "l").replace('u', "p");
@@ -82,4 +95,5 @@ fn msrv_1_57() {
 #[clippy::msrv = "1.58"]
 fn msrv_1_58() {
     let _ = "".replace('a', "1.58").replace('b', "1.58");
+    //~^ collapsible_str_replace
 }

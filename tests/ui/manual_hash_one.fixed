@@ -7,18 +7,21 @@ fn returned(b: impl BuildHasher) -> u64 {
     
     
     b.hash_one(&true)
+    //~^ manual_hash_one
 }
 
 fn unsized_receiver(b: impl BuildHasher, s: &str) {
     
     
     let _ = b.hash_one(&s[4..10]);
+    //~^ manual_hash_one
 }
 
 fn owned_value(b: impl BuildHasher, v: Vec<u32>) -> Vec<u32> {
     
     
     let _ = b.hash_one(&v);
+    //~^ manual_hash_one
     v
 }
 
@@ -86,4 +89,5 @@ fn msrv_1_71(b: impl BuildHasher, v: impl Hash) {
     
     
     let _ = b.hash_one(&v);
+    //~^ manual_hash_one
 }

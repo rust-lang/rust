@@ -8,6 +8,7 @@ struct MyTypeDebug;
 fn main() {
     let test_debug: Result<MyTypeDebug, u32> = Ok(MyTypeDebug);
     test_debug.err().expect("Testing debug type");
+    //~^ err_expect
 
     let test_non_debug: Result<MyTypeNonDebug, u32> = Ok(MyTypeNonDebug);
     test_non_debug.err().expect("Testing non debug type");
@@ -23,4 +24,5 @@ fn msrv_1_16() {
 fn msrv_1_17() {
     let x: Result<u32, &str> = Ok(17);
     x.err().expect("17");
+    //~^ err_expect
 }

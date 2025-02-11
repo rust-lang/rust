@@ -74,7 +74,7 @@ LL |     x.expect("———{:?}");
    |                  ^^^^
 
 error: this looks like a formatting argument but it is not part of a formatting macro
-  --> tests/ui/literal_string_with_formatting_arg.rs:53:19
+  --> tests/ui/literal_string_with_formatting_arg.rs:54:19
    |
 LL |     x.expect(r##" {x:?} "##); // `x` doesn't exist so we shoud not lint
    |                   ^^^^^

@@ -1,3 +1,4 @@
+//@ check-pass
 // This is a regression test for <https://github.com/rust-lang/rust-clippy/issues/13183>.
 // It should not warn on missing backticks on footnote references.
 

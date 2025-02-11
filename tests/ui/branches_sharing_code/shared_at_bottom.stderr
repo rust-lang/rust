@@ -2,9 +2,7 @@ error: all if blocks contain the same code at the end
   --> tests/ui/branches_sharing_code/shared_at_bottom.rs:35:5
    |
 LL | /         let result = false;
-LL | |
-LL | |
-LL | |         println!("Block end!");
+...  |
 LL | |         result
 LL | |     };
    | |_____^
@@ -20,16 +18,17 @@ help: consider moving these statements after the if
 LL ~     }
 LL +     let result = false;
 LL +
-LL +
+LL + 
+LL + 
 LL +     println!("Block end!");
 LL ~     result;
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:55:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:56:5
    |
 LL | /         println!("Same end of block");
-LL | |
+...  |
 LL | |     }
    | |_____^
    |
@@ -40,9 +39,10 @@ LL +     println!("Same end of block");
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:73:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:75:5
    |
 LL | /         println!(
+LL | |
 LL | |
 LL | |             "I'm moveable because I know: `outer_scope_value`: '{}'",
 LL | |             outer_scope_value
@@ -55,16 +55,17 @@ help: consider moving these statements after the if
 LL ~     }
 LL +     println!(
 LL +
+LL + 
 LL +         "I'm moveable because I know: `outer_scope_value`: '{}'",
 LL +         outer_scope_value
 LL +     );
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:86:9
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:89:9
    |
 LL | /             println!("Hello World");
-LL | |
+...  |
 LL | |         }
    | |_________^
    |
@@ -75,9 +76,10 @@ LL +         println!("Hello World");
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:103:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:107:5
    |
 LL | /         let later_used_value = "A string value";
+LL | |
 LL | |
 LL | |         println!("{}", later_used_value);
 LL | |         // I'm expecting a note about this
@@ -90,13 +92,15 @@ help: consider moving these statements after the if
 LL ~     }
 LL +     let later_used_value = "A string value";
 LL +
+LL + 
 LL +     println!("{}", later_used_value);
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:117:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:122:5
    |
 LL | /         let simple_examples = "I now identify as a &str :)";
+LL | |
 LL | |
 LL | |         println!("This is the new simple_example: {}", simple_examples);
 LL | |     }
@@ -108,11 +112,12 @@ help: consider moving these statements after the if
 LL ~     }
 LL +     let simple_examples = "I now identify as a &str :)";
 LL +
+LL + 
 LL +     println!("This is the new simple_example: {}", simple_examples);
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:183:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:189:5
    |
 LL | /         x << 2
 ...  |
@@ -127,7 +132,7 @@ LL ~     x << 2;
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:192:5
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:199:5
    |
 LL | /         x * 4
 ...  |
@@ -142,7 +147,7 @@ LL +     x * 4
    |
 
 error: all if blocks contain the same code at the end
-  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:206:44
+  --> tests/ui/branches_sharing_code/shared_at_bottom.rs:214:44
    |
 LL |     if x == 17 { b = 1; a = 0x99; } else { a = 0x99; }
    |                                            ^^^^^^^^^^^

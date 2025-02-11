@@ -3,6 +3,7 @@ error: unneeded late initialization
    |
 LL |     let a;
    |     ^^^^^^ created here
+LL |
 LL |     a = "zero";
    |     ^^^^^^^^^^ initialised here
    |
@@ -11,71 +12,79 @@ LL |     a = "zero";
 help: move the declaration `a` here
    |
 LL ~     
+LL |
 LL ~     let a = "zero";
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:30:5
+  --> tests/ui/needless_late_init.rs:31:5
    |
 LL |     let b;
    |     ^^^^^^ created here
-LL |     let c;
+...
 LL |     b = 1;
    |     ^^^^^ initialised here
    |
 help: move the declaration `b` here
    |
 LL ~     
+LL |
 LL |     let c;
+LL |
 LL ~     let b = 1;
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:31:5
+  --> tests/ui/needless_late_init.rs:33:5
    |
 LL |     let c;
    |     ^^^^^^ created here
-LL |     b = 1;
+...
 LL |     c = 2;
    |     ^^^^^ initialised here
    |
 help: move the declaration `c` here
    |
 LL ~     
+LL |
 LL |     b = 1;
 LL ~     let c = 2;
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:35:5
+  --> tests/ui/needless_late_init.rs:38:5
    |
 LL |     let d: usize;
    |     ^^^^^^^^^^^^^ created here
+LL |
 LL |     d = 1;
    |     ^^^^^ initialised here
    |
 help: move the declaration `d` here
    |
 LL ~     
+LL |
 LL ~     let d: usize = 1;
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:38:5
+  --> tests/ui/needless_late_init.rs:42:5
    |
 LL |     let e;
    |     ^^^^^^ created here
+LL |
 LL |     e = format!("{}", d);
    |     ^^^^^^^^^^^^^^^^^^^^ initialised here
    |
 help: move the declaration `e` here
    |
 LL ~     
+LL |
 LL ~     let e = format!("{}", d);
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:43:5
+  --> tests/ui/needless_late_init.rs:48:5
    |
 LL |     let a;
    |     ^^^^^^
@@ -83,6 +92,7 @@ LL |     let a;
 help: move the declaration `a` here and remove the assignments from the `match` arms
    |
 LL ~     
+LL |
 LL |     let n = 1;
 LL ~     let a = match n {
 LL ~         1 => "one",
@@ -93,7 +103,7 @@ LL ~     };
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:52:5
+  --> tests/ui/needless_late_init.rs:58:5
    |
 LL |     let b;
    |     ^^^^^^
@@ -101,6 +111,7 @@ LL |     let b;
 help: move the declaration `b` here and remove the assignments from the branches
    |
 LL ~     
+LL |
 LL ~     let b = if n == 3 {
 LL ~         "four"
 LL |     } else {
@@ -109,7 +120,7 @@ LL ~     };
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:59:5
+  --> tests/ui/needless_late_init.rs:66:5
    |
 LL |     let d;
    |     ^^^^^^
@@ -117,6 +128,7 @@ LL |     let d;
 help: move the declaration `d` here and remove the assignments from the branches
    |
 LL ~     
+LL |
 LL ~     let d = if true {
 LL |         let temp = 5;
 LL ~         temp
@@ -126,7 +138,7 @@ LL ~     };
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:67:5
+  --> tests/ui/needless_late_init.rs:75:5
    |
 LL |     let e;
    |     ^^^^^^
@@ -134,6 +146,7 @@ LL |     let e;
 help: move the declaration `e` here and remove the assignments from the branches
    |
 LL ~     
+LL |
 LL ~     let e = if true {
 LL ~         format!("{} {}", a, b)
 LL |     } else {
@@ -142,7 +155,7 @@ LL ~     };
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:74:5
+  --> tests/ui/needless_late_init.rs:83:5
    |
 LL |     let f;
    |     ^^^^^^
@@ -150,12 +163,13 @@ LL |     let f;
 help: move the declaration `f` here and remove the assignments from the `match` arms
    |
 LL ~     
+LL |
 LL ~     let f = match 1 {
 LL ~         1 => "three",
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:80:5
+  --> tests/ui/needless_late_init.rs:90:5
    |
 LL |     let g: usize;
    |     ^^^^^^^^^^^^^
@@ -163,6 +177,7 @@ LL |     let g: usize;
 help: move the declaration `g` here and remove the assignments from the branches
    |
 LL ~     
+LL |
 LL ~     let g: usize = if true {
 LL ~         5
 LL |     } else {
@@ -171,39 +186,24 @@ LL ~     };
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:88:5
+  --> tests/ui/needless_late_init.rs:99:5
    |
 LL |     let x;
    |     ^^^^^^ created here
-LL |     let y = SignificantDrop;
+...
 LL |     x = 1;
    |     ^^^^^ initialised here
    |
 help: move the declaration `x` here
    |
 LL ~     
+LL |
 LL |     let y = SignificantDrop;
 LL ~     let x = 1;
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:92:5
-   |
-LL |     let x;
-   |     ^^^^^^ created here
-LL |     let y = 1;
-LL |     x = SignificantDrop;
-   |     ^^^^^^^^^^^^^^^^^^^ initialised here
-   |
-help: move the declaration `x` here
-   |
-LL ~     
-LL |     let y = 1;
-LL ~     let x = SignificantDrop;
-   |
-
-error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:96:5
+  --> tests/ui/needless_late_init.rs:104:5
    |
 LL |     let x;
    |     ^^^^^^ created here
@@ -214,14 +214,31 @@ LL |     x = SignificantDrop;
 help: move the declaration `x` here
    |
 LL ~     
-LL |     // types that should be considered insignificant
+LL |
+LL |     let y = 1;
+LL ~     let x = SignificantDrop;
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:109:5
+   |
+LL |     let x;
+   |     ^^^^^^ created here
+...
+LL |     x = SignificantDrop;
+   |     ^^^^^^^^^^^^^^^^^^^ initialised here
+   |
+help: move the declaration `x` here
+   |
+LL ~     
+LL |
 ...
 LL |     let y = Box::new(4);
 LL ~     let x = SignificantDrop;
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:115:5
+  --> tests/ui/needless_late_init.rs:129:5
    |
 LL |     let a;
    |     ^^^^^^
@@ -229,6 +246,7 @@ LL |     let a;
 help: move the declaration `a` here and remove the assignments from the `match` arms
    |
 LL ~     
+LL |
 LL |     let n = 1;
 LL ~     let a = match n {
 LL ~         1 => f().await,
@@ -239,7 +257,7 @@ LL ~     };
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:132:5
+  --> tests/ui/needless_late_init.rs:147:5
    |
 LL |     let a;
    |     ^^^^^^
@@ -247,6 +265,7 @@ LL |     let a;
 help: move the declaration `a` here and remove the assignments from the `match` arms
    |
 LL ~     
+LL |
 LL |     let n = 1;
 LL ~     let a = match n {
 LL ~         1 => f(),

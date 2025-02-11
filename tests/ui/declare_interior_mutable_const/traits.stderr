@@ -1,8 +1,8 @@
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/traits.rs:16:5
+  --> tests/ui/declare_interior_mutable_const/traits.rs:17:1
    |
-LL |     const ATOMIC: AtomicUsize;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const ATOMIC: AtomicUsize;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::declare-interior-mutable-const` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::declare_interior_mutable_const)]`
@@ -19,70 +19,70 @@ LL |     declare_const!(ANOTHER_ATOMIC: AtomicUsize = Self::ATOMIC);
    = note: this error originates in the macro `declare_const` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/traits.rs:44:5
+  --> tests/ui/declare_interior_mutable_const/traits.rs:46:1
    |
-LL |     const TO_BE_CONCRETE: AtomicUsize = AtomicUsize::new(11);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const TO_BE_CONCRETE: AtomicUsize = AtomicUsize::new(11);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/traits.rs:69:5
+  --> tests/ui/declare_interior_mutable_const/traits.rs:72:1
    |
-LL |     const TO_BE_UNFROZEN: Self::ToBeUnfrozen = AtomicUsize::new(13);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const TO_BE_UNFROZEN: Self::ToBeUnfrozen = AtomicUsize::new(13);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/traits.rs:70:5
+  --> tests/ui/declare_interior_mutable_const/traits.rs:74:1
    |
-LL |     const WRAPPED_TO_BE_UNFROZEN: Wrapper<Self::ToBeUnfrozen> = Wrapper(AtomicUsize::new(14));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const WRAPPED_TO_BE_UNFROZEN: Wrapper<Self::ToBeUnfrozen> = Wrapper(AtomicUsize::new(14));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/traits.rs:89:5
+  --> tests/ui/declare_interior_mutable_const/traits.rs:94:1
    |
-LL |     const BOUNDED: T::ToBeBounded;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const BOUNDED: T::ToBeBounded;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/traits.rs:117:5
+  --> tests/ui/declare_interior_mutable_const/traits.rs:123:1
    |
-LL |     const SELF: Self = AtomicUsize::new(17);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const SELF: Self = AtomicUsize::new(17);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/traits.rs:118:5
+  --> tests/ui/declare_interior_mutable_const/traits.rs:125:1
    |
-LL |     const WRAPPED_SELF: Option<Self> = Some(AtomicUsize::new(21));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const WRAPPED_SELF: Option<Self> = Some(AtomicUsize::new(21));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/traits.rs:124:5
+  --> tests/ui/declare_interior_mutable_const/traits.rs:132:1
    |
-LL |     const DIRECT: Cell<T>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+LL | const DIRECT: Cell<T>;
+   | ^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/traits.rs:125:5
+  --> tests/ui/declare_interior_mutable_const/traits.rs:134:1
    |
-LL |     const INDIRECT: Cell<*const T>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const INDIRECT: Cell<*const T>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/traits.rs:129:5
+  --> tests/ui/declare_interior_mutable_const/traits.rs:139:1
    |
-LL |     const DIRECT: Cell<T> = Cell::new(T::DEFAULT);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const DIRECT: Cell<T> = Cell::new(T::DEFAULT);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/traits.rs:141:5
+  --> tests/ui/declare_interior_mutable_const/traits.rs:152:1
    |
-LL |     const ATOMIC: AtomicUsize = AtomicUsize::new(18);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const ATOMIC: AtomicUsize = AtomicUsize::new(18);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/traits.rs:147:5
+  --> tests/ui/declare_interior_mutable_const/traits.rs:159:1
    |
-LL |     const BOUNDED_ASSOC_TYPE: T::ToBeBounded = AtomicUsize::new(19);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const BOUNDED_ASSOC_TYPE: T::ToBeBounded = AtomicUsize::new(19);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 13 previous errors
 

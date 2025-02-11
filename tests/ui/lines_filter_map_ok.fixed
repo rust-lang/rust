@@ -7,20 +7,26 @@ fn main() -> io::Result<()> {
     let f = std::fs::File::open("/")?;
     // Lint
     BufReader::new(f).lines().map_while(Result::ok).for_each(|_| ());
+    //~^ lines_filter_map_ok
     // Lint
     let f = std::fs::File::open("/")?;
     BufReader::new(f).lines().map_while(Result::ok).for_each(|_| ());
+    //~^ lines_filter_map_ok
     // Lint
     let f = std::fs::File::open("/")?;
     BufReader::new(f).lines().map_while(Result::ok).for_each(|_| ());
+    //~^ lines_filter_map_ok
 
     let s = "foo\nbar\nbaz\n";
     // Lint
     io::stdin().lines().map_while(Result::ok).for_each(|_| ());
+    //~^ lines_filter_map_ok
     // Lint
     io::stdin().lines().map_while(Result::ok).for_each(|_| ());
+    //~^ lines_filter_map_ok
     // Lint
     io::stdin().lines().map_while(Result::ok).for_each(|_| ());
+    //~^ lines_filter_map_ok
     // Do not lint (not a `Lines` iterator)
     io::stdin()
         .lines()

@@ -8,25 +8,25 @@ LL |     if p == ptr::null() {
    = help: to override `-D warnings` add `#[allow(clippy::cmp_null)]`
 
 error: comparing with null is better expressed by the `.is_null()` method
-  --> tests/ui/cmp_null.rs:14:8
+  --> tests/ui/cmp_null.rs:15:8
    |
 LL |     if ptr::null() == p {
    |        ^^^^^^^^^^^^^^^^ help: try: `p.is_null()`
 
 error: comparing with null is better expressed by the `.is_null()` method
-  --> tests/ui/cmp_null.rs:21:8
+  --> tests/ui/cmp_null.rs:23:8
    |
 LL |     if m == ptr::null_mut() {
    |        ^^^^^^^^^^^^^^^^^^^^ help: try: `m.is_null()`
 
 error: comparing with null is better expressed by the `.is_null()` method
-  --> tests/ui/cmp_null.rs:25:8
+  --> tests/ui/cmp_null.rs:28:8
    |
 LL |     if ptr::null_mut() == m {
    |        ^^^^^^^^^^^^^^^^^^^^ help: try: `m.is_null()`
 
 error: comparing with null is better expressed by the `.is_null()` method
-  --> tests/ui/cmp_null.rs:30:13
+  --> tests/ui/cmp_null.rs:34:13
    |
 LL |     let _ = x as *const () == ptr::null();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(x as *const ()).is_null()`

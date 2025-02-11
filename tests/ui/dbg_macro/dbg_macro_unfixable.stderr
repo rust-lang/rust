@@ -12,7 +12,7 @@ LL -     dbg!();
    |
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:8:5
+  --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:9:5
    |
 LL |     dbg!(dbg!(dbg!(42)));
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     dbg!(dbg!(42));
    |     ~~~~~~~~~~~~~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:8:10
+  --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:9:10
    |
 LL |     dbg!(dbg!(dbg!(42)));
    |          ^^^^^^^^^^^^^^
@@ -34,7 +34,7 @@ LL |     dbg!(dbg!(42));
    |          ~~~~~~~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:8:15
+  --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:9:15
    |
 LL |     dbg!(dbg!(dbg!(42)));
    |               ^^^^^^^^
@@ -45,7 +45,7 @@ LL |     dbg!(dbg!(42));
    |               ~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:10:5
+  --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:14:5
    |
 LL |     dbg!(1, 2, dbg!(3, 4));
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -56,7 +56,7 @@ LL |     (1, 2, dbg!(3, 4));
    |     ~~~~~~~~~~~~~~~~~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:10:16
+  --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:14:16
    |
 LL |     dbg!(1, 2, dbg!(3, 4));
    |                ^^^^^^^^^^

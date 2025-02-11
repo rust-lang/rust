@@ -1,3 +1,5 @@
+//@error-in-other-file:
+//@no-rustfix
 // issue 12436
 #![allow(clippy::mixed_attributes_style)]
 

@@ -1,7 +1,8 @@
 #![warn(clippy::doc_include_without_cfg)]
 // Should not lint.
 #![doc(html_playground_url = "https://playground.example.com/")]
-#![cfg_attr(doc, doc = include_str!("../approx_const.rs"))] //~ doc_include_without_cfg
+#![cfg_attr(doc, doc = include_str!("../approx_const.rs"))]
+//~^ doc_include_without_cfg
 // Should not lint.
 #![cfg_attr(feature = "whatever", doc = include_str!("../approx_const.rs"))]
 #![cfg_attr(doc, doc = include_str!("../approx_const.rs"))]
@@ -28,7 +29,8 @@ tst! {
     /// This is a test with no included file
 }
 
-#[cfg_attr(doc, doc = include_str!("../approx_const.rs"))] //~ doc_include_without_cfg
+#[cfg_attr(doc, doc = include_str!("../approx_const.rs"))]
+//~^ doc_include_without_cfg
 // Should not lint.
 #[doc = man_link!("bla", "blob")]
 #[cfg_attr(feature = "whatever", doc = include_str!("../approx_const.rs"))]

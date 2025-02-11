@@ -38,8 +38,9 @@ fn warn_call() {
 }
 
 fn warn_arg(x: Box<A>) {
-    //~^ ERROR: local variable doesn't need to be boxed here
-    //~| NOTE: `-D clippy::boxed-local` implied by `-D warnings`
+//~^ boxed_local
+
+
     x.foo();
 }
 
@@ -121,7 +122,8 @@ pub struct PeekableSeekable<I: Foo> {
 }
 
 pub fn new(_needs_name: Box<PeekableSeekable<&()>>) -> () {}
-//~^ ERROR: local variable doesn't need to be boxed here
+//~^ boxed_local
+
 
 /// Regression for #916, #1123
 ///
@@ -187,7 +189,8 @@ mod issue4804 {
 
         // warn on `x: Box<u32>`
         fn default_impl_x(self: Box<Self>, x: Box<u32>) -> u32 {
-            //~^ ERROR: local variable doesn't need to be boxed here
+        //~^ boxed_local
+
             4
         }
     }
@@ -195,7 +198,8 @@ mod issue4804 {
     trait WarnTrait {
         // warn on `x: Box<u32>`
         fn foo(x: Box<u32>) {}
-        //~^ ERROR: local variable doesn't need to be boxed here
+        //~^ boxed_local
+
     }
 }
 

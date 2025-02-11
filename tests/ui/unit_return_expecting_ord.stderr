@@ -5,7 +5,7 @@ LL |     structs.sort_by_key(|s| {
    |                         ^^^
    |
 help: probably caused by this trailing semicolon
-  --> tests/ui/unit_return_expecting_ord.rs:20:24
+  --> tests/ui/unit_return_expecting_ord.rs:21:24
    |
 LL |         double(s.field);
    |                        ^
@@ -13,25 +13,25 @@ LL |         double(s.field);
    = help: to override `-D warnings` add `#[allow(clippy::unit_return_expecting_ord)]`
 
 error: this closure returns the unit type which also implements PartialOrd
-  --> tests/ui/unit_return_expecting_ord.rs:23:30
+  --> tests/ui/unit_return_expecting_ord.rs:24:30
    |
 LL |     structs.is_sorted_by_key(|s| {
    |                              ^^^
    |
 help: probably caused by this trailing semicolon
-  --> tests/ui/unit_return_expecting_ord.rs:25:24
+  --> tests/ui/unit_return_expecting_ord.rs:27:24
    |
 LL |         double(s.field);
    |                        ^
 
 error: this closure returns the unit type which also implements PartialOrd
-  --> tests/ui/unit_return_expecting_ord.rs:27:30
+  --> tests/ui/unit_return_expecting_ord.rs:29:30
    |
 LL |     structs.is_sorted_by_key(|s| {
    |                              ^^^
 
 error: this closure returns the unit type which also implements Ord
-  --> tests/ui/unit_return_expecting_ord.rs:38:25
+  --> tests/ui/unit_return_expecting_ord.rs:41:25
    |
 LL |     structs.sort_by_key(|s| unit(s.field));
    |                         ^^^

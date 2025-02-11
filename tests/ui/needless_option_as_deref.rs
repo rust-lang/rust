@@ -5,11 +5,14 @@
 fn main() {
     // should lint
     let _: Option<&usize> = Some(&1).as_deref();
+    //~^ needless_option_as_deref
     let _: Option<&mut usize> = Some(&mut 1).as_deref_mut();
+    //~^ needless_option_as_deref
 
     let mut y = 0;
     let mut x = Some(&mut y);
     let _ = x.as_deref_mut();
+    //~^ needless_option_as_deref
 
     // should not lint
     let _ = Some(Box::new(1)).as_deref();

@@ -3,14 +3,14 @@
 use std::path::PathBuf;
 
 fn main() {
-    let mut path_buf = PathBuf::from("foo");
+let mut path_buf = PathBuf::from("foo");
 
-    path_buf = PathBuf::from("foo").join("bar");
+path_buf = PathBuf::from("foo").join("bar");
 
     let bar = "bar";
-    path_buf = PathBuf::from("foo").join(bar);
+path_buf = PathBuf::from("foo").join(bar);
 
-    let mut path_buf = PathBuf::from("foo").join("bar").join("buz");
+let mut path_buf = PathBuf::from("foo").join("bar").join("buz");
 
     let mut x = PathBuf::new();
     println!("{}", x.display());

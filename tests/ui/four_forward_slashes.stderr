@@ -1,7 +1,8 @@
 error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
-  --> tests/ui/four_forward_slashes.rs:12:1
+  --> tests/ui/four_forward_slashes.rs:11:1
    |
 LL | / //// whoops
+LL | |
 LL | | fn a() {}
    | |_^
    |
@@ -16,6 +17,7 @@ error: this item has comments with 4 forward slashes (`////`). These look like d
   --> tests/ui/four_forward_slashes.rs:15:1
    |
 LL | / //// whoops
+LL | |
 LL | | #[allow(dead_code)]
 LL | | fn b() {}
    | |_^
@@ -26,10 +28,11 @@ LL + /// whoops
    |
 
 error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
-  --> tests/ui/four_forward_slashes.rs:19:1
+  --> tests/ui/four_forward_slashes.rs:20:1
    |
 LL | / //// whoops
 LL | | //// two borked comments!
+LL | |
 LL | | #[track_caller]
 LL | | fn c() {}
    | |_^
@@ -41,9 +44,10 @@ LL ~ /// two borked comments!
    |
 
 error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
-  --> tests/ui/four_forward_slashes.rs:27:1
+  --> tests/ui/four_forward_slashes.rs:29:1
    |
 LL | / //// between attributes
+LL | |
 LL | | #[allow(dead_code)]
 LL | | fn g() {}
    | |_^
@@ -54,9 +58,10 @@ LL + /// between attributes
    |
 
 error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
-  --> tests/ui/four_forward_slashes.rs:31:1
+  --> tests/ui/four_forward_slashes.rs:34:1
    |
 LL | /     //// not very start of contents
+LL | |
 LL | | fn h() {}
    | |_^
    |

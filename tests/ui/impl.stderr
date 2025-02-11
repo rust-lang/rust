@@ -3,6 +3,7 @@ error: multiple implementations of this structure
    |
 LL | / impl MyStruct {
 LL | |
+LL | |
 LL | |     fn second() {}
 LL | | }
    | |_^
@@ -18,9 +19,10 @@ LL | | }
    = help: to override `-D warnings` add `#[allow(clippy::multiple_inherent_impl)]`
 
 error: multiple implementations of this structure
-  --> tests/ui/impl.rs:25:5
+  --> tests/ui/impl.rs:26:5
    |
 LL | /     impl super::MyStruct {
+LL | |
 LL | |
 LL | |         fn third() {}
 LL | |     }
@@ -35,16 +37,17 @@ LL | | }
    | |_^
 
 error: multiple implementations of this structure
-  --> tests/ui/impl.rs:46:1
+  --> tests/ui/impl.rs:48:1
    |
 LL | / impl WithArgs<u64> {
+LL | |
 LL | |
 LL | |     fn f3() {}
 LL | | }
    | |_^
    |
 note: first implementation here
-  --> tests/ui/impl.rs:43:1
+  --> tests/ui/impl.rs:45:1
    |
 LL | / impl WithArgs<u64> {
 LL | |     fn f2() {}
@@ -52,13 +55,13 @@ LL | | }
    | |_^
 
 error: multiple implementations of this structure
-  --> tests/ui/impl.rs:68:1
+  --> tests/ui/impl.rs:71:1
    |
 LL | impl OneAllowedImpl {} // Lint, only one of the three blocks is allowed.
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first implementation here
-  --> tests/ui/impl.rs:65:1
+  --> tests/ui/impl.rs:68:1
    |
 LL | impl OneAllowedImpl {}
    | ^^^^^^^^^^^^^^^^^^^^^^

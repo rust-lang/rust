@@ -8,7 +8,7 @@ LL | fn the_answer(ref mut x: u8) {
    = help: to override `-D warnings` add `#[allow(clippy::toplevel_ref_arg)]`
 
 error: `ref` directly on a function parameter does not prevent taking ownership of the passed argument. Consider using a reference type instead
-  --> tests/ui/toplevel_ref_arg_non_rustfix.rs:20:24
+  --> tests/ui/toplevel_ref_arg_non_rustfix.rs:21:24
    |
 LL |         fn fun_example(ref _x: usize) {}
    |                        ^^^^^^

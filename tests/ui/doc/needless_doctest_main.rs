@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![warn(clippy::needless_doctest_main)]
 //! issue 10491:
 //! ```rust,no_test

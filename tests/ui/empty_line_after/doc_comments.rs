@@ -1,17 +1,19 @@
 #![warn(clippy::empty_line_after_outer_attr, clippy::empty_line_after_doc_comments)]
 
-//~vvv empty_line_after_doc_comments
+
 /// Meant to be an
 /// inner doc comment
 /// for the crate
+//~^ empty_line_after_doc_comments
 
 fn first_in_crate() {}
 
 mod m {
-    //~vvv empty_line_after_doc_comments
+
     /// Meant to be an
     /// inner doc comment
     /// for the module
+    //~^ empty_line_after_doc_comments
 
     fn first_in_module() {}
 }
@@ -23,15 +25,17 @@ mod some_mod {
         fn some_noop() {}
     }
 
-    //~v empty_line_after_doc_comments
+
     /// # Indented
+    //~^ empty_line_after_doc_comments
 
     /// Blank line
     fn indented() {}
 }
 
-//~v empty_line_after_doc_comments
+
 /// This should produce a warning
+//~^ empty_line_after_doc_comments
 
 fn with_doc_and_newline() {}
 
@@ -40,8 +44,9 @@ fn with_doc_and_newline() {}
 /// some comment
 fn with_no_newline_and_comment() {}
 
-//~v empty_line_after_doc_comments
+
 /// This doc comment should produce a warning
+//~^ empty_line_after_doc_comments
 
 /** This is also a doc comment and is part of the warning
  */
@@ -52,15 +57,17 @@ fn with_no_newline_and_comment() {}
 fn three_attributes() {}
 
 mod misattributed {
-    //~v empty_line_after_doc_comments
+
     /// docs for `old_code`
+    //~^ empty_line_after_doc_comments
     // fn old_code() {}
 
     fn new_code() {}
 
-    //~vv empty_line_after_doc_comments
+
     /// Docs
     /// for OldA
+    //~^ empty_line_after_doc_comments
     // struct OldA;
 
     /// Docs
@@ -74,15 +81,17 @@ mod misattributed {
 }
 
 mod block_comments {
-    //~v empty_line_after_doc_comments
+
     /**
+    //~^ empty_line_after_doc_comments
      * Meant to be inner doc comment
      */
 
     fn first_in_module() {}
 
-    //~v empty_line_after_doc_comments
+
     /**
+    //~^ empty_line_after_doc_comments
      * Docs for `old_code`
      */
     /* fn old_code() {} */
@@ -92,8 +101,9 @@ mod block_comments {
      */
     fn new_code() {}
 
-    //~v empty_line_after_doc_comments
+
     /// Docs for `old_code2`
+    //~^ empty_line_after_doc_comments
     /* fn old_code2() {} */
 
     /// Docs for `new_code2`

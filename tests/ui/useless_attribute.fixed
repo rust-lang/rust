@@ -6,7 +6,9 @@
 #![feature(rustc_private)]
 
 #![allow(dead_code)]
+//~^ useless_attribute
 #![cfg_attr(clippy, allow(dead_code))]
+//~^ useless_attribute
 #[rustfmt::skip]
 #[allow(unused_imports)]
 #[allow(unused_extern_crates)]
@@ -18,6 +20,7 @@ extern crate proc_macro_derive;
 
 fn test_indented_attr() {
     #![allow(clippy::almost_swapped)]
+    //~^ useless_attribute
     use std::collections::HashSet;
 
     let _ = HashSet::<u32>::default();

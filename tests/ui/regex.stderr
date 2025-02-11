@@ -1,5 +1,5 @@
 error: trivial regex
-  --> tests/ui/regex.rs:19:45
+  --> tests/ui/regex.rs:20:45
    |
 LL |     let pipe_in_wrong_position = Regex::new("|");
    |                                             ^^^
@@ -9,7 +9,7 @@ LL |     let pipe_in_wrong_position = Regex::new("|");
    = help: to override `-D warnings` add `#[allow(clippy::trivial_regex)]`
 
 error: trivial regex
-  --> tests/ui/regex.rs:21:60
+  --> tests/ui/regex.rs:22:60
    |
 LL |     let pipe_in_wrong_position_builder = RegexBuilder::new("|");
    |                                                            ^^^
@@ -17,7 +17,7 @@ LL |     let pipe_in_wrong_position_builder = RegexBuilder::new("|");
    = help: the regex is unlikely to be useful as it is
 
 error: regex syntax error: invalid character class range, the start must be <= the end
-  --> tests/ui/regex.rs:23:42
+  --> tests/ui/regex.rs:24:42
    |
 LL |     let wrong_char_ranice = Regex::new("[z-a]");
    |                                          ^^^
@@ -26,7 +26,7 @@ LL |     let wrong_char_ranice = Regex::new("[z-a]");
    = help: to override `-D warnings` add `#[allow(clippy::invalid_regex)]`
 
 error: regex syntax error: invalid character class range, the start must be <= the end
-  --> tests/ui/regex.rs:26:37
+  --> tests/ui/regex.rs:27:37
    |
 LL |     let some_unicode = Regex::new("[é-è]");
    |                                     ^^^
@@ -35,13 +35,13 @@ error: regex parse error:
            (
            ^
        error: unclosed group
-  --> tests/ui/regex.rs:29:33
+  --> tests/ui/regex.rs:30:33
    |
 LL |     let some_regex = Regex::new(OPENING_PAREN);
    |                                 ^^^^^^^^^^^^^
 
 error: trivial regex
-  --> tests/ui/regex.rs:31:53
+  --> tests/ui/regex.rs:33:53
    |
 LL |     let binary_pipe_in_wrong_position = BRegex::new("|");
    |                                                     ^^^
@@ -52,7 +52,7 @@ error: regex parse error:
            (
            ^
        error: unclosed group
-  --> tests/ui/regex.rs:33:41
+  --> tests/ui/regex.rs:35:41
    |
 LL |     let some_binary_regex = BRegex::new(OPENING_PAREN);
    |                                         ^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ error: regex parse error:
            (
            ^
        error: unclosed group
-  --> tests/ui/regex.rs:34:56
+  --> tests/ui/regex.rs:37:56
    |
 LL |     let some_binary_regex_builder = BRegexBuilder::new(OPENING_PAREN);
    |                                                        ^^^^^^^^^^^^^
@@ -70,7 +70,7 @@ error: regex parse error:
            (
            ^
        error: unclosed group
-  --> tests/ui/regex.rs:46:37
+  --> tests/ui/regex.rs:50:37
    |
 LL |     let set_error = RegexSet::new(&[OPENING_PAREN, r"[a-z]+\.(com|org|net)"]);
    |                                     ^^^^^^^^^^^^^
@@ -79,7 +79,7 @@ error: regex parse error:
            (
            ^
        error: unclosed group
-  --> tests/ui/regex.rs:47:39
+  --> tests/ui/regex.rs:52:39
    |
 LL |     let bset_error = BRegexSet::new(&[OPENING_PAREN, r"[a-z]+\.(com|org|net)"]);
    |                                       ^^^^^^^^^^^^^
@@ -88,7 +88,7 @@ error: regex parse error:
            \b\c
              ^^
        error: unrecognized escape sequence
-  --> tests/ui/regex.rs:54:42
+  --> tests/ui/regex.rs:60:42
    |
 LL |     let escaped_string_span = Regex::new("\\b\\c");
    |                                          ^^^^^^^^
@@ -96,19 +96,19 @@ LL |     let escaped_string_span = Regex::new("\\b\\c");
    = help: consider using a raw string literal: `r".."`
 
 error: regex syntax error: duplicate flag
-  --> tests/ui/regex.rs:56:34
+  --> tests/ui/regex.rs:63:34
    |
 LL |     let aux_span = Regex::new("(?ixi)");
    |                                  ^ ^
 
 error: regex syntax error: pattern can match invalid UTF-8
-  --> tests/ui/regex.rs:62:53
+  --> tests/ui/regex.rs:69:53
    |
 LL |     let invalid_utf8_should_lint = Regex::new("(?-u).");
    |                                                     ^
 
 error: trivial regex
-  --> tests/ui/regex.rs:67:33
+  --> tests/ui/regex.rs:74:33
    |
 LL |     let trivial_eq = Regex::new("^foobar$");
    |                                 ^^^^^^^^^^
@@ -116,7 +116,7 @@ LL |     let trivial_eq = Regex::new("^foobar$");
    = help: consider using `==` on `str`s
 
 error: trivial regex
-  --> tests/ui/regex.rs:70:48
+  --> tests/ui/regex.rs:77:48
    |
 LL |     let trivial_eq_builder = RegexBuilder::new("^foobar$");
    |                                                ^^^^^^^^^^
@@ -124,7 +124,7 @@ LL |     let trivial_eq_builder = RegexBuilder::new("^foobar$");
    = help: consider using `==` on `str`s
 
 error: trivial regex
-  --> tests/ui/regex.rs:73:42
+  --> tests/ui/regex.rs:80:42
    |
 LL |     let trivial_starts_with = Regex::new("^foobar");
    |                                          ^^^^^^^^^
@@ -132,7 +132,7 @@ LL |     let trivial_starts_with = Regex::new("^foobar");
    = help: consider using `str::starts_with`
 
 error: trivial regex
-  --> tests/ui/regex.rs:76:40
+  --> tests/ui/regex.rs:83:40
    |
 LL |     let trivial_ends_with = Regex::new("foobar$");
    |                                        ^^^^^^^^^
@@ -140,7 +140,7 @@ LL |     let trivial_ends_with = Regex::new("foobar$");
    = help: consider using `str::ends_with`
 
 error: trivial regex
-  --> tests/ui/regex.rs:79:39
+  --> tests/ui/regex.rs:86:39
    |
 LL |     let trivial_contains = Regex::new("foobar");
    |                                       ^^^^^^^^
@@ -148,7 +148,7 @@ LL |     let trivial_contains = Regex::new("foobar");
    = help: consider using `str::contains`
 
 error: trivial regex
-  --> tests/ui/regex.rs:82:39
+  --> tests/ui/regex.rs:89:39
    |
 LL |     let trivial_contains = Regex::new(NOT_A_REAL_REGEX);
    |                                       ^^^^^^^^^^^^^^^^
@@ -156,7 +156,7 @@ LL |     let trivial_contains = Regex::new(NOT_A_REAL_REGEX);
    = help: consider using `str::contains`
 
 error: trivial regex
-  --> tests/ui/regex.rs:85:40
+  --> tests/ui/regex.rs:92:40
    |
 LL |     let trivial_backslash = Regex::new("a\\.b");
    |                                        ^^^^^^^
@@ -164,7 +164,7 @@ LL |     let trivial_backslash = Regex::new("a\\.b");
    = help: consider using `str::contains`
 
 error: trivial regex
-  --> tests/ui/regex.rs:89:36
+  --> tests/ui/regex.rs:96:36
    |
 LL |     let trivial_empty = Regex::new("");
    |                                    ^^
@@ -172,7 +172,7 @@ LL |     let trivial_empty = Regex::new("");
    = help: the regex is unlikely to be useful as it is
 
 error: trivial regex
-  --> tests/ui/regex.rs:92:36
+  --> tests/ui/regex.rs:99:36
    |
 LL |     let trivial_empty = Regex::new("^");
    |                                    ^^^
@@ -180,7 +180,7 @@ LL |     let trivial_empty = Regex::new("^");
    = help: the regex is unlikely to be useful as it is
 
 error: trivial regex
-  --> tests/ui/regex.rs:95:36
+  --> tests/ui/regex.rs:102:36
    |
 LL |     let trivial_empty = Regex::new("^$");
    |                                    ^^^^
@@ -188,7 +188,7 @@ LL |     let trivial_empty = Regex::new("^$");
    = help: consider using `str::is_empty`
 
 error: trivial regex
-  --> tests/ui/regex.rs:98:44
+  --> tests/ui/regex.rs:105:44
    |
 LL |     let binary_trivial_empty = BRegex::new("^$");
    |                                            ^^^^
@@ -196,13 +196,13 @@ LL |     let binary_trivial_empty = BRegex::new("^$");
    = help: consider using `str::is_empty`
 
 error: compiling a regex in a loop
-  --> tests/ui/regex.rs:125:21
+  --> tests/ui/regex.rs:132:21
    |
 LL |         let regex = Regex::new("a.b");
    |                     ^^^^^^^^^^
    |
 help: move the regex construction outside this loop
-  --> tests/ui/regex.rs:122:5
+  --> tests/ui/regex.rs:129:5
    |
 LL |     loop {
    |     ^^^^
@@ -210,37 +210,37 @@ LL |     loop {
    = help: to override `-D warnings` add `#[allow(clippy::regex_creation_in_loops)]`
 
 error: compiling a regex in a loop
-  --> tests/ui/regex.rs:127:21
+  --> tests/ui/regex.rs:134:21
    |
 LL |         let regex = BRegex::new("a.b");
    |                     ^^^^^^^^^^^
    |
 help: move the regex construction outside this loop
-  --> tests/ui/regex.rs:122:5
+  --> tests/ui/regex.rs:129:5
    |
 LL |     loop {
    |     ^^^^
 
 error: compiling a regex in a loop
-  --> tests/ui/regex.rs:133:25
+  --> tests/ui/regex.rs:140:25
    |
 LL |             let regex = Regex::new("a.b");
    |                         ^^^^^^^^^^
    |
 help: move the regex construction outside this loop
-  --> tests/ui/regex.rs:122:5
+  --> tests/ui/regex.rs:129:5
    |
 LL |     loop {
    |     ^^^^
 
 error: compiling a regex in a loop
-  --> tests/ui/regex.rs:138:32
+  --> tests/ui/regex.rs:145:32
    |
 LL |             let nested_regex = Regex::new("a.b");
    |                                ^^^^^^^^^^
    |
 help: move the regex construction outside this loop
-  --> tests/ui/regex.rs:137:9
+  --> tests/ui/regex.rs:144:9
    |
 LL |         for _ in 0..10 {
    |         ^^^^^^^^^^^^^^

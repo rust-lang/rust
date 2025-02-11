@@ -2,9 +2,7 @@ error: constructor `should_spawn` has the same name as the type
   --> tests/ui/self_named_constructors.rs:7:5
    |
 LL | /     pub fn should_spawn() -> ShouldSpawn {
-LL | |
-LL | |
-LL | |         ShouldSpawn
+...  |
 LL | |     }
    | |_____^
    |

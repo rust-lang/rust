@@ -14,7 +14,7 @@ LL +     let _: i64 = 0i32.into();
    |
 
 error: use of a fallible conversion when an infallible one could be used
-  --> tests/ui/unnecessary_fallible_conversions.rs:9:23
+  --> tests/ui/unnecessary_fallible_conversions.rs:10:23
    |
 LL |     let _: i64 = 0i32.try_into().expect("can't happen");
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -27,7 +27,7 @@ LL +     let _: i64 = 0i32.into();
    |
 
 error: use of a fallible conversion when an infallible one could be used
-  --> tests/ui/unnecessary_fallible_conversions.rs:14:13
+  --> tests/ui/unnecessary_fallible_conversions.rs:16:13
    |
 LL |     let _ = i64::try_from(0i32).unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL +     let _ = i64::from(0i32);
    |
 
 error: use of a fallible conversion when an infallible one could be used
-  --> tests/ui/unnecessary_fallible_conversions.rs:17:13
+  --> tests/ui/unnecessary_fallible_conversions.rs:20:13
    |
 LL |     let _ = i64::try_from(0i32).expect("can't happen");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -53,7 +53,7 @@ LL +     let _ = i64::from(0i32);
    |
 
 error: use of a fallible conversion when an infallible one could be used
-  --> tests/ui/unnecessary_fallible_conversions.rs:22:18
+  --> tests/ui/unnecessary_fallible_conversions.rs:26:18
    |
 LL |     let _: i64 = i32::try_into(0).unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -66,7 +66,7 @@ LL +     let _: i64 = i32::into(0);
    |
 
 error: use of a fallible conversion when an infallible one could be used
-  --> tests/ui/unnecessary_fallible_conversions.rs:25:18
+  --> tests/ui/unnecessary_fallible_conversions.rs:30:18
    |
 LL |     let _: i64 = i32::try_into(0i32).expect("can't happen");
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -79,7 +79,7 @@ LL +     let _: i64 = i32::into(0i32);
    |
 
 error: use of a fallible conversion when an infallible one could be used
-  --> tests/ui/unnecessary_fallible_conversions.rs:30:13
+  --> tests/ui/unnecessary_fallible_conversions.rs:36:13
    |
 LL |     let _ = <i64 as TryFrom<i32>>::try_from(0).unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -92,7 +92,7 @@ LL +     let _ = <i64 as From<i32>>::from(0);
    |
 
 error: use of a fallible conversion when an infallible one could be used
-  --> tests/ui/unnecessary_fallible_conversions.rs:33:13
+  --> tests/ui/unnecessary_fallible_conversions.rs:40:13
    |
 LL |     let _ = <i64 as TryFrom<i32>>::try_from(0).expect("can't happen");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -105,7 +105,7 @@ LL +     let _ = <i64 as From<i32>>::from(0);
    |
 
 error: use of a fallible conversion when an infallible one could be used
-  --> tests/ui/unnecessary_fallible_conversions.rs:38:18
+  --> tests/ui/unnecessary_fallible_conversions.rs:46:18
    |
 LL |     let _: i64 = <i32 as TryInto<_>>::try_into(0).unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -118,7 +118,7 @@ LL +     let _: i64 = <i32 as Into<_>>::into(0);
    |
 
 error: use of a fallible conversion when an infallible one could be used
-  --> tests/ui/unnecessary_fallible_conversions.rs:41:18
+  --> tests/ui/unnecessary_fallible_conversions.rs:50:18
    |
 LL |     let _: i64 = <i32 as TryInto<_>>::try_into(0).expect("can't happen");
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

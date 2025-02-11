@@ -37,7 +37,8 @@ fn if_same_then_else() {
         0..=10;
         foo();
     }
-    //~^^^^^^^^^^^^^^^^^ ERROR: this `if` has identical blocks
+    //~^^^^^^^^^^^^^^^^^ if_same_then_else
+
 
     if true {
         Foo { bar: 42 };
@@ -65,10 +66,12 @@ fn if_same_then_else() {
     }
 
     let _ = if true { 0.0 } else { 0.0 };
-    //~^ ERROR: this `if` has identical blocks
+    //~^ if_same_then_else
+
 
     let _ = if true { -0.0 } else { -0.0 };
-    //~^ ERROR: this `if` has identical blocks
+    //~^ if_same_then_else
+
 
     let _ = if true { 0.0 } else { -0.0 };
 
@@ -80,7 +83,8 @@ fn if_same_then_else() {
     }
 
     let _ = if true { 42 } else { 42 };
-    //~^ ERROR: this `if` has identical blocks
+    //~^ if_same_then_else
+
 
     if true {
         let bar = if true { 42 } else { 43 };
@@ -97,7 +101,8 @@ fn if_same_then_else() {
         }
         bar + 1;
     }
-    //~^^^^^^^^^^^^^^^ ERROR: this `if` has identical blocks
+    //~^^^^^^^^^^^^^^^ if_same_then_else
+
 
     if true {
         let _ = match 42 {
@@ -240,6 +245,7 @@ mod issue_11213 {
         } else {
             0_u8.is_power_of_two()
         }
+        //~^^^^^ if_same_then_else
     }
 }
 

@@ -8,7 +8,7 @@ LL |     &x[num..10];
    = help: to override `-D warnings` add `#[allow(clippy::out_of_bounds_indexing)]`
 
 error: range is out of bounds
-  --> tests/ui/out_of_bounds_indexing/issue-3102.rs:12:8
+  --> tests/ui/out_of_bounds_indexing/issue-3102.rs:13:8
    |
 LL |     &x[10..num];
    |        ^^

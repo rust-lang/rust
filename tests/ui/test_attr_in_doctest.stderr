@@ -3,6 +3,7 @@ error: unit tests in doctest are not executed
    |
 LL |   /// #[test]
    |  _____^
+LL | |
 LL | | /// fn should_be_linted() {
    | |_______________________^
    |
@@ -10,18 +11,20 @@ LL | | /// fn should_be_linted() {
    = help: to override `-D warnings` add `#[allow(clippy::test_attr_in_doctest)]`
 
 error: unit tests in doctest are not executed
-  --> tests/ui/test_attr_in_doctest.rs:16:5
+  --> tests/ui/test_attr_in_doctest.rs:17:5
    |
 LL |   /// #[test]
    |  _____^
+LL | |
 LL | | /// fn should_also_be_linted() {
    | |____________________________^
 
 error: unit tests in doctest are not executed
-  --> tests/ui/test_attr_in_doctest.rs:22:5
+  --> tests/ui/test_attr_in_doctest.rs:24:5
    |
 LL |   /// #[test]
    |  _____^
+LL | |
 LL | | /// fn should_be_linted_too() {
    | |___________________________^
 

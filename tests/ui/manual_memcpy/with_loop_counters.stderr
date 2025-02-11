@@ -2,9 +2,7 @@ error: it looks like you're manually copying between slices
   --> tests/ui/manual_memcpy/with_loop_counters.rs:5:5
    |
 LL | /     for i in 3..src.len() {
-LL | |
-LL | |
-LL | |         dst[i] = src[count];
+...  |
 LL | |         count += 1;
 LL | |     }
    | |_____^ help: try replacing the loop by: `dst[3..src.len()].copy_from_slice(&src[..(src.len() - 3)]);`
@@ -13,9 +11,10 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::manual_memcpy)]`
 
 error: it looks like you're manually copying between slices
-  --> tests/ui/manual_memcpy/with_loop_counters.rs:13:5
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:14:5
    |
 LL | /     for i in 3..src.len() {
+LL | |
 LL | |
 LL | |         dst[count] = src[i];
 LL | |         count += 1;
@@ -23,9 +22,10 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[..(src.len() - 3)].copy_from_slice(&src[3..]);`
 
 error: it looks like you're manually copying between slices
-  --> tests/ui/manual_memcpy/with_loop_counters.rs:20:5
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:22:5
    |
 LL | /     for i in 0..src.len() {
+LL | |
 LL | |
 LL | |         dst[count] = src[i];
 LL | |         count += 1;
@@ -33,9 +33,10 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[3..(src.len() + 3)].copy_from_slice(&src[..]);`
 
 error: it looks like you're manually copying between slices
-  --> tests/ui/manual_memcpy/with_loop_counters.rs:27:5
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:30:5
    |
 LL | /     for i in 0..src.len() {
+LL | |
 LL | |
 LL | |         dst[i] = src[count];
 LL | |         count += 1;
@@ -43,9 +44,10 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[..src.len()].copy_from_slice(&src[3..(src.len() + 3)]);`
 
 error: it looks like you're manually copying between slices
-  --> tests/ui/manual_memcpy/with_loop_counters.rs:34:5
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:38:5
    |
 LL | /     for i in 3..(3 + src.len()) {
+LL | |
 LL | |
 LL | |         dst[i] = src[count];
 LL | |         count += 1;
@@ -53,9 +55,10 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[3..(3 + src.len())].copy_from_slice(&src[..(3 + src.len() - 3)]);`
 
 error: it looks like you're manually copying between slices
-  --> tests/ui/manual_memcpy/with_loop_counters.rs:41:5
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:46:5
    |
 LL | /     for i in 5..src.len() {
+LL | |
 LL | |
 LL | |         dst[i] = src[count - 2];
 LL | |         count += 1;
@@ -63,9 +66,10 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[5..src.len()].copy_from_slice(&src[(3 - 2)..((src.len() - 2) + 3 - 5)]);`
 
 error: it looks like you're manually copying between slices
-  --> tests/ui/manual_memcpy/with_loop_counters.rs:48:5
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:54:5
    |
 LL | /     for i in 0..dst.len() {
+LL | |
 LL | |
 LL | |         dst[i] = src[count];
 LL | |         count += 1;
@@ -73,9 +77,10 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst.copy_from_slice(&src[2..(dst.len() + 2)]);`
 
 error: it looks like you're manually copying between slices
-  --> tests/ui/manual_memcpy/with_loop_counters.rs:55:5
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:62:5
    |
 LL | /     for i in 3..10 {
+LL | |
 LL | |
 LL | |         dst[i] = src[count];
 LL | |         count += 1;
@@ -83,13 +88,13 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[3..10].copy_from_slice(&src[5..(10 + 5 - 3)]);`
 
 error: it looks like you're manually copying between slices
-  --> tests/ui/manual_memcpy/with_loop_counters.rs:63:5
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:71:5
    |
 LL | /     for i in 0..src.len() {
 LL | |
+LL | |
 LL | |         dst[count] = src[i];
-LL | |         dst2[count2] = src[i];
-LL | |         count += 1;
+...  |
 LL | |         count2 += 1;
 LL | |     }
    | |_____^
@@ -101,9 +106,10 @@ LL +     dst2[30..(src.len() + 30)].copy_from_slice(&src[..]);
    |
 
 error: it looks like you're manually copying between slices
-  --> tests/ui/manual_memcpy/with_loop_counters.rs:74:5
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:83:5
    |
 LL | /     for i in 0..1 << 1 {
+LL | |
 LL | |
 LL | |         dst[count] = src[i + 2];
 LL | |         count += 1;
@@ -111,9 +117,10 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst[(0 << 1)..((1 << 1) + (0 << 1))].copy_from_slice(&src[2..((1 << 1) + 2)]);`
 
 error: it looks like you're manually copying between slices
-  --> tests/ui/manual_memcpy/with_loop_counters.rs:82:5
+  --> tests/ui/manual_memcpy/with_loop_counters.rs:92:5
    |
 LL | /     for i in 3..src.len() {
+LL | |
 LL | |
 LL | |         dst[i] = src[count];
 LL | |         count += 1

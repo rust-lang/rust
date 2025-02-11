@@ -101,6 +101,7 @@ struct BadNew;
 
 impl BadNew {
     fn new() -> i32 {
+    //~^ new_ret_no_self
         0
     }
 }
@@ -122,6 +123,7 @@ fn filter_next() {
 
     // Multi-line case.
     let _ = v.iter().filter(|&x| {
+    //~^ filter_next
                                 *x < 0
                             }
                    ).next();

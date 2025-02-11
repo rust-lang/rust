@@ -2,7 +2,7 @@
 #![allow(unused)]
 //@no-rustfix
 pub enum E {
-    //~^ manual_non_exhaustive
+//~^ manual_non_exhaustive
     A,
     B,
     #[doc(hidden)]
@@ -27,6 +27,7 @@ pub enum NoDocHidden {
 
 // name of variant with doc hidden does not start with underscore
 pub enum NoUnderscore {
+//~^ manual_non_exhaustive
     A,
     B,
     #[doc(hidden)]

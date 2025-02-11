@@ -3,5 +3,6 @@
 fn main() {
     println!("Hello, World!");
     main();
-    //~^ ERROR: recursing into entrypoint `main`
+    //~^ main_recursion
+
 }

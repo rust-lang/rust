@@ -24,49 +24,67 @@ fn main() {
     let x = 'x';
 
     println!("error: {}", format!("something failed at {}", Location::caller()));
-    //~^ ERROR: `format!` in `println!` args
+    //~^ format_in_format_args
+
     println!("{}: {}", error, format!("something failed at {}", Location::caller()));
-    //~^ ERROR: `format!` in `println!` args
+    //~^ format_in_format_args
+
     println!("{:?}: {}", error, format!("something failed at {}", Location::caller()));
-    //~^ ERROR: `format!` in `println!` args
+    //~^ format_in_format_args
+
     println!("{{}}: {}", format!("something failed at {}", Location::caller()));
-    //~^ ERROR: `format!` in `println!` args
+    //~^ format_in_format_args
+
     println!(r#"error: "{}""#, format!("something failed at {}", Location::caller()));
-    //~^ ERROR: `format!` in `println!` args
+    //~^ format_in_format_args
+
     println!("error: {}", format!(r#"something failed at "{}""#, Location::caller()));
-    //~^ ERROR: `format!` in `println!` args
+    //~^ format_in_format_args
+
     println!("error: {}", format!("something failed at {} {0}", Location::caller()));
-    //~^ ERROR: `format!` in `println!` args
+    //~^ format_in_format_args
+
     let _ = format!("error: {}", format!("something failed at {}", Location::caller()));
-    //~^ ERROR: `format!` in `format!` args
+    //~^ format_in_format_args
+
     let _ = write!(
-        //~^ ERROR: `format!` in `write!` args
+    //~^ format_in_format_args
+
         stdout(),
         "error: {}",
         format!("something failed at {}", Location::caller())
     );
     let _ = writeln!(
-        //~^ ERROR: `format!` in `writeln!` args
+    //~^ format_in_format_args
+
         stdout(),
         "error: {}",
         format!("something failed at {}", Location::caller())
     );
     print!("error: {}", format!("something failed at {}", Location::caller()));
-    //~^ ERROR: `format!` in `print!` args
+    //~^ format_in_format_args
+
     eprint!("error: {}", format!("something failed at {}", Location::caller()));
-    //~^ ERROR: `format!` in `eprint!` args
+    //~^ format_in_format_args
+
     eprintln!("error: {}", format!("something failed at {}", Location::caller()));
-    //~^ ERROR: `format!` in `eprintln!` args
+    //~^ format_in_format_args
+
     let _ = format_args!("error: {}", format!("something failed at {}", Location::caller()));
-    //~^ ERROR: `format!` in `format_args!` args
+    //~^ format_in_format_args
+
     assert!(true, "error: {}", format!("something failed at {}", Location::caller()));
-    //~^ ERROR: `format!` in `assert!` args
+    //~^ format_in_format_args
+
     assert_eq!(0, 0, "error: {}", format!("something failed at {}", Location::caller()));
-    //~^ ERROR: `format!` in `assert_eq!` args
+    //~^ format_in_format_args
+
     assert_ne!(0, 0, "error: {}", format!("something failed at {}", Location::caller()));
-    //~^ ERROR: `format!` in `assert_ne!` args
+    //~^ format_in_format_args
+
     panic!("error: {}", format!("something failed at {}", Location::caller()));
-    //~^ ERROR: `format!` in `panic!` args
+    //~^ format_in_format_args
+
 
     // negative tests
     println!("error: {}", format_args!("something failed at {}", Location::caller()));
@@ -134,17 +152,24 @@ fn user_format() {
     let x = 'x';
 
     usr_println!(true, "error: {}", format!("boom at {}", Location::caller()));
-    //~^ ERROR: `format!` in `usr_println!` args
+    //~^ format_in_format_args
+
     usr_println!(true, "{}: {}", error, format!("boom at {}", Location::caller()));
-    //~^ ERROR: `format!` in `usr_println!` args
+    //~^ format_in_format_args
+
     usr_println!(true, "{:?}: {}", error, format!("boom at {}", Location::caller()));
-    //~^ ERROR: `format!` in `usr_println!` args
+    //~^ format_in_format_args
+
     usr_println!(true, "{{}}: {}", format!("boom at {}", Location::caller()));
-    //~^ ERROR: `format!` in `usr_println!` args
+    //~^ format_in_format_args
+
     usr_println!(true, r#"error: "{}""#, format!("boom at {}", Location::caller()));
-    //~^ ERROR: `format!` in `usr_println!` args
+    //~^ format_in_format_args
+
     usr_println!(true, "error: {}", format!(r#"boom at "{}""#, Location::caller()));
-    //~^ ERROR: `format!` in `usr_println!` args
+    //~^ format_in_format_args
+
     usr_println!(true, "error: {}", format!("boom at {} {0}", Location::caller()));
-    //~^ ERROR: `format!` in `usr_println!` args
+    //~^ format_in_format_args
+
 }

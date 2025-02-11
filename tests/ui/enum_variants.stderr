@@ -21,25 +21,25 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: variant name starts with the enum's name
-  --> tests/ui/enum_variants.rs:30:5
+  --> tests/ui/enum_variants.rs:29:5
    |
 LL |     FoodGood,
    |     ^^^^^^^^
 
 error: variant name starts with the enum's name
-  --> tests/ui/enum_variants.rs:32:5
+  --> tests/ui/enum_variants.rs:31:5
    |
 LL |     FoodMiddle,
    |     ^^^^^^^^^^
 
 error: variant name starts with the enum's name
-  --> tests/ui/enum_variants.rs:34:5
+  --> tests/ui/enum_variants.rs:33:5
    |
 LL |     FoodBad,
    |     ^^^^^^^
 
 error: all variants have the same prefix: `Food`
-  --> tests/ui/enum_variants.rs:28:1
+  --> tests/ui/enum_variants.rs:27:1
    |
 LL | / enum Food {
 LL | |
@@ -51,9 +51,10 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `CallType`
-  --> tests/ui/enum_variants.rs:42:1
+  --> tests/ui/enum_variants.rs:41:1
    |
 LL | / enum BadCallType {
+LL | |
 LL | |
 LL | |     CallTypeCall,
 LL | |     CallTypeCreate,

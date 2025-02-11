@@ -5,15 +5,19 @@ use std::io::{BufReader, Read};
 fn main() {
     // should fix, because type is String
     let _ = String::from("foo").bytes().count();
+    //~^ bytes_count_to_len
 
     let s1 = String::from("foo");
     let _ = s1.bytes().count();
+    //~^ bytes_count_to_len
 
     // should fix, because type is &str
     let _ = "foo".bytes().count();
+    //~^ bytes_count_to_len
 
     let s2 = "foo";
     let _ = s2.bytes().count();
+    //~^ bytes_count_to_len
 
     // make sure using count() normally doesn't trigger warning
     let vector = [0, 1, 2];

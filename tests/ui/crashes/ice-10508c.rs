@@ -1,3 +1,5 @@
+//@ check-pass
+
 #[derive(Debug)]
 struct S<T> {
     t: T,

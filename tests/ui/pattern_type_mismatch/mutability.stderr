@@ -9,7 +9,7 @@ LL |         Some(_) => (),
    = help: to override `-D warnings` add `#[allow(clippy::pattern_type_mismatch)]`
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/mutability.rs:16:9
+  --> tests/ui/pattern_type_mismatch/mutability.rs:17:9
    |
 LL |         Some(_) => (),
    |         ^^^^^^^
