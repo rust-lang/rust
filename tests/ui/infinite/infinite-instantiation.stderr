@@ -1,15 +1,15 @@
 error: reached the recursion limit while instantiating `function::<Option<Option<Option<Option<Option<...>>>>>>`
-  --> $DIR/infinite-instantiation.rs:23:9
+  --> $DIR/infinite-instantiation.rs:21:9
    |
 LL |         function(counter - 1, t.to_option());
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `function` defined here
-  --> $DIR/infinite-instantiation.rs:21:1
+  --> $DIR/infinite-instantiation.rs:19:1
    |
 LL | fn function<T:ToOpt + Clone>(counter: usize, t: T) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: the full type name has been written to '$TEST_BUILD_DIR/$FILE.long-type.txt'
+   = note: the full type name has been written to '$TEST_BUILD_DIR/infinite-instantiation.long-type.txt'
 
 error: aborting due to 1 previous error
 

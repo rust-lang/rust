@@ -1,17 +1,17 @@
 error: reached the recursion limit while instantiating `rec::<&mut &mut &mut &mut &mut ...>`
-  --> $DIR/issue-67552.rs:30:9
+  --> $DIR/issue-67552.rs:28:9
    |
 LL |         rec(identity(&mut it))
    |         ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `rec` defined here
-  --> $DIR/issue-67552.rs:23:1
+  --> $DIR/issue-67552.rs:21:1
    |
 LL | / fn rec<T>(mut it: T)
 LL | | where
 LL | |     T: Iterator,
    | |________________^
-   = note: the full type name has been written to '$TEST_BUILD_DIR/$FILE.long-type.txt'
+   = note: the full type name has been written to '$TEST_BUILD_DIR/issue-67552.long-type.txt'
 
 error: aborting due to 1 previous error
 
