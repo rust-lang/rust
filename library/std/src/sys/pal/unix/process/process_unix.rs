@@ -410,6 +410,7 @@ impl Command {
 
     #[cfg(not(any(
         target_os = "freebsd",
+        target_os = "illumos",
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
         target_os = "nto",
@@ -427,6 +428,7 @@ impl Command {
     // directly.
     #[cfg(any(
         target_os = "freebsd",
+        target_os = "illumos",
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
         target_os = "nto",
@@ -584,6 +586,10 @@ impl Command {
         fn get_posix_spawn_addchdir() -> Option<PosixSpawnAddChdirFn> {
             use crate::sys::weak::weak;
 
+            // POSIX.1-2024 standardizes this function:
+            // https://pubs.opengroup.org/onlinepubs/9799919799/functions/posix_spawn_file_actions_addchdir.html.
+            // The _np version is more widely available, though, so try that first.
+
             weak! {
                 fn posix_spawn_file_actions_addchdir_np(
                     *mut libc::posix_spawn_file_actions_t,
@@ -591,7 +597,16 @@ impl Command {
                 ) -> libc::c_int
             }
 
-            posix_spawn_file_actions_addchdir_np.get()
+            weak! {
+                fn posix_spawn_file_actions_addchdir(
+                    *mut libc::posix_spawn_file_actions_t,
+                    *const libc::c_char
+                ) -> libc::c_int
+            }
+
+            posix_spawn_file_actions_addchdir_np
+                .get()
+                .or_else(|| posix_spawn_file_actions_addchdir.get())
         }
 
         /// Get the function pointer for adding a chdir action to a
