@@ -18,7 +18,6 @@
 //!
 //! | Type                    | Serial version      | Parallel version                |
 //! | ----------------------- | ------------------- | ------------------------------- |
-//! |` Weak<T>`               | `rc::Weak<T>`       | `sync::Weak<T>`                 |
 //! | `LRef<'a, T>` [^2]      | `&'a mut T`         | `&'a T`                         |
 //! |                         |                     |                                 |
 //! | `AtomicBool`            | `Cell<bool>`        | `atomic::AtomicBool`            |
@@ -104,11 +103,11 @@ mod mode {
 // FIXME(parallel_compiler): Get rid of these aliases across the compiler.
 
 pub use std::marker::{Send, Sync};
+pub use std::sync::OnceLock;
 // Use portable AtomicU64 for targets without native 64-bit atomics
 #[cfg(target_has_atomic = "64")]
 pub use std::sync::atomic::AtomicU64;
 pub use std::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize};
-pub use std::sync::{OnceLock, Weak};
 
 pub use mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
 pub use parking_lot::{
