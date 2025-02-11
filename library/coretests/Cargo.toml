@@ -6,7 +6,7 @@ repository = "https://github.com/rust-lang/rust.git"
 description = "Tests for the Rust Core Library"
 autotests = false
 autobenches = false
-edition = "2021"
+edition = "2024"
 
 [lib]
 path = "lib.rs"
