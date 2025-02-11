@@ -1,6 +1,6 @@
 pub(crate) mod aix;
 pub(crate) mod android;
-pub(crate) mod apple;
+pub mod apple;
 pub(crate) mod avr_gnu;
 pub(crate) mod bpf;
 pub(crate) mod dragonfly;
