@@ -211,17 +211,17 @@ error: casting to the same type is unnecessary (`i32` -> `i32`)
 LL |         let _ = &(x as i32);
    |                  ^^^^^^^^^^ help: try: `{ x }`
 
-error: casting integer literal to `i32` is unnecessary
+error: casting to the same type is unnecessary (`i32` -> `i32`)
   --> tests/ui/unnecessary_cast.rs:199:22
    |
 LL |         let _: i32 = -(1) as i32;
-   |                      ^^^^^^^^^^^ help: try: `-1_i32`
+   |                      ^^^^^^^^^^^ help: try: `{ -(1) }`
 
-error: casting integer literal to `i64` is unnecessary
+error: casting to the same type is unnecessary (`i64` -> `i64`)
   --> tests/ui/unnecessary_cast.rs:201:22
    |
 LL |         let _: i64 = -(1) as i64;
-   |                      ^^^^^^^^^^^ help: try: `-1_i64`
+   |                      ^^^^^^^^^^^ help: try: `{ -(1) }`
 
 error: casting float literal to `f64` is unnecessary
   --> tests/ui/unnecessary_cast.rs:208:22

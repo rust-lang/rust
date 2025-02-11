@@ -317,7 +317,7 @@ impl<'a> NormalizedPat<'a> {
             },
             PatKind::Expr(e) => match &e.kind {
                 // TODO: Handle negative integers. They're currently treated as a wild match.
-                PatExprKind::Lit { lit, negated: false } => match lit.node {
+                PatExprKind::Lit { lit } if !lit.node.is_negative() => match lit.node {
                     LitKind::Str(sym, _) => Self::LitStr(sym),
                     LitKind::ByteStr(ref bytes, _) | LitKind::CStr(ref bytes, _) => Self::LitBytes(bytes),
                     LitKind::Byte(val) => Self::LitInt(val.into()),
@@ -334,7 +334,7 @@ impl<'a> NormalizedPat<'a> {
                 let start = match start {
                     None => 0,
                     Some(e) => match &e.kind {
-                        PatExprKind::Lit { lit, negated: false } => match lit.node {
+                        PatExprKind::Lit { lit } if !lit.node.is_negative() => match lit.node {
                             LitKind::Int(val, _) => val.get(),
                             LitKind::Char(val) => val.into(),
                             LitKind::Byte(val) => val.into(),
@@ -346,7 +346,7 @@ impl<'a> NormalizedPat<'a> {
                 let (end, bounds) = match end {
                     None => (u128::MAX, RangeEnd::Included),
                     Some(e) => match &e.kind {
-                        PatExprKind::Lit { lit, negated: false } => match lit.node {
+                        PatExprKind::Lit { lit } if !lit.node.is_negative() => match lit.node {
                             LitKind::Int(val, _) => (val.get(), bounds),
                             LitKind::Char(val) => (val.into(), bounds),
                             LitKind::Byte(val) => (val.into(), bounds),

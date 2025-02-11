@@ -112,6 +112,7 @@ fn is_min_or_max(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<MinMax> {
                     return Some(MinMax::Max);
                 }
 
+                let check_min = check_min || lit.node.is_negative();
                 if check_min && value == minval {
                     return Some(MinMax::Min);
                 }
@@ -125,12 +126,6 @@ fn is_min_or_max(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<MinMax> {
         return r;
     }
 
-    if ty.is_signed() {
-        if let hir::ExprKind::Unary(hir::UnOp::Neg, val) = &expr.kind {
-            return check_lit(val, true);
-        }
-    }
-
     None
 }
 
@@ -141,12 +136,8 @@ enum Sign {
 }
 
 fn lit_sign(expr: &hir::Expr<'_>) -> Option<Sign> {
-    if let hir::ExprKind::Unary(hir::UnOp::Neg, inner) = &expr.kind {
-        if let hir::ExprKind::Lit(..) = &inner.kind {
-            return Some(Sign::Neg);
-        }
-    } else if let hir::ExprKind::Lit(..) = &expr.kind {
-        return Some(Sign::Pos);
+    if let hir::ExprKind::Lit(lit) = &expr.kind {
+        return Some(if lit.node.is_negative() { Sign::Neg } else { Sign::Pos });
     }
 
     None

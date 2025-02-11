@@ -6,10 +6,10 @@ if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::Fo
     && fields.len() == 2
     && fields[0].ident.as_str() == "start"
     && let ExprKind::Lit(ref lit) = fields[0].expr.kind
-    && let LitKind::Int(0, LitIntType::Unsuffixed) = lit.node
+    && let LitKind::Int(0, LitIntType::Unsuffixed(false)) = lit.node
     && fields[1].ident.as_str() == "end"
     && let ExprKind::Lit(ref lit1) = fields[1].expr.kind
-    && let LitKind::Int(10, LitIntType::Unsuffixed) = lit1.node
+    && let LitKind::Int(10, LitIntType::Unsuffixed(false)) = lit1.node
     && let ExprKind::Block(block, None) = body.kind
     && block.stmts.len() == 1
     && let StmtKind::Let(local) = block.stmts[0].kind
@@ -29,10 +29,10 @@ if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::Fo
     && fields.len() == 2
     && fields[0].ident.as_str() == "start"
     && let ExprKind::Lit(ref lit) = fields[0].expr.kind
-    && let LitKind::Int(0, LitIntType::Unsuffixed) = lit.node
+    && let LitKind::Int(0, LitIntType::Unsuffixed(false)) = lit.node
     && fields[1].ident.as_str() == "end"
     && let ExprKind::Lit(ref lit1) = fields[1].expr.kind
-    && let LitKind::Int(10, LitIntType::Unsuffixed) = lit1.node
+    && let LitKind::Int(10, LitIntType::Unsuffixed(false)) = lit1.node
     && let ExprKind::Block(block, None) = body.kind
     && block.stmts.len() == 1
     && let StmtKind::Semi(e) = block.stmts[0].kind
@@ -49,10 +49,10 @@ if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::Fo
     && fields.len() == 2
     && fields[0].ident.as_str() == "start"
     && let ExprKind::Lit(ref lit) = fields[0].expr.kind
-    && let LitKind::Int(0, LitIntType::Unsuffixed) = lit.node
+    && let LitKind::Int(0, LitIntType::Unsuffixed(false)) = lit.node
     && fields[1].ident.as_str() == "end"
     && let ExprKind::Lit(ref lit1) = fields[1].expr.kind
-    && let LitKind::Int(10, LitIntType::Unsuffixed) = lit1.node
+    && let LitKind::Int(10, LitIntType::Unsuffixed(false)) = lit1.node
     && let ExprKind::Block(block, None) = body.kind
     && block.stmts.len() == 1
     && let StmtKind::Semi(e) = block.stmts[0].kind
@@ -77,7 +77,7 @@ if let Some(higher::While { condition: condition, body: body }) = higher::While:
 }
 if let Some(higher::WhileLet { let_pat: let_pat, let_expr: let_expr, if_then: if_then }) = higher::WhileLet::hir(expr)
     && let PatKind::Expr(lit_expr) = let_pat.kind
-    && let PatExprKind::Lit{ref lit, negated } = lit_expr.kind
+    && let PatExprKind::Lit{ref lit } = lit_expr.kind
     && let LitKind::Bool(true) = lit.node
     && let ExprKind::Path(ref qpath) = let_expr.kind
     && match_qpath(qpath, &["a"])

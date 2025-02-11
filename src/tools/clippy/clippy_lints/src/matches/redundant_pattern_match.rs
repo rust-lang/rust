@@ -75,7 +75,7 @@ fn find_match_true<'tcx>(
     message: &'static str,
 ) {
     if let PatKind::Expr(lit) = pat.kind
-        && let PatExprKind::Lit { lit, negated: false } = lit.kind
+        && let PatExprKind::Lit { lit } = lit.kind
         && let LitKind::Bool(pat_is_true) = lit.node
     {
         let mut applicability = Applicability::MachineApplicable;

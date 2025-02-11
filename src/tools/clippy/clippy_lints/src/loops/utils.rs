@@ -192,7 +192,7 @@ impl<'tcx> Visitor<'tcx> for InitializeVisitor<'_, 'tcx> {
                                 InitializeVisitorState::Declared(name, mut ty) => {
                                     if ty.is_none() {
                                         if let ExprKind::Lit(Spanned {
-                                            node: LitKind::Int(_, LitIntType::Unsuffixed),
+                                            node: LitKind::Int(_, LitIntType::Unsuffixed(false)),
                                             ..
                                         }) = rhs.kind
                                         {

@@ -202,14 +202,8 @@ fn check_expr_range(start: &Expr<'_>, end: &Expr<'_>) -> CharRange {
 }
 
 fn check_range(start: &PatExpr<'_>, end: &PatExpr<'_>) -> CharRange {
-    if let PatExprKind::Lit {
-        lit: start_lit,
-        negated: false,
-    } = &start.kind
-        && let PatExprKind::Lit {
-            lit: end_lit,
-            negated: false,
-        } = &end.kind
+    if let PatExprKind::Lit { lit: start_lit } = &start.kind
+        && let PatExprKind::Lit { lit: end_lit } = &end.kind
     {
         check_lit_range(start_lit, end_lit)
     } else {
