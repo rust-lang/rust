@@ -27,7 +27,7 @@ error: literal out of range for `i32`
 LL |     Ci32 = 3_000_000_000,
    |            ^^^^^^^^^^^^^
    |
-   = note: the literal `3_000_000_000` does not fit into the type `i32` whose range is `-2147483648..=2147483647`
+   = note: the literal `3000000000` does not fit into the type `i32` whose range is `-2147483648..=2147483647`
    = help: consider using the type `u32` instead
 
 error: literal out of range for `i64`
