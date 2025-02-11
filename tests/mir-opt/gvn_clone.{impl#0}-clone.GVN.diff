@@ -55,16 +55,16 @@
       bb3: {
           StorageDead(_9);
 -         _0 = AllCopy { a: move _2, b: move _5, c: move _8 };
-+         _0 = copy (*_1);
-          StorageDead(_8);
-          StorageDead(_5);
-          StorageDead(_2);
 -         StorageDead(_10);
++         _0 = copy (*_1);
++         nop;
+          StorageDead(_8);
 -         StorageDead(_7);
++         nop;
+          StorageDead(_5);
 -         StorageDead(_4);
 +         nop;
-+         nop;
-+         nop;
+          StorageDead(_2);
           return;
       }
   }
