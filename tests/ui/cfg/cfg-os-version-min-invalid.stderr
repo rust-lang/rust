@@ -1,0 +1,139 @@
+error: expected two literals, a platform and a version
+  --> $DIR/cfg-os-version-min-invalid.rs:7:7
+   |
+LL | #[cfg(os_version_min("macos"))]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected two literals, a platform and a version
+  --> $DIR/cfg-os-version-min-invalid.rs:9:7
+   |
+LL | #[cfg(os_version_min("1", "2", "3"))]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected a platform literal
+  --> $DIR/cfg-os-version-min-invalid.rs:12:22
+   |
+LL | #[cfg(os_version_min(macos, "1.0.0"))]
+   |                      ^^^^^
+
+error: expected a platform literal
+  --> $DIR/cfg-os-version-min-invalid.rs:14:22
+   |
+LL | #[cfg(os_version_min(42, "1.0.0"))]
+   |                      ^^
+
+error: expected a version literal
+  --> $DIR/cfg-os-version-min-invalid.rs:17:31
+   |
+LL | #[cfg(os_version_min("macos", 42))]
+   |                               ^^
+
+error: expected a version literal
+  --> $DIR/cfg-os-version-min-invalid.rs:19:31
+   |
+LL | #[cfg(os_version_min("macos", 10.10))]
+   |                               ^^^^^
+
+error: expected a version literal
+  --> $DIR/cfg-os-version-min-invalid.rs:21:31
+   |
+LL | #[cfg(os_version_min("macos", false))]
+   |                               ^^^^^
+
+warning: unknown platform literal, expected values are: `macos`, `ios`, `tvos`, `watchos`, and `visionos`
+  --> $DIR/cfg-os-version-min-invalid.rs:24:22
+   |
+LL | #[cfg(os_version_min("11.0", "macos"))]
+   |                      ^^^^^^
+
+warning: unknown platform literal, expected values are: `macos`, `ios`, `tvos`, `watchos`, and `visionos`
+  --> $DIR/cfg-os-version-min-invalid.rs:26:22
+   |
+LL | #[cfg(os_version_min("linux", "5.3"))]
+   |                      ^^^^^^^
+
+error: unimplemented platform
+  --> $DIR/cfg-os-version-min-invalid.rs:29:22
+   |
+LL | #[cfg(os_version_min("windows", "10.0.10240"))]
+   |                      ^^^^^^^^^
+
+error: failed parsing version: number too large to fit in target type
+  --> $DIR/cfg-os-version-min-invalid.rs:32:31
+   |
+LL | #[cfg(os_version_min("macos", "99999"))]
+   |                               ^^^^^^^
+
+error: failed parsing version: invalid digit found in string
+  --> $DIR/cfg-os-version-min-invalid.rs:34:31
+   |
+LL | #[cfg(os_version_min("macos", "-1"))]
+   |                               ^^^^
+
+error: failed parsing version: number too large to fit in target type
+  --> $DIR/cfg-os-version-min-invalid.rs:36:31
+   |
+LL | #[cfg(os_version_min("macos", "65536"))]
+   |                               ^^^^^^^
+
+error: failed parsing version: invalid digit found in string
+  --> $DIR/cfg-os-version-min-invalid.rs:38:31
+   |
+LL | #[cfg(os_version_min("macos", "1.2.3.4"))]
+   |                               ^^^^^^^^^
+
+warning: version is set unnecessarily low, the minimum supported by Rust on this platform is 10.12
+  --> $DIR/cfg-os-version-min-invalid.rs:41:31
+   |
+LL | #[cfg(os_version_min("macos", "10.0"))]
+   |       ------------------------^^^^^^- help: use `target_os` instead: `target_os = "macos"`
+
+warning: version is set unnecessarily low, the minimum supported by Rust on this platform is 10.12
+  --> $DIR/cfg-os-version-min-invalid.rs:43:31
+   |
+LL | #[cfg(os_version_min("macos", "0"))]
+   |       ------------------------^^^- help: use `target_os` instead: `target_os = "macos"`
+
+warning: version is set unnecessarily low, the minimum supported by Rust on this platform is 10.12
+  --> $DIR/cfg-os-version-min-invalid.rs:46:31
+   |
+LL | #[cfg(os_version_min("macos", "10.12"))]
+   |       ------------------------^^^^^^^- help: use `target_os` instead: `target_os = "macos"`
+
+warning: version is set unnecessarily low, the minimum supported by Rust on this platform is 10.0
+  --> $DIR/cfg-os-version-min-invalid.rs:48:29
+   |
+LL | #[cfg(os_version_min("ios", "10.0"))]
+   |       ----------------------^^^^^^- help: use `target_os` instead: `target_os = "ios"`
+
+warning: version is set unnecessarily low, the minimum supported by Rust on this platform is 10.0
+  --> $DIR/cfg-os-version-min-invalid.rs:50:30
+   |
+LL | #[cfg(os_version_min("tvos", "10.0"))]
+   |       -----------------------^^^^^^- help: use `target_os` instead: `target_os = "tvos"`
+
+warning: version is set unnecessarily low, the minimum supported by Rust on this platform is 5.0
+  --> $DIR/cfg-os-version-min-invalid.rs:52:33
+   |
+LL | #[cfg(os_version_min("watchos", "5.0"))]
+   |       --------------------------^^^^^- help: use `target_os` instead: `target_os = "watchos"`
+
+warning: version is set unnecessarily low, the minimum supported by Rust on this platform is 1.0
+  --> $DIR/cfg-os-version-min-invalid.rs:54:34
+   |
+LL | #[cfg(os_version_min("visionos", "1.0"))]
+   |       ---------------------------^^^^^- help: use `target_os` instead: `target_os = "visionos"`
+
+warning: unexpected `cfg` condition name: `os_version_min`
+  --> $DIR/cfg-os-version-min-invalid.rs:4:7
+   |
+LL | #[cfg(os_version_min = "macos")]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: expected names are: `FALSE` and `test` and 31 more
+   = help: to expect this configuration use `--check-cfg=cfg(os_version_min, values("macos"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+error: aborting due to 12 previous errors; 10 warnings emitted
+

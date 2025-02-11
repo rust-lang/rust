@@ -1,3 +1,9 @@
+attr_parsing_apple_version_invalid =
+    failed parsing version: {$error}
+
+attr_parsing_apple_version_unnecessarily_low =
+    version is set unnecessarily low, the minimum supported by Rust on this platform is {$os_min}
+
 attr_parsing_cfg_predicate_identifier =
     `cfg` predicate key must be an identifier
 
@@ -10,6 +16,12 @@ attr_parsing_empty_confusables =
     expected at least one confusable name
 attr_parsing_expected_one_cfg_pattern =
     expected 1 cfg-pattern
+
+attr_parsing_expected_platform_and_version_literals =
+    expected two literals, a platform and a version
+
+attr_parsing_expected_platform_literal =
+    expected a platform literal
 
 attr_parsing_expected_single_version_literal =
     expected single version literal
@@ -107,6 +119,9 @@ attr_parsing_stability_outside_std = stability attributes may not be used outsid
 attr_parsing_unknown_meta_item =
     unknown meta item '{$item}'
     .label = expected one of {$expected}
+
+attr_parsing_unknown_platform_literal =
+    unknown platform literal, expected values are: {$possibilities}
 
 attr_parsing_unknown_version_literal =
     unknown version literal format, assuming it refers to a future version
