@@ -1,0 +1,45 @@
+error: no rules expected keyword `const`
+  --> $DIR/std-2024-macros.rs:5:19
+   |
+LL |     assert_eq!(0, const { 0 });
+   |                   ^^^^^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$right:expr`
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
+
+error: no rules expected keyword `const`
+  --> $DIR/std-2024-macros.rs:7:16
+   |
+LL |     assert_eq!(const { 0 }, const { 0 });
+   |                ^^^^^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$left:expr`
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
+
+error: no rules expected keyword `const`
+  --> $DIR/std-2024-macros.rs:9:16
+   |
+LL |     assert_eq!(const { 0 }, 0);
+   |                ^^^^^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$left:expr`
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
+
+error: no rules expected keyword `const`
+  --> $DIR/std-2024-macros.rs:12:36
+   |
+LL |     let _: Vec<Vec<String>> = vec![const { vec![] }];
+   |                                    ^^^^^ no rules expected this token in macro call
+   |
+   = note: while trying to match end of macro
+
+error: no rules expected keyword `const`
+  --> $DIR/std-2024-macros.rs:14:36
+   |
+LL |     let _: Vec<Vec<String>> = vec![const { vec![] }; 10];
+   |                                    ^^^^^ no rules expected this token in macro call
+   |
+   = note: while trying to match end of macro
+
+error: aborting due to 5 previous errors
+
