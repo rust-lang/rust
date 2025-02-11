@@ -1800,7 +1800,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         let u8_type = self.tcx().types.u8;
-        match (cv.valtree, cv.ty.kind()) {
+        match (cv.valtree, *cv.ty.kind()) {
             (ty::ValTree::Branch(_), ty::Ref(_, inner_ty, _)) => match inner_ty.kind() {
                 ty::Slice(t) if *t == u8_type => {
                     let bytes = cv.try_to_raw_bytes(self.tcx()).unwrap_or_else(|| {
@@ -1820,13 +1820,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     return Ok(());
                 }
                 _ => {
-                    let cv = ty::Value { valtree: cv.valtree, ty: *inner_ty };
+                    let cv = ty::Value { valtree: cv.valtree, ty: inner_ty };
                     p!("&");
                     p!(pretty_print_const_valtree(cv, print_ty));
                     return Ok(());
                 }
             },
-            (ty::ValTree::Branch(_), ty::Array(t, _)) if *t == u8_type => {
+            (ty::ValTree::Branch(_), ty::Array(t, _)) if t == u8_type => {
                 let bytes = cv.try_to_raw_bytes(self.tcx()).unwrap_or_else(|| {
                     bug!("expected to convert valtree to raw bytes for type {:?}", t)
                 });
@@ -1893,10 +1893,15 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             (ty::ValTree::Leaf(leaf), ty::Ref(_, inner_ty, _)) => {
                 p!(write("&"));
-                return self.pretty_print_const_scalar_int(leaf, *inner_ty, print_ty);
+                return self.pretty_print_const_scalar_int(leaf, inner_ty, print_ty);
             }
             (ty::ValTree::Leaf(leaf), _) => {
                 return self.pretty_print_const_scalar_int(leaf, cv.ty, print_ty);
+            }
+            (_, ty::FnDef(def_id, args)) => {
+                // Never allowed today, but we still encounter them in invalid const args.
+                p!(print_value_path(def_id, args));
+                return Ok(());
             }
             // FIXME(oli-obk): also pretty print arrays and other aggregate constants by reading
             // their fields instead of just dumping the memory.
