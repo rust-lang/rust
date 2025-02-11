@@ -9,7 +9,7 @@ pub(crate) fn target() -> Target {
     base.max_atomic_width = Some(64);
 
     // https://developer.android.com/ndk/guides/abis.html#x86
-    base.cpu = "pentiumpro".into();
+    base.cpu = "pentium4".into();
     base.features = "+mmx,+sse,+sse2,+sse3,+ssse3".into();
     base.stack_probes = StackProbeType::Inline;
 
