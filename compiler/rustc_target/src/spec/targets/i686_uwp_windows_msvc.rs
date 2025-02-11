@@ -1,7 +1,8 @@
-use crate::spec::{Target, base};
+use crate::spec::{RustcAbi, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_uwp_msvc::opts();
+    base.rustc_abi = Some(RustcAbi::X86Sse2);
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
 
