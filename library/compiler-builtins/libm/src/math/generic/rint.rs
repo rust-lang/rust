@@ -8,7 +8,7 @@ use super::super::support::{FpResult, Round};
 /// applicable.
 pub fn rint_round<F: Float>(x: F, _round: Round) -> FpResult<F> {
     let toint = F::ONE / F::EPSILON;
-    let e = x.exp();
+    let e = x.ex();
     let positive = x.is_sign_positive();
 
     // On i386 `force_eval!` must be used to force rounding via storage to memory. Otherwise,

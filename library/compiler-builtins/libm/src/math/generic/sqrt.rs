@@ -109,7 +109,7 @@ where
         ix = scaled.to_bits();
         match top {
             Exp::Shifted(ref mut v) => {
-                *v = scaled.exp();
+                *v = scaled.ex();
                 *v = (*v).wrapping_sub(F::SIG_BITS);
             }
             Exp::NoShift(()) => {

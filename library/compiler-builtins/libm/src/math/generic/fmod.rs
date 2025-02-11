@@ -9,8 +9,8 @@ pub fn fmod<F: Float>(x: F, y: F) -> F {
     let one = F::Int::ONE;
     let mut ix = x.to_bits();
     let mut iy = y.to_bits();
-    let mut ex = x.exp().signed();
-    let mut ey = y.exp().signed();
+    let mut ex = x.ex().signed();
+    let mut ey = y.ex().signed();
     let sx = ix & F::SIGN_MASK;
 
     if iy << 1 == zero || y.is_nan() || ex == F::EXP_SAT as i32 {

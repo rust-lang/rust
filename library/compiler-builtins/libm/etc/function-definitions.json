@@ -206,8 +206,7 @@
     },
     "exp": {
         "sources": [
-            "src/math/exp.rs",
-            "src/math/support/float_traits.rs"
+            "src/math/exp.rs"
         ],
         "type": "f64"
     },

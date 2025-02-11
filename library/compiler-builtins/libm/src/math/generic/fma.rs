@@ -249,7 +249,7 @@ where
     let xy: B = x.widen() * y.widen();
     let mut result: B = xy + z.widen();
     let mut ui: B::Int = result.to_bits();
-    let re = result.exp();
+    let re = result.ex();
     let zb: B = z.widen();
 
     let prec_diff = B::SIG_BITS - F::SIG_BITS;
@@ -318,7 +318,7 @@ impl<F: Float> Norm<F> {
 
     fn from_float(x: F) -> Self {
         let mut ix = x.to_bits();
-        let mut e = x.exp() as i32;
+        let mut e = x.ex() as i32;
         let neg = x.is_sign_negative();
         if e == 0 {
             // Normalize subnormals by multiplication
@@ -326,7 +326,7 @@ impl<F: Float> Norm<F> {
             let scale_f = F::from_parts(false, scale_i + F::EXP_BIAS, F::Int::ZERO);
             let scaled = x * scale_f;
             ix = scaled.to_bits();
-            e = scaled.exp() as i32;
+            e = scaled.ex() as i32;
             e = if e == 0 {
                 // If the exponent is still zero, the input was zero. Artifically set this value
                 // such that the final `e` will exceed `ZERO_INF_NAN`.

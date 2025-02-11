@@ -128,13 +128,13 @@ pub trait Float:
     }
 
     /// Returns the exponent, not adjusting for bias, not accounting for subnormals or zero.
-    fn exp(self) -> u32 {
+    fn ex(self) -> u32 {
         u32::cast_from(self.to_bits() >> Self::SIG_BITS) & Self::EXP_SAT
     }
 
     /// Extract the exponent and adjust it for bias, not accounting for subnormals or zero.
     fn exp_unbiased(self) -> i32 {
-        self.exp().signed() - (Self::EXP_BIAS as i32)
+        self.ex().signed() - (Self::EXP_BIAS as i32)
     }
 
     /// Returns the significand with no implicit bit (or the "fractional" part)
