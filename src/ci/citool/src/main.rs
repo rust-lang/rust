@@ -10,7 +10,7 @@ const CI_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
 const DOCKER_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../docker");
 const JOBS_YML_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../github-actions/jobs.yml");
 
-/// Representation of a job loaded from the jobs.yml file.
+/// Representation of a job loaded from the `src/ci/github-actions/jobs.yml` file.
 #[derive(serde::Deserialize, Debug, Clone)]
 struct Job {
     /// Name of the job, e.g. mingw-check
@@ -86,7 +86,10 @@ fn load_job_db(path: &Path) -> anyhow::Result<JobDatabase> {
 /// Representation of a job outputted to a GitHub Actions workflow.
 #[derive(serde::Serialize, Debug)]
 struct GithubActionsJob {
+    /// The main identifier of the job, used by CI scripts to determine what should be executed.
     name: String,
+    /// Helper label displayed in GitHub Actions interface, containing the job name and a run type
+    /// prefix (PR/try/auto).
     full_name: String,
     os: String,
     env: HashMap<String, String>,
@@ -277,7 +280,9 @@ fn calculate_job_matrix(
         RunType::AutoJob => "auto",
     };
 
-    eprintln!("Output:\njobs={jobs:?}\nrun_type={run_type}");
+    eprintln!("Output");
+    eprintln!("jobs={jobs:?}");
+    eprintln!("run_type={run_type}");
     println!("jobs={}", serde_json::to_string(&jobs)?);
     println!("run_type={run_type}");
 
