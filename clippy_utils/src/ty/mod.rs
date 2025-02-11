@@ -1247,6 +1247,10 @@ impl<'tcx> InteriorMut<'tcx> {
                         .find_map(|f| self.interior_mut_ty_chain(cx, f.ty(cx.tcx, args)))
                 }
             },
+            ty::Alias(ty::Projection, _) => match cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty) {
+                Ok(normalized_ty) if ty != normalized_ty => self.interior_mut_ty_chain(cx, normalized_ty),
+                _ => None,
+            },
             _ => None,
         };
 

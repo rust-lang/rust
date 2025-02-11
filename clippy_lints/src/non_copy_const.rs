@@ -215,6 +215,12 @@ impl<'tcx> NonCopyConst<'tcx> {
                 .iter()
                 .zip(tys)
                 .any(|(field, ty)| Self::is_value_unfrozen_raw_inner(cx, *field, ty)),
+            ty::Alias(ty::Projection, _) => match cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty) {
+                Ok(normalized_ty) if ty != normalized_ty => {
+                    Self::is_value_unfrozen_raw_inner(cx, ty::ValTree::Branch(val), normalized_ty)
+                },
+                _ => false,
+            },
             _ => false,
         }
     }
