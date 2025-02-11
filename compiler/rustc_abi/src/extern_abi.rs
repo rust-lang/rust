@@ -1,7 +1,6 @@
 use std::fmt;
 
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::{Span, Symbol, sym};
 
 #[cfg(test)]
 mod tests;
@@ -95,14 +94,14 @@ impl Abi {
 
 #[derive(Copy, Clone)]
 pub struct AbiData {
-    abi: Abi,
+    pub abi: Abi,
 
     /// Name of this ABI as we like it called.
-    name: &'static str,
+    pub name: &'static str,
 }
 
 #[allow(non_upper_case_globals)]
-const AbiDatas: &[AbiData] = &[
+pub const AbiDatas: &[AbiData] = &[
     AbiData { abi: Abi::Rust, name: "Rust" },
     AbiData { abi: Abi::C { unwind: false }, name: "C" },
     AbiData { abi: Abi::C { unwind: true }, name: "C-unwind" },
@@ -142,129 +141,18 @@ const AbiDatas: &[AbiData] = &[
 ];
 
 #[derive(Copy, Clone, Debug)]
-pub enum AbiUnsupported {
-    Unrecognized,
-    Reason { explain: &'static str },
-}
-
+pub struct AbiUnsupported {}
 /// Returns the ABI with the given name (if any).
 pub fn lookup(name: &str) -> Result<Abi, AbiUnsupported> {
-    AbiDatas.iter().find(|abi_data| name == abi_data.name).map(|&x| x.abi).ok_or_else(|| match name {
-        "riscv-interrupt" => AbiUnsupported::Reason {
-            explain: "please use one of riscv-interrupt-m or riscv-interrupt-s for machine- or supervisor-level interrupts, respectively",
-        },
-        "riscv-interrupt-u" => AbiUnsupported::Reason {
-            explain: "user-mode interrupt handlers have been removed from LLVM pending standardization, see: https://reviews.llvm.org/D149314",
-        },
-        "wasm" => AbiUnsupported::Reason {
-            explain: "non-standard wasm ABI is no longer supported",
-        },
-
-        _ => AbiUnsupported::Unrecognized,
-
-    })
+    AbiDatas
+        .iter()
+        .find(|abi_data| name == abi_data.name)
+        .map(|&x| x.abi)
+        .ok_or_else(|| AbiUnsupported {})
 }
 
 pub fn all_names() -> Vec<&'static str> {
     AbiDatas.iter().map(|d| d.name).collect()
-}
-
-pub fn enabled_names(features: &rustc_feature::Features, span: Span) -> Vec<&'static str> {
-    AbiDatas
-        .iter()
-        .map(|d| d.name)
-        .filter(|name| is_enabled(features, span, name).is_ok())
-        .collect()
-}
-
-pub enum AbiDisabled {
-    Unstable { feature: Symbol, explain: &'static str },
-    Unrecognized,
-}
-
-pub fn is_enabled(
-    features: &rustc_feature::Features,
-    span: Span,
-    name: &str,
-) -> Result<(), AbiDisabled> {
-    let s = is_stable(name);
-    if let Err(AbiDisabled::Unstable { feature, .. }) = s {
-        if features.enabled(feature) || span.allows_unstable(feature) {
-            return Ok(());
-        }
-    }
-    s
-}
-
-/// Returns whether the ABI is stable to use.
-///
-/// Note that there is a separate check determining whether the ABI is even supported
-/// on the current target; see `fn is_abi_supported` in `rustc_target::spec`.
-pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
-    match name {
-        // Stable
-        "Rust" | "C" | "C-unwind" | "cdecl" | "cdecl-unwind" | "stdcall" | "stdcall-unwind"
-        | "fastcall" | "fastcall-unwind" | "aapcs" | "aapcs-unwind" | "win64" | "win64-unwind"
-        | "sysv64" | "sysv64-unwind" | "system" | "system-unwind" | "efiapi" | "thiscall"
-        | "thiscall-unwind" => Ok(()),
-        "rust-intrinsic" => Err(AbiDisabled::Unstable {
-            feature: sym::intrinsics,
-            explain: "intrinsics are subject to change",
-        }),
-        "vectorcall" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_vectorcall,
-            explain: "vectorcall is experimental and subject to change",
-        }),
-        "vectorcall-unwind" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_vectorcall,
-            explain: "vectorcall-unwind ABI is experimental and subject to change",
-        }),
-        "rust-call" => Err(AbiDisabled::Unstable {
-            feature: sym::unboxed_closures,
-            explain: "rust-call ABI is subject to change",
-        }),
-        "rust-cold" => Err(AbiDisabled::Unstable {
-            feature: sym::rust_cold_cc,
-            explain: "rust-cold is experimental and subject to change",
-        }),
-        "ptx-kernel" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_ptx,
-            explain: "PTX ABIs are experimental and subject to change",
-        }),
-        "unadjusted" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_unadjusted,
-            explain: "unadjusted ABI is an implementation detail and perma-unstable",
-        }),
-        "msp430-interrupt" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_msp430_interrupt,
-            explain: "msp430-interrupt ABI is experimental and subject to change",
-        }),
-        "x86-interrupt" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_x86_interrupt,
-            explain: "x86-interrupt ABI is experimental and subject to change",
-        }),
-        "gpu-kernel" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_gpu_kernel,
-            explain: "gpu-kernel ABI is experimental and subject to change",
-        }),
-        "avr-interrupt" | "avr-non-blocking-interrupt" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_avr_interrupt,
-            explain: "avr-interrupt and avr-non-blocking-interrupt ABIs are experimental and subject to change",
-        }),
-        "riscv-interrupt-m" | "riscv-interrupt-s" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_riscv_interrupt,
-            explain: "riscv-interrupt ABIs are experimental and subject to change",
-        }),
-        "C-cmse-nonsecure-call" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_c_cmse_nonsecure_call,
-            explain: "C-cmse-nonsecure-call ABI is experimental and subject to change",
-        }),
-        "C-cmse-nonsecure-entry" => Err(AbiDisabled::Unstable {
-            feature: sym::cmse_nonsecure_entry,
-            explain: "C-cmse-nonsecure-entry ABI is experimental and subject to change",
-        }),
-        _ => Err(AbiDisabled::Unrecognized),
-    }
 }
 
 impl Abi {
