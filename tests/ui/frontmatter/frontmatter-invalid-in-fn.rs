@@ -1,5 +1,4 @@
 #![feature(frontmatter)]
-//~^ unknown feature `frontmatter`
 
 fn main() {
 ---
