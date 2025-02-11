@@ -4,6 +4,7 @@ use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::for_liveness;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, HasLocalDecls, Local, Location};
+use rustc_middle::span_bug;
 use rustc_middle::traits::query::DropckOutlivesResult;
 use rustc_middle::ty::relate::Relate;
 use rustc_middle::ty::{Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
@@ -613,23 +614,22 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
                 // can't rely on the the `ErrorGuaranteed` from `fully_perform` here
                 // because it comes from delay_span_bug.
                 let ocx = ObligationCtxt::new_with_diagnostics(&typeck.infcx);
-                let errors = match dropck_outlives::compute_dropck_outlives_with_errors(
-                    &ocx, op, span, true,
-                ) {
-                    Ok(_) => ocx.select_all_or_error(),
-                    Err(e) => {
-                        if e.is_empty() {
-                            ocx.select_all_or_error()
-                        } else {
-                            e
+                let errors =
+                    match dropck_outlives::compute_dropck_outlives_with_errors(&ocx, op, span) {
+                        Ok(_) => ocx.select_all_or_error(),
+                        Err(e) => {
+                            if e.is_empty() {
+                                ocx.select_all_or_error()
+                            } else {
+                                e
+                            }
                         }
-                    }
-                };
+                    };
 
                 if !errors.is_empty() {
                     typeck.infcx.err_ctxt().report_fulfillment_errors(errors);
                 } else {
-                    rustc_middle::span_bug!(span, "Rerunning drop data query produced no error.");
+                    span_bug!(span, "Rerunning drop data query produced no error.");
                 }
                 DropData { dropck_result: Default::default(), region_constraint_data: None }
             }
