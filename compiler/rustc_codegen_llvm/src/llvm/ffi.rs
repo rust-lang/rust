@@ -2359,7 +2359,7 @@ unsafe extern "C" {
     );
     pub fn LLVMRustWriteOutputFile<'a>(
         T: &'a TargetMachine,
-        PM: &PassManager<'a>,
+        PM: *mut PassManager<'a>,
         M: &'a Module,
         Output: *const c_char,
         DwoOutput: *const c_char,
