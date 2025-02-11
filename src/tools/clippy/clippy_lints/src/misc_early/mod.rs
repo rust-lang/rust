@@ -411,9 +411,9 @@ impl MiscEarlyLints {
         let lit_kind = LitKind::from_token_lit(lit);
         if let Ok(LitKind::Int(value, lit_int_type)) = lit_kind {
             let suffix = match lit_int_type {
-                LitIntType::Signed(ty) => ty.name_str(),
+                LitIntType::Signed(ty, _) => ty.name_str(),
                 LitIntType::Unsigned(ty) => ty.name_str(),
-                LitIntType::Unsuffixed => "",
+                LitIntType::Unsuffixed(_) => "",
             };
             literal_suffix::check(cx, span, &lit_snip, suffix, "integer");
             if lit_snip.starts_with("0x") {

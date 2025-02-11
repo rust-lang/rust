@@ -325,7 +325,7 @@ fn test_parse_err() {
         assert!(Cfg::parse(&mi).is_err());
 
         let five = Symbol::intern("5");
-        let mi = dummy_lit(five, LitKind::Int(5.into(), LitIntType::Unsuffixed));
+        let mi = dummy_lit(five, LitKind::Int(5.into(), LitIntType::Unsuffixed(false)));
         assert!(Cfg::parse(&mi).is_err());
     })
 }

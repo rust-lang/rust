@@ -198,11 +198,7 @@ fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
         },
         // Example: `5 => 5`
         (PatKind::Expr(pat_expr_expr), ExprKind::Lit(expr_spanned)) => {
-            if let PatExprKind::Lit {
-                lit: pat_spanned,
-                negated: false,
-            } = &pat_expr_expr.kind
-            {
+            if let PatExprKind::Lit { lit: pat_spanned } = &pat_expr_expr.kind {
                 return pat_spanned.node == expr_spanned.node;
             }
         },
