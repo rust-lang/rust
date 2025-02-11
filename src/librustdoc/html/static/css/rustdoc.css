@@ -900,7 +900,9 @@ both the code example and the line numbers, so we need to remove the radius in t
 	min-width: fit-content; /* prevent collapsing into nothing in truncated scraped examples */
 	flex-grow: 0;
 	text-align: right;
+	-moz-user-select: none;
 	-webkit-user-select: none;
+	-ms-user-select: none;
 	user-select: none;
 	padding: 14px 8px;
 	padding-right: 2px;
@@ -940,6 +942,9 @@ both the code example and the line numbers, so we need to remove the radius in t
 	text-align: right;
 	display: inline-block;
 	margin-right: 20px;
+	-moz-user-select: none;
+	-webkit-user-select: none;
+	-ms-user-select: none;
 	user-select: none;
 	padding: 0 4px;
 }
