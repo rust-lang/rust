@@ -943,6 +943,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
                 let bk = ty::BorrowKind::from_mutbl(mutability);
                 self.delegate.borrow_mut().borrow(place, discr_place.hir_id, bk);
+            } else if let PatKind::Never = pat.kind {
+                // A `!` pattern always counts as an immutable read of the discriminant,
+                // even in an irrefutable pattern.
+                self.delegate.borrow_mut().borrow(place, discr_place.hir_id, BorrowKind::Immutable);
             }
 
             Ok(())
