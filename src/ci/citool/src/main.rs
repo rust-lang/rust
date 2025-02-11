@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 use std::path::Path;
+use std::process::Command;
 
 use anyhow::Context;
 use clap::Parser;
 use serde_yaml::Value;
 
 const CI_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
+const DOCKER_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../docker");
 const JOBS_YML_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../github-actions/jobs.yml");
 
 /// Representation of a job loaded from the jobs.yml file.
@@ -22,6 +24,21 @@ struct Job {
     /// Rest of attributes that will be passed through to GitHub actions
     #[serde(flatten)]
     extra_keys: HashMap<String, Value>,
+}
+
+impl Job {
+    fn is_linux(&self) -> bool {
+        self.os.contains("ubuntu")
+    }
+
+    /// By default, the Docker image of a job is based on its name.
+    /// However, it can be overridden by its IMAGE environment variable.
+    fn image(&self) -> String {
+        self.env
+            .get("IMAGE")
+            .map(|v| v.as_str().expect("IMAGE value should be a string").to_string())
+            .unwrap_or_else(|| self.name.clone())
+    }
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -267,11 +284,75 @@ fn calculate_job_matrix(
     Ok(())
 }
 
+fn find_linux_job<'a>(jobs: &'a [Job], name: &str) -> anyhow::Result<&'a Job> {
+    let Some(job) = jobs.iter().find(|j| j.name == name) else {
+        let available_jobs: Vec<&Job> = jobs.iter().filter(|j| j.is_linux()).collect();
+        let mut available_jobs =
+            available_jobs.iter().map(|j| j.name.to_string()).collect::<Vec<_>>();
+        available_jobs.sort();
+        return Err(anyhow::anyhow!(
+            "Job {name} not found. The following jobs are available:\n{}",
+            available_jobs.join(", ")
+        ));
+    };
+    if !job.is_linux() {
+        return Err(anyhow::anyhow!("Only Linux jobs can be executed locally"));
+    }
+
+    Ok(job)
+}
+
+fn run_workflow_locally(db: JobDatabase, job_type: JobType, name: String) -> anyhow::Result<()> {
+    let jobs = match job_type {
+        JobType::Auto => &db.auto_jobs,
+        JobType::PR => &db.pr_jobs,
+    };
+    let job = find_linux_job(&jobs, &name).with_context(|| format!("Cannot find job {name}"))?;
+
+    let mut custom_env: HashMap<String, String> = HashMap::new();
+    // Replicate src/ci/scripts/setup-environment.sh
+    // Adds custom environment variables to the job
+    if name.starts_with("dist-") {
+        if name.ends_with("-alt") {
+            custom_env.insert("DEPLOY_ALT".to_string(), "1".to_string());
+        } else {
+            custom_env.insert("DEPLOY".to_string(), "1".to_string());
+        }
+    }
+    custom_env.extend(to_string_map(&job.env));
+
+    let mut cmd = Command::new(Path::new(DOCKER_DIRECTORY).join("run.sh"));
+    cmd.arg(job.image());
+    cmd.envs(custom_env);
+
+    eprintln!("Executing {cmd:?}");
+
+    let result = cmd.spawn()?.wait()?;
+    if !result.success() { Err(anyhow::anyhow!("Job failed")) } else { Ok(()) }
+}
+
 #[derive(clap::Parser)]
 enum Args {
     /// Calculate a list of jobs that should be executed on CI.
     /// Should only be used on CI inside GitHub actions.
     CalculateJobMatrix,
+    /// Execute a given CI job locally.
+    #[clap(name = "run-local")]
+    RunJobLocally {
+        /// Name of the job that should be executed.
+        name: String,
+        /// Type of the job that should be executed.
+        #[clap(long = "type", default_value = "auto")]
+        job_type: JobType,
+    },
+}
+
+#[derive(clap::ValueEnum, Clone)]
+enum JobType {
+    /// Merge attempt ("auto") job
+    Auto,
+    /// Pull request job
+    PR,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -287,6 +368,7 @@ fn main() -> anyhow::Result<()> {
 
             calculate_job_matrix(db, gh_ctx, &channel).context("Failed to calculate job matrix")?;
         }
+        Args::RunJobLocally { job_type, name } => run_workflow_locally(db, job_type, name)?,
     }
 
     Ok(())
