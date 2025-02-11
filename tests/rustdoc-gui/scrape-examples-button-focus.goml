@@ -11,6 +11,8 @@ assert-property: (".scraped-example-list > .scraped-example .rust", {
     "scrollTop": |initialScrollTop|,
 })
 focus: ".scraped-example-list > .scraped-example .next"
+assert-text: (".scraped-example-list > .scraped-example .next", ">")
+assert-css: (".scraped-example-list > .scraped-example .next", { "font-size": "20.8px" })
 press-key: "Enter"
 assert-property-false: (".scraped-example-list > .scraped-example .src-line-numbers", {
     "scrollTop": |initialScrollTop|
@@ -19,6 +21,8 @@ assert-property-false: (".scraped-example-list > .scraped-example .rust", {
     "scrollTop": |initialScrollTop|
 }, NEAR)
 focus: ".scraped-example-list > .scraped-example .prev"
+assert-css: (".scraped-example-list > .scraped-example .next", { "font-size": "20.8px" })
+assert-text: (".scraped-example-list > .scraped-example .prev", "<")
 press-key: "Enter"
 assert-property: (".scraped-example-list > .scraped-example .src-line-numbers", {
     "scrollTop": |initialScrollTop|
