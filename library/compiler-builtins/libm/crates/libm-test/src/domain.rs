@@ -246,6 +246,7 @@ pub fn get_domain<F: Float, I: Int>(
         BaseName::Remquo => &EitherPrim::UNBOUNDED2[..],
         BaseName::Rint => &EitherPrim::UNBOUNDED1[..],
         BaseName::Round => &EitherPrim::UNBOUNDED1[..],
+        BaseName::Roundeven => &EitherPrim::UNBOUNDED1[..],
         BaseName::Scalbn => &EitherPrim::UNBOUNDED_F_I[..],
         BaseName::Sin => &EitherPrim::TRIG[..],
         BaseName::Sincos => &EitherPrim::TRIG[..],

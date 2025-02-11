@@ -184,6 +184,10 @@ libm_macros::for_each_function! {
         rintf128,
         rintf16,
         round,
+        roundeven,
+        roundevenf,
+        roundevenf128,
+        roundevenf16,
         roundf,
         roundf128,
         roundf16,
@@ -253,6 +257,8 @@ impl_no_round! {
     rint => round_even_mut; // FIXME: respect rounding mode
     rintf => round_even_mut; // FIXME: respect rounding mode
     round => round_mut;
+    roundeven => round_even_mut;
+    roundevenf => round_even_mut;
     roundf => round_mut;
     trunc => trunc_mut;
     truncf => trunc_mut;
@@ -265,6 +271,7 @@ impl_no_round! {
     floorf16 => floor_mut;
     rintf16 => round_even_mut; // FIXME: respect rounding mode
     roundf16 => round_mut;
+    roundevenf16 => round_even_mut;
     truncf16 => trunc_mut;
 }
 
@@ -275,6 +282,7 @@ impl_no_round! {
     floorf128 => floor_mut;
     rintf128 => round_even_mut; // FIXME: respect rounding mode
     roundf128 => round_mut;
+    roundevenf128 => round_even_mut;
     truncf128 => trunc_mut;
 }
 

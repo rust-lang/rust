@@ -154,6 +154,10 @@ libm_macros::for_each_function! {
         | ldexpf16
         | rintf128
         | rintf16
+        | roundeven
+        | roundevenf
+        | roundevenf128
+        | roundevenf16
         | roundf128
         | roundf16
         | scalbnf128

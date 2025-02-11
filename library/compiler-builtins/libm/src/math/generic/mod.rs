@@ -30,7 +30,7 @@ pub use fmin::fmin;
 pub use fminimum::fminimum;
 pub use fminimum_num::fminimum_num;
 pub use fmod::fmod;
-pub use rint::rint;
+pub use rint::rint_round;
 pub use round::round;
 pub use scalbn::scalbn;
 pub use sqrt::sqrt;

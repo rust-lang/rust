@@ -6,6 +6,7 @@
 //!
 //! This is useful for adding regression tests or expected failures.
 
+use libm::hf64;
 #[cfg(f128_enabled)]
 use libm::hf128;
 
@@ -574,7 +575,15 @@ fn remquof_cases() -> Vec<TestCase<op::remquof::Routine>> {
 }
 
 fn rint_cases() -> Vec<TestCase<op::rint::Routine>> {
-    vec![]
+    let mut v = vec![];
+    TestCase::append_pairs(
+        &mut v,
+        &[
+            // Failure on i586
+            ((hf64!("-0x1.e3f13ff995ffcp+38"),), Some(hf64!("-0x1.e3f13ff994000p+38"))),
+        ],
+    );
+    v
 }
 
 fn rintf_cases() -> Vec<TestCase<op::rintf::Routine>> {
@@ -588,6 +597,11 @@ fn rintf128_cases() -> Vec<TestCase<op::rintf128::Routine>> {
 
 #[cfg(f16_enabled)]
 fn rintf16_cases() -> Vec<TestCase<op::rintf16::Routine>> {
+    vec![]
+}
+
+#[cfg(f16_enabled)]
+fn roundf16_cases() -> Vec<TestCase<op::roundf16::Routine>> {
     vec![]
 }
 
@@ -605,7 +619,28 @@ fn roundf128_cases() -> Vec<TestCase<op::roundf128::Routine>> {
 }
 
 #[cfg(f16_enabled)]
-fn roundf16_cases() -> Vec<TestCase<op::roundf16::Routine>> {
+fn roundevenf16_cases() -> Vec<TestCase<op::roundevenf16::Routine>> {
+    vec![]
+}
+
+fn roundeven_cases() -> Vec<TestCase<op::roundeven::Routine>> {
+    let mut v = vec![];
+    TestCase::append_pairs(
+        &mut v,
+        &[
+            // Failure on i586
+            ((hf64!("-0x1.e3f13ff995ffcp+38"),), Some(hf64!("-0x1.e3f13ff994000p+38"))),
+        ],
+    );
+    v
+}
+
+fn roundevenf_cases() -> Vec<TestCase<op::roundevenf::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn roundevenf128_cases() -> Vec<TestCase<op::roundevenf128::Routine>> {
     vec![]
 }
 

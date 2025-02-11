@@ -40,6 +40,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         | Bn::Remquo
         | Bn::Rint
         | Bn::Round
+        | Bn::Roundeven
         | Bn::Scalbn
         | Bn::Sqrt
         | Bn::Trunc => 0,
@@ -282,7 +283,7 @@ impl MaybeOverride<(f64,)> for SpecialCase {
         }
 
         if cfg!(x86_no_sse)
-            && ctx.base_name == BaseName::Rint
+            && (ctx.base_name == BaseName::Rint || ctx.base_name == BaseName::Roundeven)
             && (expected - actual).abs() <= F::ONE
             && (expected - actual).abs() > F::ZERO
         {

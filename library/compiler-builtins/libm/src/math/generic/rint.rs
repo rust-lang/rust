@@ -2,27 +2,31 @@
 /* origin: musl src/math/rint.c */
 
 use super::super::Float;
+use super::super::support::{FpResult, Round};
 
-pub fn rint<F: Float>(x: F) -> F {
+/// IEEE 754-2019 `roundToIntegralExact`, which respects rounding mode and raises inexact if
+/// applicable.
+pub fn rint_round<F: Float>(x: F, _round: Round) -> FpResult<F> {
     let toint = F::ONE / F::EPSILON;
     let e = x.exp();
     let positive = x.is_sign_positive();
 
     // On i386 `force_eval!` must be used to force rounding via storage to memory. Otherwise,
     // the excess precission from x87 would cause an incorrect final result.
-    let use_force = cfg!(x86_no_sse) && F::BITS == 32 || F::BITS == 64;
+    let force = |x| {
+        if cfg!(x86_no_sse) && (F::BITS == 32 || F::BITS == 64) { force_eval!(x) } else { x }
+    };
 
-    if e >= F::EXP_BIAS + F::SIG_BITS {
+    let res = if e >= F::EXP_BIAS + F::SIG_BITS {
         // No fractional part; exact result can be returned.
         x
     } else {
-        // Apply a net-zero adjustment that nudges `y` in the direction of the rounding mode.
+        // Apply a net-zero adjustment that nudges `y` in the direction of the rounding mode. For
+        // Rust this is always nearest, but ideally it would take `round` into account.
         let y = if positive {
-            let tmp = if use_force { force_eval!(x) } else { x } + toint;
-            (if use_force { force_eval!(tmp) } else { tmp } - toint)
+            force(force(x) + toint) - toint
         } else {
-            let tmp = if use_force { force_eval!(x) } else { x } - toint;
-            (if use_force { force_eval!(tmp) } else { tmp } + toint)
+            force(force(x) - toint) + toint
         };
 
         if y == F::ZERO {
@@ -31,42 +35,85 @@ pub fn rint<F: Float>(x: F) -> F {
         } else {
             y
         }
-    }
+    };
+
+    FpResult::ok(res)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::support::{Hexf, Int, Status};
 
-    #[test]
-    fn zeroes_f32() {
-        assert_biteq!(rint(0.0_f32), 0.0_f32);
-        assert_biteq!(rint(-0.0_f32), -0.0_f32);
+    fn spec_test<F: Float>(cases: &[(F, F, Status)]) {
+        let roundtrip = [F::ZERO, F::ONE, F::NEG_ONE, F::NEG_ZERO, F::INFINITY, F::NEG_INFINITY];
+
+        for x in roundtrip {
+            let FpResult { val, status } = rint_round(x, Round::Nearest);
+            assert_biteq!(val, x, "rint_round({})", Hexf(x));
+            assert_eq!(status, Status::OK, "{}", Hexf(x));
+        }
+
+        for &(x, res, res_stat) in cases {
+            let FpResult { val, status } = rint_round(x, Round::Nearest);
+            assert_biteq!(val, res, "rint_round({})", Hexf(x));
+            assert_eq!(status, res_stat, "{}", Hexf(x));
+        }
     }
 
     #[test]
-    fn sanity_check_f32() {
-        assert_biteq!(rint(-1.0_f32), -1.0);
-        assert_biteq!(rint(2.8_f32), 3.0);
-        assert_biteq!(rint(-0.5_f32), -0.0);
-        assert_biteq!(rint(0.5_f32), 0.0);
-        assert_biteq!(rint(-1.5_f32), -2.0);
-        assert_biteq!(rint(1.5_f32), 2.0);
+    #[cfg(f16_enabled)]
+    fn spec_tests_f16() {
+        let cases = [];
+        spec_test::<f16>(&cases);
     }
 
     #[test]
-    fn zeroes_f64() {
-        assert_biteq!(rint(0.0_f64), 0.0_f64);
-        assert_biteq!(rint(-0.0_f64), -0.0_f64);
+    fn spec_tests_f32() {
+        let cases = [
+            (0.1, 0.0, Status::OK),
+            (-0.1, -0.0, Status::OK),
+            (0.5, 0.0, Status::OK),
+            (-0.5, -0.0, Status::OK),
+            (0.9, 1.0, Status::OK),
+            (-0.9, -1.0, Status::OK),
+            (1.1, 1.0, Status::OK),
+            (-1.1, -1.0, Status::OK),
+            (1.5, 2.0, Status::OK),
+            (-1.5, -2.0, Status::OK),
+            (1.9, 2.0, Status::OK),
+            (-1.9, -2.0, Status::OK),
+            (2.8, 3.0, Status::OK),
+            (-2.8, -3.0, Status::OK),
+        ];
+        spec_test::<f32>(&cases);
     }
 
     #[test]
-    fn sanity_check_f64() {
-        assert_biteq!(rint(-1.0_f64), -1.0);
-        assert_biteq!(rint(2.8_f64), 3.0);
-        assert_biteq!(rint(-0.5_f64), -0.0);
-        assert_biteq!(rint(0.5_f64), 0.0);
-        assert_biteq!(rint(-1.5_f64), -2.0);
-        assert_biteq!(rint(1.5_f64), 2.0);
+    fn spec_tests_f64() {
+        let cases = [
+            (0.1, 0.0, Status::OK),
+            (-0.1, -0.0, Status::OK),
+            (0.5, 0.0, Status::OK),
+            (-0.5, -0.0, Status::OK),
+            (0.9, 1.0, Status::OK),
+            (-0.9, -1.0, Status::OK),
+            (1.1, 1.0, Status::OK),
+            (-1.1, -1.0, Status::OK),
+            (1.5, 2.0, Status::OK),
+            (-1.5, -2.0, Status::OK),
+            (1.9, 2.0, Status::OK),
+            (-1.9, -2.0, Status::OK),
+            (2.8, 3.0, Status::OK),
+            (-2.8, -3.0, Status::OK),
+        ];
+        spec_test::<f64>(&cases);
+    }
+
+    #[test]
+    #[cfg(f128_enabled)]
+    fn spec_tests_f128() {
+        let cases = [];
+        spec_test::<f128>(&cases);
     }
 }

@@ -123,6 +123,10 @@ fn do_eval(basis: &str, op: &str, inputs: &[&str]) {
             | ldexpf16
             | rintf128
             | rintf16
+            | roundeven
+            | roundevenf
+            | roundevenf128
+            | roundevenf16
             | roundf128
             | roundf16
             | scalbnf128

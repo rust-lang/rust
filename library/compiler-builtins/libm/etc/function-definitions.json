@@ -791,7 +791,6 @@
         "sources": [
             "src/math/arch/aarch64.rs",
             "src/math/arch/wasm32.rs",
-            "src/math/generic/rint.rs",
             "src/math/rint.rs"
         ],
         "type": "f64"
@@ -800,22 +799,19 @@
         "sources": [
             "src/math/arch/aarch64.rs",
             "src/math/arch/wasm32.rs",
-            "src/math/generic/rint.rs",
-            "src/math/rintf.rs"
+            "src/math/rint.rs"
         ],
         "type": "f32"
     },
     "rintf128": {
         "sources": [
-            "src/math/generic/rint.rs",
-            "src/math/rintf128.rs"
+            "src/math/rint.rs"
         ],
         "type": "f128"
     },
     "rintf16": {
         "sources": [
-            "src/math/generic/rint.rs",
-            "src/math/rintf16.rs"
+            "src/math/rint.rs"
         ],
         "type": "f16"
     },
@@ -825,6 +821,30 @@
             "src/math/round.rs"
         ],
         "type": "f64"
+    },
+    "roundeven": {
+        "sources": [
+            "src/math/roundeven.rs"
+        ],
+        "type": "f64"
+    },
+    "roundevenf": {
+        "sources": [
+            "src/math/roundeven.rs"
+        ],
+        "type": "f32"
+    },
+    "roundevenf128": {
+        "sources": [
+            "src/math/roundeven.rs"
+        ],
+        "type": "f128"
+    },
+    "roundevenf16": {
+        "sources": [
+            "src/math/roundeven.rs"
+        ],
+        "type": "f16"
     },
     "roundf": {
         "sources": [

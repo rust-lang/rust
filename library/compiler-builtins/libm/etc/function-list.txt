@@ -125,6 +125,10 @@ rintf
 rintf128
 rintf16
 round
+roundeven
+roundevenf
+roundevenf128
+roundevenf16
 roundf
 roundf128
 roundf16

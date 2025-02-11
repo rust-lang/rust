@@ -94,6 +94,7 @@ libm_helper! {
         (fn remquo(x: f32, y: f32) -> (f32, i32);   => remquof);
         (fn rint(x: f32) -> (f32);                  => rintf);
         (fn round(x: f32) -> (f32);                 => roundf);
+        (fn roundeven(x: f32) -> (f32);             => roundevenf);
         (fn scalbn(x: f32, n: i32) -> (f32);        => scalbnf);
         (fn sin(x: f32) -> (f32);                   => sinf);
         (fn sincos(x: f32) -> (f32, f32);           => sincosf);
@@ -167,6 +168,7 @@ libm_helper! {
         (fn remquo(x: f64, y: f64) -> (f64, i32);   => remquo);
         (fn rint(x: f64) -> (f64);                  => rint);
         (fn round(x: f64) -> (f64);                 => round);
+        (fn roundevem(x: f64) -> (f64);             => roundeven);
         (fn scalbn(x: f64, n: i32) -> (f64);        => scalbn);
         (fn sin(x: f64) -> (f64);                   => sin);
         (fn sincos(x: f64) -> (f64, f64);           => sincos);
@@ -188,22 +190,23 @@ libm_helper! {
     f16,
     funcs: {
         // verify-sorted-start
-        (fn ceilf(x: f16) -> (f16);                 => ceilf16);
+        (fn ceil(x: f16) -> (f16);                  => ceilf16);
         (fn copysign(x: f16, y: f16) -> (f16);      => copysignf16);
         (fn fabs(x: f16) -> (f16);                  => fabsf16);
         (fn fdim(x: f16, y: f16) -> (f16);          => fdimf16);
-        (fn floorf(x: f16) -> (f16);                => floorf16);
-        (fn fmaxf(x: f16, y: f16) -> (f16);         => fmaxf16);
-        (fn fmaximum_numf16(x: f16, y: f16) -> (f16);   => fmaximum_numf16);
+        (fn floor(x: f16) -> (f16);                 => floorf16);
+        (fn fmax(x: f16, y: f16) -> (f16);          => fmaxf16);
+        (fn fmaximum_num(x: f16, y: f16) -> (f16);  => fmaximum_numf16);
         (fn fmaximumf16(x: f16, y: f16) -> (f16);   => fmaximumf16);
-        (fn fminf(x: f16, y: f16) -> (f16);         => fminf16);
-        (fn fminimum_numf16(x: f16, y: f16) -> (f16);   => fminimum_numf16);
-        (fn fminimumf16(x: f16, y: f16) -> (f16);   => fminimumf16);
-        (fn fmodf(x: f16, y: f16) -> (f16);         => fmodf16);
-        (fn ldexpf16(x: f16, n: i32) -> (f16);      => ldexpf16);
-        (fn rintf(x: f16) -> (f16);                 => rintf16);
-        (fn roundf(x: f16) -> (f16);                => roundf16);
-        (fn scalbnf16(x: f16, n: i32) -> (f16);     => ldexpf16);
+        (fn fmin(x: f16, y: f16) -> (f16);          => fminf16);
+        (fn fminimum(x: f16, y: f16) -> (f16);      => fminimumf16);
+        (fn fminimum_num(x: f16, y: f16) -> (f16);  => fminimum_numf16);
+        (fn fmod(x: f16, y: f16) -> (f16);          => fmodf16);
+        (fn ldexp(x: f16, n: i32) -> (f16);         => ldexpf16);
+        (fn rint(x: f16) -> (f16);                  => rintf16);
+        (fn round(x: f16) -> (f16);                 => roundf16);
+        (fn roundeven(x: f16) -> (f16);             => roundevenf16);
+        (fn scalbn(x: f16, n: i32) -> (f16);        => scalbnf16);
         (fn sqrtf(x: f16) -> (f16);                 => sqrtf16);
         (fn truncf(x: f16) -> (f16);                => truncf16);
         // verify-sorted-end
@@ -220,18 +223,19 @@ libm_helper! {
         (fn fabs(x: f128) -> (f128);                => fabsf128);
         (fn fdim(x: f128, y: f128) -> (f128);       => fdimf128);
         (fn floor(x: f128) -> (f128);               => floorf128);
-        (fn fmaf128(x: f128, y: f128, z: f128) -> (f128);  => fmaf128);
+        (fn fma(x: f128, y: f128, z: f128) -> (f128); => fmaf128);
         (fn fmax(x: f128, y: f128) -> (f128);       => fmaxf128);
-        (fn fmaximum_numf128(x: f128, y: f128) -> (f128);  => fmaximum_numf128);
-        (fn fmaximumf128(x: f128, y: f128) -> (f128);      => fmaximumf128);
+        (fn fmaximum(x: f128, y: f128) -> (f128);      => fmaximumf128);
+        (fn fmaximum_num(x: f128, y: f128) -> (f128);  => fmaximum_numf128);
         (fn fmin(x: f128, y: f128) -> (f128);       => fminf128);
-        (fn fminimum_numf128(x: f128, y: f128) -> (f128);  => fminimum_numf128);
-        (fn fminimumf128(x: f128, y: f128) -> (f128);      => fminimumf128);
+        (fn fminimum(x: f128, y: f128) -> (f128);      => fminimumf128);
+        (fn fminimum_num(x: f128, y: f128) -> (f128);  => fminimum_numf128);
         (fn fmod(x: f128, y: f128) -> (f128);       => fmodf128);
-        (fn ldexpf128(x: f128, n: i32) -> (f128);   => ldexpf128);
+        (fn ldexp(x: f128, n: i32) -> (f128);       => ldexpf128);
         (fn rint(x: f128) -> (f128);                => rintf128);
         (fn round(x: f128) -> (f128);               => roundf128);
-        (fn scalbnf128(x: f128, n: i32) -> (f128);  => ldexpf128);
+        (fn roundeven(x: f128) -> (f128);           => roundevenf128);
+        (fn scalbn(x: f128, n: i32) -> (f128);      => scalbnf128);
         (fn sqrt(x: f128) -> (f128);                => sqrtf128);
         (fn trunc(x: f128) -> (f128);               => truncf128);
         // verify-sorted-end
