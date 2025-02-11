@@ -1,4 +1,4 @@
-#![feature(derive_coerce_pointee, arbitrary_self_types)]
+#![feature(derive_coerce_pointee)]
 
 extern crate core;
 use std::marker::CoercePointee;

@@ -1,11 +1,11 @@
 error[E0034]: multiple applicable items in scope
-  --> $DIR/arbitrary_self_types_pin_getref.rs:23:22
+  --> $DIR/arbitrary_self_types_pin_getref.rs:18:22
    |
 LL |     let _ = pinned_a.get_ref();
    |                      ^^^^^^^ multiple `get_ref` found
    |
 note: candidate #1 is defined in an impl for the type `A`
-  --> $DIR/arbitrary_self_types_pin_getref.rs:17:5
+  --> $DIR/arbitrary_self_types_pin_getref.rs:12:5
    |
 LL |     fn get_ref(self: &Pin<&A>) {}  // note &Pin
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1152,7 +1152,8 @@ pub trait FnPtr: Copy + Clone {
 /// type as a receiver are dyn-compatible. For example, this compiles:
 ///
 /// ```
-/// #![feature(arbitrary_self_types, derive_coerce_pointee)]
+/// #![feature(derive_coerce_pointee)]
+/// # #![cfg_attr(bootstrap, feature(legacy_receiver_trait))]
 /// use std::marker::CoercePointee;
 /// use std::ops::Deref;
 ///
@@ -1166,6 +1167,9 @@ pub trait FnPtr: Copy + Clone {
 ///         &self.0
 ///     }
 /// }
+/// #
+/// # #[cfg(bootstrap)]
+/// # impl<T: ?Sized> core::ops::LegacyReceiver for MySmartPointer<T> {}
 ///
 /// // You can always define this trait. (as long as you have #![feature(arbitrary_self_types)])
 /// trait MyTrait {

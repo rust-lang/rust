@@ -5,7 +5,7 @@
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
 
-#![feature(type_alias_impl_trait, arbitrary_self_types)]
+#![feature(type_alias_impl_trait)]
 
 type Foo = impl Copy;
 

@@ -253,7 +253,9 @@ use core::iter;
 use core::marker::{PhantomData, Unsize};
 use core::mem::{self, ManuallyDrop, align_of_val_raw};
 use core::num::NonZeroUsize;
-use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
+#[cfg(bootstrap)]
+use core::ops::LegacyReceiver;
+use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 #[cfg(not(no_global_oom_handling))]
 use core::pin::Pin;
@@ -2267,6 +2269,7 @@ unsafe impl<T: ?Sized, A: Allocator> DerefPure for Rc<T, A> {}
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for UniqueRc<T, A> {}
 
+#[cfg(bootstrap)]
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
 impl<T: ?Sized> LegacyReceiver for Rc<T> {}
 

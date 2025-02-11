@@ -1,6 +1,4 @@
 //@ run-pass
-//@ revisions: default feature
-#![cfg_attr(feature, feature(arbitrary_self_types))]
 
 // This test aims to be like the IndexVec within rustc, and conflicts
 // over its into_iter().

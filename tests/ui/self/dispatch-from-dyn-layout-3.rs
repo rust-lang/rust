@@ -4,7 +4,6 @@
 // we have impossible-to-satisfy `DispatchFromDyn` predicates.
 
 #![feature(dispatch_from_dyn)]
-#![feature(arbitrary_self_types)]
 
 use std::ops::Deref;
 use std::ops::DispatchFromDyn;

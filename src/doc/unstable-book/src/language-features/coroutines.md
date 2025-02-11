@@ -89,7 +89,7 @@ Feedback on the design and usage is always appreciated!
 The `Coroutine` trait in `std::ops` currently looks like:
 
 ```rust
-# #![feature(arbitrary_self_types, coroutine_trait)]
+# #![feature(coroutine_trait)]
 # use std::ops::CoroutineState;
 # use std::pin::Pin;
 
@@ -184,7 +184,7 @@ fn main() {
 This coroutine literal will compile down to something similar to:
 
 ```rust
-#![feature(arbitrary_self_types, coroutine_trait)]
+#![feature(coroutine_trait)]
 
 use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
