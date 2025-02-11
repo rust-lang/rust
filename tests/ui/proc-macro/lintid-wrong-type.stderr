@@ -1,0 +1,14 @@
+error: wrong type for proc macro lint id
+  --> $DIR/lintid-wrong-type.rs:10:29
+   |
+LL | pub static ambiguous_thing: String;
+   |                             ^^^^^^
+   |
+note: expected `LintId`, found `String`
+  --> $DIR/lintid-wrong-type.rs:9:1
+   |
+LL | #[proc_macro_lint]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

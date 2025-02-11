@@ -1705,6 +1705,13 @@ pub(crate) struct ProcMacroBadSig {
     pub kind: ProcMacroKind,
 }
 
+#[derive(Diagnostic)]
+#[diag(passes_proc_macro_lint_wrong_type)]
+pub(crate) struct ProcMacroLintWrongType {
+    #[primary_span]
+    pub span: Span,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(passes_unreachable_due_to_uninhabited)]
 pub(crate) struct UnreachableDueToUninhabited<'desc, 'tcx> {

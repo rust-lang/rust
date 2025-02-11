@@ -1,5 +1,5 @@
 use rustc_ast::attr;
-use rustc_ast::attr::AttributeExt;
+use rustc_ast::attr::{AttributeExt, ProcMacroAttr};
 use rustc_errors::Applicability;
 use rustc_lexer::TokenKind;
 use rustc_lint::LateContext;
@@ -151,7 +151,10 @@ pub fn get_unique_attr<'a, A: AttributeExt>(sess: &'a Session, attrs: &'a [A], n
 /// Returns true if the attributes contain any of `proc_macro`,
 /// `proc_macro_derive` or `proc_macro_attribute`, false otherwise
 pub fn is_proc_macro(attrs: &[impl AttributeExt]) -> bool {
-    attrs.iter().any(AttributeExt::is_proc_macro_attr)
+    attrs.iter().any(|attr| match attr.proc_macro_attr() {
+        Some(ProcMacroAttr::Derive | ProcMacroAttr::Attribute | ProcMacroAttr::Bang) => true,
+        Some(ProcMacroAttr::Lint) | None => false,
+    })
 }
 
 /// Returns true if the attributes contain `#[doc(hidden)]`

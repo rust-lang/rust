@@ -1,0 +1,8 @@
+error: expected macro, found lint id `lint_id::ambiguous_thing`
+  --> $DIR/lintid-invoke-as-macro.rs:5:1
+   |
+LL | lint_id::ambiguous_thing!();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ not a macro
+
+error: aborting due to 1 previous error
+

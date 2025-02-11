@@ -342,6 +342,7 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::ConstParam
         | DefKind::Ctor(_, _)
         | DefKind::Macro(_)
+        | DefKind::LintId
         | DefKind::ExternCrate
         | DefKind::Use
         | DefKind::ForeignMod

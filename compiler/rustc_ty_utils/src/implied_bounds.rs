@@ -138,6 +138,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
         | DefKind::Static { .. }
         | DefKind::Ctor(_, _)
         | DefKind::Macro(_)
+        | DefKind::LintId
         | DefKind::ExternCrate
         | DefKind::Use
         | DefKind::ForeignMod

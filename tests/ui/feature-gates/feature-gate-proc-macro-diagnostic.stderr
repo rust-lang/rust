@@ -1,0 +1,43 @@
+error[E0658]: the `#[proc_macro_lint]` attribute is an experimental feature
+  --> $DIR/feature-gate-proc-macro-diagnostic.rs:11:1
+   |
+LL | #[proc_macro_lint]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54140 <https://github.com/rust-lang/rust/issues/54140> for more information
+   = help: add `#![feature(proc_macro_diagnostic)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `proc_macro_diagnostic`
+  --> $DIR/feature-gate-proc-macro-diagnostic.rs:8:5
+   |
+LL | use proc_macro::LintId;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54140 <https://github.com/rust-lang/rust/issues/54140> for more information
+   = help: add `#![feature(proc_macro_diagnostic)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `proc_macro_diagnostic`
+  --> $DIR/feature-gate-proc-macro-diagnostic.rs:14:29
+   |
+LL | pub static ambiguous_thing: LintId;
+   |                             ^^^^^^
+   |
+   = note: see issue #54140 <https://github.com/rust-lang/rust/issues/54140> for more information
+   = help: add `#![feature(proc_macro_diagnostic)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `proc_macro_diagnostic`
+  --> $DIR/feature-gate-proc-macro-diagnostic.rs:11:1
+   |
+LL | #[proc_macro_lint]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54140 <https://github.com/rust-lang/rust/issues/54140> for more information
+   = help: add `#![feature(proc_macro_diagnostic)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

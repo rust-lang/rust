@@ -2328,7 +2328,8 @@ fn lint_redundant_lifetimes<'tcx>(
         | DefKind::TraitAlias
         | DefKind::Fn
         | DefKind::Const
-        | DefKind::Impl { of_trait: _ } => {
+        | DefKind::Impl { of_trait: _ }
+        | DefKind::LintId => {
             // Proceed
         }
         DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {

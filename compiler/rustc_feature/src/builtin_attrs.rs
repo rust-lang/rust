@@ -360,6 +360,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         ErrorFollowing, EncodeCrossCrate::No,
     ),
     ungated!(proc_macro_attribute, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::No),
+    gated!(
+        proc_macro_lint, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
+        proc_macro_diagnostic, experimental!(proc_macro_lint),
+    ),
 
     // Lints:
     ungated!(

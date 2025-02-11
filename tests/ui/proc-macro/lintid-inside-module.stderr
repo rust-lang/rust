@@ -1,0 +1,8 @@
+error: statics tagged with `#[proc_macro_lint]` must currently reside in the root of the crate
+  --> $DIR/lintid-inside-module.rs:13:5
+   |
+LL |     pub static ambiguous_thing: LintId;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

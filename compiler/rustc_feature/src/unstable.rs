@@ -600,6 +600,8 @@ declare_features! (
     (unstable, postfix_match, "1.79.0", Some(121618)),
     /// Allows `use<..>` precise capturign on impl Trait in traits.
     (unstable, precise_capturing_in_traits, "1.83.0", Some(130044)),
+    /// Allows `#[proc_macro_lint]` in procedural macro crates.
+    (unstable, proc_macro_diagnostic, "CURRENT_RUSTC_VERSION", Some(54140)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.

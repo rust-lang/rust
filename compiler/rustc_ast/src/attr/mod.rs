@@ -1,6 +1,6 @@
 //! Functions dealing with attributes and meta items.
 
-use std::fmt::Debug;
+use std::fmt::{self, Debug, Display};
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_index::bit_set::GrowableBitSet;
@@ -720,6 +720,31 @@ impl MetaItemLit {
     }
 }
 
+/// An attribute relevant to the expansion of the proc macro harness performed
+/// by `rustc_builtin_macros`.
+#[derive(PartialEq, Debug)]
+pub enum ProcMacroAttr {
+    /// `#[proc_macro_derive]`
+    Derive,
+    /// `#[proc_macro_attribute]`
+    Attribute,
+    /// `#[proc_macro]`
+    Bang,
+    /// `#[proc_macro_lint]`
+    Lint,
+}
+
+impl Display for ProcMacroAttr {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(match self {
+            ProcMacroAttr::Derive => "proc_macro_derive",
+            ProcMacroAttr::Attribute => "proc_macro_attribute",
+            ProcMacroAttr::Bang => "proc_macro",
+            ProcMacroAttr::Lint => "proc_macro_lint",
+        })
+    }
+}
+
 pub trait AttributeExt: Debug {
     fn id(&self) -> AttrId;
 
@@ -776,10 +801,18 @@ pub trait AttributeExt: Debug {
     /// * `#[doc(...)]` returns `None`.
     fn doc_str(&self) -> Option<Symbol>;
 
-    fn is_proc_macro_attr(&self) -> bool {
-        [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
-            .iter()
-            .any(|kind| self.has_name(*kind))
+    fn proc_macro_attr(&self) -> Option<ProcMacroAttr> {
+        if self.has_name(sym::proc_macro_derive) {
+            Some(ProcMacroAttr::Derive)
+        } else if self.has_name(sym::proc_macro_attribute) {
+            Some(ProcMacroAttr::Attribute)
+        } else if self.has_name(sym::proc_macro) {
+            Some(ProcMacroAttr::Bang)
+        } else if self.has_name(sym::proc_macro_lint) {
+            Some(ProcMacroAttr::Lint)
+        } else {
+            None
+        }
     }
 
     /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
@@ -852,8 +885,8 @@ impl Attribute {
         AttributeExt::doc_str(self)
     }
 
-    pub fn is_proc_macro_attr(&self) -> bool {
-        AttributeExt::is_proc_macro_attr(self)
+    pub fn proc_macro_attr(&self) -> Option<ProcMacroAttr> {
+        AttributeExt::proc_macro_attr(self)
     }
 
     pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {

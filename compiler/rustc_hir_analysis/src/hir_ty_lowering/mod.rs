@@ -2179,6 +2179,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 | DefKind::AssocConst
                 | DefKind::TyParam
                 | DefKind::Macro(_)
+                | DefKind::LintId
                 | DefKind::LifetimeParam
                 | DefKind::Use
                 | DefKind::ForeignMod

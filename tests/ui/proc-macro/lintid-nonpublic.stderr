@@ -1,0 +1,8 @@
+error: statics tagged with `#[proc_macro_lint]` must be `pub`
+  --> $DIR/lintid-nonpublic.rs:12:1
+   |
+LL | static ambiguous_thing: LintId;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
