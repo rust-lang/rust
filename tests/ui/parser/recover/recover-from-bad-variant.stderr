@@ -1,18 +1,62 @@
-error: invalid `struct` delimiters or `fn` call arguments
+error: expected expression, found `:`
+  --> $DIR/recover-from-bad-variant.rs:7:24
+   |
+LL |     let x = Enum::Foo(a: 3, b: 4);
+   |                        ^ expected expression
+   |
+help: if this is a parameter, remove the name for the parameter
+   |
+LL -     let x = Enum::Foo(a: 3, b: 4);
+LL +     let x = Enum::Foo(3, b: 4);
+   |
+
+error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found `:`
+  --> $DIR/recover-from-bad-variant.rs:7:24
+   |
+LL |     let x = Enum::Foo(a: 3, b: 4);
+   |                        ^
+   |                        |
+   |                        expected one of 8 possible tokens
+   |                        help: missing `,`
+
+error: expected expression, found `:`
+  --> $DIR/recover-from-bad-variant.rs:7:30
+   |
+LL |     let x = Enum::Foo(a: 3, b: 4);
+   |                              ^ expected expression
+   |
+help: if this is a parameter, remove the name for the parameter
+   |
+LL -     let x = Enum::Foo(a: 3, b: 4);
+LL +     let x = Enum::Foo(a: 3, 4);
+   |
+
+error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found `:`
+  --> $DIR/recover-from-bad-variant.rs:7:30
+   |
+LL |     let x = Enum::Foo(a: 3, b: 4);
+   |                              ^
+   |                              |
+   |                              expected one of 8 possible tokens
+   |                              help: missing `,`
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/recover-from-bad-variant.rs:7:23
+   |
+LL |     let x = Enum::Foo(a: 3, b: 4);
+   |                       ^ not found in this scope
+
+error[E0425]: cannot find value `b` in this scope
+  --> $DIR/recover-from-bad-variant.rs:7:29
+   |
+LL |     let x = Enum::Foo(a: 3, b: 4);
+   |                             ^ not found in this scope
+
+error[E0533]: expected value, found struct variant `Enum::Foo`
   --> $DIR/recover-from-bad-variant.rs:7:13
    |
 LL |     let x = Enum::Foo(a: 3, b: 4);
-   |             ^^^^^^^^^^^^^^^^^^^^^
-   |
-help: if `Enum::Foo` is a struct, use braces as delimiters
-   |
-LL |     let x = Enum::Foo { a: 3, b: 4 };
-   |                       ~            ~
-help: if `Enum::Foo` is a function, use the arguments directly
-   |
-LL -     let x = Enum::Foo(a: 3, b: 4);
-LL +     let x = Enum::Foo(3, 4);
-   |
+   |             ^^^^^^^^^ not a value
 
 error[E0164]: expected tuple struct or tuple variant, found struct variant `Enum::Foo`
   --> $DIR/recover-from-bad-variant.rs:10:9
@@ -36,7 +80,7 @@ help: use the tuple variant pattern syntax instead
 LL |         Enum::Bar(a, b) => {}
    |                  ~~~~~~
 
-error: aborting due to 3 previous errors
+error: aborting due to 9 previous errors
 
-Some errors have detailed explanations: E0164, E0769.
+Some errors have detailed explanations: E0164, E0425, E0533, E0769.
 For more information about an error, try `rustc --explain E0164`.

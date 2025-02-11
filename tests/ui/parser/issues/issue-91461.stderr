@@ -1,14 +1,35 @@
+error: expected expression, found `:`
+  --> $DIR/issue-91461.rs:2:8
+   |
+LL |     a(_:b:,)
+   |        ^ expected expression
+   |
+help: if this is a parameter, remove the name for the parameter
+   |
+LL -     a(_:b:,)
+LL +     a(b:,)
+   |
+
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `:`
+  --> $DIR/issue-91461.rs:2:8
+   |
+LL |     a(_:b:,)
+   |        ^
+   |        |
+   |        expected one of `)`, `,`, `.`, `?`, or an operator
+   |        help: missing `,`
+
 error: expected identifier, found reserved identifier `_`
   --> $DIR/issue-91461.rs:2:7
    |
 LL |     a(_:b:,)
    |       ^ expected identifier, found reserved identifier
 
-error: expected one of `)`, `,`, `.`, `?`, or an operator, found `:`
-  --> $DIR/issue-91461.rs:2:8
+error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found `:`
+  --> $DIR/issue-91461.rs:2:10
    |
 LL |     a(_:b:,)
-   |        ^ expected one of `)`, `,`, `.`, `?`, or an operator
+   |          ^ expected one of 8 possible tokens
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 
