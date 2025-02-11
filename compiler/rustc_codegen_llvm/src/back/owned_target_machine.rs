@@ -17,7 +17,7 @@ pub struct OwnedTargetMachine {
 }
 
 impl OwnedTargetMachine {
-    pub fn new(
+    pub(crate) fn new(
         triple: &CStr,
         cpu: &CStr,
         features: &CStr,
