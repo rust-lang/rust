@@ -29,6 +29,7 @@
                   debug precision => _8;
                   let _8: usize;
                   scope 5 (inlined Formatter::<'_>::precision) {
+                      let mut _23: &std::fmt::FormattingOptions;
                   }
               }
           }
@@ -36,17 +37,21 @@
       scope 4 (inlined Formatter::<'_>::sign_plus) {
           let mut _20: u32;
           let mut _21: u32;
+          let mut _22: &std::fmt::FormattingOptions;
       }
   
       bb0: {
           StorageLive(_4);
+          StorageLive(_22);
           StorageLive(_20);
           StorageLive(_21);
-          _21 = copy (((*_1).0: std::fmt::FormattingOptions).0: u32);
+          _22 = copy ((*_1).1: &std::fmt::FormattingOptions);
+          _21 = copy ((*_22).0: u32);
           _20 = BitAnd(move _21, const 1_u32);
           StorageDead(_21);
           _4 = Ne(move _20, const 0_u32);
           StorageDead(_20);
+          StorageDead(_22);
           StorageLive(_5);
           switchInt(copy _4) -> [0: bb2, otherwise: bb1];
       }
@@ -65,7 +70,10 @@
   
       bb3: {
           StorageLive(_6);
-          _6 = copy (((*_1).0: std::fmt::FormattingOptions).4: std::option::Option<usize>);
+          StorageLive(_23);
+          _23 = copy ((*_1).1: &std::fmt::FormattingOptions);
+          _6 = copy ((*_23).4: std::option::Option<usize>);
+          StorageDead(_23);
           _7 = discriminant(_6);
           switchInt(move _7) -> [1: bb4, 0: bb6, otherwise: bb9];
       }
