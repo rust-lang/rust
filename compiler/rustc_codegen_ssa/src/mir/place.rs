@@ -474,10 +474,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             LocalRef::Operand(..) => {
                 if place_ref.is_indirect_first_projection() {
                     base = 1;
-                    let cg_base = self.codegen_consume(bx, mir::PlaceRef {
-                        projection: &place_ref.projection[..0],
-                        ..place_ref
-                    });
+                    let cg_base = self.codegen_consume(
+                        bx,
+                        mir::PlaceRef { projection: &place_ref.projection[..0], ..place_ref },
+                    );
                     cg_base.deref(bx.cx())
                 } else {
                     bug!("using operand local {:?} as place", place_ref);

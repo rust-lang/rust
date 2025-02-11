@@ -2226,10 +2226,13 @@ impl<'a> State<'a> {
         let generic_params = generic_params
             .iter()
             .filter(|p| {
-                matches!(p, GenericParam {
-                    kind: GenericParamKind::Lifetime { kind: LifetimeParamKind::Explicit },
-                    ..
-                })
+                matches!(
+                    p,
+                    GenericParam {
+                        kind: GenericParamKind::Lifetime { kind: LifetimeParamKind::Explicit },
+                        ..
+                    }
+                )
             })
             .collect::<Vec<_>>();
 

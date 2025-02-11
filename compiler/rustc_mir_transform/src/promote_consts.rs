@@ -920,19 +920,23 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             self.extra_statements.push((loc, promoted_ref_statement));
 
             (
-                Rvalue::Ref(tcx.lifetimes.re_erased, *borrow_kind, Place {
-                    local: mem::replace(&mut place.local, promoted_ref),
-                    projection: List::empty(),
-                }),
+                Rvalue::Ref(
+                    tcx.lifetimes.re_erased,
+                    *borrow_kind,
+                    Place {
+                        local: mem::replace(&mut place.local, promoted_ref),
+                        projection: List::empty(),
+                    },
+                ),
                 promoted_operand,
             )
         };
 
         assert_eq!(self.new_block(), START_BLOCK);
-        self.visit_rvalue(&mut rvalue, Location {
-            block: START_BLOCK,
-            statement_index: usize::MAX,
-        });
+        self.visit_rvalue(
+            &mut rvalue,
+            Location { block: START_BLOCK, statement_index: usize::MAX },
+        );
 
         let span = self.promoted.span;
         self.assign(RETURN_PLACE, rvalue, span);

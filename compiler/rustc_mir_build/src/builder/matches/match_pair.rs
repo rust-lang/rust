@@ -173,10 +173,13 @@ impl<'tcx> MatchPairTree<'tcx> {
                 let ascription = place.map(|source| {
                     let span = pattern.span;
                     let parent_id = cx.tcx.typeck_root_def_id(cx.def_id.to_def_id());
-                    let args = ty::InlineConstArgs::new(cx.tcx, ty::InlineConstArgsParts {
-                        parent_args: ty::GenericArgs::identity_for_item(cx.tcx, parent_id),
-                        ty: cx.infcx.next_ty_var(span),
-                    })
+                    let args = ty::InlineConstArgs::new(
+                        cx.tcx,
+                        ty::InlineConstArgsParts {
+                            parent_args: ty::GenericArgs::identity_for_item(cx.tcx, parent_id),
+                            ty: cx.infcx.next_ty_var(span),
+                        },
+                    )
                     .args;
                     let user_ty = cx.infcx.canonicalize_user_type_annotation(ty::UserType::new(
                         ty::UserTypeKind::TypeOf(def_id, ty::UserArgs { args, user_self_ty: None }),

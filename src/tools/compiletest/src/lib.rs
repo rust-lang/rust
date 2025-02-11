@@ -64,6 +64,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .reqopt("", "src-base", "directory to scan for test files", "PATH")
         .reqopt("", "build-base", "directory to deposit test outputs", "PATH")
         .reqopt("", "sysroot-base", "directory containing the compiler sysroot", "PATH")
+        .reqopt("", "stage", "stage number under test", "N")
         .reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET")
         .reqopt(
             "",
@@ -294,6 +295,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
         panic!("`--nocapture` is deprecated; please use `--no-capture`");
     }
 
+    let stage = match matches.opt_str("stage") {
+        Some(stage) => stage.parse::<u32>().expect("expected `--stage` to be an unsigned integer"),
+        None => panic!("`--stage` is required"),
+    };
+
     Config {
         bless: matches.opt_present("bless"),
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
@@ -311,7 +317,10 @@ pub fn parse_config(args: Vec<String>) -> Config {
         src_base,
         build_base: opt_path(matches, "build-base"),
         sysroot_base: opt_path(matches, "sysroot-base"),
+
+        stage,
         stage_id: matches.opt_str("stage-id").unwrap(),
+
         mode,
         suite: matches.opt_str("suite").unwrap(),
         debugger: matches.opt_str("debugger").map(|debugger| {
@@ -415,6 +424,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path));
     logv(c, format!("src_base: {:?}", config.src_base.display()));
     logv(c, format!("build_base: {:?}", config.build_base.display()));
+    logv(c, format!("stage: {}", config.stage));
     logv(c, format!("stage_id: {}", config.stage_id));
     logv(c, format!("mode: {}", config.mode));
     logv(c, format!("run_ignored: {}", config.run_ignored));

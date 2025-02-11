@@ -614,9 +614,16 @@ rustc_queries! {
         feedable
     }
 
-    /// Summarizes coverage IDs inserted by the `InstrumentCoverage` MIR pass
-    /// (for compiler option `-Cinstrument-coverage`), after MIR optimizations
-    /// have had a chance to potentially remove some of them.
+    /// Scans through a function's MIR after MIR optimizations, to prepare the
+    /// information needed by codegen when `-Cinstrument-coverage` is active.
+    ///
+    /// This includes the details of where to insert `llvm.instrprof.increment`
+    /// intrinsics, and the expression tables to be embedded in the function's
+    /// coverage metadata.
+    ///
+    /// FIXME(Zalathar): This query's purpose has drifted a bit and should
+    /// probably be renamed, but that can wait until after the potential
+    /// follow-ups to #136053 have settled down.
     ///
     /// Returns `None` for functions that were not instrumented.
     query coverage_ids_info(key: ty::InstanceKind<'tcx>) -> Option<&'tcx mir::coverage::CoverageIdsInfo> {

@@ -65,26 +65,34 @@ fn write_header(
     tooltip: Tooltip,
     extra_classes: &[String],
 ) {
-    write!(out, "<div class=\"example-wrap{}\">", match tooltip {
-        Tooltip::Ignore => " ignore",
-        Tooltip::CompileFail => " compile_fail",
-        Tooltip::ShouldPanic => " should_panic",
-        Tooltip::Edition(_) => " edition",
-        Tooltip::None => "",
-    },);
+    write!(
+        out,
+        "<div class=\"example-wrap{}\">",
+        match tooltip {
+            Tooltip::Ignore => " ignore",
+            Tooltip::CompileFail => " compile_fail",
+            Tooltip::ShouldPanic => " should_panic",
+            Tooltip::Edition(_) => " edition",
+            Tooltip::None => "",
+        },
+    );
 
     if tooltip != Tooltip::None {
         let edition_code;
-        write!(out, "<a href=\"#\" class=\"tooltip\" title=\"{}\">ⓘ</a>", match tooltip {
-            Tooltip::Ignore => "This example is not tested",
-            Tooltip::CompileFail => "This example deliberately fails to compile",
-            Tooltip::ShouldPanic => "This example panics",
-            Tooltip::Edition(edition) => {
-                edition_code = format!("This example runs with edition {edition}");
-                &edition_code
-            }
-            Tooltip::None => unreachable!(),
-        },);
+        write!(
+            out,
+            "<a href=\"#\" class=\"tooltip\" title=\"{}\">ⓘ</a>",
+            match tooltip {
+                Tooltip::Ignore => "This example is not tested",
+                Tooltip::CompileFail => "This example deliberately fails to compile",
+                Tooltip::ShouldPanic => "This example panics",
+                Tooltip::Edition(edition) => {
+                    edition_code = format!("This example runs with edition {edition}");
+                    &edition_code
+                }
+                Tooltip::None => unreachable!(),
+            },
+        );
     }
 
     if let Some(extra) = extra_content {

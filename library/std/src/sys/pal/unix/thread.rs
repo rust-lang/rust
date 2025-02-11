@@ -23,7 +23,7 @@ mod zircon {
     type zx_status_t = i32;
     pub const ZX_PROP_NAME: u32 = 3;
 
-    extern "C" {
+    unsafe extern "C" {
         pub fn zx_object_set_property(
             handle: zx_handle_t,
             property: u32,
@@ -230,7 +230,7 @@ impl Thread {
     #[cfg(target_os = "vxworks")]
     pub fn set_name(name: &CStr) {
         // FIXME(libc): adding real STATUS, ERROR type eventually.
-        extern "C" {
+        unsafe extern "C" {
             fn taskNameSet(task_id: libc::TASK_ID, task_name: *mut libc::c_char) -> libc::c_int;
         }
 
@@ -506,7 +506,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
         } else if #[cfg(target_os = "vxworks")] {
             // Note: there is also `vxCpuConfiguredGet`, closer to _SC_NPROCESSORS_CONF
             // expectations than the actual cores availability.
-            extern "C" {
+            unsafe extern "C" {
                 fn vxCpuEnabledGet() -> libc::cpuset_t;
             }
 

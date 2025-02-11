@@ -37,11 +37,7 @@ export class SyntaxTreeProvider implements vscode.TreeDataProvider<SyntaxElement
         const editor = vscode.window.activeTextEditor;
 
         if (editor !== undefined) {
-            const start = editor.document.positionAt(element.start);
-            const end = editor.document.positionAt(element.end);
-            const range = new vscode.Range(start, end);
-
-            const text = editor.document.getText(range);
+            const text = editor.document.getText(element.range);
             item.tooltip = new vscode.MarkdownString().appendCodeblock(text, "rust");
         }
 
@@ -74,14 +70,61 @@ export class SyntaxTreeProvider implements vscode.TreeDataProvider<SyntaxElement
         if (editor && isRustEditor(editor)) {
             const params = { textDocument: { uri: editor.document.uri.toString() }, range: null };
             const fileText = await this.ctx.client.sendRequest(ra.viewSyntaxTree, params);
-            this.root = JSON.parse(fileText, (_key, value: SyntaxElement) => {
-                if (value.type === "Node") {
-                    for (const child of value.children) {
-                        child.parent = value;
-                    }
+            this.root = JSON.parse(fileText, (_key, value: RawElement): SyntaxElement => {
+                if (value.type !== "Node" && value.type !== "Token") {
+                    // This is something other than a RawElement.
+                    return value;
+                }
+                const [startOffset, startLine, startCol] = value.start;
+                const [endOffset, endLine, endCol] = value.end;
+                const range = new vscode.Range(startLine, startCol, endLine, endCol);
+                const offsets = {
+                    start: startOffset,
+                    end: endOffset,
+                };
+
+                let inner;
+                if (value.istart && value.iend) {
+                    const [istartOffset, istartLine, istartCol] = value.istart;
+                    const [iendOffset, iendLine, iendCol] = value.iend;
+
+                    inner = {
+                        offsets: {
+                            start: istartOffset,
+                            end: iendOffset,
+                        },
+                        range: new vscode.Range(istartLine, istartCol, iendLine, iendCol),
+                    };
                 }
 
-                return value;
+                if (value.type === "Node") {
+                    const result = {
+                        type: value.type,
+                        kind: value.kind,
+                        offsets,
+                        range,
+                        inner,
+                        children: value.children,
+                        parent: undefined,
+                        document: editor.document,
+                    };
+
+                    for (const child of result.children) {
+                        child.parent = result;
+                    }
+
+                    return result;
+                } else {
+                    return {
+                        type: value.type,
+                        kind: value.kind,
+                        offsets,
+                        range,
+                        inner,
+                        parent: undefined,
+                        document: editor.document,
+                    };
+                }
             });
         } else {
             this.root = undefined;
@@ -90,14 +133,14 @@ export class SyntaxTreeProvider implements vscode.TreeDataProvider<SyntaxElement
         this._onDidChangeTreeData.fire();
     }
 
-    getElementByRange(start: number, end: number): SyntaxElement | undefined {
+    getElementByRange(target: vscode.Range): SyntaxElement | undefined {
         if (this.root === undefined) {
             return undefined;
         }
 
         let result: SyntaxElement = this.root;
 
-        if (this.root.start === start && this.root.end === end) {
+        if (this.root.range.isEqual(target)) {
             return result;
         }
 
@@ -105,9 +148,9 @@ export class SyntaxTreeProvider implements vscode.TreeDataProvider<SyntaxElement
 
         outer: while (true) {
             for (const child of children) {
-                if (child.start <= start && child.end >= end) {
+                if (child.range.contains(target)) {
                     result = child;
-                    if (start === end && start === child.end) {
+                    if (target.isEmpty && target.start === child.range.end) {
                         // When the cursor is on the very end of a token,
                         // we assume the user wants the next token instead.
                         continue;
@@ -136,31 +179,72 @@ export class SyntaxTreeProvider implements vscode.TreeDataProvider<SyntaxElement
 export type SyntaxNode = {
     type: "Node";
     kind: string;
-    start: number;
-    end: number;
-    istart?: number;
-    iend?: number;
+    range: vscode.Range;
+    offsets: {
+        start: number;
+        end: number;
+    };
+    /** This element's position within a Rust string literal, if it's inside of one. */
+    inner?: {
+        range: vscode.Range;
+        offsets: {
+            start: number;
+            end: number;
+        };
+    };
     children: SyntaxElement[];
     parent?: SyntaxElement;
+    document: vscode.TextDocument;
 };
 
 type SyntaxToken = {
     type: "Token";
     kind: string;
-    start: number;
-    end: number;
-    istart?: number;
-    iend?: number;
+    range: vscode.Range;
+    offsets: {
+        start: number;
+        end: number;
+    };
+    /** This element's position within a Rust string literal, if it's inside of one. */
+    inner?: {
+        range: vscode.Range;
+        offsets: {
+            start: number;
+            end: number;
+        };
+    };
     parent?: SyntaxElement;
+    document: vscode.TextDocument;
 };
 
 export type SyntaxElement = SyntaxNode | SyntaxToken;
 
+type RawNode = {
+    type: "Node";
+    kind: string;
+    start: [number, number, number];
+    end: [number, number, number];
+    istart?: [number, number, number];
+    iend?: [number, number, number];
+    children: SyntaxElement[];
+};
+
+type RawToken = {
+    type: "Token";
+    kind: string;
+    start: [number, number, number];
+    end: [number, number, number];
+    istart?: [number, number, number];
+    iend?: [number, number, number];
+};
+
+type RawElement = RawNode | RawToken;
+
 export class SyntaxTreeItem extends vscode.TreeItem {
     constructor(private readonly element: SyntaxElement) {
         super(element.kind);
-        const icon = getIcon(element.kind);
-        if (element.type === "Node") {
+        const icon = getIcon(this.element.kind);
+        if (this.element.type === "Node") {
             this.contextValue = "syntaxNode";
             this.iconPath = icon ?? new vscode.ThemeIcon("list-tree");
             this.collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
@@ -170,11 +254,9 @@ export class SyntaxTreeItem extends vscode.TreeItem {
             this.collapsibleState = vscode.TreeItemCollapsibleState.None;
         }
 
-        if (element.istart !== undefined && element.iend !== undefined) {
-            this.description = `${this.element.istart}..${this.element.iend}`;
-        } else {
-            this.description = `${this.element.start}..${this.element.end}`;
-        }
+        const offsets = this.element.inner?.offsets ?? this.element.offsets;
+
+        this.description = `${offsets.start}..${offsets.end}`;
     }
 }
 

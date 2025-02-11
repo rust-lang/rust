@@ -90,7 +90,7 @@ impl TermInfo {
 
         get_dbpath_for_term(name)
             .ok_or_else(|| {
-                Error::IoError(io::Error::new(io::ErrorKind::NotFound, "terminfo file not found"))
+                Error::IoError(io::const_error!(io::ErrorKind::NotFound, "terminfo file not found"))
             })
             .and_then(|p| TermInfo::from_path(&(*p)))
     }

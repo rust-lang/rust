@@ -34,9 +34,9 @@ use chalk_ir::{
 };
 use either::Either;
 use hir_def::{
-    body::{Body, HygieneId},
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     data::{ConstData, StaticData},
+    expr_store::{Body, HygieneId},
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, PatId},
     lang_item::{LangItem, LangItemTarget},
     layout::Integer,
@@ -466,6 +466,9 @@ pub struct InferenceResult {
     pub type_of_for_iterator: FxHashMap<ExprId, Ty>,
     type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch>,
     /// Whether there are any type-mismatching errors in the result.
+    // FIXME: This isn't as useful as initially thought due to us falling back placeholders to
+    // `TyKind::Error`.
+    // Which will then mark this field.
     pub(crate) has_errors: bool,
     /// Interned common types to return references to.
     // FIXME: Move this into `InferenceContext`
@@ -943,7 +946,7 @@ impl<'a> InferenceContext<'a> {
             let ty = self.insert_type_vars(ty);
             let ty = self.normalize_associated_types_in(ty);
 
-            self.infer_top_pat(*pat, &ty);
+            self.infer_top_pat(*pat, &ty, None);
             if ty
                 .data(Interner)
                 .flags

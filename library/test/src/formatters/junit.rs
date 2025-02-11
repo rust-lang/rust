@@ -39,15 +39,15 @@ fn str_to_cdata(s: &str) -> String {
 
 impl<T: Write> OutputFormatter for JunitFormatter<T> {
     fn write_discovery_start(&mut self) -> io::Result<()> {
-        Err(io::Error::new(io::ErrorKind::NotFound, "Not yet implemented!"))
+        Err(io::const_error!(io::ErrorKind::NotFound, "Not yet implemented!"))
     }
 
     fn write_test_discovered(&mut self, _desc: &TestDesc, _test_type: &str) -> io::Result<()> {
-        Err(io::Error::new(io::ErrorKind::NotFound, "Not yet implemented!"))
+        Err(io::const_error!(io::ErrorKind::NotFound, "Not yet implemented!"))
     }
 
     fn write_discovery_finish(&mut self, _state: &ConsoleTestDiscoveryState) -> io::Result<()> {
-        Err(io::Error::new(io::ErrorKind::NotFound, "Not yet implemented!"))
+        Err(io::const_error!(io::ErrorKind::NotFound, "Not yet implemented!"))
     }
 
     fn write_run_start(

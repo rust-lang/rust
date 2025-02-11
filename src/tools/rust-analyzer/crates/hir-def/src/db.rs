@@ -10,12 +10,12 @@ use triomphe::Arc;
 
 use crate::{
     attr::{Attrs, AttrsWithOwner},
-    body::{scope::ExprScopes, Body, BodySourceMap},
     data::{
         adt::{EnumData, EnumVariantData, StructData, VariantData},
         ConstData, ExternCrateDeclData, FunctionData, ImplData, Macro2Data, MacroRulesData,
         ProcMacroData, StaticData, TraitAliasData, TraitData, TypeAliasData,
     },
+    expr_store::{scope::ExprScopes, Body, BodySourceMap},
     generics::GenericParams,
     import_map::ImportMap,
     item_tree::{AttrOwner, ItemTree, ItemTreeSourceMaps},

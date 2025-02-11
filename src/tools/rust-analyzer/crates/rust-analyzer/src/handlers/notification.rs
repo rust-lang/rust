@@ -74,7 +74,8 @@ pub(crate) fn handle_did_open_text_document(
             tracing::error!("duplicate DidOpenTextDocument: {}", path);
         }
 
-        state.vfs.write().0.set_file_contents(path, Some(params.text_document.text.into_bytes()));
+        let contents = params.text_document.text.into_bytes();
+        state.vfs.write().0.set_file_contents(path, Some(contents));
         if state.config.discover_workspace_config().is_some() {
             tracing::debug!("queuing task");
             let _ = state

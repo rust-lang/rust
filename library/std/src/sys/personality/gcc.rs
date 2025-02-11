@@ -194,7 +194,7 @@ cfg_if::cfg_if! {
                     }
                 }
                 // defined in libgcc
-                extern "C" {
+                unsafe extern "C" {
                     fn __gnu_unwind_frame(
                         exception_object: *mut uw::_Unwind_Exception,
                         context: *mut uw::_Unwind_Context,

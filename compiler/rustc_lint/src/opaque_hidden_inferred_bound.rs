@@ -113,10 +113,13 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 // return type is well-formed in traits even when `Self` isn't sized.
                 if let ty::Param(param_ty) = *proj_term.kind()
                     && param_ty.name == kw::SelfUpper
-                    && matches!(opaque.origin, hir::OpaqueTyOrigin::AsyncFn {
-                        in_trait_or_impl: Some(hir::RpitContext::Trait),
-                        ..
-                    })
+                    && matches!(
+                        opaque.origin,
+                        hir::OpaqueTyOrigin::AsyncFn {
+                            in_trait_or_impl: Some(hir::RpitContext::Trait),
+                            ..
+                        }
+                    )
                 {
                     return;
                 }

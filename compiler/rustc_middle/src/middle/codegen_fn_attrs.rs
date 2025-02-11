@@ -178,7 +178,7 @@ impl CodegenFnAttrs {
             || match self.linkage {
                 // These are private, so make sure we don't try to consider
                 // them external.
-                None | Some(Linkage::Internal | Linkage::Private) => false,
+                None | Some(Linkage::Internal) => false,
                 Some(_) => true,
             }
     }

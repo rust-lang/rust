@@ -12,13 +12,11 @@ use crate::{FilePosition, NavigationTarget, RangeInfo, TryToNav};
 //
 // Navigates to the impl items of types.
 //
-// |===
-// | Editor  | Shortcut
+// | Editor  | Shortcut |
+// |---------|----------|
+// | VS Code | <kbd>Ctrl+F12</kbd>
 //
-// | VS Code | kbd:[Ctrl+F12]
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113065566-02f85480-91b1-11eb-9288-aaad8abd8841.gif[]
+// ![Go to Implementation](https://user-images.githubusercontent.com/48062697/113065566-02f85480-91b1-11eb-9288-aaad8abd8841.gif)
 pub(crate) fn goto_implementation(
     db: &RootDatabase,
     FilePosition { file_id, offset }: FilePosition,

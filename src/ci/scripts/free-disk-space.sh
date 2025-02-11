@@ -110,6 +110,9 @@ execAndMeasureSpaceChange() {
 # Remove large packages
 # REF: https://github.com/apache/flink/blob/master/tools/azure-pipelines/free_disk_space.sh
 cleanPackages() {
+    # Stop services to avoid issues when removing their packages.
+    sudo systemctl stop mysql
+
     local packages=(
         '^aspnetcore-.*'
         '^dotnet-.*'

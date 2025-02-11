@@ -9,9 +9,12 @@ use libc::c_char;
 #[cfg(any(
     all(target_os = "linux", not(target_env = "musl")),
     target_os = "android",
+    target_os = "fuchsia",
     target_os = "hurd"
 ))]
 use libc::dirfd;
+#[cfg(target_os = "fuchsia")]
+use libc::fstatat as fstatat64;
 #[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
 use libc::fstatat64;
 #[cfg(any(
@@ -565,8 +568,7 @@ impl FileAttr {
 
         Err(io::const_error!(
             io::ErrorKind::Unsupported,
-            "creation time is not available on this platform \
-                            currently",
+            "creation time is not available on this platform currently",
         ))
     }
 
@@ -848,7 +850,6 @@ impl Drop for Dir {
             target_os = "vita",
             target_os = "hurd",
             target_os = "espidf",
-            target_os = "fuchsia",
             target_os = "horizon",
             target_os = "vxworks",
             target_os = "rtems",
@@ -880,6 +881,7 @@ impl DirEntry {
         any(
             all(target_os = "linux", not(target_env = "musl")),
             target_os = "android",
+            target_os = "fuchsia",
             target_os = "hurd"
         ),
         not(miri) // no dirfd on Miri
@@ -908,6 +910,7 @@ impl DirEntry {
         not(any(
             all(target_os = "linux", not(target_env = "musl")),
             target_os = "android",
+            target_os = "fuchsia",
             target_os = "hurd",
         )),
         miri
@@ -1211,6 +1214,7 @@ impl File {
         }
         #[cfg(any(
             target_os = "freebsd",
+            target_os = "fuchsia",
             target_os = "linux",
             target_os = "android",
             target_os = "netbsd",
@@ -1223,6 +1227,7 @@ impl File {
         }
         #[cfg(not(any(
             target_os = "android",
+            target_os = "fuchsia",
             target_os = "freebsd",
             target_os = "linux",
             target_os = "netbsd",
@@ -1238,6 +1243,7 @@ impl File {
 
     #[cfg(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1249,6 +1255,7 @@ impl File {
 
     #[cfg(not(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1259,6 +1266,7 @@ impl File {
 
     #[cfg(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1270,6 +1278,7 @@ impl File {
 
     #[cfg(not(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1280,6 +1289,7 @@ impl File {
 
     #[cfg(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1297,6 +1307,7 @@ impl File {
 
     #[cfg(not(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1307,6 +1318,7 @@ impl File {
 
     #[cfg(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1324,6 +1336,7 @@ impl File {
 
     #[cfg(not(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1334,6 +1347,7 @@ impl File {
 
     #[cfg(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1345,6 +1359,7 @@ impl File {
 
     #[cfg(not(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1443,11 +1458,11 @@ impl File {
             Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
             Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
-                "timestamp is too large to set as a file time"
+                "timestamp is too large to set as a file time",
             )),
             Some(_) => Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
-                "timestamp is too small to set as a file time"
+                "timestamp is too small to set as a file time",
             )),
             None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
         };

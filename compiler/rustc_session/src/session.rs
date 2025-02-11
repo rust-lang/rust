@@ -1251,7 +1251,8 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     if let Some(dwarf_version) = sess.opts.unstable_opts.dwarf_version {
-        if dwarf_version > 5 {
+        // DWARF 1 is not supported by LLVM and DWARF 6 is not yet finalized.
+        if dwarf_version < 2 || dwarf_version > 5 {
             sess.dcx().emit_err(errors::UnsupportedDwarfVersion { dwarf_version });
         }
     }

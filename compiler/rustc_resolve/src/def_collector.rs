@@ -95,11 +95,14 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
     fn visit_macro_invoc(&mut self, id: NodeId) {
         let id = id.placeholder_to_expn_id();
-        let old_parent = self.resolver.invocation_parents.insert(id, InvocationParent {
-            parent_def: self.parent_def,
-            impl_trait_context: self.impl_trait_context,
-            in_attr: self.in_attr,
-        });
+        let old_parent = self.resolver.invocation_parents.insert(
+            id,
+            InvocationParent {
+                parent_def: self.parent_def,
+                impl_trait_context: self.impl_trait_context,
+                in_attr: self.in_attr,
+            },
+        );
         assert!(old_parent.is_none(), "parent `LocalDefId` is reset for an invocation");
     }
 }

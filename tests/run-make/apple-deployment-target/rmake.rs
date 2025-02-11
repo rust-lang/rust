@@ -7,7 +7,11 @@
 
 //@ only-apple
 
-use run_make_support::{apple_os, cmd, run_in_tmpdir, rustc, target};
+use std::collections::HashSet;
+
+use run_make_support::{
+    apple_os, cmd, has_extension, path, regex, run_in_tmpdir, rustc, shallow_find_files, target,
+};
 
 /// Run vtool to check the `minos` field in LC_BUILD_VERSION.
 ///
@@ -166,4 +170,21 @@ fn main() {
         rustc().env_remove(env_var).run();
         minos("foo.o", default_version);
     });
+
+    // Test that all binaries in rlibs produced by `rustc` have the same version.
+    // Regression test for https://github.com/rust-lang/rust/issues/128419.
+    let sysroot = rustc().print("sysroot").run().stdout_utf8();
+    let target_sysroot = path(sysroot.trim()).join("lib/rustlib").join(target()).join("lib");
+    let rlibs = shallow_find_files(&target_sysroot, |path| has_extension(path, "rlib"));
+
+    let output = cmd("otool").arg("-l").args(rlibs).run().stdout_utf8();
+    let re = regex::Regex::new(r"(minos|version) ([0-9.]*)").unwrap();
+    let mut versions = HashSet::new();
+    for (_, [_, version]) in re.captures_iter(&output).map(|c| c.extract()) {
+        versions.insert(version);
+    }
+    // FIXME(madsmtm): See above for aarch64-apple-watchos.
+    if versions.len() != 1 && target() != "aarch64-apple-watchos" {
+        panic!("std rlibs contained multiple different deployment target versions: {versions:?}");
+    }
 }

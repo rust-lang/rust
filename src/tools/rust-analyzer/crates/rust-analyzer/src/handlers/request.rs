@@ -2318,18 +2318,21 @@ fn run_rustfmt(
         }
     };
 
-    tracing::debug!(?command, "created format command");
+    let output = {
+        let _p = tracing::info_span!("rustfmt", ?command).entered();
 
-    let mut rustfmt = command
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .context(format!("Failed to spawn {command:?}"))?;
+        let mut rustfmt = command
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .context(format!("Failed to spawn {command:?}"))?;
 
-    rustfmt.stdin.as_mut().unwrap().write_all(file.as_bytes())?;
+        rustfmt.stdin.as_mut().unwrap().write_all(file.as_bytes())?;
 
-    let output = rustfmt.wait_with_output()?;
+        rustfmt.wait_with_output()?
+    };
+
     let captured_stdout = String::from_utf8(output.stdout)?;
     let captured_stderr = String::from_utf8(output.stderr).unwrap_or_default();
 

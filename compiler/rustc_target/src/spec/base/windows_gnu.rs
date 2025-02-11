@@ -6,19 +6,26 @@ use crate::spec::{
 };
 
 pub(crate) fn opts() -> TargetOptions {
-    let mut pre_link_args = TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &[
-        // Enable ASLR
-        "--dynamicbase",
-        // ASLR will rebase it anyway so leaving that option enabled only leads to confusion
-        "--disable-auto-image-base",
-    ]);
-    add_link_args(&mut pre_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), &[
-        // Tell GCC to avoid linker plugins, because we are not bundling
-        // them with Windows installer, and Rust does its own LTO anyways.
-        "-fno-use-linker-plugin",
-        "-Wl,--dynamicbase",
-        "-Wl,--disable-auto-image-base",
-    ]);
+    let mut pre_link_args = TargetOptions::link_args(
+        LinkerFlavor::Gnu(Cc::No, Lld::No),
+        &[
+            // Enable ASLR
+            "--dynamicbase",
+            // ASLR will rebase it anyway so leaving that option enabled only leads to confusion
+            "--disable-auto-image-base",
+        ],
+    );
+    add_link_args(
+        &mut pre_link_args,
+        LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+        &[
+            // Tell GCC to avoid linker plugins, because we are not bundling
+            // them with Windows installer, and Rust does its own LTO anyways.
+            "-fno-use-linker-plugin",
+            "-Wl,--dynamicbase",
+            "-Wl,--disable-auto-image-base",
+        ],
+    );
 
     // Order of `late_link_args*` was found through trial and error to work with various
     // mingw-w64 versions (not tested on the CI). It's expected to change from time to time.

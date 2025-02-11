@@ -1,5 +1,6 @@
 use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::visit::PlaceContext;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_session::Session;
@@ -44,6 +45,7 @@ fn insert_alignment_check<'tcx>(
     tcx: TyCtxt<'tcx>,
     pointer: Place<'tcx>,
     pointee_ty: Ty<'tcx>,
+    _context: PlaceContext,
     local_decls: &mut IndexVec<Local, LocalDecl<'tcx>>,
     stmts: &mut Vec<Statement<'tcx>>,
     source_info: SourceInfo,

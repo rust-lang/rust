@@ -1,4 +1,6 @@
-// Verify that `i32::cmp` FnDef type is declared with size 0 and align 1 in LLVM debuginfo.
+// Verify that `i32::cmp` FnDef type is declared with a size of 0 and an
+// alignment of 8 bits (1 byte) in LLVM debuginfo.
+
 //@ compile-flags: -O -g -Cno-prepopulate-passes
 //@ ignore-msvc the types are mangled differently
 
@@ -14,5 +16,5 @@ pub fn main() {
 
 // CHECK: %compare.dbg.spill = alloca [0 x i8], align 1
 // CHECK: dbg{{.}}declare({{(metadata )?}}ptr %compare.dbg.spill, {{(metadata )?}}![[VAR:.*]], {{(metadata )?}}!DIExpression()
-// CHECK: ![[TYPE:.*]] = !DIDerivedType(tag: DW_TAG_pointer_type, name: "fn(&i32, &i32) -> core::cmp::Ordering", baseType: !{{.*}}, align: 1, dwarfAddressSpace: {{.*}})
-// CHECK: ![[VAR]] = !DILocalVariable(name: "compare", scope: !{{.*}}, file: !{{.*}}, line: {{.*}}, type: ![[TYPE]], align: 1)
+// CHECK: ![[TYPE:.*]] = !DIDerivedType(tag: DW_TAG_pointer_type, name: "fn(&i32, &i32) -> core::cmp::Ordering", baseType: !{{.*}}, align: 8, dwarfAddressSpace: {{.*}})
+// CHECK: ![[VAR]] = !DILocalVariable(name: "compare", scope: !{{.*}}, file: !{{.*}}, line: {{.*}}, type: ![[TYPE]], align: 8)

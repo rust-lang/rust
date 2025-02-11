@@ -567,10 +567,13 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                             Some(rename) => source.ident.span.to(rename.span),
                             None => source.ident.span,
                         };
-                        self.r.report_error(span, ResolutionError::SelfImportsOnlyAllowedWithin {
-                            root: parent.is_none(),
-                            span_with_rename,
-                        });
+                        self.r.report_error(
+                            span,
+                            ResolutionError::SelfImportsOnlyAllowedWithin {
+                                root: parent.is_none(),
+                                span_with_rename,
+                            },
+                        );
 
                         // Error recovery: replace `use foo::self;` with `use foo;`
                         if let Some(parent) = module_path.pop() {

@@ -384,9 +384,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
                 return;
             }
 
-            const start = e.textEditor.document.offsetAt(selection.start);
-            const end = e.textEditor.document.offsetAt(selection.end);
-            const result = this.syntaxTreeProvider?.getElementByRange(start, end);
+            const result = this.syntaxTreeProvider?.getElementByRange(selection);
             if (result !== undefined) {
                 await this.syntaxTreeView?.reveal(result);
             }

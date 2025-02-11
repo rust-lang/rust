@@ -3,7 +3,7 @@
 use base_db::{ra_salsa::Cycle, CrateId};
 use chalk_ir::{cast::Cast, BoundVar, DebruijnIndex};
 use hir_def::{
-    body::{Body, HygieneId},
+    expr_store::{Body, HygieneId},
     hir::{Expr, ExprId},
     path::Path,
     resolver::{Resolver, ValueNs},
@@ -124,6 +124,7 @@ pub(crate) fn path_to_const<'g>(
             ConstScalar::UnevaluatedConst(c.into(), Substitution::empty(Interner)),
             expected_ty,
         )),
+        // FIXME: With feature(adt_const_params), we also need to consider other things here, e.g. struct constructors.
         _ => None,
     }
 }

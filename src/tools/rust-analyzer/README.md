@@ -1,6 +1,6 @@
 <p align="center">
   <img
-    src="https://raw.githubusercontent.com/rust-analyzer/rust-analyzer/master/assets/logo-wide.svg"
+    src="https://raw.githubusercontent.com/rust-lang/rust-analyzer/master/assets/logo-wide.svg"
     alt="rust-analyzer logo">
 </p>
 
@@ -9,7 +9,7 @@ It is a part of a larger rls-2.0 effort to create excellent IDE support for Rust
 
 ## Quick Start
 
-https://rust-analyzer.github.io/manual.html#installation
+https://rust-analyzer.github.io/book/installation.html
 
 ## Documentation
 
@@ -18,12 +18,13 @@ if you are just curious about how things work under the hood, check the [./docs/
 folder.
 
 If you want to **use** rust-analyzer's language server with your editor of
-choice, check [the manual](https://rust-analyzer.github.io/manual.html) folder.
+choice, check [the manual](https://rust-analyzer.github.io/book/).
 It also contains some tips & tricks to help you be more productive when using rust-analyzer.
 
 ## Security and Privacy
 
-See the corresponding sections of [the manual](https://rust-analyzer.github.io/manual.html#security).
+See the [security](https://rust-analyzer.github.io/book/security.html) and
+[privacy](https://rust-analyzer.github.io/book/privacy.html) sections of the manual.
 
 ## Communication
 

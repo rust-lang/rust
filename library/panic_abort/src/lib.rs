@@ -54,7 +54,7 @@ pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
         ))] {
             unsafe fn abort() -> ! {
                 // call std::sys::abort_internal
-                extern "C" {
+                unsafe extern "C" {
                     pub fn __rust_abort() -> !;
                 }
                 __rust_abort();
@@ -87,7 +87,7 @@ pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
             }
         } else if #[cfg(target_os = "teeos")] {
             mod teeos {
-                extern "C" {
+                unsafe extern "C" {
                     pub fn TEE_Panic(code: u32) -> !;
                 }
             }

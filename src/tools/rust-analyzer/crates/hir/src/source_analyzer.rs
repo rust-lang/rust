@@ -14,7 +14,7 @@ use crate::{
 };
 use either::Either;
 use hir_def::{
-    body::{
+    expr_store::{
         scope::{ExprScopes, ScopeId},
         Body, BodySourceMap, HygieneId,
     },
@@ -1105,16 +1105,9 @@ impl SourceAnalyzer {
             if let Some(expanded_expr) = sm.macro_expansion_expr(macro_expr) {
                 let mut is_unsafe = false;
                 let mut walk_expr = |expr_id| {
-                    unsafe_expressions(
-                        db,
-                        infer,
-                        *def,
-                        body,
-                        expr_id,
-                        &mut |_, inside_unsafe_block, _| {
-                            is_unsafe |= inside_unsafe_block == InsideUnsafeBlock::No
-                        },
-                    )
+                    unsafe_expressions(db, infer, *def, body, expr_id, &mut |inside_unsafe_block| {
+                        is_unsafe |= inside_unsafe_block == InsideUnsafeBlock::No
+                    })
                 };
                 match expanded_expr {
                     ExprOrPatId::ExprId(expanded_expr) => walk_expr(expanded_expr),
@@ -1259,7 +1252,11 @@ fn scope_for(
     node: InFile<&SyntaxNode>,
 ) -> Option<ScopeId> {
     node.ancestors_with_macros(db.upcast())
-        .take_while(|it| !ast::Item::can_cast(it.kind()) || ast::MacroCall::can_cast(it.kind()))
+        .take_while(|it| {
+            !ast::Item::can_cast(it.kind())
+                || ast::MacroCall::can_cast(it.kind())
+                || ast::Use::can_cast(it.kind())
+        })
         .filter_map(|it| it.map(ast::Expr::cast).transpose())
         .filter_map(|it| source_map.node_expr(it.as_ref())?.as_expr())
         .find_map(|it| scopes.scope_for(it))

@@ -7,7 +7,7 @@
 
 use rustc_abi::{BackendRepr, HasDataLayout, Size, TyAbiInterface};
 
-use crate::abi::call::{ArgAbi, FnAbi, Reg, Uniform};
+use crate::callconv::{ArgAbi, FnAbi, Reg, Uniform};
 use crate::spec::HasTargetSpec;
 
 const NUM_ARG_GPRS: u64 = 6;

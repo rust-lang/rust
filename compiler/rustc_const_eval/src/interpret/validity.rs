@@ -812,10 +812,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 if start == 1 && end == max_value {
                     // Only null is the niche. So make sure the ptr is NOT null.
                     if self.ecx.scalar_may_be_null(scalar)? {
-                        throw_validation_failure!(self.path, NullablePtrOutOfRange {
-                            range: valid_range,
-                            max_value
-                        })
+                        throw_validation_failure!(
+                            self.path,
+                            NullablePtrOutOfRange { range: valid_range, max_value }
+                        )
                     } else {
                         return interp_ok(());
                     }
@@ -825,10 +825,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 } else {
                     // Conservatively, we reject, because the pointer *could* have a bad
                     // value.
-                    throw_validation_failure!(self.path, PtrOutOfRange {
-                        range: valid_range,
-                        max_value
-                    })
+                    throw_validation_failure!(
+                        self.path,
+                        PtrOutOfRange { range: valid_range, max_value }
+                    )
                 }
             }
         };
@@ -836,11 +836,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         if valid_range.contains(bits) {
             interp_ok(())
         } else {
-            throw_validation_failure!(self.path, OutOfRange {
-                value: format!("{bits}"),
-                range: valid_range,
-                max_value
-            })
+            throw_validation_failure!(
+                self.path,
+                OutOfRange { value: format!("{bits}"), range: valid_range, max_value }
+            )
         }
     }
 

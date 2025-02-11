@@ -5,7 +5,7 @@
 // The cdecl ABI is used. It differs from the stdcall or fastcall ABI.
 // "i686-unknown-windows" is used to get the minimal subset of windows-specific features.
 
-use crate::spec::{RustcAbi, Target, base};
+use crate::spec::{LinkerFlavor, Lld, RustcAbi, Target, add_link_args, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::uefi_msvc::opts();
@@ -23,6 +23,13 @@ pub(crate) fn target() -> Target {
     // arguments, thus giving you access to full MMX/SSE acceleration.
     base.features = "-mmx,-sse,+soft-float".into();
     base.rustc_abi = Some(RustcAbi::X86Softfloat);
+
+    // Turn off DWARF. This fixes an lld warning, "section name .debug_frame is longer than 8
+    // characters and will use a non-standard string table". That section will not be created if
+    // DWARF is disabled.
+    //
+    // This is only needed in the i686 target due to using the `-gnu` LLVM target (see below).
+    add_link_args(&mut base.post_link_args, LinkerFlavor::Msvc(Lld::No), &["/DEBUG:NODWARF"]);
 
     // Use -GNU here, because of the reason below:
     // Background and Problem:

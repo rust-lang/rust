@@ -687,11 +687,12 @@ pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(
                 let field2 = builder.context.new_field(None, args[1].get_type(), "carryResult");
                 let struct_type =
                     builder.context.new_struct_type(None, "addcarryResult", &[field1, field2]);
-                return_value =
-                    builder.context.new_struct_constructor(None, struct_type.as_type(), None, &[
-                        return_value,
-                        last_arg.dereference(None).to_rvalue(),
-                    ]);
+                return_value = builder.context.new_struct_constructor(
+                    None,
+                    struct_type.as_type(),
+                    None,
+                    &[return_value, last_arg.dereference(None).to_rvalue()],
+                );
             }
         }
         "__builtin_ia32_stmxcsr" => {
@@ -716,11 +717,12 @@ pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(
             let field2 = builder.context.new_field(None, return_value.get_type(), "success");
             let struct_type =
                 builder.context.new_struct_type(None, "rdrand_result", &[field1, field2]);
-            return_value =
-                builder.context.new_struct_constructor(None, struct_type.as_type(), None, &[
-                    random_number,
-                    success_variable.to_rvalue(),
-                ]);
+            return_value = builder.context.new_struct_constructor(
+                None,
+                struct_type.as_type(),
+                None,
+                &[random_number, success_variable.to_rvalue()],
+            );
         }
         "fma" => {
             let f16_type = builder.context.new_c_type(CType::Float16);

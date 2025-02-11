@@ -304,16 +304,12 @@ impl OpenOptions {
             (true, false) => {}
             (false, false) => {
                 if self.truncate || self.create || self.create_new {
-                    return Err(
-                        io::const_error!(ErrorKind::InvalidInput, "invalid creation mode",),
-                    );
+                    return Err(io::const_error!(ErrorKind::InvalidInput, "invalid creation mode"));
                 }
             }
             (_, true) => {
                 if self.truncate && !self.create_new {
-                    return Err(
-                        io::const_error!(ErrorKind::InvalidInput, "invalid creation mode",),
-                    );
+                    return Err(io::const_error!(ErrorKind::InvalidInput, "invalid creation mode"));
                 }
             }
         }

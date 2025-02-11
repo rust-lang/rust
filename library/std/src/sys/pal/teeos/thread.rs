@@ -16,7 +16,7 @@ pub struct Thread {
 unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
 
-extern "C" {
+unsafe extern "C" {
     pub fn TEE_Wait(timeout: u32) -> u32;
 }
 

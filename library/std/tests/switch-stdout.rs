@@ -14,7 +14,7 @@ use std::os::windows::io::OwnedHandle;
 fn switch_stdout_to(file: OwnedFd) -> OwnedFd {
     use std::os::unix::prelude::*;
 
-    extern "C" {
+    unsafe extern "C" {
         fn dup(old: i32) -> i32;
         fn dup2(old: i32, new: i32) -> i32;
     }
@@ -32,7 +32,7 @@ fn switch_stdout_to(file: OwnedFd) -> OwnedFd {
 fn switch_stdout_to(file: OwnedHandle) -> OwnedHandle {
     use std::os::windows::prelude::*;
 
-    extern "system" {
+    unsafe extern "system" {
         fn GetStdHandle(nStdHandle: u32) -> *mut u8;
         fn SetStdHandle(nStdHandle: u32, handle: *mut u8) -> i32;
     }

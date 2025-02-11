@@ -14,7 +14,7 @@ use crate::os::unix::fs::symlink as junction_point;
 use crate::os::windows::fs::{OpenOptionsExt, junction_point, symlink_dir, symlink_file};
 use crate::path::Path;
 use crate::sync::Arc;
-use crate::sys_common::io::test::{TempDir, tmpdir};
+use crate::test_helpers::{TempDir, tmpdir};
 use crate::time::{Duration, Instant, SystemTime};
 use crate::{env, str, thread};
 
@@ -1384,7 +1384,7 @@ fn file_try_clone() {
 }
 
 #[test]
-#[cfg(not(windows))]
+#[cfg(not(target_vendor = "win7"))]
 fn unlink_readonly() {
     let tmpdir = tmpdir();
     let path = tmpdir.join("file");

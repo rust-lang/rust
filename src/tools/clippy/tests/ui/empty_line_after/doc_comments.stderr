@@ -5,11 +5,11 @@ LL | / /// for the crate
 LL | |
    | |_^
 LL |   fn first_in_crate() {}
-   |   ------------------- the comment documents this function
+   |   ----------------- the comment documents this function
    |
    = note: `-D clippy::empty-line-after-doc-comments` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::empty_line_after_doc_comments)]`
-   = help: if the empty line is unintentional remove it
+   = help: if the empty line is unintentional, remove it
 help: if the comment should document the crate use an inner doc comment
    |
 LL ~ //! Meant to be an
@@ -24,9 +24,9 @@ LL | /     /// for the module
 LL | |
    | |_^
 LL |       fn first_in_module() {}
-   |       -------------------- the comment documents this function
+   |       ------------------ the comment documents this function
    |
-   = help: if the empty line is unintentional remove it
+   = help: if the empty line is unintentional, remove it
 help: if the comment should document the parent module use an inner doc comment
    |
 LL ~     //! Meant to be an
@@ -42,9 +42,9 @@ LL | |
    | |_^
 LL |       /// Blank line
 LL |       fn indented() {}
-   |       ------------- the comment documents this function
+   |       ----------- the comment documents this function
    |
-   = help: if the empty line is unintentional remove it
+   = help: if the empty line is unintentional, remove it
 help: if the documentation should include the empty line include it in the comment
    |
 LL |     ///
@@ -57,9 +57,9 @@ LL | / /// This should produce a warning
 LL | |
    | |_^
 LL |   fn with_doc_and_newline() {}
-   |   ------------------------- the comment documents this function
+   |   ----------------------- the comment documents this function
    |
-   = help: if the empty line is unintentional remove it
+   = help: if the empty line is unintentional, remove it
 
 error: empty lines after doc comment
   --> tests/ui/empty_line_after/doc_comments.rs:44:1
@@ -72,9 +72,9 @@ LL | |
    | |_^
 ...
 LL |   fn three_attributes() {}
-   |   --------------------- the comment documents this function
+   |   ------------------- the comment documents this function
    |
-   = help: if the empty lines are unintentional remove them
+   = help: if the empty lines are unintentional, remove them
 
 error: empty line after doc comment
   --> tests/ui/empty_line_after/doc_comments.rs:56:5
@@ -84,9 +84,9 @@ LL | |     // fn old_code() {}
 LL | |
    | |_^
 LL |       fn new_code() {}
-   |       ------------- the comment documents this function
+   |       ----------- the comment documents this function
    |
-   = help: if the empty line is unintentional remove it
+   = help: if the empty line is unintentional, remove it
 help: if the doc comment should not document `new_code` comment it out
    |
 LL |     // /// docs for `old_code`
@@ -106,7 +106,7 @@ LL | |
 LL |       struct Multiple;
    |       --------------- the comment documents this struct
    |
-   = help: if the empty lines are unintentional remove them
+   = help: if the empty lines are unintentional, remove them
 help: if the doc comment should not document `Multiple` comment it out
    |
 LL ~     // /// Docs
@@ -126,9 +126,9 @@ LL | |      */
 LL | |
    | |_^
 LL |       fn first_in_module() {}
-   |       -------------------- the comment documents this function
+   |       ------------------ the comment documents this function
    |
-   = help: if the empty line is unintentional remove it
+   = help: if the empty line is unintentional, remove it
 help: if the comment should document the parent module use an inner doc comment
    |
 LL |     /*!
@@ -145,9 +145,9 @@ LL | |
    | |_^
 ...
 LL |       fn new_code() {}
-   |       ------------- the comment documents this function
+   |       ----------- the comment documents this function
    |
-   = help: if the empty line is unintentional remove it
+   = help: if the empty line is unintentional, remove it
 help: if the doc comment should not document `new_code` comment it out
    |
 LL -     /**
@@ -163,13 +163,24 @@ LL | |
    | |_^
 LL |       /// Docs for `new_code2`
 LL |       fn new_code2() {}
-   |       -------------- the comment documents this function
+   |       ------------ the comment documents this function
    |
-   = help: if the empty line is unintentional remove it
+   = help: if the empty line is unintentional, remove it
 help: if the doc comment should not document `new_code2` comment it out
    |
 LL |     // /// Docs for `old_code2`
    |     ++
 
-error: aborting due to 10 previous errors
+error: empty line after doc comment
+  --> tests/ui/empty_line_after/doc_comments.rs:152:5
+   |
+LL | /     /// comment on assoc item
+LL | |
+   | |_^
+LL |       fn bar() {}
+   |       ------ the comment documents this function
+   |
+   = help: if the empty line is unintentional, remove it
+
+error: aborting due to 11 previous errors
 

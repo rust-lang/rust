@@ -3466,11 +3466,14 @@ impl<T: Default> Default for Arc<T> {
     fn default() -> Arc<T> {
         unsafe {
             Self::from_inner(
-                Box::leak(Box::write(Box::new_uninit(), ArcInner {
-                    strong: atomic::AtomicUsize::new(1),
-                    weak: atomic::AtomicUsize::new(1),
-                    data: T::default(),
-                }))
+                Box::leak(Box::write(
+                    Box::new_uninit(),
+                    ArcInner {
+                        strong: atomic::AtomicUsize::new(1),
+                        weak: atomic::AtomicUsize::new(1),
+                        data: T::default(),
+                    },
+                ))
                 .into(),
             )
         }

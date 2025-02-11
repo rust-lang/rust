@@ -105,11 +105,14 @@ fn decodable_body(
     };
     s.underscore_const(true);
 
-    s.bound_impl(quote!(::rustc_serialize::Decodable<#decoder_ty>), quote! {
-        fn decode(__decoder: &mut #decoder_ty) -> Self {
-            #decode_body
-        }
-    })
+    s.bound_impl(
+        quote!(::rustc_serialize::Decodable<#decoder_ty>),
+        quote! {
+            fn decode(__decoder: &mut #decoder_ty) -> Self {
+                #decode_body
+            }
+        },
+    )
 }
 
 fn decode_field(field: &syn::Field) -> proc_macro2::TokenStream {
@@ -285,13 +288,16 @@ fn encodable_body(
         quote! {}
     };
 
-    s.bound_impl(quote!(::rustc_serialize::Encodable<#encoder_ty>), quote! {
-        fn encode(
-            &self,
-            __encoder: &mut #encoder_ty,
-        ) {
-            #lints
-            #encode_body
-        }
-    })
+    s.bound_impl(
+        quote!(::rustc_serialize::Encodable<#encoder_ty>),
+        quote! {
+            fn encode(
+                &self,
+                __encoder: &mut #encoder_ty,
+            ) {
+                #lints
+                #encode_body
+            }
+        },
+    )
 }

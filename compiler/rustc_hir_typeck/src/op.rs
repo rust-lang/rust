@@ -918,13 +918,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let opname = Ident::with_dummy_span(opname);
         let (opt_rhs_expr, opt_rhs_ty) = opt_rhs.unzip();
-        let cause = self.cause(span, ObligationCauseCode::BinOp {
-            lhs_hir_id: lhs_expr.hir_id,
-            rhs_hir_id: opt_rhs_expr.map(|expr| expr.hir_id),
-            rhs_span: opt_rhs_expr.map(|expr| expr.span),
-            rhs_is_lit: opt_rhs_expr.is_some_and(|expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
-            output_ty: expected.only_has_type(self),
-        });
+        let cause = self.cause(
+            span,
+            ObligationCauseCode::BinOp {
+                lhs_hir_id: lhs_expr.hir_id,
+                rhs_hir_id: opt_rhs_expr.map(|expr| expr.hir_id),
+                rhs_span: opt_rhs_expr.map(|expr| expr.span),
+                rhs_is_lit: opt_rhs_expr
+                    .is_some_and(|expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
+                output_ty: expected.only_has_type(self),
+            },
+        );
 
         let method =
             self.lookup_method_in_trait(cause.clone(), opname, trait_did, lhs_ty, opt_rhs_ty);

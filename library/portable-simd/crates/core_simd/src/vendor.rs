@@ -29,3 +29,6 @@ mod arm;
 
 #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
 mod powerpc;
+
+#[cfg(target_arch = "loongarch64")]
+mod loongarch64;

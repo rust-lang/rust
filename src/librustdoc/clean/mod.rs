@@ -544,14 +544,18 @@ fn clean_generic_param_def(
             } else {
                 None
             };
-            (def.name, GenericParamDefKind::Type {
-                bounds: ThinVec::new(), // These are filled in from the where-clauses.
-                default: default.map(Box::new),
-                synthetic,
-            })
+            (
+                def.name,
+                GenericParamDefKind::Type {
+                    bounds: ThinVec::new(), // These are filled in from the where-clauses.
+                    default: default.map(Box::new),
+                    synthetic,
+                },
+            )
         }
-        ty::GenericParamDefKind::Const { has_default, synthetic } => {
-            (def.name, GenericParamDefKind::Const {
+        ty::GenericParamDefKind::Const { has_default, synthetic } => (
+            def.name,
+            GenericParamDefKind::Const {
                 ty: Box::new(clean_middle_ty(
                     ty::Binder::dummy(
                         cx.tcx
@@ -573,8 +577,8 @@ fn clean_generic_param_def(
                     None
                 },
                 synthetic,
-            })
-        }
+            },
+        ),
     };
 
     GenericParamDef { name, def_id: def.def_id, kind }
@@ -619,21 +623,25 @@ fn clean_generic_param<'tcx>(
             } else {
                 ThinVec::new()
             };
-            (param.name.ident().name, GenericParamDefKind::Type {
-                bounds,
-                default: default.map(|t| clean_ty(t, cx)).map(Box::new),
-                synthetic,
-            })
+            (
+                param.name.ident().name,
+                GenericParamDefKind::Type {
+                    bounds,
+                    default: default.map(|t| clean_ty(t, cx)).map(Box::new),
+                    synthetic,
+                },
+            )
         }
-        hir::GenericParamKind::Const { ty, default, synthetic } => {
-            (param.name.ident().name, GenericParamDefKind::Const {
+        hir::GenericParamKind::Const { ty, default, synthetic } => (
+            param.name.ident().name,
+            GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),
                 default: default.map(|ct| {
                     Box::new(lower_const_arg_for_rustdoc(cx.tcx, ct, FeedConstTy::No).to_string())
                 }),
                 synthetic,
-            })
-        }
+            },
+        ),
     };
 
     GenericParamDef { name, def_id: param.def_id.to_def_id(), kind }
@@ -653,9 +661,10 @@ fn is_impl_trait(param: &hir::GenericParam<'_>) -> bool {
 ///
 /// See `lifetime_to_generic_param` in `rustc_ast_lowering` for more information.
 fn is_elided_lifetime(param: &hir::GenericParam<'_>) -> bool {
-    matches!(param.kind, hir::GenericParamKind::Lifetime {
-        kind: hir::LifetimeParamKind::Elided(_)
-    })
+    matches!(
+        param.kind,
+        hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Elided(_) }
+    )
 }
 
 pub(crate) fn clean_generics<'tcx>(
@@ -1055,11 +1064,10 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attrib
                         ..
                     } = param
                     {
-                        func.decl.inputs.values.insert(a.get() as _, Argument {
-                            name,
-                            type_: *ty,
-                            is_const: true,
-                        });
+                        func.decl
+                            .inputs
+                            .values
+                            .insert(a.get() as _, Argument { name, type_: *ty, is_const: true });
                     } else {
                         panic!("unexpected non const in position {pos}");
                     }
@@ -1422,11 +1430,11 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 let bounds = tcx.explicit_item_bounds(assoc_item.def_id).iter_identity_copied();
                 predicates = tcx.arena.alloc_from_iter(bounds.chain(predicates.iter().copied()));
             }
-            let mut generics =
-                clean_ty_generics(cx, tcx.generics_of(assoc_item.def_id), ty::GenericPredicates {
-                    parent: None,
-                    predicates,
-                });
+            let mut generics = clean_ty_generics(
+                cx,
+                tcx.generics_of(assoc_item.def_id),
+                ty::GenericPredicates { parent: None, predicates },
+            );
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
             if let ty::AssocItemContainer::Trait = assoc_item.container {
