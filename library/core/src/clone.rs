@@ -275,6 +275,10 @@ pub const trait Clone: Sized {
 // its invariant holds whenever `Clone` is implemented, even if the actual
 // `TrivialClone` bound would not be satisfied because of lifetime bounds.
 #[rustc_unsafe_specialization_marker]
+// If `#[derive(Clone, Clone, Copy)]` is written, there will be multiple
+// implementations of `TrivialClone`. To keep it from appearing in error
+// messages, make it a `#[marker]` trait.
+#[marker]
 pub const unsafe trait TrivialClone: [const] Clone {}
 
 /// Derive macro generating an impl of the trait `Clone`.
