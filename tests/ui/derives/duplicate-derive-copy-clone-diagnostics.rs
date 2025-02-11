@@ -6,7 +6,6 @@
 #[derive(Copy, Clone)]
 //~^ ERROR conflicting implementations of trait `Clone` for type `E`
 //~| ERROR conflicting implementations of trait `Copy` for type `E`
-//~| ERROR conflicting implementations of trait `TrivialClone` for type `E`
 enum E {}
 
 fn main() {}
