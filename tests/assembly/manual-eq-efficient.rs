@@ -1,6 +1,6 @@
 // Regression test for #106269
 //@ assembly-output: emit-asm
-//@ compile-flags: --crate-type=lib -O -C llvm-args=-x86-asm-syntax=intel
+//@ compile-flags: --crate-type=lib -Copt-level=3 -C llvm-args=-x86-asm-syntax=intel
 //@ only-x86_64
 //@ ignore-sgx
 
