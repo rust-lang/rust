@@ -20,19 +20,20 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
 use rustc_index::{IndexVec, newtype_index};
 use rustc_macros::{HashStable, TypeVisitable};
-use rustc_middle::middle::region;
-use rustc_middle::mir::interpret::AllocId;
-use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, UnOp};
-use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{
-    self, AdtDef, CanonicalUserType, CanonicalUserTypeAnnotation, FnSig, GenericArgsRef, List, Ty,
-    TyCtxt, UpvarArgs,
-};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use tracing::instrument;
+
+use crate::middle::region;
+use crate::mir::interpret::AllocId;
+use crate::mir::{self, BinOp, BorrowKind, FakeReadCause, UnOp};
+use crate::ty::adjustment::PointerCoercion;
+use crate::ty::layout::IntegerExt;
+use crate::ty::{
+    self, AdtDef, CanonicalUserType, CanonicalUserTypeAnnotation, FnSig, GenericArgsRef, List, Ty,
+    TyCtxt, UpvarArgs,
+};
 
 pub mod visit;
 

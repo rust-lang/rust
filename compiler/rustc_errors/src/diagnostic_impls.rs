@@ -108,13 +108,13 @@ impl<I: rustc_type_ir::Interner> IntoDiagArg for rustc_type_ir::ExistentialTrait
 }
 
 impl<I: rustc_type_ir::Interner> IntoDiagArg for rustc_type_ir::UnevaluatedConst<I> {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self) -> DiagArgValue {
         format!("{self:?}").into_diag_arg()
     }
 }
 
 impl<I: rustc_type_ir::Interner> IntoDiagArg for rustc_type_ir::FnSig<I> {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self) -> DiagArgValue {
         format!("{self:?}").into_diag_arg()
     }
 }

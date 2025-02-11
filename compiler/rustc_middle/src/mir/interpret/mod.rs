@@ -20,7 +20,6 @@ use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
 use tracing::{debug, trace};
 // Also make the error macros available from this module.
@@ -46,6 +45,7 @@ pub use self::pointer::{CtfeProvenance, Pointer, PointerArithmetic, Provenance};
 pub use self::value::Scalar;
 use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
+use crate::ty::print::with_no_trimmed_paths;
 use crate::ty::{self, Instance, Ty, TyCtxt};
 
 /// Uniquely identifies one of the following:
