@@ -6,7 +6,6 @@ use crate::hash::{Hash, Hasher};
 use crate::marker::{Freeze, StructuralPartialEq};
 use crate::ops::{BitOr, BitOrAssign, Div, DivAssign, Neg, Rem, RemAssign};
 use crate::panic::{RefUnwindSafe, UnwindSafe};
-use crate::random::{Random, RandomSource};
 use crate::str::FromStr;
 use crate::{fmt, intrinsics, ptr, ub_checks};
 
@@ -358,17 +357,6 @@ where
     #[inline]
     fn bitor_assign(&mut self, rhs: T) {
         *self = *self | rhs;
-    }
-}
-
-#[unstable(feature = "random", issue = "130703")]
-impl<T: ZeroablePrimitive + Random> Random for NonZero<T> {
-    fn random(source: &mut (impl RandomSource + ?Sized)) -> Self {
-        loop {
-            if let Some(n) = Self::new(T::random(source)) {
-                break n;
-            }
-        }
     }
 }
 
