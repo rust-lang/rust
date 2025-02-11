@@ -648,6 +648,9 @@ impl File {
     /// and the `LockFileEx` function on Windows with the `LOCKFILE_EXCLUSIVE_LOCK` flag. Note that,
     /// this [may change in the future][changes].
     ///
+    /// On Windows, locking a file will fail if the file is opened only for append. To lock a file,
+    /// open it with either `.read(true).append(true)` or `.write(true)`.
+    ///
     /// [changes]: io#platform-specific-behavior
     ///
     /// [`lock`]: File::lock
@@ -697,6 +700,9 @@ impl File {
     /// This function currently corresponds to the `flock` function on Unix with the `LOCK_SH` flag,
     /// and the `LockFileEx` function on Windows. Note that, this
     /// [may change in the future][changes].
+    ///
+    /// On Windows, locking a file will fail if the file is opened only for append. To lock a file,
+    /// open it with either `.read(true).append(true)` or `.write(true)`.
     ///
     /// [changes]: io#platform-specific-behavior
     ///
@@ -753,6 +759,9 @@ impl File {
     /// and `LOCKFILE_FAIL_IMMEDIATELY` flags. Note that, this
     /// [may change in the future][changes].
     ///
+    /// On Windows, locking a file will fail if the file is opened only for append. To lock a file,
+    /// open it with either `.read(true).append(true)` or `.write(true)`.
+    ///
     /// [changes]: io#platform-specific-behavior
     ///
     /// [`lock`]: File::lock
@@ -807,6 +816,9 @@ impl File {
     /// `LOCKFILE_FAIL_IMMEDIATELY` flag. Note that, this
     /// [may change in the future][changes].
     ///
+    /// On Windows, locking a file will fail if the file is opened only for append. To lock a file,
+    /// open it with either `.read(true).append(true)` or `.write(true)`.
+    ///
     /// [changes]: io#platform-specific-behavior
     ///
     /// [`lock`]: File::lock
@@ -848,6 +860,9 @@ impl File {
     /// This function currently corresponds to the `flock` function on Unix with the `LOCK_UN` flag,
     /// and the `UnlockFile` function on Windows. Note that, this
     /// [may change in the future][changes].
+    ///
+    /// On Windows, locking a file will fail if the file is opened only for append. To lock a file,
+    /// open it with either `.read(true).append(true)` or `.write(true)`.
     ///
     /// [changes]: io#platform-specific-behavior
     ///
