@@ -226,7 +226,7 @@ impl ArgumentList {
                         ty = arg.to_c_type(),
                         name = arg.name,
                         load = if arg.is_simd() {
-                            arg.ty.get_load_function(target)
+                            arg.ty.get_load_function(armv7_p64)
                         } else {
                             "*".to_string()
                         },
@@ -258,7 +258,7 @@ impl ArgumentList {
                         name = arg.name,
                         vals_name = arg.rust_vals_array_name(),
                         load = if arg.is_simd() {
-                            arg.ty.get_load_function("__")
+                            arg.ty.get_load_function(false)
                         } else {
                             "*".to_string()
                         },

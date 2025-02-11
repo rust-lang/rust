@@ -201,10 +201,10 @@ fn main() {{
 {passes}
 }}
 "#,
-        target_arch = if target.starts_with("aarch64") {
-            "aarch64"
-        } else {
+        target_arch = if target.contains("v7") {
             "arm"
+        } else {
+            "aarch64"
         },
         arglists = intrinsic
             .arguments
@@ -226,10 +226,10 @@ fn compile_c(
     cxx_toolchain_dir: Option<&str>,
 ) -> bool {
     let flags = std::env::var("CPPFLAGS").unwrap_or("".into());
-    let arch_flags = if target.starts_with("aarch64") {
-        "-march=armv8.6-a+crypto+sha3+crc+dotprod"
-    } else {
+    let arch_flags = if target.contains("v7") {
         "-march=armv8.6-a+crypto+crc+dotprod"
+    } else {
+        "-march=armv8.6-a+crypto+sha3+crc+dotprod"
     };
 
     let intrinsic_name = &intrinsic.name;
@@ -394,7 +394,6 @@ path = "{intrinsic}/main.rs""#,
 
     /* If there has been a linker explicitly set from the command line then
      * we want to set it via setting it in the RUSTFLAGS*/
-    let mut rust_flags = "-Cdebuginfo=0".to_string();
 
     let cargo_command = format!(
         "cargo {toolchain} build --target {target} --release",
@@ -403,12 +402,12 @@ path = "{intrinsic}/main.rs""#,
     );
 
     let mut command = Command::new("sh");
-
     command
         .current_dir("rust_programs")
         .arg("-c")
         .arg(cargo_command);
 
+    let mut rust_flags = "-Cdebuginfo=0".to_string();
     if let Some(linker) = linker {
         rust_flags.push_str(" -C linker=");
         rust_flags.push_str(linker);
@@ -418,6 +417,7 @@ path = "{intrinsic}/main.rs""#,
     }
 
     command.env("RUSTFLAGS", rust_flags);
+    println!("{:?}", command);
     let output = command.output();
 
     if let Ok(output) = output {
@@ -552,8 +552,8 @@ fn main() {
         std::process::exit(3);
     }
 
-    if let Some(ref _toolchain) = toolchain {
-        if !compare_outputs(&intrinsics, &c_runner, target) {
+    if let Some(ref toolchain) = toolchain {
+        if !compare_outputs(&intrinsics, toolchain, &c_runner, target) {
             std::process::exit(1)
         }
     }
@@ -565,7 +565,12 @@ enum FailureReason {
     Difference(String, String, String),
 }
 
-fn compare_outputs(intrinsics: &Vec<Intrinsic>, runner: &str, target: &str) -> bool {
+fn compare_outputs(
+    intrinsics: &Vec<Intrinsic>,
+    toolchain: &str,
+    runner: &str,
+    target: &str,
+) -> bool {
     let intrinsics = intrinsics
         .par_iter()
         .filter_map(|intrinsic| {
@@ -578,15 +583,29 @@ fn compare_outputs(intrinsics: &Vec<Intrinsic>, runner: &str, target: &str) -> b
                 ))
                 .output();
 
-            let rust = Command::new("sh")
-                .arg("-c")
-                .arg(format!(
-                    "{runner} ./rust_programs/target/{target}/release/{intrinsic}",
-                    runner = runner,
-                    target = target,
-                    intrinsic = intrinsic.name,
-                ))
-                .output();
+            let rust = if target != "aarch64_be-none-linux-gnu" {
+                Command::new("sh")
+                    .current_dir("rust_programs")
+                    .arg("-c")
+                    .arg(format!(
+                        "cargo {toolchain} run --target {target} --bin {intrinsic} --release",
+                        intrinsic = intrinsic.name,
+                        toolchain = toolchain,
+                        target = target
+                    ))
+                    .env("RUSTFLAGS", "-Cdebuginfo=0")
+                    .output()
+            } else {
+                Command::new("sh")
+                    .arg("-c")
+                    .arg(format!(
+                        "{runner} ./rust_programs/target/{target}/release/{intrinsic}",
+                        runner = runner,
+                        target = target,
+                        intrinsic = intrinsic.name,
+                    ))
+                    .output()
+            };
 
             let (c, rust) = match (c, rust) {
                 (Ok(c), Ok(rust)) => (c, rust),
