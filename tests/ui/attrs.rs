@@ -1,5 +1,5 @@
 #![warn(clippy::inline_always, clippy::deprecated_semver)]
-#![allow(clippy::assertions_on_constants)]
+#![allow(clippy::assertions_on_constants, clippy::empty_line_after_outer_attr)]
 #![allow(clippy::missing_docs_in_private_items, clippy::panic, clippy::unreachable)]
 
 #[inline(always)]

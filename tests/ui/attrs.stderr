@@ -13,24 +13,6 @@ error: the since field must contain a semver-compliant version
 LL | #[deprecated(since = "1")]
    |              ^^^^^^^^^^^
 
-error: empty lines after outer attribute
-  --> tests/ui/attrs.rs:5:1
-   |
-LL | / #[inline(always)]
-...  |
-LL | |
-   | |_^
-LL |   fn test_attr_lint() {
-   |   ------------------- the attribute applies to this function
-   |
-   = note: `-D clippy::empty-line-after-outer-attr` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::empty_line_after_outer_attr)]`
-   = help: if the empty lines are unintentional remove them
-help: if the attribute should apply to the crate use an inner attribute
-   |
-LL | #![inline(always)]
-   |  +
-
 error: you have declared `#[inline(always)]` on `test_attr_lint`. This is usually a bad idea
   --> tests/ui/attrs.rs:5:1
    |
@@ -40,29 +22,5 @@ LL | #[inline(always)]
    = note: `-D clippy::inline-always` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::inline_always)]`
 
-error: empty lines after outer attribute
-  --> tests/ui/attrs.rs:28:1
-   |
-LL | / #[deprecated(since = "forever")]
-...  |
-LL | |
-   | |_^
-LL |   pub const SOME_CONST: u8 = 42;
-   |   ------------------------ the attribute applies to this constant
-   |
-   = help: if the empty lines are unintentional remove them
-
-error: empty line after outer attribute
-  --> tests/ui/attrs.rs:34:1
-   |
-LL | / #[deprecated(since = "1")]
-LL | |
-LL | |
-   | |_^
-LL |   pub const ANOTHER_CONST: u8 = 23;
-   |   --------------------------- the attribute applies to this constant
-   |
-   = help: if the empty line is unintentional remove it
-
-error: aborting due to 6 previous errors
+error: aborting due to 3 previous errors
 
