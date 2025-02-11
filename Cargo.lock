@@ -1997,7 +1997,7 @@ dependencies = [
  "anyhow",
  "clap",
  "fs-err",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "rustdoc-json-types",
  "serde",
  "serde_json",
@@ -3188,7 +3188,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rinja_parser",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "serde",
  "syn 2.0.96",
 ]
@@ -3252,9 +3252,9 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustc-hash"
-version = "2.1.0"
+version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7fb8039b3032c191086b10f11f319a6e99e1e82889c5cc6046f515c9db1d497"
+checksum = "357703d41365b4b27c590e3ed91eabb1b663f07c4c084095e60cbed4362dff0d"
 
 [[package]]
 name = "rustc-main"
@@ -3654,7 +3654,7 @@ dependencies = [
  "memmap2",
  "parking_lot",
  "portable-atomic",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "rustc-rayon",
  "rustc-stable-hash",
  "rustc_arena",
@@ -4362,7 +4362,7 @@ dependencies = [
 name = "rustc_pattern_analysis"
 version = "0.0.0"
 dependencies = [
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "rustc_abi",
  "rustc_apfloat",
  "rustc_arena",
@@ -4757,7 +4757,7 @@ name = "rustdoc-json-types"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "serde",
  "serde_json",
 ]
@@ -5408,7 +5408,7 @@ dependencies = [
  "ignore",
  "miropt-test-tools",
  "regex",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "semver",
  "serde",
  "similar",
