@@ -58,6 +58,7 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           cd src/ci/citool
+          cargo test
           cargo run calculate-job-matrix >> $GITHUB_OUTPUT
         id: jobs
   job:
