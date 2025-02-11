@@ -1,15 +1,15 @@
 error: reached the recursion limit while instantiating `test::<Cons<Cons<Cons<Cons<Cons<...>>>>>>`
-  --> $DIR/recursion.rs:19:11
+  --> $DIR/recursion.rs:17:11
    |
 LL |     _ => {test (n-1, i+1, Cons {head:2*i+1, tail:first}, Cons{head:i*i, tail:second})}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `test` defined here
-  --> $DIR/recursion.rs:17:1
+  --> $DIR/recursion.rs:15:1
    |
 LL | fn test<T:Dot> (n:isize, i:isize, first:T, second:T) ->isize {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: the full type name has been written to '$TEST_BUILD_DIR/$FILE.long-type.txt'
+   = note: the full type name has been written to '$TEST_BUILD_DIR/recursion.long-type.txt'
 
 error: aborting due to 1 previous error
 
