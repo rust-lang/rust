@@ -595,11 +595,6 @@
 # Whether to always use incremental compilation when building rustc
 #incremental = false
 
-# Build a multi-threaded rustc. This allows users to use parallel rustc
-# via the unstable option `-Z threads=n`.
-# This option is deprecated and always true.
-#parallel-compiler = true
-
 # The default linker that will be hard-coded into the generated
 # compiler for targets that don't specify a default linker explicitly
 # in their target specifications.  Note that this is not the linker
