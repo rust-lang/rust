@@ -432,7 +432,7 @@ fn macho_object_build_version_for_target(sess: &Session) -> object::write::MachO
     }
 
     let platform = apple::macho_platform(&sess.target);
-    let min_os = apple::deployment_target(sess);
+    let min_os = sess.apple_deployment_target();
 
     let mut build_version = object::write::MachOBuildVersion::default();
     build_version.platform = platform;

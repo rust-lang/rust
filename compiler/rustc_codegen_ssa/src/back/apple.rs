@@ -1,11 +1,5 @@
-use std::env;
-use std::str::FromStr;
-
-use rustc_session::Session;
 use rustc_target::spec::Target;
 pub(super) use rustc_target::spec::apple::OSVersion;
-
-use crate::errors::AppleDeploymentTarget;
 
 #[cfg(test)]
 mod tests;
@@ -23,54 +17,6 @@ pub(super) fn macho_platform(target: &Target) -> u32 {
         ("visionos", "sim") => object::macho::PLATFORM_XROSSIMULATOR,
         ("visionos", _) => object::macho::PLATFORM_XROS,
         _ => unreachable!("tried to get Mach-O platform for non-Apple target"),
-    }
-}
-
-/// Name of the environment variable used to fetch the deployment target on the given OS.
-pub fn deployment_target_env_var(os: &str) -> &'static str {
-    match os {
-        "macos" => "MACOSX_DEPLOYMENT_TARGET",
-        "ios" => "IPHONEOS_DEPLOYMENT_TARGET",
-        "watchos" => "WATCHOS_DEPLOYMENT_TARGET",
-        "tvos" => "TVOS_DEPLOYMENT_TARGET",
-        "visionos" => "XROS_DEPLOYMENT_TARGET",
-        _ => unreachable!("tried to get deployment target env var for non-Apple platform"),
-    }
-}
-
-/// Get the deployment target based on the standard environment variables, or fall back to the
-/// minimum version supported by `rustc`.
-pub fn deployment_target(sess: &Session) -> OSVersion {
-    let min = OSVersion::minimum_deployment_target(&sess.target);
-    let env_var = deployment_target_env_var(&sess.target.os);
-
-    if let Ok(deployment_target) = env::var(env_var) {
-        match OSVersion::from_str(&deployment_target) {
-            Ok(version) => {
-                let os_min = OSVersion::os_minimum_deployment_target(&sess.target.os);
-                // It is common that the deployment target is set a bit too low, for example on
-                // macOS Aarch64 to also target older x86_64. So we only want to warn when variable
-                // is lower than the minimum OS supported by rustc, not when the variable is lower
-                // than the minimum for a specific target.
-                if version < os_min {
-                    sess.dcx().emit_warn(AppleDeploymentTarget::TooLow {
-                        env_var,
-                        version: version.fmt_pretty().to_string(),
-                        os_min: os_min.fmt_pretty().to_string(),
-                    });
-                }
-
-                // Raise the deployment target to the minimum supported.
-                version.max(min)
-            }
-            Err(error) => {
-                sess.dcx().emit_err(AppleDeploymentTarget::Invalid { env_var, error });
-                min
-            }
-        }
-    } else {
-        // If no deployment target variable is set, default to the minimum found above.
-        min
     }
 }
 
