@@ -8,15 +8,15 @@ Note that a single Docker image can be used by multiple CI jobs, so the job name
 is the important thing that you should know. You can examine the existing CI jobs in
 the [`jobs.yml`](../github-actions/jobs.yml) file.
 
-To run a specific CI job locally, you can use the following script:
+To run a specific CI job locally, you can use the `citool` Rust crate:
 
 ```
-python3 ./src/ci/github-actions/ci.py run-local <job-name>
+cargo --manifest-path src/ci/citool/Cargo.toml run run-local <job-name>
 ```
 
 For example, to run the `x86_64-gnu-llvm-18-1` job:
 ```
-python3 ./src/ci/github-actions/ci.py run-local x86_64-gnu-llvm-18-1
+cargo --manifest-path src/ci/citool/Cargo.toml run run-local x86_64-gnu-llvm-18-1
 ```
 
 The job will output artifacts in an `obj/<image-name>` dir at the root of a repository. Note
