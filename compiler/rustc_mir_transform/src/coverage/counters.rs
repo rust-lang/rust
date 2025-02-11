@@ -114,12 +114,8 @@ pub(crate) fn transcribe_counters(
         let mut new_counters_for_sites = |sites: Vec<BasicCoverageBlock>| {
             sites.into_iter().map(|node| new.ensure_phys_counter(node)).collect::<Vec<_>>()
         };
-        let mut pos = new_counters_for_sites(pos);
-        let mut neg = new_counters_for_sites(neg);
-
-        // These sorts are also not strictly necessary; see above.
-        pos.sort();
-        neg.sort();
+        let pos = new_counters_for_sites(pos);
+        let neg = new_counters_for_sites(neg);
 
         let pos_counter = new.make_sum(&pos).unwrap_or(CovTerm::Zero);
         let new_counter = new.make_subtracted_sum(pos_counter, &neg);
