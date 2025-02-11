@@ -15,8 +15,9 @@ LL | | }
    | |_^
 help: use the path separator to refer to a variant
    |
-LL |     let _: Foo = Foo::A(0);
-   |                     ~~
+LL -     let _: Foo = Foo.A(0);
+LL +     let _: Foo = Foo::A(0);
+   |
 
 error[E0423]: expected value, found enum `Foo`
   --> $DIR/enum-expected-value-suggest-variants.rs:23:18
@@ -35,10 +36,12 @@ LL | | }
    | |_^
 help: the following enum variants are available
    |
-LL |     let _: Foo = (Foo::A(/* fields */)).Bad(0);
-   |                  ~~~~~~~~~~~~~~~~~~~~~~
-LL |     let _: Foo = (Foo::B(/* fields */)).Bad(0);
-   |                  ~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _: Foo = Foo.Bad(0);
+LL +     let _: Foo = (Foo::A(/* fields */)).Bad(0);
+   |
+LL -     let _: Foo = Foo.Bad(0);
+LL +     let _: Foo = (Foo::B(/* fields */)).Bad(0);
+   |
 
 error[E0423]: expected value, found enum `Bar`
   --> $DIR/enum-expected-value-suggest-variants.rs:32:18
@@ -58,8 +61,9 @@ LL | | }
    | |_^
 help: use the path separator to refer to a variant
    |
-LL |     let _: Bar = Bar::C(0);
-   |                     ~~
+LL -     let _: Bar = Bar.C(0);
+LL +     let _: Bar = Bar::C(0);
+   |
 
 error[E0423]: expected value, found enum `Bar`
   --> $DIR/enum-expected-value-suggest-variants.rs:36:18
@@ -79,8 +83,9 @@ LL | | }
    | |_^
 help: use the path separator to refer to a variant
    |
-LL |     let _: Bar = Bar::E;
-   |                     ~~
+LL -     let _: Bar = Bar.E;
+LL +     let _: Bar = Bar::E;
+   |
 
 error[E0423]: expected value, found enum `Bar`
   --> $DIR/enum-expected-value-suggest-variants.rs:40:18
@@ -100,16 +105,20 @@ LL | | }
    | |_^
 help: you might have meant to use one of the following enum variants
    |
-LL |     let _: Bar = Bar::E.Bad(0);
-   |                  ~~~~~~
-LL |     let _: Bar = Bar::F.Bad(0);
-   |                  ~~~~~~
+LL -     let _: Bar = Bar.Bad(0);
+LL +     let _: Bar = Bar::E.Bad(0);
+   |
+LL -     let _: Bar = Bar.Bad(0);
+LL +     let _: Bar = Bar::F.Bad(0);
+   |
 help: alternatively, the following enum variants are also available
    |
-LL |     let _: Bar = (Bar::C(/* fields */)).Bad(0);
-   |                  ~~~~~~~~~~~~~~~~~~~~~~
-LL |     let _: Bar = (Bar::D(/* fields */)).Bad(0);
-   |                  ~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _: Bar = Bar.Bad(0);
+LL +     let _: Bar = (Bar::C(/* fields */)).Bad(0);
+   |
+LL -     let _: Bar = Bar.Bad(0);
+LL +     let _: Bar = (Bar::D(/* fields */)).Bad(0);
+   |
 
 error[E0423]: expected value, found enum `Bar`
   --> $DIR/enum-expected-value-suggest-variants.rs:45:18
@@ -129,16 +138,20 @@ LL | | }
    | |_^
 help: you might have meant to use one of the following enum variants
    |
-LL |     let _: Bar = Bar::E.Bad;
-   |                  ~~~~~~
-LL |     let _: Bar = Bar::F.Bad;
-   |                  ~~~~~~
+LL -     let _: Bar = Bar.Bad;
+LL +     let _: Bar = Bar::E.Bad;
+   |
+LL -     let _: Bar = Bar.Bad;
+LL +     let _: Bar = Bar::F.Bad;
+   |
 help: alternatively, the following enum variants are also available
    |
-LL |     let _: Bar = (Bar::C(/* fields */)).Bad;
-   |                  ~~~~~~~~~~~~~~~~~~~~~~
-LL |     let _: Bar = (Bar::D(/* fields */)).Bad;
-   |                  ~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _: Bar = Bar.Bad;
+LL +     let _: Bar = (Bar::C(/* fields */)).Bad;
+   |
+LL -     let _: Bar = Bar.Bad;
+LL +     let _: Bar = (Bar::D(/* fields */)).Bad;
+   |
 
 error[E0531]: cannot find tuple struct or tuple variant `A` in this scope
   --> $DIR/enum-expected-value-suggest-variants.rs:51:9
@@ -168,10 +181,12 @@ LL | | }
    | |_^
 help: try to match against one of the enum's variants
    |
-LL |         Foo::A(..) => {}
-   |         ~~~~~~
-LL |         Foo::B(..) => {}
-   |         ~~~~~~
+LL -         Foo(..) => {}
+LL +         Foo::A(..) => {}
+   |
+LL -         Foo(..) => {}
+LL +         Foo::B(..) => {}
+   |
 
 error[E0423]: expected function, tuple struct or tuple variant, found enum `Foo`
   --> $DIR/enum-expected-value-suggest-variants.rs:15:18
@@ -190,10 +205,12 @@ LL | | }
    | |_^
 help: try to construct one of the enum's variants
    |
-LL |     let _: Foo = Foo::A(0);
-   |                  ~~~~~~
-LL |     let _: Foo = Foo::B(0);
-   |                  ~~~~~~
+LL -     let _: Foo = Foo(0);
+LL +     let _: Foo = Foo::A(0);
+   |
+LL -     let _: Foo = Foo(0);
+LL +     let _: Foo = Foo::B(0);
+   |
 
 error[E0423]: expected function, tuple struct or tuple variant, found enum `Bar`
   --> $DIR/enum-expected-value-suggest-variants.rs:27:18
@@ -214,10 +231,12 @@ LL | | }
    | |_^
 help: try to construct one of the enum's variants
    |
-LL |     let _: Bar = Bar::C(0);
-   |                  ~~~~~~
-LL |     let _: Bar = Bar::D(0);
-   |                  ~~~~~~
+LL -     let _: Bar = Bar(0);
+LL +     let _: Bar = Bar::C(0);
+   |
+LL -     let _: Bar = Bar(0);
+LL +     let _: Bar = Bar::D(0);
+   |
 
 error: aborting due to 10 previous errors
 
