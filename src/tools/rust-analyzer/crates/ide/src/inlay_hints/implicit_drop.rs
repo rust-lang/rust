@@ -54,7 +54,8 @@ pub(super) fn hints(
             };
             let range = match terminator.span {
                 MirSpan::ExprId(e) => match source_map.expr_syntax(e) {
-                    Ok(s) => {
+                    // don't show inlay hint for macro
+                    Ok(s) if !s.file_id.is_macro() => {
                         let root = &s.file_syntax(sema.db);
                         let expr = s.value.to_node(root);
                         let expr = expr.syntax();
@@ -69,7 +70,7 @@ pub(super) fn hints(
                             }
                         }
                     }
-                    Err(_) => continue,
+                    _ => continue,
                 },
                 MirSpan::PatId(p) => match source_map.pat_syntax(p) {
                     Ok(s) => s.value.text_range(),
