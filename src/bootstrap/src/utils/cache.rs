@@ -298,3 +298,6 @@ impl Cache {
         self.0.borrow().contains_key(&TypeId::of::<S>())
     }
 }
+
+#[cfg(test)]
+mod tests;
