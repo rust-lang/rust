@@ -50,4 +50,15 @@ fn main() {
     //~^ ERROR: used `unwrap_err()` on a `Result` value
     a.expect_err("Hello error!");
     //~^ ERROR: used `expect_err()` on a `Result` value
+
+    // Don't trigger in compile time contexts by default
+    const SOME: Option<i32> = Some(3);
+    const UNWRAPPED: i32 = SOME.unwrap();
+    const EXPECTED: i32 = SOME.expect("Not three?");
+    const {
+        SOME.unwrap();
+    }
+    const {
+        SOME.expect("Still not three?");
+    }
 }

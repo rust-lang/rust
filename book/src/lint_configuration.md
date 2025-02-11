@@ -71,6 +71,16 @@ Whether `dbg!` should be allowed in test functions or `#[cfg(test)]`
 * [`dbg_macro`](https://rust-lang.github.io/rust-clippy/master/index.html#dbg_macro)
 
 
+## `allow-expect-in-consts`
+Whether `expect` should be allowed in code always evaluated at compile time
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`expect_used`](https://rust-lang.github.io/rust-clippy/master/index.html#expect_used)
+
+
 ## `allow-expect-in-tests`
 Whether `expect` should be allowed in test functions or `#[cfg(test)]`
 
@@ -162,6 +172,16 @@ default configuration of Clippy. By default, any configuration will replace the 
 ---
 **Affected lints:**
 * [`renamed_function_params`](https://rust-lang.github.io/rust-clippy/master/index.html#renamed_function_params)
+
+
+## `allow-unwrap-in-consts`
+Whether `unwrap` should be allowed in code always evaluated at compile time
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`unwrap_used`](https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used)
 
 
 ## `allow-unwrap-in-tests`
