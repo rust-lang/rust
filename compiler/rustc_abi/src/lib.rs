@@ -62,7 +62,7 @@ mod tests;
 mod extern_abi;
 
 pub use callconv::{Heterogeneous, HomogeneousAggregate, Reg, RegKind};
-pub use extern_abi::{AbiUnsupported, ExternAbi, all_names, lookup};
+pub use extern_abi::{ExternAbi, all_names};
 #[cfg(feature = "nightly")]
 pub use layout::{FIRST_VARIANT, FieldIdx, Layout, TyAbiInterface, TyAndLayout, VariantIdx};
 pub use layout::{LayoutCalculator, LayoutCalculatorError};
@@ -1178,10 +1178,13 @@ impl Scalar {
     #[inline]
     pub fn is_bool(&self) -> bool {
         use Integer::*;
-        matches!(self, Scalar::Initialized {
-            value: Primitive::Int(I8, false),
-            valid_range: WrappingRange { start: 0, end: 1 }
-        })
+        matches!(
+            self,
+            Scalar::Initialized {
+                value: Primitive::Int(I8, false),
+                valid_range: WrappingRange { start: 0, end: 1 }
+            }
+        )
     }
 
     /// Get the primitive representation of this type, ignoring the valid range and whether the

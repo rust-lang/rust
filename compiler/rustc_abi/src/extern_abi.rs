@@ -1,7 +1,6 @@
 use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::str::FromStr;
 
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd};
@@ -101,6 +100,7 @@ macro_rules! abi_impls {
     }
 }
 
+#[derive(Debug)]
 pub enum AbiFromStrErr {
     Unknown,
 }
@@ -212,13 +212,6 @@ impl ExternAbi {
             _ => false,
         }
     }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct AbiUnsupported {}
-/// Returns the ABI with the given name (if any).
-pub fn lookup(name: &str) -> Result<Abi, AbiUnsupported> {
-    ExternAbi::from_str(name).map_err(|_| AbiUnsupported {})
 }
 
 pub fn all_names() -> Vec<&'static str> {
