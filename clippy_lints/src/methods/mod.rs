@@ -54,6 +54,7 @@ mod iter_with_drain;
 mod iterator_step_by_zero;
 mod join_absolute_paths;
 mod manual_c_str_literals;
+mod manual_contains;
 mod manual_inspect;
 mod manual_is_variant_and;
 mod manual_next_back;
@@ -4434,6 +4435,31 @@ declare_clippy_lint! {
     "calling .bytes() is very inefficient when data is not in memory"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `iter().any()` on slices when it can be replaced with `contains()` and suggests doing so.
+    ///
+    /// ### Why is this bad?
+    /// `contains()` is more concise and idiomatic, sometimes more fast.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// fn foo(values: &[u8]) -> bool {
+    ///    values.iter().any(|&v| v == 10)
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn foo(values: &[u8]) -> bool {
+    ///    values.contains(&10)
+    /// }
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub MANUAL_CONTAINS,
+    perf,
+    "unnecessary `iter().any()` on slices that can be replaced with `contains()`"
+}
+
 #[expect(clippy::struct_excessive_bools)]
 pub struct Methods {
     avoid_breaking_exported_api: bool,
@@ -4609,6 +4635,7 @@ impl_lint_pass!(Methods => [
     SLICED_STRING_AS_BYTES,
     RETURN_AND_THEN,
     UNBUFFERED_BYTES,
+    MANUAL_CONTAINS,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4865,6 +4892,9 @@ impl Methods {
                         },
                         Some(("map", _, [map_arg], _, map_call_span)) => {
                             map_all_any_identity::check(cx, expr, recv, map_call_span, map_arg, call_span, arg, "any");
+                        },
+                        Some(("iter", iter_recv, ..)) => {
+                            manual_contains::check(cx, expr, iter_recv, arg);
                         },
                         _ => {},
                     }
