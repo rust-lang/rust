@@ -6,26 +6,19 @@ use super::*;
 #[test]
 fn lookup_Rust() {
     let abi = lookup("Rust");
-    assert!(abi.is_ok() && abi.unwrap().data().name == "Rust");
+    assert!(abi.is_ok() && abi.unwrap().as_str() == "Rust");
 }
 
 #[test]
 fn lookup_cdecl() {
     let abi = lookup("cdecl");
-    assert!(abi.is_ok() && abi.unwrap().data().name == "cdecl");
+    assert!(abi.is_ok() && abi.unwrap().as_str() == "cdecl");
 }
 
 #[test]
 fn lookup_baz() {
     let abi = lookup("baz");
     assert_matches!(abi, Err(AbiUnsupported {}));
-}
-
-#[test]
-fn indices_are_correct() {
-    for (i, abi_data) in AbiDatas.iter().enumerate() {
-        assert_eq!(i, abi_data.abi.index());
-    }
 }
 
 #[test]
