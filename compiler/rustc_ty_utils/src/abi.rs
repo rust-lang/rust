@@ -650,7 +650,7 @@ fn fn_abi_new_uncached<'tcx>(
         conv,
         can_unwind: fn_can_unwind(cx.tcx(), fn_def_id, sig.abi),
     };
-    fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi, fn_def_id)?;
+    fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi, fn_def_id);
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
     fn_abi_sanity_check(cx, &fn_abi, sig.abi);
     Ok(tcx.arena.alloc(fn_abi))
@@ -662,7 +662,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
     fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
     abi: ExternAbi,
     fn_def_id: Option<DefId>,
-) -> Result<(), &'tcx FnAbiError<'tcx>> {
+) {
     if abi == ExternAbi::Unadjusted {
         // The "unadjusted" ABI passes aggregates in "direct" mode. That's fragile but needed for
         // some LLVM intrinsics.
@@ -682,7 +682,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
         for arg in fn_abi.args.iter_mut() {
             unadjust(arg);
         }
-        return Ok(());
+        return;
     }
 
     let tcx = cx.tcx();
@@ -723,12 +723,8 @@ fn fn_abi_adjust_for_abi<'tcx>(
             }
         }
     } else {
-        fn_abi
-            .adjust_for_foreign_abi(cx, abi)
-            .map_err(|err| &*tcx.arena.alloc(FnAbiError::AdjustForForeignAbi(err)))?;
+        fn_abi.adjust_for_foreign_abi(cx, abi);
     }
-
-    Ok(())
 }
 
 #[tracing::instrument(level = "debug", skip(cx))]

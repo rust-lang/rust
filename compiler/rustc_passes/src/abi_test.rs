@@ -46,15 +46,6 @@ fn unwrap_fn_abi<'tcx>(
                 span: tcx.def_span(item_def_id),
             });
         }
-        Err(FnAbiError::AdjustForForeignAbi(e)) => {
-            // Sadly there seems to be no `into_diagnostic` for this case... and I am not sure if
-            // this can even be reached. Anyway this is a perma-unstable debug attribute, an ICE
-            // isn't the worst thing. Also this matches what codegen does.
-            span_bug!(
-                tcx.def_span(item_def_id),
-                "error computing fn_abi_of_instance, cannot adjust for foreign ABI: {e:?}",
-            )
-        }
     }
 }
 

@@ -197,12 +197,13 @@ pub(crate) struct InvalidRegister<'a> {
 }
 
 #[derive(Diagnostic)]
+#[note]
 #[diag(ast_lowering_invalid_register_class)]
-pub(crate) struct InvalidRegisterClass<'a> {
+pub(crate) struct InvalidRegisterClass {
     #[primary_span]
     pub op_span: Span,
     pub reg_class: Symbol,
-    pub error: &'a str,
+    pub supported_register_classes: String,
 }
 
 #[derive(Diagnostic)]

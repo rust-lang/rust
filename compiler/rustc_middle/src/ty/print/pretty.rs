@@ -1512,7 +1512,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::ExprKind::Binop(op) => {
                 let (_, _, c1, c2) = expr.binop_args();
 
-                let precedence = |binop: rustc_middle::mir::BinOp| {
+                let precedence = |binop: crate::mir::BinOp| {
                     use rustc_ast::util::parser::AssocOp;
                     AssocOp::from_ast_binop(binop.to_hir_binop()).precedence()
                 };
@@ -1558,7 +1558,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::ExprKind::UnOp(op) => {
                 let (_, ct) = expr.unop_args();
 
-                use rustc_middle::mir::UnOp;
+                use crate::mir::UnOp;
                 let formatted_op = match op {
                     UnOp::Not => "!",
                     UnOp::Neg => "-",
