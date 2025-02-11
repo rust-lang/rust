@@ -797,11 +797,12 @@ where
     /// treat the alias as rigid.
     ///
     /// See trait-system-refactor-initiative#124 for more details.
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "debug", skip(self, inject_normalize_to_rigid_candidate), ret)]
     pub(super) fn merge_candidates(
         &mut self,
         proven_via: Option<TraitGoalProvenVia>,
         candidates: Vec<Candidate<I>>,
+        inject_normalize_to_rigid_candidate: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
     ) -> QueryResult<I> {
         let Some(proven_via) = proven_via else {
             // We don't care about overflow. If proving the trait goal overflowed, then
@@ -818,13 +819,27 @@ where
             // FIXME(const_trait_impl): should this behavior also be used by
             // constness checking. Doing so is *at least theoretically* breaking,
             // see github.com/rust-lang/rust/issues/133044#issuecomment-2500709754
-            TraitGoalProvenVia::ParamEnv | TraitGoalProvenVia::AliasBound => candidates
-                .iter()
-                .filter(|c| {
-                    matches!(c.source, CandidateSource::AliasBound | CandidateSource::ParamEnv(_))
-                })
-                .map(|c| c.result)
-                .collect(),
+            TraitGoalProvenVia::ParamEnv | TraitGoalProvenVia::AliasBound => {
+                let mut candidates_from_env: Vec<_> = candidates
+                    .iter()
+                    .filter(|c| {
+                        matches!(
+                            c.source,
+                            CandidateSource::AliasBound | CandidateSource::ParamEnv(_)
+                        )
+                    })
+                    .map(|c| c.result)
+                    .collect();
+
+                // If the trait goal has been proven by using the environment, we want to treat
+                // aliases as rigid if there are no applicable projection bounds in the environment.
+                if candidates_from_env.is_empty() {
+                    if let Ok(response) = inject_normalize_to_rigid_candidate(self) {
+                        candidates_from_env.push(response);
+                    }
+                }
+                candidates_from_env
+            }
             TraitGoalProvenVia::Misc => candidates.iter().map(|c| c.result).collect(),
         };
 
