@@ -244,8 +244,7 @@
 use core::any::Any;
 use core::cell::Cell;
 #[cfg(not(no_global_oom_handling))]
-use core::clone::CloneToUninit;
-use core::clone::TrivialClone;
+use core::clone::{CloneToUninit, TrivialClone};
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;

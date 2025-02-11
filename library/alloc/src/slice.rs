@@ -13,6 +13,7 @@
 #![cfg_attr(test, allow(unused_imports, dead_code))]
 
 use core::borrow::{Borrow, BorrowMut};
+#[cfg(not(no_global_oom_handling))]
 use core::clone::TrivialClone;
 #[cfg(not(no_global_oom_handling))]
 use core::cmp::Ordering::{self, Less};
@@ -89,6 +90,7 @@ use crate::vec::Vec;
 #[allow(unreachable_pub)] // cfg(test) pub above
 pub(crate) mod hack {
     use core::alloc::Allocator;
+    #[cfg(not(no_global_oom_handling))]
     use core::clone::TrivialClone;
 
     use crate::boxed::Box;

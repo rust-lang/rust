@@ -1,4 +1,5 @@
 use core::any::Any;
+#[cfg(not(no_global_oom_handling))]
 use core::clone::TrivialClone;
 use core::error::Error;
 use core::mem;

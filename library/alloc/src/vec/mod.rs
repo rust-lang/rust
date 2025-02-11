@@ -53,6 +53,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[cfg(not(no_global_oom_handling))]
 use core::clone::TrivialClone;
 #[cfg(not(no_global_oom_handling))]
 use core::cmp;

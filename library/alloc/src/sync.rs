@@ -11,6 +11,7 @@
 use core::any::Any;
 #[cfg(not(no_global_oom_handling))]
 use core::clone::CloneToUninit;
+#[cfg(not(no_global_oom_handling))]
 use core::clone::TrivialClone;
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
