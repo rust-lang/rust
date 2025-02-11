@@ -417,7 +417,6 @@ path = "{intrinsic}/main.rs""#,
     }
 
     command.env("RUSTFLAGS", rust_flags);
-    println!("{:?}", command);
     let output = command.output();
 
     if let Ok(output) = output {
@@ -583,7 +582,7 @@ fn compare_outputs(
                 ))
                 .output();
 
-            let rust = if target != "aarch64_be-none-linux-gnu" {
+            let rust = if target != "aarch64_be-unknown-linux-gnu" {
                 Command::new("sh")
                     .current_dir("rust_programs")
                     .arg("-c")

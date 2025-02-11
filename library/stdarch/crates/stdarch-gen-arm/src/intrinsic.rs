@@ -1721,6 +1721,12 @@ fn create_tokens(intrinsic: &Intrinsic, endianness: Endianness, tokens: &mut Tok
         Endianness::NA => {}
     };
 
+    let expressions = match endianness {
+        Endianness::Little | Endianness::NA => &intrinsic.compose,
+        Endianness::Big => &intrinsic.big_endian_compose,
+    };
+
+
     /* If we have manually defined attributes on the block of yaml with
      * 'attr:' we want to add them */
     if let Some(attr) = &intrinsic.attr {
@@ -1765,13 +1771,6 @@ fn create_tokens(intrinsic: &Intrinsic, endianness: Endianness, tokens: &mut Tok
     if safety.is_unsafe() {
         tokens.append_all(quote! { unsafe });
     }
-    tokens.append_all(quote! { #signature });
-
-    let expressions = match endianness {
-        Endianness::Little | Endianness::NA => &intrinsic.compose,
-        Endianness::Big => &intrinsic.big_endian_compose,
-    };
-
     tokens.append_all(quote! { #signature });
 
     // If the intrinsic function is explicitly unsafe, we populate `body_default_safety` with
