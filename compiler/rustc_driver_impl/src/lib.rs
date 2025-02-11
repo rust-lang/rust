@@ -811,7 +811,7 @@ fn print_crate_info(
                     println_info!(
                         "{}={}",
                         apple::deployment_target_env_var(&sess.target.os),
-                        apple::pretty_version(apple::deployment_target(sess)),
+                        apple::deployment_target(sess).fmt_pretty(),
                     )
                 } else {
                     #[allow(rustc::diagnostic_outside_of_impl)]
