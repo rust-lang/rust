@@ -18,17 +18,11 @@ error: expected one of `async`, `|`, or `||`, found keyword `use`
 LL |     move use || {
    |          ^^^ expected one of `async`, `|`, or `||`
 
-error: expected identifier, found keyword `move`
+error: expected one of `async`, `|`, or `||`, found keyword `move`
   --> $DIR/parse.rs:16:9
    |
 LL |     use move || {
-   |         ^^^^ expected identifier, found keyword
+   |         ^^^^ expected one of `async`, `|`, or `||`
 
-error: expected one of `::`, `;`, or `as`, found `||`
-  --> $DIR/parse.rs:16:14
-   |
-LL |     use move || {
-   |              ^^ expected one of `::`, `;`, or `as`
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 

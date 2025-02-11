@@ -14,9 +14,7 @@ fn parse2() {
 
 fn parse3() {
     use move || {
-        //~^ ERROR expected identifier, found keyword `move`
-        //~| ERROR expected one of `::`, `;`, or `as`, found `||`
-        // FIXME ideally we should error like in the previous example
+        //~^ ERROR expected one of `async`, `|`, or `||`, found keyword `move`
     };
 }
 
