@@ -722,6 +722,9 @@ fn test_highlight_doc_comment() {
 //! fn test() {}
 //! ```
 
+//! ```rust
+//! extern crate Krate;
+//! ```
 mod outline_module;
 
 /// ```
