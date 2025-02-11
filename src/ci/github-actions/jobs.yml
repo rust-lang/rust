@@ -12,15 +12,15 @@ runners:
 
   # Large runner used mainly for its bigger disk capacity
   - &job-linux-4c-largedisk
-    os: ubuntu-22.04-4core-16gb
+    os: ubuntu-24.04-4core-16gb
     <<: *base-job
 
   - &job-linux-8c
-    os: ubuntu-22.04-8core-32gb
+    os: ubuntu-24.04-8core-32gb
     <<: *base-job
 
   - &job-linux-16c
-    os: ubuntu-22.04-16core-64gb
+    os: ubuntu-24.04-16core-64gb
     <<: *base-job
 
   - &job-macos-xl
