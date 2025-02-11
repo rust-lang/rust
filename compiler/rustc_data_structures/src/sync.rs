@@ -20,11 +20,6 @@
 //! | ----------------------- | ------------------- | ------------------------------- |
 //! | `LRef<'a, T>` [^2]      | `&'a mut T`         | `&'a T`                         |
 //! |                         |                     |                                 |
-//! | `AtomicBool`            | `Cell<bool>`        | `atomic::AtomicBool`            |
-//! | `AtomicU32`             | `Cell<u32>`         | `atomic::AtomicU32`             |
-//! | `AtomicU64`             | `Cell<u64>`         | `atomic::AtomicU64`             |
-//! | `AtomicUsize`           | `Cell<usize>`       | `atomic::AtomicUsize`           |
-//! |                         |                     |                                 |
 //! | `Lock<T>`               | `RefCell<T>`        | `RefCell<T>` or                 |
 //! |                         |                     | `parking_lot::Mutex<T>`         |
 //! | `RwLock<T>`             | `RefCell<T>`        | `parking_lot::RwLock<T>`        |
@@ -107,7 +102,6 @@ pub use std::sync::OnceLock;
 // Use portable AtomicU64 for targets without native 64-bit atomics
 #[cfg(target_has_atomic = "64")]
 pub use std::sync::atomic::AtomicU64;
-pub use std::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize};
 
 pub use mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
 pub use parking_lot::{
