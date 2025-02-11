@@ -555,7 +555,7 @@ impl<'tcx> NonminimalBoolVisitor<'_, 'tcx> {
                     _ => simplified.push(Bool::Not(Box::new(simple.clone()))),
                 }
                 let simple_negated = simple_negate(simple);
-                if simplified.iter().any(|s| *s == simple_negated) {
+                if simplified.contains(&simple_negated) {
                     continue;
                 }
                 simplified.push(simple_negated);

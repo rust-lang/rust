@@ -142,11 +142,11 @@ fn expr_sign<'cx, 'tcx>(cx: &LateContext<'cx>, mut expr: &'tcx Expr<'tcx>, ty: i
             expr = recv;
         }
 
-        if METHODS_POW.iter().any(|&name| method_name == name)
+        if METHODS_POW.contains(&method_name)
             && let [arg] = args
         {
             return pow_call_result_sign(cx, caller, arg);
-        } else if METHODS_RET_POSITIVE.iter().any(|&name| method_name == name) {
+        } else if METHODS_RET_POSITIVE.contains(&method_name) {
             return Sign::ZeroOrPositive;
         }
     }
