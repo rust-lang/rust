@@ -233,11 +233,14 @@ impl LintStore {
     }
 
     pub fn register_group_alias(&mut self, lint_name: &'static str, alias: &'static str) {
-        self.lint_groups.insert(alias, LintGroup {
-            lint_ids: vec![],
-            is_externally_loaded: false,
-            depr: Some(LintAlias { name: lint_name, silent: true }),
-        });
+        self.lint_groups.insert(
+            alias,
+            LintGroup {
+                lint_ids: vec![],
+                is_externally_loaded: false,
+                depr: Some(LintAlias { name: lint_name, silent: true }),
+            },
+        );
     }
 
     pub fn register_group(
@@ -252,11 +255,14 @@ impl LintStore {
             .insert(name, LintGroup { lint_ids: to, is_externally_loaded, depr: None })
             .is_none();
         if let Some(deprecated) = deprecated_name {
-            self.lint_groups.insert(deprecated, LintGroup {
-                lint_ids: vec![],
-                is_externally_loaded,
-                depr: Some(LintAlias { name, silent: false }),
-            });
+            self.lint_groups.insert(
+                deprecated,
+                LintGroup {
+                    lint_ids: vec![],
+                    is_externally_loaded,
+                    depr: Some(LintAlias { name, silent: false }),
+                },
+            );
         }
 
         if !new {

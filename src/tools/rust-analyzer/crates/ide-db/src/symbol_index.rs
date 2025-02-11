@@ -193,11 +193,9 @@ impl<DB> std::ops::Deref for Snap<DB> {
 // `rust-analyzer.workspace.symbol.search.kind` settings. Symbols prefixed
 // with `__` are hidden from the search results unless configured otherwise.
 //
-// |===
-// | Editor  | Shortcut
-//
-// | VS Code | kbd:[Ctrl+T]
-// |===
+// | Editor  | Shortcut |
+// |---------|-----------|
+// | VS Code | <kbd>Ctrl+T</kbd>
 pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
     let _p = tracing::info_span!("world_symbols", query = ?query.query).entered();
 

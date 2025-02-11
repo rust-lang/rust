@@ -74,13 +74,11 @@ impl HiddenUnicodeCodepoints {
             HiddenUnicodeCodepointsDiagSub::NoEscape { spans }
         };
 
-        cx.emit_span_lint(TEXT_DIRECTION_CODEPOINT_IN_LITERAL, span, HiddenUnicodeCodepointsDiag {
-            label,
-            count,
-            span_label: span,
-            labels,
-            sub,
-        });
+        cx.emit_span_lint(
+            TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
+            span,
+            HiddenUnicodeCodepointsDiag { label, count, span_label: span, labels, sub },
+        );
     }
 
     fn check_literal(

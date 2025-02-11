@@ -548,10 +548,10 @@ where
             // Replace the goal with an unconstrained infer var, so the
             // RHS does not affect projection candidate assembly.
             let unconstrained_rhs = self.next_term_infer_of_kind(goal.predicate.term);
-            let unconstrained_goal = goal.with(cx, ty::NormalizesTo {
-                alias: goal.predicate.alias,
-                term: unconstrained_rhs,
-            });
+            let unconstrained_goal = goal.with(
+                cx,
+                ty::NormalizesTo { alias: goal.predicate.alias, term: unconstrained_rhs },
+            );
 
             let (NestedNormalizationGoals(nested_goals), _, certainty) = self.evaluate_goal_raw(
                 GoalEvaluationKind::Nested,

@@ -108,7 +108,7 @@
 # the resulting rustc being unable to compile for the disabled architectures.
 #
 # To add support for new targets, see https://rustc-dev-guide.rust-lang.org/building/new-target.html.
-#targets = "AArch64;ARM;BPF;Hexagon;LoongArch;MSP430;Mips;NVPTX;PowerPC;RISCV;Sparc;SystemZ;WebAssembly;X86"
+#targets = "AArch64;AMDGPU;ARM;BPF;Hexagon;LoongArch;MSP430;Mips;NVPTX;PowerPC;RISCV;Sparc;SystemZ;WebAssembly;X86"
 
 # LLVM experimental targets to build support for. These targets are specified in
 # the same format as above, but since these targets are experimental, they are

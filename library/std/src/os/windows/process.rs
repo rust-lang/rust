@@ -590,10 +590,10 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
         value_ptr: *const T,
         value_size: usize,
     ) -> Self {
-        self.attributes.insert(attribute, ProcThreadAttributeValue {
-            ptr: value_ptr.cast::<c_void>(),
-            size: value_size,
-        });
+        self.attributes.insert(
+            attribute,
+            ProcThreadAttributeValue { ptr: value_ptr.cast::<c_void>(), size: value_size },
+        );
         self
     }
 

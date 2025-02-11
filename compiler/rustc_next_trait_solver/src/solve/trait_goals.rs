@@ -342,18 +342,21 @@ where
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
         let output_is_sized_pred = tupled_inputs_and_output_and_coroutine.map_bound(
             |AsyncCallableRelevantTypes { output_coroutine_ty, .. }| {
-                ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [
-                    output_coroutine_ty,
-                ])
+                ty::TraitRef::new(
+                    cx,
+                    cx.require_lang_item(TraitSolverLangItem::Sized),
+                    [output_coroutine_ty],
+                )
             },
         );
 
         let pred = tupled_inputs_and_output_and_coroutine
             .map_bound(|AsyncCallableRelevantTypes { tupled_inputs_ty, .. }| {
-                ty::TraitRef::new(cx, goal.predicate.def_id(), [
-                    goal.predicate.self_ty(),
-                    tupled_inputs_ty,
-                ])
+                ty::TraitRef::new(
+                    cx,
+                    goal.predicate.def_id(),
+                    [goal.predicate.self_ty(), tupled_inputs_ty],
+                )
             })
             .upcast(cx);
         Self::probe_and_consider_implied_clause(
@@ -975,9 +978,11 @@ where
             GoalSource::ImplWhereBound,
             goal.with(
                 cx,
-                ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Unsize), [
-                    a_tail_ty, b_tail_ty,
-                ]),
+                ty::TraitRef::new(
+                    cx,
+                    cx.require_lang_item(TraitSolverLangItem::Unsize),
+                    [a_tail_ty, b_tail_ty],
+                ),
             ),
         );
         self.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
@@ -1015,9 +1020,11 @@ where
             GoalSource::ImplWhereBound,
             goal.with(
                 cx,
-                ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Unsize), [
-                    a_last_ty, b_last_ty,
-                ]),
+                ty::TraitRef::new(
+                    cx,
+                    cx.require_lang_item(TraitSolverLangItem::Unsize),
+                    [a_last_ty, b_last_ty],
+                ),
             ),
         );
         self.probe_builtin_trait_candidate(BuiltinImplSource::TupleUnsizing)

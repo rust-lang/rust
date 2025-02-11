@@ -627,18 +627,23 @@ fn register_internals(store: &mut LintStore) {
     // `DIAGNOSTIC_OUTSIDE_OF_IMPL` here because `-Wrustc::internal` is provided to every crate and
     // these lints will trigger all of the time - change this once migration to diagnostic structs
     // and translation is completed
-    store.register_group(false, "rustc::internal", None, vec![
-        LintId::of(DEFAULT_HASH_TYPES),
-        LintId::of(POTENTIAL_QUERY_INSTABILITY),
-        LintId::of(UNTRACKED_QUERY_INFORMATION),
-        LintId::of(USAGE_OF_TY_TYKIND),
-        LintId::of(PASS_BY_VALUE),
-        LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
-        LintId::of(USAGE_OF_QUALIFIED_TY),
-        LintId::of(NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT),
-        LintId::of(BAD_OPT_ACCESS),
-        LintId::of(SPAN_USE_EQ_CTXT),
-    ]);
+    store.register_group(
+        false,
+        "rustc::internal",
+        None,
+        vec![
+            LintId::of(DEFAULT_HASH_TYPES),
+            LintId::of(POTENTIAL_QUERY_INSTABILITY),
+            LintId::of(UNTRACKED_QUERY_INFORMATION),
+            LintId::of(USAGE_OF_TY_TYKIND),
+            LintId::of(PASS_BY_VALUE),
+            LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
+            LintId::of(USAGE_OF_QUALIFIED_TY),
+            LintId::of(NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT),
+            LintId::of(BAD_OPT_ACCESS),
+            LintId::of(SPAN_USE_EQ_CTXT),
+        ],
+    );
 }
 
 #[cfg(test)]

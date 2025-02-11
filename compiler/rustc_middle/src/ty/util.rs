@@ -759,10 +759,11 @@ impl<'tcx> TyCtxt<'tcx> {
                     assert_eq!(re, self.lifetimes.re_erased);
                     let var = ty::BoundVar::from_usize(vars.len());
                     vars.push(ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon));
-                    ty::Region::new_bound(self, debruijn, ty::BoundRegion {
-                        var,
-                        kind: ty::BoundRegionKind::Anon,
-                    })
+                    ty::Region::new_bound(
+                        self,
+                        debruijn,
+                        ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon },
+                    )
                 });
                 ty::EarlyBinder::bind(ty::Binder::bind_with_vars(
                     ty,
@@ -947,6 +948,29 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         ty
+    }
+
+    // Computes the variances for an alias (opaque or RPITIT) that represent
+    // its (un)captured regions.
+    pub fn opt_alias_variances(
+        self,
+        kind: impl Into<ty::AliasTermKind>,
+        def_id: DefId,
+    ) -> Option<&'tcx [ty::Variance]> {
+        match kind.into() {
+            ty::AliasTermKind::ProjectionTy => {
+                if self.is_impl_trait_in_trait(def_id) {
+                    Some(self.variances_of(def_id))
+                } else {
+                    None
+                }
+            }
+            ty::AliasTermKind::OpaqueTy => Some(self.variances_of(def_id)),
+            ty::AliasTermKind::InherentTy
+            | ty::AliasTermKind::WeakTy
+            | ty::AliasTermKind::UnevaluatedConst
+            | ty::AliasTermKind::ProjectionConst => None,
+        }
     }
 }
 

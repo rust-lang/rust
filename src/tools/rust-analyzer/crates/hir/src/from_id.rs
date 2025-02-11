@@ -183,6 +183,7 @@ impl From<GenericDef> for GenericDefId {
             GenericDef::TypeAlias(it) => GenericDefId::TypeAliasId(it.id),
             GenericDef::Impl(it) => GenericDefId::ImplId(it.id),
             GenericDef::Const(it) => GenericDefId::ConstId(it.id),
+            GenericDef::Static(it) => GenericDefId::StaticId(it.id),
         }
     }
 }
@@ -197,6 +198,7 @@ impl From<GenericDefId> for GenericDef {
             GenericDefId::TypeAliasId(it) => GenericDef::TypeAlias(it.into()),
             GenericDefId::ImplId(it) => GenericDef::Impl(it.into()),
             GenericDefId::ConstId(it) => GenericDef::Const(it.into()),
+            GenericDefId::StaticId(it) => GenericDef::Static(it.into()),
         }
     }
 }

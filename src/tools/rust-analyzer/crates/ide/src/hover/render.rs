@@ -434,6 +434,7 @@ fn definition_owner_name(db: &RootDatabase, def: Definition, edition: Edition) -
                     None => it.name(db),
                 }
             }
+            hir::GenericDef::Static(it) => Some(it.name(db)),
         },
         Definition::DeriveHelper(derive_helper) => Some(derive_helper.derive().name(db)),
         d => {

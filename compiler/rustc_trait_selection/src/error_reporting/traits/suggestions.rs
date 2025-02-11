@@ -640,10 +640,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                     // Empty suggestions with empty spans ICE with debug assertions
                     if steps == 0 {
-                        return (msg.trim_end_matches(" and dereferencing instead"), vec![(
-                            prefix_span,
-                            String::new(),
-                        )]);
+                        return (
+                            msg.trim_end_matches(" and dereferencing instead"),
+                            vec![(prefix_span, String::new())],
+                        );
                     }
                     let derefs = "*".repeat(steps);
                     let needs_parens = steps > 0
@@ -3552,10 +3552,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::TrivialBound => {
                 err.help("see issue #48214");
-                tcx.disabled_nightly_features(err, Some(tcx.local_def_id_to_hir_id(body_id)), [(
-                    String::new(),
-                    sym::trivial_bounds,
-                )]);
+                tcx.disabled_nightly_features(
+                    err,
+                    Some(tcx.local_def_id_to_hir_id(body_id)),
+                    [(String::new(), sym::trivial_bounds)],
+                );
             }
             ObligationCauseCode::OpaqueReturnType(expr_info) => {
                 let (expr_ty, expr) = if let Some((expr_ty, hir_id)) = expr_info {

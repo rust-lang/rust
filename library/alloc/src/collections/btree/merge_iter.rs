@@ -74,7 +74,7 @@ impl<I: Iterator> MergeIterInner<I> {
                 b_next = self.b.next();
             }
         }
-        if let (Some(ref a1), Some(ref b1)) = (&a_next, &b_next) {
+        if let (Some(a1), Some(b1)) = (&a_next, &b_next) {
             match cmp(a1, b1) {
                 Ordering::Less => self.peeked = b_next.take().map(Peeked::B),
                 Ordering::Greater => self.peeked = a_next.take().map(Peeked::A),

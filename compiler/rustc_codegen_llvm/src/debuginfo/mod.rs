@@ -548,14 +548,17 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 }
             }
 
-            let scope = namespace::item_namespace(cx, DefId {
-                krate: instance.def_id().krate,
-                index: cx
-                    .tcx
-                    .def_key(instance.def_id())
-                    .parent
-                    .expect("get_containing_scope: missing parent?"),
-            });
+            let scope = namespace::item_namespace(
+                cx,
+                DefId {
+                    krate: instance.def_id().krate,
+                    index: cx
+                        .tcx
+                        .def_key(instance.def_id())
+                        .parent
+                        .expect("get_containing_scope: missing parent?"),
+                },
+            );
             (scope, false)
         }
     }
@@ -637,7 +640,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 true,
                 DIFlags::FlagZero,
                 argument_index,
-                align.bytes() as u32,
+                align.bits() as u32,
             )
         }
     }

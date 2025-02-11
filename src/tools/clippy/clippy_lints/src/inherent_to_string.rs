@@ -5,7 +5,7 @@ use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
-use rustc_target::spec::abi::Abi;
+use rustc_abi::ExternAbi;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
             // #11201
             && let header = signature.header
             && header.is_safe()
-            && header.abi == Abi::Rust
+            && header.abi == ExternAbi::Rust
             && impl_item.ident.name == sym::to_string
             && let decl = signature.decl
             && decl.implicit_self.has_implicit_self()

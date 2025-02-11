@@ -828,15 +828,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span,
                 Some(Arc::clone(&self.allow_gen_future)),
             );
-            self.lower_attrs(inner_hir_id, &[Attribute {
-                kind: AttrKind::Normal(ptr::P(NormalAttr::from_ident(Ident::new(
-                    sym::track_caller,
-                    span,
-                )))),
-                id: self.tcx.sess.psess.attr_id_generator.mk_attr_id(),
-                style: AttrStyle::Outer,
-                span: unstable_span,
-            }]);
+            self.lower_attrs(
+                inner_hir_id,
+                &[Attribute {
+                    kind: AttrKind::Normal(ptr::P(NormalAttr::from_ident(Ident::new(
+                        sym::track_caller,
+                        span,
+                    )))),
+                    id: self.tcx.sess.psess.attr_id_generator.mk_attr_id(),
+                    style: AttrStyle::Outer,
+                    span: unstable_span,
+                }],
+            );
         }
     }
 

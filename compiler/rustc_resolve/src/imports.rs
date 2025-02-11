@@ -914,12 +914,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             } => {
                 if no_ambiguity {
                     assert!(import.imported_module.get().is_none());
-                    self.report_error(span, ResolutionError::FailedToResolve {
-                        segment: Some(segment_name),
-                        label,
-                        suggestion,
-                        module,
-                    });
+                    self.report_error(
+                        span,
+                        ResolutionError::FailedToResolve {
+                            segment: Some(segment_name),
+                            label,
+                            suggestion,
+                            module,
+                        },
+                    );
                 }
                 return None;
             }
@@ -1500,7 +1503,7 @@ fn import_path_to_string(names: &[Ident], import_kind: &ImportKind<'_>, span: Sp
     let global = !names.is_empty() && names[0].name == kw::PathRoot;
     if let Some(pos) = pos {
         let names = if global { &names[1..pos + 1] } else { &names[..pos + 1] };
-        names_to_string(&names.iter().map(|ident| ident.name).collect::<Vec<_>>())
+        names_to_string(names.iter().map(|ident| ident.name))
     } else {
         let names = if global { &names[1..] } else { names };
         if names.is_empty() {
@@ -1508,7 +1511,7 @@ fn import_path_to_string(names: &[Ident], import_kind: &ImportKind<'_>, span: Sp
         } else {
             format!(
                 "{}::{}",
-                names_to_string(&names.iter().map(|ident| ident.name).collect::<Vec<_>>()),
+                names_to_string(names.iter().map(|ident| ident.name)),
                 import_kind_to_string(import_kind),
             )
         }

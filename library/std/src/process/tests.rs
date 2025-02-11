@@ -391,154 +391,6 @@ fn test_interior_nul_in_env_value_is_error() {
     }
 }
 
-/// Tests that process creation flags work by debugging a process.
-/// Other creation flags make it hard or impossible to detect
-/// behavioral changes in the process.
-#[test]
-#[cfg(windows)]
-fn test_creation_flags() {
-    use crate::os::windows::process::CommandExt;
-    use crate::sys::c::{BOOL, INFINITE};
-    #[repr(C)]
-    struct DEBUG_EVENT {
-        pub event_code: u32,
-        pub process_id: u32,
-        pub thread_id: u32,
-        // This is a union in the real struct, but we don't
-        // need this data for the purposes of this test.
-        pub _junk: [u8; 164],
-    }
-
-    extern "system" {
-        fn WaitForDebugEvent(lpDebugEvent: *mut DEBUG_EVENT, dwMilliseconds: u32) -> BOOL;
-        fn ContinueDebugEvent(dwProcessId: u32, dwThreadId: u32, dwContinueStatus: u32) -> BOOL;
-    }
-
-    const DEBUG_PROCESS: u32 = 1;
-    const EXIT_PROCESS_DEBUG_EVENT: u32 = 5;
-    const DBG_EXCEPTION_NOT_HANDLED: u32 = 0x80010001;
-
-    let mut child = Command::new("cmd")
-        .creation_flags(DEBUG_PROCESS)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap();
-    child.stdin.take().unwrap().write_all(b"exit\r\n").unwrap();
-    let mut events = 0;
-    let mut event = DEBUG_EVENT { event_code: 0, process_id: 0, thread_id: 0, _junk: [0; 164] };
-    loop {
-        if unsafe { WaitForDebugEvent(&mut event as *mut DEBUG_EVENT, INFINITE) } == 0 {
-            panic!("WaitForDebugEvent failed!");
-        }
-        events += 1;
-
-        if event.event_code == EXIT_PROCESS_DEBUG_EVENT {
-            break;
-        }
-
-        if unsafe {
-            ContinueDebugEvent(event.process_id, event.thread_id, DBG_EXCEPTION_NOT_HANDLED)
-        } == 0
-        {
-            panic!("ContinueDebugEvent failed!");
-        }
-    }
-    assert!(events > 0);
-}
-
-/// Tests proc thread attributes by spawning a process with a custom parent process,
-/// then comparing the parent process ID with the expected parent process ID.
-#[test]
-#[cfg(windows)]
-fn test_proc_thread_attributes() {
-    use crate::mem;
-    use crate::os::windows::io::AsRawHandle;
-    use crate::os::windows::process::{CommandExt, ProcThreadAttributeList};
-    use crate::sys::c::{BOOL, CloseHandle, HANDLE};
-    use crate::sys::cvt;
-
-    #[repr(C)]
-    #[allow(non_snake_case)]
-    struct PROCESSENTRY32W {
-        dwSize: u32,
-        cntUsage: u32,
-        th32ProcessID: u32,
-        th32DefaultHeapID: usize,
-        th32ModuleID: u32,
-        cntThreads: u32,
-        th32ParentProcessID: u32,
-        pcPriClassBase: i32,
-        dwFlags: u32,
-        szExeFile: [u16; 260],
-    }
-
-    extern "system" {
-        fn CreateToolhelp32Snapshot(dwflags: u32, th32processid: u32) -> HANDLE;
-        fn Process32First(hsnapshot: HANDLE, lppe: *mut PROCESSENTRY32W) -> BOOL;
-        fn Process32Next(hsnapshot: HANDLE, lppe: *mut PROCESSENTRY32W) -> BOOL;
-    }
-
-    const PROC_THREAD_ATTRIBUTE_PARENT_PROCESS: usize = 0x00020000;
-    const TH32CS_SNAPPROCESS: u32 = 0x00000002;
-
-    struct ProcessDropGuard(crate::process::Child);
-
-    impl Drop for ProcessDropGuard {
-        fn drop(&mut self) {
-            let _ = self.0.kill();
-        }
-    }
-
-    let mut parent = Command::new("cmd");
-    parent.stdout(Stdio::null()).stderr(Stdio::null());
-
-    let parent = ProcessDropGuard(parent.spawn().unwrap());
-
-    let mut child_cmd = Command::new("cmd");
-    child_cmd.stdout(Stdio::null()).stderr(Stdio::null());
-
-    let parent_process_handle = parent.0.as_raw_handle();
-
-    let mut attribute_list = ProcThreadAttributeList::build()
-        .attribute(PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &parent_process_handle)
-        .finish()
-        .unwrap();
-
-    let child = ProcessDropGuard(child_cmd.spawn_with_attributes(&mut attribute_list).unwrap());
-
-    let h_snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
-
-    let mut process_entry = PROCESSENTRY32W {
-        dwSize: mem::size_of::<PROCESSENTRY32W>() as u32,
-        cntUsage: 0,
-        th32ProcessID: 0,
-        th32DefaultHeapID: 0,
-        th32ModuleID: 0,
-        cntThreads: 0,
-        th32ParentProcessID: 0,
-        pcPriClassBase: 0,
-        dwFlags: 0,
-        szExeFile: [0; 260],
-    };
-
-    unsafe { cvt(Process32First(h_snapshot, &mut process_entry as *mut _)) }.unwrap();
-
-    loop {
-        if child.0.id() == process_entry.th32ProcessID {
-            break;
-        }
-        unsafe { cvt(Process32Next(h_snapshot, &mut process_entry as *mut _)) }.unwrap();
-    }
-
-    unsafe { cvt(CloseHandle(h_snapshot)) }.unwrap();
-
-    assert_eq!(parent.0.id(), process_entry.th32ParentProcessID);
-
-    drop(child)
-}
-
 #[test]
 fn test_command_implements_send_sync() {
     fn take_send_sync_type<T: Send + Sync>(_: T) {}
@@ -697,7 +549,7 @@ fn debug_print() {
 #[test]
 #[cfg(windows)]
 fn run_bat_script() {
-    let tempdir = crate::sys_common::io::test::tmpdir();
+    let tempdir = crate::test_helpers::tmpdir();
     let script_path = tempdir.join("hello.cmd");
 
     crate::fs::write(&script_path, "@echo Hello, %~1!").unwrap();
@@ -716,7 +568,7 @@ fn run_bat_script() {
 #[test]
 #[cfg(windows)]
 fn run_canonical_bat_script() {
-    let tempdir = crate::sys_common::io::test::tmpdir();
+    let tempdir = crate::test_helpers::tmpdir();
     let script_path = tempdir.join("hello.cmd");
 
     crate::fs::write(&script_path, "@echo Hello, %~1!").unwrap();

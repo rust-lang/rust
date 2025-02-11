@@ -299,7 +299,7 @@ fn pretty_assert_message<W: Write>(writer: &mut W, msg: &AssertMessage) -> io::R
             )
         }
         AssertMessage::NullPointerDereference => {
-            write!(writer, "\"null pointer dereference occured.\"")
+            write!(writer, "\"null pointer dereference occurred\"")
         }
         AssertMessage::ResumedAfterReturn(_) | AssertMessage::ResumedAfterPanic(_) => {
             write!(writer, "{}", msg.description().unwrap())

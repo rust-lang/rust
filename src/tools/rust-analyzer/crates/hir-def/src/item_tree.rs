@@ -937,7 +937,7 @@ pub struct Param {
 
 bitflags::bitflags! {
     #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
-    pub(crate) struct FnFlags: u8 {
+    pub(crate) struct FnFlags: u16 {
         const HAS_SELF_PARAM = 1 << 0;
         const HAS_BODY = 1 << 1;
         const HAS_DEFAULT_KW = 1 << 2;
@@ -946,6 +946,12 @@ bitflags::bitflags! {
         const HAS_UNSAFE_KW = 1 << 5;
         const IS_VARARGS = 1 << 6;
         const HAS_SAFE_KW = 1 << 7;
+        /// The `#[target_feature]` attribute is necessary to check safety (with RFC 2396),
+        /// but keeping it for all functions will consume a lot of memory when there are
+        /// only very few functions with it. So we only encode its existence here, and lookup
+        /// it if needed.
+        const HAS_TARGET_FEATURE = 1 << 8;
+        const DEPRECATED_SAFE_2024 = 1 << 9;
     }
 }
 

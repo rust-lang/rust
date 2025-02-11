@@ -13,7 +13,7 @@ rinja = { version = "0.3", default-features = false, features = ["config"] }
 base64 = "0.21.7"
 itertools = "0.12"
 indexmap = "2"
-minifier = { version = "0.3.2", default-features = false }
+minifier = { version = "0.3.4", default-features = false }
 pulldown-cmark-old = { version = "0.9.6", package = "pulldown-cmark", default-features = false }
 regex = "1"
 rustdoc-json-types = { path = "../rustdoc-json-types" }

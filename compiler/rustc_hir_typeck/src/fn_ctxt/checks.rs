@@ -2641,8 +2641,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Returns the parameters of a function, with their generic parameters if those are the full
-    /// type of that parameter. Returns `None` if the function has no generics or the body is
-    /// unavailable (eg is an instrinsic).
+    /// type of that parameter.
+    ///
+    /// Returns `None` if the body is not a named function (e.g. a closure).
     fn get_hir_param_info(
         &self,
         def_id: DefId,
@@ -2667,6 +2668,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 kind: hir::ItemKind::Fn { sig, generics, body, .. },
                 ..
             }) => (sig, generics, Some(body), None),
+            hir::Node::ForeignItem(&hir::ForeignItem {
+                kind: hir::ForeignItemKind::Fn(sig, params, generics),
+                ..
+            }) => (sig, generics, None, Some(params)),
             _ => return None,
         };
 
@@ -2700,7 +2705,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ))
             }
             (None, Some(params)) => {
-                let params = params.get(is_method as usize..)?;
+                let params =
+                    params.get(is_method as usize..params.len() - sig.decl.c_variadic as usize)?;
                 debug_assert_eq!(params.len(), fn_inputs.len());
                 Some((
                     fn_inputs.zip(params.iter().map(|param| FnParam::Name(param))).collect(),

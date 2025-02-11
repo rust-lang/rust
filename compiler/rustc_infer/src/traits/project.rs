@@ -193,10 +193,10 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
                 if result.must_apply_considering_regions() {
                     ty.obligations = PredicateObligations::new();
                 }
-                map.insert(key, ProjectionCacheEntry::NormalizedTerm {
-                    ty,
-                    complete: Some(result),
-                });
+                map.insert(
+                    key,
+                    ProjectionCacheEntry::NormalizedTerm { ty, complete: Some(result) },
+                );
             }
             ref value => {
                 // Type inference could "strand behind" old cache entries. Leave

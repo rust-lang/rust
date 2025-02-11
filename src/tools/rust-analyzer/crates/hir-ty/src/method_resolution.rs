@@ -4,6 +4,7 @@
 //! and the corresponding code mostly in rustc_hir_analysis/check/method/probe.rs.
 use std::ops::ControlFlow;
 
+use arrayvec::ArrayVec;
 use base_db::CrateId;
 use chalk_ir::{cast::Cast, UniverseIndex, WithKind};
 use hir_def::{
@@ -732,15 +733,27 @@ fn lookup_impl_assoc_item_for_trait_ref(
     let self_ty = trait_ref.self_type_parameter(Interner);
     let self_ty_fp = TyFingerprint::for_trait_impl(&self_ty)?;
     let impls = db.trait_impls_in_deps(env.krate);
-    let self_impls = match self_ty.kind(Interner) {
-        TyKind::Adt(id, _) => {
-            id.0.module(db.upcast()).containing_block().and_then(|it| db.trait_impls_in_block(it))
+
+    let trait_module = hir_trait_id.module(db.upcast());
+    let type_module = match self_ty_fp {
+        TyFingerprint::Adt(adt_id) => Some(adt_id.module(db.upcast())),
+        TyFingerprint::ForeignType(type_id) => {
+            Some(from_foreign_def_id(type_id).module(db.upcast()))
         }
+        TyFingerprint::Dyn(trait_id) => Some(trait_id.module(db.upcast())),
         _ => None,
     };
+
+    let def_blocks: ArrayVec<_, 2> =
+        [trait_module.containing_block(), type_module.and_then(|it| it.containing_block())]
+            .into_iter()
+            .flatten()
+            .filter_map(|block_id| db.trait_impls_in_block(block_id))
+            .collect();
+
     let impls = impls
         .iter()
-        .chain(self_impls.as_ref())
+        .chain(&def_blocks)
         .flat_map(|impls| impls.for_trait_and_self_ty(hir_trait_id, self_ty_fp));
 
     let table = InferenceTable::new(db, env);

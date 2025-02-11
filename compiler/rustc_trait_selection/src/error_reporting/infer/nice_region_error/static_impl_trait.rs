@@ -323,9 +323,12 @@ pub fn suggest_new_region_bound(
                             .params
                             .iter()
                             .filter(|p| {
-                                matches!(p.kind, GenericParamKind::Lifetime {
-                                    kind: hir::LifetimeParamKind::Explicit
-                                })
+                                matches!(
+                                    p.kind,
+                                    GenericParamKind::Lifetime {
+                                        kind: hir::LifetimeParamKind::Explicit
+                                    }
+                                )
                             })
                             .map(|p| {
                                 if let hir::ParamName::Plain(name) = p.name {

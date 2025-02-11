@@ -145,7 +145,7 @@ impl LookupTable {
                 self.data
                     .iter()
                     .find(|(t, _)| {
-                        Type::reference(t, Mutability::Shared).could_unify_with_deeply(db, ty)
+                        t.add_reference(Mutability::Shared).could_unify_with_deeply(db, ty)
                     })
                     .map(|(t, it)| {
                         it.exprs(t)

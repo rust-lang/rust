@@ -56,15 +56,15 @@ cfg_if::cfg_if! {
         compile_error!("`llvm-libunwind` and `system-llvm-libunwind` cannot be enabled at the same time");
     } else if #[cfg(feature = "llvm-libunwind")] {
         #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(feature = "system-llvm-libunwind")] {
         #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
         #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
-        extern "C" {}
+        unsafe extern "C" {}
     } else {
         #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
         #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
-        extern "C" {}
+        unsafe extern "C" {}
     }
 }
 
@@ -76,11 +76,11 @@ cfg_if::cfg_if! {
         compile_error!("`llvm-libunwind` and `system-llvm-libunwind` cannot be enabled at the same time");
     } else if #[cfg(feature = "llvm-libunwind")] {
         #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else {
         #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
         #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
-        extern "C" {}
+        unsafe extern "C" {}
     }
 }
 
@@ -91,14 +91,14 @@ cfg_if::cfg_if! {
     } else {
         #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
         #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
-        extern "C" {}
+        unsafe extern "C" {}
     }
 }
 // Android's unwinding library depends on dl_iterate_phdr in `libdl`.
 #[cfg(target_os = "android")]
 #[link(name = "dl", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
 #[link(name = "dl", cfg(not(target_feature = "crt-static")))]
-extern "C" {}
+unsafe extern "C" {}
 
 // When building with crt-static, we get `gcc_eh` from the `libc` crate, since
 // glibc needs it, and needs it listed later on the linker command line. We
@@ -110,7 +110,7 @@ extern "C" {}
     not(feature = "system-llvm-libunwind")
 ))]
 #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
-extern "C" {}
+unsafe extern "C" {}
 
 #[cfg(all(
     target_os = "linux",
@@ -119,67 +119,67 @@ extern "C" {}
     feature = "system-llvm-libunwind"
 ))]
 #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
-extern "C" {}
+unsafe extern "C" {}
 
 #[cfg(target_os = "redox")]
 #[link(name = "gcc_eh", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
 #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
-extern "C" {}
+unsafe extern "C" {}
 
 #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
 #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
-extern "C" {}
+unsafe extern "C" {}
 
 #[cfg(target_os = "netbsd")]
 #[link(name = "gcc_s")]
-extern "C" {}
+unsafe extern "C" {}
 
 #[cfg(target_os = "freebsd")]
 #[link(name = "gcc", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
 #[link(name = "gcc_eh", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
 #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
-extern "C" {}
+unsafe extern "C" {}
 
 #[cfg(all(target_os = "openbsd", target_arch = "sparc64"))]
 #[link(name = "gcc")]
-extern "C" {}
+unsafe extern "C" {}
 
 #[cfg(all(target_os = "openbsd", not(target_arch = "sparc64")))]
 #[link(name = "c++abi")]
-extern "C" {}
+unsafe extern "C" {}
 
 #[cfg(any(target_os = "solaris", target_os = "illumos"))]
 #[link(name = "gcc_s")]
-extern "C" {}
+unsafe extern "C" {}
 
 #[cfg(target_os = "dragonfly")]
 #[link(name = "gcc_pic")]
-extern "C" {}
+unsafe extern "C" {}
 
 #[cfg(target_os = "haiku")]
 #[link(name = "gcc_s")]
-extern "C" {}
+unsafe extern "C" {}
 
 #[cfg(target_os = "aix")]
 #[link(name = "unwind")]
-extern "C" {}
+unsafe extern "C" {}
 
 #[cfg(target_os = "nto")]
 cfg_if::cfg_if! {
     if #[cfg(target_env = "nto70")] {
         #[link(name = "gcc")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else {
         #[link(name = "gcc_s")]
-        extern "C" {}
+        unsafe extern "C" {}
     }
 }
 
 #[cfg(target_os = "hurd")]
 #[link(name = "gcc_s")]
-extern "C" {}
+unsafe extern "C" {}
 
 #[cfg(all(target_os = "windows", target_env = "gnu", target_abi = "llvm"))]
 #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
 #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
-extern "C" {}
+unsafe extern "C" {}

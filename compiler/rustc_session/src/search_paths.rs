@@ -140,10 +140,10 @@ impl SearchPath {
                     e.ok().and_then(|e| {
                         e.file_name().to_str().map(|s| {
                             let file_name_str: Arc<str> = s.into();
-                            (Arc::clone(&file_name_str), SearchPathFile {
-                                path: e.path().into(),
-                                file_name_str,
-                            })
+                            (
+                                Arc::clone(&file_name_str),
+                                SearchPathFile { path: e.path().into(), file_name_str },
+                            )
                         })
                     })
                 })

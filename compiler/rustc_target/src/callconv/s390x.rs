@@ -3,7 +3,7 @@
 
 use rustc_abi::{BackendRepr, HasDataLayout, TyAbiInterface};
 
-use crate::abi::call::{ArgAbi, FnAbi, Reg, RegKind};
+use crate::callconv::{ArgAbi, FnAbi, Reg, RegKind};
 use crate::spec::HasTargetSpec;
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {

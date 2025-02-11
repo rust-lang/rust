@@ -394,7 +394,6 @@ trigger_files = [
     "src/tools/tidy",
     "src/tools/rustdoc-gui-test",
     "src/tools/libcxx-version",
-    "src/tools/rustc-perf-wrapper",
     "x.py",
     "x",
     "x.ps1"
@@ -1058,7 +1057,6 @@ branch = "stable"
 [assign.adhoc_groups]
 compiler = [
     "@BoxyUwU",
-    "@chenyukang",
     "@cjgillot",
     "@compiler-errors",
     "@davidtwco",

@@ -314,12 +314,10 @@ where
                     // We only computed variance of lifetimes...
                     debug_assert_matches!(self.tcx.def_kind(def_id), DefKind::LifetimeParam);
                     let uncaptured = match *kind {
-                        ParamKind::Early(name, index) => {
-                            ty::Region::new_early_param(self.tcx, ty::EarlyParamRegion {
-                                name,
-                                index,
-                            })
-                        }
+                        ParamKind::Early(name, index) => ty::Region::new_early_param(
+                            self.tcx,
+                            ty::EarlyParamRegion { name, index },
+                        ),
                         ParamKind::Free(def_id, name) => ty::Region::new_late_param(
                             self.tcx,
                             self.parent_def_id.to_def_id(),

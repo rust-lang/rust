@@ -154,6 +154,7 @@ pub struct Build {
     targets: Vec<TargetSelection>,
 
     initial_rustc: PathBuf,
+    initial_rustdoc: PathBuf,
     initial_cargo: PathBuf,
     initial_lld: PathBuf,
     initial_relative_libdir: PathBuf,
@@ -248,6 +249,7 @@ impl Mode {
     }
 }
 
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CLang {
     C,
     Cxx,
@@ -354,6 +356,7 @@ impl Build {
             initial_lld,
             initial_relative_libdir,
             initial_rustc: config.initial_rustc.clone(),
+            initial_rustdoc: config.initial_rustc.with_file_name(exe("rustdoc", config.build)),
             initial_cargo: config.initial_cargo.clone(),
             initial_sysroot: config.initial_sysroot.clone(),
             local_rebuild: config.local_rebuild,
@@ -571,8 +574,8 @@ impl Build {
                 Subcommand::Suggest { run } => {
                     return core::build_steps::suggest::suggest(&builder::Builder::new(self), *run);
                 }
-                Subcommand::Perf { .. } => {
-                    return core::build_steps::perf::perf(&builder::Builder::new(self));
+                Subcommand::Perf(args) => {
+                    return core::build_steps::perf::perf(&builder::Builder::new(self), args);
                 }
                 _cmd => {
                     debug!(cmd = ?_cmd, "not a hardcoded subcommand; returning to normal handling");
@@ -1176,9 +1179,9 @@ Executed at: {executed_at}"#,
         self.cc.borrow()[&target].path().into()
     }
 
-    /// Returns a list of flags to pass to the C compiler for the target
-    /// specified.
-    fn cflags(&self, target: TargetSelection, which: GitRepo, c: CLang) -> Vec<String> {
+    /// Returns C flags that `cc-rs` thinks should be enabled for the
+    /// specified target by default.
+    fn cc_handled_clags(&self, target: TargetSelection, c: CLang) -> Vec<String> {
         if self.config.dry_run() {
             return Vec::new();
         }
@@ -1187,14 +1190,23 @@ Executed at: {executed_at}"#,
             CLang::Cxx => self.cxx.borrow()[&target].clone(),
         };
 
-        // Filter out -O and /O (the optimization flags) that we picked up from
-        // cc-rs because the build scripts will determine that for themselves.
-        let mut base = base
-            .args()
+        // Filter out -O and /O (the optimization flags) that we picked up
+        // from cc-rs, that's up to the caller to figure out.
+        base.args()
             .iter()
             .map(|s| s.to_string_lossy().into_owned())
             .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))
-            .collect::<Vec<String>>();
+            .collect::<Vec<String>>()
+    }
+
+    /// Returns extra C flags that `cc-rs` doesn't handle.
+    fn cc_unhandled_cflags(
+        &self,
+        target: TargetSelection,
+        which: GitRepo,
+        c: CLang,
+    ) -> Vec<String> {
+        let mut base = Vec::new();
 
         // If we're compiling C++ on macOS then we add a flag indicating that
         // we want libc++ (more filled out than libstdc++), ensuring that

@@ -242,10 +242,11 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MapAndCompressBoundVars<'tcx> {
                 // Allocate a new var idx, and insert a new bound ty.
                 let var = ty::BoundVar::from_usize(self.still_bound_vars.len());
                 self.still_bound_vars.push(ty::BoundVariableKind::Ty(old_bound.kind));
-                let mapped = Ty::new_bound(self.tcx, ty::INNERMOST, ty::BoundTy {
-                    var,
-                    kind: old_bound.kind,
-                });
+                let mapped = Ty::new_bound(
+                    self.tcx,
+                    ty::INNERMOST,
+                    ty::BoundTy { var, kind: old_bound.kind },
+                );
                 self.mapping.insert(old_bound.var, mapped.into());
                 mapped
             };
@@ -265,10 +266,11 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MapAndCompressBoundVars<'tcx> {
             } else {
                 let var = ty::BoundVar::from_usize(self.still_bound_vars.len());
                 self.still_bound_vars.push(ty::BoundVariableKind::Region(old_bound.kind));
-                let mapped = ty::Region::new_bound(self.tcx, ty::INNERMOST, ty::BoundRegion {
-                    var,
-                    kind: old_bound.kind,
-                });
+                let mapped = ty::Region::new_bound(
+                    self.tcx,
+                    ty::INNERMOST,
+                    ty::BoundRegion { var, kind: old_bound.kind },
+                );
                 self.mapping.insert(old_bound.var, mapped.into());
                 mapped
             };

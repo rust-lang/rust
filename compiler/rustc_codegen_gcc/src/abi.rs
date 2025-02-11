@@ -1,6 +1,7 @@
 #[cfg(feature = "master")]
 use gccjit::FnAttribute;
 use gccjit::{ToLValue, ToRValue, Type};
+use rustc_abi::{Reg, RegKind};
 use rustc_codegen_ssa::traits::{AbiBuilderMethods, BaseTypeCodegenMethods};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
@@ -8,7 +9,7 @@ use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
 #[cfg(feature = "master")]
 use rustc_session::config;
-use rustc_target::callconv::{ArgAttributes, CastTarget, FnAbi, PassMode, Reg, RegKind};
+use rustc_target::callconv::{ArgAttributes, CastTarget, FnAbi, PassMode};
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;

@@ -301,11 +301,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let make_transmute_obl = |src, dst| {
                 let transmute_trait = obligation.predicate.def_id();
                 let assume = obligation.predicate.skip_binder().trait_ref.args.const_at(2);
-                let trait_ref = ty::TraitRef::new(tcx, transmute_trait, [
-                    ty::GenericArg::from(dst),
-                    ty::GenericArg::from(src),
-                    ty::GenericArg::from(assume),
-                ]);
+                let trait_ref = ty::TraitRef::new(
+                    tcx,
+                    transmute_trait,
+                    [
+                        ty::GenericArg::from(dst),
+                        ty::GenericArg::from(src),
+                        ty::GenericArg::from(assume),
+                    ],
+                );
                 Obligation::with_depth(
                     tcx,
                     obligation.cause.clone(),
@@ -316,10 +320,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             };
 
             let make_freeze_obl = |ty| {
-                let trait_ref =
-                    ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Freeze, None), [
-                        ty::GenericArg::from(ty),
-                    ]);
+                let trait_ref = ty::TraitRef::new(
+                    tcx,
+                    tcx.require_lang_item(LangItem::Freeze, None),
+                    [ty::GenericArg::from(ty)],
+                );
                 Obligation::with_depth(
                     tcx,
                     obligation.cause.clone(),
@@ -863,10 +868,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
             ty::CoroutineClosure(_, args) => {
                 args.as_coroutine_closure().coroutine_closure_sig().map_bound(|sig| {
-                    ty::TraitRef::new(self.tcx(), obligation.predicate.def_id(), [
-                        self_ty,
-                        sig.tupled_inputs_ty,
-                    ])
+                    ty::TraitRef::new(
+                        self.tcx(),
+                        obligation.predicate.def_id(),
+                        [self_ty, sig.tupled_inputs_ty],
+                    )
                 })
             }
             _ => {
@@ -892,10 +898,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::CoroutineClosure(_, args) => {
                 let args = args.as_coroutine_closure();
                 let trait_ref = args.coroutine_closure_sig().map_bound(|sig| {
-                    ty::TraitRef::new(self.tcx(), obligation.predicate.def_id(), [
-                        self_ty,
-                        sig.tupled_inputs_ty,
-                    ])
+                    ty::TraitRef::new(
+                        self.tcx(),
+                        obligation.predicate.def_id(),
+                        [self_ty, sig.tupled_inputs_ty],
+                    )
                 });
 
                 // Note that unlike below, we don't need to check `Future + Sized` for
@@ -906,10 +913,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::FnDef(..) | ty::FnPtr(..) => {
                 let sig = self_ty.fn_sig(tcx);
                 let trait_ref = sig.map_bound(|sig| {
-                    ty::TraitRef::new(self.tcx(), obligation.predicate.def_id(), [
-                        self_ty,
-                        Ty::new_tup(tcx, sig.inputs()),
-                    ])
+                    ty::TraitRef::new(
+                        self.tcx(),
+                        obligation.predicate.def_id(),
+                        [self_ty, Ty::new_tup(tcx, sig.inputs())],
+                    )
                 });
 
                 // We must additionally check that the return type impls `Future + Sized`.
@@ -934,10 +942,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let args = args.as_closure();
                 let sig = args.sig();
                 let trait_ref = sig.map_bound(|sig| {
-                    ty::TraitRef::new(self.tcx(), obligation.predicate.def_id(), [
-                        self_ty,
-                        sig.inputs()[0],
-                    ])
+                    ty::TraitRef::new(
+                        self.tcx(),
+                        obligation.predicate.def_id(),
+                        [self_ty, sig.inputs()[0]],
+                    )
                 });
 
                 // We must additionally check that the return type impls `Future + Sized`.
@@ -1295,10 +1304,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Construct the nested `TailField<T>: Unsize<TailField<U>>` predicate.
                 let tail_unsize_obligation = obligation.with(
                     tcx,
-                    ty::TraitRef::new(tcx, obligation.predicate.def_id(), [
-                        source_tail,
-                        target_tail,
-                    ]),
+                    ty::TraitRef::new(
+                        tcx,
+                        obligation.predicate.def_id(),
+                        [source_tail, target_tail],
+                    ),
                 );
                 nested.push(tail_unsize_obligation);
 
@@ -1359,10 +1369,11 @@ fn pointer_like_goal_for_rpitit<'tcx>(
         ty::GenericParamDefKind::Lifetime => {
             let kind = ty::BoundRegionKind::Named(arg.def_id, tcx.item_name(arg.def_id));
             bound_vars.push(ty::BoundVariableKind::Region(kind));
-            ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
-                var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                kind,
-            })
+            ty::Region::new_bound(
+                tcx,
+                ty::INNERMOST,
+                ty::BoundRegion { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
+            )
             .into()
         }
         ty::GenericParamDefKind::Type { .. } | ty::GenericParamDefKind::Const { .. } => {
@@ -1371,9 +1382,11 @@ fn pointer_like_goal_for_rpitit<'tcx>(
     });
 
     ty::Binder::bind_with_vars(
-        ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::PointerLike, Some(cause.span)), [
-            Ty::new_projection_from_args(tcx, rpitit_item, args),
-        ]),
+        ty::TraitRef::new(
+            tcx,
+            tcx.require_lang_item(LangItem::PointerLike, Some(cause.span)),
+            [Ty::new_projection_from_args(tcx, rpitit_item, args)],
+        ),
         tcx.mk_bound_variable_kinds(&bound_vars),
     )
 }

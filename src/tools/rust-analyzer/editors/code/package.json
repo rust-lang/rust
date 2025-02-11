@@ -501,6 +501,10 @@
                                 },
                                 {
                                     "pattern": "**/Cargo.lock"
+                                },
+                                {
+                                    "scheme": "output",
+                                    "pattern": "extension-output-rust-lang.rust-analyzer*"
                                 }
                             ]
                         }
@@ -2244,6 +2248,16 @@
                 "properties": {
                     "rust-analyzer.inlayHints.typeHints.hideClosureInitialization": {
                         "markdownDescription": "Whether to hide inlay type hints for `let` statements that initialize to a closure.\nOnly applies to closures with blocks, same as `#rust-analyzer.inlayHints.closureReturnTypeHints.enable#`.",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "inlayHints",
+                "properties": {
+                    "rust-analyzer.inlayHints.typeHints.hideClosureParameter": {
+                        "markdownDescription": "Whether to hide inlay parameter type hints for closures.",
                         "default": false,
                         "type": "boolean"
                     }

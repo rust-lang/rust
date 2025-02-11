@@ -327,15 +327,18 @@ impl OnDiskCache {
 
             // Encode the file footer.
             let footer_pos = encoder.position() as u64;
-            encoder.encode_tagged(TAG_FILE_FOOTER, &Footer {
-                file_index_to_stable_id,
-                query_result_index,
-                side_effects_index,
-                interpret_alloc_index,
-                syntax_contexts,
-                expn_data,
-                foreign_expn_data,
-            });
+            encoder.encode_tagged(
+                TAG_FILE_FOOTER,
+                &Footer {
+                    file_index_to_stable_id,
+                    query_result_index,
+                    side_effects_index,
+                    interpret_alloc_index,
+                    syntax_contexts,
+                    expn_data,
+                    foreign_expn_data,
+                },
+            );
 
             // Encode the position of the footer as the last 8 bytes of the
             // file so we know where to look for it.

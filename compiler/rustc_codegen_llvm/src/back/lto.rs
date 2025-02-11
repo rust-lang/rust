@@ -606,10 +606,31 @@ pub(crate) fn run_pass_manager(
 
     // If this rustc version was build with enzyme/autodiff enabled, and if users applied the
     // `#[autodiff]` macro at least once, then we will later call llvm_optimize a second time.
-    let first_run = true;
     debug!("running llvm pm opt pipeline");
     unsafe {
-        write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage, first_run)?;
+        write::llvm_optimize(
+            cgcx,
+            dcx,
+            module,
+            config,
+            opt_level,
+            opt_stage,
+            write::AutodiffStage::DuringAD,
+        )?;
+    }
+    // FIXME(ZuseZ4): Make this more granular
+    if cfg!(llvm_enzyme) && !thin {
+        unsafe {
+            write::llvm_optimize(
+                cgcx,
+                dcx,
+                module,
+                config,
+                opt_level,
+                llvm::OptStage::FatLTO,
+                write::AutodiffStage::PostAD,
+            )?;
+        }
     }
     debug!("lto done");
     Ok(())
