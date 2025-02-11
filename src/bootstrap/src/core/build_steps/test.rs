@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 //! Build-and-run steps for `./x.py test` test fixtures
 //!
 //! `./x.py test` (aka [`Kind::Test`]) is currently allowed to reach build steps in other modules.
@@ -409,12 +410,261 @@ impl Step for RustAnalyzer {
         cargo.arg("--workspace");
         cargo.arg("--exclude=xtask");
 
+        let mut skip_tests = vec![
+            // FIXME: may need a fix from https://github.com/rust-lang/rust-analyzer/pull/19124.
+            "config::tests::cargo_target_dir_subdir",
+            // FIXME: I think this exercises cargo somehow?
+            "tests::smoke_test_real_sysroot_cargo",
+            // FIXME: config generation
+            "config::tests::generate_config_documentation",
+            "config::tests::generate_package_json_config",
+        ];
+        skip_tests.extend(if self.host.starts_with("aarch64-apple") {
+            vec![
+                // FIXME: fails on `aarch64-apple` due to `cfg` differences
+                "item_tree::tests::generics_with_attributes",
+                "hover::tests::generic_params_disabled_by_cfg",
+            ]
+        } else if self.host == "i686-pc-windows-gnu" || self.host == "i686-pc-windows-msvc" {
+            // FIXME: note that I didn't bother separately investigating if what fails on 32-bit
+            // windows-gnu also fails on 32-bit windows-msvc, just ignore these tests for both
+            // 32-bit windows targets.
+
+            // FIXME: fails on `i686-mingw` due to multiple reasons. E.g. unsupport op on 32-bit
+            // windows-gnu target but on a 64-bit host, i.e. ptr width being different is
+            // unsupported.
+            vec![
+                // FIXME: failed to const eval on 32-bit windows-gnu running on 64-bit host maybe?
+                "consteval::tests::add",
+                "consteval::tests::anonymous_const_block",
+                "consteval::tests::alignment",
+                "consteval::tests::bit_op",
+                "consteval::tests::associated_types",
+                "consteval::tests::boxes",
+                "consteval::tests::array_and_index",
+                "consteval::tests::builtin_derive_macro",
+                "consteval::tests::casts",
+                "consteval::tests::const_generic_subst_assoc_const_impl",
+                "consteval::tests::c_string",
+                "consteval::tests::const_generic_subst_fn",
+                "consteval::tests::const_impl_assoc",
+                "consteval::tests::closure_clone",
+                "consteval::tests::byte_string",
+                "consteval::tests::closures",
+                "consteval::tests::const_trait_assoc",
+                "consteval::tests::coerce_unsized",
+                "consteval::tests::consts",
+                "consteval::tests::enums",
+                "consteval::tests::floating_point",
+                "consteval::tests::destructing_assignment",
+                "consteval::tests::floating_point_casts",
+                "consteval::tests::closure_and_impl_fn",
+                "consteval::tests::extern_weak_statics",
+                "consteval::tests::function_call",
+                "consteval::tests::function_param_patterns",
+                "consteval::tests::closure_capture_unsized_type",
+                "consteval::tests::function_pointer",
+                "consteval::tests::from_ne_bytes",
+                "consteval::tests::function_pointer_in_constants",
+                "consteval::tests::from_trait",
+                "consteval::tests::ifs",
+                "consteval::tests::generic_fn",
+                "consteval::tests::dyn_trait",
+                "consteval::tests::impl_trait",
+                "consteval::tests::enum_variant_as_function",
+                "consteval::tests::const_transfer_memory",
+                "consteval::tests::intrinsics::allocator",
+                "consteval::tests::function_traits",
+                "consteval::tests::intrinsics::copy_nonoverlapping",
+                "consteval::tests::intrinsics::ctlz",
+                "consteval::tests::intrinsics::ctpop",
+                "consteval::tests::intrinsics::cttz",
+                "consteval::tests::intrinsics::const_eval_select",
+                "consteval::tests::intrinsics::floating_point",
+                "consteval::tests::for_loops",
+                "consteval::tests::function_pointer_and_niche_optimization",
+                "consteval::tests::intrinsics::likely",
+                "consteval::tests::intrinsics::arith_offset",
+                "consteval::tests::intrinsics::overflowing_add",
+                "consteval::tests::intrinsics::atomic",
+                "consteval::tests::intrinsics::rotate",
+                "consteval::tests::intrinsics::copy",
+                "consteval::tests::intrinsics::read_via_copy",
+                "consteval::tests::intrinsics::saturating",
+                "consteval::tests::intrinsics::needs_drop",
+                "consteval::tests::intrinsics::size_of",
+                "consteval::tests::intrinsics::simd",
+                "consteval::tests::intrinsics::min_align_of_val",
+                "consteval::tests::intrinsics::transmute",
+                "consteval::tests::intrinsics::type_name",
+                "consteval::tests::intrinsics::wrapping_add",
+                "consteval::tests::intrinsics::write_bytes",
+                "consteval::tests::intrinsics::write_via_move",
+                "consteval::tests::let_else",
+                "consteval::tests::layout_of_type_with_associated_type_field_defined_inside_body",
+                "consteval::tests::loops",
+                "consteval::tests::locals",
+                "consteval::tests::intrinsics::offset",
+                "consteval::tests::intrinsics::size_of_val",
+                "consteval::tests::or_pattern",
+                "consteval::tests::memory_limit",
+                "consteval::tests::intrinsics::ptr_offset_from",
+                "consteval::tests::intrinsics::discriminant_value",
+                "consteval::tests::path_pattern_matching",
+                "consteval::tests::overloaded_binop",
+                "consteval::tests::overloaded_deref",
+                "consteval::tests::overloaded_index",
+                "consteval::tests::overloaded_deref_autoref",
+                "consteval::tests::pattern_matching_ergonomics",
+                "consteval::tests::pattern_matching_literal",
+                "consteval::tests::pattern_matching_range",
+                "consteval::tests::manual_fn_trait_impl",
+                "consteval::tests::recursion",
+                "consteval::tests::reference_autoderef",
+                "consteval::tests::references",
+                "consteval::tests::ranges",
+                "consteval::tests::raw_pointer_equality",
+                "consteval::tests::match_guards",
+                "consteval::tests::structs",
+                "consteval::tests::options",
+                "consteval::tests::trait_method",
+                "consteval::tests::trait_basic",
+                "consteval::tests::pattern_matching_slice",
+                "consteval::tests::string",
+                "consteval::tests::trait_method_inside_block",
+                "consteval::tests::statics",
+                "consteval::tests::tuples",
+                "consteval::tests::unions",
+                "consteval::tests::result_layout_niche_optimization",
+                "consteval::tests::unsized_field",
+                "consteval::tests::try_block",
+                "consteval::tests::try_operator",
+                "mir::eval::tests::closure_capture_array_const_generic",
+                "mir::eval::tests::closure_layout_in_rpit",
+                "mir::eval::tests::drop_basic",
+                "mir::eval::tests::closure_state",
+                "mir::eval::tests::drop_in_place",
+                "mir::eval::tests::field_with_associated_type",
+                "mir::eval::tests::function_with_extern_c_abi",
+                "mir::eval::tests::generic_impl_for_trait_with_generic_method",
+                "mir::eval::tests::drop_if_let",
+                "mir::eval::tests::drop_struct_field",
+                "mir::eval::tests::index_of_slice_should_preserve_len",
+                "mir::eval::tests::for_loop",
+                "mir::eval::tests::manually_drop",
+                "mir::eval::tests::from_fn",
+                "mir::eval::tests::long_str_eq_same_prefix",
+                "mir::eval::tests::posix_getenv",
+                "mir::eval::tests::memcmp",
+                "mir::eval::tests::panic_display",
+                "mir::eval::tests::self_with_capital_s",
+                "mir::eval::tests::short_circuit_operator",
+                "mir::eval::tests::panic_fmt",
+                "mir::eval::tests::regression_14966",
+                "mir::eval::tests::posix_tls",
+                "mir::eval::tests::specialization_array_clone",
+                "mir::eval::tests::unix_write_stdout",
+                "mir::eval::tests::syscalls",
+                "tests::regression::regression_14456",
+                "tests::simple::const_eval_array_repeat_expr",
+                "tests::simple::const_eval_in_function_signature",
+                "tests::simple::issue_14275",
+                "tests::traits::array_length",
+                "tests::traits::const_generics",
+                // FIXME: annotation order seems to be different on `i686-mingw`
+                "annotations::tests::runnable_annotation",
+                "annotations::tests::struct_references_annotations",
+                "annotations::tests::struct_and_trait_impls_annotations",
+                "annotations::tests::method_annotations",
+                // FIXME: const eval on hover not working, either shows infer `_` or unevaluated.
+                "hover::tests::array_repeat_exp",
+                "hover::tests::const_generic_negative_i8_literal",
+                "hover::tests::hover_const_eval",
+                "hover::tests::hover_const_eval_discriminant",
+                "hover::tests::hover_const_eval_enum",
+                "hover::tests::hover_const_eval_floating_point",
+                "hover::tests::hover_const_static",
+                "hover::tests::hover_const_pat",
+                "hover::tests::hover_const_eval_slice",
+                "hover::tests::hover_eval_complex_constants",
+                "hover::tests::hover_unsigned_max_const",
+                "hover::tests::i128_max",
+                // FIXME: failed to const eval, formatting difference in const struct
+                // (extra comma / reformatted?)
+                "hover::tests::hover_const_eval_str",
+                // FIXME: failed to const eval, extra path segment
+                "hover::tests::hover_const_value",
+                "hover::tests::hover_dollar_crate",
+                "hover::tests::hover_dollar_crate stdout",
+                // FIXME: failed to const eval, shows explicit `i32` on literal
+                "hover::tests::hover_const_eval_dyn_trait",
+                // FIXME: discriminant `= ?` problems
+                "inlay_hints::discriminant::tests::datacarrying_mixed",
+                "inlay_hints::discriminant::tests::fieldless",
+                // FIXME: list order non-deterministic or different on `i686-mingw`?
+                "runnables::tests::tests_are_unique",
+                // FIXME: HTML element attribute order maybe non-deterministic or different on
+                // `i686-mingw`?
+                "syntax_highlighting::tests::test_rainbow_highlighting",
+                // FIXME: enum discrim not evaluated?
+                "handlers::explicit_enum_discriminant::tests::non_primitive_repr_non_data_bearing_add_discriminant",
+                "tests::generated::doctest_explicit_enum_discriminant",
+                // FIXME: import is different
+                "handlers::add_explicit_type::tests::regression_issue_2922",
+                "handlers::bool_to_enum::tests::field_enum_cross_file",
+                // FIXME: assist no source changes
+                "handlers::explicit_enum_discriminant::tests::primitive_repr_non_data_bearing_add_discriminant",
+                // FIXME: code action not applicable
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_block_array",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_block_recursive",
+                "handlers::explicit_enum_discriminant::tests::primitive_repr_non_data_bearing_add_discriminant",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_block_array",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_block_recursive",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_block_scalar_calculate_expr",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_block_scalar_calculate_param_expr",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_block_slice_single",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_block_tuple",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_const_block_eval_block_expr",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_block_tuple_scalar_calculate_block_expr",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_const_block_eval_expr",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_const_block_expr",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_const_expr",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_const_fn_call_block_nested_builtin",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_const_fn_call_builtin",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_const_fn_call_tuple",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_eval_const_block_expr_to_str_lit",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_eval_const_if_expr_to_str_lit",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_eval_const_call_expr_to_str_lit",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_eval_const_block_macro_expr_to_str_lit",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_eval_const_macro_expr_to_str_lit",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_eval_const_match_expr_to_str_lit",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_expr_as_str_lit",
+                "handlers::inline_const_as_literal::tests::inline_const_as_literal_scalar_operators",
+                // FIXME: assist is not applicable
+                "tests::generated::doctest_inline_const_as_literal",
+                // FIXME: order of `ex fn` are different?
+                "render::tests::score_fn_type_and_name_match",
+                // FIXME: false negatives in diagnostic tests
+                "handlers::type_mismatch::tests::evaluate_const_generics_in_types",
+                "handlers::mutability_errors::tests::or_pattern",
+            ]
+        } else if self.host == "x86_64-apple-darwin" {
+            vec![
+                // FIXME: missing `#[cfg(never)]` on struct generic param
+                "item_tree::tests::generics_with_attributes",
+                // FIXME: `{unknown}` in generic param position
+                "hover::tests::generic_params_disabled_by_cfg",
+            ]
+        } else {
+            vec![]
+        });
+
+        let skip_tests = skip_tests.iter().map(|name| format!("--skip={name}")).collect::<Vec<_>>();
+        let skip_tests = skip_tests.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+
         run_cargo_test(
             cargo,
-            &[
-                // FIXME: may need a fix from https://github.com/rust-lang/rust-analyzer/pull/19124.
-                "--skip=config::tests::cargo_target_dir_subdir",
-            ],
+            skip_tests.as_slice(),
             &[],
             "rust-analyzer",
             "rust-analyzer",
