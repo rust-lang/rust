@@ -664,7 +664,7 @@ impl File {
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let f = File::open("foo.txt")?;
+    ///     let f = File::create("foo.txt")?;
     ///     f.lock()?;
     ///     Ok(())
     /// }
@@ -767,7 +767,7 @@ impl File {
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let f = File::open("foo.txt")?;
+    ///     let f = File::create("foo.txt")?;
     ///     f.try_lock()?;
     ///     Ok(())
     /// }
