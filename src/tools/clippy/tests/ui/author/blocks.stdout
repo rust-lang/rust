@@ -3,7 +3,7 @@ if let ExprKind::Block(block, None) = expr.kind
     && let StmtKind::Let(local) = block.stmts[0].kind
     && let Some(init) = local.init
     && let ExprKind::Lit(ref lit) = init.kind
-    && let LitKind::Int(42, LitIntType::Signed(IntTy::I32)) = lit.node
+    && let LitKind::Int(42, LitIntType::Signed(IntTy::I32, false)) = lit.node
     && let PatKind::Binding(BindingMode::NONE, _, name, None) = local.pat.kind
     && name.as_str() == "x"
     && let StmtKind::Let(local1) = block.stmts[1].kind

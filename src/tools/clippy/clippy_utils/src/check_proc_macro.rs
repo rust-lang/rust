@@ -82,7 +82,7 @@ fn lit_search_pat(lit: &LitKind) -> (Pat, Pat) {
         LitKind::ByteStr(_, StrStyle::Raw(_)) => (Pat::Str("br#\""), Pat::Str("#")),
         LitKind::Byte(_) => (Pat::Str("b'"), Pat::Str("'")),
         LitKind::Char(_) => (Pat::Str("'"), Pat::Str("'")),
-        LitKind::Int(_, LitIntType::Signed(IntTy::Isize)) => (Pat::Num, Pat::Str("isize")),
+        LitKind::Int(_, LitIntType::Signed(IntTy::Isize, _)) => (Pat::Num, Pat::Str("isize")),
         LitKind::Int(_, LitIntType::Unsigned(UintTy::Usize)) => (Pat::Num, Pat::Str("usize")),
         LitKind::Int(..) => (Pat::Num, Pat::Num),
         LitKind::Float(..) => (Pat::Num, Pat::Str("")),

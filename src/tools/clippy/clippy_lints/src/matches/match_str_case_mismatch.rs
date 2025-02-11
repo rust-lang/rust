@@ -86,7 +86,7 @@ fn verify_case<'a>(case_method: &'a CaseMethod, arms: &'a [Arm<'_>]) -> Option<(
 
     for arm in arms {
         if let PatKind::Expr(PatExpr {
-            kind: PatExprKind::Lit { lit, negated: false },
+            kind: PatExprKind::Lit { lit },
             ..
         }) = arm.pat.kind
             && let LitKind::Str(symbol, _) = lit.node

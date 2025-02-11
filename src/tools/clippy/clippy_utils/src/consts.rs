@@ -301,30 +301,33 @@ impl Constant<'_> {
     }
 }
 
-/// Parses a `LitKind` to a `Constant`.
-pub fn lit_to_mir_constant<'tcx>(lit: &LitKind, ty: Option<Ty<'tcx>>) -> Constant<'tcx> {
-    match *lit {
-        LitKind::Str(ref is, _) => Constant::Str(is.to_string()),
-        LitKind::Byte(b) => Constant::Int(u128::from(b)),
-        LitKind::ByteStr(ref s, _) | LitKind::CStr(ref s, _) => Constant::Binary(Arc::clone(s)),
-        LitKind::Char(c) => Constant::Char(c),
-        LitKind::Int(n, _) => Constant::Int(n.get()),
-        LitKind::Float(ref is, LitFloatType::Suffixed(fty)) => match fty {
-            // FIXME(f16_f128): just use `parse()` directly when available for `f16`/`f128`
-            ast::FloatTy::F16 => Constant::parse_f16(is.as_str()),
-            ast::FloatTy::F32 => Constant::F32(is.as_str().parse().unwrap()),
-            ast::FloatTy::F64 => Constant::F64(is.as_str().parse().unwrap()),
-            ast::FloatTy::F128 => Constant::parse_f128(is.as_str()),
-        },
-        LitKind::Float(ref is, LitFloatType::Unsuffixed) => match ty.expect("type of float is known").kind() {
-            ty::Float(FloatTy::F16) => Constant::parse_f16(is.as_str()),
-            ty::Float(FloatTy::F32) => Constant::F32(is.as_str().parse().unwrap()),
-            ty::Float(FloatTy::F64) => Constant::F64(is.as_str().parse().unwrap()),
-            ty::Float(FloatTy::F128) => Constant::parse_f128(is.as_str()),
-            _ => bug!(),
-        },
-        LitKind::Bool(b) => Constant::Bool(b),
-        LitKind::Err(_) => Constant::Err,
+impl<'tcx> ConstEvalCtxt<'tcx> {
+    /// Parses a `LitKind` to a `Constant`.
+    pub fn lit_to_mir_constant(&self, lit: &LitKind, ty: Ty<'tcx>) -> Option<Constant<'tcx>> {
+        Some(match *lit {
+            LitKind::Str(ref is, _) => Constant::Str(is.to_string()),
+            LitKind::Byte(b) => Constant::Int(u128::from(b)),
+            LitKind::ByteStr(ref s, _) | LitKind::CStr(ref s, _) => Constant::Binary(Arc::clone(s)),
+            LitKind::Char(c) => Constant::Char(c),
+            LitKind::Int(n, _) if lit.is_negative() => self.constant_negate(&Constant::Int(n.get()), ty)?,
+            LitKind::Int(n, _) => Constant::Int(n.get()),
+            LitKind::Float(ref is, LitFloatType::Suffixed(fty)) => match fty {
+                // FIXME(f16_f128): just use `parse()` directly when available for `f16`/`f128`
+                ast::FloatTy::F16 => Constant::parse_f16(is.as_str()),
+                ast::FloatTy::F32 => Constant::F32(is.as_str().parse().unwrap()),
+                ast::FloatTy::F64 => Constant::F64(is.as_str().parse().unwrap()),
+                ast::FloatTy::F128 => Constant::parse_f128(is.as_str()),
+            },
+            LitKind::Float(ref is, LitFloatType::Unsuffixed) => match ty.kind() {
+                ty::Float(FloatTy::F16) => Constant::parse_f16(is.as_str()),
+                ty::Float(FloatTy::F32) => Constant::F32(is.as_str().parse().unwrap()),
+                ty::Float(FloatTy::F64) => Constant::F64(is.as_str().parse().unwrap()),
+                ty::Float(FloatTy::F128) => Constant::parse_f128(is.as_str()),
+                _ => bug!(),
+            },
+            LitKind::Bool(b) => Constant::Bool(b),
+            LitKind::Err(_) => Constant::Err,
+        })
     }
 }
 
@@ -443,14 +446,9 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
 
     pub fn eval_pat_expr(&self, pat_expr: &PatExpr<'_>) -> Option<Constant<'tcx>> {
         match &pat_expr.kind {
-            PatExprKind::Lit { lit, negated } => {
-                let ty = self.typeck.node_type_opt(pat_expr.hir_id);
-                let val = lit_to_mir_constant(&lit.node, ty);
-                if *negated {
-                    self.constant_negate(&val, ty?)
-                } else {
-                    Some(val)
-                }
+            PatExprKind::Lit { lit } => {
+                let ty = self.typeck.node_type_opt(pat_expr.hir_id)?;
+                self.lit_to_mir_constant(&lit.node, ty)
             },
             PatExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir_body(*body).value),
             PatExprKind::Path(qpath) => self.qpath(qpath, pat_expr.hir_id),
@@ -488,7 +486,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 if is_direct_expn_of(e.span, "cfg").is_some() {
                     None
                 } else {
-                    Some(lit_to_mir_constant(&lit.node, self.typeck.expr_ty_opt(e)))
+                    self.lit_to_mir_constant(&lit.node, self.typeck.expr_ty_opt(e)?)
                 }
             },
             ExprKind::Array(vec) => self.multi(vec).map(Constant::Vec),
@@ -602,7 +600,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
         }
     }
 
-    fn constant_negate(&self, o: &Constant<'tcx>, ty: Ty<'_>) -> Option<Constant<'tcx>> {
+    pub fn constant_negate(&self, o: &Constant<'tcx>, ty: Ty<'_>) -> Option<Constant<'tcx>> {
         use self::Constant::{F32, F64, Int};
         match *o {
             Int(value) => {

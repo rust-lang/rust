@@ -6,7 +6,7 @@ use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, is_ty_alias, path_t
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Expr, ExprKind, Lit, Node, Path, QPath, TyKind, UnOp};
+use rustc_hir::{Expr, ExprKind, Node, Path, QPath, TyKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::{self, FloatTy, InferTy, Ty};
 use std::ops::ControlFlow;
@@ -99,7 +99,7 @@ pub(super) fn check<'tcx>(
         return false;
     }
 
-    if let Some(lit) = get_numeric_literal(cast_expr) {
+    if let ExprKind::Lit(lit) = cast_expr.kind {
         let literal_str = &cast_str;
 
         if let LitKind::Int(n, _) = lit.node
@@ -118,7 +118,7 @@ pub(super) fn check<'tcx>(
         }
 
         match lit.node {
-            LitKind::Int(_, LitIntType::Unsuffixed) if cast_to.is_integral() => {
+            LitKind::Int(_, LitIntType::Unsuffixed(_)) if cast_to.is_integral() => {
                 lint_unnecessary_cast(cx, expr, literal_str, cast_from, cast_to);
                 return false;
             },
@@ -126,7 +126,7 @@ pub(super) fn check<'tcx>(
                 lint_unnecessary_cast(cx, expr, literal_str, cast_from, cast_to);
                 return false;
             },
-            LitKind::Int(_, LitIntType::Signed(_) | LitIntType::Unsigned(_))
+            LitKind::Int(_, LitIntType::Signed(..) | LitIntType::Unsigned(_))
             | LitKind::Float(_, LitFloatType::Suffixed(_))
                 if cast_from.kind() == cast_to.kind() =>
             {
@@ -212,20 +212,6 @@ fn lint_unnecessary_cast(
         sugg,
         Applicability::MachineApplicable,
     );
-}
-
-fn get_numeric_literal<'e>(expr: &'e Expr<'e>) -> Option<&'e Lit> {
-    match expr.kind {
-        ExprKind::Lit(lit) => Some(lit),
-        ExprKind::Unary(UnOp::Neg, e) => {
-            if let ExprKind::Lit(lit) = e.kind {
-                Some(lit)
-            } else {
-                None
-            }
-        },
-        _ => None,
-    }
 }
 
 /// Returns the mantissa bits wide of a fp type.

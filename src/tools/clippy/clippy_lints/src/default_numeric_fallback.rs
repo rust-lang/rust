@@ -88,7 +88,7 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
             && matches!(self.ty_bounds.last(), Some(ExplicitTyBound(false)))
             && matches!(
                 lit.node,
-                LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed)
+                LitKind::Int(_, LitIntType::Unsuffixed(false)) | LitKind::Float(_, LitFloatType::Unsuffixed)
             )
         {
             let (suffix, is_float) = match lit_ty.kind() {

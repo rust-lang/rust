@@ -57,7 +57,7 @@ fn issue_13950() {
     let _ = x.div_ceil(8);
 
     let y = -33i32;
-    let _ = y.div_ceil(-7);
-    let _ = y.div_ceil(-7);
-    let _ = y.div_ceil(-7);
+    let _ = (y + -8) / -7;
+    let _ = (-8 + y) / -7;
+    let _ = (y - 8) / -7;
 }

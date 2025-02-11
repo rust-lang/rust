@@ -38,12 +38,12 @@ declare_clippy_lint! {
 declare_lint_pass!(ManualRangePatterns => [MANUAL_RANGE_PATTERNS]);
 
 fn expr_as_i128(expr: &PatExpr<'_>) -> Option<i128> {
-    if let PatExprKind::Lit { lit, negated } = expr.kind
+    if let PatExprKind::Lit { lit } = expr.kind
         && let LitKind::Int(num, _) = lit.node
     {
         // Intentionally not handling numbers greater than i128::MAX (for u128 literals) for now.
         let n = i128::try_from(num.get()).ok()?;
-        Some(if negated { -n } else { n })
+        Some(if lit.node.is_negative() { -n } else { n })
     } else {
         None
     }

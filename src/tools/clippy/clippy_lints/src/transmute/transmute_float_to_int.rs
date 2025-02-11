@@ -4,7 +4,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg;
 use rustc_ast as ast;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, UnOp};
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 
@@ -15,7 +15,7 @@ pub(super) fn check<'tcx>(
     e: &'tcx Expr<'_>,
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
-    mut arg: &'tcx Expr<'_>,
+    arg: &'tcx Expr<'_>,
     const_context: bool,
     msrv: &Msrv,
 ) -> bool {
@@ -30,10 +30,6 @@ pub(super) fn check<'tcx>(
                 format!("transmute from a `{from_ty}` to a `{to_ty}`"),
                 |diag| {
                     let mut sugg = sugg::Sugg::hir(cx, arg, "..");
-
-                    if let ExprKind::Unary(UnOp::Neg, inner_expr) = &arg.kind {
-                        arg = inner_expr;
-                    }
 
                     if let ExprKind::Lit(lit) = &arg.kind
                         // if the expression is a float literal and it is unsuffixed then

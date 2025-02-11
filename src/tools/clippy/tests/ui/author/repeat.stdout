@@ -4,7 +4,7 @@ if let ExprKind::Repeat(value, length) = expr.kind
     && let ConstArgKind::Anon(anon_const) = length.kind
     && expr1 = &cx.tcx.hir_body(anon_const.body).value
     && let ExprKind::Lit(ref lit1) = expr1.kind
-    && let LitKind::Int(5, LitIntType::Unsuffixed) = lit1.node
+    && let LitKind::Int(5, LitIntType::Unsuffixed(false)) = lit1.node
 {
     // report your lint here
 }

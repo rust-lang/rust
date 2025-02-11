@@ -40,7 +40,7 @@ fn main() {
     -(3_usize as i32);
     -(3_usize as i32);
 
-    -1 * -1; // should be ok
+    1; // should be ok
 
     X * -1; // should be ok
     -1 * X; // should also be ok
