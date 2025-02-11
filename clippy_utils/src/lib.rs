@@ -113,6 +113,7 @@ use rustc_hir::{
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
+use rustc_middle::mir::{AggregateKind, Operand, RETURN_PLACE, Rvalue, StatementKind, TerminatorKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::layout::IntegerExt;
@@ -919,22 +920,101 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
 }
 
 /// Returns true if the expr is equal to `Default::default` when evaluated.
-pub fn is_default_equivalent_call(cx: &LateContext<'_>, repl_func: &Expr<'_>) -> bool {
+pub fn is_default_equivalent_call(
+    cx: &LateContext<'_>,
+    repl_func: &Expr<'_>,
+    whole_call_expr: Option<&Expr<'_>>,
+) -> bool {
     if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind
         && let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id()
         && (is_diag_trait_item(cx, repl_def_id, sym::Default)
             || is_default_equivalent_ctor(cx, repl_def_id, repl_func_qpath))
     {
-        true
-    } else {
-        false
+        return true;
     }
+
+    // Get the type of the whole method call expression, find the exact method definition, look at
+    // its body and check if it is similar to the corresponding `Default::default()` body.
+    let Some(e) = whole_call_expr else { return false };
+    let Some(default_fn_def_id) = cx.tcx.get_diagnostic_item(sym::default_fn) else {
+        return false;
+    };
+    let Some(ty) = cx.tcx.typeck(e.hir_id.owner.def_id).expr_ty_adjusted_opt(e) else {
+        return false;
+    };
+    let args = rustc_ty::GenericArgs::for_item(cx.tcx, default_fn_def_id, |param, _| {
+        if let rustc_ty::GenericParamDefKind::Lifetime = param.kind {
+            cx.tcx.lifetimes.re_erased.into()
+        } else if param.index == 0 && param.name == kw::SelfUpper {
+            ty.into()
+        } else {
+            param.to_error(cx.tcx)
+        }
+    });
+    let instance = rustc_ty::Instance::try_resolve(cx.tcx, cx.typing_env(), default_fn_def_id, args);
+
+    let Ok(Some(instance)) = instance else { return false };
+    if let rustc_ty::InstanceKind::Item(def) = instance.def
+        && !cx.tcx.is_mir_available(def)
+    {
+        return false;
+    }
+    let ExprKind::Path(ref repl_func_qpath) = repl_func.kind else {
+        return false;
+    };
+    let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id() else {
+        return false;
+    };
+
+    // Get the MIR Body for the `<Ty as Default>::default()` function.
+    // If it is a value or call (either fn or ctor), we compare its `DefId` against the one for the
+    // resolution of the expression we had in the path. This lets us identify, for example, that
+    // the body of `<Vec<T> as Default>::default()` is a `Vec::new()`, and the field was being
+    // initialized to `Vec::new()` as well.
+    let body = cx.tcx.instance_mir(instance.def);
+    for block_data in body.basic_blocks.iter() {
+        if block_data.statements.len() == 1
+            && let StatementKind::Assign(assign) = &block_data.statements[0].kind
+            && assign.0.local == RETURN_PLACE
+            && let Rvalue::Aggregate(kind, _places) = &assign.1
+            && let AggregateKind::Adt(did, variant_index, _, _, _) = &**kind
+            && let def = cx.tcx.adt_def(did)
+            && let variant = &def.variant(*variant_index)
+            && variant.fields.is_empty()
+            && let Some((_, did)) = variant.ctor
+            && did == repl_def_id
+        {
+            return true;
+        } else if block_data.statements.is_empty()
+            && let Some(term) = &block_data.terminator
+        {
+            match &term.kind {
+                TerminatorKind::Call {
+                    func: Operand::Constant(c),
+                    ..
+                } if let rustc_ty::FnDef(did, _args) = c.ty().kind()
+                    && *did == repl_def_id =>
+                {
+                    return true;
+                },
+                TerminatorKind::TailCall {
+                    func: Operand::Constant(c),
+                    ..
+                } if let rustc_ty::FnDef(did, _args) = c.ty().kind()
+                    && *did == repl_def_id =>
+                {
+                    return true;
+                },
+                _ => {},
+            }
+        }
+    }
+    false
 }
 
-/// Returns true if the expr is equal to `Default::default()` of it's type when evaluated.
+/// Returns true if the expr is equal to `Default::default()` of its type when evaluated.
 ///
-/// It doesn't cover all cases, for example indirect function calls (some of std
-/// functions are supported) but it is the best we have.
+/// It doesn't cover all cases, like struct literals, but it is a close approximation.
 pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     match &e.kind {
         ExprKind::Lit(lit) => match lit.node {
@@ -955,7 +1035,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
                 false
             }
         },
-        ExprKind::Call(repl_func, []) => is_default_equivalent_call(cx, repl_func),
+        ExprKind::Call(repl_func, []) => is_default_equivalent_call(cx, repl_func, Some(e)),
         ExprKind::Call(from_func, [arg]) => is_default_equivalent_from(cx, from_func, arg),
         ExprKind::Path(qpath) => is_res_lang_ctor(cx, cx.qpath_res(qpath, e.hir_id), OptionNone),
         ExprKind::AddrOf(rustc_hir::BorrowKind::Ref, _, expr) => matches!(expr.kind, ExprKind::Array([])),
