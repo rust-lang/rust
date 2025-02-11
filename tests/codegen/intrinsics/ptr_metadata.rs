@@ -1,4 +1,4 @@
-//@ compile-flags: -O -C no-prepopulate-passes -Z inline-mir
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes -Z inline-mir
 //@ only-64bit (so I don't need to worry about usize)
 
 #![crate_type = "lib"]

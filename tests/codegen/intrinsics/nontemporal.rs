@@ -1,4 +1,4 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@revisions: with_nontemporal without_nontemporal
 //@[with_nontemporal] compile-flags: --target aarch64-unknown-linux-gnu
 //@[with_nontemporal] needs-llvm-components: aarch64

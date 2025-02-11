@@ -1,4 +1,4 @@
-//@ compile-flags: -O -C no-prepopulate-passes --target riscv64gc-unknown-linux-gnu
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes --target riscv64gc-unknown-linux-gnu
 //@ needs-llvm-components: riscv
 
 #![feature(no_core, lang_items)]

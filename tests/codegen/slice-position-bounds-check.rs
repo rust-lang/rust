@@ -1,4 +1,4 @@
-//@ compile-flags: -O -C panic=abort
+//@ compile-flags: -Copt-level=3 -C panic=abort
 #![crate_type = "lib"]
 
 fn search<T: Ord + Eq>(arr: &mut [T], a: &T) -> Result<usize, ()> {
