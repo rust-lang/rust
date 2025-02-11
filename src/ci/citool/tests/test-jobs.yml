@@ -1,0 +1,145 @@
+runners:
+  - &base-job
+    env: { }
+
+  - &job-linux-4c
+    os: ubuntu-24.04
+    # Free some disk space to avoid running out of space during the build.
+    free_disk: true
+    <<: *base-job
+
+  - &job-linux-16c
+    os: ubuntu-22.04-16core-64gb
+    <<: *base-job
+
+  - &job-macos-m1
+    os: macos-14
+    <<: *base-job
+
+  - &job-windows
+    os: windows-2022
+    <<: *base-job
+
+  - &job-aarch64-linux
+    # Free some disk space to avoid running out of space during the build.
+    free_disk: true
+    os: ubuntu-22.04-arm
+    <<: *base-job
+envs:
+  env-x86_64-apple-tests: &env-x86_64-apple-tests
+    SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc -- --exact
+    RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+    RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+    # Ensure that host tooling is tested on our minimum supported macOS version.
+    MACOSX_DEPLOYMENT_TARGET: 10.12
+    MACOSX_STD_DEPLOYMENT_TARGET: 10.12
+    SELECT_XCODE: /Applications/Xcode_15.2.app
+    NO_LLVM_ASSERTIONS: 1
+    NO_DEBUG_ASSERTIONS: 1
+    NO_OVERFLOW_CHECKS: 1
+
+  production:
+    &production
+    DEPLOY_BUCKET: rust-lang-ci2
+    # AWS_SECRET_ACCESS_KEYs are stored in GitHub's secrets storage, named
+    # AWS_SECRET_ACCESS_KEY_<keyid>. Including the key id in the name allows to
+    # rotate them in a single branch while keeping the old key in another
+    # branch, which wouldn't be possible if the key was named with the kind
+    # (caches, artifacts...).
+    CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZI5DHEBFL
+    ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
+    AWS_REGION: us-west-1
+    TOOLSTATE_PUBLISH: 1
+
+  try:
+    <<: *production
+    # The following env var activates faster `try` builds in `opt-dist` by, e.g.
+    # - building only the more commonly useful components (we rarely need e.g. rust-docs in try
+    #   builds)
+    # - not running `opt-dist`'s post-optimization smoke tests on the resulting toolchain
+    #
+    # If you *want* these to happen however, temporarily comment it before triggering a try build.
+    DIST_TRY_BUILD: 1
+
+  auto:
+    <<: *production
+
+  pr:
+    PR_CI_JOB: 1
+
+# Jobs that run on each push to a pull request (PR)
+# These jobs automatically inherit envs.pr, to avoid repeating
+# it in each job definition.
+pr:
+  - name: mingw-check
+    <<: *job-linux-4c
+  - name: mingw-check-tidy
+    continue_on_error: true
+    <<: *job-linux-4c
+
+# Jobs that run when you perform a try build (@bors try)
+# These jobs automatically inherit envs.try, to avoid repeating
+# it in each job definition.
+try:
+  - name: dist-x86_64-linux
+    env:
+      CODEGEN_BACKENDS: llvm,cranelift
+    <<: *job-linux-16c
+
+# Main CI jobs that have to be green to merge a commit into master
+# These jobs automatically inherit envs.auto, to avoid repeating
+# it in each job definition.
+auto:
+  - name: aarch64-gnu
+    <<: *job-aarch64-linux
+
+  # The x86_64-gnu-llvm-18 job is split into multiple jobs to run tests in parallel.
+  # x86_64-gnu-llvm-18-1 skips tests that run in x86_64-gnu-llvm-18-{2,3}.
+  - name: x86_64-gnu-llvm-18-1
+    env:
+      RUST_BACKTRACE: 1
+      READ_ONLY_SRC: "0"
+      IMAGE: x86_64-gnu-llvm-18
+      DOCKER_SCRIPT: stage_2_test_set1.sh
+    <<: *job-linux-4c
+
+
+  ####################
+  #  macOS Builders  #
+  ####################
+
+  - name: aarch64-apple
+    env:
+      SCRIPT: ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin
+      RUST_CONFIGURE_ARGS: >-
+        --enable-sanitizers
+        --enable-profiler
+        --set rust.jemalloc
+      RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+      SELECT_XCODE: /Applications/Xcode_15.4.app
+      USE_XCODE_CLANG: 1
+      # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
+      # supports the hardware, so only need to test it there.
+      MACOSX_DEPLOYMENT_TARGET: 11.0
+      MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+      NO_LLVM_ASSERTIONS: 1
+      NO_DEBUG_ASSERTIONS: 1
+      NO_OVERFLOW_CHECKS: 1
+    <<: *job-macos-m1
+
+  ######################
+  #  Windows Builders  #
+  ######################
+
+  - name: dist-i686-msvc
+    env:
+      RUST_CONFIGURE_ARGS: >-
+        --build=i686-pc-windows-msvc
+        --host=i686-pc-windows-msvc
+        --target=i686-pc-windows-msvc,i586-pc-windows-msvc
+        --enable-full-tools
+        --enable-profiler
+      SCRIPT: python x.py dist bootstrap --include-default-paths
+      DIST_REQUIRE_ALL_TOOLS: 1
+      CODEGEN_BACKENDS: llvm,cranelift
+    <<: *job-windows
