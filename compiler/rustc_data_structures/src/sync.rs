@@ -97,7 +97,6 @@ mod mode {
 
 // FIXME(parallel_compiler): Get rid of these aliases across the compiler.
 
-pub use std::marker::{Send, Sync};
 pub use std::sync::OnceLock;
 // Use portable AtomicU64 for targets without native 64-bit atomics
 #[cfg(target_has_atomic = "64")]
