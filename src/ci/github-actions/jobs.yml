@@ -10,11 +10,6 @@ runners:
     free_disk: true
     <<: *base-job
 
-  # Large runner used mainly for its bigger disk capacity
-  - &job-linux-4c-largedisk
-    os: ubuntu-22.04-4core-16gb
-    <<: *base-job
-
   - &job-linux-8c
     os: ubuntu-22.04-8core-32gb
     <<: *base-job
@@ -183,7 +178,7 @@ auto:
     <<: *job-linux-4c
 
   - name: dist-powerpc64le-linux
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-4c
 
   - name: dist-riscv64-linux
     <<: *job-linux-4c
@@ -296,7 +291,7 @@ auto:
   - name: x86_64-gnu-debug
     # This seems to be needed because a full stage 2 build + run-make tests
     # overwhelms the storage capacity of the standard 4c runner.
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-4c
 
   - name: x86_64-gnu-distcheck
     <<: *job-linux-8c
