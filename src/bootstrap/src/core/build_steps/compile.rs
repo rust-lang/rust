@@ -1105,9 +1105,7 @@ pub fn rustc_cargo(
         cargo.rustflag("-Zdefault-visibility=protected");
     }
 
-    // We currently don't support cross-crate LTO in stage0. This also isn't hugely necessary
-    // and may just be a time sink.
-    if compiler.stage != 0 {
+    if is_lto_stage(compiler) {
         match builder.config.rust_lto {
             RustcLto::Thin | RustcLto::Fat => {
                 // Since using LTO for optimizing dylibs is currently experimental,
@@ -2334,4 +2332,9 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
     // is greater than the mtime of rustc-main, and will rebuild rustc-main. That will then cause
     // everything else (standard library, future stages...) to be rebuilt.
     t!(file.set_modified(previous_mtime));
+}
+
+/// We only use LTO for stage 2+, to speed up build time of intermediate stages.
+pub fn is_lto_stage(build_compiler: &Compiler) -> bool {
+    build_compiler.stage != 0
 }
