@@ -773,8 +773,7 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
                     }
                     let msg = format!(
                         "failed to find a pre-opened file descriptor \
-                     through which {:?} could be opened",
-                        p
+                        through which {p:?} could be opened",
                     );
                     return Err(io::Error::new(io::ErrorKind::Uncategorized, msg));
                 }

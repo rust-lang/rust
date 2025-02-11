@@ -182,7 +182,7 @@ impl TcpListener {
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
         if ttl > 255 {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "TTL must be less than 256"));
+            return Err(io::const_error!(io::ErrorKind::InvalidInput, "TTL must be less than 256"));
         }
         crate::os::xous::ffi::blocking_scalar(
             services::net_server(),

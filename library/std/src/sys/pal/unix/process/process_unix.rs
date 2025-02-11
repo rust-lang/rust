@@ -1228,7 +1228,7 @@ mod linux_child_ext {
                 .as_ref()
                 // SAFETY: The os type is a transparent wrapper, therefore we can transmute references
                 .map(|fd| unsafe { mem::transmute::<&imp::PidFd, &os::PidFd>(fd) })
-                .ok_or_else(|| io::Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
+                .ok_or_else(|| io::const_error!(ErrorKind::Uncategorized, "No pidfd was created."))
         }
 
         fn into_pidfd(mut self) -> Result<os::PidFd, Self> {
