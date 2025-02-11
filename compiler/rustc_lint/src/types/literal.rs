@@ -283,11 +283,7 @@ fn lint_int_literal<'tcx>(
         }
 
         let span = if negative { type_limits.negated_expr_span.unwrap() } else { span };
-        let lit = cx
-            .sess()
-            .source_map()
-            .span_to_snippet(span)
-            .unwrap_or_else(|_| if negative { format!("-{v}") } else { v.to_string() });
+        let lit = if negative { format!("-{v}") } else { v.to_string() };
         // FIXME: Don't suggest unsigned types for negative literals
         let help = get_type_suggestion(cx.typeck_results().node_type(hir_id), v, negative)
             .map(|suggestion_ty| OverflowingIntHelp { suggestion_ty });
