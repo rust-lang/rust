@@ -12,7 +12,9 @@ use anyhow::{Context, anyhow, bail, ensure};
 use libm::support::Hexf;
 
 use crate::precision::CheckAction;
-use crate::{CheckCtx, Float, Int, MaybeOverride, SpecialCase, TestResult};
+use crate::{
+    CheckBasis, CheckCtx, Float, GeneratorKind, Int, MaybeOverride, SpecialCase, TestResult,
+};
 
 /// Trait for calling a function with a tuple as arguments.
 ///
@@ -207,6 +209,8 @@ where
     SpecialCase: MaybeOverride<Input>,
 {
     let (result, xfail_msg) = match SpecialCase::check_int(input, actual, expected, ctx) {
+        // `require_biteq` forbids overrides.
+        _ if ctx.gen_kind == GeneratorKind::List => (actual == expected, None),
         CheckAction::AssertSuccess => (actual == expected, None),
         CheckAction::AssertFailure(msg) => (actual != expected, Some(msg)),
         CheckAction::Custom(res) => return res,
@@ -291,7 +295,12 @@ where
     let mut inner = || -> TestResult {
         let mut allowed_ulp = ctx.ulp;
 
+        // Forbid overrides if the items came from an explicit list, as long as we are checking
+        // against either MPFR or the result itself.
+        let require_biteq = ctx.gen_kind == GeneratorKind::List && ctx.basis != CheckBasis::Musl;
+
         match SpecialCase::check_float(input, actual, expected, ctx) {
+            _ if require_biteq => (),
             CheckAction::AssertSuccess => (),
             CheckAction::AssertFailure(msg) => assert_failure_msg = Some(msg),
             CheckAction::Custom(res) => return res,
@@ -301,6 +310,9 @@ where
 
         // Check when both are NaNs
         if actual.is_nan() && expected.is_nan() {
+            if require_biteq && ctx.basis == CheckBasis::None {
+                ensure!(actual.to_bits() == expected.to_bits(), "mismatched NaN bitpatterns");
+            }
             // By default, NaNs have nothing special to check.
             return Ok(());
         } else if actual.is_nan() || expected.is_nan() {

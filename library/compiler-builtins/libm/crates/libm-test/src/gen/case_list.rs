@@ -579,8 +579,11 @@ fn rint_cases() -> Vec<TestCase<op::rint::Routine>> {
     TestCase::append_pairs(
         &mut v,
         &[
-            // Failure on i586
+            // Known failure on i586
+            #[cfg(not(x86_no_sse))]
             ((hf64!("-0x1.e3f13ff995ffcp+38"),), Some(hf64!("-0x1.e3f13ff994000p+38"))),
+            #[cfg(x86_no_sse)]
+            ((hf64!("-0x1.e3f13ff995ffcp+38"),), Some(hf64!("-0x1.e3f13ff998000p+38"))),
         ],
     );
     v
@@ -628,8 +631,11 @@ fn roundeven_cases() -> Vec<TestCase<op::roundeven::Routine>> {
     TestCase::append_pairs(
         &mut v,
         &[
-            // Failure on i586
+            // Known failure on i586
+            #[cfg(not(x86_no_sse))]
             ((hf64!("-0x1.e3f13ff995ffcp+38"),), Some(hf64!("-0x1.e3f13ff994000p+38"))),
+            #[cfg(x86_no_sse)]
+            ((hf64!("-0x1.e3f13ff995ffcp+38"),), Some(hf64!("-0x1.e3f13ff998000p+38"))),
         ],
     );
     v
