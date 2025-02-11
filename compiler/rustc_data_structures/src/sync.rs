@@ -112,9 +112,8 @@ pub use std::sync::{OnceLock, Weak};
 
 pub use mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
 pub use parking_lot::{
-    MappedMutexGuard as MappedLockGuard, MappedRwLockReadGuard as MappedReadGuard,
-    MappedRwLockWriteGuard as MappedWriteGuard, RwLockReadGuard as ReadGuard,
-    RwLockWriteGuard as WriteGuard,
+    MappedRwLockReadGuard as MappedReadGuard, MappedRwLockWriteGuard as MappedWriteGuard,
+    RwLockReadGuard as ReadGuard, RwLockWriteGuard as WriteGuard,
 };
 #[cfg(not(target_has_atomic = "64"))]
 pub use portable_atomic::AtomicU64;

@@ -58,7 +58,6 @@ are implemented differently depending on whether `parallel-compiler` is true.
 | WriteGuard | parking_lot::RwLockWriteGuard | std::cell::RefMut |
 | MappedWriteGuard | parking_lot::MappedRwLockWriteGuard | std::cell::RefMut |
 | LockGuard | parking_lot::MutexGuard | std::cell::RefMut |
-| MappedLockGuard | parking_lot::MappedMutexGuard | std::cell::RefMut |
 
 - These thread-safe data structures are interspersed during compilation which
   can cause lock contention resulting in degraded performance as the number of
