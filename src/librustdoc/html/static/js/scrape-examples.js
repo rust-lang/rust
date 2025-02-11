@@ -60,8 +60,8 @@
 
         const locs = example.locs;
         if (locs.length > 1) {
-            const next = createScrapeButton(buttonHolder, "next", "≻");
-            const prev = createScrapeButton(buttonHolder, "prev", "≺");
+            const next = createScrapeButton(buttonHolder, "next", ">");
+            const prev = createScrapeButton(buttonHolder, "prev", "<");
 
             // Toggle through list of examples in a given file
             const onChangeLoc = changeIndex => {

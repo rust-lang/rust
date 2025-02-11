@@ -1697,6 +1697,10 @@ instead, we check that it's not a "finger" cursor.
 .example-wrap .button-holder > *:not(:first-child) {
 	margin-left: var(--button-left-margin);
 }
+.example-wrap .button-holder .prev,
+.example-wrap .button-holder .next {
+	font-size: 1.3em;
+}
 .example-wrap .button-holder .copy-button {
 	padding: 2px 0 0 4px;
 }
