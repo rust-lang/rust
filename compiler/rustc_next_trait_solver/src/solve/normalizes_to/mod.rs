@@ -538,80 +538,92 @@ where
         let cx = ecx.cx();
         let metadata_def_id = cx.require_lang_item(TraitSolverLangItem::Metadata);
         assert_eq!(metadata_def_id, goal.predicate.def_id());
+        let metadata_ty = match goal.predicate.self_ty().kind() {
+            ty::Bool
+            | ty::Char
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(..)
+            | ty::Array(..)
+            | ty::Pat(..)
+            | ty::RawPtr(..)
+            | ty::Ref(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::Never
+            | ty::Foreign(..)
+            | ty::Dynamic(_, _, ty::DynStar) => Ty::new_unit(cx),
+
+            ty::Error(e) => Ty::new_error(cx, e),
+
+            ty::Str | ty::Slice(_) => Ty::new_usize(cx),
+
+            ty::Dynamic(_, _, ty::Dyn) => {
+                let dyn_metadata = cx.require_lang_item(TraitSolverLangItem::DynMetadata);
+                cx.type_of(dyn_metadata)
+                    .instantiate(cx, &[I::GenericArg::from(goal.predicate.self_ty())])
+            }
+
+            ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
+                // This is the "fallback impl" for type parameters, unnormalizable projections
+                // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
+                // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
+                // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
+                let alias_bound_result =
+                    ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+                        let sized_predicate = ty::TraitRef::new(
+                            cx,
+                            cx.require_lang_item(TraitSolverLangItem::Sized),
+                            [I::GenericArg::from(goal.predicate.self_ty())],
+                        );
+                        ecx.add_goal(GoalSource::Misc, goal.with(cx, sized_predicate));
+                        ecx.instantiate_normalizes_to_term(goal, Ty::new_unit(cx).into());
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    });
+                // In case the dummy alias-bound candidate does not apply, we instead treat this projection
+                // as rigid.
+                return alias_bound_result.or_else(|NoSolution| {
+                    ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|this| {
+                        this.structurally_instantiate_normalizes_to_term(
+                            goal,
+                            goal.predicate.alias,
+                        );
+                        this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    })
+                });
+            }
+
+            ty::Adt(def, args) if def.is_struct() => match def.struct_tail_ty(cx) {
+                None => Ty::new_unit(cx),
+                Some(tail_ty) => {
+                    Ty::new_projection(cx, metadata_def_id, [tail_ty.instantiate(cx, args)])
+                }
+            },
+            ty::Adt(_, _) => Ty::new_unit(cx),
+
+            ty::Tuple(elements) => match elements.last() {
+                None => Ty::new_unit(cx),
+                Some(tail_ty) => Ty::new_projection(cx, metadata_def_id, [tail_ty]),
+            },
+
+            ty::UnsafeBinder(_) => {
+                // FIXME(unsafe_binder): Figure out how to handle pointee for unsafe binders.
+                todo!()
+            }
+
+            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            | ty::Bound(..) => panic!(
+                "unexpected self ty `{:?}` when normalizing `<T as Pointee>::Metadata`",
+                goal.predicate.self_ty()
+            ),
+        };
+
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-            let metadata_ty = match goal.predicate.self_ty().kind() {
-                ty::Bool
-                | ty::Char
-                | ty::Int(..)
-                | ty::Uint(..)
-                | ty::Float(..)
-                | ty::Array(..)
-                | ty::Pat(..)
-                | ty::RawPtr(..)
-                | ty::Ref(..)
-                | ty::FnDef(..)
-                | ty::FnPtr(..)
-                | ty::Closure(..)
-                | ty::CoroutineClosure(..)
-                | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
-                | ty::Coroutine(..)
-                | ty::CoroutineWitness(..)
-                | ty::Never
-                | ty::Foreign(..)
-                | ty::Dynamic(_, _, ty::DynStar) => Ty::new_unit(cx),
-
-                ty::Error(e) => Ty::new_error(cx, e),
-
-                ty::Str | ty::Slice(_) => Ty::new_usize(cx),
-
-                ty::Dynamic(_, _, ty::Dyn) => {
-                    let dyn_metadata = cx.require_lang_item(TraitSolverLangItem::DynMetadata);
-                    cx.type_of(dyn_metadata)
-                        .instantiate(cx, &[I::GenericArg::from(goal.predicate.self_ty())])
-                }
-
-                ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
-                    // This is the "fallback impl" for type parameters, unnormalizable projections
-                    // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
-                    // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
-                    // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
-                    let sized_predicate = ty::TraitRef::new(
-                        cx,
-                        cx.require_lang_item(TraitSolverLangItem::Sized),
-                        [I::GenericArg::from(goal.predicate.self_ty())],
-                    );
-                    // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
-                    ecx.add_goal(GoalSource::Misc, goal.with(cx, sized_predicate));
-                    Ty::new_unit(cx)
-                }
-
-                ty::Adt(def, args) if def.is_struct() => match def.struct_tail_ty(cx) {
-                    None => Ty::new_unit(cx),
-                    Some(tail_ty) => {
-                        Ty::new_projection(cx, metadata_def_id, [tail_ty.instantiate(cx, args)])
-                    }
-                },
-                ty::Adt(_, _) => Ty::new_unit(cx),
-
-                ty::Tuple(elements) => match elements.last() {
-                    None => Ty::new_unit(cx),
-                    Some(tail_ty) => Ty::new_projection(cx, metadata_def_id, [tail_ty]),
-                },
-
-                ty::UnsafeBinder(_) => {
-                    // FIXME(unsafe_binder): Figure out how to handle pointee for unsafe binders.
-                    todo!()
-                }
-
-                ty::Infer(
-                    ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_),
-                )
-                | ty::Bound(..) => panic!(
-                    "unexpected self ty `{:?}` when normalizing `<T as Pointee>::Metadata`",
-                    goal.predicate.self_ty()
-                ),
-            };
-
             ecx.instantiate_normalizes_to_term(goal, metadata_ty.into());
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
