@@ -1438,6 +1438,40 @@ pub fn foo() {}
 name = "bar"
 version = "0.0.0"
 
+[dependencies]
+foo = { path = "../foo" }
+
+//- /bar/src/lib.rs
+"#,
+    )
+    .root("foo")
+    .root("bar")
+    .root("baz")
+    .with_config(json!({
+       "files": {
+           "exclude": ["foo"]
+        }
+    }))
+    .server()
+    .wait_until_workspace_is_loaded();
+
+    server.request::<WorkspaceSymbolRequest>(Default::default(), json!([]));
+
+    let server = Project::with_fixture(
+        r#"
+//- /foo/Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /foo/src/lib.rs
+pub fn foo() {}
+
+//- /bar/Cargo.toml
+[package]
+name = "bar"
+version = "0.0.0"
+
 //- /bar/src/lib.rs
 pub fn bar() {}
 
@@ -1454,7 +1488,7 @@ version = "0.0.0"
     .root("baz")
     .with_config(json!({
        "files": {
-           "excludeDirs": ["foo", "bar"]
+           "exclude": ["foo", "bar"]
         }
     }))
     .server()
