@@ -90,7 +90,7 @@ pub const fn unsupported<T>() -> std_io::Result<T> {
 
 #[inline]
 pub const fn unsupported_err() -> std_io::Error {
-    std_io::const_error!(std_io::ErrorKind::Unsupported, "operation not supported on UEFI",)
+    std_io::const_error!(std_io::ErrorKind::Unsupported, "operation not supported on UEFI")
 }
 
 pub fn decode_error_kind(code: RawOsError) -> crate::io::ErrorKind {

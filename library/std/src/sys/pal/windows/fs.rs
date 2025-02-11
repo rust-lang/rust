@@ -1468,9 +1468,7 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
 
 #[cfg(target_vendor = "uwp")]
 pub fn link(_original: &Path, _link: &Path) -> io::Result<()> {
-    return Err(
-        io::const_error!(io::ErrorKind::Unsupported, "hard link are not supported on UWP",),
-    );
+    return Err(io::const_error!(io::ErrorKind::Unsupported, "hard link are not supported on UWP"));
 }
 
 pub fn stat(path: &Path) -> io::Result<FileAttr> {

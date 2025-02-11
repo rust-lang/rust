@@ -533,7 +533,7 @@ impl File {
             Some(time) if let Some(ts) = time.to_wasi_timestamp() => Ok(ts),
             Some(_) => Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
-                "timestamp is too large to set as a file time"
+                "timestamp is too large to set as a file time",
             )),
             None => Ok(0),
         };

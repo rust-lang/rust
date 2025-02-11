@@ -228,7 +228,7 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return io::const_error!(ErrorKind::InvalidInput, "nul byte found in provided data",);
+            return io::const_error!(ErrorKind::InvalidInput, "nul byte found in provided data");
         }
 
         match self.setup_io(default, true) {
