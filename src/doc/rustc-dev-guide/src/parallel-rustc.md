@@ -170,12 +170,10 @@ Here are some resources that can be used to learn more:
 - [This list of interior mutability in the compiler by nikomatsakis][imlist]
 
 [`rayon`]: https://crates.io/crates/rayon
-[Arc]: https://doc.rust-lang.org/std/sync/struct.Arc.html
 [imlist]: https://github.com/nikomatsakis/rustc-parallelization/blob/master/interior-mutability-list.md
 [irlo0]: https://internals.rust-lang.org/t/parallelizing-rustc-using-rayon/6606
 [irlo1]: https://internals.rust-lang.org/t/help-test-parallel-rustc/11503
 [monomorphization]: backend/monomorph.md
 [parallel-rustdoc]: https://github.com/rust-lang/rust/issues/82741
-[Rc]: https://doc.rust-lang.org/std/rc/struct.Rc.html
 [rustc-rayon]: https://github.com/rust-lang/rustc-rayon
 [tracking]: https://github.com/rust-lang/rust/issues/48685
