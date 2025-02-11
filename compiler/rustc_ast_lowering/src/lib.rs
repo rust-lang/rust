@@ -88,19 +88,6 @@ pub mod stability;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
-#[derive(Debug, Clone)]
-struct FnContractLoweringInfo<'hir> {
-    pub span: Span,
-    pub requires: Option<ast::ptr::P<ast::Expr>>,
-    pub ensures: Option<FnContractLoweringEnsures<'hir>>,
-}
-
-#[derive(Debug, Clone)]
-struct FnContractLoweringEnsures<'hir> {
-    expr: ast::ptr::P<ast::Expr>,
-    fresh_ident: (Ident, hir::Pat<'hir>, HirId),
-}
-
 struct LoweringContext<'a, 'hir> {
     tcx: TyCtxt<'hir>,
     resolver: &'a mut ResolverAstLowering,
@@ -115,7 +102,7 @@ struct LoweringContext<'a, 'hir> {
     /// Collect items that were created by lowering the current owner.
     children: Vec<(LocalDefId, hir::MaybeOwner<'hir>)>,
 
-    contract: Option<FnContractLoweringInfo<'hir>>,
+    contract_ensures: Option<(Span, Ident, HirId)>,
 
     coroutine_kind: Option<hir::CoroutineKind>,
 
@@ -165,7 +152,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             bodies: Vec::new(),
             attrs: SortedMap::default(),
             children: Vec::default(),
-            contract: None,
+            contract_ensures: None,
             current_hir_id_owner: hir::CRATE_OWNER_ID,
             item_local_id_counter: hir::ItemLocalId::ZERO,
             ident_and_label_to_local_id: Default::default(),
@@ -852,7 +839,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
 
-        let old_contract = self.contract.take();
+        let old_contract = self.contract_ensures.take();
 
         let catch_scope = self.catch_scope.take();
         let loop_scope = self.loop_scope.take();
@@ -860,7 +847,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.catch_scope = catch_scope;
         self.loop_scope = loop_scope;
 
-        self.contract = old_contract;
+        self.contract_ensures = old_contract;
 
         self.is_in_loop_condition = was_in_loop_condition;
 

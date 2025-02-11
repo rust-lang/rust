@@ -664,7 +664,7 @@ impl<'tcx> AbiBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
 }
 
 impl llvm::CallConv {
-    pub fn from_conv(conv: Conv, arch: &str) -> Self {
+    pub(crate) fn from_conv(conv: Conv, arch: &str) -> Self {
         match conv {
             Conv::C
             | Conv::Rust
