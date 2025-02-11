@@ -362,6 +362,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::matches::WILDCARD_ENUM_MATCH_ARM_INFO,
     crate::matches::WILDCARD_IN_OR_PATTERNS_INFO,
     crate::mem_replace::MEM_REPLACE_OPTION_WITH_NONE_INFO,
+    crate::mem_replace::MEM_REPLACE_OPTION_WITH_SOME_INFO,
     crate::mem_replace::MEM_REPLACE_WITH_DEFAULT_INFO,
     crate::mem_replace::MEM_REPLACE_WITH_UNINIT_INFO,
     crate::methods::BIND_INSTEAD_OF_MAP_INFO,

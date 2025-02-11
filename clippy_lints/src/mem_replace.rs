@@ -8,7 +8,7 @@ use clippy_utils::{
     is_default_equivalent, is_expr_used_or_unified, is_res_lang_ctor, path_res, peel_ref_operators, std_or_core,
 };
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::OptionNone;
+use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -41,6 +41,31 @@ declare_clippy_lint! {
     pub MEM_REPLACE_OPTION_WITH_NONE,
     style,
     "replacing an `Option` with `None` instead of `take()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `mem::replace()` on an `Option` with `Some(…)`.
+    ///
+    /// ### Why is this bad?
+    /// `Option` already has the method `replace()` for
+    /// taking its current value (Some(…) or None) and replacing it with
+    /// `Some(…)`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let mut an_option = Some(0);
+    /// let replaced = std::mem::replace(&mut an_option, Some(1));
+    /// ```
+    /// Is better expressed with:
+    /// ```no_run
+    /// let mut an_option = Some(0);
+    /// let taken = an_option.replace(1);
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub MEM_REPLACE_OPTION_WITH_SOME,
+    style,
+    "replacing an `Option` with `Some` instead of `replace()`"
 }
 
 declare_clippy_lint! {
@@ -101,7 +126,7 @@ declare_clippy_lint! {
 }
 
 impl_lint_pass!(MemReplace =>
-    [MEM_REPLACE_OPTION_WITH_NONE, MEM_REPLACE_WITH_UNINIT, MEM_REPLACE_WITH_DEFAULT]);
+    [MEM_REPLACE_OPTION_WITH_NONE, MEM_REPLACE_OPTION_WITH_SOME, MEM_REPLACE_WITH_UNINIT, MEM_REPLACE_WITH_DEFAULT]);
 
 fn check_replace_option_with_none(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) -> bool {
     if is_res_lang_ctor(cx, path_res(cx, src), OptionNone) {
@@ -121,6 +146,40 @@ fn check_replace_option_with_none(cx: &LateContext<'_>, src: &Expr<'_>, dest: &E
             format!(
                 "{}.take()",
                 Sugg::hir_with_context(cx, sugg_expr, expr_span.ctxt(), "", &mut applicability).maybe_par()
+            ),
+            applicability,
+        );
+        true
+    } else {
+        false
+    }
+}
+
+fn check_replace_option_with_some(
+    cx: &LateContext<'_>,
+    src: &Expr<'_>,
+    dest: &Expr<'_>,
+    expr_span: Span,
+    msrv: &Msrv,
+) -> bool {
+    if msrv.meets(msrvs::OPTION_REPLACE)
+        && let ExprKind::Call(src_func, [src_arg]) = src.kind
+        && is_res_lang_ctor(cx, path_res(cx, src_func), OptionSome)
+    {
+        // We do not have to check for a `const` context here, because `core::mem::replace()` and
+        // `Option::replace()` have been const-stabilized simultaneously in version 1.83.0.
+        let sugg_expr = peel_ref_operators(cx, dest);
+        let mut applicability = Applicability::MachineApplicable;
+        span_lint_and_sugg(
+            cx,
+            MEM_REPLACE_OPTION_WITH_SOME,
+            expr_span,
+            "replacing an `Option` with `Some(..)`",
+            "consider `Option::replace()` instead",
+            format!(
+                "{}.replace({})",
+                Sugg::hir_with_context(cx, sugg_expr, expr_span.ctxt(), "_", &mut applicability).maybe_par(),
+                snippet_with_applicability(cx, src_arg.span, "_", &mut applicability)
             ),
             applicability,
         );
@@ -249,6 +308,7 @@ impl<'tcx> LateLintPass<'tcx> for MemReplace {
         {
             // Check that second argument is `Option::None`
             if !check_replace_option_with_none(cx, src, dest, expr.span)
+                && !check_replace_option_with_some(cx, src, dest, expr.span, &self.msrv)
                 && !check_replace_with_default(cx, src, dest, expr, &self.msrv)
             {
                 check_replace_with_uninit(cx, src, dest, expr.span);
