@@ -1,4 +1,4 @@
-error[E0658]: PTX ABIs are experimental and subject to change
+error[E0658]: the extern "ptx-kernel" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi_ptx.rs:8:8
    |
 LL | extern "ptx-kernel" fn fu() {}
@@ -8,7 +8,7 @@ LL | extern "ptx-kernel" fn fu() {}
    = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: PTX ABIs are experimental and subject to change
+error[E0658]: the extern "ptx-kernel" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi_ptx.rs:11:12
    |
 LL |     extern "ptx-kernel" fn mu();
@@ -18,7 +18,7 @@ LL |     extern "ptx-kernel" fn mu();
    = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: PTX ABIs are experimental and subject to change
+error[E0658]: the extern "ptx-kernel" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi_ptx.rs:12:12
    |
 LL |     extern "ptx-kernel" fn dmu() {}
@@ -28,7 +28,7 @@ LL |     extern "ptx-kernel" fn dmu() {}
    = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: PTX ABIs are experimental and subject to change
+error[E0658]: the extern "ptx-kernel" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi_ptx.rs:17:12
    |
 LL |     extern "ptx-kernel" fn mu() {}
@@ -38,7 +38,7 @@ LL |     extern "ptx-kernel" fn mu() {}
    = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: PTX ABIs are experimental and subject to change
+error[E0658]: the extern "ptx-kernel" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi_ptx.rs:21:12
    |
 LL |     extern "ptx-kernel" fn imu() {}
@@ -48,7 +48,7 @@ LL |     extern "ptx-kernel" fn imu() {}
    = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: PTX ABIs are experimental and subject to change
+error[E0658]: the extern "ptx-kernel" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi_ptx.rs:24:19
    |
 LL | type TAU = extern "ptx-kernel" fn();
@@ -58,7 +58,7 @@ LL | type TAU = extern "ptx-kernel" fn();
    = help: add `#![feature(abi_ptx)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: PTX ABIs are experimental and subject to change
+error[E0658]: the extern "ptx-kernel" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi_ptx.rs:26:8
    |
 LL | extern "ptx-kernel" {}

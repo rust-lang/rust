@@ -1284,8 +1284,22 @@ pub trait FnPtr: Copy + Clone {
 /// }
 /// ```
 #[rustc_builtin_macro(CoercePointee, attributes(pointee))]
-#[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize)]
+#[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize, coerce_pointee_validated)]
 #[unstable(feature = "derive_coerce_pointee", issue = "123430")]
 pub macro CoercePointee($item:item) {
+    /* compiler built-in */
+}
+
+/// A trait that is implemented for ADTs with `derive(CoercePointee)` so that
+/// the compiler can enforce the derive impls are valid post-expansion, since
+/// the derive has stricter requirements than if the impls were written by hand.
+///
+/// This trait is not intended to be implemented by users or used other than
+/// validation, so it should never be stabilized.
+#[cfg(not(bootstrap))]
+#[lang = "coerce_pointee_validated"]
+#[unstable(feature = "coerce_pointee_validated", issue = "none")]
+#[doc(hidden)]
+pub trait CoercePointeeValidated {
     /* compiler built-in */
 }

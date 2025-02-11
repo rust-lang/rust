@@ -1,5 +1,5 @@
+use rustc_errors::DiagArgFromDisplay;
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, DiagArgFromDisplay, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
@@ -32,8 +32,6 @@ pub(crate) struct InvalidAbi {
     pub abi: Symbol,
     pub command: String,
     #[subdiagnostic]
-    pub explain: Option<InvalidAbiReason>,
-    #[subdiagnostic]
     pub suggestion: Option<InvalidAbiSuggestion>,
 }
 
@@ -43,19 +41,6 @@ pub(crate) struct TupleStructWithDefault {
     #[primary_span]
     #[label]
     pub span: Span,
-}
-
-pub(crate) struct InvalidAbiReason(pub &'static str);
-
-impl Subdiagnostic for InvalidAbiReason {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _: &F,
-    ) {
-        #[allow(rustc::untranslatable_diagnostic)]
-        diag.note(self.0);
-    }
 }
 
 #[derive(Subdiagnostic)]

@@ -18,7 +18,7 @@ fn lookup_cdecl() {
 #[test]
 fn lookup_baz() {
     let abi = lookup("baz");
-    assert_matches!(abi, Err(AbiUnsupported::Unrecognized));
+    assert_matches!(abi, Err(AbiUnsupported {}));
 }
 
 #[test]

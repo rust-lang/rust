@@ -8,8 +8,9 @@ use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use rustc_span::Span;
+use rustc_session::parse::feature_err;
 use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::{Span, sym};
 use tracing::{debug, instrument, trace};
 
 use crate::infer::InferCtxt;
@@ -704,8 +705,47 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 ));
             }
 
-            ty::Pat(subty, _) => {
+            ty::Pat(subty, pat) => {
                 self.require_sized(subty, ObligationCauseCode::Misc);
+                match *pat {
+                    ty::PatternKind::Range { start, end, include_end: _ } => {
+                        let mut check = |c| {
+                            let cause = self.cause(ObligationCauseCode::Misc);
+                            self.out.push(traits::Obligation::with_depth(
+                                tcx,
+                                cause.clone(),
+                                self.recursion_depth,
+                                self.param_env,
+                                ty::Binder::dummy(ty::PredicateKind::Clause(
+                                    ty::ClauseKind::ConstArgHasType(c, subty),
+                                )),
+                            ));
+                            if !tcx.features().generic_pattern_types() {
+                                if c.has_param() {
+                                    if self.span.is_dummy() {
+                                        self.tcx().dcx().delayed_bug(
+                                            "feature error should be reported elsewhere, too",
+                                        );
+                                    } else {
+                                        feature_err(
+                                            &self.tcx().sess,
+                                            sym::generic_pattern_types,
+                                            self.span,
+                                            "wraparound pattern type ranges cause monomorphization time errors",
+                                        )
+                                        .emit();
+                                    }
+                                }
+                            }
+                        };
+                        if let Some(start) = start {
+                            check(start)
+                        }
+                        if let Some(end) = end {
+                            check(end)
+                        }
+                    }
+                }
             }
 
             ty::Tuple(tys) => {
