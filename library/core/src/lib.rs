@@ -226,7 +226,7 @@ extern crate self as core;
 
 #[prelude_import]
 #[allow(unused)]
-use prelude::rust_2021::*;
+use prelude::rust_2024::*;
 
 #[cfg(not(test))] // See #65860
 #[macro_use]
