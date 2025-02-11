@@ -242,6 +242,7 @@ mod llvm_enzyme {
             defaultness: ast::Defaultness::Final,
             sig: d_sig,
             generics: Generics::default(),
+            contract: None,
             body: Some(d_body),
         });
         let mut rustc_ad_attr =
