@@ -482,7 +482,7 @@ impl FormattingOptions {
     ///
     /// You may alternatively use [`Formatter::new()`].
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub fn create_formatter<'a>(self, write: &'a mut (dyn Write + 'a)) -> Formatter<'a> {
+    pub fn create_formatter<'a>(&'a self, write: &'a mut (dyn Write + 'a)) -> Formatter<'a> {
         Formatter { options: self, buf: write }
     }
 
@@ -530,9 +530,8 @@ impl Default for FormattingOptions {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Formatter"]
 pub struct Formatter<'a> {
-    options: FormattingOptions,
-
     buf: &'a mut (dyn Write + 'a),
+    options: &'a FormattingOptions,
 }
 
 impl<'a> Formatter<'a> {
@@ -544,14 +543,21 @@ impl<'a> Formatter<'a> {
     ///
     /// You may alternatively use [`FormattingOptions::create_formatter()`].
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub fn new(write: &'a mut (dyn Write + 'a), options: FormattingOptions) -> Self {
-        Formatter { options, buf: write }
+    pub fn new(write: &'a mut (dyn Write + 'a), options: &'a FormattingOptions) -> Self {
+        Formatter { buf: write, options }
+    }
+
+    fn reborrow(&mut self) -> Formatter<'_> {
+        Formatter { buf: self.buf, options: self.options }
     }
 
     /// Creates a new formatter based on this one with given [`FormattingOptions`].
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub fn with_options<'b>(&'b mut self, options: FormattingOptions) -> Formatter<'b> {
-        Formatter { options, buf: self.buf }
+    pub fn with_options<'f, 'o>(&'f mut self, options: &'o FormattingOptions) -> Formatter<'f>
+    where
+        'o: 'f,
+    {
+        Formatter { buf: self.buf, options }
     }
 }
 
@@ -1429,7 +1435,7 @@ pub trait UpperExp {
 /// [`write!`]: crate::write!
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
-    let mut formatter = Formatter::new(output, FormattingOptions::new());
+    let mut formatter = Formatter::new(output, const { &FormattingOptions::new() });
     let mut idx = 0;
 
     match args.fmt {
@@ -1478,15 +1484,17 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
 }
 
 unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[rt::Argument<'_>]) -> Result {
-    fmt.options.fill = arg.fill;
-    fmt.options.align = arg.align.into();
-    fmt.options.flags = arg.flags;
-    // SAFETY: arg and args come from the same Arguments,
-    // which guarantees the indexes are always within bounds.
-    unsafe {
-        fmt.options.width = getcount(args, &arg.width);
-        fmt.options.precision = getcount(args, &arg.precision);
-    }
+    let options = FormattingOptions {
+        flags: arg.flags,
+        fill: arg.fill,
+        align: arg.align.into(),
+        // SAFETY: arg and args come from the same Arguments,
+        // which guarantees the indexes are always within bounds.
+        width: unsafe { getcount(args, &arg.width) },
+        // SAFETY: likewise.
+        precision: unsafe { getcount(args, &arg.precision) },
+    };
+    let mut fmt = fmt.with_options(&options);
 
     // Extract the correct argument
     debug_assert!(arg.position < args.len());
@@ -1496,7 +1504,7 @@ unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[rt::Argume
 
     // Then actually do some printing
     // SAFETY: this is a placeholder argument.
-    unsafe { value.fmt(fmt) }
+    unsafe { value.fmt(&mut fmt) }
 }
 
 unsafe fn getcount(args: &[rt::Argument<'_>], cnt: &rt::Count) -> Option<usize> {
@@ -1641,16 +1649,16 @@ impl<'a> Formatter<'a> {
             // The sign and prefix goes before the padding if the fill character
             // is zero
             Some(min) if self.sign_aware_zero_pad() => {
-                let old_fill = crate::mem::replace(&mut self.options.fill, '0');
-                let old_align =
-                    crate::mem::replace(&mut self.options.align, Some(Alignment::Right));
-                write_prefix(self, sign, prefix)?;
-                let post_padding = self.padding(min - width, Alignment::Right)?;
-                self.buf.write_str(buf)?;
-                post_padding.write(self)?;
-                self.options.fill = old_fill;
-                self.options.align = old_align;
-                Ok(())
+                let options = FormattingOptions {
+                    fill: '0',
+                    align: Some(Alignment::Right),
+                    ..self.options().clone()
+                };
+                let mut f = self.with_options(&options);
+                write_prefix(&mut f, sign, prefix)?;
+                let post_padding = f.padding(min - width, Alignment::Right)?;
+                f.write_str(buf)?;
+                post_padding.write(&mut f)
             }
             // Otherwise, the sign and prefix goes after the padding
             Some(min) => {
@@ -1776,9 +1784,9 @@ impl<'a> Formatter<'a> {
             // for the sign-aware zero padding, we render the sign first and
             // behave as if we had no sign from the beginning.
             let mut formatted = formatted.clone();
-            let old_fill = self.options.fill;
-            let old_align = self.options.align;
-            if self.sign_aware_zero_pad() {
+
+            let options;
+            let mut f = if self.sign_aware_zero_pad() {
                 // a sign always goes first
                 let sign = formatted.sign;
                 self.buf.write_str(sign)?;
@@ -1786,27 +1794,30 @@ impl<'a> Formatter<'a> {
                 // remove the sign from the formatted parts
                 formatted.sign = "";
                 width = width.saturating_sub(sign.len());
-                self.options.fill = '0';
-                self.options.align = Some(Alignment::Right);
-            }
+                options = FormattingOptions {
+                    fill: '0',
+                    align: Some(Alignment::Right),
+                    ..self.options().clone()
+                };
+                self.with_options(&options)
+            } else {
+                self.reborrow()
+            };
 
             // remaining parts go through the ordinary padding process.
             let len = formatted.len();
-            let ret = if width <= len {
+            if width <= len {
                 // no padding
                 // SAFETY: Per the precondition.
-                unsafe { self.write_formatted_parts(&formatted) }
+                unsafe { f.write_formatted_parts(&formatted) }
             } else {
-                let post_padding = self.padding(width - len, Alignment::Right)?;
+                let post_padding = f.padding(width - len, Alignment::Right)?;
                 // SAFETY: Per the precondition.
                 unsafe {
-                    self.write_formatted_parts(&formatted)?;
+                    f.write_formatted_parts(&formatted)?;
                 }
-                post_padding.write(self)
-            };
-            self.options.fill = old_fill;
-            self.options.align = old_align;
-            ret
+                post_padding.write(&mut f)
+            }
         } else {
             // this is the common case and we take a shortcut
             // SAFETY: Per the precondition.
@@ -2610,7 +2621,7 @@ impl<'a> Formatter<'a> {
 
     /// Returns the formatting options this formatter corresponds to.
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub const fn options(&self) -> FormattingOptions {
+    pub const fn options(&self) -> &FormattingOptions {
         self.options
     }
 }
@@ -2789,28 +2800,22 @@ impl<T: ?Sized> Pointer for *const T {
 ///
 /// [problematic]: https://github.com/rust-lang/rust/issues/95489
 pub(crate) fn pointer_fmt_inner(ptr_addr: usize, f: &mut Formatter<'_>) -> Result {
-    let old_width = f.options.width;
-    let old_flags = f.options.flags;
+    let mut options = f.options().clone();
 
     // The alternate flag is already treated by LowerHex as being special-
     // it denotes whether to prefix with 0x. We use it to work out whether
     // or not to zero extend, and then unconditionally set it to get the
     // prefix.
     if f.alternate() {
-        f.options.flags |= 1 << (rt::Flag::SignAwareZeroPad as u32);
+        options.flags |= 1 << (rt::Flag::SignAwareZeroPad as u32);
 
-        if f.options.width.is_none() {
-            f.options.width = Some((usize::BITS / 4) as usize + 2);
+        if options.width.is_none() {
+            options.width = Some((usize::BITS / 4) as usize + 2);
         }
     }
-    f.options.flags |= 1 << (rt::Flag::Alternate as u32);
+    options.flags |= 1 << (rt::Flag::Alternate as u32);
 
-    let ret = LowerHex::fmt(&ptr_addr, f);
-
-    f.options.width = old_width;
-    f.options.flags = old_flags;
-
-    ret
+    LowerHex::fmt(&ptr_addr, &mut f.with_options(&options))
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

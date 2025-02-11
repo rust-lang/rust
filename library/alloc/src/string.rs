@@ -2751,7 +2751,7 @@ impl<T: fmt::Display + ?Sized> SpecToString for T {
     default fn spec_to_string(&self) -> String {
         let mut buf = String::new();
         let mut formatter =
-            core::fmt::Formatter::new(&mut buf, core::fmt::FormattingOptions::new());
+            core::fmt::Formatter::new(&mut buf, const { &core::fmt::FormattingOptions::new() });
         // Bypass format_args!() to avoid write_str with zero-length strs
         fmt::Display::fmt(self, &mut formatter)
             .expect("a Display implementation returned an error unexpectedly");
