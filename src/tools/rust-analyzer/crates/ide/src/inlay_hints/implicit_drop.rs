@@ -232,4 +232,25 @@ mod tests {
 "#,
         );
     }
+
+    #[test]
+    fn ignore_inlay_hint_for_macro_call() {
+        check_with_config(
+            ONLY_DROP_CONFIG,
+            r#"
+    struct X;
+
+    macro_rules! my_macro {
+        () => {{
+            let bbb = X;
+            bbb
+        }};
+    }
+
+    fn test() -> X {
+        my_macro!()
+    }
+"#,
+        );
+    }
 }
