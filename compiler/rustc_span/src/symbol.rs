@@ -1007,6 +1007,7 @@ symbols! {
         from_str_method,
         from_usize,
         from_yeet,
+        frontmatter,
         fs_create_dir,
         fsub_algebraic,
         fsub_fast,
