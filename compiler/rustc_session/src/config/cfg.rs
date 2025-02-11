@@ -9,7 +9,7 @@
 //!
 //! ## Adding a new cfg
 //!
-//! Adding a new feature requires two new symbols one for the cfg it-self
+//! Adding a new feature requires two new symbols one for the cfg itself
 //! and the second one for the unstable feature gate, those are defined in
 //! `rustc_span::symbol`.
 //!
