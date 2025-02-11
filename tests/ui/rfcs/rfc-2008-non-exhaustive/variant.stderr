@@ -82,8 +82,9 @@ LL |         NonExhaustiveVariants::Struct { field } => ""
    |
 help: add `..` at the end of the field list to ignore all other fields
    |
-LL |         NonExhaustiveVariants::Struct { field , .. } => ""
-   |                                               ~~~~~~
+LL -         NonExhaustiveVariants::Struct { field } => ""
+LL +         NonExhaustiveVariants::Struct { field , .. } => ""
+   |
 
 error[E0638]: `..` required with variant marked as non-exhaustive
   --> $DIR/variant.rs:30:12
@@ -93,8 +94,9 @@ LL |     if let NonExhaustiveVariants::Struct { field } = variant_struct {
    |
 help: add `..` at the end of the field list to ignore all other fields
    |
-LL |     if let NonExhaustiveVariants::Struct { field , .. } = variant_struct {
-   |                                                  ~~~~~~
+LL -     if let NonExhaustiveVariants::Struct { field } = variant_struct {
+LL +     if let NonExhaustiveVariants::Struct { field , .. } = variant_struct {
+   |
 
 error: aborting due to 8 previous errors
 

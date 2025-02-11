@@ -6,8 +6,9 @@ LL | struct Apple((Apple, Option(Banana ? Citron)));
    |
 help: if you meant to express that the type might not contain a value, use the `Option` wrapper type
    |
-LL | struct Apple((Apple, Option(Option<Banana > Citron)));
-   |                             +++++++       ~
+LL - struct Apple((Apple, Option(Banana ? Citron)));
+LL + struct Apple((Apple, Option(Option<Banana > Citron)));
+   |
 
 error: expected one of `)` or `,`, found `Citron`
   --> $DIR/issue-103748-ICE-wrong-braces.rs:3:38
@@ -31,8 +32,9 @@ LL | struct Apple((Apple, Option(Banana ? Citron)));
    |
 help: use angle brackets instead
    |
-LL | struct Apple((Apple, Option<Banana ? Citron>));
-   |                            ~               ~
+LL - struct Apple((Apple, Option(Banana ? Citron)));
+LL + struct Apple((Apple, Option<Banana ? Citron>));
+   |
 
 error[E0072]: recursive type `Apple` has infinite size
   --> $DIR/issue-103748-ICE-wrong-braces.rs:3:1

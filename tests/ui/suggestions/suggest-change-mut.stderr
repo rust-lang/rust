@@ -19,8 +19,9 @@ LL | fn issue_81421<T: Read + Write>(mut stream: T) where &T: std::io::Read {
    |                                                +++++++++++++++++++++++
 help: consider changing this borrow's mutability
    |
-LL |         let mut stream_reader = BufReader::new(&mut stream);
-   |                                                ~~~~
+LL -         let mut stream_reader = BufReader::new(&stream);
+LL +         let mut stream_reader = BufReader::new(&mut stream);
+   |
 
 error[E0599]: the method `read_until` exists for struct `BufReader<&T>`, but its trait bounds were not satisfied
   --> $DIR/suggest-change-mut.rs:16:23

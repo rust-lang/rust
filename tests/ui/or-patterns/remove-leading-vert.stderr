@@ -31,8 +31,9 @@ LL |     let ( || A): (E);
    |
 help: use a single `|` to separate multiple alternative patterns
    |
-LL |     let ( | A): (E);
-   |           ~
+LL -     let ( || A): (E);
+LL +     let ( | A): (E);
+   |
 
 error: unexpected token `||` in pattern
   --> $DIR/remove-leading-vert.rs:17:11
@@ -42,8 +43,9 @@ LL |     let [ || A ]: [E; 1];
    |
 help: use a single `|` to separate multiple alternative patterns
    |
-LL |     let [ | A ]: [E; 1];
-   |           ~
+LL -     let [ || A ]: [E; 1];
+LL +     let [ | A ]: [E; 1];
+   |
 
 error: unexpected token `||` in pattern
   --> $DIR/remove-leading-vert.rs:19:13
@@ -53,8 +55,9 @@ LL |     let TS( || A ): TS;
    |
 help: use a single `|` to separate multiple alternative patterns
    |
-LL |     let TS( | A ): TS;
-   |             ~
+LL -     let TS( || A ): TS;
+LL +     let TS( | A ): TS;
+   |
 
 error: unexpected token `||` in pattern
   --> $DIR/remove-leading-vert.rs:21:17
@@ -64,8 +67,9 @@ LL |     let NS { f: || A }: NS;
    |
 help: use a single `|` to separate multiple alternative patterns
    |
-LL |     let NS { f: | A }: NS;
-   |                 ~
+LL -     let NS { f: || A }: NS;
+LL +     let NS { f: | A }: NS;
+   |
 
 error: a trailing `|` is not allowed in an or-pattern
   --> $DIR/remove-leading-vert.rs:26:13
@@ -147,8 +151,9 @@ LL |     let ( A || B | ): E;
    |
 help: use a single `|` to separate multiple alternative patterns
    |
-LL |     let ( A | B | ): E;
-   |             ~
+LL -     let ( A || B | ): E;
+LL +     let ( A | B | ): E;
+   |
 
 error: a trailing `|` is not allowed in an or-pattern
   --> $DIR/remove-leading-vert.rs:31:18
@@ -203,8 +208,9 @@ LL |         A || B | => {}
    |
 help: use a single `|` to separate multiple alternative patterns
    |
-LL |         A | B | => {}
-   |           ~
+LL -         A || B | => {}
+LL +         A | B | => {}
+   |
 
 error: a trailing `|` is not allowed in an or-pattern
   --> $DIR/remove-leading-vert.rs:36:16

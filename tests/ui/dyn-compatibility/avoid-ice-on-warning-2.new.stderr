@@ -7,8 +7,9 @@ LL | fn id<F>(f: Copy) -> usize {
    = note: `Copy` it is dyn-incompatible, so it can't be `dyn`
 help: use a new generic type parameter, constrained by `Copy`
    |
-LL | fn id<F, T: Copy>(f: T) -> usize {
-   |        +++++++++     ~
+LL - fn id<F>(f: Copy) -> usize {
+LL + fn id<F, T: Copy>(f: T) -> usize {
+   |
 help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
    |
 LL | fn id<F>(f: impl Copy) -> usize {

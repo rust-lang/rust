@@ -11,8 +11,9 @@ LL |     (|_, ()| ())([return, ()]);
    |      ^^^^^^^
 help: provide the argument
    |
-LL |     (|_, ()| ())([return, ()], ());
-   |                 ~~~~~~~~~~~~~~~~~~
+LL -     (|_, ()| ())([return, ()]);
+LL +     (|_, ()| ())([return, ()], ());
+   |
 
 error: aborting due to 1 previous error
 

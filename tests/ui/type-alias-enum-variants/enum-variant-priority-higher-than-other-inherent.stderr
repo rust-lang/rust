@@ -11,8 +11,9 @@ LL |     V(u8)
    |     ^
 help: provide the argument
    |
-LL |     <E>::V(/* u8 */);
-   |           ~~~~~~~~~~
+LL -     <E>::V();
+LL +     <E>::V(/* u8 */);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/enum-variant-priority-higher-than-other-inherent.rs:22:17

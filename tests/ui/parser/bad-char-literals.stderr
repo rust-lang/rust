@@ -6,8 +6,9 @@ LL |     ''';
    |
 help: escape the character
    |
-LL |     '\'';
-   |      ~~
+LL -     ''';
+LL +     '\'';
+   |
 
 error: character constant must be escaped: `\n`
   --> $DIR/bad-char-literals.rs:10:6
@@ -41,8 +42,9 @@ LL |     '-␀-';
    |
 help: if you meant to write a string literal, use double quotes
    |
-LL |     "-␀-";
-   |     ~   ~
+LL -     '-␀-';
+LL +     "-␀-";
+   |
 
 error: character constant must be escaped: `\t`
   --> $DIR/bad-char-literals.rs:21:6

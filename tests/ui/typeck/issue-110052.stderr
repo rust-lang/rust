@@ -6,10 +6,12 @@ LL |     for<'iter> dyn Validator<<&'iter I>::Item>:,
    |
 help: use fully-qualified syntax
    |
-LL |     for<'iter> dyn Validator<<&'iter I as IntoAsyncIterator>::Item>:,
-   |                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-LL |     for<'iter> dyn Validator<<&'iter I as IntoIterator>::Item>:,
-   |                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     for<'iter> dyn Validator<<&'iter I>::Item>:,
+LL +     for<'iter> dyn Validator<<&'iter I as IntoAsyncIterator>::Item>:,
+   |
+LL -     for<'iter> dyn Validator<<&'iter I>::Item>:,
+LL +     for<'iter> dyn Validator<<&'iter I as IntoIterator>::Item>:,
+   |
 
 error: aborting due to 1 previous error
 

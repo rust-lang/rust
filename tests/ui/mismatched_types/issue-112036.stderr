@@ -8,8 +8,9 @@ LL |     fn drop(self) {}
               found signature `fn(Foo)`
 help: change the self-receiver type to match the trait
    |
-LL |     fn drop(&mut self) {}
-   |             ~~~~~~~~~
+LL -     fn drop(self) {}
+LL +     fn drop(&mut self) {}
+   |
 
 error: aborting due to 1 previous error
 

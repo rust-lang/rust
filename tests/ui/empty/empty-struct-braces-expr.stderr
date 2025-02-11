@@ -14,12 +14,14 @@ LL | pub struct XEmpty2;
    |
 help: use struct literal syntax instead
    |
-LL |     let e1 = Empty1 {};
-   |              ~~~~~~~~~
+LL -     let e1 = Empty1;
+LL +     let e1 = Empty1 {};
+   |
 help: a unit struct with a similar name exists
    |
-LL |     let e1 = XEmpty2;
-   |              ~~~~~~~
+LL -     let e1 = Empty1;
+LL +     let e1 = XEmpty2;
+   |
 
 error[E0423]: expected value, found struct `XEmpty1`
   --> $DIR/empty-struct-braces-expr.rs:22:15
@@ -36,12 +38,14 @@ LL | pub struct XEmpty2;
    |
 help: use struct literal syntax instead
    |
-LL |     let xe1 = XEmpty1 {};
-   |               ~~~~~~~~~~
+LL -     let xe1 = XEmpty1;
+LL +     let xe1 = XEmpty1 {};
+   |
 help: a unit struct with a similar name exists
    |
-LL |     let xe1 = XEmpty2;
-   |               ~~~~~~~
+LL -     let xe1 = XEmpty1;
+LL +     let xe1 = XEmpty2;
+   |
 
 error[E0423]: expected function, tuple struct or tuple variant, found struct `Empty1`
   --> $DIR/empty-struct-braces-expr.rs:16:14
@@ -59,12 +63,14 @@ LL | pub struct XEmpty2;
    |
 help: use struct literal syntax instead
    |
-LL |     let e1 = Empty1 {};
-   |              ~~~~~~~~~
+LL -     let e1 = Empty1();
+LL +     let e1 = Empty1 {};
+   |
 help: a unit struct with a similar name exists
    |
-LL |     let e1 = XEmpty2();
-   |              ~~~~~~~
+LL -     let e1 = Empty1();
+LL +     let e1 = XEmpty2();
+   |
 
 error[E0533]: expected value, found struct variant `E::Empty3`
   --> $DIR/empty-struct-braces-expr.rs:18:14
@@ -85,8 +91,9 @@ LL |     let e3 = E::Empty3();
    |
 help: you might have meant to create a new value of the struct
    |
-LL |     let e3 = E::Empty3 {};
-   |                        ~~
+LL -     let e3 = E::Empty3();
+LL +     let e3 = E::Empty3 {};
+   |
 
 error[E0423]: expected function, tuple struct or tuple variant, found struct `XEmpty1`
   --> $DIR/empty-struct-braces-expr.rs:23:15
@@ -103,12 +110,14 @@ LL | pub struct XEmpty2;
    |
 help: use struct literal syntax instead
    |
-LL |     let xe1 = XEmpty1 {};
-   |               ~~~~~~~~~~
+LL -     let xe1 = XEmpty1();
+LL +     let xe1 = XEmpty1 {};
+   |
 help: a unit struct with a similar name exists
    |
-LL |     let xe1 = XEmpty2();
-   |               ~~~~~~~
+LL -     let xe1 = XEmpty1();
+LL +     let xe1 = XEmpty2();
+   |
 
 error[E0599]: no variant or associated item named `Empty3` found for enum `empty_struct::XE` in the current scope
   --> $DIR/empty-struct-braces-expr.rs:25:19
@@ -118,8 +127,9 @@ LL |     let xe3 = XE::Empty3;
    |
 help: there is a variant with a similar name
    |
-LL |     let xe3 = XE::XEmpty3;
-   |                   ~~~~~~~
+LL -     let xe3 = XE::Empty3;
+LL +     let xe3 = XE::XEmpty3;
+   |
 
 error[E0599]: no variant or associated item named `Empty3` found for enum `empty_struct::XE` in the current scope
   --> $DIR/empty-struct-braces-expr.rs:26:19
@@ -129,8 +139,9 @@ LL |     let xe3 = XE::Empty3();
    |
 help: there is a variant with a similar name
    |
-LL |     let xe3 = XE::XEmpty3 {};
-   |                   ~~~~~~~~~~
+LL -     let xe3 = XE::Empty3();
+LL +     let xe3 = XE::XEmpty3 {};
+   |
 
 error[E0599]: no variant named `Empty1` found for enum `empty_struct::XE`
   --> $DIR/empty-struct-braces-expr.rs:28:9
@@ -140,8 +151,9 @@ LL |     XE::Empty1 {};
    |
 help: there is a variant with a similar name
    |
-LL |     XE::XEmpty3 {};
-   |         ~~~~~~~~~~
+LL -     XE::Empty1 {};
+LL +     XE::XEmpty3 {};
+   |
 
 error: aborting due to 9 previous errors
 

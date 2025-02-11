@@ -15,8 +15,9 @@ LL |     fn early<'early, T>(x: &'early T) -> impl Sized;
               found signature `fn(&())`
 help: change the parameter type to match the trait
    |
-LL |     fn early<'late, T>(_: &'early T) {}
-   |                           ~~~~~~~~~
+LL -     fn early<'late, T>(_: &'late ()) {}
+LL +     fn early<'late, T>(_: &'early T) {}
+   |
 
 error: aborting due to 1 previous error
 

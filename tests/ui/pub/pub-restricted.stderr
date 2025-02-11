@@ -10,8 +10,9 @@ LL | pub (a) fn afn() {}
            `pub(in path::to::module)`: visible only on the specified path
 help: make this visible only to module `a` with `in`
    |
-LL | pub (in a) fn afn() {}
-   |      ~~~~
+LL - pub (a) fn afn() {}
+LL + pub (in a) fn afn() {}
+   |
 
 error[E0704]: incorrect visibility restriction
   --> $DIR/pub-restricted.rs:4:6
@@ -25,8 +26,9 @@ LL | pub (b) fn bfn() {}
            `pub(in path::to::module)`: visible only on the specified path
 help: make this visible only to module `b` with `in`
    |
-LL | pub (in b) fn bfn() {}
-   |      ~~~~
+LL - pub (b) fn bfn() {}
+LL + pub (in b) fn bfn() {}
+   |
 
 error[E0704]: incorrect visibility restriction
   --> $DIR/pub-restricted.rs:5:6
@@ -40,8 +42,9 @@ LL | pub (crate::a) fn cfn() {}
            `pub(in path::to::module)`: visible only on the specified path
 help: make this visible only to module `crate::a` with `in`
    |
-LL | pub (in crate::a) fn cfn() {}
-   |      ~~~~~~~~~~~
+LL - pub (crate::a) fn cfn() {}
+LL + pub (in crate::a) fn cfn() {}
+   |
 
 error[E0704]: incorrect visibility restriction
   --> $DIR/pub-restricted.rs:22:14
@@ -55,8 +58,9 @@ LL |         pub (a) invalid: usize,
            `pub(in path::to::module)`: visible only on the specified path
 help: make this visible only to module `a` with `in`
    |
-LL |         pub (in a) invalid: usize,
-   |              ~~~~
+LL -         pub (a) invalid: usize,
+LL +         pub (in a) invalid: usize,
+   |
 
 error[E0704]: incorrect visibility restriction
   --> $DIR/pub-restricted.rs:31:6
@@ -70,8 +74,9 @@ LL | pub (xyz) fn xyz() {}
            `pub(in path::to::module)`: visible only on the specified path
 help: make this visible only to module `xyz` with `in`
    |
-LL | pub (in xyz) fn xyz() {}
-   |      ~~~~~~
+LL - pub (xyz) fn xyz() {}
+LL + pub (in xyz) fn xyz() {}
+   |
 
 error[E0742]: visibilities can only be restricted to ancestor modules
   --> $DIR/pub-restricted.rs:23:17

@@ -6,16 +6,19 @@ LL |     let UnstableStruct { stable, stable2, } = UnstableStruct::default();
    |
 help: include the missing field in the pattern
    |
-LL |     let UnstableStruct { stable, stable2, unstable } = UnstableStruct::default();
-   |                                         ~~~~~~~~~~~~
+LL -     let UnstableStruct { stable, stable2, } = UnstableStruct::default();
+LL +     let UnstableStruct { stable, stable2, unstable } = UnstableStruct::default();
+   |
 help: if you don't care about this missing field, you can explicitly ignore it
    |
-LL |     let UnstableStruct { stable, stable2, unstable: _ } = UnstableStruct::default();
-   |                                         ~~~~~~~~~~~~~~~
+LL -     let UnstableStruct { stable, stable2, } = UnstableStruct::default();
+LL +     let UnstableStruct { stable, stable2, unstable: _ } = UnstableStruct::default();
+   |
 help: or always ignore missing fields here
    |
-LL |     let UnstableStruct { stable, stable2, .. } = UnstableStruct::default();
-   |                                         ~~~~~~
+LL -     let UnstableStruct { stable, stable2, } = UnstableStruct::default();
+LL +     let UnstableStruct { stable, stable2, .. } = UnstableStruct::default();
+   |
 
 error[E0027]: pattern does not mention field `stable2`
   --> $DIR/unstable-gated-fields.rs:13:9
@@ -25,16 +28,19 @@ LL |     let UnstableStruct { stable, unstable, } = UnstableStruct::default();
    |
 help: include the missing field in the pattern
    |
-LL |     let UnstableStruct { stable, unstable, stable2 } = UnstableStruct::default();
-   |                                          ~~~~~~~~~~~
+LL -     let UnstableStruct { stable, unstable, } = UnstableStruct::default();
+LL +     let UnstableStruct { stable, unstable, stable2 } = UnstableStruct::default();
+   |
 help: if you don't care about this missing field, you can explicitly ignore it
    |
-LL |     let UnstableStruct { stable, unstable, stable2: _ } = UnstableStruct::default();
-   |                                          ~~~~~~~~~~~~~~
+LL -     let UnstableStruct { stable, unstable, } = UnstableStruct::default();
+LL +     let UnstableStruct { stable, unstable, stable2: _ } = UnstableStruct::default();
+   |
 help: or always ignore missing fields here
    |
-LL |     let UnstableStruct { stable, unstable, .. } = UnstableStruct::default();
-   |                                          ~~~~~~
+LL -     let UnstableStruct { stable, unstable, } = UnstableStruct::default();
+LL +     let UnstableStruct { stable, unstable, .. } = UnstableStruct::default();
+   |
 
 error: aborting due to 2 previous errors
 

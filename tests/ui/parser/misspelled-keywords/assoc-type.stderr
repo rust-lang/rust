@@ -11,8 +11,9 @@ LL | }
    |
 help: write keyword `type` in lowercase
    |
-LL |     type Result = u8;
-   |     ~~~~
+LL -     Type Result = u8;
+LL +     type Result = u8;
+   |
 
 error: aborting due to 1 previous error
 

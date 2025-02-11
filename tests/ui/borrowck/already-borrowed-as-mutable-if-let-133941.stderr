@@ -15,8 +15,9 @@ LL |     }
    |
 help: consider using the `matches!` macro
    |
-LL |     while matches!(foo.f(), Some(_)) {
-   |           ~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     while let Some(_) = foo.f() {
+LL +     while matches!(foo.f(), Some(_)) {
+   |
 
 error[E0499]: cannot borrow `foo` as mutable more than once at a time
   --> $DIR/already-borrowed-as-mutable-if-let-133941.rs:29:9
@@ -35,8 +36,9 @@ LL |     }
    |
 help: consider using the `matches!` macro
    |
-LL |     if matches!(foo.f(), Some(_)) {
-   |        ~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     if let Some(_) = foo.f() {
+LL +     if matches!(foo.f(), Some(_)) {
+   |
 
 error[E0499]: cannot borrow `foo` as mutable more than once at a time
   --> $DIR/already-borrowed-as-mutable-if-let-133941.rs:33:9

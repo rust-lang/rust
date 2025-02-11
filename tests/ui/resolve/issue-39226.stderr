@@ -9,12 +9,14 @@ LL |         handle: Handle
    |
 help: use struct literal syntax instead
    |
-LL |         handle: Handle {}
-   |                 ~~~~~~~~~
+LL -         handle: Handle
+LL +         handle: Handle {}
+   |
 help: a local variable with a similar name exists
    |
-LL |         handle: handle
-   |                 ~~~~~~
+LL -         handle: Handle
+LL +         handle: handle
+   |
 
 error: aborting due to 1 previous error
 

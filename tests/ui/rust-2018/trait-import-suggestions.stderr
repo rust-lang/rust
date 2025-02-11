@@ -14,8 +14,9 @@ LL +     use crate::foo::foobar::Foobar;
    |
 help: there is a method `bar` with a similar name
    |
-LL |         x.bar();
-   |           ~~~
+LL -         x.foobar();
+LL +         x.bar();
+   |
 
 error[E0599]: no method named `bar` found for type `u32` in the current scope
   --> $DIR/trait-import-suggestions.rs:28:7
@@ -33,8 +34,9 @@ LL + use crate::foo::Bar;
    |
 help: there is a method `foobar` with a similar name
    |
-LL |     x.foobar();
-   |       ~~~~~~
+LL -     x.bar();
+LL +     x.foobar();
+   |
 
 error[E0599]: no method named `baz` found for type `u32` in the current scope
   --> $DIR/trait-import-suggestions.rs:29:7
@@ -44,8 +46,9 @@ LL |     x.baz();
    |
 help: there is a method `bar` with a similar name
    |
-LL |     x.bar();
-   |       ~~~
+LL -     x.baz();
+LL +     x.bar();
+   |
 
 error[E0599]: no function or associated item named `from_str` found for type `u32` in the current scope
   --> $DIR/trait-import-suggestions.rs:30:18
@@ -60,8 +63,9 @@ LL + use std::str::FromStr;
    |
 help: there is an associated function `from` with a similar name
    |
-LL |     let y = u32::from("33");
-   |                  ~~~~
+LL -     let y = u32::from_str("33");
+LL +     let y = u32::from("33");
+   |
 
 error: aborting due to 4 previous errors
 

@@ -7,8 +7,9 @@ LL |     let (foo @ ..,) = (0, 0);
    = help: remove this and bind each tuple field independently
 help: if you don't need to use the contents of foo, discard the tuple's remaining fields
    |
-LL |     let (..,) = (0, 0);
-   |          ~~
+LL -     let (foo @ ..,) = (0, 0);
+LL +     let (..,) = (0, 0);
+   |
 
 error: `..` patterns are not allowed here
   --> $DIR/issue-74702.rs:2:16

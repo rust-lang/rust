@@ -225,8 +225,9 @@ LL |     let bad = format_args! {""} else { return; };
    |
 help: use parentheses instead of braces for this macro
    |
-LL |     let bad = format_args! ("") else { return; };
-   |                            ~  ~
+LL -     let bad = format_args! {""} else { return; };
+LL +     let bad = format_args! ("") else { return; };
+   |
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
   --> $DIR/bad-let-else-statement.rs:207:5
@@ -254,8 +255,9 @@ LL |     b!(2);
    = note: this error originates in the macro `b` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use parentheses instead of braces for this macro
    |
-LL |             let 0 = a! () else { return; };
-   |                        ~~
+LL -             let 0 = a! {} else { return; };
+LL +             let 0 = a! () else { return; };
+   |
 
 warning: irrefutable `let...else` pattern
   --> $DIR/bad-let-else-statement.rs:95:5

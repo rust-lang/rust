@@ -13,8 +13,9 @@ LL | fn arg_error(x: <fn() as Mirror>::Assoc, y: ()) { todo!() }
    |    ^^^^^^^^^
 help: swap these arguments
    |
-LL |     arg_error(|| (), ());
-   |              ~~~~~~~~~~~
+LL -     arg_error((), || ());
+LL +     arg_error(|| (), ());
+   |
 
 error: aborting due to 1 previous error
 

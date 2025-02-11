@@ -11,8 +11,9 @@ LL | #![deny(rustdoc::broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: to link to the trait, prefix with `trait@`
    |
-LL | /// [`trait@Clone`]
-   |       ~~~~~~
+LL - /// [`struct@Clone`]
+LL + /// [`trait@Clone`]
+   |
 
 error: incompatible link kind for `Clone`
   --> $DIR/weird-syntax.rs:21:9
@@ -22,8 +23,9 @@ LL | /// [```struct@Clone```]
    |
 help: to link to the trait, prefix with `trait@`
    |
-LL | /// [```trait@Clone```]
-   |         ~~~~~~
+LL - /// [```struct@Clone```]
+LL + /// [```trait@Clone```]
+   |
 
 error: incompatible link kind for `Clone`
   --> $DIR/weird-syntax.rs:24:11
@@ -33,8 +35,9 @@ LL | /// [  `  struct@Clone  `  ]
    |
 help: to link to the trait, prefix with `trait@`
    |
-LL | /// [  `  trait@Clone  `  ]
-   |           ~~~~~~
+LL - /// [  `  struct@Clone  `  ]
+LL + /// [  `  trait@Clone  `  ]
+   |
 
 error: unresolved link to `Clone`
   --> $DIR/weird-syntax.rs:27:9
@@ -104,8 +107,9 @@ LL | /// [x][ struct@Clone]
    |
 help: to link to the trait, prefix with `trait@`
    |
-LL | /// [x][ trait@Clone]
-   |          ~~~~~~
+LL - /// [x][ struct@Clone]
+LL + /// [x][ trait@Clone]
+   |
 
 error: incompatible link kind for `Clone`
   --> $DIR/weird-syntax.rs:65:9
@@ -115,8 +119,9 @@ LL | /// [x][struct@Clone ]
    |
 help: to link to the trait, prefix with `trait@`
    |
-LL | /// [x][trait@Clone ]
-   |         ~~~~~~
+LL - /// [x][struct@Clone ]
+LL + /// [x][trait@Clone ]
+   |
 
 error: unresolved link to `Clone`
   --> $DIR/weird-syntax.rs:74:9
@@ -158,8 +163,9 @@ LL | /// [w]( struct@Clone)
    |
 help: to link to the trait, prefix with `trait@`
    |
-LL | /// [w]( trait@Clone)
-   |          ~~~~~~
+LL - /// [w]( struct@Clone)
+LL + /// [w]( trait@Clone)
+   |
 
 error: incompatible link kind for `Clone`
   --> $DIR/weird-syntax.rs:94:9
@@ -169,8 +175,9 @@ LL | /// [w](struct@Clone )
    |
 help: to link to the trait, prefix with `trait@`
    |
-LL | /// [w](trait@Clone )
-   |         ~~~~~~
+LL - /// [w](struct@Clone )
+LL + /// [w](trait@Clone )
+   |
 
 error: unresolved link to `Clone`
   --> $DIR/weird-syntax.rs:97:9

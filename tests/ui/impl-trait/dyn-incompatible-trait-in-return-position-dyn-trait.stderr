@@ -34,8 +34,9 @@ LL | fn car() -> dyn DynIncompatible {
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn car() -> impl DynIncompatible {
-   |             ~~~~
+LL - fn car() -> dyn DynIncompatible {
+LL + fn car() -> impl DynIncompatible {
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn car() -> Box<dyn DynIncompatible> {

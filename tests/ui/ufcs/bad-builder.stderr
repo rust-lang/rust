@@ -13,8 +13,9 @@ note: if you're trying to build a new `Vec<Q>` consider using one of the followi
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 help: there is an associated function `new` with a similar name
    |
-LL |     Vec::<Q>::new()
-   |               ~~~
+LL -     Vec::<Q>::mew()
+LL +     Vec::<Q>::new()
+   |
 
 error: aborting due to 1 previous error
 
