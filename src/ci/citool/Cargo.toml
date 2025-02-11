@@ -10,6 +10,9 @@ serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 serde_json = "1"
 
+[dev-dependencies]
+insta = "1"
+
 # Tell cargo that citool is its own workspace.
 # If this is omitted, cargo will look for a workspace elsewhere.
 # We want to avoid this, since citool is independent of the other crates.

@@ -1,5 +1,5 @@
-use std::collections::HashMap;
-use std::path::Path;
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::Context;
@@ -17,13 +17,13 @@ struct Job {
     name: String,
     /// GitHub runner on which the job should be executed
     os: String,
-    env: HashMap<String, Value>,
+    env: BTreeMap<String, Value>,
     /// Should the job be only executed on a specific channel?
     #[serde(default)]
     only_on_channel: Option<String>,
     /// Rest of attributes that will be passed through to GitHub actions
     #[serde(flatten)]
-    extra_keys: HashMap<String, Value>,
+    extra_keys: BTreeMap<String, Value>,
 }
 
 impl Job {
@@ -44,11 +44,11 @@ impl Job {
 #[derive(serde::Deserialize, Debug)]
 struct JobEnvironments {
     #[serde(rename = "pr")]
-    pr_env: HashMap<String, Value>,
+    pr_env: BTreeMap<String, Value>,
     #[serde(rename = "try")]
-    try_env: HashMap<String, Value>,
+    try_env: BTreeMap<String, Value>,
     #[serde(rename = "auto")]
-    auto_env: HashMap<String, Value>,
+    auto_env: BTreeMap<String, Value>,
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -71,7 +71,7 @@ impl JobDatabase {
 }
 
 fn load_job_db(path: &Path) -> anyhow::Result<JobDatabase> {
-    let db = std::fs::read_to_string(path)?;
+    let db = read_to_string(path)?;
     let mut db: Value = serde_yaml::from_str(&db)?;
 
     // We need to expand merge keys (<<), because serde_yaml can't deal with them
@@ -92,9 +92,9 @@ struct GithubActionsJob {
     /// prefix (PR/try/auto).
     full_name: String,
     os: String,
-    env: HashMap<String, String>,
+    env: BTreeMap<String, String>,
     #[serde(flatten)]
-    extra_keys: HashMap<String, serde_json::Value>,
+    extra_keys: BTreeMap<String, serde_json::Value>,
 }
 
 /// Type of workflow that is being executed on CI
@@ -116,27 +116,17 @@ struct GitHubContext {
 
 impl GitHubContext {
     fn get_run_type(&self) -> Option<RunType> {
-        if self.event_name == "pull_request" {
-            return Some(RunType::PullRequest);
-        } else if self.event_name == "push" {
-            let is_try_build =
-                ["refs/heads/try", "refs/heads/try-perf", "refs/heads/automation/bors/try"]
-                    .iter()
-                    .any(|r| **r == self.branch_ref);
-            // Unrolled branch from a rollup for testing perf
-            // This should **not** allow custom try jobs
-            let is_unrolled_perf_build = self.branch_ref == "refs/heads/try-perf";
-            if is_try_build {
-                let custom_jobs =
-                    if !is_unrolled_perf_build { Some(self.get_custom_jobs()) } else { None };
-                return Some(RunType::TryJob { custom_jobs });
+        match (self.event_name.as_str(), self.branch_ref.as_str()) {
+            ("pull_request", _) => Some(RunType::PullRequest),
+            ("push", "refs/heads/try-perf") => Some(RunType::TryJob { custom_jobs: None }),
+            ("push", "refs/heads/try" | "refs/heads/automation/bors/try") => {
+                let custom_jobs = self.get_custom_jobs();
+                let custom_jobs = if !custom_jobs.is_empty() { Some(custom_jobs) } else { None };
+                Some(RunType::TryJob { custom_jobs })
             }
-
-            if self.branch_ref == "refs/heads/auto" {
-                return Some(RunType::AutoJob);
-            }
+            ("push", "refs/heads/auto") => Some(RunType::AutoJob),
+            _ => None,
         }
-        None
     }
 
     /// Tries to parse names of specific CI jobs that should be executed in the form of
@@ -175,7 +165,7 @@ fn skip_jobs(jobs: Vec<Job>, channel: &str) -> Vec<Job> {
         .collect()
 }
 
-fn to_string_map(map: &HashMap<String, Value>) -> HashMap<String, String> {
+fn to_string_map(map: &BTreeMap<String, Value>) -> BTreeMap<String, String> {
     map.iter()
         .map(|(key, value)| {
             (
@@ -232,7 +222,7 @@ fn calculate_jobs(
     let jobs = jobs
         .into_iter()
         .map(|job| {
-            let mut env: HashMap<String, String> = to_string_map(base_env);
+            let mut env: BTreeMap<String, String> = to_string_map(base_env);
             env.extend(to_string_map(&job.env));
             let full_name = format!("{prefix} - {}", job.name);
 
@@ -312,9 +302,9 @@ fn run_workflow_locally(db: JobDatabase, job_type: JobType, name: String) -> any
         JobType::Auto => &db.auto_jobs,
         JobType::PR => &db.pr_jobs,
     };
-    let job = find_linux_job(&jobs, &name).with_context(|| format!("Cannot find job {name}"))?;
+    let job = find_linux_job(jobs, &name).with_context(|| format!("Cannot find job {name}"))?;
 
-    let mut custom_env: HashMap<String, String> = HashMap::new();
+    let mut custom_env: BTreeMap<String, String> = BTreeMap::new();
     // Replicate src/ci/scripts/setup-environment.sh
     // Adds custom environment variables to the job
     if name.starts_with("dist-") {
@@ -340,7 +330,10 @@ fn run_workflow_locally(db: JobDatabase, job_type: JobType, name: String) -> any
 enum Args {
     /// Calculate a list of jobs that should be executed on CI.
     /// Should only be used on CI inside GitHub actions.
-    CalculateJobMatrix,
+    CalculateJobMatrix {
+        #[clap(long)]
+        jobs_file: Option<PathBuf>,
+    },
     /// Execute a given CI job locally.
     #[clap(name = "run-local")]
     RunJobLocally {
@@ -362,19 +355,29 @@ enum JobType {
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    let db = load_job_db(Path::new(JOBS_YML_PATH)).context("Cannot load jobs.yml")?;
+    let default_jobs_file = Path::new(JOBS_YML_PATH);
+    let load_db = |jobs_path| load_job_db(jobs_path).context("Cannot load jobs.yml");
 
     match args {
-        Args::CalculateJobMatrix => {
+        Args::CalculateJobMatrix { jobs_file } => {
+            let jobs_path = jobs_file.as_deref().unwrap_or(default_jobs_file);
             let gh_ctx = load_github_ctx()
                 .context("Cannot load environment variables from GitHub Actions")?;
-            let channel = std::fs::read_to_string(Path::new(CI_DIRECTORY).join("channel"))
+            let channel = read_to_string(Path::new(CI_DIRECTORY).join("channel"))
                 .context("Cannot read channel file")?;
 
-            calculate_job_matrix(db, gh_ctx, &channel).context("Failed to calculate job matrix")?;
+            calculate_job_matrix(load_db(jobs_path)?, gh_ctx, &channel)
+                .context("Failed to calculate job matrix")?;
         }
-        Args::RunJobLocally { job_type, name } => run_workflow_locally(db, job_type, name)?,
+        Args::RunJobLocally { job_type, name } => {
+            run_workflow_locally(load_db(default_jobs_file)?, job_type, name)?
+        }
     }
 
     Ok(())
+}
+
+fn read_to_string<P: AsRef<Path>>(path: P) -> anyhow::Result<String> {
+    let error = format!("Cannot read file {:?}", path.as_ref());
+    std::fs::read_to_string(path).context(error)
 }
