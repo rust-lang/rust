@@ -249,7 +249,7 @@ fn write_scraped_line_number(out: &mut impl Write, line: u32, extra: &'static st
 fn write_line_number(out: &mut impl Write, line: u32, extra: &'static str) {
     // https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag#data-nosnippet-attr
     // Do not show "1 2 3 4 5 ..." in web search results.
-    write!(out, "{extra}<a href=\"#{line}\" id={line} data-nosnippet>{line}</a>",).unwrap();
+    write!(out, "{extra}<a href=#{line} id={line} data-nosnippet>{line}</a>",).unwrap();
 }
 
 fn empty_line_number(out: &mut impl Write, _: u32, extra: &'static str) {
