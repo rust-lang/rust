@@ -145,13 +145,13 @@ case ${TARGET} in
     aarch64-unknown-linux-gnu*)
         TEST_CPPFLAGS="-fuse-ld=lld -I/usr/aarch64-linux-gnu/include/ -I/usr/aarch64-linux-gnu/include/c++/9/aarch64-linux-gnu/"
         TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_aarch64.txt
-        TEST_CXX_COMPILER="clang++-15"
+        TEST_CXX_COMPILER="clang++-19"
         TEST_RUNNER="${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER}"
         ;;
     armv7-unknown-linux-gnueabihf*)
         TEST_CPPFLAGS="-fuse-ld=lld -I/usr/arm-linux-gnueabihf/include/ -I/usr/arm-linux-gnueabihf/include/c++/9/arm-linux-gnueabihf/"
         TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_arm.txt
-        TEST_CXX_COMPILER="clang++-15"
+        TEST_CXX_COMPILER="clang++-19"
         TEST_RUNNER="${CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_RUNNER}"
         ;;
     *)
@@ -199,7 +199,7 @@ case "${TARGET}" in
             "./target/${TARGET}/release/intrinsic-test" \
             "./intrinsics_data/arm_intrinsics.json" \
             --target "${TARGET}" \
-            --cppcompiler "clang++-18" \
+            --cppcompiler "clang++-19" \
             --skip crates/intrinsic-test/missing_aarch64.txt \
             --runner "${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER}" \
             --linker "${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER}" \

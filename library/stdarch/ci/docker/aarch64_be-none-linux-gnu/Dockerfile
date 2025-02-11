@@ -9,5 +9,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   qemu-user \
   make \
   file \
-  clang-18 \
+  clang-19 \
   lld
