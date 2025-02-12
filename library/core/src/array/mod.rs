@@ -427,6 +427,9 @@ impl<T: Clone, const N: usize> Clone for [T; N] {
     }
 }
 
+#[unstable(feature = "trivial_clone", issue = "none")]
+unsafe impl<T: TrivialClone, const N: usize> TrivialClone for [T; N] {}
+
 trait SpecArrayClone: Clone {
     fn clone<const N: usize>(array: &[Self; N]) -> [Self; N];
 }

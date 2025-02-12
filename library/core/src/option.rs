@@ -556,6 +556,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::clone::TrivialClone;
 use crate::iter::{self, FusedIterator, TrustedLen};
 use crate::ops::{self, ControlFlow, Deref, DerefMut};
 use crate::panicking::{panic, panic_display};
@@ -2049,6 +2050,9 @@ where
         }
     }
 }
+
+#[unstable(feature = "trivial_clone", issue = "none")]
+unsafe impl<T: TrivialClone> TrivialClone for Option<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Option<T> {
