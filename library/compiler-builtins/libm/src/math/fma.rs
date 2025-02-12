@@ -1,23 +1,28 @@
 /* SPDX-License-Identifier: MIT */
-/* origin: musl src/math/{fma,fmaf}.c. Ported to generic Rust algorithm in 2025, TG. */
+/* origin: musl src/math/fma.c. Ported to generic Rust algorithm in 2025, TG. */
 
 use super::super::support::{DInt, FpResult, HInt, IntTy, Round, Status};
-use super::super::{CastFrom, CastInto, DFloat, Float, HFloat, Int, MinInt};
+use super::{CastFrom, CastInto, Float, Int, MinInt};
 
-/// Fused multiply-add that works when there is not a larger float size available. Currently this
-/// is still specialized only for `f64`. Computes `(x * y) + z`.
+/// Fused multiply add (f64)
+///
+/// Computes `(x*y)+z`, rounded as one ternary operation (i.e. calculated with infinite precision).
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
-pub fn fma<F>(x: F, y: F, z: F) -> F
-where
-    F: Float,
-    F: CastFrom<F::SignedInt>,
-    F: CastFrom<i8>,
-    F::Int: HInt,
-    u32: CastInto<F::Int>,
-{
+pub fn fma(x: f64, y: f64, z: f64) -> f64 {
     fma_round(x, y, z, Round::Nearest).val
 }
 
+/// Fused multiply add (f128)
+///
+/// Computes `(x*y)+z`, rounded as one ternary operation (i.e. calculated with infinite precision).
+#[cfg(f128_enabled)]
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
+pub fn fmaf128(x: f128, y: f128, z: f128) -> f128 {
+    fma_round(x, y, z, Round::Nearest).val
+}
+
+/// Fused multiply-add that works when there is not a larger float size available. Computes
+/// `(x * y) + z`.
 pub fn fma_round<F>(x: F, y: F, z: F, _round: Round) -> FpResult<F>
 where
     F: Float,
@@ -222,79 +227,7 @@ where
     }
 
     // Use our exponent to scale the final value.
-    FpResult::new(super::scalbn(r, e), status)
-}
-
-/// Fma implementation when a hardware-backed larger float type is available. For `f32` and `f64`,
-/// `f64` has enough precision to represent the `f32` in its entirety, except for double rounding.
-pub fn fma_wide<F, B>(x: F, y: F, z: F) -> F
-where
-    F: Float + HFloat<D = B>,
-    B: Float + DFloat<H = F>,
-    B::Int: CastInto<i32>,
-    i32: CastFrom<i32>,
-{
-    fma_wide_round(x, y, z, Round::Nearest).val
-}
-
-pub fn fma_wide_round<F, B>(x: F, y: F, z: F, round: Round) -> FpResult<F>
-where
-    F: Float + HFloat<D = B>,
-    B: Float + DFloat<H = F>,
-    B::Int: CastInto<i32>,
-    i32: CastFrom<i32>,
-{
-    let one = IntTy::<B>::ONE;
-
-    let xy: B = x.widen() * y.widen();
-    let mut result: B = xy + z.widen();
-    let mut ui: B::Int = result.to_bits();
-    let re = result.ex();
-    let zb: B = z.widen();
-
-    let prec_diff = B::SIG_BITS - F::SIG_BITS;
-    let excess_prec = ui & ((one << prec_diff) - one);
-    let halfway = one << (prec_diff - 1);
-
-    // Common case: the larger precision is fine if...
-    // This is not a halfway case
-    if excess_prec != halfway
-        // Or the result is NaN
-        || re == B::EXP_SAT
-        // Or the result is exact
-        || (result - xy == zb && result - zb == xy)
-        // Or the mode is something other than round to nearest
-        || round != Round::Nearest
-    {
-        let min_inexact_exp = (B::EXP_BIAS as i32 + F::EXP_MIN_SUBNORM) as u32;
-        let max_inexact_exp = (B::EXP_BIAS as i32 + F::EXP_MIN) as u32;
-
-        let mut status = Status::OK;
-
-        if (min_inexact_exp..max_inexact_exp).contains(&re) && status.inexact() {
-            // This branch is never hit; requires previous operations to set a status
-            status.set_inexact(false);
-
-            result = xy + z.widen();
-            if status.inexact() {
-                status.set_underflow(true);
-            } else {
-                status.set_inexact(true);
-            }
-        }
-
-        return FpResult { val: result.narrow(), status };
-    }
-
-    let neg = ui >> (B::BITS - 1) != IntTy::<B>::ZERO;
-    let err = if neg == (zb > xy) { xy - result + zb } else { zb - result + xy };
-    if neg == (err < B::ZERO) {
-        ui += one;
-    } else {
-        ui -= one;
-    }
-
-    FpResult::ok(B::from_bits(ui).narrow())
+    FpResult::new(super::generic::scalbn(r, e), status)
 }
 
 /// Representation of `F` that has handled subnormals.
@@ -363,6 +296,7 @@ impl<F: Float> Norm<F> {
 mod tests {
     use super::*;
 
+    /// Test the generic `fma_round` algorithm for a given float.
     fn spec_test<F>()
     where
         F: Float,
@@ -375,6 +309,8 @@ mod tests {
         let y = F::from_bits(F::Int::ONE);
         let z = F::ZERO;
 
+        let fma = |x, y, z| fma_round(x, y, z, Round::Nearest).val;
+
         // 754-2020 says "When the exact result of (a × b) + c is non-zero yet the result of
         // fusedMultiplyAdd is zero because of rounding, the zero result takes the sign of the
         // exact result"
@@ -382,6 +318,11 @@ mod tests {
         assert_biteq!(fma(x, -y, z), F::NEG_ZERO);
         assert_biteq!(fma(-x, y, z), F::NEG_ZERO);
         assert_biteq!(fma(-x, -y, z), F::ZERO);
+    }
+
+    #[test]
+    fn spec_test_f32() {
+        spec_test::<f32>();
     }
 
     #[test]
@@ -416,5 +357,34 @@ mod tests {
     #[cfg(f128_enabled)]
     fn spec_test_f128() {
         spec_test::<f128>();
+    }
+
+    #[test]
+    fn fma_segfault() {
+        // These two inputs cause fma to segfault on release due to overflow:
+        assert_eq!(
+            fma(
+                -0.0000000000000002220446049250313,
+                -0.0000000000000002220446049250313,
+                -0.0000000000000002220446049250313
+            ),
+            -0.00000000000000022204460492503126,
+        );
+
+        let result = fma(-0.992, -0.992, -0.992);
+        //force rounding to storage format on x87 to prevent superious errors.
+        #[cfg(all(target_arch = "x86", not(target_feature = "sse2")))]
+        let result = force_eval!(result);
+        assert_eq!(result, -0.007936000000000007,);
+    }
+
+    #[test]
+    fn fma_sbb() {
+        assert_eq!(fma(-(1.0 - f64::EPSILON), f64::MIN, f64::MIN), -3991680619069439e277);
+    }
+
+    #[test]
+    fn fma_underflow() {
+        assert_eq!(fma(1.1102230246251565e-16, -9.812526705433188e-305, 1.0894e-320), 0.0,);
     }
 }
