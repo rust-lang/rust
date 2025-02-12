@@ -10,7 +10,7 @@ use crate::{
     lang_items::is_box,
     mapping::ToChalk,
     CallableDefId, ClosureId, Const, ConstScalar, InferenceResult, Interner, MemoryMap,
-    Substitution, TraitEnvironment, Ty, TyKind,
+    Substitution, TraitEnvironment, Ty, TyExt, TyKind,
 };
 use base_db::CrateId;
 use chalk_ir::Mutability;
@@ -144,6 +144,13 @@ impl<V, T> ProjectionElem<V, T> {
         closure_field: impl FnOnce(ClosureId, &Substitution, usize) -> Ty,
         krate: CrateId,
     ) -> Ty {
+        // we only bail on mir building when there are type mismatches
+        // but error types may pop up resulting in us still attempting to build the mir
+        // so just propagate the error type
+        if base.is_unknown() {
+            return TyKind::Error.intern(Interner);
+        }
+
         if matches!(base.kind(Interner), TyKind::Alias(_) | TyKind::AssociatedType(..)) {
             base = normalize(
                 db,
@@ -166,7 +173,7 @@ impl<V, T> ProjectionElem<V, T> {
                     TyKind::Error.intern(Interner)
                 }
             },
-            ProjectionElem::Field(Either::Left(f)) => match &base.kind(Interner) {
+            ProjectionElem::Field(Either::Left(f)) => match base.kind(Interner) {
                 TyKind::Adt(_, subst) => {
                     db.field_types(f.parent)[f.local_id].clone().substitute(Interner, subst)
                 }
