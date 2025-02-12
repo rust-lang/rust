@@ -12,9 +12,9 @@ use span::FileId;
 use triomphe::Arc;
 
 use crate::{
-    sysroot::SysrootWorkspace, workspace::ProjectWorkspaceKind, CargoWorkspace, CfgOverrides,
-    ManifestPath, ProjectJson, ProjectJsonData, ProjectWorkspace, Sysroot,
-    SysrootSourceWorkspaceConfig, WorkspaceBuildScripts,
+    sysroot::RustLibSrcWorkspace, workspace::ProjectWorkspaceKind, CargoWorkspace, CfgOverrides,
+    ManifestPath, ProjectJson, ProjectJsonData, ProjectWorkspace, RustSourceWorkspaceConfig,
+    Sysroot, WorkspaceBuildScripts,
 };
 
 fn load_cargo(file: &str) -> (CrateGraph, ProcMacroPaths) {
@@ -125,7 +125,10 @@ fn get_fake_sysroot() -> Sysroot {
     let sysroot_dir = AbsPathBuf::assert(sysroot_path);
     let sysroot_src_dir = sysroot_dir.clone();
     let mut sysroot = Sysroot::new(Some(sysroot_dir), Some(sysroot_src_dir));
-    sysroot.load_workspace(&SysrootSourceWorkspaceConfig::default_cargo());
+    let loaded_sysroot = sysroot.load_workspace(&RustSourceWorkspaceConfig::default_cargo());
+    if let Some(loaded_sysroot) = loaded_sysroot {
+        sysroot.set_workspace(loaded_sysroot);
+    }
     sysroot
 }
 
@@ -271,8 +274,11 @@ fn smoke_test_real_sysroot_cargo() {
         AbsPath::assert(Utf8Path::new(env!("CARGO_MANIFEST_DIR"))),
         &Default::default(),
     );
-    sysroot.load_workspace(&SysrootSourceWorkspaceConfig::default_cargo());
-    assert!(matches!(sysroot.workspace(), SysrootWorkspace::Workspace(_)));
+    let loaded_sysroot = sysroot.load_workspace(&RustSourceWorkspaceConfig::default_cargo());
+    if let Some(loaded_sysroot) = loaded_sysroot {
+        sysroot.set_workspace(loaded_sysroot);
+    }
+    assert!(matches!(sysroot.workspace(), RustLibSrcWorkspace::Workspace(_)));
     let project_workspace = ProjectWorkspace {
         kind: ProjectWorkspaceKind::Cargo {
             cargo: cargo_workspace,
