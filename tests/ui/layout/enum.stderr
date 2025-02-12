@@ -1,4 +1,4 @@
-error: align: AbiAndPrefAlign { abi: Align(2 bytes), pref: $PREF_ALIGN }
+error: align: AbiAlign { abi: Align(2 bytes) }
   --> $DIR/enum.rs:9:1
    |
 LL | enum UninhabitedVariantAlign {

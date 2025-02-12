@@ -235,7 +235,7 @@ pub(crate) fn check_intrinsic_type(
             sym::abort => (0, 0, vec![], tcx.types.never),
             sym::unreachable => (0, 0, vec![], tcx.types.never),
             sym::breakpoint => (0, 0, vec![], tcx.types.unit),
-            sym::size_of | sym::pref_align_of | sym::min_align_of | sym::variant_count => {
+            sym::size_of | sym::min_align_of | sym::variant_count => {
                 (1, 0, vec![], tcx.types.usize)
             }
             sym::size_of_val | sym::min_align_of_val => {
