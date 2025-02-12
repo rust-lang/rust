@@ -1,4 +1,4 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@ only-x86_64 (vectorization varies between architectures)
 #![crate_type = "lib"]
 
