@@ -1239,7 +1239,29 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn write_expr_adj(&mut self, expr: ExprId, adjustments: Vec<Adjustment>) {
-        self.result.expr_adjustments.insert(expr, adjustments);
+        if adjustments.is_empty() {
+            return;
+        }
+        match self.result.expr_adjustments.entry(expr) {
+            std::collections::hash_map::Entry::Occupied(mut entry) => {
+                match (&mut entry.get_mut()[..], &adjustments[..]) {
+                    (
+                        [Adjustment { kind: Adjust::NeverToAny, target }],
+                        [.., Adjustment { target: new_target, .. }],
+                    ) => {
+                        // NeverToAny coercion can target any type, so instead of adding a new
+                        // adjustment on top we can change the target.
+                        *target = new_target.clone();
+                    }
+                    _ => {
+                        *entry.get_mut() = adjustments;
+                    }
+                }
+            }
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                entry.insert(adjustments);
+            }
+        }
     }
 
     fn write_method_resolution(&mut self, expr: ExprId, func: FunctionId, subst: Substitution) {
