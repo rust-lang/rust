@@ -554,7 +554,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                             _ => self.requires_unsafe(expr.span, UseOfExternStatic),
                         }
                     }
-                } else if self.thir[arg].ty.is_unsafe_ptr() {
+                } else if self.thir[arg].ty.is_raw_ptr() {
                     self.requires_unsafe(expr.span, DerefOfRawPointer);
                 }
             }

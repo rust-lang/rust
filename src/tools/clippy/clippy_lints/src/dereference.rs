@@ -682,7 +682,7 @@ fn try_parse_ref_op<'tcx>(
             },
             [arg],
         ) => (true, typeck.qpath_res(path, *hir_id).opt_def_id()?, arg),
-        ExprKind::Unary(UnOp::Deref, sub_expr) if !typeck.expr_ty(sub_expr).is_unsafe_ptr() => {
+        ExprKind::Unary(UnOp::Deref, sub_expr) if !typeck.expr_ty(sub_expr).is_raw_ptr() => {
             return Some((RefOp::Deref, sub_expr));
         },
         ExprKind::AddrOf(BorrowKind::Ref, mutability, sub_expr) => return Some((RefOp::AddrOf(mutability), sub_expr)),

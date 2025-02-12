@@ -45,7 +45,7 @@ fn test<'a,T,U:Copy>(_: &'a isize) {
     // mutable object types are not ok
     assert_copy::<&'a mut (dyn Dummy + Send)>();  //~ ERROR : Copy` is not satisfied
 
-    // unsafe ptrs are ok
+    // raw ptrs are ok
     assert_copy::<*const isize>();
     assert_copy::<*const &'a mut isize>();
 
