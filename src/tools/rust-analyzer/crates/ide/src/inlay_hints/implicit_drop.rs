@@ -73,8 +73,8 @@ pub(super) fn hints(
                     _ => continue,
                 },
                 MirSpan::PatId(p) => match source_map.pat_syntax(p) {
-                    Ok(s) => s.value.text_range(),
-                    Err(_) => continue,
+                    Ok(s) if !s.file_id.is_macro() => s.value.text_range(),
+                    _ => continue,
                 },
                 MirSpan::BindingId(b) => {
                     match source_map
@@ -82,13 +82,13 @@ pub(super) fn hints(
                         .iter()
                         .find_map(|p| source_map.pat_syntax(*p).ok())
                     {
-                        Some(s) => s.value.text_range(),
-                        None => continue,
+                        Some(s) if !s.file_id.is_macro() => s.value.text_range(),
+                        _ => continue,
                     }
                 }
                 MirSpan::SelfParam => match source_map.self_param_syntax() {
-                    Some(s) => s.value.text_range(),
-                    None => continue,
+                    Some(s) if !s.file_id.is_macro() => s.value.text_range(),
+                    _ => continue,
                 },
                 MirSpan::Unknown => continue,
             };
