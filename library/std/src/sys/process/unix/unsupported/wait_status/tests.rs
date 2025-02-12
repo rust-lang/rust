@@ -1,4 +1,4 @@
-// Note that tests in this file are run on Linux as well as on platforms using process_unsupported
+// Note that tests in this file are run on Linux as well as on platforms using unsupported
 
 // Test that our emulation exactly matches Linux
 //

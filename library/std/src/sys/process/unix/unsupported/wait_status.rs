@@ -7,7 +7,7 @@ use crate::ffi::c_int;
 use crate::fmt;
 use crate::num::NonZero;
 
-/// Emulated wait status for use by `process_unsupported.rs`
+/// Emulated wait status for use by `unsupported.rs`
 ///
 /// Uses the "traditional unix" encoding.  For use on platfors which are `#[cfg(unix)]`
 /// but do not actually support subprocesses at all.
@@ -48,7 +48,7 @@ impl ExitStatus {
         // true on all actual versions of Unix, is widely assumed, and is specified in SuS
         // https://pubs.opengroup.org/onlinepubs/9699919799/functions/wait.html. If it is not
         // true for a platform pretending to be Unix, the tests (our doctests, and also
-        // process_unix/tests.rs) will spot it. `ExitStatusError::code` assumes this too.
+        // unix/tests.rs) will spot it. `ExitStatusError::code` assumes this too.
         match NonZero::try_from(self.wait_status) {
             /* was nonzero */ Ok(failure) => Err(ExitStatusError(failure)),
             /* was zero, couldn't convert */ Err(_) => Ok(()),
@@ -79,5 +79,6 @@ impl ExitStatus {
 }
 
 #[cfg(test)]
-#[path = "wait_status/tests.rs"] // needed because of strange layout of process_unsupported
+#[path = "wait_status/tests.rs"]
+// needed because this module is also imported through #[path] for testing purposes
 mod tests;

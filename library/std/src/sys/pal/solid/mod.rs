@@ -25,8 +25,6 @@ pub(crate) mod error;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-#[path = "../unsupported/process.rs"]
-pub mod process;
 pub use self::itron::{thread, thread_parking};
 pub mod time;
 

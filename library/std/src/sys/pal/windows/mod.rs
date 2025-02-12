@@ -22,7 +22,6 @@ pub mod futex;
 pub mod handle;
 pub mod os;
 pub mod pipe;
-pub mod process;
 pub mod thread;
 pub mod time;
 cfg_if::cfg_if! {
@@ -284,6 +283,14 @@ pub fn truncate_utf16_at_nul(v: &[u16]) -> &[u16] {
         // don't include the 0
         Some(i) => &v[..i],
         None => v,
+    }
+}
+
+pub fn ensure_no_nuls<T: AsRef<OsStr>>(s: T) -> crate::io::Result<T> {
+    if s.as_ref().encode_wide().any(|b| b == 0) {
+        Err(crate::io::const_error!(ErrorKind::InvalidInput, "nul byte found in provided data"))
+    } else {
+        Ok(s)
     }
 }
 
