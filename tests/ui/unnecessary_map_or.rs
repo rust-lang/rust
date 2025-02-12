@@ -102,3 +102,9 @@ impl std::ops::Deref for S {
 fn with_deref(o: &S) -> bool {
     o.map_or(true, |n| n > 5)
 }
+
+fn issue14201(a: Option<String>, b: Option<String>, s: &String) -> bool {
+    let x = a.map_or(false, |a| a == *s);
+    let y = b.map_or(true, |b| b == *s);
+    x && y
+}
