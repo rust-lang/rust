@@ -46,8 +46,8 @@ For space savings, it's also written without newlines or spaces.
 ]
 ```
 
-[`src/librustdoc/html/static/js/externs.js`]
-defines an actual schema in a Closure `@typedef`.
+[`src/librustdoc/html/static/js/rustdoc.d.ts`]
+defines an actual schema in a TypeScript `type`.
 
 | Key | Name                 | Description  |
 | --- | -------------------- | ------------ |
@@ -68,7 +68,7 @@ with a free function called `function_name` and a struct called `Data`,
 with the type signature `Data, i32 -> str`,
 and an alias, `get_name`, that equivalently refers to `function_name`.
 
-[`src/librustdoc/html/static/js/externs.js`]: https://github.com/rust-lang/rust/blob/79b710c13968a1a48d94431d024d2b1677940866/src/librustdoc/html/static/js/externs.js#L204-L258
+[`src/librustdoc/html/static/js/rustdoc.d.ts`]: https://github.com/rust-lang/rust/blob/2f92f050e83bf3312ce4ba73c31fe843ad3cbc60/src/librustdoc/html/static/js/rustdoc.d.ts#L344-L390
 
 The search index needs to fit the needs of the `rustdoc` compiler,
 the `search.js` frontend,
@@ -469,7 +469,7 @@ want the libs team to be able to add new items without causing unrelated
 tests to fail, but standalone tests will use it more often.
 
 The `ResultsTable` and `ParsedQuery` types are specified in
-[`externs.js`](https://github.com/rust-lang/rust/blob/master/src/librustdoc/html/static/js/externs.js).
+[`rustdoc.d.ts`](https://github.com/rust-lang/rust/blob/master/src/librustdoc/html/static/js/rustdoc.d.ts).
 
 For example, imagine we needed to fix a bug where a function named
 `constructor` couldn't be found. To do this, write two files:

@@ -1,5 +1,5 @@
 use clap::Parser;
-use crate::sync::GitSync;
+use crate::sync::{GitSync, RustcPullError};
 
 mod sync;
 
@@ -22,7 +22,18 @@ fn main() -> anyhow::Result<()> {
     let sync = GitSync::from_current_dir()?;
     match args {
         Args::RustcPull => {
-            sync.rustc_pull(None)?;
+            if let Err(error) = sync.rustc_pull(None) {
+                match error {
+                    RustcPullError::NothingToPull => {
+                        eprintln!("Nothing to pull");
+                        std::process::exit(2);
+                    }
+                    RustcPullError::PullFailed(error) => {
+                        eprintln!("Pull failure: {error:?}");
+                        std::process::exit(1);
+                    }
+                }
+            }
         }
         Args::RustcPush { github_username, branch } => {
             sync.rustc_push(github_username, branch)?;
