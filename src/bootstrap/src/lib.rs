@@ -905,6 +905,8 @@ impl Build {
             return CommandOutput::default();
         }
 
+        let _run_span = trace_cmd!(command);
+
         let created_at = command.get_created_location();
         let executed_at = std::panic::Location::caller();
 

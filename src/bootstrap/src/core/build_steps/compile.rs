@@ -30,7 +30,7 @@ use crate::utils::exec::command;
 use crate::utils::helpers::{
     exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
 };
-use crate::{CLang, Compiler, DependencyType, GitRepo, LLVM_TOOLS, Mode};
+use crate::{CLang, Compiler, DependencyType, GitRepo, LLVM_TOOLS, Mode, trace_cmd};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Std {
@@ -2234,6 +2234,9 @@ pub fn stream_cargo(
     cb: &mut dyn FnMut(CargoMessage<'_>),
 ) -> bool {
     let mut cmd = cargo.into_cmd();
+
+    let _run_span = trace_cmd!(cmd);
+
     let cargo = cmd.as_command_mut();
     // Instruct Cargo to give us json messages on stdout, critically leaving
     // stderr as piped so we can get those pretty colors.
