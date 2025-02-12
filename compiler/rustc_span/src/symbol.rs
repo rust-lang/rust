@@ -879,6 +879,7 @@ symbols! {
         extern_crate_self,
         extern_in_paths,
         extern_prelude,
+        extern_system_varargs,
         extern_types,
         external,
         external_doc,
