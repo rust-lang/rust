@@ -614,6 +614,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(control_flow_guard, CFGuard::Checks);
     tracked!(debug_assertions, Some(true));
     tracked!(debuginfo, DebugInfo::Limited);
+    tracked!(dwarf_version, Some(5));
     tracked!(embed_bitcode, false);
     tracked!(force_frame_pointers, FramePointer::Always);
     tracked!(force_unwind_tables, Some(true));
