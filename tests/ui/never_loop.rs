@@ -422,6 +422,34 @@ pub fn issue12205() -> Option<()> {
     }
 }
 
+fn stmt_after_return() {
+    for v in 0..10 {
+        //~^ never_loop
+        break;
+        println!("{v}");
+    }
+}
+
+fn loop_label() {
+    'outer: for v in 0..10 {
+        //~^ never_loop
+        loop {
+            //~^ never_loop
+            break 'outer;
+        }
+        return;
+    }
+
+    for v in 0..10 {
+        //~^ never_loop
+        'inner: loop {
+            //~^ never_loop
+            break 'inner;
+        }
+        return;
+    }
+}
+
 fn main() {
     test1();
     test2();
