@@ -62,7 +62,7 @@
 //! a "stability" of an item. So, the stability attribute has an
 //! [`AttributeParser`](attributes::AttributeParser) that recognizes both the `#[stable()]`
 //! and `#[unstable()]` syntactic attributes, and at the end produce a single
-//! [`AttributeKind::Stability`](rustc_attr_data_structures::AttributeKind::Stability).
+//! [`AttributeKind::Stability`].
 //!
 //! When multiple instances of the same attribute are allowed, they're combined into a single
 //! semantic attribute. For example:
@@ -86,6 +86,7 @@
 #[macro_use]
 mod attributes;
 mod context;
+mod lints;
 pub mod parser;
 mod session_diagnostics;
 
@@ -93,6 +94,7 @@ pub use attributes::cfg::*;
 pub use attributes::util::{
     find_crate_name, is_builtin_attr, is_doc_alias_attrs_contain_symbol, parse_version,
 };
-pub use context::{AttributeParser, OmitDoc};
+pub use context::{AttributeParser, Early, Late, OmitDoc};
+pub use lints::emit_attribute_lint;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

@@ -2,16 +2,16 @@ use rustc_attr_data_structures::{AttributeKind, DeprecatedSince, Deprecation};
 use rustc_span::{Span, Symbol, sym};
 
 use super::util::parse_version;
-use super::{AttributeDuplicates, OnDuplicate, SingleAttributeParser};
-use crate::context::AcceptContext;
+use super::{AttributeOrder, OnDuplicate, SingleAttributeParser};
+use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics;
 use crate::session_diagnostics::UnsupportedLiteralReason;
 
 pub(crate) struct DeprecationParser;
 
-fn get(
-    cx: &AcceptContext<'_>,
+fn get<S: Stage>(
+    cx: &AcceptContext<'_, '_, S>,
     name: Symbol,
     param_span: Span,
     arg: &ArgParser<'_>,
@@ -41,12 +41,12 @@ fn get(
     }
 }
 
-impl SingleAttributeParser for DeprecationParser {
+impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
     const PATH: &'static [Symbol] = &[sym::deprecated];
-    const ON_DUPLICATE_STRATEGY: AttributeDuplicates = AttributeDuplicates::ErrorFollowing;
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Error;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
 
-    fn convert(cx: &AcceptContext<'_>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let features = cx.features();
 
         let mut since = None;
