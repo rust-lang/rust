@@ -3,8 +3,8 @@ use crate::marker::PhantomData;
 use crate::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 use crate::sync::Arc;
 use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use crate::{fmt, io};
 use crate::sys_common::{AsInner, IntoInner};
+use crate::{fmt, io};
 
 /// A scope to spawn scoped threads in.
 ///
