@@ -2561,27 +2561,29 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // reject function types that violate cmse ABI requirements
         cmse::validate_cmse_abi(self.tcx(), self.dcx(), hir_id, abi, bare_fn_ty);
 
-        // Find any late-bound regions declared in return type that do
-        // not appear in the arguments. These are not well-formed.
-        //
-        // Example:
-        //     for<'a> fn() -> &'a str <-- 'a is bad
-        //     for<'a> fn(&'a String) -> &'a str <-- 'a is ok
-        let inputs = bare_fn_ty.inputs();
-        let late_bound_in_args =
-            tcx.collect_constrained_late_bound_regions(inputs.map_bound(|i| i.to_owned()));
-        let output = bare_fn_ty.output();
-        let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(output);
+        if !bare_fn_ty.references_error() {
+            // Find any late-bound regions declared in return type that do
+            // not appear in the arguments. These are not well-formed.
+            //
+            // Example:
+            //     for<'a> fn() -> &'a str <-- 'a is bad
+            //     for<'a> fn(&'a String) -> &'a str <-- 'a is ok
+            let inputs = bare_fn_ty.inputs();
+            let late_bound_in_args =
+                tcx.collect_constrained_late_bound_regions(inputs.map_bound(|i| i.to_owned()));
+            let output = bare_fn_ty.output();
+            let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(output);
 
-        self.validate_late_bound_regions(late_bound_in_args, late_bound_in_ret, |br_name| {
-            struct_span_code_err!(
-                self.dcx(),
-                decl.output.span(),
-                E0581,
-                "return type references {}, which is not constrained by the fn input types",
-                br_name
-            )
-        });
+            self.validate_late_bound_regions(late_bound_in_args, late_bound_in_ret, |br_name| {
+                struct_span_code_err!(
+                    self.dcx(),
+                    decl.output.span(),
+                    E0581,
+                    "return type references {}, which is not constrained by the fn input types",
+                    br_name
+                )
+            });
+        }
 
         bare_fn_ty
     }
