@@ -12,16 +12,13 @@ import re
 import subprocess as sp
 import sys
 from dataclasses import dataclass
-from glob import glob, iglob
+from glob import glob
 from pathlib import Path
 from typing import Any, Callable, TypeAlias
 
 SELF_PATH = Path(__file__)
 ETC_DIR = SELF_PATH.parent
 ROOT_DIR = ETC_DIR.parent
-
-# Loose approximation of what gets checked in to git, without needing `git ls-files`.
-DIRECTORIES = [".github", "ci", "crates", "etc", "src"]
 
 # These files do not trigger a retest.
 IGNORED_SOURCES = ["src/libm_helper.rs", "src/math/support/float_traits.rs"]
@@ -190,30 +187,31 @@ class Crate:
         """In each file, check annotations indicating blocks of code should be sorted or should
         include all public API.
         """
-        for dirname in DIRECTORIES:
-            dir = ROOT_DIR.joinpath(dirname)
-            for fname in iglob("**", root_dir=dir, recursive=True):
-                fpath = dir.joinpath(fname)
-                if fpath.is_dir() or fpath == SELF_PATH:
-                    continue
 
-                lines = fpath.read_text().splitlines()
+        flist = sp.check_output(["git", "ls-files"], cwd=ROOT_DIR, text=True)
 
-                validate_delimited_block(
-                    fpath,
-                    lines,
-                    "verify-sorted-start",
-                    "verify-sorted-end",
-                    ensure_sorted,
-                )
+        for path in flist.splitlines():
+            fpath = ROOT_DIR.joinpath(path)
+            if fpath.is_dir() or fpath == SELF_PATH:
+                continue
 
-                validate_delimited_block(
-                    fpath,
-                    lines,
-                    "verify-apilist-start",
-                    "verify-apilist-end",
-                    lambda p, n, lines: self.ensure_contains_api(p, n, lines),
-                )
+            lines = fpath.read_text().splitlines()
+
+            validate_delimited_block(
+                fpath,
+                lines,
+                "verify-sorted-start",
+                "verify-sorted-end",
+                ensure_sorted,
+            )
+
+            validate_delimited_block(
+                fpath,
+                lines,
+                "verify-apilist-start",
+                "verify-apilist-end",
+                lambda p, n, lines: self.ensure_contains_api(p, n, lines),
+            )
 
     def ensure_contains_api(self, fpath: Path, line_num: int, lines: list[str]):
         """Given a list of strings, ensure that each public function we have is named
