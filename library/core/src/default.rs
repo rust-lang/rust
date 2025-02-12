@@ -104,6 +104,7 @@ use crate::ascii::Char as AsciiChar;
 #[rustc_diagnostic_item = "Default"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[const_trait]
+#[rustc_const_unstable(feature = "const_default", issue = "none")]
 #[rustc_trivial_field_reads]
 #[rustc_const_unstable(feature = "const_default", issue = "none")]
 pub trait Default: Sized {
