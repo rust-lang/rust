@@ -1,7 +1,7 @@
 //! Verify that Rust implements the expected calling convention for `i128`/`u128`.
 
 //@ add-core-stubs
-//@ compile-flags: -O --target wasm32-wasip1
+//@ compile-flags: -Copt-level=3 --target wasm32-wasip1
 //@ needs-llvm-components: webassembly
 
 #![crate_type = "lib"]

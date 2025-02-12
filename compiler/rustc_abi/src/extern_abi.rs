@@ -1,14 +1,19 @@
+use std::cmp::Ordering;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+#[cfg(feature = "nightly")]
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd};
+#[cfg(feature = "nightly")]
+use rustc_macros::{Decodable, Encodable};
 
 #[cfg(test)]
 mod tests;
 
 use ExternAbi as Abi;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Debug)]
-#[derive(HashStable_Generic, Encodable, Decodable)]
+#[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable))]
 pub enum ExternAbi {
     // Some of the ABIs come first because every time we add a new ABI, we have to re-bless all the
     // hashing tests. These are used in many places, so giving them stable values reduces test
@@ -68,7 +73,124 @@ pub enum ExternAbi {
     RiscvInterruptS,
 }
 
-impl Abi {
+macro_rules! abi_impls {
+    ($e_name:ident = {
+        $($variant:ident $({ unwind: $uw:literal })? =><= $tok:literal,)*
+    }) => {
+        impl $e_name {
+            pub const ALL_VARIANTS: &[Self] = &[
+                $($e_name::$variant $({ unwind: $uw })*,)*
+            ];
+            pub const fn as_str(&self) -> &'static str {
+                match self {
+                    $($e_name::$variant $( { unwind: $uw } )* => $tok,)*
+                }
+            }
+        }
+
+        impl ::core::str::FromStr for $e_name {
+            type Err = AbiFromStrErr;
+            fn from_str(s: &str) -> Result<$e_name, Self::Err> {
+                match s {
+                    $($tok => Ok($e_name::$variant $({ unwind: $uw })*),)*
+                    _ => Err(AbiFromStrErr::Unknown),
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum AbiFromStrErr {
+    Unknown,
+}
+
+abi_impls! {
+    ExternAbi = {
+            C { unwind: false } =><= "C",
+            CCmseNonSecureCall =><= "C-cmse-nonsecure-call",
+            CCmseNonSecureEntry =><= "C-cmse-nonsecure-entry",
+            C { unwind: true } =><= "C-unwind",
+            Rust =><= "Rust",
+            Aapcs { unwind: false } =><= "aapcs",
+            Aapcs { unwind: true } =><= "aapcs-unwind",
+            AvrInterrupt =><= "avr-interrupt",
+            AvrNonBlockingInterrupt =><= "avr-non-blocking-interrupt",
+            Cdecl { unwind: false } =><= "cdecl",
+            Cdecl { unwind: true } =><= "cdecl-unwind",
+            EfiApi =><= "efiapi",
+            Fastcall { unwind: false } =><= "fastcall",
+            Fastcall { unwind: true } =><= "fastcall-unwind",
+            GpuKernel =><= "gpu-kernel",
+            Msp430Interrupt =><= "msp430-interrupt",
+            PtxKernel =><= "ptx-kernel",
+            RiscvInterruptM =><= "riscv-interrupt-m",
+            RiscvInterruptS =><= "riscv-interrupt-s",
+            RustCall =><= "rust-call",
+            RustCold =><= "rust-cold",
+            RustIntrinsic =><= "rust-intrinsic",
+            Stdcall { unwind: false } =><= "stdcall",
+            Stdcall { unwind: true } =><= "stdcall-unwind",
+            System { unwind: false } =><= "system",
+            System { unwind: true } =><= "system-unwind",
+            SysV64 { unwind: false } =><= "sysv64",
+            SysV64 { unwind: true } =><= "sysv64-unwind",
+            Thiscall { unwind: false } =><= "thiscall",
+            Thiscall { unwind: true } =><= "thiscall-unwind",
+            Unadjusted =><= "unadjusted",
+            Vectorcall { unwind: false } =><= "vectorcall",
+            Vectorcall { unwind: true } =><= "vectorcall-unwind",
+            Win64 { unwind: false } =><= "win64",
+            Win64 { unwind: true } =><= "win64-unwind",
+            X86Interrupt =><= "x86-interrupt",
+    }
+}
+
+impl Ord for ExternAbi {
+    fn cmp(&self, rhs: &Self) -> Ordering {
+        self.as_str().cmp(rhs.as_str())
+    }
+}
+
+impl PartialOrd for ExternAbi {
+    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+        Some(self.cmp(rhs))
+    }
+}
+
+impl PartialEq for ExternAbi {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.cmp(rhs) == Ordering::Equal
+    }
+}
+
+impl Eq for ExternAbi {}
+
+impl Hash for ExternAbi {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.as_str().hash(state);
+        // double-assurance of a prefix breaker
+        u32::from_be_bytes(*b"ABI\0").hash(state);
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl<C> HashStable<C> for ExternAbi {
+    #[inline]
+    fn hash_stable(&self, _: &mut C, hasher: &mut StableHasher) {
+        Hash::hash(self, hasher);
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl StableOrd for ExternAbi {
+    const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    // because each ABI is hashed like a string, there is no possible instability
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
+}
+
+impl ExternAbi {
     pub fn supports_varargs(self) -> bool {
         // * C and Cdecl obviously support varargs.
         // * C can be based on Aapcs, SysV64 or Win64, so they must support varargs.
@@ -92,144 +214,21 @@ impl Abi {
     }
 }
 
-#[derive(Copy, Clone)]
-pub struct AbiData {
-    pub abi: Abi,
-
-    /// Name of this ABI as we like it called.
-    pub name: &'static str,
-}
-
-#[allow(non_upper_case_globals)]
-pub const AbiDatas: &[AbiData] = &[
-    AbiData { abi: Abi::Rust, name: "Rust" },
-    AbiData { abi: Abi::C { unwind: false }, name: "C" },
-    AbiData { abi: Abi::C { unwind: true }, name: "C-unwind" },
-    AbiData { abi: Abi::Cdecl { unwind: false }, name: "cdecl" },
-    AbiData { abi: Abi::Cdecl { unwind: true }, name: "cdecl-unwind" },
-    AbiData { abi: Abi::Stdcall { unwind: false }, name: "stdcall" },
-    AbiData { abi: Abi::Stdcall { unwind: true }, name: "stdcall-unwind" },
-    AbiData { abi: Abi::Fastcall { unwind: false }, name: "fastcall" },
-    AbiData { abi: Abi::Fastcall { unwind: true }, name: "fastcall-unwind" },
-    AbiData { abi: Abi::Vectorcall { unwind: false }, name: "vectorcall" },
-    AbiData { abi: Abi::Vectorcall { unwind: true }, name: "vectorcall-unwind" },
-    AbiData { abi: Abi::Thiscall { unwind: false }, name: "thiscall" },
-    AbiData { abi: Abi::Thiscall { unwind: true }, name: "thiscall-unwind" },
-    AbiData { abi: Abi::Aapcs { unwind: false }, name: "aapcs" },
-    AbiData { abi: Abi::Aapcs { unwind: true }, name: "aapcs-unwind" },
-    AbiData { abi: Abi::Win64 { unwind: false }, name: "win64" },
-    AbiData { abi: Abi::Win64 { unwind: true }, name: "win64-unwind" },
-    AbiData { abi: Abi::SysV64 { unwind: false }, name: "sysv64" },
-    AbiData { abi: Abi::SysV64 { unwind: true }, name: "sysv64-unwind" },
-    AbiData { abi: Abi::PtxKernel, name: "ptx-kernel" },
-    AbiData { abi: Abi::Msp430Interrupt, name: "msp430-interrupt" },
-    AbiData { abi: Abi::X86Interrupt, name: "x86-interrupt" },
-    AbiData { abi: Abi::GpuKernel, name: "gpu-kernel" },
-    AbiData { abi: Abi::EfiApi, name: "efiapi" },
-    AbiData { abi: Abi::AvrInterrupt, name: "avr-interrupt" },
-    AbiData { abi: Abi::AvrNonBlockingInterrupt, name: "avr-non-blocking-interrupt" },
-    AbiData { abi: Abi::CCmseNonSecureCall, name: "C-cmse-nonsecure-call" },
-    AbiData { abi: Abi::CCmseNonSecureEntry, name: "C-cmse-nonsecure-entry" },
-    AbiData { abi: Abi::System { unwind: false }, name: "system" },
-    AbiData { abi: Abi::System { unwind: true }, name: "system-unwind" },
-    AbiData { abi: Abi::RustIntrinsic, name: "rust-intrinsic" },
-    AbiData { abi: Abi::RustCall, name: "rust-call" },
-    AbiData { abi: Abi::Unadjusted, name: "unadjusted" },
-    AbiData { abi: Abi::RustCold, name: "rust-cold" },
-    AbiData { abi: Abi::RiscvInterruptM, name: "riscv-interrupt-m" },
-    AbiData { abi: Abi::RiscvInterruptS, name: "riscv-interrupt-s" },
-];
-
-#[derive(Copy, Clone, Debug)]
-pub struct AbiUnsupported {}
-/// Returns the ABI with the given name (if any).
-pub fn lookup(name: &str) -> Result<Abi, AbiUnsupported> {
-    AbiDatas
-        .iter()
-        .find(|abi_data| name == abi_data.name)
-        .map(|&x| x.abi)
-        .ok_or_else(|| AbiUnsupported {})
-}
-
 pub fn all_names() -> Vec<&'static str> {
-    AbiDatas.iter().map(|d| d.name).collect()
+    ExternAbi::ALL_VARIANTS.iter().map(|abi| abi.as_str()).collect()
 }
 
-impl Abi {
+impl ExternAbi {
     /// Default ABI chosen for `extern fn` declarations without an explicit ABI.
     pub const FALLBACK: Abi = Abi::C { unwind: false };
 
-    #[inline]
-    pub fn index(self) -> usize {
-        // N.B., this ordering MUST match the AbiDatas array above.
-        // (This is ensured by the test indices_are_correct().)
-        use Abi::*;
-        let i = match self {
-            // Cross-platform ABIs
-            Rust => 0,
-            C { unwind: false } => 1,
-            C { unwind: true } => 2,
-            // Platform-specific ABIs
-            Cdecl { unwind: false } => 3,
-            Cdecl { unwind: true } => 4,
-            Stdcall { unwind: false } => 5,
-            Stdcall { unwind: true } => 6,
-            Fastcall { unwind: false } => 7,
-            Fastcall { unwind: true } => 8,
-            Vectorcall { unwind: false } => 9,
-            Vectorcall { unwind: true } => 10,
-            Thiscall { unwind: false } => 11,
-            Thiscall { unwind: true } => 12,
-            Aapcs { unwind: false } => 13,
-            Aapcs { unwind: true } => 14,
-            Win64 { unwind: false } => 15,
-            Win64 { unwind: true } => 16,
-            SysV64 { unwind: false } => 17,
-            SysV64 { unwind: true } => 18,
-            PtxKernel => 19,
-            Msp430Interrupt => 20,
-            X86Interrupt => 21,
-            GpuKernel => 22,
-            EfiApi => 23,
-            AvrInterrupt => 24,
-            AvrNonBlockingInterrupt => 25,
-            CCmseNonSecureCall => 26,
-            CCmseNonSecureEntry => 27,
-            // Cross-platform ABIs
-            System { unwind: false } => 28,
-            System { unwind: true } => 29,
-            RustIntrinsic => 30,
-            RustCall => 31,
-            Unadjusted => 32,
-            RustCold => 33,
-            RiscvInterruptM => 34,
-            RiscvInterruptS => 35,
-        };
-        debug_assert!(
-            AbiDatas
-                .iter()
-                .enumerate()
-                .find(|(_, AbiData { abi, .. })| *abi == self)
-                .map(|(index, _)| index)
-                .expect("abi variant has associated data")
-                == i,
-            "Abi index did not match `AbiDatas` ordering"
-        );
-        i
-    }
-
-    #[inline]
-    pub fn data(self) -> &'static AbiData {
-        &AbiDatas[self.index()]
-    }
-
     pub fn name(self) -> &'static str {
-        self.data().name
+        self.as_str()
     }
 }
 
-impl fmt::Display for Abi {
+impl fmt::Display for ExternAbi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "\"{}\"", self.name())
+        write!(f, "\"{}\"", self.as_str())
     }
 }

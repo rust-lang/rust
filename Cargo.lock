@@ -3409,7 +3409,6 @@ dependencies = [
  "rustc_parse",
  "rustc_session",
  "rustc_span",
- "rustc_target",
  "thin-vec",
 ]
 
@@ -4423,6 +4422,7 @@ version = "0.0.0"
 dependencies = [
  "parking_lot",
  "rustc-rayon-core",
+ "rustc_abi",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
@@ -4434,7 +4434,6 @@ dependencies = [
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
- "rustc_target",
  "smallvec",
  "thin-vec",
  "tracing",

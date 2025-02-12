@@ -1,4 +1,4 @@
-//@ compile-flags: -C lto -C panic=abort -O
+//@ compile-flags: -C lto -C panic=abort -Copt-level=3
 //@ no-prefer-dynamic
 
 fn main() {

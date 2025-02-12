@@ -1475,7 +1475,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_abi(&mut self, abi_str: StrLit) -> ExternAbi {
         let ast::StrLit { symbol_unescaped, span, .. } = abi_str;
-        let extern_abi = rustc_abi::lookup(symbol_unescaped.as_str()).unwrap_or_else(|_| {
+        let extern_abi = symbol_unescaped.as_str().parse().unwrap_or_else(|_| {
             self.error_on_invalid_abi(abi_str);
             ExternAbi::Rust
         });

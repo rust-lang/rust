@@ -8,10 +8,10 @@ use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 
 pub(crate) fn enabled_names(features: &rustc_feature::Features, span: Span) -> Vec<&'static str> {
-    rustc_abi::AbiDatas
-        .iter()
-        .filter(|data| extern_abi_enabled(features, span, data.abi).is_ok())
-        .map(|d| d.name)
+    ExternAbi::ALL_VARIANTS
+        .into_iter()
+        .filter(|abi| extern_abi_enabled(features, span, **abi).is_ok())
+        .map(|abi| abi.as_str())
         .collect()
 }
 
@@ -54,17 +54,12 @@ enum GateReason {
 impl fmt::Display for UnstableAbi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Self { abi, .. } = self;
-        let name = abi.to_string();
-        let name = name.trim_matches('"');
         match self.explain {
             GateReason::Experimental => {
-                write!(f, r#"the extern "{name}" ABI is experimental and subject to change"#)
+                write!(f, "the extern {abi} ABI is experimental and subject to change")
             }
             GateReason::ImplDetail => {
-                write!(
-                    f,
-                    r#"the extern "{name}" ABI is an implementation detail and perma-unstable"#
-                )
+                write!(f, "the extern {abi} ABI is an implementation detail and perma-unstable")
             }
         }
     }

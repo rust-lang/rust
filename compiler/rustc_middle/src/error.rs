@@ -11,7 +11,7 @@ use crate::ty::Ty;
 #[derive(Diagnostic)]
 #[diag(middle_drop_check_overflow, code = E0320)]
 #[note]
-pub struct DropCheckOverflow<'tcx> {
+pub(crate) struct DropCheckOverflow<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
@@ -20,14 +20,14 @@ pub struct DropCheckOverflow<'tcx> {
 
 #[derive(Diagnostic)]
 #[diag(middle_failed_writing_file)]
-pub struct FailedWritingFile<'a> {
+pub(crate) struct FailedWritingFile<'a> {
     pub path: &'a Path,
     pub error: io::Error,
 }
 
 #[derive(Diagnostic)]
 #[diag(middle_opaque_hidden_type_mismatch)]
-pub struct OpaqueHiddenTypeMismatch<'tcx> {
+pub(crate) struct OpaqueHiddenTypeMismatch<'tcx> {
     pub self_ty: Ty<'tcx>,
     pub other_ty: Ty<'tcx>,
     #[primary_span]
@@ -37,12 +37,14 @@ pub struct OpaqueHiddenTypeMismatch<'tcx> {
     pub sub: TypeMismatchReason,
 }
 
+// FIXME(autodiff): I should get used somewhere
 #[derive(Diagnostic)]
 #[diag(middle_unsupported_union)]
 pub struct UnsupportedUnion {
     pub ty_name: String,
 }
 
+// FIXME(autodiff): I should get used somewhere
 #[derive(Diagnostic)]
 #[diag(middle_autodiff_unsafe_inner_const_ref)]
 pub struct AutodiffUnsafeInnerConstRef {
@@ -67,7 +69,7 @@ pub enum TypeMismatchReason {
 
 #[derive(Diagnostic)]
 #[diag(middle_limit_invalid)]
-pub struct LimitInvalid<'a> {
+pub(crate) struct LimitInvalid<'a> {
     #[primary_span]
     pub span: Span,
     #[label]
@@ -78,14 +80,14 @@ pub struct LimitInvalid<'a> {
 #[derive(Diagnostic)]
 #[diag(middle_recursion_limit_reached)]
 #[help]
-pub struct RecursionLimitReached<'tcx> {
+pub(crate) struct RecursionLimitReached<'tcx> {
     pub ty: Ty<'tcx>,
     pub suggested_limit: rustc_session::Limit,
 }
 
 #[derive(Diagnostic)]
 #[diag(middle_const_eval_non_int)]
-pub struct ConstEvalNonIntError {
+pub(crate) struct ConstEvalNonIntError {
     #[primary_span]
     pub span: Span,
 }
@@ -160,26 +162,16 @@ pub enum LayoutError<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(middle_adjust_for_foreign_abi_error)]
-pub struct UnsupportedFnAbi {
-    pub arch: Symbol,
-    pub abi: &'static str,
-}
-
-#[derive(Diagnostic)]
 #[diag(middle_erroneous_constant)]
-pub struct ErroneousConstant {
+pub(crate) struct ErroneousConstant {
     #[primary_span]
     pub span: Span,
 }
 
-/// Used by `rustc_const_eval`
-pub use crate::fluent_generated::middle_adjust_for_foreign_abi_error;
-
 #[derive(Diagnostic)]
 #[diag(middle_type_length_limit)]
 #[help(middle_consider_type_length_limit)]
-pub struct TypeLengthLimit {
+pub(crate) struct TypeLengthLimit {
     #[primary_span]
     pub span: Span,
     pub shrunk: String,

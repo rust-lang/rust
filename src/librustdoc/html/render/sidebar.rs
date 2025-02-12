@@ -11,7 +11,6 @@ use super::{Context, ItemSection, item_ty_to_section};
 use crate::clean;
 use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
-use crate::html::format::Buffer;
 use crate::html::markdown::{IdMap, MarkdownWithToc};
 
 #[derive(Clone, Copy)]
@@ -114,7 +113,7 @@ pub(crate) mod filters {
     }
 }
 
-pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
+pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut String) {
     let mut ids = IdMap::new();
     let mut blocks: Vec<LinkBlock<'_>> = docblock_toc(cx, it, &mut ids).into_iter().collect();
     let deref_id_map = cx.deref_id_map.borrow();

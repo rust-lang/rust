@@ -1,6 +1,6 @@
 #![crate_type = "lib"]
 
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 
 // MIR inlining now optimizes this code.
 

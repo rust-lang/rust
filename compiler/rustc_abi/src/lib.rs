@@ -52,21 +52,17 @@ use bitflags::bitflags;
 use rustc_data_structures::stable_hasher::StableOrd;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 #[cfg(feature = "nightly")]
-use rustc_macros::HashStable_Generic;
-#[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_Generic, Encodable_Generic};
+use rustc_macros::{Decodable_Generic, Encodable_Generic, HashStable_Generic};
 
 mod callconv;
 mod layout;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "nightly")]
 mod extern_abi;
 
 pub use callconv::{Heterogeneous, HomogeneousAggregate, Reg, RegKind};
-#[cfg(feature = "nightly")]
-pub use extern_abi::{AbiDatas, AbiUnsupported, ExternAbi, all_names, lookup};
+pub use extern_abi::{ExternAbi, all_names};
 #[cfg(feature = "nightly")]
 pub use layout::{FIRST_VARIANT, FieldIdx, Layout, TyAbiInterface, TyAndLayout, VariantIdx};
 pub use layout::{LayoutCalculator, LayoutCalculatorError};

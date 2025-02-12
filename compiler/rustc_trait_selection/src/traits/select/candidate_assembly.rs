@@ -920,11 +920,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         //     T: Trait
         // so it seems ok if we (conservatively) fail to accept that `Unsize`
         // obligation above. Should be possible to extend this in the future.
-        let Some(source) = obligation.self_ty().no_bound_vars() else {
+        let Some(trait_pred) = obligation.predicate.no_bound_vars() else {
             // Don't add any candidates if there are bound regions.
             return;
         };
-        let target = obligation.predicate.skip_binder().trait_ref.args.type_at(1);
+        let source = trait_pred.self_ty();
+        let target = trait_pred.trait_ref.args.type_at(1);
 
         debug!(?source, ?target, "assemble_candidates_for_unsizing");
 
