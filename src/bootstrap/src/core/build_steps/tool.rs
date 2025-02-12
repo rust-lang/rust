@@ -164,6 +164,16 @@ pub fn prepare_tool_cargo(
         }
     }
 
+    // The stage0 compiler changes infrequently and does not directly depend on code
+    // in the current working directory. Therefore, caching it with sccache should be
+    // useful.
+    // This is only performed for non-incremental builds, as ccache cannot deal with these.
+    if let Some(ref ccache) = builder.config.ccache {
+        if matches!(mode, Mode::ToolBootstrap) && !builder.config.incremental {
+            cargo.env("RUSTC_WRAPPER", ccache);
+        }
+    }
+
     // clippy tests need to know about the stage sysroot. Set them consistently while building to
     // avoid rebuilding when running tests.
     cargo.env("SYSROOT", builder.sysroot(compiler));
