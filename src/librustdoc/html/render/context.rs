@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, channel};
+use std::{fmt, io};
 
 use rinja::Template;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
@@ -26,11 +26,12 @@ use crate::formats::FormatRenderer;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
-use crate::html::format::{Buffer, join_with_double_colon};
+use crate::html::format::join_with_double_colon;
+use crate::html::layout::{self, BufDisplay};
 use crate::html::markdown::{self, ErrorCodes, IdMap, plain_text_summary};
 use crate::html::render::write_shared::write_shared;
 use crate::html::url_parts_builder::UrlPartsBuilder;
-use crate::html::{layout, sources, static_files};
+use crate::html::{sources, static_files};
 use crate::scrape_examples::AllCallLocations;
 use crate::{DOC_RUST_LANG_ORG_VERSION, try_err};
 
@@ -235,7 +236,7 @@ impl<'tcx> Context<'tcx> {
         };
 
         if !render_redirect_pages {
-            let mut page_buffer = Buffer::html();
+            let mut page_buffer = String::new();
             print_item(self, it, &mut page_buffer);
             let page = layout::Page {
                 css_class: tyname_s,
@@ -249,8 +250,10 @@ impl<'tcx> Context<'tcx> {
             layout::render(
                 &self.shared.layout,
                 &page,
-                |buf: &mut _| print_sidebar(self, it, buf),
-                move |buf: &mut Buffer| buf.push_buffer(page_buffer),
+                BufDisplay(|buf: &mut String| {
+                    print_sidebar(self, it, buf);
+                }),
+                page_buffer,
                 &self.shared.style_files,
             )
         } else {
@@ -627,7 +630,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             rust_logo: has_doc_flag(self.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
         };
         let all = shared.all.replace(AllTypes::new());
-        let mut sidebar = Buffer::html();
+        let mut sidebar = String::new();
 
         // all.html is not customizable, so a blank id map is fine
         let blocks = sidebar_module_like(all.item_sections(), &mut IdMap::new(), ModuleLike::Crate);
@@ -646,8 +649,10 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let v = layout::render(
             &shared.layout,
             &page,
-            sidebar.into_inner(),
-            |buf: &mut Buffer| all.print(buf),
+            sidebar,
+            BufDisplay(|buf: &mut String| {
+                all.print(buf);
+            }),
             &shared.style_files,
         );
         shared.fs.write(final_file, v)?;
@@ -665,7 +670,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 &shared.layout,
                 &page,
                 sidebar,
-                |buf: &mut Buffer| {
+                fmt::from_fn(|buf| {
                     write!(
                         buf,
                         "<div class=\"main-heading\">\
@@ -684,7 +689,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                          <script defer src=\"{static_root_path}{settings_js}\"></script>",
                         static_root_path = page.get_static_root_path(),
                         settings_js = static_files::STATIC_FILES.settings_js,
-                    );
+                    )?;
                     // Pre-load all theme CSS files, so that switching feels seamless.
                     //
                     // When loading settings.html as a popover, the equivalent HTML is
@@ -697,10 +702,11 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                                     as=\"style\">",
                                 root_path = page.static_root_path.unwrap_or(""),
                                 suffix = page.resource_suffix,
-                            );
+                            )?;
                         }
                     }
-                },
+                    Ok(())
+                }),
                 &shared.style_files,
             );
             shared.fs.write(settings_file, v)?;
@@ -716,25 +722,22 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 &shared.layout,
                 &page,
                 sidebar,
-                |buf: &mut Buffer| {
-                    write!(
-                        buf,
-                        "<div class=\"main-heading\">\
-                         <h1>Rustdoc help</h1>\
-                         <span class=\"out-of-band\">\
-                             <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
-                                Back\
-                            </a>\
-                         </span>\
-                         </div>\
-                         <noscript>\
-                            <section>\
-                                <p>You need to enable JavaScript to use keyboard commands or search.</p>\
-                                <p>For more information, browse the <a href=\"{DOC_RUST_LANG_ORG_VERSION}/rustdoc/\">rustdoc handbook</a>.</p>\
-                            </section>\
-                         </noscript>",
-                    )
-                },
+                format_args!(
+                    "<div class=\"main-heading\">\
+                        <h1>Rustdoc help</h1>\
+                        <span class=\"out-of-band\">\
+                            <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
+                            Back\
+                        </a>\
+                        </span>\
+                        </div>\
+                        <noscript>\
+                        <section>\
+                            <p>You need to enable JavaScript to use keyboard commands or search.</p>\
+                            <p>For more information, browse the <a href=\"{DOC_RUST_LANG_ORG_VERSION}/rustdoc/\">rustdoc handbook</a>.</p>\
+                        </section>\
+                        </noscript>",
+                ),
                 &shared.style_files,
             );
             shared.fs.write(help_file, v)?;
