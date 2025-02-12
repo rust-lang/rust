@@ -614,9 +614,10 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
             if !infer_replacements.is_empty() {
                 diag.multipart_suggestion(
                     format!(
-                    "try replacing `_` with the type{} in the corresponding trait method signature",
-                    rustc_errors::pluralize!(infer_replacements.len()),
-                ),
+                        "try replacing `_` with the type{} in the corresponding trait method \
+                         signature",
+                        rustc_errors::pluralize!(infer_replacements.len()),
+                    ),
                     infer_replacements,
                     Applicability::MachineApplicable,
                 );
