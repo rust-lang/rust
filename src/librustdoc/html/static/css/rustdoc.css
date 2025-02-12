@@ -40,6 +40,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	--docblock-indent: 24px;
 	--font-family: "Source Serif 4", NanumBarunGothic, serif;
 	--font-family-code: "Source Code Pro", monospace;
+	--line-number-padding: 4px;
 }
 
 :root.sans-serif {
@@ -450,9 +451,7 @@ pre.item-decl {
 
 .src .content pre {
 	padding: 20px;
-}
-.rustdoc.src .example-wrap .src-line-numbers  {
-	padding: 20px 0 20px 4px;
+	padding-left: 16px;
 }
 
 img {
@@ -901,29 +900,58 @@ both the code example and the line numbers, so we need to remove the radius in t
 	min-width: fit-content; /* prevent collapsing into nothing in truncated scraped examples */
 	flex-grow: 0;
 	text-align: right;
+	-moz-user-select: none;
 	-webkit-user-select: none;
+	-ms-user-select: none;
 	user-select: none;
 	padding: 14px 8px;
 	padding-right: 2px;
 	color: var(--src-line-numbers-span-color);
 }
 
-.rustdoc .scraped-example .example-wrap .src-line-numbers {
-	padding: 0;
+.example-wrap.digits-1 [data-nosnippet] {
+	width: calc(1ch + var(--line-number-padding) * 2);
 }
-.rustdoc .src-line-numbers pre {
-	padding: 14px 0;
+.example-wrap.digits-2 [data-nosnippet] {
+	width: calc(2ch + var(--line-number-padding) * 2);
 }
-.src-line-numbers a, .src-line-numbers span {
+.example-wrap.digits-3 [data-nosnippet] {
+	width: calc(3ch + var(--line-number-padding) * 2);
+}
+.example-wrap.digits-4 [data-nosnippet] {
+	width: calc(4ch + var(--line-number-padding) * 2);
+}
+.example-wrap.digits-5 [data-nosnippet] {
+	width: calc(5ch + var(--line-number-padding) * 2);
+}
+.example-wrap.digits-6 [data-nosnippet] {
+	width: calc(6ch + var(--line-number-padding) * 2);
+}
+.example-wrap.digits-7 [data-nosnippet] {
+	width: calc(7ch + var(--line-number-padding) * 2);
+}
+.example-wrap.digits-8 [data-nosnippet] {
+	width: calc(8ch + var(--line-number-padding) * 2);
+}
+.example-wrap.digits-9 [data-nosnippet] {
+	width: calc(9ch + var(--line-number-padding) * 2);
+}
+
+.example-wrap [data-nosnippet] {
 	color: var(--src-line-numbers-span-color);
-	padding: 0 8px;
+	text-align: right;
+	display: inline-block;
+	margin-right: 20px;
+	-moz-user-select: none;
+	-webkit-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	padding: 0 4px;
 }
-.src-line-numbers :target {
-	background-color: transparent;
+.example-wrap [data-nosnippet]:target {
 	border-right: none;
-	padding: 0 8px;
 }
-.src-line-numbers .line-highlighted {
+.example-wrap .line-highlighted[data-nosnippet] {
 	background-color: var(--src-line-number-highlighted-background-color);
 }
 
@@ -1110,7 +1138,7 @@ because of the `[-]` element which would overlap with it. */
 }
 
 .main-heading a:hover,
-.example-wrap .rust a:hover,
+.example-wrap .rust a:hover:not([data-nosnippet]),
 .all-items a:hover,
 .docblock a:not(.scrape-help):not(.tooltip):hover:not(.doc-anchor),
 .item-table dd a:not(.scrape-help):not(.tooltip):hover,
@@ -1568,7 +1596,7 @@ pre.rust .doccomment {
 	color: var(--code-highlight-doc-comment-color);
 }
 
-.rustdoc.src .example-wrap pre.rust a {
+.rustdoc.src .example-wrap pre.rust a:not([data-nosnippet]) {
 	background: var(--codeblock-link-background);
 }
 
@@ -1759,8 +1787,7 @@ instead, we check that it's not a "finger" cursor.
 	}
 }
 
-:target {
-	padding-right: 3px;
+:target:not([data-nosnippet]) {
 	background-color: var(--target-background-color);
 	border-right: 3px solid var(--target-border-color);
 }
@@ -3153,7 +3180,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	color: #ff7733;
 }
 
-:root[data-theme="ayu"] .src-line-numbers .line-highlighted {
+:root[data-theme="ayu"] a[data-nosnippet].line-highlighted {
 	color: #708090;
 	padding-right: 7px;
 	border-right: 1px solid #ffb44c;

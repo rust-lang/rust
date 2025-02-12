@@ -2,17 +2,7 @@
     <div class="scraped-example-title">
        {{info.name +}} (<a href="{{info.url}}">{{info.title}}</a>) {# #}
     </div> {# #}
-    <div class="example-wrap">
-        {# https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag#data-nosnippet-attr
-           Do not show "1 2 3 4 5 ..." in web search results. #}
-        <div class="src-line-numbers" data-nosnippet> {# #}
-            <pre>
-                {% for line in lines.clone() %}
-                    {# ~#}
-                    <span>{{line|safe}}</span>
-                {% endfor %}
-            </pre> {# #}
-        </div> {# #}
+    <div class="example-wrap digits-{{max_nb_digits}}"> {# #}
         <pre class="rust"> {# #}
             <code>
                 {{code_html|safe}}
