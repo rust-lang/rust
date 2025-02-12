@@ -46,9 +46,6 @@ fn generate_enzyme_call<'ll>(
     let output = attrs.ret_activity;
 
     // We have to pick the name depending on whether we want forward or reverse mode autodiff.
-    // FIXME(ZuseZ4): The new pass based approach should not need the {Forward/Reverse}First method anymore, since
-    // it will handle higher-order derivatives correctly automatically (in theory). Currently
-    // higher-order derivatives fail, so we should debug that before adjusting this code.
     let mut ad_name: String = match attrs.mode {
         DiffMode::Forward => "__enzyme_fwddiff",
         DiffMode::Reverse => "__enzyme_autodiff",

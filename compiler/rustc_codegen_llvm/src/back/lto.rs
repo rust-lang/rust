@@ -607,19 +607,20 @@ pub(crate) fn run_pass_manager(
     // If this rustc version was build with enzyme/autodiff enabled, and if users applied the
     // `#[autodiff]` macro at least once, then we will later call llvm_optimize a second time.
     debug!("running llvm pm opt pipeline");
+
+    // The PostAD behavior is the same that we would have if no autodiff was used.
+    // It will run the default optimization pipeline. If AD is enabled we select
+    // the DuringAD stage, which will disable vectorization and loop unrolling, and
+    // schedule two autodiff optimization + differentiation passes.
+    // We then run the llvm_optimize function a second time, to optimize the code which we generated
+    // in the enzyme differentiation pass.
+    let enable_ad = config.autodiff.contains(&config::AutoDiff::Enable);
+    let stage =
+        if enable_ad { write::AutodiffStage::DuringAD } else { write::AutodiffStage::PostAD };
     unsafe {
-        write::llvm_optimize(
-            cgcx,
-            dcx,
-            module,
-            config,
-            opt_level,
-            opt_stage,
-            write::AutodiffStage::DuringAD,
-        )?;
+        write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage, stage)?;
     }
-    // FIXME(ZuseZ4): Make this more granular
-    if cfg!(llvm_enzyme) && !thin {
+    if cfg!(llvm_enzyme) && !thin && enable_ad {
         unsafe {
             write::llvm_optimize(
                 cgcx,
