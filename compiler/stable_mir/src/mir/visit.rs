@@ -428,8 +428,8 @@ pub trait MirVisitor {
             }
             AssertMessage::ResumedAfterReturn(_)
             | AssertMessage::ResumedAfterPanic(_)
-            | AssertMessage::NullPointerDereference => {
-                //nothing to visit
+            | AssertMessage::NullPointerDereference
+            | AssertMessage::ResumedAfterDrop(_) => { //nothing to visit
             }
             AssertMessage::MisalignedPointerDereference { required, found } => {
                 self.visit_operand(required, location);

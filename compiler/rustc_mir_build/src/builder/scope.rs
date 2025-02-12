@@ -402,6 +402,8 @@ impl DropTree {
                         unwind: UnwindAction::Terminate(UnwindTerminateReason::InCleanup),
                         place: drop_node.data.local.into(),
                         replace: false,
+                        drop: None,
+                        async_fut: None,
                     };
                     cfg.terminate(block, drop_node.data.source_info, terminator);
                 }
@@ -845,6 +847,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 target: next,
                                 unwind: UnwindAction::Continue,
                                 replace: false,
+                                drop: None,
+                                async_fut: None,
                             },
                         );
                         block = next;
@@ -1369,6 +1373,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 target: assign,
                 unwind: UnwindAction::Cleanup(assign_unwind),
                 replace: true,
+                drop: None,
+                async_fut: None,
             },
         );
         self.diverge_from(block);
@@ -1508,6 +1514,8 @@ fn build_scope_drops<'tcx>(
                         target: next,
                         unwind: UnwindAction::Continue,
                         replace: false,
+                        drop: None,
+                        async_fut: None,
                     },
                 );
                 block = next;

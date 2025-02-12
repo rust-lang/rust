@@ -1,9 +1,13 @@
 middle_adjust_for_foreign_abi_error =
     target architecture {$arch} does not support `extern {$abi}` ABI
 
+middle_assert_async_resume_after_drop = `async fn` resumed after async drop
+
 middle_assert_async_resume_after_panic = `async fn` resumed after panicking
 
 middle_assert_async_resume_after_return = `async fn` resumed after completion
+
+middle_assert_coroutine_resume_after_drop = coroutine resumed after async drop
 
 middle_assert_coroutine_resume_after_panic = coroutine resumed after panicking
 
@@ -11,6 +15,8 @@ middle_assert_coroutine_resume_after_return = coroutine resumed after completion
 
 middle_assert_divide_by_zero =
     attempt to divide `{$val}` by zero
+
+middle_assert_gen_resume_after_drop = `gen` fn or block cannot be further iterated on after it async dropped
 
 middle_assert_gen_resume_after_panic = `gen` fn or block cannot be further iterated on after it panicked
 
