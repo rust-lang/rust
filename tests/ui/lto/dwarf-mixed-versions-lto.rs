@@ -4,7 +4,7 @@
 
 //@ ignore-msvc Platform must use DWARF
 //@ aux-build:dwarf-mixed-versions-lto-aux.rs
-//@ compile-flags: -C lto -g -Zdwarf-version=5
+//@ compile-flags: -C lto -g -Cdwarf-version=5
 //@ no-prefer-dynamic
 //@ build-pass
 

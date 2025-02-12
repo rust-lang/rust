@@ -1956,6 +1956,9 @@ options! {
         "allow the linker to link its default libraries (default: no)"),
     dlltool: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "import library generation tool (ignored except when targeting windows-gnu)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::dwarf_version` instead of this field")]
+    dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED],
+        "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     embed_bitcode: bool = (true, parse_bool, [TRACKED],
         "emit bitcode in rlibs (default: yes)"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED],
