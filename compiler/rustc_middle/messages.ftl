@@ -1,6 +1,3 @@
-middle_adjust_for_foreign_abi_error =
-    target architecture {$arch} does not support `extern {$abi}` ABI
-
 middle_assert_async_resume_after_panic = `async fn` resumed after panicking
 
 middle_assert_async_resume_after_return = `async fn` resumed after completion
