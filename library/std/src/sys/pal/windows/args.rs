@@ -6,13 +6,13 @@
 #[cfg(test)]
 mod tests;
 
+use super::ensure_no_nuls;
 use super::os::current_exe;
 use crate::ffi::{OsStr, OsString};
 use crate::num::NonZero;
 use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
 use crate::sys::path::get_long_path;
-use crate::sys::process::ensure_no_nuls;
 use crate::sys::{c, to_u16s};
 use crate::sys_common::AsInner;
 use crate::sys_common::wstr::WStrUnits;
