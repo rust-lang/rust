@@ -2271,6 +2271,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "measureme-mirror"
+version = "12.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe110855993552cfa51a5018e8cdf2acf7f948c46136322017a9a8484ffc5ea8"
+dependencies = [
+ "log",
+ "memmap2",
+ "parking_lot",
+ "perf-event-open-sys",
+ "rustc-hash 1.1.0",
+ "smallvec",
+]
+
+[[package]]
 name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3534,7 +3548,7 @@ dependencies = [
  "gimli 0.30.0",
  "itertools",
  "libc",
- "measureme",
+ "measureme-mirror",
  "object 0.36.7",
  "rustc-demangle",
  "rustc_abi",
@@ -3650,7 +3664,7 @@ dependencies = [
  "indexmap",
  "jobserver",
  "libc",
- "measureme",
+ "measureme-mirror",
  "memmap2",
  "parking_lot",
  "portable-atomic",
@@ -4403,7 +4417,7 @@ dependencies = [
 name = "rustc_query_impl"
 version = "0.0.0"
 dependencies = [
- "measureme",
+ "measureme-mirror",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",

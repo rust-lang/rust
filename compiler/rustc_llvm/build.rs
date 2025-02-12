@@ -237,7 +237,7 @@ fn main() {
         println!("cargo:rustc-link-lib=kstat");
     }
 
-    if (target.starts_with("arm") && !target.contains("freebsd"))
+    if (target.starts_with("arm") && !target.contains("freebsd")) && !target.contains("ohos")
         || target.starts_with("mips-")
         || target.starts_with("mipsel-")
         || target.starts_with("powerpc-")
@@ -367,6 +367,7 @@ fn main() {
         || target.contains("freebsd")
         || target.contains("windows-gnullvm")
         || target.contains("aix")
+        || target.contains("ohos")
     {
         "c++"
     } else if target.contains("netbsd") && llvm_static_stdcpp.is_some() {
