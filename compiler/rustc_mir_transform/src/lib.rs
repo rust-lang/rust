@@ -30,7 +30,7 @@ use rustc_middle::mir::{
     MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, START_BLOCK,
     SourceInfo, Statement, StatementKind, TerminatorKind,
 };
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, query, span_bug};
 use rustc_mir_build::builder::build_mir;
@@ -213,9 +213,11 @@ pub fn provide(providers: &mut Providers) {
         mir_const_qualif,
         mir_promoted,
         mir_drops_elaborated_and_const_checked,
+        templated_mir_drops_elaborated_and_const_checked,
         mir_for_ctfe,
         mir_coroutine_witnesses: coroutine::mir_coroutine_witnesses,
         optimized_mir,
+        templated_optimized_mir,
         is_mir_available,
         is_ctfe_mir_available: is_mir_available,
         mir_callgraph_reachable: inline::cycle::mir_callgraph_reachable,
@@ -516,6 +518,21 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     tcx.alloc_steal_mir(body)
 }
 
+/// mir_drops_elaborated_and_const_checked simplified analog for templated coroutine
+fn templated_mir_drops_elaborated_and_const_checked<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> &'tcx Steal<Body<'tcx>> {
+    let ty::Coroutine(def_id, _) = ty.kind() else {
+        bug!();
+    };
+    assert!(ty.is_templated_coroutine(tcx));
+
+    let instance = ty::InstanceKind::AsyncDropGlue(*def_id, ty);
+    let body = tcx.mir_shims(instance).clone();
+    tcx.alloc_steal_mir(body)
+}
+
 // Made public so that `mir_drops_elaborated_and_const_checked` can be overridden
 // by custom rustc drivers, running all the steps by themselves. See #114628.
 pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -718,6 +735,11 @@ fn optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> &Body<'_> {
     tcx.arena.alloc(inner_optimized_mir(tcx, did))
 }
 
+/// Optimize the templated MIR and prepare it for codegen.
+fn templated_optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> &'tcx Body<'tcx> {
+    tcx.arena.alloc(inner_templated_optimized_mir(tcx, ty))
+}
+
 fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
     if tcx.is_constructor(did.to_def_id()) {
         // There's no reason to run all of the MIR passes on constructors when
@@ -747,6 +769,29 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
     // visited does not depend on the optimization level.
     // We do not use `run_passes` for this as that might skip the pass if `injection_phase` is set.
     mentioned_items::MentionedItems.run_pass(tcx, &mut body);
+
+    // If `mir_drops_elaborated_and_const_checked` found that the current body has unsatisfiable
+    // predicates, it will shrink the MIR to a single `unreachable` terminator.
+    // More generally, if MIR is a lone `unreachable`, there is nothing to optimize.
+    if let TerminatorKind::Unreachable = body.basic_blocks[START_BLOCK].terminator().kind
+        && body.basic_blocks[START_BLOCK].statements.is_empty()
+    {
+        return body;
+    }
+
+    run_optimization_passes(tcx, &mut body);
+
+    body
+}
+
+fn inner_templated_optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Body<'tcx> {
+    debug!("about to call templated_mir_drops_elaborated...");
+    let body = tcx.templated_mir_drops_elaborated_and_const_checked(ty).steal();
+    let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::NotConst);
+
+    if body.tainted_by_errors.is_some() {
+        return body;
+    }
 
     // If `mir_drops_elaborated_and_const_checked` found that the current body has unsatisfiable
     // predicates, it will shrink the MIR to a single `unreachable` terminator.
