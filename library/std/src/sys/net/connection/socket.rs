@@ -3,9 +3,9 @@ mod tests;
 
 use crate::ffi::{c_int, c_void};
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut};
-use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
+use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6};
 use crate::sys::common::small_c_string::run_with_cstr;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys_common::{AsInner, FromInner};
 use crate::time::Duration;
 use crate::{cmp, fmt, mem, ptr};
 
@@ -80,6 +80,111 @@ cfg_if::cfg_if! {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// address conversions
+////////////////////////////////////////////////////////////////////////////////
+
+fn ip_v4_addr_to_c(addr: &Ipv4Addr) -> c::in_addr {
+    // `s_addr` is stored as BE on all machines and the array is in BE order.
+    // So the native endian conversion method is used so that it's never swapped.
+    c::in_addr { s_addr: u32::from_ne_bytes(addr.octets()) }
+}
+
+fn ip_v6_addr_to_c(addr: &Ipv6Addr) -> c::in6_addr {
+    c::in6_addr { s6_addr: addr.octets() }
+}
+
+fn ip_v4_addr_from_c(addr: c::in_addr) -> Ipv4Addr {
+    Ipv4Addr::from(addr.s_addr.to_ne_bytes())
+}
+
+fn ip_v6_addr_from_c(addr: c::in6_addr) -> Ipv6Addr {
+    Ipv6Addr::from(addr.s6_addr)
+}
+
+fn socket_addr_v4_to_c(addr: &SocketAddrV4) -> c::sockaddr_in {
+    c::sockaddr_in {
+        sin_family: c::AF_INET as c::sa_family_t,
+        sin_port: addr.port().to_be(),
+        sin_addr: ip_v4_addr_to_c(addr.ip()),
+        ..unsafe { mem::zeroed() }
+    }
+}
+
+fn socket_addr_v6_to_c(addr: &SocketAddrV6) -> c::sockaddr_in6 {
+    c::sockaddr_in6 {
+        sin6_family: c::AF_INET6 as c::sa_family_t,
+        sin6_port: addr.port().to_be(),
+        sin6_addr: ip_v6_addr_to_c(addr.ip()),
+        sin6_flowinfo: addr.flowinfo(),
+        sin6_scope_id: addr.scope_id(),
+        ..unsafe { mem::zeroed() }
+    }
+}
+
+fn socket_addr_v4_from_c(addr: c::sockaddr_in) -> SocketAddrV4 {
+    SocketAddrV4::new(ip_v4_addr_from_c(addr.sin_addr), u16::from_be(addr.sin_port))
+}
+
+fn socket_addr_v6_from_c(addr: c::sockaddr_in6) -> SocketAddrV6 {
+    SocketAddrV6::new(
+        ip_v6_addr_from_c(addr.sin6_addr),
+        u16::from_be(addr.sin6_port),
+        addr.sin6_flowinfo,
+        addr.sin6_scope_id,
+    )
+}
+
+/// A type with the same memory layout as `c::sockaddr`. Used in converting Rust level
+/// SocketAddr* types into their system representation. The benefit of this specific
+/// type over using `c::sockaddr_storage` is that this type is exactly as large as it
+/// needs to be and not a lot larger. And it can be initialized more cleanly from Rust.
+#[repr(C)]
+union SocketAddrCRepr {
+    v4: c::sockaddr_in,
+    v6: c::sockaddr_in6,
+}
+
+impl SocketAddrCRepr {
+    fn as_ptr(&self) -> *const c::sockaddr {
+        self as *const _ as *const c::sockaddr
+    }
+}
+
+fn socket_addr_to_c(addr: &SocketAddr) -> (SocketAddrCRepr, c::socklen_t) {
+    match addr {
+        SocketAddr::V4(a) => {
+            let sockaddr = SocketAddrCRepr { v4: socket_addr_v4_to_c(a) };
+            (sockaddr, mem::size_of::<c::sockaddr_in>() as c::socklen_t)
+        }
+        SocketAddr::V6(a) => {
+            let sockaddr = SocketAddrCRepr { v6: socket_addr_v6_to_c(a) };
+            (sockaddr, mem::size_of::<c::sockaddr_in6>() as c::socklen_t)
+        }
+    }
+}
+
+unsafe fn socket_addr_from_c(
+    storage: *const c::sockaddr_storage,
+    len: usize,
+) -> io::Result<SocketAddr> {
+    match (*storage).ss_family as c_int {
+        c::AF_INET => {
+            assert!(len >= mem::size_of::<c::sockaddr_in>());
+            Ok(SocketAddr::V4(socket_addr_v4_from_c(unsafe {
+                *(storage as *const _ as *const c::sockaddr_in)
+            })))
+        }
+        c::AF_INET6 => {
+            assert!(len >= mem::size_of::<c::sockaddr_in6>());
+            Ok(SocketAddr::V6(socket_addr_v6_from_c(unsafe {
+                *(storage as *const _ as *const c::sockaddr_in6)
+            })))
+        }
+        _ => Err(io::const_error!(ErrorKind::InvalidInput, "invalid argument")),
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // sockaddr and misc bindings
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -124,25 +229,7 @@ where
         let mut storage: c::sockaddr_storage = mem::zeroed();
         let mut len = mem::size_of_val(&storage) as c::socklen_t;
         cvt(f((&raw mut storage) as *mut _, &mut len))?;
-        sockaddr_to_addr(&storage, len as usize)
-    }
-}
-
-pub fn sockaddr_to_addr(storage: &c::sockaddr_storage, len: usize) -> io::Result<SocketAddr> {
-    match storage.ss_family as c_int {
-        c::AF_INET => {
-            assert!(len >= mem::size_of::<c::sockaddr_in>());
-            Ok(SocketAddr::V4(FromInner::from_inner(unsafe {
-                *(storage as *const _ as *const c::sockaddr_in)
-            })))
-        }
-        c::AF_INET6 => {
-            assert!(len >= mem::size_of::<c::sockaddr_in6>());
-            Ok(SocketAddr::V6(FromInner::from_inner(unsafe {
-                *(storage as *const _ as *const c::sockaddr_in6)
-            })))
-        }
-        _ => Err(io::const_error!(ErrorKind::InvalidInput, "invalid argument")),
+        socket_addr_from_c(&storage, len as usize)
     }
 }
 
@@ -179,7 +266,7 @@ impl Iterator for LookupHost {
             unsafe {
                 let cur = self.cur.as_ref()?;
                 self.cur = cur.ai_next;
-                match sockaddr_to_addr(mem::transmute(cur.ai_addr), cur.ai_addrlen as usize) {
+                match socket_addr_from_c(cur.ai_addr.cast(), cur.ai_addrlen as usize) {
                     Ok(addr) => return Some(addr),
                     Err(_) => continue,
                 }
@@ -432,7 +519,7 @@ impl TcpListener {
         setsockopt(&sock, c::SOL_SOCKET, c::SO_REUSEADDR, 1 as c_int)?;
 
         // Bind our new socket
-        let (addr, len) = addr.into_inner();
+        let (addr, len) = socket_addr_to_c(addr);
         cvt(unsafe { c::bind(sock.as_raw(), addr.as_ptr(), len as _) })?;
 
         cfg_if::cfg_if! {
@@ -473,7 +560,7 @@ impl TcpListener {
         let mut storage: c::sockaddr_storage = unsafe { mem::zeroed() };
         let mut len = mem::size_of_val(&storage) as c::socklen_t;
         let sock = self.inner.accept((&raw mut storage) as *mut _, &mut len)?;
-        let addr = sockaddr_to_addr(&storage, len as usize)?;
+        let addr = unsafe { socket_addr_from_c(&storage, len as usize)? };
         Ok((TcpStream { inner: sock }, addr))
     }
 
@@ -542,7 +629,7 @@ impl UdpSocket {
         init();
 
         let sock = Socket::new(addr, c::SOCK_DGRAM)?;
-        let (addr, len) = addr.into_inner();
+        let (addr, len) = socket_addr_to_c(addr);
         cvt(unsafe { c::bind(sock.as_raw(), addr.as_ptr(), len as _) })?;
         Ok(UdpSocket { inner: sock })
     }
@@ -574,7 +661,7 @@ impl UdpSocket {
 
     pub fn send_to(&self, buf: &[u8], dst: &SocketAddr) -> io::Result<usize> {
         let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
-        let (dst, dstlen) = dst.into_inner();
+        let (dst, dstlen) = socket_addr_to_c(dst);
         let ret = cvt(unsafe {
             c::sendto(
                 self.inner.as_raw(),
@@ -656,15 +743,15 @@ impl UdpSocket {
 
     pub fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
         let mreq = c::ip_mreq {
-            imr_multiaddr: multiaddr.into_inner(),
-            imr_interface: interface.into_inner(),
+            imr_multiaddr: ip_v4_addr_to_c(multiaddr),
+            imr_interface: ip_v4_addr_to_c(interface),
         };
         setsockopt(&self.inner, c::IPPROTO_IP, c::IP_ADD_MEMBERSHIP, mreq)
     }
 
     pub fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
         let mreq = c::ipv6_mreq {
-            ipv6mr_multiaddr: multiaddr.into_inner(),
+            ipv6mr_multiaddr: ip_v6_addr_to_c(multiaddr),
             ipv6mr_interface: to_ipv6mr_interface(interface),
         };
         setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, mreq)
@@ -672,15 +759,15 @@ impl UdpSocket {
 
     pub fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
         let mreq = c::ip_mreq {
-            imr_multiaddr: multiaddr.into_inner(),
-            imr_interface: interface.into_inner(),
+            imr_multiaddr: ip_v4_addr_to_c(multiaddr),
+            imr_interface: ip_v4_addr_to_c(interface),
         };
         setsockopt(&self.inner, c::IPPROTO_IP, c::IP_DROP_MEMBERSHIP, mreq)
     }
 
     pub fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
         let mreq = c::ipv6_mreq {
-            ipv6mr_multiaddr: multiaddr.into_inner(),
+            ipv6mr_multiaddr: ip_v6_addr_to_c(multiaddr),
             ipv6mr_interface: to_ipv6mr_interface(interface),
         };
         setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP, mreq)
@@ -720,7 +807,7 @@ impl UdpSocket {
     }
 
     pub fn connect(&self, addr: io::Result<&SocketAddr>) -> io::Result<()> {
-        let (addr, len) = addr?.into_inner();
+        let (addr, len) = socket_addr_to_c(addr?);
         cvt_r(|| unsafe { c::connect(self.inner.as_raw(), addr.as_ptr(), len) }).map(drop)
     }
 }
@@ -741,40 +828,5 @@ impl fmt::Debug for UdpSocket {
 
         let name = if cfg!(windows) { "socket" } else { "fd" };
         res.field(name, &self.inner.as_raw()).finish()
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Converting SocketAddr to libc representation
-////////////////////////////////////////////////////////////////////////////////
-
-/// A type with the same memory layout as `c::sockaddr`. Used in converting Rust level
-/// SocketAddr* types into their system representation. The benefit of this specific
-/// type over using `c::sockaddr_storage` is that this type is exactly as large as it
-/// needs to be and not a lot larger. And it can be initialized more cleanly from Rust.
-#[repr(C)]
-pub(crate) union SocketAddrCRepr {
-    v4: c::sockaddr_in,
-    v6: c::sockaddr_in6,
-}
-
-impl SocketAddrCRepr {
-    pub fn as_ptr(&self) -> *const c::sockaddr {
-        self as *const _ as *const c::sockaddr
-    }
-}
-
-impl<'a> IntoInner<(SocketAddrCRepr, c::socklen_t)> for &'a SocketAddr {
-    fn into_inner(self) -> (SocketAddrCRepr, c::socklen_t) {
-        match *self {
-            SocketAddr::V4(ref a) => {
-                let sockaddr = SocketAddrCRepr { v4: a.into_inner() };
-                (sockaddr, mem::size_of::<c::sockaddr_in>() as c::socklen_t)
-            }
-            SocketAddr::V6(ref a) => {
-                let sockaddr = SocketAddrCRepr { v6: a.into_inner() };
-                (sockaddr, mem::size_of::<c::sockaddr_in6>() as c::socklen_t)
-            }
-        }
     }
 }
