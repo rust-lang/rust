@@ -1,4 +1,4 @@
-error[E0045]: C-variadic function must have a compatible calling convention, like `C`, `cdecl`, `system`, `aapcs`, `win64`, `sysv64` or `efiapi`
+error[E0045]: C-variadic function must have a compatible calling convention, like `C` or `cdecl`
   --> $DIR/variadic-ffi-1.rs:9:5
    |
 LL |     fn printf(_: *const u8, ...);
