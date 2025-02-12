@@ -6,7 +6,7 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, MultiSpan, listify, pluralize, struct_span_code_err,
 };
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
@@ -1027,7 +1027,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         segments: impl Iterator<Item = &'a hir::PathSegment<'a>> + Clone,
         args_visitors: impl Iterator<Item = &'a hir::GenericArg<'a>> + Clone,
-        err_extend: GenericsArgsErrExtend<'_>,
+        err_extend: GenericsArgsErrExtend<'a>,
     ) -> ErrorGuaranteed {
         #[derive(PartialEq, Eq, Hash)]
         enum ProhibitGenericsArg {
@@ -1047,23 +1047,24 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             };
         });
 
+        let segments: Vec<_> = segments.collect();
         let types_and_spans: Vec<_> = segments
-            .clone()
+            .iter()
             .flat_map(|segment| {
                 if segment.args().args.is_empty() {
                     None
                 } else {
                     Some((
                         match segment.res {
-                            hir::def::Res::PrimTy(ty) => {
+                            Res::PrimTy(ty) => {
                                 format!("{} `{}`", segment.res.descr(), ty.name())
                             }
-                            hir::def::Res::Def(_, def_id)
+                            Res::Def(_, def_id)
                                 if let Some(name) = self.tcx().opt_item_name(def_id) =>
                             {
                                 format!("{} `{name}`", segment.res.descr())
                             }
-                            hir::def::Res::Err => "this type".to_string(),
+                            Res::Err => "this type".to_string(),
                             _ => segment.res.descr().to_string(),
                         },
                         segment.ident.span,
@@ -1074,11 +1075,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let this_type = listify(&types_and_spans, |(t, _)| t.to_string())
             .expect("expected one segment to deny");
 
-        let arg_spans: Vec<Span> = segments
-            .clone()
-            .flat_map(|segment| segment.args().args)
-            .map(|arg| arg.span())
-            .collect();
+        let arg_spans: Vec<Span> =
+            segments.iter().flat_map(|segment| segment.args().args).map(|arg| arg.span()).collect();
 
         let mut kinds = Vec::with_capacity(4);
         prohibit_args.iter().for_each(|arg| match arg {
@@ -1103,7 +1101,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         for (what, span) in types_and_spans {
             err.span_label(span, format!("not allowed on {what}"));
         }
-        generics_args_err_extend(self.tcx(), segments, &mut err, err_extend);
+        generics_args_err_extend(self.tcx(), segments.into_iter(), &mut err, err_extend);
         err.emit()
     }
 
@@ -1400,7 +1398,7 @@ pub enum GenericsArgsErrExtend<'tcx> {
     },
     SelfTyParam(Span),
     Param(DefId),
-    DefVariant,
+    DefVariant(&'tcx [hir::PathSegment<'tcx>]),
     None,
 }
 
@@ -1408,7 +1406,7 @@ fn generics_args_err_extend<'a>(
     tcx: TyCtxt<'_>,
     segments: impl Iterator<Item = &'a hir::PathSegment<'a>> + Clone,
     err: &mut Diag<'_>,
-    err_extend: GenericsArgsErrExtend<'_>,
+    err_extend: GenericsArgsErrExtend<'a>,
 ) {
     match err_extend {
         GenericsArgsErrExtend::EnumVariant { qself, assoc_segment, adt_def } => {
@@ -1496,6 +1494,32 @@ fn generics_args_err_extend<'a>(
             ];
             err.multipart_suggestion_verbose(msg, suggestion, Applicability::MaybeIncorrect);
         }
+        GenericsArgsErrExtend::DefVariant(segments) => {
+            let args: Vec<Span> = segments
+                .iter()
+                .filter_map(|segment| match segment.res {
+                    Res::Def(
+                        DefKind::Ctor(CtorOf::Variant, _) | DefKind::Variant | DefKind::Enum,
+                        _,
+                    ) => segment.args().span_ext().map(|s| s.with_lo(segment.ident.span.hi())),
+                    _ => None,
+                })
+                .collect();
+            if args.len() > 1
+                && let Some(span) = args.into_iter().last()
+            {
+                err.note(
+                    "generic arguments are not allowed on both an enum and its variant's path \
+                     segments simultaneously; they are only valid in one place or the other",
+                );
+                err.span_suggestion_verbose(
+                    span,
+                    "remove the generics arguments from one of the path segments",
+                    String::new(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        }
         GenericsArgsErrExtend::PrimTy(prim_ty) => {
             let name = prim_ty.name_str();
             for segment in segments {
@@ -1511,9 +1535,6 @@ fn generics_args_err_extend<'a>(
         }
         GenericsArgsErrExtend::OpaqueTy => {
             err.note("`impl Trait` types can't have type parameters");
-        }
-        GenericsArgsErrExtend::DefVariant => {
-            err.note("enum variants can't have type parameters");
         }
         GenericsArgsErrExtend::Param(def_id) => {
             let span = tcx.def_ident_span(def_id).unwrap();

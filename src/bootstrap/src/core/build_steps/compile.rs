@@ -191,7 +191,7 @@ impl Step for Std {
         // The LLD wrappers and `rust-lld` are self-contained linking components that can be
         // necessary to link the stdlib on some targets. We'll also need to copy these binaries to
         // the `stage0-sysroot` to ensure the linker is found when bootstrapping on such a target.
-        if compiler.stage == 0 && compiler.host == builder.config.build {
+        if compiler.stage == 0 && builder.is_builder_target(&compiler.host) {
             // We want to copy the host `bin` folder within the `rustlib` folder in the sysroot.
             let src_sysroot_bin = builder
                 .rustc_snapshot_sysroot()
@@ -2310,7 +2310,8 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
     // FIXME: to make things simpler for now, limit this to the host and target where we know
     // `strip -g` is both available and will fix the issue, i.e. on a x64 linux host that is not
     // cross-compiling. Expand this to other appropriate targets in the future.
-    if target != "x86_64-unknown-linux-gnu" || target != builder.config.build || !path.exists() {
+    if target != "x86_64-unknown-linux-gnu" || !builder.is_builder_target(&target) || !path.exists()
+    {
         return;
     }
 

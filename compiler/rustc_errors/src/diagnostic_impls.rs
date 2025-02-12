@@ -93,6 +93,7 @@ into_diag_arg_using_display!(
     SplitDebuginfo,
     ExitStatus,
     ErrCode,
+    rustc_abi::ExternAbi,
 );
 
 impl<I: rustc_type_ir::Interner> IntoDiagArg for rustc_type_ir::TraitRef<I> {

@@ -54,7 +54,7 @@ pub(crate) fn render_example_with_highlighting(
     extra_classes: &[String],
 ) {
     write_header(out, "rust-example-rendered", None, tooltip, extra_classes);
-    write_code(out, src, None, None);
+    write_code(out, src, None, None, None);
     write_footer(out, playground_button);
 }
 
@@ -150,6 +150,7 @@ struct TokenHandler<'a, 'tcx, F: Write> {
     /// used to generate links.
     pending_elems: Vec<(&'a str, Option<Class>)>,
     href_context: Option<HrefContext<'a, 'tcx>>,
+    write_line_number: fn(&mut F, u32, &'static str),
 }
 
 impl<F: Write> TokenHandler<'_, '_, F> {
@@ -182,7 +183,14 @@ impl<F: Write> TokenHandler<'_, '_, F> {
             && can_merge(current_class, Some(*parent_class), "")
         {
             for (text, class) in self.pending_elems.iter() {
-                string(self.out, EscapeBodyText(text), *class, &self.href_context, false);
+                string(
+                    self.out,
+                    EscapeBodyText(text),
+                    *class,
+                    &self.href_context,
+                    false,
+                    self.write_line_number,
+                );
             }
         } else {
             // We only want to "open" the tag ourselves if we have more than one pending and if the
@@ -204,6 +212,7 @@ impl<F: Write> TokenHandler<'_, '_, F> {
                     *class,
                     &self.href_context,
                     close_tag.is_none(),
+                    self.write_line_number,
                 );
             }
             if let Some(close_tag) = close_tag {
@@ -212,6 +221,11 @@ impl<F: Write> TokenHandler<'_, '_, F> {
         }
         self.pending_elems.clear();
         true
+    }
+
+    #[inline]
+    fn write_line_number(&mut self, line: u32, extra: &'static str) {
+        (self.write_line_number)(&mut self.out, line, extra);
     }
 }
 
@@ -222,6 +236,43 @@ impl<F: Write> Drop for TokenHandler<'_, '_, F> {
             self.handle_exit_span();
         } else {
             self.write_pending_elems(self.current_class);
+        }
+    }
+}
+
+fn write_scraped_line_number(out: &mut impl Write, line: u32, extra: &'static str) {
+    // https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag#data-nosnippet-attr
+    // Do not show "1 2 3 4 5 ..." in web search results.
+    write!(out, "{extra}<span data-nosnippet>{line}</span>",).unwrap();
+}
+
+fn write_line_number(out: &mut impl Write, line: u32, extra: &'static str) {
+    // https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag#data-nosnippet-attr
+    // Do not show "1 2 3 4 5 ..." in web search results.
+    write!(out, "{extra}<a href=#{line} id={line} data-nosnippet>{line}</a>",).unwrap();
+}
+
+fn empty_line_number(out: &mut impl Write, _: u32, extra: &'static str) {
+    out.write_str(extra).unwrap();
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct LineInfo {
+    pub(super) start_line: u32,
+    max_lines: u32,
+    pub(super) is_scraped_example: bool,
+}
+
+impl LineInfo {
+    pub(super) fn new(max_lines: u32) -> Self {
+        Self { start_line: 1, max_lines: max_lines + 1, is_scraped_example: false }
+    }
+
+    pub(super) fn new_scraped(max_lines: u32, start_line: u32) -> Self {
+        Self {
+            start_line: start_line + 1,
+            max_lines: max_lines + start_line + 1,
+            is_scraped_example: true,
         }
     }
 }
@@ -242,6 +293,7 @@ pub(super) fn write_code(
     src: &str,
     href_context: Option<HrefContext<'_, '_>>,
     decoration_info: Option<&DecorationInfo>,
+    line_info: Option<LineInfo>,
 ) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
     let src = src.replace("\r\n", "\n");
@@ -252,6 +304,23 @@ pub(super) fn write_code(
         current_class: None,
         pending_elems: Vec::new(),
         href_context,
+        write_line_number: match line_info {
+            Some(line_info) => {
+                if line_info.is_scraped_example {
+                    write_scraped_line_number
+                } else {
+                    write_line_number
+                }
+            }
+            None => empty_line_number,
+        },
+    };
+
+    let (mut line, max_lines) = if let Some(line_info) = line_info {
+        token_handler.write_line_number(line_info.start_line, "");
+        (line_info.start_line, line_info.max_lines)
+    } else {
+        (0, u32::MAX)
     };
 
     Classifier::new(
@@ -282,7 +351,14 @@ pub(super) fn write_code(
                 if need_current_class_update {
                     token_handler.current_class = class.map(Class::dummy);
                 }
-                token_handler.pending_elems.push((text, class));
+                if text == "\n" {
+                    line += 1;
+                    if line < max_lines {
+                        token_handler.pending_elems.push((text, Some(Class::Backline(line))));
+                    }
+                } else {
+                    token_handler.pending_elems.push((text, class));
+                }
             }
             Highlight::EnterSpan { class } => {
                 let mut should_add = true;
@@ -348,6 +424,7 @@ enum Class {
     PreludeVal(Span),
     QuestionMark,
     Decoration(&'static str),
+    Backline(u32),
 }
 
 impl Class {
@@ -396,6 +473,7 @@ impl Class {
             Class::PreludeVal(_) => "prelude-val",
             Class::QuestionMark => "question-mark",
             Class::Decoration(kind) => kind,
+            Class::Backline(_) => "",
         }
     }
 
@@ -419,7 +497,8 @@ impl Class {
             | Self::Bool
             | Self::Lifetime
             | Self::QuestionMark
-            | Self::Decoration(_) => None,
+            | Self::Decoration(_)
+            | Self::Backline(_) => None,
         }
     }
 }
@@ -694,8 +773,13 @@ impl<'src> Classifier<'src> {
     ) {
         let lookahead = self.peek();
         let no_highlight = |sink: &mut dyn FnMut(_)| sink(Highlight::Token { text, class: None });
+        let whitespace = |sink: &mut dyn FnMut(_)| {
+            for part in text.split('\n').intersperse("\n").filter(|s| !s.is_empty()) {
+                sink(Highlight::Token { text: part, class: None });
+            }
+        };
         let class = match token {
-            TokenKind::Whitespace => return no_highlight(sink),
+            TokenKind::Whitespace => return whitespace(sink),
             TokenKind::LineComment { doc_style } | TokenKind::BlockComment { doc_style, .. } => {
                 if doc_style.is_some() {
                     Class::DocComment
@@ -716,7 +800,7 @@ impl<'src> Classifier<'src> {
             // or a reference or pointer type. Unless, of course, it looks like
             // a logical and or a multiplication operator: `&&` or `* `.
             TokenKind::Star => match self.tokens.peek() {
-                Some((TokenKind::Whitespace, _)) => return no_highlight(sink),
+                Some((TokenKind::Whitespace, _)) => return whitespace(sink),
                 Some((TokenKind::Ident, "mut")) => {
                     self.next();
                     sink(Highlight::Token { text: "*mut", class: Some(Class::RefKeyWord) });
@@ -740,7 +824,7 @@ impl<'src> Classifier<'src> {
                     sink(Highlight::Token { text: "&=", class: None });
                     return;
                 }
-                Some((TokenKind::Whitespace, _)) => return no_highlight(sink),
+                Some((TokenKind::Whitespace, _)) => return whitespace(sink),
                 Some((TokenKind::Ident, "mut")) => {
                     self.next();
                     sink(Highlight::Token { text: "&mut", class: Some(Class::RefKeyWord) });
@@ -887,7 +971,9 @@ impl<'src> Classifier<'src> {
         };
         // Anything that didn't return above is the simple case where we the
         // class just spans a single token, so we can use the `string` method.
-        sink(Highlight::Token { text, class: Some(class) });
+        for part in text.split('\n').intersperse("\n").filter(|s| !s.is_empty()) {
+            sink(Highlight::Token { text: part, class: Some(class) });
+        }
     }
 
     fn peek(&mut self) -> Option<TokenKind> {
@@ -939,14 +1025,18 @@ fn exit_span(out: &mut impl Write, closing_tag: &str) {
 /// Note that if `context` is not `None` and that the given `klass` contains a `Span`, the function
 /// will then try to find this `span` in the `span_correspondence_map`. If found, it'll then
 /// generate a link for this element (which corresponds to where its definition is located).
-fn string<T: Display>(
-    out: &mut impl Write,
+fn string<T: Display, W: Write>(
+    out: &mut W,
     text: T,
     klass: Option<Class>,
     href_context: &Option<HrefContext<'_, '_>>,
     open_tag: bool,
+    write_line_number_callback: fn(&mut W, u32, &'static str),
 ) {
-    if let Some(closing_tag) = string_without_closing_tag(out, text, klass, href_context, open_tag)
+    if let Some(Class::Backline(line)) = klass {
+        write_line_number_callback(out, line, "\n");
+    } else if let Some(closing_tag) =
+        string_without_closing_tag(out, text, klass, href_context, open_tag)
     {
         out.write_str(closing_tag).unwrap();
     }

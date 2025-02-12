@@ -1,4 +1,4 @@
-//! Constants for the `f16` double-precision floating point type.
+//! Constants for the `f16` half-precision floating point type.
 //!
 //! *[See also the `f16` primitive type](primitive@f16).*
 //!

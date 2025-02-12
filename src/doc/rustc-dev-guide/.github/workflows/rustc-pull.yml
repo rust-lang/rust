@@ -3,8 +3,8 @@ name: rustc-pull
 on:
   workflow_dispatch:
   schedule:
-    # Run at 04:00 UTC every Monday
-    - cron: '0 4 * * 1'
+    # Run at 04:00 UTC every Monday and Thursday
+    - cron: '0 4 * * 1,4'
 
 jobs:
   pull:
@@ -34,8 +34,25 @@ jobs:
           git config --global user.name 'The rustc-dev-guide Cronjob Bot'
           git config --global user.email 'github-actions@github.com'
       - name: Perform rustc-pull
-        run: cargo run --manifest-path josh-sync/Cargo.toml -- rustc-pull
+        id: rustc-pull
+        # Turn off -e to disable early exit
+        shell: bash {0}
+        run: |
+          cargo run --manifest-path josh-sync/Cargo.toml -- rustc-pull
+          exitcode=$?
+
+          # If no pull was performed, we want to mark this job as successful,
+          # but we do not want to perform the follow-up steps.
+          if [ $exitcode -eq 0 ]; then
+            echo "pull_result=pull-finished" >> $GITHUB_OUTPUT
+          elif [ $exitcode -eq 2 ]; then
+            echo "pull_result=skipped" >> $GITHUB_OUTPUT
+            exitcode=0
+          fi
+
+          exit ${exitcode}
       - name: Push changes to a branch
+        if: ${{ steps.rustc-pull.outputs.pull_result == 'pull-finished' }}
         run: |
           # Update a sticky branch that is used only for rustc pulls
           BRANCH="rustc-pull"
@@ -43,6 +60,9 @@ jobs:
           git push -u origin $BRANCH --force
       - name: Create pull request
         id: update-pr
+        if: ${{ steps.rustc-pull.outputs.pull_result == 'pull-finished' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Check if an open pull request for an rustc pull update already exists
           # If it does, the previous push has just updated it
@@ -54,26 +74,35 @@ jobs:
             echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
           else
             PR_URL=`gh pr list --author github-actions[bot] --state open -q 'map(select(.title=="Rustc pull update")) | .[0].url' --json url,title`
+            echo "Updating pull request ${PR_URL}"
             echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   send-zulip-message:
     needs: [pull]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Compute message
-        id: message
+        id: create-message
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ "${{ needs.pull.result }}" == "failure" ];
-          then
+          if [ "${{ needs.pull.result }}" == "failure" ]; then
             WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             echo "message=Rustc pull sync failed. Check out the [workflow URL]($WORKFLOW_URL)." >> $GITHUB_OUTPUT
           else
-            echo "message=Rustc pull sync succeeded. Check out the [PR](${{ needs.pull.outputs.pr_url }})." >> $GITHUB_OUTPUT
+            CREATED_AT=`gh pr list --author github-actions[bot] --state open -q 'map(select(.title=="Rustc pull update")) | .[0].createdAt' --json createdAt,title`
+            PR_URL=`gh pr list --author github-actions[bot] --state open -q 'map(select(.title=="Rustc pull update")) | .[0].url' --json url,title`
+            week_ago=$(date +%F -d '7 days ago')
+
+            # If there is an open PR that is at least a week old, post a message about it
+            if [[ -n $DATE_GH && $DATE_GH < $week_ago ]]; then
+              echo "message=A PR with a Rustc pull has been opened for more a week. Check out the [PR](${PR_URL})." >> $GITHUB_OUTPUT
+            fi
           fi
       - name: Send a Zulip message about updated PR
+        if: ${{ steps.create-message.outputs.message != '' }}
         uses: zulip/github-actions-zulip/send-message@e4c8f27c732ba9bd98ac6be0583096dea82feea5
         with:
           api-key: ${{ secrets.ZULIP_API_TOKEN }}

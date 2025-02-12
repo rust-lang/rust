@@ -582,7 +582,7 @@ impl Step for DebuggerScripts {
 fn skip_host_target_lib(builder: &Builder<'_>, compiler: Compiler) -> bool {
     // The only true set of target libraries came from the build triple, so
     // let's reduce redundant work by only producing archives from that host.
-    if compiler.host != builder.config.build {
+    if !builder.is_builder_target(&compiler.host) {
         builder.info("\tskipping, not a build host");
         true
     } else {
@@ -637,7 +637,7 @@ fn copy_target_libs(
     for (path, dependency_type) in builder.read_stamp_file(stamp) {
         if dependency_type == DependencyType::TargetSelfContained {
             builder.copy_link(&path, &self_contained_dst.join(path.file_name().unwrap()));
-        } else if dependency_type == DependencyType::Target || builder.config.build == target {
+        } else if dependency_type == DependencyType::Target || builder.is_builder_target(&target) {
             builder.copy_link(&path, &dst.join(path.file_name().unwrap()));
         }
     }
@@ -786,7 +786,7 @@ impl Step for Analysis {
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
-        if compiler.host != builder.config.build {
+        if !builder.is_builder_target(&compiler.host) {
             return None;
         }
 
