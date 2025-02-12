@@ -1,0 +1,15 @@
+error: expected expression, found `}`
+  --> $DIR/frontmatter-invalid-in-fn.rs:7:1
+   |
+LL | }
+   | ^ expected expression
+
+error[E0635]: unknown feature `frontmatter`
+  --> $DIR/frontmatter-invalid-in-fn.rs:1:12
+   |
+LL | #![feature(frontmatter)]
+   |            ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0635`.
