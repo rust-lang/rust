@@ -1284,7 +1284,50 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn fcmp(&mut self, op: RealPredicate, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
-        self.context.new_comparison(self.location, op.to_gcc_comparison(), lhs, rhs)
+        // LLVM has a concept of "unordered compares", where eg ULT returns true if either the two
+        // arguments are unordered (i.e. either is NaN), or the lhs is less than the rhs. GCC does
+        // not natively have this concept, so in some cases we must manually handle NaNs
+        let must_handle_nan = match op {
+            RealPredicate::RealPredicateFalse => unreachable!(),
+            RealPredicate::RealOEQ => false,
+            RealPredicate::RealOGT => false,
+            RealPredicate::RealOGE => false,
+            RealPredicate::RealOLT => false,
+            RealPredicate::RealOLE => false,
+            RealPredicate::RealONE => false,
+            RealPredicate::RealORD => unreachable!(),
+            RealPredicate::RealUNO => unreachable!(),
+            RealPredicate::RealUEQ => false,
+            RealPredicate::RealUGT => true,
+            RealPredicate::RealUGE => true,
+            RealPredicate::RealULT => true,
+            RealPredicate::RealULE => true,
+            RealPredicate::RealUNE => false,
+            RealPredicate::RealPredicateTrue => unreachable!(),
+        };
+
+        let cmp = self.context.new_comparison(self.location, op.to_gcc_comparison(), lhs, rhs);
+
+        if must_handle_nan {
+            let is_nan = self.context.new_binary_op(
+                self.location,
+                BinaryOp::LogicalOr,
+                self.cx.bool_type,
+                // compare a value to itself to check whether it is NaN
+                self.context.new_comparison(self.location, ComparisonOp::NotEquals, lhs, lhs),
+                self.context.new_comparison(self.location, ComparisonOp::NotEquals, rhs, rhs),
+            );
+
+            self.context.new_binary_op(
+                self.location,
+                BinaryOp::LogicalOr,
+                self.cx.bool_type,
+                is_nan,
+                cmp,
+            )
+        } else {
+            cmp
+        }
     }
 
     /* Miscellaneous instructions */
