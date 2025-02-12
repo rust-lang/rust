@@ -72,17 +72,17 @@ hir_analysis_cmse_entry_generic =
     functions with the `"C-cmse-nonsecure-entry"` ABI cannot contain generics in their type
 
 hir_analysis_cmse_inputs_stack_spill =
-    arguments for `"{$abi_name}"` function too large to pass via registers
+    arguments for `{$abi}` function too large to pass via registers
     .label = {$plural ->
         [false] this argument doesn't
         *[true] these arguments don't
     } fit in the available registers
-    .note = functions with the `"{$abi_name}"` ABI must pass all their arguments via the 4 32-bit available argument registers
+    .note = functions with the `{$abi}` ABI must pass all their arguments via the 4 32-bit available argument registers
 
 hir_analysis_cmse_output_stack_spill =
-    return value of `"{$abi_name}"` function too large to pass via registers
+    return value of `{$abi}` function too large to pass via registers
     .label = this type doesn't fit in the available registers
-    .note1 = functions with the `"{$abi_name}"` ABI must pass their result via the available return registers
+    .note1 = functions with the `{$abi}` ABI must pass their result via the available return registers
     .note2 = the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
 hir_analysis_coerce_pointee_no_field = `CoercePointee` can only be derived on `struct`s with at least one field

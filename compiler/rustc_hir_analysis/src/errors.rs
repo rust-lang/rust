@@ -1,5 +1,6 @@
 //! Errors emitted by `rustc_hir_analysis`.
 
+use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan,
@@ -1689,7 +1690,7 @@ pub(crate) struct CmseInputsStackSpill {
     #[label]
     pub span: Span,
     pub plural: bool,
-    pub abi_name: &'static str,
+    pub abi: ExternAbi,
 }
 
 #[derive(Diagnostic)]
@@ -1700,7 +1701,7 @@ pub(crate) struct CmseOutputStackSpill {
     #[primary_span]
     #[label]
     pub span: Span,
-    pub abi_name: &'static str,
+    pub abi: ExternAbi,
 }
 
 #[derive(Diagnostic)]
