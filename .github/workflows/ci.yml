@@ -89,9 +89,9 @@ jobs:
       # we do not need. We do this to enable some of the less resource
       # intensive jobs to run on free runners, which however also have
       # less disk space.
-      - name: free up disk space
-        run: src/ci/scripts/free-disk-space.sh
-        if: matrix.free_disk
+#      - name: free up disk space
+#        run: src/ci/scripts/free-disk-space.sh
+#        if: matrix.free_disk
 
       # Rust Log Analyzer can't currently detect the PR number of a GitHub
       # Actions build on its own, so a hint in the log message is needed to
@@ -144,8 +144,8 @@ jobs:
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
 
-      - name: checkout submodules
-        run: src/ci/scripts/checkout-submodules.sh
+#      - name: checkout submodules
+#        run: src/ci/scripts/checkout-submodules.sh
 
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
@@ -175,10 +175,15 @@ jobs:
 
       - name: run the build
         # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.
-        run: src/ci/scripts/run-build-from-ci.sh 2>&1
+        run: exit 1
+#        src/ci/scripts/run-build-from-ci.sh 2>&1
         env:
           AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
+
+      - name: Print helper link
+        if: ${{ failure() }}
+        run: echo "https://rustc-dev-guide.rust-lang.org/tests/fuchsia.html"
 
       - name: create github artifacts
         run: src/ci/scripts/create-doc-artifacts.sh
