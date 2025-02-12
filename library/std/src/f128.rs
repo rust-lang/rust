@@ -1,4 +1,4 @@
-//! Constants for the `f128` double-precision floating point type.
+//! Constants for the `f128` quadruple-precision floating point type.
 //!
 //! *[See also the `f128` primitive type](primitive@f128).*
 //!
