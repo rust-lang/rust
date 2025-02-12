@@ -1,7 +1,7 @@
 //! Operations related to UTF-8 validation.
 
 use super::Utf8Error;
-use crate::intrinsics::{const_eval_select, unlikely};
+use crate::intrinsics::const_eval_select;
 
 /// Returns the initial codepoint accumulator for the first byte.
 /// The first byte is special, only want bottom 5 bits for width 2, 4 bits
@@ -243,7 +243,7 @@ const unsafe fn run_with_error_handling(
 ) -> Result<(), Utf8Error> {
     while i < bytes.len() {
         let new_st = next_state(*st, bytes[i]);
-        if unlikely(new_st & STATE_MASK == ST_ERROR) {
+        if new_st & STATE_MASK == ST_ERROR {
             // SAFETY: Guaranteed by the caller.
             let (valid_up_to, error_len) = unsafe { resolve_error_location(*st, bytes, i) };
             return Err(Utf8Error { valid_up_to, error_len: Some(error_len) });
@@ -287,7 +287,9 @@ fn run_utf8_validation_rt(bytes: &[u8]) -> Result<(), Utf8Error> {
     const { assert!(ASCII_CHUNK_SIZE % MAIN_CHUNK_SIZE == 0) };
 
     let mut st = ST_ACCEPT;
-    let mut i = 0usize;
+    let mut i = bytes.len() % MAIN_CHUNK_SIZE;
+    // SAFETY: Start at initial state ACCEPT.
+    unsafe { run_with_error_handling(&mut st, &bytes[..i], 0)? };
 
     while i + MAIN_CHUNK_SIZE <= bytes.len() {
         // Fast path: if the current state is ACCEPT, we can skip to the next non-ASCII chunk.
@@ -320,20 +322,16 @@ fn run_utf8_validation_rt(bytes: &[u8]) -> Result<(), Utf8Error> {
         for &b in chunk {
             new_st = next_state(new_st, b);
         }
-        if unlikely(new_st & STATE_MASK == ST_ERROR) {
-            // Discard the current chunk erronous result, and reuse the trailing chunk handling to
-            // report the error location.
-            break;
+        if new_st & STATE_MASK == ST_ERROR {
+            // SAFETY: `st` is the last state after executing `bytes[..i]` without encountering any error.
+            return unsafe { run_with_error_handling(&mut st, bytes, i) };
         }
 
         st = new_st;
         i += MAIN_CHUNK_SIZE;
     }
 
-    // SAFETY: `st` is the last state after executing `bytes[..i]` without encountering any error.
-    unsafe { run_with_error_handling(&mut st, bytes, i)? };
-
-    if unlikely(st & STATE_MASK != ST_ACCEPT) {
+    if st & STATE_MASK != ST_ACCEPT {
         // SAFETY: Same as above.
         let (valid_up_to, _) = unsafe { resolve_error_location(st, bytes, bytes.len()) };
         return Err(Utf8Error { valid_up_to, error_len: None });
