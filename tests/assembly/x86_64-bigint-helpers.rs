@@ -1,6 +1,6 @@
 //@ only-x86_64
 //@ assembly-output: emit-asm
-//@ compile-flags: --crate-type=lib -O -C target-cpu=x86-64-v4
+//@ compile-flags: --crate-type=lib -Copt-level=3 -C target-cpu=x86-64-v4
 //@ compile-flags: -C llvm-args=-x86-asm-syntax=intel
 //@ revisions: llvm-pre-20 llvm-20
 //@ [llvm-20] min-llvm-version: 20

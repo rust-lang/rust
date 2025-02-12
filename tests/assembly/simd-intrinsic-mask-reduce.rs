@@ -7,7 +7,7 @@
 //@ [aarch64] compile-flags: --target=aarch64-unknown-linux-gnu
 //@ [aarch64] needs-llvm-components: aarch64
 //@ assembly-output: emit-asm
-//@ compile-flags: --crate-type=lib -O -C panic=abort
+//@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort
 
 #![feature(no_core, lang_items, repr_simd, intrinsics)]
 #![no_core]
