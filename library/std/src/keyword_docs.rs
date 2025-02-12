@@ -1064,7 +1064,7 @@ mod move_keyword {}
 /// ```rust,compile_fail,E0502
 /// let mut v = vec![0, 1];
 /// let mut_ref_v = &mut v;
-/// ##[allow(unused)]
+/// # #[allow(unused)]
 /// let ref_v = &v;
 /// mut_ref_v.push(2);
 /// ```
