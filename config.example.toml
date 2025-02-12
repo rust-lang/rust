@@ -424,6 +424,11 @@
 # What custom diff tool to use for displaying compiletest tests.
 #compiletest-diff-tool = <none>
 
+# Indicates whether ccache is used when building certain artifacts (e.g. LLVM).
+# Set to `true` to use the first `ccache` in PATH, or set an absolute path to use
+# a specific version.
+#ccache = false
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
