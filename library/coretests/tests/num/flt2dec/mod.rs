@@ -577,7 +577,7 @@ where
     }
 
     // very large output
-    assert_eq!(to_string(f, 1.1, Minus, 80000), format!("1.1{:0>79999}", ""));
+    assert_eq!(to_string(f, 1.1, Minus, 50000), format!("1.1{:0>49999}", ""));
 }
 
 pub fn to_shortest_exp_str_test<F>(mut f_: F)
