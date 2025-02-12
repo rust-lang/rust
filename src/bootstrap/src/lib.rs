@@ -905,6 +905,7 @@ impl Build {
             return CommandOutput::default();
         }
 
+        #[cfg(feature = "tracing")]
         let _run_span = trace_cmd!(command);
 
         let created_at = command.get_created_location();

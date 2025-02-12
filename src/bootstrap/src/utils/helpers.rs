@@ -13,11 +13,11 @@ use std::{env, fs, io, str};
 use build_helper::util::fail;
 use object::read::archive::ArchiveFile;
 
+use crate::LldMode;
 use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
 pub use crate::utils::shared_helpers::{dylib_path, dylib_path_var};
-use crate::{LldMode, trace_cmd};
 
 #[cfg(test)]
 mod tests;
@@ -265,7 +265,8 @@ pub fn make(host: &str) -> PathBuf {
 
 #[track_caller]
 pub fn output(cmd: &mut Command) -> String {
-    let _run_span = trace_cmd!(cmd);
+    #[cfg(feature = "tracing")]
+    let _run_span = crate::trace_cmd!(cmd);
 
     let output = match cmd.stderr(Stdio::inherit()).output() {
         Ok(status) => status,

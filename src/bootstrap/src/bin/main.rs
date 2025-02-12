@@ -21,7 +21,7 @@ use tracing::instrument;
 #[cfg_attr(feature = "tracing", instrument(level = "trace", name = "main"))]
 fn main() {
     #[cfg(feature = "tracing")]
-    setup_tracing();
+    let _guard = setup_tracing();
 
     let args = env::args().skip(1).collect::<Vec<_>>();
 
@@ -210,7 +210,7 @@ fn check_version(config: &Config) -> Option<String> {
 // - `tracing`'s `#[instrument(..)]` macro will need to be gated like `#![cfg_attr(feature =
 //   "tracing", instrument(..))]`.
 #[cfg(feature = "tracing")]
-fn setup_tracing() {
+fn setup_tracing() -> impl Drop {
     use tracing_subscriber::EnvFilter;
     use tracing_subscriber::layer::SubscriberExt;
 
@@ -218,7 +218,17 @@ fn setup_tracing() {
     // cf. <https://docs.rs/tracing-tree/latest/tracing_tree/struct.HierarchicalLayer.html>.
     let layer = tracing_tree::HierarchicalLayer::default().with_targets(true).with_indent_amount(2);
 
-    let registry = tracing_subscriber::registry().with(filter).with(layer);
+    let mut chrome_layer = tracing_chrome::ChromeLayerBuilder::new().include_args(true);
+
+    // Writes the Chrome profile to trace-<unix-timestamp>.json if enabled
+    if !env::var("BOOTSTRAP_PROFILE").is_ok_and(|v| v == "1") {
+        chrome_layer = chrome_layer.writer(io::sink());
+    }
+
+    let (chrome_layer, _guard) = chrome_layer.build();
+
+    let registry = tracing_subscriber::registry().with(filter).with(layer).with(chrome_layer);
 
     tracing::subscriber::set_global_default(registry).unwrap();
+    _guard
 }

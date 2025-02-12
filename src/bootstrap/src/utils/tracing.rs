@@ -52,10 +52,8 @@ macro_rules! error {
 macro_rules! trace_cmd {
     ($cmd:expr) => {
         {
-            #[allow(unused)]
             use $crate::utils::exec::FormatShortCmd;
 
-            #[cfg(feature = "tracing")]
             ::tracing::span!(
                 target: "COMMAND",
                 ::tracing::Level::TRACE,

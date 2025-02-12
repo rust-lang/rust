@@ -347,7 +347,7 @@ impl FormatShortCmd for Command {
     fn format_short_cmd(&self) -> String {
         let program = Path::new(self.get_program());
         let mut line = vec![program.file_name().unwrap().to_str().unwrap()];
-        line.extend(self.get_args().into_iter().map(|arg| arg.to_str().unwrap()));
+        line.extend(self.get_args().map(|arg| arg.to_str().unwrap()));
         line.join(" ")
     }
 }
