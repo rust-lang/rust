@@ -116,7 +116,7 @@ impl MirPhase {
         }
     }
 
-    /// Parses an `MirPhase` from a pair of strings. Panics if this isn't possible for any reason.
+    /// Parses a `MirPhase` from a pair of strings. Panics if this isn't possible for any reason.
     pub fn parse(dialect: String, phase: Option<String>) -> Self {
         match &*dialect.to_ascii_lowercase() {
             "built" => {
