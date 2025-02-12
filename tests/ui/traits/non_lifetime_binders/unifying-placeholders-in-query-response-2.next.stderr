@@ -1,5 +1,5 @@
 warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/unifying-placeholders-in-query-response-2.rs:6:12
+  --> $DIR/unifying-placeholders-in-query-response-2.rs:7:12
    |
 LL | #![feature(non_lifetime_binders)]
    |            ^^^^^^^^^^^^^^^^^^^^
