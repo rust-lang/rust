@@ -488,7 +488,7 @@ auto:
     env:
       SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
-    <<: *job-windows
+    <<: *job-windows-25
 
   # Temporary builder to workaround CI issues
   # See <https://github.com/rust-lang/rust/issues/127883>
@@ -502,7 +502,7 @@ auto:
         python x.py miri --stage 2 library/alloc --test-args notest &&
         python x.py miri --stage 2 library/std --test-args notest
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
-    <<: *job-windows
+    <<: *job-windows-25
 
   # Run `checktools.sh` and upload the toolstate file.
   - name: x86_64-msvc-ext3
@@ -511,7 +511,7 @@ auto:
       HOST_TARGET: x86_64-pc-windows-msvc
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
       DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
-    <<: *job-windows
+    <<: *job-windows-25
 
   # 32/64-bit MinGW builds.
   #
