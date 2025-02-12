@@ -1,9 +1,10 @@
-use super::{Builder, JoinInner, Result, Thread, current_or_unnamed};
+use super::{Builder, JoinInner, Result, Thread, current_or_unnamed, imp};
 use crate::marker::PhantomData;
 use crate::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 use crate::sync::Arc;
 use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use crate::{fmt, io};
+use crate::sys_common::{AsInner, IntoInner};
 
 /// A scope to spawn scoped threads in.
 ///
@@ -345,5 +346,17 @@ impl fmt::Debug for Scope<'_, '_> {
 impl<'scope, T> fmt::Debug for ScopedJoinHandle<'scope, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ScopedJoinHandle").finish_non_exhaustive()
+    }
+}
+
+impl<T> AsInner<imp::Thread> for ScopedJoinHandle<'_, T> {
+    fn as_inner(&self) -> &imp::Thread {
+        &self.0.native
+    }
+}
+
+impl<T> IntoInner<imp::Thread> for ScopedJoinHandle<'_, T> {
+    fn into_inner(self) -> imp::Thread {
+        self.0.native
     }
 }

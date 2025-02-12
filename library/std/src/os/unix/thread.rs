@@ -7,7 +7,7 @@
 #[allow(deprecated)]
 use crate::os::unix::raw::pthread_t;
 use crate::sys_common::{AsInner, IntoInner};
-use crate::thread::JoinHandle;
+use crate::thread::{JoinHandle, ScopedJoinHandle};
 
 #[stable(feature = "thread_extensions", since = "1.9.0")]
 #[allow(deprecated)]
@@ -31,6 +31,17 @@ pub trait JoinHandleExt {
 
 #[stable(feature = "thread_extensions", since = "1.9.0")]
 impl<T> JoinHandleExt for JoinHandle<T> {
+    fn as_pthread_t(&self) -> RawPthread {
+        self.as_inner().id() as RawPthread
+    }
+
+    fn into_pthread_t(self) -> RawPthread {
+        self.into_inner().into_id() as RawPthread
+    }
+}
+
+#[stable(feature = "scoped_thread_extensions", since = "CURRENT_RUSTC_VERSION")]
+impl<T> JoinHandleExt for ScopedJoinHandle<'_, T> {
     fn as_pthread_t(&self) -> RawPthread {
         self.as_inner().id() as RawPthread
     }
