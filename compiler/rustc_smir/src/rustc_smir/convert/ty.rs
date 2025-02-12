@@ -408,7 +408,7 @@ impl<'tcx> Stable<'tcx> for ty::Pattern<'tcx> {
             ty::PatternKind::Range { start, end, include_end } => stable_mir::ty::Pattern::Range {
                 start: start.stable(tables),
                 end: end.stable(tables),
-                include_end,
+                include_end: matches!(include_end, rustc_hir::RangeEnd::Included),
             },
         }
     }
