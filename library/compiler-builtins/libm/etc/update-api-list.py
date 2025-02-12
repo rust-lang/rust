@@ -24,7 +24,7 @@ ROOT_DIR = ETC_DIR.parent
 DIRECTORIES = [".github", "ci", "crates", "etc", "src"]
 
 # These files do not trigger a retest.
-IGNORED_SOURCES = ["src/libm_helper.rs"]
+IGNORED_SOURCES = ["src/libm_helper.rs", "src/math/support/float_traits.rs"]
 
 IndexTy: TypeAlias = dict[str, dict[str, Any]]
 """Type of the `index` item in rustdoc's JSON output"""

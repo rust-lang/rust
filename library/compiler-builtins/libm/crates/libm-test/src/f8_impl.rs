@@ -78,6 +78,10 @@ impl Float for f8 {
         libm::generic::copysign(self, other)
     }
 
+    fn fma(self, _y: Self, _z: Self) -> Self {
+        unimplemented!()
+    }
+
     fn normalize(_significand: Self::Int) -> (i32, Self::Int) {
         unimplemented!()
     }

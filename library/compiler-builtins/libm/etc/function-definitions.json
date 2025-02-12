@@ -130,8 +130,7 @@
     "copysign": {
         "sources": [
             "src/math/copysign.rs",
-            "src/math/generic/copysign.rs",
-            "src/math/support/float_traits.rs"
+            "src/math/generic/copysign.rs"
         ],
         "type": "f64"
     },

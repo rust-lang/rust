@@ -103,11 +103,11 @@ pub fn cbrt_round(x: f64, round: Round) -> FpResult<f64> {
      * and rr an approximation of 1/zz. We now perform another iteration of
      * Newton-Raphson, this time with a linear approximation only. */
     y2 = y * y;
-    let mut y2l: f64 = fmaf64(y, y, -y2);
+    let mut y2l: f64 = y.fma(y, -y2);
 
     /* y2 + y2l = y^2 exactly */
     let mut y3: f64 = y2 * y;
-    let mut y3l: f64 = fmaf64(y, y2, -y3) + y * y2l;
+    let mut y3l: f64 = y.fma(y2, -y3) + y * y2l;
 
     /* y3 + y3l approximates y^3 with about 106 bits of accuracy */
     h = ((y3 - zz) + y3l) * rr;
@@ -132,9 +132,9 @@ pub fn cbrt_round(x: f64, round: Round) -> FpResult<f64> {
         cold_path();
 
         y2 = y1 * y1;
-        y2l = fmaf64(y1, y1, -y2);
+        y2l = y1.fma(y1, -y2);
         y3 = y2 * y1;
-        y3l = fmaf64(y1, y2, -y3) + y1 * y2l;
+        y3l = y1.fma(y2, -y3) + y1 * y2l;
         h = ((y3 - zz) + y3l) * rr;
         dy = h * (y1 * u0);
         y = y1 - dy;
@@ -196,18 +196,6 @@ pub fn cbrt_round(x: f64, round: Round) -> FpResult<f64> {
     }
 
     FpResult::ok(f64::from_bits(cvt3))
-}
-
-fn fmaf64(x: f64, y: f64, z: f64) -> f64 {
-    #[cfg(intrinsics_enabled)]
-    {
-        return unsafe { core::intrinsics::fmaf64(x, y, z) };
-    }
-
-    #[cfg(not(intrinsics_enabled))]
-    {
-        return super::fma(x, y, z);
-    }
 }
 
 #[cfg(test)]
