@@ -3,8 +3,6 @@
 #![allow(internal_features)]
 #![feature(rustc_attrs, const_trait_impl, sized_hierarchy)]
 
-use std::marker::MetaSized;
-
 #[rustc_non_const_sized]
 struct NotConstSized;
 
