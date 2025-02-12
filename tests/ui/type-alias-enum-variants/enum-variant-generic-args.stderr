@@ -285,6 +285,13 @@ LL |     Enum::<()>::TSVariant::<()>(());
    |                 ---------   ^^ type argument not allowed
    |                 |
    |                 not allowed on tuple variant `TSVariant`
+   |
+   = note: generic arguments are not allowed on both an enum and its variant's path segments simultaneously; they are only valid in one place or the other
+help: remove the generics arguments from one of the path segments
+   |
+LL -     Enum::<()>::TSVariant::<()>(());
+LL +     Enum::<()>::TSVariant(());
+   |
 
 error[E0109]: type arguments are not allowed on this type
   --> $DIR/enum-variant-generic-args.rs:57:24
@@ -354,7 +361,12 @@ LL |     Enum::<()>::SVariant::<()> { v: () };
    |                 |
    |                 not allowed on variant `SVariant`
    |
-   = note: enum variants can't have type parameters
+   = note: generic arguments are not allowed on both an enum and its variant's path segments simultaneously; they are only valid in one place or the other
+help: remove the generics arguments from one of the path segments
+   |
+LL -     Enum::<()>::SVariant::<()> { v: () };
+LL +     Enum::<()>::SVariant { v: () };
+   |
 
 error[E0109]: type arguments are not allowed on this type
   --> $DIR/enum-variant-generic-args.rs:75:23
@@ -451,6 +463,13 @@ LL |     Enum::<()>::UVariant::<()>;
    |                 --------   ^^ type argument not allowed
    |                 |
    |                 not allowed on unit variant `UVariant`
+   |
+   = note: generic arguments are not allowed on both an enum and its variant's path segments simultaneously; they are only valid in one place or the other
+help: remove the generics arguments from one of the path segments
+   |
+LL -     Enum::<()>::UVariant::<()>;
+LL +     Enum::<()>::UVariant;
+   |
 
 error[E0109]: type arguments are not allowed on this type
   --> $DIR/enum-variant-generic-args.rs:93:23
