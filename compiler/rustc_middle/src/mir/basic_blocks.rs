@@ -20,6 +20,13 @@ pub struct BasicBlocks<'tcx> {
 // Typically 95%+ of basic blocks have 4 or fewer predecessors.
 type Predecessors = IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>>;
 
+/// Each `(target, switch)` entry in the map contains a list of switch values
+/// that lead to a `target` block from a `switch` block.
+///
+/// Note: this type is currently never instantiated, because it's only used for
+/// `BasicBlocks::switch_sources`, which is only called by backwards analyses
+/// that do `SwitchInt` handling, and we don't have any of those, not even in
+/// tests. See #95120 and #94576.
 type SwitchSources = FxHashMap<(BasicBlock, BasicBlock), SmallVec<[Option<u128>; 1]>>;
 
 #[derive(Clone, Default, Debug)]
@@ -70,8 +77,8 @@ impl<'tcx> BasicBlocks<'tcx> {
         })
     }
 
-    /// `switch_sources()[&(target, switch)]` returns a list of switch
-    /// values that lead to a `target` block from a `switch` block.
+    /// Returns info about switch values that lead from one block to another
+    /// block. See `SwitchSources`.
     #[inline]
     pub fn switch_sources(&self) -> &SwitchSources {
         self.cache.switch_sources.get_or_init(|| {
