@@ -175,15 +175,16 @@ jobs:
 
       - name: run the build
         # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.
-        run: exit 1
-#        src/ci/scripts/run-build-from-ci.sh 2>&1
+        run: |
+          src/ci/scripts/run-build-from-ci.sh 2>&1
+          STATUS=$?
+          if [[ STATUS != 0 ]]; then
+            echo "https://rustc-dev-guide.rust-lang.org/tests/fuchsia.html"
+          fi
+          exit ${STATUS}
         env:
           AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
-
-      - name: Print helper link
-        if: ${{ failure() }}
-        run: echo "https://rustc-dev-guide.rust-lang.org/tests/fuchsia.html"
 
       - name: create github artifacts
         run: src/ci/scripts/create-doc-artifacts.sh
