@@ -19,7 +19,7 @@
 #![allow(incomplete_features)]
 #![feature(unsized_locals, unsized_fn_params)]
 
-// CHECK-LABEL: emptyfn:
+// CHECK-LABEL: emptyfn
 #[no_mangle]
 pub fn emptyfn() {
     // all: __stack_chk_fail
@@ -63,7 +63,7 @@ pub fn array_u8_1(f: fn(*const u8)) {
     // missing-NOT: __stack_chk_fail
 }
 
-// CHECK-LABEL: array_u8_small:
+// CHECK-LABEL: array_u8_small
 #[no_mangle]
 pub fn array_u8_small(f: fn(*const u8)) {
     let a = [0u8; 2];
@@ -80,7 +80,7 @@ pub fn array_u8_small(f: fn(*const u8)) {
     // missing-NOT: __stack_chk_fail
 }
 
-// CHECK-LABEL: array_u8_large:
+// CHECK-LABEL: array_u8_large
 #[no_mangle]
 pub fn array_u8_large(f: fn(*const u8)) {
     let a = [0u8; 9];
@@ -99,7 +99,7 @@ pub fn array_u8_large(f: fn(*const u8)) {
 #[derive(Copy, Clone)]
 pub struct ByteSizedNewtype(u8);
 
-// CHECK-LABEL: array_bytesizednewtype_9:
+// CHECK-LABEL: array_bytesizednewtype_9
 #[no_mangle]
 pub fn array_bytesizednewtype_9(f: fn(*const ByteSizedNewtype)) {
     let a = [ByteSizedNewtype(0); 9];
