@@ -117,7 +117,7 @@ fn check_impl(
                     expected.trim_start_matches("adjustments:").trim().to_owned(),
                 );
             } else {
-                panic!("unexpected annotation: {expected}");
+                panic!("unexpected annotation: {expected} @ {range:?}");
             }
             had_annotations = true;
         }
