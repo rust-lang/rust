@@ -194,7 +194,7 @@ def StdStringSummaryProvider(valobj, dict):
     length = inner_vec.GetChildMemberWithName("len").GetValueAsUnsigned()
 
     if length <= 0:
-        return ""
+        return '""'
     error = SBError()
     process = pointer.GetProcess()
     data = process.ReadMemory(pointer.GetValueAsUnsigned(), length, error)

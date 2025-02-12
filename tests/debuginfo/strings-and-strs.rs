@@ -24,7 +24,7 @@
 // === LLDB TESTS ==================================================================================
 // lldb-command:run
 // lldb-command:v plain_string
-// lldb-check:(alloc::string::String) plain_string = "Hello" { vec = size=5 { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } }
+// lldb-check:(alloc::string::String) plain_string = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' }
 
 // lldb-command:v plain_str
 // lldb-check:(&str) plain_str = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' }
