@@ -75,7 +75,11 @@ impl Tester {
         };
 
         let mut sysroot = Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env);
-        sysroot.load_workspace(&SysrootSourceWorkspaceConfig::default_cargo());
+        let loaded_sysroot = sysroot.load_workspace(&SysrootSourceWorkspaceConfig::default_cargo());
+        if let Some(loaded_sysroot) = loaded_sysroot {
+            sysroot.set_workspace(loaded_sysroot);
+        }
+
         let data_layout = target_data_layout::get(
             QueryConfig::Rustc(&sysroot, tmp_file.parent().unwrap().as_ref()),
             None,

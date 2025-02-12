@@ -1152,7 +1152,11 @@ fn resolve_proc_macro() {
         &AbsPathBuf::assert_utf8(std::env::current_dir().unwrap()),
         &Default::default(),
     );
-    sysroot.load_workspace(&project_model::SysrootSourceWorkspaceConfig::default_cargo());
+    let loaded_sysroot =
+        sysroot.load_workspace(&project_model::SysrootSourceWorkspaceConfig::default_cargo());
+    if let Some(loaded_sysroot) = loaded_sysroot {
+        sysroot.set_workspace(loaded_sysroot);
+    }
 
     let proc_macro_server_path = sysroot.discover_proc_macro_srv().unwrap();
 

@@ -34,14 +34,14 @@ pub struct Sysroot {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub(crate) enum SysrootWorkspace {
+pub enum SysrootWorkspace {
     Workspace(CargoWorkspace),
     Stitched(Stitched),
     Empty,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub(crate) struct Stitched {
+pub struct Stitched {
     crates: Arena<SysrootCrateData>,
 }
 
@@ -227,18 +227,21 @@ impl Sysroot {
         }
     }
 
-    pub fn load_workspace(&mut self, sysroot_source_config: &SysrootSourceWorkspaceConfig) {
+    pub fn load_workspace(
+        &self,
+        sysroot_source_config: &SysrootSourceWorkspaceConfig,
+    ) -> Option<SysrootWorkspace> {
         assert!(matches!(self.workspace, SysrootWorkspace::Empty), "workspace already loaded");
-        let Self { root: _, src_root: Some(src_root), workspace, error: _ } = self else { return };
+        let Self { root: _, src_root: Some(src_root), workspace: _, error: _ } = self else {
+            return None;
+        };
         if let SysrootSourceWorkspaceConfig::CargoMetadata(cargo_config) = sysroot_source_config {
             let library_manifest = ManifestPath::try_from(src_root.join("Cargo.toml")).unwrap();
             if fs::metadata(&library_manifest).is_ok() {
                 if let Some(loaded) =
                     Self::load_library_via_cargo(library_manifest, src_root, cargo_config)
                 {
-                    *workspace = loaded;
-                    self.load_core_check();
-                    return;
+                    return Some(loaded);
                 }
             }
         }
@@ -286,11 +289,11 @@ impl Sysroot {
                 }
             }
         }
-        *workspace = SysrootWorkspace::Stitched(stitched);
-        self.load_core_check();
+        Some(SysrootWorkspace::Stitched(stitched))
     }
 
-    fn load_core_check(&mut self) {
+    pub fn set_workspace(&mut self, workspace: SysrootWorkspace) {
+        self.workspace = workspace;
         if self.error.is_none() {
             if let Some(src_root) = &self.src_root {
                 let has_core = match &self.workspace {
