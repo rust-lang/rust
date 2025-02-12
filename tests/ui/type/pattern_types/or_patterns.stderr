@@ -41,9 +41,8 @@ LL |     let _: NonNegOneI8 = -128;
 
 error: layout_of((i8) is (i8::MIN..=-1 | 1..)) = Layout {
            size: Size(1 bytes),
-           align: AbiAndPrefAlign {
+           align: AbiAlign {
                abi: Align(1 bytes),
-               pref: $SOME_ALIGN,
            },
            backend_repr: Scalar(
                Initialized {
@@ -80,9 +79,8 @@ LL | type NonNullI8 = pattern_type!(i8 is ..0 | 1..);
 
 error: layout_of((i8) is (i8::MIN..=-2 | 0..)) = Layout {
            size: Size(1 bytes),
-           align: AbiAndPrefAlign {
+           align: AbiAlign {
                abi: Align(1 bytes),
-               pref: $SOME_ALIGN,
            },
            backend_repr: Scalar(
                Initialized {
