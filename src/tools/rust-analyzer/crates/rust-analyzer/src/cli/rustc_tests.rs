@@ -12,8 +12,8 @@ use paths::Utf8PathBuf;
 use profile::StopWatch;
 use project_model::toolchain_info::{target_data_layout, QueryConfig};
 use project_model::{
-    CargoConfig, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, RustLibSource, Sysroot,
-    SysrootSourceWorkspaceConfig,
+    CargoConfig, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, RustLibSource,
+    RustSourceWorkspaceConfig, Sysroot,
 };
 
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
@@ -75,7 +75,7 @@ impl Tester {
         };
 
         let mut sysroot = Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env);
-        let loaded_sysroot = sysroot.load_workspace(&SysrootSourceWorkspaceConfig::default_cargo());
+        let loaded_sysroot = sysroot.load_workspace(&RustSourceWorkspaceConfig::default_cargo());
         if let Some(loaded_sysroot) = loaded_sysroot {
             sysroot.set_workspace(loaded_sysroot);
         }

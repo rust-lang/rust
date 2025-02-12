@@ -1153,7 +1153,7 @@ fn resolve_proc_macro() {
         &Default::default(),
     );
     let loaded_sysroot =
-        sysroot.load_workspace(&project_model::SysrootSourceWorkspaceConfig::default_cargo());
+        sysroot.load_workspace(&project_model::RustSourceWorkspaceConfig::default_cargo());
     if let Some(loaded_sysroot) = loaded_sysroot {
         sysroot.set_workspace(loaded_sysroot);
     }

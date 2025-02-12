@@ -23,10 +23,10 @@ use crate::{
     cargo_workspace::{CargoMetadataConfig, DepKind, PackageData, RustLibSource},
     env::{cargo_config_env, inject_cargo_env, inject_cargo_package_env, inject_rustc_tool_env},
     project_json::{Crate, CrateArrayIdx},
-    sysroot::{SysrootCrate, SysrootWorkspace},
+    sysroot::{RustLibSrcCrate, RustLibSrcWorkspace},
     toolchain_info::{rustc_cfg, target_data_layout, target_tuple, version, QueryConfig},
     CargoConfig, CargoWorkspace, CfgOverrides, InvocationStrategy, ManifestPath, Package,
-    ProjectJson, ProjectManifest, Sysroot, SysrootSourceWorkspaceConfig, TargetData, TargetKind,
+    ProjectJson, ProjectManifest, RustSourceWorkspaceConfig, Sysroot, TargetData, TargetKind,
     WorkspaceBuildScripts,
 };
 use tracing::{debug, error, info};
@@ -230,7 +230,7 @@ impl ProjectWorkspace {
                 )
             }
             (Some(RustLibSource::Path(path)), None) => {
-                Sysroot::discover_sysroot_src_dir(path.clone())
+                Sysroot::discover_rust_lib_src_dir(path.clone())
             }
             (Some(RustLibSource::Path(sysroot)), Some(sysroot_src)) => {
                 Sysroot::new(Some(sysroot.clone()), Some(sysroot_src.clone()))
@@ -238,7 +238,7 @@ impl ProjectWorkspace {
             (None, _) => Sysroot::empty(),
         };
 
-        tracing::info!(workspace = %cargo_toml, src_root = ?sysroot.src_root(), root = ?sysroot.root(), "Using sysroot");
+        tracing::info!(workspace = %cargo_toml, src_root = ?sysroot.rust_lib_src_root(), root = ?sysroot.root(), "Using sysroot");
         progress("Querying project metadata".to_owned());
         let toolchain_config = QueryConfig::Cargo(&sysroot, cargo_toml);
         let targets =
@@ -340,7 +340,7 @@ impl ProjectWorkspace {
                 )
             });
             let loaded_sysroot = s.spawn(|| {
-                sysroot.load_workspace(&SysrootSourceWorkspaceConfig::CargoMetadata(
+                sysroot.load_workspace(&RustSourceWorkspaceConfig::CargoMetadata(
                     sysroot_metadata_config(extra_env, &targets),
                 ))
             });
@@ -405,12 +405,12 @@ impl ProjectWorkspace {
         progress("Discovering sysroot".to_owned());
         let mut sysroot =
             Sysroot::new(project_json.sysroot.clone(), project_json.sysroot_src.clone());
-        let loaded_sysroot = sysroot.load_workspace(&SysrootSourceWorkspaceConfig::Stitched);
+        let loaded_sysroot = sysroot.load_workspace(&RustSourceWorkspaceConfig::Stitched);
         if let Some(loaded_sysroot) = loaded_sysroot {
             sysroot.set_workspace(loaded_sysroot);
         }
 
-        tracing::info!(workspace = %project_json.manifest_or_root(), src_root = ?sysroot.src_root(), root = ?sysroot.root(), "Using sysroot");
+        tracing::info!(workspace = %project_json.manifest_or_root(), src_root = ?sysroot.rust_lib_src_root(), root = ?sysroot.root(), "Using sysroot");
         progress("Querying project metadata".to_owned());
         let query_config = QueryConfig::Rustc(&sysroot, project_json.path().as_ref());
         let targets = target_tuple::get(query_config, config.target.as_deref(), &config.extra_env)
@@ -458,7 +458,7 @@ impl ProjectWorkspace {
     ) -> anyhow::Result<ProjectWorkspace> {
         let dir = detached_file.parent();
         let mut sysroot = match &config.sysroot {
-            Some(RustLibSource::Path(path)) => Sysroot::discover_sysroot_src_dir(path.clone()),
+            Some(RustLibSource::Path(path)) => Sysroot::discover_rust_lib_src_dir(path.clone()),
             Some(RustLibSource::Discover) => Sysroot::discover(dir, &config.extra_env),
             None => Sysroot::empty(),
         };
@@ -469,7 +469,7 @@ impl ProjectWorkspace {
             .unwrap_or_default();
         let rustc_cfg = rustc_cfg::get(query_config, None, &config.extra_env);
         let data_layout = target_data_layout::get(query_config, None, &config.extra_env);
-        let loaded_sysroot = sysroot.load_workspace(&SysrootSourceWorkspaceConfig::CargoMetadata(
+        let loaded_sysroot = sysroot.load_workspace(&RustSourceWorkspaceConfig::CargoMetadata(
             sysroot_metadata_config(&config.extra_env, &targets),
         ));
         if let Some(loaded_sysroot) = loaded_sysroot {
@@ -643,7 +643,7 @@ impl ProjectWorkspace {
     pub fn to_roots(&self) -> Vec<PackageRoot> {
         let mk_sysroot = || {
             let mut r = match self.sysroot.workspace() {
-                SysrootWorkspace::Workspace(ws) => ws
+                RustLibSrcWorkspace::Workspace(ws) => ws
                     .packages()
                     .filter_map(|pkg| {
                         if ws[pkg].is_local {
@@ -664,12 +664,17 @@ impl ProjectWorkspace {
                         Some(PackageRoot { is_local: false, include, exclude })
                     })
                     .collect(),
-                SysrootWorkspace::Stitched(_) | SysrootWorkspace::Empty => vec![],
+                RustLibSrcWorkspace::Stitched(_) | RustLibSrcWorkspace::Empty => vec![],
             };
 
             r.push(PackageRoot {
                 is_local: false,
-                include: self.sysroot.src_root().map(|it| it.to_path_buf()).into_iter().collect(),
+                include: self
+                    .sysroot
+                    .rust_lib_src_root()
+                    .map(|it| it.to_path_buf())
+                    .into_iter()
+                    .collect(),
                 exclude: Vec::new(),
             });
             r
@@ -1483,7 +1488,7 @@ fn sysroot_to_crate_graph(
 ) -> (SysrootPublicDeps, Option<CrateId>) {
     let _p = tracing::info_span!("sysroot_to_crate_graph").entered();
     match sysroot.workspace() {
-        SysrootWorkspace::Workspace(cargo) => {
+        RustLibSrcWorkspace::Workspace(cargo) => {
             let (mut cg, mut pm) = cargo_to_crate_graph(
                 load,
                 None,
@@ -1558,7 +1563,7 @@ fn sysroot_to_crate_graph(
 
             (SysrootPublicDeps { deps: pub_deps }, libproc_macro)
         }
-        SysrootWorkspace::Stitched(stitched) => {
+        RustLibSrcWorkspace::Stitched(stitched) => {
             let cfg_options = Arc::new({
                 let mut cfg_options = CfgOptions::default();
                 cfg_options.extend(rustc_cfg);
@@ -1566,7 +1571,7 @@ fn sysroot_to_crate_graph(
                 cfg_options.insert_atom(sym::miri.clone());
                 cfg_options
             });
-            let sysroot_crates: FxHashMap<SysrootCrate, CrateId> = stitched
+            let sysroot_crates: FxHashMap<RustLibSrcCrate, CrateId> = stitched
                 .crates()
                 .filter_map(|krate| {
                     let file_id = load(&stitched[krate].root)?;
@@ -1611,7 +1616,7 @@ fn sysroot_to_crate_graph(
                 stitched.proc_macro().and_then(|it| sysroot_crates.get(&it).copied());
             (public_deps, libproc_macro)
         }
-        SysrootWorkspace::Empty => (SysrootPublicDeps { deps: vec![] }, None),
+        RustLibSrcWorkspace::Empty => (SysrootPublicDeps { deps: vec![] }, None),
     }
 }
 
