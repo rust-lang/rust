@@ -678,7 +678,7 @@ mod types {
         /*! FIXME: todo */
     }
     /// TyKind::Pat
-    fn ty_pat() { let _: u32 is 1..; }
+    fn ty_pat() { let _: u32 is const 1..; }
 }
 mod visibilities {
     /// VisibilityKind::Public

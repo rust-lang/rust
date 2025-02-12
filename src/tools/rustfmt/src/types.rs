@@ -18,6 +18,7 @@ use crate::lists::{
 use crate::macros::{MacroPosition, rewrite_macro};
 use crate::overflow;
 use crate::pairs::{PairParts, rewrite_pair};
+use crate::patterns::rewrite_range_pat;
 use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
@@ -1041,6 +1042,21 @@ impl Rewrite for ast::Ty {
                 result.push_str(&rewrite);
                 Ok(result)
             }
+        }
+    }
+}
+
+impl Rewrite for ast::TyPat {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
+        match self.kind {
+            ast::TyPatKind::Range(ref lhs, ref rhs, ref end_kind) => {
+                rewrite_range_pat(context, shape, lhs, rhs, end_kind, self.span)
+            }
+            ast::TyPatKind::Err(_) => Err(RewriteError::Unknown),
         }
     }
 }
