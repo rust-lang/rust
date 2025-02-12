@@ -662,7 +662,7 @@ LL |     m!();
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: casting `u32` to `u8` may truncate the value
-  --> tests/ui/cast.rs:536:21
+  --> tests/ui/cast.rs:537:21
    |
 LL |             let _ = u32::MAX as u8; // cast_possible_truncation
    |                     ^^^^^^^^^^^^^^
@@ -678,7 +678,7 @@ LL |             let _ = u8::try_from(u32::MAX); // cast_possible_truncation
    |                     ~~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `f64` to `f32` may truncate the value
-  --> tests/ui/cast.rs:538:21
+  --> tests/ui/cast.rs:540:21
    |
 LL |             let _ = std::f64::consts::PI as f32; // cast_possible_truncation
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -690,7 +690,7 @@ LL |     m!();
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: casting `i64` to `usize` may truncate the value on targets with 32-bit wide pointers
-  --> tests/ui/cast.rs:548:5
+  --> tests/ui/cast.rs:551:5
    |
 LL |     bar.unwrap().unwrap() as usize
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -702,13 +702,13 @@ LL |     usize::try_from(bar.unwrap().unwrap())
    |
 
 error: casting `i64` to `usize` may lose the sign of the value
-  --> tests/ui/cast.rs:548:5
+  --> tests/ui/cast.rs:551:5
    |
 LL |     bar.unwrap().unwrap() as usize
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `u64` to `u8` may truncate the value
-  --> tests/ui/cast.rs:565:5
+  --> tests/ui/cast.rs:568:5
    |
 LL |     (256 & 999999u64) as u8;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -720,7 +720,7 @@ LL |     u8::try_from(256 & 999999u64);
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `u64` to `u8` may truncate the value
-  --> tests/ui/cast.rs:568:5
+  --> tests/ui/cast.rs:571:5
    |
 LL |     (255 % 999999u64) as u8;
    |     ^^^^^^^^^^^^^^^^^^^^^^^

@@ -25,5 +25,6 @@ fn main() {
     let ref_to_instant = &Instant::now();
 
     Instant::now() - *ref_to_instant; // to ensure parens are added correctly
-    //~^ manual_instant_elapsed
+    //
+    //~^^ manual_instant_elapsed
 }

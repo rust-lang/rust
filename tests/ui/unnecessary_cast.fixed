@@ -246,7 +246,8 @@ mod fixable {
         //~^ unnecessary_cast
         #[allow(ambiguous_negative_literals)]
         let _: f64 = -8.0_f64.exp(); // should suggest `-8.0_f64.exp()` here not to change code behavior
-        //~^ unnecessary_cast
+        //
+        //~^^ unnecessary_cast
     }
 
     fn issue_9562_non_literal() {

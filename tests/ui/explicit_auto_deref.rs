@@ -81,7 +81,8 @@ fn main() {
     f_ref_t(&*s); // Don't lint. Inferred type would change.
 
     f_str_t(&*s, &*s); // Don't lint second param.
-    //~^ explicit_auto_deref
+    //
+    //~^^ explicit_auto_deref
 
     let b = Box::new(Box::new(Box::new(5)));
     let _: &Box<i32> = &**b;
@@ -239,9 +240,11 @@ fn main() {
     }
 
     f_str(&&*ref_str); // `needless_borrow` will suggest removing both references
-    //~^ explicit_auto_deref
+    //
+    //~^^ explicit_auto_deref
     f_str(&&**ref_str); // `needless_borrow` will suggest removing only one reference
-    //~^ explicit_auto_deref
+    //
+    //~^^ explicit_auto_deref
 
     let x = &&40;
     unsafe {

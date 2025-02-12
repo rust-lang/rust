@@ -45,13 +45,17 @@ fn tester(fn_arg: i32) {
     println!("val='{}'", local_i32);
     //~^ uninlined_format_args
     println!("val='{   }'", local_i32); // 3 spaces
-    //~^ uninlined_format_args
+    //
+    //~^^ uninlined_format_args
     println!("val='{	}'", local_i32); // tab
-    //~^ uninlined_format_args
+    //
+    //~^^ uninlined_format_args
     println!("val='{ 	}'", local_i32); // space+tab
-    //~^ uninlined_format_args
+    //
+    //~^^ uninlined_format_args
     println!("val='{	 }'", local_i32); // tab+space
-    //~^ uninlined_format_args
+    //
+    //~^^ uninlined_format_args
     println!(
         //~^ uninlined_format_args
         "val='{

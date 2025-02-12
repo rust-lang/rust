@@ -17,7 +17,8 @@ fn issue_11174<T>(boolean: bool, maybe_some: Option<T>) -> bool {
 
 fn issue_11174_edge_cases<T>(boolean: bool, boolean2: bool, maybe_some: Option<T>) {
     let _ = matches!(maybe_some, None if boolean || boolean2); // guard needs parentheses
-    //~^ redundant_pattern_matching
+    //
+    //~^^ redundant_pattern_matching
     let _ = match maybe_some {
         // can't use `matches!` here
         // because `expr` metavars in macros don't allow let exprs

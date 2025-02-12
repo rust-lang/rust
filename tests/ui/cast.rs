@@ -532,11 +532,14 @@ fn issue11738() {
     macro_rules! m {
         () => {
             let _ = i32::MIN as u32; // cast_sign_loss
-            //~^ cast_sign_loss
+            //
+            //~^^ cast_sign_loss
             let _ = u32::MAX as u8; // cast_possible_truncation
-            //~^ cast_possible_truncation
+            //
+            //~^^ cast_possible_truncation
             let _ = std::f64::consts::PI as f32; // cast_possible_truncation
-            //~^ cast_possible_truncation
+            //
+            //~^^ cast_possible_truncation
             let _ = 0i8 as i32; // cast_lossless
         };
     }

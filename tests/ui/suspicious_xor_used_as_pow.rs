@@ -11,7 +11,8 @@ macro_rules! macro_test {
 macro_rules! macro_test_inside {
     () => {
         1 ^ 2 // should warn even if inside macro
-        //~^ suspicious_xor_used_as_pow
+        //
+        //~^^ suspicious_xor_used_as_pow
     };
 }
 

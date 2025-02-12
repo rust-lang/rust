@@ -164,49 +164,49 @@ LL |     x.replace(';', ",").split(","); // issue #2978
    |                               ^^^ help: consider using a `char`: `','`
 
 error: single-character string constant used as pattern
-  --> tests/ui/single_char_pattern.rs:77:19
+  --> tests/ui/single_char_pattern.rs:78:19
    |
 LL |     x.starts_with("\x03"); // issue #2996
    |                   ^^^^^^ help: consider using a `char`: `'\x03'`
 
 error: single-character string constant used as pattern
-  --> tests/ui/single_char_pattern.rs:85:13
+  --> tests/ui/single_char_pattern.rs:87:13
    |
 LL |     x.split(r"a");
    |             ^^^^ help: consider using a `char`: `'a'`
 
 error: single-character string constant used as pattern
-  --> tests/ui/single_char_pattern.rs:87:13
+  --> tests/ui/single_char_pattern.rs:89:13
    |
 LL |     x.split(r#"a"#);
    |             ^^^^^^ help: consider using a `char`: `'a'`
 
 error: single-character string constant used as pattern
-  --> tests/ui/single_char_pattern.rs:89:13
+  --> tests/ui/single_char_pattern.rs:91:13
    |
 LL |     x.split(r###"a"###);
    |             ^^^^^^^^^^ help: consider using a `char`: `'a'`
 
 error: single-character string constant used as pattern
-  --> tests/ui/single_char_pattern.rs:91:13
+  --> tests/ui/single_char_pattern.rs:93:13
    |
 LL |     x.split(r###"'"###);
    |             ^^^^^^^^^^ help: consider using a `char`: `'\''`
 
 error: single-character string constant used as pattern
-  --> tests/ui/single_char_pattern.rs:93:13
+  --> tests/ui/single_char_pattern.rs:95:13
    |
 LL |     x.split(r###"#"###);
    |             ^^^^^^^^^^ help: consider using a `char`: `'#'`
 
 error: single-character string constant used as pattern
-  --> tests/ui/single_char_pattern.rs:96:13
+  --> tests/ui/single_char_pattern.rs:98:13
    |
 LL |     x.split(r#"\"#);
    |             ^^^^^^ help: consider using a `char`: `'\\'`
 
 error: single-character string constant used as pattern
-  --> tests/ui/single_char_pattern.rs:98:13
+  --> tests/ui/single_char_pattern.rs:100:13
    |
 LL |     x.split(r"\");
    |             ^^^^ help: consider using a `char`: `'\\'`

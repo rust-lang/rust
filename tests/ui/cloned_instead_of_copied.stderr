@@ -38,13 +38,13 @@ LL |     let _ = Some(&1).cloned(); // Option::copied needs 1.35
    |                      ^^^^^^ help: try: `copied`
 
 error: used `cloned` where `copied` could be used instead
-  --> tests/ui/cloned_instead_of_copied.rs:38:24
+  --> tests/ui/cloned_instead_of_copied.rs:39:24
    |
 LL |     let _ = [1].iter().cloned(); // Iterator::copied needs 1.36
    |                        ^^^^^^ help: try: `copied`
 
 error: used `cloned` where `copied` could be used instead
-  --> tests/ui/cloned_instead_of_copied.rs:40:22
+  --> tests/ui/cloned_instead_of_copied.rs:42:22
    |
 LL |     let _ = Some(&1).cloned();
    |                      ^^^^^^ help: try: `copied`

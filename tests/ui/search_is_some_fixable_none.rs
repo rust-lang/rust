@@ -9,7 +9,8 @@ fn main() {
     let _ = v.iter().find(|&x| *x < 0).is_none();
     //~^ search_is_some
     let _ = (0..1).find(|x| **y == *x).is_none(); // one dereference less
-    //~^ search_is_some
+    //
+    //~^^ search_is_some
     let _ = (0..1).find(|x| *x == 0).is_none();
     //~^ search_is_some
     let _ = v.iter().find(|x| **x == 0).is_none();

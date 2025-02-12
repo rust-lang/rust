@@ -73,9 +73,11 @@ fn main() {
     h.contains("X"); // should not warn
 
     x.replace(';', ",").split(','); // issue #2978
-    //~^ single_char_pattern
+    //
+    //~^^ single_char_pattern
     x.starts_with('\x03'); // issue #2996
-    //~^ single_char_pattern
+    //
+    //~^^ single_char_pattern
 
     // Issue #3204
     const S: &str = "#";

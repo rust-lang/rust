@@ -14,12 +14,14 @@ fn main() {
     let ref_a = &a;
     let _ = x(&a); // no warning
     let _ = x(&a); // warn
-    //~^ needless_borrow
+    //
+    //~^^ needless_borrow
 
     let mut b = 5;
     mut_ref(&mut b); // no warning
     mut_ref(&mut b); // warn
-    //~^ needless_borrow
+    //
+    //~^^ needless_borrow
 
     let s = &String::from("hi");
     let s_ident = f(&s); // should not error, because `&String` implements Copy, but `String` does not

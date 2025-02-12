@@ -543,7 +543,7 @@ LL +     let _ = unsafe { 1 + *(&1 as *const i32) }; // needs to keep the unsafe
    |
 
 error: used `unwrap_unchecked()` on `Some` value
-  --> tests/ui/unnecessary_literal_unwrap.rs:142:22
+  --> tests/ui/unnecessary_literal_unwrap.rs:143:22
    |
 LL |     let _ = unsafe { Some(1).unwrap_unchecked() } + 1;
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -555,7 +555,7 @@ LL +     let _ = 1 + 1;
    |
 
 error: used `unwrap_unchecked()` on `Ok` value
-  --> tests/ui/unnecessary_literal_unwrap.rs:144:22
+  --> tests/ui/unnecessary_literal_unwrap.rs:145:22
    |
 LL |     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() };
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -567,7 +567,7 @@ LL +     let _ = 1;
    |
 
 error: used `unwrap_unchecked()` on `Ok` value
-  --> tests/ui/unnecessary_literal_unwrap.rs:146:22
+  --> tests/ui/unnecessary_literal_unwrap.rs:147:22
    |
 LL |     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() + *(&1 as *const i32) };
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -579,7 +579,7 @@ LL +     let _ = unsafe { 1 + *(&1 as *const i32) };
    |
 
 error: used `unwrap_unchecked()` on `Ok` value
-  --> tests/ui/unnecessary_literal_unwrap.rs:148:22
+  --> tests/ui/unnecessary_literal_unwrap.rs:149:22
    |
 LL |     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() } + 1;
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -591,7 +591,7 @@ LL +     let _ = 1 + 1;
    |
 
 error: used `unwrap_err_unchecked()` on `Err` value
-  --> tests/ui/unnecessary_literal_unwrap.rs:150:22
+  --> tests/ui/unnecessary_literal_unwrap.rs:151:22
    |
 LL |     let _ = unsafe { Err::<(), i32>(123).unwrap_err_unchecked() };
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

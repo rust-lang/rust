@@ -69,7 +69,8 @@ mod false_negative {
         let x = &12;
         let addr_x = &x as *const _ as usize;
         let addr_y = &&*x as *const _ as usize; // assert ok
-        //~^ borrow_deref_ref
+        //
+        //~^^ borrow_deref_ref
         // let addr_y = &x as *const _ as usize; // assert fail
         assert_ne!(addr_x, addr_y);
     }

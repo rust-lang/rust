@@ -1,0 +1,45 @@
+error: this if-then-else expression will always return true
+  --> tests/ui/needless_bool/simple.rs:14:5
+   |
+LL | /     if x {
+LL | |         true
+LL | |     } else {
+LL | |         true
+LL | |     };
+   | |_____^
+   |
+   = note: `-D clippy::needless-bool` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_bool)]`
+
+error: this if-then-else expression will always return false
+  --> tests/ui/needless_bool/simple.rs:20:5
+   |
+LL | /     if x {
+LL | |         false
+LL | |     } else {
+LL | |         false
+LL | |     };
+   | |_____^
+
+error: this if-then-else expression will always return true
+  --> tests/ui/needless_bool/simple.rs:36:5
+   |
+LL | /     if x {
+LL | |         return true;
+LL | |     } else {
+LL | |         return true;
+LL | |     };
+   | |_____^
+
+error: this if-then-else expression will always return false
+  --> tests/ui/needless_bool/simple.rs:45:5
+   |
+LL | /     if x {
+LL | |         return false;
+LL | |     } else {
+LL | |         return false;
+LL | |     };
+   | |_____^
+
+error: aborting due to 4 previous errors
+

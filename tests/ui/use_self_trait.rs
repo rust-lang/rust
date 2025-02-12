@@ -158,7 +158,8 @@ mod full_path_replacement {
     impl Error for std::fmt::Error {
         fn custom<T: std::fmt::Display>(_msg: T) -> Self {
             std::fmt::Error // Should lint
-            //~^ use_self
+            //
+            //~^^ use_self
         }
     }
 }

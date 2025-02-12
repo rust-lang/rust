@@ -62,7 +62,7 @@ LL |         f(&String::new()); // Lint, makes no difference
    |           ^^^^^^^^^^^^^^ help: change this to: `String::new()`
 
 error: the borrowed expression implements the required traits
-  --> tests/ui/needless_borrows_for_generic_args.rs:344:11
+  --> tests/ui/needless_borrows_for_generic_args.rs:345:11
    |
 LL |         f(&"".to_owned()); // Lint
    |           ^^^^^^^^^^^^^^ help: change this to: `"".to_owned()`

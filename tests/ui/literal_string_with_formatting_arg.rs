@@ -52,7 +52,8 @@ fn main() {
     x.expect("{{y:?}");
     x.expect(" {0}"); // If it only contains an integer, we ignore it.
     x.expect(r##" {x:?} "##); // `x` doesn't exist so we shoud not lint
-    //~^ literal_string_with_formatting_args
+    //
+    //~^^ literal_string_with_formatting_args
     x.expect("{y:...}");
     let _ = "fn main {\n\
     }";

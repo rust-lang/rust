@@ -374,11 +374,13 @@ fn fn_call_in_nested_expr() {
     let opt: Option<i32> = Some(1);
 
     let _ = opt.unwrap_or({ f() }); // suggest `.unwrap_or_else(f)`
-    //~^ or_fun_call
+    //
+    //~^^ or_fun_call
     //
 
     let _ = opt.unwrap_or(f() + 1); // suggest `.unwrap_or_else(|| f() + 1)`
-    //~^ or_fun_call
+    //
+    //~^^ or_fun_call
     //
 
     let _ = opt.unwrap_or({
@@ -388,7 +390,8 @@ fn fn_call_in_nested_expr() {
     });
 
     let _ = opt.map_or(f() + 1, |v| v); // suggest `.map_or_else(|| f() + 1, |v| v)`
-    //~^ or_fun_call
+    //
+    //~^^ or_fun_call
     //
 
     let _ = opt.unwrap_or({ i32::default() });

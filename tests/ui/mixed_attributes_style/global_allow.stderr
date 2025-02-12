@@ -1,0 +1,20 @@
+error: empty line after outer attribute
+  --> tests/ui/mixed_attributes_style/auxiliary/submodule.rs:5:1
+   |
+LL | / #[allow(unused)]
+LL | |
+LL | |
+   | |_^
+LL |   mod foo {
+   |   ------- the attribute applies to this module
+   |
+   = note: `-D clippy::empty-line-after-outer-attr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::empty_line_after_outer_attr)]`
+   = help: if the empty line is unintentional remove it
+help: if the attribute should apply to the parent module use an inner attribute
+   |
+LL | #![allow(unused)]
+   |  +
+
+error: aborting due to 1 previous error
+

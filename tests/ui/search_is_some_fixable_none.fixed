@@ -9,7 +9,8 @@ fn main() {
     let _ = !v.iter().any(|x| *x < 0);
     //~^ search_is_some
     let _ = !(0..1).any(|x| **y == x); // one dereference less
-    //~^ search_is_some
+    //
+    //~^^ search_is_some
     let _ = !(0..1).any(|x| x == 0);
     //~^ search_is_some
     let _ = !v.iter().any(|x| *x == 0);

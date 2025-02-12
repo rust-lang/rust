@@ -1,5 +1,5 @@
 error: `^` is not the exponentiation operator
-  --> tests/ui/suspicious_xor_used_as_pow.rs:20:13
+  --> tests/ui/suspicious_xor_used_as_pow.rs:21:13
    |
 LL |     let _ = 2 ^ 5;
    |             ^^^^^
@@ -12,7 +12,7 @@ LL |     let _ = 2.pow(5);
    |             ~~~~~~~~
 
 error: `^` is not the exponentiation operator
-  --> tests/ui/suspicious_xor_used_as_pow.rs:23:13
+  --> tests/ui/suspicious_xor_used_as_pow.rs:24:13
    |
 LL |     let _ = 2i32 ^ 9i32;
    |             ^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     let _ = 2i32.pow(9i32);
    |             ~~~~~~~~~~~~~~
 
 error: `^` is not the exponentiation operator
-  --> tests/ui/suspicious_xor_used_as_pow.rs:26:13
+  --> tests/ui/suspicious_xor_used_as_pow.rs:27:13
    |
 LL |     let _ = 2i32 ^ 2i32;
    |             ^^^^^^^^^^^
@@ -34,7 +34,7 @@ LL |     let _ = 2i32.pow(2i32);
    |             ~~~~~~~~~~~~~~
 
 error: `^` is not the exponentiation operator
-  --> tests/ui/suspicious_xor_used_as_pow.rs:29:13
+  --> tests/ui/suspicious_xor_used_as_pow.rs:30:13
    |
 LL |     let _ = 50i32 ^ 3i32;
    |             ^^^^^^^^^^^^
@@ -45,7 +45,7 @@ LL |     let _ = 50i32.pow(3i32);
    |             ~~~~~~~~~~~~~~~
 
 error: `^` is not the exponentiation operator
-  --> tests/ui/suspicious_xor_used_as_pow.rs:32:13
+  --> tests/ui/suspicious_xor_used_as_pow.rs:33:13
    |
 LL |     let _ = 5i32 ^ 8i32;
    |             ^^^^^^^^^^^
@@ -56,7 +56,7 @@ LL |     let _ = 5i32.pow(8i32);
    |             ~~~~~~~~~~~~~~
 
 error: `^` is not the exponentiation operator
-  --> tests/ui/suspicious_xor_used_as_pow.rs:35:13
+  --> tests/ui/suspicious_xor_used_as_pow.rs:36:13
    |
 LL |     let _ = 2i32 ^ 32i32;
    |             ^^^^^^^^^^^^

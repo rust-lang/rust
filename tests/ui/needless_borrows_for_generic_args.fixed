@@ -338,11 +338,13 @@ fn main() {
         let x = String::new();
         f(&x); // Don't lint, not a copy, makes it unavailable later
         f(String::new()); // Lint, makes no difference
-        //~^ needless_borrows_for_generic_args
+        //
+        //~^^ needless_borrows_for_generic_args
         let y = "".to_owned();
         f(&y); // Don't lint
         f("".to_owned()); // Lint
-        //~^ needless_borrows_for_generic_args
+        //
+        //~^^ needless_borrows_for_generic_args
     }
     {
         fn takes_writer<T: std::io::Write>(_: T) {}

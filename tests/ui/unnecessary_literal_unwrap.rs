@@ -138,7 +138,8 @@ fn unwrap_unchecked() {
     let _ = unsafe { Some(1).unwrap_unchecked() };
     //~^ unnecessary_literal_unwrap
     let _ = unsafe { Some(1).unwrap_unchecked() + *(&1 as *const i32) }; // needs to keep the unsafe block
-    //~^ unnecessary_literal_unwrap
+    //
+    //~^^ unnecessary_literal_unwrap
     let _ = unsafe { Some(1).unwrap_unchecked() } + 1;
     //~^ unnecessary_literal_unwrap
     let _ = unsafe { Ok::<_, ()>(1).unwrap_unchecked() };

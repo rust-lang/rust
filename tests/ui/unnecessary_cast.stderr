@@ -236,13 +236,13 @@ LL |         let _: f64 = -(8.0 as f64).exp(); // should suggest `-8.0_f64.exp()
    |                       ^^^^^^^^^^^^ help: try: `8.0_f64`
 
 error: casting to the same type is unnecessary (`f32` -> `f32`)
-  --> tests/ui/unnecessary_cast.rs:257:20
+  --> tests/ui/unnecessary_cast.rs:258:20
    |
 LL |         let _num = foo() as f32;
    |                    ^^^^^^^^^^^^ help: try: `foo()`
 
 error: casting to the same type is unnecessary (`usize` -> `usize`)
-  --> tests/ui/unnecessary_cast.rs:268:9
+  --> tests/ui/unnecessary_cast.rs:269:9
    |
 LL |         (*x as usize).pow(2)
    |         ^^^^^^^^^^^^^ help: try: `{ *x }`

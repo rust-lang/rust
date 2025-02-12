@@ -34,11 +34,14 @@ fn main() {
     true.then(|| mac!()); // don't lint function in macro expansion
     Some(1).map(closure_mac!()); // don't lint closure in macro expansion
     let _: Option<Vec<u8>> = true.then(std::vec::Vec::new); // special case vec!
-    //~^ redundant_closure
+    //
+    //~^^ redundant_closure
     let d = Some(1u8).map(|a| foo(foo2(a))); //is adjusted?
-    //~^ redundant_closure
+    //
+    //~^^ redundant_closure
     all(&[1, 2, 3], &&2, below); //is adjusted
-    //~^ redundant_closure
+    //
+    //~^^ redundant_closure
     unsafe {
         Some(1u8).map(|a| unsafe_fn(a)); // unsafe fn
     }

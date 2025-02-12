@@ -32,31 +32,31 @@ LL |     let _ = &mut mut_slice[..]; // Err, re-borrows slice
    |             ^^^^^^^^^^^^^^^^^^ help: reborrow the original value instead: `&mut *mut_slice`
 
 error: slicing when dereferencing would work
-  --> tests/ui/deref_by_slicing.rs:22:13
+  --> tests/ui/deref_by_slicing.rs:23:13
    |
 LL |     let _ = &s[..];
    |             ^^^^^^ help: dereference the original value instead: `&*s`
 
 error: slicing when dereferencing would work
-  --> tests/ui/deref_by_slicing.rs:26:18
+  --> tests/ui/deref_by_slicing.rs:27:18
    |
 LL |     let _ = &mut &S[..]; // Err, re-borrows slice
    |                  ^^^^^^ help: reborrow the original value instead: `&*S`
 
 error: slicing when dereferencing would work
-  --> tests/ui/deref_by_slicing.rs:31:13
+  --> tests/ui/deref_by_slicing.rs:33:13
    |
 LL |     let _ = &slice_ref[..]; // Err, derefs slice
    |             ^^^^^^^^^^^^^^ help: dereference the original value instead: `*slice_ref`
 
 error: slicing when dereferencing would work
-  --> tests/ui/deref_by_slicing.rs:35:13
+  --> tests/ui/deref_by_slicing.rs:38:13
    |
 LL |     let _ = (&bytes[..]).read_to_end(&mut vec![]).unwrap(); // Err, re-borrows slice
    |             ^^^^^^^^^^^^ help: reborrow the original value instead: `(&*bytes)`
 
 error: slicing when dereferencing would work
-  --> tests/ui/deref_by_slicing.rs:40:13
+  --> tests/ui/deref_by_slicing.rs:44:13
    |
 LL |     let _ = &a[..];
    |             ^^^^^^ help: reborrow the original value instead: `&*a`

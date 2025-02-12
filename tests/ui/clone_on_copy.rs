@@ -81,6 +81,7 @@ fn clone_on_copy() -> Option<(i32)> {
     //  Issue #9277
     let opt: &Option<i32> = &None;
     let value = opt.clone()?; // operator precedence needed (*opt)?
-    //~^ clone_on_copy
+    //
+    //~^^ clone_on_copy
     None
 }
