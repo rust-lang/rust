@@ -51,7 +51,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
-use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
+use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{
     self as hir, ConstArg, GenericArg, HirId, ItemLocalMap, LangItem, ParamName, TraitCandidate,
 };
@@ -188,12 +188,28 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // interact with `gen`/`async gen` blocks
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
 
-            attribute_parser: AttributeParser::new(tcx.sess, tcx.features(), registered_tools),
+            attribute_parser: AttributeParser::new(tcx, tcx.features(), registered_tools),
         }
     }
 
     pub(crate) fn dcx(&self) -> DiagCtxtHandle<'hir> {
         self.tcx.dcx()
+    }
+}
+
+struct SpanLowerer {
+    is_incremental: bool,
+    defid: LocalDefId,
+}
+
+impl SpanLowerer {
+    fn lower(&self, span: Span) -> Span {
+        if self.is_incremental {
+            span.with_parent(Some(self.defid))
+        } else {
+            // Do not make spans relative when not using incremental compilation.
+            span
+        }
     }
 }
 
@@ -740,15 +756,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         })
     }
 
+    fn span_lowerer(&self) -> SpanLowerer {
+        SpanLowerer {
+            is_incremental: self.tcx.sess.opts.incremental.is_some(),
+            defid: self.current_hir_id_owner.def_id,
+        }
+    }
+
     /// Intercept all spans entering HIR.
     /// Mark a span as relative to the current owning item.
     fn lower_span(&self, span: Span) -> Span {
-        if self.tcx.sess.opts.incremental.is_some() {
-            span.with_parent(Some(self.current_hir_id_owner.def_id))
-        } else {
-            // Do not make spans relative when not using incremental compilation.
-            span
-        }
+        self.span_lowerer().lower(span)
     }
 
     fn lower_ident(&self, ident: Ident) -> Ident {
@@ -871,7 +889,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         if attrs.is_empty() {
             &[]
         } else {
-            let lowered_attrs = self.lower_attrs_vec(attrs, self.lower_span(target_span));
+            let lowered_attrs = self.lower_attrs_vec(attrs, self.lower_span(target_span), id);
 
             debug_assert_eq!(id.owner, self.current_hir_id_owner);
             let ret = self.arena.alloc_from_iter(lowered_attrs);
@@ -891,9 +909,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_attrs_vec(&self, attrs: &[Attribute], target_span: Span) -> Vec<hir::Attribute> {
-        self.attribute_parser
-            .parse_attribute_list(attrs, target_span, OmitDoc::Lower, |s| self.lower_span(s))
+    fn lower_attrs_vec(
+        &mut self,
+        attrs: &[Attribute],
+        target_span: Span,
+        target_hir_id: HirId,
+    ) -> Vec<hir::Attribute> {
+        let l = self.span_lowerer();
+        self.attribute_parser.parse_attribute_list(
+            attrs,
+            target_span,
+            target_hir_id,
+            OmitDoc::Lower,
+            |s| l.lower(s),
+        )
     }
 
     fn alias_attrs(&mut self, id: HirId, target_id: HirId) {

@@ -53,6 +53,8 @@ pub use diagnostic_impls::{
     DiagArgFromDisplay, DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
     IndicateAnonymousLifetime, SingleLabelManySpans,
 };
+use rustc_lint_defs::Lint;
+use rustc_hir::HirId;
 pub use emitter::ColorConfig;
 use emitter::{DynEmitter, Emitter, is_case_difference, is_different};
 use rustc_data_structures::AtomicRef;
@@ -536,6 +538,13 @@ impl<'a> std::ops::Deref for DiagCtxtHandle<'a> {
     }
 }
 
+pub type HirDelayedLint = (
+    &'static Lint,
+    HirId,
+    Span,
+    Box<dyn DynSend + for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>) + 'static>
+);
+
 /// This inner struct exists to keep it all behind a single lock;
 /// this is done to prevent possible deadlocks in a multi-threaded compiler,
 /// as well as inconsistent state observation.
@@ -551,6 +560,11 @@ struct DiagCtxtInner {
     lint_err_guars: Vec<ErrorGuaranteed>,
     /// The delayed bugs and their error guarantees.
     delayed_bugs: Vec<(DelayedDiagInner, ErrorGuaranteed)>,
+
+    /// *specifically* for lints emitted during ast lowering.
+    /// At this point we can't get the lint level yet (doing so will cause really weird bugs).
+    /// So, by stuffing lints in here they can be emitted when hir is built.
+    hir_delayed_lints: Vec<HirDelayedLint>,
 
     /// The error count shown to the user at the end.
     deduplicated_err_count: usize,
@@ -769,6 +783,18 @@ impl DiagCtxt {
         inner.emitter = new_emitter;
     }
 
+    /// You can't emit lints during ast lowering,
+    /// since you'd need to find the lint level of hir nodes you're currently working on lowering.
+    ///
+    /// This stashes them and emits them during the late lint pass.
+    ///
+    /// Lints stashed at other stages of the compiler will be ignored.
+    /// Instead, in all other stages after hir lowering you should be able to
+    /// use `TyCtx::{emit}_node_span_lint(...)`.
+    pub fn delay_lint_during_ast_lowering(&self, lint: HirDelayedLint) {
+        self.inner.borrow_mut().hir_delayed_lints.push(lint);
+    }
+
     pub fn set_emitter(&self, emitter: Box<dyn Emitter + DynSend>) {
         self.inner.borrow_mut().emitter = emitter;
     }
@@ -828,6 +854,7 @@ impl DiagCtxt {
             future_breakage_diagnostics,
             fulfilled_expectations,
             ice_file: _,
+            hir_delayed_lints,
         } = inner.deref_mut();
 
         // For the `Vec`s and `HashMap`s, we overwrite with an empty container to free the
@@ -846,6 +873,7 @@ impl DiagCtxt {
         *stashed_diagnostics = Default::default();
         *future_breakage_diagnostics = Default::default();
         *fulfilled_expectations = Default::default();
+        *hir_delayed_lints = Default::default();
     }
 
     pub fn handle<'a>(&'a self) -> DiagCtxtHandle<'a> {
@@ -989,6 +1017,11 @@ impl<'a> DiagCtxtHandle<'a> {
     /// Emit all stashed diagnostics.
     pub fn emit_stashed_diagnostics(&self) -> Option<ErrorGuaranteed> {
         self.inner.borrow_mut().emit_stashed_diagnostics()
+    }
+
+    /// Emit all lints that were delayed while building the hir.
+    pub fn steal_hir_delayed_lints(&self) -> Vec<HirDelayedLint> {
+        std::mem::take(&mut self.inner.borrow_mut().hir_delayed_lints)
     }
 
     /// This excludes delayed bugs.
@@ -1479,6 +1512,7 @@ impl DiagCtxtInner {
             future_breakage_diagnostics: Vec::new(),
             fulfilled_expectations: Default::default(),
             ice_file: None,
+            hir_delayed_lints: Vec::new(),
         }
     }
 
