@@ -512,6 +512,8 @@ macro_rules! make_mir_visitor {
                         target: _,
                         unwind: _,
                         replace: _,
+                        drop: _,
+                        async_fut: _,
                     } => {
                         self.visit_place(
                             place,
@@ -638,7 +640,7 @@ macro_rules! make_mir_visitor {
                     OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) => {
                         self.visit_operand(op, location);
                     }
-                    ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference => {
+                    ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference | ResumedAfterDrop(_) => {
                         // Nothing to visit
                     }
                     MisalignedPointerDereference { required, found } => {
