@@ -39,9 +39,7 @@
 //@[multivalue] compile-flags: --crate-type=lib,rlib,staticlib
 //@[multivalue] check-pass
 
-//@[multivalue_combined] ignore-musl (dylibs are not supported)
-//@[multivalue_combined] ignore-wasm (dylibs are not supported)
-//@[multivalue_combined] compile-flags: --crate-type=lib,rlib,staticlib --crate-type=dylib
+//@[multivalue_combined] compile-flags: --crate-type=lib,rlib --crate-type=staticlib
 //@[multivalue_combined] check-pass
 
 // `proc-macro` is accepted, but `proc_macro` is not.
