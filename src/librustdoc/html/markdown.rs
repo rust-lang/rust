@@ -52,7 +52,6 @@ use crate::clean::RenderedLink;
 use crate::doctest;
 use crate::doctest::GlobalTestOptions;
 use crate::html::escape::{Escape, EscapeBodyText};
-use crate::html::format::Buffer;
 use crate::html::highlight;
 use crate::html::length_limit::HtmlWithLimit;
 use crate::html::render::small_url_encode;
@@ -329,7 +328,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 
         // insert newline to clearly separate it from the
         // previous block so we can shorten the html output
-        let mut s = Buffer::new();
+        let mut s = String::new();
         s.push('\n');
 
         highlight::render_example_with_highlighting(
@@ -339,7 +338,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             playground_button.as_deref(),
             &added_classes,
         );
-        Some(Event::Html(s.into_inner().into()))
+        Some(Event::Html(s.into()))
     }
 }
 

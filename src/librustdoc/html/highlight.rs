@@ -14,7 +14,7 @@ use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, DUMMY_SP, Span};
 
-use super::format::{self, Buffer};
+use super::format::{self, write_str};
 use crate::clean::PrimitiveType;
 use crate::html::escape::EscapeBodyText;
 use crate::html::render::{Context, LinkFromSrc};
@@ -48,7 +48,7 @@ pub(crate) enum Tooltip {
 /// Highlights `src` as an inline example, returning the HTML output.
 pub(crate) fn render_example_with_highlighting(
     src: &str,
-    out: &mut Buffer,
+    out: &mut String,
     tooltip: Tooltip,
     playground_button: Option<&str>,
     extra_classes: &[String],
@@ -59,61 +59,69 @@ pub(crate) fn render_example_with_highlighting(
 }
 
 fn write_header(
-    out: &mut Buffer,
+    out: &mut String,
     class: &str,
-    extra_content: Option<Buffer>,
+    extra_content: Option<&str>,
     tooltip: Tooltip,
     extra_classes: &[String],
 ) {
-    write!(
+    write_str(
         out,
-        "<div class=\"example-wrap{}\">",
-        match tooltip {
-            Tooltip::Ignore => " ignore",
-            Tooltip::CompileFail => " compile_fail",
-            Tooltip::ShouldPanic => " should_panic",
-            Tooltip::Edition(_) => " edition",
-            Tooltip::None => "",
-        },
+        format_args!(
+            "<div class=\"example-wrap{}\">",
+            match tooltip {
+                Tooltip::Ignore => " ignore",
+                Tooltip::CompileFail => " compile_fail",
+                Tooltip::ShouldPanic => " should_panic",
+                Tooltip::Edition(_) => " edition",
+                Tooltip::None => "",
+            }
+        ),
     );
 
     if tooltip != Tooltip::None {
         let edition_code;
-        write!(
+        write_str(
             out,
-            "<a href=\"#\" class=\"tooltip\" title=\"{}\">ⓘ</a>",
-            match tooltip {
-                Tooltip::Ignore => "This example is not tested",
-                Tooltip::CompileFail => "This example deliberately fails to compile",
-                Tooltip::ShouldPanic => "This example panics",
-                Tooltip::Edition(edition) => {
-                    edition_code = format!("This example runs with edition {edition}");
-                    &edition_code
+            format_args!(
+                "<a href=\"#\" class=\"tooltip\" title=\"{}\">ⓘ</a>",
+                match tooltip {
+                    Tooltip::Ignore => "This example is not tested",
+                    Tooltip::CompileFail => "This example deliberately fails to compile",
+                    Tooltip::ShouldPanic => "This example panics",
+                    Tooltip::Edition(edition) => {
+                        edition_code = format!("This example runs with edition {edition}");
+                        &edition_code
+                    }
+                    Tooltip::None => unreachable!(),
                 }
-                Tooltip::None => unreachable!(),
-            },
+            ),
         );
     }
 
     if let Some(extra) = extra_content {
-        out.push_buffer(extra);
+        out.push_str(&extra);
     }
     if class.is_empty() {
-        write!(
+        write_str(
             out,
-            "<pre class=\"rust{}{}\">",
-            if extra_classes.is_empty() { "" } else { " " },
-            extra_classes.join(" "),
+            format_args!(
+                "<pre class=\"rust{}{}\">",
+                if extra_classes.is_empty() { "" } else { " " },
+                extra_classes.join(" ")
+            ),
         );
     } else {
-        write!(
+        write_str(
             out,
-            "<pre class=\"rust {class}{}{}\">",
-            if extra_classes.is_empty() { "" } else { " " },
-            extra_classes.join(" "),
+            format_args!(
+                "<pre class=\"rust {class}{}{}\">",
+                if extra_classes.is_empty() { "" } else { " " },
+                extra_classes.join(" ")
+            ),
         );
     }
-    write!(out, "<code>");
+    write_str(out, format_args!("<code>"));
 }
 
 /// Check if two `Class` can be merged together. In the following rules, "unclassified" means `None`
@@ -398,8 +406,8 @@ pub(super) fn write_code(
     });
 }
 
-fn write_footer(out: &mut Buffer, playground_button: Option<&str>) {
-    writeln!(out, "</code></pre>{}</div>", playground_button.unwrap_or_default());
+fn write_footer(out: &mut String, playground_button: Option<&str>) {
+    write_str(out, format_args_nl!("</code></pre>{}</div>", playground_button.unwrap_or_default()));
 }
 
 /// How a span of text is classified. Mostly corresponds to token kinds.
