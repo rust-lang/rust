@@ -59,7 +59,7 @@ macro_rules! handle_call {
             let libm_fn: <Op as MathOp>::RustFn = libm::$fn_name;
 
             let output = match $basis {
-                "libm" => input.call(libm_fn),
+                "libm" => input.call_intercept_panics(libm_fn),
                 #[cfg(feature = "build-musl")]
                 "musl" => {
                     let musl_fn: <Op as MathOp>::CFn =

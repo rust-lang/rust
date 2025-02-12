@@ -6,7 +6,8 @@
 //! - `CheckOutput`: implemented on anything that is an output type for validation against an
 //!   expected value.
 
-use std::fmt;
+use std::panic::{RefUnwindSafe, UnwindSafe};
+use std::{fmt, panic};
 
 use anyhow::{Context, anyhow, bail, ensure};
 use libm::support::Hexf;
@@ -23,6 +24,22 @@ use crate::{
 pub trait TupleCall<Func>: fmt::Debug {
     type Output;
     fn call(self, f: Func) -> Self::Output;
+
+    /// Intercept panics and print the input to stderr before continuing.
+    fn call_intercept_panics(self, f: Func) -> Self::Output
+    where
+        Self: RefUnwindSafe + Copy,
+        Func: UnwindSafe,
+    {
+        let res = panic::catch_unwind(|| self.call(f));
+        match res {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("panic with the following input: {self:?}");
+                panic::resume_unwind(e)
+            }
+        }
+    }
 }
 
 /// A trait to implement on any output type so we can verify it in a generic way.

@@ -21,7 +21,7 @@ fn musl_runner<Op: MathOp>(
 ) {
     for input in cases {
         let musl_res = input.call(musl_fn);
-        let crate_res = input.call(Op::ROUTINE);
+        let crate_res = input.call_intercept_panics(Op::ROUTINE);
 
         crate_res.validate(musl_res, input, ctx).unwrap();
     }

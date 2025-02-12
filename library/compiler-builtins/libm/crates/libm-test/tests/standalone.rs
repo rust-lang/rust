@@ -10,7 +10,7 @@ fn standalone_runner<Op: MathOp>(
     cases: impl Iterator<Item = (Op::RustArgs, Op::RustRet)>,
 ) {
     for (input, expected) in cases {
-        let crate_res = input.call(Op::ROUTINE);
+        let crate_res = input.call_intercept_panics(Op::ROUTINE);
         crate_res.validate(expected, input, ctx).unwrap();
     }
 }

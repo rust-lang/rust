@@ -14,6 +14,7 @@
 //!   level. `Op` is also used as the name for generic parameters since it is terse.
 
 use std::fmt;
+use std::panic::{RefUnwindSafe, UnwindSafe};
 
 pub use shared::{ALL_OPERATIONS, FloatTy, MathOpInfo, Ty};
 
@@ -64,7 +65,7 @@ pub trait MathOp {
     type CRet;
 
     /// The signature of the Rust function as a `fn(...) -> ...` type.
-    type RustFn: Copy;
+    type RustFn: Copy + UnwindSafe;
 
     /// Arguments passed to the Rust library function as a tuple.
     ///
@@ -72,7 +73,8 @@ pub trait MathOp {
     /// to the Rust function.
     type RustArgs: Copy
         + TupleCall<Self::RustFn, Output = Self::RustRet>
-        + TupleCall<Self::CFn, Output = Self::RustRet>;
+        + TupleCall<Self::CFn, Output = Self::RustRet>
+        + RefUnwindSafe;
 
     /// Type returned from the Rust function.
     type RustRet: CheckOutput<Self::RustArgs>;

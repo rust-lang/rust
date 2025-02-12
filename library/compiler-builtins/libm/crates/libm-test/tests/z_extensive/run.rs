@@ -113,7 +113,7 @@ where
         for input in input_vec {
             // Test the input.
             let mp_res = Op::run(mp_vals, input);
-            let crate_res = input.call(Op::ROUTINE);
+            let crate_res = input.call_intercept_panics(Op::ROUTINE);
             crate_res.validate(mp_res, input, ctx)?;
 
             let completed = completed.fetch_add(1, Ordering::Relaxed) + 1;

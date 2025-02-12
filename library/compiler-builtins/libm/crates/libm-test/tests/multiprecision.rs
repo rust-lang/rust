@@ -12,7 +12,7 @@ fn mp_runner<Op: MathOp + MpOp>(ctx: &CheckCtx, cases: impl Iterator<Item = Op::
     let mut mp_vals = Op::new_mp();
     for input in cases {
         let mp_res = Op::run(&mut mp_vals, input);
-        let crate_res = input.call(Op::ROUTINE);
+        let crate_res = input.call_intercept_panics(Op::ROUTINE);
 
         crate_res.validate(mp_res, input, ctx).unwrap();
     }
