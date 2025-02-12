@@ -153,3 +153,28 @@ fn consume() -> Option<()> {
 "#,
     );
 }
+
+#[test]
+fn method_call_on_field() {
+    check(
+        r#"
+struct S {
+    field: fn() -> u32,
+    field2: u32
+}
+
+fn main() {
+    let s = S { field: || 0, field2: 0 };
+    s.field(0);
+         // ^ type: i32
+ // ^^^^^^^^^^ type: u32
+    s.field2(0);
+          // ^ type: i32
+ // ^^^^^^^^^^^ type: u32
+    s.not_a_field(0);
+               // ^ type: i32
+ // ^^^^^^^^^^^^^^^^ type: {unknown}
+}
+"#,
+    );
+}

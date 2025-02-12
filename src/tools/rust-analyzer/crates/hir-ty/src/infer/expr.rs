@@ -489,78 +489,7 @@ impl InferenceContext<'_> {
 
                 ty
             }
-            Expr::Call { callee, args, .. } => {
-                let callee_ty = self.infer_expr(*callee, &Expectation::none(), ExprIsRead::Yes);
-                let mut derefs = Autoderef::new(&mut self.table, callee_ty.clone(), false, true);
-                let (res, derefed_callee) = loop {
-                    let Some((callee_deref_ty, _)) = derefs.next() else {
-                        break (None, callee_ty.clone());
-                    };
-                    if let Some(res) = derefs.table.callable_sig(&callee_deref_ty, args.len()) {
-                        break (Some(res), callee_deref_ty);
-                    }
-                };
-                // if the function is unresolved, we use is_varargs=true to
-                // suppress the arg count diagnostic here
-                let is_varargs =
-                    derefed_callee.callable_sig(self.db).is_some_and(|sig| sig.is_varargs)
-                        || res.is_none();
-                let (param_tys, ret_ty) = match res {
-                    Some((func, params, ret_ty)) => {
-                        let mut adjustments = auto_deref_adjust_steps(&derefs);
-                        if let TyKind::Closure(c, _) =
-                            self.table.resolve_completely(callee_ty.clone()).kind(Interner)
-                        {
-                            if let Some(par) = self.current_closure {
-                                self.closure_dependencies.entry(par).or_default().push(*c);
-                            }
-                            self.deferred_closures.entry(*c).or_default().push((
-                                derefed_callee.clone(),
-                                callee_ty.clone(),
-                                params.clone(),
-                                tgt_expr,
-                            ));
-                        }
-                        if let Some(fn_x) = func {
-                            self.write_fn_trait_method_resolution(
-                                fn_x,
-                                &derefed_callee,
-                                &mut adjustments,
-                                &callee_ty,
-                                &params,
-                                tgt_expr,
-                            );
-                        }
-                        self.write_expr_adj(*callee, adjustments);
-                        (params, ret_ty)
-                    }
-                    None => {
-                        self.push_diagnostic(InferenceDiagnostic::ExpectedFunction {
-                            call_expr: tgt_expr,
-                            found: callee_ty.clone(),
-                        });
-                        (Vec::new(), self.err_ty())
-                    }
-                };
-                let indices_to_skip = self.check_legacy_const_generics(derefed_callee, args);
-                self.register_obligations_for_call(&callee_ty);
-
-                let expected_inputs = self.expected_inputs_for_expected_output(
-                    expected,
-                    ret_ty.clone(),
-                    param_tys.clone(),
-                );
-
-                self.check_call_arguments(
-                    tgt_expr,
-                    args,
-                    &expected_inputs,
-                    &param_tys,
-                    &indices_to_skip,
-                    is_varargs,
-                );
-                self.normalize_associated_types_in(ret_ty)
-            }
+            Expr::Call { callee, args, .. } => self.infer_call(tgt_expr, *callee, args, expected),
             Expr::MethodCall { receiver, args, method_name, generic_args } => self
                 .infer_method_call(
                     tgt_expr,
@@ -1872,6 +1801,107 @@ impl InferenceContext<'_> {
         }
     }
 
+    fn infer_call(
+        &mut self,
+        tgt_expr: ExprId,
+        callee: ExprId,
+        args: &[ExprId],
+        expected: &Expectation,
+    ) -> Ty {
+        let callee_ty = self.infer_expr(callee, &Expectation::none(), ExprIsRead::Yes);
+        let mut derefs = Autoderef::new(&mut self.table, callee_ty.clone(), false, true);
+        let (res, derefed_callee) = loop {
+            let Some((callee_deref_ty, _)) = derefs.next() else {
+                break (None, callee_ty.clone());
+            };
+            if let Some(res) = derefs.table.callable_sig(&callee_deref_ty, args.len()) {
+                break (Some(res), callee_deref_ty);
+            }
+        };
+        // if the function is unresolved, we use is_varargs=true to
+        // suppress the arg count diagnostic here
+        let is_varargs =
+            derefed_callee.callable_sig(self.db).is_some_and(|sig| sig.is_varargs) || res.is_none();
+        let (param_tys, ret_ty) = match res {
+            Some((func, params, ret_ty)) => {
+                let mut adjustments = auto_deref_adjust_steps(&derefs);
+                if let TyKind::Closure(c, _) =
+                    self.table.resolve_completely(callee_ty.clone()).kind(Interner)
+                {
+                    if let Some(par) = self.current_closure {
+                        self.closure_dependencies.entry(par).or_default().push(*c);
+                    }
+                    self.deferred_closures.entry(*c).or_default().push((
+                        derefed_callee.clone(),
+                        callee_ty.clone(),
+                        params.clone(),
+                        tgt_expr,
+                    ));
+                }
+                if let Some(fn_x) = func {
+                    self.write_fn_trait_method_resolution(
+                        fn_x,
+                        &derefed_callee,
+                        &mut adjustments,
+                        &callee_ty,
+                        &params,
+                        tgt_expr,
+                    );
+                }
+                self.write_expr_adj(callee, adjustments);
+                (params, ret_ty)
+            }
+            None => {
+                self.push_diagnostic(InferenceDiagnostic::ExpectedFunction {
+                    call_expr: tgt_expr,
+                    found: callee_ty.clone(),
+                });
+                (Vec::new(), self.err_ty())
+            }
+        };
+        let indices_to_skip = self.check_legacy_const_generics(derefed_callee, args);
+        self.check_call(
+            tgt_expr,
+            args,
+            callee_ty,
+            &param_tys,
+            ret_ty,
+            &indices_to_skip,
+            is_varargs,
+            expected,
+        )
+    }
+
+    fn check_call(
+        &mut self,
+        tgt_expr: ExprId,
+        args: &[ExprId],
+        callee_ty: Ty,
+        param_tys: &[Ty],
+        ret_ty: Ty,
+        indices_to_skip: &[u32],
+        is_varargs: bool,
+        expected: &Expectation,
+    ) -> Ty {
+        self.register_obligations_for_call(&callee_ty);
+
+        let expected_inputs = self.expected_inputs_for_expected_output(
+            expected,
+            ret_ty.clone(),
+            param_tys.to_owned(),
+        );
+
+        self.check_call_arguments(
+            tgt_expr,
+            args,
+            &expected_inputs,
+            param_tys,
+            indices_to_skip,
+            is_varargs,
+        );
+        self.normalize_associated_types_in(ret_ty)
+    }
+
     fn infer_method_call(
         &mut self,
         tgt_expr: ExprId,
@@ -1939,14 +1969,32 @@ impl InferenceContext<'_> {
                     expr: tgt_expr,
                     receiver: receiver_ty.clone(),
                     name: method_name.clone(),
-                    field_with_same_name: field_with_same_name_exists,
+                    field_with_same_name: field_with_same_name_exists.clone(),
                     assoc_func_with_same_name,
                 });
-                (
-                    receiver_ty,
-                    Binders::empty(Interner, self.err_ty()),
-                    Substitution::empty(Interner),
-                )
+
+                return match field_with_same_name_exists {
+                    Some(field_ty) => match field_ty.callable_sig(self.db) {
+                        Some(sig) => self.check_call(
+                            tgt_expr,
+                            args,
+                            field_ty,
+                            sig.params(),
+                            sig.ret().clone(),
+                            &[],
+                            true,
+                            expected,
+                        ),
+                        None => {
+                            self.check_call_arguments(tgt_expr, args, &[], &[], &[], true);
+                            field_ty
+                        }
+                    },
+                    None => {
+                        self.check_call_arguments(tgt_expr, args, &[], &[], &[], true);
+                        self.err_ty()
+                    }
+                };
             }
         };
         self.check_method_call(tgt_expr, args, method_ty, substs, receiver_ty, expected)
