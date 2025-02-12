@@ -6,6 +6,7 @@
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_def::{
+    expr_store::ExprOrPatPtr,
     hir::ExprOrPatId,
     path::{hir_segment_to_ast_segment, ModPath},
     type_ref::TypesSourceMap,
@@ -115,14 +116,14 @@ diagnostics![
 
 #[derive(Debug)]
 pub struct BreakOutsideOfLoop {
-    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub expr: InFile<ExprOrPatPtr>,
     pub is_break: bool,
     pub bad_value_break: bool,
 }
 
 #[derive(Debug)]
 pub struct TypedHole {
-    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub expr: InFile<ExprOrPatPtr>,
     pub expected: Type,
 }
 
@@ -221,26 +222,26 @@ pub struct NoSuchField {
 
 #[derive(Debug)]
 pub struct PrivateAssocItem {
-    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub expr_or_pat: InFile<ExprOrPatPtr>,
     pub item: AssocItem,
 }
 
 #[derive(Debug)]
 pub struct MismatchedTupleStructPatArgCount {
-    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub expr_or_pat: InFile<ExprOrPatPtr>,
     pub expected: usize,
     pub found: usize,
 }
 
 #[derive(Debug)]
 pub struct ExpectedFunction {
-    pub call: InFile<AstPtr<ast::Expr>>,
+    pub call: InFile<ExprOrPatPtr>,
     pub found: Type,
 }
 
 #[derive(Debug)]
 pub struct UnresolvedField {
-    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub expr: InFile<ExprOrPatPtr>,
     pub receiver: Type,
     pub name: Name,
     pub method_with_same_name_exists: bool,
@@ -248,7 +249,7 @@ pub struct UnresolvedField {
 
 #[derive(Debug)]
 pub struct UnresolvedMethodCall {
-    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub expr: InFile<ExprOrPatPtr>,
     pub receiver: Type,
     pub name: Name,
     pub field_with_same_name: Option<Type>,
@@ -257,17 +258,17 @@ pub struct UnresolvedMethodCall {
 
 #[derive(Debug)]
 pub struct UnresolvedAssocItem {
-    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub expr_or_pat: InFile<ExprOrPatPtr>,
 }
 
 #[derive(Debug)]
 pub struct UnresolvedIdent {
-    pub node: InFile<(AstPtr<Either<ast::Expr, ast::Pat>>, Option<TextRange>)>,
+    pub node: InFile<(ExprOrPatPtr, Option<TextRange>)>,
 }
 
 #[derive(Debug)]
 pub struct PrivateField {
-    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub expr: InFile<ExprOrPatPtr>,
     pub field: Field,
 }
 
@@ -280,7 +281,7 @@ pub enum UnsafeLint {
 
 #[derive(Debug)]
 pub struct MissingUnsafe {
-    pub node: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub node: InFile<ExprOrPatPtr>,
     pub lint: UnsafeLint,
     pub reason: UnsafetyReason,
 }
@@ -302,7 +303,7 @@ pub struct ReplaceFilterMapNextWithFindMap {
 
 #[derive(Debug)]
 pub struct MismatchedArgCount {
-    pub call_expr: InFile<AstPtr<ast::Expr>>,
+    pub call_expr: InFile<ExprOrPatPtr>,
     pub expected: usize,
     pub found: usize,
 }
@@ -321,7 +322,7 @@ pub struct NonExhaustiveLet {
 
 #[derive(Debug)]
 pub struct TypeMismatch {
-    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub expr_or_pat: InFile<ExprOrPatPtr>,
     pub expected: Type,
     pub actual: Type,
 }
@@ -395,13 +396,13 @@ pub struct RemoveUnnecessaryElse {
 
 #[derive(Debug)]
 pub struct CastToUnsized {
-    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub expr: InFile<ExprOrPatPtr>,
     pub cast_ty: Type,
 }
 
 #[derive(Debug)]
 pub struct InvalidCast {
-    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub expr: InFile<ExprOrPatPtr>,
     pub error: CastError,
     pub expr_ty: Type,
     pub cast_ty: Type,
@@ -428,9 +429,7 @@ impl AnyDiagnostic {
                     .collect();
 
                 let record = match record {
-                    Either::Left(record_expr) => {
-                        source_map.expr_syntax(record_expr).ok()?.map(AstPtr::wrap_left)
-                    }
+                    Either::Left(record_expr) => source_map.expr_syntax(record_expr).ok()?,
                     Either::Right(record_pat) => source_map.pat_syntax(record_pat).ok()?,
                 };
                 let file = record.file_id;
@@ -474,7 +473,7 @@ impl AnyDiagnostic {
                     return Some(
                         ReplaceFilterMapNextWithFindMap {
                             file: next_source_ptr.file_id,
-                            next_expr: next_source_ptr.value,
+                            next_expr: next_source_ptr.value.cast()?,
                         }
                         .into(),
                     );
@@ -484,7 +483,9 @@ impl AnyDiagnostic {
                 match source_map.expr_syntax(match_expr) {
                     Ok(source_ptr) => {
                         let root = source_ptr.file_syntax(db.upcast());
-                        if let ast::Expr::MatchExpr(match_expr) = &source_ptr.value.to_node(&root) {
+                        if let Either::Left(ast::Expr::MatchExpr(match_expr)) =
+                            &source_ptr.value.to_node(&root)
+                        {
                             match match_expr.expr() {
                                 Some(scrut_expr) if match_expr.match_arm_list().is_some() => {
                                     return Some(
@@ -561,7 +562,7 @@ impl AnyDiagnostic {
         let pat_syntax =
             |pat| source_map.pat_syntax(pat).inspect_err(|_| stdx::never!("synthetic syntax")).ok();
         let expr_or_pat_syntax = |id| match id {
-            ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(|it| it.map(AstPtr::wrap_left)),
+            ExprOrPatId::ExprId(expr) => expr_syntax(expr),
             ExprOrPatId::PatId(pat) => pat_syntax(pat),
         };
         Some(match d {
@@ -633,7 +634,7 @@ impl AnyDiagnostic {
             &InferenceDiagnostic::UnresolvedIdent { id } => {
                 let node = match id {
                     ExprOrPatId::ExprId(id) => match source_map.expr_syntax(id) {
-                        Ok(syntax) => syntax.map(|it| (it.wrap_left(), None)),
+                        Ok(syntax) => syntax.map(|it| (it, None)),
                         Err(SyntheticSyntax) => source_map
                             .format_args_implicit_capture(id)?
                             .map(|(node, range)| (node.wrap_left(), Some(range))),
@@ -652,7 +653,7 @@ impl AnyDiagnostic {
             }
             &InferenceDiagnostic::MismatchedTupleStructPatArgCount { pat, expected, found } => {
                 let expr_or_pat = match pat {
-                    ExprOrPatId::ExprId(expr) => expr_syntax(expr)?.map(AstPtr::wrap_left),
+                    ExprOrPatId::ExprId(expr) => expr_syntax(expr)?,
                     ExprOrPatId::PatId(pat) => {
                         let InFile { file_id, value } = pat_syntax(pat)?;
 

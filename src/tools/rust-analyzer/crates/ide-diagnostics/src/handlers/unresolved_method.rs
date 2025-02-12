@@ -35,7 +35,7 @@ pub(crate) fn unresolved_method(
         ),
         adjusted_display_range(ctx, d.expr, &|expr| {
             Some(
-                match expr {
+                match expr.left()? {
                     ast::Expr::MethodCallExpr(it) => it.name_ref(),
                     ast::Expr::FieldExpr(it) => it.name_ref(),
                     _ => None,
@@ -85,7 +85,7 @@ fn field_fix(
     let expr_ptr = &d.expr;
     let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
-    let (file_id, range) = match expr {
+    let (file_id, range) = match expr.left()? {
         ast::Expr::MethodCallExpr(mcall) => {
             let FileRange { range, file_id } =
                 ctx.sema.original_range_opt(mcall.receiver()?.syntax())?;
@@ -117,7 +117,7 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
 
         let expr_ptr = &d.expr;
         let root = db.parse_or_expand(expr_ptr.file_id);
-        let expr: ast::Expr = expr_ptr.value.to_node(&root);
+        let expr: ast::Expr = expr_ptr.value.to_node(&root).left()?;
 
         let call = ast::MethodCallExpr::cast(expr.syntax().clone())?;
         let range = InFile::new(expr_ptr.file_id, call.syntax().text_range())
