@@ -23,8 +23,8 @@ static EXTENSIVE_ITER_OVERRIDE: LazyLock<Option<u64>> = LazyLock::new(|| {
 ///
 /// Contains the itentifier+generator combo to match on, plus the factor to reduce by.
 const EXTEMELY_SLOW_TESTS: &[(Identifier, GeneratorKind, u64)] = &[
-    (Identifier::Fmodf128, GeneratorKind::QuickSpaced, 40),
-    (Identifier::Fmodf128, GeneratorKind::Extensive, 40),
+    (Identifier::Fmodf128, GeneratorKind::QuickSpaced, 50),
+    (Identifier::Fmodf128, GeneratorKind::Extensive, 50),
 ];
 
 /// Maximum number of iterations to run for a single routine.
@@ -200,15 +200,6 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
         domain_iter_count = 100_000;
     }
 
-    // Larger float types get more iterations.
-    if t_env.large_float_ty {
-        domain_iter_count *= 4;
-    }
-
-    // Functions with more arguments get more iterations.
-    let arg_multiplier = 1 << (t_env.input_count - 1);
-    domain_iter_count *= arg_multiplier;
-
     // If we will be running tests against MPFR, we don't need to test as much against musl.
     // However, there are some platforms where we have to test against musl since MPFR can't be
     // built.
@@ -228,6 +219,25 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
         }
     };
 
+    // Larger float types get more iterations.
+    if t_env.large_float_ty && ctx.gen_kind != GeneratorKind::Extensive {
+        if ctx.gen_kind == GeneratorKind::Extensive {
+            // Extensive already has a pretty high test count.
+            total_iterations *= 2;
+        } else {
+            total_iterations *= 4;
+        }
+    }
+
+    // Functions with more arguments get more iterations.
+    let arg_multiplier = 1 << (t_env.input_count - 1);
+    total_iterations *= arg_multiplier;
+
+    // FMA has a huge domain but is reasonably fast to run, so increase another 1.5x.
+    if ctx.base_name == BaseName::Fma {
+        total_iterations = 3 * total_iterations / 2;
+    }
+
     // Some tests are significantly slower than others and need to be further reduced.
     if let Some((_id, _gen, scale)) = EXTEMELY_SLOW_TESTS
         .iter()
@@ -237,11 +247,6 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
         if !(ctx.gen_kind == GeneratorKind::Extensive && EXTENSIVE_ITER_OVERRIDE.is_some()) {
             total_iterations /= scale;
         }
-    }
-
-    // FMA has a huge domain but is reasonably fast to run, so increase iterations.
-    if ctx.base_name == BaseName::Fma {
-        total_iterations *= 4;
     }
 
     if cfg!(optimizations_enabled) {
