@@ -2154,11 +2154,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 span_bug!(span, "use of bare `static` ConstArgKind::Path's not yet supported")
             }
             // FIXME(const_generics): create real const to allow fn items as const paths
-            Res::Def(DefKind::Fn | DefKind::AssocFn, _) => ty::Const::new_error_with_message(
-                tcx,
-                span,
-                "fn items cannot be used as const args",
-            ),
+            Res::Def(DefKind::Fn | DefKind::AssocFn, did) => {
+                self.dcx().span_delayed_bug(span, "function items cannot be used as const args");
+                let args = self.lower_generic_args_of_path_segment(
+                    span,
+                    did,
+                    path.segments.last().unwrap(),
+                );
+                ty::Const::new_value(tcx, ty::ValTree::zst(), Ty::new_fn_def(tcx, did, args))
+            }
 
             // Exhaustive match to be clear about what exactly we're considering to be
             // an invalid Res for a const path.
