@@ -417,7 +417,7 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
         }
         fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> Self::Result {
             match e.kind {
-                ExprKind::Unary(UnOp::Deref, e) if self.cx.typeck_results().expr_ty(e).is_unsafe_ptr() => {
+                ExprKind::Unary(UnOp::Deref, e) if self.cx.typeck_results().expr_ty(e).is_raw_ptr() => {
                     ControlFlow::Break(())
                 },
                 ExprKind::MethodCall(..)
