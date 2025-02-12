@@ -1,8 +1,9 @@
 //! Utilities for validating string and char literals and turning them into
 //! values they represent.
 
+use std::iter::{Peekable, from_fn};
 use std::ops::Range;
-use std::str::Chars;
+use std::str::CharIndices;
 
 use Mode::*;
 
@@ -231,7 +232,7 @@ impl Mode {
 }
 
 fn scan_escape<T: From<char> + From<u8>>(
-    chars: &mut Chars<'_>,
+    chars: &mut impl Iterator<Item = char>,
     mode: Mode,
 ) -> Result<T, EscapeError> {
     // Previous character was '\\', unescape what follows.
@@ -268,7 +269,10 @@ fn scan_escape<T: From<char> + From<u8>>(
     Ok(T::from(res))
 }
 
-fn scan_unicode(chars: &mut Chars<'_>, allow_unicode_escapes: bool) -> Result<char, EscapeError> {
+fn scan_unicode(
+    chars: &mut impl Iterator<Item = char>,
+    allow_unicode_escapes: bool,
+) -> Result<char, EscapeError> {
     // We've parsed '\u', now we have to parse '{..}'.
 
     if chars.next() != Some('{') {
@@ -326,7 +330,10 @@ fn ascii_check(c: char, allow_unicode_chars: bool) -> Result<char, EscapeError> 
     if allow_unicode_chars || c.is_ascii() { Ok(c) } else { Err(EscapeError::NonAsciiCharInByte) }
 }
 
-fn unescape_char_or_byte(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
+fn unescape_char_or_byte(
+    chars: &mut impl Iterator<Item = char>,
+    mode: Mode,
+) -> Result<char, EscapeError> {
     let c = chars.next().ok_or(EscapeError::ZeroChars)?;
     let res = match c {
         '\\' => scan_escape(chars, mode),
@@ -346,63 +353,52 @@ fn unescape_non_raw_common<F, T: From<char> + From<u8>>(src: &str, mode: Mode, c
 where
     F: FnMut(Range<usize>, Result<T, EscapeError>),
 {
-    let mut chars = src.chars();
     let allow_unicode_chars = mode.allow_unicode_chars(); // get this outside the loop
 
-    // The `start` and `end` computation here is complicated because
-    // `skip_ascii_whitespace` makes us to skip over chars without counting
-    // them in the range computation.
-    while let Some(c) = chars.next() {
-        let start = src.len() - chars.as_str().len() - c.len_utf8();
+    let mut chars = src.char_indices().peekable();
+    while let Some((start, c)) = chars.next() {
         let res = match c {
-            '\\' => {
-                match chars.clone().next() {
-                    Some('\n') => {
-                        // Rust language specification requires us to skip whitespaces
-                        // if unescaped '\' character is followed by '\n'.
-                        // For details see [Rust language reference]
-                        // (https://doc.rust-lang.org/reference/tokens.html#string-literals).
-                        skip_ascii_whitespace(&mut chars, start, &mut |range, err| {
-                            callback(range, Err(err))
-                        });
-                        continue;
-                    }
-                    _ => scan_escape::<T>(&mut chars, mode),
-                }
+            // skip whitespace for backslash newline, see [Rust language reference]
+            // (https://doc.rust-lang.org/reference/tokens.html#string-literals).
+            '\\' if chars.next_if(|&(_, c)| c == '\n').is_some() => {
+                let mut callback_err = |range, err| callback(range, Err(err));
+                skip_ascii_whitespace(&mut chars, start, &mut callback_err);
+                continue;
             }
+            '\\' => scan_escape::<T>(&mut from_fn(|| chars.next().map(|i| i.1)), mode),
             '"' => Err(EscapeError::EscapeOnlyChar),
             '\r' => Err(EscapeError::BareCarriageReturn),
             _ => ascii_check(c, allow_unicode_chars).map(T::from),
         };
-        let end = src.len() - chars.as_str().len();
+        let end = chars.peek().map(|&(end, _)| end).unwrap_or(src.len());
         callback(start..end, res);
     }
 }
 
-fn skip_ascii_whitespace<F>(chars: &mut Chars<'_>, start: usize, callback: &mut F)
+/// Skip ASCII whitespace, except for the formfeed character
+/// (see [this issue](https://github.com/rust-lang/rust/issues/136600)).
+/// Warns on unescaped newline and following non-ASCII whitespace.
+fn skip_ascii_whitespace<F>(chars: &mut Peekable<CharIndices<'_>>, start: usize, callback: &mut F)
 where
     F: FnMut(Range<usize>, EscapeError),
 {
-    let tail = chars.as_str();
-    let first_non_space = tail
-        .bytes()
-        .position(|b| b != b' ' && b != b'\t' && b != b'\n' && b != b'\r')
-        .unwrap_or(tail.len());
-    if tail[1..first_non_space].contains('\n') {
-        // The +1 accounts for the escaping slash.
-        let end = start + first_non_space + 1;
+    // the escaping slash and newline characters add 2 bytes
+    let mut end = start + 2;
+    let mut contains_nl = false;
+    while let Some((_, c)) = chars.next_if(|&(_, c)| c.is_ascii_whitespace() && c != '\x0c') {
+        end += 1;
+        contains_nl = contains_nl || c == '\n';
+    }
+
+    if contains_nl {
         callback(start..end, EscapeError::MultipleSkippedLinesWarning);
     }
-    let tail = &tail[first_non_space..];
-    if let Some(c) = tail.chars().next() {
+    if let Some((_, c)) = chars.peek() {
         if c.is_whitespace() {
-            // For error reporting, we would like the span to contain the character that was not
-            // skipped. The +1 is necessary to account for the leading \ that started the escape.
-            let end = start + first_non_space + c.len_utf8() + 1;
-            callback(start..end, EscapeError::UnskippedWhitespaceWarning);
+            // for error reporting, include the character that was not skipped in the span
+            callback(start..end + c.len_utf8(), EscapeError::UnskippedWhitespaceWarning);
         }
     }
-    *chars = tail.chars();
 }
 
 /// Takes a contents of a string literal (without quotes) and produces a
