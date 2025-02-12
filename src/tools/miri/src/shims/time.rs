@@ -132,16 +132,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.assert_target_os_is_unix("localtime_r");
         this.check_no_isolation("`localtime_r`")?;
 
-        let timep = this.deref_pointer(timep)?;
+        let time_layout = this.libc_ty_layout("time_t");
+        let timep = this.deref_pointer_as(timep, time_layout)?;
         let result = this.deref_pointer_as(result_op, this.libc_ty_layout("tm"))?;
 
         // The input "represents the number of seconds elapsed since the Epoch,
         // 1970-01-01 00:00:00 +0000 (UTC)".
-        let sec_since_epoch: i64 = this
-            .read_scalar(&timep)?
-            .to_int(this.libc_ty_layout("time_t").size)?
-            .try_into()
-            .unwrap();
+        let sec_since_epoch: i64 =
+            this.read_scalar(&timep)?.to_int(time_layout.size)?.try_into().unwrap();
         let dt_utc: DateTime<Utc> =
             DateTime::from_timestamp(sec_since_epoch, 0).expect("Invalid timestamp");
 
@@ -180,6 +178,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if !matches!(&*this.tcx.sess.target.os, "solaris" | "illumos") {
             // tm_zone represents the timezone value in the form of: +0730, +08, -0730 or -08.
             // This may not be consistent with libc::localtime_r's result.
+
             let offset_in_seconds = dt.offset().fix().local_minus_utc();
             let tm_gmtoff = offset_in_seconds;
             let mut tm_zone = String::new();
@@ -195,11 +194,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 write!(tm_zone, "{:02}", offset_min).unwrap();
             }
 
-            // FIXME: String de-duplication is needed so that we only allocate this string only once
-            // even when there are multiple calls to this function.
-            let tm_zone_ptr = this
-                .alloc_os_str_as_c_str(&OsString::from(tm_zone), MiriMemoryKind::Machine.into())?;
+            // Add null terminator for C string compatibility.
+            tm_zone.push('\0');
 
+            // Deduplicate and allocate the string.
+            let tm_zone_ptr = this.allocate_bytes_dedup(tm_zone.as_bytes())?;
+
+            // Write the timezone pointer and offset into the result structure.
             this.write_pointer(tm_zone_ptr, &this.project_field_named(&result, "tm_zone")?)?;
             this.write_int_fields_named(&[("tm_gmtoff", tm_gmtoff.into())], &result)?;
         }
@@ -251,7 +252,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let qpc = i64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^63 nanoseconds are not supported")
         })?;
-        this.write_scalar(Scalar::from_i64(qpc), &this.deref_pointer(lpPerformanceCount_op)?)?;
+        this.write_scalar(
+            Scalar::from_i64(qpc),
+            &this.deref_pointer_as(lpPerformanceCount_op, this.machine.layouts.i64)?,
+        )?;
         interp_ok(Scalar::from_i32(-1)) // return non-zero on success
     }
 
@@ -328,8 +332,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
             callback!(
                 @capture<'tcx> {}
-                @unblock = |_this| { panic!("sleeping thread unblocked before time is up") }
-                @timeout = |_this| { interp_ok(()) }
+                |_this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::TimedOut);
+                    interp_ok(())
+                }
             ),
         );
         interp_ok(Scalar::from_i32(0))
@@ -350,8 +356,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
             callback!(
                 @capture<'tcx> {}
-                @unblock = |_this| { panic!("sleeping thread unblocked before time is up") }
-                @timeout = |_this| { interp_ok(()) }
+                |_this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::TimedOut);
+                    interp_ok(())
+                }
             ),
         );
         interp_ok(())

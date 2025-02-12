@@ -1,8 +1,9 @@
-use ide_db::text_edit::TextRange;
 use ide_db::{
     assists::{AssistId, AssistKind},
     defs::Definition,
-    search::{FileReference, SearchScope, UsageSearchResult},
+    search::{FileReference, SearchScope},
+    syntax_helpers::suggest_name,
+    text_edit::TextRange,
 };
 use itertools::Itertools;
 use syntax::{
@@ -122,31 +123,32 @@ fn collect_data(ident_pat: IdentPat, ctx: &AssistContext<'_>) -> Option<TupleDat
         return None;
     }
 
-    let name = ident_pat.name()?.to_string();
-
-    let usages = ctx.sema.to_def(&ident_pat).map(|def| {
+    let usages = ctx.sema.to_def(&ident_pat).and_then(|def| {
         Definition::Local(def)
             .usages(&ctx.sema)
             .in_scope(&SearchScope::single_file(ctx.file_id()))
             .all()
+            .iter()
+            .next()
+            .map(|(_, refs)| refs.to_vec())
     });
 
-    let field_names = (0..field_types.len())
-        .map(|i| generate_name(ctx, i, &name, &ident_pat, &usages))
+    let mut name_generator =
+        suggest_name::NameGenerator::new_from_scope_locals(ctx.sema.scope(ident_pat.syntax()));
+
+    let field_names = field_types
+        .into_iter()
+        .enumerate()
+        .map(|(id, ty)| {
+            match name_generator.for_type(&ty, ctx.db(), ctx.edition()) {
+                Some(name) => name,
+                None => name_generator.suggest_name(&format!("_{}", id)),
+            }
+            .to_string()
+        })
         .collect::<Vec<_>>();
 
     Some(TupleData { ident_pat, ref_type, field_names, usages })
-}
-
-fn generate_name(
-    _ctx: &AssistContext<'_>,
-    index: usize,
-    _tuple_name: &str,
-    _ident_pat: &IdentPat,
-    _usages: &Option<UsageSearchResult>,
-) -> String {
-    // FIXME: detect if name already used
-    format!("_{index}")
 }
 
 enum RefType {
@@ -157,7 +159,7 @@ struct TupleData {
     ident_pat: IdentPat,
     ref_type: Option<RefType>,
     field_names: Vec<String>,
-    usages: Option<UsageSearchResult>,
+    usages: Option<Vec<FileReference>>,
 }
 fn edit_tuple_assignment(
     ctx: &AssistContext<'_>,
@@ -213,42 +215,23 @@ fn edit_tuple_usages(
     ctx: &AssistContext<'_>,
     in_sub_pattern: bool,
 ) -> Option<Vec<EditTupleUsage>> {
-    let mut current_file_usages = None;
+    // We need to collect edits first before actually applying them
+    // as mapping nodes to their mutable node versions requires an
+    // unmodified syntax tree.
+    //
+    // We also defer editing usages in the current file first since
+    // tree mutation in the same file breaks when `builder.edit_file`
+    // is called
 
-    if let Some(usages) = data.usages.as_ref() {
-        // We need to collect edits first before actually applying them
-        // as mapping nodes to their mutable node versions requires an
-        // unmodified syntax tree.
-        //
-        // We also defer editing usages in the current file first since
-        // tree mutation in the same file breaks when `builder.edit_file`
-        // is called
+    let edits = data
+        .usages
+        .as_ref()?
+        .as_slice()
+        .iter()
+        .filter_map(|r| edit_tuple_usage(ctx, edit, r, data, in_sub_pattern))
+        .collect_vec();
 
-        if let Some((_, refs)) = usages.iter().find(|(file_id, _)| *file_id == ctx.file_id()) {
-            current_file_usages = Some(
-                refs.iter()
-                    .filter_map(|r| edit_tuple_usage(ctx, edit, r, data, in_sub_pattern))
-                    .collect_vec(),
-            );
-        }
-
-        for (file_id, refs) in usages.iter() {
-            if file_id == ctx.file_id() {
-                continue;
-            }
-
-            edit.edit_file(file_id.file_id());
-
-            let tuple_edits = refs
-                .iter()
-                .filter_map(|r| edit_tuple_usage(ctx, edit, r, data, in_sub_pattern))
-                .collect_vec();
-
-            tuple_edits.into_iter().for_each(|tuple_edit| tuple_edit.apply(edit))
-        }
-    }
-
-    current_file_usages
+    Some(edits)
 }
 fn edit_tuple_usage(
     ctx: &AssistContext<'_>,
@@ -1145,7 +1128,10 @@ fn main {
             destructure_tuple_binding_impl(acc, ctx, false)
         }
 
-        pub(crate) fn check_in_place_assist(ra_fixture_before: &str, ra_fixture_after: &str) {
+        pub(crate) fn check_in_place_assist(
+            #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+            #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+        ) {
             check_assist_by_label(
                 in_place_assist,
                 ra_fixture_before,
@@ -1155,7 +1141,10 @@ fn main {
             );
         }
 
-        pub(crate) fn check_sub_pattern_assist(ra_fixture_before: &str, ra_fixture_after: &str) {
+        pub(crate) fn check_sub_pattern_assist(
+            #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+            #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+        ) {
             check_assist_by_label(
                 assist,
                 ra_fixture_before,
@@ -1769,14 +1758,14 @@ struct S4 {
 }
 
 fn foo() -> Option<()> {
-    let ($0_0, _1, _2, _3, _4, _5) = &(0, (1,"1"), Some(2), [3;3], S4 { value: 4 }, &5);
+    let ($0_0, _1, _2, _3, s4, _5) = &(0, (1,"1"), Some(2), [3;3], S4 { value: 4 }, &5);
     let v: i32 = *_0;           // deref, no parens
     let v: &i32 = _0;         // no deref, no parens, remove `&`
     f1(*_0);                    // deref, no parens
     f2(_0);                   // `&*` -> cancel out -> no deref, no parens
     // https://github.com/rust-lang/rust-analyzer/issues/1109#issuecomment-658868639
     // let v: i32 = t.1.0;      // no deref, no parens
-    let v: i32 = _4.value;     // no deref, no parens
+    let v: i32 = s4.value;     // no deref, no parens
     (*_0).do_stuff();             // deref, parens
     let v: i32 = (*_2)?;          // deref, parens
     let v: i32 = _3[0];        // no deref, no parens
@@ -1815,8 +1804,8 @@ impl S {
 }
 
 fn main() {
-    let ($0_0, _1) = &(S,2);
-    let s = _0.f();
+    let ($0s, _1) = &(S,2);
+    let s = s.f();
 }
                 "#,
             )
@@ -1845,8 +1834,8 @@ impl S {
 }
 
 fn main() {
-    let ($0_0, _1) = &(S,2);
-    let s = (*_0).f();
+    let ($0s, _1) = &(S,2);
+    let s = (*s).f();
 }
                 "#,
             )
@@ -1882,8 +1871,8 @@ impl T for &S {
 }
 
 fn main() {
-    let ($0_0, _1) = &(S,2);
-    let s = (*_0).f();
+    let ($0s, _1) = &(S,2);
+    let s = (*s).f();
 }
                 "#,
             )
@@ -1923,8 +1912,8 @@ impl T for &S {
 }
 
 fn main() {
-    let ($0_0, _1) = &(S,2);
-    let s = (*_0).f();
+    let ($0s, _1) = &(S,2);
+    let s = (*s).f();
 }
                 "#,
             )
@@ -1951,8 +1940,8 @@ impl S {
     fn do_stuff(&self) -> i32 { 42 }
 }
 fn main() {
-    let ($0_0, _1) = &(S,&S);
-    let v = _0.do_stuff();
+    let ($0s, s1) = &(S,&S);
+    let v = s.do_stuff();
 }
                 "#,
             )
@@ -1973,7 +1962,7 @@ fn main() {
     // `t.0` gets auto-refed -> no deref needed -> no parens
     let v = t.0.do_stuff();         // no deref, no parens
     let v = &t.0.do_stuff();        // `&` is for result -> no deref, no parens
-    // deref: `_1` is `&&S`, but method called is on `&S` -> there might be a method accepting `&&S`
+    // deref: `s1` is `&&S`, but method called is on `&S` -> there might be a method accepting `&&S`
     let v = t.1.do_stuff();         // deref, parens
 }
                 "#,
@@ -1984,13 +1973,13 @@ impl S {
     fn do_stuff(&self) -> i32 { 42 }
 }
 fn main() {
-    let ($0_0, _1) = &(S,&S);
-    let v = _0.do_stuff();      // no deref, remove parens
+    let ($0s, s1) = &(S,&S);
+    let v = s.do_stuff();      // no deref, remove parens
     // `t.0` gets auto-refed -> no deref needed -> no parens
-    let v = _0.do_stuff();         // no deref, no parens
-    let v = &_0.do_stuff();        // `&` is for result -> no deref, no parens
-    // deref: `_1` is `&&S`, but method called is on `&S` -> there might be a method accepting `&&S`
-    let v = (*_1).do_stuff();         // deref, parens
+    let v = s.do_stuff();         // no deref, no parens
+    let v = &s.do_stuff();        // `&` is for result -> no deref, no parens
+    // deref: `s1` is `&&S`, but method called is on `&S` -> there might be a method accepting `&&S`
+    let v = (*s1).do_stuff();         // deref, parens
 }
                 "#,
             )

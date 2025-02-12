@@ -253,6 +253,12 @@ impl FlagComputation {
             &ty::FnPtr(sig_tys, _) => self.bound_computation(sig_tys, |computation, sig_tys| {
                 computation.add_tys(sig_tys.inputs_and_output);
             }),
+
+            &ty::UnsafeBinder(bound_ty) => {
+                self.bound_computation(bound_ty.into(), |computation, ty| {
+                    computation.add_ty(ty);
+                })
+            }
         }
     }
 
@@ -375,7 +381,7 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::HAS_CT_PLACEHOLDER);
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
-            ty::ConstKind::Value(ty, _) => self.add_ty(ty),
+            ty::ConstKind::Value(cv) => self.add_ty(cv.ty),
             ty::ConstKind::Expr(e) => self.add_args(e.args()),
             ty::ConstKind::Error(_) => self.add_flags(TypeFlags::HAS_ERROR),
         }

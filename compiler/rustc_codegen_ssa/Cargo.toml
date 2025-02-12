@@ -8,7 +8,10 @@ edition = "2021"
 ar_archive_writer = "0.4.2"
 arrayvec = { version = "0.7", default-features = false }
 bitflags = "2.4.1"
-cc = "1.1.23"
+bstr = "1.11.3"
+# Pinned so `cargo update` bumps don't cause breakage. Please also update the
+# `cc` in `rustc_llvm` if you update the `cc` here.
+cc = "=1.2.13"
 either = "1.5.0"
 itertools = "0.12"
 pathdiff = "0.2.0"
@@ -17,12 +20,13 @@ rustc_abi = { path = "../rustc_abi" }
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
-rustc_attr = { path = "../rustc_attr" }
+rustc_attr_parsing = { path = "../rustc_attr_parsing" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_fs_util = { path = "../rustc_fs_util" }
 rustc_hir = { path = "../rustc_hir" }
+rustc_hir_pretty = { path = "../rustc_hir_pretty" }
 rustc_incremental = { path = "../rustc_incremental" }
 rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
@@ -56,5 +60,5 @@ default-features = false
 features = ["read_core", "elf", "macho", "pe", "xcoff", "unaligned", "archive", "write", "wasm"]
 
 [target.'cfg(windows)'.dependencies.windows]
-version = "0.57.0"
+version = "0.59.0"
 features = ["Win32_Globalization"]

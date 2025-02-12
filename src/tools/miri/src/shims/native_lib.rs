@@ -72,7 +72,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             // Functions with no declared return type (i.e., the default return)
             // have the output_type `Tuple([])`.
-            ty::Tuple(t_list) if t_list.len() == 0 => {
+            ty::Tuple(t_list) if t_list.is_empty() => {
                 unsafe { ffi::call::<()>(ptr, libffi_args.as_slice()) };
                 return interp_ok(ImmTy::uninit(dest.layout));
             }
@@ -172,6 +172,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // Wildcard pointer, whatever it points to must be already exposed.
                     continue;
                 };
+                // The first time this happens, print a warning.
+                if !this.machine.native_call_mem_warned.replace(true) {
+                    // Newly set, so first time we get here.
+                    this.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem);
+                }
+
                 this.prepare_for_native_call(alloc_id, prov)?;
             }
         }

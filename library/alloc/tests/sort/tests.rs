@@ -11,7 +11,14 @@ use crate::sort::{Sort, known_good_stable_sort, patterns};
 #[cfg(miri)]
 const TEST_LENGTHS: &[usize] = &[2, 3, 4, 7, 10, 15, 20, 24, 33, 50, 100, 171, 300];
 
-#[cfg(not(miri))]
+// node.js gives out of memory error to use with length 1_100_000
+#[cfg(all(not(miri), target_os = "emscripten"))]
+const TEST_LENGTHS: &[usize] = &[
+    2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 16, 17, 20, 24, 30, 32, 33, 35, 50, 100, 200, 500, 1_000,
+    2_048, 5_000, 10_000, 100_000,
+];
+
+#[cfg(all(not(miri), not(target_os = "emscripten")))]
 const TEST_LENGTHS: &[usize] = &[
     2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 16, 17, 20, 24, 30, 32, 33, 35, 50, 100, 200, 500, 1_000,
     2_048, 5_000, 10_000, 100_000, 1_100_000,
@@ -33,7 +40,7 @@ fn check_is_sorted<T: Ord + Clone + Debug, S: Sort>(v: &mut [T]) {
             known_good_stable_sort::sort(known_good_sorted_vec.as_mut_slice());
 
             if is_small_test {
-                eprintln!("Orginal:  {:?}", v_orig);
+                eprintln!("Original: {:?}", v_orig);
                 eprintln!("Expected: {:?}", known_good_sorted_vec);
                 eprintln!("Got:      {:?}", v);
             } else {

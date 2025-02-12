@@ -48,7 +48,7 @@ fn main() {
         let default = &target_spec["crt-static-default"];
 
         // If the value is `null`, then the default to dynamically link from
-        // musl_base was not overriden.
+        // musl_base was not overridden.
         if default.is_null() {
             continue;
         }

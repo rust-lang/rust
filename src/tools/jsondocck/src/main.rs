@@ -65,6 +65,11 @@ enum CommandKind {
     /// Checks the path doesn't exist.
     HasNotPath,
 
+    /// `//@ !has <path> <value>`
+    ///
+    /// Checks the path exists, but doesn't have the given value.
+    HasNotValue { value: String },
+
     /// `//@ is <path> <value>`
     ///
     /// Check the path is the given value.
@@ -128,10 +133,11 @@ impl CommandKind {
                 [_path, value] => Self::HasValue { value: value.clone() },
                 _ => panic!("`//@ has` must have 2 or 3 arguments, but got {args:?}"),
             },
-            ("has", true) => {
-                assert_eq!(args.len(), 1, "args={args:?}");
-                Self::HasNotPath
-            }
+            ("has", true) => match args {
+                [_path] => Self::HasNotPath,
+                [_path, value] => Self::HasNotValue { value: value.clone() },
+                _ => panic!("`//@ !has` must have 2 or 3 arguments, but got {args:?}"),
+            },
 
             (_, false) if KNOWN_DIRECTIVE_NAMES.contains(&command_name) => {
                 return None;
@@ -223,6 +229,19 @@ fn check_command(command: &Command, cache: &mut Cache) -> Result<(), String> {
                 return Err(format!("matched to {matches:?}, which didn't contain {want_value:?}"));
             }
         }
+        CommandKind::HasNotValue { value } => {
+            let wantnt_value = string_to_value(value, cache);
+            if matches.contains(&wantnt_value.as_ref()) {
+                return Err(format!(
+                    "matched to {matches:?}, which contains unwanted {wantnt_value:?}"
+                ));
+            } else if matches.is_empty() {
+                return Err(format!(
+                    "got no matches, but expected some matched (not containing {wantnt_value:?}"
+                ));
+            }
+        }
+
         CommandKind::Is { value } => {
             let want_value = string_to_value(value, cache);
             let matched = get_one(&matches)?;

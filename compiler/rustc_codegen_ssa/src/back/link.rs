@@ -15,12 +15,14 @@ use rustc_ast::CRATE_NODE_ID;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_errors::{DiagCtxtHandle, FatalError};
+use rustc_errors::{DiagCtxtHandle, LintDiagnostic};
 use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc_macros::LintDiagnostic;
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
 use rustc_metadata::{find_native_static_library, walk_native_lib_search_dirs};
 use rustc_middle::bug;
+use rustc_middle::lint::lint_level;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
@@ -29,13 +31,14 @@ use rustc_session::config::{
     OutputType, PrintKind, SplitDwarfKind, Strip,
 };
 use rustc_session::cstore::DllImport;
+use rustc_session::lint::builtin::LINKER_MESSAGES;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{Session, filesearch};
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
     Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault, LinkerFeatures,
@@ -234,8 +237,6 @@ pub fn each_linked_rlib(
     crate_type: Option<CrateType>,
     f: &mut dyn FnMut(CrateNum, &Path),
 ) -> Result<(), errors::LinkRlibError> {
-    let crates = info.used_crates.iter();
-
     let fmts = if let Some(crate_type) = crate_type {
         let Some(fmts) = info.dependency_formats.get(&crate_type) else {
             return Err(errors::LinkRlibError::MissingFormat);
@@ -261,8 +262,9 @@ pub fn each_linked_rlib(
         info.dependency_formats.first().unwrap().1
     };
 
-    for &cnum in crates {
-        match fmts.get(cnum.as_usize() - 1) {
+    let used_dep_crates = info.used_crates.iter();
+    for &cnum in used_dep_crates {
+        match fmts.get(cnum) {
             Some(&Linkage::NotLinked | &Linkage::Dynamic | &Linkage::IncludedFromDylib) => continue,
             Some(_) => {}
             None => return Err(errors::LinkRlibError::MissingFormat),
@@ -624,7 +626,7 @@ fn link_staticlib(
 
     let mut all_rust_dylibs = vec![];
     for &cnum in crates {
-        match fmts.get(cnum.as_usize() - 1) {
+        match fmts.get(cnum) {
             Some(&Linkage::Dynamic) => {}
             _ => continue,
         }
@@ -748,6 +750,14 @@ fn link_dwarf_object(sess: &Session, cg_results: &CodegenResults, executable_out
         Ok(()) => {}
         Err(e) => sess.dcx().emit_fatal(errors::ThorinErrorWrapper(e)),
     }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(codegen_ssa_linker_output)]
+/// Translating this is kind of useless. We don't pass translation flags to the linker, so we'd just
+/// end up with inconsistent languages within the same diagnostic.
+struct LinkerOutput {
+    inner: String,
 }
 
 /// Create a dynamic library or executable.
@@ -982,6 +992,11 @@ fn link_natively(
 
     match prog {
         Ok(prog) => {
+            let is_msvc_link_exe = sess.target.is_like_msvc
+                && flavor == LinkerFlavor::Msvc(Lld::No)
+                // Match exactly "link.exe"
+                && linker_path.to_str() == Some("link.exe");
+
             if !prog.status.success() {
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
@@ -992,29 +1007,19 @@ fn link_natively(
                     command: cmd,
                     escaped_output,
                     verbose: sess.opts.verbose,
+                    sysroot_dir: sess.sysroot.clone(),
                 };
                 sess.dcx().emit_err(err);
                 // If MSVC's `link.exe` was expected but the return code
                 // is not a Microsoft LNK error then suggest a way to fix or
                 // install the Visual Studio build tools.
                 if let Some(code) = prog.status.code() {
-                    if sess.target.is_like_msvc
-                        && flavor == LinkerFlavor::Msvc(Lld::No)
-                        // Respect the command line override
-                        && sess.opts.cg.linker.is_none()
-                        // Match exactly "link.exe"
-                        && linker_path.to_str() == Some("link.exe")
-                        // All Microsoft `link.exe` linking error codes are
-                        // four digit numbers in the range 1000 to 9999 inclusive
-                        && (code < 1000 || code > 9999)
-                    {
+                    // All Microsoft `link.exe` linking ror codes are
+                    // four digit numbers in the range 1000 to 9999 inclusive
+                    if is_msvc_link_exe && (code < 1000 || code > 9999) {
                         let is_vs_installed = windows_registry::find_vs_version().is_ok();
-                        // FIXME(cc-rs#1265) pass only target arch to find_tool()
-                        let has_linker = windows_registry::find_tool(
-                            sess.opts.target_triple.tuple(),
-                            "link.exe",
-                        )
-                        .is_some();
+                        let has_linker =
+                            windows_registry::find_tool(&sess.target.arch, "link.exe").is_some();
 
                         sess.dcx().emit_note(errors::LinkExeUnexpectedError);
                         if is_vs_installed && has_linker {
@@ -1033,28 +1038,69 @@ fn link_natively(
 
                 sess.dcx().abort_if_errors();
             }
-            info!("linker stderr:\n{}", escape_string(&prog.stderr));
-            info!("linker stdout:\n{}", escape_string(&prog.stdout));
+
+            let stderr = escape_string(&prog.stderr);
+            let mut stdout = escape_string(&prog.stdout);
+            info!("linker stderr:\n{}", &stderr);
+            info!("linker stdout:\n{}", &stdout);
+
+            // Hide some progress messages from link.exe that we don't care about.
+            // See https://github.com/chromium/chromium/blob/bfa41e41145ffc85f041384280caf2949bb7bd72/build/toolchain/win/tool_wrapper.py#L144-L146
+            if is_msvc_link_exe {
+                if let Ok(str) = str::from_utf8(&prog.stdout) {
+                    let mut output = String::with_capacity(str.len());
+                    for line in stdout.lines() {
+                        if line.starts_with("   Creating library")
+                            || line.starts_with("Generating code")
+                            || line.starts_with("Finished generating code")
+                        {
+                            continue;
+                        }
+                        output += line;
+                        output += "\r\n"
+                    }
+                    stdout = escape_string(output.trim().as_bytes())
+                }
+            }
+
+            let (level, src) = codegen_results.crate_info.lint_levels.linker_messages;
+            let lint = |msg| {
+                lint_level(sess, LINKER_MESSAGES, level, src, None, |diag| {
+                    LinkerOutput { inner: msg }.decorate_lint(diag)
+                })
+            };
+
+            if !prog.stderr.is_empty() {
+                // We already print `warning:` at the start of the diagnostic. Remove it from the linker output if present.
+                let stderr = stderr
+                    .strip_prefix("warning: ")
+                    .unwrap_or(&stderr)
+                    .replace(": warning: ", ": ");
+                lint(format!("linker stderr: {stderr}"));
+            }
+            if !stdout.is_empty() {
+                lint(format!("linker stdout: {}", stdout))
+            }
         }
         Err(e) => {
             let linker_not_found = e.kind() == io::ErrorKind::NotFound;
 
-            if linker_not_found {
-                sess.dcx().emit_err(errors::LinkerNotFound { linker_path, error: e });
+            let err = if linker_not_found {
+                sess.dcx().emit_err(errors::LinkerNotFound { linker_path, error: e })
             } else {
                 sess.dcx().emit_err(errors::UnableToExeLinker {
                     linker_path,
                     error: e,
                     command_formatted: format!("{cmd:?}"),
-                });
-            }
+                })
+            };
 
             if sess.target.is_like_msvc && linker_not_found {
                 sess.dcx().emit_note(errors::MsvcMissingLinker);
                 sess.dcx().emit_note(errors::CheckInstalledVisualStudio);
                 sess.dcx().emit_note(errors::InsufficientVSCodeProduct);
             }
-            FatalError.raise();
+            err.raise_fatal();
         }
     }
 
@@ -1105,14 +1151,14 @@ fn link_natively(
         let stripcmd = "rust-objcopy";
         match (strip, crate_type) {
             (Strip::Debuginfo, _) => {
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &["-S"])
+                strip_with_external_utility(sess, stripcmd, out_filename, &["--strip-debug"])
             }
             // Per the manpage, `-x` is the maximum safe strip level for dynamic libraries. (#93988)
             (Strip::Symbols, CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro) => {
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &["-x"])
+                strip_with_external_utility(sess, stripcmd, out_filename, &["-x"])
             }
             (Strip::Symbols, _) => {
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &[])
+                strip_with_external_utility(sess, stripcmd, out_filename, &["--strip-all"])
             }
             (Strip::None, _) => {}
         }
@@ -1128,9 +1174,7 @@ fn link_natively(
         let stripcmd = if !sess.host.is_like_solaris { "rust-objcopy" } else { "/usr/bin/strip" };
         match strip {
             // Always preserve the symbol table (-x).
-            Strip::Debuginfo => {
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &["-x"])
-            }
+            Strip::Debuginfo => strip_with_external_utility(sess, stripcmd, out_filename, &["-x"]),
             // Strip::Symbols is handled via the --strip-all linker option.
             Strip::Symbols => {}
             Strip::None => {}
@@ -1146,15 +1190,11 @@ fn link_natively(
         match strip {
             Strip::Debuginfo => {
                 // FIXME: AIX's strip utility only offers option to strip line number information.
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &[
-                    "-X32_64", "-l",
-                ])
+                strip_with_external_utility(sess, stripcmd, out_filename, &["-X32_64", "-l"])
             }
             Strip::Symbols => {
                 // Must be noted this option might remove symbol __aix_rust_metadata and thus removes .info section which contains metadata.
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &[
-                    "-X32_64", "-r",
-                ])
+                strip_with_external_utility(sess, stripcmd, out_filename, &["-X32_64", "-r"])
             }
             Strip::None => {}
         }
@@ -1167,12 +1207,7 @@ fn link_natively(
     }
 }
 
-fn strip_symbols_with_external_utility(
-    sess: &Session,
-    util: &str,
-    out_filename: &Path,
-    options: &[&str],
-) {
+fn strip_with_external_utility(sess: &Session, util: &str, out_filename: &Path, options: &[&str]) {
     let mut cmd = Command::new(util);
     cmd.args(options);
 
@@ -2361,8 +2396,8 @@ fn linker_with_args(
         .crate_info
         .native_libraries
         .iter()
-        .filter_map(|(cnum, libraries)| {
-            (dependency_linkage[cnum.as_usize() - 1] != Linkage::Static).then_some(libraries)
+        .filter_map(|(&cnum, libraries)| {
+            (dependency_linkage[cnum] != Linkage::Static).then_some(libraries)
         })
         .flatten()
         .collect::<Vec<_>>();
@@ -2467,10 +2502,12 @@ fn add_order_independent_options(
     }
 
     if sess.target.os == "emscripten" {
-        cmd.cc_arg("-s").cc_arg(if sess.panic_strategy() == PanicStrategy::Abort {
-            "DISABLE_EXCEPTION_CATCHING=1"
+        cmd.cc_arg(if sess.opts.unstable_opts.emscripten_wasm_eh {
+            "-fwasm-exceptions"
+        } else if sess.panic_strategy() == PanicStrategy::Abort {
+            "-sDISABLE_EXCEPTION_CATCHING=1"
         } else {
-            "DISABLE_EXCEPTION_CATCHING=0"
+            "-sDISABLE_EXCEPTION_CATCHING=0"
         });
     }
 
@@ -2754,7 +2791,7 @@ fn add_upstream_rust_crates(
         // (e.g. `libstd` when `-C prefer-dynamic` is used).
         // FIXME: `dependency_formats` can report `profiler_builtins` as `NotLinked` for some
         // reason, it shouldn't do that because `profiler_builtins` should indeed be linked.
-        let linkage = data[cnum.as_usize() - 1];
+        let linkage = data[cnum];
         let link_static_crate = linkage == Linkage::Static
             || (linkage == Linkage::IncludedFromDylib || linkage == Linkage::NotLinked)
                 && (codegen_results.crate_info.compiler_builtins == Some(cnum)
@@ -2982,7 +3019,7 @@ fn add_dynamic_crate(cmd: &mut dyn Linker, sess: &Session, cratepath: &Path) {
 
 fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
-        Some(ref cfg) => rustc_attr::cfg_matches(cfg, sess, CRATE_NODE_ID, None),
+        Some(ref cfg) => rustc_attr_parsing::cfg_matches(cfg, sess, CRATE_NODE_ID, None),
         None => true,
     }
 }

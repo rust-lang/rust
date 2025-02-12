@@ -88,10 +88,10 @@
 #![allow(rustdoc::redundant_explicit_links)]
 #![warn(rustdoc::unescaped_backticks)]
 #![deny(ffi_unwind_calls)]
+#![warn(unreachable_pub)]
 //
 // Library features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(async_closure))]
 #![cfg_attr(test, feature(str_as_str))]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
@@ -103,6 +103,8 @@
 #![feature(async_fn_traits)]
 #![feature(async_iterator)]
 #![feature(box_uninit_write)]
+#![feature(bstr)]
+#![feature(bstr_internals)]
 #![feature(clone_to_uninit)]
 #![feature(coerce_unsized)]
 #![feature(const_eval_select)]
@@ -127,6 +129,7 @@
 #![feature(local_waker)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_uninit_array_transpose)]
+#![feature(nonnull_provenance)]
 #![feature(panic_internals)]
 #![feature(pattern)]
 #![feature(pin_coerce_unsized_trait)]
@@ -143,6 +146,7 @@
 #![feature(slice_range)]
 #![feature(std_internals)]
 #![feature(str_internals)]
+#![feature(temporary_niche_types)]
 #![feature(trusted_fused)]
 #![feature(trusted_len)]
 #![feature(trusted_random_access)]
@@ -152,7 +156,6 @@
 #![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]
-#![feature(vec_pop_if)]
 // tidy-alphabetical-end
 //
 // Language features:
@@ -168,6 +171,7 @@
 #![feature(dropck_eyepatch)]
 #![feature(fundamental)]
 #![feature(hashmap_internals)]
+#![feature(intrinsics)]
 #![feature(lang_items)]
 #![feature(min_specialization)]
 #![feature(multiple_supertrait_upcastable)]
@@ -223,9 +227,11 @@ pub mod alloc;
 pub mod boxed;
 #[cfg(test)]
 mod boxed {
-    pub use std::boxed::Box;
+    pub(crate) use std::boxed::Box;
 }
 pub mod borrow;
+#[unstable(feature = "bstr", issue = "134915")]
+pub mod bstr;
 pub mod collections;
 #[cfg(all(not(no_rc), not(no_sync), not(no_global_oom_handling)))]
 pub mod ffi;

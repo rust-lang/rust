@@ -1,4 +1,4 @@
-error[E0015]: cannot call non-const fn `non_const` in constant functions
+error[E0015]: cannot call non-const function `non_const` in constant functions
   --> $DIR/const-check-fns-in-const-impl.rs:14:16
    |
 LL |     fn foo() { non_const() }

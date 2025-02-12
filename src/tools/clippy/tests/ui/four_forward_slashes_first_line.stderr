@@ -9,6 +9,8 @@ LL | | fn a() {}
    = help: to override `-D warnings` add `#[allow(clippy::four_forward_slashes)]`
 help: make this a doc comment by removing one `/`
    |
+LL - //// borked doc comment on the first line. doesn't combust!
+LL - fn a() {}
 LL + /// borked doc comment on the first line. doesn't combust!
    |
 

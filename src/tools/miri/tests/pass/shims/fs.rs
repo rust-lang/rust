@@ -27,11 +27,8 @@ fn main() {
     test_file_sync();
     test_errors();
     test_rename();
-    // solarish needs to support readdir/readdir64 for these tests.
-    if cfg!(not(any(target_os = "solaris", target_os = "illumos"))) {
-        test_directory();
-        test_canonicalize();
-    }
+    test_directory();
+    test_canonicalize();
     test_from_raw_os_error();
     #[cfg(unix)]
     test_pread_pwrite();
@@ -279,7 +276,12 @@ fn test_directory() {
             .collect::<BTreeMap<_, _>>()
     );
     // Deleting the directory should fail, since it is not empty.
-    assert_eq!(ErrorKind::DirectoryNotEmpty, remove_dir(&dir_path).unwrap_err().kind());
+
+    // Solaris/Illumos `rmdir` call set errno to EEXIST if directory contains
+    // other entries than `.` and `..`.
+    // https://docs.oracle.com/cd/E86824_01/html/E54765/rmdir-2.html
+    let err = remove_dir(&dir_path).unwrap_err().kind();
+    assert!(matches!(err, ErrorKind::AlreadyExists | ErrorKind::DirectoryNotEmpty));
     // Clean up the files in the directory
     remove_file(&path_1).unwrap();
     remove_file(&path_2).unwrap();

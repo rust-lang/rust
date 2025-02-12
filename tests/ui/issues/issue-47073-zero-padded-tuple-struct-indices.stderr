@@ -6,8 +6,9 @@ LL |     let _condemned = justice.00;
    |
 help: a field with a similar name exists
    |
-LL |     let _condemned = justice.0;
-   |                              ~
+LL -     let _condemned = justice.00;
+LL +     let _condemned = justice.0;
+   |
 
 error[E0609]: no field `001` on type `Verdict`
   --> $DIR/issue-47073-zero-padded-tuple-struct-indices.rs:10:31

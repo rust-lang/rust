@@ -8,23 +8,23 @@
 //! LLVM and compiler-rt are essentially just wired up to everything else to
 //! ensure that they're always in place if needed.
 
-use std::env;
 use std::env::consts::EXE_EXTENSION;
 use std::ffi::{OsStr, OsString};
-use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
+use std::{env, fs};
 
 use build_helper::ci::CiEnv;
 use build_helper::git::get_closest_merge_commit;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
+use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
-    self, HashStamp, exe, get_clang_cl_resource_dir, t, unhashed_basename, up_to_date,
+    self, exe, get_clang_cl_resource_dir, t, unhashed_basename, up_to_date,
 };
-use crate::{CLang, GitRepo, Kind, generate_smart_stamp_hash};
+use crate::{CLang, GitRepo, Kind};
 
 #[derive(Clone)]
 pub struct LlvmResult {
@@ -36,7 +36,7 @@ pub struct LlvmResult {
 }
 
 pub struct Meta {
-    stamp: HashStamp,
+    stamp: BuildStamp,
     res: LlvmResult,
     out_dir: PathBuf,
     root: String,
@@ -52,6 +52,14 @@ impl LlvmBuildStatus {
         match self {
             LlvmBuildStatus::AlreadyBuilt(_) => false,
             LlvmBuildStatus::ShouldBuild(_) => true,
+        }
+    }
+
+    #[cfg(test)]
+    pub fn llvm_result(&self) -> &LlvmResult {
+        match self {
+            LlvmBuildStatus::AlreadyBuilt(res) => res,
+            LlvmBuildStatus::ShouldBuild(meta) => &meta.res,
         }
     }
 }
@@ -120,9 +128,19 @@ pub fn prebuilt_llvm_config(
     let root = "src/llvm-project/llvm";
     let out_dir = builder.llvm_out(target);
 
-    let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
-    llvm_config_ret_dir.push("bin");
-    let build_llvm_config = llvm_config_ret_dir.join(exe("llvm-config", builder.config.build));
+    let build_llvm_config = if let Some(build_llvm_config) = builder
+        .config
+        .target_config
+        .get(&builder.config.build)
+        .and_then(|config| config.llvm_config.clone())
+    {
+        build_llvm_config
+    } else {
+        let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
+        llvm_config_ret_dir.push("bin");
+        llvm_config_ret_dir.join(exe("llvm-config", builder.config.build))
+    };
+
     let llvm_cmake_dir = out_dir.join("lib/cmake/llvm");
     let res = LlvmResult { llvm_config: build_llvm_config, llvm_cmake_dir };
 
@@ -135,18 +153,17 @@ pub fn prebuilt_llvm_config(
         )
     });
 
-    let stamp = out_dir.join("llvm-finished-building");
-    let stamp = HashStamp::new(stamp, Some(smart_stamp_hash));
+    let stamp = BuildStamp::new(&out_dir).with_prefix("llvm").add_stamp(smart_stamp_hash);
 
-    if stamp.is_done() {
-        if stamp.hash.is_none() {
+    if stamp.is_up_to_date() {
+        if stamp.stamp().is_empty() {
             builder.info(
                 "Could not determine the LLVM submodule commit hash. \
                      Assuming that an LLVM rebuild is not necessary.",
             );
             builder.info(&format!(
                 "To force LLVM to rebuild, remove the file `{}`",
-                stamp.path.display()
+                stamp.path().display()
             ));
         }
         return LlvmBuildStatus::AlreadyBuilt(res);
@@ -158,12 +175,16 @@ pub fn prebuilt_llvm_config(
 /// This retrieves the LLVM sha we *want* to use, according to git history.
 pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
     let llvm_sha = if is_git {
-        get_closest_merge_commit(Some(&config.src), &config.git_config(), &[
-            config.src.join("src/llvm-project"),
-            config.src.join("src/bootstrap/download-ci-llvm-stamp"),
-            // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
-            config.src.join("src/version"),
-        ])
+        get_closest_merge_commit(
+            Some(&config.src),
+            &config.git_config(),
+            &[
+                config.src.join("src/llvm-project"),
+                config.src.join("src/bootstrap/download-ci-llvm-stamp"),
+                // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
+                config.src.join("src/version"),
+            ],
+        )
         .unwrap()
     } else if let Some(info) = crate::utils::channel::read_commit_info_file(&config.src) {
         info.sha.trim().to_owned()
@@ -217,6 +238,7 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
         ("powerpc-unknown-linux-gnu", false),
         ("powerpc64-unknown-linux-gnu", false),
         ("powerpc64le-unknown-linux-gnu", false),
+        ("powerpc64le-unknown-linux-musl", false),
         ("riscv64gc-unknown-linux-gnu", false),
         ("s390x-unknown-linux-gnu", false),
         ("x86_64-unknown-freebsd", false),
@@ -331,7 +353,7 @@ impl Step for Llvm {
         let llvm_targets = match &builder.config.llvm_targets {
             Some(s) => s,
             None => {
-                "AArch64;ARM;BPF;Hexagon;LoongArch;MSP430;Mips;NVPTX;PowerPC;RISCV;\
+                "AArch64;AMDGPU;ARM;BPF;Hexagon;LoongArch;MSP430;Mips;NVPTX;PowerPC;RISCV;\
                      Sparc;SystemZ;WebAssembly;X86"
             }
         };
@@ -757,9 +779,15 @@ fn configure_cmake(
     }
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
+    // FIXME(madsmtm): Allow `cmake-rs` to select flags by itself by passing
+    // our flags via `.cflag`/`.cxxflag` instead.
+    //
+    // Needs `suppressed_compiler_flag_prefixes` to be gone, and hence
+    // https://github.com/llvm/llvm-project/issues/88780 to be fixed.
     let mut cflags: OsString = builder
-        .cflags(target, GitRepo::Llvm, CLang::C)
+        .cc_handled_clags(target, CLang::C)
         .into_iter()
+        .chain(builder.cc_unhandled_cflags(target, GitRepo::Llvm, CLang::C))
         .filter(|flag| {
             !suppressed_compiler_flag_prefixes
                 .iter()
@@ -778,8 +806,9 @@ fn configure_cmake(
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags: OsString = builder
-        .cflags(target, GitRepo::Llvm, CLang::Cxx)
+        .cc_handled_clags(target, CLang::Cxx)
         .into_iter()
+        .chain(builder.cc_unhandled_cflags(target, GitRepo::Llvm, CLang::Cxx))
         .filter(|flag| {
             !suppressed_compiler_flag_prefixes
                 .iter()
@@ -921,18 +950,17 @@ impl Step for Enzyme {
         });
 
         let out_dir = builder.enzyme_out(target);
-        let stamp = out_dir.join("enzyme-finished-building");
-        let stamp = HashStamp::new(stamp, Some(smart_stamp_hash));
+        let stamp = BuildStamp::new(&out_dir).with_prefix("enzyme").add_stamp(smart_stamp_hash);
 
-        if stamp.is_done() {
-            if stamp.hash.is_none() {
+        if stamp.is_up_to_date() {
+            if stamp.stamp().is_empty() {
                 builder.info(
                     "Could not determine the Enzyme submodule commit hash. \
                      Assuming that an Enzyme rebuild is not necessary.",
                 );
                 builder.info(&format!(
                     "To force Enzyme to rebuild, remove the file `{}`",
-                    stamp.path.display()
+                    stamp.path().display()
                 ));
             }
             return out_dir;
@@ -965,6 +993,7 @@ impl Step for Enzyme {
             .env("LLVM_CONFIG_REAL", &llvm_config)
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("ENZYME_EXTERNAL_SHARED_LIB", "ON")
+            .define("ENZYME_RUNPASS", "ON")
             .define("LLVM_DIR", builder.llvm_out(target));
 
         cfg.build();
@@ -1015,8 +1044,9 @@ impl Step for Lld {
         }
 
         let out_dir = builder.lld_out(target);
-        let done_stamp = out_dir.join("lld-finished-building");
-        if done_stamp.exists() {
+
+        let lld_stamp = BuildStamp::new(&out_dir).with_prefix("lld");
+        if lld_stamp.path().exists() {
             return out_dir;
         }
 
@@ -1091,7 +1121,7 @@ impl Step for Lld {
 
         cfg.build();
 
-        t!(File::create(&done_stamp));
+        t!(lld_stamp.write());
         out_dir
     }
 }
@@ -1121,25 +1151,32 @@ impl Step for Sanitizers {
 
         let out_dir = builder.native_dir(self.target).join("sanitizers");
         let runtimes = supported_sanitizers(&out_dir, self.target, &builder.config.channel);
-        if runtimes.is_empty() {
+
+        if builder.config.dry_run() || runtimes.is_empty() {
             return runtimes;
         }
 
         let LlvmResult { llvm_config, .. } = builder.ensure(Llvm { target: builder.config.build });
-        if builder.config.dry_run() {
-            return runtimes;
-        }
 
-        let stamp = out_dir.join("sanitizers-finished-building");
-        let stamp = HashStamp::new(stamp, builder.in_tree_llvm_info.sha());
+        static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
+        let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
+            generate_smart_stamp_hash(
+                builder,
+                &builder.config.src.join("src/llvm-project/compiler-rt"),
+                builder.in_tree_llvm_info.sha().unwrap_or_default(),
+            )
+        });
 
-        if stamp.is_done() {
-            if stamp.hash.is_none() {
+        let stamp = BuildStamp::new(&out_dir).with_prefix("sanitizers").add_stamp(smart_stamp_hash);
+
+        if stamp.is_up_to_date() {
+            if stamp.stamp().is_empty() {
                 builder.info(&format!(
                     "Rebuild sanitizers by removing the file `{}`",
-                    stamp.path.display()
+                    stamp.path().display()
                 ));
             }
+
             return runtimes;
         }
 
@@ -1288,7 +1325,9 @@ impl Step for CrtBeginEnd {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(CrtBeginEnd { target: run.target });
+        if run.target.needs_crt_begin_end() {
+            run.builder.ensure(CrtBeginEnd { target: run.target });
+        }
     }
 
     /// Build crtbegin.o/crtend.o for musl target.
@@ -1331,7 +1370,7 @@ impl Step for CrtBeginEnd {
             .file(crtbegin_src)
             .file(crtend_src);
 
-        // Those flags are defined in src/llvm-project/compiler-rt/lib/crt/CMakeLists.txt
+        // Those flags are defined in src/llvm-project/compiler-rt/lib/builtins/CMakeLists.txt
         // Currently only consumer of those objects is musl, which use .init_array/.fini_array
         // instead of .ctors/.dtors
         cfg.flag("-std=c11")

@@ -6,7 +6,6 @@ use rustc_ast::Label;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_span::sym;
 
 use super::INFINITE_LOOP;
@@ -30,7 +29,7 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    if in_external_macro(cx.sess(), expr.span) || is_from_proc_macro(cx, expr) {
+    if expr.span.in_external_macro(cx.sess().source_map()) || is_from_proc_macro(cx, expr) {
         return;
     }
 
@@ -38,8 +37,8 @@ pub(super) fn check<'tcx>(
         cx,
         label,
         inner_labels: label.into_iter().collect(),
-        is_finite: false,
         loop_depth: 0,
+        is_finite: false,
     };
     loop_visitor.visit_block(loop_block);
 
@@ -75,7 +74,11 @@ fn get_parent_fn_ret_ty<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option
                 ..
             }) => (),
             Node::Item(hir::Item {
-                kind: hir::ItemKind::Fn(FnSig { decl, .. }, _, _),
+                kind:
+                    hir::ItemKind::Fn {
+                        sig: FnSig { decl, .. },
+                        ..
+                    },
                 ..
             })
             | Node::TraitItem(hir::TraitItem {

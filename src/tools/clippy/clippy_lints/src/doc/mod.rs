@@ -5,7 +5,7 @@ mod too_long_first_doc_paragraph;
 
 use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::Visitable;
@@ -16,13 +16,12 @@ use pulldown_cmark::Event::{
 };
 use pulldown_cmark::Tag::{BlockQuote, CodeBlock, FootnoteDefinition, Heading, Item, Link, Paragraph};
 use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options, TagEnd};
-use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::Applicability;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{AnonConst, Expr, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
+use rustc_hir::{AnonConst, Attribute, Expr, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_resolve::rustdoc::{
     DocFragment, add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range,
@@ -34,7 +33,6 @@ use rustc_span::{Span, sym};
 use std::ops::Range;
 use url::Url;
 
-mod empty_line_after;
 mod include_in_doc_without_cfg;
 mod link_with_quotes;
 mod markdown;
@@ -430,6 +428,39 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    ///
+    /// Detects overindented list items in doc comments where the continuation
+    /// lines are indented more than necessary.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Overindented list items in doc comments can lead to inconsistent and
+    /// poorly formatted documentation when rendered. Excessive indentation may
+    /// cause the text to be misinterpreted as a nested list item or code block,
+    /// affecting readability and the overall structure of the documentation.
+    ///
+    /// ### Example
+    ///
+    /// ```no_run
+    /// /// - This is the first item in a list
+    /// ///      and this line is overindented.
+    /// # fn foo() {}
+    /// ```
+    ///
+    /// Fixes this into:
+    /// ```no_run
+    /// /// - This is the first item in a list
+    /// ///   and this line is overindented.
+    /// # fn foo() {}
+    /// ```
+    #[clippy::version = "1.80.0"]
+    pub DOC_OVERINDENTED_LIST_ITEMS,
+    style,
+    "ensure list items are not overindented"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks if the first paragraph in the documentation of items listed in the module page is too long.
     ///
     /// ### Why is this bad?
@@ -461,82 +492,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for empty lines after outer attributes
-    ///
-    /// ### Why is this bad?
-    /// The attribute may have meant to be an inner attribute (`#![attr]`). If
-    /// it was meant to be an outer attribute (`#[attr]`) then the empty line
-    /// should be removed
-    ///
-    /// ### Example
-    /// ```no_run
-    /// #[allow(dead_code)]
-    ///
-    /// fn not_quite_good_code() {}
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// // Good (as inner attribute)
-    /// #![allow(dead_code)]
-    ///
-    /// fn this_is_fine() {}
-    ///
-    /// // or
-    ///
-    /// // Good (as outer attribute)
-    /// #[allow(dead_code)]
-    /// fn this_is_fine_too() {}
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub EMPTY_LINE_AFTER_OUTER_ATTR,
-    suspicious,
-    "empty line after outer attribute"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for empty lines after doc comments.
-    ///
-    /// ### Why is this bad?
-    /// The doc comment may have meant to be an inner doc comment, regular
-    /// comment or applied to some old code that is now commented out. If it was
-    /// intended to be a doc comment, then the empty line should be removed.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// /// Some doc comment with a blank line after it.
-    ///
-    /// fn f() {}
-    ///
-    /// /// Docs for `old_code`
-    /// // fn old_code() {}
-    ///
-    /// fn new_code() {}
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// //! Convert it to an inner doc comment
-    ///
-    /// // Or a regular comment
-    ///
-    /// /// Or remove the empty line
-    /// fn f() {}
-    ///
-    /// // /// Docs for `old_code`
-    /// // fn old_code() {}
-    ///
-    /// fn new_code() {}
-    /// ```
-    #[clippy::version = "1.70.0"]
-    pub EMPTY_LINE_AFTER_DOC_COMMENTS,
-    suspicious,
-    "empty line after doc comments"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks if included files in doc comments are included only for `cfg(doc)`.
     ///
     /// ### Why restrict this?
@@ -564,6 +519,32 @@ declare_clippy_lint! {
     "check if files included in documentation are behind `cfg(doc)`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Warns if a link reference definition appears at the start of a
+    /// list item or quote.
+    ///
+    /// ### Why is this bad?
+    /// This is probably intended as an intra-doc link. If it is really
+    /// supposed to be a reference definition, it can be written outside
+    /// of the list item or quote.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// //! - [link]: description
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// //! - [link][]: description (for intra-doc link)
+    /// //!
+    /// //! [link]: destination (for link reference definition)
+    /// ```
+    #[clippy::version = "1.84.0"]
+    pub DOC_NESTED_REFDEFS,
+    suspicious,
+    "link reference defined in list item or quote"
+}
+
 pub struct Documentation {
     valid_idents: FxHashSet<String>,
     check_private_items: bool,
@@ -581,6 +562,7 @@ impl Documentation {
 impl_lint_pass!(Documentation => [
     DOC_LINK_WITH_QUOTES,
     DOC_MARKDOWN,
+    DOC_NESTED_REFDEFS,
     MISSING_SAFETY_DOC,
     MISSING_ERRORS_DOC,
     MISSING_PANICS_DOC,
@@ -590,8 +572,7 @@ impl_lint_pass!(Documentation => [
     SUSPICIOUS_DOC_COMMENTS,
     EMPTY_DOCS,
     DOC_LAZY_CONTINUATION,
-    EMPTY_LINE_AFTER_OUTER_ATTR,
-    EMPTY_LINE_AFTER_DOC_COMMENTS,
+    DOC_OVERINDENTED_LIST_ITEMS,
     TOO_LONG_FIRST_DOC_PARAGRAPH,
     DOC_INCLUDE_WITHOUT_CFG,
 ]);
@@ -612,9 +593,9 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
                     self.check_private_items,
                 );
                 match item.kind {
-                    ItemKind::Fn(sig, _, body_id) => {
+                    ItemKind::Fn { sig, body: body_id, .. } => {
                         if !(is_entrypoint_fn(cx, item.owner_id.to_def_id())
-                            || in_external_macro(cx.tcx.sess, item.span))
+                            || item.span.in_external_macro(cx.tcx.sess.source_map()))
                         {
                             let body = cx.tcx.hir().body(body_id);
 
@@ -650,7 +631,7 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
             },
             Node::TraitItem(trait_item) => {
                 if let TraitItemKind::Fn(sig, ..) = trait_item.kind
-                    && !in_external_macro(cx.tcx.sess, trait_item.span)
+                    && !trait_item.span.in_external_macro(cx.tcx.sess.source_map())
                 {
                     missing_headers::check(
                         cx,
@@ -665,7 +646,7 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
             },
             Node::ImplItem(impl_item) => {
                 if let ImplItemKind::Fn(sig, body_id) = impl_item.kind
-                    && !in_external_macro(cx.tcx.sess, impl_item.span)
+                    && !impl_item.span.in_external_macro(cx.tcx.sess.source_map())
                     && !is_trait_impl_item(cx, impl_item.hir_id())
                 {
                     let body = cx.tcx.hir().body(body_id);
@@ -724,13 +705,13 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
     }
 
     include_in_doc_without_cfg::check(cx, attrs);
-    if suspicious_doc_comments::check(cx, attrs) || empty_line_after::check(cx, attrs) || is_doc_hidden(attrs) {
+    if suspicious_doc_comments::check(cx, attrs) || is_doc_hidden(attrs) {
         return None;
     }
 
     let (fragments, _) = attrs_to_doc_fragments(
         attrs.iter().filter_map(|attr| {
-            if in_external_macro(cx.sess(), attr.span) {
+            if attr.span.in_external_macro(cx.sess().source_map()) {
                 None
             } else {
                 Some((attr, None))
@@ -770,8 +751,8 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         parser.into_offset_iter(),
         &doc,
         Fragments {
-            fragments: &fragments,
             doc: &doc,
+            fragments: &fragments,
         },
     ))
 }
@@ -832,6 +813,31 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             Start(BlockQuote(_)) => {
                 blockquote_level += 1;
                 containers.push(Container::Blockquote);
+                if let Some((next_event, next_range)) = events.peek() {
+                    let next_start = match next_event {
+                        End(TagEnd::BlockQuote) => next_range.end,
+                        _ => next_range.start,
+                    };
+                    if let Some(refdefrange) = looks_like_refdef(doc, range.start..next_start) &&
+                        let Some(refdefspan) = fragments.span(cx, refdefrange.clone())
+                    {
+                        span_lint_and_then(
+                            cx,
+                            DOC_NESTED_REFDEFS,
+                            refdefspan,
+                            "link reference defined in quote",
+                            |diag| {
+                                diag.span_suggestion_short(
+                                    refdefspan.shrink_to_hi(),
+                                    "for an intra-doc link, add `[]` between the label and the colon",
+                                    "[]",
+                                    Applicability::MaybeIncorrect,
+                                );
+                                diag.help("link definitions are not shown in rendered documentation");
+                            }
+                        );
+                    }
+                }
             },
             End(TagEnd::BlockQuote) => {
                 blockquote_level -= 1;
@@ -870,11 +876,42 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     in_heading = true;
                 }
                 if let Start(Item) = event {
-                    if let Some((_next_event, next_range)) = events.peek() {
-                        containers.push(Container::List(next_range.start - range.start));
+                    let indent = if let Some((next_event, next_range)) = events.peek() {
+                        let next_start = match next_event {
+                            End(TagEnd::Item) => next_range.end,
+                            _ => next_range.start,
+                        };
+                        if let Some(refdefrange) = looks_like_refdef(doc, range.start..next_start) &&
+                            let Some(refdefspan) = fragments.span(cx, refdefrange.clone())
+                        {
+                            span_lint_and_then(
+                                cx,
+                                DOC_NESTED_REFDEFS,
+                                refdefspan,
+                                "link reference defined in list item",
+                                |diag| {
+                                    diag.span_suggestion_short(
+                                        refdefspan.shrink_to_hi(),
+                                        "for an intra-doc link, add `[]` between the label and the colon",
+                                        "[]",
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                    diag.help("link definitions are not shown in rendered documentation");
+                                }
+                            );
+                            refdefrange.start - range.start
+                        } else {
+                            let mut start = next_range.start;
+                            if start > 0 && doc.as_bytes().get(start - 1) == Some(&b'\\') {
+                                // backslashes aren't in the event stream...
+                                start -= 1;
+                            }
+                            start - range.start
+                        }
                     } else {
-                        containers.push(Container::List(0));
-                    }
+                        0
+                    };
+                    containers.push(Container::List(indent));
                 }
                 ticks_unbalanced = false;
                 paragraph_range = range;
@@ -1045,4 +1082,26 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
     fn nested_visit_map(&mut self) -> Self::Map {
         self.cx.tcx.hir()
     }
+}
+
+#[expect(clippy::range_plus_one)] // inclusive ranges aren't the same type
+fn looks_like_refdef(doc: &str, range: Range<usize>) -> Option<Range<usize>> {
+    let offset = range.start;
+    let mut iterator = doc.as_bytes()[range].iter().copied().enumerate();
+    let mut start = None;
+    while let Some((i, byte)) = iterator.next() {
+        match byte {
+            b'\\' => {
+                iterator.next();
+            },
+            b'[' => {
+                start = Some(i + offset);
+            },
+            b']' if let Some(start) = start => {
+                return Some(start..i + offset + 1);
+            },
+            _ => {},
+        }
+    }
+    None
 }

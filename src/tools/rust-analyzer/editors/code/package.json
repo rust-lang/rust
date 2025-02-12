@@ -109,11 +109,6 @@
         ],
         "commands": [
             {
-                "command": "rust-analyzer.syntaxTree",
-                "title": "Show Syntax Tree",
-                "category": "rust-analyzer (debug command)"
-            },
-            {
                 "command": "rust-analyzer.viewHir",
                 "title": "View Hir",
                 "category": "rust-analyzer (debug command)"
@@ -289,6 +284,30 @@
                 "category": "rust-analyzer"
             },
             {
+                "command": "rust-analyzer.syntaxTreeReveal",
+                "title": "Reveal Syntax Element",
+                "icon": "$(search)",
+                "category": "rust-analyzer (syntax tree)"
+            },
+            {
+                "command": "rust-analyzer.syntaxTreeCopy",
+                "title": "Copy",
+                "icon": "$(copy)",
+                "category": "rust-analyzer (syntax tree)"
+            },
+            {
+                "command": "rust-analyzer.syntaxTreeHideWhitespace",
+                "title": "Hide Whitespace",
+                "icon": "$(filter)",
+                "category": "rust-analyzer (syntax tree)"
+            },
+            {
+                "command": "rust-analyzer.syntaxTreeShowWhitespace",
+                "title": "Show Whitespace",
+                "icon": "$(filter-filled)",
+                "category": "rust-analyzer (syntax tree)"
+            },
+            {
                 "command": "rust-analyzer.viewMemoryLayout",
                 "title": "View Memory Layout",
                 "category": "rust-analyzer"
@@ -343,6 +362,11 @@
                     "rust-analyzer.showDependenciesExplorer": {
                         "markdownDescription": "Whether to show the dependencies view.",
                         "default": true,
+                        "type": "boolean"
+                    },
+                    "rust-analyzer.showSyntaxTree": {
+                        "markdownDescription": "Whether to show the syntax tree view.",
+                        "default": false,
                         "type": "boolean"
                     },
                     "rust-analyzer.testExplorer": {
@@ -407,6 +431,11 @@
                             "$rustc"
                         ],
                         "markdownDescription": "Problem matchers to use for `rust-analyzer.run` command, eg `[\"$rustc\", \"$rust-panic\"]`."
+                    },
+                    "rust-analyzer.runnables.askBeforeUpdateTest": {
+                        "type": "boolean",
+                        "default": true,
+                        "markdownDescription": "Ask before updating the test when running it."
                     }
                 }
             },
@@ -426,40 +455,59 @@
                         "default": "openLogs",
                         "markdownDescription": "Action to run when clicking the extension status bar item."
                     },
-                    "rust-analyzer.statusBar.documentSelector": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "language": {
-                                    "type": [
-                                        "string",
-                                        "null"
-                                    ]
-                                },
-                                "pattern": {
-                                    "type": [
-                                        "string",
-                                        "null"
-                                    ]
+                    "rust-analyzer.statusBar.showStatusBar": {
+                        "markdownDescription": "When to show the extension status bar.\n\n`\"always\"` Always show the status bar.\n\n`\"never\"` Never show the status bar.\n\n`{ documentSelector: <DocumentSelector>[] }` Show the status bar if the open file matches any of the given document selectors.\n\nSee [VS Code -- DocumentSelector](https://code.visualstudio.com/api/references/document-selector) for more information.",
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "always",
+                                    "never"
+                                ]
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "documentSelector": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "language": {
+                                                    "type": "string"
+                                                },
+                                                "notebookType": {
+                                                    "type": "string"
+                                                },
+                                                "scheme": {
+                                                    "type": "string"
+                                                },
+                                                "pattern": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
-                        },
-                        "default": [
-                            {
-                                "language": "rust"
-                            },
-                            {
-                                "pattern": "**/Cargo.toml"
-                            },
-                            {
-                                "pattern": "**/Cargo.lock"
-                            }
                         ],
-                        "markdownDescription": "Determines when to show the extension status bar item based on the currently open file. Use `{ \"pattern\": \"**\" }` to always show. Use `null` to never show."
+                        "default": {
+                            "documentSelector": [
+                                {
+                                    "language": "rust"
+                                },
+                                {
+                                    "pattern": "**/Cargo.toml"
+                                },
+                                {
+                                    "pattern": "**/Cargo.lock"
+                                },
+                                {
+                                    "scheme": "output",
+                                    "pattern": "extension-output-rust-lang.rust-analyzer*"
+                                }
+                            ]
+                        }
                     }
                 }
             },
@@ -771,11 +819,14 @@
                 "properties": {
                     "rust-analyzer.cargo.cfgs": {
                         "markdownDescription": "List of cfg options to enable with the given values.",
-                        "default": {
-                            "miri": null,
-                            "debug_assertions": null
-                        },
-                        "type": "object"
+                        "default": [
+                            "debug_assertions",
+                            "miri"
+                        ],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 }
             },
@@ -854,24 +905,6 @@
             {
                 "title": "cargo",
                 "properties": {
-                    "rust-analyzer.cargo.sysrootQueryMetadata": {
-                        "markdownDescription": "How to query metadata for the sysroot crate. Using cargo metadata allows rust-analyzer\nto analyze third-party dependencies of the standard libraries.",
-                        "default": "cargo_metadata",
-                        "type": "string",
-                        "enum": [
-                            "none",
-                            "cargo_metadata"
-                        ],
-                        "enumDescriptions": [
-                            "Do not query sysroot metadata, always use stitched sysroot.",
-                            "Use `cargo metadata` to query sysroot metadata."
-                        ]
-                    }
-                }
-            },
-            {
-                "title": "cargo",
-                "properties": {
                     "rust-analyzer.cargo.sysrootSrc": {
                         "markdownDescription": "Relative path to the sysroot library sources. If left unset, this will default to\n`{cargo.sysroot}/lib/rustlib/src/rust/library`.\n\nThis option does not take effect until rust-analyzer is restarted.",
                         "default": null,
@@ -886,7 +919,7 @@
                 "title": "cargo",
                 "properties": {
                     "rust-analyzer.cargo.target": {
-                        "markdownDescription": "Compilation target override (target triple).",
+                        "markdownDescription": "Compilation target override (target tuple).",
                         "default": null,
                         "type": [
                             "null",
@@ -1098,7 +1131,7 @@
                 "title": "check",
                 "properties": {
                     "rust-analyzer.check.workspace": {
-                        "markdownDescription": "Whether `--workspace` should be passed to `cargo check`.\nIf false, `-p <package>` will be passed instead.",
+                        "markdownDescription": "Whether `--workspace` should be passed to `cargo check`.\nIf false, `-p <package>` will be passed instead if applicable. In case it is not, no\ncheck will be performed.",
                         "default": true,
                         "type": "boolean"
                     }
@@ -1117,10 +1150,75 @@
             {
                 "title": "completion",
                 "properties": {
+                    "rust-analyzer.completion.autoAwait.enable": {
+                        "markdownDescription": "Toggles the additional completions that automatically show method calls and field accesses with `await` prefixed to them when completing on a future.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "completion",
+                "properties": {
+                    "rust-analyzer.completion.autoIter.enable": {
+                        "markdownDescription": "Toggles the additional completions that automatically show method calls with `iter()` or `into_iter()` prefixed to them when completing on a type that has them.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "completion",
+                "properties": {
                     "rust-analyzer.completion.autoimport.enable": {
                         "markdownDescription": "Toggles the additional completions that automatically add imports when completed.\nNote that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.",
                         "default": true,
                         "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "completion",
+                "properties": {
+                    "rust-analyzer.completion.autoimport.exclude": {
+                        "markdownDescription": "A list of full paths to items to exclude from auto-importing completions.\n\nTraits in this list won't have their methods suggested in completions unless the trait\nis in scope.\n\nYou can either specify a string path which defaults to type \"always\" or use the more verbose\nform `{ \"path\": \"path::to::item\", type: \"always\" }`.\n\nFor traits the type \"methods\" can be used to only exclude the methods but not the trait itself.\n\nThis setting also inherits `#rust-analyzer.completion.excludeTraits#`.",
+                        "default": [
+                            {
+                                "path": "core::borrow::Borrow",
+                                "type": "methods"
+                            },
+                            {
+                                "path": "core::borrow::BorrowMut",
+                                "type": "methods"
+                            }
+                        ],
+                        "type": "array",
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "path": {
+                                            "type": "string"
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                            "enum": [
+                                                "always",
+                                                "methods"
+                                            ],
+                                            "enumDescriptions": [
+                                                "Do not show this item or its methods (if it is a trait) in auto-import completions.",
+                                                "Do not show this traits methods in auto-import completions."
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
                     }
                 }
             },
@@ -1151,6 +1249,19 @@
                             "Add call parentheses.",
                             "Do no snippet completions for callables."
                         ]
+                    }
+                }
+            },
+            {
+                "title": "completion",
+                "properties": {
+                    "rust-analyzer.completion.excludeTraits": {
+                        "markdownDescription": "A list of full paths to traits whose methods to exclude from completion.\n\nMethods from these traits won't be completed, even if the trait is in scope. However, they will still be suggested on expressions whose type is `dyn Trait`, `impl Trait` or `T where T: Trait`.\n\nNote that the trait themselves can still be completed.",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 }
             },
@@ -1503,6 +1614,16 @@
             {
                 "title": "hover",
                 "properties": {
+                    "rust-analyzer.hover.actions.updateTest.enable": {
+                        "markdownDescription": "Whether to show `Update Test` action. Only applies when\n`#rust-analyzer.hover.actions.enable#` and `#rust-analyzer.hover.actions.run.enable#` are set.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "hover",
+                "properties": {
                     "rust-analyzer.hover.documentation.enable": {
                         "markdownDescription": "Whether to show documentation on hover.",
                         "default": true,
@@ -1527,6 +1648,29 @@
                         "markdownDescription": "Use markdown syntax for links on hover.",
                         "default": true,
                         "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "hover",
+                "properties": {
+                    "rust-analyzer.hover.maxSubstitutionLength": {
+                        "markdownDescription": "Whether to show what types are used as generic arguments in calls etc. on hover, and what is their max length to show such types, beyond it they will be shown with ellipsis.\n\nThis can take three values: `null` means \"unlimited\", the string `\"hide\"` means to not show generic substitutions at all, and a number means to limit them to X characters.\n\nThe default is 20 characters.",
+                        "default": 20,
+                        "anyOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "hide"
+                                ]
+                            },
+                            {
+                                "type": "integer"
+                            }
+                        ]
                     }
                 }
             },
@@ -1988,6 +2132,16 @@
             {
                 "title": "inlayHints",
                 "properties": {
+                    "rust-analyzer.inlayHints.implicitSizedBoundHints.enable": {
+                        "markdownDescription": "Whether to show inlay hints for the implied type parameter `Sized` bound.",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "inlayHints",
+                "properties": {
                     "rust-analyzer.inlayHints.lifetimeElisionHints.enable": {
                         "markdownDescription": "Whether to show inlay type hints for elided lifetimes in function signatures.",
                         "default": "never",
@@ -2094,6 +2248,16 @@
                 "properties": {
                     "rust-analyzer.inlayHints.typeHints.hideClosureInitialization": {
                         "markdownDescription": "Whether to hide inlay type hints for `let` statements that initialize to a closure.\nOnly applies to closures with blocks, same as `#rust-analyzer.inlayHints.closureReturnTypeHints.enable#`.",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "inlayHints",
+                "properties": {
+                    "rust-analyzer.inlayHints.typeHints.hideClosureParameter": {
+                        "markdownDescription": "Whether to hide inlay parameter type hints for closures.",
                         "default": false,
                         "type": "boolean"
                     }
@@ -2252,6 +2416,16 @@
                 "properties": {
                     "rust-analyzer.lens.run.enable": {
                         "markdownDescription": "Whether to show `Run` lens. Only applies when\n`#rust-analyzer.lens.enable#` is set.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "lens",
+                "properties": {
+                    "rust-analyzer.lens.updateTest.enable": {
+                        "markdownDescription": "Whether to show `Update Test` lens. Only applies when\n`#rust-analyzer.lens.enable#` and `#rust-analyzer.lens.run.enable#` are set.",
                         "default": true,
                         "type": "boolean"
                     }
@@ -2605,13 +2779,26 @@
             {
                 "title": "typing",
                 "properties": {
-                    "rust-analyzer.typing.excludeChars": {
-                        "markdownDescription": "Specify the characters to exclude from triggering typing assists. The default trigger characters are `.`, `=`, `<`, `>`, `{`, and `(`.",
-                        "default": "|<",
+                    "rust-analyzer.typing.triggerChars": {
+                        "markdownDescription": "Specify the characters allowed to invoke special on typing triggers.\n- typing `=` after `let` tries to smartly add `;` if `=` is followed by an existing expression\n- typing `=` between two expressions adds `;` when in statement position\n- typing `=` to turn an assignment into an equality comparison removes `;` when in expression position\n- typing `.` in a chain method call auto-indents\n- typing `{` or `(` in front of an expression inserts a closing `}` or `)` after the expression\n- typing `{` in a use item adds a closing `}` in the right place\n- typing `>` to complete a return type `->` will insert a whitespace after it\n- typing `<` in a path or type position inserts a closing `>` after the path or type.",
+                        "default": "=.",
                         "type": [
                             "null",
                             "string"
                         ]
+                    }
+                }
+            },
+            {
+                "title": "vfs",
+                "properties": {
+                    "rust-analyzer.vfs.extraIncludes": {
+                        "markdownDescription": "Additional paths to include in the VFS. Generally for code that is\ngenerated or otherwise managed by a build system outside of Cargo,\nthough Cargo might be the eventual consumer.",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 }
             },
@@ -2823,17 +3010,6 @@
                     "endsPattern": "^\\[Finished running\\b"
                 },
                 "pattern": "$rustc"
-            }
-        ],
-        "colors": [
-            {
-                "id": "rust_analyzer.syntaxTreeBorder",
-                "description": "Color of the border displayed in the Rust source code for the selected syntax node (see \"Show Syntax Tree\" command)",
-                "defaults": {
-                    "dark": "#ffffff",
-                    "light": "#b700ff",
-                    "highContrast": "#b700ff"
-                }
             }
         ],
         "semanticTokenTypes": [
@@ -3156,10 +3332,6 @@
         "menus": {
             "commandPalette": [
                 {
-                    "command": "rust-analyzer.syntaxTree",
-                    "when": "inRustProject"
-                },
-                {
                     "command": "rust-analyzer.viewHir",
                     "when": "inRustProject"
                 },
@@ -3241,6 +3413,22 @@
                 },
                 {
                     "command": "rust-analyzer.openWalkthrough"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeReveal",
+                    "when": "false"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeCopy",
+                    "when": "false"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeHideWhitespace",
+                    "when": "false"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeShowWhitespace",
+                    "when": "false"
                 }
             ],
             "editor/context": [
@@ -3254,6 +3442,30 @@
                     "when": "inRustProject && editorTextFocus && editorLangId == rust",
                     "group": "navigation@1001"
                 }
+            ],
+            "view/title": [
+                {
+                    "command": "rust-analyzer.syntaxTreeHideWhitespace",
+                    "group": "navigation",
+                    "when": "view == rustSyntaxTree && !rustSyntaxTree.hideWhitespace"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeShowWhitespace",
+                    "group": "navigation",
+                    "when": "view == rustSyntaxTree && rustSyntaxTree.hideWhitespace"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "rust-analyzer.syntaxTreeCopy",
+                    "group": "inline",
+                    "when": "view == rustSyntaxTree"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeReveal",
+                    "group": "inline",
+                    "when": "view == rustSyntaxTree"
+                }
             ]
         },
         "views": {
@@ -3262,6 +3474,22 @@
                     "id": "rustDependencies",
                     "name": "Rust Dependencies",
                     "when": "inRustProject && config.rust-analyzer.showDependenciesExplorer"
+                }
+            ],
+            "rustSyntaxTreeContainer": [
+                {
+                    "id": "rustSyntaxTree",
+                    "name": "Rust Syntax Tree",
+                    "when": "inRustProject && config.rust-analyzer.showSyntaxTree"
+                }
+            ]
+        },
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "rustSyntaxTreeContainer",
+                    "title": "Rust Syntax Tree",
+                    "icon": "$(list-tree)"
                 }
             ]
         },

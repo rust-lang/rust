@@ -112,9 +112,11 @@ passes_coroutine_on_non_closure =
     attribute should be applied to closures
     .label = not a closure
 
-passes_coverage_not_fn_or_closure =
-    attribute should be applied to a function definition or closure
-    .label = not a function or closure
+passes_coverage_attribute_not_allowed =
+    coverage attribute not allowed here
+    .not_fn_impl_mod = not a function, impl block, or module
+    .no_body = function has no body
+    .help = coverage attribute can be applied to a function (with body), impl block, or module
 
 passes_dead_codes =
     { $multiple ->
@@ -211,8 +213,9 @@ passes_doc_invalid =
 passes_doc_keyword_empty_mod =
     `#[doc(keyword = "...")]` should be used on empty modules
 
-passes_doc_keyword_invalid_ident =
-    `{$doc_keyword}` is not a valid identifier
+passes_doc_keyword_not_keyword =
+    nonexistent keyword `{$keyword}` used in `#[doc(keyword = "...")]`
+    .help = only existing keywords are allowed in core/std
 
 passes_doc_keyword_not_mod =
     `#[doc(keyword = "...")]` should be used on modules
@@ -356,6 +359,9 @@ passes_ignored_derived_impls =
 passes_implied_feature_not_exist =
     feature `{$implied_by}` implying `{$feature}` does not exist
 
+passes_incorrect_do_not_recommend_args =
+    `#[diagnostic::do_not_recommend]` does not expect any arguments
+
 passes_incorrect_do_not_recommend_location =
     `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
 
@@ -496,11 +502,6 @@ passes_multiple_rustc_main =
     .first = first `#[rustc_main]` function
     .additional = additional `#[rustc_main]` function
 
-passes_multiple_start_functions =
-    multiple `start` functions
-    .label = multiple `start` functions
-    .previous = previous `#[start]` function here
-
 passes_must_not_suspend =
     `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
     .label = is not a struct, enum, union, or trait
@@ -561,6 +562,10 @@ passes_no_patterns =
 passes_no_sanitize =
     `#[no_sanitize({$attr_str})]` should be applied to {$accepted_kind}
     .label = not {$accepted_kind}
+
+passes_non_exaustive_with_default_field_values =
+    `#[non_exhaustive]` can't be used to annotate items with default field values
+    .label = this struct has default field values
 
 passes_non_exported_macro_invalid_attrs =
     attribute should be applied to function or closure
@@ -645,6 +650,14 @@ passes_rustc_allow_const_fn_unstable =
 
 passes_rustc_dirty_clean =
     attribute requires -Z query-dep-graph to be enabled
+
+passes_rustc_force_inline =
+    attribute should be applied to a function
+    .label = not a function definition
+
+passes_rustc_force_inline_coro =
+    attribute cannot be applied to a `async`, `gen` or `async gen` function
+    .label = `async`, `gen` or `async gen` function
 
 passes_rustc_layout_scalar_valid_range_arg =
     expected exactly one integer literal argument
@@ -781,6 +794,9 @@ passes_unused_assign = value assigned to `{$name}` is never read
 passes_unused_assign_passed = value passed to `{$name}` is never read
     .help = maybe it is overwritten before being read?
 
+passes_unused_assign_suggestion =
+    you might have meant to mutate the pointed at value being passed in, instead of changing the reference in the local binding
+
 passes_unused_capture_maybe_capture_ref = value captured by `{$name}` is never read
     .help = did you mean to capture by reference instead?
 
@@ -795,6 +811,9 @@ passes_unused_duplicate =
 
 passes_unused_empty_lints_note =
     attribute `{$name}` with an empty list has no effect
+
+passes_unused_linker_warnings_note =
+    the `linker_warnings` lint can only be controlled at the root of a crate that needs to be linked
 
 passes_unused_multiple =
     multiple `{$name}` attributes

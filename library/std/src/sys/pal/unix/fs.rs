@@ -8,16 +8,14 @@ mod tests;
 use libc::c_char;
 #[cfg(any(
     all(target_os = "linux", not(target_env = "musl")),
-    target_os = "emscripten",
     target_os = "android",
+    target_os = "fuchsia",
     target_os = "hurd"
 ))]
 use libc::dirfd;
-#[cfg(any(
-    all(target_os = "linux", not(target_env = "musl")),
-    target_os = "emscripten",
-    target_os = "hurd"
-))]
+#[cfg(target_os = "fuchsia")]
+use libc::fstatat as fstatat64;
+#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
 use libc::fstatat64;
 #[cfg(any(
     target_os = "android",
@@ -34,7 +32,6 @@ use libc::readdir as readdir64;
 #[cfg(not(any(
     target_os = "android",
     target_os = "linux",
-    target_os = "emscripten",
     target_os = "solaris",
     target_os = "illumos",
     target_os = "l4re",
@@ -48,7 +45,7 @@ use libc::readdir as readdir64;
 use libc::readdir_r as readdir64_r;
 #[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
 use libc::readdir64;
-#[cfg(any(target_os = "emscripten", target_os = "l4re"))]
+#[cfg(target_os = "l4re")]
 use libc::readdir64_r;
 use libc::{c_int, mode_t};
 #[cfg(target_os = "android")]
@@ -58,7 +55,6 @@ use libc::{
 };
 #[cfg(not(any(
     all(target_os = "linux", not(target_env = "musl")),
-    target_os = "emscripten",
     target_os = "l4re",
     target_os = "android",
     target_os = "hurd",
@@ -69,7 +65,6 @@ use libc::{
 };
 #[cfg(any(
     all(target_os = "linux", not(target_env = "musl")),
-    target_os = "emscripten",
     target_os = "l4re",
     target_os = "hurd"
 ))]
@@ -168,7 +163,8 @@ cfg_has_statx! {{
             ) -> c_int
         }
 
-        if STATX_SAVED_STATE.load(Ordering::Relaxed) == STATX_STATE::Unavailable as u8 {
+        let statx_availability = STATX_SAVED_STATE.load(Ordering::Relaxed);
+        if statx_availability == STATX_STATE::Unavailable as u8 {
             return None;
         }
 
@@ -199,6 +195,9 @@ cfg_has_statx! {{
                 STATX_SAVED_STATE.store(STATX_STATE::Unavailable as u8, Ordering::Relaxed);
                 return None;
             }
+        }
+        if statx_availability == STATX_STATE::Unknown as u8 {
+            STATX_SAVED_STATE.store(STATX_STATE::Present as u8, Ordering::Relaxed);
         }
 
         // We cannot fill `stat64` exhaustively because of private padding fields.
@@ -713,7 +712,7 @@ impl Iterator for ReadDir {
                 // thread safety for readdir() as long an individual DIR* is not accessed
                 // concurrently, which is sufficient for Rust.
                 super::os::set_errno(0);
-                let entry_ptr = readdir64(self.inner.dirp.0);
+                let entry_ptr: *const dirent64 = readdir64(self.inner.dirp.0);
                 if entry_ptr.is_null() {
                     // We either encountered an error, or reached the end. Either way,
                     // the next call to next() should return None.
@@ -739,44 +738,32 @@ impl Iterator for ReadDir {
                 // contents were "simply" partially initialized data.
                 //
                 // Like for uninitialized contents, converting entry_ptr to `&dirent64`
-                // would not be legal. However, unique to dirent64 is that we don't even
-                // get to use `&raw const (*entry_ptr).d_name` because that operation
-                // requires the full extent of *entry_ptr to be in bounds of the same
-                // allocation, which is not necessarily the case here.
-                //
-                // Instead we must access fields individually through their offsets.
-                macro_rules! offset_ptr {
-                    ($entry_ptr:expr, $field:ident) => {{
-                        const OFFSET: isize = mem::offset_of!(dirent64, $field) as isize;
-                        if true {
-                            // Cast to the same type determined by the else branch.
-                            $entry_ptr.byte_offset(OFFSET).cast::<_>()
-                        } else {
-                            #[allow(deref_nullptr)]
-                            {
-                                &raw const (*ptr::null::<dirent64>()).$field
-                            }
-                        }
-                    }};
-                }
+                // would not be legal. However, we can use `&raw const (*entry_ptr).d_name`
+                // to refer the fields individually, because that operation is equivalent
+                // to `byte_offset` and thus does not require the full extent of `*entry_ptr`
+                // to be in bounds of the same allocation, only the offset of the field
+                // being referenced.
 
                 // d_name is guaranteed to be null-terminated.
-                let name = CStr::from_ptr(offset_ptr!(entry_ptr, d_name).cast());
+                let name = CStr::from_ptr((&raw const (*entry_ptr).d_name).cast());
                 let name_bytes = name.to_bytes();
                 if name_bytes == b"." || name_bytes == b".." {
                     continue;
                 }
 
+                // When loading from a field, we can skip the `&raw const`; `(*entry_ptr).d_ino` as
+                // a value expression will do the right thing: `byte_offset` to the field and then
+                // only access those bytes.
                 #[cfg(not(target_os = "vita"))]
                 let entry = dirent64_min {
-                    d_ino: *offset_ptr!(entry_ptr, d_ino) as u64,
+                    d_ino: (*entry_ptr).d_ino as u64,
                     #[cfg(not(any(
                         target_os = "solaris",
                         target_os = "illumos",
                         target_os = "aix",
                         target_os = "nto",
                     )))]
-                    d_type: *offset_ptr!(entry_ptr, d_type) as u8,
+                    d_type: (*entry_ptr).d_type as u8,
                 };
 
                 #[cfg(target_os = "vita")]
@@ -864,7 +851,6 @@ impl Drop for Dir {
             target_os = "vita",
             target_os = "hurd",
             target_os = "espidf",
-            target_os = "fuchsia",
             target_os = "horizon",
             target_os = "vxworks",
             target_os = "rtems",
@@ -895,8 +881,8 @@ impl DirEntry {
     #[cfg(all(
         any(
             all(target_os = "linux", not(target_env = "musl")),
-            target_os = "emscripten",
             target_os = "android",
+            target_os = "fuchsia",
             target_os = "hurd"
         ),
         not(miri) // no dirfd on Miri
@@ -924,8 +910,8 @@ impl DirEntry {
     #[cfg(any(
         not(any(
             all(target_os = "linux", not(target_env = "musl")),
-            target_os = "emscripten",
             target_os = "android",
+            target_os = "fuchsia",
             target_os = "hurd",
         )),
         miri
@@ -1229,6 +1215,7 @@ impl File {
         }
         #[cfg(any(
             target_os = "freebsd",
+            target_os = "fuchsia",
             target_os = "linux",
             target_os = "android",
             target_os = "netbsd",
@@ -1241,6 +1228,7 @@ impl File {
         }
         #[cfg(not(any(
             target_os = "android",
+            target_os = "fuchsia",
             target_os = "freebsd",
             target_os = "linux",
             target_os = "netbsd",
@@ -1256,6 +1244,7 @@ impl File {
 
     #[cfg(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1267,6 +1256,7 @@ impl File {
 
     #[cfg(not(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1277,6 +1267,7 @@ impl File {
 
     #[cfg(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1288,6 +1279,7 @@ impl File {
 
     #[cfg(not(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1298,6 +1290,7 @@ impl File {
 
     #[cfg(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1315,6 +1308,7 @@ impl File {
 
     #[cfg(not(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1325,6 +1319,7 @@ impl File {
 
     #[cfg(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1342,6 +1337,7 @@ impl File {
 
     #[cfg(not(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1352,6 +1348,7 @@ impl File {
 
     #[cfg(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1363,6 +1360,7 @@ impl File {
 
     #[cfg(not(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1944,7 +1942,7 @@ fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> 
 #[cfg(target_os = "espidf")]
 fn open_to_and_set_permissions(
     to: &Path,
-    _reader_metadata: crate::fs::Metadata,
+    _reader_metadata: &crate::fs::Metadata,
 ) -> io::Result<(crate::fs::File, crate::fs::Metadata)> {
     use crate::fs::OpenOptions;
     let writer = OpenOptions::new().open(to)?;
@@ -1955,7 +1953,7 @@ fn open_to_and_set_permissions(
 #[cfg(not(target_os = "espidf"))]
 fn open_to_and_set_permissions(
     to: &Path,
-    reader_metadata: crate::fs::Metadata,
+    reader_metadata: &crate::fs::Metadata,
 ) -> io::Result<(crate::fs::File, crate::fs::Metadata)> {
     use crate::fs::OpenOptions;
     use crate::os::unix::fs::{OpenOptionsExt, PermissionsExt};
@@ -1980,30 +1978,63 @@ fn open_to_and_set_permissions(
     Ok((writer, writer_metadata))
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "android", target_vendor = "apple")))]
-pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    let (mut reader, reader_metadata) = open_from(from)?;
-    let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
+mod cfm {
+    use crate::fs::{File, Metadata};
+    use crate::io::{BorrowedCursor, IoSlice, IoSliceMut, Read, Result, Write};
 
-    io::copy(&mut reader, &mut writer)
-}
+    #[allow(dead_code)]
+    pub struct CachedFileMetadata(pub File, pub Metadata);
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
-pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    let (mut reader, reader_metadata) = open_from(from)?;
-    let max_len = u64::MAX;
-    let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
-
-    use super::kernel_copy::{CopyResult, copy_regular_files};
-
-    match copy_regular_files(reader.as_raw_fd(), writer.as_raw_fd(), max_len) {
-        CopyResult::Ended(bytes) => Ok(bytes),
-        CopyResult::Error(e, _) => Err(e),
-        CopyResult::Fallback(written) => match io::copy::generic_copy(&mut reader, &mut writer) {
-            Ok(bytes) => Ok(bytes + written),
-            Err(e) => Err(e),
-        },
+    impl Read for CachedFileMetadata {
+        fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+            self.0.read(buf)
+        }
+        fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> Result<usize> {
+            self.0.read_vectored(bufs)
+        }
+        fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> Result<()> {
+            self.0.read_buf(cursor)
+        }
+        #[inline]
+        fn is_read_vectored(&self) -> bool {
+            self.0.is_read_vectored()
+        }
+        fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
+            self.0.read_to_end(buf)
+        }
+        fn read_to_string(&mut self, buf: &mut String) -> Result<usize> {
+            self.0.read_to_string(buf)
+        }
     }
+    impl Write for CachedFileMetadata {
+        fn write(&mut self, buf: &[u8]) -> Result<usize> {
+            self.0.write(buf)
+        }
+        fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> Result<usize> {
+            self.0.write_vectored(bufs)
+        }
+        #[inline]
+        fn is_write_vectored(&self) -> bool {
+            self.0.is_write_vectored()
+        }
+        #[inline]
+        fn flush(&mut self) -> Result<()> {
+            self.0.flush()
+        }
+    }
+}
+#[cfg(any(target_os = "linux", target_os = "android"))]
+pub(crate) use cfm::CachedFileMetadata;
+
+#[cfg(not(target_vendor = "apple"))]
+pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+    let (reader, reader_metadata) = open_from(from)?;
+    let (writer, writer_metadata) = open_to_and_set_permissions(to, &reader_metadata)?;
+
+    io::copy(
+        &mut cfm::CachedFileMetadata(reader, reader_metadata),
+        &mut cfm::CachedFileMetadata(writer, writer_metadata),
+    )
 }
 
 #[cfg(target_vendor = "apple")]
@@ -2040,7 +2071,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     }
 
     // Fall back to using `fcopyfile` if `fclonefileat` does not succeed.
-    let (writer, writer_metadata) = open_to_and_set_permissions(to, reader_metadata)?;
+    let (writer, writer_metadata) = open_to_and_set_permissions(to, &reader_metadata)?;
 
     // We ensure that `FreeOnDrop` never contains a null pointer so it is
     // always safe to call `copyfile_state_free`

@@ -104,10 +104,9 @@ impl fmt::Display for EscapeBodyTextWithWbr<'_> {
                 continue;
             }
             let is_uppercase = || s.chars().any(|c| c.is_uppercase());
-            let next_is_uppercase =
-                || pk.map_or(true, |(_, t)| t.chars().any(|c| c.is_uppercase()));
-            let next_is_underscore = || pk.map_or(true, |(_, t)| t.contains('_'));
-            let next_is_colon = || pk.map_or(true, |(_, t)| t.contains(':'));
+            let next_is_uppercase = || pk.is_none_or(|(_, t)| t.chars().any(|c| c.is_uppercase()));
+            let next_is_underscore = || pk.is_none_or(|(_, t)| t.contains('_'));
+            let next_is_colon = || pk.is_none_or(|(_, t)| t.contains(':'));
             // Check for CamelCase.
             //
             // `i - last > 3` avoids turning FmRadio into Fm<wbr>Radio, which is technically

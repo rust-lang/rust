@@ -9,7 +9,7 @@ use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, Lrc, OnceLock, WorkerLocal};
+use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, OnceLock, WorkerLocal};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
@@ -19,21 +19,19 @@ use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
-use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
+use rustc_middle::ty::{self, CurrentGcx, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_parse::{
     new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal, validate_attr,
 };
 use rustc_passes::{abi_test, input_stats, layout_test};
 use rustc_resolve::Resolver;
-use rustc_session::code_stats::VTableSizeInfo;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
 use rustc_session::output::{collect_crate_types, filename_for_input, find_crate_name};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
-use rustc_span::symbol::{Symbol, sym};
-use rustc_span::{ErrorGuaranteed, FileName, SourceFileHash, SourceFileHashAlgorithm};
+use rustc_span::{ErrorGuaranteed, FileName, SourceFileHash, SourceFileHashAlgorithm, Symbol, sym};
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
 use tracing::{info, instrument};
@@ -41,7 +39,7 @@ use tracing::{info, instrument};
 use crate::interface::Compiler;
 use crate::{errors, proc_macro_decls, util};
 
-pub(crate) fn parse<'a>(sess: &'a Session) -> ast::Crate {
+pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
     let krate = sess
         .time("parse_crate", || {
             let mut parser = unwrap_or_emit_fatal(match &sess.io.input {
@@ -76,6 +74,7 @@ fn pre_expansion_lint<'a>(
         || {
             rustc_lint::check_ast_node(
                 sess,
+                None,
                 features,
                 true,
                 lint_store,
@@ -269,6 +268,7 @@ fn configure_and_expand(
 
     resolver.resolve_crate(&krate);
 
+    CStore::from_tcx(tcx).report_incompatible_target_modifiers(tcx, &krate);
     krate
 }
 
@@ -310,6 +310,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let lint_store = unerased_lint_store(tcx.sess);
     rustc_lint::check_ast_node(
         sess,
+        Some(tcx),
         tcx.features(),
         false,
         lint_store,
@@ -601,7 +602,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 fn resolver_for_lowering_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
-) -> (&'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
+) -> (&'tcx Steal<(ty::ResolverAstLowering, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
@@ -623,7 +624,7 @@ fn resolver_for_lowering_raw<'tcx>(
     } = resolver.into_outputs();
 
     let resolutions = tcx.arena.alloc(untracked_resolutions);
-    (tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Lrc::new(krate)))), resolutions)
+    (tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Arc::new(krate)))), resolutions)
 }
 
 pub fn write_dep_info(tcx: TyCtxt<'_>) {
@@ -709,13 +710,11 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     *providers
 });
 
-pub(crate) fn create_global_ctxt<'tcx>(
-    compiler: &'tcx Compiler,
+pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
+    compiler: &Compiler,
     mut krate: rustc_ast::Crate,
-    gcx_cell: &'tcx OnceLock<GlobalCtxt<'tcx>>,
-    arena: &'tcx WorkerLocal<Arena<'tcx>>,
-    hir_arena: &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
-) -> &'tcx GlobalCtxt<'tcx> {
+    f: F,
+) -> T {
     let sess = &compiler.sess;
 
     rustc_builtin_macros::cmdline_attrs::inject(
@@ -763,44 +762,63 @@ pub(crate) fn create_global_ctxt<'tcx>(
 
     let incremental = dep_graph.is_fully_enabled();
 
-    sess.time("setup_global_ctxt", || {
-        let qcx = gcx_cell.get_or_init(move || {
-            TyCtxt::create_global_ctxt(
-                sess,
-                crate_types,
-                stable_crate_id,
-                arena,
-                hir_arena,
-                untracked,
-                dep_graph,
-                rustc_query_impl::query_callbacks(arena),
-                rustc_query_impl::query_system(
-                    providers.queries,
-                    providers.extern_queries,
-                    query_result_on_disk_cache,
-                    incremental,
-                ),
-                providers.hooks,
-                compiler.current_gcx.clone(),
-            )
-        });
+    let gcx_cell = OnceLock::new();
+    let arena = WorkerLocal::new(|_| Arena::default());
+    let hir_arena = WorkerLocal::new(|_| rustc_hir::Arena::default());
 
-        qcx.enter(|tcx| {
-            let feed = tcx.create_crate_num(stable_crate_id).unwrap();
-            assert_eq!(feed.key(), LOCAL_CRATE);
-            feed.crate_name(crate_name);
+    // This closure is necessary to force rustc to perform the correct lifetime
+    // subtyping for GlobalCtxt::enter to be allowed.
+    let inner: Box<
+        dyn for<'tcx> FnOnce(
+            &'tcx Session,
+            CurrentGcx,
+            &'tcx OnceLock<GlobalCtxt<'tcx>>,
+            &'tcx WorkerLocal<Arena<'tcx>>,
+            &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
+            F,
+        ) -> T,
+    > = Box::new(move |sess, current_gcx, gcx_cell, arena, hir_arena, f| {
+        TyCtxt::create_global_ctxt(
+            gcx_cell,
+            sess,
+            crate_types,
+            stable_crate_id,
+            arena,
+            hir_arena,
+            untracked,
+            dep_graph,
+            rustc_query_impl::query_callbacks(arena),
+            rustc_query_impl::query_system(
+                providers.queries,
+                providers.extern_queries,
+                query_result_on_disk_cache,
+                incremental,
+            ),
+            providers.hooks,
+            current_gcx,
+            |tcx| {
+                let feed = tcx.create_crate_num(stable_crate_id).unwrap();
+                assert_eq!(feed.key(), LOCAL_CRATE);
+                feed.crate_name(crate_name);
 
-            let feed = tcx.feed_unit_query();
-            feed.features_query(tcx.arena.alloc(rustc_expand::config::features(
-                sess,
-                &pre_configured_attrs,
-                crate_name,
-            )));
-            feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
-            feed.output_filenames(Arc::new(outputs));
-        });
-        qcx
-    })
+                let feed = tcx.feed_unit_query();
+                feed.features_query(tcx.arena.alloc(rustc_expand::config::features(
+                    tcx.sess,
+                    &pre_configured_attrs,
+                    crate_name,
+                )));
+                feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
+                feed.output_filenames(Arc::new(outputs));
+
+                let res = f(tcx);
+                // FIXME maybe run finish even when a fatal error occured? or at least tcx.alloc_self_profile_query_strings()?
+                tcx.finish();
+                res
+            },
+        )
+    });
+
+    inner(&compiler.sess, compiler.current_gcx.clone(), &gcx_cell, &arena, &hir_arena, f)
 }
 
 /// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
@@ -809,26 +827,28 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     if tcx.sess.opts.unstable_opts.input_stats {
         rustc_passes::input_stats::print_hir_stats(tcx);
     }
-    #[cfg(debug_assertions)]
+    // When using rustdoc's "jump to def" feature, it enters this code and `check_crate`
+    // is not defined. So we need to cfg it out.
+    #[cfg(all(not(doc), debug_assertions))]
     rustc_passes::hir_id_validator::check_crate(tcx);
     let sess = tcx.sess;
     sess.time("misc_checking_1", || {
         parallel!(
             {
-                sess.time("looking_for_entry_point", || tcx.ensure().entry_fn(()));
+                sess.time("looking_for_entry_point", || tcx.ensure_ok().entry_fn(()));
 
                 sess.time("looking_for_derive_registrar", || {
-                    tcx.ensure().proc_macro_decls_static(())
+                    tcx.ensure_ok().proc_macro_decls_static(())
                 });
 
                 CStore::from_tcx(tcx).report_unused_deps(tcx);
             },
             {
                 tcx.hir().par_for_each_module(|module| {
-                    tcx.ensure().check_mod_loops(module);
-                    tcx.ensure().check_mod_attrs(module);
-                    tcx.ensure().check_mod_naked_functions(module);
-                    tcx.ensure().check_mod_unstable_api_usage(module);
+                    tcx.ensure_ok().check_mod_loops(module);
+                    tcx.ensure_ok().check_mod_attrs(module);
+                    tcx.ensure_ok().check_mod_naked_functions(module);
+                    tcx.ensure_ok().check_mod_unstable_api_usage(module);
                 });
             },
             {
@@ -841,8 +861,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 // since they might not otherwise get called.
                 // This marks the corresponding crate-level attributes
                 // as used, and ensures that their values are valid.
-                tcx.ensure().limits(());
-                tcx.ensure().stability_index(());
+                tcx.ensure_ok().limits(());
+                tcx.ensure_ok().stability_index(());
             }
         );
     });
@@ -851,12 +871,14 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     sess.time("MIR_coroutine_by_move_body", || {
         tcx.hir().par_body_owners(|def_id| {
             if tcx.needs_coroutine_by_move_body_def_id(def_id.to_def_id()) {
-                tcx.ensure_with_value().coroutine_by_move_body_def_id(def_id);
+                tcx.ensure_done().coroutine_by_move_body_def_id(def_id);
             }
         });
     });
     // Freeze definitions as we don't add new ones at this point.
     // We need to wait until now since we synthesize a by-move body
+    // for all coroutine-closures.
+    //
     // This improves performance by allowing lock-free access to them.
     tcx.untracked().definitions.freeze();
 
@@ -864,13 +886,13 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
         tcx.hir().par_body_owners(|def_id| {
             // Run unsafety check because it's responsible for stealing and
             // deallocating THIR.
-            tcx.ensure().check_unsafety(def_id);
-            tcx.ensure().mir_borrowck(def_id)
+            tcx.ensure_ok().check_unsafety(def_id);
+            tcx.ensure_ok().mir_borrowck(def_id)
         });
     });
     sess.time("MIR_effect_checking", || {
-        for def_id in tcx.hir().body_owners() {
-            tcx.ensure().has_ffi_unwind_calls(def_id);
+        tcx.hir().par_body_owners(|def_id| {
+            tcx.ensure_ok().has_ffi_unwind_calls(def_id);
 
             // If we need to codegen, ensure that we emit all errors from
             // `mir_drops_elaborated_and_const_checked` now, to avoid discovering
@@ -878,17 +900,24 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             if tcx.sess.opts.output_types.should_codegen()
                 || tcx.hir().body_const_context(def_id).is_some()
             {
-                tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
+                tcx.ensure_ok().mir_drops_elaborated_and_const_checked(def_id);
             }
-        }
+        });
     });
-    tcx.hir().par_body_owners(|def_id| {
-        if tcx.is_coroutine(def_id.to_def_id()) {
-            tcx.ensure().mir_coroutine_witnesses(def_id);
-            tcx.ensure().check_coroutine_obligations(
-                tcx.typeck_root_def_id(def_id.to_def_id()).expect_local(),
-            );
-        }
+    sess.time("coroutine_obligations", || {
+        tcx.hir().par_body_owners(|def_id| {
+            if tcx.is_coroutine(def_id.to_def_id()) {
+                tcx.ensure_ok().mir_coroutine_witnesses(def_id);
+                tcx.ensure_ok().check_coroutine_obligations(
+                    tcx.typeck_root_def_id(def_id.to_def_id()).expect_local(),
+                );
+                // Eagerly check the unsubstituted layout for cycles.
+                tcx.ensure_ok().layout_of(
+                    ty::TypingEnv::post_analysis(tcx, def_id.to_def_id())
+                        .as_query_input(tcx.type_of(def_id).instantiate_identity()),
+                );
+            }
+        });
     });
 
     sess.time("layout_testing", || layout_test::test_layout(tcx));
@@ -929,15 +958,16 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
     sess.time("misc_checking_3", || {
         parallel!(
             {
-                tcx.ensure().effective_visibilities(());
+                tcx.ensure_ok().effective_visibilities(());
 
                 parallel!(
                     {
-                        tcx.ensure().check_private_in_public(());
+                        tcx.ensure_ok().check_private_in_public(());
                     },
                     {
-                        tcx.hir()
-                            .par_for_each_module(|module| tcx.ensure().check_mod_deathness(module));
+                        tcx.hir().par_for_each_module(|module| {
+                            tcx.ensure_ok().check_mod_deathness(module)
+                        });
                     },
                     {
                         sess.time("lint_checking", || {
@@ -945,14 +975,14 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
                         });
                     },
                     {
-                        tcx.ensure().clashing_extern_declarations(());
+                        tcx.ensure_ok().clashing_extern_declarations(());
                     }
                 );
             },
             {
                 sess.time("privacy_checking_modules", || {
                     tcx.hir().par_for_each_module(|module| {
-                        tcx.ensure().check_mod_privacy(module);
+                        tcx.ensure_ok().check_mod_privacy(module);
                     });
                 });
             }
@@ -960,97 +990,13 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
 
         // This check has to be run after all lints are done processing. We don't
         // define a lint filter, as all lint checks should have finished at this point.
-        sess.time("check_lint_expectations", || tcx.ensure().check_expectations(None));
+        sess.time("check_lint_expectations", || tcx.ensure_ok().check_expectations(None));
 
         // This query is only invoked normally if a diagnostic is emitted that needs any
         // diagnostic item. If the crate compiles without checking any diagnostic items,
         // we will fail to emit overlap diagnostics. Thus we invoke it here unconditionally.
         let _ = tcx.all_diagnostic_items(());
     });
-
-    if sess.opts.unstable_opts.print_vtable_sizes {
-        let traits = tcx.traits(LOCAL_CRATE);
-
-        for &tr in traits {
-            if !tcx.is_dyn_compatible(tr) {
-                continue;
-            }
-
-            let name = ty::print::with_no_trimmed_paths!(tcx.def_path_str(tr));
-
-            let mut first_dsa = true;
-
-            // Number of vtable entries, if we didn't have upcasting
-            let mut entries_ignoring_upcasting = 0;
-            // Number of vtable entries needed solely for upcasting
-            let mut entries_for_upcasting = 0;
-
-            let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, tr));
-
-            // A slightly edited version of the code in
-            // `rustc_trait_selection::traits::vtable::vtable_entries`, that works without self
-            // type and just counts number of entries.
-            //
-            // Note that this is technically wrong, for traits which have associated types in
-            // supertraits:
-            //
-            //   trait A: AsRef<Self::T> + AsRef<()> { type T; }
-            //
-            // Without self type we can't normalize `Self::T`, so we can't know if `AsRef<Self::T>`
-            // and `AsRef<()>` are the same trait, thus we assume that those are different, and
-            // potentially over-estimate how many vtable entries there are.
-            //
-            // Similarly this is wrong for traits that have methods with possibly-impossible bounds.
-            // For example:
-            //
-            //   trait B<T> { fn f(&self) where T: Copy; }
-            //
-            // Here `dyn B<u8>` will have 4 entries, while `dyn B<String>` will only have 3.
-            // However, since we don't know `T`, we can't know if `T: Copy` holds or not,
-            // thus we lean on the bigger side and say it has 4 entries.
-            traits::vtable::prepare_vtable_segments(tcx, trait_ref, |segment| {
-                match segment {
-                    traits::vtable::VtblSegment::MetadataDSA => {
-                        // If this is the first dsa, it would be included either way,
-                        // otherwise it's needed for upcasting
-                        if std::mem::take(&mut first_dsa) {
-                            entries_ignoring_upcasting += 3;
-                        } else {
-                            entries_for_upcasting += 3;
-                        }
-                    }
-
-                    traits::vtable::VtblSegment::TraitOwnEntries { trait_ref, emit_vptr } => {
-                        // Lookup the shape of vtable for the trait.
-                        let own_existential_entries =
-                            tcx.own_existential_vtable_entries(trait_ref.def_id());
-
-                        // The original code here ignores the method if its predicates are
-                        // impossible. We can't really do that as, for example, all not trivial
-                        // bounds on generic parameters are impossible (since we don't know the
-                        // parameters...), see the comment above.
-                        entries_ignoring_upcasting += own_existential_entries.len();
-
-                        if emit_vptr {
-                            entries_for_upcasting += 1;
-                        }
-                    }
-                }
-
-                std::ops::ControlFlow::Continue::<std::convert::Infallible>(())
-            });
-
-            sess.code_stats.record_vtable_size(tr, &name, VTableSizeInfo {
-                trait_name: name.clone(),
-                entries: entries_ignoring_upcasting + entries_for_upcasting,
-                entries_ignoring_upcasting,
-                entries_for_upcasting,
-                upcasting_cost_percent: entries_for_upcasting as f64
-                    / entries_ignoring_upcasting as f64
-                    * 100.,
-            })
-        }
-    }
 }
 
 /// Check for the `#[rustc_error]` annotation, which forces an error in codegen. This is used
@@ -1069,7 +1015,7 @@ fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
                     )
                 }) =>
             {
-                tcx.ensure().trigger_delayed_bug(def_id);
+                tcx.ensure_ok().trigger_delayed_bug(def_id);
             }
 
             // Bare `#[rustc_error]`.
@@ -1129,12 +1075,6 @@ pub(crate) fn start_codegen<'tcx>(
     // have been instantiated.
     if tcx.sess.opts.unstable_opts.print_type_sizes {
         tcx.sess.code_stats.print_type_sizes();
-    }
-
-    if tcx.sess.opts.unstable_opts.print_vtable_sizes {
-        let crate_name = tcx.crate_name(LOCAL_CRATE);
-
-        tcx.sess.code_stats.print_vtable_sizes(crate_name);
     }
 
     codegen

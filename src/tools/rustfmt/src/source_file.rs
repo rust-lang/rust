@@ -1,6 +1,7 @@
 use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
+use std::sync::Arc;
 
 use crate::NewlineStyle;
 use crate::config::FileName;
@@ -13,8 +14,6 @@ use crate::config::Config;
 use crate::create_emitter;
 #[cfg(test)]
 use crate::formatting::FileRecord;
-
-use rustc_data_structures::sync::Lrc;
 
 // Append a newline to the end of each file.
 pub(crate) fn append_newline(s: &mut String) {
@@ -88,11 +87,11 @@ where
     // source map instead of hitting the file system. This also supports getting
     // original text for `FileName::Stdin`.
     let original_text = if newline_style != NewlineStyle::Auto && *filename != FileName::Stdin {
-        Lrc::new(fs::read_to_string(ensure_real_path(filename))?)
+        Arc::new(fs::read_to_string(ensure_real_path(filename))?)
     } else {
         match psess.and_then(|psess| psess.get_original_snippet(filename)) {
             Some(ori) => ori,
-            None => Lrc::new(fs::read_to_string(ensure_real_path(filename))?),
+            None => Arc::new(fs::read_to_string(ensure_real_path(filename))?),
         }
     };
 

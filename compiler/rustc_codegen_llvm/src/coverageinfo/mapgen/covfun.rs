@@ -10,15 +10,17 @@ use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
 };
-use rustc_middle::bug;
-use rustc_middle::mir::coverage::MappingKind;
+use rustc_middle::mir::coverage::{
+    BasicCoverageBlock, CovTerm, CoverageIdsInfo, Expression, FunctionCoverageInfo, Mapping,
+    MappingKind, Op,
+};
 use rustc_middle::ty::{Instance, TyCtxt};
+use rustc_span::Span;
 use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
 
 use crate::common::CodegenCx;
-use crate::coverageinfo::map_data::FunctionCoverage;
-use crate::coverageinfo::mapgen::{GlobalFileTable, VirtualFileMapping, span_file_name};
+use crate::coverageinfo::mapgen::{GlobalFileTable, VirtualFileMapping, spans};
 use crate::coverageinfo::{ffi, llvm_cov};
 use crate::llvm;
 
@@ -45,85 +47,129 @@ impl<'tcx> CovfunRecord<'tcx> {
 
 pub(crate) fn prepare_covfun_record<'tcx>(
     tcx: TyCtxt<'tcx>,
-    global_file_table: &GlobalFileTable,
+    global_file_table: &mut GlobalFileTable,
     instance: Instance<'tcx>,
-    function_coverage: &FunctionCoverage<'tcx>,
+    is_used: bool,
 ) -> Option<CovfunRecord<'tcx>> {
+    let fn_cov_info = tcx.instance_mir(instance.def).function_coverage_info.as_deref()?;
+    let ids_info = tcx.coverage_ids_info(instance.def)?;
+
+    let expressions = prepare_expressions(ids_info);
+
     let mut covfun = CovfunRecord {
         mangled_function_name: tcx.symbol_name(instance).name,
-        source_hash: function_coverage.source_hash(),
-        is_used: function_coverage.is_used(),
+        source_hash: if is_used { fn_cov_info.function_source_hash } else { 0 },
+        is_used,
         virtual_file_mapping: VirtualFileMapping::default(),
-        expressions: function_coverage.counter_expressions().collect::<Vec<_>>(),
+        expressions,
         regions: ffi::Regions::default(),
     };
 
-    fill_region_tables(tcx, global_file_table, function_coverage, &mut covfun);
+    fill_region_tables(tcx, global_file_table, fn_cov_info, ids_info, &mut covfun);
 
     if covfun.regions.has_no_regions() {
-        if covfun.is_used {
-            bug!("a used function should have had coverage mapping data but did not: {covfun:?}");
-        } else {
-            debug!(?covfun, "unused function had no coverage mapping data");
-            return None;
-        }
+        debug!(?covfun, "function has no mappings to embed; skipping");
+        return None;
     }
 
     Some(covfun)
 }
 
+/// Convert the function's coverage-counter expressions into a form suitable for FFI.
+fn prepare_expressions(ids_info: &CoverageIdsInfo) -> Vec<ffi::CounterExpression> {
+    let counter_for_term = ffi::Counter::from_term;
+
+    // We know that LLVM will optimize out any unused expressions before
+    // producing the final coverage map, so there's no need to do the same
+    // thing on the Rust side unless we're confident we can do much better.
+    // (See `CounterExpressionsMinimizer` in `CoverageMappingWriter.cpp`.)
+    ids_info
+        .expressions
+        .iter()
+        .map(move |&Expression { lhs, op, rhs }| ffi::CounterExpression {
+            lhs: counter_for_term(lhs),
+            kind: match op {
+                Op::Add => ffi::ExprKind::Add,
+                Op::Subtract => ffi::ExprKind::Subtract,
+            },
+            rhs: counter_for_term(rhs),
+        })
+        .collect::<Vec<_>>()
+}
+
 /// Populates the mapping region tables in the current function's covfun record.
 fn fill_region_tables<'tcx>(
     tcx: TyCtxt<'tcx>,
-    global_file_table: &GlobalFileTable,
-    function_coverage: &FunctionCoverage<'tcx>,
+    global_file_table: &mut GlobalFileTable,
+    fn_cov_info: &'tcx FunctionCoverageInfo,
+    ids_info: &'tcx CoverageIdsInfo,
     covfun: &mut CovfunRecord<'tcx>,
 ) {
-    let counter_regions = function_coverage.counter_regions();
-    if counter_regions.is_empty() {
-        return;
-    }
-
     // Currently a function's mappings must all be in the same file as its body span.
-    let file_name = span_file_name(tcx, function_coverage.function_coverage_info.body_span);
+    let source_map = tcx.sess.source_map();
+    let source_file = source_map.lookup_source_file(fn_cov_info.body_span.lo());
 
-    // Look up the global file ID for that filename.
-    let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
+    // Look up the global file ID for that file.
+    let global_file_id = global_file_table.global_file_id_for_file(&source_file);
 
     // Associate that global file ID with a local file ID for this function.
     let local_file_id = covfun.virtual_file_mapping.local_id_for_global(global_file_id);
-    debug!("  file id: {local_file_id:?} => {global_file_id:?} = '{file_name:?}'");
 
     let ffi::Regions { code_regions, branch_regions, mcdc_branch_regions, mcdc_decision_regions } =
         &mut covfun.regions;
 
+    let make_cov_span = |span: Span| {
+        spans::make_coverage_span(local_file_id, source_map, fn_cov_info, &source_file, span)
+    };
+    let discard_all = tcx.sess.coverage_discard_all_spans_in_codegen();
+
     // For each counter/region pair in this function+file, convert it to a
     // form suitable for FFI.
-    for (mapping_kind, region) in counter_regions {
-        debug!("Adding counter {mapping_kind:?} to map for {region:?}");
-        let span = ffi::CoverageSpan::from_source_region(local_file_id, region);
-        match mapping_kind {
-            MappingKind::Code(term) => {
-                code_regions.push(ffi::CodeRegion { span, counter: ffi::Counter::from_term(term) });
+    for &Mapping { ref kind, span } in &fn_cov_info.mappings {
+        // If this function is unused, replace all counters with zero.
+        let counter_for_bcb = |bcb: BasicCoverageBlock| -> ffi::Counter {
+            let term = if covfun.is_used {
+                ids_info.term_for_bcb[bcb].expect("every BCB in a mapping was given a term")
+            } else {
+                CovTerm::Zero
+            };
+            ffi::Counter::from_term(term)
+        };
+
+        // Convert the `Span` into coordinates that we can pass to LLVM, or
+        // discard the span if conversion fails. In rare, cases _all_ of a
+        // function's spans are discarded, and the rest of coverage codegen
+        // needs to handle that gracefully to avoid a repeat of #133606.
+        // We don't have a good test case for triggering that organically, so
+        // instead we set `-Zcoverage-options=discard-all-spans-in-codegen`
+        // to force it to occur.
+        let Some(cov_span) = make_cov_span(span) else { continue };
+        if discard_all {
+            continue;
+        }
+
+        match *kind {
+            MappingKind::Code { bcb } => {
+                code_regions.push(ffi::CodeRegion { cov_span, counter: counter_for_bcb(bcb) });
             }
-            MappingKind::Branch { true_term, false_term } => {
+            MappingKind::Branch { true_bcb, false_bcb } => {
                 branch_regions.push(ffi::BranchRegion {
-                    span,
-                    true_counter: ffi::Counter::from_term(true_term),
-                    false_counter: ffi::Counter::from_term(false_term),
+                    cov_span,
+                    true_counter: counter_for_bcb(true_bcb),
+                    false_counter: counter_for_bcb(false_bcb),
                 });
             }
-            MappingKind::MCDCBranch { true_term, false_term, mcdc_params } => {
+            MappingKind::MCDCBranch { true_bcb, false_bcb, mcdc_params } => {
                 mcdc_branch_regions.push(ffi::MCDCBranchRegion {
-                    span,
-                    true_counter: ffi::Counter::from_term(true_term),
-                    false_counter: ffi::Counter::from_term(false_term),
+                    cov_span,
+                    true_counter: counter_for_bcb(true_bcb),
+                    false_counter: counter_for_bcb(false_bcb),
                     mcdc_branch_params: ffi::mcdc::BranchParameters::from(mcdc_params),
                 });
             }
             MappingKind::MCDCDecision(mcdc_decision_params) => {
                 mcdc_decision_regions.push(ffi::MCDCDecisionRegion {
-                    span,
+                    cov_span,
                     mcdc_decision_params: ffi::mcdc::DecisionParameters::from(mcdc_decision_params),
                 });
             }

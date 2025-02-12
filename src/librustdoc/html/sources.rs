@@ -17,7 +17,7 @@ use crate::clean::utils::has_doc_flag;
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::html::render::Context;
-use crate::html::{format, highlight, layout};
+use crate::html::{highlight, layout};
 use crate::visit::DocVisitor;
 
 pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error> {
@@ -249,7 +249,7 @@ impl SourceCollector<'_, '_> {
                     file_span,
                     self.cx,
                     &root_path,
-                    highlight::DecorationInfo::default(),
+                    &highlight::DecorationInfo::default(),
                     SourceContext::Standalone { file_path },
                 )
             },
@@ -328,13 +328,13 @@ pub(crate) fn print_src(
     file_span: rustc_span::Span,
     context: &Context<'_>,
     root_path: &str,
-    decoration_info: highlight::DecorationInfo,
+    decoration_info: &highlight::DecorationInfo,
     source_context: SourceContext<'_>,
 ) {
-    let current_href = context
-        .href_from_span(clean::Span::new(file_span), false)
-        .expect("only local crates should have sources emitted");
-    let code = format::display_fn(move |fmt| {
+    let code = fmt::from_fn(move |fmt| {
+        let current_href = context
+            .href_from_span(clean::Span::new(file_span), false)
+            .expect("only local crates should have sources emitted");
         highlight::write_code(
             fmt,
             s,

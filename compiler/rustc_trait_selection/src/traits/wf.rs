@@ -8,8 +8,9 @@ use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_session::parse::feature_err;
+use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::{Span, sym};
 use tracing::{debug, instrument, trace};
 
 use crate::infer::InferCtxt;
@@ -89,6 +90,8 @@ pub fn unnormalized_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     arg: GenericArg<'tcx>,
+    span: Span,
+    body_id: LocalDefId,
 ) -> Option<PredicateObligations<'tcx>> {
     debug_assert_eq!(arg, infcx.resolve_vars_if_possible(arg));
 
@@ -106,8 +109,8 @@ pub fn unnormalized_obligations<'tcx>(
     let mut wf = WfPredicates {
         infcx,
         param_env,
-        body_id: CRATE_DEF_ID,
-        span: DUMMY_SP,
+        body_id,
+        span,
         out: PredicateObligations::new(),
         recursion_depth: 0,
         item: None,
@@ -689,7 +692,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 self.require_sized(subty, ObligationCauseCode::SliceOrArrayElem);
                 // Note that the len being WF is implicitly checked while visiting.
                 // Here we just check that it's of type usize.
-                let cause = self.cause(ObligationCauseCode::Misc);
+                let cause = self.cause(ObligationCauseCode::ArrayLen(t));
                 self.out.push(traits::Obligation::with_depth(
                     tcx,
                     cause,
@@ -702,8 +705,47 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 ));
             }
 
-            ty::Pat(subty, _) => {
+            ty::Pat(subty, pat) => {
                 self.require_sized(subty, ObligationCauseCode::Misc);
+                match *pat {
+                    ty::PatternKind::Range { start, end, include_end: _ } => {
+                        let mut check = |c| {
+                            let cause = self.cause(ObligationCauseCode::Misc);
+                            self.out.push(traits::Obligation::with_depth(
+                                tcx,
+                                cause.clone(),
+                                self.recursion_depth,
+                                self.param_env,
+                                ty::Binder::dummy(ty::PredicateKind::Clause(
+                                    ty::ClauseKind::ConstArgHasType(c, subty),
+                                )),
+                            ));
+                            if !tcx.features().generic_pattern_types() {
+                                if c.has_param() {
+                                    if self.span.is_dummy() {
+                                        self.tcx().dcx().delayed_bug(
+                                            "feature error should be reported elsewhere, too",
+                                        );
+                                    } else {
+                                        feature_err(
+                                            &self.tcx().sess,
+                                            sym::generic_pattern_types,
+                                            self.span,
+                                            "wraparound pattern type ranges cause monomorphization time errors",
+                                        )
+                                        .emit();
+                                    }
+                                }
+                            }
+                        };
+                        if let Some(start) = start {
+                            check(start)
+                        }
+                        if let Some(end) = end {
+                            check(end)
+                        }
+                    }
+                }
             }
 
             ty::Tuple(tys) => {
@@ -827,6 +869,26 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             ty::FnPtr(..) => {
                 // Let the visitor iterate into the argument/return
                 // types appearing in the fn signature.
+            }
+            ty::UnsafeBinder(ty) => {
+                // FIXME(unsafe_binders): For now, we have no way to express
+                // that a type must be `ManuallyDrop` OR `Copy` (or a pointer).
+                if !ty.has_escaping_bound_vars() {
+                    self.out.push(traits::Obligation::new(
+                        self.tcx(),
+                        self.cause(ObligationCauseCode::Misc),
+                        self.param_env,
+                        ty.map_bound(|ty| {
+                            ty::TraitRef::new(
+                                self.tcx(),
+                                self.tcx().require_lang_item(LangItem::Copy, Some(self.span)),
+                                [ty],
+                            )
+                        }),
+                    ));
+                }
+
+                // We recurse into the binder below.
             }
 
             ty::Dynamic(data, r, _) => {

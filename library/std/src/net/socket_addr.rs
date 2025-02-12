@@ -6,8 +6,7 @@ mod tests;
 pub use core::net::{SocketAddr, SocketAddrV4, SocketAddrV6};
 
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use crate::sys::net::netc as c;
-use crate::sys_common::net::LookupHost;
+use crate::sys::net::{LookupHost, netc as c};
 use crate::sys_common::{FromInner, IntoInner};
 use crate::{io, iter, mem, option, slice, vec};
 

@@ -4,13 +4,10 @@ use std::assert_matches::assert_matches;
 
 use hir::LangItem;
 use rustc_ast::Mutability;
-use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
-use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 
-use super::outlives_bounds::InferCtxtExt;
 use crate::regions::InferCtxtRegionExt;
 use crate::traits::{self, FulfillmentError, ObligationCause};
 
@@ -170,15 +167,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
         }
 
         // Check regions assuming the self type of the impl is WF
-        let outlives_env = OutlivesEnvironment::with_bounds(
-            param_env,
-            infcx.implied_bounds_tys(
-                param_env,
-                parent_cause.body_id,
-                &FxIndexSet::from_iter([self_type]),
-            ),
-        );
-        let errors = infcx.resolve_regions(&outlives_env);
+        let errors = infcx.resolve_regions(parent_cause.body_id, param_env, [self_type]);
         if !errors.is_empty() {
             infringing_inner_tys.push((inner_ty, InfringingFieldsReason::Regions(errors)));
             continue;
@@ -261,15 +250,7 @@ pub fn all_fields_implement_trait<'tcx>(
             }
 
             // Check regions assuming the self type of the impl is WF
-            let outlives_env = OutlivesEnvironment::with_bounds(
-                param_env,
-                infcx.implied_bounds_tys(
-                    param_env,
-                    parent_cause.body_id,
-                    &FxIndexSet::from_iter([self_type]),
-                ),
-            );
-            let errors = infcx.resolve_regions(&outlives_env);
+            let errors = infcx.resolve_regions(parent_cause.body_id, param_env, [self_type]);
             if !errors.is_empty() {
                 infringing.push((field, ty, InfringingFieldsReason::Regions(errors)));
             }

@@ -100,8 +100,9 @@ LL | impl Tr2<i32, T2 = Qux, T3 = usize> for Bar {
    |
 help: to use `Qux` as a generic argument specify it directly
    |
-LL | impl Tr2<i32, Qux, T3 = usize> for Bar {
-   |               ~~~
+LL - impl Tr2<i32, T2 = Qux, T3 = usize> for Bar {
+LL + impl Tr2<i32, Qux, T3 = usize> for Bar {
+   |
 
 error[E0107]: trait takes 3 generic arguments but 1 generic argument was supplied
   --> $DIR/associated-types-eq-2.rs:47:6
@@ -189,8 +190,9 @@ LL | impl Tr2<i32, Qux, T3 = GenericTerm<i32>> for Bar {
    |
 help: to use `GenericTerm<i32>` as a generic argument specify it directly
    |
-LL | impl Tr2<i32, Qux, GenericTerm<i32>> for Bar {
-   |                    ~~~~~~~~~~~~~~~~
+LL - impl Tr2<i32, Qux, T3 = GenericTerm<i32>> for Bar {
+LL + impl Tr2<i32, Qux, GenericTerm<i32>> for Bar {
+   |
 
 error[E0229]: associated item constraints are not allowed here
   --> $DIR/associated-types-eq-2.rs:76:10
@@ -203,8 +205,12 @@ LL | | = 42, T2 = Qux, T3 = usize> for Bar {
    |
 help: to use `42` as a generic argument specify it directly
    |
-LL | impl Tr3<42, T2 = Qux, T3 = usize> for Bar {
-   |          ~~
+LL - impl Tr3<N
+LL -
+LL -
+LL - = 42, T2 = Qux, T3 = usize> for Bar {
+LL + impl Tr3<42, T2 = Qux, T3 = usize> for Bar {
+   |
 
 error[E0107]: trait takes 3 generic arguments but 0 generic arguments were supplied
   --> $DIR/associated-types-eq-2.rs:84:6
@@ -328,8 +334,9 @@ LL | impl<'a, T> St<'a , T = Qux> {
    |
 help: to use `Qux` as a generic argument specify it directly
    |
-LL | impl<'a, T> St<'a , Qux> {
-   |                     ~~~
+LL - impl<'a, T> St<'a , T = Qux> {
+LL + impl<'a, T> St<'a , Qux> {
+   |
 
 error: aborting due to 25 previous errors
 

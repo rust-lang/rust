@@ -821,7 +821,7 @@ pub(crate) fn get_function_type_for_search(
                     .map(|name| clean::PathSegment {
                         name: *name,
                         args: clean::GenericArgs::AngleBracketed {
-                            args: Vec::new().into_boxed_slice(),
+                            args: ThinVec::new(),
                             constraints: ThinVec::new(),
                         },
                     })
@@ -837,8 +837,24 @@ pub(crate) fn get_function_type_for_search(
         clean::ForeignFunctionItem(ref f, _)
         | clean::FunctionItem(ref f)
         | clean::MethodItem(ref f, _)
-        | clean::TyMethodItem(ref f) => {
+        | clean::RequiredMethodItem(ref f) => {
             get_fn_inputs_and_outputs(f, tcx, impl_or_trait_generics, cache)
+        }
+        clean::ConstantItem(ref c) => make_nullary_fn(&c.type_),
+        clean::StaticItem(ref s) => make_nullary_fn(&s.type_),
+        clean::StructFieldItem(ref t) => {
+            let Some(parent) = parent else {
+                return None;
+            };
+            let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> =
+                Default::default();
+            let output = get_index_type(t, vec![], &mut rgen);
+            let input = RenderType {
+                id: Some(RenderTypeId::DefId(parent)),
+                generics: None,
+                bindings: None,
+            };
+            (vec![input], vec![output], vec![], vec![])
         }
         _ => return None,
     };
@@ -900,7 +916,8 @@ fn get_index_type_id(
         | clean::Generic(_)
         | clean::SelfTy
         | clean::ImplTrait(_)
-        | clean::Infer => None,
+        | clean::Infer
+        | clean::UnsafeBinder(_) => None,
     }
 }
 
@@ -1207,10 +1224,11 @@ fn simplify_fn_type<'a, 'tcx>(
                 && let Type::Path { path } = arg
                 && let def_id = path.def_id()
                 && let Some(trait_) = cache.traits.get(&def_id)
-                && trait_.items.iter().any(|at| at.is_ty_associated_type())
+                && trait_.items.iter().any(|at| at.is_required_associated_type())
             {
                 for assoc_ty in &trait_.items {
-                    if let clean::ItemKind::TyAssocTypeItem(_generics, bounds) = &assoc_ty.kind
+                    if let clean::ItemKind::RequiredAssocTypeItem(_generics, bounds) =
+                        &assoc_ty.kind
                         && let Some(name) = assoc_ty.name
                     {
                         let idx = -isize::try_from(rgen.len() + 1).unwrap();
@@ -1247,13 +1265,14 @@ fn simplify_fn_type<'a, 'tcx>(
                                 *stored_bounds = type_bounds;
                             }
                         }
-                        ty_constraints.push((RenderTypeId::AssociatedType(name), vec![
-                            RenderType {
+                        ty_constraints.push((
+                            RenderTypeId::AssociatedType(name),
+                            vec![RenderType {
                                 id: Some(RenderTypeId::Index(idx)),
                                 generics: None,
                                 bindings: None,
-                            },
-                        ]))
+                            }],
+                        ))
                     }
                 }
             }
@@ -1349,6 +1368,17 @@ fn simplify_fn_constraint<'a>(
         }
     }
     res.push((ty_constrained_assoc, ty_constraints));
+}
+
+/// Create a fake nullary function.
+///
+/// Used to allow type-based search on constants and statics.
+fn make_nullary_fn(
+    clean_type: &clean::Type,
+) -> (Vec<RenderType>, Vec<RenderType>, Vec<Symbol>, Vec<Vec<RenderType>>) {
+    let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> = Default::default();
+    let output = get_index_type(clean_type, vec![], &mut rgen);
+    (vec![], vec![output], vec![], vec![])
 }
 
 /// Return the full list of types when bounds have been resolved.

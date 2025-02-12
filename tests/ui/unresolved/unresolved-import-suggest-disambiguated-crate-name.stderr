@@ -6,8 +6,9 @@ LL | pub use module::SomeUsefulType;
    |
 help: consider importing this struct instead
    |
-LL | pub use ::library::SomeUsefulType;
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - pub use module::SomeUsefulType;
+LL + pub use ::library::SomeUsefulType;
+   |
 
 error: aborting due to 1 previous error
 

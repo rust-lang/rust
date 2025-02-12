@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{SpanRangeExt, snippet_with_context};
 use clippy_utils::sugg::{Sugg, has_enclosing_paren};
+use clippy_utils::ty::implements_trait;
 use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, is_trait_method, peel_ref_operators};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -8,8 +9,8 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{
     AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, ImplItem, ImplItemKind,
-    ImplicitSelfKind, Item, ItemKind, Mutability, Node, OpaqueTyOrigin, PatKind, PathSegment, PrimTy, QPath,
-    TraitItemRef, TyKind,
+    ImplicitSelfKind, Item, ItemKind, Mutability, Node, OpaqueTyOrigin, PatExprKind, PatKind, PathSegment, PrimTy,
+    QPath, TraitItemRef, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, AssocKind, FnSig, Ty};
@@ -17,6 +18,7 @@ use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
+use rustc_trait_selection::traits::supertrait_def_ids;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -163,7 +165,13 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
         if let ExprKind::Let(lt) = expr.kind
             && match lt.pat.kind {
                 PatKind::Slice([], None, []) => true,
-                PatKind::Lit(lit) if is_empty_string(lit) => true,
+                PatKind::Expr(lit) => match lit.kind {
+                    PatExprKind::Lit { lit, .. } => match lit.node {
+                        LitKind::Str(lit, _) => lit.as_str().is_empty(),
+                        _ => false,
+                    },
+                    _ => false,
+                },
                 _ => false,
             }
             && !expr.span.from_expansion()
@@ -263,7 +271,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
     // fill the set with current and super traits
     fn fill_trait_set(traitt: DefId, set: &mut DefIdSet, cx: &LateContext<'_>) {
         if set.insert(traitt) {
-            for supertrait in cx.tcx.supertrait_def_ids(traitt) {
+            for supertrait in supertrait_def_ids(cx.tcx, traitt) {
                 fill_trait_set(supertrait, set, cx);
             }
         }
@@ -620,18 +628,30 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         })
     }
 
-    let ty = &cx.typeck_results().expr_ty(expr).peel_refs();
-    match ty.kind() {
-        ty::Dynamic(tt, ..) => tt.principal().is_some_and(|principal| {
-            let is_empty = sym!(is_empty);
-            cx.tcx
-                .associated_items(principal.def_id())
-                .filter_by_name_unhygienic(is_empty)
-                .any(|item| is_is_empty(cx, item))
-        }),
-        ty::Alias(ty::Projection, proj) => has_is_empty_impl(cx, proj.def_id),
-        ty::Adt(id, _) => has_is_empty_impl(cx, id.did()),
-        ty::Array(..) | ty::Slice(..) | ty::Str => true,
-        _ => false,
+    fn ty_has_is_empty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, depth: usize) -> bool {
+        match ty.kind() {
+            ty::Dynamic(tt, ..) => tt.principal().is_some_and(|principal| {
+                let is_empty = sym!(is_empty);
+                cx.tcx
+                    .associated_items(principal.def_id())
+                    .filter_by_name_unhygienic(is_empty)
+                    .any(|item| is_is_empty(cx, item))
+            }),
+            ty::Alias(ty::Projection, proj) => has_is_empty_impl(cx, proj.def_id),
+            ty::Adt(id, _) => {
+                has_is_empty_impl(cx, id.did())
+                    || (cx.tcx.recursion_limit().value_within_limit(depth)
+                        && cx.tcx.get_diagnostic_item(sym::Deref).is_some_and(|deref_id| {
+                            implements_trait(cx, ty, deref_id, &[])
+                                && cx
+                                    .get_associated_type(ty, deref_id, "Target")
+                                    .is_some_and(|deref_ty| ty_has_is_empty(cx, deref_ty, depth + 1))
+                        }))
+            },
+            ty::Array(..) | ty::Slice(..) | ty::Str => true,
+            _ => false,
+        }
     }
+
+    ty_has_is_empty(cx, cx.typeck_results().expr_ty(expr).peel_refs(), 0)
 }

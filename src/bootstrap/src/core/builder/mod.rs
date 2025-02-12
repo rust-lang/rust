@@ -1,9 +1,7 @@
-mod cargo;
-
 use std::any::{Any, type_name};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
-use std::fmt::{Debug, Write};
+use std::fmt::{self, Debug, Write};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -13,7 +11,7 @@ use std::{env, fs};
 
 use clap::ValueEnum;
 
-pub use self::cargo::Cargo;
+pub use self::cargo::{Cargo, cargo_profile_var};
 pub use crate::Compiler;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
@@ -24,6 +22,8 @@ use crate::utils::cache::Cache;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
 use crate::{Build, Crate};
+
+mod cargo;
 
 #[cfg(test)]
 mod tests;
@@ -271,16 +271,17 @@ impl PathSet {
     /// This is used for `StepDescription::krate`, which passes all matching crates at once to
     /// `Step::make_run`, rather than calling it many times with a single crate.
     /// See `tests.rs` for examples.
-    fn intersection_removing_matches(&self, needles: &mut Vec<PathBuf>, module: Kind) -> PathSet {
+    fn intersection_removing_matches(&self, needles: &mut [CLIStepPath], module: Kind) -> PathSet {
         let mut check = |p| {
-            for (i, n) in needles.iter().enumerate() {
-                let matched = Self::check(p, n, module);
+            let mut result = false;
+            for n in needles.iter_mut() {
+                let matched = Self::check(p, &n.path, module);
                 if matched {
-                    needles.remove(i);
-                    return true;
+                    n.will_be_executed = true;
+                    result = true;
                 }
             }
-            false
+            result
         };
         match self {
             PathSet::Set(set) => PathSet::Set(set.iter().filter(|&p| check(p)).cloned().collect()),
@@ -314,29 +315,32 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
     // actual path is `proc-macro-srv-cli`
     ("rust-analyzer-proc-macro-srv", &["src/tools/rust-analyzer/crates/proc-macro-srv-cli"]),
     // Make `x test tests` function the same as `x t tests/*`
-    ("tests", &[
-        // tidy-alphabetical-start
-        "tests/assembly",
-        "tests/codegen",
-        "tests/codegen-units",
-        "tests/coverage",
-        "tests/coverage-run-rustdoc",
-        "tests/crashes",
-        "tests/debuginfo",
-        "tests/incremental",
-        "tests/mir-opt",
-        "tests/pretty",
-        "tests/run-make",
-        "tests/rustdoc",
-        "tests/rustdoc-gui",
-        "tests/rustdoc-js",
-        "tests/rustdoc-js-std",
-        "tests/rustdoc-json",
-        "tests/rustdoc-ui",
-        "tests/ui",
-        "tests/ui-fulldeps",
-        // tidy-alphabetical-end
-    ]),
+    (
+        "tests",
+        &[
+            // tidy-alphabetical-start
+            "tests/assembly",
+            "tests/codegen",
+            "tests/codegen-units",
+            "tests/coverage",
+            "tests/coverage-run-rustdoc",
+            "tests/crashes",
+            "tests/debuginfo",
+            "tests/incremental",
+            "tests/mir-opt",
+            "tests/pretty",
+            "tests/run-make",
+            "tests/rustdoc",
+            "tests/rustdoc-gui",
+            "tests/rustdoc-js",
+            "tests/rustdoc-js-std",
+            "tests/rustdoc-json",
+            "tests/rustdoc-ui",
+            "tests/ui",
+            "tests/ui-fulldeps",
+            // tidy-alphabetical-end
+        ],
+    ),
 ];
 
 fn remap_paths(paths: &mut Vec<PathBuf>) {
@@ -359,6 +363,32 @@ fn remap_paths(paths: &mut Vec<PathBuf>) {
         paths.remove(idx);
     }
     paths.append(&mut add);
+}
+
+#[derive(Clone, PartialEq)]
+struct CLIStepPath {
+    path: PathBuf,
+    will_be_executed: bool,
+}
+
+#[cfg(test)]
+impl CLIStepPath {
+    fn will_be_executed(mut self, will_be_executed: bool) -> Self {
+        self.will_be_executed = will_be_executed;
+        self
+    }
+}
+
+impl Debug for CLIStepPath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.path.display())
+    }
+}
+
+impl From<PathBuf> for CLIStepPath {
+    fn from(path: PathBuf) -> Self {
+        Self { path, will_be_executed: false }
+    }
 }
 
 impl StepDescription {
@@ -478,7 +508,8 @@ impl StepDescription {
             return;
         }
 
-        let mut path_lookup: Vec<(PathBuf, bool)> =
+        let mut paths: Vec<CLIStepPath> = paths.into_iter().map(|p| p.into()).collect();
+        let mut path_lookup: Vec<(CLIStepPath, bool)> =
             paths.clone().into_iter().map(|p| (p, false)).collect();
 
         // List of `(usize, &StepDescription, Vec<PathSet>)` where `usize` is the closest index of a path
@@ -518,8 +549,10 @@ impl StepDescription {
             }
         }
 
+        paths.retain(|p| !p.will_be_executed);
+
         if !paths.is_empty() {
-            eprintln!("ERROR: no `{}` rules matched {:?}", builder.kind.as_str(), paths,);
+            eprintln!("ERROR: no `{}` rules matched {:?}", builder.kind.as_str(), paths);
             eprintln!(
                 "HELP: run `x.py {} --help --verbose` to show a list of available paths",
                 builder.kind.as_str()
@@ -613,7 +646,9 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    // single, non-aliased path
+    /// single, non-aliased path
+    ///
+    /// Must be an on-disk path; use `alias` for names that do not correspond to on-disk paths.
     pub fn path(self, path: &str) -> Self {
         self.paths(&[path])
     }
@@ -622,7 +657,7 @@ impl<'a> ShouldRun<'a> {
     ///
     /// This differs from [`path`] in that multiple calls to path will end up calling `make_run`
     /// multiple times, whereas a single call to `paths` will only ever generate a single call to
-    /// `paths`.
+    /// `make_run`.
     ///
     /// This is analogous to `all_krates`, although `all_krates` is gone now. Prefer [`path`] where possible.
     ///
@@ -680,7 +715,7 @@ impl<'a> ShouldRun<'a> {
     /// (for now, just `all_krates` and `paths`, but we may want to add an `aliases` function in the future?)
     fn pathset_for_paths_removing_matches(
         &self,
-        paths: &mut Vec<PathBuf>,
+        paths: &mut [CLIStepPath],
         kind: Kind,
     ) -> Vec<PathSet> {
         let mut sets = vec![];
@@ -868,6 +903,7 @@ impl<'a> Builder<'a> {
                 clippy::BuildManifest,
                 clippy::CargoMiri,
                 clippy::Clippy,
+                clippy::CodegenGcc,
                 clippy::CollectLicenseMetadata,
                 clippy::Compiletest,
                 clippy::CoverageDump,
@@ -903,6 +939,9 @@ impl<'a> Builder<'a> {
                 check::RustAnalyzer,
                 check::TestFloatParse,
                 check::Bootstrap,
+                check::RunMakeSupport,
+                check::Compiletest,
+                check::FeaturesStatusDump,
             ),
             Kind::Test => describe!(
                 crate::core::build_steps::toolstate::ToolStateCheck,
@@ -910,8 +949,6 @@ impl<'a> Builder<'a> {
                 test::Ui,
                 test::Crashes,
                 test::Coverage,
-                test::CoverageMap,
-                test::CoverageRun,
                 test::MirOpt,
                 test::Codegen,
                 test::CodegenUnits,
@@ -919,11 +956,11 @@ impl<'a> Builder<'a> {
                 test::Incremental,
                 test::Debuginfo,
                 test::UiFullDeps,
-                test::CodegenCranelift,
-                test::CodegenGCC,
                 test::Rustdoc,
                 test::CoverageRunRustdoc,
                 test::Pretty,
+                test::CodegenCranelift,
+                test::CodegenGCC,
                 test::Crate,
                 test::CrateLibrustc,
                 test::CrateRustdoc,
@@ -944,7 +981,6 @@ impl<'a> Builder<'a> {
                 test::UnstableBook,
                 test::RustcBook,
                 test::LintDocs,
-                test::RustcGuide,
                 test::EmbeddedBook,
                 test::EditionGuide,
                 test::Rustfmt,
@@ -1057,6 +1093,7 @@ impl<'a> Builder<'a> {
                 run::GenerateWindowsSys,
                 run::GenerateCompletions,
                 run::UnicodeTableGenerator,
+                run::FeaturesStatusDump,
             ),
             Kind::Setup => {
                 describe!(setup::Profile, setup::Hook, setup::Link, setup::Editor)
@@ -1333,16 +1370,9 @@ impl<'a> Builder<'a> {
         }
 
         let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
-        self.ensure(tool::Clippy {
-            compiler: build_compiler,
-            target: self.build.build,
-            extra_features: vec![],
-        });
-        let cargo_clippy = self.ensure(tool::CargoClippy {
-            compiler: build_compiler,
-            target: self.build.build,
-            extra_features: vec![],
-        });
+        self.ensure(tool::Clippy { compiler: build_compiler, target: self.build.build });
+        let cargo_clippy =
+            self.ensure(tool::CargoClippy { compiler: build_compiler, target: self.build.build });
         let mut dylib_path = helpers::dylib_path();
         dylib_path.insert(0, self.sysroot(run_compiler).join("lib"));
 
@@ -1357,16 +1387,9 @@ impl<'a> Builder<'a> {
         let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
 
         // Prepare the tools
-        let miri = self.ensure(tool::Miri {
-            compiler: build_compiler,
-            target: self.build.build,
-            extra_features: Vec::new(),
-        });
-        let cargo_miri = self.ensure(tool::CargoMiri {
-            compiler: build_compiler,
-            target: self.build.build,
-            extra_features: Vec::new(),
-        });
+        let miri = self.ensure(tool::Miri { compiler: build_compiler, target: self.build.build });
+        let cargo_miri =
+            self.ensure(tool::CargoMiri { compiler: build_compiler, target: self.build.build });
         // Invoke cargo-miri, make sure it can find miri and cargo.
         let mut cmd = command(cargo_miri);
         cmd.env("MIRI", &miri);
@@ -1426,7 +1449,7 @@ impl<'a> Builder<'a> {
             let mut stack = self.stack.borrow_mut();
             for stack_step in stack.iter() {
                 // should skip
-                if stack_step.downcast_ref::<S>().map_or(true, |stack_step| *stack_step != step) {
+                if stack_step.downcast_ref::<S>().is_none_or(|stack_step| *stack_step != step) {
                     continue;
                 }
                 let mut out = String::new();

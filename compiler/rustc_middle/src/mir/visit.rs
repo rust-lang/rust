@@ -527,8 +527,9 @@ macro_rules! make_mir_visitor {
                         target: _,
                         unwind: _,
                         call_source: _,
-                        fn_span: _
+                        fn_span,
                     } => {
+                        self.visit_span($(& $mutability)? *fn_span);
                         self.visit_operand(func, location);
                         for arg in args {
                             self.visit_operand(&$($mutability)? arg.node, location);
@@ -543,8 +544,9 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::TailCall {
                         func,
                         args,
-                        fn_span: _,
+                        fn_span,
                     } => {
+                        self.visit_span($(& $mutability)? *fn_span);
                         self.visit_operand(func, location);
                         for arg in args {
                             self.visit_operand(&$($mutability)? arg.node, location);
@@ -636,7 +638,7 @@ macro_rules! make_mir_visitor {
                     OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) => {
                         self.visit_operand(op, location);
                     }
-                    ResumedAfterReturn(_) | ResumedAfterPanic(_) => {
+                    ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference => {
                         // Nothing to visit
                     }
                     MisalignedPointerDereference { required, found } => {
@@ -685,11 +687,14 @@ macro_rules! make_mir_visitor {
 
                     Rvalue::RawPtr(m, path) => {
                         let ctx = match m {
-                            Mutability::Mut => PlaceContext::MutatingUse(
+                            RawPtrKind::Mut => PlaceContext::MutatingUse(
                                 MutatingUseContext::RawBorrow
                             ),
-                            Mutability::Not => PlaceContext::NonMutatingUse(
+                            RawPtrKind::Const => PlaceContext::NonMutatingUse(
                                 NonMutatingUseContext::RawBorrow
+                            ),
+                            RawPtrKind::FakeForPtrMetadata => PlaceContext::NonMutatingUse(
+                                NonMutatingUseContext::Inspect
                             ),
                         };
                         self.visit_place(path, ctx, location);
@@ -778,6 +783,11 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(operand, location);
                         self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     }
+
+                    Rvalue::WrapUnsafeBinder(op, ty) => {
+                        self.visit_operand(op, location);
+                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
+                    }
                 }
             }
 
@@ -845,6 +855,8 @@ macro_rules! make_mir_visitor {
                     local_info: _,
                 } = local_decl;
 
+                self.visit_source_info(source_info);
+
                 self.visit_ty($(& $mutability)? *ty, TyContext::LocalDecl {
                     local,
                     source_info: *source_info,
@@ -854,7 +866,6 @@ macro_rules! make_mir_visitor {
                         self.visit_user_type_projection(user_ty);
                     }
                 }
-                self.visit_source_info(source_info);
             }
 
             fn super_var_debug_info(
@@ -1148,6 +1159,11 @@ macro_rules! visit_place_fns {
                     self.visit_ty(&mut new_ty, TyContext::Location(location));
                     if ty != new_ty { Some(PlaceElem::Subtype(new_ty)) } else { None }
                 }
+                PlaceElem::UnwrapUnsafeBinder(ty) => {
+                    let mut new_ty = ty;
+                    self.visit_ty(&mut new_ty, TyContext::Location(location));
+                    if ty != new_ty { Some(PlaceElem::UnwrapUnsafeBinder(new_ty)) } else { None }
+                }
                 PlaceElem::Deref
                 | PlaceElem::ConstantIndex { .. }
                 | PlaceElem::Subslice { .. }
@@ -1216,7 +1232,8 @@ macro_rules! visit_place_fns {
             match elem {
                 ProjectionElem::OpaqueCast(ty)
                 | ProjectionElem::Subtype(ty)
-                | ProjectionElem::Field(_, ty) => {
+                | ProjectionElem::Field(_, ty)
+                | ProjectionElem::UnwrapUnsafeBinder(ty) => {
                     self.visit_ty(ty, TyContext::Location(location));
                 }
                 ProjectionElem::Index(local) => {
@@ -1369,12 +1386,12 @@ pub enum PlaceContext {
 impl PlaceContext {
     /// Returns `true` if this place context represents a drop.
     #[inline]
-    pub fn is_drop(&self) -> bool {
+    pub fn is_drop(self) -> bool {
         matches!(self, PlaceContext::MutatingUse(MutatingUseContext::Drop))
     }
 
     /// Returns `true` if this place context represents a borrow.
-    pub fn is_borrow(&self) -> bool {
+    pub fn is_borrow(self) -> bool {
         matches!(
             self,
             PlaceContext::NonMutatingUse(
@@ -1384,7 +1401,7 @@ impl PlaceContext {
     }
 
     /// Returns `true` if this place context represents an address-of.
-    pub fn is_address_of(&self) -> bool {
+    pub fn is_address_of(self) -> bool {
         matches!(
             self,
             PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow)
@@ -1394,7 +1411,7 @@ impl PlaceContext {
 
     /// Returns `true` if this place context represents a storage live or storage dead marker.
     #[inline]
-    pub fn is_storage_marker(&self) -> bool {
+    pub fn is_storage_marker(self) -> bool {
         matches!(
             self,
             PlaceContext::NonUse(NonUseContext::StorageLive | NonUseContext::StorageDead)
@@ -1403,18 +1420,18 @@ impl PlaceContext {
 
     /// Returns `true` if this place context represents a use that potentially changes the value.
     #[inline]
-    pub fn is_mutating_use(&self) -> bool {
+    pub fn is_mutating_use(self) -> bool {
         matches!(self, PlaceContext::MutatingUse(..))
     }
 
     /// Returns `true` if this place context represents a use.
     #[inline]
-    pub fn is_use(&self) -> bool {
+    pub fn is_use(self) -> bool {
         !matches!(self, PlaceContext::NonUse(..))
     }
 
     /// Returns `true` if this place context represents an assignment statement.
-    pub fn is_place_assignment(&self) -> bool {
+    pub fn is_place_assignment(self) -> bool {
         matches!(
             self,
             PlaceContext::MutatingUse(
@@ -1423,5 +1440,20 @@ impl PlaceContext {
                     | MutatingUseContext::AsmOutput,
             )
         )
+    }
+
+    /// The variance of a place in the given context.
+    pub fn ambient_variance(self) -> ty::Variance {
+        use NonMutatingUseContext::*;
+        use NonUseContext::*;
+        match self {
+            PlaceContext::MutatingUse(_) => ty::Invariant,
+            PlaceContext::NonUse(StorageDead | StorageLive | VarDebugInfo) => ty::Invariant,
+            PlaceContext::NonMutatingUse(
+                Inspect | Copy | Move | PlaceMention | SharedBorrow | FakeBorrow | RawBorrow
+                | Projection,
+            ) => ty::Covariant,
+            PlaceContext::NonUse(AscribeUserTy(variance)) => variance,
+        }
     }
 }

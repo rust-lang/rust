@@ -14,6 +14,7 @@ use crate::{
     builder::ParamKind,
     consteval, error_lifetime,
     generics::generics,
+    infer::diagnostics::InferenceTyLoweringContext as TyLoweringContext,
     method_resolution::{self, VisibleFromModule},
     to_chalk_trait_id, InferenceDiagnostic, Interner, Substitution, TraitRef, TraitRefExt, Ty,
     TyBuilder, TyExt, TyKind, ValueTyDefId,
@@ -85,10 +86,9 @@ impl InferenceContext<'_> {
             }
         };
 
-        let generic_def_id = value_def.to_generic_def_id(self.db);
-        let Some(generic_def) = generic_def_id else {
-            // `value_def` is the kind of item that can never be generic (i.e. statics, at least
-            // currently). We can just skip the binders to get its type.
+        let generic_def = value_def.to_generic_def_id(self.db);
+        if let GenericDefId::StaticId(_) = generic_def {
+            // `Static` is the kind of item that can never be generic currently. We can just skip the binders to get its type.
             let (ty, binders) = self.db.value_ty(value_def)?.into_value_and_skipped_binders();
             stdx::always!(binders.is_empty(Interner), "non-empty binders for non-generic def",);
             return Some(ValuePathResolution::NonGeneric(ty));
@@ -121,7 +121,7 @@ impl InferenceContext<'_> {
         }
 
         let parent_substs = self_subst.or_else(|| {
-            let generics = generics(self.db.upcast(), generic_def_id?);
+            let generics = generics(self.db.upcast(), generic_def);
             let parent_params_len = generics.parent_generics()?.len();
             let parent_args = &substs[substs.len() - parent_params_len..];
             Some(Substitution::from_iter(Interner, parent_args))
@@ -147,36 +147,38 @@ impl InferenceContext<'_> {
         path: &Path,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<chalk_ir::Substitution<Interner>>)> {
+        // Don't use `self.make_ty()` here as we need `orig_ns`.
+        let mut ctx = TyLoweringContext::new(
+            self.db,
+            &self.resolver,
+            &self.body.types,
+            self.owner.into(),
+            &self.diagnostics,
+            InferenceTyDiagnosticSource::Body,
+        );
         let (value, self_subst) = if let Some(type_ref) = path.type_anchor() {
             let last = path.segments().last()?;
 
-            // Don't use `self.make_ty()` here as we need `orig_ns`.
-            let mut ctx = crate::lower::TyLoweringContext::new(
-                self.db,
-                &self.resolver,
-                &self.body.types,
-                self.owner.into(),
-            );
             let (ty, orig_ns) = ctx.lower_ty_ext(type_ref);
             let ty = self.table.insert_type_vars(ty);
             let ty = self.table.normalize_associated_types_in(ty);
 
             let remaining_segments_for_ty = path.segments().take(path.segments().len() - 1);
             let (ty, _) = ctx.lower_ty_relative_path(ty, orig_ns, remaining_segments_for_ty);
-            self.push_ty_diagnostics(InferenceTyDiagnosticSource::Body, ctx.diagnostics);
+            drop(ctx);
             let ty = self.table.insert_type_vars(ty);
             let ty = self.table.normalize_associated_types_in(ty);
             self.resolve_ty_assoc_item(ty, last.name, id).map(|(it, substs)| (it, Some(substs)))?
         } else {
             let hygiene = self.body.expr_or_pat_path_hygiene(id);
             // FIXME: report error, unresolved first path segment
-            let value_or_partial =
-                self.resolver.resolve_path_in_value_ns(self.db.upcast(), path, hygiene)?;
+            let value_or_partial = ctx.resolve_path_in_value_ns(path, id, hygiene)?;
+            drop(ctx);
 
             match value_or_partial {
                 ResolveValueResult::ValueNs(it, _) => (it, None),
                 ResolveValueResult::Partial(def, remaining_index, _) => self
-                    .resolve_assoc_item(def, path, remaining_index, id)
+                    .resolve_assoc_item(id, def, path, remaining_index, id)
                     .map(|(it, substs)| (it, Some(substs)))?,
             }
         };
@@ -212,6 +214,7 @@ impl InferenceContext<'_> {
 
     fn resolve_assoc_item(
         &mut self,
+        node: ExprOrPatId,
         def: TypeNs,
         path: &Path,
         remaining_index: usize,
@@ -260,17 +263,23 @@ impl InferenceContext<'_> {
                 // as Iterator>::Item::default`)
                 let remaining_segments_for_ty =
                     remaining_segments.take(remaining_segments.len() - 1);
-                let (ty, _) = self.with_body_ty_lowering(|ctx| {
-                    ctx.lower_partly_resolved_path(
-                        def,
-                        resolved_segment,
-                        remaining_segments_for_ty,
-                        true,
-                        &mut |_, _reason| {
-                            // FIXME: Report an error.
-                        },
-                    )
-                });
+                let mut ctx = TyLoweringContext::new(
+                    self.db,
+                    &self.resolver,
+                    &self.body.types,
+                    self.owner.into(),
+                    &self.diagnostics,
+                    InferenceTyDiagnosticSource::Body,
+                );
+                let (ty, _) = ctx.lower_partly_resolved_path(
+                    node,
+                    def,
+                    resolved_segment,
+                    remaining_segments_for_ty,
+                    (remaining_index - 1) as u32,
+                    true,
+                );
+                drop(ctx);
                 if ty.is_unknown() {
                     return None;
                 }
@@ -305,13 +314,7 @@ impl InferenceContext<'_> {
                     }
 
                     AssocItemId::ConstId(konst) => {
-                        if self
-                            .db
-                            .const_data(konst)
-                            .name
-                            .as_ref()
-                            .map_or(false, |n| n == segment.name)
-                        {
+                        if self.db.const_data(konst).name.as_ref() == Some(segment.name) {
                             Some(AssocItemId::ConstId(konst))
                         } else {
                             None

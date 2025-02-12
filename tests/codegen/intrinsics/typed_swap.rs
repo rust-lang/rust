@@ -8,14 +8,14 @@
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
 
-use std::intrinsics::typed_swap;
+use std::intrinsics::typed_swap_nonoverlapping;
 
 // CHECK-LABEL: @swap_unit(
 #[no_mangle]
 pub unsafe fn swap_unit(x: &mut (), y: &mut ()) {
     // CHECK: start
     // CHECK-NEXT: ret void
-    typed_swap(x, y)
+    typed_swap_nonoverlapping(x, y)
 }
 
 // CHECK-LABEL: @swap_i32(
@@ -32,7 +32,7 @@ pub unsafe fn swap_i32(x: &mut i32, y: &mut i32) {
     // OPT3: call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x, ptr align 4 %y, i64 4, i1 false)
     // CHECK: store i32 %[[TEMP]], ptr %y, align 4
     // CHECK: ret void
-    typed_swap(x, y)
+    typed_swap_nonoverlapping(x, y)
 }
 
 // CHECK-LABEL: @swap_pair(
@@ -47,7 +47,7 @@ pub unsafe fn swap_pair(x: &mut (i32, u32), y: &mut (i32, u32)) {
     // CHECK: call void @llvm.memcpy.p0.p0.i64(ptr align 4 %x, ptr align 4 %y, i64 8, i1 false)
     // CHECK: store i32
     // CHECK: store i32
-    typed_swap(x, y)
+    typed_swap_nonoverlapping(x, y)
 }
 
 // CHECK-LABEL: @swap_str(
@@ -63,7 +63,7 @@ pub unsafe fn swap_str<'a>(x: &mut &'a str, y: &mut &'a str) {
     // CHECK: call void @llvm.memcpy.p0.p0.i64(ptr align 8 %x, ptr align 8 %y, i64 16, i1 false)
     // CHECK: store ptr
     // CHECK: store i64
-    typed_swap(x, y)
+    typed_swap_nonoverlapping(x, y)
 }
 
 // OPT0-LABEL: @swap_string(
@@ -73,5 +73,5 @@ pub unsafe fn swap_string(x: &mut String, y: &mut String) {
     // OPT0: call void @llvm.memcpy.p0.p0.i64(ptr align 8 %[[TEMP]], ptr align 8 %x, i64 24, i1 false)
     // OPT0: call void @llvm.memcpy.p0.p0.i64(ptr align 8 %x, ptr align 8 %y, i64 24, i1 false)
     // OPT0: call void @llvm.memcpy.p0.p0.i64(ptr align 8 %y, ptr align 8 %[[TEMP]], i64 24, i1 false)
-    typed_swap(x, y)
+    typed_swap_nonoverlapping(x, y)
 }

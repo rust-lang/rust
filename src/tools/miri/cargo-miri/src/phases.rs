@@ -1,10 +1,10 @@
 //! Implements the various phases of `cargo miri run/test`.
 
+use std::env;
 use std::fs::{self, File};
-use std::io::{BufReader, Write};
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::{env, thread};
 
 use rustc_version::VersionMeta;
 
@@ -24,10 +24,7 @@ Subcommands:
     clean                    Clean the Miri cache & target directory
 
 The cargo options are exactly the same as for `cargo run` and `cargo test`, respectively.
-Furthermore, the following extra flags and environment variables are recognized for `run` and `test`:
-
-    --many-seeds[=from..to]  Run the program/tests many times with different seeds in the given range.
-                             The range defaults to `0..64`.
+Furthermore, the following environment variables are recognized for `run` and `test`:
 
     MIRIFLAGS                Extra flags to pass to the Miri driver. Use this to pass `-Zmiri-...` flags.
 
@@ -40,8 +37,6 @@ Examples:
         stderr will still contain progress information about how the build is doing.
 
 ";
-
-const DEFAULT_MANY_SEEDS: &str = "0..64";
 
 fn show_help() {
     println!("{CARGO_MIRI_HELP}");
@@ -182,17 +177,15 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     let target_dir = get_target_dir(&metadata);
     cmd.arg("--target-dir").arg(target_dir);
 
-    // Store many-seeds argument.
-    let mut many_seeds = None;
     // *After* we set all the flags that need setting, forward everything else. Make sure to skip
-    // `--target-dir` (which would otherwise be set twice) and `--many-seeds` (which is our flag, not cargo's).
+    // `--target-dir` (which would otherwise be set twice).
     for arg in
         ArgSplitFlagValue::from_string_iter(&mut args, "--target-dir").filter_map(Result::err)
     {
-        if arg == "--many-seeds" {
-            many_seeds = Some(DEFAULT_MANY_SEEDS.to_owned());
-        } else if let Some(val) = arg.strip_prefix("--many-seeds=") {
-            many_seeds = Some(val.to_owned());
+        if arg == "--many-seeds" || arg.starts_with("--many-seeds=") {
+            show_error!(
+                "ERROR: the `--many-seeds` flag has been removed from cargo-miri; use MIRIFLAGS=-Zmiri-many-seeds instead"
+            );
         } else {
             cmd.arg(arg);
         }
@@ -249,9 +242,6 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     // Forward some crucial information to our own re-invocations.
     cmd.env("MIRI_SYSROOT", miri_sysroot);
     cmd.env("MIRI_LOCAL_CRATES", local_crates(&metadata));
-    if let Some(many_seeds) = many_seeds {
-        cmd.env("MIRI_MANY_SEEDS", many_seeds);
-    }
     if verbose > 0 {
         cmd.env("MIRI_VERBOSE", verbose.to_string()); // This makes the other phases verbose.
     }
@@ -407,14 +397,11 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
 
             // Alter the `-o` parameter so that it does not overwrite the JSON file we stored above.
             let mut args = env.args;
-            let mut out_filename = None;
             for i in 0..args.len() {
                 if args[i] == "-o" {
-                    out_filename = Some(args[i + 1].clone());
                     args[i + 1].push_str(".miri");
                 }
             }
-            let out_filename = out_filename.expect("rustdoc must pass `-o`");
 
             cmd.args(&args);
             cmd.env("MIRI_BE_RUSTC", "target");
@@ -427,7 +414,7 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
                 eprintln!("[cargo-miri rustc inside rustdoc] going to run:\n{cmd:?}");
             }
 
-            exec_with_pipe(cmd, &env.stdin, format!("{out_filename}.stdin"));
+            exec_with_pipe(cmd, &env.stdin);
         }
 
         return;
@@ -589,111 +576,81 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
         }
     };
 
-    let many_seeds = env::var("MIRI_MANY_SEEDS");
-    run_many_seeds(many_seeds.ok(), |seed| {
-        let mut cmd = miri();
+    let mut cmd = miri();
 
-        // Set missing env vars. We prefer build-time env vars over run-time ones; see
-        // <https://github.com/rust-lang/miri/issues/1661> for the kind of issue that fixes.
-        for (name, val) in &info.env {
-            // `CARGO_MAKEFLAGS` contains information about how to reach the jobserver, but by the time
-            // the program is being run, that jobserver no longer exists (cargo only runs the jobserver
-            // for the build portion of `cargo run`/`cargo test`). Hence we shouldn't forward this.
-            // Also see <https://github.com/rust-lang/rust/pull/113730>.
-            if name == "CARGO_MAKEFLAGS" {
+    // Set missing env vars. We prefer build-time env vars over run-time ones; see
+    // <https://github.com/rust-lang/miri/issues/1661> for the kind of issue that fixes.
+    for (name, val) in &info.env {
+        // `CARGO_MAKEFLAGS` contains information about how to reach the jobserver, but by the time
+        // the program is being run, that jobserver no longer exists (cargo only runs the jobserver
+        // for the build portion of `cargo run`/`cargo test`). Hence we shouldn't forward this.
+        // Also see <https://github.com/rust-lang/rust/pull/113730>.
+        if name == "CARGO_MAKEFLAGS" {
+            continue;
+        }
+        if let Some(old_val) = env::var_os(name) {
+            if *old_val == *val {
+                // This one did not actually change, no need to re-set it.
+                // (This keeps the `debug_cmd` below more manageable.)
                 continue;
-            }
-            if let Some(old_val) = env::var_os(name) {
-                if *old_val == *val {
-                    // This one did not actually change, no need to re-set it.
-                    // (This keeps the `debug_cmd` below more manageable.)
-                    continue;
-                } else if verbose > 0 {
-                    eprintln!(
-                        "[cargo-miri runner] Overwriting run-time env var {name:?}={old_val:?} with build-time value {val:?}"
-                    );
-                }
-            }
-            cmd.env(name, val);
-        }
-
-        if phase != RunnerPhase::Rustdoc {
-            // Set the sysroot. Not necessary in rustdoc, where we already set the sysroot in
-            // `phase_rustdoc`. rustdoc will forward that flag when invoking rustc (i.e., us), so the
-            // flag is present in `info.args`.
-            cmd.arg("--sysroot").arg(env::var_os("MIRI_SYSROOT").unwrap());
-        }
-        // Forward rustc arguments.
-        // We need to patch "--extern" filenames because we forced a check-only
-        // build without cargo knowing about that: replace `.rlib` suffix by
-        // `.rmeta`.
-        // We also need to remove `--error-format` as cargo specifies that to be JSON,
-        // but when we run here, cargo does not interpret the JSON any more. `--json`
-        // then also needs to be dropped.
-        let mut args = info.args.iter();
-        while let Some(arg) = args.next() {
-            if arg == "--extern" {
-                forward_patched_extern_arg(&mut (&mut args).cloned(), &mut cmd);
-            } else if let Some(suffix) = arg.strip_prefix("--error-format") {
-                assert!(suffix.starts_with('='));
-                // Drop this argument.
-            } else if let Some(suffix) = arg.strip_prefix("--json") {
-                assert!(suffix.starts_with('='));
-                // Drop this argument.
-            } else {
-                cmd.arg(arg);
+            } else if verbose > 0 {
+                eprintln!(
+                    "[cargo-miri runner] Overwriting run-time env var {name:?}={old_val:?} with build-time value {val:?}"
+                );
             }
         }
-        // Respect `MIRIFLAGS`.
-        if let Ok(a) = env::var("MIRIFLAGS") {
-            let args = flagsplit(&a);
-            cmd.args(args);
+        cmd.env(name, val);
+    }
+
+    if phase != RunnerPhase::Rustdoc {
+        // Set the sysroot. Not necessary in rustdoc, where we already set the sysroot in
+        // `phase_rustdoc`. rustdoc will forward that flag when invoking rustc (i.e., us), so the
+        // flag is present in `info.args`.
+        cmd.arg("--sysroot").arg(env::var_os("MIRI_SYSROOT").unwrap());
+    }
+    // Forward rustc arguments.
+    // We need to patch "--extern" filenames because we forced a check-only
+    // build without cargo knowing about that: replace `.rlib` suffix by
+    // `.rmeta`.
+    // We also need to remove `--error-format` as cargo specifies that to be JSON,
+    // but when we run here, cargo does not interpret the JSON any more. `--json`
+    // then also needs to be dropped.
+    let mut args = info.args.iter();
+    while let Some(arg) = args.next() {
+        if arg == "--extern" {
+            forward_patched_extern_arg(&mut (&mut args).cloned(), &mut cmd);
+        } else if let Some(suffix) = arg.strip_prefix("--error-format") {
+            assert!(suffix.starts_with('='));
+            // Drop this argument.
+        } else if let Some(suffix) = arg.strip_prefix("--json") {
+            assert!(suffix.starts_with('='));
+            // Drop this argument.
+        } else {
+            cmd.arg(arg);
         }
-        // Set the current seed.
-        if let Some(seed) = seed {
-            eprintln!("Trying seed: {seed}");
-            cmd.arg(format!("-Zmiri-seed={seed}"));
-        }
+    }
+    // Respect `MIRIFLAGS`.
+    if let Ok(a) = env::var("MIRIFLAGS") {
+        let args = flagsplit(&a);
+        cmd.args(args);
+    }
 
-        // Then pass binary arguments.
-        cmd.arg("--");
-        cmd.args(&binary_args);
+    // Then pass binary arguments.
+    cmd.arg("--");
+    cmd.args(&binary_args);
 
-        // Make sure we use the build-time working directory for interpreting Miri/rustc arguments.
-        // But then we need to switch to the run-time one, which we instruct Miri to do by setting `MIRI_CWD`.
-        cmd.current_dir(&info.current_dir);
-        cmd.env("MIRI_CWD", env::current_dir().unwrap());
+    // Make sure we use the build-time working directory for interpreting Miri/rustc arguments.
+    // But then we need to switch to the run-time one, which we instruct Miri to do by setting `MIRI_CWD`.
+    cmd.current_dir(&info.current_dir);
+    cmd.env("MIRI_CWD", env::current_dir().unwrap());
 
-        // Run it.
-        debug_cmd("[cargo-miri runner]", verbose, &cmd);
+    // Run it.
+    debug_cmd("[cargo-miri runner]", verbose, &cmd);
 
-        match phase {
-            RunnerPhase::Rustdoc => {
-                cmd.stdin(std::process::Stdio::piped());
-                // the warning is wrong, we have a `wait` inside the `scope` closure.
-                let mut child = cmd.spawn().expect("failed to spawn process");
-                let child_stdin = child.stdin.take().unwrap();
-                // Write stdin in a background thread, as it may block.
-                let exit_status = thread::scope(|s| {
-                    s.spawn(|| {
-                        let mut child_stdin = child_stdin;
-                        // Ignore failure, it is most likely due to the process having terminated.
-                        let _ = child_stdin.write_all(&info.stdin);
-                    });
-                    child.wait().expect("failed to run command")
-                });
-                if !exit_status.success() {
-                    std::process::exit(exit_status.code().unwrap_or(-1));
-                }
-            }
-            RunnerPhase::Cargo => {
-                let exit_status = cmd.status().expect("failed to run command");
-                if !exit_status.success() {
-                    std::process::exit(exit_status.code().unwrap_or(-1));
-                }
-            }
-        }
-    });
+    match phase {
+        RunnerPhase::Rustdoc => exec_with_pipe(cmd, &info.stdin),
+        RunnerPhase::Cargo => exec(cmd),
+    }
 }
 
 pub fn phase_rustdoc(mut args: impl Iterator<Item = String>) {

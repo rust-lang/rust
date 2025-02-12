@@ -293,7 +293,7 @@ impl<T> Trait<T> for X {
                     (ty::Dynamic(t, _, ty::DynKind::Dyn), ty::Alias(ty::Opaque, alias))
                         if let Some(def_id) = t.principal_def_id()
                             && tcx
-                                .explicit_item_super_predicates(alias.def_id)
+                                .explicit_item_self_bounds(alias.def_id)
                                 .skip_binder()
                                 .iter()
                                 .any(|(pred, _span)| match pred.kind().skip_binder() {
@@ -422,7 +422,7 @@ impl<T> Trait<T> for X {
                             ty::Alias(..) => values.expected,
                             _ => values.found,
                         };
-                        let preds = tcx.explicit_item_super_predicates(opaque_ty.def_id);
+                        let preds = tcx.explicit_item_self_bounds(opaque_ty.def_id);
                         for (pred, _span) in preds.skip_binder() {
                             let ty::ClauseKind::Trait(trait_predicate) = pred.kind().skip_binder()
                             else {
@@ -461,9 +461,11 @@ impl<T> Trait<T> for X {
                     (ty::FnPtr(_, hdr), ty::FnDef(def_id, _))
                     | (ty::FnDef(def_id, _), ty::FnPtr(_, hdr)) => {
                         if tcx.fn_sig(def_id).skip_binder().safety() < hdr.safety {
-                            diag.note(
+                            if !tcx.codegen_fn_attrs(def_id).safe_target_features {
+                                diag.note(
                                 "unsafe functions cannot be coerced into safe function pointers",
-                            );
+                                );
+                            }
                         }
                     }
                     (ty::Adt(_, _), ty::Adt(def, args))
@@ -630,7 +632,7 @@ impl<T> Trait<T> for X {
         let callable_scope = matches!(
             body_owner,
             Some(
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { .. }, .. })
                     | hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(..), .. })
                     | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }),
             )

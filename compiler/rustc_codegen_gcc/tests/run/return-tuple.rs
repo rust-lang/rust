@@ -6,27 +6,28 @@
 //     10
 //     42
 
-#![feature(auto_traits, lang_items, no_core, start, intrinsics)]
+#![feature(auto_traits, lang_items, no_core, intrinsics)]
 #![allow(internal_features)]
 
 #![no_std]
 #![no_core]
+#![no_main]
 
 #[lang = "copy"]
 pub unsafe trait Copy {}
 
-unsafe impl Copy for bool {}
-unsafe impl Copy for u8 {}
-unsafe impl Copy for u16 {}
-unsafe impl Copy for u32 {}
-unsafe impl Copy for u64 {}
-unsafe impl Copy for usize {}
-unsafe impl Copy for i8 {}
-unsafe impl Copy for i16 {}
-unsafe impl Copy for i32 {}
-unsafe impl Copy for isize {}
-unsafe impl Copy for f32 {}
-unsafe impl Copy for char {}
+impl Copy for bool {}
+impl Copy for u8 {}
+impl Copy for u16 {}
+impl Copy for u32 {}
+impl Copy for u64 {}
+impl Copy for usize {}
+impl Copy for i8 {}
+impl Copy for i16 {}
+impl Copy for i32 {}
+impl Copy for isize {}
+impl Copy for f32 {}
+impl Copy for char {}
 
 mod libc {
     #[link(name = "c")]
@@ -43,8 +44,8 @@ mod libc {
 #[lang = "sized"]
 pub trait Sized {}
 
-#[lang = "receiver"]
-trait Receiver {
+#[lang = "legacy_receiver"]
+trait LegacyReceiver {
 }
 
 #[lang = "freeze"]
@@ -61,8 +62,8 @@ fn int_cast(a: u16, b: i16) -> (u8, u16, u32, usize, i8, i16, i32, isize, u8, u3
     )
 }
 
-#[start]
-fn main(argc: isize, _argv: *const *const u8) -> isize {
+#[no_mangle]
+extern "C" fn main(argc: i32, _argv: *const *const u8) -> i32 {
     let (a, b, c, d, e, f, g, h, i, j) = int_cast(10, 42);
     unsafe {
         libc::printf(b"%d\n\0" as *const u8 as *const i8, c);

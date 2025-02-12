@@ -421,7 +421,7 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
             | "__builtin_ia32_xsaveopt64" => {
                 let new_args = args.to_vec();
                 let thirty_two = builder.context.new_rvalue_from_int(new_args[1].get_type(), 32);
-                let arg2 = new_args[1] << thirty_two | new_args[2];
+                let arg2 = (new_args[1] << thirty_two) | new_args[2];
                 let arg2_type = gcc_func.get_param_type(1);
                 let arg2 = builder.context.new_cast(None, arg2, arg2_type);
                 args = vec![new_args[0], arg2].into();
@@ -687,11 +687,12 @@ pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(
                 let field2 = builder.context.new_field(None, args[1].get_type(), "carryResult");
                 let struct_type =
                     builder.context.new_struct_type(None, "addcarryResult", &[field1, field2]);
-                return_value =
-                    builder.context.new_struct_constructor(None, struct_type.as_type(), None, &[
-                        return_value,
-                        last_arg.dereference(None).to_rvalue(),
-                    ]);
+                return_value = builder.context.new_struct_constructor(
+                    None,
+                    struct_type.as_type(),
+                    None,
+                    &[return_value, last_arg.dereference(None).to_rvalue()],
+                );
             }
         }
         "__builtin_ia32_stmxcsr" => {
@@ -716,11 +717,12 @@ pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(
             let field2 = builder.context.new_field(None, return_value.get_type(), "success");
             let struct_type =
                 builder.context.new_struct_type(None, "rdrand_result", &[field1, field2]);
-            return_value =
-                builder.context.new_struct_constructor(None, struct_type.as_type(), None, &[
-                    random_number,
-                    success_variable.to_rvalue(),
-                ]);
+            return_value = builder.context.new_struct_constructor(
+                None,
+                struct_type.as_type(),
+                None,
+                &[random_number, success_variable.to_rvalue()],
+            );
         }
         "fma" => {
             let f16_type = builder.context.new_c_type(CType::Float16);

@@ -13,11 +13,10 @@ use ide_db::{
 use span::Edition;
 use syntax::{AstNode, SyntaxKind::*, SyntaxNode, TextRange, T};
 
-use crate::inlay_hints::InlayFieldsToResolve;
 use crate::navigation_target::UpmappingResult;
 use crate::{
-    hover::hover_for_definition,
-    inlay_hints::AdjustmentHintsMode,
+    hover::{hover_for_definition, SubstTyLen},
+    inlay_hints::{AdjustmentHintsMode, InlayFieldsToResolve},
     moniker::{def_to_kind, def_to_moniker, MonikerResult, SymbolInformationKind},
     parent_module::crates_for,
     Analysis, Fold, HoverConfig, HoverResult, InlayHint, InlayHintsConfig, TryToNav,
@@ -49,7 +48,6 @@ pub struct TokenStaticData {
     pub references: Vec<ReferenceData>,
     pub moniker: Option<MonikerResult>,
     pub display_name: Option<String>,
-    pub enclosing_moniker: Option<MonikerResult>,
     pub signature: Option<String>,
     pub kind: SymbolInformationKind,
 }
@@ -140,6 +138,7 @@ impl StaticIndex<'_> {
                     render_colons: true,
                     discriminant_hints: crate::DiscriminantHints::Fieldless,
                     type_hints: true,
+                    sized_bound: false,
                     parameter_hints: true,
                     generic_parameter_hints: crate::GenericParameterHints {
                         type_hints: false,
@@ -155,6 +154,7 @@ impl StaticIndex<'_> {
                     implicit_drop_hints: false,
                     hide_named_constructor_hints: false,
                     hide_closure_initialization_hints: false,
+                    hide_closure_parameter_hints: false,
                     closure_style: hir::ClosureStyle::ImplFn,
                     param_names_for_lifetime_elision_hints: false,
                     binding_mode_hints: false,
@@ -170,10 +170,10 @@ impl StaticIndex<'_> {
             .unwrap();
         // hovers
         let sema = hir::Semantics::new(self.db);
-        let tokens_or_nodes = sema.parse_guess_edition(file_id).syntax().clone();
+        let root = sema.parse_guess_edition(file_id).syntax().clone();
         let edition =
             sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
-        let tokens = tokens_or_nodes.descendants_with_tokens().filter_map(|it| match it {
+        let tokens = root.descendants_with_tokens().filter_map(|it| match it {
             syntax::NodeOrToken::Node(_) => None,
             syntax::NodeOrToken::Token(it) => Some(it),
         });
@@ -186,6 +186,7 @@ impl StaticIndex<'_> {
             max_trait_assoc_items_count: None,
             max_fields_count: Some(5),
             max_enum_variants_count: Some(5),
+            max_subst_ty_len: SubstTyLen::Unlimited,
         };
         let tokens = tokens.filter(|token| {
             matches!(
@@ -194,23 +195,19 @@ impl StaticIndex<'_> {
             )
         });
         let mut result = StaticIndexedFile { file_id, inlay_hints, folds, tokens: vec![] };
-        for token in tokens {
-            let range = token.text_range();
-            let node = token.parent().unwrap();
-            let def = match get_definition(&sema, token.clone()) {
-                Some(it) => it,
-                None => continue,
-            };
+
+        let mut add_token = |def: Definition, range: TextRange, scope_node: &SyntaxNode| {
             let id = if let Some(it) = self.def_map.get(&def) {
                 *it
             } else {
                 let it = self.tokens.insert(TokenStaticData {
-                    documentation: documentation_for_definition(&sema, def, &node),
+                    documentation: documentation_for_definition(&sema, def, scope_node),
                     hover: Some(hover_for_definition(
                         &sema,
                         file_id,
                         def,
-                        &node,
+                        None,
+                        scope_node,
                         None,
                         false,
                         &hover_config,
@@ -224,9 +221,6 @@ impl StaticIndex<'_> {
                     display_name: def
                         .name(self.db)
                         .map(|name| name.display(self.db, edition).to_string()),
-                    enclosing_moniker: current_crate
-                        .zip(def.enclosing_definition(self.db))
-                        .and_then(|(cc, enclosing_def)| def_to_moniker(self.db, enclosing_def, cc)),
                     signature: Some(def.label(self.db, edition)),
                     kind: def_to_kind(self.db, def),
                 });
@@ -242,6 +236,22 @@ impl StaticIndex<'_> {
                 },
             });
             result.tokens.push((range, id));
+        };
+
+        if let Some(module) = sema.file_to_module_def(file_id) {
+            let def = Definition::Module(module);
+            let range = root.text_range();
+            add_token(def, range, &root);
+        }
+
+        for token in tokens {
+            let range = token.text_range();
+            let node = token.parent().unwrap();
+            let def = match get_definition(&sema, token.clone()) {
+                Some(it) => it,
+                None => continue,
+            };
+            add_token(def, range, &node);
         }
         self.files.push(result);
     }
@@ -293,12 +303,19 @@ mod tests {
 
     use super::VendoredLibrariesConfig;
 
-    fn check_all_ranges(ra_fixture: &str, vendored_libs_config: VendoredLibrariesConfig<'_>) {
+    fn check_all_ranges(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        vendored_libs_config: VendoredLibrariesConfig<'_>,
+    ) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
         let s = StaticIndex::compute(&analysis, vendored_libs_config);
         let mut range_set: FxHashSet<_> = ranges.iter().map(|it| it.0).collect();
         for f in s.files {
             for (range, _) in f.tokens {
+                if range.start() == TextSize::from(0) {
+                    // ignore whole file range corresponding to module definition
+                    continue;
+                }
                 let it = FileRange { file_id: f.file_id, range };
                 if !range_set.contains(&it) {
                     panic!("additional range {it:?}");
@@ -312,7 +329,10 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_definitions(ra_fixture: &str, vendored_libs_config: VendoredLibrariesConfig<'_>) {
+    fn check_definitions(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        vendored_libs_config: VendoredLibrariesConfig<'_>,
+    ) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
         let s = StaticIndex::compute(&analysis, vendored_libs_config);
         let mut range_set: FxHashSet<_> = ranges.iter().map(|it| it.0).collect();

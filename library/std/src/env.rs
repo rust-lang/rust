@@ -10,9 +10,6 @@
 
 #![stable(feature = "env", since = "1.0.0")]
 
-#[cfg(test)]
-mod tests;
-
 use crate::error::Error;
 use crate::ffi::{OsStr, OsString};
 use crate::path::{Path, PathBuf};
@@ -336,7 +333,10 @@ impl Error for VarError {
 ///  - [Austin Group Bugzilla](https://austingroupbugs.net/view.php?id=188)
 ///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
 ///
+/// To pass an environment variable to a child process, you can instead use [`Command::env`].
+///
 /// [`std::net::ToSocketAddrs`]: crate::net::ToSocketAddrs
+/// [`Command::env`]: crate::process::Command::env
 ///
 /// # Panics
 ///
@@ -396,7 +396,12 @@ pub unsafe fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
 ///  - [Austin Group Bugzilla](https://austingroupbugs.net/view.php?id=188)
 ///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
 ///
+/// To prevent a child process from inheriting an environment variable, you can
+/// instead use [`Command::env_remove`] or [`Command::env_clear`].
+///
 /// [`std::net::ToSocketAddrs`]: crate::net::ToSocketAddrs
+/// [`Command::env_remove`]: crate::process::Command::env_remove
+/// [`Command::env_clear`]: crate::process::Command::env_clear
 ///
 /// # Panics
 ///
@@ -622,7 +627,7 @@ impl Error for JoinPathsError {
 ///
 /// In UWP (Universal Windows Platform) targets this function is unimplemented and always returns `None`.
 ///
-/// Before Rust CURRENT_RUSTC_VERSION, this function used to return the value of the 'HOME' environment variable
+/// Before Rust 1.85.0, this function used to return the value of the 'HOME' environment variable
 /// on Windows, which in Cygwin or Mingw environments could return non-standard paths like `/home/you`
 /// instead of `C:\Users\you`.
 ///

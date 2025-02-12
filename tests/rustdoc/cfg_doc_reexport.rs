@@ -1,12 +1,15 @@
 #![feature(doc_cfg)]
-#![feature(no_core)]
+#![feature(no_core, lang_items)]
 
 #![crate_name = "foo"]
 #![no_core]
 
+#[lang = "sized"]
+trait Sized {}
+
 //@ has 'foo/index.html'
-//@ has - '//*[@class="item-name"]/*[@class="stab portability"]' 'foobar'
-//@ has - '//*[@class="item-name"]/*[@class="stab portability"]' 'bar'
+//@ has - '//dt/*[@class="stab portability"]' 'foobar'
+//@ has - '//dt/*[@class="stab portability"]' 'bar'
 
 #[doc(cfg(feature = "foobar"))]
 mod imp_priv {

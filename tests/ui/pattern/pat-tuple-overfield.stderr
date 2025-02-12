@@ -23,12 +23,14 @@ LL |         Z0() => {}
    |
 help: use this syntax instead
    |
-LL |         Z0 => {}
-   |         ~~
+LL -         Z0() => {}
+LL +         Z0 => {}
+   |
 help: a tuple struct with a similar name exists
    |
-LL |         Z1() => {}
-   |         ~~
+LL -         Z0() => {}
+LL +         Z1() => {}
+   |
 
 error[E0532]: expected tuple struct or tuple variant, found unit struct `Z0`
   --> $DIR/pat-tuple-overfield.rs:53:9
@@ -43,12 +45,14 @@ LL |         Z0(_) => {}
    |
 help: use this syntax instead
    |
-LL |         Z0 => {}
-   |         ~~
+LL -         Z0(_) => {}
+LL +         Z0 => {}
+   |
 help: a tuple struct with a similar name exists
    |
-LL |         Z1(_) => {}
-   |         ~~
+LL -         Z0(_) => {}
+LL +         Z1(_) => {}
+   |
 
 error[E0532]: expected tuple struct or tuple variant, found unit struct `Z0`
   --> $DIR/pat-tuple-overfield.rs:54:9
@@ -63,12 +67,14 @@ LL |         Z0(_, _) => {}
    |
 help: use this syntax instead
    |
-LL |         Z0 => {}
-   |         ~~
+LL -         Z0(_, _) => {}
+LL +         Z0 => {}
+   |
 help: a tuple struct with a similar name exists
    |
-LL |         Z1(_, _) => {}
-   |         ~~
+LL -         Z0(_, _) => {}
+LL +         Z1(_, _) => {}
+   |
 
 error[E0532]: expected tuple struct or tuple variant, found unit variant `E1::Z0`
   --> $DIR/pat-tuple-overfield.rs:64:9
@@ -83,12 +89,14 @@ LL |         E1::Z0() => {}
    |
 help: use this syntax instead
    |
-LL |         E1::Z0 => {}
-   |         ~~~~~~
+LL -         E1::Z0() => {}
+LL +         E1::Z0 => {}
+   |
 help: a tuple variant with a similar name exists
    |
-LL |         E1::Z1() => {}
-   |             ~~
+LL -         E1::Z0() => {}
+LL +         E1::Z1() => {}
+   |
 
 error[E0532]: expected tuple struct or tuple variant, found unit variant `E1::Z0`
   --> $DIR/pat-tuple-overfield.rs:65:9
@@ -103,12 +111,14 @@ LL |         E1::Z0(_) => {}
    |
 help: use this syntax instead
    |
-LL |         E1::Z0 => {}
-   |         ~~~~~~
+LL -         E1::Z0(_) => {}
+LL +         E1::Z0 => {}
+   |
 help: a tuple variant with a similar name exists
    |
-LL |         E1::Z1(_) => {}
-   |             ~~
+LL -         E1::Z0(_) => {}
+LL +         E1::Z1(_) => {}
+   |
 
 error[E0532]: expected tuple struct or tuple variant, found unit variant `E1::Z0`
   --> $DIR/pat-tuple-overfield.rs:66:9
@@ -123,12 +133,14 @@ LL |         E1::Z0(_, _) => {}
    |
 help: use this syntax instead
    |
-LL |         E1::Z0 => {}
-   |         ~~~~~~
+LL -         E1::Z0(_, _) => {}
+LL +         E1::Z0 => {}
+   |
 help: a tuple variant with a similar name exists
    |
-LL |         E1::Z1(_, _) => {}
-   |             ~~
+LL -         E1::Z0(_, _) => {}
+LL +         E1::Z1(_, _) => {}
+   |
 
 error[E0532]: expected unit struct, unit variant or constant, found tuple variant `E1::Z1`
   --> $DIR/pat-tuple-overfield.rs:69:9
@@ -143,12 +155,14 @@ LL |         E1::Z1 => {}
    |
 help: use the tuple variant pattern syntax instead
    |
-LL |         E1::Z1() => {}
-   |         ~~~~~~~~
+LL -         E1::Z1 => {}
+LL +         E1::Z1() => {}
+   |
 help: a unit variant with a similar name exists
    |
-LL |         E1::Z0 => {}
-   |             ~~
+LL -         E1::Z1 => {}
+LL +         E1::Z0 => {}
+   |
 
 error[E0308]: mismatched types
   --> $DIR/pat-tuple-overfield.rs:19:9

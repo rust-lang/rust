@@ -139,7 +139,7 @@ impl UninhabitedFrom<'_> {
         ty: &Binders<Ty>,
         subst: &Substitution,
     ) -> ControlFlow<VisiblyUninhabited> {
-        if vis.map_or(true, |it| it.is_visible_from(self.db.upcast(), self.target_mod)) {
+        if vis.is_none_or(|it| it.is_visible_from(self.db.upcast(), self.target_mod)) {
             let ty = ty.clone().substitute(Interner, subst);
             ty.visit_with(self, DebruijnIndex::INNERMOST)
         } else {

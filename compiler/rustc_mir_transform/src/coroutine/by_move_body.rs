@@ -78,7 +78,7 @@ use rustc_middle::hir::place::{Projection, ProjectionKind};
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{self, dump_mir};
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::symbol::kw;
+use rustc_span::kw;
 
 pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -138,10 +138,10 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
             // If the parent capture is by-ref, then we need to apply an additional
             // deref before applying any further projections to this place.
             if parent_capture.is_by_ref() {
-                child_precise_captures.insert(0, Projection {
-                    ty: parent_capture.place.ty(),
-                    kind: ProjectionKind::Deref,
-                });
+                child_precise_captures.insert(
+                    0,
+                    Projection { ty: parent_capture.place.ty(), kind: ProjectionKind::Deref },
+                );
             }
             // If the child capture is by-ref, then we need to apply a "ref"
             // projection (i.e. `&`) at the end. But wait! We don't have that

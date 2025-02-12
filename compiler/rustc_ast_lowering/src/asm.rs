@@ -7,8 +7,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::kw;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, kw, sym};
 use rustc_target::asm;
 
 use super::LoweringContext;
@@ -153,11 +152,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     InlineAsmRegOrRegClass::RegClass(reg_class) => {
                         asm::InlineAsmRegOrRegClass::RegClass(if let Some(asm_arch) = asm_arch {
                             asm::InlineAsmRegClass::parse(asm_arch, reg_class).unwrap_or_else(
-                                |error| {
+                                |supported_register_classes| {
+                                    let mut register_classes =
+                                        format!("`{}`", supported_register_classes[0]);
+                                    for m in &supported_register_classes[1..] {
+                                        let _ = write!(register_classes, ", `{m}`");
+                                    }
                                     self.dcx().emit_err(InvalidRegisterClass {
                                         op_span: *op_sp,
                                         reg_class,
-                                        error,
+                                        supported_register_classes: register_classes,
                                     });
                                     asm::InlineAsmRegClass::Err
                                 },

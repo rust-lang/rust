@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: x86_64 arm_llvm_18 arm
 //@[x86_64] compile-flags: --target x86_64-unknown-linux-gnu
 //@[x86_64] check-pass
@@ -13,22 +14,12 @@
 //@[arm] min-llvm-version: 19
 //@ needs-asm-support
 
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core)]
 #![crate_type = "rlib"]
 #![no_core]
 
-
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! global_asm {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 pub fn main() {
     unsafe {

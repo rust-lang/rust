@@ -3,7 +3,7 @@
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use crate::take_array;
 
@@ -30,6 +30,17 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                             kind: StatementKind::Assign(Box::new((
                                 *destination,
                                 Rvalue::NullaryOp(NullOp::UbChecks, tcx.types.bool),
+                            ))),
+                        });
+                        terminator.kind = TerminatorKind::Goto { target };
+                    }
+                    sym::contract_checks => {
+                        let target = target.unwrap();
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::NullaryOp(NullOp::ContractChecks, tcx.types.bool),
                             ))),
                         });
                         terminator.kind = TerminatorKind::Goto { target };
@@ -324,5 +335,9 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                 }
             }
         }
+    }
+
+    fn is_required(&self) -> bool {
+        true
     }
 }

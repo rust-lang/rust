@@ -300,7 +300,9 @@ fn run_ui_cargo(cx: &TestContext) {
 }
 
 fn main() {
-    set_var("CLIPPY_DISABLE_DOCS_LINKS", "true");
+    unsafe {
+        set_var("CLIPPY_DISABLE_DOCS_LINKS", "true");
+    }
 
     let cx = TestContext::new();
 
@@ -574,12 +576,12 @@ impl LintMetadata {
             id_location: None,
             group: "deprecated",
             level: "none",
-            version,
             docs: format!(
                 "### What it does\n\n\
                 Nothing. This lint has been deprecated\n\n\
                 ### Deprecation reason\n\n{reason}.\n",
             ),
+            version,
             applicability: Applicability::Unspecified,
         }
     }

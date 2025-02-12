@@ -14,11 +14,14 @@
 // - `relocation-model` set to `static`; also no PIE, no relro and no dynamic
 // linking. rationale: matches `thumb` targets
 
-use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{
+    Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions,
+};
 
 pub(crate) fn target() -> Target {
     let opts = TargetOptions {
         abi: "eabi".into(),
+        llvm_floatabi: Some(FloatAbi::Soft),
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
         features: "+v7,+thumb2,+soft-float,-neon,+strict-align".into(),

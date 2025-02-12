@@ -1,5 +1,5 @@
 #![warn(clippy::print_literal)]
-#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::uninlined_format_args, clippy::literal_string_with_formatting_args)]
 
 fn main() {
     // these should be fine
@@ -65,4 +65,19 @@ fn main() {
     println!("{}", "\\\\u{1234}");
 
     println!("mixed: {} {world}", "{hello}");
+}
+
+fn issue_13959() {
+    println!("{}", r#"""#);
+    println!(
+        "{}",
+        r#"
+        foo
+        \
+        \\
+        "
+        \"
+        bar
+"#
+    );
 }

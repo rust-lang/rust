@@ -9,14 +9,14 @@ use std::{io, ops, str};
 
 use regex::Regex;
 use rustc_hir::def_id::DefId;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{
     self, BasicBlock, Body, Location, create_dump_file, dump_enabled, graphviz_safe_def_name,
     traversal,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_graphviz as dot};
 
@@ -205,7 +205,7 @@ where
     // the operations that involve the mutation, i.e. within the `borrow_mut`.
     cursor: RefCell<ResultsCursor<'mir, 'tcx, A>>,
     style: OutputStyle,
-    reachable: BitSet<BasicBlock>,
+    reachable: DenseBitSet<BasicBlock>,
 }
 
 impl<'mir, 'tcx, A> Formatter<'mir, 'tcx, A>
@@ -608,7 +608,7 @@ where
         let before = diffs_before.as_mut().map(next_in_dataflow_order);
 
         assert!(diffs_after.is_empty());
-        assert!(diffs_before.as_ref().map_or(true, ExactSizeIterator::is_empty));
+        assert!(diffs_before.as_ref().is_none_or(ExactSizeIterator::is_empty));
 
         let terminator = self.cursor.body()[block].terminator();
         let mut terminator_str = String::new();
@@ -670,10 +670,10 @@ where
                 r#"<td colspan="{colspan}" {fmt} align="left">{state}</td>"#,
                 colspan = this.style.num_state_columns(),
                 fmt = fmt,
-                state = dot::escape_html(&format!("{:?}", DebugWithAdapter {
-                    this: state,
-                    ctxt: analysis
-                })),
+                state = dot::escape_html(&format!(
+                    "{:?}",
+                    DebugWithAdapter { this: state, ctxt: analysis }
+                )),
             )
         })
     }

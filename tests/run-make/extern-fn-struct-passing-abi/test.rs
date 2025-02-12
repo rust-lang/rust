@@ -126,7 +126,7 @@ extern "C" {
 
 fn main() {
     let s = Rect { a: 553, b: 554, c: 555, d: 556 };
-    let t = BiggerRect { s: s, a: 27834, b: 7657 };
+    let t = BiggerRect { s, a: 27834, b: 7657 };
     let u = FloatRect { a: 3489, b: 3490, c: 8. };
     let v = Huge { a: 5647, b: 5648, c: 5649, d: 5650, e: 5651 };
     let w = Huge64 { a: 1234, b: 1335, c: 1436, d: 1537, e: 1638 };

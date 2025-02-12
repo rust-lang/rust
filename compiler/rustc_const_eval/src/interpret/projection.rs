@@ -325,7 +325,7 @@ where
         let actual_to = if from_end {
             if from.checked_add(to).is_none_or(|to| to > len) {
                 // This can only be reached in ConstProp and non-rustc-MIR.
-                throw_ub!(BoundsCheckFailed { len: len, index: from.saturating_add(to) });
+                throw_ub!(BoundsCheckFailed { len, index: from.saturating_add(to) });
             }
             len.checked_sub(to).unwrap()
         } else {
@@ -381,6 +381,7 @@ where
             OpaqueCast(ty) => {
                 span_bug!(self.cur_span(), "OpaqueCast({ty}) encountered after borrowck")
             }
+            UnwrapUnsafeBinder(target) => base.transmute(self.layout_of(target)?, self)?,
             // We don't want anything happening here, this is here as a dummy.
             Subtype(_) => base.transmute(base.layout(), self)?,
             Field(field, _) => self.project_field(base, field.index())?,

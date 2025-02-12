@@ -11,19 +11,27 @@ use std::str::FromStr;
 use std::{env, process};
 
 use bootstrap::{
-    Build, CONFIG_CHANGE_HISTORY, Config, Flags, Subcommand, find_recent_config_change_ids,
+    Build, CONFIG_CHANGE_HISTORY, Config, Flags, Subcommand, debug, find_recent_config_change_ids,
     human_readable_changes, t,
 };
 use build_helper::ci::CiEnv;
+#[cfg(feature = "tracing")]
+use tracing::instrument;
 
+#[cfg_attr(feature = "tracing", instrument(level = "trace", name = "main"))]
 fn main() {
+    #[cfg(feature = "tracing")]
+    setup_tracing();
+
     let args = env::args().skip(1).collect::<Vec<_>>();
 
     if Flags::try_parse_verbose_help(&args) {
         return;
     }
 
+    debug!("parsing flags");
     let flags = Flags::parse(&args);
+    debug!("parsing config based on flags");
     let config = Config::parse(flags);
 
     let mut build_lock;
@@ -47,7 +55,9 @@ fn main() {
             }
             err => {
                 drop(err);
-                if let Ok(pid) = pid {
+                // #135972: We can reach this point when the lock has been taken,
+                // but the locker has not yet written its PID to the file
+                if let Some(pid) = pid.ok().filter(|pid| !pid.is_empty()) {
                     println!("WARNING: build directory locked by process {pid}, waiting for lock");
                 } else {
                     println!("WARNING: build directory locked, waiting for lock");
@@ -83,6 +93,7 @@ fn main() {
     let dump_bootstrap_shims = config.dump_bootstrap_shims;
     let out_dir = config.out.clone();
 
+    debug!("creating new build based on config");
     Build::new(config).build();
 
     if suggest_setup {
@@ -186,4 +197,28 @@ fn check_version(config: &Config) -> Option<String> {
     };
 
     Some(msg)
+}
+
+// # Note on `tracing` usage in bootstrap
+//
+// Due to the conditional compilation via the `tracing` cargo feature, this means that `tracing`
+// usages in bootstrap need to be also gated behind the `tracing` feature:
+//
+// - `tracing` macros with log levels (`trace!`, `debug!`, `warn!`, `info`, `error`) should not be
+//   used *directly*. You should use the wrapped `tracing` macros which gate the actual invocations
+//   behind `feature = "tracing"`.
+// - `tracing`'s `#[instrument(..)]` macro will need to be gated like `#![cfg_attr(feature =
+//   "tracing", instrument(..))]`.
+#[cfg(feature = "tracing")]
+fn setup_tracing() {
+    use tracing_subscriber::EnvFilter;
+    use tracing_subscriber::layer::SubscriberExt;
+
+    let filter = EnvFilter::from_env("BOOTSTRAP_TRACING");
+    // cf. <https://docs.rs/tracing-tree/latest/tracing_tree/struct.HierarchicalLayer.html>.
+    let layer = tracing_tree::HierarchicalLayer::default().with_targets(true).with_indent_amount(2);
+
+    let registry = tracing_subscriber::registry().with(filter).with(layer);
+
+    tracing::subscriber::set_global_default(registry).unwrap();
 }

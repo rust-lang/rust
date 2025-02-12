@@ -3,8 +3,9 @@
 // tidy-alphabetical-end
 
 use rustc_abi::ExternAbi;
+use rustc_ast::AttrId;
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::node_id::NodeId;
-use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
@@ -14,8 +15,7 @@ use rustc_hir::def::Namespace;
 use rustc_hir::{HashStableContext, HirId, MissingLifetimeKind};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 pub use rustc_span::edition::Edition;
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, sym};
 use serde::{Deserialize, Serialize};
 
 pub use self::Level::*;
@@ -40,6 +40,23 @@ macro_rules! pluralize {
     ("this", $x:expr) => {
         if $x == 1 { "this" } else { "these" }
     };
+}
+
+/// Grammatical tool for displaying messages to end users in a nice form.
+///
+/// Take a list of items and a function to turn those items into a `String`, and output a display
+/// friendly comma separated list of those items.
+// FIXME(estebank): this needs to be changed to go through the translation machinery.
+pub fn listify<T>(list: &[T], fmt: impl Fn(&T) -> String) -> Option<String> {
+    Some(match list {
+        [only] => fmt(&only),
+        [others @ .., last] => format!(
+            "{} and {}",
+            others.iter().map(|i| fmt(i)).collect::<Vec<_>>().join(", "),
+            fmt(&last),
+        ),
+        [] => return None,
+    })
 }
 
 /// Indicates the confidence in the correctness of a suggestion.
@@ -161,7 +178,19 @@ impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectation
 /// Setting for how to handle a lint.
 ///
 /// See: <https://doc.rust-lang.org/rustc/lints/levels.html>
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, HashStable_Generic)]
+#[derive(
+    Clone,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Ord,
+    Debug,
+    Hash,
+    Encodable,
+    Decodable,
+    HashStable_Generic
+)]
 pub enum Level {
     /// The `allow` level will not issue any message.
     Allow,
@@ -221,8 +250,8 @@ impl Level {
     }
 
     /// Converts an `Attribute` to a level.
-    pub fn from_attr(attr: &Attribute) -> Option<Self> {
-        Self::from_symbol(attr.name_or_empty(), Some(attr.id))
+    pub fn from_attr(attr: &impl AttributeExt) -> Option<Self> {
+        Self::from_symbol(attr.name_or_empty(), Some(attr.id()))
     }
 
     /// Converts a `Symbol` to a level.
@@ -783,7 +812,6 @@ pub enum BuiltinLintDiag {
         extern_crate: Symbol,
         local_crate: Symbol,
     },
-    WasmCAbi,
     IllFormedAttributeInput {
         suggestions: Vec<String>,
     },
@@ -931,7 +959,7 @@ macro_rules! declare_lint {
             desc: $desc,
             is_externally_loaded: false,
             $($v: true,)*
-            $(feature_gate: Some(rustc_span::symbol::sym::$gate),)?
+            $(feature_gate: Some(rustc_span::sym::$gate),)?
             $(future_incompatible: Some($crate::FutureIncompatibleInfo {
                 reason: $reason,
                 $($field: $val,)*
@@ -976,7 +1004,7 @@ macro_rules! declare_tool_lint {
             report_in_external_macro: $external,
             future_incompatible: None,
             is_externally_loaded: true,
-            $(feature_gate: Some(rustc_span::symbol::sym::$gate),)?
+            $(feature_gate: Some(rustc_span::sym::$gate),)?
             crate_level_only: false,
             $(eval_always: $eval_always,)?
             ..$crate::Lint::default_fields_for_macro()

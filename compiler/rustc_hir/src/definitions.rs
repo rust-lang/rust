@@ -11,7 +11,7 @@ use rustc_data_structures::stable_hasher::{Hash64, StableHasher};
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Symbol, kw, sym};
 use tracing::{debug, instrument};
 
 pub use crate::def_id::DefPathHash;

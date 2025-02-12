@@ -1,8 +1,8 @@
 warning: unknown lint: `multiple_supertrait_upcastable`
-  --> $DIR/feature-gate-multiple_supertrait_upcastable.rs:3:1
+  --> $DIR/feature-gate-multiple_supertrait_upcastable.rs:3:9
    |
 LL | #![deny(multiple_supertrait_upcastable)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the `multiple_supertrait_upcastable` lint is unstable
    = help: add `#![feature(multiple_supertrait_upcastable)]` to the crate attributes to enable
@@ -10,10 +10,10 @@ LL | #![deny(multiple_supertrait_upcastable)]
    = note: `#[warn(unknown_lints)]` on by default
 
 warning: unknown lint: `multiple_supertrait_upcastable`
-  --> $DIR/feature-gate-multiple_supertrait_upcastable.rs:5:1
+  --> $DIR/feature-gate-multiple_supertrait_upcastable.rs:5:9
    |
 LL | #![warn(multiple_supertrait_upcastable)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the `multiple_supertrait_upcastable` lint is unstable
    = help: add `#![feature(multiple_supertrait_upcastable)]` to the crate attributes to enable

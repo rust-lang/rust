@@ -100,18 +100,17 @@ impl<'a> Link<'a> {
 }
 
 pub(crate) mod filters {
-    use std::fmt::Display;
+    use std::fmt::{self, Display};
 
     use rinja::filters::Safe;
 
     use crate::html::escape::EscapeBodyTextWithWbr;
-    use crate::html::render::display_fn;
     pub(crate) fn wrapped<T>(v: T) -> rinja::Result<Safe<impl Display>>
     where
         T: Display,
     {
         let string = v.to_string();
-        Ok(Safe(display_fn(move |f| EscapeBodyTextWithWbr(&string).fmt(f))))
+        Ok(Safe(fmt::from_fn(move |f| EscapeBodyTextWithWbr(&string).fmt(f))))
     }
 }
 
@@ -282,10 +281,10 @@ fn sidebar_trait<'a>(
         res
     }
 
-    let req_assoc = filter_items(&t.items, |m| m.is_ty_associated_type(), "associatedtype");
+    let req_assoc = filter_items(&t.items, |m| m.is_required_associated_type(), "associatedtype");
     let prov_assoc = filter_items(&t.items, |m| m.is_associated_type(), "associatedtype");
     let req_assoc_const =
-        filter_items(&t.items, |m| m.is_ty_associated_const(), "associatedconstant");
+        filter_items(&t.items, |m| m.is_required_associated_const(), "associatedconstant");
     let prov_assoc_const =
         filter_items(&t.items, |m| m.is_associated_const(), "associatedconstant");
     let req_method = filter_items(&t.items, |m| m.is_ty_method(), "tymethod");
@@ -357,7 +356,7 @@ fn sidebar_type_alias<'a>(
     deref_id_map: &'a DefIdMap<String>,
 ) {
     if let Some(inner_type) = &t.inner_type {
-        items.push(LinkBlock::forced(Link::new("aliased-type", "Aliased type"), "type"));
+        items.push(LinkBlock::forced(Link::new("aliased-type", "Aliased Type"), "type"));
         match inner_type {
             clean::TypeAliasInnerType::Enum { variants, is_non_exhaustive: _ } => {
                 let mut variants = variants

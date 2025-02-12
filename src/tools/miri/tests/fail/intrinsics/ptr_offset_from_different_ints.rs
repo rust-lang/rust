@@ -15,6 +15,6 @@ fn main() {
         let _ = p1.byte_offset_from(p1);
 
         // UB because different pointers.
-        let _ = p1.byte_offset_from(p2); //~ERROR: no provenance
+        let _ = p1.byte_offset_from(p2); //~ERROR: not both derived from the same allocation
     }
 }

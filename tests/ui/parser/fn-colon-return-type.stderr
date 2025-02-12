@@ -6,8 +6,9 @@ LL | fn foo(x: i32): i32 {
    |
 help: use `->` instead
    |
-LL | fn foo(x: i32) -> i32 {
-   |                ~~
+LL - fn foo(x: i32): i32 {
+LL + fn foo(x: i32) -> i32 {
+   |
 
 error: aborting due to 1 previous error
 

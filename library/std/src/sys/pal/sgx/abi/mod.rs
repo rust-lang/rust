@@ -73,7 +73,7 @@ extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64
 
         EntryReturn(0, 0)
     } else {
-        extern "C" {
+        unsafe extern "C" {
             fn main(argc: isize, argv: *const *const u8) -> isize;
         }
 

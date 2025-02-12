@@ -8,7 +8,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{DUMMY_SP, Span};
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, trace};
 
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
@@ -93,23 +93,59 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return;
                 }
 
-                if let OperandValue::Immediate(v) = cg_elem.val {
+                // If `v` is an integer constant whose value is just a single byte repeated N times,
+                // emit a `memset` filling the entire `dest` with that byte.
+                let try_init_all_same = |bx: &mut Bx, v| {
                     let start = dest.val.llval;
                     let size = bx.const_usize(dest.layout.size.bytes());
 
-                    // Use llvm.memset.p0i8.* to initialize all zero arrays
-                    if bx.cx().const_to_opt_u128(v, false) == Some(0) {
-                        let fill = bx.cx().const_u8(0);
-                        bx.memset(start, fill, size, dest.val.align, MemFlags::empty());
-                        return;
+                    // Use llvm.memset.p0i8.* to initialize all same byte arrays
+                    if let Some(int) = bx.cx().const_to_opt_u128(v, false) {
+                        let bytes = &int.to_le_bytes()[..cg_elem.layout.size.bytes_usize()];
+                        let first = bytes[0];
+                        if bytes[1..].iter().all(|&b| b == first) {
+                            let fill = bx.cx().const_u8(first);
+                            bx.memset(start, fill, size, dest.val.align, MemFlags::empty());
+                            return true;
+                        }
                     }
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     let v = bx.from_immediate(v);
                     if bx.cx().val_ty(v) == bx.cx().type_i8() {
                         bx.memset(start, v, size, dest.val.align, MemFlags::empty());
-                        return;
+                        return true;
                     }
+                    false
+                };
+
+                trace!(?cg_elem.val);
+                match cg_elem.val {
+                    OperandValue::Immediate(v) => {
+                        if try_init_all_same(bx, v) {
+                            return;
+                        }
+                    }
+                    OperandValue::Pair(a, b) => {
+                        let a_is_undef = bx.cx().is_undef(a);
+                        match (a_is_undef, bx.cx().is_undef(b)) {
+                            // Can happen for uninit unions
+                            (true, true) => {
+                                // FIXME: can we produce better output here?
+                            }
+                            (false, true) | (true, false) => {
+                                let val = if a_is_undef { b } else { a };
+                                if try_init_all_same(bx, val) {
+                                    return;
+                                }
+                            }
+                            (false, false) => {
+                                // FIXME: if both are the same value, use try_init_all_same
+                            }
+                        }
+                    }
+                    OperandValue::ZeroSized => unreachable!("checked above"),
+                    OperandValue::Ref(..) => {}
                 }
 
                 let count = self
@@ -351,10 +387,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         use abi::Primitive::*;
         imm = bx.from_immediate(imm);
 
-        // When scalars are passed by value, there's no metadata recording their
-        // valid ranges. For example, `char`s are passed as just `i32`, with no
-        // way for LLVM to know that they're 0x10FFFF at most. Thus we assume
-        // the range of the input value too, not just the output range.
+        // If we have a scalar, we must already know its range. Either
+        //
+        // 1) It's a parameter with `range` parameter metadata,
+        // 2) It's something we `load`ed with `!range` metadata, or
+        // 3) After a transmute we `assume`d the range (see below).
+        //
+        // That said, last time we tried removing this, it didn't actually help
+        // the rustc-perf results, so might as well keep doing it
+        // <https://github.com/rust-lang/rust/pull/135610#issuecomment-2599275182>
         self.assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
 
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
@@ -375,7 +416,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.bitcast(int_imm, to_backend_ty)
             }
         };
+
+        // This `assume` remains important for cases like (a conceptual)
+        //    transmute::<u32, NonZeroU32>(x) == 0
+        // since it's never passed to something with parameter metadata (especially
+        // after MIR inlining) so the only way to tell the backend about the
+        // constraint that the `transmute` introduced is to `assume` it.
         self.assume_scalar_range(bx, imm, to_scalar, to_backend_ty);
+
         imm = bx.to_immediate_scalar(imm, to_scalar);
         imm
     }
@@ -397,31 +445,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
 
-        let abi::WrappingRange { start, end } = scalar.valid_range(self.cx);
-
-        if start <= end {
-            if start > 0 {
-                let low = bx.const_uint_big(backend_ty, start);
-                let cmp = bx.icmp(IntPredicate::IntUGE, imm, low);
-                bx.assume(cmp);
-            }
-
-            let type_max = scalar.size(self.cx).unsigned_int_max();
-            if end < type_max {
-                let high = bx.const_uint_big(backend_ty, end);
-                let cmp = bx.icmp(IntPredicate::IntULE, imm, high);
-                bx.assume(cmp);
-            }
-        } else {
-            let low = bx.const_uint_big(backend_ty, start);
-            let cmp_low = bx.icmp(IntPredicate::IntUGE, imm, low);
-
-            let high = bx.const_uint_big(backend_ty, end);
-            let cmp_high = bx.icmp(IntPredicate::IntULE, imm, high);
-
-            let or = bx.or(cmp_low, cmp_high);
-            bx.assume(or);
-        }
+        let range = scalar.valid_range(self.cx);
+        bx.assume_integer_range(imm, backend_ty, range);
     }
 
     pub(crate) fn codegen_rvalue_unsized(
@@ -587,9 +612,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::CopyForDeref(place) => {
                 self.codegen_operand(bx, &mir::Operand::Copy(place))
             }
-            mir::Rvalue::RawPtr(mutability, place) => {
-                let mk_ptr =
-                    move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| Ty::new_ptr(tcx, ty, mutability);
+            mir::Rvalue::RawPtr(kind, place) => {
+                let mk_ptr = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
+                    Ty::new_ptr(tcx, ty, kind.to_mutbl_lossy())
+                };
                 self.codegen_place_to_pointer(bx, place, mk_ptr)
             }
 
@@ -715,6 +741,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let val = bx.tcx().sess.ub_checks();
                         bx.cx().const_bool(val)
                     }
+                    mir::NullOp::ContractChecks => {
+                        let val = bx.tcx().sess.contract_checks();
+                        bx.cx().const_bool(val)
+                    }
                 };
                 let tcx = self.cx.tcx();
                 OperandRef {
@@ -796,6 +826,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let box_layout = bx.cx().layout_of(Ty::new_box(bx.tcx(), content_ty));
 
                 OperandRef { val: OperandValue::Immediate(val), layout: box_layout }
+            }
+            mir::Rvalue::WrapUnsafeBinder(ref operand, binder_ty) => {
+                let operand = self.codegen_operand(bx, operand);
+                let binder_ty = self.monomorphize(binder_ty);
+                let layout = bx.cx().layout_of(binder_ty);
+                OperandRef { val: operand.val, layout }
             }
         }
     }
@@ -1097,7 +1133,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Discriminant(..) |
             mir::Rvalue::NullaryOp(..) |
             mir::Rvalue::ThreadLocalRef(_) |
-            mir::Rvalue::Use(..) => // (*)
+            mir::Rvalue::Use(..) |
+            mir::Rvalue::WrapUnsafeBinder(..) => // (*)
                 true,
             // Arrays are always aggregates, so it's not worth checking anything here.
             // (If it's really `[(); N]` or `[T; 0]` and we use the place path, fine.)

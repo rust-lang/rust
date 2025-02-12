@@ -174,6 +174,10 @@ fn integrated_completion_benchmark() {
             limit: None,
             add_semicolon_to_unit: true,
             fields_to_resolve: CompletionFieldsToResolve::empty(),
+            exclude_flyimport: vec![],
+            exclude_traits: &[],
+            enable_auto_await: true,
+            enable_auto_iter: true,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -222,6 +226,10 @@ fn integrated_completion_benchmark() {
             limit: None,
             add_semicolon_to_unit: true,
             fields_to_resolve: CompletionFieldsToResolve::empty(),
+            exclude_flyimport: vec![],
+            exclude_traits: &[],
+            enable_auto_await: true,
+            enable_auto_iter: true,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -268,6 +276,10 @@ fn integrated_completion_benchmark() {
             limit: None,
             add_semicolon_to_unit: true,
             fields_to_resolve: CompletionFieldsToResolve::empty(),
+            exclude_flyimport: vec![],
+            exclude_traits: &[],
+            enable_auto_await: true,
+            enable_auto_iter: true,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };

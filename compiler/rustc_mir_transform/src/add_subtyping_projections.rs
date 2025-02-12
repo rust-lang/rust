@@ -61,4 +61,8 @@ impl<'tcx> crate::MirPass<'tcx> for Subtyper {
         }
         checker.patcher.apply(body);
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }

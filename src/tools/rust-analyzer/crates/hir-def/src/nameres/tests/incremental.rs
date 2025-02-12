@@ -331,7 +331,7 @@ pub type Ty = ();
             }
 
             for (_, res) in module_data.scope.resolutions() {
-                match res.values.map(|(a, _, _)| a).or(res.types.map(|(a, _, _)| a)).unwrap() {
+                match res.values.map(|it| it.def).or(res.types.map(|it| it.def)).unwrap() {
                     ModuleDefId::FunctionId(f) => _ = db.function_data(f),
                     ModuleDefId::AdtId(adt) => match adt {
                         AdtId::StructId(it) => _ = db.struct_data(it),

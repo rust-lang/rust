@@ -235,7 +235,7 @@ fn concurrent_wait_wake() {
     static mut DATA: i32 = 0;
     static WOKEN: AtomicI32 = AtomicI32::new(0);
 
-    let rounds = 50;
+    let rounds = 64;
     for _ in 0..rounds {
         unsafe { DATA = 0 }; // Reset
         // Suppose the main thread is holding a lock implemented using futex...
@@ -267,8 +267,7 @@ fn concurrent_wait_wake() {
             }
         });
         // Increase the chance that the other thread actually goes to sleep.
-        // (5 yields in a loop seem to make that happen around 40% of the time.)
-        for _ in 0..5 {
+        for _ in 0..6 {
             thread::yield_now();
         }
 

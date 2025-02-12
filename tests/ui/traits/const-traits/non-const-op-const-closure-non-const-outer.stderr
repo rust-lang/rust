@@ -1,4 +1,4 @@
-error[E0015]: cannot call non-const fn `<() as Foo>::foo` in constant functions
+error[E0015]: cannot call non-const method `<() as Foo>::foo` in constant functions
   --> $DIR/non-const-op-const-closure-non-const-outer.rs:13:22
    |
 LL |     (const || { (()).foo() })();

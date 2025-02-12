@@ -59,7 +59,7 @@ pub struct QuestionMark {
     /// As for why we need this in the first place: <https://github.com/rust-lang/rust-clippy/issues/8628>
     try_block_depth_stack: Vec<u32>,
     /// Keeps track of the number of inferred return type closures we are inside, to avoid problems
-    /// with the `Err(x.into())` expansion being ambiguious.
+    /// with the `Err(x.into())` expansion being ambiguous.
     inferred_ret_closure_stack: u16,
 }
 

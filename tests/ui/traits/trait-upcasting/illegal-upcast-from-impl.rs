@@ -2,8 +2,6 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
-#![feature(trait_upcasting)]
-
 trait Super {
     type Assoc;
 }

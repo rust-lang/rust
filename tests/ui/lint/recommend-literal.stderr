@@ -33,12 +33,14 @@ LL |     let v2: Bool = true;
    |
 help: a builtin type with a similar name exists
    |
-LL |     let v2: bool = true;
-   |             ~~~~
+LL -     let v2: Bool = true;
+LL +     let v2: bool = true;
+   |
 help: perhaps you intended to use this type
    |
-LL |     let v2: bool = true;
-   |             ~~~~
+LL -     let v2: Bool = true;
+LL +     let v2: bool = true;
+   |
 
 error[E0412]: cannot find type `boolean` in this scope
   --> $DIR/recommend-literal.rs:19:9
@@ -75,8 +77,9 @@ LL |     depth: Option<int>,
    |
 help: perhaps you intended to use this type
    |
-LL |     depth: Option<i32>,
-   |                   ~~~
+LL -     depth: Option<int>,
+LL +     depth: Option<i32>,
+   |
 help: you might be missing a type parameter
    |
 LL | struct Data<int> {

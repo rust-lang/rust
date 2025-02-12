@@ -60,9 +60,9 @@ impl Lock {
 
         unsafe {
             LockFileEx(
-                HANDLE(file.as_raw_handle() as isize),
+                HANDLE(file.as_raw_handle()),
                 flags,
-                0,
+                None,
                 u32::MAX,
                 u32::MAX,
                 &mut overlapped,

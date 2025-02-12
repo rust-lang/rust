@@ -629,15 +629,18 @@ impl File {
     /// This acquires an exclusive advisory lock; no other file handle to this file may acquire
     /// another lock.
     ///
-    /// If this file handle, or a clone of it, already holds an advisory lock the exact behavior is
-    /// unspecified and platform dependent, including the possibility that it will deadlock.
-    /// However, if this method returns, then an exclusive lock is held.
+    /// If this file handle/descriptor, or a clone of it, already holds an advisory lock the exact
+    /// behavior is unspecified and platform dependent, including the possibility that it will
+    /// deadlock. However, if this method returns, then an exclusive lock is held.
     ///
     /// If the file not open for writing, it is unspecified whether this function returns an error.
     ///
     /// Note, this is an advisory lock meant to interact with [`lock_shared`], [`try_lock`],
     /// [`try_lock_shared`], and [`unlock`]. Its interactions with other methods, such as [`read`]
     /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    ///
+    /// The lock will be released when this file (along with any other file descriptors/handles
+    /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
     ///
     /// # Platform-specific behavior
     ///
@@ -661,7 +664,7 @@ impl File {
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let f = File::open("foo.txt")?;
+    ///     let f = File::create("foo.txt")?;
     ///     f.lock()?;
     ///     Ok(())
     /// }
@@ -671,18 +674,21 @@ impl File {
         self.inner.lock()
     }
 
-    /// Acquire a shared advisory lock on the file. Blocks until the lock can be acquired.
+    /// Acquire a shared (non-exclusive) advisory lock on the file. Blocks until the lock can be acquired.
     ///
     /// This acquires a shared advisory lock; more than one file handle may hold a shared lock, but
-    /// none may hold an exclusive lock.
+    /// none may hold an exclusive lock at the same time.
     ///
-    /// If this file handle, or a clone of it, already holds an advisory lock, the exact behavior is
-    /// unspecified and platform dependent, including the possibility that it will deadlock.
-    /// However, if this method returns, then a shared lock is held.
+    /// If this file handle/descriptor, or a clone of it, already holds an advisory lock, the exact
+    /// behavior is unspecified and platform dependent, including the possibility that it will
+    /// deadlock. However, if this method returns, then a shared lock is held.
     ///
     /// Note, this is an advisory lock meant to interact with [`lock`], [`try_lock`],
     /// [`try_lock_shared`], and [`unlock`]. Its interactions with other methods, such as [`read`]
     /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    ///
+    /// The lock will be released when this file (along with any other file descriptors/handles
+    /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
     ///
     /// # Platform-specific behavior
     ///
@@ -716,20 +722,27 @@ impl File {
         self.inner.lock_shared()
     }
 
-    /// Acquire an exclusive advisory lock on the file. Returns `Ok(false)` if the file is locked.
+    /// Try to acquire an exclusive advisory lock on the file.
+    ///
+    /// Returns `Ok(false)` if a different lock is already held on this file (via another
+    /// handle/descriptor).
     ///
     /// This acquires an exclusive advisory lock; no other file handle to this file may acquire
     /// another lock.
     ///
-    /// If this file handle, or a clone of it, already holds an advisory lock, the exact behavior is
-    /// unspecified and platform dependent, including the possibility that it will deadlock.
-    /// However, if this method returns, then an exclusive lock is held.
+    /// If this file handle/descriptor, or a clone of it, already holds an advisory lock, the exact
+    /// behavior is unspecified and platform dependent, including the possibility that it will
+    /// deadlock. However, if this method returns `Ok(true)`, then it has acquired an exclusive
+    /// lock.
     ///
     /// If the file not open for writing, it is unspecified whether this function returns an error.
     ///
     /// Note, this is an advisory lock meant to interact with [`lock`], [`lock_shared`],
     /// [`try_lock_shared`], and [`unlock`]. Its interactions with other methods, such as [`read`]
     /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    ///
+    /// The lock will be released when this file (along with any other file descriptors/handles
+    /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
     ///
     /// # Platform-specific behavior
     ///
@@ -754,7 +767,7 @@ impl File {
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let f = File::open("foo.txt")?;
+    ///     let f = File::create("foo.txt")?;
     ///     f.try_lock()?;
     ///     Ok(())
     /// }
@@ -764,19 +777,24 @@ impl File {
         self.inner.try_lock()
     }
 
-    /// Acquire a shared advisory lock on the file.
-    /// Returns `Ok(false)` if the file is exclusively locked.
+    /// Try to acquire a shared (non-exclusive) advisory lock on the file.
+    ///
+    /// Returns `Ok(false)` if an exclusive lock is already held on this file (via another
+    /// handle/descriptor).
     ///
     /// This acquires a shared advisory lock; more than one file handle may hold a shared lock, but
-    /// none may hold an exclusive lock.
+    /// none may hold an exclusive lock at the same time.
     ///
     /// If this file handle, or a clone of it, already holds an advisory lock, the exact behavior is
     /// unspecified and platform dependent, including the possibility that it will deadlock.
-    /// However, if this method returns, then a shared lock is held.
+    /// However, if this method returns `Ok(true)`, then it has acquired a shared lock.
     ///
     /// Note, this is an advisory lock meant to interact with [`lock`], [`try_lock`],
     /// [`try_lock`], and [`unlock`]. Its interactions with other methods, such as [`read`]
     /// and [`write`] are platform specific, and it may or may not cause non-lockholders to block.
+    ///
+    /// The lock will be released when this file (along with any other file descriptors/handles
+    /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
     ///
     /// # Platform-specific behavior
     ///
@@ -813,7 +831,12 @@ impl File {
 
     /// Release all locks on the file.
     ///
-    /// All remaining locks are released when the file handle, and all clones of it, are dropped.
+    /// All locks are released when the file (along with any other file descriptors/handles
+    /// duplicated or inherited from it) is closed. This method allows releasing locks without
+    /// closing the file.
+    ///
+    /// If no lock is currently held via this file descriptor/handle, this method may return an
+    /// error, or may return successfully without taking any action.
     ///
     /// # Platform-specific behavior
     ///
@@ -1869,8 +1892,10 @@ impl Permissions {
     ///
     /// # Note
     ///
-    /// This function does not take Access Control Lists (ACLs) or Unix group
-    /// membership into account.
+    /// This function does not take Access Control Lists (ACLs), Unix group
+    /// membership and other nuances into account.
+    /// Therefore the return value of this function cannot be relied upon
+    /// to predict whether attempts to read or write the file will actually succeed.
     ///
     /// # Windows
     ///
@@ -1885,10 +1910,13 @@ impl Permissions {
     /// # Unix (including macOS)
     ///
     /// On Unix-based platforms this checks if *any* of the owner, group or others
-    /// write permission bits are set. It does not check if the current
-    /// user is in the file's assigned group. It also does not check ACLs.
-    /// Therefore the return value of this function cannot be relied upon
-    /// to predict whether attempts to read or write the file will actually succeed.
+    /// write permission bits are set. It does not consider anything else, including:
+    ///
+    /// * Whether the current user is in the file's assigned group.
+    /// * Permissions granted by ACL.
+    /// * That `root` user can write to files that do not have any write bits set.
+    /// * Writable files on a filesystem that is mounted read-only.
+    ///
     /// The [`PermissionsExt`] trait gives direct access to the permission bits but
     /// also does not read ACLs.
     ///
@@ -2279,8 +2307,8 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 ///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds to the `unlink` function on Unix
-/// and the `DeleteFile` function on Windows.
+/// This function currently corresponds to the `unlink` function on Unix.
+/// On Windows, `DeleteFile` is used or `CreateFileW` and `SetInformationByHandle` for readonly files.
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
@@ -2397,12 +2425,14 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `rename` function on Unix
-/// and the `MoveFileEx` function with the `MOVEFILE_REPLACE_EXISTING` flag on Windows.
+/// and the `SetFileInformationByHandle` function on Windows.
 ///
 /// Because of this, the behavior when both `from` and `to` exist differs. On
 /// Unix, if `from` is a directory, `to` must also be an (empty) directory. If
-/// `from` is not a directory, `to` must also be not a directory. In contrast,
-/// on Windows, `from` can be anything, but `to` must *not* be a directory.
+/// `from` is not a directory, `to` must also be not a directory. The behavior
+/// on Windows is the same on Windows 10 1607 and higher if `FileRenameInfoEx`
+/// is supported by the filesystem; otherwise, `from` can be anything, but
+/// `to` must *not* be a directory.
 ///
 /// Note that, this [may change in the future][changes].
 ///
@@ -2522,6 +2552,7 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 /// limited to just these cases:
 ///
 /// * The `original` path is not a file or doesn't exist.
+/// * The 'link' path already exists.
 ///
 /// # Examples
 ///

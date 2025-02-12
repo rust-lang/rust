@@ -70,12 +70,12 @@ pub struct TraitDef {
 
     /// Whether to add a builtin `dyn Trait: Trait` implementation.
     /// This is enabled for all traits except ones marked with
-    /// `#[rustc_deny_explicit_impl(implement_via_object = false)]`.
+    /// `#[rustc_do_not_implement_via_object]`.
     pub implement_via_object: bool,
 
     /// Whether a trait is fully built-in, and any implementation is disallowed.
     /// This only applies to built-in traits, and is marked via
-    /// `#[rustc_deny_explicit_impl(implement_via_object = ...)]`.
+    /// `#[rustc_deny_explicit_impl]`.
     pub deny_explicit_impl: bool,
 }
 

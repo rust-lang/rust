@@ -1,17 +1,14 @@
+use std::ops::ControlFlow;
+
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::{
-    self, BasicBlock, Body, BorrowKind, FakeBorrowKind, InlineAsmOperand, Location, Mutability,
-    NonDivergingIntrinsic, Operand, Place, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind,
-};
+use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 
+use super::{PoloniusFacts, PoloniusLocationTable};
 use crate::borrow_set::BorrowSet;
-use crate::facts::AllFacts;
-use crate::location::LocationTable;
 use crate::path_utils::*;
 use crate::{
     AccessDepth, Activation, ArtificialField, BorrowIndex, Deep, LocalMutationIsAllowed, Read,
@@ -21,22 +18,22 @@ use crate::{
 /// Emit `loan_invalidated_at` facts.
 pub(super) fn emit_loan_invalidations<'tcx>(
     tcx: TyCtxt<'tcx>,
-    all_facts: &mut AllFacts,
-    location_table: &LocationTable,
+    facts: &mut PoloniusFacts,
     body: &Body<'tcx>,
+    location_table: &PoloniusLocationTable,
     borrow_set: &BorrowSet<'tcx>,
 ) {
     let dominators = body.basic_blocks.dominators();
     let mut visitor =
-        LoanInvalidationsGenerator { all_facts, borrow_set, tcx, location_table, body, dominators };
+        LoanInvalidationsGenerator { facts, borrow_set, tcx, location_table, body, dominators };
     visitor.visit_body(body);
 }
 
 struct LoanInvalidationsGenerator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    all_facts: &'a mut AllFacts,
-    location_table: &'a LocationTable,
+    facts: &'a mut PoloniusFacts,
     body: &'a Body<'tcx>,
+    location_table: &'a PoloniusLocationTable,
     dominators: &'a Dominators<BasicBlock>,
     borrow_set: &'a BorrowSet<'tcx>,
 }
@@ -59,7 +56,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
             StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => {
                 self.consume_operand(location, op);
             }
-            StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(mir::CopyNonOverlapping {
+            StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
                 src,
                 dst,
                 count,
@@ -151,7 +148,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
                 let resume = self.location_table.start_index(resume.start_location());
                 for (i, data) in borrow_set.iter_enumerated() {
                     if borrow_of_local_data(data.borrowed_place) {
-                        self.all_facts.loan_invalidated_at.push((resume, i));
+                        self.facts.loan_invalidated_at.push((resume, i));
                     }
                 }
 
@@ -165,7 +162,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
                 let start = self.location_table.start_index(location);
                 for (i, data) in borrow_set.iter_enumerated() {
                     if borrow_of_local_data(data.borrowed_place) {
-                        self.all_facts.loan_invalidated_at.push((start, i));
+                        self.facts.loan_invalidated_at.push((start, i));
                     }
                 }
             }
@@ -261,7 +258,7 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                     }
                     BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
-                        if allow_two_phase_borrow(bk) {
+                        if bk.allows_two_phase_borrow() {
                             (Deep, Reservation(wk))
                         } else {
                             (Deep, Write(wk))
@@ -272,15 +269,18 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                 self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
             }
 
-            &Rvalue::RawPtr(mutability, place) => {
-                let access_kind = match mutability {
-                    Mutability::Mut => (
+            &Rvalue::RawPtr(kind, place) => {
+                let access_kind = match kind {
+                    RawPtrKind::Mut => (
                         Deep,
                         Write(WriteKind::MutableBorrow(BorrowKind::Mut {
-                            kind: mir::MutBorrowKind::Default,
+                            kind: MutBorrowKind::Default,
                         })),
                     ),
-                    Mutability::Not => (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
+                    RawPtrKind::Const => (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
+                    RawPtrKind::FakeForPtrMetadata => {
+                        (Shallow(Some(ArtificialField::ArrayLength)), Read(ReadKind::Copy))
+                    }
                 };
 
                 self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
@@ -324,6 +324,10 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                 for operand in operands {
                     self.consume_operand(location, operand);
                 }
+            }
+
+            Rvalue::WrapUnsafeBinder(op, _) => {
+                self.consume_operand(location, op);
             }
         }
     }
@@ -384,8 +388,8 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                         // Reading from mere reservations of mutable-borrows is OK.
                         if !is_active(this.dominators, borrow, location) {
                             // If the borrow isn't active yet, reads don't invalidate it
-                            assert!(allow_two_phase_borrow(borrow.kind));
-                            return Control::Continue;
+                            assert!(borrow.kind.allows_two_phase_borrow());
+                            return ControlFlow::Continue(());
                         }
 
                         // Unique and mutable borrows are invalidated by reads from any
@@ -401,7 +405,7 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                         this.emit_loan_invalidated_at(borrow_index, location);
                     }
                 }
-                Control::Continue
+                ControlFlow::Continue(())
             },
         );
     }
@@ -409,7 +413,7 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
     /// Generates a new `loan_invalidated_at(L, B)` fact.
     fn emit_loan_invalidated_at(&mut self, b: BorrowIndex, l: Location) {
         let lidx = self.location_table.start_index(l);
-        self.all_facts.loan_invalidated_at.push((lidx, b));
+        self.facts.loan_invalidated_at.push((lidx, b));
     }
 
     fn check_activations(&mut self, location: Location) {

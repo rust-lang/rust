@@ -651,16 +651,24 @@ mod if_keyword {}
 
 #[doc(keyword = "impl")]
 //
-/// Implement some functionality for a type.
+/// Implementations of functionality for a type, or a type implementing some functionality.
+///
+/// There are two uses of the keyword `impl`:
+///  * An `impl` block is an item that is used to implement some functionality for a type.
+///  * An `impl Trait` in a type-position can be used to designate a type that implements a trait called `Trait`.
+///
+/// # Implementing Functionality for a Type
 ///
 /// The `impl` keyword is primarily used to define implementations on types. Inherent
 /// implementations are standalone, while trait implementations are used to implement traits for
 /// types, or other traits.
 ///
-/// Functions and consts can both be defined in an implementation. A function defined in an
-/// `impl` block can be standalone, meaning it would be called like `Foo::bar()`. If the function
+/// An implementation consists of definitions of functions and consts. A function defined in an
+/// `impl` block can be standalone, meaning it would be called like `Vec::new()`. If the function
 /// takes `self`, `&self`, or `&mut self` as its first argument, it can also be called using
-/// method-call syntax, a familiar feature to any object oriented programmer, like `foo.bar()`.
+/// method-call syntax, a familiar feature to any object-oriented programmer, like `vec.len()`.
+///
+/// ## Inherent Implementations
 ///
 /// ```rust
 /// struct Example {
@@ -680,6 +688,17 @@ mod if_keyword {}
 ///         self.number
 ///     }
 /// }
+/// ```
+///
+/// It matters little where an inherent implementation is defined;
+/// its functionality is in scope wherever its implementing type is.
+///
+/// ## Trait Implementations
+///
+/// ```rust
+/// struct Example {
+///     number: i32,
+/// }
 ///
 /// trait Thingy {
 ///     fn do_thingy(&self);
@@ -692,11 +711,19 @@ mod if_keyword {}
 /// }
 /// ```
 ///
+/// It matters little where a trait implementation is defined;
+/// its functionality can be brought into scope by importing the trait it implements.
+///
 /// For more information on implementations, see the [Rust book][book1] or the [Reference].
 ///
-/// The other use of the `impl` keyword is in `impl Trait` syntax, which can be seen as a shorthand
-/// for "a concrete type that implements this trait". Its primary use is working with closures,
-/// which have type definitions generated at compile time that can't be simply typed out.
+/// # Designating a Type that Implements Some Functionality
+///
+/// The other use of the `impl` keyword is in `impl Trait` syntax, which can be understood to mean
+/// "any (or some) concrete type that implements Trait".
+/// It can be used as the type of a variable declaration,
+/// in [argument position](https://rust-lang.github.io/rfcs/1951-expand-impl-trait.html)
+/// or in [return position](https://rust-lang.github.io/rfcs/3425-return-position-impl-trait-in-traits.html).
+/// One pertinent use case is in working with closures, which have unnameable types.
 ///
 /// ```rust
 /// fn thing_returning_closure() -> impl Fn(i32) -> bool {
@@ -806,64 +833,6 @@ mod in_keyword {}
 /// [book2]: ../book/ch18-01-all-the-places-for-patterns.html#let-statements
 /// [Reference]: ../reference/statements.html#let-statements
 mod let_keyword {}
-
-#[doc(keyword = "while")]
-//
-/// Loop while a condition is upheld.
-///
-/// A `while` expression is used for predicate loops. The `while` expression runs the conditional
-/// expression before running the loop body, then runs the loop body if the conditional
-/// expression evaluates to `true`, or exits the loop otherwise.
-///
-/// ```rust
-/// let mut counter = 0;
-///
-/// while counter < 10 {
-///     println!("{counter}");
-///     counter += 1;
-/// }
-/// ```
-///
-/// Like the [`for`] expression, we can use `break` and `continue`. A `while` expression
-/// cannot break with a value and always evaluates to `()` unlike [`loop`].
-///
-/// ```rust
-/// let mut i = 1;
-///
-/// while i < 100 {
-///     i *= 2;
-///     if i == 64 {
-///         break; // Exit when `i` is 64.
-///     }
-/// }
-/// ```
-///
-/// As `if` expressions have their pattern matching variant in `if let`, so too do `while`
-/// expressions with `while let`. The `while let` expression matches the pattern against the
-/// expression, then runs the loop body if pattern matching succeeds, or exits the loop otherwise.
-/// We can use `break` and `continue` in `while let` expressions just like in `while`.
-///
-/// ```rust
-/// let mut counter = Some(0);
-///
-/// while let Some(i) = counter {
-///     if i == 10 {
-///         counter = None;
-///     } else {
-///         println!("{i}");
-///         counter = Some (i + 1);
-///     }
-/// }
-/// ```
-///
-/// For more information on `while` and loops in general, see the [reference].
-///
-/// See also, [`for`], [`loop`].
-///
-/// [`for`]: keyword.for.html
-/// [`loop`]: keyword.loop.html
-/// [reference]: ../reference/expressions/loop-expr.html#predicate-loops
-mod while_keyword {}
 
 #[doc(keyword = "loop")]
 //
@@ -1321,10 +1290,10 @@ mod return_keyword {}
 /// [Reference]: ../reference/items/associated-items.html#methods
 mod self_keyword {}
 
-// FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we can remove the
-// three next lines and put back: `#[doc(keyword = "Self")]`.
+// FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we can replace
+// these two lines with `#[doc(keyword = "Self")]` and update `is_doc_keyword` in
+// `CheckAttrVisitor`.
 #[doc(alias = "Self")]
-#[allow(rustc::existing_doc_keyword)]
 #[doc(keyword = "SelfTy")]
 //
 /// The implementing type within a [`trait`] or [`impl`] block, or the current type within a type
@@ -2343,6 +2312,64 @@ mod use_keyword {}
 /// [RFC]: https://github.com/rust-lang/rfcs/blob/master/text/0135-where.md
 mod where_keyword {}
 
+#[doc(keyword = "while")]
+//
+/// Loop while a condition is upheld.
+///
+/// A `while` expression is used for predicate loops. The `while` expression runs the conditional
+/// expression before running the loop body, then runs the loop body if the conditional
+/// expression evaluates to `true`, or exits the loop otherwise.
+///
+/// ```rust
+/// let mut counter = 0;
+///
+/// while counter < 10 {
+///     println!("{counter}");
+///     counter += 1;
+/// }
+/// ```
+///
+/// Like the [`for`] expression, we can use `break` and `continue`. A `while` expression
+/// cannot break with a value and always evaluates to `()` unlike [`loop`].
+///
+/// ```rust
+/// let mut i = 1;
+///
+/// while i < 100 {
+///     i *= 2;
+///     if i == 64 {
+///         break; // Exit when `i` is 64.
+///     }
+/// }
+/// ```
+///
+/// As `if` expressions have their pattern matching variant in `if let`, so too do `while`
+/// expressions with `while let`. The `while let` expression matches the pattern against the
+/// expression, then runs the loop body if pattern matching succeeds, or exits the loop otherwise.
+/// We can use `break` and `continue` in `while let` expressions just like in `while`.
+///
+/// ```rust
+/// let mut counter = Some(0);
+///
+/// while let Some(i) = counter {
+///     if i == 10 {
+///         counter = None;
+///     } else {
+///         println!("{i}");
+///         counter = Some (i + 1);
+///     }
+/// }
+/// ```
+///
+/// For more information on `while` and loops in general, see the [reference].
+///
+/// See also, [`for`], [`loop`].
+///
+/// [`for`]: keyword.for.html
+/// [`loop`]: keyword.loop.html
+/// [reference]: ../reference/expressions/loop-expr.html#predicate-loops
+mod while_keyword {}
+
 // 2018 Edition keywords
 
 #[doc(alias = "promise")]
@@ -2387,13 +2414,12 @@ mod async_keyword {}
 /// [`async`]: ../std/keyword.async.html
 mod await_keyword {}
 
-// FIXME(dyn_compat_renaming): Update URL and link text.
 #[doc(keyword = "dyn")]
 //
 /// `dyn` is a prefix of a [trait object]'s type.
 ///
 /// The `dyn` keyword is used to highlight that calls to methods on the associated `Trait`
-/// are [dynamically dispatched]. To use the trait this way, it must be 'dyn-compatible'[^1].
+/// are [dynamically dispatched]. To use the trait this way, it must be *dyn compatible*[^1].
 ///
 /// Unlike generic parameters or `impl Trait`, the compiler does not know the concrete type that
 /// is being passed. That is, the type has been [erased].
@@ -2406,7 +2432,7 @@ mod await_keyword {}
 /// the function pointer and then that function pointer is called.
 ///
 /// See the Reference for more information on [trait objects][ref-trait-obj]
-/// and [object safety][ref-obj-safety].
+/// and [dyn compatibility][ref-dyn-compat].
 ///
 /// ## Trade-offs
 ///
@@ -2419,9 +2445,9 @@ mod await_keyword {}
 /// [trait object]: ../book/ch17-02-trait-objects.html
 /// [dynamically dispatched]: https://en.wikipedia.org/wiki/Dynamic_dispatch
 /// [ref-trait-obj]: ../reference/types/trait-object.html
-/// [ref-obj-safety]: ../reference/items/traits.html#object-safety
+/// [ref-dyn-compat]: ../reference/items/traits.html#dyn-compatibility
 /// [erased]: https://en.wikipedia.org/wiki/Type_erasure
-/// [^1]: Formerly known as 'object safe'.
+/// [^1]: Formerly known as *object safe*.
 mod dyn_keyword {}
 
 #[doc(keyword = "union")]

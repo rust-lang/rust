@@ -9,7 +9,7 @@ use std::hash::{BuildHasherDefault, Hasher};
 use std::ops::BitXor;
 
 /// Type alias for a hashmap using the `fx` hash algorithm.
-pub type FxHashMap<K, V> = HashMap<K, V, BuildHasherDefault<FxHasher>>;
+pub(super) type FxHashMap<K, V> = HashMap<K, V, BuildHasherDefault<FxHasher>>;
 
 /// A speedy hash algorithm for use within rustc. The hashmap in alloc by
 /// default uses SipHash which isn't quite as speedy as we want. In the compiler
@@ -22,7 +22,8 @@ pub type FxHashMap<K, V> = HashMap<K, V, BuildHasherDefault<FxHasher>>;
 /// out-performs an FNV-based hash within rustc itself -- the collision rate is
 /// similar or slightly worse than FNV, but the speed of the hash function
 /// itself is much higher because it works on up to 8 bytes at a time.
-pub struct FxHasher {
+#[derive(Default)]
+pub(super) struct FxHasher {
     hash: usize,
 }
 
@@ -30,13 +31,6 @@ pub struct FxHasher {
 const K: usize = 0x9e3779b9;
 #[cfg(target_pointer_width = "64")]
 const K: usize = 0x517cc1b727220a95;
-
-impl Default for FxHasher {
-    #[inline]
-    fn default() -> FxHasher {
-        FxHasher { hash: 0 }
-    }
-}
 
 impl FxHasher {
     #[inline]

@@ -1,12 +1,7 @@
 //! Completion tests for use trees.
-use expect_test::{expect, Expect};
+use expect_test::expect;
 
-use crate::tests::completion_list;
-
-fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(ra_fixture);
-    expect.assert_eq(&actual)
-}
+use crate::tests::check;
 
 #[test]
 fn use_tree_completion() {
@@ -92,7 +87,7 @@ use self::{foo::*, bar$0};
 "#,
         expect![[r#"
             md foo
-            st S   S
+            st S S
         "#]],
     );
 }
@@ -179,7 +174,7 @@ struct Bar;
 "#,
         expect![[r#"
             ma foo macro_rules! foo_
-            st Foo Foo
+            st Foo               Foo
         "#]],
     );
 }
@@ -203,8 +198,8 @@ impl Foo {
 "#,
         expect![[r#"
             ev RecordVariant RecordVariant
-            ev TupleVariant  TupleVariant
-            ev UnitVariant   UnitVariant
+            ev TupleVariant   TupleVariant
+            ev UnitVariant     UnitVariant
         "#]],
     );
 }
@@ -257,7 +252,7 @@ mod a {
 }
 "#,
         expect![[r#"
-            ct A       usize
+            ct A usize
             md b
             kw super::
         "#]],
@@ -450,9 +445,26 @@ pub fn foo() {}
 marco_rules! m { () => {} }
 "#,
         expect![[r#"
-            fn foo  fn()
+            fn foo fn()
             md simd
-            st S    S
+            st S      S
+        "#]],
+    );
+}
+
+#[test]
+fn use_tree_doc_hidden() {
+    check(
+        r#"
+//- /foo.rs crate:foo
+#[doc(hidden)] pub struct Hidden;
+pub struct Visible;
+
+//- /lib.rs crate:lib deps:foo
+use foo::$0;
+    "#,
+        expect![[r#"
+            st Visible Visible
         "#]],
     );
 }

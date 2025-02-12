@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ assembly-output: emit-asm
 //@ revisions: rv32i rv64i rv32e
 //@[rv32i] compile-flags: --target riscv32i-unknown-none-elf
@@ -9,16 +10,11 @@
 // ignore-tidy-linelength
 
 #![crate_type = "rlib"]
-#![feature(no_core, rustc_attrs, lang_items)]
+#![feature(no_core)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
+extern crate minicore;
+use minicore::*;
 
 // CHECK-LABEL: @flags_clobber
 // CHECK: call void asm sideeffect "", "~{vtype},~{vl},~{vxsat},~{vxrm}"()

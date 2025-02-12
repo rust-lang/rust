@@ -41,6 +41,7 @@ pub enum SimplifiedType<DefId> {
     Coroutine(DefId),
     CoroutineWitness(DefId),
     Function(usize),
+    UnsafeBinder,
     Placeholder,
     Error,
 }
@@ -138,6 +139,7 @@ pub fn simplify_type<I: Interner>(
         ty::FnPtr(sig_tys, _hdr) => {
             Some(SimplifiedType::Function(sig_tys.skip_binder().inputs().len()))
         }
+        ty::UnsafeBinder(_) => Some(SimplifiedType::UnsafeBinder),
         ty::Placeholder(..) => Some(SimplifiedType::Placeholder),
         ty::Param(_) => match treat_params {
             TreatParams::AsRigid => Some(SimplifiedType::Placeholder),
@@ -290,7 +292,8 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Foreign(_)
-            | ty::Placeholder(_) => {}
+            | ty::Placeholder(_)
+            | ty::UnsafeBinder(_) => {}
         };
 
         // The type system needs to support exponentially large types
@@ -447,6 +450,13 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
                 matches!(rhs.kind(), ty::Pat(rhs_ty, _) if self.types_may_unify_inner(lhs_ty, rhs_ty, depth))
             }
 
+            ty::UnsafeBinder(lhs_ty) => match rhs.kind() {
+                ty::UnsafeBinder(rhs_ty) => {
+                    self.types_may_unify(lhs_ty.skip_binder(), rhs_ty.skip_binder())
+                }
+                _ => false,
+            },
+
             ty::Error(..) => true,
         }
     }
@@ -473,8 +483,8 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         };
 
         match lhs.kind() {
-            ty::ConstKind::Value(_, lhs_val) => match rhs.kind() {
-                ty::ConstKind::Value(_, rhs_val) => lhs_val == rhs_val,
+            ty::ConstKind::Value(lhs_val) => match rhs.kind() {
+                ty::ConstKind::Value(rhs_val) => lhs_val.valtree() == rhs_val.valtree(),
                 _ => false,
             },
 

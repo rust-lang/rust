@@ -35,7 +35,8 @@ pub(super) fn check<'tcx>(
             && let Some(GenericArg::Type(boxed_ty)) = last.args.first()
             // extract allocator from the Box for later
             && let boxed_alloc_ty = last.args.get(1)
-            && let ty_ty = lower_ty(cx.tcx, boxed_ty)
+            // we don't expect to encounter `_` here so ignore `GenericArg::Infer` is okay
+            && let ty_ty = lower_ty(cx.tcx, boxed_ty.as_unambig_ty())
             && !ty_ty.has_escaping_bound_vars()
             && ty_ty.is_sized(cx.tcx, cx.typing_env())
             && let Ok(ty_ty_size) = cx.layout_of(ty_ty).map(|l| l.size.bytes())
@@ -55,7 +56,8 @@ pub(super) fn check<'tcx>(
                     }
                 },
                 (Some(GenericArg::Type(l)), Some(GenericArg::Type(r))) =>
-                    lower_ty(cx.tcx, l) == lower_ty(cx.tcx, r),
+                    // we don't expect to encounter `_` here so ignore `GenericArg::Infer` is okay
+                    lower_ty(cx.tcx, l.as_unambig_ty()) == lower_ty(cx.tcx, r.as_unambig_ty()),
                 _ => false
             }
         {

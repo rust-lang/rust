@@ -185,10 +185,9 @@ use rustc_ast::{
     self as ast, AnonConst, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind,
     Generics, Mutability, PatKind, VariantData,
 };
-use rustc_attr as attr;
+use rustc_attr_parsing as attr;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use ty::{Bounds, Path, Ref, Self_, Ty};
 
@@ -312,7 +311,7 @@ pub(crate) enum SubstructureFields<'a> {
     /// Matching variants of the enum: variant index, ast::Variant,
     /// fields: the field name is only non-`None` in the case of a struct
     /// variant.
-    EnumMatching(usize, &'a ast::Variant, Vec<FieldInfo>),
+    EnumMatching(&'a ast::Variant, Vec<FieldInfo>),
 
     /// The discriminant of an enum. The first field is a `FieldInfo` for the discriminants, as
     /// if they were fields. The second field is the expression to combine the
@@ -323,7 +322,7 @@ pub(crate) enum SubstructureFields<'a> {
     StaticStruct(&'a ast::VariantData, StaticFields),
 
     /// A static method where `Self` is an enum.
-    StaticEnum(&'a ast::EnumDef, Vec<(Ident, Span, StaticFields)>),
+    StaticEnum(&'a ast::EnumDef),
 }
 
 /// Combine the values of all the fields together. The last argument is
@@ -1035,6 +1034,7 @@ impl<'a> MethodDef<'a> {
                 defaultness,
                 sig,
                 generics: fn_generics,
+                contract: None,
                 body: Some(body_block),
             })),
             tokens: None,
@@ -1220,10 +1220,12 @@ impl<'a> MethodDef<'a> {
 
             let discr_let_stmts: ThinVec<_> = iter::zip(&discr_idents, &selflike_args)
                 .map(|(&ident, selflike_arg)| {
-                    let variant_value =
-                        deriving::call_intrinsic(cx, span, sym::discriminant_value, thin_vec![
-                            selflike_arg.clone()
-                        ]);
+                    let variant_value = deriving::call_intrinsic(
+                        cx,
+                        span,
+                        sym::discriminant_value,
+                        thin_vec![selflike_arg.clone()],
+                    );
                     cx.stmt_let(span, false, ident, variant_value)
                 })
                 .collect();
@@ -1271,7 +1273,7 @@ impl<'a> MethodDef<'a> {
                     trait_,
                     type_ident,
                     nonselflike_args,
-                    &EnumMatching(0, variant, Vec::new()),
+                    &EnumMatching(variant, Vec::new()),
                 );
             }
         }
@@ -1283,9 +1285,8 @@ impl<'a> MethodDef<'a> {
         // where each tuple has length = selflike_args.len()
         let mut match_arms: ThinVec<ast::Arm> = variants
             .iter()
-            .enumerate()
-            .filter(|&(_, v)| !(unify_fieldless_variants && v.data.fields().is_empty()))
-            .map(|(index, variant)| {
+            .filter(|&v| !(unify_fieldless_variants && v.data.fields().is_empty()))
+            .map(|variant| {
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK
                 // (see "Final wrinkle" note below for why.)
 
@@ -1317,7 +1318,7 @@ impl<'a> MethodDef<'a> {
                 // expressions for referencing every field of every
                 // Self arg, assuming all are instances of VariantK.
                 // Build up code associated with such a case.
-                let substructure = EnumMatching(index, variant, fields);
+                let substructure = EnumMatching(variant, fields);
                 let arm_expr = self
                     .call_substructure_method(
                         cx,
@@ -1345,7 +1346,7 @@ impl<'a> MethodDef<'a> {
                         trait_,
                         type_ident,
                         nonselflike_args,
-                        &EnumMatching(0, v, Vec::new()),
+                        &EnumMatching(v, Vec::new()),
                     )
                     .into_expr(cx, span),
                 )
@@ -1408,21 +1409,12 @@ impl<'a> MethodDef<'a> {
         type_ident: Ident,
         nonselflike_args: &[P<Expr>],
     ) -> BlockOrExpr {
-        let summary = enum_def
-            .variants
-            .iter()
-            .map(|v| {
-                let sp = v.span.with_ctxt(trait_.span.ctxt());
-                let summary = trait_.summarise_struct(cx, &v.data);
-                (v.ident, sp, summary)
-            })
-            .collect();
         self.call_substructure_method(
             cx,
             trait_,
             type_ident,
             nonselflike_args,
-            &StaticEnum(enum_def, summary),
+            &StaticEnum(enum_def),
         )
     }
 }

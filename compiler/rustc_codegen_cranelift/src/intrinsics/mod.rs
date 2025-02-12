@@ -1,4 +1,5 @@
 //! Codegen of intrinsics. This includes `extern "rust-intrinsic"`,
+//! functions marked with the `#[rustc_intrinsic]` attribute
 //! and LLVM intrinsics that have symbol names starting with `llvm.`.
 
 macro_rules! intrinsic_args {
@@ -23,7 +24,7 @@ use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 
 pub(crate) use self::llvm::codegen_llvm_intrinsic_call;
 use crate::cast::clif_intcast;

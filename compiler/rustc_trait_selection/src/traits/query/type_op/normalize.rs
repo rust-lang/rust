@@ -5,6 +5,7 @@ use rustc_middle::traits::query::NoSolution;
 pub use rustc_middle::traits::query::type_op::Normalize;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
+use rustc_span::Span;
 
 use crate::infer::canonical::{CanonicalQueryInput, CanonicalQueryResponse};
 use crate::traits::ObligationCtxt;
@@ -29,9 +30,10 @@ where
     fn perform_locally_with_next_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
         key: ParamEnvAnd<'tcx, Self>,
+        span: Span,
     ) -> Result<Self::QueryResponse, NoSolution> {
         // FIXME(-Znext-solver): shouldn't be using old normalizer
-        Ok(ocx.normalize(&ObligationCause::dummy(), key.param_env, key.value.value))
+        Ok(ocx.normalize(&ObligationCause::dummy_with_span(span), key.param_env, key.value.value))
     }
 }
 

@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: powerpc powerpc64 powerpc64le aix64
 //@[powerpc] compile-flags: --target powerpc-unknown-linux-gnu
 //@[powerpc] needs-llvm-components: powerpc
@@ -11,30 +12,20 @@
 // ignore-tidy-linelength
 
 #![crate_type = "rlib"]
-#![feature(no_core, rustc_attrs, lang_items, repr_simd, asm_experimental_arch)]
+#![feature(no_core, repr_simd, asm_experimental_arch)]
 #![no_core]
 #![allow(non_camel_case_types)]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(simd)]
 pub struct i32x4([i32; 4]);
 #[repr(simd)]
 pub struct i64x2([i64; 2]);
 
-impl<T: Copy, const N: usize> Copy for [T; N] {}
-impl Copy for i32 {}
-impl Copy for i64 {}
 impl Copy for i32x4 {}
 impl Copy for i64x2 {}
-
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
 
 fn f() {
     let mut x = 0;

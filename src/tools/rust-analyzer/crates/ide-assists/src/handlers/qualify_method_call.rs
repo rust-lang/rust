@@ -86,7 +86,7 @@ fn item_for_path_search(db: &dyn HirDatabase, item: ItemInNs) -> Option<ItemInNs
 }
 
 fn item_as_assoc(db: &dyn HirDatabase, item: ItemInNs) -> Option<AssocItem> {
-    item.as_module_def().and_then(|module_def| module_def.as_assoc_item(db))
+    item.into_module_def().as_assoc_item(db)
 }
 
 #[cfg(test)]

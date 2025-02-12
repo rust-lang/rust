@@ -1,6 +1,8 @@
 //@compile-flags: --diagnostic-width=300
 // gate-test-coroutine_clone
 // Verifies that static coroutines cannot be cloned/copied.
+// This is important: the cloned coroutine would reference state of the original
+// coroutine, leading to semantic nonsense.
 
 #![feature(coroutines, coroutine_clone, stmt_expr_attributes)]
 

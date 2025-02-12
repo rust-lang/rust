@@ -1,6 +1,5 @@
 use std::cell::{Cell, RefCell};
 use std::cmp::max;
-use std::iter;
 use std::ops::Deref;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -25,8 +24,7 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edit_distance::{
     edit_distance_with_substrings, find_best_match_for_name_with_substrings,
 };
-use rustc_span::symbol::{Ident, sym};
-use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::CanonicalTyGoal;
@@ -1010,11 +1008,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         if self.tcx.is_trait_alias(trait_def_id) {
             // For trait aliases, recursively assume all explicitly named traits are relevant
-            for expansion in traits::expand_trait_aliases(
-                self.tcx,
-                iter::once((ty::Binder::dummy(trait_ref), self.span)),
-            ) {
-                let bound_trait_ref = expansion.trait_ref();
+            for (bound_trait_pred, _) in
+                traits::expand_trait_aliases(self.tcx, [(trait_ref.upcast(self.tcx), self.span)]).0
+            {
+                assert_eq!(bound_trait_pred.polarity(), ty::PredicatePolarity::Positive);
+                let bound_trait_ref = bound_trait_pred.map_bound(|pred| pred.trait_ref);
                 for item in self.impl_or_trait_item(bound_trait_ref.def_id()) {
                     if !self.has_applicable_self(&item) {
                         self.record_static_candidate(CandidateSource::Trait(
@@ -1230,23 +1228,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 if let Some(by_value_pick) = by_value_pick {
                     if let Ok(by_value_pick) = by_value_pick.as_ref() {
                         if by_value_pick.kind == PickKind::InherentImplPick {
-                            if let Err(e) = self.check_for_shadowed_autorefd_method(
-                                by_value_pick,
-                                step,
-                                self_ty,
-                                hir::Mutability::Not,
-                                track_unstable_candidates,
-                            ) {
-                                return Some(Err(e));
-                            }
-                            if let Err(e) = self.check_for_shadowed_autorefd_method(
-                                by_value_pick,
-                                step,
-                                self_ty,
-                                hir::Mutability::Mut,
-                                track_unstable_candidates,
-                            ) {
-                                return Some(Err(e));
+                            for mutbl in [hir::Mutability::Not, hir::Mutability::Mut] {
+                                if let Err(e) = self.check_for_shadowed_autorefd_method(
+                                    by_value_pick,
+                                    step,
+                                    self_ty,
+                                    mutbl,
+                                    track_unstable_candidates,
+                                ) {
+                                    return Some(Err(e));
+                                }
                             }
                         }
                     }
@@ -1337,6 +1328,15 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         mutbl: hir::Mutability,
         track_unstable_candidates: bool,
     ) -> Result<(), MethodError<'tcx>> {
+        // The errors emitted by this function are part of
+        // the arbitrary self types work, and should not impact
+        // other users.
+        if !self.tcx.features().arbitrary_self_types()
+            && !self.tcx.features().arbitrary_self_types_pointers()
+        {
+            return Ok(());
+        }
+
         // We don't want to remember any of the diagnostic hints from this
         // shadow search, but we do need to provide Some/None for the
         // unstable_candidates in order to reflect the behavior of the
@@ -1738,8 +1738,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         trait_ref: ty::TraitRef<'tcx>,
     ) -> traits::SelectionResult<'tcx, traits::Selection<'tcx>> {
-        let cause = traits::ObligationCause::misc(self.span, self.body_id);
-        let obligation = traits::Obligation::new(self.tcx, cause, self.param_env, trait_ref);
+        let obligation =
+            traits::Obligation::new(self.tcx, self.misc(self.span), self.param_env, trait_ref);
         traits::SelectionContext::new(self).select(&obligation)
     }
 
@@ -1840,7 +1840,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                 self.scope_expr_id,
                                 idx,
                             );
-                            ObligationCause::new(self.span, self.body_id, code)
+                            self.cause(self.span, code)
                         },
                         self.param_env,
                         impl_bounds,

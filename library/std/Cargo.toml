@@ -7,6 +7,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/rust.git"
 description = "The Rust Standard Library"
 edition = "2021"
+autobenches = false
 
 [lib]
 crate-type = ["dylib", "rlib"]
@@ -17,7 +18,7 @@ cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core", public = true }
-compiler_builtins = { version = "=0.1.138" }
+compiler_builtins = { version = "=0.1.146" }
 unwind = { path = "../unwind" }
 hashbrown = { version = "0.15", default-features = false, features = [
     'rustc-dep-of-std',
@@ -30,11 +31,11 @@ std_detect = { path = "../stdarch/crates/std_detect", default-features = false, 
 rustc-demangle = { version = "0.1.24", features = ['rustc-dep-of-std'] }
 
 [target.'cfg(not(all(windows, target_env = "msvc", not(target_vendor = "uwp"))))'.dependencies]
-miniz_oxide = { version = "0.7.0", optional = true, default-features = false }
-addr2line = { version = "0.22.0", optional = true, default-features = false }
+miniz_oxide = { version = "0.8.0", optional = true, default-features = false }
+addr2line = { version = "0.24.0", optional = true, default-features = false }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
-libc = { version = "0.2.167", default-features = false, features = [
+libc = { version = "0.2.169", default-features = false, features = [
     'rustc-dep-of-std',
 ], public = true }
 
@@ -130,6 +131,18 @@ name = "pipe-subprocess"
 path = "tests/pipe_subprocess.rs"
 harness = false
 
+[[test]]
+name = "sync"
+path = "tests/sync/lib.rs"
+
+[[test]]
+name = "floats"
+path = "tests/floats/lib.rs"
+
+[[test]]
+name = "thread_local"
+path = "tests/thread_local/lib.rs"
+
 [[bench]]
 name = "stdbenches"
 path = "benches/lib.rs"
@@ -139,7 +152,8 @@ test = true
 level = "warn"
 check-cfg = [
     'cfg(bootstrap)',
-    'cfg(target_arch, values("xtensa"))',
+    'cfg(target_arch, values("xtensa", "aarch64-unknown-nto-qnx710_iosock", "x86_64-pc-nto-qnx710_iosock", "x86_64-pc-nto-qnx800","aarch64-unknown-nto-qnx800"))',
+    'cfg(target_env, values("nto71_iosock", "nto80"))',
     # std use #[path] imports to portable-simd `std_float` crate
     # and to the `backtrace` crate which messes-up with Cargo list
     # of declared features, we therefor expect any feature cfg

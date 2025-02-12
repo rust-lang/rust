@@ -17,7 +17,7 @@ note: `PartialEq` can't be used with `~const` because it isn't annotated with `#
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0015]: cannot call non-const fn `<T as PartialEq>::eq` in constant functions
+error[E0015]: cannot call non-const method `<T as PartialEq>::eq` in constant functions
   --> $DIR/call-generic-in-impl.rs:12:9
    |
 LL |         PartialEq::eq(self, other)

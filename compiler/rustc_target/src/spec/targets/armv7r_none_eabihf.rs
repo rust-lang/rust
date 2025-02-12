@@ -1,6 +1,8 @@
 // Targets the Little-endian Cortex-R4F/R5F processor (ARMv7-R)
 
-use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{
+    Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions,
+};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -17,6 +19,7 @@ pub(crate) fn target() -> Target {
 
         options: TargetOptions {
             abi: "eabihf".into(),
+            llvm_floatabi: Some(FloatAbi::Hard),
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
             relocation_model: RelocModel::Static,

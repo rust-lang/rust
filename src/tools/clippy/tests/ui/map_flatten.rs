@@ -55,6 +55,18 @@ fn long_span() {
         .collect();
 }
 
+#[allow(clippy::useless_vec)]
+fn no_suggestion_if_comments_present() {
+    let vec = vec![vec![1, 2, 3]];
+    let _ = vec
+        .iter()
+        // a lovely comment explaining the code in very detail
+        .map(|x| x.iter())
+        //~^ ERROR: called `map(..).flatten()` on `Iterator`
+        // the answer to life, the universe and everything could be here
+        .flatten();
+}
+
 fn main() {
     long_span();
 }

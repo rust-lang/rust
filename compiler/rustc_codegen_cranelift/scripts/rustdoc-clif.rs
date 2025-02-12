@@ -11,7 +11,7 @@ fn main() {
         sysroot = sysroot.parent().unwrap();
     }
 
-    let cg_clif_dylib_path = sysroot.join(if cfg!(windows) { "bin" } else { "lib" }).join(
+    let cg_clif_dylib_path = sysroot.join("lib").join(
         env::consts::DLL_PREFIX.to_string() + "rustc_codegen_cranelift" + env::consts::DLL_SUFFIX,
     );
 

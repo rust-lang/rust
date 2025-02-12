@@ -14,7 +14,7 @@
 //! to everything owned by `x`, so the result is the same for something
 //! like `x.f = 5` and so on (presuming `x` is not a borrowed pointer to a
 //! struct). These adjustments are performed in
-//! `adjust_upvar_borrow_kind()` (you can trace backwards through the code
+//! `adjust_for_non_move_closure` (you can trace backwards through the code
 //! from there).
 //!
 //! The fact that we are inferring borrow kinds as we go results in a
@@ -147,14 +147,15 @@ impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
                 self.visit_body(body);
                 self.fcx.analyze_closure(expr.hir_id, expr.span, body_id, body, capture_clause);
             }
-            hir::ExprKind::ConstBlock(anon_const) => {
-                let body = self.fcx.tcx.hir().body(anon_const.body);
-                self.visit_body(body);
-            }
             _ => {}
         }
 
         intravisit::walk_expr(self, expr);
+    }
+
+    fn visit_inline_const(&mut self, c: &'tcx hir::ConstBlock) {
+        let body = self.fcx.tcx.hir().body(c.body);
+        self.visit_body(body);
     }
 }
 
@@ -287,11 +288,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     bug!();
                 };
                 let place = self.place_for_root_variable(closure_def_id, local_id);
-                delegate.capture_information.push((place, ty::CaptureInfo {
-                    capture_kind_expr_id: Some(init.hir_id),
-                    path_expr_id: Some(init.hir_id),
-                    capture_kind: UpvarCapture::ByValue,
-                }));
+                delegate.capture_information.push((
+                    place,
+                    ty::CaptureInfo {
+                        capture_kind_expr_id: Some(init.hir_id),
+                        path_expr_id: Some(init.hir_id),
+                        capture_kind: UpvarCapture::ByValue,
+                    },
+                ));
             }
         }
 
@@ -378,11 +382,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let UpvarArgs::CoroutineClosure(args) = args
             && !args.references_error()
         {
-            let closure_env_region: ty::Region<'_> =
-                ty::Region::new_bound(self.tcx, ty::INNERMOST, ty::BoundRegion {
-                    var: ty::BoundVar::ZERO,
-                    kind: ty::BoundRegionKind::ClosureEnv,
-                });
+            let closure_env_region: ty::Region<'_> = ty::Region::new_bound(
+                self.tcx,
+                ty::INNERMOST,
+                ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::ClosureEnv },
+            );
 
             let num_args = args
                 .as_coroutine_closure()
@@ -1684,8 +1688,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // want to capture by ref to allow precise capture using reborrows.
             //
             // If the data will be moved out of this place, then the place will be truncated
-            // at the first Deref in `adjust_upvar_borrow_kind_for_consume` and then moved into
-            // the closure.
+            // at the first Deref in `adjust_for_move_closure` and then moved into the closure.
             hir::CaptureBy::Value { .. } if !place.deref_tys().any(Ty::is_ref) => {
                 ty::UpvarCapture::ByValue
             }
@@ -1936,7 +1939,7 @@ fn drop_location_span(tcx: TyCtxt<'_>, hir_id: HirId) -> Span {
     let owner_node = tcx.hir_node(owner_id);
     let owner_span = match owner_node {
         hir::Node::Item(item) => match item.kind {
-            hir::ItemKind::Fn(_, _, owner_id) => tcx.hir().span(owner_id.hir_id),
+            hir::ItemKind::Fn { body: owner_id, .. } => tcx.hir().span(owner_id.hir_id),
             _ => {
                 bug!("Drop location span error: need to handle more ItemKind '{:?}'", item.kind);
             }
@@ -2009,11 +2012,14 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
         let PlaceBase::Upvar(upvar_id) = place_with_id.place.base else { return };
         assert_eq!(self.closure_def_id, upvar_id.closure_expr_id);
 
-        self.capture_information.push((place_with_id.place.clone(), ty::CaptureInfo {
-            capture_kind_expr_id: Some(diag_expr_id),
-            path_expr_id: Some(diag_expr_id),
-            capture_kind: ty::UpvarCapture::ByValue,
-        }));
+        self.capture_information.push((
+            place_with_id.place.clone(),
+            ty::CaptureInfo {
+                capture_kind_expr_id: Some(diag_expr_id),
+                path_expr_id: Some(diag_expr_id),
+                capture_kind: ty::UpvarCapture::ByValue,
+            },
+        ));
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -2040,11 +2046,14 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
             capture_kind = ty::UpvarCapture::ByRef(ty::BorrowKind::Immutable);
         }
 
-        self.capture_information.push((place, ty::CaptureInfo {
-            capture_kind_expr_id: Some(diag_expr_id),
-            path_expr_id: Some(diag_expr_id),
-            capture_kind,
-        }));
+        self.capture_information.push((
+            place,
+            ty::CaptureInfo {
+                capture_kind_expr_id: Some(diag_expr_id),
+                path_expr_id: Some(diag_expr_id),
+                capture_kind,
+            },
+        ));
     }
 
     #[instrument(skip(self), level = "debug")]

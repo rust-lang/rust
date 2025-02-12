@@ -20,7 +20,7 @@ use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
-use rustc_target::spec::abi::Abi;
+use rustc_abi::ExternAbi;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -149,7 +149,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                     return;
                 }
                 let attrs = cx.tcx.hir().attrs(hir_id);
-                if header.abi != Abi::Rust || requires_exact_signature(attrs) {
+                if header.abi != ExternAbi::Rust || requires_exact_signature(attrs) {
                     return;
                 }
                 header.is_async()

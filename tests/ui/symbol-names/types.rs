@@ -4,8 +4,8 @@
 //@ [legacy] compile-flags: -Csymbol-mangling-version=legacy
 //@ [verbose-legacy] compile-flags: -Csymbol-mangling-version=legacy -Zverbose-internals
 //@ [v0] compile-flags: -Csymbol-mangling-version=v0
-//@ normalize-stderr-test: "h[[:xdigit:]]{16}" -> "h[HASH]"
-//@ [v0] normalize-stderr-test: "\[[[:xdigit:]]{16}\]" -> "[HASH]"
+//@ normalize-stderr: "h[[:xdigit:]]{16}" -> "h[HASH]"
+//@ [v0] normalize-stderr: "\[[[:xdigit:]]{16}\]" -> "[HASH]"
 
 #![feature(never_type)]
 #![feature(rustc_attrs)]

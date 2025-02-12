@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{db::ExpandDatabase, CallableKind, ClosureStyle, HirDisplay, HirFileIdExt, InFile, Type};
+use hir::{db::ExpandDatabase, CallableKind, ClosureStyle, HirDisplay, HirFileIdExt, InFile};
 use ide_db::{
     famous_defs::FamousDefs,
     source_change::{SourceChange, SourceChangeBuilder},
@@ -88,7 +88,7 @@ fn add_reference(
     let range = ctx.sema.diagnostics_display_range((*expr_ptr).map(|it| it.into()));
 
     let (_, mutability) = d.expected.as_reference()?;
-    let actual_with_ref = Type::reference(&d.actual, mutability);
+    let actual_with_ref = d.actual.add_reference(mutability);
     if !actual_with_ref.could_coerce_to(ctx.sema.db, &d.expected) {
         return None;
     }
@@ -1158,6 +1158,37 @@ struct Bar {
     f1: u8,
     f2: &[u16],
     f3: dyn Debug,
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn trait_upcast_ok() {
+        check_diagnostics(
+            r#"
+//- minicore: coerce_unsized
+trait A: B {}
+trait B {}
+
+fn test(a: &dyn A) -> &dyn B {
+    a
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn trait_upcast_err() {
+        check_diagnostics(
+            r#"
+//- minicore: coerce_unsized
+trait A {} // `A` does not have `B` as a supertrait, so no upcast :c
+trait B {}
+
+fn test(a: &dyn A) -> &dyn B {
+    a
+  //^ error: expected &dyn B, found &dyn A
 }
 "#,
         );

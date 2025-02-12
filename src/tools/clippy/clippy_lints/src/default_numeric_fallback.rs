@@ -3,10 +3,12 @@ use clippy_utils::numeric_literal;
 use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{Visitor, walk_expr, walk_stmt};
-use rustc_hir::{Block, Body, ConstContext, Expr, ExprKind, FnRetTy, HirId, Lit, Stmt, StmtKind, StructTailExpr};
+use rustc_hir::intravisit::{Visitor, walk_expr, walk_pat, walk_stmt};
+use rustc_hir::{
+    Block, Body, ConstContext, Expr, ExprKind, FnRetTy, HirId, Lit, Pat, PatExpr, PatExprKind, PatKind, Stmt, StmtKind,
+    StructTailExpr,
+};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, FloatTy, IntTy, PolyFnSig, Ty};
 use rustc_session::declare_lint_pass;
 use std::iter;
@@ -26,7 +28,8 @@ declare_clippy_lint! {
     /// To ensure that every numeric type is chosen explicitly rather than implicitly.
     ///
     /// ### Known problems
-    /// This lint can only be allowed at the function level or above.
+    /// This lint is implemented using a custom algorithm independent of rustc's inference,
+    /// which results in many false positives and false negatives.
     ///
     /// ### Example
     /// ```no_run
@@ -36,8 +39,8 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```no_run
-    /// let i = 10i32;
-    /// let f = 1.23f64;
+    /// let i = 10_i32;
+    /// let f = 1.23_f64;
     /// ```
     #[clippy::version = "1.52.0"]
     pub DEFAULT_NUMERIC_FALLBACK,
@@ -82,7 +85,7 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
 
     /// Check whether a passed literal has potential to cause fallback or not.
     fn check_lit(&self, lit: &Lit, lit_ty: Ty<'tcx>, emit_hir_id: HirId) {
-        if !in_external_macro(self.cx.sess(), lit.span)
+        if !lit.span.in_external_macro(self.cx.sess().source_map())
             && matches!(self.ty_bounds.last(), Some(ExplicitTyBound(false)))
             && matches!(
                 lit.node,
@@ -216,6 +219,20 @@ impl<'tcx> Visitor<'tcx> for NumericFallbackVisitor<'_, 'tcx> {
         }
 
         walk_expr(self, expr);
+    }
+
+    fn visit_pat(&mut self, pat: &'tcx Pat<'_>) {
+        if let PatKind::Expr(&PatExpr {
+            hir_id,
+            kind: PatExprKind::Lit { lit, .. },
+            ..
+        }) = pat.kind
+        {
+            let ty = self.cx.typeck_results().node_type(hir_id);
+            self.check_lit(lit, ty, hir_id);
+            return;
+        }
+        walk_pat(self, pat);
     }
 
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {

@@ -35,7 +35,7 @@ pub fn is_const_evaluatable<'tcx>(
         ty::ConstKind::Param(_)
         | ty::ConstKind::Bound(_, _)
         | ty::ConstKind::Placeholder(_)
-        | ty::ConstKind::Value(_, _)
+        | ty::ConstKind::Value(_)
         | ty::ConstKind::Error(_) => return Ok(()),
         ty::ConstKind::Infer(_) => return Err(NotConstEvaluatable::MentionsInfer),
     };
@@ -79,7 +79,7 @@ pub fn is_const_evaluatable<'tcx>(
                     Err(
                         EvaluateConstErr::EvaluationFailure(e)
                         | EvaluateConstErr::InvalidConstParamTy(e),
-                    ) => Err(NotConstEvaluatable::Error(e.into())),
+                    ) => Err(NotConstEvaluatable::Error(e)),
                     Ok(_) => Ok(()),
                 }
             }
@@ -140,7 +140,7 @@ pub fn is_const_evaluatable<'tcx>(
             }
             Err(
                 EvaluateConstErr::EvaluationFailure(e) | EvaluateConstErr::InvalidConstParamTy(e),
-            ) => Err(NotConstEvaluatable::Error(e.into())),
+            ) => Err(NotConstEvaluatable::Error(e)),
             Ok(_) => Ok(()),
         }
     }

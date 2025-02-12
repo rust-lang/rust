@@ -64,6 +64,11 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         if type_is_pointer(typ) { self.context.new_null(typ) } else { self.const_int(typ, 0) }
     }
 
+    fn is_undef(&self, _val: RValue<'gcc>) -> bool {
+        // FIXME: actually check for undef
+        false
+    }
+
     fn const_undef(&self, typ: Type<'gcc>) -> RValue<'gcc> {
         let local = self.current_func.borrow().expect("func").new_local(None, typ, "undefined");
         if typ.is_struct().is_some() {
@@ -229,7 +234,12 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     GlobalAlloc::VTable(ty, dyn_ty) => {
                         let alloc = self
                             .tcx
-                            .global_alloc(self.tcx.vtable_allocation((ty, dyn_ty.principal())))
+                            .global_alloc(self.tcx.vtable_allocation((
+                                ty,
+                                dyn_ty.principal().map(|principal| {
+                                    self.tcx.instantiate_bound_regions_with_erased(principal)
+                                }),
+                            )))
                             .unwrap_memory();
                         let init = const_alloc_to_gcc(self, alloc);
                         self.static_addr_of(init, alloc.inner().align, None)
@@ -240,14 +250,14 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     }
                 };
                 let ptr_type = base_addr.get_type();
-                let base_addr = self.const_bitcast(base_addr, self.usize_type);
+                let base_addr = self.context.new_cast(None, base_addr, self.usize_type);
                 let offset =
                     self.context.new_rvalue_from_long(self.usize_type, offset.bytes() as i64);
-                let ptr = self.const_bitcast(base_addr + offset, ptr_type);
+                let ptr = self.context.new_cast(None, base_addr + offset, ptr_type);
                 if !matches!(layout.primitive(), Pointer(_)) {
                     self.const_bitcast(ptr.dereference(None).to_rvalue(), ty)
                 } else {
-                    self.const_bitcast(ptr, ty)
+                    self.context.new_cast(None, ptr, ty)
                 }
             }
         }

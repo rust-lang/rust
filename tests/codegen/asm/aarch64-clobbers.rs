@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: aarch64 aarch64_fixed_x18 aarch64_no_x18 aarch64_reserve_x18 arm64ec
 //@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
 //@[aarch64] needs-llvm-components: aarch64
@@ -14,16 +15,11 @@
 // ignore-tidy-linelength
 
 #![crate_type = "rlib"]
-#![feature(no_core, rustc_attrs, lang_items)]
+#![feature(no_core)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
+extern crate minicore;
+use minicore::*;
 
 // CHECK-LABEL: @cc_clobber
 // CHECK: call void asm sideeffect "", "~{cc}"()

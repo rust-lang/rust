@@ -4,9 +4,6 @@
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
 
-#[cfg(test)]
-mod tests;
-
 #[unstable(feature = "f16", issue = "116909")]
 pub use core::f16::consts;
 
@@ -228,6 +225,7 @@ impl f16 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    #[doc(alias = "fmaf16", alias = "fusedMultiplyAdd")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn mul_add(self, a: f16, b: f16) -> f16 {
         unsafe { intrinsics::fmaf16(self, a, b) }
@@ -323,6 +321,20 @@ impl f16 {
     ///
     /// The precision of this function is non-deterministic. This means it varies by platform,
     /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(reliable_f16_math)] {
+    ///
+    /// let x = 2.0_f16;
+    /// let abs_difference = (x.powi(2) - (x * x)).abs();
+    /// assert!(abs_difference <= f16::EPSILON);
+    ///
+    /// assert_eq!(f16::powi(f16::NAN, 0), 1.0);
+    /// # }
+    /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
@@ -346,8 +358,10 @@ impl f16 {
     ///
     /// let x = 2.0_f16;
     /// let abs_difference = (x.powf(2.0) - (x * x)).abs();
-    ///
     /// assert!(abs_difference <= f16::EPSILON);
+    ///
+    /// assert_eq!(f16::powf(1.0, f16::NAN), 1.0);
+    /// assert_eq!(f16::powf(f16::NAN, 0.0), 1.0);
     /// # }
     /// ```
     #[inline]
@@ -384,6 +398,7 @@ impl f16 {
     /// # }
     /// ```
     #[inline]
+    #[doc(alias = "squareRoot")]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]

@@ -10,19 +10,18 @@ use libc::c_uint;
 use rustc_abi::{Align, Size, WrappingRange};
 use rustc_llvm::RustString;
 
-pub use self::AtomicRmwBinOp::*;
 pub use self::CallConv::*;
 pub use self::CodeGenOptSize::*;
-pub use self::IntPredicate::*;
-pub use self::Linkage::*;
 pub use self::MetadataType::*;
-pub use self::RealPredicate::*;
 pub use self::ffi::*;
 use crate::common::AsCCharPtr;
 
 pub mod archive_ro;
 pub mod diagnostic;
+pub mod enzyme_ffi;
 mod ffi;
+
+pub use self::enzyme_ffi::*;
 
 impl LLVMRustResult {
     pub fn into_result(self) -> Result<(), ()> {

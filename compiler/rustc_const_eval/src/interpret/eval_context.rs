@@ -106,9 +106,6 @@ impl<'tcx, M: Machine<'tcx>> FnAbiOfHelpers<'tcx> for InterpCx<'tcx, M> {
     ) -> InterpErrorKind<'tcx> {
         match err {
             FnAbiError::Layout(err) => err_inval!(Layout(err)),
-            FnAbiError::AdjustForForeignAbi(err) => {
-                err_inval!(FnAbiAdjustForForeignAbi(err))
-            }
         }
     }
 }

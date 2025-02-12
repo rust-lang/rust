@@ -1,4 +1,4 @@
-error[E0658]: intrinsics are subject to change
+error[E0658]: the extern "rust-intrinsic" ABI is an implementation detail and perma-unstable
   --> $DIR/feature-gated-feature-in-macro-arg.rs:8:16
    |
 LL |         extern "rust-intrinsic" {

@@ -415,6 +415,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
+            | ty::UnsafeBinder(_)
             | ty::Alias(_, _)
             | ty::Param(_)
             | ty::Error(_) => ConstructorSet::Unlistable,
@@ -793,9 +794,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 // fictitious values after `{u,i}size::MAX` (see [`IntRange::split`] for why we do
                 // this). We show this to the user as `usize::MAX..` which is slightly incorrect but
                 // probably clear enough.
-                let c = ty.numeric_max_val(cx.tcx).unwrap();
-                let value = mir::Const::from_ty_const(c, ty.0, cx.tcx);
-                lo = PatRangeBoundary::Finite(value);
+                lo = PatRangeBoundary::Finite(ty.numeric_max_val(cx.tcx).unwrap());
             }
             let hi = if let Some(hi) = range.hi.minus_one() {
                 hi

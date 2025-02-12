@@ -7,12 +7,11 @@
 //! * Traits that represent operators; e.g., `Add`, `Sub`, `Index`.
 //! * Functions called by the compiler itself.
 
-use rustc_ast as ast;
+use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Span, Symbol, kw, sym};
 
 use crate::def_id::DefId;
 use crate::{MethodKind, Target};
@@ -153,11 +152,11 @@ impl<CTX> HashStable<CTX> for LangItem {
 
 /// Extracts the first `lang = "$name"` out of a list of attributes.
 /// The `#[panic_handler]` attribute is also extracted out when found.
-pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
+pub fn extract(attrs: &[impl AttributeExt]) -> Option<(Symbol, Span)> {
     attrs.iter().find_map(|attr| {
         Some(match attr {
-            _ if attr.has_name(sym::lang) => (attr.value_str()?, attr.span),
-            _ if attr.has_name(sym::panic_handler) => (sym::panic_impl, attr.span),
+            _ if attr.has_name(sym::lang) => (attr.value_str()?, attr.span()),
+            _ if attr.has_name(sym::panic_handler) => (sym::panic_impl, attr.span()),
             _ => return None,
         })
     })
@@ -317,6 +316,7 @@ language_item_table! {
     PanicAsyncFnResumedPanic, sym::panic_const_async_fn_resumed_panic, panic_const_async_fn_resumed_panic, Target::Fn, GenericRequirement::None;
     PanicAsyncGenFnResumedPanic, sym::panic_const_async_gen_fn_resumed_panic, panic_const_async_gen_fn_resumed_panic, Target::Fn, GenericRequirement::None;
     PanicGenFnNonePanic, sym::panic_const_gen_fn_none_panic, panic_const_gen_fn_none_panic, Target::Fn, GenericRequirement::None;
+    PanicNullPointerDereference, sym::panic_null_pointer_dereference, panic_null_pointer_dereference, Target::Fn, GenericRequirement::None;
     /// libstd panic entry point. Necessary for const eval to be able to catch it
     BeginPanic,              sym::begin_panic,         begin_panic_fn,             Target::Fn,             GenericRequirement::None;
 
@@ -333,6 +333,10 @@ language_item_table! {
     FallbackSurfaceDrop,     sym::fallback_surface_drop, fallback_surface_drop_fn, Target::Fn,             GenericRequirement::None;
     AllocLayout,             sym::alloc_layout,        alloc_layout,               Target::Struct,         GenericRequirement::None;
 
+    /// For all binary crates without `#![no_main]`, Rust will generate a "main" function.
+    /// The exact name and signature are target-dependent. The "main" function will invoke
+    /// this lang item, passing it the `argc` and `argv` (or null, if those don't exist
+    /// on the current target) as well as the user-defined `fn main` from the binary crate.
     Start,                   sym::start,               start_fn,                   Target::Fn,             GenericRequirement::Exact(1);
 
     EhPersonality,           sym::eh_personality,      eh_personality,             Target::Fn,             GenericRequirement::None;
@@ -365,6 +369,8 @@ language_item_table! {
     TryTraitFromYeet,        sym::from_yeet,           from_yeet_fn,               Target::Fn,             GenericRequirement::None;
 
     PointerLike,             sym::pointer_like,        pointer_like,               Target::Trait,          GenericRequirement::Exact(0);
+
+    CoercePointeeValidated, sym::coerce_pointee_validated, coerce_pointee_validated_trait, Target::Trait,     GenericRequirement::Exact(0);
 
     ConstParamTy,            sym::const_param_ty,      const_param_ty_trait,       Target::Trait,          GenericRequirement::Exact(0);
     UnsizedConstParamTy,     sym::unsized_const_param_ty, unsized_const_param_ty_trait, Target::Trait, GenericRequirement::Exact(0);
@@ -412,13 +418,26 @@ language_item_table! {
     RangeToInclusive,        sym::RangeToInclusive,    range_to_inclusive_struct,  Target::Struct,         GenericRequirement::None;
     RangeTo,                 sym::RangeTo,             range_to_struct,            Target::Struct,         GenericRequirement::None;
 
+    // `new_range` types that are `Copy + IntoIterator`
+    RangeFromCopy,           sym::RangeFromCopy,       range_from_copy_struct,     Target::Struct,         GenericRequirement::None;
+    RangeCopy,               sym::RangeCopy,           range_copy_struct,          Target::Struct,         GenericRequirement::None;
+    RangeInclusiveCopy,      sym::RangeInclusiveCopy,  range_inclusive_copy_struct, Target::Struct,         GenericRequirement::None;
+
     String,                  sym::String,              string,                     Target::Struct,         GenericRequirement::None;
     CStr,                    sym::CStr,                c_str,                      Target::Struct,         GenericRequirement::None;
+
+    // Experimental lang items for implementing contract pre- and post-condition checking.
+    ContractBuildCheckEnsures, sym::contract_build_check_ensures, contract_build_check_ensures_fn, Target::Fn, GenericRequirement::None;
+    ContractCheckRequires,     sym::contract_check_requires,      contract_check_requires_fn,      Target::Fn, GenericRequirement::None;
 }
 
+/// The requirement imposed on the generics of a lang item
 pub enum GenericRequirement {
+    /// No restriction on the generics
     None,
+    /// A minimum number of generics that is demanded on a lang item
     Minimum(usize),
+    /// The number of generics must match precisely as stipulated
     Exact(usize),
 }
 

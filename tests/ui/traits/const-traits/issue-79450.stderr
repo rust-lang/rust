@@ -1,4 +1,4 @@
-error[E0015]: cannot call non-const fn `_print` in constant functions
+error[E0015]: cannot call non-const function `_print` in constant functions
   --> $DIR/issue-79450.rs:9:9
    |
 LL |         println!("lul");

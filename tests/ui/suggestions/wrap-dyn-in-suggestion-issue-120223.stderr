@@ -58,14 +58,14 @@ help: consider adding an explicit lifetime bound
 LL |     executor: impl FnOnce(T) -> (dyn Future<Output = ()>) + 'static,
    |                                 +                       +++++++++++
 
-error[E0310]: the parameter type `impl FnOnce(T) -> Future<Output = ()>` may not live long enough
+error[E0310]: the parameter type `impl FnOnce(T) -> dyn* Future<Output = ()>` may not live long enough
   --> $DIR/wrap-dyn-in-suggestion-issue-120223.rs:14:5
    |
 LL |     Box::new(executor)
    |     ^^^^^^^^^^^^^^^^^^
    |     |
-   |     the parameter type `impl FnOnce(T) -> Future<Output = ()>` must be valid for the static lifetime...
-   |     ...so that the type `impl FnOnce(T) -> Future<Output = ()>` will meet its required lifetime bounds
+   |     the parameter type `impl FnOnce(T) -> dyn* Future<Output = ()>` must be valid for the static lifetime...
+   |     ...so that the type `impl FnOnce(T) -> dyn* Future<Output = ()>` will meet its required lifetime bounds
    |
 help: consider adding an explicit lifetime bound
    |

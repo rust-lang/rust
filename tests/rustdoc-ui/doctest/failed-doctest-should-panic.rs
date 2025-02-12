@@ -3,8 +3,8 @@
 
 //@ edition: 2024
 //@ compile-flags:--test
-//@ normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
-//@ normalize-stdout-test: "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ normalize-stdout: "tests/rustdoc-ui/doctest" -> "$$DIR"
+//@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 //@ failure-status: 101
 
 /// ```should_panic

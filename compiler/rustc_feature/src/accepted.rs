@@ -1,6 +1,6 @@
 //! List of the accepted feature gates.
 
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use super::{Feature, to_nonzero};
 
@@ -9,7 +9,7 @@ macro_rules! declare_features {
         $(#[doc = $doc:tt])* (accepted, $feature:ident, $ver:expr, $issue:expr),
     )+) => {
         /// Formerly unstable features that have now been accepted (stabilized).
-        pub const ACCEPTED_LANG_FEATURES: &[Feature] = &[
+        pub static ACCEPTED_LANG_FEATURES: &[Feature] = &[
             $(Feature {
                 name: sym::$feature,
                 since: $ver,
@@ -73,7 +73,7 @@ declare_features! (
     /// Allows free and inherent `async fn`s, `async` blocks, and `<expr>.await` expressions.
     (accepted, async_await, "1.39.0", Some(50547)),
     /// Allows `async || body` closures.
-    (accepted, async_closure, "CURRENT_RUSTC_VERSION", Some(62290)),
+    (accepted, async_closure, "1.85.0", Some(62290)),
     /// Allows async functions to be declared, implemented, and used in traits.
     (accepted, async_fn_in_trait, "1.75.0", Some(91611)),
     /// Allows all literals in attribute lists and values of key-value pairs.
@@ -175,6 +175,8 @@ declare_features! (
     (accepted, destructuring_assignment, "1.59.0", Some(71126)),
     /// Allows using the `#[diagnostic]` attribute tool namespace
     (accepted, diagnostic_namespace, "1.78.0", Some(111996)),
+    /// Controls errors in trait implementations.
+    (accepted, do_not_recommend, "1.85.0", Some(51992)),
     /// Allows `#[doc(alias = "...")]`.
     (accepted, doc_alias, "1.48.0", Some(50146)),
     /// Allows `..` in tuple (struct) patterns.
@@ -197,7 +199,7 @@ declare_features! (
     (accepted, extended_key_value_attributes, "1.54.0", Some(78835)),
     /// Allows using `efiapi`, `aapcs`, `sysv64` and `win64` as calling
     /// convention for functions with varargs.
-    (accepted, extended_varargs_abi_support, "CURRENT_RUSTC_VERSION", Some(100189)),
+    (accepted, extended_varargs_abi_support, "1.85.0", Some(100189)),
     /// Allows resolving absolute paths as paths from other crates.
     (accepted, extern_absolute_paths, "1.30.0", Some(44660)),
     /// Allows `extern crate foo as bar;`. This puts `bar` into extern prelude.
@@ -398,6 +400,9 @@ declare_features! (
     /// Allows `#[track_caller]` to be used which provides
     /// accurate caller location reporting during panic (RFC 2091).
     (accepted, track_caller, "1.46.0", Some(47809)),
+    /// Allows dyn upcasting trait objects via supertraits.
+    /// Dyn upcasting is casting, e.g., `dyn Foo -> dyn Bar` where `Foo: Bar`.
+    (accepted, trait_upcasting, "CURRENT_RUSTC_VERSION", Some(65991)),
     /// Allows #[repr(transparent)] on univariant enums (RFC 2645).
     (accepted, transparent_enums, "1.42.0", Some(60405)),
     /// Allows indexing tuples.

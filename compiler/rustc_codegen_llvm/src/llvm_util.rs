@@ -15,14 +15,14 @@ use rustc_fs_util::path_to_c_string;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_session::config::{PrintKind, PrintRequest};
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy, SmallDataThresholdSupport};
 use rustc_target::target_features::{RUSTC_SPECIAL_FEATURES, RUSTC_SPECIFIC_FEATURES};
 
 use crate::back::write::create_informational_target_machine;
 use crate::errors::{
-    FixedX18InvalidArch, ForbiddenCTargetFeature, InvalidTargetFeaturePrefix, PossibleFeature,
-    UnknownCTargetFeature, UnknownCTargetFeaturePrefix, UnstableCTargetFeature,
+    FixedX18InvalidArch, ForbiddenCTargetFeature, PossibleFeature, UnknownCTargetFeature,
+    UnknownCTargetFeaturePrefix, UnstableCTargetFeature,
 };
 use crate::llvm;
 
@@ -109,7 +109,10 @@ unsafe fn configure_llvm(sess: &Session) {
             add("-wasm-enable-eh", false);
         }
 
-        if sess.target.os == "emscripten" && sess.panic_strategy() == PanicStrategy::Unwind {
+        if sess.target.os == "emscripten"
+            && !sess.opts.unstable_opts.emscripten_wasm_eh
+            && sess.panic_strategy() == PanicStrategy::Unwind
+        {
             add("-enable-emscripten-cxx-exceptions", false);
         }
 
@@ -268,6 +271,7 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("aarch64", "fp16") => Some(LLVMFeature::new("fullfp16")),
         // Filter out features that are not supported by the current LLVM version
         ("aarch64", "fpmr") if get_version().0 != 18 => None,
+        ("arm", "fp16") => Some(LLVMFeature::new("fullfp16")),
         // In LLVM 18, `unaligned-scalar-mem` was merged with `unaligned-vector-mem` into a single
         // feature called `fast-unaligned-access`. In LLVM 19, it was split back out.
         ("riscv32" | "riscv64", "unaligned-scalar-mem") if get_version().0 == 18 => {
@@ -300,7 +304,7 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
 /// Must express features in the way Rust understands them.
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled outside codegen.
-pub fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
+pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
     let mut features: FxHashSet<Symbol> = Default::default();
 
     // Add base features for the target.
@@ -316,7 +320,6 @@ pub fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<Symbol> 
         sess.target
             .rust_target_features()
             .iter()
-            .filter(|(_, gate, _)| gate.in_cfg())
             .filter(|(feature, _, _)| {
                 // skip checking special features, as LLVM may not understand them
                 if RUSTC_SPECIAL_FEATURES.contains(feature) {
@@ -348,7 +351,16 @@ pub fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<Symbol> 
     {
         if enabled {
             // Also add all transitively implied features.
-            features.extend(sess.target.implied_target_features(std::iter::once(feature)));
+
+            // We don't care about the order in `features` since the only thing we use it for is the
+            // `features.contains` below.
+            #[allow(rustc::potential_query_instability)]
+            features.extend(
+                sess.target
+                    .implied_target_features(std::iter::once(feature.as_str()))
+                    .iter()
+                    .map(|s| Symbol::intern(s)),
+            );
         } else {
             // Remove transitively reverse-implied features.
 
@@ -356,7 +368,11 @@ pub fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<Symbol> 
             // `features.contains` below.
             #[allow(rustc::potential_query_instability)]
             features.retain(|f| {
-                if sess.target.implied_target_features(std::iter::once(*f)).contains(&feature) {
+                if sess
+                    .target
+                    .implied_target_features(std::iter::once(f.as_str()))
+                    .contains(&feature.as_str())
+                {
                     // If `f` if implies `feature`, then `!feature` implies `!f`, so we have to
                     // remove `f`. (This is the standard logical contraposition principle.)
                     false
@@ -372,10 +388,14 @@ pub fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<Symbol> 
     sess.target
         .rust_target_features()
         .iter()
-        .filter(|(_, gate, _)| gate.in_cfg())
-        .filter_map(|&(feature, gate, _)| {
-            if sess.is_nightly_build() || allow_unstable || gate.requires_nightly().is_none() {
-                Some(feature)
+        .filter_map(|(feature, gate, _)| {
+            // The `allow_unstable` set is used by rustc internally to determined which target
+            // features are truly available, so we want to return even perma-unstable "forbidden"
+            // features.
+            if allow_unstable
+                || (gate.in_cfg() && (sess.is_nightly_build() || gate.requires_nightly().is_none()))
+            {
+                Some(*feature)
             } else {
                 None
             }
@@ -638,7 +658,7 @@ pub(crate) fn global_llvm_features(
         sess.target
             .features
             .split(',')
-            .filter(|v| !v.is_empty() && backend_feature_name(sess, v).is_some())
+            .filter(|v| !v.is_empty())
             // Drop +v8plus feature introduced in LLVM 20.
             .filter(|v| *v != "+v8plus" || get_version() >= (20, 0, 0))
             .map(String::from),
@@ -651,89 +671,89 @@ pub(crate) fn global_llvm_features(
     // -Ctarget-features
     if !only_base_features {
         let known_features = sess.target.rust_target_features();
+        // Will only be filled when `diagnostics` is set!
         let mut featsmap = FxHashMap::default();
 
-        // insert implied features
+        // Compute implied features
         let mut all_rust_features = vec![];
         for feature in sess.opts.cg.target_feature.split(',') {
-            match feature.strip_prefix('+') {
-                Some(feature) => all_rust_features.extend(
-                    UnordSet::from(
-                        sess.target
-                            .implied_target_features(std::iter::once(Symbol::intern(feature))),
-                    )
-                    .to_sorted_stable_ord()
-                    .iter()
-                    .map(|s| format!("+{}", s.as_str())),
-                ),
-                _ => all_rust_features.push(feature.to_string()),
+            if let Some(feature) = feature.strip_prefix('+') {
+                all_rust_features.extend(
+                    UnordSet::from(sess.target.implied_target_features(std::iter::once(feature)))
+                        .to_sorted_stable_ord()
+                        .iter()
+                        .map(|&&s| (true, s)),
+                )
+            } else if let Some(feature) = feature.strip_prefix('-') {
+                // FIXME: Why do we not remove implied features on "-" here?
+                // We do the equivalent above in `target_features_cfg`.
+                // See <https://github.com/rust-lang/rust/issues/134792>.
+                all_rust_features.push((false, feature));
+            } else if !feature.is_empty() {
+                if diagnostics {
+                    sess.dcx().emit_warn(UnknownCTargetFeaturePrefix { feature });
+                }
+            }
+        }
+        // Remove features that are meant for rustc, not LLVM.
+        all_rust_features.retain(|(_, feature)| {
+            // Retain if it is not a rustc feature
+            !RUSTC_SPECIFIC_FEATURES.contains(feature)
+        });
+
+        // Check feature validity.
+        if diagnostics {
+            for &(enable, feature) in &all_rust_features {
+                let feature_state = known_features.iter().find(|&&(v, _, _)| v == feature);
+                match feature_state {
+                    None => {
+                        let rust_feature =
+                            known_features.iter().find_map(|&(rust_feature, _, _)| {
+                                let llvm_features = to_llvm_features(sess, rust_feature)?;
+                                if llvm_features.contains(feature)
+                                    && !llvm_features.contains(rust_feature)
+                                {
+                                    Some(rust_feature)
+                                } else {
+                                    None
+                                }
+                            });
+                        let unknown_feature = if let Some(rust_feature) = rust_feature {
+                            UnknownCTargetFeature {
+                                feature,
+                                rust_feature: PossibleFeature::Some { rust_feature },
+                            }
+                        } else {
+                            UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
+                        };
+                        sess.dcx().emit_warn(unknown_feature);
+                    }
+                    Some((_, stability, _)) => {
+                        if let Err(reason) = stability.toggle_allowed() {
+                            sess.dcx().emit_warn(ForbiddenCTargetFeature {
+                                feature,
+                                enabled: if enable { "enabled" } else { "disabled" },
+                                reason,
+                            });
+                        } else if stability.requires_nightly().is_some() {
+                            // An unstable feature. Warn about using it. It makes little sense
+                            // to hard-error here since we just warn about fully unknown
+                            // features above.
+                            sess.dcx().emit_warn(UnstableCTargetFeature { feature });
+                        }
+                    }
+                }
+
+                // FIXME(nagisa): figure out how to not allocate a full hashset here.
+                featsmap.insert(feature, enable);
             }
         }
 
+        // Translate this into LLVM features.
         let feats = all_rust_features
             .iter()
-            .filter_map(|s| {
-                let enable_disable = match s.chars().next() {
-                    None => return None,
-                    Some(c @ ('+' | '-')) => c,
-                    Some(_) => {
-                        if diagnostics {
-                            sess.dcx().emit_warn(UnknownCTargetFeaturePrefix { feature: s });
-                        }
-                        return None;
-                    }
-                };
-
-                // Get the backend feature name, if any.
-                // This excludes rustc-specific features, which do not get passed to LLVM.
-                let feature = backend_feature_name(sess, s)?;
-                // Warn against use of LLVM specific feature names and unstable features on the CLI.
-                if diagnostics {
-                    let feature_state = known_features.iter().find(|&&(v, _, _)| v == feature);
-                    match feature_state {
-                        None => {
-                            let rust_feature =
-                                known_features.iter().find_map(|&(rust_feature, _, _)| {
-                                    let llvm_features = to_llvm_features(sess, rust_feature)?;
-                                    if llvm_features.contains(feature)
-                                        && !llvm_features.contains(rust_feature)
-                                    {
-                                        Some(rust_feature)
-                                    } else {
-                                        None
-                                    }
-                                });
-                            let unknown_feature = if let Some(rust_feature) = rust_feature {
-                                UnknownCTargetFeature {
-                                    feature,
-                                    rust_feature: PossibleFeature::Some { rust_feature },
-                                }
-                            } else {
-                                UnknownCTargetFeature {
-                                    feature,
-                                    rust_feature: PossibleFeature::None,
-                                }
-                            };
-                            sess.dcx().emit_warn(unknown_feature);
-                        }
-                        Some((_, stability, _)) => {
-                            if let Err(reason) =
-                                stability.compute_toggleability(&sess.target).allow_toggle()
-                            {
-                                sess.dcx().emit_warn(ForbiddenCTargetFeature { feature, reason });
-                            } else if stability.requires_nightly().is_some() {
-                                // An unstable feature. Warn about using it. It makes little sense
-                                // to hard-error here since we just warn about fully unknown
-                                // features above.
-                                sess.dcx().emit_warn(UnstableCTargetFeature { feature });
-                            }
-                        }
-                    }
-
-                    // FIXME(nagisa): figure out how to not allocate a full hashset here.
-                    featsmap.insert(feature, enable_disable == '+');
-                }
-
+            .filter_map(|&(enable, feature)| {
+                let enable_disable = if enable { '+' } else { '-' };
                 // We run through `to_llvm_features` when
                 // passing requests down to LLVM. This means that all in-language
                 // features also work on the command line instead of having two
@@ -746,9 +766,9 @@ pub(crate) fn global_llvm_features(
                         enable_disable, llvm_feature.llvm_feature_name
                     ))
                     .chain(llvm_feature.dependency.into_iter().filter_map(
-                        move |feat| match (enable_disable, feat) {
-                            ('-' | '+', TargetFeatureFoldStrength::Both(f))
-                            | ('+', TargetFeatureFoldStrength::EnableOnly(f)) => {
+                        move |feat| match (enable, feat) {
+                            (_, TargetFeatureFoldStrength::Both(f))
+                            | (true, TargetFeatureFoldStrength::EnableOnly(f)) => {
                                 Some(format!("{enable_disable}{f}"))
                             }
                             _ => None,
@@ -778,22 +798,6 @@ pub(crate) fn global_llvm_features(
     }
 
     features
-}
-
-/// Returns a feature name for the given `+feature` or `-feature` string.
-///
-/// Only allows features that are backend specific (i.e. not [`RUSTC_SPECIFIC_FEATURES`].)
-fn backend_feature_name<'a>(sess: &Session, s: &'a str) -> Option<&'a str> {
-    // features must start with a `+` or `-`.
-    let feature = s
-        .strip_prefix(&['+', '-'][..])
-        .unwrap_or_else(|| sess.dcx().emit_fatal(InvalidTargetFeaturePrefix { feature: s }));
-    // Rustc-specific feature requests like `+crt-static` or `-crt-static`
-    // are not passed down to LLVM.
-    if s.is_empty() || RUSTC_SPECIFIC_FEATURES.contains(&feature) {
-        return None;
-    }
-    Some(feature)
 }
 
 pub(crate) fn tune_cpu(sess: &Session) -> Option<&str> {

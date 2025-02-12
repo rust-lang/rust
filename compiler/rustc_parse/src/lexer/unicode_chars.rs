@@ -1,15 +1,14 @@
 //! Characters and their corresponding confusables were collected from
 //! <https://www.unicode.org/Public/security/10.0.0/confusables.txt>
 
-use rustc_span::symbol::kw;
-use rustc_span::{BytePos, Pos, Span};
+use rustc_span::{BytePos, Pos, Span, kw};
 
 use super::Lexer;
 use crate::errors::TokenSubstitution;
 use crate::token::{self, Delimiter};
 
 #[rustfmt::skip] // for line breaks
-pub(super) const UNICODE_ARRAY: &[(char, &str, &str)] = &[
+pub(super) static UNICODE_ARRAY: &[(char, &str, &str)] = &[
     (' ', "Line Separator", " "),
     (' ', "Paragraph Separator", " "),
     (' ', "Ogham Space mark", " "),

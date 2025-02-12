@@ -19,7 +19,7 @@ use std::fmt;
 
 use hir_expand::{name::Name, MacroDefId};
 use intern::Symbol;
-use la_arena::{Idx, RawIdx};
+use la_arena::Idx;
 use rustc_apfloat::ieee::{Half as f16, Quad as f128};
 use syntax::ast;
 use type_ref::TypeRefId;
@@ -37,13 +37,10 @@ pub type BindingId = Idx<Binding>;
 
 pub type ExprId = Idx<Expr>;
 
-/// FIXME: this is a hacky function which should be removed
-pub(crate) fn dummy_expr_id() -> ExprId {
-    ExprId::from_raw(RawIdx::from(u32::MAX))
-}
-
 pub type PatId = Idx<Pat>;
 
+// FIXME: Encode this as a single u32, we won't ever reach all 32 bits especially given these counts
+// are local to the body.
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum ExprOrPatId {
     ExprId(ExprId),

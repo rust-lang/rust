@@ -18,7 +18,7 @@ use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::{self as ty, Canonical, CanonicalVarValues, InferCtxtLike, Interner};
 use tracing::{debug, instrument, trace};
 
-use crate::canonicalizer::{CanonicalizeMode, Canonicalizer};
+use crate::canonicalizer::Canonicalizer;
 use crate::delegate::SolverDelegate;
 use crate::resolve::EagerResolver;
 use crate::solve::eval_ctxt::NestedGoals;
@@ -60,9 +60,8 @@ where
             (goal, opaque_types).fold_with(&mut EagerResolver::new(self.delegate));
 
         let mut orig_values = Default::default();
-        let canonical = Canonicalizer::canonicalize(
+        let canonical = Canonicalizer::canonicalize_input(
             self.delegate,
-            CanonicalizeMode::Input,
             &mut orig_values,
             QueryInput {
                 goal,
@@ -146,11 +145,11 @@ where
         // Remove any trivial region constraints once we've resolved regions
         external_constraints
             .region_constraints
-            .retain(|outlives| outlives.0.as_region().map_or(true, |re| re != outlives.1));
+            .retain(|outlives| outlives.0.as_region().is_none_or(|re| re != outlives.1));
 
-        let canonical = Canonicalizer::canonicalize(
+        let canonical = Canonicalizer::canonicalize_response(
             self.delegate,
-            CanonicalizeMode::Response { max_input_universe: self.max_input_universe },
+            self.max_input_universe,
             &mut Default::default(),
             Response {
                 var_values,
@@ -259,20 +258,29 @@ where
             self.delegate,
             &original_values,
             &response,
+            self.origin_span,
         );
 
         let Response { var_values, external_constraints, certainty } =
             self.delegate.instantiate_canonical(response, instantiation);
 
-        Self::unify_query_var_values(self.delegate, param_env, &original_values, var_values);
+        Self::unify_query_var_values(
+            self.delegate,
+            param_env,
+            &original_values,
+            var_values,
+            self.origin_span,
+        );
 
         let ExternalConstraintsData {
             region_constraints,
             opaque_types,
             normalization_nested_goals,
         } = &*external_constraints;
+
         self.register_region_constraints(region_constraints);
         self.register_new_opaque_types(opaque_types);
+
         (normalization_nested_goals.clone(), certainty)
     }
 
@@ -283,6 +291,7 @@ where
         delegate: &D,
         original_values: &[I::GenericArg],
         response: &Canonical<I, T>,
+        span: I::Span,
     ) -> CanonicalVarValues<I> {
         // FIXME: Longterm canonical queries should deal with all placeholders
         // created inside of the query directly instead of returning them to the
@@ -335,7 +344,7 @@ where
                     // A variable from inside a binder of the query. While ideally these shouldn't
                     // exist at all (see the FIXME at the start of this method), we have to deal with
                     // them for now.
-                    delegate.instantiate_canonical_var_with_infer(info, |idx| {
+                    delegate.instantiate_canonical_var_with_infer(info, span, |idx| {
                         ty::UniverseIndex::from(prev_universe.index() + idx.index())
                     })
                 } else if info.is_existential() {
@@ -349,7 +358,7 @@ where
                     if let Some(v) = opt_values[ty::BoundVar::from_usize(index)] {
                         v
                     } else {
-                        delegate.instantiate_canonical_var_with_infer(info, |_| prev_universe)
+                        delegate.instantiate_canonical_var_with_infer(info, span, |_| prev_universe)
                     }
                 } else {
                     // For placeholders which were already part of the input, we simply map this
@@ -380,12 +389,13 @@ where
         param_env: I::ParamEnv,
         original_values: &[I::GenericArg],
         var_values: CanonicalVarValues<I>,
+        span: I::Span,
     ) {
         assert_eq!(original_values.len(), var_values.len());
 
         for (&orig, response) in iter::zip(original_values, var_values.var_values.iter()) {
             let goals =
-                delegate.eq_structurally_relating_aliases(param_env, orig, response).unwrap();
+                delegate.eq_structurally_relating_aliases(param_env, orig, response, span).unwrap();
             assert!(goals.is_empty());
         }
     }
@@ -405,7 +415,7 @@ where
 
     fn register_new_opaque_types(&mut self, opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)]) {
         for &(key, ty) in opaque_types {
-            self.delegate.inject_new_hidden_type_unchecked(key, ty);
+            self.delegate.inject_new_hidden_type_unchecked(key, ty, self.origin_span);
         }
     }
 }
@@ -428,19 +438,14 @@ where
     let var_values = CanonicalVarValues { var_values: delegate.cx().mk_args(var_values) };
     let state = inspect::State { var_values, data };
     let state = state.fold_with(&mut EagerResolver::new(delegate));
-    Canonicalizer::canonicalize(
-        delegate,
-        CanonicalizeMode::Response { max_input_universe },
-        &mut vec![],
-        state,
-    )
+    Canonicalizer::canonicalize_response(delegate, max_input_universe, &mut vec![], state)
 }
 
 // FIXME: needs to be pub to be accessed by downstream
 // `rustc_trait_selection::solve::inspect::analyse`.
 pub fn instantiate_canonical_state<D, I, T: TypeFoldable<I>>(
     delegate: &D,
-    span: D::Span,
+    span: I::Span,
     param_env: I::ParamEnv,
     orig_values: &mut Vec<I::GenericArg>,
     state: inspect::CanonicalState<I, T>,
@@ -451,19 +456,17 @@ where
 {
     // In case any fresh inference variables have been created between `state`
     // and the previous instantiation, extend `orig_values` for it.
-    assert!(orig_values.len() <= state.value.var_values.len());
-    for &arg in &state.value.var_values.var_values.as_slice()
-        [orig_values.len()..state.value.var_values.len()]
-    {
-        let unconstrained = delegate.fresh_var_for_kind_with_span(arg, span);
-        orig_values.push(unconstrained);
-    }
+    orig_values.extend(
+        state.value.var_values.var_values.as_slice()[orig_values.len()..]
+            .iter()
+            .map(|&arg| delegate.fresh_var_for_kind_with_span(arg, span)),
+    );
 
     let instantiation =
-        EvalCtxt::compute_query_response_instantiation_values(delegate, orig_values, &state);
+        EvalCtxt::compute_query_response_instantiation_values(delegate, orig_values, &state, span);
 
     let inspect::State { var_values, data } = delegate.instantiate_canonical(state, instantiation);
 
-    EvalCtxt::unify_query_var_values(delegate, param_env, orig_values, var_values);
+    EvalCtxt::unify_query_var_values(delegate, param_env, orig_values, var_values, span);
     data
 }

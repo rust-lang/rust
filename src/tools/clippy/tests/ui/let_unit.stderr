@@ -1,5 +1,5 @@
 error: this let-binding has unit value
-  --> tests/ui/let_unit.rs:13:5
+  --> tests/ui/let_unit.rs:11:5
    |
 LL |     let _x = println!("x");
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: omit the `let` binding: `println!("x");`
@@ -8,7 +8,7 @@ LL |     let _x = println!("x");
    = help: to override `-D warnings` add `#[allow(clippy::let_unit_value)]`
 
 error: this let-binding has unit value
-  --> tests/ui/let_unit.rs:61:5
+  --> tests/ui/let_unit.rs:59:5
    |
 LL | /     let _ = v
 LL | |         .into_iter()
@@ -31,7 +31,7 @@ LL +         .unwrap();
    |
 
 error: this let-binding has unit value
-  --> tests/ui/let_unit.rs:110:5
+  --> tests/ui/let_unit.rs:108:5
    |
 LL | /     let x = match Some(0) {
 LL | |         None => f2(1),
@@ -52,23 +52,17 @@ LL +     };
    |
 
 error: this let-binding has unit value
-  --> tests/ui/let_unit.rs:191:9
+  --> tests/ui/let_unit.rs:189:9
    |
 LL |         let res = returns_unit();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: omit the `let` binding
+help: omit the `let` binding and replace variable usages with `()`
    |
-LL |         returns_unit();
+LL ~         returns_unit();
+LL ~         returns_result(()).unwrap();
+LL ~         returns_result(()).unwrap();
    |
-help: variable `res` of type `()` can be replaced with explicit `()`
-   |
-LL |         returns_result(()).unwrap();
-   |                        ~~
-help: variable `res` of type `()` can be replaced with explicit `()`
-   |
-LL |         returns_result(()).unwrap();
-   |                        ~~
 
 error: aborting due to 4 previous errors
 

@@ -60,7 +60,7 @@ impl RawWaker {
         RawWaker { data, vtable }
     }
 
-    #[stable(feature = "noop_waker", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "noop_waker", since = "1.85.0")]
     const NOOP: RawWaker = {
         const VTABLE: RawWakerVTable = RawWakerVTable::new(
             // Cloning just returns a new no-op raw waker
@@ -322,7 +322,7 @@ impl<'a> ContextBuilder<'a> {
         // SAFETY: LocalWaker is just Waker without thread safety
         let local_waker = unsafe { transmute(waker) };
         Self {
-            waker: waker,
+            waker,
             local_waker,
             ext: ExtData::None(()),
             _marker: PhantomData,
@@ -564,8 +564,8 @@ impl Waker {
     /// ```
     #[inline]
     #[must_use]
-    #[stable(feature = "noop_waker", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "noop_waker", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "noop_waker", since = "1.85.0")]
+    #[rustc_const_stable(feature = "noop_waker", since = "1.85.0")]
     pub const fn noop() -> &'static Waker {
         const WAKER: &Waker = &Waker { waker: RawWaker::NOOP };
         WAKER

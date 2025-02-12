@@ -7,8 +7,7 @@ use rustc_hir::HirId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::def_id::LocalDefIdMap;
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 use super::TyCtxt;
 use crate::hir::place::{
@@ -434,7 +433,7 @@ pub fn analyze_coroutine_closure_captures<'a, 'tcx: 'a, T>(
                 // A parent matches a child if they share the same prefix of projections.
                 // The child may have more, if it is capturing sub-fields out of
                 // something that is captured by-move in the parent closure.
-                while child_captures.peek().map_or(false, |(_, child_capture)| {
+                while child_captures.peek().is_some_and(|(_, child_capture)| {
                     child_prefix_matches_parent_projections(parent_capture, child_capture)
                 }) {
                     let (child_field_idx, child_capture) = child_captures.next().unwrap();

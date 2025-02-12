@@ -6,7 +6,6 @@
 use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
-use crate::expand::typetree::TypeTree;
 use crate::expand::{Decodable, Encodable, HashStable_Generic};
 use crate::ptr::P;
 use crate::{Ty, TyKind};
@@ -31,14 +30,6 @@ pub enum DiffMode {
     Forward,
     /// The target function, to be created using reverse mode AD.
     Reverse,
-    /// The target function, to be created using forward mode AD.
-    /// This target function will also be used as a source for higher order derivatives,
-    /// so compute it before all Forward/Reverse targets and optimize it through llvm.
-    ForwardFirst,
-    /// The target function, to be created using reverse mode AD.
-    /// This target function will also be used as a source for higher order derivatives,
-    /// so compute it before all Forward/Reverse targets and optimize it through llvm.
-    ReverseFirst,
 }
 
 /// Dual and Duplicated (and their Only variants) are getting lowered to the same Enzyme Activity.
@@ -79,11 +70,8 @@ pub struct AutoDiffItem {
     /// The name of the function being generated
     pub target: String,
     pub attrs: AutoDiffAttrs,
-    /// Describe the memory layout of input types
-    pub inputs: Vec<TypeTree>,
-    /// Describe the memory layout of the output type
-    pub output: TypeTree,
 }
+
 #[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct AutoDiffAttrs {
     /// Conceptually either forward or reverse mode AD, as described in various autodiff papers and
@@ -96,10 +84,10 @@ pub struct AutoDiffAttrs {
 
 impl DiffMode {
     pub fn is_rev(&self) -> bool {
-        matches!(self, DiffMode::Reverse | DiffMode::ReverseFirst)
+        matches!(self, DiffMode::Reverse)
     }
     pub fn is_fwd(&self) -> bool {
-        matches!(self, DiffMode::Forward | DiffMode::ForwardFirst)
+        matches!(self, DiffMode::Forward)
     }
 }
 
@@ -110,8 +98,6 @@ impl Display for DiffMode {
             DiffMode::Source => write!(f, "Source"),
             DiffMode::Forward => write!(f, "Forward"),
             DiffMode::Reverse => write!(f, "Reverse"),
-            DiffMode::ForwardFirst => write!(f, "ForwardFirst"),
-            DiffMode::ReverseFirst => write!(f, "ReverseFirst"),
         }
     }
 }
@@ -129,12 +115,12 @@ pub fn valid_ret_activity(mode: DiffMode, activity: DiffActivity) -> bool {
     match mode {
         DiffMode::Error => false,
         DiffMode::Source => false,
-        DiffMode::Forward | DiffMode::ForwardFirst => {
+        DiffMode::Forward => {
             activity == DiffActivity::Dual
                 || activity == DiffActivity::DualOnly
                 || activity == DiffActivity::Const
         }
-        DiffMode::Reverse | DiffMode::ReverseFirst => {
+        DiffMode::Reverse => {
             activity == DiffActivity::Const
                 || activity == DiffActivity::Active
                 || activity == DiffActivity::ActiveOnly
@@ -170,10 +156,10 @@ pub fn valid_input_activity(mode: DiffMode, activity: DiffActivity) -> bool {
     return match mode {
         DiffMode::Error => false,
         DiffMode::Source => false,
-        DiffMode::Forward | DiffMode::ForwardFirst => {
+        DiffMode::Forward => {
             matches!(activity, Dual | DualOnly | Const)
         }
-        DiffMode::Reverse | DiffMode::ReverseFirst => {
+        DiffMode::Reverse => {
             matches!(activity, Active | ActiveOnly | Duplicated | DuplicatedOnly | Const)
         }
     };
@@ -204,8 +190,6 @@ impl FromStr for DiffMode {
             "Source" => Ok(DiffMode::Source),
             "Forward" => Ok(DiffMode::Forward),
             "Reverse" => Ok(DiffMode::Reverse),
-            "ForwardFirst" => Ok(DiffMode::ForwardFirst),
-            "ReverseFirst" => Ok(DiffMode::ReverseFirst),
             _ => Err(()),
         }
     }
@@ -236,7 +220,7 @@ impl AutoDiffAttrs {
         self.ret_activity == DiffActivity::ActiveOnly
     }
 
-    pub fn error() -> Self {
+    pub const fn error() -> Self {
         AutoDiffAttrs {
             mode: DiffMode::Error,
             ret_activity: DiffActivity::None,
@@ -262,22 +246,14 @@ impl AutoDiffAttrs {
         !matches!(self.mode, DiffMode::Error | DiffMode::Source)
     }
 
-    pub fn into_item(
-        self,
-        source: String,
-        target: String,
-        inputs: Vec<TypeTree>,
-        output: TypeTree,
-    ) -> AutoDiffItem {
-        AutoDiffItem { source, target, inputs, output, attrs: self }
+    pub fn into_item(self, source: String, target: String) -> AutoDiffItem {
+        AutoDiffItem { source, target, attrs: self }
     }
 }
 
 impl fmt::Display for AutoDiffItem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Differentiating {} -> {}", self.source, self.target)?;
-        write!(f, " with attributes: {:?}", self.attrs)?;
-        write!(f, " with inputs: {:?}", self.inputs)?;
-        write!(f, " with output: {:?}", self.output)
+        write!(f, " with attributes: {:?}", self.attrs)
     }
 }

@@ -751,7 +751,7 @@ impl ast::MatchArmList {
         ted::insert_all(position, elements);
 
         fn needs_comma(arm: &ast::MatchArm) -> bool {
-            arm.expr().map_or(false, |e| !e.is_block_like()) && arm.comma_token().is_none()
+            arm.expr().is_some_and(|e| !e.is_block_like()) && arm.comma_token().is_none()
         }
     }
 }

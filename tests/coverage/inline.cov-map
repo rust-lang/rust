@@ -1,15 +1,16 @@
 Function name: inline::display::<char>
-Raw bytes (31): 0x[01, 01, 01, 01, 05, 05, 01, 29, 01, 00, 22, 05, 01, 09, 00, 0a, 03, 00, 0e, 00, 10, 05, 00, 11, 02, 06, 01, 03, 05, 01, 02]
+Raw bytes (31): 0x[01, 01, 01, 05, 01, 05, 01, 29, 01, 00, 22, 02, 01, 09, 00, 0a, 05, 00, 0e, 00, 10, 02, 00, 11, 02, 06, 01, 03, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
-- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 0 operands: lhs = Counter(1), rhs = Counter(0)
 Number of file 0 mappings: 5
 - Code(Counter(0)) at (prev + 41, 1) to (start + 0, 34)
-- Code(Counter(1)) at (prev + 1, 9) to (start + 0, 10)
-- Code(Expression(0, Add)) at (prev + 0, 14) to (start + 0, 16)
-    = (c0 + c1)
-- Code(Counter(1)) at (prev + 0, 17) to (start + 2, 6)
+- Code(Expression(0, Sub)) at (prev + 1, 9) to (start + 0, 10)
+    = (c1 - c0)
+- Code(Counter(1)) at (prev + 0, 14) to (start + 0, 16)
+- Code(Expression(0, Sub)) at (prev + 0, 17) to (start + 2, 6)
+    = (c1 - c0)
 - Code(Counter(0)) at (prev + 3, 5) to (start + 1, 2)
 Highest counter ID seen: c1
 
@@ -41,28 +42,29 @@ Number of file 0 mappings: 1
 Highest counter ID seen: c0
 
 Function name: inline::permutate::<char>
-Raw bytes (54): 0x[01, 01, 05, 01, 05, 01, 0b, 05, 0d, 13, 0d, 01, 09, 08, 01, 0f, 01, 02, 0e, 05, 02, 0f, 02, 06, 02, 02, 0f, 00, 14, 11, 01, 0d, 00, 0e, 0d, 00, 12, 00, 16, 11, 00, 17, 04, 0a, 06, 05, 0c, 02, 06, 0e, 03, 01, 00, 02]
+Raw bytes (54): 0x[01, 01, 05, 01, 05, 0d, 09, 0d, 09, 01, 13, 05, 09, 08, 01, 0f, 01, 02, 0e, 05, 02, 0f, 02, 06, 02, 02, 0f, 00, 14, 0a, 01, 0d, 00, 0e, 09, 00, 12, 00, 16, 0a, 00, 17, 04, 0a, 0e, 05, 0c, 02, 06, 01, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 5
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
-- expression 1 operands: lhs = Counter(0), rhs = Expression(2, Add)
-- expression 2 operands: lhs = Counter(1), rhs = Counter(3)
-- expression 3 operands: lhs = Expression(4, Add), rhs = Counter(3)
-- expression 4 operands: lhs = Counter(0), rhs = Counter(2)
+- expression 1 operands: lhs = Counter(3), rhs = Counter(2)
+- expression 2 operands: lhs = Counter(3), rhs = Counter(2)
+- expression 3 operands: lhs = Counter(0), rhs = Expression(4, Add)
+- expression 4 operands: lhs = Counter(1), rhs = Counter(2)
 Number of file 0 mappings: 8
 - Code(Counter(0)) at (prev + 15, 1) to (start + 2, 14)
 - Code(Counter(1)) at (prev + 2, 15) to (start + 2, 6)
 - Code(Expression(0, Sub)) at (prev + 2, 15) to (start + 0, 20)
     = (c0 - c1)
-- Code(Counter(4)) at (prev + 1, 13) to (start + 0, 14)
-- Code(Counter(3)) at (prev + 0, 18) to (start + 0, 22)
-- Code(Counter(4)) at (prev + 0, 23) to (start + 4, 10)
-- Code(Expression(1, Sub)) at (prev + 5, 12) to (start + 2, 6)
-    = (c0 - (c1 + c3))
-- Code(Expression(3, Sub)) at (prev + 3, 1) to (start + 0, 2)
-    = ((c0 + c2) - c3)
-Highest counter ID seen: c4
+- Code(Expression(2, Sub)) at (prev + 1, 13) to (start + 0, 14)
+    = (c3 - c2)
+- Code(Counter(2)) at (prev + 0, 18) to (start + 0, 22)
+- Code(Expression(2, Sub)) at (prev + 0, 23) to (start + 4, 10)
+    = (c3 - c2)
+- Code(Expression(3, Sub)) at (prev + 5, 12) to (start + 2, 6)
+    = (c0 - (c1 + c2))
+- Code(Counter(0)) at (prev + 3, 1) to (start + 0, 2)
+Highest counter ID seen: c2
 
 Function name: inline::permutations::<char>
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 0a, 01, 03, 02]

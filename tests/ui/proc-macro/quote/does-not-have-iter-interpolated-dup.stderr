@@ -1,0 +1,10 @@
+error: proc macro panicked
+  --> $DIR/does-not-have-iter-interpolated-dup.rs:16:5
+   |
+LL |     quote!($($nonrep $nonrep)*);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: `$` must be followed by an ident or `$` in `quote!`
+
+error: aborting due to 1 previous error
+

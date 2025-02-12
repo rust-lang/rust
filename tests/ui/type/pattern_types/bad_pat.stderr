@@ -24,7 +24,7 @@ LL - type Positive2 = pattern_type!(i32 is 0..=);
 LL + type Positive2 = pattern_type!(i32 is 0..);
    |
 
-error: wildcard patterns are not permitted for pattern types
+error: pattern not supported in pattern types
   --> $DIR/bad_pat.rs:10:33
    |
 LL | type Wild = pattern_type!(() is _);

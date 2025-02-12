@@ -1,7 +1,9 @@
 use crate::fmt;
 
-/// Creates a new iterator where each iteration calls the provided closure
-/// `F: FnMut() -> Option<T>`.
+/// Creates an iterator with the provided closure
+/// `F: FnMut() -> Option<T>` as its [`next`](Iterator::next) method.
+///
+/// The iterator will yield the `T`s returned from the closure.
 ///
 /// This allows creating a custom iterator with any behavior
 /// without using the more verbose syntax of creating a dedicated type

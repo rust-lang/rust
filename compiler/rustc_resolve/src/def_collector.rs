@@ -7,9 +7,8 @@ use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
-use rustc_span::Span;
 use rustc_span::hygiene::LocalExpnId;
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Span, Symbol, kw, sym};
 use tracing::debug;
 
 use crate::{ImplTraitContext, InvocationParent, Resolver};
@@ -96,11 +95,14 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
     fn visit_macro_invoc(&mut self, id: NodeId) {
         let id = id.placeholder_to_expn_id();
-        let old_parent = self.resolver.invocation_parents.insert(id, InvocationParent {
-            parent_def: self.parent_def,
-            impl_trait_context: self.impl_trait_context,
-            in_attr: self.in_attr,
-        });
+        let old_parent = self.resolver.invocation_parents.insert(
+            id,
+            InvocationParent {
+                parent_def: self.parent_def,
+                impl_trait_context: self.impl_trait_context,
+                in_attr: self.in_attr,
+            },
+        );
         assert!(old_parent.is_none(), "parent `LocalDefId` is reset for an invocation");
     }
 }
@@ -171,11 +173,17 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
     fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
         match fn_kind {
-            FnKind::Fn(_ctxt, _ident, FnSig { header, decl, span: _ }, _vis, generics, body)
-                if let Some(coroutine_kind) = header.coroutine_kind =>
-            {
+            FnKind::Fn(
+                _ctxt,
+                _ident,
+                _vis,
+                Fn { sig: FnSig { header, decl, span: _ }, generics, contract, body, .. },
+            ) if let Some(coroutine_kind) = header.coroutine_kind => {
                 self.visit_fn_header(header);
                 self.visit_generics(generics);
+                if let Some(contract) = contract {
+                    self.visit_contract(contract);
+                }
 
                 // For async functions, we need to create their inner defs inside of a
                 // closure to match their desugared representation. Besides that,

@@ -14,11 +14,13 @@ use std::io::prelude::*;
 use std::io::{self, IsTerminal};
 use std::iter;
 use std::path::Path;
+use std::sync::Arc;
 
 use derive_setters::Setters;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
-use rustc_data_structures::sync::{DynSend, IntoDynSyncSend, Lrc};
+use rustc_data_structures::sync::{DynSend, IntoDynSyncSend};
 use rustc_error_messages::{FluentArgs, SpanLabel};
+use rustc_lexer;
 use rustc_lint_defs::pluralize;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
@@ -34,8 +36,8 @@ use crate::snippet::{
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{Translate, to_fluent_args};
 use crate::{
-    CodeSuggestion, DiagCtxt, DiagInner, DiagMessage, ErrCode, FluentBundle, LazyFallbackBundle,
-    Level, MultiSpan, Subdiag, SubstitutionHighlight, SuggestionStyle, TerminalUrl,
+    CodeSuggestion, DiagInner, DiagMessage, ErrCode, FluentBundle, LazyFallbackBundle, Level,
+    MultiSpan, Subdiag, SubstitutionHighlight, SuggestionStyle, TerminalUrl,
 };
 
 /// Default column width, used in tests and when terminal dimensions cannot be determined.
@@ -536,11 +538,10 @@ impl Emitter for HumanEmitter {
 }
 
 /// An emitter that does nothing when emitting a non-fatal diagnostic.
-/// Fatal diagnostics are forwarded to `fatal_dcx` to avoid silent
+/// Fatal diagnostics are forwarded to `fatal_emitter` to avoid silent
 /// failures of rustc, as witnessed e.g. in issue #89358.
 pub struct SilentEmitter {
-    pub fallback_bundle: LazyFallbackBundle,
-    pub fatal_dcx: DiagCtxt,
+    pub fatal_emitter: Box<dyn Emitter + DynSend>,
     pub fatal_note: Option<String>,
     pub emit_fatal_diagnostic: bool,
 }
@@ -551,9 +552,7 @@ impl Translate for SilentEmitter {
     }
 
     fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        // Ideally this field wouldn't be necessary and the fallback bundle in `fatal_dcx` would be
-        // used but the lock prevents this.
-        &self.fallback_bundle
+        self.fatal_emitter.fallback_fluent_bundle()
     }
 }
 
@@ -562,12 +561,12 @@ impl Emitter for SilentEmitter {
         None
     }
 
-    fn emit_diagnostic(&mut self, mut diag: DiagInner, _registry: &Registry) {
+    fn emit_diagnostic(&mut self, mut diag: DiagInner, registry: &Registry) {
         if self.emit_fatal_diagnostic && diag.level == Level::Fatal {
             if let Some(fatal_note) = &self.fatal_note {
                 diag.sub(Level::Note, fatal_note.clone(), MultiSpan::new());
             }
-            self.fatal_dcx.handle().emit_diagnostic(diag);
+            self.fatal_emitter.emit_diagnostic(diag, registry);
         }
     }
 }
@@ -612,8 +611,8 @@ pub enum OutputTheme {
 pub struct HumanEmitter {
     #[setters(skip)]
     dst: IntoDynSyncSend<Destination>,
-    sm: Option<Lrc<SourceMap>>,
-    fluent_bundle: Option<Lrc<FluentBundle>>,
+    sm: Option<Arc<SourceMap>>,
+    fluent_bundle: Option<Arc<FluentBundle>>,
     #[setters(skip)]
     fallback_bundle: LazyFallbackBundle,
     short_message: bool,
@@ -630,7 +629,7 @@ pub struct HumanEmitter {
 
 #[derive(Debug)]
 pub(crate) struct FileWithAnnotatedLines {
-    pub(crate) file: Lrc<SourceFile>,
+    pub(crate) file: Arc<SourceFile>,
     pub(crate) lines: Vec<Line>,
     multiline_depth: usize,
 }
@@ -714,7 +713,7 @@ impl HumanEmitter {
     fn render_source_line(
         &self,
         buffer: &mut StyledBuffer,
-        file: Lrc<SourceFile>,
+        file: Arc<SourceFile>,
         line: &Line,
         width_offset: usize,
         code_offset: usize,
@@ -1693,14 +1692,19 @@ impl HumanEmitter {
                 // Get the left-side margin to remove it
                 let mut whitespace_margin = usize::MAX;
                 for line_idx in 0..annotated_file.lines.len() {
-                    let file = Lrc::clone(&annotated_file.file);
+                    let file = Arc::clone(&annotated_file.file);
                     let line = &annotated_file.lines[line_idx];
                     if let Some(source_string) =
                         line.line_index.checked_sub(1).and_then(|l| file.get_line(l))
                     {
+                        // Whitespace can only be removed (aka considered leading)
+                        // if the lexer considers it whitespace.
+                        // non-rustc_lexer::is_whitespace() chars are reported as an
+                        // error (ex. no-break-spaces \u{a0}), and thus can't be considered
+                        // for removal during error reporting.
                         let leading_whitespace = source_string
                             .chars()
-                            .take_while(|c| c.is_whitespace())
+                            .take_while(|c| rustc_lexer::is_whitespace(*c))
                             .map(|c| {
                                 match c {
                                     // Tabs are displayed as 4 spaces
@@ -1709,7 +1713,7 @@ impl HumanEmitter {
                                 }
                             })
                             .sum();
-                        if source_string.chars().any(|c| !c.is_whitespace()) {
+                        if source_string.chars().any(|c| !rustc_lexer::is_whitespace(c)) {
                             whitespace_margin = min(whitespace_margin, leading_whitespace);
                         }
                     }
@@ -1761,7 +1765,7 @@ impl HumanEmitter {
 
                 let column_width = if let Some(width) = self.diagnostic_width {
                     width.saturating_sub(code_offset)
-                } else if self.ui_testing {
+                } else if self.ui_testing || cfg!(miri) {
                     DEFAULT_COLUMN_WIDTH
                 } else {
                     termize::dimensions()
@@ -1784,7 +1788,7 @@ impl HumanEmitter {
 
                     let depths = self.render_source_line(
                         &mut buffer,
-                        Lrc::clone(&annotated_file.file),
+                        Arc::clone(&annotated_file.file),
                         &annotated_file.lines[line_idx],
                         width_offset,
                         code_offset,
@@ -1978,7 +1982,7 @@ impl HumanEmitter {
         {
             debug!(?complete, ?parts, ?highlights);
 
-            let has_deletion = parts.iter().any(|p| p.is_deletion(sm));
+            let has_deletion = parts.iter().any(|p| p.is_deletion(sm) || p.is_replacement(sm));
             let is_multiline = complete.lines().count() > 1;
 
             if i == 0 {
@@ -2210,6 +2214,11 @@ impl HumanEmitter {
                 show_code_change
             {
                 for part in parts {
+                    let snippet = if let Ok(snippet) = sm.span_to_snippet(part.span) {
+                        snippet
+                    } else {
+                        String::new()
+                    };
                     let span_start_pos = sm.lookup_char_pos(part.span.lo()).col_display;
                     let span_end_pos = sm.lookup_char_pos(part.span.hi()).col_display;
 
@@ -2257,13 +2266,80 @@ impl HumanEmitter {
                     }
                     if let DisplaySuggestion::Diff = show_code_change {
                         // Colorize removal with red in diff format.
-                        buffer.set_style_range(
-                            row_num - 2,
-                            (padding as isize + span_start_pos as isize) as usize,
-                            (padding as isize + span_end_pos as isize) as usize,
-                            Style::Removal,
-                            true,
-                        );
+
+                        // Below, there's some tricky buffer indexing going on. `row_num` at this
+                        // point corresponds to:
+                        //
+                        //    |
+                        // LL | CODE
+                        //    | ++++  <- `row_num`
+                        //
+                        // in the buffer. When we have a diff format output, we end up with
+                        //
+                        //    |
+                        // LL - OLDER   <- row_num - 2
+                        // LL + NEWER
+                        //    |         <- row_num
+                        //
+                        // The `row_num - 2` is to select the buffer line that has the "old version
+                        // of the diff" at that point. When the removal is a single line, `i` is
+                        // `0`, `newlines` is `1` so `(newlines - i - 1)` ends up being `0`, so row
+                        // points at `LL - OLDER`. When the removal corresponds to multiple lines,
+                        // we end up with `newlines > 1` and `i` being `0..newlines - 1`.
+                        //
+                        //    |
+                        // LL - OLDER   <- row_num - 2 - (newlines - last_i - 1)
+                        // LL - CODE
+                        // LL - BEING
+                        // LL - REMOVED <- row_num - 2 - (newlines - first_i - 1)
+                        // LL + NEWER
+                        //    |         <- row_num
+
+                        let newlines = snippet.lines().count();
+                        if newlines > 0 && row_num > newlines {
+                            // Account for removals where the part being removed spans multiple
+                            // lines.
+                            // FIXME: We check the number of rows because in some cases, like in
+                            // `tests/ui/lint/invalid-nan-comparison-suggestion.rs`, the rendered
+                            // suggestion will only show the first line of code being replaced. The
+                            // proper way of doing this would be to change the suggestion rendering
+                            // logic to show the whole prior snippet, but the current output is not
+                            // too bad to begin with, so we side-step that issue here.
+                            for (i, line) in snippet.lines().enumerate() {
+                                let line = normalize_whitespace(line);
+                                let row = row_num - 2 - (newlines - i - 1);
+                                // On the first line, we highlight between the start of the part
+                                // span, and the end of that line.
+                                // On the last line, we highlight between the start of the line, and
+                                // the column of the part span end.
+                                // On all others, we highlight the whole line.
+                                let start = if i == 0 {
+                                    (padding as isize + span_start_pos as isize) as usize
+                                } else {
+                                    padding
+                                };
+                                let end = if i == 0 {
+                                    (padding as isize
+                                        + span_start_pos as isize
+                                        + line.len() as isize)
+                                        as usize
+                                } else if i == newlines - 1 {
+                                    (padding as isize + span_end_pos as isize) as usize
+                                } else {
+                                    (padding as isize + line.len() as isize) as usize
+                                };
+                                buffer.set_style_range(row, start, end, Style::Removal, true);
+                            }
+                        } else {
+                            // The removed code fits all in one line.
+                            buffer.set_style_range(
+                                row_num - 2,
+                                (padding as isize + span_start_pos as isize) as usize,
+                                (padding as isize + span_end_pos as isize) as usize,
+                                Style::Removal,
+                                true,
+                            );
+                        }
                     }
 
                     // length of the code after substitution
@@ -2523,7 +2599,7 @@ impl HumanEmitter {
                     buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
                 }
                 [] => {
-                    // FIXME: needed? Doesn't get excercised in any test.
+                    // FIXME: needed? Doesn't get exercised in any test.
                     self.draw_col_separator_no_space(buffer, *row_num, max_line_num_len + 1);
                 }
                 _ => {
@@ -2901,7 +2977,7 @@ impl FileWithAnnotatedLines {
     ) -> Vec<FileWithAnnotatedLines> {
         fn add_annotation_to_file(
             file_vec: &mut Vec<FileWithAnnotatedLines>,
-            file: Lrc<SourceFile>,
+            file: Arc<SourceFile>,
             line_index: usize,
             ann: Annotation,
         ) {
@@ -3038,7 +3114,7 @@ impl FileWithAnnotatedLines {
                 //  |        baz
                 add_annotation_to_file(
                     &mut output,
-                    Lrc::clone(&file),
+                    Arc::clone(&file),
                     ann.line_start,
                     ann.as_start(),
                 );
@@ -3065,12 +3141,12 @@ impl FileWithAnnotatedLines {
                     .unwrap_or(ann.line_start);
                 for line in ann.line_start + 1..until {
                     // Every `|` that joins the beginning of the span (`___^`) to the end (`|__^`).
-                    add_annotation_to_file(&mut output, Lrc::clone(&file), line, ann.as_line());
+                    add_annotation_to_file(&mut output, Arc::clone(&file), line, ann.as_line());
                 }
                 let line_end = ann.line_end - 1;
-                let end_is_empty = file.get_line(line_end - 1).map_or(false, |s| !filter(&s));
+                let end_is_empty = file.get_line(line_end - 1).is_some_and(|s| !filter(&s));
                 if middle < line_end && !end_is_empty {
-                    add_annotation_to_file(&mut output, Lrc::clone(&file), line_end, ann.as_line());
+                    add_annotation_to_file(&mut output, Arc::clone(&file), line_end, ann.as_line());
                 }
             } else {
                 end_ann.annotation_type = AnnotationType::Singleline;

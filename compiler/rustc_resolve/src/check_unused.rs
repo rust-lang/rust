@@ -33,8 +33,7 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES, UNUSED_IMPORTS, UNUSED_QUALIFICATIONS,
 };
-use rustc_span::symbol::{Ident, kw};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, kw};
 
 use crate::imports::{Import, ImportKind};
 use crate::{LexicalScopeBinding, NameBindingKind, Resolver, module_to_string};
@@ -398,7 +397,7 @@ impl Resolver<'_, '_> {
                 }
                 ImportKind::ExternCrate { id, .. } => {
                     let def_id = self.local_def_id(id);
-                    if self.extern_crate_map.get(&def_id).map_or(true, |&cnum| {
+                    if self.extern_crate_map.get(&def_id).is_none_or(|&cnum| {
                         !tcx.is_compiler_builtins(cnum)
                             && !tcx.is_panic_runtime(cnum)
                             && !tcx.has_global_allocator(cnum)

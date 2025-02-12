@@ -4,8 +4,7 @@ use rustc_ast::token::Delimiter;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::{self as ast, Safety};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_span::DUMMY_SP;
-use rustc_span::symbol::Ident;
+use rustc_span::{DUMMY_SP, Ident};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 

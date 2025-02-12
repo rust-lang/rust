@@ -3,12 +3,12 @@ use std::slice;
 
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::Visitor;
+use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{self as hir, ExprKind, GenericArg, HirId, Node, QPath, intravisit};
+use rustc_hir::{self as hir, AmbigArg, ExprKind, GenericArg, HirId, Node, QPath, intravisit};
 use rustc_hir_analysis::hir_ty_lowering::errors::GenericsArgsErrExtend;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
     check_generic_arg_count_for_call, lower_generic_args,
@@ -29,10 +29,9 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::symbol::kw;
+use rustc_span::{Span, kw};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCauseCode, StructurallyNormalizeExt,
@@ -147,18 +146,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("write_ty({:?}, {:?}) in fcx {}", id, self.resolve_vars_if_possible(ty), self.tag());
         let mut typeck = self.typeck_results.borrow_mut();
         let mut node_ty = typeck.node_types_mut();
-        if let Some(ty) = node_ty.get(id)
-            && let Err(e) = ty.error_reported()
-        {
-            // Do not overwrite nodes that were already marked as `{type error}`. This allows us to
-            // silence unnecessary errors from obligations that were set earlier than a type error
-            // was produced, but that is overwritten by later analysis. This happens in particular
-            // for `Sized` obligations introduced in gather_locals. (#117846)
-            self.set_tainted_by_errors(e);
-            return;
-        }
 
-        node_ty.insert(id, ty);
+        if let Some(prev) = node_ty.insert(id, ty) {
+            if prev.references_error() {
+                node_ty.insert(id, prev);
+            } else if !ty.references_error() {
+                // Could change this to a bug, but there's lots of diagnostic code re-lowering
+                // or re-typechecking nodes that were already typecked.
+                // Lots of that diagnostics code relies on subtle effects of re-lowering, so we'll
+                // let it keep doing that and just ensure that compilation won't succeed.
+                self.dcx().span_delayed_bug(
+                    self.tcx.hir().span(id),
+                    format!("`{prev}` overridden by `{ty}` for {id:?} in {:?}", self.body_id),
+                );
+            }
+        }
 
         if let Err(e) = ty.error_reported() {
             self.set_tainted_by_errors(e);
@@ -251,6 +253,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
+        let mut expr_ty = self.typeck_results.borrow().expr_ty_adjusted(expr);
+
         for a in &adj {
             match a.kind {
                 Adjust::NeverToAny => {
@@ -264,7 +268,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         None,
                         expr.span,
                         overloaded_deref.method_call(self.tcx),
-                        self.tcx.mk_args(&[a.target.into()]),
+                        self.tcx.mk_args(&[expr_ty.into()]),
                     );
                 }
                 Adjust::Deref(None) => {
@@ -281,13 +285,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // No effects to enforce here.
                 }
             }
+
+            expr_ty = a.target;
         }
 
         let autoborrow_mut = adj.iter().any(|adj| {
-            matches!(adj, &Adjustment {
-                kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })),
-                ..
-            })
+            matches!(
+                adj,
+                &Adjustment {
+                    kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })),
+                    ..
+                }
+            )
         });
 
         match self.typeck_results.borrow_mut().adjustments_mut().entry(expr.hir_id) {
@@ -382,7 +391,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         code: traits::ObligationCauseCode<'tcx>,
         def_id: DefId,
     ) {
-        self.register_bound(ty, def_id, traits::ObligationCause::new(span, self.body_id, code));
+        self.register_bound(ty, def_id, self.cause(span, code));
     }
 
     pub(crate) fn require_type_is_sized(
@@ -408,12 +417,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn require_type_has_static_alignment(
-        &self,
-        ty: Ty<'tcx>,
-        span: Span,
-        code: traits::ObligationCauseCode<'tcx>,
-    ) {
+    pub(crate) fn require_type_has_static_alignment(&self, ty: Ty<'tcx>, span: Span) {
         if !ty.references_error() {
             let tail = self.tcx.struct_tail_raw(
                 ty,
@@ -432,7 +436,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 // We can't be sure, let's required full `Sized`.
                 let lang_item = self.tcx.require_lang_item(LangItem::Sized, None);
-                self.require_type_meets(ty, span, code, lang_item);
+                self.require_type_meets(ty, span, ObligationCauseCode::Misc, lang_item);
             }
         }
     }
@@ -473,7 +477,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         impl<'tcx> intravisit::Visitor<'tcx> for CollectClauses<'_, 'tcx> {
-            fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
+            fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
                 if let Some(clauses) = self.fcx.trait_ascriptions.borrow().get(&ty.hir_id.local_id)
                 {
                     self.clauses.extend(clauses.iter().cloned());
@@ -483,7 +487,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut clauses = CollectClauses { clauses: vec![], fcx: self };
-        clauses.visit_ty(hir_ty);
+        clauses.visit_ty_unambig(hir_ty);
         self.tcx.mk_clauses(&clauses.clauses)
     }
 
@@ -570,7 +574,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         code: traits::ObligationCauseCode<'tcx>,
     ) {
         // WF obligations never themselves fail, so no real need to give a detailed cause:
-        let cause = traits::ObligationCause::new(span, self.body_id, code);
+        let cause = self.cause(span, code);
         self.register_predicate(traits::Obligation::new(
             self.tcx,
             cause,
@@ -580,11 +584,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Registers obligations that all `args` are well-formed.
-    pub(crate) fn add_wf_bounds(&self, args: GenericArgsRef<'tcx>, expr: &hir::Expr<'_>) {
+    pub(crate) fn add_wf_bounds(&self, args: GenericArgsRef<'tcx>, span: Span) {
         for arg in args.iter().filter(|arg| {
             matches!(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
         }) {
-            self.register_wf_obligation(arg, expr.span, ObligationCauseCode::WellFormed(None));
+            self.register_wf_obligation(arg, span, ObligationCauseCode::WellFormed(None));
         }
     }
 
@@ -809,17 +813,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let item_name = item_segment.ident;
         let result = self
             .resolve_fully_qualified_call(span, item_name, ty.normalized, qself.span, hir_id)
-            .map(|r| {
-                // lint bare trait if the method is found in the trait
-                if span.edition().at_least_rust_2021() {
-                    self.dcx().try_steal_modify_and_emit_err(
-                        qself.span,
-                        StashKey::TraitMissingMethod,
-                        |_err| {},
-                    );
-                }
-                r
-            })
             .or_else(|error| {
                 let guar = self
                     .dcx()
@@ -840,17 +833,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ty.raw.into(),
                         qself.span,
                         ObligationCauseCode::WellFormed(None),
-                    );
-                }
-
-                // Emit the diagnostic for bare traits. (We used to cancel for slightly better
-                // error messages, but cancelling stashed diagnostics is no longer allowed because
-                // it causes problems when tracking whether errors have actually occurred.)
-                if span.edition().at_least_rust_2021() {
-                    self.dcx().try_steal_modify_and_emit_err(
-                        qself.span,
-                        StashKey::TraitMissingMethod,
-                        |_err| {},
                     );
                 }
 
@@ -894,7 +876,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.tcx.hir().get_fn_id_for_return_block(blk_id).and_then(|item_id| {
             match self.tcx.hir_node(item_id) {
                 Node::Item(&hir::Item {
-                    kind: hir::ItemKind::Fn(ref sig, ..), owner_id, ..
+                    kind: hir::ItemKind::Fn { sig, .. }, owner_id, ..
                 }) => Some((owner_id.def_id, sig.decl)),
                 Node::TraitItem(&hir::TraitItem {
                     kind: hir::TraitItemKind::Fn(ref sig, ..),
@@ -923,7 +905,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         )) => {
                             let (sig, owner_id) = match self.tcx.parent_hir_node(hir_id) {
                                 Node::Item(&hir::Item {
-                                    kind: hir::ItemKind::Fn(ref sig, ..),
+                                    kind: hir::ItemKind::Fn { ref sig, .. },
                                     owner_id,
                                     ..
                                 }) => (sig, owner_id),
@@ -993,11 +975,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut sp = MultiSpan::from_span(path_segment.ident.span);
         sp.push_span_label(
             path_segment.ident.span,
-            format!("this call modifies {} in-place", match rcvr.kind {
-                ExprKind::Path(QPath::Resolved(None, hir::Path { segments: [segment], .. })) =>
-                    format!("`{}`", segment.ident),
-                _ => "its receiver".to_string(),
-            }),
+            format!(
+                "this call modifies {} in-place",
+                match rcvr.kind {
+                    ExprKind::Path(QPath::Resolved(
+                        None,
+                        hir::Path { segments: [segment], .. },
+                    )) => format!("`{}`", segment.ident),
+                    _ => "its receiver".to_string(),
+                }
+            ),
         );
 
         let modifies_rcvr_note =
@@ -1042,6 +1029,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 def_id,
                 span,
             ),
+            Res::Err => {
+                return (
+                    Ty::new_error(
+                        tcx,
+                        tcx.dcx().span_delayed_bug(span, "could not resolve path {:?}"),
+                    ),
+                    res,
+                );
+            }
             _ => bug!("instantiate_value_path on {:?}", res),
         };
 
@@ -1105,7 +1101,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Res::Local(hid) = res {
             let ty = self.local_ty(span, hid);
             let ty = self.normalize(span, ty);
-            self.write_ty(hir_id, ty);
             return (ty, res);
         }
 
@@ -1278,7 +1273,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             fn provided_kind(
                 &mut self,
-                _preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
@@ -1289,14 +1283,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .lower_lifetime(lt, RegionInferReason::Param(param))
                         .into(),
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
-                        self.fcx.lower_ty(ty).raw.into()
-                    }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.fcx.lower_const_arg(ct, FeedConstTy::Param(param.def_id)).into()
+                        // We handle the ambig portions of `Ty` in match arm below
+                        self.fcx.lower_ty(ty.as_unambig_ty()).raw.into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
-                        self.fcx.ty_infer(Some(param), inf.span).into()
+                        self.fcx.lower_ty(&inf.to_ty()).raw.into()
                     }
+                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => self
+                        .fcx
+                        // Ambiguous parts of `ConstArg` are handled in the match arms below
+                        .lower_const_arg(ct.as_unambig_ct(), FeedConstTy::Param(param.def_id))
+                        .into(),
                     (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         self.fcx.ct_infer(Some(param), inf.span).into()
                     }
@@ -1425,9 +1422,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let bounds = self.instantiate_bounds(span, def_id, args);
 
         for obligation in traits::predicates_for_generics(
-            |idx, predicate_span| {
-                traits::ObligationCause::new(span, self.body_id, code(idx, predicate_span))
-            },
+            |idx, predicate_span| self.cause(span, code(idx, predicate_span)),
             param_env,
             bounds,
         ) {
@@ -1452,7 +1447,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // in a reentrant borrow, causing an ICE.
             let result = self
                 .at(&self.misc(sp), self.param_env)
-                .structurally_normalize(ty, &mut **self.fulfillment_cx.borrow_mut());
+                .structurally_normalize_ty(ty, &mut **self.fulfillment_cx.borrow_mut());
             match result {
                 Ok(normalized_ty) => normalized_ty,
                 Err(errors) => {
@@ -1560,7 +1555,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         query_result: &Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>,
     ) -> InferResult<'tcx, Ty<'tcx>> {
         self.instantiate_query_response_and_region_obligations(
-            &traits::ObligationCause::misc(span, self.body_id),
+            &self.misc(span),
             self.param_env,
             original_values,
             query_result,

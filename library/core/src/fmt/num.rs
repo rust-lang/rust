@@ -192,7 +192,8 @@ macro_rules! impl_Debug {
 }
 
 // 2 digit decimal look up table
-static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
+static DEC_DIGITS_LUT: &[u8; 200] = b"\
+      0001020304050607080910111213141516171819\
       2021222324252627282930313233343536373839\
       4041424344454647484950515253545556575859\
       6061626364656667686970717273747576777879\
@@ -232,83 +233,89 @@ macro_rules! impl_Display {
 
         #[cfg(not(feature = "optimize_for_size"))]
         impl $unsigned {
-            fn _fmt(mut self, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                const SIZE: usize = $unsigned::MAX.ilog(10) as usize + 1;
-                let mut buf = [MaybeUninit::<u8>::uninit(); SIZE];
-                let mut curr = SIZE;
-                let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
-                let lut_ptr = DEC_DIGITS_LUT.as_ptr();
+            fn _fmt(self, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                const MAX_DEC_N: usize = $unsigned::MAX.ilog(10) as usize + 1;
+                // Buffer decimals for $unsigned with right alignment.
+                let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
+                // Count the number of bytes in buf that are not initialized.
+                let mut offset = buf.len();
+                // Consume the least-significant decimals from a working copy.
+                let mut remain = self;
 
-                // SAFETY: Since `d1` and `d2` are always less than or equal to `198`, we
-                // can copy from `lut_ptr[d1..d1 + 1]` and `lut_ptr[d2..d2 + 1]`. To show
-                // that it's OK to copy into `buf_ptr`, notice that at the beginning
-                // `curr == buf.len() == 39 > log(n)` since `n < 2^128 < 10^39`, and at
-                // each step this is kept the same as `n` is divided. Since `n` is always
-                // non-negative, this means that `curr > 0` so `buf_ptr[curr..curr + 1]`
-                // is safe to access.
-                unsafe {
-                    // need at least 16 bits for the 4-characters-at-a-time to work.
-                    #[allow(overflowing_literals)]
-                    #[allow(unused_comparisons)]
-                    // This block will be removed for smaller types at compile time and in the worst
-                    // case, it will prevent to have the `10000` literal to overflow for `i8` and `u8`.
-                    if core::mem::size_of::<$unsigned>() >= 2 {
-                        // eagerly decode 4 characters at a time
-                        while self >= 10000 {
-                            let rem = (self % 10000) as usize;
-                            self /= 10000;
+                // Format per four digits from the lookup table.
+                // Four digits need a 16-bit $unsigned or wider.
+                while size_of::<Self>() > 1 && remain > 999.try_into().expect("branch is not hit for types that cannot fit 999 (u8)") {
+                    // SAFETY: All of the decimals fit in buf due to MAX_DEC_N
+                    // and the while condition ensures at least 4 more decimals.
+                    unsafe { core::hint::assert_unchecked(offset >= 4) }
+                    // SAFETY: The offset counts down from its initial buf.len()
+                    // without underflow due to the previous precondition.
+                    unsafe { core::hint::assert_unchecked(offset <= buf.len()) }
+                    offset -= 4;
 
-                            let d1 = (rem / 100) << 1;
-                            let d2 = (rem % 100) << 1;
-                            curr -= 4;
-
-                            // We are allowed to copy to `buf_ptr[curr..curr + 3]` here since
-                            // otherwise `curr < 0`. But then `n` was originally at least `10000^10`
-                            // which is `10^40 > 2^128 > n`.
-                            ptr::copy_nonoverlapping(lut_ptr.add(d1 as usize), buf_ptr.add(curr), 2);
-                            ptr::copy_nonoverlapping(lut_ptr.add(d2 as usize), buf_ptr.add(curr + 2), 2);
-                        }
-                    }
-
-                    // if we reach here numbers are <= 9999, so at most 4 chars long
-                    let mut n = self as usize; // possibly reduce 64bit math
-
-                    // decode 2 more chars, if > 2 chars
-                    if n >= 100 {
-                        let d1 = (n % 100) << 1;
-                        n /= 100;
-                        curr -= 2;
-                        ptr::copy_nonoverlapping(lut_ptr.add(d1), buf_ptr.add(curr), 2);
-                    }
-
-                    // if we reach here numbers are <= 100, so at most 2 chars long
-                    // The biggest it can be is 99, and 99 << 1 == 198, so a `u8` is enough.
-                    // decode last 1 or 2 chars
-                    if n < 10 {
-                        curr -= 1;
-                        *buf_ptr.add(curr) = (n as u8) + b'0';
-                    } else {
-                        let d1 = n << 1;
-                        curr -= 2;
-                        ptr::copy_nonoverlapping(lut_ptr.add(d1), buf_ptr.add(curr), 2);
-                    }
+                    // pull two pairs
+                    let scale: Self = 1_00_00.try_into().expect("branch is not hit for types that cannot fit 1E4 (u8)");
+                    let quad = remain % scale;
+                    remain /= scale;
+                    let pair1 = (quad / 100) as usize;
+                    let pair2 = (quad % 100) as usize;
+                    buf[offset + 0].write(DEC_DIGITS_LUT[pair1 * 2 + 0]);
+                    buf[offset + 1].write(DEC_DIGITS_LUT[pair1 * 2 + 1]);
+                    buf[offset + 2].write(DEC_DIGITS_LUT[pair2 * 2 + 0]);
+                    buf[offset + 3].write(DEC_DIGITS_LUT[pair2 * 2 + 1]);
                 }
 
-                // SAFETY: `curr` > 0 (since we made `buf` large enough), and all the chars are valid
-                // UTF-8 since `DEC_DIGITS_LUT` is
-                let buf_slice = unsafe {
-                    str::from_utf8_unchecked(
-                        slice::from_raw_parts(buf_ptr.add(curr), buf.len() - curr))
+                // Format per two digits from the lookup table.
+                if remain > 9 {
+                    // SAFETY: All of the decimals fit in buf due to MAX_DEC_N
+                    // and the while condition ensures at least 2 more decimals.
+                    unsafe { core::hint::assert_unchecked(offset >= 2) }
+                    // SAFETY: The offset counts down from its initial buf.len()
+                    // without underflow due to the previous precondition.
+                    unsafe { core::hint::assert_unchecked(offset <= buf.len()) }
+                    offset -= 2;
+
+                    let pair = (remain % 100) as usize;
+                    remain /= 100;
+                    buf[offset + 0].write(DEC_DIGITS_LUT[pair * 2 + 0]);
+                    buf[offset + 1].write(DEC_DIGITS_LUT[pair * 2 + 1]);
+                }
+
+                // Format the last remaining digit, if any.
+                if remain != 0 || self == 0 {
+                    // SAFETY: All of the decimals fit in buf due to MAX_DEC_N
+                    // and the if condition ensures (at least) 1 more decimals.
+                    unsafe { core::hint::assert_unchecked(offset >= 1) }
+                    // SAFETY: The offset counts down from its initial buf.len()
+                    // without underflow due to the previous precondition.
+                    unsafe { core::hint::assert_unchecked(offset <= buf.len()) }
+                    offset -= 1;
+
+                    // Either the compiler sees that remain < 10, or it prevents
+                    // a boundary check up next.
+                    let last = (remain & 15) as usize;
+                    buf[offset].write(DEC_DIGITS_LUT[last * 2 + 1]);
+                    // not used: remain = 0;
+                }
+
+                // SAFETY: All buf content since offset is set.
+                let written = unsafe { buf.get_unchecked(offset..) };
+                // SAFETY: Writes use ASCII from the lookup table exclusively.
+                let as_str = unsafe {
+                    str::from_utf8_unchecked(slice::from_raw_parts(
+                          MaybeUninit::slice_as_ptr(written),
+                          written.len(),
+                    ))
                 };
-                f.pad_integral(is_nonnegative, "", buf_slice)
+                f.pad_integral(is_nonnegative, "", as_str)
             }
         })*
 
         #[cfg(feature = "optimize_for_size")]
         fn $gen_name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            const SIZE: usize = $u::MAX.ilog(10) as usize + 1;
-            let mut buf = [MaybeUninit::<u8>::uninit(); SIZE];
-            let mut curr = buf.len();
+            const MAX_DEC_N: usize = $u::MAX.ilog(10) as usize + 1;
+            let mut buf = [MaybeUninit::<u8>::uninit(); MAX_DEC_N];
+            let mut curr = MAX_DEC_N;
             let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
 
             // SAFETY: To show that it's OK to copy into `buf_ptr`, notice that at the beginning
@@ -726,28 +733,9 @@ fn udiv_1e19(n: u128) -> (u128, u64) {
     let quot = if n < 1 << 83 {
         ((n >> 19) as u64 / (DIV >> 19)) as u128
     } else {
-        u128_mulhi(n, FACTOR) >> 62
+        n.widening_mul(FACTOR).1 >> 62
     };
 
     let rem = (n - quot * DIV as u128) as u64;
     (quot, rem)
-}
-
-/// Multiply unsigned 128 bit integers, return upper 128 bits of the result
-#[inline]
-fn u128_mulhi(x: u128, y: u128) -> u128 {
-    let x_lo = x as u64;
-    let x_hi = (x >> 64) as u64;
-    let y_lo = y as u64;
-    let y_hi = (y >> 64) as u64;
-
-    // handle possibility of overflow
-    let carry = (x_lo as u128 * y_lo as u128) >> 64;
-    let m = x_lo as u128 * y_hi as u128 + carry;
-    let high1 = m >> 64;
-
-    let m_lo = m as u64;
-    let high2 = (x_hi as u128 * y_lo as u128 + m_lo as u128) >> 64;
-
-    x_hi as u128 * y_hi as u128 + high1 + high2
 }

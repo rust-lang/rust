@@ -48,11 +48,14 @@
 
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
-use crate::sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::{fmt, net, sys};
 
 /// Raw file descriptors.
 pub type RawFd = i32;
+
+// The max of this is -2, in two's complement. -1 is `SOLID_NET_INVALID_FD`.
+type ValidRawFd = core::num::niche_types::NotAllOnes<RawFd>;
 
 /// A borrowed SOLID Sockets file descriptor.
 ///
@@ -69,12 +72,9 @@ pub type RawFd = i32;
 /// socket, which is then borrowed under the same lifetime.
 #[derive(Copy, Clone)]
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(0)]
-// This is -2, in two's complement. -1 is `SOLID_NET_INVALID_FD`.
-#[rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
 #[rustc_nonnull_optimization_guaranteed]
 pub struct BorrowedFd<'socket> {
-    fd: RawFd,
+    fd: ValidRawFd,
     _phantom: PhantomData<&'socket OwnedFd>,
 }
 
@@ -87,12 +87,9 @@ pub struct BorrowedFd<'socket> {
 /// an argument, it is not captured or consumed, and it never has the value
 /// `SOLID_NET_INVALID_FD`.
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(0)]
-// This is -2, in two's complement. -1 is `SOLID_NET_INVALID_FD`.
-#[rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
 #[rustc_nonnull_optimization_guaranteed]
 pub struct OwnedFd {
-    fd: RawFd,
+    fd: ValidRawFd,
 }
 
 impl BorrowedFd<'_> {
@@ -108,7 +105,8 @@ impl BorrowedFd<'_> {
         assert!(fd != -1 as RawFd);
         // SAFETY: we just asserted that the value is in the valid range and
         // isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
-        unsafe { Self { fd, _phantom: PhantomData } }
+        let fd = unsafe { ValidRawFd::new_unchecked(fd) };
+        Self { fd, _phantom: PhantomData }
     }
 }
 
@@ -132,21 +130,21 @@ impl BorrowedFd<'_> {
 impl AsRawFd for BorrowedFd<'_> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        self.fd
+        self.fd.as_inner()
     }
 }
 
 impl AsRawFd for OwnedFd {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        self.fd
+        self.fd.as_inner()
     }
 }
 
 impl IntoRawFd for OwnedFd {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
-        ManuallyDrop::new(self).fd
+        ManuallyDrop::new(self).fd.as_inner()
     }
 }
 
@@ -162,14 +160,15 @@ impl FromRawFd for OwnedFd {
         assert_ne!(fd, -1 as RawFd);
         // SAFETY: we just asserted that the value is in the valid range and
         // isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
-        unsafe { Self { fd } }
+        let fd = unsafe { ValidRawFd::new_unchecked(fd) };
+        Self { fd }
     }
 }
 
 impl Drop for OwnedFd {
     #[inline]
     fn drop(&mut self) {
-        unsafe { sys::net::netc::close(self.fd) };
+        unsafe { sys::net::netc::close(self.fd.as_inner()) };
     }
 }
 
@@ -388,7 +387,7 @@ macro_rules! impl_from_raw_fd {
             #[inline]
             unsafe fn from_raw_fd(fd: RawFd) -> net::$t {
                 let socket = unsafe { sys::net::Socket::from_raw_fd(fd) };
-                net::$t::from_inner(sys_common::net::$t::from_inner(socket))
+                net::$t::from_inner(sys::net::$t::from_inner(socket))
             }
         }
     )*};

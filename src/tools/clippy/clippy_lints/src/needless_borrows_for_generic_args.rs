@@ -9,7 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{Body, Expr, ExprKind, Mutability, Path, QPath};
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::{Rvalue, StatementKind};
@@ -390,7 +390,7 @@ fn replace_types<'tcx>(
     projection_predicates: &[ProjectionPredicate<'tcx>],
     args: &mut [GenericArg<'tcx>],
 ) -> bool {
-    let mut replaced = BitSet::new_empty(args.len());
+    let mut replaced = DenseBitSet::new_empty(args.len());
 
     let mut deque = VecDeque::with_capacity(args.len());
     deque.push_back((param_ty, new_ty));

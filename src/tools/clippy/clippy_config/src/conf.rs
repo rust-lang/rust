@@ -291,6 +291,9 @@ define_Conf! {
     /// Whether `expect` should be allowed in test functions or `#[cfg(test)]`
     #[lints(expect_used)]
     allow_expect_in_tests: bool = false,
+    /// Whether `indexing_slicing` should be allowed in test functions or `#[cfg(test)]`
+    #[lints(indexing_slicing)]
+    allow_indexing_slicing_in_tests: bool = false,
     /// Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)`
     #[lints(uninlined_format_args)]
     allow_mixed_uninlined_format_args: bool = true,
@@ -529,6 +532,26 @@ define_Conf! {
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
     #[lints(result_large_err)]
     large_error_threshold: u64 = 128,
+    /// Whether to suggest reordering constructor fields when initializers are present.
+    ///
+    /// Warnings produced by this configuration aren't necessarily fixed by just reordering the fields. Even if the
+    /// suggested code would compile, it can change semantics if the initializer expressions have side effects. The
+    /// following example [from rust-clippy#11846] shows how the suggestion can run into borrow check errors:
+    ///
+    /// ```rust
+    /// struct MyStruct {
+    ///     vector: Vec<u32>,
+    ///     length: usize
+    /// }
+    /// fn main() {
+    ///     let vector = vec![1,2,3];
+    ///     MyStruct { length: vector.len(), vector};
+    /// }
+    /// ```
+    ///
+    /// [from rust-clippy#11846]: https://github.com/rust-lang/rust-clippy/issues/11846#issuecomment-1820747924
+    #[lints(inconsistent_struct_constructor)]
+    lint_inconsistent_struct_field_initializers: bool = false,
     /// The lower bound for linting decimal literals
     #[lints(decimal_literal_representation)]
     literal_representation_threshold: u64 = 16384,
@@ -596,7 +619,9 @@ define_Conf! {
         manual_pattern_char_comparison,
         manual_range_contains,
         manual_rem_euclid,
+        manual_repeat_n,
         manual_retain,
+        manual_slice_fill,
         manual_split_once,
         manual_str_repeat,
         manual_strip,
@@ -608,11 +633,13 @@ define_Conf! {
         mem_replace_with_default,
         missing_const_for_fn,
         needless_borrow,
+        non_std_lazy_statics,
         option_as_ref_deref,
         option_map_unwrap_or,
         ptr_as_ptr,
         redundant_field_names,
         redundant_static_lifetimes,
+        same_item_push,
         seek_from_current,
         seek_rewind,
         transmute_ptr_to_ref,

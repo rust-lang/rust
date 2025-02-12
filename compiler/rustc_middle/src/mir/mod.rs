@@ -21,21 +21,19 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{
     self as hir, BindingMode, ByRef, CoroutineDesugaring, CoroutineKind, HirId, ImplicitSelfKind,
 };
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Symbol;
-use rustc_span::{DUMMY_SP, Span};
-use tracing::trace;
+use rustc_span::{DUMMY_SP, Span, Symbol};
+use tracing::{debug, trace};
 
 pub use self::query::*;
 use self::visit::TyContext;
 use crate::mir::interpret::{AllocRange, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{
@@ -60,7 +58,6 @@ pub mod tcx;
 mod terminator;
 
 pub mod traversal;
-mod type_foldable;
 pub mod visit;
 
 pub use consts::*;
@@ -359,6 +356,8 @@ pub struct Body<'tcx> {
     ///
     /// Only present if coverage is enabled and this function is eligible.
     /// Boxed to limit space overhead in non-coverage builds.
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
     pub coverage_info_hi: Option<Box<coverage::CoverageInfoHi>>,
 
     /// Per-function coverage information added by the `InstrumentCoverage`
@@ -367,6 +366,8 @@ pub struct Body<'tcx> {
     ///
     /// If `-Cinstrument-coverage` is not active, or if an individual function
     /// is not eligible for coverage, then this should always be `None`.
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
     pub function_coverage_info: Option<Box<coverage::FunctionCoverageInfo>>,
 }
 
@@ -924,8 +925,6 @@ pub enum BindingForm<'tcx> {
     RefForGuard,
 }
 
-TrivialTypeTraversalImpls! { BindingForm<'tcx> }
-
 mod binding_form_impl {
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
     use rustc_query_system::ich::StableHashingContext;
@@ -1349,8 +1348,8 @@ pub struct BasicBlockData<'tcx> {
 }
 
 impl<'tcx> BasicBlockData<'tcx> {
-    pub fn new(terminator: Option<Terminator<'tcx>>) -> BasicBlockData<'tcx> {
-        BasicBlockData { statements: vec![], terminator, is_cleanup: false }
+    pub fn new(terminator: Option<Terminator<'tcx>>, is_cleanup: bool) -> BasicBlockData<'tcx> {
+        BasicBlockData { statements: vec![], terminator, is_cleanup }
     }
 
     /// Accessor for terminator.
@@ -1411,10 +1410,10 @@ impl<'tcx> BasicBlockData<'tcx> {
         // existing elements from before the gap to the end of the gap.
         // For now, this is safe code, emulating a gap but initializing it.
         let mut gap = self.statements.len()..self.statements.len() + extra_stmts;
-        self.statements.resize(gap.end, Statement {
-            source_info: SourceInfo::outermost(DUMMY_SP),
-            kind: StatementKind::Nop,
-        });
+        self.statements.resize(
+            gap.end,
+            Statement { source_info: SourceInfo::outermost(DUMMY_SP), kind: StatementKind::Nop },
+        );
         for (splice_start, new_stmts) in splices.into_iter().rev() {
             let splice_end = splice_start + new_stmts.size_hint().0;
             while gap.end > splice_end {
@@ -1791,6 +1790,47 @@ impl DefLocation {
             }
         }
     }
+}
+
+/// Checks if the specified `local` is used as the `self` parameter of a method call
+/// in the provided `BasicBlock`. If it is, then the `DefId` of the called method is
+/// returned.
+pub fn find_self_call<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    local: Local,
+    block: BasicBlock,
+) -> Option<(DefId, GenericArgsRef<'tcx>)> {
+    debug!("find_self_call(local={:?}): terminator={:?}", local, body[block].terminator);
+    if let Some(Terminator { kind: TerminatorKind::Call { func, args, .. }, .. }) =
+        &body[block].terminator
+        && let Operand::Constant(box ConstOperand { const_, .. }) = func
+        && let ty::FnDef(def_id, fn_args) = *const_.ty().kind()
+        && let Some(ty::AssocItem { fn_has_self_parameter: true, .. }) =
+            tcx.opt_associated_item(def_id)
+        && let [Spanned { node: Operand::Move(self_place) | Operand::Copy(self_place), .. }, ..] =
+            **args
+    {
+        if self_place.as_local() == Some(local) {
+            return Some((def_id, fn_args));
+        }
+
+        // Handle the case where `self_place` gets reborrowed.
+        // This happens when the receiver is `&T`.
+        for stmt in &body[block].statements {
+            if let StatementKind::Assign(box (place, rvalue)) = &stmt.kind
+                && let Some(reborrow_local) = place.as_local()
+                && self_place.as_local() == Some(reborrow_local)
+                && let Rvalue::Ref(_, _, deref_place) = rvalue
+                && let PlaceRef { local: deref_local, projection: [ProjectionElem::Deref] } =
+                    deref_place.as_ref()
+                && deref_local == local
+            {
+                return Some((def_id, fn_args));
+            }
+        }
+    }
+    None
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.

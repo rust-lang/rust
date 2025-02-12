@@ -9,8 +9,8 @@ use chalk_ir::{
 };
 use chalk_solve::rust_ir::InlineBound;
 use hir_def::{
-    lang_item::LangItem, AssocItemId, ConstId, FunctionId, GenericDefId, HasModule, TraitId,
-    TypeAliasId,
+    data::TraitFlags, lang_item::LangItem, AssocItemId, ConstId, FunctionId, GenericDefId,
+    HasModule, TraitId, TypeAliasId,
 };
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
@@ -432,7 +432,7 @@ where
         // Allow `impl AutoTrait` predicates
         if let WhereClause::Implemented(TraitRef { trait_id, substitution }) = pred {
             let trait_data = db.trait_data(from_chalk_trait_id(*trait_id));
-            if trait_data.is_auto
+            if trait_data.flags.contains(TraitFlags::IS_AUTO)
                 && substitution
                     .as_slice(Interner)
                     .first()

@@ -3,15 +3,19 @@
 
 use std::{fmt, io, process::Command, time::Duration};
 
+use cargo_metadata::PackageId;
 use crossbeam_channel::{select_biased, unbounded, Receiver, Sender};
+use ide_db::FxHashSet;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
-use serde::Deserialize;
+use serde::Deserialize as _;
+use serde_derive::Deserialize;
 
 pub(crate) use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
 };
 use toolchain::Tool;
+use triomphe::Arc;
 
 use crate::command::{CommandHandle, ParseFromLine};
 
@@ -24,7 +28,7 @@ pub(crate) enum InvocationStrategy {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct CargoOptions {
-    pub(crate) target_triples: Vec<String>,
+    pub(crate) target_tuples: Vec<String>,
     pub(crate) all_targets: bool,
     pub(crate) no_default_features: bool,
     pub(crate) all_features: bool,
@@ -35,7 +39,7 @@ pub(crate) struct CargoOptions {
     pub(crate) target_dir: Option<Utf8PathBuf>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum Target {
     Bin(String),
     Example(String),
@@ -45,7 +49,7 @@ pub(crate) enum Target {
 
 impl CargoOptions {
     pub(crate) fn apply_on_command(&self, cmd: &mut Command) {
-        for target in &self.target_triples {
+        for target in &self.target_tuples {
             cmd.args(["--target", target.as_str()]);
         }
         if self.all_targets {
@@ -82,6 +86,17 @@ pub(crate) enum FlycheckConfig {
         extra_env: FxHashMap<String, String>,
         invocation_strategy: InvocationStrategy,
     },
+}
+
+impl FlycheckConfig {
+    pub(crate) fn invocation_strategy_once(&self) -> bool {
+        match self {
+            FlycheckConfig::CargoCommand { .. } => false,
+            FlycheckConfig::CustomCommand { invocation_strategy, .. } => {
+                *invocation_strategy == InvocationStrategy::Once
+            }
+        }
+    }
 }
 
 impl fmt::Display for FlycheckConfig {
@@ -150,10 +165,19 @@ impl FlycheckHandle {
 
 pub(crate) enum FlycheckMessage {
     /// Request adding a diagnostic with fixes included to a file
-    AddDiagnostic { id: usize, workspace_root: AbsPathBuf, diagnostic: Diagnostic },
+    AddDiagnostic {
+        id: usize,
+        workspace_root: Arc<AbsPathBuf>,
+        diagnostic: Diagnostic,
+        package_id: Option<Arc<PackageId>>,
+    },
 
-    /// Request clearing all previous diagnostics
-    ClearDiagnostics { id: usize },
+    /// Request clearing all outdated diagnostics.
+    ClearDiagnostics {
+        id: usize,
+        /// The package whose diagnostics to clear, or if unspecified, all diagnostics.
+        package_id: Option<Arc<PackageId>>,
+    },
 
     /// Request check progress notification to client
     Progress {
@@ -166,15 +190,18 @@ pub(crate) enum FlycheckMessage {
 impl fmt::Debug for FlycheckMessage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FlycheckMessage::AddDiagnostic { id, workspace_root, diagnostic } => f
+            FlycheckMessage::AddDiagnostic { id, workspace_root, diagnostic, package_id } => f
                 .debug_struct("AddDiagnostic")
                 .field("id", id)
                 .field("workspace_root", workspace_root)
+                .field("package_id", package_id)
                 .field("diagnostic_code", &diagnostic.code.as_ref().map(|it| &it.code))
                 .finish(),
-            FlycheckMessage::ClearDiagnostics { id } => {
-                f.debug_struct("ClearDiagnostics").field("id", id).finish()
-            }
+            FlycheckMessage::ClearDiagnostics { id, package_id } => f
+                .debug_struct("ClearDiagnostics")
+                .field("id", id)
+                .field("package_id", package_id)
+                .finish(),
             FlycheckMessage::Progress { id, progress } => {
                 f.debug_struct("Progress").field("id", id).field("progress", progress).finish()
             }
@@ -200,12 +227,13 @@ enum StateChange {
 struct FlycheckActor {
     /// The workspace id of this flycheck instance.
     id: usize,
+
     sender: Sender<FlycheckMessage>,
     config: FlycheckConfig,
     manifest_path: Option<AbsPathBuf>,
     /// Either the workspace root of the workspace we are flychecking,
     /// or the project root of the project.
-    root: AbsPathBuf,
+    root: Arc<AbsPathBuf>,
     sysroot_root: Option<AbsPathBuf>,
     /// CargoHandle exists to wrap around the communication needed to be able to
     /// run `cargo check` without blocking. Currently the Rust standard library
@@ -215,21 +243,15 @@ struct FlycheckActor {
     command_handle: Option<CommandHandle<CargoCheckMessage>>,
     /// The receiver side of the channel mentioned above.
     command_receiver: Option<Receiver<CargoCheckMessage>>,
-
-    status: FlycheckStatus,
+    diagnostics_cleared_for: FxHashSet<Arc<PackageId>>,
+    diagnostics_cleared_for_all: bool,
+    diagnostics_received: bool,
 }
 
 #[allow(clippy::large_enum_variant)]
 enum Event {
     RequestStateChange(StateChange),
     CheckEvent(Option<CargoCheckMessage>),
-}
-
-#[derive(PartialEq)]
-enum FlycheckStatus {
-    Started,
-    DiagnosticSent,
-    Finished,
 }
 
 pub(crate) const SAVED_FILE_PLACEHOLDER: &str = "$saved_file";
@@ -249,11 +271,13 @@ impl FlycheckActor {
             sender,
             config,
             sysroot_root,
-            root: workspace_root,
+            root: Arc::new(workspace_root),
             manifest_path,
             command_handle: None,
             command_receiver: None,
-            status: FlycheckStatus::Finished,
+            diagnostics_cleared_for: Default::default(),
+            diagnostics_cleared_for_all: false,
+            diagnostics_received: false,
         }
     }
 
@@ -306,13 +330,11 @@ impl FlycheckActor {
                             self.command_handle = Some(command_handle);
                             self.command_receiver = Some(receiver);
                             self.report_progress(Progress::DidStart);
-                            self.status = FlycheckStatus::Started;
                         }
                         Err(error) => {
                             self.report_progress(Progress::DidFailToRestart(format!(
                                 "Failed to run the following command: {formatted_command} error={error}"
                             )));
-                            self.status = FlycheckStatus::Finished;
                         }
                     }
                 }
@@ -332,37 +354,74 @@ impl FlycheckActor {
                             error
                         );
                     }
-                    if self.status == FlycheckStatus::Started {
-                        self.send(FlycheckMessage::ClearDiagnostics { id: self.id });
+                    if !self.diagnostics_received {
+                        tracing::trace!(flycheck_id = self.id, "clearing diagnostics");
+                        // We finished without receiving any diagnostics.
+                        // Clear everything for good measure
+                        self.send(FlycheckMessage::ClearDiagnostics {
+                            id: self.id,
+                            package_id: None,
+                        });
                     }
+                    self.clear_diagnostics_state();
+
                     self.report_progress(Progress::DidFinish(res));
-                    self.status = FlycheckStatus::Finished;
                 }
                 Event::CheckEvent(Some(message)) => match message {
                     CargoCheckMessage::CompilerArtifact(msg) => {
                         tracing::trace!(
                             flycheck_id = self.id,
                             artifact = msg.target.name,
+                            package_id = msg.package_id.repr,
                             "artifact received"
                         );
                         self.report_progress(Progress::DidCheckCrate(msg.target.name));
+                        let package_id = Arc::new(msg.package_id);
+                        if self.diagnostics_cleared_for.insert(package_id.clone()) {
+                            tracing::trace!(
+                                flycheck_id = self.id,
+                                package_id = package_id.repr,
+                                "clearing diagnostics"
+                            );
+                            self.send(FlycheckMessage::ClearDiagnostics {
+                                id: self.id,
+                                package_id: Some(package_id),
+                            });
+                        }
                     }
-
-                    CargoCheckMessage::Diagnostic(msg) => {
+                    CargoCheckMessage::Diagnostic { diagnostic, package_id } => {
                         tracing::trace!(
                             flycheck_id = self.id,
-                            message = msg.message,
+                            message = diagnostic.message,
+                            package_id = package_id.as_ref().map(|it| &it.repr),
                             "diagnostic received"
                         );
-                        if self.status == FlycheckStatus::Started {
-                            self.send(FlycheckMessage::ClearDiagnostics { id: self.id });
+                        self.diagnostics_received = true;
+                        if let Some(package_id) = &package_id {
+                            if self.diagnostics_cleared_for.insert(package_id.clone()) {
+                                tracing::trace!(
+                                    flycheck_id = self.id,
+                                    package_id = package_id.repr,
+                                    "clearing diagnostics"
+                                );
+                                self.send(FlycheckMessage::ClearDiagnostics {
+                                    id: self.id,
+                                    package_id: Some(package_id.clone()),
+                                });
+                            }
+                        } else if !self.diagnostics_cleared_for_all {
+                            self.diagnostics_cleared_for_all = true;
+                            self.send(FlycheckMessage::ClearDiagnostics {
+                                id: self.id,
+                                package_id: None,
+                            });
                         }
                         self.send(FlycheckMessage::AddDiagnostic {
                             id: self.id,
+                            package_id,
                             workspace_root: self.root.clone(),
-                            diagnostic: msg,
+                            diagnostic,
                         });
-                        self.status = FlycheckStatus::DiagnosticSent;
                     }
                 },
             }
@@ -380,8 +439,14 @@ impl FlycheckActor {
             command_handle.cancel();
             self.command_receiver.take();
             self.report_progress(Progress::DidCancel);
-            self.status = FlycheckStatus::Finished;
         }
+        self.clear_diagnostics_state();
+    }
+
+    fn clear_diagnostics_state(&mut self) {
+        self.diagnostics_cleared_for.clear();
+        self.diagnostics_cleared_for_all = false;
+        self.diagnostics_received = false;
     }
 
     /// Construct a `Command` object for checking the user's code. If the user
@@ -395,12 +460,11 @@ impl FlycheckActor {
     ) -> Option<Command> {
         match &self.config {
             FlycheckConfig::CargoCommand { command, options, ansi_color_output } => {
-                let mut cmd = Command::new(Tool::Cargo.path());
+                let mut cmd = toolchain::command(Tool::Cargo.path(), &*self.root);
                 if let Some(sysroot_root) = &self.sysroot_root {
                     cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(sysroot_root));
                 }
                 cmd.arg(command);
-                cmd.current_dir(&self.root);
 
                 match package {
                     Some(pkg) => cmd.arg("-p").arg(pkg),
@@ -425,7 +489,7 @@ impl FlycheckActor {
                 if let Some(manifest_path) = &self.manifest_path {
                     cmd.arg("--manifest-path");
                     cmd.arg(manifest_path);
-                    if manifest_path.extension().map_or(false, |ext| ext == "rs") {
+                    if manifest_path.extension() == Some("rs") {
                         cmd.arg("-Zscript");
                     }
                 }
@@ -437,18 +501,15 @@ impl FlycheckActor {
                 Some(cmd)
             }
             FlycheckConfig::CustomCommand { command, args, extra_env, invocation_strategy } => {
-                let mut cmd = Command::new(command);
-                cmd.envs(extra_env);
-
-                match invocation_strategy {
-                    InvocationStrategy::Once => {
-                        cmd.current_dir(&self.root);
-                    }
+                let root = match invocation_strategy {
+                    InvocationStrategy::Once => &*self.root,
                     InvocationStrategy::PerWorkspace => {
-                        // FIXME: cmd.current_dir(&affected_workspace);
-                        cmd.current_dir(&self.root);
+                        // FIXME: &affected_workspace
+                        &*self.root
                     }
-                }
+                };
+                let mut cmd = toolchain::command(command, root);
+                cmd.envs(extra_env);
 
                 // If the custom command has a $saved_file placeholder, and
                 // we're saving a file, replace the placeholder in the arguments.
@@ -486,7 +547,7 @@ impl FlycheckActor {
 #[allow(clippy::large_enum_variant)]
 enum CargoCheckMessage {
     CompilerArtifact(cargo_metadata::Artifact),
-    Diagnostic(Diagnostic),
+    Diagnostic { diagnostic: Diagnostic, package_id: Option<Arc<PackageId>> },
 }
 
 impl ParseFromLine for CargoCheckMessage {
@@ -501,11 +562,16 @@ impl ParseFromLine for CargoCheckMessage {
                         Some(CargoCheckMessage::CompilerArtifact(artifact))
                     }
                     cargo_metadata::Message::CompilerMessage(msg) => {
-                        Some(CargoCheckMessage::Diagnostic(msg.message))
+                        Some(CargoCheckMessage::Diagnostic {
+                            diagnostic: msg.message,
+                            package_id: Some(Arc::new(msg.package_id)),
+                        })
                     }
                     _ => None,
                 },
-                JsonMessage::Rustc(message) => Some(CargoCheckMessage::Diagnostic(message)),
+                JsonMessage::Rustc(message) => {
+                    Some(CargoCheckMessage::Diagnostic { diagnostic: message, package_id: None })
+                }
             };
         }
 

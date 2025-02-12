@@ -1,4 +1,4 @@
-//@ ignore-windows
+//@ ignore-windows different error message
 //@ revisions: edition2015 edition2024
 //@[edition2015]edition:2015
 //@[edition2015]check-fail
@@ -7,8 +7,8 @@
 //@[edition2024]edition:2024
 //@[edition2024]check-pass
 //@[edition2024]compile-flags:--test --test-args=--test-threads=1
-//@ normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
-//@ normalize-stdout-test: "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ normalize-stdout: "tests/rustdoc-ui/doctest" -> "$$DIR"
+//@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 
 // https://github.com/rust-lang/rust/issues/132203
 // This version, because it's edition2024, passes thanks to the new

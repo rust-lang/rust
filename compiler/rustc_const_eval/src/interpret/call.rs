@@ -5,6 +5,7 @@ use std::borrow::Cow;
 
 use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::{FnAbiOf, IntegerExt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
@@ -380,10 +381,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 "caller ABI: {:#?}, args: {:#?}",
                 caller_fn_abi,
                 args.iter()
-                    .map(|arg| (arg.layout().ty, match arg {
-                        FnArg::Copy(op) => format!("copy({op:?})"),
-                        FnArg::InPlace(mplace) => format!("in-place({mplace:?})"),
-                    }))
+                    .map(|arg| (
+                        arg.layout().ty,
+                        match arg {
+                            FnArg::Copy(op) => format!("copy({op:?})"),
+                            FnArg::InPlace(mplace) => format!("in-place({mplace:?})"),
+                        }
+                    ))
                     .collect::<Vec<_>>()
             );
             trace!(
@@ -519,7 +523,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 return M::call_extra_fn(
                     self,
                     extra,
-                    caller_abi,
+                    caller_fn_abi,
                     args,
                     destination,
                     target,
@@ -566,11 +570,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             | ty::InstanceKind::ThreadLocalShim(..)
             | ty::InstanceKind::AsyncDropGlueCtorShim(..)
             | ty::InstanceKind::Item(_) => {
-                // We need MIR for this fn
+                // We need MIR for this fn.
+                // Note that this can be an intrinsic, if we are executing its fallback body.
                 let Some((body, instance)) = M::find_mir_or_eval_fn(
                     self,
                     instance,
-                    caller_abi,
+                    caller_fn_abi,
                     args,
                     destination,
                     target,
@@ -692,25 +697,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 trace!("Virtual call dispatches to {fn_inst:#?}");
                 // We can also do the lookup based on `def_id` and `dyn_ty`, and check that that
                 // produces the same result.
-                if cfg!(debug_assertions) {
-                    let tcx = *self.tcx;
-
-                    let trait_def_id = tcx.trait_of_item(def_id).unwrap();
-                    let virtual_trait_ref =
-                        ty::TraitRef::from_method(tcx, trait_def_id, instance.args);
-                    let existential_trait_ref =
-                        ty::ExistentialTraitRef::erase_self_ty(tcx, virtual_trait_ref);
-                    let concrete_trait_ref = existential_trait_ref.with_self_ty(tcx, dyn_ty);
-
-                    let concrete_method = Instance::expect_resolve_for_vtable(
-                        tcx,
-                        self.typing_env,
-                        def_id,
-                        instance.args.rebase_onto(tcx, trait_def_id, concrete_trait_ref.args),
-                        self.cur_span(),
-                    );
-                    assert_eq!(fn_inst, concrete_method);
-                }
+                self.assert_virtual_instance_matches_concrete(dyn_ty, def_id, instance, fn_inst);
 
                 // Adjust receiver argument. Layout can be any (thin) ptr.
                 let receiver_ty = Ty::new_mut_ptr(self.tcx.tcx, dyn_ty);
@@ -741,6 +728,30 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 )
             }
         }
+    }
+
+    fn assert_virtual_instance_matches_concrete(
+        &self,
+        dyn_ty: Ty<'tcx>,
+        def_id: DefId,
+        virtual_instance: ty::Instance<'tcx>,
+        concrete_instance: ty::Instance<'tcx>,
+    ) {
+        let tcx = *self.tcx;
+
+        let trait_def_id = tcx.trait_of_item(def_id).unwrap();
+        let virtual_trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, virtual_instance.args);
+        let existential_trait_ref = ty::ExistentialTraitRef::erase_self_ty(tcx, virtual_trait_ref);
+        let concrete_trait_ref = existential_trait_ref.with_self_ty(tcx, dyn_ty);
+
+        let concrete_method = Instance::expect_resolve_for_vtable(
+            tcx,
+            self.typing_env,
+            def_id,
+            virtual_instance.args.rebase_onto(tcx, trait_def_id, concrete_trait_ref.args),
+            self.cur_span(),
+        );
+        assert_eq!(concrete_instance, concrete_method);
     }
 
     /// Initiate a tail call to this function -- popping the current stack frame, pushing the new
@@ -866,10 +877,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         );
 
         // Check `unwinding`.
-        assert_eq!(unwinding, match self.frame().loc {
-            Left(loc) => self.body().basic_blocks[loc.block].is_cleanup,
-            Right(_) => true,
-        });
+        assert_eq!(
+            unwinding,
+            match self.frame().loc {
+                Left(loc) => self.body().basic_blocks[loc.block].is_cleanup,
+                Right(_) => true,
+            }
+        );
         if unwinding && self.frame_idx() == 0 {
             throw_ub_custom!(fluent::const_eval_unwind_past_top);
         }
@@ -883,19 +897,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 .local_to_op(mir::RETURN_PLACE, None)
                 .expect("return place should always be live");
             let dest = self.frame().return_place.clone();
-            let res = if self.stack().len() == 1 {
-                // The initializer of constants and statics will get validated separately
-                // after the constant has been fully evaluated. While we could fall back to the default
-                // code path, that will cause -Zenforce-validity to cycle on static initializers.
-                // Reading from a static's memory is not allowed during its evaluation, and will always
-                // trigger a cycle error. Validation must read from the memory of the current item.
-                // For Miri this means we do not validate the root frame return value,
-                // but Miri anyway calls `read_target_isize` on that so separate validation
-                // is not needed.
-                self.copy_op_no_dest_validation(&op, &dest)
-            } else {
-                self.copy_op_allow_transmute(&op, &dest)
-            };
+            let res = self.copy_op_allow_transmute(&op, &dest);
             trace!("return value: {:?}", self.dump_place(&dest.into()));
             // We delay actually short-circuiting on this error until *after* the stack frame is
             // popped, since we want this error to be attributed to the caller, whose type defines

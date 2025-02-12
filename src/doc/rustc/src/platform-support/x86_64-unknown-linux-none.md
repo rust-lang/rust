@@ -14,6 +14,11 @@ This target is cross compiled and can be built from any host.
 
 This target has no support for host tools, std, or alloc.
 
+One of the primary motivations of the target is to write a dynamic linker and libc in Rust.
+For that, the target defaults to position-independent code and position-independent executables (PIE) by default.
+PIE binaries need relocation at runtime. This is usually done by the dynamic linker or libc.
+You can use `-Crelocation-model=static` to create a position-dependent binary that does not need relocation at runtime.
+
 ## Building the target
 
 The target can be built by enabling it for a `rustc` build:

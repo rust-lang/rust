@@ -14,7 +14,8 @@ LL | m!();
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you can use `as` to change the binding name of the import
    |
-LL |         extern crate std as other_empty;
+LL -         extern crate std as empty;
+LL +         extern crate std as other_empty;
    |
 
 error: aborting due to 1 previous error

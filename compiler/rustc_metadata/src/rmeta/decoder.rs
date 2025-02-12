@@ -2,6 +2,7 @@
 
 use std::iter::TrustedLen;
 use std::path::Path;
+use std::sync::Arc;
 use std::{io, iter, mem};
 
 pub(super) use cstore_impl::provide;
@@ -11,7 +12,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::owned_slice::OwnedSlice;
-use rustc_data_structures::sync::{Lock, Lrc, OnceLock};
+use rustc_data_structures::sync::{Lock, OnceLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
@@ -29,10 +30,10 @@ use rustc_middle::{bug, implement_ty_decoder};
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
 use rustc_session::Session;
+use rustc_session::config::TargetModifier;
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
-use rustc_span::symbol::kw;
-use rustc_span::{BytePos, DUMMY_SP, Pos, SpanData, SpanDecoder, SyntaxContext};
+use rustc_span::{BytePos, DUMMY_SP, Pos, SpanData, SpanDecoder, SyntaxContext, kw};
 use tracing::debug;
 
 use crate::creader::CStore;
@@ -74,6 +75,9 @@ impl MetadataBlob {
 /// own crate numbers.
 pub(crate) type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 
+/// Target modifiers - abi or exploit mitigations flags
+pub(crate) type TargetModifiers = Vec<TargetModifier>;
+
 pub(crate) struct CrateMetadata {
     /// The primary crate data - binary metadata blob.
     blob: MetadataBlob,
@@ -114,7 +118,7 @@ pub(crate) struct CrateMetadata {
     /// How to link (or not link) this crate to the currently compiled crate.
     dep_kind: CrateDepKind,
     /// Filesystem location of this crate.
-    source: Lrc<CrateSource>,
+    source: Arc<CrateSource>,
     /// Whether or not this crate should be consider a private dependency.
     /// Used by the 'exported_private_dependencies' lint, and for determining
     /// whether to emit suggestions that reference this crate.
@@ -146,7 +150,7 @@ struct ImportedSourceFile {
     /// The end of this SourceFile within the source_map of its original crate
     original_end_pos: rustc_span::BytePos,
     /// The imported SourceFile's representation within the local source_map
-    translated_source_file: Lrc<rustc_span::SourceFile>,
+    translated_source_file: Arc<rustc_span::SourceFile>,
 }
 
 pub(super) struct DecodeContext<'a, 'tcx> {
@@ -872,9 +876,9 @@ impl MetadataBlob {
 
                         let def_kind = root.tables.def_kind.get(blob, item).unwrap();
                         let def_key = root.tables.def_keys.get(blob, item).unwrap().decode(blob);
-                        #[cfg_attr(not(bootstrap), allow(rustc::symbol_intern_string_literal))]
+                        #[allow(rustc::symbol_intern_string_literal)]
                         let def_name = if item == CRATE_DEF_INDEX {
-                            rustc_span::symbol::kw::Crate
+                            kw::Crate
                         } else {
                             def_key
                                 .disambiguated_data
@@ -961,6 +965,13 @@ impl CrateRoot {
         metadata: &'a MetadataBlob,
     ) -> impl ExactSizeIterator<Item = CrateDep> + Captures<'a> {
         self.crate_deps.decode(metadata)
+    }
+
+    pub(crate) fn decode_target_modifiers<'a>(
+        &self,
+        metadata: &'a MetadataBlob,
+    ) -> impl ExactSizeIterator<Item = TargetModifier> + Captures<'a> {
+        self.target_modifiers.decode(metadata)
     }
 }
 
@@ -1369,7 +1380,7 @@ impl<'a> CrateMetadataRef<'a> {
         self,
         id: DefIndex,
         sess: &'a Session,
-    ) -> impl Iterator<Item = ast::Attribute> + 'a {
+    ) -> impl Iterator<Item = hir::Attribute> + 'a {
         self.root
             .tables
             .attributes
@@ -1475,7 +1486,7 @@ impl<'a> CrateMetadataRef<'a> {
     ) -> &'tcx [(CrateNum, LinkagePreference)] {
         tcx.arena.alloc_from_iter(
             self.root.dylib_dependency_formats.decode(self).enumerate().flat_map(|(i, link)| {
-                let cnum = CrateNum::new(i + 1);
+                let cnum = CrateNum::new(i + 1); // We skipped LOCAL_CRATE when encoding
                 link.map(|link| (self.cnum_map[cnum], link))
             }),
         )
@@ -1856,7 +1867,7 @@ impl CrateMetadata {
             cnum_map,
             dependencies,
             dep_kind,
-            source: Lrc::new(source),
+            source: Arc::new(source),
             private_dep,
             host_hash,
             used: false,
@@ -1882,6 +1893,10 @@ impl CrateMetadata {
 
     pub(crate) fn add_dependency(&mut self, cnum: CrateNum) {
         self.dependencies.push(cnum);
+    }
+
+    pub(crate) fn target_modifiers(&self) -> TargetModifiers {
+        self.root.decode_target_modifiers(&self.blob).collect()
     }
 
     pub(crate) fn update_extern_crate(&mut self, new_extern_crate: ExternCrate) -> bool {

@@ -73,6 +73,7 @@ pub fn check_path(cx: &LateContext<'_>, path: &[&str]) -> bool {
         SimplifiedType::Slice,
         SimplifiedType::Str,
         SimplifiedType::Bool,
+        SimplifiedType::Char,
     ]
     .iter()
     .flat_map(|&ty| cx.tcx.incoherent_impls(ty).iter())

@@ -212,6 +212,15 @@ Miri comes with a few benchmarks; you can run `./miri bench` to run them with th
 Miri. Note: this will run `./miri install` as a side-effect. Also requires `hyperfine` to be
 installed (`cargo install hyperfine`).
 
+To compare the benchmark results with a baseline, do the following:
+- Before applying your changes, run `./miri bench --save-baseline=baseline.json`.
+- Then do your changes.
+- Then run `./miri bench --load-baseline=baseline.json`; the results will include
+  a comparison with the baseline.
+
+You can run only some of the benchmarks by listing them, e.g. `./miri bench mse`.
+The names refer to the folders in `bench-cargo-miri`.
+
 ## Configuring `rust-analyzer`
 
 To configure `rust-analyzer` and the IDE for working on Miri, copy one of the provided
@@ -281,7 +290,7 @@ We use the [`josh` proxy](https://github.com/josh-project/josh) to transmit chan
 rustc and Miri repositories. You can install it as follows:
 
 ```sh
-RUSTFLAGS="--cap-lints=warn" cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r23.12.04
+cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r24.10.04
 ```
 
 Josh will automatically be started and stopped by `./miri`.

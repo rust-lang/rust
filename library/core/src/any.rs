@@ -423,7 +423,8 @@ impl dyn Any + Send {
     ///
     /// # Safety
     ///
-    /// Same as the method on the type `dyn Any`.
+    /// The contained value must be of type `T`. Calling this method
+    /// with the incorrect type is *undefined behavior*.
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     #[inline]
     pub unsafe fn downcast_ref_unchecked<T: Any>(&self) -> &T {
@@ -451,7 +452,8 @@ impl dyn Any + Send {
     ///
     /// # Safety
     ///
-    /// Same as the method on the type `dyn Any`.
+    /// The contained value must be of type `T`. Calling this method
+    /// with the incorrect type is *undefined behavior*.
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     #[inline]
     pub unsafe fn downcast_mut_unchecked<T: Any>(&mut self) -> &mut T {
@@ -552,6 +554,10 @@ impl dyn Any + Send + Sync {
     ///     assert_eq!(*x.downcast_ref_unchecked::<usize>(), 1);
     /// }
     /// ```
+    /// # Safety
+    ///
+    /// The contained value must be of type `T`. Calling this method
+    /// with the incorrect type is *undefined behavior*.
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     #[inline]
     pub unsafe fn downcast_ref_unchecked<T: Any>(&self) -> &T {
@@ -576,6 +582,10 @@ impl dyn Any + Send + Sync {
     ///
     /// assert_eq!(*x.downcast_ref::<usize>().unwrap(), 2);
     /// ```
+    /// # Safety
+    ///
+    /// The contained value must be of type `T`. Calling this method
+    /// with the incorrect type is *undefined behavior*.
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     #[inline]
     pub unsafe fn downcast_mut_unchecked<T: Any>(&mut self) -> &mut T {
@@ -600,6 +610,101 @@ impl dyn Any + Send + Sync {
 /// While `TypeId` implements `Hash`, `PartialOrd`, and `Ord`, it is worth
 /// noting that the hashes and ordering will vary between Rust releases. Beware
 /// of relying on them inside of your code!
+///
+/// # Danger of Improper Variance
+///
+/// You might think that subtyping is impossible between two static types,
+/// but this is false; there exists a static type with a static subtype.
+/// To wit, `fn(&str)`, which is short for `for<'any> fn(&'any str)`, and
+/// `fn(&'static str)`, are two distinct, static types, and yet,
+/// `fn(&str)` is a subtype of `fn(&'static str)`, since any value of type
+/// `fn(&str)` can be used where a value of type `fn(&'static str)` is needed.
+///
+/// This means that abstractions around `TypeId`, despite its
+/// `'static` bound on arguments, still need to worry about unnecessary
+/// and improper variance: it is advisable to strive for invariance
+/// first. The usability impact will be negligible, while the reduction
+/// in the risk of unsoundness will be most welcome.
+///
+/// ## Examples
+///
+/// Suppose `SubType` is a subtype of `SuperType`, that is,
+/// a value of type `SubType` can be used wherever
+/// a value of type `SuperType` is expected.
+/// Suppose also that `CoVar<T>` is a generic type, which is covariant over `T`
+/// (like many other types, including `PhantomData<T>` and `Vec<T>`).
+///
+/// Then, by covariance, `CoVar<SubType>` is a subtype of `CoVar<SuperType>`,
+/// that is, a value of type `CoVar<SubType>` can be used wherever
+/// a value of type `CoVar<SuperType>` is expected.
+///
+/// Then if `CoVar<SuperType>` relies on `TypeId::of::<SuperType>()` to uphold any invariants,
+/// those invariants may be broken because a value of type `CoVar<SuperType>` can be created
+/// without going through any of its methods, like so:
+/// ```
+/// type SubType = fn(&());
+/// type SuperType = fn(&'static ());
+/// type CoVar<T> = Vec<T>; // imagine something more complicated
+///
+/// let sub: CoVar<SubType> = CoVar::new();
+/// // we have a `CoVar<SuperType>` instance without
+/// // *ever* having called `CoVar::<SuperType>::new()`!
+/// let fake_super: CoVar<SuperType> = sub;
+/// ```
+///
+/// The following is an example program that tries to use `TypeId::of` to
+/// implement a generic type `Unique<T>` that guarantees unique instances for each `Unique<T>`,
+/// that is, and for each type `T` there can be at most one value of type `Unique<T>` at any time.
+///
+/// ```
+/// mod unique {
+///     use std::any::TypeId;
+///     use std::collections::BTreeSet;
+///     use std::marker::PhantomData;
+///     use std::sync::Mutex;
+///
+///     static ID_SET: Mutex<BTreeSet<TypeId>> = Mutex::new(BTreeSet::new());
+///
+///     // TypeId has only covariant uses, which makes Unique covariant over TypeAsId 🚨
+///     #[derive(Debug, PartialEq)]
+///     pub struct Unique<TypeAsId: 'static>(
+///         // private field prevents creation without `new` outside this module
+///         PhantomData<TypeAsId>,
+///     );
+///
+///     impl<TypeAsId: 'static> Unique<TypeAsId> {
+///         pub fn new() -> Option<Self> {
+///             let mut set = ID_SET.lock().unwrap();
+///             (set.insert(TypeId::of::<TypeAsId>())).then(|| Self(PhantomData))
+///         }
+///     }
+///
+///     impl<TypeAsId: 'static> Drop for Unique<TypeAsId> {
+///         fn drop(&mut self) {
+///             let mut set = ID_SET.lock().unwrap();
+///             (!set.remove(&TypeId::of::<TypeAsId>())).then(|| panic!("duplicity detected"));
+///         }
+///     }
+/// }
+///
+/// use unique::Unique;
+///
+/// // `OtherRing` is a subtype of `TheOneRing`. Both are 'static, and thus have a TypeId.
+/// type TheOneRing = fn(&'static ());
+/// type OtherRing = fn(&());
+///
+/// fn main() {
+///     let the_one_ring: Unique<TheOneRing> = Unique::new().unwrap();
+///     assert_eq!(Unique::<TheOneRing>::new(), None);
+///
+///     let other_ring: Unique<OtherRing> = Unique::new().unwrap();
+///     // Use that `Unique<OtherRing>` is a subtype of `Unique<TheOneRing>` 🚨
+///     let fake_one_ring: Unique<TheOneRing> = other_ring;
+///     assert_eq!(fake_one_ring, the_one_ring);
+///
+///     std::mem::forget(fake_one_ring);
+/// }
+/// ```
 #[derive(Clone, Copy, Eq, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
@@ -617,8 +722,7 @@ impl PartialEq for TypeId {
 }
 
 impl TypeId {
-    /// Returns the `TypeId` of the type this generic function has been
-    /// instantiated with.
+    /// Returns the `TypeId` of the generic type parameter.
     ///
     /// # Examples
     ///

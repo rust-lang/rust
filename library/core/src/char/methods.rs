@@ -92,7 +92,7 @@ impl char {
     #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const UNICODE_VERSION: (u8, u8, u8) = crate::unicode::UNICODE_VERSION;
 
-    /// Creates an iterator over the UTF-16 encoded code points in `iter`,
+    /// Creates an iterator over the native endian UTF-16 encoded code points in `iter`,
     /// returning unpaired surrogates as `Err`s.
     ///
     /// # Examples
@@ -394,17 +394,21 @@ impl char {
         );
         // check radix to remove letter handling code when radix is a known constant
         let value = if self > '9' && radix > 10 {
-            // convert ASCII letters to lowercase
-            let lower = self as u32 | 0x20;
-            // convert an ASCII letter to the corresponding value,
-            // non-letters convert to values > 36
-            lower.wrapping_sub('a' as u32) as u64 + 10
+            // mask to convert ASCII letters to uppercase
+            const TO_UPPERCASE_MASK: u32 = !0b0010_0000;
+            // Converts an ASCII letter to its corresponding integer value:
+            // A-Z => 10-35, a-z => 10-35. Other characters produce values >= 36.
+            //
+            // Add Overflow Safety:
+            // By applying the mask after the subtraction, the first addendum is
+            // constrained such that it never exceeds u32::MAX - 0x20.
+            ((self as u32).wrapping_sub('A' as u32) & TO_UPPERCASE_MASK) + 10
         } else {
             // convert digit to value, non-digits wrap to values > 36
-            (self as u32).wrapping_sub('0' as u32) as u64
+            (self as u32).wrapping_sub('0' as u32)
         };
         // FIXME(const-hack): once then_some is const fn, use it here
-        if value < radix as u64 { Some(value as u32) } else { None }
+        if value < radix { Some(value) } else { None }
     }
 
     /// Returns an iterator that yields the hexadecimal Unicode escape of a
@@ -700,7 +704,7 @@ impl char {
         unsafe { from_utf8_unchecked_mut(encode_utf8_raw(self as u32, dst)) }
     }
 
-    /// Encodes this character as UTF-16 into the provided `u16` buffer,
+    /// Encodes this character as native endian UTF-16 into the provided `u16` buffer,
     /// and then returns the subslice of the buffer that contains the encoded character.
     ///
     /// # Panics
@@ -1824,7 +1828,7 @@ pub const fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
     unsafe { slice::from_raw_parts_mut(dst.as_mut_ptr(), len) }
 }
 
-/// Encodes a raw `u32` value as UTF-16 into the provided `u16` buffer,
+/// Encodes a raw `u32` value as native endian UTF-16 into the provided `u16` buffer,
 /// and then returns the subslice of the buffer that contains the encoded character.
 ///
 /// Unlike `char::encode_utf16`, this method also handles codepoints in the surrogate range.

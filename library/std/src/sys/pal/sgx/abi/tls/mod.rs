@@ -22,7 +22,7 @@ macro_rules! dup {
 #[export_name = "_ZN16__rust_internals3std3sys3sgx3abi3tls14TLS_DESTRUCTORE"]
 static TLS_DESTRUCTOR: [AtomicUsize; TLS_KEYS] = dup!((* * * * * * *) (AtomicUsize::new(0)));
 
-extern "C" {
+unsafe extern "C" {
     fn get_tls_ptr() -> *const u8;
     fn set_tls_ptr(tls: *const u8);
 }

@@ -5,16 +5,17 @@
 
 use core::ops::ControlFlow;
 use std::borrow::Cow;
+use std::path::PathBuf;
 
 use hir::Expr;
 use rustc_ast::ast::Mutability;
-use rustc_attr::parse_confusables;
+use rustc_attr_parsing::parse_confusables;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, MultiSpan, StashKey, pluralize, struct_span_code_err};
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::lang_items::LangItem;
@@ -27,9 +28,9 @@ use rustc_middle::ty::print::{
 };
 use rustc_middle::ty::{self, GenericArgKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::DefIdSet;
-use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{
-    DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, MacroKind, Span, Symbol, edit_distance,
+    DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, Ident, MacroKind, Span, Symbol, edit_distance,
+    kw, sym,
 };
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplementedNote;
@@ -105,8 +106,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         };
         let trait_ref = ty::TraitRef::new(self.tcx, into_iterator_trait, [ty]);
-        let cause = ObligationCause::new(span, self.body_id, ObligationCauseCode::Misc);
-        let obligation = Obligation::new(self.tcx, cause, self.param_env, trait_ref);
+        let obligation = Obligation::new(self.tcx, self.misc(span), self.param_env, trait_ref);
         if !self.predicate_must_hold_modulo_regions(&obligation) {
             return false;
         }
@@ -171,10 +171,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span,
                 ..
             })
+            | hir::Node::PatExpr(&hir::PatExpr {
+                kind: hir::PatExprKind::Path(QPath::TypeRelative(rcvr, segment)),
+                span,
+                ..
+            })
             | hir::Node::Pat(&hir::Pat {
                 kind:
-                    hir::PatKind::Path(QPath::TypeRelative(rcvr, segment))
-                    | hir::PatKind::Struct(QPath::TypeRelative(rcvr, segment), ..)
+                    hir::PatKind::Struct(QPath::TypeRelative(rcvr, segment), ..)
                     | hir::PatKind::TupleStruct(QPath::TypeRelative(rcvr, segment), ..),
                 span,
                 ..
@@ -359,14 +363,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_missing_writer(&self, rcvr_ty: Ty<'tcx>, rcvr_expr: &hir::Expr<'tcx>) -> Diag<'_> {
         let mut file = None;
-        let ty_str = self.tcx.short_ty_string(rcvr_ty, &mut file);
         let mut err = struct_span_code_err!(
             self.dcx(),
             rcvr_expr.span,
             E0599,
             "cannot write into `{}`",
-            ty_str
+            self.tcx.short_string(rcvr_ty, &mut file),
         );
+        *err.long_ty_path() = file;
         err.span_note(
             rcvr_expr.span,
             "must implement `io::Write`, `fmt::Write`, or have a `write_fmt` method",
@@ -377,11 +381,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 "a writer is needed before this format string",
             );
         };
-        if let Some(file) = file {
-            err.note(format!("the full type name has been written to '{}'", file.display()));
-            err.note("consider using `--verbose` to print the full type name to the console");
-        }
-
         err
     }
 
@@ -592,7 +591,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (predicates.to_string(), with_forced_trimmed_paths!(predicates.to_string()))
             } else {
                 (
-                    tcx.short_ty_string(rcvr_ty, &mut ty_file),
+                    tcx.short_string(rcvr_ty, &mut ty_file),
                     with_forced_trimmed_paths!(rcvr_ty.to_string()),
                 )
             };
@@ -621,6 +620,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span,
             item_name,
             &short_ty_str,
+            &mut ty_file,
         ) {
             return guar;
         }
@@ -632,6 +632,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             item_kind,
             item_name,
             &short_ty_str,
+            &mut ty_file,
         ) {
             return guar;
         }
@@ -691,6 +692,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
 
+            // Check if we wrote `Self::Assoc(1)` as if it were a tuple ctor.
+            if let SelfSource::QPath(ty) = source
+                && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind
+                && let Res::SelfTyAlias { alias_to: impl_def_id, .. } = path.res
+                && let DefKind::Impl { .. } = self.tcx.def_kind(impl_def_id)
+                && let Some(candidate) = tcx.associated_items(impl_def_id).find_by_name_and_kind(
+                    self.tcx,
+                    item_name,
+                    ty::AssocKind::Type,
+                    impl_def_id,
+                )
+                && let Some(adt_def) = tcx.type_of(candidate.def_id).skip_binder().ty_adt_def()
+                && adt_def.is_struct()
+                && adt_def.non_enum_variant().ctor_kind() == Some(CtorKind::Fn)
+            {
+                let def_path = tcx.def_path_str(adt_def.did());
+                err.span_suggestion(
+                    ty.span.to(item_name.span),
+                    format!("to construct a value of type `{}`, use the explicit path", def_path),
+                    def_path,
+                    Applicability::MachineApplicable,
+                );
+            }
+
             err
         };
         if tcx.sess.source_map().is_multiline(sugg_span) {
@@ -701,10 +726,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty_str = short_ty_str;
         }
 
-        if let Some(file) = ty_file {
-            err.note(format!("the full type name has been written to '{}'", file.display(),));
-            err.note("consider using `--verbose` to print the full type name to the console");
-        }
         if rcvr_ty.references_error() {
             err.downgrade_to_delayed_bug();
         }
@@ -1068,7 +1089,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                 ) {
                     continue;
-                };
+                }
 
                 match self.tcx.hir().get_if_local(item_def_id) {
                     // Unmet obligation comes from a `derive` macro, point at it once to
@@ -1182,8 +1203,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         entry.1.insert((cause_span, "unsatisfied trait bound introduced here"));
                         entry.2.push(p);
                     }
-                    Some(node) => unreachable!("encountered `{node:?}` due to `{cause:#?}`"),
-                    None => (),
+                    _ => {
+                        // It's possible to use well-formedness clauses to get obligations
+                        // which point arbitrary items like ADTs, so there's no use in ICEing
+                        // here if we find that the obligation originates from some other
+                        // node that we don't handle.
+                    }
                 }
             }
             let mut spanned_predicates: Vec<_> = spanned_predicates.into_iter().collect();
@@ -1283,7 +1308,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     bound_list.into_iter().map(|(_, path)| path).collect::<Vec<_>>().join("\n");
                 let actual_prefix = rcvr_ty.prefix_string(self.tcx);
                 info!("unimplemented_traits.len() == {}", unimplemented_traits.len());
-                let mut long_ty_file = None;
                 let (primary_message, label, notes) = if unimplemented_traits.len() == 1
                     && unimplemented_traits_only
                 {
@@ -1298,7 +1322,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                             let OnUnimplementedNote { message, label, notes, .. } = self
                                 .err_ctxt()
-                                .on_unimplemented_note(trait_ref, &obligation, &mut long_ty_file);
+                                .on_unimplemented_note(trait_ref, &obligation, &mut ty_file);
                             (message, label, notes)
                         })
                         .unwrap()
@@ -1312,15 +1336,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                 });
                 err.primary_message(primary_message);
-                if let Some(file) = long_ty_file {
-                    err.note(format!(
-                        "the full name for the type has been written to '{}'",
-                        file.display(),
-                    ));
-                    err.note(
-                        "consider using `--verbose` to print the full type name to the console",
-                    );
-                }
                 if let Some(label) = label {
                     custom_span_label = true;
                     err.span_label(span, label);
@@ -2372,6 +2387,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         item_name: Ident,
         ty_str: &str,
+        long_ty_path: &mut Option<PathBuf>,
     ) -> Result<(), ErrorGuaranteed> {
         if let SelfSource::MethodCall(expr) = source {
             for (_, parent) in tcx.hir().parent_iter(expr.hir_id).take(5) {
@@ -2379,6 +2395,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let lang_item = match parent_expr.kind {
                         ExprKind::Struct(qpath, _, _) => match *qpath {
                             QPath::LangItem(LangItem::Range, ..) => Some(LangItem::Range),
+                            QPath::LangItem(LangItem::RangeCopy, ..) => Some(LangItem::RangeCopy),
+                            QPath::LangItem(LangItem::RangeInclusiveCopy, ..) => {
+                                Some(LangItem::RangeInclusiveCopy)
+                            }
                             QPath::LangItem(LangItem::RangeTo, ..) => Some(LangItem::RangeTo),
                             QPath::LangItem(LangItem::RangeToInclusive, ..) => {
                                 Some(LangItem::RangeToInclusive)
@@ -2429,7 +2449,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     if pick.is_ok() {
                         let range_span = parent_expr.span.with_hi(expr.span.hi());
-                        return Err(self.dcx().emit_err(errors::MissingParenthesesInRange {
+                        let mut err = self.dcx().create_err(errors::MissingParenthesesInRange {
                             span,
                             ty_str: ty_str.to_string(),
                             method_name: item_name.as_str().to_string(),
@@ -2438,7 +2458,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 left: range_span.shrink_to_lo(),
                                 right: range_span.shrink_to_hi(),
                             }),
-                        }));
+                        });
+                        *err.long_ty_path() = long_ty_path.take();
+                        return Err(err.emit());
                     }
                 }
             }
@@ -2455,6 +2477,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_kind: &str,
         item_name: Ident,
         ty_str: &str,
+        long_ty_path: &mut Option<PathBuf>,
     ) -> Result<(), ErrorGuaranteed> {
         let found_candidate = all_traits(self.tcx)
             .into_iter()
@@ -2495,6 +2518,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 item_name,
                 ty_str
             );
+            *err.long_ty_path() = long_ty_path.take();
             let concrete_type = if actual.is_integral() { "i32" } else { "f32" };
             match expr.kind {
                 ExprKind::Lit(lit) => {
@@ -2682,7 +2706,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .map(|field_path| {
                         field_path
                             .iter()
-                            .map(|id| id.name.to_ident_string())
+                            .map(|id| id.to_string())
                             .collect::<Vec<String>>()
                             .join(".")
                     })
@@ -3489,7 +3513,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let pred = ty::TraitRef::new(self.tcx, unpin_trait, [*rcvr_ty]);
                 let unpin = self.predicate_must_hold_considering_regions(&Obligation::new(
                     self.tcx,
-                    ObligationCause::misc(rcvr.span, self.body_id),
+                    self.misc(rcvr.span),
                     self.param_env,
                     pred,
                 ));
@@ -3729,18 +3753,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         hir::TraitFn::Required([ident, ..]) => {
                                             ident.name == kw::SelfLower
                                         }
-                                        hir::TraitFn::Provided(body_id) => {
-                                            self.tcx.hir().body(*body_id).params.first().map_or(
-                                                false,
-                                                |param| {
-                                                    matches!(
-                                                        param.pat.kind,
-                                                        hir::PatKind::Binding(_, _, ident, _)
-                                                            if ident.name == kw::SelfLower
-                                                    )
-                                                },
-                                            )
-                                        }
+                                        hir::TraitFn::Provided(body_id) => self
+                                            .tcx
+                                            .hir()
+                                            .body(*body_id)
+                                            .params
+                                            .first()
+                                            .is_some_and(|param| {
+                                                matches!(
+                                                    param.pat.kind,
+                                                    hir::PatKind::Binding(_, _, ident, _)
+                                                        if ident.name == kw::SelfLower
+                                                )
+                                            }),
                                         _ => false,
                                     };
 
@@ -3897,11 +3922,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 };
 
                             let all_suggs = candidate_strs.iter().map(|cand| {
-                                let suggestion = format!("{} {cand}", match introducer {
-                                    Introducer::Plus => " +",
-                                    Introducer::Colon => ":",
-                                    Introducer::Nothing => "",
-                                },);
+                                let suggestion = format!(
+                                    "{} {cand}",
+                                    match introducer {
+                                        Introducer::Plus => " +",
+                                        Introducer::Colon => ":",
+                                        Introducer::Nothing => "",
+                                    },
+                                );
 
                                 let mut suggs = vec![];
 

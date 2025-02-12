@@ -4,6 +4,7 @@
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{self as ty, Interner, elaborate};
 use tracing::instrument;
 
@@ -102,7 +103,7 @@ where
                 |ecx| {
                     // Const conditions must hold for the implied const bound to hold.
                     ecx.add_goals(
-                        GoalSource::Misc,
+                        GoalSource::AliasBoundConstCondition,
                         cx.const_conditions(alias_ty.def_id)
                             .iter_instantiated(cx, alias_ty.args)
                             .map(|trait_ref| {
@@ -247,10 +248,11 @@ where
 
         let pred = inputs_and_output
             .map_bound(|(inputs, _)| {
-                ty::TraitRef::new(cx, goal.predicate.def_id(), [
-                    goal.predicate.self_ty(),
-                    Ty::new_tup(cx, inputs.as_slice()),
-                ])
+                ty::TraitRef::new(
+                    cx,
+                    goal.predicate.def_id(),
+                    [goal.predicate.self_ty(), Ty::new_tup(cx, inputs.as_slice())],
+                )
             })
             .to_host_effect_clause(cx, goal.predicate.constness);
 
@@ -352,7 +354,7 @@ where
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             ecx.add_goals(
-                GoalSource::Misc,
+                GoalSource::AliasBoundConstCondition,
                 const_conditions.into_iter().map(|trait_ref| {
                     goal.with(
                         cx,
@@ -391,6 +393,11 @@ where
         goal: Goal<I, ty::HostEffectPredicate<I>>,
     ) -> QueryResult<I> {
         let candidates = self.assemble_and_evaluate_candidates(goal);
-        self.merge_candidates(candidates)
+        let (_, proven_via) = self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
+            let trait_goal: Goal<I, ty::TraitPredicate<I>> =
+                goal.with(ecx.cx(), goal.predicate.trait_ref);
+            ecx.compute_trait_goal(trait_goal)
+        })?;
+        self.merge_candidates(proven_via, candidates)
     }
 }

@@ -135,7 +135,7 @@ impl FileAttr {
             S_IFREG => DT_REG,
             _ => DT_UNKNOWN,
         };
-        FileType { mode: mode }
+        FileType { mode }
     }
 }
 

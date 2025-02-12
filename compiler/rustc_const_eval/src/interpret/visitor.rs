@@ -218,8 +218,8 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
                 // recurse with the inner type
                 self.visit_variant(v, idx, &inner)?;
             }
-            // For single-variant layouts, we already did anything there is to do.
-            Variants::Single { .. } => {}
+            // For single-variant layouts, we already did everything there is to do.
+            Variants::Single { .. } | Variants::Empty => {}
         }
 
         interp_ok(())

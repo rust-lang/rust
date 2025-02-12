@@ -2,10 +2,12 @@ use rustc_ast::TraitObjectSyntax;
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, EmissionGuarantee, ErrorGuaranteed, StashKey, Suggestions};
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{DefKind, Namespace, Res};
+use rustc_hir::def_id::DefId;
 use rustc_lint_defs::Applicability;
 use rustc_lint_defs::builtin::BARE_TRAIT_OBJECTS;
 use rustc_span::Span;
+use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 
 use super::HirTyLowerer;
@@ -21,9 +23,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Option<ErrorGuaranteed> {
         let tcx = self.tcx();
 
-        let hir::TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
+        let poly_trait_ref = if let hir::TyKind::TraitObject([poly_trait_ref, ..], tagged_ptr) =
             self_ty.kind
-        else {
+            && let TraitObjectSyntax::None = tagged_ptr.tag()
+        {
+            poly_trait_ref
+        } else {
             return None;
         };
 
@@ -36,8 +41,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 kind: hir::ExprKind::Path(hir::QPath::TypeRelative(qself, _)),
                 ..
             })
-            | hir::Node::Pat(hir::Pat {
-                kind: hir::PatKind::Path(hir::QPath::TypeRelative(qself, _)),
+            | hir::Node::PatExpr(hir::PatExpr {
+                kind: hir::PatExprKind::Path(hir::QPath::TypeRelative(qself, _)),
                 ..
             }) if qself.hir_id == self_ty.hir_id => true,
             _ => false,
@@ -86,7 +91,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Check if the impl trait that we are considering is an impl of a local trait.
             self.maybe_suggest_blanket_trait_impl(self_ty, &mut diag);
             self.maybe_suggest_assoc_ty_bound(self_ty, &mut diag);
-            // In case there is an associate type with the same name
+            self.maybe_suggest_typoed_method(
+                self_ty,
+                poly_trait_ref.trait_ref.trait_def_id(),
+                &mut diag,
+            );
+            // In case there is an associated type with the same name
             // Add the suggestion to this error
             if let Some(mut sugg) =
                 tcx.dcx().steal_non_err(self_ty.span, StashKey::AssociatedTypeSuggestion)
@@ -96,7 +106,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 s1.append(s2);
                 sugg.cancel();
             }
-            diag.stash(self_ty.span, StashKey::TraitMissingMethod)
+            Some(diag.emit())
         } else {
             tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, |lint| {
                 lint.primary_message("trait objects without an explicit `dyn` are deprecated");
@@ -189,9 +199,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // 2. Functions inside trait blocks
         // 3. Functions inside impl blocks
         let (sig, generics) = match tcx.hir_node_by_def_id(parent_id) {
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, generics, _), .. }) => {
-                (sig, generics)
-            }
+            hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Fn { sig, generics, .. }, ..
+            }) => (sig, generics),
             hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(sig, _),
                 generics,
@@ -287,7 +297,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let (dyn_str, paren_dyn_str) =
                     if borrowed { ("dyn ", "(dyn ") } else { ("&dyn ", "&(dyn ") };
 
-                let sugg = if let hir::TyKind::TraitObject([_, _, ..], _, _) = self_ty.kind {
+                let sugg = if let hir::TyKind::TraitObject([_, _, ..], _) = self_ty.kind {
                     // There are more than one trait bound, we need surrounding parentheses.
                     vec![
                         (self_ty.span.shrink_to_lo(), paren_dyn_str.to_string()),
@@ -339,6 +349,46 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 lo.between(hi),
                 "you might have meant to write a bound here",
                 ": ",
+                Applicability::MaybeIncorrect,
+            );
+        }
+    }
+
+    fn maybe_suggest_typoed_method(
+        &self,
+        self_ty: &hir::Ty<'_>,
+        trait_def_id: Option<DefId>,
+        diag: &mut Diag<'_>,
+    ) {
+        let tcx = self.tcx();
+        let Some(trait_def_id) = trait_def_id else {
+            return;
+        };
+        let hir::Node::Expr(hir::Expr {
+            kind: hir::ExprKind::Path(hir::QPath::TypeRelative(path_ty, segment)),
+            ..
+        }) = tcx.parent_hir_node(self_ty.hir_id)
+        else {
+            return;
+        };
+        if path_ty.hir_id != self_ty.hir_id {
+            return;
+        }
+        let names: Vec<_> = tcx
+            .associated_items(trait_def_id)
+            .in_definition_order()
+            .filter(|assoc| assoc.kind.namespace() == Namespace::ValueNS)
+            .map(|cand| cand.name)
+            .collect();
+        if let Some(typo) = find_best_match_for_name(&names, segment.ident.name, None) {
+            diag.span_suggestion_verbose(
+                segment.ident.span,
+                format!(
+                    "you may have misspelled this associated item, causing `{}` \
+                    to be interpreted as a type rather than a trait",
+                    tcx.item_name(trait_def_id),
+                ),
+                typo,
                 Applicability::MaybeIncorrect,
             );
         }

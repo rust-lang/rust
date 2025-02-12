@@ -1,0 +1,37 @@
+error: `NonZeroUsize::new()` and `Option::unwrap()` can be safely used in a `const` context
+  --> tests/ui/useless_nonzero_new_unchecked.rs:7:13
+   |
+LL |     const { unsafe { NonZeroUsize::new_unchecked(3) } }
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use instead: `NonZeroUsize::new(3).unwrap()`
+   |
+   = note: `-D clippy::useless-nonzero-new-unchecked` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::useless_nonzero_new_unchecked)]`
+
+error: `NonZeroUsize::new()` and `Option::unwrap()` can be safely used in a `const` context
+  --> tests/ui/useless_nonzero_new_unchecked.rs:37:30
+   |
+LL |     const _A: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(3) };
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use instead: `NonZeroUsize::new(3).unwrap()`
+
+error: `NonZero::<u8>::new()` and `Option::unwrap()` can be safely used in a `const` context
+  --> tests/ui/useless_nonzero_new_unchecked.rs:40:30
+   |
+LL |     static _B: NonZero<u8> = unsafe { NonZero::<u8>::new_unchecked(42) };
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use instead: `NonZero::<u8>::new(42).unwrap()`
+
+error: `NonZeroUsize::new()` and `Option::unwrap()` can be safely used in a `const` context
+  --> tests/ui/useless_nonzero_new_unchecked.rs:43:32
+   |
+LL |     const _C: usize = unsafe { NonZeroUsize::new_unchecked(3).get() };
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use instead: `NonZeroUsize::new(3).unwrap()`
+   |
+   = note: the fixed expression does not require an `unsafe` context
+
+error: `NonZeroUsize::new()` and `Option::unwrap()` can be safely used in a `const` context
+  --> tests/ui/useless_nonzero_new_unchecked.rs:47:30
+   |
+LL |     const _D: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(AUX) };
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use instead: `NonZeroUsize::new(AUX).unwrap()`
+
+error: aborting due to 5 previous errors
+

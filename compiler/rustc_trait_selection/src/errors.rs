@@ -6,16 +6,14 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
     EmissionGuarantee, IntoDiagArg, Level, MultiSpan, SubdiagMessageOp, Subdiagnostic,
 };
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{Visitor, walk_ty};
-use rustc_hir::{FnRetTy, GenericParamKind, Node};
+use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
+use rustc_hir::{self as hir, AmbigArg, FnRetTy, GenericParamKind, Node};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, TraitRefPrintOnlyTraitPath};
-use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, PolyTraitRef, Region, Ty, TyCtxt};
-use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_span::{BytePos, Span};
+use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, Region, Ty, TyCtxt};
+use rustc_span::{BytePos, Ident, Span, Symbol, kw};
 
 use crate::error_reporting::infer::ObligationCauseAsDiagArg;
 use crate::error_reporting::infer::need_type_info::UnderspecifiedArgKind;
@@ -23,15 +21,6 @@ use crate::error_reporting::infer::nice_region_error::placeholder_error::Highlig
 use crate::fluent_generated as fluent;
 
 pub mod note_and_explain;
-
-#[derive(Diagnostic)]
-#[diag(trait_selection_dump_vtable_entries)]
-pub struct DumpVTableEntries<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub trait_ref: PolyTraitRef<'a>,
-    pub entries: String,
-}
 
 #[derive(Diagnostic)]
 #[diag(trait_selection_unable_to_construct_constant_value)]
@@ -517,17 +506,17 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                 return false;
             };
 
-            let node = self.tcx.hir_node_by_def_id(anon_reg.def_id);
+            let node = self.tcx.hir_node_by_def_id(anon_reg.scope);
             let is_impl = matches!(&node, hir::Node::ImplItem(_));
             let (generics, parent_generics) = match node {
                 hir::Node::Item(&hir::Item {
-                    kind: hir::ItemKind::Fn(_, ref generics, ..),
+                    kind: hir::ItemKind::Fn { ref generics, .. },
                     ..
                 })
                 | hir::Node::TraitItem(&hir::TraitItem { ref generics, .. })
                 | hir::Node::ImplItem(&hir::ImplItem { ref generics, .. }) => (
                     generics,
-                    match self.tcx.parent_hir_node(self.tcx.local_def_id_to_hir_id(anon_reg.def_id))
+                    match self.tcx.parent_hir_node(self.tcx.local_def_id_to_hir_id(anon_reg.scope))
                     {
                         hir::Node::Item(hir::Item {
                             kind: hir::ItemKind::Trait(_, _, ref generics, ..),
@@ -580,7 +569,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
             }
 
             impl<'v> Visitor<'v> for ImplicitLifetimeFinder {
-                fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+                fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
                     let make_suggestion = |ident: Ident| {
                         if ident.name == kw::Empty && ident.span.is_empty() {
                             format!("{}, ", self.suggestion_param_name)
@@ -643,16 +632,16 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
             if let Some(fn_decl) = node.fn_decl()
                 && let hir::FnRetTy::Return(ty) = fn_decl.output
             {
-                visitor.visit_ty(ty);
+                visitor.visit_ty_unambig(ty);
             }
             if visitor.suggestions.is_empty() {
                 // Do not suggest constraining the `&self` param, but rather the return type.
                 // If that is wrong (because it is not sufficient), a follow up error will tell the
                 // user to fix it. This way we lower the chances of *over* constraining, but still
                 // get the cake of "correctly" contrained in two steps.
-                visitor.visit_ty(self.ty_sup);
+                visitor.visit_ty_unambig(self.ty_sup);
             }
-            visitor.visit_ty(self.ty_sub);
+            visitor.visit_ty_unambig(self.ty_sub);
             if visitor.suggestions.is_empty() {
                 return false;
             }
@@ -1402,15 +1391,13 @@ pub struct OpaqueCapturesLifetime<'tcx> {
 pub enum FunctionPointerSuggestion<'a> {
     #[suggestion(
         trait_selection_fps_use_ref,
-        code = "&{fn_name}",
+        code = "&",
         style = "verbose",
         applicability = "maybe-incorrect"
     )]
     UseRef {
         #[primary_span]
         span: Span,
-        #[skip_arg]
-        fn_name: String,
     },
     #[suggestion(
         trait_selection_fps_remove_ref,
@@ -1440,7 +1427,7 @@ pub enum FunctionPointerSuggestion<'a> {
     },
     #[suggestion(
         trait_selection_fps_cast,
-        code = "{fn_name} as {sig}",
+        code = " as {sig}",
         style = "verbose",
         applicability = "maybe-incorrect"
     )]
@@ -1448,21 +1435,17 @@ pub enum FunctionPointerSuggestion<'a> {
         #[primary_span]
         span: Span,
         #[skip_arg]
-        fn_name: String,
-        #[skip_arg]
         sig: Binder<'a, FnSig<'a>>,
     },
     #[suggestion(
         trait_selection_fps_cast_both,
-        code = "{fn_name} as {found_sig}",
+        code = " as {found_sig}",
         style = "hidden",
         applicability = "maybe-incorrect"
     )]
     CastBoth {
         #[primary_span]
         span: Span,
-        #[skip_arg]
-        fn_name: String,
         #[skip_arg]
         found_sig: Binder<'a, FnSig<'a>>,
         expected_sig: Binder<'a, FnSig<'a>>,
@@ -1496,6 +1479,12 @@ pub struct FnUniqTypes;
 #[help(trait_selection_fn_consider_casting)]
 pub struct FnConsiderCasting {
     pub casting: String,
+}
+
+#[derive(Subdiagnostic)]
+#[help(trait_selection_fn_consider_casting_both)]
+pub struct FnConsiderCastingBoth<'a> {
+    pub sig: Binder<'a, FnSig<'a>>,
 }
 
 #[derive(Subdiagnostic)]
@@ -1696,13 +1685,6 @@ pub enum ObligationCauseFailureCode {
         #[primary_span]
         span: Span,
     },
-    #[diag(trait_selection_oc_fn_start_correct_type, code = E0308)]
-    FnStartCorrectType {
-        #[primary_span]
-        span: Span,
-        #[subdiagnostic]
-        subdiags: Vec<TypeErrorAdditionalDiags>,
-    },
     #[diag(trait_selection_oc_fn_lang_correct_type, code = E0308)]
     FnLangCorrectType {
         #[primary_span]
@@ -1730,8 +1712,15 @@ pub enum ObligationCauseFailureCode {
         #[primary_span]
         span: Span,
     },
-    #[diag(trait_selection_oc_cant_coerce, code = E0308)]
-    CantCoerce {
+    #[diag(trait_selection_oc_cant_coerce_force_inline, code = E0308)]
+    CantCoerceForceInline {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiags: Vec<TypeErrorAdditionalDiags>,
+    },
+    #[diag(trait_selection_oc_cant_coerce_intrinsic, code = E0308)]
+    CantCoerceIntrinsic {
         #[primary_span]
         span: Span,
         #[subdiagnostic]

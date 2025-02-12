@@ -11,7 +11,7 @@ libloading = "0.8.0"
 odht = { version = "0.3.1", features = ["nightly"] }
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
-rustc_attr = { path = "../rustc_attr" }
+rustc_attr_parsing = { path = "../rustc_attr_parsing" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_expand = { path = "../rustc_expand" }

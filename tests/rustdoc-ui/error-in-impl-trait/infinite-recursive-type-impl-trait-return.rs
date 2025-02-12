@@ -1,5 +1,5 @@
-//@ normalize-stderr-test: "`.*`" -> "`DEF_ID`"
-//@ normalize-stdout-test: "`.*`" -> "`DEF_ID`"
+//@ normalize-stderr: "`.*`" -> "`DEF_ID`"
+//@ normalize-stdout: "`.*`" -> "`DEF_ID`"
 //@ edition:2018
 
 pub async fn f() -> impl std::fmt::Debug {

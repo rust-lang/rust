@@ -24,25 +24,30 @@
 use std::collections::BTreeSet;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordMap;
+use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::CrateNum;
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_middle::dep_graph::WorkProduct;
+use rustc_middle::lint::LintLevelSource;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_session::config::{CrateType, OutputFilenames, OutputType, RUST_CGU_EXT};
 use rustc_session::cstore::{self, CrateSource};
+use rustc_session::lint::Level;
+use rustc_session::lint::builtin::LINKER_MESSAGES;
 use rustc_session::utils::NativeLibKind;
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 
 pub mod assert_module_sources;
 pub mod back;
@@ -195,11 +200,12 @@ pub struct CrateInfo {
     pub native_libraries: FxIndexMap<CrateNum, Vec<NativeLib>>,
     pub crate_name: UnordMap<CrateNum, Symbol>,
     pub used_libraries: Vec<NativeLib>,
-    pub used_crate_source: UnordMap<CrateNum, Lrc<CrateSource>>,
+    pub used_crate_source: UnordMap<CrateNum, Arc<CrateSource>>,
     pub used_crates: Vec<CrateNum>,
-    pub dependency_formats: Lrc<Dependencies>,
+    pub dependency_formats: Arc<Dependencies>,
     pub windows_subsystem: Option<String>,
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
+    pub lint_levels: CodegenLintLevels,
 }
 
 #[derive(Encodable, Decodable)]
@@ -300,5 +306,21 @@ impl CodegenResults {
         let codegen_results = CodegenResults::decode(&mut decoder);
         let outputs = OutputFilenames::decode(&mut decoder);
         Ok((codegen_results, outputs))
+    }
+}
+
+/// A list of lint levels used in codegen.
+///
+/// When using `-Z link-only`, we don't have access to the tcx and must work
+/// solely from the `.rlink` file. `Lint`s are defined too early to be encodeable.
+/// Instead, encode exactly the information we need.
+#[derive(Copy, Clone, Debug, Encodable, Decodable)]
+pub struct CodegenLintLevels {
+    linker_messages: (Level, LintLevelSource),
+}
+
+impl CodegenLintLevels {
+    pub fn from_tcx(tcx: TyCtxt<'_>) -> Self {
+        Self { linker_messages: tcx.lint_level_at_node(LINKER_MESSAGES, CRATE_HIR_ID) }
     }
 }

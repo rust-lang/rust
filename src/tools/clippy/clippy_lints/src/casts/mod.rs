@@ -1,3 +1,4 @@
+mod as_pointer_underscore;
 mod as_ptr_cast_mut;
 mod as_underscore;
 mod borrow_as_ptr;
@@ -28,7 +29,6 @@ use clippy_utils::is_hir_ty_cfg_dependant;
 use clippy_utils::msrvs::{self, Msrv};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -574,13 +574,13 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for the usage of `&expr as *const T` or
-    /// `&mut expr as *mut T`, and suggest using `ptr::addr_of` or
-    /// `ptr::addr_of_mut` instead.
+    /// `&mut expr as *mut T`, and suggest using `&raw const` or
+    /// `&raw mut` instead.
     ///
     /// ### Why is this bad?
     /// This would improve readability and avoid creating a reference
     /// that points to an uninitialized value or unaligned place.
-    /// Read the `ptr::addr_of` docs for more information.
+    /// Read the `&raw` explanation in the Reference for more information.
     ///
     /// ### Example
     /// ```no_run
@@ -593,10 +593,10 @@ declare_clippy_lint! {
     /// Use instead:
     /// ```no_run
     /// let val = 1;
-    /// let p = std::ptr::addr_of!(val);
+    /// let p = &raw const val;
     ///
     /// let mut val_mut = 1;
-    /// let p_mut = std::ptr::addr_of_mut!(val_mut);
+    /// let p_mut = &raw mut val_mut;
     /// ```
     #[clippy::version = "1.60.0"]
     pub BORROW_AS_PTR,
@@ -726,6 +726,33 @@ declare_clippy_lint! {
     "using `as` to cast a reference to pointer"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for the usage of `as *const _` or `as *mut _` conversion using inferred type.
+    ///
+    /// ### Why restrict this?
+    /// The conversion might include a dangerous cast that might go undetected due to the type being inferred.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// fn as_usize<T>(t: &T) -> usize {
+    ///     // BUG: `t` is already a reference, so we will here
+    ///     // return a dangling pointer to a temporary value instead
+    ///     &t as *const _ as usize
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn as_usize<T>(t: &T) -> usize {
+    ///     t as *const T as usize
+    /// }
+    /// ```
+    #[clippy::version = "1.81.0"]
+    pub AS_POINTER_UNDERSCORE,
+    restriction,
+    "detects `as *mut _` and `as *const _` conversion"
+}
+
 pub struct Casts {
     msrv: Msrv,
 }
@@ -763,11 +790,12 @@ impl_lint_pass!(Casts => [
     CAST_NAN_TO_INT,
     ZERO_PTR,
     REF_AS_PTR,
+    AS_POINTER_UNDERSCORE,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if expr.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
 
@@ -805,11 +833,12 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             }
 
             as_underscore::check(cx, expr, cast_to_hir);
+            as_pointer_underscore::check(cx, cast_to, cast_to_hir);
 
-            if self.msrv.meets(msrvs::PTR_FROM_REF) {
+            let was_borrow_as_ptr_emitted = self.msrv.meets(msrvs::BORROW_AS_PTR)
+                && borrow_as_ptr::check(cx, expr, cast_from_expr, cast_to_hir, &self.msrv);
+            if self.msrv.meets(msrvs::PTR_FROM_REF) && !was_borrow_as_ptr_emitted {
                 ref_as_ptr::check(cx, expr, cast_from_expr, cast_to_hir);
-            } else if self.msrv.meets(msrvs::BORROW_AS_PTR) {
-                borrow_as_ptr::check(cx, expr, cast_from_expr, cast_to_hir);
             }
         }
 

@@ -6,8 +6,9 @@ LL |     pub macro_rules! foo {
    |
 help: try exporting the macro
    |
-LL |     #[macro_export] macro_rules! foo {
-   |     ~~~~~~~~~~~~~~~
+LL -     pub macro_rules! foo {
+LL +     #[macro_export] macro_rules! foo {
+   |
 
 error: aborting due to 1 previous error
 

@@ -30,8 +30,8 @@ pub fn output_result(cmd: &mut Command) -> Result<String, String> {
 /// Finds the remote for rust-lang/rust.
 /// For example for these remotes it will return `upstream`.
 /// ```text
-/// origin  https://github.com/Nilstrieb/rust.git (fetch)
-/// origin  https://github.com/Nilstrieb/rust.git (push)
+/// origin  https://github.com/pietroalbani/rust.git (fetch)
+/// origin  https://github.com/pietroalbani/rust.git (push)
 /// upstream        https://github.com/rust-lang/rust (fetch)
 /// upstream        https://github.com/rust-lang/rust (push)
 /// ```
@@ -129,8 +129,19 @@ pub fn get_closest_merge_commit(
         git.current_dir(git_dir);
     }
 
+    let channel = include_str!("../../ci/channel");
+
     let merge_base = {
-        if CiEnv::is_ci() {
+        if CiEnv::is_ci() &&
+            // FIXME: When running on rust-lang managed CI and it's not a nightly build,
+            // `git_upstream_merge_base` fails with an error message similar to this:
+            // ```
+            //    called `Result::unwrap()` on an `Err` value: "command did not execute successfully:
+            //    cd \"/checkout\" && \"git\" \"merge-base\" \"origin/master\" \"HEAD\"\nexpected success, got: exit status: 1\n"
+            // ```
+            // Investigate and resolve this issue instead of skipping it like this.
+            (channel == "nightly" || !CiEnv::is_rust_lang_managed_ci_job())
+        {
             git_upstream_merge_base(config, git_dir).unwrap()
         } else {
             // For non-CI environments, ignore rust-lang/rust upstream as it usually gets

@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::mem;
 use std::ops::Bound;
 
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::DiagArgValue;
 use rustc_hir::def::DefKind;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability};
@@ -15,10 +16,9 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::Level;
 use rustc_session::lint::builtin::{DEPRECATED_SAFE_2024, UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::symbol::Symbol;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 
-use crate::build::ExprCategory;
+use crate::builder::ExprCategory;
 use crate::errors::*;
 
 struct UnsafetyVisitor<'a, 'tcx> {
@@ -201,7 +201,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
     fn visit_inner_body(&mut self, def: LocalDefId) {
         if let Ok((inner_thir, expr)) = self.tcx.thir_body(def) {
             // Runs all other queries that depend on THIR.
-            self.tcx.ensure_with_value().mir_built(def);
+            self.tcx.ensure_done().mir_built(def);
             let inner_thir = &inner_thir.steal();
             let hir_context = self.tcx.local_def_id_to_hir_id(def);
             let safety_context = mem::replace(&mut self.safety_context, SafetyContext::Safe);
@@ -267,7 +267,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for LayoutConstrainedPlaceVisitor<'a, 'tcx> {
             // place, i.e. the expression is a place expression and not a dereference
             // (since dereferencing something leads us to a different place).
             ExprKind::Deref { .. } => {}
-            ref kind if ExprCategory::of(kind).map_or(true, |cat| cat == ExprCategory::Place) => {
+            ref kind if ExprCategory::of(kind).is_none_or(|cat| cat == ExprCategory::Place) => {
                 visit::walk_expr(self, expr);
             }
 
@@ -440,6 +440,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::NeverToAny { .. }
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. }
+            | ExprKind::PlaceUnwrapUnsafeBinder { .. }
+            | ExprKind::ValueUnwrapUnsafeBinder { .. }
+            | ExprKind::WrapUnsafeBinder { .. }
             | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::StaticRef { .. }
@@ -474,28 +477,33 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::Scope { value, lint_level: LintLevel::Explicit(hir_id), region_scope: _ } => {
                 let prev_id = self.hir_context;
                 self.hir_context = hir_id;
-                self.visit_expr(&self.thir[value]);
+                ensure_sufficient_stack(|| {
+                    self.visit_expr(&self.thir[value]);
+                });
                 self.hir_context = prev_id;
                 return; // don't visit the whole expression
             }
             ExprKind::Call { fun, ty: _, args: _, from_hir_call: _, fn_span: _ } => {
-                if self.thir[fun].ty.fn_sig(self.tcx).safety().is_unsafe() {
-                    let func_id = if let ty::FnDef(func_id, _) = self.thir[fun].ty.kind() {
+                let fn_ty = self.thir[fun].ty;
+                let sig = fn_ty.fn_sig(self.tcx);
+                let (callee_features, safe_target_features): (&[_], _) = match fn_ty.kind() {
+                    ty::FnDef(func_id, ..) => {
+                        let cg_attrs = self.tcx.codegen_fn_attrs(func_id);
+                        (&cg_attrs.target_features, cg_attrs.safe_target_features)
+                    }
+                    _ => (&[], false),
+                };
+                if sig.safety().is_unsafe() && !safe_target_features {
+                    let func_id = if let ty::FnDef(func_id, _) = fn_ty.kind() {
                         Some(*func_id)
                     } else {
                         None
                     };
                     self.requires_unsafe(expr.span, CallToUnsafeFunction(func_id));
-                } else if let &ty::FnDef(func_did, _) = self.thir[fun].ty.kind() {
-                    // If the called function has target features the calling function hasn't,
-                    // the call requires `unsafe`. Don't check this on wasm
-                    // targets, though. For more information on wasm see the
-                    // is_like_wasm check in hir_analysis/src/collect.rs
-                    let callee_features = &self.tcx.codegen_fn_attrs(func_did).target_features;
-                    if !self.tcx.sess.target.options.is_like_wasm
-                        && !callee_features.iter().all(|feature| {
-                            self.body_target_features.iter().any(|f| f.name == feature.name)
-                        })
+                } else if let &ty::FnDef(func_did, _) = fn_ty.kind() {
+                    if !self
+                        .tcx
+                        .is_target_feature_call_safe(callee_features, self.body_target_features)
                     {
                         let missing: Vec<_> = callee_features
                             .iter()
@@ -517,11 +525,10 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                             .copied()
                             .filter(|feature| missing.contains(feature))
                             .collect();
-                        self.requires_unsafe(expr.span, CallToFunctionWith {
-                            function: func_did,
-                            missing,
-                            build_enabled,
-                        });
+                        self.requires_unsafe(
+                            expr.span,
+                            CallToFunctionWith { function: func_did, missing, build_enabled },
+                        );
                     }
                 }
             }
@@ -678,6 +685,11 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     }
                 }
             }
+            ExprKind::PlaceUnwrapUnsafeBinder { .. }
+            | ExprKind::ValueUnwrapUnsafeBinder { .. }
+            | ExprKind::WrapUnsafeBinder { .. } => {
+                self.requires_unsafe(expr.span, UnsafeBinderCast);
+            }
             _ => {}
         }
         visit::walk_expr(self, expr);
@@ -726,6 +738,7 @@ enum UnsafeOpKind {
         /// (e.g., with `-C target-feature`).
         build_enabled: Vec<Symbol>,
     },
+    UnsafeBinderCast,
 }
 
 use UnsafeOpKind::*;
@@ -740,7 +753,10 @@ impl UnsafeOpKind {
     ) {
         let parent_id = tcx.hir().get_parent_item(hir_id);
         let parent_owner = tcx.hir_owner_node(parent_id);
-        let should_suggest = parent_owner.fn_sig().is_some_and(|sig| sig.header.is_unsafe());
+        let should_suggest = parent_owner.fn_sig().is_some_and(|sig| {
+            // Do not suggest for safe target_feature functions
+            matches!(sig.header.safety, hir::HeaderSafety::Normal(hir::Safety::Unsafe))
+        });
         let unsafe_not_inherited_note = if should_suggest {
             suggest_unsafe_block.then(|| {
                 let body_span = tcx.hir().body(parent_owner.body_id().unwrap()).value.span;
@@ -886,6 +902,15 @@ impl UnsafeOpKind {
                     unsafe_not_inherited_note,
                 },
             ),
+            UnsafeBinderCast => tcx.emit_node_span_lint(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                hir_id,
+                span,
+                UnsafeOpInUnsafeFnUnsafeBinderCastRequiresUnsafe {
+                    span,
+                    unsafe_not_inherited_note,
+                },
+            ),
         }
     }
 
@@ -903,7 +928,7 @@ impl UnsafeOpKind {
             {
                 true
             } else if let Some(sig) = tcx.hir().fn_sig_by_hir_id(*id)
-                && sig.header.is_unsafe()
+                && matches!(sig.header.safety, hir::HeaderSafety::Normal(hir::Safety::Unsafe))
             {
                 true
             } else {
@@ -1094,6 +1119,15 @@ impl UnsafeOpKind {
                     function: tcx.def_path_str(*function),
                 });
             }
+            UnsafeBinderCast if unsafe_op_in_unsafe_fn_allowed => {
+                dcx.emit_err(UnsafeBinderCastRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                    span,
+                    unsafe_not_inherited_note,
+                });
+            }
+            UnsafeBinderCast => {
+                dcx.emit_err(UnsafeBinderCastRequiresUnsafe { span, unsafe_not_inherited_note });
+            }
         }
     }
 }
@@ -1107,12 +1141,21 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
 
     let Ok((thir, expr)) = tcx.thir_body(def) else { return };
     // Runs all other queries that depend on THIR.
-    tcx.ensure_with_value().mir_built(def);
+    tcx.ensure_done().mir_built(def);
     let thir = &thir.steal();
 
     let hir_id = tcx.local_def_id_to_hir_id(def);
     let safety_context = tcx.hir().fn_sig_by_hir_id(hir_id).map_or(SafetyContext::Safe, |fn_sig| {
-        if fn_sig.header.safety.is_unsafe() { SafetyContext::UnsafeFn } else { SafetyContext::Safe }
+        match fn_sig.header.safety {
+            // We typeck the body as safe, but otherwise treat it as unsafe everywhere else.
+            // Call sites to other SafeTargetFeatures functions are checked explicitly and don't need
+            // to care about safety of the body.
+            hir::HeaderSafety::SafeTargetFeatures => SafetyContext::Safe,
+            hir::HeaderSafety::Normal(safety) => match safety {
+                hir::Safety::Unsafe => SafetyContext::UnsafeFn,
+                hir::Safety::Safe => SafetyContext::Safe,
+            },
+        }
     });
     let body_target_features = &tcx.body_codegen_attrs(def.to_def_id()).target_features;
     let mut warnings = Vec::new();
@@ -1142,9 +1185,11 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     warnings.sort_by_key(|w| w.block_span);
     for UnusedUnsafeWarning { hir_id, block_span, enclosing_unsafe } in warnings {
         let block_span = tcx.sess.source_map().guess_head_span(block_span);
-        tcx.emit_node_span_lint(UNUSED_UNSAFE, hir_id, block_span, UnusedUnsafe {
-            span: block_span,
-            enclosing: enclosing_unsafe,
-        });
+        tcx.emit_node_span_lint(
+            UNUSED_UNSAFE,
+            hir_id,
+            block_span,
+            UnusedUnsafe { span: block_span, enclosing: enclosing_unsafe },
+        );
     }
 }

@@ -11,7 +11,7 @@ use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::{LayoutOf as _, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{GenericArgsRef, Ty, TyCtxt};
 use rustc_middle::{bug, ty};
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 use tracing::trace;
 
 use super::memory::MemoryKind;
@@ -90,6 +90,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             | ty::CoroutineClosure(_, _)
             | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
+            | ty::UnsafeBinder(_)
             | ty::Never
             | ty::Tuple(_)
             | ty::Error(_) => ConstValue::from_target_usize(0u64, &tcx),
@@ -318,7 +319,25 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 // Check that the memory between them is dereferenceable at all, starting from the
                 // origin pointer: `dist` is `a - b`, so it is based on `b`.
-                self.check_ptr_access_signed(b, dist, CheckInAllocMsg::OffsetFromTest)?;
+                self.check_ptr_access_signed(b, dist, CheckInAllocMsg::OffsetFromTest)
+                    .map_err_kind(|_| {
+                        // This could mean they point to different allocations, or they point to the same allocation
+                        // but not the entire range between the pointers is in-bounds.
+                        if let Ok((a_alloc_id, ..)) = self.ptr_try_get_alloc_id(a, 0)
+                            && let Ok((b_alloc_id, ..)) = self.ptr_try_get_alloc_id(b, 0)
+                            && a_alloc_id == b_alloc_id
+                        {
+                            err_ub_custom!(
+                                fluent::const_eval_offset_from_out_of_bounds,
+                                name = intrinsic_name,
+                            )
+                        } else {
+                            err_ub_custom!(
+                                fluent::const_eval_offset_from_different_allocations,
+                                name = intrinsic_name,
+                            )
+                        }
+                    })?;
                 // Then check that this is also dereferenceable from `a`. This ensures that they are
                 // derived from the same allocation.
                 self.check_ptr_access_signed(
@@ -423,8 +442,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let result = self.raw_eq_intrinsic(&args[0], &args[1])?;
                 self.write_scalar(result, dest)?;
             }
-            sym::typed_swap => {
-                self.typed_swap_intrinsic(&args[0], &args[1])?;
+            sym::typed_swap_nonoverlapping => {
+                self.typed_swap_nonoverlapping_intrinsic(&args[0], &args[1])?;
             }
 
             sym::vtable_size => {
@@ -637,19 +656,35 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// Does a *typed* swap of `*left` and `*right`.
-    fn typed_swap_intrinsic(
+    fn typed_swap_nonoverlapping_intrinsic(
         &mut self,
         left: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         right: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
     ) -> InterpResult<'tcx> {
         let left = self.deref_pointer(left)?;
         let right = self.deref_pointer(right)?;
-        debug_assert_eq!(left.layout, right.layout);
+        assert_eq!(left.layout, right.layout);
+        assert!(left.layout.is_sized());
         let kind = MemoryKind::Stack;
         let temp = self.allocate(left.layout, kind)?;
-        self.copy_op(&left, &temp)?;
-        self.copy_op(&right, &left)?;
-        self.copy_op(&temp, &right)?;
+        self.copy_op(&left, &temp)?; // checks alignment of `left`
+
+        // We want to always enforce non-overlapping, even if this is a scalar type.
+        // Therefore we directly use the underlying `mem_copy` here.
+        self.mem_copy(right.ptr(), left.ptr(), left.layout.size, /*nonoverlapping*/ true)?;
+        // This means we also need to do the validation of the value that used to be in `right`
+        // ourselves. This value is now in `left.` The one that started out in `left` already got
+        // validated by the copy above.
+        if M::enforce_validity(self, left.layout) {
+            self.validate_operand(
+                &left.clone().into(),
+                M::enforce_validity_recursively(self, left.layout),
+                /*reset_provenance_and_padding*/ true,
+            )?;
+        }
+
+        self.copy_op(&temp, &right)?; // checks alignment of `right`
+
         self.deallocate_ptr(temp.ptr(), None, kind)?;
         interp_ok(())
     }
@@ -730,7 +765,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     {
         let a: F = self.read_scalar(&args[0])?.to_float()?;
         let b: F = self.read_scalar(&args[1])?.to_float()?;
-        let res = self.adjust_nan(a.min(b), &[a, b]);
+        let res = if a == b {
+            // They are definitely not NaN (those are never equal), but they could be `+0` and `-0`.
+            // Let the machine decide which one to return.
+            M::equal_float_min_max(self, a, b)
+        } else {
+            self.adjust_nan(a.min(b), &[a, b])
+        };
         self.write_scalar(res, dest)?;
         interp_ok(())
     }
@@ -745,7 +786,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     {
         let a: F = self.read_scalar(&args[0])?.to_float()?;
         let b: F = self.read_scalar(&args[1])?.to_float()?;
-        let res = self.adjust_nan(a.max(b), &[a, b]);
+        let res = if a == b {
+            // They are definitely not NaN (those are never equal), but they could be `+0` and `-0`.
+            // Let the machine decide which one to return.
+            M::equal_float_min_max(self, a, b)
+        } else {
+            self.adjust_nan(a.max(b), &[a, b])
+        };
         self.write_scalar(res, dest)?;
         interp_ok(())
     }

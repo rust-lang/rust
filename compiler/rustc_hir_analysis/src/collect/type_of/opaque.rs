@@ -1,4 +1,3 @@
-use rustc_errors::StashKey;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -45,7 +44,7 @@ pub(super) fn find_opaque_ty_constraints_for_impl_trait_in_assoc_type(
         if !hidden.ty.references_error() {
             for concrete_type in locator.typeck_types {
                 if concrete_type.ty != tcx.erase_regions(hidden.ty) {
-                    if let Ok(d) = hidden.build_mismatch_error(&concrete_type, def_id, tcx) {
+                    if let Ok(d) = hidden.build_mismatch_error(&concrete_type, tcx) {
                         d.emit();
                     }
                 }
@@ -56,7 +55,7 @@ pub(super) fn find_opaque_ty_constraints_for_impl_trait_in_assoc_type(
     } else {
         let reported = tcx.dcx().emit_err(UnconstrainedOpaqueType {
             span: tcx.def_span(def_id),
-            name: tcx.item_name(parent_def_id.to_def_id()),
+            name: tcx.item_ident(parent_def_id.to_def_id()),
             what: "impl",
         });
         Ty::new_error(tcx, reported)
@@ -121,7 +120,7 @@ pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: Local
         if !hidden.ty.references_error() {
             for concrete_type in locator.typeck_types {
                 if concrete_type.ty != tcx.erase_regions(hidden.ty) {
-                    if let Ok(d) = hidden.build_mismatch_error(&concrete_type, def_id, tcx) {
+                    if let Ok(d) = hidden.build_mismatch_error(&concrete_type, tcx) {
                         d.emit();
                     }
                 }
@@ -137,7 +136,7 @@ pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: Local
         }
         let reported = tcx.dcx().emit_err(UnconstrainedOpaqueType {
             span: tcx.def_span(def_id),
-            name: tcx.item_name(parent_def_id.to_def_id()),
+            name: tcx.item_ident(parent_def_id.to_def_id()),
             what: match tcx.hir_node(scope) {
                 _ if scope == hir::CRATE_HIR_ID => "module",
                 Node::Item(hir::Item { kind: hir::ItemKind::Mod(_), .. }) => "module",
@@ -187,7 +186,7 @@ impl TaitConstraintLocator<'_> {
             "foreign items cannot constrain opaque types",
         );
         if let Some(hir_sig) = hir_node.fn_sig()
-            && hir_sig.decl.output.get_infer_ret_ty().is_some()
+            && hir_sig.decl.output.is_suggestable_infer_ty().is_some()
         {
             let guar = self.tcx.dcx().span_delayed_bug(
                 hir_sig.decl.output.span(),
@@ -285,9 +284,8 @@ impl TaitConstraintLocator<'_> {
             debug!(?concrete_type, "found constraint");
             if let Some(prev) = &mut self.found {
                 if concrete_type.ty != prev.ty {
-                    let (Ok(guar) | Err(guar)) = prev
-                        .build_mismatch_error(&concrete_type, self.def_id, self.tcx)
-                        .map(|d| d.emit());
+                    let (Ok(guar) | Err(guar)) =
+                        prev.build_mismatch_error(&concrete_type, self.tcx).map(|d| d.emit());
                     prev.ty = Ty::new_error(self.tcx, guar);
                 }
             } else {
@@ -361,11 +359,8 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
             );
             if let Some(prev) = &mut hir_opaque_ty {
                 if concrete_type.ty != prev.ty {
-                    if let Ok(d) = prev.build_mismatch_error(&concrete_type, def_id, tcx) {
-                        d.stash(
-                            tcx.def_span(opaque_type_key.def_id),
-                            StashKey::OpaqueHiddenTypeMismatch,
-                        );
+                    if let Ok(d) = prev.build_mismatch_error(&concrete_type, tcx) {
+                        d.emit();
                     }
                 }
             } else {
@@ -435,9 +430,7 @@ impl RpitConstraintChecker<'_> {
             debug!(?concrete_type, "found constraint");
 
             if concrete_type.ty != self.found.ty {
-                if let Ok(d) =
-                    self.found.build_mismatch_error(&concrete_type, self.def_id, self.tcx)
-                {
+                if let Ok(d) = self.found.build_mismatch_error(&concrete_type, self.tcx) {
                     d.emit();
                 }
             }

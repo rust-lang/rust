@@ -7,7 +7,8 @@ LL | impl Bar for Baz { }
 help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
   --> $DIR/two_files_data.rs:5:1
    |
-LL | trait Bar = dyn Foo;
+LL - type Bar = dyn Foo;
+LL + trait Bar = dyn Foo;
    |
 
 error: aborting due to 1 previous error

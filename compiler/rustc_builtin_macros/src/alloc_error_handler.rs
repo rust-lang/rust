@@ -3,8 +3,7 @@ use rustc_ast::{
     self as ast, Fn, FnHeader, FnSig, Generics, ItemKind, Safety, Stmt, StmtKind, TyKind,
 };
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, kw, sym};
+use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::errors;
@@ -68,10 +67,11 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
 
     let layout_new = cx.std_path(&[sym::alloc, sym::Layout, sym::from_size_align_unchecked]);
     let layout_new = cx.expr_path(cx.path(span, layout_new));
-    let layout = cx.expr_call(span, layout_new, thin_vec![
-        cx.expr_ident(span, size),
-        cx.expr_ident(span, align)
-    ]);
+    let layout = cx.expr_call(
+        span,
+        layout_new,
+        thin_vec![cx.expr_ident(span, size), cx.expr_ident(span, align)],
+    );
 
     let call = cx.expr_call_ident(sig_span, handler, thin_vec![layout]);
 
@@ -86,6 +86,7 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
         defaultness: ast::Defaultness::Final,
         sig,
         generics: Generics::default(),
+        contract: None,
         body,
     }));
 

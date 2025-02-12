@@ -6,8 +6,9 @@ LL |     T: MyTrait<Assoc == S::Assoc>,
    |
 help: if you meant to use an associated type binding, replace `==` with `=`
    |
-LL |     T: MyTrait<Assoc = S::Assoc>,
-   |                      ~
+LL -     T: MyTrait<Assoc == S::Assoc>,
+LL +     T: MyTrait<Assoc = S::Assoc>,
+   |
 
 error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-87493.rs:8:8

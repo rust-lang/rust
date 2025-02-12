@@ -3,6 +3,7 @@
 use hir::{FileRange, Semantics};
 use ide_db::EditionedFileId;
 use ide_db::{label::Label, FileId, RootDatabase};
+use syntax::Edition;
 use syntax::{
     algo::{self, find_node_at_offset, find_node_at_range},
     AstNode, AstToken, Direction, SourceFile, SyntaxElement, SyntaxKind, SyntaxToken, TextRange,
@@ -94,6 +95,10 @@ impl<'a> AssistContext<'a> {
         self.frange.file_id
     }
 
+    pub(crate) fn edition(&self) -> Edition {
+        self.frange.file_id.edition()
+    }
+
     pub(crate) fn has_empty_selection(&self) -> bool {
         self.trimmed_range.is_empty()
     }
@@ -102,6 +107,10 @@ impl<'a> AssistContext<'a> {
     /// to the nearest enclosed token.
     pub(crate) fn selection_trimmed(&self) -> TextRange {
         self.trimmed_range
+    }
+
+    pub(crate) fn source_file(&self) -> &SourceFile {
+        &self.source_file
     }
 
     pub(crate) fn token_at_offset(&self) -> TokenAtOffset<SyntaxToken> {

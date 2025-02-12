@@ -167,6 +167,11 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn unchecked_umul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn and(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn or(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    /// Defaults to [`Self::or`], but guarantees `(lhs & rhs) == 0` so some backends
+    /// can emit something more helpful for optimizations.
+    fn or_disjoint(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.or(lhs, rhs)
+    }
     fn xor(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn neg(&mut self, v: Self::Value) -> Self::Value;
     fn fneg(&mut self, v: Self::Value) -> Self::Value;
@@ -216,6 +221,27 @@ pub trait BuilderMethods<'a, 'tcx>:
         count: u64,
         dest: PlaceRef<'tcx, Self::Value>,
     );
+
+    /// Emits an `assume` that the integer value `imm` of type `ty` is contained in `range`.
+    ///
+    /// This *always* emits the assumption, so you probably want to check the
+    /// optimization level and `Scalar::is_always_valid` before calling it.
+    fn assume_integer_range(&mut self, imm: Self::Value, ty: Self::Type, range: WrappingRange) {
+        let WrappingRange { start, end } = range;
+
+        // Perhaps one day we'll be able to use assume operand bundles for this,
+        // but for now this encoding with a single icmp+assume is best per
+        // <https://github.com/llvm/llvm-project/issues/123278#issuecomment-2597440158>
+        let shifted = if start == 0 {
+            imm
+        } else {
+            let low = self.const_uint_big(ty, start);
+            self.sub(imm, low)
+        };
+        let width = self.const_uint_big(ty, u128::wrapping_sub(end, start));
+        let cmp = self.icmp(IntPredicate::IntULE, shifted, width);
+        self.assume(cmp);
+    }
 
     fn range_metadata(&mut self, load: Self::Value, range: WrappingRange);
     fn nonnull_metadata(&mut self, load: Self::Value);
@@ -382,7 +408,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     /// Avoids `alloca`s for Immediates and ScalarPairs.
     ///
     /// FIXME: Maybe do something smarter for Ref types too?
-    /// For now, the `typed_swap` intrinsic just doesn't call this for those
+    /// For now, the `typed_swap_nonoverlapping` intrinsic just doesn't call this for those
     /// cases (in non-debug), preferring the fallback body instead.
     fn typed_place_swap(
         &mut self,

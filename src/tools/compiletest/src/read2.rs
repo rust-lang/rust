@@ -90,7 +90,7 @@ impl ProcOutput {
                         .count();
                     *filtered_len -= matches * path_bytes.len();
 
-                    // We can't just remove the length of the filtered path from the output lenght,
+                    // We can't just remove the length of the filtered path from the output length,
                     // otherwise a compiler emitting only filtered paths would OOM compiletest. Add
                     // a fixed placeholder length for each path to prevent that.
                     *filtered_len += matches * FILTERED_PATHS_PLACEHOLDER_LEN;
@@ -286,7 +286,7 @@ mod imp {
     impl<'a> Pipe<'a> {
         unsafe fn new<P: IntoRawHandle>(p: P, dst: &'a mut Vec<u8>) -> Pipe<'a> {
             Pipe {
-                dst: dst,
+                dst,
                 pipe: NamedPipe::from_raw_handle(p.into_raw_handle()),
                 overlapped: Overlapped::zero(),
                 done: false,

@@ -1,4 +1,4 @@
-error[E0015]: cannot call non-const fn `<Vec<usize> as Default>::default` in constant functions
+error[E0015]: cannot call non-const associated function `<Vec<usize> as Default>::default` in constant functions
   --> $DIR/std-impl-gate.rs:13:5
    |
 LL |     Default::default()

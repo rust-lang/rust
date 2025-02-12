@@ -10,8 +10,7 @@ use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
 use rustc_middle::{bug, mir, ty};
 use rustc_session::config::DebugInfo;
-use rustc_span::symbol::{Symbol, kw};
-use rustc_span::{BytePos, Span, hygiene};
+use rustc_span::{BytePos, Span, Symbol, hygiene, kw};
 
 use super::operand::{OperandRef, OperandValue};
 use super::place::{PlaceRef, PlaceValue};
@@ -20,9 +19,7 @@ use crate::traits::*;
 
 pub struct FunctionDebugContext<'tcx, S, L> {
     /// Maps from source code to the corresponding debug info scope.
-    /// May be None if the backend is not capable of representing the scope for
-    /// some reason.
-    pub scopes: IndexVec<mir::SourceScope, Option<DebugScope<S, L>>>,
+    pub scopes: IndexVec<mir::SourceScope, DebugScope<S, L>>,
 
     /// Maps from an inlined function to its debug info declaration.
     pub inlined_function_scopes: FxHashMap<Instance<'tcx>, S>,
@@ -233,7 +230,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &self,
         source_info: mir::SourceInfo,
     ) -> Option<(Bx::DIScope, Option<Bx::DILocation>, Span)> {
-        let scope = &self.debug_context.as_ref()?.scopes[source_info.scope]?;
+        let scope = &self.debug_context.as_ref()?.scopes[source_info.scope];
         let span = hygiene::walk_chain_collapsed(source_info.span, self.mir.span);
         Some((scope.adjust_dbg_scope_for_span(self.cx, span), scope.inlined_at, span))
     }

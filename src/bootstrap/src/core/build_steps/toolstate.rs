@@ -42,11 +42,15 @@ pub enum ToolState {
 
 impl fmt::Display for ToolState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            ToolState::TestFail => "test-fail",
-            ToolState::TestPass => "test-pass",
-            ToolState::BuildFail => "build-fail",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                ToolState::TestFail => "test-fail",
+                ToolState::TestPass => "test-pass",
+                ToolState::BuildFail => "build-fail",
+            }
+        )
     }
 }
 
@@ -76,10 +80,7 @@ static STABLE_TOOLS: &[(&str, &str)] = &[
 // We do require that we checked whether they build or not on the tools builder,
 // though, as otherwise we will be unable to file an issue if they start
 // failing.
-static NIGHTLY_TOOLS: &[(&str, &str)] = &[
-    ("embedded-book", "src/doc/embedded-book"),
-    // ("rustc-dev-guide", "src/doc/rustc-dev-guide"),
-];
+static NIGHTLY_TOOLS: &[(&str, &str)] = &[("embedded-book", "src/doc/embedded-book")];
 
 fn print_error(tool: &str, submodule: &str) {
     eprintln!();

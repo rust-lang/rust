@@ -16,7 +16,7 @@ use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, S
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
 use tracing::{debug, warn};
 
@@ -50,8 +50,7 @@ pub(crate) fn get_linker<'a>(
     self_contained: bool,
     target_cpu: &'a str,
 ) -> Box<dyn Linker + 'a> {
-    // FIXME(cc-rs#1265) pass only target arch to find_tool()
-    let msvc_tool = windows_registry::find_tool(sess.opts.target_triple.tuple(), "link.exe");
+    let msvc_tool = windows_registry::find_tool(&sess.target.arch, "link.exe");
 
     // If our linker looks like a batch script on Windows then to execute this
     // we'll need to spawn `cmd` explicitly. This is primarily done to handle
@@ -1744,15 +1743,10 @@ fn for_each_exported_symbols_include_dep<'tcx>(
     crate_type: CrateType,
     mut callback: impl FnMut(ExportedSymbol<'tcx>, SymbolExportInfo, CrateNum),
 ) {
-    for &(symbol, info) in tcx.exported_symbols(LOCAL_CRATE).iter() {
-        callback(symbol, info, LOCAL_CRATE);
-    }
-
     let formats = tcx.dependency_formats(());
     let deps = &formats[&crate_type];
 
-    for (index, dep_format) in deps.iter().enumerate() {
-        let cnum = CrateNum::new(index + 1);
+    for (cnum, dep_format) in deps.iter_enumerated() {
         // For each dependency that we are linking to statically ...
         if *dep_format == Linkage::Static {
             for &(symbol, info) in tcx.exported_symbols(cnum).iter() {

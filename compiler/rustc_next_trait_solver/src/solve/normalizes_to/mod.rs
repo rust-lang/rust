@@ -88,10 +88,17 @@ where
     /// returns `NoSolution`.
     #[instrument(level = "trace", skip(self), ret)]
     fn normalize_at_least_one_step(&mut self, goal: Goal<I, NormalizesTo<I>>) -> QueryResult<I> {
-        match goal.predicate.alias.kind(self.cx()) {
+        let cx = self.cx();
+        match goal.predicate.alias.kind(cx) {
             ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
                 let candidates = self.assemble_and_evaluate_candidates(goal);
-                self.merge_candidates(candidates)
+                let (_, proven_via) =
+                    self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
+                        let trait_goal: Goal<I, ty::TraitPredicate<I>> =
+                            goal.with(cx, goal.predicate.alias.trait_ref(cx));
+                        ecx.compute_trait_goal(trait_goal)
+                    })?;
+                self.merge_candidates(proven_via, candidates)
             }
             ty::AliasTermKind::InherentTy => self.normalize_inherent_associated_type(goal),
             ty::AliasTermKind::OpaqueTy => self.normalize_opaque_type(goal),
@@ -237,20 +244,7 @@ where
                     .map(|pred| goal.with(cx, pred)),
             );
 
-            // In case the associated item is hidden due to specialization, we have to
-            // return ambiguity this would otherwise be incomplete, resulting in
-            // unsoundness during coherence (#105782).
-            let Some(target_item_def_id) = ecx.fetch_eligible_assoc_item(
-                goal_trait_ref,
-                goal.predicate.def_id(),
-                impl_def_id,
-            )?
-            else {
-                return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
-            };
-
-            let error_response = |ecx: &mut EvalCtxt<'_, D>, msg: &str| {
-                let guar = cx.delay_bug(msg);
+            let error_response = |ecx: &mut EvalCtxt<'_, D>, guar| {
                 let error_term = match goal.predicate.alias.kind(cx) {
                     ty::AliasTermKind::ProjectionTy => Ty::new_error(cx, guar).into(),
                     ty::AliasTermKind::ProjectionConst => Const::new_error(cx, guar).into(),
@@ -260,8 +254,24 @@ where
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             };
 
+            // In case the associated item is hidden due to specialization, we have to
+            // return ambiguity this would otherwise be incomplete, resulting in
+            // unsoundness during coherence (#105782).
+            let target_item_def_id = match ecx.fetch_eligible_assoc_item(
+                goal_trait_ref,
+                goal.predicate.def_id(),
+                impl_def_id,
+            ) {
+                Ok(Some(target_item_def_id)) => target_item_def_id,
+                Ok(None) => {
+                    return ecx
+                        .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+                }
+                Err(guar) => return error_response(ecx, guar),
+            };
+
             if !cx.has_item_definition(target_item_def_id) {
-                return error_response(ecx, "missing item");
+                return error_response(ecx, cx.delay_bug("missing item"));
             }
 
             let target_container_def_id = cx.parent(target_item_def_id);
@@ -285,7 +295,10 @@ where
             )?;
 
             if !cx.check_args_compatible(target_item_def_id, target_args) {
-                return error_response(ecx, "associated item has mismatched arguments");
+                return error_response(
+                    ecx,
+                    cx.delay_bug("associated item has mismatched arguments"),
+                );
             }
 
             // Finally we construct the actual value of the associated type.
@@ -385,10 +398,11 @@ where
 
         let pred = tupled_inputs_and_output
             .map_bound(|(inputs, output)| ty::ProjectionPredicate {
-                projection_term: ty::AliasTerm::new(cx, goal.predicate.def_id(), [
-                    goal.predicate.self_ty(),
-                    inputs,
-                ]),
+                projection_term: ty::AliasTerm::new(
+                    cx,
+                    goal.predicate.def_id(),
+                    [goal.predicate.self_ty(), inputs],
+                ),
                 term: output.into(),
             })
             .upcast(cx);
@@ -441,21 +455,26 @@ where
                         .is_lang_item(goal.predicate.def_id(), TraitSolverLangItem::CallOnceFuture)
                     {
                         (
-                            ty::AliasTerm::new(cx, goal.predicate.def_id(), [
-                                goal.predicate.self_ty(),
-                                tupled_inputs_ty,
-                            ]),
+                            ty::AliasTerm::new(
+                                cx,
+                                goal.predicate.def_id(),
+                                [goal.predicate.self_ty(), tupled_inputs_ty],
+                            ),
                             output_coroutine_ty.into(),
                         )
                     } else if cx
                         .is_lang_item(goal.predicate.def_id(), TraitSolverLangItem::CallRefFuture)
                     {
                         (
-                            ty::AliasTerm::new(cx, goal.predicate.def_id(), [
-                                I::GenericArg::from(goal.predicate.self_ty()),
-                                tupled_inputs_ty.into(),
-                                env_region.into(),
-                            ]),
+                            ty::AliasTerm::new(
+                                cx,
+                                goal.predicate.def_id(),
+                                [
+                                    I::GenericArg::from(goal.predicate.self_ty()),
+                                    tupled_inputs_ty.into(),
+                                    env_region.into(),
+                                ],
+                            ),
                             output_coroutine_ty.into(),
                         )
                     } else if cx.is_lang_item(
@@ -463,10 +482,14 @@ where
                         TraitSolverLangItem::AsyncFnOnceOutput,
                     ) {
                         (
-                            ty::AliasTerm::new(cx, goal.predicate.def_id(), [
-                                I::GenericArg::from(goal.predicate.self_ty()),
-                                tupled_inputs_ty.into(),
-                            ]),
+                            ty::AliasTerm::new(
+                                cx,
+                                goal.predicate.def_id(),
+                                [
+                                    I::GenericArg::from(goal.predicate.self_ty()),
+                                    tupled_inputs_ty.into(),
+                                ],
+                            ),
                             coroutine_return_ty.into(),
                         )
                     } else {
@@ -590,10 +613,11 @@ where
                     // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
                     // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
                     // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
-                    let sized_predicate =
-                        ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [
-                            I::GenericArg::from(goal.predicate.self_ty()),
-                        ]);
+                    let sized_predicate = ty::TraitRef::new(
+                        cx,
+                        cx.require_lang_item(TraitSolverLangItem::Sized),
+                        [I::GenericArg::from(goal.predicate.self_ty())],
+                    );
                     // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
                     ecx.add_goal(GoalSource::Misc, goal.with(cx, sized_predicate));
                     Ty::new_unit(cx)
@@ -611,6 +635,11 @@ where
                     None => Ty::new_unit(cx),
                     Some(tail_ty) => Ty::new_projection(cx, metadata_def_id, [tail_ty]),
                 },
+
+                ty::UnsafeBinder(_) => {
+                    // FIXME(unsafe_binder): Figure out how to handle pointee for unsafe binders.
+                    todo!()
+                }
 
                 ty::Infer(
                     ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_),
@@ -764,10 +793,11 @@ where
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::ProjectionPredicate {
-                projection_term: ty::AliasTerm::new(ecx.cx(), goal.predicate.def_id(), [
-                    self_ty,
-                    coroutine.resume_ty(),
-                ]),
+                projection_term: ty::AliasTerm::new(
+                    ecx.cx(),
+                    goal.predicate.def_id(),
+                    [self_ty, coroutine.resume_ty()],
+                ),
                 term,
             }
             .upcast(cx),
@@ -815,6 +845,11 @@ where
             | ty::Tuple(_)
             | ty::Error(_) => self_ty.discriminant_ty(ecx.cx()),
 
+            ty::UnsafeBinder(_) => {
+                // FIXME(unsafe_binders): instantiate this with placeholders?? i guess??
+                todo!("discr subgoal...")
+            }
+
             // We do not call `Ty::discriminant_ty` on alias, param, or placeholder
             // types, which return `<self_ty as DiscriminantKind>::Discriminant`
             // (or ICE in the case of placeholders). Projecting a type to itself
@@ -861,6 +896,11 @@ where
             | ty::Slice(_)
             | ty::Tuple(_)
             | ty::Error(_) => self_ty.async_destructor_ty(ecx.cx()),
+
+            ty::UnsafeBinder(_) => {
+                // FIXME(unsafe_binders): Instantiate the binder with placeholders I guess.
+                todo!()
+            }
 
             // We do not call `Ty::async_destructor_ty` on alias, param, or placeholder
             // types, which return `<self_ty as AsyncDestruct>::AsyncDestructor`

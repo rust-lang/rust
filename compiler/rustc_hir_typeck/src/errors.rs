@@ -10,8 +10,7 @@ use rustc_errors::{
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
 
@@ -20,8 +19,15 @@ use crate::fluent_generated as fluent;
 pub(crate) struct BaseExpressionDoubleDot {
     #[primary_span]
     pub span: Span,
+    #[suggestion(
+        hir_typeck_base_expression_double_dot_enable_default_field_values,
+        code = "#![feature(default_field_values)]\n",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    pub default_field_values_suggestion: Option<Span>,
     #[subdiagnostic]
-    pub default_field_values: Option<BaseExpressionDoubleDotEnableDefaultFieldValues>,
+    pub default_field_values_help: Option<BaseExpressionDoubleDotEnableDefaultFieldValues>,
     #[subdiagnostic]
     pub add_expr: Option<BaseExpressionDoubleDotAddExpr>,
     #[subdiagnostic]
@@ -671,9 +677,11 @@ pub(crate) struct CannotCastToBool<'tcx> {
     pub help: CannotCastToBoolHelp,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(hir_typeck_cast_enum_drop)]
 pub(crate) struct CastEnumDrop<'tcx> {
+    #[primary_span]
+    pub span: Span,
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: Ty<'tcx>,
 }
@@ -846,4 +854,17 @@ pub(crate) struct PassFnItemToVariadicFunction {
     #[suggestion(code = " as {replace}", applicability = "machine-applicable", style = "verbose")]
     pub sugg_span: Span,
     pub replace: String,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    hir_typeck_replace_comma_with_semicolon,
+    applicability = "machine-applicable",
+    style = "verbose",
+    code = "; "
+)]
+pub(crate) struct ReplaceCommaWithSemicolon {
+    #[primary_span]
+    pub comma_span: Span,
+    pub descr: &'static str,
 }

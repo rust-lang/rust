@@ -166,6 +166,8 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
         // MIR passes can be enabled / disabled separately, we should figure out, what passes to
         // use for Clippy.
         config.opts.unstable_opts.mir_opt_level = Some(0);
+        config.opts.unstable_opts.mir_enable_passes =
+            vec![("CheckNull".to_owned(), false), ("CheckAlignment".to_owned(), false)];
 
         // Disable flattening and inlining of format_args!(), so the HIR matches with the AST.
         config.opts.unstable_opts.flatten_format_args = false;
@@ -186,7 +188,7 @@ pub fn main() {
 
     rustc_driver::init_rustc_env_logger(&early_dcx);
 
-    let using_internal_features = rustc_driver::install_ice_hook(BUG_REPORT_URL, |dcx| {
+    rustc_driver::install_ice_hook(BUG_REPORT_URL, |dcx| {
         // FIXME: this macro calls unwrap internally but is called in a panicking context!  It's not
         // as simple as moving the call from the hook to main, because `install_ice_hook` doesn't
         // accept a generic closure.
@@ -195,7 +197,7 @@ pub fn main() {
     });
 
     exit(rustc_driver::catch_with_exit_code(move || {
-        let mut orig_args = rustc_driver::args::raw_args(&early_dcx)?;
+        let mut orig_args = rustc_driver::args::raw_args(&early_dcx);
 
         let has_sysroot_arg = |args: &mut [String]| -> bool {
             if has_arg(args, "--sysroot") {
@@ -223,7 +225,7 @@ pub fn main() {
                 if !has_sysroot_arg(args) {
                     args.extend(vec!["--sysroot".into(), sys_root]);
                 }
-            };
+            }
         };
 
         // make "clippy-driver --rustc" work like a subcommand that passes further args to "rustc"
@@ -236,8 +238,8 @@ pub fn main() {
             let mut args: Vec<String> = orig_args.clone();
             pass_sysroot_env_if_given(&mut args, sys_root_env);
 
-            rustc_driver::RunCompiler::new(&args, &mut DefaultCallbacks).run();
-            return Ok(());
+            rustc_driver::run_compiler(&args, &mut DefaultCallbacks);
+            return;
         }
 
         if orig_args.iter().any(|a| a == "--version" || a == "-V") {
@@ -285,7 +287,7 @@ pub fn main() {
         let cap_lints_allow = arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_some()
             && arg_value(&orig_args, "--force-warn", |val| val.contains("clippy::")).is_none();
 
-        // If `--no-deps` is enabled only lint the primary pacakge
+        // If `--no-deps` is enabled only lint the primary package
         let relevant_package = !no_deps || env::var("CARGO_PRIMARY_PACKAGE").is_ok();
 
         // Do not run Clippy for Cargo's info queries so that invalid CLIPPY_ARGS are not cached
@@ -295,15 +297,10 @@ pub fn main() {
         let clippy_enabled = !cap_lints_allow && relevant_package && !info_query;
         if clippy_enabled {
             args.extend(clippy_args);
-            rustc_driver::RunCompiler::new(&args, &mut ClippyCallbacks { clippy_args_var })
-                .set_using_internal_features(using_internal_features)
-                .run();
+            rustc_driver::run_compiler(&args, &mut ClippyCallbacks { clippy_args_var });
         } else {
-            rustc_driver::RunCompiler::new(&args, &mut RustcCallbacks { clippy_args_var })
-                .set_using_internal_features(using_internal_features)
-                .run();
+            rustc_driver::run_compiler(&args, &mut RustcCallbacks { clippy_args_var });
         }
-        return Ok(());
     }))
 }
 

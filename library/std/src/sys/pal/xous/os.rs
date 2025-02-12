@@ -37,7 +37,7 @@ mod eh_unwinding {
 #[cfg(not(test))]
 mod c_compat {
     use crate::os::xous::ffi::exit;
-    extern "C" {
+    unsafe extern "C" {
         fn main() -> u32;
     }
 

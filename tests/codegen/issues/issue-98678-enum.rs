@@ -1,8 +1,10 @@
-// This test verifies the accuracy of emitted file and line debuginfo metadata enums.
-//
-//@ compile-flags: --crate-type=lib -Copt-level=0 -Cdebuginfo=2 -Zdebug-info-type-line-numbers=true
-
 // ignore-tidy-linelength
+//! This test verifies the accuracy of emitted file and line debuginfo metadata enums.
+
+//@ revisions: MSVC NONMSVC
+//@[MSVC] only-msvc
+//@[NONMSVC] ignore-msvc
+//@ compile-flags: --crate-type=lib -Copt-level=0 -Cdebuginfo=2 -Zdebug-info-type-line-numbers=true
 
 // NONMSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*[/\\]}}issue-98678-enum.rs{{".*}})
 // MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\issue-98678-enum.rs{{".*}})

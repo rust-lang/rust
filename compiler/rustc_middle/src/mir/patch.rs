@@ -1,5 +1,6 @@
-use rustc_middle::mir::*;
 use tracing::debug;
+
+use crate::mir::*;
 
 /// This struct represents a patch to MIR, which can add
 /// new statements and basic blocks and patch over block

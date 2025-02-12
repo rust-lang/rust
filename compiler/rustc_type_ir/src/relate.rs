@@ -236,28 +236,14 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
                 ExpectedFound::new(a, b)
             }))
         } else {
-            let args = match a.kind(relation.cx()) {
-                ty::Opaque => relate_args_with_variances(
-                    relation,
-                    a.def_id,
-                    relation.cx().variances_of(a.def_id),
-                    a.args,
-                    b.args,
+            let cx = relation.cx();
+            let args = if let Some(variances) = cx.opt_alias_variances(a.kind(cx), a.def_id) {
+                relate_args_with_variances(
+                    relation, a.def_id, variances, a.args, b.args,
                     false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
-                )?,
-                ty::Projection if relation.cx().is_impl_trait_in_trait(a.def_id) => {
-                    relate_args_with_variances(
-                        relation,
-                        a.def_id,
-                        relation.cx().variances_of(a.def_id),
-                        a.args,
-                        b.args,
-                        false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
-                    )?
-                }
-                ty::Projection | ty::Weak | ty::Inherent => {
-                    relate_args_invariantly(relation, a.args, b.args)?
-                }
+                )?
+            } else {
+                relate_args_invariantly(relation, a.args, b.args)?
             };
             Ok(ty::AliasTy::new_from_args(relation.cx(), a.def_id, args))
         }
@@ -549,6 +535,10 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             Ok(Ty::new_pat(cx, ty, pat))
         }
 
+        (ty::UnsafeBinder(a_binder), ty::UnsafeBinder(b_binder)) => {
+            Ok(Ty::new_unsafe_binder(cx, relation.binders(*a_binder, *b_binder)?))
+        }
+
         _ => Err(TypeError::Sorts(ExpectedFound::new(a, b))),
     }
 }
@@ -602,7 +592,9 @@ pub fn structurally_relate_consts<I: Interner, R: TypeRelation<I>>(
             true
         }
         (ty::ConstKind::Placeholder(p1), ty::ConstKind::Placeholder(p2)) => p1 == p2,
-        (ty::ConstKind::Value(_, a_val), ty::ConstKind::Value(_, b_val)) => a_val == b_val,
+        (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => {
+            a_val.valtree() == b_val.valtree()
+        }
 
         // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
         // and is the better alternative to waiting until `generic_const_exprs` can

@@ -563,11 +563,11 @@ impl () {}
 /// Note that here the call to [`drop`] is for clarity - it indicates
 /// that we are done with the given value and it should be destroyed.
 ///
-/// ## 3. Create it using `ptr::addr_of!`
+/// ## 3. Create it using `&raw`
 ///
-/// Instead of coercing a reference to a raw pointer, you can use the macros
-/// [`ptr::addr_of!`] (for `*const T`) and [`ptr::addr_of_mut!`] (for `*mut T`).
-/// These macros allow you to create raw pointers to fields to which you cannot
+/// Instead of coercing a reference to a raw pointer, you can use the raw borrow
+/// operators `&raw const` (for `*const T`) and `&raw mut` (for `*mut T`).
+/// These operators allow you to create raw pointers to fields to which you cannot
 /// create a reference (without causing undefined behavior), such as an
 /// unaligned field. This might be necessary if packed structs or uninitialized
 /// memory is involved.
@@ -580,7 +580,7 @@ impl () {}
 ///     unaligned: u32,
 /// }
 /// let s = S::default();
-/// let p = std::ptr::addr_of!(s.unaligned); // not allowed with coercion
+/// let p = &raw const s.unaligned; // not allowed with coercion
 /// ```
 ///
 /// ## 4. Get it from C.
@@ -1160,9 +1160,9 @@ impl<T> (T,) {}
 ///
 /// Note that most common platforms will not support `f16` in hardware without enabling extra target
 /// features, with the notable exception of Apple Silicon (also known as M1, M2, etc.) processors.
-/// Hardware support on x86-64 requires the avx512fp16 feature, while RISC-V requires Zhf.
-/// Usually the fallback implementation will be to use `f32` hardware if it exists, and convert
-/// between `f16` and `f32` when performing math.
+/// Hardware support on x86/x86-64 requires the avx512fp16 or avx10.1 features, while RISC-V requires
+/// Zfh, and Arm/AArch64 requires FEAT_FP16.  Usually the fallback implementation will be to use `f32`
+/// hardware if it exists, and convert between `f16` and `f32` when performing math.
 ///
 /// *[See also the `std::f16::consts` module](crate::f16::consts).*
 ///
@@ -1344,10 +1344,10 @@ mod prim_f64 {}
 /// quad-precision values][wikipedia] for more information.
 ///
 /// Note that no platforms have hardware support for `f128` without enabling target specific features,
-/// as for all instruction set architectures `f128` is considered an optional feature.
-/// Only Power ISA ("PowerPC") and RISC-V specify it, and only certain microarchitectures
-/// actually implement it. For x86-64 and AArch64, ISA support is not even specified,
-/// so it will always be a software implementation significantly slower than `f64`.
+/// as for all instruction set architectures `f128` is considered an optional feature.  Only Power ISA
+/// ("PowerPC") and RISC-V (via the Q extension) specify it, and only certain microarchitectures
+/// actually implement it. For x86-64 and AArch64, ISA support is not even specified, so it will always
+/// be a software implementation significantly slower than `f64`.
 ///
 /// _Note: `f128` support is incomplete. Many platforms will not be able to link math functions. On
 /// x86 in particular, these functions do link but their results are always incorrect._

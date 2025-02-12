@@ -43,9 +43,9 @@ use crate::{
     primitive::{self, UintTy},
     static_lifetime, to_chalk_trait_id,
     traits::FnTrait,
-    Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, CallableSig, FnAbi, FnPointer,
-    FnSig, FnSubst, Interner, Rawness, Scalar, Substitution, TraitEnvironment, TraitRef, Ty,
-    TyBuilder, TyExt, TyKind,
+    Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, CallableSig, DeclContext,
+    DeclOrigin, FnAbi, FnPointer, FnSig, FnSubst, Interner, Rawness, Scalar, Substitution,
+    TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
 use super::{
@@ -206,7 +206,7 @@ impl InferenceContext<'_> {
                     path,
                     self.body.expr_path_hygiene(expr),
                 )
-                .map_or(true, |res| matches!(res, ValueNs::LocalBinding(_) | ValueNs::StaticId(_))),
+                .is_none_or(|res| matches!(res, ValueNs::LocalBinding(_) | ValueNs::StaticId(_))),
             Expr::Underscore => true,
             Expr::UnaryOp { op: UnaryOp::Deref, .. } => true,
             Expr::Field { .. } | Expr::Index { .. } => true,
@@ -334,7 +334,11 @@ impl InferenceContext<'_> {
                     ExprIsRead::No
                 };
                 let input_ty = self.infer_expr(expr, &Expectation::none(), child_is_read);
-                self.infer_top_pat(pat, &input_ty);
+                self.infer_top_pat(
+                    pat,
+                    &input_ty,
+                    Some(DeclContext { origin: DeclOrigin::LetExpr }),
+                );
                 self.result.standard_types.bool_.clone()
             }
             Expr::Block { statements, tail, label, id } => {
@@ -461,7 +465,7 @@ impl InferenceContext<'_> {
 
                 // Now go through the argument patterns
                 for (arg_pat, arg_ty) in args.iter().zip(&sig_tys) {
-                    self.infer_top_pat(*arg_pat, arg_ty);
+                    self.infer_top_pat(*arg_pat, arg_ty, None);
                 }
 
                 // FIXME: lift these out into a struct
@@ -487,7 +491,7 @@ impl InferenceContext<'_> {
             }
             Expr::Call { callee, args, .. } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none(), ExprIsRead::Yes);
-                let mut derefs = Autoderef::new(&mut self.table, callee_ty.clone(), false);
+                let mut derefs = Autoderef::new(&mut self.table, callee_ty.clone(), false, true);
                 let (res, derefed_callee) = loop {
                     let Some((callee_deref_ty, _)) = derefs.next() else {
                         break (None, callee_ty.clone());
@@ -499,7 +503,7 @@ impl InferenceContext<'_> {
                 // if the function is unresolved, we use is_varargs=true to
                 // suppress the arg count diagnostic here
                 let is_varargs =
-                    derefed_callee.callable_sig(self.db).map_or(false, |sig| sig.is_varargs)
+                    derefed_callee.callable_sig(self.db).is_some_and(|sig| sig.is_varargs)
                         || res.is_none();
                 let (param_tys, ret_ty) = match res {
                     Some((func, params, ret_ty)) => {
@@ -531,7 +535,7 @@ impl InferenceContext<'_> {
                         (params, ret_ty)
                     }
                     None => {
-                        self.result.diagnostics.push(InferenceDiagnostic::ExpectedFunction {
+                        self.push_diagnostic(InferenceDiagnostic::ExpectedFunction {
                             call_expr: tgt_expr,
                             found: callee_ty.clone(),
                         });
@@ -582,7 +586,7 @@ impl InferenceContext<'_> {
                     let mut all_arms_diverge = Diverges::Always;
                     for arm in arms.iter() {
                         let input_ty = self.resolve_ty_shallow(&input_ty);
-                        self.infer_top_pat(arm.pat, &input_ty);
+                        self.infer_top_pat(arm.pat, &input_ty, None);
                     }
 
                     let expected = expected.adjust_for_branches(&mut self.table);
@@ -707,7 +711,7 @@ impl InferenceContext<'_> {
                 self.result.standard_types.never.clone()
             }
             Expr::RecordLit { path, fields, spread, .. } => {
-                let (ty, def_id) = self.resolve_variant(path.as_deref(), false);
+                let (ty, def_id) = self.resolve_variant(tgt_expr.into(), path.as_deref(), false);
 
                 if let Some(t) = expected.only_has_type(&mut self.table) {
                     self.unify(&ty, &t);
@@ -854,7 +858,7 @@ impl InferenceContext<'_> {
                         if let Some(derefed) = builtin_deref(self.table.db, &inner_ty, true) {
                             self.resolve_ty_shallow(derefed)
                         } else {
-                            deref_by_trait(&mut self.table, inner_ty)
+                            deref_by_trait(&mut self.table, inner_ty, false)
                                 .unwrap_or_else(|| self.err_ty())
                         }
                     }
@@ -927,7 +931,7 @@ impl InferenceContext<'_> {
                     let resolver_guard =
                         self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, tgt_expr);
                     self.inside_assignment = true;
-                    self.infer_top_pat(target, &rhs_ty);
+                    self.infer_top_pat(target, &rhs_ty, None);
                     self.inside_assignment = false;
                     self.resolver.reset_to_guard(resolver_guard);
                 }
@@ -1632,8 +1636,11 @@ impl InferenceContext<'_> {
                                 decl_ty
                             };
 
-                            this.infer_top_pat(*pat, &ty);
+                            let decl = DeclContext {
+                                origin: DeclOrigin::LocalDecl { has_else: else_branch.is_some() },
+                            };
 
+                            this.infer_top_pat(*pat, &ty, Some(decl));
                             if let Some(expr) = else_branch {
                                 let previous_diverges =
                                     mem::replace(&mut this.diverges, Diverges::Maybe);
@@ -1718,7 +1725,7 @@ impl InferenceContext<'_> {
         receiver_ty: &Ty,
         name: &Name,
     ) -> Option<(Ty, Either<FieldId, TupleFieldId>, Vec<Adjustment>, bool)> {
-        let mut autoderef = Autoderef::new(&mut self.table, receiver_ty.clone(), false);
+        let mut autoderef = Autoderef::new(&mut self.table, receiver_ty.clone(), false, false);
         let mut private_field = None;
         let res = autoderef.by_ref().find_map(|(derefed_ty, _)| {
             let (field_id, parameters) = match derefed_ty.kind(Interner) {
@@ -1816,9 +1823,10 @@ impl InferenceContext<'_> {
                 if !is_public {
                     if let Either::Left(field) = field_id {
                         // FIXME: Merge this diagnostic into UnresolvedField?
-                        self.result
-                            .diagnostics
-                            .push(InferenceDiagnostic::PrivateField { expr: tgt_expr, field });
+                        self.push_diagnostic(InferenceDiagnostic::PrivateField {
+                            expr: tgt_expr,
+                            field,
+                        });
                     }
                 }
                 ty
@@ -1835,7 +1843,7 @@ impl InferenceContext<'_> {
                     VisibleFromModule::Filter(self.resolver.module()),
                     name,
                 );
-                self.result.diagnostics.push(InferenceDiagnostic::UnresolvedField {
+                self.push_diagnostic(InferenceDiagnostic::UnresolvedField {
                     expr: tgt_expr,
                     receiver: receiver_ty.clone(),
                     name: name.clone(),
@@ -1927,7 +1935,7 @@ impl InferenceContext<'_> {
                     },
                 );
 
-                self.result.diagnostics.push(InferenceDiagnostic::UnresolvedMethodCall {
+                self.push_diagnostic(InferenceDiagnostic::UnresolvedMethodCall {
                     expr: tgt_expr,
                     receiver: receiver_ty.clone(),
                     name: method_name.clone(),
@@ -2042,7 +2050,7 @@ impl InferenceContext<'_> {
                     continue;
                 }
 
-                while skip_indices.peek().map_or(false, |i| *i < idx as u32) {
+                while skip_indices.peek().is_some_and(|i| *i < idx as u32) {
                     skip_indices.next();
                 }
                 if skip_indices.peek().copied() == Some(idx as u32) {

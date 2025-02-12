@@ -31,8 +31,9 @@ LL |     std::ptr::from_ref(num).cast_mut().as_deref();
    |
 help: there is a method `as_ref` with a similar name
    |
-LL |     std::ptr::from_ref(num).cast_mut().as_ref();
-   |                                        ~~~~~~
+LL -     std::ptr::from_ref(num).cast_mut().as_deref();
+LL +     std::ptr::from_ref(num).cast_mut().as_ref();
+   |
 
 error: aborting due to 2 previous errors; 2 warnings emitted
 

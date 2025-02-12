@@ -6,7 +6,7 @@ use std::{
 };
 
 use either::Either;
-use hir_def::{body::Body, hir::BindingId};
+use hir_def::{expr_store::Body, hir::BindingId};
 use hir_expand::{name::Name, Lookup};
 use la_arena::ArenaMap;
 use span::Edition;

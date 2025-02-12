@@ -18,8 +18,9 @@ LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
    |
 help: copy the `where` clause predicates from the trait
    |
-LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'a: 'b;
-   |                                      ~~~~~~~~~~~~
+LL -     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
+LL +     type B<'a, 'b> = (&'a(), &'b ()) where 'a: 'b;
+   |
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/impl_bounds.rs:18:33

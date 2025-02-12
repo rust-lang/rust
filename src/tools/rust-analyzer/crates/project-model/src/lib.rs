@@ -15,14 +15,32 @@
 //!   procedural macros).
 //! * Lowering of concrete model to a [`base_db::CrateGraph`]
 
+pub mod project_json;
+pub mod toolchain_info {
+    pub mod rustc_cfg;
+    pub mod target_data_layout;
+    pub mod target_tuple;
+    pub mod version;
+
+    use std::path::Path;
+
+    use crate::{ManifestPath, Sysroot};
+
+    #[derive(Copy, Clone)]
+    pub enum QueryConfig<'a> {
+        /// Directly invoke `rustc` to query the desired information.
+        Rustc(&'a Sysroot, &'a Path),
+        /// Attempt to use cargo to query the desired information, honoring cargo configurations.
+        /// If this fails, falls back to invoking `rustc` directly.
+        Cargo(&'a Sysroot, &'a ManifestPath),
+    }
+}
+
 mod build_dependencies;
 mod cargo_workspace;
 mod env;
 mod manifest_path;
-pub mod project_json;
-mod rustc_cfg;
 mod sysroot;
-pub mod target_data_layout;
 mod workspace;
 
 #[cfg(test)]
@@ -42,8 +60,8 @@ use rustc_hash::FxHashSet;
 pub use crate::{
     build_dependencies::WorkspaceBuildScripts,
     cargo_workspace::{
-        CargoConfig, CargoFeatures, CargoWorkspace, Package, PackageData, PackageDependency,
-        RustLibSource, Target, TargetData, TargetKind,
+        CargoConfig, CargoFeatures, CargoMetadataConfig, CargoWorkspace, Package, PackageData,
+        PackageDependency, RustLibSource, Target, TargetData, TargetKind,
     },
     manifest_path::ManifestPath,
     project_json::{ProjectJson, ProjectJsonData},
@@ -181,7 +199,7 @@ impl fmt::Display for ProjectManifest {
     }
 }
 
-fn utf8_stdout(mut cmd: Command) -> anyhow::Result<String> {
+fn utf8_stdout(cmd: &mut Command) -> anyhow::Result<String> {
     let output = cmd.output().with_context(|| format!("{cmd:?} failed"))?;
     if !output.status.success() {
         match String::from_utf8(output.stderr) {
@@ -241,9 +259,20 @@ fn parse_cfg(s: &str) -> Result<cfg::CfgAtom, String> {
     Ok(res)
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum SysrootQueryMetadata {
-    #[default]
-    CargoMetadata,
-    None,
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SysrootSourceWorkspaceConfig {
+    CargoMetadata(CargoMetadataConfig),
+    Stitched,
+}
+
+impl Default for SysrootSourceWorkspaceConfig {
+    fn default() -> Self {
+        SysrootSourceWorkspaceConfig::default_cargo()
+    }
+}
+
+impl SysrootSourceWorkspaceConfig {
+    pub fn default_cargo() -> Self {
+        SysrootSourceWorkspaceConfig::CargoMetadata(Default::default())
+    }
 }

@@ -10,7 +10,7 @@
 //@ check-pass
 //@ no-auto-check-cfg
 //@ compile-flags: --check-cfg=cfg() -Zcheck-cfg-all-expected
-//@ normalize-stderr-test: "`, `" -> "`\n`"
+//@ normalize-stderr: "`, `" -> "`\n`"
 
 fn main() {
     cfg!(target_feature = "_UNEXPECTED_VALUE");

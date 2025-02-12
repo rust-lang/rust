@@ -5,7 +5,7 @@
 
 use crate::msrvs::{self, Msrv};
 use hir::LangItem;
-use rustc_attr::StableSince;
+use rustc_attr_parsing::{RustcVersion, StableSince};
 use rustc_const_eval::check_consts::ConstCx;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -29,13 +29,14 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
     let def_id = body.source.def_id();
 
     for local in &body.local_decls {
-        check_ty(tcx, local.ty, local.source_info.span)?;
+        check_ty(tcx, local.ty, local.source_info.span, msrv)?;
     }
     // impl trait is gone in MIR, so check the return type manually
     check_ty(
         tcx,
         tcx.fn_sig(def_id).instantiate_identity().output().skip_binder(),
         body.local_decls.iter().next().unwrap().source_info.span,
+        msrv,
     )?;
 
     for bb in &*body.basic_blocks {
@@ -51,7 +52,7 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
     Ok(())
 }
 
-fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
+fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, msrv: &Msrv) -> McfResult {
     for arg in ty.walk() {
         let ty = match arg.unpack() {
             GenericArgKind::Type(ty) => ty,
@@ -62,7 +63,7 @@ fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
         };
 
         match ty.kind() {
-            ty::Ref(_, _, hir::Mutability::Mut) => {
+            ty::Ref(_, _, hir::Mutability::Mut) if !msrv.meets(msrvs::CONST_MUT_REFS) => {
                 return Err((span, "mutable references in const fn are unstable".into()));
             },
             ty::Alias(ty::Opaque, ..) => return Err((span, "`impl Trait` in const fn is unstable".into())),
@@ -115,6 +116,7 @@ fn check_rvalue<'tcx>(
         Rvalue::CopyForDeref(place) => check_place(tcx, *place, span, body, msrv),
         Rvalue::Repeat(operand, _)
         | Rvalue::Use(operand)
+        | Rvalue::WrapUnsafeBinder(operand, _)
         | Rvalue::Cast(
             CastKind::PointerWithExposedProvenance
             | CastKind::IntToInt
@@ -177,7 +179,10 @@ fn check_rvalue<'tcx>(
                 ))
             }
         },
-        Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) | NullOp::UbChecks, _)
+        Rvalue::NullaryOp(
+            NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) | NullOp::UbChecks | NullOp::ContractChecks,
+            _,
+        )
         | Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::UnaryOp(_, operand) => {
             let ty = operand.ty(body, tcx);
@@ -288,7 +293,8 @@ fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &B
             | ProjectionElem::Downcast(..)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Subtype(_)
-            | ProjectionElem::Index(_) => {},
+            | ProjectionElem::Index(_)
+            | ProjectionElem::UnwrapUnsafeBinder(_) => {},
         }
     }
 
@@ -381,14 +387,14 @@ fn check_terminator<'tcx>(
 fn is_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
     tcx.is_const_fn(def_id)
         && tcx.lookup_const_stability(def_id).is_none_or(|const_stab| {
-            if let rustc_attr::StabilityLevel::Stable { since, .. } = const_stab.level {
+            if let rustc_attr_parsing::StabilityLevel::Stable { since, .. } = const_stab.level {
                 // Checking MSRV is manually necessary because `rustc` has no such concept. This entire
                 // function could be removed if `rustc` provided a MSRV-aware version of `is_stable_const_fn`.
                 // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
 
                 let const_stab_rust_version = match since {
                     StableSince::Version(version) => version,
-                    StableSince::Current => rustc_session::RustcVersion::CURRENT,
+                    StableSince::Current => RustcVersion::CURRENT,
                     StableSince::Err => return false,
                 };
 

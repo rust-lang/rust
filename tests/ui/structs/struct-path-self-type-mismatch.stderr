@@ -44,8 +44,9 @@ LL | |         }
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 help: use the type name directly
    |
-LL |         Foo::<U> {
-   |         ~~~~~~~~
+LL -         Self {
+LL +         Foo::<U> {
+   |
 
 error: aborting due to 3 previous errors
 

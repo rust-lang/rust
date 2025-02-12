@@ -12,8 +12,7 @@ use rustc_ast::{
     LocalKind, MacCall, MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind,
 };
 use rustc_errors::{Applicability, Diag, PResult};
-use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{BytePos, ErrorGuaranteed, Span};
+use rustc_span::{BytePos, ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::attr::InnerAttrForbiddenReason;
@@ -25,7 +24,7 @@ use super::{
     Trailing, UsePreAttrPos,
 };
 use crate::errors::MalformedLoopLabel;
-use crate::{errors, maybe_whole};
+use crate::{errors, exp, maybe_whole};
 
 impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.
@@ -72,7 +71,7 @@ impl<'a> Parser<'a> {
 
         let stmt = if self.token.is_keyword(kw::Let) {
             self.collect_tokens(None, attrs, force_collect, |this, attrs| {
-                this.expect_keyword(kw::Let)?;
+                this.expect_keyword(exp!(Let))?;
                 let local = this.parse_local(attrs)?;
                 let trailing = Trailing::from(capture_semi && this.token == token::Semi);
                 Ok((
@@ -141,7 +140,7 @@ impl<'a> Parser<'a> {
             force_collect,
         )? {
             self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
-        } else if self.eat(&token::Semi) {
+        } else if self.eat(exp!(Semi)) {
             // Do not attempt to parse an expression if we're done here.
             self.error_outer_attrs(attrs);
             self.mk_stmt(lo, StmtKind::Empty)
@@ -157,7 +156,7 @@ impl<'a> Parser<'a> {
                     Ok((expr, Trailing::No, UsePreAttrPos::Yes))
                 },
             )?;
-            if matches!(e.kind, ExprKind::Assign(..)) && self.eat_keyword(kw::Else) {
+            if matches!(e.kind, ExprKind::Assign(..)) && self.eat_keyword(exp!(Else)) {
                 let bl = self.parse_block()?;
                 // Destructuring assignment ... else.
                 // This is not allowed, but point it out in a nice way.
@@ -177,7 +176,7 @@ impl<'a> Parser<'a> {
         let stmt = self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
             let path = this.parse_path(PathStyle::Expr)?;
 
-            if this.eat(&token::Not) {
+            if this.eat(exp!(Not)) {
                 let stmt_mac = this.parse_stmt_mac(lo, attrs, path)?;
                 return Ok((
                     stmt_mac,
@@ -186,7 +185,7 @@ impl<'a> Parser<'a> {
                 ));
             }
 
-            let expr = if this.eat(&token::OpenDelim(Delimiter::Brace)) {
+            let expr = if this.eat(exp!(OpenBrace)) {
                 this.parse_expr_struct(None, path, true)?
             } else {
                 let hi = this.prev_token.span;
@@ -371,7 +370,7 @@ impl<'a> Parser<'a> {
         let kind = match init {
             None => LocalKind::Decl,
             Some(init) => {
-                if self.eat_keyword(kw::Else) {
+                if self.eat_keyword(exp!(Else)) {
                     if self.token.is_keyword(kw::If) {
                         // `let...else if`. Emit the same error that `parse_block()` would,
                         // but explicitly point out that this pattern is not allowed.
@@ -418,14 +417,20 @@ impl<'a> Parser<'a> {
     fn check_let_else_init_trailing_brace(&self, init: &ast::Expr) {
         if let Some(trailing) = classify::expr_trailing_brace(init) {
             let (span, sugg) = match trailing {
-                TrailingBrace::MacCall(mac) => (mac.span(), errors::WrapInParentheses::MacroArgs {
-                    left: mac.args.dspan.open,
-                    right: mac.args.dspan.close,
-                }),
-                TrailingBrace::Expr(expr) => (expr.span, errors::WrapInParentheses::Expression {
-                    left: expr.span.shrink_to_lo(),
-                    right: expr.span.shrink_to_hi(),
-                }),
+                TrailingBrace::MacCall(mac) => (
+                    mac.span(),
+                    errors::WrapInParentheses::MacroArgs {
+                        left: mac.args.dspan.open,
+                        right: mac.args.dspan.close,
+                    },
+                ),
+                TrailingBrace::Expr(expr) => (
+                    expr.span,
+                    errors::WrapInParentheses::Expression {
+                        left: expr.span.shrink_to_lo(),
+                        right: expr.span.shrink_to_hi(),
+                    },
+                ),
             };
             self.dcx().emit_err(errors::InvalidCurlyInLetElse {
                 span: span.with_lo(span.hi() - BytePos(1)),
@@ -450,7 +455,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 true
             }
-            _ => self.eat(&token::Eq),
+            _ => self.eat(exp!(Eq)),
         };
 
         Ok(if eq_consumed || eq_optional { Some(self.parse_expr()?) } else { None })
@@ -510,7 +515,7 @@ impl<'a> Parser<'a> {
             Ok(Some(Stmt { kind: StmtKind::Empty, .. })) => {}
             Ok(Some(stmt)) => {
                 let stmt_own_line = self.psess.source_map().is_line_before_span_empty(sp);
-                let stmt_span = if stmt_own_line && self.eat(&token::Semi) {
+                let stmt_span = if stmt_own_line && self.eat(exp!(Semi)) {
                     // Expand the span to include the semicolon.
                     stmt.span.with_hi(self.prev_token.span.hi())
                 } else {
@@ -652,7 +657,7 @@ impl<'a> Parser<'a> {
 
         let maybe_ident = self.prev_token.clone();
         self.maybe_recover_unexpected_block_label();
-        if !self.eat(&token::OpenDelim(Delimiter::Brace)) {
+        if !self.eat(exp!(OpenBrace)) {
             return self.error_block_no_opening_brace();
         }
 
@@ -679,7 +684,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Block>> {
         let mut stmts = ThinVec::new();
         let mut snapshot = None;
-        while !self.eat(&token::CloseDelim(Delimiter::Brace)) {
+        while !self.eat(exp!(CloseBrace)) {
             if self.token == token::Eof {
                 break;
             }
@@ -746,6 +751,51 @@ impl<'a> Parser<'a> {
         Ok(self.mk_block(stmts, s, lo.to(self.prev_token.span)))
     }
 
+    fn recover_missing_dot(&mut self, err: &mut Diag<'_>) {
+        let Some((ident, _)) = self.token.ident() else {
+            return;
+        };
+        if let Some(c) = ident.name.as_str().chars().next()
+            && c.is_uppercase()
+        {
+            return;
+        }
+        if self.token.is_reserved_ident() && !self.token.is_ident_named(kw::Await) {
+            return;
+        }
+        if self.prev_token.is_reserved_ident() && self.prev_token.is_ident_named(kw::Await) {
+            // Likely `foo.await bar`
+        } else if !self.prev_token.is_reserved_ident() && self.prev_token.is_ident() {
+            // Likely `foo bar`
+        } else if self.prev_token.kind == token::Question {
+            // `foo? bar`
+        } else if self.prev_token.kind == token::CloseDelim(Delimiter::Parenthesis) {
+            // `foo() bar`
+        } else {
+            return;
+        }
+        if self.token.span == self.prev_token.span {
+            // Account for syntax errors in proc-macros.
+            return;
+        }
+        if self.look_ahead(1, |t| [token::Semi, token::Question, token::Dot].contains(&t.kind)) {
+            err.span_suggestion_verbose(
+                self.prev_token.span.between(self.token.span),
+                "you might have meant to write a field access",
+                ".".to_string(),
+                Applicability::MaybeIncorrect,
+            );
+        }
+        if self.look_ahead(1, |t| t.kind == token::OpenDelim(Delimiter::Parenthesis)) {
+            err.span_suggestion_verbose(
+                self.prev_token.span.between(self.token.span),
+                "you might have meant to write a method call",
+                ".".to_string(),
+                Applicability::MaybeIncorrect,
+            );
+        }
+    }
+
     /// Parses a statement, including the trailing semicolon.
     pub fn parse_full_stmt(
         &mut self,
@@ -782,8 +832,7 @@ impl<'a> Parser<'a> {
             {
                 // Just check for errors and recover; do not eat semicolon yet.
 
-                let expect_result =
-                    self.expect_one_of(&[], &[token::Semi, token::CloseDelim(Delimiter::Brace)]);
+                let expect_result = self.expect_one_of(&[], &[exp!(Semi), exp!(CloseBrace)]);
 
                 // Try to both emit a better diagnostic, and avoid further errors by replacing
                 // the `expr` with `ExprKind::Err`.
@@ -853,7 +902,8 @@ impl<'a> Parser<'a> {
                             Some(if recover.no() {
                                 res?
                             } else {
-                                res.unwrap_or_else(|e| {
+                                res.unwrap_or_else(|mut e| {
+                                    self.recover_missing_dot(&mut e);
                                     let guar = e.emit();
                                     self.recover_stmt();
                                     guar
@@ -874,7 +924,12 @@ impl<'a> Parser<'a> {
                 // We might be at the `,` in `let x = foo<bar, baz>;`. Try to recover.
                 match &mut local.kind {
                     LocalKind::Init(expr) | LocalKind::InitElse(expr, _) => {
-                        self.check_mistyped_turbofish_with_multiple_type_params(e, expr)?;
+                        self.check_mistyped_turbofish_with_multiple_type_params(e, expr).map_err(
+                            |mut e| {
+                                self.recover_missing_dot(&mut e);
+                                e
+                            },
+                        )?;
                         // We found `foo<bar, baz>`, have we fully recovered?
                         self.expect_semi()?;
                     }
@@ -931,7 +986,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if add_semi_to_stmt || (eat_semi && self.eat(&token::Semi)) {
+        if add_semi_to_stmt || (eat_semi && self.eat(exp!(Semi))) {
             stmt = stmt.add_trailing_semicolon();
         }
 

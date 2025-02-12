@@ -315,4 +315,34 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "`build.vendor` is now enabled by default for dist/tarball sources when 'vendor' directory and '.cargo/config.toml' file are present.",
     },
+    ChangeInfo {
+        change_id: 134809,
+        severity: ChangeSeverity::Warning,
+        summary: "compiletest now takes `--no-capture` instead of `--nocapture`; bootstrap now accepts `--no-capture` as an argument to test commands directly",
+    },
+    ChangeInfo {
+        change_id: 134650,
+        severity: ChangeSeverity::Warning,
+        summary: "Removed `rust.parallel-compiler` as it was deprecated in #132282 long time ago.",
+    },
+    ChangeInfo {
+        change_id: 135326,
+        severity: ChangeSeverity::Warning,
+        summary: "It is now possible to configure `optimized-compiler-builtins` for per target.",
+    },
+    ChangeInfo {
+        change_id: 135281,
+        severity: ChangeSeverity::Warning,
+        summary: "Some stamp names in the build artifacts may have changed slightly (e.g., from `llvm-finished-building` to `.llvm-stamp`).",
+    },
+    ChangeInfo {
+        change_id: 135729,
+        severity: ChangeSeverity::Info,
+        summary: "Change the compiler profile to default to rust.debug-assertions = true",
+    },
+    ChangeInfo {
+        change_id: 135832,
+        severity: ChangeSeverity::Info,
+        summary: "Rustdoc now respects the value of rust.lto.",
+    },
 ];

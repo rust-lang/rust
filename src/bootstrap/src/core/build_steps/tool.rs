@@ -1,11 +1,14 @@
 use std::path::PathBuf;
 use std::{env, fs};
 
-use crate::core::build_steps::compile;
+use crate::core::build_steps::compile::is_lto_stage;
 use crate::core::build_steps::toolstate::ToolState;
+use crate::core::build_steps::{compile, llvm};
 use crate::core::builder;
-use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
-use crate::core::config::TargetSelection;
+use crate::core::builder::{
+    Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step, cargo_profile_var,
+};
+use crate::core::config::{DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{add_dylib_path, exe, t};
@@ -334,7 +337,11 @@ macro_rules! bootstrap_tool {
 }
 
 bootstrap_tool!(
-    Rustbook, "src/tools/rustbook", "rustbook", submodules = SUBMODULES_FOR_RUSTBOOK;
+    // This is marked as an external tool because it includes dependencies
+    // from submodules. Trying to keep the lints in sync between all the repos
+    // is a bit of a pain. Unfortunately it means the rustbook source itself
+    // doesn't deny warnings, but it is a relatively small piece of code.
+    Rustbook, "src/tools/rustbook", "rustbook", is_external_tool = true, submodules = SUBMODULES_FOR_RUSTBOOK;
     UnstableBookGen, "src/tools/unstable-book-gen", "unstable-book-gen";
     Tidy, "src/tools/tidy", "tidy";
     Linkchecker, "src/tools/linkchecker", "linkchecker";
@@ -356,9 +363,9 @@ bootstrap_tool!(
     GenerateWindowsSys, "src/tools/generate-windows-sys", "generate-windows-sys";
     RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = "test";
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
-    RustcPerfWrapper, "src/tools/rustc-perf-wrapper", "rustc-perf-wrapper";
     WasmComponentLd, "src/tools/wasm-component-ld", "wasm-component-ld", is_unstable_tool = true, allow_features = "min_specialization";
     UnicodeTableGenerator, "src/tools/unicode-table-generator", "unicode-table-generator";
+    FeaturesStatusDump, "src/tools/features-status-dump", "features-status-dump";
 );
 
 /// These are the submodules that are required for rustbook to work due to
@@ -575,7 +582,7 @@ impl Step for Rustdoc {
             if !target_compiler.is_snapshot(builder) {
                 panic!("rustdoc in stage 0 must be snapshot rustdoc");
             }
-            return builder.initial_rustc.with_file_name(exe("rustdoc", target_compiler.host));
+            return builder.initial_rustdoc.clone();
         }
         let target = target_compiler.host;
 
@@ -641,7 +648,7 @@ impl Step for Rustdoc {
         }
 
         // NOTE: Never modify the rustflags here, it breaks the build cache for other tools!
-        let cargo = prepare_tool_cargo(
+        let mut cargo = prepare_tool_cargo(
             builder,
             build_compiler,
             Mode::ToolRustc,
@@ -651,6 +658,19 @@ impl Step for Rustdoc {
             SourceType::InTree,
             features.as_slice(),
         );
+
+        // rustdoc is performance sensitive, so apply LTO to it.
+        if is_lto_stage(&build_compiler) {
+            let lto = match builder.config.rust_lto {
+                RustcLto::Off => Some("off"),
+                RustcLto::Thin => Some("thin"),
+                RustcLto::Fat => Some("fat"),
+                RustcLto::ThinLocal => None,
+            };
+            if let Some(lto) = lto {
+                cargo.env(cargo_profile_var("LTO", &builder.config), lto);
+            }
+        }
 
         let _guard = builder.msg_tool(
             Kind::Build,
@@ -671,6 +691,11 @@ impl Step for Rustdoc {
 
         // don't create a stage0-sysroot/bin directory.
         if target_compiler.stage > 0 {
+            if builder.config.rust_debuginfo_level_tools == DebuginfoLevel::None {
+                // Due to LTO a lot of debug info from C++ dependencies such as jemalloc can make it into
+                // our final binaries
+                compile::strip_debug(builder, target, &tool_rustdoc);
+            }
             let bin_rustdoc = bin_rustdoc();
             builder.copy_link(&tool_rustdoc, &bin_rustdoc);
             bin_rustdoc
@@ -722,21 +747,27 @@ impl Step for Cargo {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LldWrapper {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
+    pub build_compiler: Compiler,
+    pub target_compiler: Compiler,
 }
 
 impl Step for LldWrapper {
-    type Output = PathBuf;
+    type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder.ensure(ToolBuild {
-            compiler: self.compiler,
-            target: self.target,
+    fn run(self, builder: &Builder<'_>) {
+        if builder.config.dry_run() {
+            return;
+        }
+
+        let target = self.target_compiler.host;
+
+        let executable = builder.ensure(ToolBuild {
+            compiler: self.build_compiler,
+            target,
             tool: "lld-wrapper",
             mode: Mode::ToolStd,
             path: "src/tools/lld-wrapper",
@@ -744,7 +775,22 @@ impl Step for LldWrapper {
             extra_features: Vec::new(),
             allow_features: "",
             cargo_args: Vec::new(),
-        })
+        });
+
+        let libdir_bin = builder.sysroot_target_bindir(self.target_compiler, target);
+        t!(fs::create_dir_all(&libdir_bin));
+
+        let lld_install = builder.ensure(llvm::Lld { target });
+        let src_exe = exe("lld", target);
+        let dst_exe = exe("rust-lld", target);
+
+        builder.copy_link(&lld_install.join("bin").join(src_exe), &libdir_bin.join(dst_exe));
+        let self_contained_lld_dir = libdir_bin.join("gcc-ld");
+        t!(fs::create_dir_all(&self_contained_lld_dir));
+
+        for name in crate::LLD_FILE_NAMES {
+            builder.copy_link(&executable, &self_contained_lld_dir.join(exe(name, target)));
+        }
     }
 }
 
@@ -981,43 +1027,32 @@ impl Step for LibcxxVersionTool {
 }
 
 macro_rules! tool_extended {
-    (($sel:ident, $builder:ident),
-       $($name:ident,
-       $path:expr,
-       $tool_name:expr,
-       stable = $stable:expr
-       $(,tool_std = $tool_std:literal)?
-       $(,allow_features = $allow_features:expr)?
-       $(,add_bins_to_sysroot = $add_bins_to_sysroot:expr)?
-       ;)+) => {
-        $(
-            #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+    (
+        $name:ident {
+            path: $path:expr,
+            tool_name: $tool_name:expr,
+            stable: $stable:expr
+            $( , add_bins_to_sysroot: $add_bins_to_sysroot:expr )?
+            $( , )?
+        }
+    ) => {
+        #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
             pub compiler: Compiler,
             pub target: TargetSelection,
-            pub extra_features: Vec<String>,
         }
 
         impl Step for $name {
             type Output = PathBuf;
-            const DEFAULT: bool = true; // Overwritten below
+            const DEFAULT: bool = true; // Overridden by `should_run_tool_build_step`
             const ONLY_HOSTS: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                let builder = run.builder;
-                run.path($path).default_condition(
-                    builder.config.extended
-                        && builder.config.tools.as_ref().map_or(
-                            // By default, on nightly/dev enable all tools, else only
-                            // build stable tools.
-                            $stable || builder.build.unstable_features(),
-                            // If `tools` is set, search list for this tool.
-                            |tools| {
-                                tools.iter().any(|tool| match tool.as_ref() {
-                                    "clippy" => $tool_name == "clippy-driver",
-                                    x => $tool_name == x,
-                            })
-                        }),
+                should_run_tool_build_step(
+                    run,
+                    $tool_name,
+                    $path,
+                    $stable,
                 )
             }
 
@@ -1025,58 +1060,117 @@ macro_rules! tool_extended {
                 run.builder.ensure($name {
                     compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
                     target: run.target,
-                    extra_features: Vec::new(),
                 });
             }
 
-            #[allow(unused_mut)]
-            fn run(mut $sel, $builder: &Builder<'_>) -> PathBuf {
-                let tool = $builder.ensure(ToolBuild {
-                    compiler: $sel.compiler,
-                    target: $sel.target,
-                    tool: $tool_name,
-                    mode: if false $(|| $tool_std)? { Mode::ToolStd } else { Mode::ToolRustc },
-                    path: $path,
-                    extra_features: $sel.extra_features,
-                    source_type: SourceType::InTree,
-                    allow_features: concat!($($allow_features)*),
-                    cargo_args: vec![]
-                });
-
-                if (false $(|| !$add_bins_to_sysroot.is_empty())?) && $sel.compiler.stage > 0 {
-                    let bindir = $builder.sysroot($sel.compiler).join("bin");
-                    t!(fs::create_dir_all(&bindir));
-
-                    #[allow(unused_variables)]
-                    let tools_out = $builder
-                        .cargo_out($sel.compiler, Mode::ToolRustc, $sel.target);
-
-                    $(for add_bin in $add_bins_to_sysroot {
-                        let bin_source = tools_out.join(exe(add_bin, $sel.target));
-                        let bin_destination = bindir.join(exe(add_bin, $sel.compiler.host));
-                        $builder.copy_link(&bin_source, &bin_destination);
-                    })?
-
-                    let tool = bindir.join(exe($tool_name, $sel.compiler.host));
-                    tool
-                } else {
-                    tool
-                }
+            fn run(self, builder: &Builder<'_>) -> PathBuf {
+                let Self { compiler, target } = self;
+                run_tool_build_step(
+                    builder,
+                    compiler,
+                    target,
+                    $tool_name,
+                    $path,
+                    None $( .or(Some(&$add_bins_to_sysroot)) )?,
+                )
             }
         }
-        )+
     }
 }
 
-tool_extended!((self, builder),
-    Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true;
-    CargoClippy, "src/tools/clippy", "cargo-clippy", stable=true;
-    Clippy, "src/tools/clippy", "clippy-driver", stable=true, add_bins_to_sysroot = ["clippy-driver", "cargo-clippy"];
-    Miri, "src/tools/miri", "miri", stable=false, add_bins_to_sysroot = ["miri"];
-    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, add_bins_to_sysroot = ["cargo-miri"];
-    Rls, "src/tools/rls", "rls", stable=true;
-    Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, add_bins_to_sysroot = ["rustfmt", "cargo-fmt"];
-);
+fn should_run_tool_build_step<'a>(
+    run: ShouldRun<'a>,
+    tool_name: &'static str,
+    path: &'static str,
+    stable: bool,
+) -> ShouldRun<'a> {
+    let builder = run.builder;
+    run.path(path).default_condition(
+        builder.config.extended
+            && builder.config.tools.as_ref().map_or(
+                // By default, on nightly/dev enable all tools, else only
+                // build stable tools.
+                stable || builder.build.unstable_features(),
+                // If `tools` is set, search list for this tool.
+                |tools| {
+                    tools.iter().any(|tool| match tool.as_ref() {
+                        "clippy" => tool_name == "clippy-driver",
+                        x => tool_name == x,
+                    })
+                },
+            ),
+    )
+}
+
+fn run_tool_build_step(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target: TargetSelection,
+    tool_name: &'static str,
+    path: &'static str,
+    add_bins_to_sysroot: Option<&[&str]>,
+) -> PathBuf {
+    let tool = builder.ensure(ToolBuild {
+        compiler,
+        target,
+        tool: tool_name,
+        mode: Mode::ToolRustc,
+        path,
+        extra_features: vec![],
+        source_type: SourceType::InTree,
+        allow_features: "",
+        cargo_args: vec![],
+    });
+
+    // FIXME: This should just be an if-let-chain, but those are unstable.
+    if let Some(add_bins_to_sysroot) =
+        add_bins_to_sysroot.filter(|bins| !bins.is_empty() && compiler.stage > 0)
+    {
+        let bindir = builder.sysroot(compiler).join("bin");
+        t!(fs::create_dir_all(&bindir));
+
+        let tools_out = builder.cargo_out(compiler, Mode::ToolRustc, target);
+
+        for add_bin in add_bins_to_sysroot {
+            let bin_source = tools_out.join(exe(add_bin, target));
+            let bin_destination = bindir.join(exe(add_bin, compiler.host));
+            builder.copy_link(&bin_source, &bin_destination);
+        }
+
+        // Return a path into the bin dir.
+        bindir.join(exe(tool_name, compiler.host))
+    } else {
+        tool
+    }
+}
+
+tool_extended!(Cargofmt { path: "src/tools/rustfmt", tool_name: "cargo-fmt", stable: true });
+tool_extended!(CargoClippy { path: "src/tools/clippy", tool_name: "cargo-clippy", stable: true });
+tool_extended!(Clippy {
+    path: "src/tools/clippy",
+    tool_name: "clippy-driver",
+    stable: true,
+    add_bins_to_sysroot: ["clippy-driver", "cargo-clippy"]
+});
+tool_extended!(Miri {
+    path: "src/tools/miri",
+    tool_name: "miri",
+    stable: false,
+    add_bins_to_sysroot: ["miri"]
+});
+tool_extended!(CargoMiri {
+    path: "src/tools/miri/cargo-miri",
+    tool_name: "cargo-miri",
+    stable: false,
+    add_bins_to_sysroot: ["cargo-miri"]
+});
+tool_extended!(Rls { path: "src/tools/rls", tool_name: "rls", stable: true });
+tool_extended!(Rustfmt {
+    path: "src/tools/rustfmt",
+    tool_name: "rustfmt",
+    stable: true,
+    add_bins_to_sysroot: ["rustfmt", "cargo-fmt"]
+});
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TestFloatParse {

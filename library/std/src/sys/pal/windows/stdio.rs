@@ -84,21 +84,43 @@ fn is_console(handle: c::HANDLE) -> bool {
     unsafe { c::GetConsoleMode(handle, &mut mode) != 0 }
 }
 
+/// Returns true if the attached console's code page is currently UTF-8.
+#[cfg(not(target_vendor = "win7"))]
+fn is_utf8_console() -> bool {
+    unsafe { c::GetConsoleOutputCP() == c::CP_UTF8 }
+}
+
+#[cfg(target_vendor = "win7")]
+fn is_utf8_console() -> bool {
+    // Windows 7 has a fun "feature" where WriteFile on a console handle will return
+    // the number of UTF-16 code units written and not the number of bytes from the input string.
+    // So we always claim the console isn't UTF-8 to trigger the WriteConsole fallback code.
+    false
+}
+
 fn write(handle_id: u32, data: &[u8], incomplete_utf8: &mut IncompleteUtf8) -> io::Result<usize> {
     if data.is_empty() {
         return Ok(0);
     }
 
     let handle = get_handle(handle_id)?;
-    if !is_console(handle) {
+    if !is_console(handle) || is_utf8_console() {
         unsafe {
             let handle = Handle::from_raw_handle(handle);
             let ret = handle.write(data);
             let _ = handle.into_raw_handle(); // Don't close the handle
             return ret;
         }
+    } else {
+        write_console_utf16(data, incomplete_utf8, handle)
     }
+}
 
+fn write_console_utf16(
+    data: &[u8],
+    incomplete_utf8: &mut IncompleteUtf8,
+    handle: c::HANDLE,
+) -> io::Result<usize> {
     if incomplete_utf8.len > 0 {
         assert!(
             incomplete_utf8.len < 4,
@@ -185,7 +207,7 @@ fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usiz
         assert!(result != 0, "Unexpected error in MultiByteToWideChar");
 
         // Safety: MultiByteToWideChar initializes `result` values.
-        MaybeUninit::slice_assume_init_ref(&utf16[..result as usize])
+        utf16[..result as usize].assume_init_ref()
     };
 
     let mut written = write_u16s(handle, utf16)?;
@@ -261,7 +283,7 @@ impl io::Read for Stdin {
             let read = read_u16s_fixup_surrogates(handle, &mut utf16_buf, 1, &mut self.surrogate)?;
             // Read bytes, using the (now-empty) self.incomplete_utf8 as extra space.
             let read_bytes = utf16_to_utf8(
-                unsafe { MaybeUninit::slice_assume_init_ref(&utf16_buf[..read]) },
+                unsafe { utf16_buf[..read].assume_init_ref() },
                 &mut self.incomplete_utf8.bytes,
             )?;
 
@@ -281,7 +303,7 @@ impl io::Read for Stdin {
                 read_u16s_fixup_surrogates(handle, &mut utf16_buf, amount, &mut self.surrogate)?;
             // Safety `read_u16s_fixup_surrogates` returns the number of items
             // initialized.
-            let utf16s = unsafe { MaybeUninit::slice_assume_init_ref(&utf16_buf[..read]) };
+            let utf16s = unsafe { utf16_buf[..read].assume_init_ref() };
             match utf16_to_utf8(utf16s, buf) {
                 Ok(value) => return Ok(bytes_copied + value),
                 Err(e) => return Err(e),

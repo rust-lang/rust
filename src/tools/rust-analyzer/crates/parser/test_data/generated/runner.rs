@@ -482,6 +482,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/record_field_attrs.rs");
     }
     #[test]
+    fn record_field_default_values() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/record_field_default_values.rs");
+    }
+    #[test]
     fn record_field_list() {
         run_and_expect_no_errors("test_data/parser/inline/ok/record_field_list.rs");
     }
@@ -542,6 +546,10 @@ mod ok {
     #[test]
     fn stmt_postfix_expr_ambiguity() {
         run_and_expect_no_errors("test_data/parser/inline/ok/stmt_postfix_expr_ambiguity.rs");
+    }
+    #[test]
+    fn struct_initializer_with_defaults() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/struct_initializer_with_defaults.rs");
     }
     #[test]
     fn struct_item() { run_and_expect_no_errors("test_data/parser/inline/ok/struct_item.rs"); }
@@ -719,6 +727,10 @@ mod err {
         );
     }
     #[test]
+    fn comma_after_default_values_syntax() {
+        run_and_expect_errors("test_data/parser/inline/err/comma_after_default_values_syntax.rs");
+    }
+    #[test]
     fn crate_visibility_empty_recover() {
         run_and_expect_errors("test_data/parser/inline/err/crate_visibility_empty_recover.rs");
     }
@@ -773,6 +785,10 @@ mod err {
     #[test]
     fn missing_fn_param_type() {
         run_and_expect_errors("test_data/parser/inline/err/missing_fn_param_type.rs");
+    }
+    #[test]
+    fn path_item_without_excl() {
+        run_and_expect_errors("test_data/parser/inline/err/path_item_without_excl.rs");
     }
     #[test]
     fn pointer_type_no_mutability() {

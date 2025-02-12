@@ -10,6 +10,14 @@ error: `#[doc(keyword = "...")]` should be used on modules
 LL | #[doc(keyword = "hall")]
    |       ^^^^^^^^^^^^^^^^
 
+error: nonexistent keyword `tadam` used in `#[doc(keyword = "...")]`
+  --> $DIR/doc_keyword.rs:22:17
+   |
+LL | #[doc(keyword = "tadam")]
+   |                 ^^^^^^^
+   |
+   = help: only existing keywords are allowed in core/std
+
 error: `#[doc(keyword = "...")]` should be used on modules
   --> $DIR/doc_keyword.rs:17:11
    |
@@ -22,5 +30,5 @@ error: `#![doc(keyword = "...")]` isn't allowed as a crate-level attribute
 LL | #![doc(keyword = "hello")]
    |        ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

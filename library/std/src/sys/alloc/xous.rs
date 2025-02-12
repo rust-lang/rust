@@ -8,7 +8,7 @@ use crate::alloc::{GlobalAlloc, Layout, System};
 static mut DLMALLOC: dlmalloc::Dlmalloc = dlmalloc::Dlmalloc::new();
 
 #[cfg(test)]
-extern "Rust" {
+unsafe extern "Rust" {
     #[link_name = "_ZN16__rust_internals3std3sys4xous5alloc8DLMALLOCE"]
     static mut DLMALLOC: dlmalloc::Dlmalloc;
 }

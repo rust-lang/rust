@@ -253,6 +253,11 @@ impl GlobalState {
         &self,
         inbox: &Receiver<lsp_server::Message>,
     ) -> Result<Option<Event>, crossbeam_channel::RecvError> {
+        // Make sure we reply to formatting requests ASAP so the editor doesn't block
+        if let Ok(task) = self.fmt_pool.receiver.try_recv() {
+            return Ok(Some(Event::Task(task)));
+        }
+
         select! {
             recv(inbox) -> msg =>
                 return Ok(msg.ok().map(Event::Lsp)),
@@ -320,26 +325,30 @@ impl GlobalState {
                 }
 
                 for progress in prime_caches_progress {
-                    let (state, message, fraction);
+                    let (state, message, fraction, title);
                     match progress {
                         PrimeCachesProgress::Begin => {
                             state = Progress::Begin;
                             message = None;
                             fraction = 0.0;
+                            title = "Indexing";
                         }
                         PrimeCachesProgress::Report(report) => {
                             state = Progress::Report;
+                            title = report.work_type;
 
-                            message = match &report.crates_currently_indexing[..] {
+                            message = match &*report.crates_currently_indexing {
                                 [crate_name] => Some(format!(
-                                    "{}/{} ({crate_name})",
-                                    report.crates_done, report.crates_total
+                                    "{}/{} ({})",
+                                    report.crates_done,
+                                    report.crates_total,
+                                    crate_name.as_str(),
                                 )),
                                 [crate_name, rest @ ..] => Some(format!(
                                     "{}/{} ({} + {} more)",
                                     report.crates_done,
                                     report.crates_total,
-                                    crate_name,
+                                    crate_name.as_str(),
                                     rest.len()
                                 )),
                                 _ => None,
@@ -351,6 +360,7 @@ impl GlobalState {
                             state = Progress::End;
                             message = None;
                             fraction = 1.0;
+                            title = "Indexing";
 
                             self.prime_caches_queue.op_completed(());
                             if cancelled {
@@ -360,7 +370,13 @@ impl GlobalState {
                         }
                     };
 
-                    self.report_progress("Indexing", state, message, Some(fraction), None);
+                    self.report_progress(
+                        title,
+                        state,
+                        message,
+                        Some(fraction),
+                        Some("rustAnalyzer/cachePriming".to_owned()),
+                    );
                 }
             }
             Event::Vfs(message) => {
@@ -408,7 +424,10 @@ impl GlobalState {
         if self.is_quiescent() {
             let became_quiescent = !was_quiescent;
             if became_quiescent {
-                if self.config.check_on_save(None) {
+                if self.config.check_on_save(None)
+                    && self.config.flycheck_workspace(None)
+                    && !self.fetch_build_data_queue.op_requested()
+                {
                     // Project has loaded properly, kick off initial flycheck
                     self.flycheck.iter().for_each(|flycheck| flycheck.restart_workspace(None));
                 }
@@ -656,8 +675,8 @@ impl GlobalState {
 
     fn update_status_or_notify(&mut self) {
         let status = self.current_status();
-        if self.last_reported_status.as_ref() != Some(&status) {
-            self.last_reported_status = Some(status.clone());
+        if self.last_reported_status != status {
+            self.last_reported_status = status.clone();
 
             if self.config.server_status_notification() {
                 self.send_notification::<lsp_ext::ServerStatusNotification>(status);
@@ -715,6 +734,7 @@ impl GlobalState {
                             error!("FetchWorkspaceError: {e}");
                         }
                         self.wants_to_switch = Some("fetched workspace".to_owned());
+                        self.diagnostics.clear_check_all();
                         (Progress::End, None)
                     }
                 };
@@ -740,7 +760,8 @@ impl GlobalState {
                             DiscoverProjectParam::Path(it) => DiscoverArgument::Path(it),
                         };
 
-                        let handle = discover.spawn(arg).unwrap();
+                        let handle =
+                            discover.spawn(arg, &std::env::current_dir().unwrap()).unwrap();
                         self.discover_handle = Some(handle);
                     }
                 }
@@ -956,7 +977,7 @@ impl GlobalState {
 
     fn handle_flycheck_msg(&mut self, message: FlycheckMessage) {
         match message {
-            FlycheckMessage::AddDiagnostic { id, workspace_root, diagnostic } => {
+            FlycheckMessage::AddDiagnostic { id, workspace_root, diagnostic, package_id } => {
                 let snap = self.snapshot();
                 let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
                     &self.config.diagnostics_map(None),
@@ -968,6 +989,7 @@ impl GlobalState {
                     match url_to_file_id(&self.vfs.read().0, &diag.url) {
                         Ok(file_id) => self.diagnostics.add_check_diagnostic(
                             id,
+                            &package_id,
                             file_id,
                             diag.diagnostic,
                             diag.fix,
@@ -981,9 +1003,12 @@ impl GlobalState {
                     };
                 }
             }
-
-            FlycheckMessage::ClearDiagnostics { id } => self.diagnostics.clear_check(id),
-
+            FlycheckMessage::ClearDiagnostics { id, package_id: None } => {
+                self.diagnostics.clear_check(id)
+            }
+            FlycheckMessage::ClearDiagnostics { id, package_id: Some(package_id) } => {
+                self.diagnostics.clear_check_for_package(id, package_id)
+            }
             FlycheckMessage::Progress { id, progress } => {
                 let (state, message) = match progress {
                     flycheck::Progress::DidStart => (Progress::Begin, None),
@@ -1090,12 +1115,12 @@ impl GlobalState {
             .on_latency_sensitive::<NO_RETRY, lsp_request::SemanticTokensRangeRequest>(handlers::handle_semantic_tokens_range)
             // FIXME: Some of these NO_RETRY could be retries if the file they are interested didn't change.
             // All other request handlers
-            .on_with::<lsp_request::DocumentDiagnosticRequest>(handlers::handle_document_diagnostics, || lsp_types::DocumentDiagnosticReportResult::Report(
+            .on_with_vfs_default::<lsp_request::DocumentDiagnosticRequest>(handlers::handle_document_diagnostics, || lsp_types::DocumentDiagnosticReportResult::Report(
                 lsp_types::DocumentDiagnosticReport::Full(
                     lsp_types::RelatedFullDocumentDiagnosticReport {
                         related_documents: None,
                         full_document_diagnostic_report: lsp_types::FullDocumentDiagnosticReport {
-                            result_id: None,
+                            result_id: Some("rust-analyzer".to_owned()),
                             items: vec![],
                         },
                     },
@@ -1136,7 +1161,7 @@ impl GlobalState {
             .on::<RETRY, lsp_ext::WorkspaceSymbol>(handlers::handle_workspace_symbol)
             .on::<NO_RETRY, lsp_ext::Ssr>(handlers::handle_ssr)
             .on::<NO_RETRY, lsp_ext::ViewRecursiveMemoryLayout>(handlers::handle_view_recursive_memory_layout)
-            .on::<NO_RETRY, lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)
+            .on::<NO_RETRY, lsp_ext::ViewSyntaxTree>(handlers::handle_view_syntax_tree)
             .on::<NO_RETRY, lsp_ext::ViewHir>(handlers::handle_view_hir)
             .on::<NO_RETRY, lsp_ext::ViewMir>(handlers::handle_view_mir)
             .on::<NO_RETRY, lsp_ext::InterpretFunction>(handlers::handle_interpret_function)

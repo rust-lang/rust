@@ -18,6 +18,7 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
         return;
     }
     match layout.variants {
+        Variants::Empty => unreachable!("we already handled uninhabited types"),
         Variants::Single { index } => {
             assert_eq!(index, variant_index);
         }
@@ -85,6 +86,7 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
     }
 
     let (tag_scalar, tag_field, tag_encoding) = match &layout.variants {
+        Variants::Empty => unreachable!("we already handled uninhabited types"),
         Variants::Single { index } => {
             let discr_val = layout
                 .ty

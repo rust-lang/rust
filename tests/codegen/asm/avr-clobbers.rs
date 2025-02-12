@@ -1,18 +1,14 @@
+//@ add-core-stubs
 //@ assembly-output: emit-asm
 //@ compile-flags: --target avr-unknown-gnu-atmega328
 //@ needs-llvm-components: avr
 
 #![crate_type = "rlib"]
-#![feature(no_core, rustc_attrs, lang_items, asm_experimental_arch)]
+#![feature(no_core, asm_experimental_arch)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
+extern crate minicore;
+use minicore::*;
 
 // CHECK-LABEL: @sreg_is_clobbered
 // CHECK: void asm sideeffect "", "~{sreg}"()

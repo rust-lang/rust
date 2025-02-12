@@ -1,5 +1,6 @@
 // Test that loads into registers x16..=x31 are never generated for riscv32{e,em,emc} targets
 //
+//@ add-core-stubs
 //@ build-fail
 //@ revisions: riscv32e riscv32em riscv32emc riscv32e_llvm_18 riscv32em_llvm_18 riscv32emc_llvm_18
 //
@@ -27,15 +28,10 @@
 // usage in assembly code.
 
 #![no_core]
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 // Verify registers x1..=x15 are addressable on riscv32e, but registers x16..=x31 are not
 #[no_mangle]

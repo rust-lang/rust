@@ -1,5 +1,4 @@
-use crate::io;
-use crate::pipe::{PipeReader, PipeWriter};
+use crate::io::{self, PipeReader, PipeWriter};
 use crate::process::Stdio;
 pub use crate::sys::pipe::AnonPipe;
 

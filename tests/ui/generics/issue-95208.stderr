@@ -6,8 +6,9 @@ LL | impl<T> Struct<T> where T:: std::fmt::Display {
    |
 help: use single colon
    |
-LL | impl<T> Struct<T> where T: std::fmt::Display {
-   |                          ~
+LL - impl<T> Struct<T> where T:: std::fmt::Display {
+LL + impl<T> Struct<T> where T: std::fmt::Display {
+   |
 
 error: aborting due to 1 previous error
 

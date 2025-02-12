@@ -19,7 +19,8 @@
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
 use std::borrow::Cow;
-use std::{cmp, fmt, mem};
+use std::sync::Arc;
+use std::{cmp, fmt};
 
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
@@ -27,12 +28,11 @@ pub use rustc_ast_ir::{Movability, Mutability, Pinnedness};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 pub use rustc_span::AttrId;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 pub use crate::format::*;
@@ -100,7 +100,7 @@ pub struct Path {
 impl PartialEq<Symbol> for Path {
     #[inline]
     fn eq(&self, symbol: &Symbol) -> bool {
-        self.segments.len() == 1 && { self.segments[0].ident.name == *symbol }
+        matches!(&self.segments[..], [segment] if segment.ident.name == *symbol)
     }
 }
 
@@ -121,13 +121,13 @@ impl Path {
     }
 
     pub fn is_global(&self) -> bool {
-        !self.segments.is_empty() && self.segments[0].ident.name == kw::PathRoot
+        self.segments.first().is_some_and(|segment| segment.ident.name == kw::PathRoot)
     }
 
     /// If this path is a single identifier with no arguments, does not ensure
     /// that the path resolves to a const param, the caller should check this.
     pub fn is_potential_trivial_const_arg(&self) -> bool {
-        self.segments.len() == 1 && self.segments[0].args.is_none()
+        matches!(self.segments[..], [PathSegment { args: None, .. }])
     }
 }
 
@@ -242,15 +242,15 @@ impl AngleBracketedArg {
     }
 }
 
-impl Into<P<GenericArgs>> for AngleBracketedArgs {
-    fn into(self) -> P<GenericArgs> {
-        P(GenericArgs::AngleBracketed(self))
+impl From<AngleBracketedArgs> for P<GenericArgs> {
+    fn from(val: AngleBracketedArgs) -> Self {
+        P(GenericArgs::AngleBracketed(val))
     }
 }
 
-impl Into<P<GenericArgs>> for ParenthesizedArgs {
-    fn into(self) -> P<GenericArgs> {
-        P(GenericArgs::Parenthesized(self))
+impl From<ParenthesizedArgs> for P<GenericArgs> {
+    fn from(val: ParenthesizedArgs) -> Self {
+        P(GenericArgs::Parenthesized(val))
     }
 }
 
@@ -288,6 +288,7 @@ impl ParenthesizedArgs {
     }
 }
 
+use crate::AstDeref;
 pub use crate::node_id::{CRATE_NODE_ID, DUMMY_NODE_ID, NodeId};
 
 /// Modifiers on a trait bound like `~const`, `?` and `!`.
@@ -388,22 +389,15 @@ impl GenericParam {
 
 /// Represents lifetime, type and const parameters attached to a declaration of
 /// a function, enum, trait, etc.
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, Default)]
 pub struct Generics {
     pub params: ThinVec<GenericParam>,
     pub where_clause: WhereClause,
     pub span: Span,
 }
 
-impl Default for Generics {
-    /// Creates an instance of `Generics`.
-    fn default() -> Generics {
-        Generics { params: ThinVec::new(), where_clause: Default::default(), span: DUMMY_SP }
-    }
-}
-
 /// A where-clause in a definition.
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, Default)]
 pub struct WhereClause {
     /// `true` if we ate a `where` token.
     ///
@@ -417,12 +411,6 @@ pub struct WhereClause {
 impl WhereClause {
     pub fn is_empty(&self) -> bool {
         !self.has_where_token && self.predicates.is_empty()
-    }
-}
-
-impl Default for WhereClause {
-    fn default() -> WhereClause {
-        WhereClause { has_where_token: false, predicates: ThinVec::new(), span: DUMMY_SP }
     }
 }
 
@@ -637,7 +625,7 @@ impl Pat {
             PatKind::Wild
             | PatKind::Rest
             | PatKind::Never
-            | PatKind::Lit(_)
+            | PatKind::Expr(_)
             | PatKind::Range(..)
             | PatKind::Ident(..)
             | PatKind::Path(..)
@@ -815,8 +803,8 @@ pub enum PatKind {
     /// A reference pattern (e.g., `&mut (a, b)`).
     Ref(P<Pat>, Mutability),
 
-    /// A literal.
-    Lit(P<Expr>),
+    /// A literal, const block or path.
+    Expr(P<Expr>),
 
     /// A range pattern (e.g., `1...2`, `1..2`, `1..`, `..2`, `1..=2`, `..=2`).
     Range(Option<P<Expr>>, Option<P<Expr>>, Spanned<RangeEnd>),
@@ -859,6 +847,8 @@ pub enum PatKind {
 pub enum PatFieldsRest {
     /// `module::StructName { field, ..}`
     Rest,
+    /// `module::StructName { field, syntax error }`
+    Recovered(ErrorGuaranteed),
     /// `module::StructName { field }`
     None,
 }
@@ -1321,11 +1311,15 @@ impl Expr {
     }
 
     pub fn precedence(&self) -> ExprPrecedence {
-        match self.kind {
-            ExprKind::Closure(..) => ExprPrecedence::Closure,
+        match &self.kind {
+            ExprKind::Closure(closure) => {
+                match closure.fn_decl.output {
+                    FnRetTy::Default(_) => ExprPrecedence::Jump,
+                    FnRetTy::Ty(_) => ExprPrecedence::Unambiguous,
+                }
+            }
 
             ExprKind::Break(..)
-            | ExprKind::Continue(..)
             | ExprKind::Ret(..)
             | ExprKind::Yield(..)
             | ExprKind::Yeet(..)
@@ -1359,6 +1353,7 @@ impl Expr {
             | ExprKind::Block(..)
             | ExprKind::Call(..)
             | ExprKind::ConstBlock(_)
+            | ExprKind::Continue(..)
             | ExprKind::Field(..)
             | ExprKind::ForLoop { .. }
             | ExprKind::FormatArgs(..)
@@ -1616,7 +1611,7 @@ pub enum ExprKind {
     /// Added for optimization purposes to avoid the need to escape
     /// large binary blobs - should always behave like [`ExprKind::Lit`]
     /// with a `ByteStr` literal.
-    IncludedBytes(Lrc<[u8]>),
+    IncludedBytes(Arc<[u8]>),
 
     /// A `format_args!()` expression.
     FormatArgs(P<FormatArgs>),
@@ -1662,7 +1657,7 @@ impl GenBlockKind {
 }
 
 /// Whether we're unwrapping or wrapping an unsafe binder
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum UnsafeBinderCastKind {
     // e.g. `&i32` -> `unsafe<'a> &'a i32`
@@ -1758,45 +1753,8 @@ pub enum AttrArgs {
     Eq {
         /// Span of the `=` token.
         eq_span: Span,
-
-        value: AttrArgsEq,
+        expr: P<Expr>,
     },
-}
-
-// The RHS of an `AttrArgs::Eq` starts out as an expression. Once macro
-// expansion is completed, all cases end up either as a meta item literal,
-// which is the form used after lowering to HIR, or as an error.
-#[derive(Clone, Encodable, Decodable, Debug)]
-pub enum AttrArgsEq {
-    Ast(P<Expr>),
-    Hir(MetaItemLit),
-}
-
-impl AttrArgsEq {
-    pub fn span(&self) -> Span {
-        match self {
-            AttrArgsEq::Ast(p) => p.span,
-            AttrArgsEq::Hir(lit) => lit.span,
-        }
-    }
-
-    pub fn unwrap_ast(&self) -> &Expr {
-        match self {
-            AttrArgsEq::Ast(p) => p,
-            AttrArgsEq::Hir(lit) => {
-                unreachable!("in literal form when getting inner tokens: {lit:?}")
-            }
-        }
-    }
-
-    pub fn unwrap_ast_mut(&mut self) -> &mut P<Expr> {
-        match self {
-            AttrArgsEq::Ast(p) => p,
-            AttrArgsEq::Hir(lit) => {
-                unreachable!("in literal form when getting inner tokens: {lit:?}")
-            }
-        }
-    }
 }
 
 impl AttrArgs {
@@ -1804,7 +1762,7 @@ impl AttrArgs {
         match self {
             AttrArgs::Empty => None,
             AttrArgs::Delimited(args) => Some(args.dspan.entire()),
-            AttrArgs::Eq { eq_span, value } => Some(eq_span.to(value.span())),
+            AttrArgs::Eq { eq_span, expr } => Some(eq_span.to(expr.span)),
         }
     }
 
@@ -1814,27 +1772,7 @@ impl AttrArgs {
         match self {
             AttrArgs::Empty => TokenStream::default(),
             AttrArgs::Delimited(args) => args.tokens.clone(),
-            AttrArgs::Eq { value, .. } => TokenStream::from_ast(value.unwrap_ast()),
-        }
-    }
-}
-
-impl<CTX> HashStable<CTX> for AttrArgs
-where
-    CTX: crate::HashStableContext,
-{
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(ctx, hasher);
-        match self {
-            AttrArgs::Empty => {}
-            AttrArgs::Delimited(args) => args.hash_stable(ctx, hasher),
-            AttrArgs::Eq { value: AttrArgsEq::Ast(expr), .. } => {
-                unreachable!("hash_stable {:?}", expr);
-            }
-            AttrArgs::Eq { eq_span, value: AttrArgsEq::Hir(lit) } => {
-                eq_span.hash_stable(ctx, hasher);
-                lit.hash_stable(ctx, hasher);
-            }
+            AttrArgs::Eq { expr, .. } => TokenStream::from_ast(expr),
         }
     }
 }
@@ -1966,9 +1904,9 @@ pub enum LitKind {
     Str(Symbol, StrStyle),
     /// A byte string (`b"foo"`). Not stored as a symbol because it might be
     /// non-utf8, and symbols only allow utf8 strings.
-    ByteStr(Lrc<[u8]>, StrStyle),
+    ByteStr(Arc<[u8]>, StrStyle),
     /// A C String (`c"foo"`). Guaranteed to only have `\0` at the end.
-    CStr(Lrc<[u8]>, StrStyle),
+    CStr(Arc<[u8]>, StrStyle),
     /// A byte char (`b'f'`).
     Byte(u8),
     /// A character literal (`'a'`).
@@ -2229,6 +2167,14 @@ impl Ty {
         }
         final_ty
     }
+
+    pub fn is_maybe_parenthesised_infer(&self) -> bool {
+        match &self.kind {
+            TyKind::Infer => true,
+            TyKind::Paren(inner) => inner.ast_deref().is_maybe_parenthesised_infer(),
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -2333,10 +2279,32 @@ impl TyKind {
 
 /// Syntax used to declare a trait object.
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[repr(u8)]
 pub enum TraitObjectSyntax {
-    Dyn,
-    DynStar,
-    None,
+    // SAFETY: When adding new variants make sure to update the `Tag` impl.
+    Dyn = 0,
+    DynStar = 1,
+    None = 2,
+}
+
+/// SAFETY: `TraitObjectSyntax` only has 3 data-less variants which means
+/// it can be represented with a `u2`. We use `repr(u8)` to guarantee the
+/// discriminants of the variants are no greater than `3`.
+unsafe impl Tag for TraitObjectSyntax {
+    const BITS: u32 = 2;
+
+    fn into_usize(self) -> usize {
+        self as u8 as usize
+    }
+
+    unsafe fn from_usize(tag: usize) -> Self {
+        match tag {
+            0 => TraitObjectSyntax::Dyn,
+            1 => TraitObjectSyntax::DynStar,
+            2 => TraitObjectSyntax::None,
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -3051,7 +3019,7 @@ impl NormalAttr {
     }
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub struct AttrItem {
     pub unsafety: Safety,
     pub path: Path,
@@ -3257,7 +3225,7 @@ pub enum Extern {
     ///
     /// E.g. `extern fn foo() {}`.
     ///
-    /// This is just `extern "C"` (see `rustc_target::spec::abi::Abi::FALLBACK`).
+    /// This is just `extern "C"` (see `rustc_abi::ExternAbi::FALLBACK`).
     Implicit(Span),
     /// An explicit extern keyword was used with an explicit ABI.
     ///
@@ -3380,11 +3348,18 @@ pub struct Impl {
     pub items: ThinVec<P<AssocItem>>,
 }
 
+#[derive(Clone, Encodable, Decodable, Debug, Default)]
+pub struct FnContract {
+    pub requires: Option<P<Expr>>,
+    pub ensures: Option<P<Expr>>,
+}
+
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Fn {
     pub defaultness: Defaultness,
     pub generics: Generics,
     pub sig: FnSig,
+    pub contract: Option<P<FnContract>>,
     pub body: Option<P<Block>>,
 }
 
@@ -3682,7 +3657,7 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 160);
+    static_assert_size!(Fn, 168);
     static_assert_size!(ForeignItem, 88);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);

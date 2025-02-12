@@ -14,10 +14,11 @@
 //! ownership of the original.
 
 use std::borrow::Cow;
+use std::sync::Arc;
 use std::{cmp, fmt, iter};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{self, Lrc};
+use rustc_data_structures::sync;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
@@ -99,7 +100,7 @@ where
     CTX: crate::HashStableContext,
 {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        for sub_tt in self.trees() {
+        for sub_tt in self.iter() {
             sub_tt.hash_stable(hcx, hasher);
         }
     }
@@ -119,11 +120,11 @@ impl ToAttrTokenStream for AttrTokenStream {
 /// of an actual `TokenStream` until it is needed.
 /// `Box` is here only to reduce the structure size.
 #[derive(Clone)]
-pub struct LazyAttrTokenStream(Lrc<Box<dyn ToAttrTokenStream>>);
+pub struct LazyAttrTokenStream(Arc<Box<dyn ToAttrTokenStream>>);
 
 impl LazyAttrTokenStream {
     pub fn new(inner: impl ToAttrTokenStream + 'static) -> LazyAttrTokenStream {
-        LazyAttrTokenStream(Lrc::new(Box::new(inner)))
+        LazyAttrTokenStream(Arc::new(Box::new(inner)))
     }
 
     pub fn to_attr_token_stream(&self) -> AttrTokenStream {
@@ -160,7 +161,7 @@ impl<CTX> HashStable<CTX> for LazyAttrTokenStream {
 /// during expansion to perform early cfg-expansion, and to process attributes
 /// during proc-macro invocations.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
-pub struct AttrTokenStream(pub Lrc<Vec<AttrTokenTree>>);
+pub struct AttrTokenStream(pub Arc<Vec<AttrTokenTree>>);
 
 /// Like `TokenTree`, but for `AttrTokenStream`.
 #[derive(Clone, Debug, Encodable, Decodable)]
@@ -175,7 +176,7 @@ pub enum AttrTokenTree {
 
 impl AttrTokenStream {
     pub fn new(tokens: Vec<AttrTokenTree>) -> AttrTokenStream {
-        AttrTokenStream(Lrc::new(tokens))
+        AttrTokenStream(Arc::new(tokens))
     }
 
     /// Converts this `AttrTokenStream` to a plain `Vec<TokenTree>`. During
@@ -293,7 +294,7 @@ pub struct AttrsTarget {
 /// Today's `TokenTree`s can still contain AST via `token::Interpolated` for
 /// backwards compatibility.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
-pub struct TokenStream(pub(crate) Lrc<Vec<TokenTree>>);
+pub struct TokenStream(pub(crate) Arc<Vec<TokenTree>>);
 
 /// Indicates whether a token can join with the following token to form a
 /// compound token. Used for conversions to `proc_macro::Spacing`. Also used to
@@ -406,13 +407,13 @@ impl Eq for TokenStream {}
 
 impl PartialEq<TokenStream> for TokenStream {
     fn eq(&self, other: &TokenStream) -> bool {
-        self.trees().eq(other.trees())
+        self.iter().eq(other.iter())
     }
 }
 
 impl TokenStream {
     pub fn new(tts: Vec<TokenTree>) -> TokenStream {
-        TokenStream(Lrc::new(tts))
+        TokenStream(Arc::new(tts))
     }
 
     pub fn is_empty(&self) -> bool {
@@ -423,24 +424,24 @@ impl TokenStream {
         self.0.len()
     }
 
-    pub fn trees(&self) -> RefTokenTreeCursor<'_> {
-        RefTokenTreeCursor::new(self)
+    pub fn get(&self, index: usize) -> Option<&TokenTree> {
+        self.0.get(index)
     }
 
-    pub fn into_trees(self) -> TokenTreeCursor {
-        TokenTreeCursor::new(self)
+    pub fn iter(&self) -> TokenStreamIter<'_> {
+        TokenStreamIter::new(self)
     }
 
     /// Compares two `TokenStream`s, checking equality without regarding span information.
     pub fn eq_unspanned(&self, other: &TokenStream) -> bool {
-        let mut t1 = self.trees();
-        let mut t2 = other.trees();
-        for (t1, t2) in iter::zip(&mut t1, &mut t2) {
-            if !t1.eq_unspanned(t2) {
+        let mut iter1 = self.iter();
+        let mut iter2 = other.iter();
+        for (tt1, tt2) in iter::zip(&mut iter1, &mut iter2) {
+            if !tt1.eq_unspanned(tt2) {
                 return false;
             }
         }
-        t1.next().is_none() && t2.next().is_none()
+        iter1.next().is_none() && iter2.next().is_none()
     }
 
     /// Create a token stream containing a single token with alone spacing. The
@@ -509,7 +510,7 @@ impl TokenStream {
     #[must_use]
     pub fn flattened(&self) -> TokenStream {
         fn can_skip(stream: &TokenStream) -> bool {
-            stream.trees().all(|tree| match tree {
+            stream.iter().all(|tree| match tree {
                 TokenTree::Token(token, _) => !matches!(
                     token.kind,
                     token::NtIdent(..) | token::NtLifetime(..) | token::Interpolated(..)
@@ -522,7 +523,7 @@ impl TokenStream {
             return self.clone();
         }
 
-        self.trees().map(|tree| TokenStream::flatten_token_tree(tree)).collect()
+        self.iter().map(|tree| TokenStream::flatten_token_tree(tree)).collect()
     }
 
     // If `vec` is not empty, try to glue `tt` onto its last token. The return
@@ -544,7 +545,7 @@ impl TokenStream {
     /// Push `tt` onto the end of the stream, possibly gluing it to the last
     /// token. Uses `make_mut` to maximize efficiency.
     pub fn push_tree(&mut self, tt: TokenTree) {
-        let vec_mut = Lrc::make_mut(&mut self.0);
+        let vec_mut = Arc::make_mut(&mut self.0);
 
         if Self::try_glue_to_last(vec_mut, &tt) {
             // nothing else to do
@@ -557,7 +558,7 @@ impl TokenStream {
     /// token tree to the last token. (No other token trees will be glued.)
     /// Uses `make_mut` to maximize efficiency.
     pub fn push_stream(&mut self, stream: TokenStream) {
-        let vec_mut = Lrc::make_mut(&mut self.0);
+        let vec_mut = Arc::make_mut(&mut self.0);
 
         let stream_iter = stream.0.iter().cloned();
 
@@ -577,7 +578,7 @@ impl TokenStream {
     }
 
     /// Desugar doc comments like `/// foo` in the stream into `#[doc =
-    /// r"foo"]`. Modifies the `TokenStream` via `Lrc::make_mut`, but as little
+    /// r"foo"]`. Modifies the `TokenStream` via `Arc::make_mut`, but as little
     /// as possible.
     pub fn desugar_doc_comments(&mut self) {
         if let Some(desugared_stream) = desugar_inner(self.clone()) {
@@ -596,7 +597,7 @@ impl TokenStream {
                     ) => {
                         let desugared = desugared_tts(attr_style, data, span);
                         let desugared_len = desugared.len();
-                        Lrc::make_mut(&mut stream.0).splice(i..i + 1, desugared);
+                        Arc::make_mut(&mut stream.0).splice(i..i + 1, desugared);
                         modified = true;
                         i += desugared_len;
                     }
@@ -607,7 +608,7 @@ impl TokenStream {
                         if let Some(desugared_delim_stream) = desugar_inner(delim_stream.clone()) {
                             let new_tt =
                                 TokenTree::Delimited(sp, spacing, delim, desugared_delim_stream);
-                            Lrc::make_mut(&mut stream.0)[i] = new_tt;
+                            Arc::make_mut(&mut stream.0)[i] = new_tt;
                             modified = true;
                         }
                         i += 1;
@@ -665,25 +666,26 @@ impl TokenStream {
     }
 }
 
-/// By-reference iterator over a [`TokenStream`], that produces `&TokenTree`
-/// items.
 #[derive(Clone)]
-pub struct RefTokenTreeCursor<'t> {
+pub struct TokenStreamIter<'t> {
     stream: &'t TokenStream,
     index: usize,
 }
 
-impl<'t> RefTokenTreeCursor<'t> {
+impl<'t> TokenStreamIter<'t> {
     fn new(stream: &'t TokenStream) -> Self {
-        RefTokenTreeCursor { stream, index: 0 }
+        TokenStreamIter { stream, index: 0 }
     }
 
-    pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
-        self.stream.0.get(self.index + n)
+    // Peeking could be done via `Peekable`, but most iterators need peeking,
+    // and this is simple and avoids the need to use `peekable` and `Peekable`
+    // at all the use sites.
+    pub fn peek(&self) -> Option<&'t TokenTree> {
+        self.stream.0.get(self.index)
     }
 }
 
-impl<'t> Iterator for RefTokenTreeCursor<'t> {
+impl<'t> Iterator for TokenStreamIter<'t> {
     type Item = &'t TokenTree;
 
     fn next(&mut self) -> Option<&'t TokenTree> {
@@ -691,39 +693,6 @@ impl<'t> Iterator for RefTokenTreeCursor<'t> {
             self.index += 1;
             tree
         })
-    }
-}
-
-/// Owning by-value iterator over a [`TokenStream`], that produces `&TokenTree`
-/// items.
-///
-/// Doesn't impl `Iterator` because Rust doesn't permit an owning iterator to
-/// return `&T` from `next`; the need for an explicit lifetime in the `Item`
-/// associated type gets in the way. Instead, use `next_ref` (which doesn't
-/// involve associated types) for getting individual elements, or
-/// `RefTokenTreeCursor` if you really want an `Iterator`, e.g. in a `for`
-/// loop.
-#[derive(Clone, Debug)]
-pub struct TokenTreeCursor {
-    pub stream: TokenStream,
-    index: usize,
-}
-
-impl TokenTreeCursor {
-    fn new(stream: TokenStream) -> Self {
-        TokenTreeCursor { stream, index: 0 }
-    }
-
-    #[inline]
-    pub fn next_ref(&mut self) -> Option<&TokenTree> {
-        self.stream.0.get(self.index).map(|tree| {
-            self.index += 1;
-            tree
-        })
-    }
-
-    pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
-        self.stream.0.get(self.index + n)
     }
 }
 

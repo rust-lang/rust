@@ -1,8 +1,7 @@
+use rustc_errors::DiagArgFromDisplay;
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, DiagArgFromDisplay, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(ast_lowering_generic_type_with_parentheses, code = E0214)]
@@ -33,8 +32,6 @@ pub(crate) struct InvalidAbi {
     pub abi: Symbol,
     pub command: String,
     #[subdiagnostic]
-    pub explain: Option<InvalidAbiReason>,
-    #[subdiagnostic]
     pub suggestion: Option<InvalidAbiSuggestion>,
 }
 
@@ -44,19 +41,6 @@ pub(crate) struct TupleStructWithDefault {
     #[primary_span]
     #[label]
     pub span: Span,
-}
-
-pub(crate) struct InvalidAbiReason(pub &'static str);
-
-impl Subdiagnostic for InvalidAbiReason {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _: &F,
-    ) {
-        #[allow(rustc::untranslatable_diagnostic)]
-        diag.note(self.0);
-    }
 }
 
 #[derive(Subdiagnostic)]
@@ -213,12 +197,13 @@ pub(crate) struct InvalidRegister<'a> {
 }
 
 #[derive(Diagnostic)]
+#[note]
 #[diag(ast_lowering_invalid_register_class)]
-pub(crate) struct InvalidRegisterClass<'a> {
+pub(crate) struct InvalidRegisterClass {
     #[primary_span]
     pub op_span: Span,
     pub reg_class: Symbol,
-    pub error: &'a str,
+    pub supported_register_classes: String,
 }
 
 #[derive(Diagnostic)]

@@ -8,7 +8,7 @@
 //!
 //! Currently uses a combination of HTML parsing to
 //! extract the `href` and `id` attributes,
-//! and regex search on the orignal markdown to handle intra-doc links.
+//! and regex search on the original markdown to handle intra-doc links.
 //!
 //! These values are then translated to file URLs if possible and then the
 //! destination is asserted to exist.
@@ -50,6 +50,29 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
     ("alloc/slice/trait.Concat.html", &["#method.concat"]),
     ("alloc/slice/index.html", &["#method.concat", "#method.join"]),
     ("alloc/vec/struct.Vec.html", &["#method.sort_by_key", "#method.sort_by_cached_key"]),
+    ("alloc/bstr/struct.ByteStr.html", &[
+        "#method.to_ascii_uppercase",
+        "#method.to_ascii_lowercase",
+        "core/slice::sort_by_key",
+        "core\\slice::sort_by_key",
+        "#method.sort_by_cached_key",
+        "#method.sort_by_key"
+    ]),
+    ("alloc/bstr/struct.ByteString.html", &[
+        "#method.to_ascii_uppercase",
+        "#method.to_ascii_lowercase",
+        "core/slice::sort_by_key",
+        "core\\slice::sort_by_key",
+        "#method.sort_by_cached_key",
+        "#method.sort_by_key"
+    ]),
+    ("core/bstr/struct.ByteStr.html", &[
+        "#method.to_ascii_uppercase",
+        "#method.to_ascii_lowercase",
+        "core/bstr/slice::sort_by_key",
+        "core\\bstr\\slice::sort_by_key",
+        "#method.sort_by_cached_key"
+    ]),
     ("core/primitive.str.html", &["#method.to_ascii_uppercase", "#method.to_ascii_lowercase"]),
     ("core/primitive.slice.html", &["#method.to_ascii_uppercase", "#method.to_ascii_lowercase",
                                     "core/slice::sort_by_key", "core\\slice::sort_by_key",

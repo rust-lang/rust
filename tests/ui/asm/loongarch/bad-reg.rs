@@ -7,7 +7,7 @@
 //@[loongarch64_lp64s] needs-llvm-components: loongarch
 
 #![crate_type = "lib"]
-#![feature(no_core, rustc_attrs)]
+#![feature(no_core)]
 #![no_core]
 
 extern crate minicore;

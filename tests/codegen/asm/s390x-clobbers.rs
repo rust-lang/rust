@@ -1,18 +1,14 @@
+//@ add-core-stubs
 //@ revisions: s390x
 //@[s390x] compile-flags: --target s390x-unknown-linux-gnu
 //@[s390x] needs-llvm-components: systemz
 
 #![crate_type = "rlib"]
-#![feature(no_core, rustc_attrs, lang_items)]
+#![feature(no_core)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
+extern crate minicore;
+use minicore::*;
 
 // CHECK-LABEL: @cc_clobber
 // CHECK: call void asm sideeffect "", "~{cc}"()

@@ -44,7 +44,7 @@ fn std::ptr::drop_in_place(_1: *mut [String]) -> () {
     }
 
     bb7: {
-        _2 = Len((*_1));
+        _2 = PtrMetadata(copy _1);
         _3 = const 0_usize;
         goto -> bb6;
     }

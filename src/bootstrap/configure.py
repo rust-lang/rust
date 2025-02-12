@@ -246,6 +246,11 @@ v(
     "mips64el-unknown-linux-muslabi64 install directory",
 )
 v(
+    "musl-root-powerpc64le",
+    "target.powerpc64le-unknown-linux-musl.musl-root",
+    "powerpc64le-unknown-linux-musl install directory",
+)
+v(
     "musl-root-riscv32gc",
     "target.riscv32gc-unknown-linux-musl.musl-root",
     "riscv32gc-unknown-linux-musl install directory",

@@ -118,7 +118,16 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `hvx-length128b`
 `hwdiv`
 `i8mm`
+`isa-68000`
+`isa-68010`
+`isa-68020`
+`isa-68030`
+`isa-68040`
+`isa-68060`
+`isa-68881`
+`isa-68882`
 `jsconv`
+`kl`
 `lahfsahf`
 `lasx`
 `lbt`
@@ -194,6 +203,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `sme-lutv2`
 `sme2`
 `sme2p1`
+`soft-float`
 `spe`
 `ssbs`
 `sse`
@@ -262,6 +272,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `vsx`
 `wfxt`
 `wide-arithmetic`
+`widekl`
 `x87`
 `xop`
 `xsave`

@@ -7,15 +7,14 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer;
-use rustc_infer::traits::{self, Obligation, ObligationCause, ObligationCauseCode};
+use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::{Ident, sym};
+use rustc_span::{Ident, Span, sym};
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -50,7 +49,7 @@ pub(crate) fn check_legal_trait_for_method_call(
         };
         return Err(tcx.dcx().emit_err(errors::ExplicitDestructorCall { span, sugg }));
     }
-    tcx.ensure().coherent_trait(trait_id)
+    tcx.ensure_ok().coherent_trait(trait_id)
 }
 
 #[derive(Debug)]
@@ -154,13 +153,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     closure_sig,
                 );
                 let adjustments = self.adjust_steps(autoderef);
-                self.record_deferred_call_resolution(def_id, DeferredCallResolution {
-                    call_expr,
-                    callee_expr,
-                    closure_ty: adjusted_ty,
-                    adjustments,
-                    fn_sig: closure_sig,
-                });
+                self.record_deferred_call_resolution(
+                    def_id,
+                    DeferredCallResolution {
+                        call_expr,
+                        callee_expr,
+                        closure_ty: adjusted_ty,
+                        adjustments,
+                        fn_sig: closure_sig,
+                    },
+                );
                 return Some(CallStep::DeferredClosure(def_id, closure_sig));
             }
 
@@ -197,13 +199,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     coroutine_closure_sig.abi,
                 );
                 let adjustments = self.adjust_steps(autoderef);
-                self.record_deferred_call_resolution(def_id, DeferredCallResolution {
-                    call_expr,
-                    callee_expr,
-                    closure_ty: adjusted_ty,
-                    adjustments,
-                    fn_sig: call_sig,
-                });
+                self.record_deferred_call_resolution(
+                    def_id,
+                    DeferredCallResolution {
+                        call_expr,
+                        callee_expr,
+                        closure_ty: adjusted_ty,
+                        adjustments,
+                        fn_sig: call_sig,
+                    },
+                );
                 return Some(CallStep::DeferredClosure(def_id, call_sig));
             }
 
@@ -513,7 +518,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.register_bound(
                     ty,
                     self.tcx.require_lang_item(hir::LangItem::Tuple, Some(sp)),
-                    traits::ObligationCause::new(sp, self.body_id, ObligationCauseCode::RustCall),
+                    self.cause(sp, ObligationCauseCode::RustCall),
                 );
                 self.require_type_is_sized(ty, sp, ObligationCauseCode::RustCall);
             } else {
@@ -706,7 +711,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for id in self.tcx.hir().items() {
                 if let Some(node) = self.tcx.hir().get_if_local(id.owner_id.into())
                     && let hir::Node::Item(item) = node
-                    && let hir::ItemKind::Fn(..) = item.kind
+                    && let hir::ItemKind::Fn { .. } = item.kind
                     && item.ident.name == segment.ident.name
                 {
                     err.span_label(

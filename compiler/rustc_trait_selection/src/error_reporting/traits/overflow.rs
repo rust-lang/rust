@@ -1,8 +1,6 @@
 use std::fmt;
 
-use rustc_errors::{
-    Diag, E0275, EmissionGuarantee, ErrorGuaranteed, FatalError, struct_span_code_err,
-};
+use rustc_errors::{Diag, E0275, EmissionGuarantee, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_infer::traits::{Obligation, PredicateObligation};
@@ -52,8 +50,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> ! {
         let mut err = self.build_overflow_error(cause, span, suggest_increasing_limit);
         mutate(&mut err);
-        err.emit();
-        FatalError.raise();
+        err.emit().raise_fatal();
     }
 
     pub fn build_overflow_error(
@@ -144,7 +141,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             obligation.cause.span,
             suggest_increasing_limit,
             |err| {
-                let mut long_ty_file = None;
                 self.note_obligation_cause_code(
                     obligation.cause.body_id,
                     err,
@@ -153,17 +149,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     obligation.cause.code(),
                     &mut vec![],
                     &mut Default::default(),
-                    &mut long_ty_file,
                 );
-                if let Some(file) = long_ty_file {
-                    err.note(format!(
-                        "the full name for the type has been written to '{}'",
-                        file.display(),
-                    ));
-                    err.note(
-                        "consider using `--verbose` to print the full type name to the console",
-                    );
-                }
             },
         );
     }
@@ -199,7 +185,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             suggest_increasing_limit,
         );
         self.note_obligation_cause(&mut err, &obligation);
-        self.point_at_returns_when_relevant(&mut err, &obligation);
         err.emit()
     }
 }

@@ -248,8 +248,8 @@ impl Write {
     pub fn new(conf: &'static Conf, format_args: FormatArgsStorage) -> Self {
         Self {
             format_args,
-            allow_print_in_tests: conf.allow_print_in_tests,
             in_debug_impl: false,
+            allow_print_in_tests: conf.allow_print_in_tests,
         }
     }
 }
@@ -522,7 +522,7 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
 
             let replacement = match (format_string_is_raw, replace_raw) {
                 (false, false) => Some(replacement),
-                (false, true) => Some(replacement.replace('"', "\\\"").replace('\\', "\\\\")),
+                (false, true) => Some(replacement.replace('\\', "\\\\").replace('"', "\\\"")),
                 (true, false) => match conservative_unescape(&replacement) {
                     Ok(unescaped) => Some(unescaped),
                     Err(UnescapeErr::Lint) => None,

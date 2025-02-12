@@ -14,7 +14,7 @@ use crate::{DatabaseKeyIndex, QueryDb};
 use indexmap::map::Entry;
 use parking_lot::RwLock;
 use std::iter;
-use tracing::debug;
+use tracing::trace;
 
 /// Input queries store the result plus a list of the other queries
 /// that they invoked. This means we can avoid recomputing them when
@@ -73,11 +73,11 @@ where
             return true;
         };
 
-        debug!("maybe_changed_after(slot={:?}, revision={:?})", Q::default(), revision,);
+        trace!("maybe_changed_after(slot={:?}, revision={:?})", Q::default(), revision,);
 
         let changed_at = slot.stamped_value.read().changed_at;
 
-        debug!("maybe_changed_after: changed_at = {:?}", changed_at);
+        trace!("maybe_changed_after: changed_at = {:?}", changed_at);
 
         changed_at > revision
     }
@@ -140,7 +140,7 @@ where
     Q: Query,
 {
     fn set(&self, runtime: &mut Runtime, key: &Q::Key, value: Q::Value, durability: Durability) {
-        tracing::debug!("{:?}({:?}) = {:?} ({:?})", Q::default(), key, value, durability);
+        tracing::trace!("{:?}({:?}) = {:?} ({:?})", Q::default(), key, value, durability);
 
         // The value is changing, so we need a new revision (*). We also
         // need to update the 'last changed' revision by invoking
@@ -234,14 +234,14 @@ where
     ) -> bool {
         debug_assert!(revision < db.salsa_runtime().current_revision());
 
-        debug!("maybe_changed_after(slot={:?}, revision={:?})", Q::default(), revision,);
+        trace!("maybe_changed_after(slot={:?}, revision={:?})", Q::default(), revision,);
 
         let Some(value) = &*self.slot.stamped_value.read() else {
             return true;
         };
         let changed_at = value.changed_at;
 
-        debug!("maybe_changed_after: changed_at = {:?}", changed_at);
+        trace!("maybe_changed_after: changed_at = {:?}", changed_at);
 
         changed_at > revision
     }
@@ -298,7 +298,7 @@ where
     Q: Query<Key = ()>,
 {
     fn set(&self, runtime: &mut Runtime, (): &Q::Key, value: Q::Value, durability: Durability) {
-        tracing::debug!("{:?} = {:?} ({:?})", Q::default(), value, durability);
+        tracing::trace!("{:?} = {:?} ({:?})", Q::default(), value, durability);
 
         // The value is changing, so we need a new revision (*). We also
         // need to update the 'last changed' revision by invoking

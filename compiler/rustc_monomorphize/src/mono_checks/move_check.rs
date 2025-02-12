@@ -6,9 +6,8 @@ use rustc_middle::mir::{self, Location, traversal};
 use rustc_middle::ty::{self, AssocKind, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_session::Limit;
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
-use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{Ident, sym};
+use rustc_span::{Ident, Span, sym};
 use tracing::{debug, trace};
 
 use crate::errors::LargeAssignmentsLint;
@@ -163,11 +162,12 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
             // but correct span? This would make the lint at least accept crate-level lint attributes.
             return;
         };
-        self.tcx.emit_node_span_lint(LARGE_ASSIGNMENTS, lint_root, span, LargeAssignmentsLint {
+        self.tcx.emit_node_span_lint(
+            LARGE_ASSIGNMENTS,
+            lint_root,
             span,
-            size: too_large_size.bytes(),
-            limit: limit as u64,
-        });
+            LargeAssignmentsLint { span, size: too_large_size.bytes(), limit: limit as u64 },
+        );
         self.move_size_spans.push(span);
     }
 }

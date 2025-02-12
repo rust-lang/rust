@@ -1,4 +1,4 @@
-#![cfg_attr(not(bootstrap), allow(rustc::symbol_intern_string_literal))]
+#![allow(rustc::symbol_intern_string_literal)]
 
 use std::assert_matches::assert_matches;
 use std::io::prelude::*;
@@ -13,20 +13,20 @@ use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{self as ast, PatKind, visit};
 use rustc_ast_pretty::pprust::item_to_string;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::{HumanEmitter, OutputTheme};
 use rustc_errors::{DiagCtxt, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{BytePos, FileName, Pos, Span, create_default_session_globals_then};
+use rustc_span::{
+    BytePos, FileName, Pos, Span, Symbol, create_default_session_globals_then, kw, sym,
+};
 use termcolor::WriteColor;
 
 use crate::parser::{ForceCollect, Parser};
 use crate::{new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
 
 fn psess() -> ParseSess {
-    ParseSess::new(vec![crate::DEFAULT_LOCALE_RESOURCE, crate::DEFAULT_LOCALE_RESOURCE])
+    ParseSess::new(vec![crate::DEFAULT_LOCALE_RESOURCE])
 }
 
 /// Map string to parser (via tts).
@@ -38,13 +38,11 @@ fn string_to_parser(psess: &ParseSess, source_str: String) -> Parser<'_> {
     ))
 }
 
-fn create_test_handler(theme: OutputTheme) -> (DiagCtxt, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
+fn create_test_handler(theme: OutputTheme) -> (DiagCtxt, Arc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
     let output = Arc::new(Mutex::new(Vec::new()));
-    let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-    let fallback_bundle = rustc_errors::fallback_fluent_bundle(
-        vec![crate::DEFAULT_LOCALE_RESOURCE, crate::DEFAULT_LOCALE_RESOURCE],
-        false,
-    );
+    let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
+    let fallback_bundle =
+        rustc_errors::fallback_fluent_bundle(vec![crate::DEFAULT_LOCALE_RESOURCE], false);
     let mut emitter = HumanEmitter::new(Box::new(Shared { data: output.clone() }), fallback_bundle)
         .sm(Some(source_map.clone()))
         .diagnostic_width(Some(140));
@@ -2285,7 +2283,7 @@ fn bad_path_expr_1() {
 fn string_to_tts_macro() {
     create_default_session_globals_then(|| {
         let stream = string_to_stream("macro_rules! zip (($a)=>($a))".to_string());
-        let tts = &stream.trees().collect::<Vec<_>>()[..];
+        let tts = &stream.iter().collect::<Vec<_>>()[..];
 
         match tts {
             [
@@ -2297,14 +2295,14 @@ fn string_to_tts_macro() {
                 TokenTree::Token(Token { kind: token::Ident(name_zip, IdentIsRaw::No), .. }, _),
                 TokenTree::Delimited(.., macro_delim, macro_tts),
             ] if name_macro_rules == &kw::MacroRules && name_zip.as_str() == "zip" => {
-                let tts = &macro_tts.trees().collect::<Vec<_>>();
+                let tts = &macro_tts.iter().collect::<Vec<_>>();
                 match &tts[..] {
                     [
                         TokenTree::Delimited(.., first_delim, first_tts),
                         TokenTree::Token(Token { kind: token::FatArrow, .. }, _),
                         TokenTree::Delimited(.., second_delim, second_tts),
                     ] if macro_delim == &Delimiter::Parenthesis => {
-                        let tts = &first_tts.trees().collect::<Vec<_>>();
+                        let tts = &first_tts.iter().collect::<Vec<_>>();
                         match &tts[..] {
                             [
                                 TokenTree::Token(Token { kind: token::Dollar, .. }, _),
@@ -2316,7 +2314,7 @@ fn string_to_tts_macro() {
                             }
                             _ => panic!("value 3: {:?} {:?}", first_delim, first_tts),
                         }
-                        let tts = &second_tts.trees().collect::<Vec<_>>();
+                        let tts = &second_tts.iter().collect::<Vec<_>>();
                         match &tts[..] {
                             [
                                 TokenTree::Token(Token { kind: token::Dollar, .. }, _),
@@ -2365,8 +2363,7 @@ fn string_to_tts_1() {
                         token::Ident(sym::i32, IdentIsRaw::No),
                         sp(8, 11),
                     ),
-                ])
-                .into(),
+                ]),
             ),
             TokenTree::Delimited(
                 DelimSpan::from_pair(sp(13, 14), sp(18, 19)),
@@ -2382,8 +2379,7 @@ fn string_to_tts_1() {
                     ),
                     // `Alone` because the `;` is followed by whitespace.
                     TokenTree::token_alone(token::Semi, sp(16, 17)),
-                ])
-                .into(),
+                ]),
             ),
         ]);
 
@@ -2544,7 +2540,7 @@ fn ttdelim_span() {
         .unwrap();
 
         let ast::ExprKind::MacCall(mac) = &expr.kind else { panic!("not a macro") };
-        let span = mac.args.tokens.trees().last().unwrap().span();
+        let span = mac.args.tokens.iter().last().unwrap().span();
 
         match psess.source_map().span_to_snippet(span) {
             Ok(s) => assert_eq!(&s[..], "{ body }"),

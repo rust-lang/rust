@@ -1,3 +1,4 @@
+from typing import List
 import re
 
 
@@ -85,12 +86,11 @@ STD_TYPE_TO_REGEX = {
 }
 
 
-def is_tuple_fields(fields):
-    # type: (list) -> bool
+def is_tuple_fields(fields: List) -> bool:
     return all(TUPLE_ITEM_REGEX.match(str(field.name)) for field in fields)
 
 
-def classify_struct(name, fields):
+def classify_struct(name: str, fields: List) -> str:
     if len(fields) == 0:
         return RustType.EMPTY
 
@@ -111,7 +111,7 @@ def classify_struct(name, fields):
     return RustType.STRUCT
 
 
-def classify_union(fields):
+def classify_union(fields: List) -> str:
     if len(fields) == 0:
         return RustType.EMPTY
 

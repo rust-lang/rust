@@ -1,9 +1,8 @@
 // ignore-tidy-linelength
 //@ build-fail
-//@ normalize-stderr-test: "S32" -> "SXX"
-//@ normalize-stderr-test: "S1M" -> "SXX"
-//@ normalize-stderr-32bit: "values of the type `[^`]+` are too big" -> "values of the type $$REALLY_TOO_BIG are too big"
-//@ normalize-stderr-64bit: "values of the type `[^`]+` are too big" -> "values of the type $$REALLY_TOO_BIG are too big"
+//@ normalize-stderr: "S32" -> "SXX"
+//@ normalize-stderr: "S1M" -> "SXX"
+//@ normalize-stderr: "values of the type `[^`]+` are too big" -> "values of the type $$REALLY_TOO_BIG are too big"
 
 struct S32<T> {
     v0: T,

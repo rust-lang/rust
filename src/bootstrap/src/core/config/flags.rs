@@ -6,7 +6,10 @@
 use std::path::{Path, PathBuf};
 
 use clap::{CommandFactory, Parser, ValueEnum};
+#[cfg(feature = "tracing")]
+use tracing::instrument;
 
+use crate::core::build_steps::perf::PerfArgs;
 use crate::core::build_steps::setup::Profile;
 use crate::core::builder::{Builder, Kind};
 use crate::core::config::{Config, TargetSelectionList, target_selection_list};
@@ -211,6 +214,10 @@ impl Flags {
         }
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(level = "trace", name = "Flags::parse", skip_all, fields(args = ?args))
+    )]
     pub fn parse(args: &[String]) -> Self {
         Flags::parse_from(normalize_args(args))
     }
@@ -388,6 +395,9 @@ pub enum Subcommand {
         /// enable this to generate a Rustfix coverage file, which is saved in
         /// `/<build_base>/rustfix_missing_coverage.txt`
         rustfix_coverage: bool,
+        #[arg(long)]
+        /// don't capture stdout/stderr of tests
+        no_capture: bool,
     },
     /// Build and run some test suites *in Miri*
     Miri {
@@ -472,11 +482,8 @@ Arguments:
         #[arg(long)]
         versioned_dirs: bool,
     },
-    /// Perform profiling and benchmarking of the compiler using the
-    /// `rustc-perf-wrapper` tool.
-    ///
-    /// You need to pass arguments after `--`, e.g.`x perf -- cachegrind`.
-    Perf {},
+    /// Perform profiling and benchmarking of the compiler using `rustc-perf`.
+    Perf(PerfArgs),
 }
 
 impl Subcommand {
@@ -563,6 +570,13 @@ impl Subcommand {
         }
     }
 
+    pub fn no_capture(&self) -> bool {
+        match *self {
+            Subcommand::Test { no_capture, .. } => no_capture,
+            _ => false,
+        }
+    }
+
     pub fn rustfix_coverage(&self) -> bool {
         match *self {
             Subcommand::Test { rustfix_coverage, .. } => rustfix_coverage,
@@ -633,7 +647,14 @@ pub fn get_completion<G: clap_complete::Generator>(shell: G, path: &Path) -> Opt
         })
     };
     let mut buf = Vec::new();
-    clap_complete::generate(shell, &mut cmd, "x.py", &mut buf);
+    let (bin_name, _) = path
+        .file_name()
+        .expect("path should be a regular file")
+        .to_str()
+        .expect("file name should be UTF-8")
+        .rsplit_once('.')
+        .expect("file name should have an extension");
+    clap_complete::generate(shell, &mut cmd, bin_name, &mut buf);
     if buf == current.as_bytes() {
         return None;
     }

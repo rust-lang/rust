@@ -1,5 +1,4 @@
-//@ignore-target: windows # only very limited libc on Windows
-//@ignore-target: apple # `sched_{g, s}etaffinity` are not supported on macOS
+//@only-target: linux # these are Linux-specific APIs
 //@compile-flags: -Zmiri-disable-isolation -Zmiri-num-cpus=4
 #![feature(io_error_more)]
 #![feature(pointer_is_aligned_to)]

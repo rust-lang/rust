@@ -43,22 +43,19 @@ pub unsafe fn integer_transmutes() {
     }
 }
 
-// EMIT_MIR combine_transmutes.adt_transmutes.InstSimplify-after-simplifycfg.diff
-pub unsafe fn adt_transmutes() {
-    // CHECK-LABEL: fn adt_transmutes(
-    // CHECK: as u8 (Transmute);
-    // CHECK: ({{_.*}}.0: i16);
-    // CHECK: as u16 (Transmute);
-    // CHECK: as u32 (Transmute);
-    // CHECK: as i32 (Transmute);
-    // CHECK: ({{_.*}}.1: std::mem::ManuallyDrop<std::string::String>);
+// EMIT_MIR combine_transmutes.keep_transparent_transmute.InstSimplify-after-simplifycfg.diff
+pub unsafe fn keep_transparent_transmute() {
+    // CHECK-LABEL: fn keep_transparent_transmute(
+    // CHECK-NOT: .{{[0-9]+}}: i16
+    // CHECK: as i16 (Transmute);
+    // CHECK-NOT: .{{[0-9]+}}: i16
+    // CHECK: as i16 (Transmute);
+    // CHECK-NOT: .{{[0-9]+}}: i16
 
-    let _a: u8 = transmute(Some(std::num::NonZero::<u8>::MAX));
+    // Transmutes should not be converted to field accesses, because MCP#807
+    // bans projections into `[rustc_layout_scalar_valid_range_*]` types.
+    let _a: i16 = transmute(const { std::num::NonZero::new(12345_i16).unwrap() });
     let _a: i16 = transmute(std::num::Wrapping(0_i16));
-    let _a: u16 = transmute(std::num::Wrapping(0_i16));
-    let _a: u32 = transmute(Union32 { i32: 0 });
-    let _a: i32 = transmute(Union32 { u32: 0 });
-    let _a: ManuallyDrop<String> = transmute(MaybeUninit::<String>::uninit());
 }
 
 pub union Union32 {

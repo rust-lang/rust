@@ -4,8 +4,7 @@ use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, LangItem};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_session::{declare_lint, impl_lint_pass};
-use rustc_span::Span;
-use rustc_span::symbol::sym;
+use rustc_span::{Span, sym};
 
 use crate::lints::DanglingPointersFromTemporaries;
 use crate::{LateContext, LateLintPass};
@@ -142,7 +141,7 @@ fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
             expr.hir_id,
             method.ident.span,
             DanglingPointersFromTemporaries {
-                callee: method.ident.name,
+                callee: method.ident,
                 ty,
                 ptr_span: method.ident.span,
                 temporary_span: receiver.span,

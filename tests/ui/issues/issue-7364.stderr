@@ -11,7 +11,7 @@ note: required because it appears within the type `Box<RefCell<isize>>`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
    = note: shared static variables must have a type that implements `Sync`
 
-error[E0015]: cannot call non-const fn `Box::<RefCell<isize>>::new` in statics
+error[E0015]: cannot call non-const associated function `Box::<RefCell<isize>>::new` in statics
   --> $DIR/issue-7364.rs:4:37
    |
 LL | static boxed: Box<RefCell<isize>> = Box::new(RefCell::new(0));

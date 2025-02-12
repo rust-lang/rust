@@ -3,9 +3,7 @@
 use std::path::Path;
 
 use rustc_ast::{self as ast, attr};
-use rustc_errors::FatalError;
-use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 
 use crate::Session;
 use crate::config::{self, CrateType, Input, OutFileName, OutputFilenames, OutputType};
@@ -91,11 +89,10 @@ pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute]) -> Symbol {
 }
 
 pub fn validate_crate_name(sess: &Session, s: Symbol, sp: Option<Span>) {
-    let mut err_count = 0;
+    let mut guar = None;
     {
         if s.is_empty() {
-            err_count += 1;
-            sess.dcx().emit_err(CrateNameEmpty { span: sp });
+            guar = Some(sess.dcx().emit_err(CrateNameEmpty { span: sp }));
         }
         for c in s.as_str().chars() {
             if c.is_alphanumeric() {
@@ -104,8 +101,7 @@ pub fn validate_crate_name(sess: &Session, s: Symbol, sp: Option<Span>) {
             if c == '_' {
                 continue;
             }
-            err_count += 1;
-            sess.dcx().emit_err(InvalidCharacterInCrateName {
+            guar = Some(sess.dcx().emit_err(InvalidCharacterInCrateName {
                 span: sp,
                 character: c,
                 crate_name: s,
@@ -114,12 +110,12 @@ pub fn validate_crate_name(sess: &Session, s: Symbol, sp: Option<Span>) {
                 } else {
                     None
                 },
-            });
+            }));
         }
     }
 
-    if err_count > 0 {
-        FatalError.raise();
+    if let Some(guar) = guar {
+        guar.raise_fatal();
     }
 }
 

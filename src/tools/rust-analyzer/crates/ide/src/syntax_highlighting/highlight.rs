@@ -58,6 +58,7 @@ pub(super) fn name_like(
     bindings_shadow_count: &mut FxHashMap<hir::Name, u32>,
     syntactic_name_ref_highlighting: bool,
     name_like: ast::NameLike,
+    edition: Edition,
 ) -> Option<(Highlight, Option<u64>)> {
     let mut binding_hash = None;
     let highlight = match name_like {
@@ -68,16 +69,17 @@ pub(super) fn name_like(
             &mut binding_hash,
             syntactic_name_ref_highlighting,
             name_ref,
+            edition,
         ),
         ast::NameLike::Name(name) => {
-            highlight_name(sema, bindings_shadow_count, &mut binding_hash, krate, name)
+            highlight_name(sema, bindings_shadow_count, &mut binding_hash, krate, name, edition)
         }
         ast::NameLike::Lifetime(lifetime) => match IdentClass::classify_lifetime(sema, &lifetime) {
             Some(IdentClass::NameClass(NameClass::Definition(def))) => {
-                highlight_def(sema, krate, def) | HlMod::Definition
+                highlight_def(sema, krate, def, edition) | HlMod::Definition
             }
-            Some(IdentClass::NameRefClass(NameRefClass::Definition(def))) => {
-                highlight_def(sema, krate, def)
+            Some(IdentClass::NameRefClass(NameRefClass::Definition(def, _))) => {
+                highlight_def(sema, krate, def, edition)
             }
             // FIXME: Fallback for 'static and '_, as we do not resolve these yet
             _ => SymbolKind::LifetimeParam.into(),
@@ -155,7 +157,7 @@ fn punctuation(
                 if parent
                     .as_ref()
                     .and_then(SyntaxNode::parent)
-                    .map_or(false, |it| it.kind() == MACRO_RULES) =>
+                    .is_some_and(|it| it.kind() == MACRO_RULES) =>
             {
                 return HlOperator::Other.into()
             }
@@ -193,7 +195,7 @@ fn keyword(
         T![for] if parent_matches::<ast::ForExpr>(&token) => h | HlMod::ControlFlow,
         T![unsafe] => h | HlMod::Unsafe,
         T![const]
-            if token.parent().map_or(false, |it| {
+            if token.parent().is_some_and(|it| {
                 matches!(
                     it.kind(),
                     SyntaxKind::CONST
@@ -234,16 +236,17 @@ fn highlight_name_ref(
     binding_hash: &mut Option<u64>,
     syntactic_name_ref_highlighting: bool,
     name_ref: ast::NameRef,
+    edition: Edition,
 ) -> Highlight {
     let db = sema.db;
-    if let Some(res) = highlight_method_call_by_name_ref(sema, krate, &name_ref) {
+    if let Some(res) = highlight_method_call_by_name_ref(sema, krate, &name_ref, edition) {
         return res;
     }
 
     let name_class = match NameRefClass::classify(sema, &name_ref) {
         Some(name_kind) => name_kind,
         None if syntactic_name_ref_highlighting => {
-            return highlight_name_ref_by_syntax(name_ref, sema, krate)
+            return highlight_name_ref_by_syntax(name_ref, sema, krate, edition)
         }
         // FIXME: This is required for helper attributes used by proc-macros, as those do not map down
         // to anything when used.
@@ -253,21 +256,21 @@ fn highlight_name_ref(
             && !sema
                 .hir_file_for(name_ref.syntax())
                 .macro_file()
-                .map_or(false, |it| it.is_derive_attr_pseudo_expansion(sema.db)) =>
+                .is_some_and(|it| it.is_derive_attr_pseudo_expansion(sema.db)) =>
         {
             return HlTag::Symbol(SymbolKind::Attribute).into();
         }
         None => return HlTag::UnresolvedReference.into(),
     };
     let mut h = match name_class {
-        NameRefClass::Definition(def) => {
+        NameRefClass::Definition(def, _) => {
             if let Definition::Local(local) = &def {
                 let name = local.name(db);
                 let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
                 *binding_hash = Some(calc_binding_hash(&name, *shadow_count))
             };
 
-            let mut h = highlight_def(sema, krate, def);
+            let mut h = highlight_def(sema, krate, def, edition);
 
             match def {
                 Definition::Local(local) if is_consumed_lvalue(name_ref.syntax(), &local, db) => {
@@ -275,7 +278,7 @@ fn highlight_name_ref(
                 }
                 Definition::Trait(trait_) if trait_.is_unsafe(db) => {
                     if ast::Impl::for_trait_name_ref(&name_ref)
-                        .map_or(false, |impl_| impl_.unsafe_token().is_some())
+                        .is_some_and(|impl_| impl_.unsafe_token().is_some())
                     {
                         h |= HlMod::Unsafe;
                     }
@@ -305,7 +308,7 @@ fn highlight_name_ref(
             h
         }
         NameRefClass::FieldShorthand { field_ref, .. } => {
-            highlight_def(sema, krate, field_ref.into())
+            highlight_def(sema, krate, field_ref.into(), edition)
         }
         NameRefClass::ExternCrateShorthand { decl, krate: resolved_krate } => {
             let mut h = HlTag::Symbol(SymbolKind::Module).into();
@@ -341,6 +344,7 @@ fn highlight_name(
     binding_hash: &mut Option<u64>,
     krate: hir::Crate,
     name: ast::Name,
+    edition: Edition,
 ) -> Highlight {
     let name_kind = NameClass::classify(sema, &name);
     if let Some(NameClass::Definition(Definition::Local(local))) = &name_kind {
@@ -351,7 +355,7 @@ fn highlight_name(
     };
     match name_kind {
         Some(NameClass::Definition(def)) => {
-            let mut h = highlight_def(sema, krate, def) | HlMod::Definition;
+            let mut h = highlight_def(sema, krate, def, edition) | HlMod::Definition;
             if let Definition::Trait(trait_) = &def {
                 if trait_.is_unsafe(sema.db) {
                     h |= HlMod::Unsafe;
@@ -359,7 +363,7 @@ fn highlight_name(
             }
             h
         }
-        Some(NameClass::ConstReference(def)) => highlight_def(sema, krate, def),
+        Some(NameClass::ConstReference(def)) => highlight_def(sema, krate, def, edition),
         Some(NameClass::PatFieldShorthand { field_ref, .. }) => {
             let mut h = HlTag::Symbol(SymbolKind::Field).into();
             if let hir::VariantDef::Union(_) = field_ref.parent_def(sema.db) {
@@ -379,12 +383,16 @@ pub(super) fn highlight_def(
     sema: &Semantics<'_, RootDatabase>,
     krate: hir::Crate,
     def: Definition,
+    edition: Edition,
 ) -> Highlight {
     let db = sema.db;
     let mut h = match def {
         Definition::Macro(m) => Highlight::new(HlTag::Symbol(m.kind(sema.db).into())),
         Definition::Field(_) | Definition::TupleField(_) => {
             Highlight::new(HlTag::Symbol(SymbolKind::Field))
+        }
+        Definition::Crate(_) => {
+            Highlight::new(HlTag::Symbol(SymbolKind::Module)) | HlMod::CrateRoot
         }
         Definition::Module(module) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));
@@ -424,7 +432,12 @@ pub(super) fn highlight_def(
                 }
             }
 
-            if func.is_unsafe_to_call(db) {
+            // FIXME: Passing `None` here means not-unsafe functions with `#[target_feature]` will be
+            // highlighted as unsafe, even when the current target features set is a superset (RFC 2396).
+            // We probably should consider checking the current function, but I found no easy way to do
+            // that (also I'm worried about perf). There's also an instance below.
+            // FIXME: This should be the edition of the call.
+            if func.is_unsafe_to_call(db, None, edition) {
                 h |= HlMod::Unsafe;
             }
             if func.is_async(db) {
@@ -550,7 +563,7 @@ pub(super) fn highlight_def(
 
     let def_crate = def.krate(db);
     let is_from_other_crate = def_crate != Some(krate);
-    let is_from_builtin_crate = def_crate.map_or(false, |def_crate| def_crate.is_builtin(db));
+    let is_from_builtin_crate = def_crate.is_some_and(|def_crate| def_crate.is_builtin(db));
     let is_builtin = matches!(
         def,
         Definition::BuiltinType(_) | Definition::BuiltinLifetime(_) | Definition::BuiltinAttr(_)
@@ -572,21 +585,23 @@ fn highlight_method_call_by_name_ref(
     sema: &Semantics<'_, RootDatabase>,
     krate: hir::Crate,
     name_ref: &ast::NameRef,
+    edition: Edition,
 ) -> Option<Highlight> {
     let mc = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
-    highlight_method_call(sema, krate, &mc)
+    highlight_method_call(sema, krate, &mc, edition)
 }
 
 fn highlight_method_call(
     sema: &Semantics<'_, RootDatabase>,
     krate: hir::Crate,
     method_call: &ast::MethodCallExpr,
+    edition: Edition,
 ) -> Option<Highlight> {
     let func = sema.resolve_method_call(method_call)?;
 
     let mut h = SymbolKind::Method.into();
 
-    if func.is_unsafe_to_call(sema.db) || sema.is_unsafe_method_call(method_call) {
+    if func.is_unsafe_to_call(sema.db, None, edition) || sema.is_unsafe_method_call(method_call) {
         h |= HlMod::Unsafe;
     }
     if func.is_async(sema.db) {
@@ -662,6 +677,12 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
         STATIC => SymbolKind::Static,
         IDENT_PAT => SymbolKind::Local,
         FORMAT_ARGS_ARG => SymbolKind::Local,
+        RENAME => SymbolKind::Local,
+        MACRO_RULES => SymbolKind::Macro,
+        CONST_PARAM => SymbolKind::ConstParam,
+        SELF_PARAM => SymbolKind::SelfParam,
+        TRAIT_ALIAS => SymbolKind::TraitAlias,
+        ASM_OPERAND_NAMED => SymbolKind::Local,
         _ => return default.into(),
     };
 
@@ -672,6 +693,7 @@ fn highlight_name_ref_by_syntax(
     name: ast::NameRef,
     sema: &Semantics<'_, RootDatabase>,
     krate: hir::Crate,
+    edition: Edition,
 ) -> Highlight {
     let default = HlTag::UnresolvedReference;
 
@@ -682,13 +704,13 @@ fn highlight_name_ref_by_syntax(
 
     match parent.kind() {
         METHOD_CALL_EXPR => ast::MethodCallExpr::cast(parent)
-            .and_then(|it| highlight_method_call(sema, krate, &it))
+            .and_then(|it| highlight_method_call(sema, krate, &it, edition))
             .unwrap_or_else(|| SymbolKind::Method.into()),
         FIELD_EXPR => {
             let h = HlTag::Symbol(SymbolKind::Field);
             let is_union = ast::FieldExpr::cast(parent)
                 .and_then(|field_expr| sema.resolve_field(&field_expr))
-                .map_or(false, |field| match field {
+                .is_some_and(|field| match field {
                     Either::Left(field) => {
                         matches!(field.parent_def(sema.db), hir::VariantDef::Union(_))
                     }
@@ -764,5 +786,5 @@ fn parents_match(mut node: NodeOrToken<SyntaxNode, SyntaxToken>, mut kinds: &[Sy
 }
 
 fn parent_matches<N: AstNode>(token: &SyntaxToken) -> bool {
-    token.parent().map_or(false, |it| N::can_cast(it.kind()))
+    token.parent().is_some_and(|it| N::can_cast(it.kind()))
 }

@@ -5,6 +5,7 @@
 #![feature(exact_size_is_empty)]
 #![feature(file_buffered)]
 #![feature(let_chains)]
+#![feature(never_type)]
 #![feature(try_blocks)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
@@ -19,8 +20,7 @@ pub use self::drop_flag_effects::{
 };
 pub use self::framework::{
     Analysis, Backward, Direction, EntryStates, Forward, GenKill, JoinSemiLattice, MaybeReachable,
-    Results, ResultsCursor, ResultsVisitor, SwitchIntEdgeEffects, fmt, graphviz, lattice,
-    visit_results,
+    Results, ResultsCursor, ResultsVisitor, fmt, graphviz, lattice, visit_results,
 };
 use self::move_paths::MoveData;
 

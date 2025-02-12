@@ -7,11 +7,10 @@
 
 use rustc_macros::{HashStable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
-// FIXME: Remove this import and import via `traits::solve`.
-pub use rustc_type_ir::solve::NoSolution;
 
 use crate::error::DropCheckOverflow;
 use crate::infer::canonical::{Canonical, CanonicalQueryInput, QueryResponse};
+pub use crate::traits::solve::NoSolution;
 use crate::ty::{self, GenericArg, Ty, TyCtxt};
 
 pub mod type_op {

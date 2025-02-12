@@ -1,4 +1,4 @@
-//! Include a file by concating the verbatim path using `/` instead of `\`
+//! Include a file by concatenating the verbatim path using `/` instead of `\`
 
 include!(concat!(env!("VERBATIM_DIR"), "/include/include.txt"));
 fn main() {

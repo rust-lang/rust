@@ -9,7 +9,7 @@ struct Foo {
 #[no_mangle]
 // CHECK: memcpy
 fn interior(x: Vec<i32>) -> Vec<i32> {
-    let Foo { x } = Foo { x: x };
+    let Foo { x } = Foo { x };
     x
 }
 

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_trait_method;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
+use clippy_utils::{is_trait_method, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind, Mutability, Param, Pat, PatKind, Path, PathSegment, QPath};
 use rustc_lint::LateContext;
@@ -43,8 +43,7 @@ fn mirrored_exprs(a_expr: &Expr<'_>, a_ident: &Ident, b_expr: &Expr<'_>, b_ident
                 && iter::zip(*left_args, *right_args).all(|(left, right)| mirrored_exprs(left, a_ident, right, b_ident))
         },
         // The two exprs are method calls.
-        // Check to see that the function is the same and the arguments are mirrored
-        // This is enough because the receiver of the method is listed in the arguments
+        // Check to see that the function is the same and the arguments and receivers are mirrored
         (
             ExprKind::MethodCall(left_segment, left_receiver, left_args, _),
             ExprKind::MethodCall(right_segment, right_receiver, right_args, _),
@@ -211,8 +210,10 @@ pub(super) fn check<'tcx>(
                 trigger.vec_name,
                 if is_unstable { "_unstable" } else { "" },
                 trigger.closure_arg,
-                if trigger.reverse {
-                    format!("std::cmp::Reverse({})", trigger.closure_body)
+                if let Some(std_or_core) = std_or_core(cx)
+                    && trigger.reverse
+                {
+                    format!("{}::cmp::Reverse({})", std_or_core, trigger.closure_body)
                 } else {
                     trigger.closure_body.to_string()
                 },

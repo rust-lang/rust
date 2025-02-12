@@ -31,29 +31,30 @@ extern "rust-intrinsic" {
 // CHECK-LABEL: mask_reduce_all:
 #[no_mangle]
 pub unsafe extern "C" fn mask_reduce_all(m: mask8x16) -> bool {
-    // x86: psllw xmm0, 7
-    // x86-NEXT: pmovmskb eax, xmm0
-    // x86-NEXT: {{cmp ax, -1|xor eax, 65535}}
+    // x86-NOT: psllw
+    // x86: pmovmskb eax, xmm0
+    // x86-NEXT: {{cmp ax, -1|cmp eax, 65535|xor eax, 65535}}
     // x86-NEXT: sete al
     //
-    // aarch64: shl v0.16b, v0.16b, #7
-    // aarch64-NEXT: cmlt v0.16b, v0.16b, #0
-    // aarch64-NEXT: uminv b0, v0.16b
-    // aarch64-NEXT: fmov [[REG:[a-z0-9]+]], s0
-    // aarch64-NEXT: and w0, [[REG]], #0x1
+    // aarch64-NOT: shl
+    // aarch64: cmge v0.16b, v0.16b, #0
+    // aarch64-DAG: mov [[REG1:[a-z0-9]+]], #1
+    // aarch64-DAG: umaxv b0, v0.16b
+    // aarch64-NEXT: fmov [[REG2:[a-z0-9]+]], s0
+    // aarch64-NEXT: bic w0, [[REG1]], [[REG2]]
     simd_reduce_all(m)
 }
 
 // CHECK-LABEL: mask_reduce_any:
 #[no_mangle]
 pub unsafe extern "C" fn mask_reduce_any(m: mask8x16) -> bool {
-    // x86: psllw xmm0, 7
-    // x86-NEXT: pmovmskb
+    // x86-NOT: psllw
+    // x86: pmovmskb
     // x86-NEXT: test eax, eax
     // x86-NEXT: setne al
     //
-    // aarch64: shl v0.16b, v0.16b, #7
-    // aarch64-NEXT: cmlt v0.16b, v0.16b, #0
+    // aarch64-NOT: shl
+    // aarch64: cmlt v0.16b, v0.16b, #0
     // aarch64-NEXT: umaxv b0, v0.16b
     // aarch64-NEXT: fmov [[REG:[a-z0-9]+]], s0
     // aarch64-NEXT: and w0, [[REG]], #0x1

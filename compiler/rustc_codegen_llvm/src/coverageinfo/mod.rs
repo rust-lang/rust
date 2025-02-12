@@ -5,26 +5,23 @@ use rustc_abi::Size;
 use rustc_codegen_ssa::traits::{
     BuilderMethods, ConstCodegenMethods, CoverageInfoBuilderMethods, MiscCodegenMethods,
 };
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::Instance;
-use rustc_middle::ty::layout::HasTyCtxt;
 use tracing::{debug, instrument};
 
 use crate::builder::Builder;
 use crate::common::CodegenCx;
-use crate::coverageinfo::map_data::FunctionCoverage;
 use crate::llvm;
 
 pub(crate) mod ffi;
 mod llvm_cov;
-pub(crate) mod map_data;
 mod mapgen;
 
 /// Extra per-CGU context/state needed for coverage instrumentation.
 pub(crate) struct CguCoverageContext<'ll, 'tcx> {
     /// Coverage data for each instrumented function identified by DefId.
-    pub(crate) function_coverage_map: RefCell<FxIndexMap<Instance<'tcx>, FunctionCoverage<'tcx>>>,
+    pub(crate) instances_used: RefCell<FxIndexSet<Instance<'tcx>>>,
     pub(crate) pgo_func_name_var_map: RefCell<FxHashMap<Instance<'tcx>, &'ll llvm::Value>>,
     pub(crate) mcdc_condition_bitmap_map: RefCell<FxHashMap<Instance<'tcx>, Vec<&'ll llvm::Value>>>,
 
@@ -34,15 +31,11 @@ pub(crate) struct CguCoverageContext<'ll, 'tcx> {
 impl<'ll, 'tcx> CguCoverageContext<'ll, 'tcx> {
     pub(crate) fn new() -> Self {
         Self {
-            function_coverage_map: Default::default(),
+            instances_used: RefCell::<FxIndexSet<_>>::default(),
             pgo_func_name_var_map: Default::default(),
             mcdc_condition_bitmap_map: Default::default(),
             covfun_section_name: Default::default(),
         }
-    }
-
-    fn take_function_coverage_map(&self) -> FxIndexMap<Instance<'tcx>, FunctionCoverage<'tcx>> {
-        self.function_coverage_map.replace(FxIndexMap::default())
     }
 
     /// LLVM use a temp value to record evaluated mcdc test vector of each decision, which is
@@ -153,37 +146,26 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
             debug!("function has a coverage statement but no coverage info");
             return;
         };
+        let Some(ids_info) = bx.tcx.coverage_ids_info(instance.def) else {
+            debug!("function has a coverage statement but no IDs info");
+            return;
+        };
 
         // Mark the instance as used in this CGU, for coverage purposes.
         // This includes functions that were not partitioned into this CGU,
         // but were MIR-inlined into one of this CGU's functions.
-        coverage_cx.function_coverage_map.borrow_mut().entry(instance).or_insert_with(|| {
-            FunctionCoverage::new_used(
-                function_coverage_info,
-                bx.tcx.coverage_ids_info(instance.def),
-            )
-        });
+        coverage_cx.instances_used.borrow_mut().insert(instance);
 
         match *kind {
             CoverageKind::SpanMarker | CoverageKind::BlockMarker { .. } => unreachable!(
                 "marker statement {kind:?} should have been removed by CleanupPostBorrowck"
             ),
-            CoverageKind::CounterIncrement { id } => {
-                // The number of counters passed to `llvm.instrprof.increment` might
-                // be smaller than the number originally inserted by the instrumentor,
-                // if some high-numbered counters were removed by MIR optimizations.
-                // If so, LLVM's profiler runtime will use fewer physical counters.
-                let num_counters =
-                    bx.tcx().coverage_ids_info(instance.def).num_counters_after_mir_opts();
-                assert!(
-                    num_counters as usize <= function_coverage_info.num_counters,
-                    "num_counters disagreement: query says {num_counters} but function info only has {}",
-                    function_coverage_info.num_counters
-                );
-
+            CoverageKind::VirtualCounter { bcb }
+                if let Some(&id) = ids_info.phys_counter_for_node.get(&bcb) =>
+            {
                 let fn_name = bx.get_pgo_func_name_var(instance);
                 let hash = bx.const_u64(function_coverage_info.function_source_hash);
-                let num_counters = bx.const_u32(num_counters);
+                let num_counters = bx.const_u32(ids_info.num_counters);
                 let index = bx.const_u32(id.as_u32());
                 debug!(
                     "codegen intrinsic instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?}, index={:?})",
@@ -191,10 +173,8 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
                 );
                 bx.instrprof_increment(fn_name, hash, num_counters, index);
             }
-            CoverageKind::ExpressionUsed { id: _ } => {
-                // Expression-used statements are markers that are handled by
-                // `coverage_ids_info`, so there's nothing to codegen here.
-            }
+            // If a BCB doesn't have an associated physical counter, there's nothing to codegen.
+            CoverageKind::VirtualCounter { .. } => {}
             CoverageKind::CondBitmapUpdate { index, decision_depth } => {
                 let cond_bitmap = coverage_cx
                     .try_get_mcdc_condition_bitmap(&instance, decision_depth)

@@ -8,11 +8,10 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
     BinOpKind, BlockCheckMode, Expr, ExprKind, HirId, HirIdMap, ItemKind, LocalSource, Node, PatKind, Stmt, StmtKind,
-    UnsafeSource, StructTailExpr, is_range_literal,
+    StructTailExpr, UnsafeSource, is_range_literal,
 };
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -144,7 +143,7 @@ impl NoEffect {
                     |diag| {
                         for parent in cx.tcx.hir().parent_iter(stmt.hir_id) {
                             if let Node::Item(item) = parent.1
-                                && let ItemKind::Fn(..) = item.kind
+                                && let ItemKind::Fn { .. } = item.kind
                                 && let Node::Block(block) = cx.tcx.parent_hir_node(stmt.hir_id)
                                 && let [.., final_stmt] = block.stmts
                                 && final_stmt.hir_id == stmt.hir_id
@@ -268,7 +267,7 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
     if let StmtKind::Semi(expr) = stmt.kind
-        && !in_external_macro(cx.sess(), stmt.span)
+        && !stmt.span.in_external_macro(cx.sess().source_map())
         && let ctxt = stmt.span.ctxt()
         && expr.span.ctxt() == ctxt
         && let Some(reduced) = reduce_expression(cx, expr)

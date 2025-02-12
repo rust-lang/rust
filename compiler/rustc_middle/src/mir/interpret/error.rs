@@ -88,14 +88,12 @@ impl ReportedErrorInfo {
     }
 }
 
-impl Into<ErrorGuaranteed> for ReportedErrorInfo {
+impl From<ReportedErrorInfo> for ErrorGuaranteed {
     #[inline]
-    fn into(self) -> ErrorGuaranteed {
-        self.error
+    fn from(val: ReportedErrorInfo) -> Self {
+        val.error
     }
 }
-
-TrivialTypeTraversalImpls! { ErrorHandled }
 
 pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
 pub type EvalStaticInitializerRawResult<'tcx> = Result<ConstAllocation<'tcx>, ErrorHandled>;
@@ -218,10 +216,6 @@ pub enum InvalidProgramInfo<'tcx> {
     AlreadyReported(ReportedErrorInfo),
     /// An error occurred during layout computation.
     Layout(layout::LayoutError<'tcx>),
-    /// An error occurred during FnAbi computation: the passed --target lacks FFI support
-    /// (which unfortunately typeck does not reject).
-    /// Not using `FnAbiError` as that contains a nested `LayoutError`.
-    FnAbiAdjustForForeignAbi(rustc_target::callconv::AdjustForForeignAbiError),
 }
 
 /// Details of why a pointer had to be in-bounds.
@@ -392,7 +386,7 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// A discriminant of an uninhabited enum variant is written.
     UninhabitedEnumVariantWritten(VariantIdx),
     /// An uninhabited enum variant is projected.
-    UninhabitedEnumVariantRead(VariantIdx),
+    UninhabitedEnumVariantRead(Option<VariantIdx>),
     /// Trying to set discriminant to the niched variant, but the value does not match.
     InvalidNichedEnumVariantWritten { enum_ty: Ty<'tcx> },
     /// ABI-incompatible argument types.

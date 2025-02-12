@@ -2,11 +2,11 @@
 //@ aux-build:crateresolve1-2.rs
 //@ aux-build:crateresolve1-3.rs
 
-//@ normalize-stderr-test: "\.nll/" -> "/"
-//@ normalize-stderr-test: "\\\?\\" -> ""
-//@ normalize-stderr-test: "(lib)?crateresolve1-([123])\.[a-z]+" -> "libcrateresolve1-$2.somelib"
+//@ normalize-stderr: "crateresolve1\..+/auxiliary/" -> "crateresolve1/auxiliary/"
+//@ normalize-stderr: "\\\?\\" -> ""
+//@ normalize-stderr: "(lib)?crateresolve1-([123])\.[a-z]+" -> "libcrateresolve1-$2.somelib"
 
-// NOTE: This test is duplicated at `tests/ui/error-codes/E0464.rs`.
+// NOTE: This test is duplicated at `tests/ui/error-codes/E0464.rs` and `E0523.rs`.
 
 extern crate crateresolve1;
 //~^ ERROR multiple candidates for `rlib` dependency `crateresolve1` found

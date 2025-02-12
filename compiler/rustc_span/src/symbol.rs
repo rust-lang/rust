@@ -20,18 +20,26 @@ mod tests;
 
 // The proc macro code for this is in `compiler/rustc_macros/src/symbols.rs`.
 symbols! {
-    // If you modify this list, adjust `is_special`, `is_used_keyword`/`is_unused_keyword`
-    // and `AllKeywords`.
+    // This list includes things that are definitely keywords (e.g. `if`),
+    // a few things that are definitely not keywords (e.g. the empty symbol,
+    // `{{root}}`) and things where there is disagreement between people and/or
+    // documents (such as the Rust Reference) about whether it is a keyword
+    // (e.g. `_`).
+    //
+    // If you modify this list, adjust any relevant `Symbol::{is,can_be}_*` predicates and
+    // `used_keywords`.
     // But this should rarely be necessary if the keywords are kept in alphabetic order.
     Keywords {
         // Special reserved identifiers used internally for elided lifetimes,
         // unnamed method parameters, crate root module, error recovery etc.
+        // Matching predicates: `is_any_keyword`, `is_special`/`is_reserved`
         Empty:              "",
         PathRoot:           "{{root}}",
         DollarCrate:        "$crate",
         Underscore:         "_",
 
         // Keywords that are used in stable Rust.
+        // Matching predicates: `is_any_keyword`, `is_used_keyword_always`/`is_reserved`
         As:                 "as",
         Break:              "break",
         Const:              "const",
@@ -69,6 +77,7 @@ symbols! {
         While:              "while",
 
         // Keywords that are used in unstable Rust or reserved for future use.
+        // Matching predicates: `is_any_keyword`, `is_unused_keyword_always`/`is_reserved`
         Abstract:           "abstract",
         Become:             "become",
         Box:                "box",
@@ -83,26 +92,34 @@ symbols! {
         Yield:              "yield",
 
         // Edition-specific keywords that are used in stable Rust.
+        // Matching predicates: `is_any_keyword`, `is_used_keyword_conditional`/`is_reserved` (if
+        // the edition suffices)
         Async:              "async", // >= 2018 Edition only
         Await:              "await", // >= 2018 Edition only
         Dyn:                "dyn", // >= 2018 Edition only
 
         // Edition-specific keywords that are used in unstable Rust or reserved for future use.
+        // Matching predicates: `is_any_keyword`, `is_unused_keyword_conditional`/`is_reserved` (if
+        // the edition suffices)
+        Gen:                "gen", // >= 2024 Edition only
         Try:                "try", // >= 2018 Edition only
 
-        // Special lifetime names
+        // "Lifetime keywords": regular keywords with a leading `'`.
+        // Matching predicates: `is_any_keyword`
         UnderscoreLifetime: "'_",
         StaticLifetime:     "'static",
 
         // Weak keywords, have special meaning only in specific contexts.
+        // Matching predicates: `is_any_keyword`
         Auto:               "auto",
         Builtin:            "builtin",
         Catch:              "catch",
         Default:            "default",
-        Gen:                "gen",
         MacroRules:         "macro_rules",
         Raw:                "raw",
         Reuse:              "reuse",
+        ContractEnsures:  "contract_ensures",
+        ContractRequires: "contract_requires",
         Safe:               "safe",
         Union:              "union",
         Yeet:               "yeet",
@@ -176,6 +193,7 @@ symbols! {
         Cleanup,
         Clone,
         CoercePointee,
+        CoercePointeeValidated,
         CoerceUnsized,
         Command,
         ConstParamTy,
@@ -279,9 +297,12 @@ symbols! {
         ProceduralMasqueradeDummyType,
         Range,
         RangeBounds,
+        RangeCopy,
         RangeFrom,
+        RangeFromCopy,
         RangeFull,
         RangeInclusive,
+        RangeInclusiveCopy,
         RangeTo,
         RangeToInclusive,
         Rc,
@@ -299,13 +320,12 @@ symbols! {
         Right,
         Rust,
         RustaceansAreAwesome,
-        RustcDecodable,
-        RustcEncodable,
         RwLock,
         RwLockReadGuard,
         RwLockWriteGuard,
         Saturating,
         SeekFrom,
+        SelfTy,
         Send,
         SeqCst,
         Sized,
@@ -363,6 +383,7 @@ symbols! {
         abi_avr_interrupt,
         abi_c_cmse_nonsecure_call,
         abi_efiapi,
+        abi_gpu_kernel,
         abi_msp430_interrupt,
         abi_ptx,
         abi_riscv_interrupt,
@@ -485,7 +506,6 @@ symbols! {
         augmented_assignments,
         auto_traits,
         autodiff,
-        autodiff_fallback,
         automatically_derived,
         avx,
         avx512_target_feature,
@@ -539,6 +559,7 @@ symbols! {
         call_ref_future,
         caller_location,
         capture_disjoint_fields,
+        carrying_mul_add,
         catch_unwind,
         cause,
         cdylib,
@@ -550,9 +571,10 @@ symbols! {
         cfg_accessible,
         cfg_attr,
         cfg_attr_multi,
-        cfg_autodiff_fallback,
         cfg_boolean_literals,
+        cfg_contract_checks,
         cfg_doctest,
+        cfg_emscripten_wasm_eh,
         cfg_eval,
         cfg_fmt_debug,
         cfg_hide,
@@ -598,6 +620,7 @@ symbols! {
         cmp_partialord_lt,
         cmpxchg16b_target_feature,
         cmse_nonsecure_entry,
+        coerce_pointee_validated,
         coerce_unsized,
         cold,
         cold_path,
@@ -660,6 +683,14 @@ symbols! {
         const_ty_placeholder: "<const_ty>",
         constant,
         constructor,
+        contract_build_check_ensures,
+        contract_check_ensures,
+        contract_check_requires,
+        contract_checks,
+        contracts,
+        contracts_ensures,
+        contracts_internals,
+        contracts_requires,
         convert_identity,
         copy,
         copy_closures,
@@ -688,7 +719,6 @@ symbols! {
         coverage,
         coverage_attribute,
         cr,
-        crate_id,
         crate_in_paths,
         crate_local,
         crate_name,
@@ -760,6 +790,7 @@ symbols! {
         discriminant_kind,
         discriminant_type,
         discriminant_value,
+        disjoint_bitor,
         dispatch_from_dyn,
         div,
         div_assign,
@@ -806,6 +837,7 @@ symbols! {
         emit_enum_variant_arg,
         emit_struct,
         emit_struct_field,
+        emscripten_wasm_eh,
         enable,
         encode,
         end,
@@ -994,6 +1026,7 @@ symbols! {
         generic_const_exprs,
         generic_const_items,
         generic_param_attrs,
+        generic_pattern_types,
         get_context,
         global_alloc_ty,
         global_allocator,
@@ -1076,6 +1109,7 @@ symbols! {
         import,
         import_name_type,
         import_shadowing,
+        import_trait_associated_functions,
         imported_main,
         in_band_lifetimes,
         include,
@@ -1132,6 +1166,7 @@ symbols! {
         iterator,
         iterator_collect_fn,
         kcfi,
+        keylocker_x86,
         keyword,
         kind,
         kreg,
@@ -1168,6 +1203,7 @@ symbols! {
         link_section,
         linkage,
         linker,
+        linker_messages,
         lint_reasons,
         literal,
         load,
@@ -1190,6 +1226,7 @@ symbols! {
         loongarch_target_feature,
         loop_break_value,
         lt,
+        m68k_target_feature,
         macro_at_most_once_rep,
         macro_attributes_in_derive_output,
         macro_escape,
@@ -1345,6 +1382,7 @@ symbols! {
         new_lower_hex,
         new_octal,
         new_pointer,
+        new_range,
         new_unchecked,
         new_upper_exp,
         new_upper_hex,
@@ -1367,7 +1405,6 @@ symbols! {
         no_mangle,
         no_sanitize,
         no_stack_check,
-        no_start,
         no_std,
         nomem,
         non_ascii_idents,
@@ -1455,6 +1492,7 @@ symbols! {
         panic_location,
         panic_misaligned_pointer_dereference,
         panic_nounwind,
+        panic_null_pointer_dereference,
         panic_runtime,
         panic_str_2015,
         panic_unwind,
@@ -1679,7 +1717,6 @@ symbols! {
         rustc_as_ptr,
         rustc_attrs,
         rustc_autodiff,
-        rustc_box,
         rustc_builtin_macro,
         rustc_capture_analysis,
         rustc_clean,
@@ -1700,6 +1737,7 @@ symbols! {
         rustc_diagnostic_macros,
         rustc_dirty,
         rustc_do_not_const_check,
+        rustc_do_not_implement_via_object,
         rustc_doc_primitive,
         rustc_driver,
         rustc_dummy,
@@ -1712,6 +1750,7 @@ symbols! {
         rustc_error,
         rustc_evaluate_where_clauses,
         rustc_expected_cgu_reuse,
+        rustc_force_inline,
         rustc_has_incoherent_inherent_impls,
         rustc_hidden_type_of_opaques,
         rustc_if_this_changed,
@@ -2041,7 +2080,7 @@ symbols! {
         type_macros,
         type_name,
         type_privacy_lints,
-        typed_swap,
+        typed_swap_nonoverlapping,
         u128,
         u128_legacy_const_max,
         u128_legacy_const_min,
@@ -2161,8 +2200,10 @@ symbols! {
         vec_macro,
         vec_new,
         vec_pop,
+        vec_reserve,
         vec_with_capacity,
         vecdeque_iter,
+        vecdeque_reserve,
         vector,
         version,
         vfp2,
@@ -2219,6 +2260,10 @@ symbols! {
         zmm_reg,
     }
 }
+
+/// Symbols for crates that are part of the stable standard library: `std`, `core`, `alloc`, and
+/// `proc_macro`.
+pub const STDLIB_STABLE_CRATES: &[Symbol] = &[sym::std, sym::core, sym::alloc, sym::proc_macro];
 
 #[derive(Copy, Clone, Eq, HashStable_Generic, Encodable, Decodable)]
 pub struct Ident {
@@ -2587,6 +2632,11 @@ pub mod sym {
 }
 
 impl Symbol {
+    /// Don't use this unless you're doing something very loose and heuristic-y.
+    pub fn is_any_keyword(self) -> bool {
+        self >= kw::As && self <= kw::Yeet
+    }
+
     fn is_special(self) -> bool {
         self <= kw::Underscore
     }
@@ -2604,8 +2654,8 @@ impl Symbol {
     }
 
     fn is_unused_keyword_conditional(self, edition: impl Copy + FnOnce() -> Edition) -> bool {
-        self == kw::Try && edition().at_least_rust_2018()
-            || self == kw::Gen && edition().at_least_rust_2024()
+        self == kw::Gen && edition().at_least_rust_2024()
+            || self == kw::Try && edition().at_least_rust_2018()
     }
 
     pub fn is_reserved(self, edition: impl Copy + FnOnce() -> Edition) -> bool {
@@ -2643,6 +2693,11 @@ impl Symbol {
 }
 
 impl Ident {
+    /// Don't use this unless you're doing something very loose and heuristic-y.
+    pub fn is_any_keyword(self) -> bool {
+        self.name.is_any_keyword()
+    }
+
     /// Returns `true` for reserved identifiers used internally for elided lifetimes,
     /// unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special(self) -> bool {
@@ -2679,43 +2734,27 @@ impl Ident {
     pub fn is_raw_guess(self) -> bool {
         self.name.can_be_raw() && self.is_reserved()
     }
-}
 
-/// An iterator over all the keywords in Rust.
-#[derive(Copy, Clone)]
-pub struct AllKeywords {
-    curr_idx: u32,
-    end_idx: u32,
-}
-
-impl AllKeywords {
-    /// Initialize a new iterator over all the keywords.
-    ///
-    /// *Note:* Please update this if a new keyword is added beyond the current
-    /// range.
-    pub fn new() -> Self {
-        AllKeywords { curr_idx: kw::Empty.as_u32(), end_idx: kw::Yeet.as_u32() }
+    /// Whether this would be the identifier for a tuple field like `self.0`, as
+    /// opposed to a named field like `self.thing`.
+    pub fn is_numeric(self) -> bool {
+        !self.name.is_empty() && self.as_str().bytes().all(|b| b.is_ascii_digit())
     }
+}
 
-    /// Collect all the keywords in a given edition into a vector.
-    pub fn collect_used(&self, edition: impl Copy + FnOnce() -> Edition) -> Vec<Symbol> {
-        self.filter(|&keyword| {
-            keyword.is_used_keyword_always() || keyword.is_used_keyword_conditional(edition)
+/// Collect all the keywords in a given edition into a vector.
+///
+/// *Note:* Please update this if a new keyword is added beyond the current
+/// range.
+pub fn used_keywords(edition: impl Copy + FnOnce() -> Edition) -> Vec<Symbol> {
+    (kw::Empty.as_u32()..kw::Yeet.as_u32())
+        .filter_map(|kw| {
+            let kw = Symbol::new(kw);
+            if kw.is_used_keyword_always() || kw.is_used_keyword_conditional(edition) {
+                Some(kw)
+            } else {
+                None
+            }
         })
         .collect()
-    }
-}
-
-impl Iterator for AllKeywords {
-    type Item = Symbol;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.curr_idx <= self.end_idx {
-            let keyword = Symbol::new(self.curr_idx);
-            self.curr_idx += 1;
-            Some(keyword)
-        } else {
-            None
-        }
-    }
 }

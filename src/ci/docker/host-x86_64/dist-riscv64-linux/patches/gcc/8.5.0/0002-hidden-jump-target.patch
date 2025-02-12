@@ -10,7 +10,7 @@ https://sourceware.org/bugzilla/show_bug.cgi?id=28509
 And this is the first version of the proposed binutils patch,
 https://sourceware.org/pipermail/binutils/2021-November/118398.html
 
-After applying the binutils patch, I get the the unexpected error when
+After applying the binutils patch, I get the unexpected error when
 building libgcc,
 
 /scratch/nelsonc/riscv-gnu-toolchain/riscv-gcc/libgcc/config/riscv/div.S:42:

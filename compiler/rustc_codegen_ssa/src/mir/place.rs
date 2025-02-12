@@ -243,6 +243,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             return bx.cx().const_poison(cast_to);
         }
         let (tag_scalar, tag_encoding, tag_field) = match self.layout.variants {
+            Variants::Empty => unreachable!("we already handled uninhabited types"),
             Variants::Single { index } => {
                 let discr_val = self
                     .layout
@@ -365,9 +366,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             return;
         }
         match self.layout.variants {
-            Variants::Single { index } => {
-                assert_eq!(index, variant_index);
-            }
+            Variants::Empty => unreachable!("we already handled uninhabited types"),
+            Variants::Single { index } => assert_eq!(index, variant_index),
+
             Variants::Multiple { tag_encoding: TagEncoding::Direct, tag_field, .. } => {
                 let ptr = self.project_field(bx, tag_field);
                 let to =
@@ -473,10 +474,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             LocalRef::Operand(..) => {
                 if place_ref.is_indirect_first_projection() {
                     base = 1;
-                    let cg_base = self.codegen_consume(bx, mir::PlaceRef {
-                        projection: &place_ref.projection[..0],
-                        ..place_ref
-                    });
+                    let cg_base = self.codegen_consume(
+                        bx,
+                        mir::PlaceRef { projection: &place_ref.projection[..0], ..place_ref },
+                    );
                     cg_base.deref(bx.cx())
                 } else {
                     bug!("using operand local {:?} as place", place_ref);
@@ -501,6 +502,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bug!("encountered OpaqueCast({ty}) in codegen")
                 }
                 mir::ProjectionElem::Subtype(ty) => cg_base.project_type(bx, self.monomorphize(ty)),
+                mir::ProjectionElem::UnwrapUnsafeBinder(ty) => {
+                    cg_base.project_type(bx, self.monomorphize(ty))
+                }
                 mir::ProjectionElem::Index(index) => {
                     let index = &mir::Operand::Copy(mir::Place::from(index));
                     let index = self.codegen_operand(bx, index);

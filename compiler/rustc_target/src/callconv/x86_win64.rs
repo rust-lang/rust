@@ -1,12 +1,12 @@
-use rustc_abi::{BackendRepr, Float, Primitive};
+use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind, Size};
 
-use crate::abi::call::{ArgAbi, FnAbi, Reg};
+use crate::callconv::{ArgAbi, FnAbi, Reg};
 use crate::spec::HasTargetSpec;
 
 // Win64 ABI: https://docs.microsoft.com/en-us/cpp/build/parameter-passing
 
-pub(crate) fn compute_abi_info<Ty>(cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<'_, Ty>) {
-    let fixup = |a: &mut ArgAbi<'_, Ty>| {
+pub(crate) fn compute_abi_info<Ty>(_cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<'_, Ty>) {
+    let fixup = |a: &mut ArgAbi<'_, Ty>, is_ret: bool| {
         match a.layout.backend_repr {
             BackendRepr::Uninhabited | BackendRepr::Memory { sized: false } => {}
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { sized: true } => {
@@ -23,11 +23,16 @@ pub(crate) fn compute_abi_info<Ty>(cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<'
                 // (probably what clang calls "illegal vectors").
             }
             BackendRepr::Scalar(scalar) => {
-                // Match what LLVM does for `f128` so that `compiler-builtins` builtins match up
-                // with what LLVM expects.
-                if a.layout.size.bytes() > 8
+                if is_ret && matches!(scalar.primitive(), Primitive::Int(Integer::I128, _)) {
+                    // `i128` is returned in xmm0 by Clang and GCC
+                    // FIXME(#134288): This may change for the `-msvc` targets in the future.
+                    let reg = Reg { kind: RegKind::Vector, size: Size::from_bits(128) };
+                    a.cast_to(reg);
+                } else if a.layout.size.bytes() > 8
                     && !matches!(scalar.primitive(), Primitive::Float(Float::F128))
                 {
+                    // Match what LLVM does for `f128` so that `compiler-builtins` builtins match up
+                    // with what LLVM expects.
                     a.make_indirect();
                 } else {
                     a.extend_integer_width_to(32);
@@ -37,19 +42,22 @@ pub(crate) fn compute_abi_info<Ty>(cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<'
     };
 
     if !fn_abi.ret.is_ignore() {
-        fixup(&mut fn_abi.ret);
+        fixup(&mut fn_abi.ret, true);
     }
+
     for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() {
-            // x86_64-pc-windows-gnu doesn't ignore ZSTs.
-            if cx.target_spec().os == "windows"
-                && cx.target_spec().env == "gnu"
-                && arg.layout.is_zst()
-            {
-                arg.make_indirect_from_ignore();
-            }
+        if arg.is_ignore() && arg.layout.is_zst() {
+            // Windows ABIs do not talk about ZST since such types do not exist in MSVC.
+            // In that sense we can do whatever we want here, and maybe we should throw an error
+            // (but of course that would be a massive breaking change now).
+            // We try to match clang and gcc (which allow ZST is their windows-gnu targets), so we
+            // pass ZST via pointer indirection.
+            arg.make_indirect_from_ignore();
             continue;
         }
-        fixup(arg);
+        fixup(arg, false);
     }
+    // FIXME: We should likely also do something about ZST return types, similar to above.
+    // However, that's non-trivial due to `()`.
+    // See <https://github.com/rust-lang/unsafe-code-guidelines/issues/552>.
 }

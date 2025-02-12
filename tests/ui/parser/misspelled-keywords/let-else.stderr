@@ -6,8 +6,9 @@ LL |     let Some(a) = Some(10) elze {}
    |
 help: there is a keyword `else` with a similar name
    |
-LL |     let Some(a) = Some(10) else {}
-   |                            ~~~~
+LL -     let Some(a) = Some(10) elze {}
+LL +     let Some(a) = Some(10) else {}
+   |
 
 error: aborting due to 1 previous error
 

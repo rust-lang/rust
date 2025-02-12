@@ -108,11 +108,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Pick one of the NaNs.
         let nan = nans.choose(&mut *rand).unwrap();
         // Non-deterministically flip the sign.
-        if rand.gen() {
+        if rand.random() {
             // This will properly flip even for NaN.
             -nan
         } else {
             nan
         }
+    }
+
+    fn equal_float_min_max<F: Float>(&self, a: F, b: F) -> F {
+        let this = self.eval_context_ref();
+        // Return one side non-deterministically.
+        let mut rand = this.machine.rng.borrow_mut();
+        if rand.random() { a } else { b }
     }
 }

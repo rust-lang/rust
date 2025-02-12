@@ -136,7 +136,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
             fx.bcx.ins().jump(destination_block, &[]);
         }
         None => {
-            fx.bcx.ins().trap(TrapCode::user(0 /* unreachable */).unwrap());
+            fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
         }
     }
 }
@@ -875,11 +875,15 @@ fn call_inline_asm<'tcx>(
 
     let inline_asm_func = fx
         .module
-        .declare_function(asm_name, Linkage::Import, &Signature {
-            call_conv: CallConv::SystemV,
-            params: vec![AbiParam::new(fx.pointer_type)],
-            returns: vec![],
-        })
+        .declare_function(
+            asm_name,
+            Linkage::Import,
+            &Signature {
+                call_conv: CallConv::SystemV,
+                params: vec![AbiParam::new(fx.pointer_type)],
+                returns: vec![],
+            },
+        )
         .unwrap();
     let inline_asm_func = fx.module.declare_func_in_func(inline_asm_func, fx.bcx.func);
     if fx.clif_comments.enabled() {

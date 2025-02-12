@@ -29,9 +29,10 @@
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
+extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
-extern crate rustc_attr;
+extern crate rustc_attr_parsing;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 // The `rustc_driver` crate seems to be required in order to use the `rust_ast` crate.
@@ -48,7 +49,6 @@ extern crate rustc_middle;
 extern crate rustc_mir_dataflow;
 extern crate rustc_session;
 extern crate rustc_span;
-extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate smallvec;
 
@@ -88,7 +88,7 @@ use core::mem;
 use core::ops::ControlFlow;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
-use std::iter::{once, repeat};
+use std::iter::{once, repeat_n};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use itertools::Itertools;
@@ -106,26 +106,25 @@ use rustc_hir::{
     self as hir, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, ConstContext,
     Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind,
     ImplItemRef, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat,
-    PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef,
-    TyKind, UnOp, def,
+    PatExpr, PatExprKind, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind,
+    TraitItemRef, TraitRef, TyKind, UnOp, def,
 };
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
-use rustc_middle::mir::Const;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
-    self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, FloatTy, GenericArgsRef, IntTy, Ty, TyCtxt,
-    TypeVisitableExt, UintTy, UpvarCapture,
+    self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, FloatTy, GenericArgKind, GenericArgsRef, IntTy, Ty,
+    TyCtxt, TypeVisitableExt, UintTy, UpvarCapture,
 };
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
 use rustc_span::{InnerSpan, Span, sym};
-use rustc_target::abi::Integer;
-use visitors::Visitable;
+use rustc_abi::Integer;
+use visitors::{Visitable, for_each_unconsumed_temporary};
 
 use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};
 use crate::higher::Range;
@@ -135,13 +134,24 @@ use rustc_middle::hir::nested_filter;
 
 #[macro_export]
 macro_rules! extract_msrv_attr {
-    ($context:ident) => {
-        fn check_attributes(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
+    (LateContext) => {
+        fn check_attributes(&mut self, cx: &rustc_lint::LateContext<'_>, attrs: &[rustc_hir::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
             self.msrv.check_attributes(sess, attrs);
         }
 
-        fn check_attributes_post(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
+        fn check_attributes_post(&mut self, cx: &rustc_lint::LateContext<'_>, attrs: &[rustc_hir::Attribute]) {
+            let sess = rustc_lint::LintContext::sess(cx);
+            self.msrv.check_attributes_post(sess, attrs);
+        }
+    };
+    (EarlyContext) => {
+        fn check_attributes(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::Attribute]) {
+            let sess = rustc_lint::LintContext::sess(cx);
+            self.msrv.check_attributes(sess, attrs);
+        }
+
+        fn check_attributes_post(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
             self.msrv.check_attributes_post(sess, attrs);
         }
@@ -331,6 +341,15 @@ pub fn is_wild(pat: &Pat<'_>) -> bool {
     matches!(pat.kind, PatKind::Wild)
 }
 
+// Checks if arm has the form `None => None`
+pub fn is_none_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
+    matches!(
+        arm.pat.kind,
+        PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), .. })
+            if is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), OptionNone)
+    )
+}
+
 /// Checks if the given `QPath` belongs to a type alias.
 pub fn is_ty_alias(qpath: &QPath<'_>) -> bool {
     match *qpath {
@@ -426,7 +445,7 @@ pub fn qpath_generic_tys<'tcx>(qpath: &QPath<'tcx>) -> impl Iterator<Item = &'tc
         .map_or(&[][..], |a| a.args)
         .iter()
         .filter_map(|a| match a {
-            hir::GenericArg::Type(ty) => Some(*ty),
+            hir::GenericArg::Type(ty) => Some(ty.as_unambig_ty()),
             _ => None,
         })
 }
@@ -550,7 +569,20 @@ macro_rules! maybe_path {
     };
 }
 maybe_path!(Expr, ExprKind);
-maybe_path!(Pat, PatKind);
+impl<'hir> MaybePath<'hir> for Pat<'hir> {
+    fn hir_id(&self) -> HirId {
+        self.hir_id
+    }
+    fn qpath_opt(&self) -> Option<&QPath<'hir>> {
+        match &self.kind {
+            PatKind::Expr(PatExpr {
+                kind: PatExprKind::Path(qpath),
+                ..
+            }) => Some(qpath),
+            _ => None,
+        }
+    }
+}
 maybe_path!(Ty, TyKind);
 
 /// If `maybe_path` is a path node, resolves it, otherwise returns `Res::Err`
@@ -804,7 +836,7 @@ fn projection_stack<'a, 'hir>(mut e: &'a Expr<'hir>) -> (Vec<&'a Expr<'hir>>, &'
                 e = ep;
             },
             _ => break e,
-        };
+        }
     };
     result.reverse();
     (result, root)
@@ -1232,9 +1264,9 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
 
     let mut v = V {
         cx,
-        allow_closure: true,
         loops: Vec::new(),
         locals: HirIdSet::default(),
+        allow_closure: true,
         captures: HirIdMap::default(),
     };
     v.visit_expr(expr);
@@ -1386,7 +1418,7 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
     enclosing_node.and_then(|node| match node {
         Node::Block(block) => Some(block),
         Node::Item(&Item {
-            kind: ItemKind::Fn(_, _, eid),
+            kind: ItemKind::Fn { body: eid, .. },
             ..
         })
         | Node::ImplItem(&ImplItem {
@@ -1573,8 +1605,8 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
         let start_is_none_or_min = start.is_none_or(|start| {
             if let rustc_ty::Adt(_, subst) = ty.kind()
                 && let bnd_ty = subst.type_at(0)
-                && let Some(min_val) = bnd_ty.numeric_min_val(cx.tcx)
-                && let Some(min_const) = mir_to_const(cx.tcx, Const::from_ty_const(min_val, bnd_ty, cx.tcx))
+                && let Some(min_const) = bnd_ty.numeric_min_val(cx.tcx)
+                && let Some(min_const) = mir_to_const(cx.tcx, min_const)
                 && let Some(start_const) = ConstEvalCtxt::new(cx).eval(start)
             {
                 start_const == min_const
@@ -1586,8 +1618,8 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
             RangeLimits::Closed => {
                 if let rustc_ty::Adt(_, subst) = ty.kind()
                     && let bnd_ty = subst.type_at(0)
-                    && let Some(max_val) = bnd_ty.numeric_max_val(cx.tcx)
-                    && let Some(max_const) = mir_to_const(cx.tcx, Const::from_ty_const(max_val, bnd_ty, cx.tcx))
+                    && let Some(max_const) = bnd_ty.numeric_max_val(cx.tcx)
+                    && let Some(max_const) = mir_to_const(cx.tcx, max_const)
                     && let Some(end_const) = ConstEvalCtxt::new(cx).eval(end)
                 {
                     end_const == max_const
@@ -1743,7 +1775,11 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
         PatKind::Wild | PatKind::Never => false, // If `!` typechecked then the type is empty, so not refutable.
         PatKind::Binding(_, _, _, pat) => pat.is_some_and(|pat| is_refutable(cx, pat)),
         PatKind::Box(pat) | PatKind::Ref(pat, _) => is_refutable(cx, pat),
-        PatKind::Path(ref qpath) => is_enum_variant(cx, qpath, pat.hir_id),
+        PatKind::Expr(PatExpr {
+            kind: PatExprKind::Path(qpath),
+            hir_id,
+            ..
+        }) => is_enum_variant(cx, qpath, *hir_id),
         PatKind::Or(pats) => {
             // TODO: should be the honest check, that pats is exhaustive set
             are_refutable(cx, pats)
@@ -1766,7 +1802,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
                 },
             }
         },
-        PatKind::Lit(..) | PatKind::Range(..) | PatKind::Err(_) | PatKind::Deref(_) => true,
+        PatKind::Expr(..) | PatKind::Range(..) | PatKind::Err(_) | PatKind::Deref(_) | PatKind::Guard(..) => true,
     }
 }
 
@@ -1912,7 +1948,7 @@ pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: UintTy) -> u128 {
     (u << amt) >> amt
 }
 
-pub fn has_attr(attrs: &[ast::Attribute], symbol: Symbol) -> bool {
+pub fn has_attr(attrs: &[hir::Attribute], symbol: Symbol) -> bool {
     attrs.iter().any(|attr| attr.has_name(symbol))
 }
 
@@ -1947,43 +1983,6 @@ pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
                 sym::automatically_derived,
             )
         })
-}
-
-/// Matches a function call with the given path and returns the arguments.
-///
-/// Usage:
-///
-/// ```rust,ignore
-/// if let Some(args) = match_function_call(cx, cmp_max_call, &paths::CMP_MAX);
-/// ```
-/// This function is deprecated. Use [`match_function_call_with_def_id`].
-pub fn match_function_call<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'_>,
-    path: &[&str],
-) -> Option<&'tcx [Expr<'tcx>]> {
-    if let ExprKind::Call(fun, args) = expr.kind
-        && let ExprKind::Path(ref qpath) = fun.kind
-        && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
-        && match_def_path(cx, fun_def_id, path)
-    {
-        return Some(args);
-    };
-    None
-}
-
-pub fn match_function_call_with_def_id<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'_>,
-    fun_def_id: DefId,
-) -> Option<&'tcx [Expr<'tcx>]> {
-    if let ExprKind::Call(fun, args) = expr.kind
-        && let ExprKind::Path(ref qpath) = fun.kind
-        && cx.qpath_res(qpath, fun.hir_id).opt_def_id() == Some(fun_def_id)
-    {
-        return Some(args);
-    };
-    None
 }
 
 /// Checks if the given `DefId` matches any of the paths. Returns the index of matching path, if
@@ -2072,7 +2071,7 @@ pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'t
         {
             return Some(expr);
         }
-    };
+    }
     None
 }
 
@@ -2174,7 +2173,7 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
 pub fn is_expr_untyped_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match expr.kind {
         ExprKind::Closure(&Closure { body, fn_decl, .. })
-            if fn_decl.inputs.iter().all(|ty| matches!(ty.kind, TyKind::Infer)) =>
+            if fn_decl.inputs.iter().all(|ty| matches!(ty.kind, TyKind::Infer(()))) =>
         {
             is_body_identity_function(cx, cx.tcx.hir().body(body))
         },
@@ -2262,23 +2261,19 @@ pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
 }
 
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
-        if let ast::AttrKind::Normal(ref normal) = attr.kind {
-            normal.item.path == sym::no_std
-        } else {
-            false
-        }
-    })
+    cx.tcx
+        .hir()
+        .attrs(hir::CRATE_HIR_ID)
+        .iter()
+        .any(|attr| attr.name_or_empty() == sym::no_std)
 }
 
 pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
-        if let ast::AttrKind::Normal(ref normal) = attr.kind {
-            normal.item.path == sym::no_core
-        } else {
-            false
-        }
-    })
+    cx.tcx
+        .hir()
+        .attrs(hir::CRATE_HIR_ID)
+        .iter()
+        .any(|attr| attr.name_or_empty() == sym::no_core)
 }
 
 /// Check if parent of a hir node is a trait implementation block.
@@ -2595,7 +2590,7 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
             // function scope
             .any(|(_id, node)| {
                 if let Node::Item(item) = node {
-                    if let ItemKind::Fn(_, _, _) = item.kind {
+                    if let ItemKind::Fn { .. } = item.kind {
                         // Note that we have sorted the item names in the visitor,
                         // so the binary_search gets the same as `contains`, but faster.
                         return names.binary_search(&item.ident.name).is_ok();
@@ -2752,7 +2747,7 @@ impl<'tcx> ExprUseCtxt<'tcx> {
             }) => ExprUseNode::ConstStatic(owner_id),
 
             Node::Item(&Item {
-                kind: ItemKind::Fn(..),
+                kind: ItemKind::Fn { .. },
                 owner_id,
                 ..
             })
@@ -2977,12 +2972,18 @@ pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
 ///
 /// Comments are returned wrapped with their relevant delimiters
 pub fn span_extract_comment(sm: &SourceMap, span: Span) -> String {
+    span_extract_comments(sm, span).join("\n")
+}
+
+/// Returns all the comments a given span contains.
+///
+/// Comments are returned wrapped with their relevant delimiters.
+pub fn span_extract_comments(sm: &SourceMap, span: Span) -> Vec<String> {
     let snippet = sm.span_to_snippet(span).unwrap_or_default();
-    let res = tokenize_with_text(&snippet)
+    tokenize_with_text(&snippet)
         .filter(|(t, ..)| matches!(t, TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }))
-        .map(|(_, s, _)| s)
-        .join("\n");
-    res
+        .map(|(_, s, _)| s.to_string())
+        .collect::<Vec<_>>()
 }
 
 pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {
@@ -3445,7 +3446,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
             }))
             .join("::")
     } else {
-        repeat(String::from("super")).take(go_up_by).chain(path).join("::")
+        repeat_n(String::from("super"), go_up_by).chain(path).join("::")
     }
 }
 
@@ -3489,4 +3490,21 @@ pub fn is_receiver_of_method_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool
         return true;
     }
     false
+}
+
+/// Returns true if `expr` creates any temporary whose type references a non-static lifetime and has
+/// a significant drop and does not consume it.
+pub fn leaks_droppable_temporary_with_limited_lifetime<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+    for_each_unconsumed_temporary(cx, expr, |temporary_ty| {
+        if temporary_ty.has_significant_drop(cx.tcx, cx.typing_env())
+            && temporary_ty
+                .walk()
+                .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(re) if !re.is_static()))
+        {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    })
+    .is_break()
 }

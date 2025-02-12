@@ -17,8 +17,7 @@ use rustc_infer::infer;
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
-use rustc_span::symbol::Ident;
-use rustc_span::{self, DUMMY_SP, Span, sym};
+use rustc_span::{self, DUMMY_SP, Ident, Span, sym};
 use rustc_trait_selection::error_reporting::TypeErrCtxt;
 use rustc_trait_selection::error_reporting::infer::sub_relations::SubRelations;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
@@ -32,12 +31,12 @@ use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt};
 /// functions, closures, and `const`s, including performing type inference
 /// with [`InferCtxt`].
 ///
-/// This is in contrast to [`ItemCtxt`], which is used to type-check item *signatures*
-/// and thus does not perform type inference.
+/// This is in contrast to `rustc_hir_analysis::collect::ItemCtxt`, which is
+/// used to type-check item *signatures* and thus does not perform type
+/// inference.
 ///
-/// See [`ItemCtxt`]'s docs for more.
+/// See `ItemCtxt`'s docs for more.
 ///
-/// [`ItemCtxt`]: rustc_hir_analysis::collect::ItemCtxt
 /// [`InferCtxt`]: infer::InferCtxt
 pub(crate) struct FnCtxt<'a, 'tcx> {
     pub(super) body_id: LocalDefId,

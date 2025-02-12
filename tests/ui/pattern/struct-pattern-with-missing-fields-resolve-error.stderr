@@ -1,0 +1,27 @@
+error: expected `,`
+  --> $DIR/struct-pattern-with-missing-fields-resolve-error.rs:16:31
+   |
+LL |     if let Website { url, Some(title) } = website {
+   |            -------            ^
+   |            |
+   |            while parsing the fields for this pattern
+
+error[E0425]: cannot find value `title` in this scope
+  --> $DIR/struct-pattern-with-missing-fields-resolve-error.rs:22:30
+   |
+LL |     if let Website { url, .. } = website {
+   |            ------------------- this pattern doesn't include `title`, which is available in `Website`
+LL |         println!("[{}]({})", title, url);
+   |                              ^^^^^ not found in this scope
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/struct-pattern-with-missing-fields-resolve-error.rs:28:20
+   |
+LL |     if let Foo::Bar { .. } = x {
+   |            --------------- this pattern doesn't include `a`, which is available in `Bar`
+LL |         println!("{a}");
+   |                    ^ help: a local variable with a similar name exists: `x`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

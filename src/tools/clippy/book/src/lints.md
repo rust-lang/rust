@@ -101,5 +101,18 @@ The `clippy::cargo` group gives you suggestions on how to improve your
 your crate and are not sure if you have all useful information in your
 `Cargo.toml`.
 
+## Nursery
+
+The `clippy::nursery` group contains lints which are buggy or need more work. It is **not** 
+recommended to enable the whole group, but rather cherry-pick lints that are useful for your 
+code base and your use case. 
+
+## Deprecated
+
+The `clippy::deprecated` is empty lints that exist to ensure that `#[allow(lintname)]` still 
+compiles after the lint was deprecated. Deprecation "removes" lints by removing their 
+functionality and marking them as deprecated, which may cause further warnings but cannot 
+cause a compiler error.
+
 [Clippy lint documentation]: https://rust-lang.github.io/rust-clippy/
 [Clippy 1.0 RFC]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#lint-audit-and-categories

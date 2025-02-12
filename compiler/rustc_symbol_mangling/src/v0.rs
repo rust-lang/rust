@@ -14,10 +14,10 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, PrintError, Printer};
 use rustc_middle::ty::{
-    self, EarlyBinder, FloatTy, GenericArg, GenericArgKind, Instance, IntTy, ReifyReason, Ty,
-    TyCtxt, TypeVisitable, TypeVisitableExt, UintTy,
+    self, FloatTy, GenericArg, GenericArgKind, Instance, IntTy, ReifyReason, Ty, TyCtxt,
+    TypeVisitable, TypeVisitableExt, UintTy,
 };
-use rustc_span::symbol::kw;
+use rustc_span::kw;
 
 pub(super) fn mangle<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -72,7 +72,7 @@ pub(super) fn mangle<'tcx>(
 
 pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
     tcx: TyCtxt<'tcx>,
-    trait_ref: ty::PolyExistentialTraitRef<'tcx>,
+    trait_ref: ty::ExistentialTraitRef<'tcx>,
 ) -> String {
     // FIXME(flip1995): See comment in `mangle_typeid_for_fnabi`.
     let mut cx = SymbolMangler {
@@ -84,7 +84,7 @@ pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
         binders: vec![],
         out: String::new(),
     };
-    cx.print_def_path(trait_ref.def_id(), &[]).unwrap();
+    cx.print_def_path(trait_ref.def_id, &[]).unwrap();
     std::mem::take(&mut cx.out)
 }
 
@@ -227,17 +227,50 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         &mut self,
         impl_def_id: DefId,
         args: &'tcx [GenericArg<'tcx>],
-        mut self_ty: Ty<'tcx>,
-        mut impl_trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
         let key = self.tcx.def_key(impl_def_id);
         let parent_def_id = DefId { index: key.parent.unwrap(), ..impl_def_id };
 
-        let mut typing_env = ty::TypingEnv::post_analysis(self.tcx, impl_def_id);
-        if !args.is_empty() {
-            typing_env.param_env =
-                EarlyBinder::bind(typing_env.param_env).instantiate(self.tcx, args);
-        }
+        let self_ty = self.tcx.type_of(impl_def_id);
+        let impl_trait_ref = self.tcx.impl_trait_ref(impl_def_id);
+        let generics = self.tcx.generics_of(impl_def_id);
+        // We have two cases to worry about here:
+        // 1. We're printing a nested item inside of an impl item, like an inner
+        // function inside of a method. Due to the way that def path printing works,
+        // we'll render this something like `<Ty as Trait>::method::inner_fn`
+        // but we have no substs for this impl since it's not really inheriting
+        // generics from the outer item. We need to use the identity substs, and
+        // to normalize we need to use the correct param-env too.
+        // 2. We're mangling an item with identity substs. This seems to only happen
+        // when generating coverage, since we try to generate coverage for unused
+        // items too, and if something isn't monomorphized then we necessarily don't
+        // have anything to substitute the instance with.
+        // NOTE: We don't support mangling partially substituted but still polymorphic
+        // instances, like `impl<A> Tr<A> for ()` where `A` is substituted w/ `(T,)`.
+        let (typing_env, mut self_ty, mut impl_trait_ref) = if generics.count() > args.len()
+            || &args[..generics.count()]
+                == self
+                    .tcx
+                    .erase_regions(ty::GenericArgs::identity_for_item(self.tcx, impl_def_id))
+                    .as_slice()
+        {
+            (
+                ty::TypingEnv::post_analysis(self.tcx, impl_def_id),
+                self_ty.instantiate_identity(),
+                impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate_identity()),
+            )
+        } else {
+            assert!(
+                !args.has_non_region_param(),
+                "should not be mangling partially substituted \
+                polymorphic instance: {impl_def_id:?} {args:?}"
+            );
+            (
+                ty::TypingEnv::fully_monomorphized(),
+                self_ty.instantiate(self.tcx, args),
+                impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate(self.tcx, args)),
+            )
+        };
 
         match &mut impl_trait_ref {
             Some(impl_trait_ref) => {
@@ -466,6 +499,9 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 })?;
             }
 
+            // FIXME(unsafe_binder):
+            ty::UnsafeBinder(..) => todo!(),
+
             ty::Dynamic(predicates, r, kind) => {
                 self.push(match kind {
                     ty::Dyn => "D",
@@ -554,8 +590,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 
     fn print_const(&mut self, ct: ty::Const<'tcx>) -> Result<(), PrintError> {
         // We only mangle a typed value if the const can be evaluated.
-        let (ct_ty, valtree) = match ct.kind() {
-            ty::ConstKind::Value(ty, val) => (ty, val),
+        let cv = match ct.kind() {
+            ty::ConstKind::Value(cv) => cv,
 
             // Should only be encountered within the identity-substituted
             // impl header of an item nested within an impl item.
@@ -583,13 +619,14 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             return Ok(());
         }
 
+        let ty::Value { ty: ct_ty, valtree } = cv;
         let start = self.out.len();
 
         match ct_ty.kind() {
             ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => {
                 ct_ty.print(self)?;
 
-                let mut bits = ct
+                let mut bits = cv
                     .try_to_bits(self.tcx, ty::TypingEnv::fully_monomorphized())
                     .expect("expected const to be monomorphic");
 
@@ -612,7 +649,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 // HACK(jaic1): hide the `str` type behind a reference
                 // for the following transformation from valtree to raw bytes
                 let ref_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, ct_ty);
-                let slice = valtree.try_to_raw_bytes(tcx, ref_ty).unwrap_or_else(|| {
+                let cv = ty::Value { ty: ref_ty, valtree };
+                let slice = cv.try_to_raw_bytes(tcx).unwrap_or_else(|| {
                     bug!("expected to get raw bytes from valtree {:?} for type {:}", valtree, ct_ty)
                 });
                 let s = std::str::from_utf8(slice).expect("non utf8 str from MIR interpreter");

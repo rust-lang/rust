@@ -6,7 +6,7 @@ use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, ScalarInt, Ty};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 use tracing::trace;
 
 use super::{ImmTy, InterpCx, Machine, MemPlaceMeta, interp_ok, throw_ub};
@@ -537,6 +537,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ImmTy::from_uint(val, usize_layout())
             }
             UbChecks => ImmTy::from_bool(M::ub_checks(self)?, *self.tcx),
+            ContractChecks => ImmTy::from_bool(M::contract_checks(self)?, *self.tcx),
         })
     }
 }

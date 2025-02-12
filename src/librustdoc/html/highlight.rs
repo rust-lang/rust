@@ -65,26 +65,34 @@ fn write_header(
     tooltip: Tooltip,
     extra_classes: &[String],
 ) {
-    write!(out, "<div class=\"example-wrap{}\">", match tooltip {
-        Tooltip::Ignore => " ignore",
-        Tooltip::CompileFail => " compile_fail",
-        Tooltip::ShouldPanic => " should_panic",
-        Tooltip::Edition(_) => " edition",
-        Tooltip::None => "",
-    },);
+    write!(
+        out,
+        "<div class=\"example-wrap{}\">",
+        match tooltip {
+            Tooltip::Ignore => " ignore",
+            Tooltip::CompileFail => " compile_fail",
+            Tooltip::ShouldPanic => " should_panic",
+            Tooltip::Edition(_) => " edition",
+            Tooltip::None => "",
+        },
+    );
 
     if tooltip != Tooltip::None {
         let edition_code;
-        write!(out, "<a href=\"#\" class=\"tooltip\" title=\"{}\">ⓘ</a>", match tooltip {
-            Tooltip::Ignore => "This example is not tested",
-            Tooltip::CompileFail => "This example deliberately fails to compile",
-            Tooltip::ShouldPanic => "This example panics",
-            Tooltip::Edition(edition) => {
-                edition_code = format!("This example runs with edition {edition}");
-                &edition_code
-            }
-            Tooltip::None => unreachable!(),
-        },);
+        write!(
+            out,
+            "<a href=\"#\" class=\"tooltip\" title=\"{}\">ⓘ</a>",
+            match tooltip {
+                Tooltip::Ignore => "This example is not tested",
+                Tooltip::CompileFail => "This example deliberately fails to compile",
+                Tooltip::ShouldPanic => "This example panics",
+                Tooltip::Edition(edition) => {
+                    edition_code = format!("This example runs with edition {edition}");
+                    &edition_code
+                }
+                Tooltip::None => unreachable!(),
+            },
+        );
     }
 
     if let Some(extra) = extra_content {
@@ -233,7 +241,7 @@ pub(super) fn write_code(
     out: &mut impl Write,
     src: &str,
     href_context: Option<HrefContext<'_, '_>>,
-    decoration_info: Option<DecorationInfo>,
+    decoration_info: Option<&DecorationInfo>,
 ) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
     let src = src.replace("\r\n", "\n");
@@ -337,7 +345,7 @@ enum Class {
     Ident(Span),
     Lifetime,
     PreludeTy(Span),
-    PreludeVal,
+    PreludeVal(Span),
     QuestionMark,
     Decoration(&'static str),
 }
@@ -385,7 +393,7 @@ impl Class {
             Class::Ident(_) => "",
             Class::Lifetime => "lifetime",
             Class::PreludeTy(_) => "prelude-ty",
-            Class::PreludeVal => "prelude-val",
+            Class::PreludeVal(_) => "prelude-val",
             Class::QuestionMark => "question-mark",
             Class::Decoration(kind) => kind,
         }
@@ -395,7 +403,11 @@ impl Class {
     /// a "span" (a tuple representing `(lo, hi)` equivalent of `Span`).
     fn get_span(self) -> Option<Span> {
         match self {
-            Self::Ident(sp) | Self::Self_(sp) | Self::Macro(sp) | Self::PreludeTy(sp) => Some(sp),
+            Self::Ident(sp)
+            | Self::Self_(sp)
+            | Self::Macro(sp)
+            | Self::PreludeTy(sp)
+            | Self::PreludeVal(sp) => Some(sp),
             Self::Comment
             | Self::DocComment
             | Self::Attribute
@@ -406,7 +418,6 @@ impl Class {
             | Self::Number
             | Self::Bool
             | Self::Lifetime
-            | Self::PreludeVal
             | Self::QuestionMark
             | Self::Decoration(_) => None,
         }
@@ -507,12 +518,12 @@ struct Decorations {
 }
 
 impl Decorations {
-    fn new(info: DecorationInfo) -> Self {
+    fn new(info: &DecorationInfo) -> Self {
         // Extract tuples (start, end, kind) into separate sequences of (start, kind) and (end).
         let (mut starts, mut ends): (Vec<_>, Vec<_>) = info
             .0
-            .into_iter()
-            .flat_map(|(kind, ranges)| ranges.into_iter().map(move |(lo, hi)| ((lo, kind), hi)))
+            .iter()
+            .flat_map(|(&kind, ranges)| ranges.into_iter().map(move |&(lo, hi)| ((lo, kind), hi)))
             .unzip();
 
         // Sort the sequences in document order.
@@ -539,7 +550,7 @@ struct Classifier<'src> {
 impl<'src> Classifier<'src> {
     /// Takes as argument the source code to HTML-ify, the rust edition to use and the source code
     /// file span which will be used later on by the `span_correspondence_map`.
-    fn new(src: &str, file_span: Span, decoration_info: Option<DecorationInfo>) -> Classifier<'_> {
+    fn new(src: &'src str, file_span: Span, decoration_info: Option<&DecorationInfo>) -> Self {
         let tokens = PeekIter::new(TokenIter { src, cursor: Cursor::new(src) });
         let decorations = decoration_info.map(Decorations::new);
         Classifier {
@@ -851,7 +862,9 @@ impl<'src> Classifier<'src> {
             TokenKind::Ident => match get_real_ident_class(text, false) {
                 None => match text {
                     "Option" | "Result" => Class::PreludeTy(self.new_span(before, text)),
-                    "Some" | "None" | "Ok" | "Err" => Class::PreludeVal,
+                    "Some" | "None" | "Ok" | "Err" => {
+                        Class::PreludeVal(self.new_span(before, text))
+                    }
                     // "union" is a weak keyword and is only considered as a keyword when declaring
                     // a union type.
                     "union" if self.check_if_is_union_keyword() => Class::KeyWord,

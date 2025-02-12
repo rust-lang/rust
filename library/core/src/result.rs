@@ -1065,10 +1065,15 @@ impl<T, E> Result<T, E> {
     /// Returns the contained [`Ok`] value, consuming the `self` value.
     ///
     /// Because this function may panic, its use is generally discouraged.
-    /// Instead, prefer to use pattern matching and handle the [`Err`]
-    /// case explicitly, or call [`unwrap_or`], [`unwrap_or_else`], or
-    /// [`unwrap_or_default`].
+    /// Panics are meant for unrecoverable errors, and
+    /// [may abort the entire program][panic-abort].
     ///
+    /// Instead, prefer to use [the `?` (try) operator][try-operator], or pattern matching
+    /// to handle the [`Err`] case explicitly, or call [`unwrap_or`],
+    /// [`unwrap_or_else`], or [`unwrap_or_default`].
+    ///
+    /// [panic-abort]: https://doc.rust-lang.org/book/ch09-01-unrecoverable-errors-with-panic.html
+    /// [try-operator]: https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html#a-shortcut-for-propagating-errors-the--operator
     /// [`unwrap_or`]: Result::unwrap_or
     /// [`unwrap_or_else`]: Result::unwrap_or_else
     /// [`unwrap_or_default`]: Result::unwrap_or_default

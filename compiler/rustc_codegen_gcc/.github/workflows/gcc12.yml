@@ -17,7 +17,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: false
@@ -81,9 +81,6 @@ jobs:
 
     #- name: Add more failing tests for GCC 12
       #run: cat tests/failing-ui-tests12.txt >> tests/failing-ui-tests.txt
-
-    #- name: Add more failing tests because the sysroot is not compiled with LTO
-      #run: cat tests/failing-non-lto-tests.txt >> tests/failing-ui-tests.txt
 
     #- name: Run tests
       #run: |

@@ -96,12 +96,12 @@ pub struct Argument<'a> {
 #[rustc_diagnostic_item = "ArgumentMethods"]
 impl Argument<'_> {
     #[inline]
-    fn new<'a, T>(x: &'a T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'a> {
+    const fn new<'a, T>(x: &'a T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'a> {
         Argument {
             // INVARIANT: this creates an `ArgumentType<'a>` from a `&'a T` and
             // a `fn(&T, ...)`, so the invariant is maintained.
             ty: ArgumentType::Placeholder {
-                value: NonNull::from(x).cast(),
+                value: NonNull::from_ref(x).cast(),
                 // SAFETY: function pointers always have the same layout.
                 formatter: unsafe { mem::transmute(f) },
                 _lifetime: PhantomData,
@@ -150,7 +150,7 @@ impl Argument<'_> {
         Self::new(x, UpperExp::fmt)
     }
     #[inline]
-    pub fn from_usize(x: &usize) -> Argument<'_> {
+    pub const fn from_usize(x: &usize) -> Argument<'_> {
         Argument { ty: ArgumentType::Count(*x) }
     }
 
@@ -181,7 +181,7 @@ impl Argument<'_> {
     }
 
     #[inline]
-    pub(super) fn as_usize(&self) -> Option<usize> {
+    pub(super) const fn as_usize(&self) -> Option<usize> {
         match self.ty {
             ArgumentType::Count(count) => Some(count),
             ArgumentType::Placeholder { .. } => None,
@@ -199,7 +199,7 @@ impl Argument<'_> {
     /// println!("{f}");
     /// ```
     #[inline]
-    pub fn none() -> [Self; 0] {
+    pub const fn none() -> [Self; 0] {
         []
     }
 }
@@ -216,7 +216,7 @@ impl UnsafeArg {
     /// See documentation where `UnsafeArg` is required to know when it is safe to
     /// create and use `UnsafeArg`.
     #[inline]
-    pub unsafe fn new() -> Self {
+    pub const unsafe fn new() -> Self {
         Self { _private: () }
     }
 }

@@ -19,7 +19,7 @@ use tracing::debug;
 
 use crate::clean::cfg::Cfg;
 use crate::clean::utils::{inherits_doc_hidden, should_ignore_res};
-use crate::clean::{AttributesExt, NestedAttributesExt, reexport_chain};
+use crate::clean::{NestedAttributesExt, hir_attr_lists, reexport_chain};
 use crate::core;
 
 /// This module is used to store stuff from Rust's AST in a more convenient
@@ -247,8 +247,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let document_hidden = self.cx.render_options.document_hidden;
         let use_attrs = tcx.hir().attrs(tcx.local_def_id_to_hir_id(def_id));
         // Don't inline `doc(hidden)` imports so they can be stripped at a later stage.
-        let is_no_inline = use_attrs.lists(sym::doc).has_word(sym::no_inline)
-            || (document_hidden && use_attrs.lists(sym::doc).has_word(sym::hidden));
+        let is_no_inline = hir_attr_lists(use_attrs, sym::doc).has_word(sym::no_inline)
+            || (document_hidden && hir_attr_lists(use_attrs, sym::doc).has_word(sym::hidden));
 
         if is_no_inline {
             return false;
@@ -499,7 +499,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hir::ItemKind::Mod(m) => {
                 self.enter_mod(item.owner_id.def_id, m, name, renamed, import_id);
             }
-            hir::ItemKind::Fn(..)
+            hir::ItemKind::Fn { .. }
             | hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
@@ -598,8 +598,13 @@ impl<'tcx> Visitor<'tcx> for RustdocVisitor<'_, 'tcx> {
         // Unneeded.
     }
 
-    fn visit_infer(&mut self, _: &hir::InferArg) {
-        // Unneeded.
+    fn visit_infer(
+        &mut self,
+        _inf_id: hir::HirId,
+        _inf_span: Span,
+        _kind: hir::intravisit::InferKind<'tcx>,
+    ) -> Self::Result {
+        // Unneeded
     }
 
     fn visit_lifetime(&mut self, _: &hir::Lifetime) {

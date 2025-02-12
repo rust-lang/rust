@@ -233,6 +233,27 @@ pub struct Box<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 >(Unique<T>, A);
 
+/// Constructs a `Box<T>` by calling the `exchange_malloc` lang item and moving the argument into
+/// the newly allocated memory. This is an intrinsic to avoid unnecessary copies.
+///
+/// This is the surface syntax for `box <expr>` expressions.
+#[cfg(not(bootstrap))]
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[unstable(feature = "liballoc_internals", issue = "none")]
+pub fn box_new<T>(_x: T) -> Box<T> {
+    unreachable!()
+}
+
+/// Transition function for the next bootstrap bump.
+#[cfg(bootstrap)]
+#[unstable(feature = "liballoc_internals", issue = "none")]
+#[inline(always)]
+pub fn box_new<T>(x: T) -> Box<T> {
+    #[rustc_box]
+    Box::new(x)
+}
+
 impl<T> Box<T> {
     /// Allocates memory on the heap and then places `x` into it.
     ///
@@ -250,8 +271,7 @@ impl<T> Box<T> {
     #[rustc_diagnostic_item = "box_new"]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn new(x: T) -> Self {
-        #[rustc_box]
-        Box::new(x)
+        return box_new(x);
     }
 
     /// Constructs a new box with uninitialized contents.
@@ -761,6 +781,26 @@ impl<T> Box<[T]> {
         };
         unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, Global).into_box(len)) }
     }
+
+    /// Converts the boxed slice into a boxed array.
+    ///
+    /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
+    ///
+    /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
+    #[unstable(feature = "slice_as_array", issue = "133508")]
+    #[inline]
+    #[must_use]
+    pub fn into_array<const N: usize>(self) -> Option<Box<[T; N]>> {
+        if self.len() == N {
+            let ptr = Self::into_raw(self) as *mut [T; N];
+
+            // SAFETY: The underlying array of a slice has the exact same layout as an actual array `[T; N]` if `N` is equal to the slice's length.
+            let me = unsafe { Box::from_raw(ptr) };
+            Some(me)
+        } else {
+            None
+        }
+    }
 }
 
 impl<T, A: Allocator> Box<[T], A> {
@@ -1025,6 +1065,8 @@ impl<T: ?Sized> Box<T> {
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same raw pointer.
     ///
+    /// The raw pointer must point to a block of memory allocated by the global allocator.
+    ///
     /// The safety conditions are described in the [memory layout] section.
     ///
     /// # Examples
@@ -1072,6 +1114,8 @@ impl<T: ?Sized> Box<T> {
     /// This function is unsafe because improper use may lead to
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same `NonNull` pointer.
+    ///
+    /// The non-null pointer must point to a block of memory allocated by the global allocator.
     ///
     /// The safety conditions are described in the [memory layout] section.
     ///
@@ -1128,6 +1172,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same raw pointer.
     ///
+    /// The raw pointer must point to a block of memory allocated by `alloc`.
     ///
     /// # Examples
     ///
@@ -1182,6 +1227,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same raw pointer.
     ///
+    /// The non-null pointer must point to a block of memory allocated by `alloc`.
     ///
     /// # Examples
     ///
@@ -1985,8 +2031,7 @@ impl<Args: Tuple, F: Fn<Args> + ?Sized, A: Allocator> Fn<Args> for Box<F, A> {
     }
 }
 
-#[cfg_attr(bootstrap, unstable(feature = "async_closure", issue = "62290"))]
-#[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "CURRENT_RUSTC_VERSION"))]
+#[stable(feature = "async_closure", since = "1.85.0")]
 impl<Args: Tuple, F: AsyncFnOnce<Args> + ?Sized, A: Allocator> AsyncFnOnce<Args> for Box<F, A> {
     type Output = F::Output;
     type CallOnceFuture = F::CallOnceFuture;
@@ -1996,8 +2041,7 @@ impl<Args: Tuple, F: AsyncFnOnce<Args> + ?Sized, A: Allocator> AsyncFnOnce<Args>
     }
 }
 
-#[cfg_attr(bootstrap, unstable(feature = "async_closure", issue = "62290"))]
-#[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "CURRENT_RUSTC_VERSION"))]
+#[stable(feature = "async_closure", since = "1.85.0")]
 impl<Args: Tuple, F: AsyncFnMut<Args> + ?Sized, A: Allocator> AsyncFnMut<Args> for Box<F, A> {
     type CallRefFuture<'a>
         = F::CallRefFuture<'a>
@@ -2009,8 +2053,7 @@ impl<Args: Tuple, F: AsyncFnMut<Args> + ?Sized, A: Allocator> AsyncFnMut<Args> f
     }
 }
 
-#[cfg_attr(bootstrap, unstable(feature = "async_closure", issue = "62290"))]
-#[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "CURRENT_RUSTC_VERSION"))]
+#[stable(feature = "async_closure", since = "1.85.0")]
 impl<Args: Tuple, F: AsyncFn<Args> + ?Sized, A: Allocator> AsyncFn<Args> for Box<F, A> {
     extern "rust-call" fn async_call(&self, args: Args) -> Self::CallRefFuture<'_> {
         F::async_call(self, args)

@@ -242,10 +242,11 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MapAndCompressBoundVars<'tcx> {
                 // Allocate a new var idx, and insert a new bound ty.
                 let var = ty::BoundVar::from_usize(self.still_bound_vars.len());
                 self.still_bound_vars.push(ty::BoundVariableKind::Ty(old_bound.kind));
-                let mapped = Ty::new_bound(self.tcx, ty::INNERMOST, ty::BoundTy {
-                    var,
-                    kind: old_bound.kind,
-                });
+                let mapped = Ty::new_bound(
+                    self.tcx,
+                    ty::INNERMOST,
+                    ty::BoundTy { var, kind: old_bound.kind },
+                );
                 self.mapping.insert(old_bound.var, mapped.into());
                 mapped
             };
@@ -265,10 +266,11 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MapAndCompressBoundVars<'tcx> {
             } else {
                 let var = ty::BoundVar::from_usize(self.still_bound_vars.len());
                 self.still_bound_vars.push(ty::BoundVariableKind::Region(old_bound.kind));
-                let mapped = ty::Region::new_bound(self.tcx, ty::INNERMOST, ty::BoundRegion {
-                    var,
-                    kind: old_bound.kind,
-                });
+                let mapped = ty::Region::new_bound(
+                    self.tcx,
+                    ty::INNERMOST,
+                    ty::BoundRegion { var, kind: old_bound.kind },
+                );
                 self.mapping.insert(old_bound.var, mapped.into());
                 mapped
             };
@@ -350,7 +352,7 @@ pub(super) fn explicit_item_bounds(
     explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::All)
 }
 
-pub(super) fn explicit_item_super_predicates(
+pub(super) fn explicit_item_self_bounds(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
 ) -> ty::EarlyBinder<'_, &'_ [(ty::Clause<'_>, Span)]> {
@@ -371,10 +373,9 @@ pub(super) fn explicit_item_bounds_with_filter(
                 associated_type_bounds(tcx, def_id, opaque_ty.bounds, opaque_ty.span, filter);
             return ty::EarlyBinder::bind(bounds);
         }
-        Some(ty::ImplTraitInTraitData::Impl { .. }) => span_bug!(
-            tcx.def_span(def_id),
-            "item bounds for RPITIT in impl to be fed on def-id creation"
-        ),
+        Some(ty::ImplTraitInTraitData::Impl { .. }) => {
+            span_bug!(tcx.def_span(def_id), "RPITIT in impl should not have item bounds")
+        }
         None => {}
     }
 
@@ -435,11 +436,11 @@ pub(super) fn item_bounds(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<'_,
     })
 }
 
-pub(super) fn item_super_predicates(
+pub(super) fn item_self_bounds(
     tcx: TyCtxt<'_>,
     def_id: DefId,
 ) -> ty::EarlyBinder<'_, ty::Clauses<'_>> {
-    tcx.explicit_item_super_predicates(def_id).map_bound(|bounds| {
+    tcx.explicit_item_self_bounds(def_id).map_bound(|bounds| {
         tcx.mk_clauses_from_iter(
             util::elaborate(tcx, bounds.iter().map(|&(bound, _span)| bound)).filter_only_self(),
         )
@@ -448,13 +449,12 @@ pub(super) fn item_super_predicates(
 
 /// This exists as an optimization to compute only the item bounds of the item
 /// that are not `Self` bounds.
-pub(super) fn item_non_self_assumptions(
+pub(super) fn item_non_self_bounds(
     tcx: TyCtxt<'_>,
     def_id: DefId,
 ) -> ty::EarlyBinder<'_, ty::Clauses<'_>> {
     let all_bounds: FxIndexSet<_> = tcx.item_bounds(def_id).skip_binder().iter().collect();
-    let own_bounds: FxIndexSet<_> =
-        tcx.item_super_predicates(def_id).skip_binder().iter().collect();
+    let own_bounds: FxIndexSet<_> = tcx.item_self_bounds(def_id).skip_binder().iter().collect();
     if all_bounds.len() == own_bounds.len() {
         ty::EarlyBinder::bind(ty::ListWithCachedTypeInfo::empty())
     } else {

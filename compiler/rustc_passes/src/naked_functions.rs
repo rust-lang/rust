@@ -1,5 +1,6 @@
 //! Checks validity of naked functions.
 
+use rustc_abi::ExternAbi;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
@@ -10,9 +11,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::UNDEFINED_NAKED_FUNCTION_ABI;
-use rustc_span::Span;
-use rustc_span::symbol::sym;
-use rustc_target::spec::abi::Abi;
+use rustc_span::{Span, sym};
 
 use crate::errors::{
     NakedAsmOutsideNakedFn, NakedFunctionsAsmBlock, NakedFunctionsMustNakedAsm, NoPatterns,
@@ -31,7 +30,10 @@ fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
         }
 
         let (fn_header, body_id) = match tcx.hir_node_by_def_id(def_id) {
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. })
+            hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Fn { sig, body: body_id, .. },
+                ..
+            })
             | hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)),
                 ..
@@ -59,8 +61,8 @@ fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
 }
 
 /// Checks that function uses non-Rust ABI.
-fn check_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, abi: Abi) {
-    if abi == Abi::Rust {
+fn check_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, abi: ExternAbi) {
+    if abi == ExternAbi::Rust {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
         let span = tcx.def_span(def_id);
         tcx.emit_node_span_lint(

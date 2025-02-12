@@ -209,7 +209,7 @@ pub fn setup(config: &Config, profile: Profile) {
     setup_config_toml(path, profile, config);
 }
 
-fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
+fn setup_config_toml(path: &Path, profile: Profile, config: &Config) {
     if profile == Profile::None {
         return;
     }

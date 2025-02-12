@@ -83,13 +83,15 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::Placeholder(..)
         | ty::Infer(_)
         | ty::Bound(..)
-        | ty::Coroutine(..) => false,
+        | ty::Coroutine(..)
+        | ty::UnsafeBinder(_) => false,
     }
 }
 
 pub fn compute_dropck_outlives_inner<'tcx>(
     ocx: &ObligationCtxt<'_, 'tcx>,
     goal: ParamEnvAnd<'tcx, DropckOutlives<'tcx>>,
+    span: Span,
 ) -> Result<DropckOutlivesResult<'tcx>, NoSolution> {
     let tcx = ocx.infcx.tcx;
     let ParamEnvAnd { param_env, value: DropckOutlives { dropped_ty } } = goal;
@@ -135,7 +137,7 @@ pub fn compute_dropck_outlives_inner<'tcx>(
     // Set used to detect infinite recursion.
     let mut ty_set = FxHashSet::default();
 
-    let cause = ObligationCause::dummy();
+    let cause = ObligationCause::dummy_with_span(span);
     let mut constraints = DropckConstraint::empty();
     while let Some((ty, depth)) = ty_stack.pop() {
         debug!(
@@ -333,6 +335,11 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
 
         // Types that can't be resolved. Pass them forward.
         ty::Alias(..) | ty::Param(..) => {
+            constraints.dtorck_types.push(ty);
+        }
+
+        // Can't instantiate binder here.
+        ty::UnsafeBinder(_) => {
             constraints.dtorck_types.push(ty);
         }
 

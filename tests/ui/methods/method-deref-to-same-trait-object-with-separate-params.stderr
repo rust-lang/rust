@@ -46,16 +46,19 @@ LL |         fn foo(self: Smaht<Self, u64>) -> u64 {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
-LL |     let z = FinalFoo::foo(&x);
-   |             ~~~~~~~~~~~~~~~~~
+LL -     let z = x.foo();
+LL +     let z = FinalFoo::foo(&x);
+   |
 help: disambiguate the method for candidate #2
    |
-LL |     let z = NuisanceFoo::foo(x);
-   |             ~~~~~~~~~~~~~~~~~~~
+LL -     let z = x.foo();
+LL +     let z = NuisanceFoo::foo(x);
+   |
 help: disambiguate the method for candidate #3
    |
-LL |     let z = X::foo(x);
-   |             ~~~~~~~~~
+LL -     let z = x.foo();
+LL +     let z = X::foo(x);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:139:24

@@ -15,8 +15,7 @@
 
 pub use rustc_ast_ir::visit::VisitorResult;
 pub use rustc_ast_ir::{try_visit, visit_opt, walk_list, walk_visitable_list};
-use rustc_span::Span;
-use rustc_span::symbol::Ident;
+use rustc_span::{Ident, Span};
 
 use crate::ast::*;
 use crate::ptr::P;
@@ -66,7 +65,7 @@ impl BoundKind {
 #[derive(Copy, Clone, Debug)]
 pub enum FnKind<'a> {
     /// E.g., `fn foo()`, `fn foo(&self)`, or `extern "Abi" fn foo()`.
-    Fn(FnCtxt, &'a Ident, &'a FnSig, &'a Visibility, &'a Generics, &'a Option<P<Block>>),
+    Fn(FnCtxt, &'a Ident, &'a Visibility, &'a Fn),
 
     /// E.g., `|x, y| body`.
     Closure(&'a ClosureBinder, &'a Option<CoroutineKind>, &'a FnDecl, &'a Expr),
@@ -75,7 +74,7 @@ pub enum FnKind<'a> {
 impl<'a> FnKind<'a> {
     pub fn header(&self) -> Option<&'a FnHeader> {
         match *self {
-            FnKind::Fn(_, _, sig, _, _, _) => Some(&sig.header),
+            FnKind::Fn(_, _, _, Fn { sig, .. }) => Some(&sig.header),
             FnKind::Closure(..) => None,
         }
     }
@@ -89,7 +88,7 @@ impl<'a> FnKind<'a> {
 
     pub fn decl(&self) -> &'a FnDecl {
         match self {
-            FnKind::Fn(_, _, sig, _, _, _) => &sig.decl,
+            FnKind::Fn(_, _, _, Fn { sig, .. }) => &sig.decl,
             FnKind::Closure(_, _, decl, _) => decl,
         }
     }
@@ -188,6 +187,9 @@ pub trait Visitor<'ast>: Sized {
     }
     fn visit_closure_binder(&mut self, b: &'ast ClosureBinder) -> Self::Result {
         walk_closure_binder(self, b)
+    }
+    fn visit_contract(&mut self, c: &'ast FnContract) -> Self::Result {
+        walk_contract(self, c)
     }
     fn visit_where_predicate(&mut self, p: &'ast WherePredicate) -> Self::Result {
         walk_where_predicate(self, p)
@@ -375,8 +377,8 @@ impl WalkItemKind for ItemKind {
                 try_visit!(visitor.visit_ty(ty));
                 visit_opt!(visitor, visit_expr, expr);
             }
-            ItemKind::Fn(box Fn { defaultness: _, generics, sig, body }) => {
-                let kind = FnKind::Fn(FnCtxt::Free, ident, sig, vis, generics, body);
+            ItemKind::Fn(func) => {
+                let kind = FnKind::Fn(FnCtxt::Free, ident, vis, &*func);
                 try_visit!(visitor.visit_fn(kind, span, id));
             }
             ItemKind::Mod(_unsafety, mod_kind) => match mod_kind {
@@ -681,7 +683,7 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) -> V::Res
             try_visit!(visitor.visit_ident(ident));
             visit_opt!(visitor, visit_pat, optional_subpattern);
         }
-        PatKind::Lit(expression) => try_visit!(visitor.visit_expr(expression)),
+        PatKind::Expr(expression) => try_visit!(visitor.visit_expr(expression)),
         PatKind::Range(lower_bound, upper_bound, _end) => {
             visit_opt!(visitor, visit_expr, lower_bound);
             visit_opt!(visitor, visit_expr, upper_bound);
@@ -716,8 +718,8 @@ impl WalkItemKind for ForeignItemKind {
                 try_visit!(visitor.visit_ty(ty));
                 visit_opt!(visitor, visit_expr, expr);
             }
-            ForeignItemKind::Fn(box Fn { defaultness: _, generics, sig, body }) => {
-                let kind = FnKind::Fn(FnCtxt::Foreign, ident, sig, vis, generics, body);
+            ForeignItemKind::Fn(func) => {
+                let kind = FnKind::Fn(FnCtxt::Foreign, ident, vis, &*func);
                 try_visit!(visitor.visit_fn(kind, span, id));
             }
             ForeignItemKind::TyAlias(box TyAlias {
@@ -801,6 +803,17 @@ pub fn walk_closure_binder<'a, V: Visitor<'a>>(
     V::Result::output()
 }
 
+pub fn walk_contract<'a, V: Visitor<'a>>(visitor: &mut V, c: &'a FnContract) -> V::Result {
+    let FnContract { requires, ensures } = c;
+    if let Some(pred) = requires {
+        visitor.visit_expr(pred);
+    }
+    if let Some(pred) = ensures {
+        visitor.visit_expr(pred);
+    }
+    V::Result::output()
+}
+
 pub fn walk_where_predicate<'a, V: Visitor<'a>>(
     visitor: &mut V,
     predicate: &'a WherePredicate,
@@ -859,11 +872,17 @@ pub fn walk_fn_decl<'a, V: Visitor<'a>>(
 
 pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Result {
     match kind {
-        FnKind::Fn(_ctxt, _ident, FnSig { header, decl, span: _ }, _vis, generics, body) => {
+        FnKind::Fn(
+            _ctxt,
+            _ident,
+            _vis,
+            Fn { defaultness: _, sig: FnSig { header, decl, span: _ }, generics, contract, body },
+        ) => {
             // Identifier and visibility are visited as a part of the item.
             try_visit!(visitor.visit_fn_header(header));
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_fn_decl(decl));
+            visit_opt!(visitor, visit_contract, contract);
             visit_opt!(visitor, visit_block, body);
         }
         FnKind::Closure(binder, coroutine_kind, decl, body) => {
@@ -893,8 +912,8 @@ impl WalkItemKind for AssocItemKind {
                 try_visit!(visitor.visit_ty(ty));
                 visit_opt!(visitor, visit_expr, expr);
             }
-            AssocItemKind::Fn(box Fn { defaultness: _, generics, sig, body }) => {
-                let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), ident, sig, vis, generics, body);
+            AssocItemKind::Fn(func) => {
+                let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), ident, vis, &*func);
                 try_visit!(visitor.visit_fn(kind, span, id));
             }
             AssocItemKind::Type(box TyAlias {
@@ -1062,7 +1081,7 @@ pub fn walk_inline_asm_sym<'a, V: Visitor<'a>>(
 }
 
 pub fn walk_format_args<'a, V: Visitor<'a>>(visitor: &mut V, fmt: &'a FormatArgs) -> V::Result {
-    let FormatArgs { span: _, template: _, arguments } = fmt;
+    let FormatArgs { span: _, template: _, arguments, uncooked_fmt_str: _ } = fmt;
     for FormatArgument { kind, expr } in arguments.all_args() {
         match kind {
             FormatArgumentKind::Named(ident) | FormatArgumentKind::Captured(ident) => {
@@ -1287,7 +1306,7 @@ pub fn walk_attr_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a AttrArgs) -
     match args {
         AttrArgs::Empty => {}
         AttrArgs::Delimited(_args) => {}
-        AttrArgs::Eq { value, .. } => try_visit!(visitor.visit_expr(value.unwrap_ast())),
+        AttrArgs::Eq { expr, .. } => try_visit!(visitor.visit_expr(expr)),
     }
     V::Result::output()
 }

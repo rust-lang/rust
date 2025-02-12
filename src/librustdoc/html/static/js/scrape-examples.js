@@ -1,5 +1,8 @@
 /* global addClass, hasClass, removeClass, onEachLazy */
 
+// Eventually fix this.
+// @ts-nocheck
+
 "use strict";
 
 (function() {

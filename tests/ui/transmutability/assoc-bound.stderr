@@ -12,8 +12,9 @@ LL |     type AssocB: std::mem::TransmuteFrom<()>;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `B::AssocB`
 help: consider further restricting the associated type
    |
-LL |     T: A, <T as A>::AssocA: TransmuteFrom<(), Assume { alignment: false, lifetimes: false, safety: false, validity: false }>
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     T: A,
+LL +     T: A, <T as A>::AssocA: TransmuteFrom<(), Assume { alignment: false, lifetimes: false, safety: false, validity: false }>
+   |
 
 error[E0277]: `()` cannot be safely transmuted into `<&i32 as A>::AssocA`
   --> $DIR/assoc-bound.rs:24:19

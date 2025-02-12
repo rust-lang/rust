@@ -15,10 +15,7 @@
 // Reason: this should be ignored in cg_clif (Cranelift) CI and anywhere
 // else that uses panic=abort.
 
-use std::ffi::{self, CStr, CString};
-use std::path::PathBuf;
-
-use run_make_support::{libc, run, rustc};
+use run_make_support::{libc, rustc};
 
 fn main() {
     rustc().input("test.rs").arg("--test").run();

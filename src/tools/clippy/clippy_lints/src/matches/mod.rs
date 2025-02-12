@@ -2,6 +2,7 @@ mod collapsible_match;
 mod infallible_destructuring_match;
 mod manual_filter;
 mod manual_map;
+mod manual_ok_err;
 mod manual_unwrap_or;
 mod manual_utils;
 mod match_as_ref;
@@ -27,10 +28,11 @@ mod wild_in_or_pats;
 use clippy_config::Conf;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::walk_span_to_context;
-use clippy_utils::{higher, is_direct_expn_of, is_in_const_context, is_span_match, span_contains_cfg};
+use clippy_utils::{
+    higher, is_direct_expn_of, is_in_const_context, is_span_match, span_contains_cfg, span_extract_comments,
+};
 use rustc_hir::{Arm, Expr, ExprKind, LetStmt, MatchSource, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::{SpanData, SyntaxContext};
 
@@ -581,11 +583,6 @@ declare_clippy_lint! {
     /// are the same on purpose, you can factor them
     /// [using `|`](https://doc.rust-lang.org/book/patterns.html#multiple-patterns).
     ///
-    /// ### Known problems
-    /// False positive possible with order dependent `match`
-    /// (see issue
-    /// [#860](https://github.com/rust-lang/rust-clippy/issues/860)).
-    ///
     /// ### Example
     /// ```rust,ignore
     /// match foo {
@@ -975,6 +972,40 @@ declare_clippy_lint! {
     "checks for unnecessary guards in match expressions"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for manual implementation of `.ok()` or `.err()`
+    /// on `Result` values.
+    ///
+    /// ### Why is this bad?
+    /// Using `.ok()` or `.err()` rather than a `match` or
+    /// `if let` is less complex and more readable.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # fn func() -> Result<u32, &'static str> { Ok(0) }
+    /// let a = match func() {
+    ///     Ok(v) => Some(v),
+    ///     Err(_) => None,
+    /// };
+    /// let b = if let Err(v) = func() {
+    ///     Some(v)
+    /// } else {
+    ///     None
+    /// };
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # fn func() -> Result<u32, &'static str> { Ok(0) }
+    /// let a = func().ok();
+    /// let b = func().err();
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub MANUAL_OK_ERR,
+    complexity,
+    "find manual implementations of `.ok()` or `.err()` on `Result`"
+}
+
 pub struct Matches {
     msrv: Msrv,
     infallible_destructuring_match_linted: bool,
@@ -1016,12 +1047,13 @@ impl_lint_pass!(Matches => [
     MANUAL_MAP,
     MANUAL_FILTER,
     REDUNDANT_GUARDS,
+    MANUAL_OK_ERR,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
     #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if is_direct_expn_of(expr.span, "matches").is_none() && in_external_macro(cx.sess(), expr.span) {
+        if is_direct_expn_of(expr.span, "matches").is_none() && expr.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
         let from_expansion = expr.span.from_expansion();
@@ -1059,7 +1091,28 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     }
 
                     redundant_pattern_match::check_match(cx, expr, ex, arms);
-                    single_match::check(cx, ex, arms, expr);
+                    let source_map = cx.tcx.sess.source_map();
+                    let mut match_comments = span_extract_comments(source_map, expr.span);
+                    // We remove comments from inside arms block.
+                    if !match_comments.is_empty() {
+                        for arm in arms {
+                            for comment in span_extract_comments(source_map, arm.body.span) {
+                                if let Some(index) = match_comments
+                                    .iter()
+                                    .enumerate()
+                                    .find(|(_, cm)| **cm == comment)
+                                    .map(|(index, _)| index)
+                                {
+                                    match_comments.remove(index);
+                                }
+                            }
+                        }
+                    }
+                    // If there are still comments, it means they are outside of the arms, therefore
+                    // we should not lint.
+                    if match_comments.is_empty() {
+                        single_match::check(cx, ex, arms, expr);
+                    }
                     match_bool::check(cx, ex, arms, expr);
                     overlapping_arms::check(cx, ex, arms);
                     match_wild_enum::check(cx, ex, arms);
@@ -1073,6 +1126,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                         manual_unwrap_or::check_match(cx, expr, ex, arms);
                         manual_map::check_match(cx, expr, ex, arms);
                         manual_filter::check_match(cx, ex, arms, expr);
+                        manual_ok_err::check_match(cx, expr, ex, arms);
                     }
 
                     if self.infallible_destructuring_match_linted {
@@ -1109,6 +1163,14 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                         );
                         manual_map::check_if_let(cx, expr, if_let.let_pat, if_let.let_expr, if_let.if_then, else_expr);
                         manual_filter::check_if_let(
+                            cx,
+                            expr,
+                            if_let.let_pat,
+                            if_let.let_expr,
+                            if_let.if_then,
+                            else_expr,
+                        );
+                        manual_ok_err::check_if_let(
                             cx,
                             expr,
                             if_let.let_pat,

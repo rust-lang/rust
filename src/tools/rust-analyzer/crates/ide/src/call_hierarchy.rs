@@ -47,7 +47,7 @@ pub(crate) fn incoming_calls(
         .find_nodes_at_offset_with_descend(file, offset)
         .filter_map(move |node| match node {
             ast::NameLike::NameRef(name_ref) => match NameRefClass::classify(sema, &name_ref)? {
-                NameRefClass::Definition(def @ Definition::Function(_)) => Some(def),
+                NameRefClass::Definition(def @ Definition::Function(_), _) => Some(def),
                 _ => None,
             },
             ast::NameLike::Name(name) => match NameClass::classify(sema, &name)? {
@@ -173,7 +173,7 @@ mod tests {
 
     fn check_hierarchy(
         exclude_tests: bool,
-        ra_fixture: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
         expected_nav: Expect,
         expected_incoming: Expect,
         expected_outgoing: Expect,

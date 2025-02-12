@@ -1,18 +1,19 @@
 use std::mem;
+use std::sync::Arc;
 
 use rustc_ast::ExprKind;
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, Delimiter, IdentIsRaw, Lit, LitKind, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diag, DiagCtxtHandle, PResult, pluralize};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parser::ParseNtResult;
 use rustc_session::parse::{ParseSess, SymbolGallery};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, sym};
-use rustc_span::{Span, Symbol, SyntaxContext, with_metavar_spans};
+use rustc_span::{
+    Ident, MacroRulesNormalizedIdent, Span, Symbol, SyntaxContext, sym, with_metavar_spans,
+};
 use smallvec::{SmallVec, smallvec};
 
 use crate::errors::{
@@ -281,11 +282,13 @@ pub(super) fn transcribe<'a>(
                         }
                         MatchedSingle(ParseNtResult::Ident(ident, is_raw)) => {
                             marker.visit_span(&mut sp);
+                            with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
                             let kind = token::NtIdent(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
                         }
                         MatchedSingle(ParseNtResult::Lifetime(ident, is_raw)) => {
                             marker.visit_span(&mut sp);
+                            with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
                             let kind = token::NtLifetime(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
                         }
@@ -294,7 +297,9 @@ pub(super) fn transcribe<'a>(
                             // `Delimiter::Invisible` to maintain parsing priorities.
                             // `Interpolated` is currently used for such groups in rustc parser.
                             marker.visit_span(&mut sp);
-                            TokenTree::token_alone(token::Interpolated(Lrc::clone(nt)), sp)
+                            let use_span = nt.use_span();
+                            with_metavar_spans(|mspans| mspans.insert(use_span, sp));
+                            TokenTree::token_alone(token::Interpolated(Arc::clone(nt)), sp)
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.
@@ -409,19 +414,15 @@ fn maybe_use_metavar_location(
         return orig_tt.clone();
     }
 
-    let insert = |mspans: &mut FxHashMap<_, _>, s, ms| match mspans.try_insert(s, ms) {
-        Ok(_) => true,
-        Err(err) => *err.entry.get() == ms, // Tried to insert the same span, still success
-    };
     marker.visit_span(&mut metavar_span);
     let no_collision = match orig_tt {
         TokenTree::Token(token, ..) => {
-            with_metavar_spans(|mspans| insert(mspans, token.span, metavar_span))
+            with_metavar_spans(|mspans| mspans.insert(token.span, metavar_span))
         }
         TokenTree::Delimited(dspan, ..) => with_metavar_spans(|mspans| {
-            insert(mspans, dspan.open, metavar_span)
-                && insert(mspans, dspan.close, metavar_span)
-                && insert(mspans, dspan.entire(), metavar_span)
+            mspans.insert(dspan.open, metavar_span)
+                && mspans.insert(dspan.close, metavar_span)
+                && mspans.insert(dspan.entire(), metavar_span)
         }),
     };
     if no_collision || psess.source_map().is_imported(metavar_span) {
@@ -433,14 +434,14 @@ fn maybe_use_metavar_location(
     match orig_tt {
         TokenTree::Token(Token { kind, span }, spacing) => {
             let span = metavar_span.with_ctxt(span.ctxt());
-            with_metavar_spans(|mspans| insert(mspans, span, metavar_span));
+            with_metavar_spans(|mspans| mspans.insert(span, metavar_span));
             TokenTree::Token(Token { kind: kind.clone(), span }, *spacing)
         }
         TokenTree::Delimited(dspan, dspacing, delimiter, tts) => {
             let open = metavar_span.with_ctxt(dspan.open.ctxt());
             let close = metavar_span.with_ctxt(dspan.close.ctxt());
             with_metavar_spans(|mspans| {
-                insert(mspans, open, metavar_span) && insert(mspans, close, metavar_span)
+                mspans.insert(open, metavar_span) && mspans.insert(close, metavar_span)
             });
             let dspan = DelimSpan::from_pair(open, close);
             TokenTree::Delimited(dspan, *dspacing, *delimiter, tts.clone())
@@ -696,8 +697,10 @@ fn transcribe_metavar_expr<'a>(
                     MetaVarExprConcatElem::Var(ident) => {
                         match matched_from_ident(dcx, *ident, interp)? {
                             NamedMatch::MatchedSeq(named_matches) => {
-                                let curr_idx = repeats.last().unwrap().0;
-                                match &named_matches[curr_idx] {
+                                let Some((curr_idx, _)) = repeats.last() else {
+                                    return Err(dcx.struct_span_err(sp.entire(), "invalid syntax"));
+                                };
+                                match &named_matches[*curr_idx] {
                                     // FIXME(c410-f3r) Nested repetitions are unimplemented
                                     MatchedSeq(_) => unimplemented!(),
                                     MatchedSingle(pnr) => {

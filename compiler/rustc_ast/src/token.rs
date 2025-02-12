@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::fmt;
+use std::sync::Arc;
 
 pub use BinOpToken::*;
 pub use LitKind::*;
@@ -8,14 +9,12 @@ pub use NtExprKind::*;
 pub use NtPatKind::*;
 pub use TokenKind::*;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::Lrc;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::Edition;
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, kw, sym};
 #[allow(clippy::useless_attribute)] // FIXME: following use of `hidden_glob_reexports` incorrectly triggers `useless_attribute` lint.
 #[allow(hidden_glob_reexports)]
-use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::symbol::{kw, sym};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{Ident, Symbol};
 
 use crate::ast;
 use crate::ptr::P;
@@ -452,7 +451,7 @@ pub enum TokenKind {
     /// The span in the surrounding `Token` is that of the metavariable in the
     /// macro's RHS. The span within the Nonterminal is that of the fragment
     /// passed to the macro at the call site.
-    Interpolated(Lrc<Nonterminal>),
+    Interpolated(Arc<Nonterminal>),
 
     /// A doc comment token.
     /// `Symbol` is the doc comment's data excluding its "quotes" (`///`, `/**`, etc)
@@ -470,7 +469,7 @@ impl Clone for TokenKind {
         // a copy. This is faster than the `derive(Clone)` version which has a
         // separate path for every variant.
         match self {
-            Interpolated(nt) => Interpolated(Lrc::clone(nt)),
+            Interpolated(nt) => Interpolated(Arc::clone(nt)),
             _ => unsafe { std::ptr::read(self) },
         }
     }
@@ -528,13 +527,13 @@ impl TokenKind {
 
     /// Returns tokens that are likely to be typed accidentally instead of the current token.
     /// Enables better error recovery when the wrong token is found.
-    pub fn similar_tokens(&self) -> Option<Vec<TokenKind>> {
-        match *self {
-            Comma => Some(vec![Dot, Lt, Semi]),
-            Semi => Some(vec![Colon, Comma]),
-            Colon => Some(vec![Semi]),
-            FatArrow => Some(vec![Eq, RArrow, Ge, Gt]),
-            _ => None,
+    pub fn similar_tokens(&self) -> &[TokenKind] {
+        match self {
+            Comma => &[Dot, Lt, Semi],
+            Semi => &[Colon, Comma],
+            Colon => &[Semi],
+            FatArrow => &[Eq, RArrow, Ge, Gt],
+            _ => &[],
         }
     }
 
@@ -904,17 +903,24 @@ impl Token {
         self.is_non_raw_ident_where(|id| id.name == kw)
     }
 
-    /// Returns `true` if the token is a given keyword, `kw` or if `case` is `Insensitive` and this token is an identifier equal to `kw` ignoring the case.
+    /// Returns `true` if the token is a given keyword, `kw` or if `case` is `Insensitive` and this
+    /// token is an identifier equal to `kw` ignoring the case.
     pub fn is_keyword_case(&self, kw: Symbol, case: Case) -> bool {
         self.is_keyword(kw)
             || (case == Case::Insensitive
                 && self.is_non_raw_ident_where(|id| {
-                    id.name.as_str().to_lowercase() == kw.as_str().to_lowercase()
+                    // Do an ASCII case-insensitive match, because all keywords are ASCII.
+                    id.name.as_str().eq_ignore_ascii_case(kw.as_str())
                 }))
     }
 
     pub fn is_path_segment_keyword(&self) -> bool {
         self.is_non_raw_ident_where(Ident::is_path_segment_keyword)
+    }
+
+    /// Don't use this unless you're doing something very loose and heuristic-y.
+    pub fn is_any_keyword(&self) -> bool {
+        self.is_non_raw_ident_where(Ident::is_any_keyword)
     }
 
     /// Returns true for reserved identifiers used internally for elided lifetimes,

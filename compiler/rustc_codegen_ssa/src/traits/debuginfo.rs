@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use rustc_abi::Size;
 use rustc_middle::mir;
-use rustc_middle::ty::{Instance, PolyExistentialTraitRef, Ty};
+use rustc_middle::ty::{ExistentialTraitRef, Instance, Ty};
 use rustc_span::{SourceFile, Span, Symbol};
 use rustc_target::callconv::FnAbi;
 
@@ -13,7 +13,7 @@ pub trait DebugInfoCodegenMethods<'tcx>: BackendTypes {
     fn create_vtable_debuginfo(
         &self,
         ty: Ty<'tcx>,
-        trait_ref: Option<PolyExistentialTraitRef<'tcx>>,
+        trait_ref: Option<ExistentialTraitRef<'tcx>>,
         vtable: Self::Value,
     );
 

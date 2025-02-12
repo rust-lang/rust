@@ -13,8 +13,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `usize` to `u16`
    |
-LL |     foo::<u16>(42_u16);
-   |                   ~~~
+LL -     foo::<u16>(42_usize);
+LL +     foo::<u16>(42_u16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:147:16
@@ -31,8 +32,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `u64` to `u16`
    |
-LL |     foo::<u16>(42_u16);
-   |                   ~~~
+LL -     foo::<u16>(42_u64);
+LL +     foo::<u16>(42_u16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:151:16
@@ -49,8 +51,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `u32` to `u16`
    |
-LL |     foo::<u16>(42_u16);
-   |                   ~~~
+LL -     foo::<u16>(42_u32);
+LL +     foo::<u16>(42_u16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:156:16
@@ -67,8 +70,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `u8` to `u16`
    |
-LL |     foo::<u16>(42_u16);
-   |                   ~~~
+LL -     foo::<u16>(42_u8);
+LL +     foo::<u16>(42_u16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:160:16
@@ -85,8 +89,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `isize` to `u16`
    |
-LL |     foo::<u16>(42_u16);
-   |                   ~~~
+LL -     foo::<u16>(42_isize);
+LL +     foo::<u16>(42_u16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:164:16
@@ -103,8 +108,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `i64` to `u16`
    |
-LL |     foo::<u16>(42_u16);
-   |                   ~~~
+LL -     foo::<u16>(42_i64);
+LL +     foo::<u16>(42_u16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:168:16
@@ -121,8 +127,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `i32` to `u16`
    |
-LL |     foo::<u16>(42_u16);
-   |                   ~~~
+LL -     foo::<u16>(42_i32);
+LL +     foo::<u16>(42_u16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:172:16
@@ -139,8 +146,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `i16` to `u16`
    |
-LL |     foo::<u16>(42_u16);
-   |                   ~~~
+LL -     foo::<u16>(42_i16);
+LL +     foo::<u16>(42_u16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:176:16
@@ -157,8 +165,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `i8` to `u16`
    |
-LL |     foo::<u16>(42_u16);
-   |                   ~~~
+LL -     foo::<u16>(42_i8);
+LL +     foo::<u16>(42_u16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:180:16
@@ -175,8 +184,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `f64` to `u16`
    |
-LL |     foo::<u16>(42u16);
-   |                  ~~~
+LL -     foo::<u16>(42.0_f64);
+LL +     foo::<u16>(42u16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:184:16
@@ -193,8 +203,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `f32` to `u16`
    |
-LL |     foo::<u16>(42u16);
-   |                  ~~~
+LL -     foo::<u16>(42.0_f32);
+LL +     foo::<u16>(42u16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:189:16
@@ -211,8 +222,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `usize` to `i16`
    |
-LL |     foo::<i16>(42_i16);
-   |                   ~~~
+LL -     foo::<i16>(42_usize);
+LL +     foo::<i16>(42_i16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:193:16
@@ -229,8 +241,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `u64` to `i16`
    |
-LL |     foo::<i16>(42_i16);
-   |                   ~~~
+LL -     foo::<i16>(42_u64);
+LL +     foo::<i16>(42_i16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:197:16
@@ -247,8 +260,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `u32` to `i16`
    |
-LL |     foo::<i16>(42_i16);
-   |                   ~~~
+LL -     foo::<i16>(42_u32);
+LL +     foo::<i16>(42_i16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:201:16
@@ -265,8 +279,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `u16` to `i16`
    |
-LL |     foo::<i16>(42_i16);
-   |                   ~~~
+LL -     foo::<i16>(42_u16);
+LL +     foo::<i16>(42_i16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:205:16
@@ -283,8 +298,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `u8` to `i16`
    |
-LL |     foo::<i16>(42_i16);
-   |                   ~~~
+LL -     foo::<i16>(42_u8);
+LL +     foo::<i16>(42_i16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:209:16
@@ -301,8 +317,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `isize` to `i16`
    |
-LL |     foo::<i16>(42_i16);
-   |                   ~~~
+LL -     foo::<i16>(42_isize);
+LL +     foo::<i16>(42_i16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:213:16
@@ -319,8 +336,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `i64` to `i16`
    |
-LL |     foo::<i16>(42_i16);
-   |                   ~~~
+LL -     foo::<i16>(42_i64);
+LL +     foo::<i16>(42_i16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:217:16
@@ -337,8 +355,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `i32` to `i16`
    |
-LL |     foo::<i16>(42_i16);
-   |                   ~~~
+LL -     foo::<i16>(42_i32);
+LL +     foo::<i16>(42_i16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:222:16
@@ -355,8 +374,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `i8` to `i16`
    |
-LL |     foo::<i16>(42_i16);
-   |                   ~~~
+LL -     foo::<i16>(42_i8);
+LL +     foo::<i16>(42_i16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:226:16
@@ -373,8 +393,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `f64` to `i16`
    |
-LL |     foo::<i16>(42i16);
-   |                  ~~~
+LL -     foo::<i16>(42.0_f64);
+LL +     foo::<i16>(42i16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:230:16
@@ -391,8 +412,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `f32` to `i16`
    |
-LL |     foo::<i16>(42i16);
-   |                  ~~~
+LL -     foo::<i16>(42.0_f32);
+LL +     foo::<i16>(42i16);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:235:15
@@ -409,8 +431,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `usize` to `u8`
    |
-LL |     foo::<u8>(42_u8);
-   |                  ~~
+LL -     foo::<u8>(42_usize);
+LL +     foo::<u8>(42_u8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:239:15
@@ -427,8 +450,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `u64` to `u8`
    |
-LL |     foo::<u8>(42_u8);
-   |                  ~~
+LL -     foo::<u8>(42_u64);
+LL +     foo::<u8>(42_u8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:243:15
@@ -445,8 +469,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `u32` to `u8`
    |
-LL |     foo::<u8>(42_u8);
-   |                  ~~
+LL -     foo::<u8>(42_u32);
+LL +     foo::<u8>(42_u8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:247:15
@@ -463,8 +488,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `u16` to `u8`
    |
-LL |     foo::<u8>(42_u8);
-   |                  ~~
+LL -     foo::<u8>(42_u16);
+LL +     foo::<u8>(42_u8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:252:15
@@ -481,8 +507,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `isize` to `u8`
    |
-LL |     foo::<u8>(42_u8);
-   |                  ~~
+LL -     foo::<u8>(42_isize);
+LL +     foo::<u8>(42_u8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:256:15
@@ -499,8 +526,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `i64` to `u8`
    |
-LL |     foo::<u8>(42_u8);
-   |                  ~~
+LL -     foo::<u8>(42_i64);
+LL +     foo::<u8>(42_u8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:260:15
@@ -517,8 +545,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `i32` to `u8`
    |
-LL |     foo::<u8>(42_u8);
-   |                  ~~
+LL -     foo::<u8>(42_i32);
+LL +     foo::<u8>(42_u8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:264:15
@@ -535,8 +564,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `i16` to `u8`
    |
-LL |     foo::<u8>(42_u8);
-   |                  ~~
+LL -     foo::<u8>(42_i16);
+LL +     foo::<u8>(42_u8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:268:15
@@ -553,8 +583,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `i8` to `u8`
    |
-LL |     foo::<u8>(42_u8);
-   |                  ~~
+LL -     foo::<u8>(42_i8);
+LL +     foo::<u8>(42_u8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:272:15
@@ -571,8 +602,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `f64` to `u8`
    |
-LL |     foo::<u8>(42u8);
-   |                 ~~
+LL -     foo::<u8>(42.0_f64);
+LL +     foo::<u8>(42u8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:276:15
@@ -589,8 +621,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `f32` to `u8`
    |
-LL |     foo::<u8>(42u8);
-   |                 ~~
+LL -     foo::<u8>(42.0_f32);
+LL +     foo::<u8>(42u8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:281:15
@@ -607,8 +640,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `usize` to `i8`
    |
-LL |     foo::<i8>(42_i8);
-   |                  ~~
+LL -     foo::<i8>(42_usize);
+LL +     foo::<i8>(42_i8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:285:15
@@ -625,8 +659,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `u64` to `i8`
    |
-LL |     foo::<i8>(42_i8);
-   |                  ~~
+LL -     foo::<i8>(42_u64);
+LL +     foo::<i8>(42_i8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:289:15
@@ -643,8 +678,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `u32` to `i8`
    |
-LL |     foo::<i8>(42_i8);
-   |                  ~~
+LL -     foo::<i8>(42_u32);
+LL +     foo::<i8>(42_i8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:293:15
@@ -661,8 +697,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `u16` to `i8`
    |
-LL |     foo::<i8>(42_i8);
-   |                  ~~
+LL -     foo::<i8>(42_u16);
+LL +     foo::<i8>(42_i8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:297:15
@@ -679,8 +716,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `u8` to `i8`
    |
-LL |     foo::<i8>(42_i8);
-   |                  ~~
+LL -     foo::<i8>(42_u8);
+LL +     foo::<i8>(42_i8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:301:15
@@ -697,8 +735,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `isize` to `i8`
    |
-LL |     foo::<i8>(42_i8);
-   |                  ~~
+LL -     foo::<i8>(42_isize);
+LL +     foo::<i8>(42_i8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:305:15
@@ -715,8 +754,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `i64` to `i8`
    |
-LL |     foo::<i8>(42_i8);
-   |                  ~~
+LL -     foo::<i8>(42_i64);
+LL +     foo::<i8>(42_i8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:309:15
@@ -733,8 +773,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `i32` to `i8`
    |
-LL |     foo::<i8>(42_i8);
-   |                  ~~
+LL -     foo::<i8>(42_i32);
+LL +     foo::<i8>(42_i8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:313:15
@@ -751,8 +792,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `i16` to `i8`
    |
-LL |     foo::<i8>(42_i8);
-   |                  ~~
+LL -     foo::<i8>(42_i16);
+LL +     foo::<i8>(42_i8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:318:15
@@ -769,8 +811,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `f64` to `i8`
    |
-LL |     foo::<i8>(42i8);
-   |                 ~~
+LL -     foo::<i8>(42.0_f64);
+LL +     foo::<i8>(42i8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:322:15
@@ -787,8 +830,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `f32` to `i8`
    |
-LL |     foo::<i8>(42i8);
-   |                 ~~
+LL -     foo::<i8>(42.0_f32);
+LL +     foo::<i8>(42i8);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:327:16
@@ -805,8 +849,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `usize` to `f64`
    |
-LL |     foo::<f64>(42_f64);
-   |                   ~~~
+LL -     foo::<f64>(42_usize);
+LL +     foo::<f64>(42_f64);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:331:16
@@ -823,8 +868,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `u64` to `f64`
    |
-LL |     foo::<f64>(42_f64);
-   |                   ~~~
+LL -     foo::<f64>(42_u64);
+LL +     foo::<f64>(42_f64);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:335:16
@@ -895,8 +941,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `isize` to `f64`
    |
-LL |     foo::<f64>(42_f64);
-   |                   ~~~
+LL -     foo::<f64>(42_isize);
+LL +     foo::<f64>(42_f64);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:351:16
@@ -913,8 +960,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `i64` to `f64`
    |
-LL |     foo::<f64>(42_f64);
-   |                   ~~~
+LL -     foo::<f64>(42_i64);
+LL +     foo::<f64>(42_f64);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:355:16
@@ -985,8 +1033,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `f32` to `f64`
    |
-LL |     foo::<f64>(42.0_f64);
-   |                     ~~~
+LL -     foo::<f64>(42.0_f32);
+LL +     foo::<f64>(42.0_f64);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:373:16
@@ -1003,8 +1052,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `usize` to `f32`
    |
-LL |     foo::<f32>(42_f32);
-   |                   ~~~
+LL -     foo::<f32>(42_usize);
+LL +     foo::<f32>(42_f32);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:377:16
@@ -1021,8 +1071,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `u64` to `f32`
    |
-LL |     foo::<f32>(42_f32);
-   |                   ~~~
+LL -     foo::<f32>(42_u64);
+LL +     foo::<f32>(42_f32);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:381:16
@@ -1039,8 +1090,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `u32` to `f32`
    |
-LL |     foo::<f32>(42_f32);
-   |                   ~~~
+LL -     foo::<f32>(42_u32);
+LL +     foo::<f32>(42_f32);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:385:16
@@ -1093,8 +1145,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `isize` to `f32`
    |
-LL |     foo::<f32>(42_f32);
-   |                   ~~~
+LL -     foo::<f32>(42_isize);
+LL +     foo::<f32>(42_f32);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:397:16
@@ -1111,8 +1164,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `i64` to `f32`
    |
-LL |     foo::<f32>(42_f32);
-   |                   ~~~
+LL -     foo::<f32>(42_i64);
+LL +     foo::<f32>(42_f32);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:401:16
@@ -1129,8 +1183,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `i32` to `f32`
    |
-LL |     foo::<f32>(42_f32);
-   |                   ~~~
+LL -     foo::<f32>(42_i32);
+LL +     foo::<f32>(42_f32);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:405:16
@@ -1183,8 +1238,9 @@ LL | fn foo<N>(_x: N) {}
    |    ^^^    -----
 help: change the type of the numeric literal from `f64` to `f32`
    |
-LL |     foo::<f32>(42.0_f32);
-   |                     ~~~
+LL -     foo::<f32>(42.0_f64);
+LL +     foo::<f32>(42.0_f32);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/numeric-suffix.rs:419:16

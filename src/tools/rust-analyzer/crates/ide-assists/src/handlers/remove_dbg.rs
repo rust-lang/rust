@@ -102,7 +102,7 @@ fn compute_dbg_replacement(macro_expr: ast::MacroExpr) -> Option<(TextRange, Opt
                         };
                         (range, None)
                     },
-                    _ => (macro_call.syntax().text_range(), Some(make::expr_unit())),
+                    _ => (macro_call.syntax().text_range(), Some(make::ext::expr_unit())),
                 }
             }
         }
@@ -152,7 +152,7 @@ fn compute_dbg_replacement(macro_expr: ast::MacroExpr) -> Option<(TextRange, Opt
         exprs => {
             let exprs = exprs.iter().cloned().map(replace_nested_dbgs);
             let expr = make::expr_tuple(exprs);
-            (macro_call.syntax().text_range(), Some(expr))
+            (macro_call.syntax().text_range(), Some(expr.into()))
         }
     })
 }
@@ -209,7 +209,10 @@ mod tests {
 
     use super::*;
 
-    fn check(ra_fixture_before: &str, ra_fixture_after: &str) {
+    fn check(
+        #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+    ) {
         check_assist(
             remove_dbg,
             &format!("fn main() {{\n{ra_fixture_before}\n}}"),

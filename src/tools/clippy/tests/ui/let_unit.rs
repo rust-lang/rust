@@ -1,8 +1,6 @@
 #![warn(clippy::let_unit_value)]
 #![allow(unused, clippy::no_effect, clippy::needless_late_init, path_statements)]
 
-//@no-rustfix: need to change the suggestion to a multipart suggestion
-
 macro_rules! let_and_return {
     ($n:expr) => {{
         let ret = $n;

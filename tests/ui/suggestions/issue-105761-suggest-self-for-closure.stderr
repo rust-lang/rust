@@ -11,7 +11,7 @@ LL |         self.qux();
 LL |         x(1);
    |         - immutable borrow later used here
    |
-help: try explicitly pass `&Self` into the Closure as an argument
+help: try explicitly passing `&Self` into the closure as an argument
    |
 LL ~         let x = |this: &Self, v: i32| {
 LL ~             this.bar();
@@ -35,7 +35,7 @@ LL |         self.qux();
 LL |         y();
    |         - immutable borrow later used here
    |
-help: try explicitly pass `&Self` into the Closure as an argument
+help: try explicitly passing `&Self` into the closure as an argument
    |
 LL ~         let y = |this: &Self| {
 LL ~             this.bar();

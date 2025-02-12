@@ -25,10 +25,9 @@ use rustc_session::Session;
 use rustc_session::config::{
     self, Lto, OutputType, Passes, RemapPathScopeComponents, SplitDwarfKind, SwitchWithOptPath,
 };
-use rustc_span::symbol::sym;
-use rustc_span::{BytePos, InnerSpan, Pos, SpanData, SyntaxContext};
-use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
-use tracing::debug;
+use rustc_span::{BytePos, InnerSpan, Pos, SpanData, SyntaxContext, sym};
+use rustc_target::spec::{CodeModel, FloatAbi, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
+use tracing::{debug, trace};
 
 use crate::back::lto::ThinBuffer;
 use crate::back::owned_target_machine::OwnedTargetMachine;
@@ -182,6 +181,14 @@ pub(crate) fn to_llvm_code_model(code_model: Option<CodeModel>) -> llvm::CodeMod
     }
 }
 
+fn to_llvm_float_abi(float_abi: Option<FloatAbi>) -> llvm::FloatAbi {
+    match float_abi {
+        None => llvm::FloatAbi::Default,
+        Some(FloatAbi::Soft) => llvm::FloatAbi::Soft,
+        Some(FloatAbi::Hard) => llvm::FloatAbi::Hard,
+    }
+}
+
 pub(crate) fn target_machine_factory(
     sess: &Session,
     optlvl: config::OptLevel,
@@ -190,12 +197,12 @@ pub(crate) fn target_machine_factory(
     let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
     let (opt_level, _) = to_llvm_opt_settings(optlvl);
-    let use_softfp = if sess.target.arch == "arm" && sess.target.abi == "eabihf" {
-        sess.opts.cg.soft_float
+    let float_abi = if sess.target.arch == "arm" && sess.opts.cg.soft_float {
+        llvm::FloatAbi::Soft
     } else {
         // `validate_commandline_args_with_session_available` has already warned about this being
         // ignored. Let's make sure LLVM doesn't suddenly start using this flag on more targets.
-        false
+        to_llvm_float_abi(sess.target.llvm_floatabi)
     };
 
     let ffunction_sections =
@@ -291,7 +298,7 @@ pub(crate) fn target_machine_factory(
             code_model,
             reloc_model,
             opt_level,
-            use_softfp,
+            float_abi,
             ffunction_sections,
             fdata_sections,
             funique_section_names,
@@ -523,6 +530,16 @@ fn get_instr_profile_output_path(config: &ModuleConfig) -> Option<CString> {
     config.instrument_coverage.then(|| c"default_%m_%p.profraw".to_owned())
 }
 
+// PreAD will run llvm opts but disable size increasing opts (vectorization, loop unrolling)
+// DuringAD is the same as above, but also runs the enzyme opt and autodiff passes.
+// PostAD will run all opts, including size increasing opts.
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) enum AutodiffStage {
+    PreAD,
+    DuringAD,
+    PostAD,
+}
+
 pub(crate) unsafe fn llvm_optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     dcx: DiagCtxtHandle<'_>,
@@ -530,9 +547,39 @@ pub(crate) unsafe fn llvm_optimize(
     config: &ModuleConfig,
     opt_level: config::OptLevel,
     opt_stage: llvm::OptStage,
+    autodiff_stage: AutodiffStage,
 ) -> Result<(), FatalError> {
-    let unroll_loops =
-        opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
+    // Enzyme:
+    // The whole point of compiler based AD is to differentiate optimized IR instead of unoptimized
+    // source code. However, benchmarks show that optimizations increasing the code size
+    // tend to reduce AD performance. Therefore deactivate them before AD, then differentiate the code
+    // and finally re-optimize the module, now with all optimizations available.
+    // FIXME(ZuseZ4): In a future update we could figure out how to only optimize individual functions getting
+    // differentiated.
+
+    let unroll_loops;
+    let vectorize_slp;
+    let vectorize_loop;
+    let run_enzyme = cfg!(llvm_enzyme) && autodiff_stage == AutodiffStage::DuringAD;
+
+    // When we build rustc with enzyme/autodiff support, we want to postpone size-increasing
+    // optimizations until after differentiation. Our pipeline is thus: (opt + enzyme), (full opt).
+    // We therefore have two calls to llvm_optimize, if autodiff is used.
+    //
+    // FIXME(ZuseZ4): Before shipping on nightly,
+    // we should make this more granular, or at least check that the user has at least one autodiff
+    // call in their code, to justify altering the compilation pipeline.
+    if cfg!(llvm_enzyme) && autodiff_stage != AutodiffStage::PostAD {
+        unroll_loops = false;
+        vectorize_slp = false;
+        vectorize_loop = false;
+    } else {
+        unroll_loops =
+            opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
+        vectorize_slp = config.vectorize_slp;
+        vectorize_loop = config.vectorize_loop;
+    }
+    trace!(?unroll_loops, ?vectorize_slp, ?vectorize_loop, ?run_enzyme);
     let using_thin_buffers = opt_stage == llvm::OptStage::PreLinkThinLTO || config.bitcode_needed();
     let pgo_gen_path = get_pgo_gen_path(config);
     let pgo_use_path = get_pgo_use_path(config);
@@ -596,10 +643,11 @@ pub(crate) unsafe fn llvm_optimize(
             using_thin_buffers,
             config.merge_functions,
             unroll_loops,
-            config.vectorize_slp,
-            config.vectorize_loop,
+            vectorize_slp,
+            vectorize_loop,
             config.no_builtins,
             config.emit_lifetime_markers,
+            run_enzyme,
             sanitizer_options.as_ref(),
             pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
             pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
@@ -641,6 +689,8 @@ pub(crate) unsafe fn optimize(
         unsafe { llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr()) };
     }
 
+    // FIXME(ZuseZ4): support SanitizeHWAddress and prevent illegal/unsupported opts
+
     if let Some(opt_level) = config.opt_level {
         let opt_stage = match cgcx.lto {
             Lto::Fat => llvm::OptStage::PreLinkFatLTO,
@@ -648,7 +698,16 @@ pub(crate) unsafe fn optimize(
             _ if cgcx.opts.cg.linker_plugin_lto.enabled() => llvm::OptStage::PreLinkThinLTO,
             _ => llvm::OptStage::PreLinkNoLTO,
         };
-        return unsafe { llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage) };
+
+        // If we know that we will later run AD, then we disable vectorization and loop unrolling.
+        // Otherwise we pretend AD is already done and run the normal opt pipeline (=PostAD).
+        // FIXME(ZuseZ4): Make this more granular, only set PreAD if we actually have autodiff
+        // usages, not just if we build rustc with autodiff support.
+        let autodiff_stage =
+            if cfg!(llvm_enzyme) { AutodiffStage::PreAD } else { AutodiffStage::PostAD };
+        return unsafe {
+            llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage, autodiff_stage)
+        };
     }
     Ok(())
 }
@@ -721,12 +780,9 @@ pub(crate) unsafe fn codegen(
             }
         }
 
-        // Two things to note:
-        // - If object files are just LLVM bitcode we write bitcode, copy it to
-        //   the .o file, and delete the bitcode if it wasn't otherwise
-        //   requested.
-        // - If we don't have the integrated assembler then we need to emit
-        //   asm from LLVM and use `gcc` to create the object file.
+        // Note that if object files are just LLVM bitcode we write bitcode,
+        // copy it to the .o file, and delete the bitcode if it wasn't
+        // otherwise requested.
 
         let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
         let bc_summary_out =

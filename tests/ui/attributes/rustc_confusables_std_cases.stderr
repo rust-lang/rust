@@ -6,8 +6,9 @@ LL |     x.push(1);
    |
 help: you might have meant to use `insert`
    |
-LL |     x.insert(1);
-   |       ~~~~~~
+LL -     x.push(1);
+LL +     x.insert(1);
+   |
 
 error[E0599]: no method named `push_back` found for struct `Vec<_>` in the current scope
   --> $DIR/rustc_confusables_std_cases.rs:9:7
@@ -17,8 +18,9 @@ LL |     x.push_back(1);
    |
 help: you might have meant to use `push`
    |
-LL |     x.push(1);
-   |       ~~~~
+LL -     x.push_back(1);
+LL +     x.push(1);
+   |
 
 error[E0599]: no method named `push` found for struct `VecDeque` in the current scope
   --> $DIR/rustc_confusables_std_cases.rs:12:7
@@ -36,8 +38,9 @@ LL |     let mut x = VecDeque::new();
    |         ----- earlier `x` shadowed here with type `VecDeque`
 help: you might have meant to use `push_back`
    |
-LL |     x.push_back(1);
-   |       ~~~~~~~~~
+LL -     x.push(1);
+LL +     x.push_back(1);
+   |
 
 error[E0599]: no method named `length` found for struct `Vec<{integer}>` in the current scope
   --> $DIR/rustc_confusables_std_cases.rs:15:7
@@ -47,8 +50,9 @@ LL |     x.length();
    |
 help: you might have meant to use `len`
    |
-LL |     x.len();
-   |       ~~~
+LL -     x.length();
+LL +     x.len();
+   |
 
 error[E0599]: no method named `size` found for struct `Vec<{integer}>` in the current scope
   --> $DIR/rustc_confusables_std_cases.rs:17:7
@@ -60,8 +64,9 @@ help: there is a method `resize` with a similar name, but with different argumen
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 help: you might have meant to use `len`
    |
-LL |     x.len();
-   |       ~~~
+LL -     x.size();
+LL +     x.len();
+   |
 
 error[E0308]: mismatched types
   --> $DIR/rustc_confusables_std_cases.rs:20:14
@@ -77,8 +82,9 @@ note: method defined here
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 help: you might have meant to use `push`
    |
-LL |     x.push(42);
-   |       ~~~~
+LL -     x.append(42);
+LL +     x.push(42);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/rustc_confusables_std_cases.rs:22:24
@@ -92,8 +98,9 @@ note: method defined here
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
 help: you might have meant to use `push_str`
    |
-LL |     String::new().push_str("");
-   |                   ~~~~~~~~
+LL -     String::new().push("");
+LL +     String::new().push_str("");
+   |
 
 error[E0599]: no method named `append` found for struct `String` in the current scope
   --> $DIR/rustc_confusables_std_cases.rs:24:19
@@ -103,8 +110,9 @@ LL |     String::new().append("");
    |
 help: you might have meant to use `push_str`
    |
-LL |     String::new().push_str("");
-   |                   ~~~~~~~~
+LL -     String::new().append("");
+LL +     String::new().push_str("");
+   |
 
 error[E0599]: no method named `get_line` found for struct `Stdin` in the current scope
   --> $DIR/rustc_confusables_std_cases.rs:28:11
@@ -114,8 +122,9 @@ LL |     stdin.get_line(&mut buffer).unwrap();
    |
 help: you might have meant to use `read_line`
    |
-LL |     stdin.read_line(&mut buffer).unwrap();
-   |           ~~~~~~~~~
+LL -     stdin.get_line(&mut buffer).unwrap();
+LL +     stdin.read_line(&mut buffer).unwrap();
+   |
 
 error: aborting due to 9 previous errors
 

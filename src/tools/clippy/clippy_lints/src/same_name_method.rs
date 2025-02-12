@@ -62,10 +62,13 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                 && let TyKind::Path(QPath::Resolved(_, Path { res, .. })) = self_ty.kind
             {
                 if !map.contains_key(res) {
-                    map.insert(*res, ExistingName {
-                        impl_methods: BTreeMap::new(),
-                        trait_methods: BTreeMap::new(),
-                    });
+                    map.insert(
+                        *res,
+                        ExistingName {
+                            impl_methods: BTreeMap::new(),
+                            trait_methods: BTreeMap::new(),
+                        },
+                    );
                 }
                 let existing_name = map.get_mut(res).unwrap();
 

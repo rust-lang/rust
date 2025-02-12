@@ -28,7 +28,7 @@ pub(crate) fn add_lifetime_to_type(acc: &mut Assists, ctx: &AssistContext<'_>) -
     let node = ctx.find_node_at_offset::<ast::Adt>()?;
     let has_lifetime = node
         .generic_param_list()
-        .map_or(false, |gen_list| gen_list.lifetime_params().next().is_some());
+        .is_some_and(|gen_list| gen_list.lifetime_params().next().is_some());
 
     if has_lifetime {
         return None;

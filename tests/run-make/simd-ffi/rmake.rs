@@ -56,7 +56,7 @@ fn main() {
             .target(&target)
             .emit("llvm-ir,asm")
             .input("simd.rs")
-            .arg("-Ctarget-feature=+neon,+sse")
+            .arg("-Ctarget-feature=-soft-float,+neon,+sse")
             .arg(&format!("-Cextra-filename=-{target}"))
             .run();
     }

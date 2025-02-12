@@ -9,7 +9,6 @@ use std::cmp::max;
 use rand::Rng;
 use rustc_abi::{Align, Size};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_span::Span;
 
 use self::reuse_pool::ReusePool;
 use crate::concurrency::VClock;
@@ -218,7 +217,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // We have to pick a fresh address.
             // Leave some space to the previous allocation, to give it some chance to be less aligned.
             // We ensure that `(global_state.next_base_addr + slack) % 16` is uniformly distributed.
-            let slack = rng.gen_range(0..16);
+            let slack = rng.random_range(0..16);
             // From next_base_addr + slack, round up to adjust for alignment.
             let base_addr = global_state
                 .next_base_addr
@@ -319,17 +318,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match global_state.provenance_mode {
             ProvenanceMode::Default => {
                 // The first time this happens at a particular location, print a warning.
-                thread_local! {
-                    // `Span` is non-`Send`, so we use a thread-local instead.
-                    static PAST_WARNINGS: RefCell<FxHashSet<Span>> = RefCell::default();
+                let mut int2ptr_warned = this.machine.int2ptr_warned.borrow_mut();
+                let first = int2ptr_warned.is_empty();
+                if int2ptr_warned.insert(this.cur_span()) {
+                    // Newly inserted, so first time we see this span.
+                    this.emit_diagnostic(NonHaltingDiagnostic::Int2Ptr { details: first });
                 }
-                PAST_WARNINGS.with_borrow_mut(|past_warnings| {
-                    let first = past_warnings.is_empty();
-                    if past_warnings.insert(this.cur_span()) {
-                        // Newly inserted, so first time we see this span.
-                        this.emit_diagnostic(NonHaltingDiagnostic::Int2Ptr { details: first });
-                    }
-                });
             }
             ProvenanceMode::Strict => {
                 throw_machine_stop!(TerminationInfo::Int2PtrWithStrictProvenance);

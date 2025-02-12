@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs::{self, File, create_dir_all};
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::prelude::*;
@@ -17,8 +17,8 @@ use tracing::*;
 
 use crate::common::{
     Assembly, Codegen, CodegenUnits, CompareMode, Config, CoverageMap, CoverageRun, Crashes,
-    DebugInfo, Debugger, FailMode, Incremental, JsDocTest, MirOpt, PassMode, Pretty, RunMake,
-    Rustdoc, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT,
+    DebugInfo, Debugger, FailMode, Incremental, MirOpt, PassMode, Pretty, RunMake, Rustdoc,
+    RustdocJs, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT,
     UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG, Ui, expected_output_path, incremental_dir,
     output_base_dir, output_base_name, output_testname_unique,
 };
@@ -32,7 +32,7 @@ use crate::{ColorConfig, json, stamp_file_path};
 mod debugger;
 
 // Helper modules that implement test running logic for each test suite.
-// tidy-alphabet-start
+// tidy-alphabetical-start
 mod assembly;
 mod codegen;
 mod codegen_units;
@@ -47,7 +47,7 @@ mod run_make;
 mod rustdoc;
 mod rustdoc_json;
 mod ui;
-// tidy-alphabet-end
+// tidy-alphabetical-end
 
 #[cfg(test)]
 mod tests;
@@ -59,7 +59,7 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     use std::sync::Mutex;
 
     use windows::Win32::System::Diagnostics::Debug::{
-        SEM_FAILCRITICALERRORS, SEM_NOGPFAULTERRORBOX, SetErrorMode, THREAD_ERROR_MODE,
+        SEM_FAILCRITICALERRORS, SEM_NOGPFAULTERRORBOX, SetErrorMode,
     };
 
     static LOCK: Mutex<()> = Mutex::new(());
@@ -80,7 +80,6 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     unsafe {
         // read inherited flags
         let old_mode = SetErrorMode(SEM_NOGPFAULTERRORBOX | SEM_FAILCRITICALERRORS);
-        let old_mode = THREAD_ERROR_MODE(old_mode);
         SetErrorMode(old_mode | SEM_NOGPFAULTERRORBOX | SEM_FAILCRITICALERRORS);
         let r = f();
         SetErrorMode(old_mode);
@@ -213,7 +212,7 @@ fn remove_and_create_dir_all(path: &Path) {
     fs::create_dir_all(path).unwrap();
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct TestCx<'test> {
     config: &'test Config,
     props: &'test TestProps,
@@ -269,7 +268,7 @@ impl<'test> TestCx<'test> {
             Ui => self.run_ui_test(),
             MirOpt => self.run_mir_opt_test(),
             Assembly => self.run_assembly_test(),
-            JsDocTest => self.run_js_doc_test(),
+            RustdocJs => self.run_rustdoc_js_test(),
             CoverageMap => self.run_coverage_map_test(), // see self::coverage
             CoverageRun => self.run_coverage_run_test(), // see self::coverage
             Crashes => self.run_crash_test(),
@@ -303,7 +302,7 @@ impl<'test> TestCx<'test> {
 
     fn should_compile_successfully(&self, pm: Option<PassMode>) -> bool {
         match self.config.mode {
-            JsDocTest => true,
+            RustdocJs => true,
             Ui => pm.is_some() || self.props.fail_mode > Some(FailMode::Build),
             Crashes => false,
             Incremental => {
@@ -410,7 +409,12 @@ impl<'test> TestCx<'test> {
             truncated: Truncated::No,
             cmdline: format!("{cmd:?}"),
         };
-        self.dump_output(&proc_res.stdout, &proc_res.stderr);
+        self.dump_output(
+            self.config.verbose,
+            &cmd.get_program().to_string_lossy(),
+            &proc_res.stdout,
+            &proc_res.stderr,
+        );
 
         proc_res
     }
@@ -501,8 +505,9 @@ impl<'test> TestCx<'test> {
             // Generate `cfg(FALSE, REV1, ..., REVN)` (for all possible revisions)
             //
             // For compatibility reason we consider the `FALSE` cfg to be expected
-            // since it is extensively used in the testsuite.
-            check_cfg.push_str("cfg(FALSE");
+            // since it is extensively used in the testsuite, as well as the `test`
+            // cfg since we have tests that uses it.
+            check_cfg.push_str("cfg(test,FALSE");
             for revision in &self.props.revisions {
                 check_cfg.push(',');
                 check_cfg.push_str(&normalize_revision(revision));
@@ -1401,15 +1406,18 @@ impl<'test> TestCx<'test> {
             cmdline,
         };
 
-        self.dump_output(&result.stdout, &result.stderr);
+        self.dump_output(
+            self.config.verbose,
+            &command.get_program().to_string_lossy(),
+            &result.stdout,
+            &result.stderr,
+        );
 
         result
     }
 
     fn is_rustdoc(&self) -> bool {
-        self.config.src_base.ends_with("rustdoc-ui")
-            || self.config.src_base.ends_with("rustdoc-js")
-            || self.config.src_base.ends_with("rustdoc-json")
+        matches!(self.config.suite.as_str(), "rustdoc-ui" | "rustdoc-js" | "rustdoc-json")
     }
 
     fn get_mir_dump_dir(&self) -> PathBuf {
@@ -1616,7 +1624,7 @@ impl<'test> TestCx<'test> {
             Crashes => {
                 set_mir_dump_dir(&mut rustc);
             }
-            Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake | CodegenUnits | JsDocTest => {
+            Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake | CodegenUnits | RustdocJs => {
                 // do not use JSON output
             }
         }
@@ -1816,12 +1824,35 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn dump_output(&self, out: &str, err: &str) {
+    fn dump_output(&self, print_output: bool, proc_name: &str, out: &str, err: &str) {
         let revision = if let Some(r) = self.revision { format!("{}.", r) } else { String::new() };
 
         self.dump_output_file(out, &format!("{}out", revision));
         self.dump_output_file(err, &format!("{}err", revision));
-        self.maybe_dump_to_stdout(out, err);
+
+        if !print_output {
+            return;
+        }
+
+        let path = Path::new(proc_name);
+        let proc_name = if path.file_stem().is_some_and(|p| p == "rmake") {
+            OsString::from_iter(
+                path.parent()
+                    .unwrap()
+                    .file_name()
+                    .into_iter()
+                    .chain(Some(OsStr::new("/")))
+                    .chain(path.file_name()),
+            )
+        } else {
+            path.file_name().unwrap().into()
+        };
+        let proc_name = proc_name.to_string_lossy();
+        println!("------{proc_name} stdout------------------------------");
+        println!("{}", out);
+        println!("------{proc_name} stderr------------------------------");
+        println!("{}", err);
+        println!("------------------------------------------");
     }
 
     fn dump_output_file(&self, out: &str, extension: &str) {
@@ -1872,16 +1903,6 @@ impl<'test> TestCx<'test> {
     /// E.g., `/.../relative/testname.revision.mode/testname`.
     fn output_base_name(&self) -> PathBuf {
         output_base_name(self.config, self.testpaths, self.safe_revision())
-    }
-
-    fn maybe_dump_to_stdout(&self, out: &str, err: &str) {
-        if self.config.verbose {
-            println!("------stdout------------------------------");
-            println!("{}", out);
-            println!("------stderr------------------------------");
-            println!("{}", err);
-            println!("------------------------------------------");
-        }
     }
 
     fn error(&self, err: &str) {
@@ -1935,23 +1956,23 @@ impl<'test> TestCx<'test> {
         let mut filecheck = Command::new(self.config.llvm_filecheck.as_ref().unwrap());
         filecheck.arg("--input-file").arg(output).arg(&self.testpaths.file);
 
-        // FIXME: Consider making some of these prefix flags opt-in per test,
-        // via `filecheck-flags` or by adding new header directives.
-
         // Because we use custom prefixes, we also have to register the default prefix.
         filecheck.arg("--check-prefix=CHECK");
 
-        // Some tests use the current revision name as a check prefix.
+        // FIXME(#134510): auto-registering revision names as check prefix is a bit sketchy, and
+        // that having to pass `--allow-unused-prefix` is an unfortunate side-effect of not knowing
+        // whether the test author actually wanted revision-specific check prefixes or not.
+        //
+        // TL;DR We may not want to conflate `compiletest` revisions and `FileCheck` prefixes.
+
+        // HACK: tests are allowed to use a revision name as a check prefix.
         if let Some(rev) = self.revision {
             filecheck.arg("--check-prefix").arg(rev);
         }
 
-        // Some tests also expect either the MSVC or NONMSVC prefix to be defined.
-        let msvc_or_not = if self.config.target.contains("msvc") { "MSVC" } else { "NONMSVC" };
-        filecheck.arg("--check-prefix").arg(msvc_or_not);
-
-        // The filecheck tool normally fails if a prefix is defined but not used.
-        // However, we define several prefixes globally for all tests.
+        // HACK: the filecheck tool normally fails if a prefix is defined but not used. However,
+        // sometimes revisions are used to specify *compiletest* directives which are not FileCheck
+        // concerns.
         filecheck.arg("--allow-unused-prefixes");
 
         // Provide more context on failures.
@@ -2295,31 +2316,46 @@ impl<'test> TestCx<'test> {
         match output_kind {
             TestOutput::Compile => {
                 if !self.props.dont_check_compiler_stdout {
-                    errors += self.compare_output(
+                    if self
+                        .compare_output(
+                            stdout_kind,
+                            &normalized_stdout,
+                            &proc_res.stdout,
+                            &expected_stdout,
+                        )
+                        .should_error()
+                    {
+                        errors += 1;
+                    }
+                }
+                if !self.props.dont_check_compiler_stderr {
+                    if self
+                        .compare_output(stderr_kind, &normalized_stderr, &stderr, &expected_stderr)
+                        .should_error()
+                    {
+                        errors += 1;
+                    }
+                }
+            }
+            TestOutput::Run => {
+                if self
+                    .compare_output(
                         stdout_kind,
                         &normalized_stdout,
                         &proc_res.stdout,
                         &expected_stdout,
-                    );
+                    )
+                    .should_error()
+                {
+                    errors += 1;
                 }
-                if !self.props.dont_check_compiler_stderr {
-                    errors += self.compare_output(
-                        stderr_kind,
-                        &normalized_stderr,
-                        &stderr,
-                        &expected_stderr,
-                    );
+
+                if self
+                    .compare_output(stderr_kind, &normalized_stderr, &stderr, &expected_stderr)
+                    .should_error()
+                {
+                    errors += 1;
                 }
-            }
-            TestOutput::Run => {
-                errors += self.compare_output(
-                    stdout_kind,
-                    &normalized_stdout,
-                    &proc_res.stdout,
-                    &expected_stdout,
-                );
-                errors +=
-                    self.compare_output(stderr_kind, &normalized_stderr, &stderr, &expected_stderr);
             }
         }
         errors
@@ -2537,7 +2573,7 @@ impl<'test> TestCx<'test> {
         })
     }
 
-    fn delete_file(&self, file: &PathBuf) {
+    fn delete_file(&self, file: &Path) {
         if !file.exists() {
             // Deleting a nonexistent file would error.
             return;
@@ -2553,7 +2589,14 @@ impl<'test> TestCx<'test> {
         actual: &str,
         actual_unnormalized: &str,
         expected: &str,
-    ) -> usize {
+    ) -> CompareOutcome {
+        let expected_path =
+            expected_output_path(self.testpaths, self.revision, &self.config.compare_mode, stream);
+
+        if self.config.bless && actual.is_empty() && expected_path.exists() {
+            self.delete_file(&expected_path);
+        }
+
         let are_different = match (self.force_color_svg(), expected.find('\n'), actual.find('\n')) {
             // FIXME: We ignore the first line of SVG files
             // because the width parameter is non-deterministic.
@@ -2561,7 +2604,7 @@ impl<'test> TestCx<'test> {
             _ => expected != actual,
         };
         if !are_different {
-            return 0;
+            return CompareOutcome::Same;
         }
 
         // Wrapper tools set by `runner` might provide extra output on failure,
@@ -2577,7 +2620,7 @@ impl<'test> TestCx<'test> {
             used.retain(|line| actual_lines.contains(line));
             // check if `expected` contains a subset of the lines of `actual`
             if used.len() == expected_lines.len() && (expected.is_empty() == actual.is_empty()) {
-                return 0;
+                return CompareOutcome::Same;
             }
             if expected_lines.is_empty() {
                 // if we have no lines to check, force a full overwite
@@ -2603,9 +2646,6 @@ impl<'test> TestCx<'test> {
         }
         println!("Saved the actual {stream} to {actual_path:?}");
 
-        let expected_path =
-            expected_output_path(self.testpaths, self.revision, &self.config.compare_mode, stream);
-
         if !self.config.bless {
             if expected.is_empty() {
                 println!("normalized {}:\n{}\n", stream, actual);
@@ -2628,15 +2668,17 @@ impl<'test> TestCx<'test> {
                 self.delete_file(&old);
             }
 
-            if let Err(err) = fs::write(&expected_path, &actual) {
-                self.fatal(&format!("failed to write {stream} to `{expected_path:?}`: {err}"));
+            if !actual.is_empty() {
+                if let Err(err) = fs::write(&expected_path, &actual) {
+                    self.fatal(&format!("failed to write {stream} to `{expected_path:?}`: {err}"));
+                }
+                println!("Blessing the {stream} of {test_name} in {expected_path:?}");
             }
-            println!("Blessing the {stream} of {test_name} in {expected_path:?}");
         }
 
         println!("\nThe actual {0} differed from the expected {0}.", stream);
 
-        if self.config.bless { 0 } else { 1 }
+        if self.config.bless { CompareOutcome::Blessed } else { CompareOutcome::Differed }
     }
 
     /// Returns whether to show the full stderr/stdout.
@@ -2786,29 +2828,6 @@ impl<'test> TestCx<'test> {
             println!("init_incremental_test: incremental_dir={}", incremental_dir.display());
         }
     }
-
-    fn aggressive_rm_rf(&self, path: &Path) -> io::Result<()> {
-        for e in path.read_dir()? {
-            let entry = e?;
-            let path = entry.path();
-            if entry.file_type()?.is_dir() {
-                self.aggressive_rm_rf(&path)?;
-            } else {
-                // Remove readonly files as well on windows (by default we can't)
-                fs::remove_file(&path).or_else(|e| {
-                    if cfg!(windows) && e.kind() == io::ErrorKind::PermissionDenied {
-                        let mut meta = entry.metadata()?.permissions();
-                        meta.set_readonly(false);
-                        fs::set_permissions(&path, meta)?;
-                        fs::remove_file(&path)
-                    } else {
-                        Err(e)
-                    }
-                })?;
-            }
-        }
-        fs::remove_dir(path)
-    }
 }
 
 struct ProcArgs {
@@ -2884,4 +2903,22 @@ enum AuxType {
     Lib,
     Dylib,
     ProcMacro,
+}
+
+/// Outcome of comparing a stream to a blessed file,
+/// e.g. `.stderr` and `.fixed`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum CompareOutcome {
+    /// Expected and actual outputs are the same
+    Same,
+    /// Outputs differed but were blessed
+    Blessed,
+    /// Outputs differed and an error should be emitted
+    Differed,
+}
+
+impl CompareOutcome {
+    fn should_error(&self) -> bool {
+        matches!(self, CompareOutcome::Differed)
+    }
 }

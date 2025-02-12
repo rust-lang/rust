@@ -7,8 +7,7 @@ use rustc_macros::Subdiagnostic;
 use rustc_parse::parser::{Parser, Recovery, token_descr};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::Ident;
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Ident, Span};
 use tracing::debug;
 
 use super::macro_rules::{NoopTracker, parser_from_cx};
@@ -160,7 +159,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
                 if self
                     .best_failure
                     .as_ref()
-                    .map_or(true, |failure| failure.is_better_position(*approx_position))
+                    .is_none_or(|failure| failure.is_better_position(*approx_position))
                 {
                     self.best_failure = Some(BestFailure {
                         token: token.clone(),

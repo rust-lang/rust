@@ -1,35 +1,35 @@
-use rustc_ast as ast;
+use rustc_abi::Size;
+use rustc_ast::{self as ast};
 use rustc_hir::LangItem;
 use rustc_middle::bug;
-use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
+use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::ty::{self, ScalarInt, TyCtxt, TypeVisitableExt as _};
 use tracing::trace;
 
-use crate::build::parse_float_into_scalar;
+use crate::builder::parse_float_into_scalar;
 
 pub(crate) fn lit_to_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     lit_input: LitToConstInput<'tcx>,
-) -> Result<ty::Const<'tcx>, LitToConstError> {
+) -> ty::Const<'tcx> {
     let LitToConstInput { lit, ty, neg } = lit_input;
 
     if let Err(guar) = ty.error_reported() {
-        return Ok(ty::Const::new_error(tcx, guar));
+        return ty::Const::new_error(tcx, guar);
     }
 
-    let trunc = |n| {
-        let width = match tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty)) {
-            Ok(layout) => layout.size,
-            Err(_) => {
-                tcx.dcx().bug(format!("couldn't compute width of literal: {:?}", lit_input.lit))
-            }
-        };
+    let trunc = |n, width: ty::UintTy| {
+        let width = width
+            .normalize(tcx.data_layout.pointer_size.bits().try_into().unwrap())
+            .bit_width()
+            .unwrap();
+        let width = Size::from_bits(width);
         trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
         let result = width.truncate(n);
         trace!("trunc result: {}", result);
 
-        Ok(ScalarInt::try_from_uint(result, width)
-            .unwrap_or_else(|| bug!("expected to create ScalarInt from uint {:?}", result)))
+        ScalarInt::try_from_uint(result, width)
+            .unwrap_or_else(|| bug!("expected to create ScalarInt from uint {:?}", result))
     };
 
     let valtree = match (lit, ty.kind()) {
@@ -55,22 +55,28 @@ pub(crate) fn lit_to_const<'tcx>(
             let bytes = data as &[u8];
             ty::ValTree::from_raw_bytes(tcx, bytes)
         }
-        (ast::LitKind::Int(n, _), ty::Uint(_)) | (ast::LitKind::Int(n, _), ty::Int(_)) => {
-            let scalar_int =
-                trunc(if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() })?;
+        (ast::LitKind::Int(n, _), ty::Uint(ui)) if !neg => {
+            let scalar_int = trunc(n.get(), *ui);
+            ty::ValTree::from_scalar_int(scalar_int)
+        }
+        (ast::LitKind::Int(n, _), ty::Int(i)) => {
+            let scalar_int = trunc(
+                if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() },
+                i.to_unsigned(),
+            );
             ty::ValTree::from_scalar_int(scalar_int)
         }
         (ast::LitKind::Bool(b), ty::Bool) => ty::ValTree::from_scalar_int((*b).into()),
         (ast::LitKind::Float(n, _), ty::Float(fty)) => {
-            let bits = parse_float_into_scalar(*n, *fty, neg).ok_or_else(|| {
+            let bits = parse_float_into_scalar(*n, *fty, neg).unwrap_or_else(|| {
                 tcx.dcx().bug(format!("couldn't parse float literal: {:?}", lit_input.lit))
-            })?;
+            });
             ty::ValTree::from_scalar_int(bits)
         }
         (ast::LitKind::Char(c), ty::Char) => ty::ValTree::from_scalar_int((*c).into()),
-        (ast::LitKind::Err(guar), _) => return Err(LitToConstError::Reported(*guar)),
-        _ => return Err(LitToConstError::TypeError),
+        (ast::LitKind::Err(guar), _) => return ty::Const::new_error(tcx, *guar),
+        _ => return ty::Const::new_misc_error(tcx),
     };
 
-    Ok(ty::Const::new_value(tcx, valtree, ty))
+    ty::Const::new_value(tcx, valtree, ty)
 }

@@ -5,18 +5,17 @@ use rustc_ast as ast;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
-    BinOp, BinOpKind, Expr, ExprKind, GenericArg, HirId, Impl, Item, ItemKind, Node, Pat, PatKind,
-    Path, PathSegment, QPath, Ty, TyKind,
+    AmbigArg, BinOp, BinOpKind, Expr, ExprKind, GenericArg, HirId, Impl, Item, ItemKind, Node, Pat,
+    PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, Ty, TyKind,
 };
 use rustc_middle::ty::{self, GenericArgsRef, Ty as MiddleTy};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Span;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Span, sym};
 use tracing::debug;
 
 use crate::lints::{
-    BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand, NonExistentDocKeyword,
+    BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand,
     NonGlobImportTypeIrInherent, QueryInstability, QueryUntracked, SpanUseEqCtxtDiag,
     SymbolInternStringLiteralDiag, TyQualified, TykindDiag, TykindKind, TypeIrInherentUsage,
     UntranslatableDiag,
@@ -49,10 +48,11 @@ impl LateLintPass<'_> for DefaultHashTypes {
             Some(sym::HashSet) => "FxHashSet",
             _ => return,
         };
-        cx.emit_span_lint(DEFAULT_HASH_TYPES, path.span, DefaultHashTypesDiag {
-            preferred,
-            used: cx.tcx.item_name(def_id),
-        });
+        cx.emit_span_lint(
+            DEFAULT_HASH_TYPES,
+            path.span,
+            DefaultHashTypesDiag { preferred, used: cx.tcx.item_name(def_id) },
+        );
     }
 }
 
@@ -108,14 +108,18 @@ impl LateLintPass<'_> for QueryStability {
         {
             let def_id = instance.def_id();
             if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
-                cx.emit_span_lint(POTENTIAL_QUERY_INSTABILITY, span, QueryInstability {
-                    query: cx.tcx.item_name(def_id),
-                });
+                cx.emit_span_lint(
+                    POTENTIAL_QUERY_INSTABILITY,
+                    span,
+                    QueryInstability { query: cx.tcx.item_name(def_id) },
+                );
             }
             if cx.tcx.has_attr(def_id, sym::rustc_lint_untracked_query_information) {
-                cx.emit_span_lint(UNTRACKED_QUERY_INFORMATION, span, QueryUntracked {
-                    method: cx.tcx.item_name(def_id),
-                });
+                cx.emit_span_lint(
+                    UNTRACKED_QUERY_INFORMATION,
+                    span,
+                    QueryUntracked { method: cx.tcx.item_name(def_id) },
+                );
             }
         }
     }
@@ -160,38 +164,20 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
         }
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx Ty<'tcx>) {
+    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx Ty<'tcx, AmbigArg>) {
         match &ty.kind {
             TyKind::Path(QPath::Resolved(_, path)) => {
                 if lint_ty_kind_usage(cx, &path.res) {
                     let span = match cx.tcx.parent_hir_node(ty.hir_id) {
-                        Node::Pat(Pat {
-                            kind:
-                                PatKind::Path(qpath)
-                                | PatKind::TupleStruct(qpath, ..)
-                                | PatKind::Struct(qpath, ..),
+                        Node::PatExpr(PatExpr { kind: PatExprKind::Path(qpath), .. })
+                        | Node::Pat(Pat {
+                            kind: PatKind::TupleStruct(qpath, ..) | PatKind::Struct(qpath, ..),
                             ..
-                        }) => {
-                            if let QPath::TypeRelative(qpath_ty, ..) = qpath
-                                && qpath_ty.hir_id == ty.hir_id
-                            {
-                                Some(path.span)
-                            } else {
-                                None
-                            }
-                        }
-                        Node::Expr(Expr { kind: ExprKind::Path(qpath), .. }) => {
-                            if let QPath::TypeRelative(qpath_ty, ..) = qpath
-                                && qpath_ty.hir_id == ty.hir_id
-                            {
-                                Some(path.span)
-                            } else {
-                                None
-                            }
-                        }
-                        // Can't unify these two branches because qpath below is `&&` and above is `&`
-                        // and `A | B` paths don't play well together with adjustments, apparently.
-                        Node::Expr(Expr { kind: ExprKind::Struct(qpath, ..), .. }) => {
+                        })
+                        | Node::Expr(
+                            Expr { kind: ExprKind::Path(qpath), .. }
+                            | &Expr { kind: ExprKind::Struct(qpath, ..), .. },
+                        ) => {
                             if let QPath::TypeRelative(qpath_ty, ..) = qpath
                                 && qpath_ty.hir_id == ty.hir_id
                             {
@@ -205,9 +191,11 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
 
                     match span {
                         Some(span) => {
-                            cx.emit_span_lint(USAGE_OF_TY_TYKIND, path.span, TykindKind {
-                                suggestion: span,
-                            });
+                            cx.emit_span_lint(
+                                USAGE_OF_TY_TYKIND,
+                                path.span,
+                                TykindKind { suggestion: span },
+                            );
                         }
                         None => cx.emit_span_lint(USAGE_OF_TY_TYKIND, path.span, TykindDiag),
                     }
@@ -215,10 +203,11 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                     && path.segments.len() > 1
                     && let Some(ty) = is_ty_or_ty_ctxt(cx, path)
                 {
-                    cx.emit_span_lint(USAGE_OF_QUALIFIED_TY, path.span, TyQualified {
-                        ty,
-                        suggestion: path.span,
-                    });
+                    cx.emit_span_lint(
+                        USAGE_OF_QUALIFIED_TY,
+                        path.span,
+                        TyQualified { ty, suggestion: path.span },
+                    );
                 }
             }
             _ => {}
@@ -368,46 +357,6 @@ impl EarlyLintPass for LintPassImpl {
                             lint_pass.path.span,
                             LintPassByHand,
                         );
-                    }
-                }
-            }
-        }
-    }
-}
-
-declare_tool_lint! {
-    /// The `existing_doc_keyword` lint detects use `#[doc()]` keywords
-    /// that don't exist, e.g. `#[doc(keyword = "..")]`.
-    pub rustc::EXISTING_DOC_KEYWORD,
-    Allow,
-    "Check that documented keywords in std and core actually exist",
-    report_in_external_macro: true
-}
-
-declare_lint_pass!(ExistingDocKeyword => [EXISTING_DOC_KEYWORD]);
-
-fn is_doc_keyword(s: Symbol) -> bool {
-    s <= kw::Union
-}
-
-impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
-    fn check_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::Item<'_>) {
-        for attr in cx.tcx.hir().attrs(item.hir_id()) {
-            if !attr.has_name(sym::doc) {
-                continue;
-            }
-            if let Some(list) = attr.meta_item_list() {
-                for nested in list {
-                    if nested.has_name(sym::keyword) {
-                        let keyword = nested
-                            .value_str()
-                            .expect("#[doc(keyword = \"...\")] expected a value!");
-                        if is_doc_keyword(keyword) {
-                            return;
-                        }
-                        cx.emit_span_lint(EXISTING_DOC_KEYWORD, attr.span, NonExistentDocKeyword {
-                            keyword,
-                        });
                     }
                 }
             }
@@ -612,9 +561,11 @@ impl LateLintPass<'_> for BadOptAccess {
                 && let Some(lit) = item.lit()
                 && let ast::LitKind::Str(val, _) = lit.kind
             {
-                cx.emit_span_lint(BAD_OPT_ACCESS, expr.span, BadOptAccessDiag {
-                    msg: val.as_str(),
-                });
+                cx.emit_span_lint(
+                    BAD_OPT_ACCESS,
+                    expr.span,
+                    BadOptAccessDiag { msg: val.as_str() },
+                );
             }
         }
     }

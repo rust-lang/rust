@@ -8,6 +8,8 @@
 //!
 //! FIXME: No span and source file information is implemented yet
 
+use std::fmt;
+
 use proc_macro::bridge;
 
 mod token_stream;
@@ -18,6 +20,32 @@ pub mod rust_analyzer_span;
 pub mod token_id;
 // pub use symbol::*;
 use tt::Spacing;
+
+#[derive(Clone)]
+pub(crate) struct TopSubtree<S>(pub(crate) Vec<tt::TokenTree<S>>);
+
+impl<S: Copy + fmt::Debug> fmt::Debug for TopSubtree<S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&tt::TokenTreesView::new(&self.0), f)
+    }
+}
+
+impl<S: Copy> TopSubtree<S> {
+    pub(crate) fn top_subtree(&self) -> &tt::Subtree<S> {
+        let tt::TokenTree::Subtree(subtree) = &self.0[0] else {
+            unreachable!("the first token tree is always the top subtree");
+        };
+        subtree
+    }
+
+    pub(crate) fn from_bridge(group: bridge::Group<TokenStream<S>, S>) -> Self {
+        let delimiter = delim_to_internal(group.delimiter, group.span);
+        let mut tts =
+            group.stream.map(|it| it.token_trees).unwrap_or_else(|| Vec::with_capacity(1));
+        tts.insert(0, tt::TokenTree::Subtree(tt::Subtree { delimiter, len: tts.len() as u32 }));
+        TopSubtree(tts)
+    }
+}
 
 fn delim_to_internal<S>(d: proc_macro::Delimiter, span: bridge::DelimSpan<S>) -> tt::Delimiter<S> {
     let kind = match d {

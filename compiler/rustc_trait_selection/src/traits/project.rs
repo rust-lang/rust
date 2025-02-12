@@ -17,7 +17,8 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Term, Ty, TyCtxt, TypingMode, Upcast};
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
+use rustc_type_ir::elaborate;
 use thin_vec::thin_vec;
 use tracing::{debug, instrument};
 
@@ -836,8 +837,7 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
     if tcx.is_impl_trait_in_trait(obligation.predicate.def_id)
         && let Some(out_trait_def_id) = data.principal_def_id()
         && let rpitit_trait_def_id = tcx.parent(obligation.predicate.def_id)
-        && tcx
-            .supertrait_def_ids(out_trait_def_id)
+        && elaborate::supertrait_def_ids(tcx, out_trait_def_id)
             .any(|trait_def_id| trait_def_id == rpitit_trait_def_id)
     {
         candidate_set.push_candidate(ProjectionCandidate::ObjectRpitit);
@@ -950,42 +950,48 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 //
                 // NOTE: This should be kept in sync with the similar code in
                 // `rustc_ty_utils::instance::resolve_associated_item()`.
-                let node_item = specialization_graph::assoc_def(
+                match specialization_graph::assoc_def(
                     selcx.tcx(),
                     impl_data.impl_def_id,
                     obligation.predicate.def_id,
-                )
-                .map_err(|ErrorGuaranteed { .. }| ())?;
-
-                if node_item.is_final() {
-                    // Non-specializable items are always projectable.
-                    true
-                } else {
-                    // Only reveal a specializable default if we're past type-checking
-                    // and the obligation is monomorphic, otherwise passes such as
-                    // transmute checking and polymorphic MIR optimizations could
-                    // get a result which isn't correct for all monomorphizations.
-                    match selcx.infcx.typing_mode() {
-                        TypingMode::Coherence
-                        | TypingMode::Analysis { .. }
-                        | TypingMode::PostBorrowckAnalysis { .. } => {
-                            debug!(
-                                assoc_ty = ?selcx.tcx().def_path_str(node_item.item.def_id),
-                                ?obligation.predicate,
-                                "assemble_candidates_from_impls: not eligible due to default",
-                            );
-                            false
-                        }
-                        TypingMode::PostAnalysis => {
-                            // NOTE(eddyb) inference variables can resolve to parameters, so
-                            // assume `poly_trait_ref` isn't monomorphic, if it contains any.
-                            let poly_trait_ref = selcx.infcx.resolve_vars_if_possible(trait_ref);
-                            !poly_trait_ref.still_further_specializable()
+                ) {
+                    Ok(node_item) => {
+                        if node_item.is_final() {
+                            // Non-specializable items are always projectable.
+                            true
+                        } else {
+                            // Only reveal a specializable default if we're past type-checking
+                            // and the obligation is monomorphic, otherwise passes such as
+                            // transmute checking and polymorphic MIR optimizations could
+                            // get a result which isn't correct for all monomorphizations.
+                            match selcx.infcx.typing_mode() {
+                                TypingMode::Coherence
+                                | TypingMode::Analysis { .. }
+                                | TypingMode::PostBorrowckAnalysis { .. } => {
+                                    debug!(
+                                        assoc_ty = ?selcx.tcx().def_path_str(node_item.item.def_id),
+                                        ?obligation.predicate,
+                                        "not eligible due to default",
+                                    );
+                                    false
+                                }
+                                TypingMode::PostAnalysis => {
+                                    // NOTE(eddyb) inference variables can resolve to parameters, so
+                                    // assume `poly_trait_ref` isn't monomorphic, if it contains any.
+                                    let poly_trait_ref =
+                                        selcx.infcx.resolve_vars_if_possible(trait_ref);
+                                    !poly_trait_ref.still_further_specializable()
+                                }
+                            }
                         }
                     }
+                    // Always project `ErrorGuaranteed`, since this will just help
+                    // us propagate `TyKind::Error` around which suppresses ICEs
+                    // and spurious, unrelated inference errors.
+                    Err(ErrorGuaranteed { .. }) => true,
                 }
             }
-            ImplSource::Builtin(BuiltinImplSource::Misc, _) => {
+            ImplSource::Builtin(BuiltinImplSource::Misc | BuiltinImplSource::Trivial, _) => {
                 // While a builtin impl may be known to exist, the associated type may not yet
                 // be known. Any type with multiple potential associated types is therefore
                 // not eligible.
@@ -1047,6 +1053,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         // Integers and floats always have `u8` as their discriminant.
                         | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
 
+                        ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
+
                         // type parameters, opaques, and unnormalized projections don't have
                         // a known discriminant and may need to be normalized further or rely
                         // on param env for discriminant projections
@@ -1072,6 +1080,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Ref(..)
                         | ty::FnDef(..)
                         | ty::FnPtr(..)
+                        | ty::UnsafeBinder(_)
                         | ty::Dynamic(..)
                         | ty::Closure(..)
                         | ty::CoroutineClosure(..)
@@ -1139,7 +1148,9 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         // If returned by `struct_tail` this is the empty tuple.
                         | ty::Tuple(..)
                         // Integers and floats are always Sized, and so have unit type metadata.
-                        | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
+                        | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..))
+                        // This happens if we reach the recursion limit when finding the struct tail.
+                        | ty::Error(..) => true,
 
                         // We normalize from `Wrapper<Tail>::Metadata` to `Tail::Metadata` if able.
                         // Otherwise, type parameters, opaques, and unnormalized projections have
@@ -1163,13 +1174,14 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             true
                         }
 
+                        ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
+
                         // FIXME(compiler-errors): are Bound and Placeholder types ever known sized?
                         ty::Param(_)
                         | ty::Alias(..)
                         | ty::Bound(..)
                         | ty::Placeholder(..)
-                        | ty::Infer(..)
-                        | ty::Error(_) => {
+                        | ty::Infer(..) => {
                             if tail.has_infer_types() {
                                 candidate_set.mark_ambiguous();
                             }
@@ -1284,7 +1296,7 @@ fn confirm_select_candidate<'cx, 'tcx>(
 ) -> Progress<'tcx> {
     match impl_source {
         ImplSource::UserDefined(data) => confirm_impl_candidate(selcx, obligation, data),
-        ImplSource::Builtin(BuiltinImplSource::Misc, data) => {
+        ImplSource::Builtin(BuiltinImplSource::Misc | BuiltinImplSource::Trivial, data) => {
             let tcx = selcx.tcx();
             let trait_def_id = obligation.predicate.trait_def_id(tcx);
             if tcx.is_lang_item(trait_def_id, LangItem::Coroutine) {
@@ -1658,14 +1670,18 @@ fn confirm_closure_candidate<'cx, 'tcx>(
                 } else {
                     let upvars_projection_def_id =
                         tcx.require_lang_item(LangItem::AsyncFnKindUpvars, None);
-                    let tupled_upvars_ty = Ty::new_projection(tcx, upvars_projection_def_id, [
-                        ty::GenericArg::from(kind_ty),
-                        Ty::from_closure_kind(tcx, ty::ClosureKind::FnOnce).into(),
-                        tcx.lifetimes.re_static.into(),
-                        sig.tupled_inputs_ty.into(),
-                        args.tupled_upvars_ty().into(),
-                        args.coroutine_captures_by_ref_ty().into(),
-                    ]);
+                    let tupled_upvars_ty = Ty::new_projection(
+                        tcx,
+                        upvars_projection_def_id,
+                        [
+                            ty::GenericArg::from(kind_ty),
+                            Ty::from_closure_kind(tcx, ty::ClosureKind::FnOnce).into(),
+                            tcx.lifetimes.re_static.into(),
+                            sig.tupled_inputs_ty.into(),
+                            args.tupled_upvars_ty().into(),
+                            args.coroutine_captures_by_ref_ty().into(),
+                        ],
+                    );
                     sig.to_coroutine(
                         tcx,
                         args.parent_args(),
@@ -1783,14 +1799,18 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                         // will project to the right upvars for the generator, appending the inputs and
                         // coroutine upvars respecting the closure kind.
                         // N.B. No need to register a `AsyncFnKindHelper` goal here, it's already in `nested`.
-                        let tupled_upvars_ty = Ty::new_projection(tcx, upvars_projection_def_id, [
-                            ty::GenericArg::from(kind_ty),
-                            Ty::from_closure_kind(tcx, goal_kind).into(),
-                            env_region.into(),
-                            sig.tupled_inputs_ty.into(),
-                            args.tupled_upvars_ty().into(),
-                            args.coroutine_captures_by_ref_ty().into(),
-                        ]);
+                        let tupled_upvars_ty = Ty::new_projection(
+                            tcx,
+                            upvars_projection_def_id,
+                            [
+                                ty::GenericArg::from(kind_ty),
+                                Ty::from_closure_kind(tcx, goal_kind).into(),
+                                env_region.into(),
+                                sig.tupled_inputs_ty.into(),
+                                args.tupled_upvars_ty().into(),
+                                args.coroutine_captures_by_ref_ty().into(),
+                            ],
+                        );
                         sig.to_coroutine(
                             tcx,
                             args.parent_args(),
@@ -1804,17 +1824,16 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                 name => bug!("no such associated type: {name}"),
             };
             let projection_term = match item_name {
-                sym::CallOnceFuture | sym::Output => {
-                    ty::AliasTerm::new(tcx, obligation.predicate.def_id, [
-                        self_ty,
-                        sig.tupled_inputs_ty,
-                    ])
-                }
-                sym::CallRefFuture => ty::AliasTerm::new(tcx, obligation.predicate.def_id, [
-                    ty::GenericArg::from(self_ty),
-                    sig.tupled_inputs_ty.into(),
-                    env_region.into(),
-                ]),
+                sym::CallOnceFuture | sym::Output => ty::AliasTerm::new(
+                    tcx,
+                    obligation.predicate.def_id,
+                    [self_ty, sig.tupled_inputs_ty],
+                ),
+                sym::CallRefFuture => ty::AliasTerm::new(
+                    tcx,
+                    obligation.predicate.def_id,
+                    [ty::GenericArg::from(self_ty), sig.tupled_inputs_ty.into(), env_region.into()],
+                ),
                 name => bug!("no such associated type: {name}"),
             };
 
@@ -1834,17 +1853,20 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                 name => bug!("no such associated type: {name}"),
             };
             let projection_term = match item_name {
-                sym::CallOnceFuture | sym::Output => {
-                    ty::AliasTerm::new(tcx, obligation.predicate.def_id, [
-                        self_ty,
-                        Ty::new_tup(tcx, sig.inputs()),
-                    ])
-                }
-                sym::CallRefFuture => ty::AliasTerm::new(tcx, obligation.predicate.def_id, [
-                    ty::GenericArg::from(self_ty),
-                    Ty::new_tup(tcx, sig.inputs()).into(),
-                    env_region.into(),
-                ]),
+                sym::CallOnceFuture | sym::Output => ty::AliasTerm::new(
+                    tcx,
+                    obligation.predicate.def_id,
+                    [self_ty, Ty::new_tup(tcx, sig.inputs())],
+                ),
+                sym::CallRefFuture => ty::AliasTerm::new(
+                    tcx,
+                    obligation.predicate.def_id,
+                    [
+                        ty::GenericArg::from(self_ty),
+                        Ty::new_tup(tcx, sig.inputs()).into(),
+                        env_region.into(),
+                    ],
+                ),
                 name => bug!("no such associated type: {name}"),
             };
 
@@ -1867,11 +1889,11 @@ fn confirm_async_closure_candidate<'cx, 'tcx>(
                 sym::CallOnceFuture | sym::Output => {
                     ty::AliasTerm::new(tcx, obligation.predicate.def_id, [self_ty, sig.inputs()[0]])
                 }
-                sym::CallRefFuture => ty::AliasTerm::new(tcx, obligation.predicate.def_id, [
-                    ty::GenericArg::from(self_ty),
-                    sig.inputs()[0].into(),
-                    env_region.into(),
-                ]),
+                sym::CallRefFuture => ty::AliasTerm::new(
+                    tcx,
+                    obligation.predicate.def_id,
+                    [ty::GenericArg::from(self_ty), sig.inputs()[0].into(), env_region.into()],
+                ),
                 name => bug!("no such associated type: {name}"),
             };
 
@@ -2009,7 +2031,6 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         Ok(assoc_ty) => assoc_ty,
         Err(guar) => return Progress::error(tcx, guar),
     };
-
     if !assoc_ty.item.defaultness(tcx).has_value() {
         // This means that the impl is missing a definition for the
         // associated type. This error will be reported by the type

@@ -361,6 +361,13 @@ fn issue11365() {
     }
 }
 
+fn issue12758(s: &[u8]) {
+    match &s[0..3] {
+        b"foo" => println!(),
+        _ => {},
+    }
+}
+
 #[derive(Eq, PartialEq)]
 pub struct Data([u8; 4]);
 
@@ -400,5 +407,25 @@ fn irrefutable_match() {
     match CONST_I32 {
         CONST_I32 => println!(),
         _ => {},
+    }
+
+    let mut x = vec![1i8];
+
+    // Should not lint.
+    match x.pop() {
+        // bla
+        Some(u) => println!("{u}"),
+        // more comments!
+        None => {},
+    }
+    // Should not lint.
+    match x.pop() {
+        // bla
+        Some(u) => {
+            // bla
+            println!("{u}");
+        },
+        // bla
+        None => {},
     }
 }

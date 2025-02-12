@@ -10,10 +10,9 @@ use rustc_hir::CoroutineKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Symbol;
+use rustc_span::{Span, Symbol};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use smallvec::SmallVec;
 
@@ -179,6 +178,59 @@ pub enum BorrowKind {
 
     /// Data is mutable and not aliasable.
     Mut { kind: MutBorrowKind },
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Hash, HashStable)]
+pub enum RawPtrKind {
+    Mut,
+    Const,
+    /// Creates a raw pointer to a place that will only be used to access its metadata,
+    /// not the data behind the pointer. Note that this limitation is *not* enforced
+    /// by the validator.
+    ///
+    /// The borrow checker allows overlap of these raw pointers with references to the
+    /// data. This is sound even if the pointer is "misused" since any such use is anyway
+    /// unsafe. In terms of the operational semantics (i.e., Miri), this is equivalent
+    /// to `RawPtrKind::Mut`, but will never incur a retag.
+    FakeForPtrMetadata,
+}
+
+impl From<Mutability> for RawPtrKind {
+    fn from(other: Mutability) -> Self {
+        match other {
+            Mutability::Mut => RawPtrKind::Mut,
+            Mutability::Not => RawPtrKind::Const,
+        }
+    }
+}
+
+impl RawPtrKind {
+    pub fn is_fake(self) -> bool {
+        match self {
+            RawPtrKind::Mut | RawPtrKind::Const => false,
+            RawPtrKind::FakeForPtrMetadata => true,
+        }
+    }
+
+    pub fn to_mutbl_lossy(self) -> Mutability {
+        match self {
+            RawPtrKind::Mut => Mutability::Mut,
+            RawPtrKind::Const => Mutability::Not,
+
+            // We have no type corresponding to a fake borrow, so use
+            // `*const` as an approximation.
+            RawPtrKind::FakeForPtrMetadata => Mutability::Not,
+        }
+    }
+
+    pub fn ptr_str(self) -> &'static str {
+        match self {
+            RawPtrKind::Mut => "mut",
+            RawPtrKind::Const => "const",
+            RawPtrKind::FakeForPtrMetadata => "const (fake)",
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, TyEncodable, TyDecodable)]
@@ -418,7 +470,14 @@ pub enum StatementKind<'tcx> {
     ///
     /// Interpreters and codegen backends that don't support coverage instrumentation
     /// can usually treat this as a no-op.
-    Coverage(CoverageKind),
+    Coverage(
+        // Coverage statements are unlikely to ever contain type information in
+        // the foreseeable future, so excluding them from TypeFoldable/TypeVisitable
+        // avoids some unhelpful derive boilerplate.
+        #[type_foldable(identity)]
+        #[type_visitable(ignore)]
+        CoverageKind,
+    ),
 
     /// Denotes a call to an intrinsic that does not require an unwind path and always returns.
     /// This avoids adding a new block and a terminator for simple intrinsics.
@@ -822,6 +881,11 @@ pub enum TerminatorKind<'tcx> {
     /// continues at the `resume` basic block, with the second argument written to the `resume_arg`
     /// place. If the coroutine is dropped before then, the `drop` basic block is invoked.
     ///
+    /// Note that coroutines can be (unstably) cloned under certain conditions, which means that
+    /// this terminator can **return multiple times**! MIR optimizations that reorder code into
+    /// different basic blocks needs to be aware of that.
+    /// See <https://github.com/rust-lang/rust/issues/95360>.
+    ///
     /// Not permitted in bodies that are not coroutine bodies, or after coroutine lowering.
     ///
     /// **Needs clarification**: What about the evaluation order of the `resume_arg` and `value`?
@@ -1012,6 +1076,7 @@ pub enum AssertKind<O> {
     ResumedAfterReturn(CoroutineKind),
     ResumedAfterPanic(CoroutineKind),
     MisalignedPointerDereference { required: O, found: O },
+    NullPointerDereference,
 }
 
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
@@ -1211,6 +1276,10 @@ pub enum ProjectionElem<V, T> {
     /// requiring an intermediate variable.
     OpaqueCast(T),
 
+    /// A transmute from an unsafe binder to the type that it wraps. This is a projection
+    /// of a place, so it doesn't necessarily constitute a move out of the binder.
+    UnwrapUnsafeBinder(T),
+
     /// A `Subtype(T)` projection is applied to any `StatementKind::Assign` where
     /// type of lvalue doesn't match the type of rvalue, the primary goal is making subtyping
     /// explicit during optimizations and codegen.
@@ -1345,7 +1414,7 @@ pub enum Rvalue<'tcx> {
     ///
     /// Like with references, the semantics of this operation are heavily dependent on the aliasing
     /// model.
-    RawPtr(Mutability, Place<'tcx>),
+    RawPtr(RawPtrKind, Place<'tcx>),
 
     /// Yields the length of the place, as a `usize`.
     ///
@@ -1428,6 +1497,9 @@ pub enum Rvalue<'tcx> {
     /// optimizations and codegen backends that previously had to handle deref operations anywhere
     /// in a place.
     CopyForDeref(Place<'tcx>),
+
+    /// Wraps a value in an unsafe binder.
+    WrapUnsafeBinder(Operand<'tcx>, Ty<'tcx>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
@@ -1519,6 +1591,9 @@ pub enum NullOp<'tcx> {
     /// Returns whether we should perform some UB-checking at runtime.
     /// See the `ub_checks` intrinsic docs for details.
     UbChecks,
+    /// Returns whether we should perform contract-checking at runtime.
+    /// See the `contract_checks` intrinsic docs for details.
+    ContractChecks,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

@@ -9,7 +9,7 @@ use rustc_errors::{
 use rustc_hir::{self as hir, HirIdSet};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::{FutureIncompatibilityReason, Level};
+use rustc_session::lint::{FutureIncompatibilityReason, LintId};
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::Span;
 use rustc_span::edition::Edition;
@@ -84,7 +84,7 @@ declare_lint! {
     rewriting in `match` is an option to preserve the semantics up to Edition 2021",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "issue #124085 <https://github.com/rust-lang/rust/issues/124085>",
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>",
     };
 }
 
@@ -221,20 +221,25 @@ impl IfLetRescope {
             }
         }
         if let Some((span, hir_id)) = first_if_to_lint {
-            tcx.emit_node_span_lint(IF_LET_RESCOPE, hir_id, span, IfLetRescopeLint {
-                significant_droppers,
-                lifetime_ends,
-                rewrite: first_if_to_rewrite.then_some(IfLetRescopeRewrite {
-                    match_heads,
-                    consequent_heads,
-                    closing_brackets: ClosingBrackets {
-                        span: expr_end,
-                        count: closing_brackets,
-                        empty_alt,
-                    },
-                    alt_heads,
-                }),
-            });
+            tcx.emit_node_span_lint(
+                IF_LET_RESCOPE,
+                hir_id,
+                span,
+                IfLetRescopeLint {
+                    significant_droppers,
+                    lifetime_ends,
+                    rewrite: first_if_to_rewrite.then_some(IfLetRescopeRewrite {
+                        match_heads,
+                        consequent_heads,
+                        closing_brackets: ClosingBrackets {
+                            span: expr_end,
+                            count: closing_brackets,
+                            empty_alt,
+                        },
+                        alt_heads,
+                    }),
+                },
+            );
         }
     }
 }
@@ -245,12 +250,12 @@ impl_lint_pass!(
 
 impl<'tcx> LateLintPass<'tcx> for IfLetRescope {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
-        if expr.span.edition().at_least_rust_2024() {
+        if expr.span.edition().at_least_rust_2024()
+            || cx.tcx.lints_that_dont_need_to_run(()).contains(&LintId::of(IF_LET_RESCOPE))
+        {
             return;
         }
-        if let (Level::Allow, _) = cx.tcx.lint_level_at_node(IF_LET_RESCOPE, expr.hir_id) {
-            return;
-        }
+
         if let hir::ExprKind::Loop(block, _label, hir::LoopSource::While, _span) = expr.kind
             && let Some(value) = block.expr
             && let hir::ExprKind::If(cond, _conseq, _alt) = value.kind
@@ -290,7 +295,6 @@ struct IfLetRescopeLint {
     rewrite: Option<IfLetRescopeRewrite>,
 }
 
-// #[derive(Subdiagnostic)]
 struct IfLetRescopeRewrite {
     match_heads: Vec<SingleArmMatchBegin>,
     consequent_heads: Vec<ConsequentRewrite>,

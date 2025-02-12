@@ -1,4 +1,4 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, SanitizerSet, Target, TargetOptions, base};
+use crate::spec::{Cc, FloatAbi, LinkerFlavor, Lld, SanitizerSet, Target, TargetOptions, base};
 
 // This target if is for the baseline of the Android v7a ABI
 // in thumb mode. It's named armv7-* instead of thumbv7-*
@@ -24,6 +24,7 @@ pub(crate) fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             features: "+v7,+thumb-mode,+thumb2,+vfp3,-d32,-neon".into(),
             supported_sanitizers: SanitizerSet::ADDRESS,
             max_atomic_width: Some(64),

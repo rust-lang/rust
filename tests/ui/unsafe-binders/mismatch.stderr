@@ -1,0 +1,59 @@
+warning: the feature `unsafe_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/mismatch.rs:1:12
+   |
+LL | #![feature(unsafe_binders)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #130516 <https://github.com/rust-lang/rust/issues/130516> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/mismatch.rs:7:46
+   |
+LL |     let _: unsafe<'a> &'a i32 = wrap_binder!(&());
+   |                                              ^^^ expected `&i32`, found `&()`
+   |
+   = note: expected reference `&i32`
+              found reference `&()`
+
+error: `wrap_binder!()` can only wrap into unsafe binder, not `i32`
+  --> $DIR/mismatch.rs:12:18
+   |
+LL |     let _: i32 = wrap_binder!(&());
+   |                  ^^^^^^^^^^^^^^^^^
+   |
+   = note: unsafe binders are the only valid output of wrap
+   = note: this error originates in the macro `wrap_binder` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected unsafe binder, found integer as input of `unwrap_binder!()`
+  --> $DIR/mismatch.rs:18:20
+   |
+LL |     unwrap_binder!(y);
+   |                    ^
+   |
+   = note: only an unsafe binder type can be unwrapped
+
+error[E0282]: type annotations needed
+  --> $DIR/mismatch.rs:23:9
+   |
+LL |     let unknown = Default::default();
+   |         ^^^^^^^
+LL |
+LL |     unwrap_binder!(unknown);
+   |                    ------- type must be known at this point
+   |
+help: consider giving `unknown` an explicit type
+   |
+LL |     let unknown: /* Type */ = Default::default();
+   |                ++++++++++++
+
+error[E0282]: type annotations needed
+  --> $DIR/mismatch.rs:29:26
+   |
+LL |     let x = wrap_binder!(&42);
+   |                          ^^^ cannot infer type
+
+error: aborting due to 5 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0282, E0308.
+For more information about an error, try `rustc --explain E0282`.

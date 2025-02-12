@@ -2,9 +2,9 @@ use super::REDUNDANT_PATTERN_MATCHING;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_lint_allowed, is_wild, span_contains_comment};
-use rustc_ast::{Attribute, LitKind};
+use rustc_ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, Pat, PatKind, QPath};
+use rustc_hir::{Arm, Attribute, BorrowKind, Expr, ExprKind, Pat, PatKind, QPath};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty;
 use rustc_span::source_map::Spanned;
@@ -117,7 +117,7 @@ where
             if let ty::Ref(..) = cx.typeck_results().expr_ty(ex_inner).kind() {
                 ex_new = ex_inner;
             }
-        };
+        }
         span_lint_and_sugg(
             cx,
             MATCH_LIKE_MATCHES_MACRO,

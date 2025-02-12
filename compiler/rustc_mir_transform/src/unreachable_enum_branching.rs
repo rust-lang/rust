@@ -54,6 +54,10 @@ fn variant_discriminants<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> FxHashSet<u128> {
     match &layout.variants {
+        Variants::Empty => {
+            // Uninhabited, no valid discriminant.
+            FxHashSet::default()
+        }
         Variants::Single { index } => {
             let mut res = FxHashSet::default();
             res.insert(
@@ -203,5 +207,9 @@ impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
         }
 
         patch.apply(body);
+    }
+
+    fn is_required(&self) -> bool {
+        false
     }
 }

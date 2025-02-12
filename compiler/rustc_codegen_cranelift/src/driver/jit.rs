@@ -46,7 +46,7 @@ unsafe impl Send for UnsafeMessage {}
 
 impl UnsafeMessage {
     /// Send the message.
-    fn send(self) -> Result<(), mpsc::SendError<UnsafeMessage>> {
+    fn send(self) {
         thread_local! {
             /// The Sender owned by the local thread
             static LOCAL_MESSAGE_SENDER: mpsc::Sender<UnsafeMessage> =
@@ -55,7 +55,9 @@ impl UnsafeMessage {
                     .lock().unwrap()
                     .clone();
         }
-        LOCAL_MESSAGE_SENDER.with(|sender| sender.send(self))
+        LOCAL_MESSAGE_SENDER.with(|sender| {
+            sender.send(self).expect("rustc thread hung up before lazy JIT request was sent")
+        })
     }
 }
 
@@ -90,7 +92,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, codegen_mode: CodegenMode, jit_args: Vec<
         create_jit_module(tcx, matches!(codegen_mode, CodegenMode::JitLazy));
     let mut cached_context = Context::new();
 
-    let (_, cgus) = tcx.collect_and_partition_mono_items(());
+    let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;
     let mono_items = cgus
         .iter()
         .map(|cgu| cgu.items_in_deterministic_order(tcx).into_iter())
@@ -231,9 +233,7 @@ extern "C" fn clif_jit_fn(
 ) -> *const u8 {
     // send the JIT request to the rustc thread, with a channel for the response
     let (tx, rx) = mpsc::channel();
-    UnsafeMessage::JitFn { instance_ptr, trampoline_ptr, tx }
-        .send()
-        .expect("rustc thread hung up before lazy JIT request was sent");
+    UnsafeMessage::JitFn { instance_ptr, trampoline_ptr, tx }.send();
 
     // block on JIT compilation result
     rx.recv().expect("rustc thread hung up before responding to sent lazy JIT request")
@@ -287,14 +287,14 @@ fn dep_symbol_lookup_fn(
 
     let mut dylib_paths = Vec::new();
 
-    let data = &crate_info.dependency_formats[&rustc_session::config::CrateType::Executable].1;
+    let data = &crate_info.dependency_formats[&rustc_session::config::CrateType::Executable];
     // `used_crates` is in reverse postorder in terms of dependencies. Reverse the order here to
     // get a postorder which ensures that all dependencies of a dylib are loaded before the dylib
     // itself. This helps the dynamic linker to find dylibs not in the regular dynamic library
     // search path.
     for &cnum in crate_info.used_crates.iter().rev() {
         let src = &crate_info.used_crate_source[&cnum];
-        match data[cnum.as_usize() - 1] {
+        match data[cnum] {
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
             Linkage::Static => {
                 let name = crate_info.crate_name[&cnum];
@@ -342,11 +342,15 @@ fn codegen_shim<'tcx>(
     let instance_ptr = Box::into_raw(Box::new(inst));
 
     let jit_fn = module
-        .declare_function("__clif_jit_fn", Linkage::Import, &Signature {
-            call_conv: module.target_config().default_call_conv,
-            params: vec![AbiParam::new(pointer_type), AbiParam::new(pointer_type)],
-            returns: vec![AbiParam::new(pointer_type)],
-        })
+        .declare_function(
+            "__clif_jit_fn",
+            Linkage::Import,
+            &Signature {
+                call_conv: module.target_config().default_call_conv,
+                params: vec![AbiParam::new(pointer_type), AbiParam::new(pointer_type)],
+                returns: vec![AbiParam::new(pointer_type)],
+            },
+        )
         .unwrap();
 
     let context = cached_context;

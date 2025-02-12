@@ -14,8 +14,7 @@ use rustc_session::lint::builtin::{
     TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
 };
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::Symbol;
-use rustc_span::{BytePos, Pos, Span};
+use rustc_span::{BytePos, Pos, Span, Symbol};
 use tracing::debug;
 
 use crate::lexer::diagnostics::TokenTreeDiagInfo;

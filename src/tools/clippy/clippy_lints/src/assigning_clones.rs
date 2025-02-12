@@ -257,7 +257,7 @@ fn build_sugg<'tcx>(
                         // The receiver may have been a value type, so we need to add an `&` to
                         // be sure the argument to clone_from will be a reference.
                         arg_sugg = arg_sugg.addr();
-                    };
+                    }
 
                     format!("{receiver_sugg}.clone_from({arg_sugg})")
                 },

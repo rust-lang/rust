@@ -25,6 +25,7 @@
 // gate-test-s390x_target_feature
 // gate-test-sparc_target_feature
 // gate-test-x87_target_feature
+// gate-test-m68k_target_feature
 
 #[target_feature(enable = "avx512bw")]
 //~^ ERROR: currently unstable

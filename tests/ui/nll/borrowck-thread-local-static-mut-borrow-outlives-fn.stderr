@@ -9,8 +9,9 @@ LL |         S1 { a: unsafe { &mut X1 } }
    = note: `#[warn(static_mut_refs)]` on by default
 help: use `&raw mut` instead to create a raw pointer
    |
-LL |         S1 { a: unsafe { &raw mut X1 } }
-   |                          ~~~~~~~~
+LL -         S1 { a: unsafe { &mut X1 } }
+LL +         S1 { a: unsafe { &raw mut X1 } }
+   |
 
 warning: 1 warning emitted
 

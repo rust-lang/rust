@@ -81,11 +81,11 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
     mut has_self: bool,
     owner: DefId,
-) -> Vec<GenericArg> {
+) -> ThinVec<GenericArg> {
     let (args, bound_vars) = (args.skip_binder(), args.bound_vars());
     if args.is_empty() {
         // Fast path which avoids executing the query `generics_of`.
-        return Vec::new();
+        return ThinVec::new();
     }
 
     // If the container is a trait object type, the arguments won't contain the self type but the
@@ -144,7 +144,7 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     };
 
     let offset = if has_self { 1 } else { 0 };
-    let mut clean_args = Vec::with_capacity(args.len().saturating_sub(offset));
+    let mut clean_args = ThinVec::with_capacity(args.len().saturating_sub(offset));
     clean_args.extend(args.iter().enumerate().rev().filter_map(clean_arg));
     clean_args.reverse();
     clean_args
@@ -303,7 +303,8 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
             return kw::Underscore;
         }
         PatKind::Binding(_, _, ident, _) => return ident.name,
-        PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
+        PatKind::TupleStruct(ref p, ..)
+        | PatKind::Expr(PatExpr { kind: PatExprKind::Path(ref p), .. }) => qpath_to_string(p),
         PatKind::Or(pats) => {
             pats.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(" | ")
         }
@@ -314,12 +315,13 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
         PatKind::Box(p) => return name_from_pat(p),
         PatKind::Deref(p) => format!("deref!({})", name_from_pat(p)),
         PatKind::Ref(p, _) => return name_from_pat(p),
-        PatKind::Lit(..) => {
+        PatKind::Expr(..) => {
             warn!(
-                "tried to get argument name from PatKind::Lit, which is silly in function arguments"
+                "tried to get argument name from PatKind::Expr, which is silly in function arguments"
             );
             return Symbol::intern("()");
         }
+        PatKind::Guard(p, _) => return name_from_pat(p),
         PatKind::Range(..) => return kw::Underscore,
         PatKind::Slice(begin, ref mid, end) => {
             let begin = begin.iter().map(|p| name_from_pat(p).to_string());
@@ -342,10 +344,8 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
             s
         }
         // array lengths are obviously usize
-        ty::ConstKind::Value(ty, ty::ValTree::Leaf(scalar))
-            if *ty.kind() == ty::Uint(ty::UintTy::Usize) =>
-        {
-            scalar.to_string()
+        ty::ConstKind::Value(cv) if *cv.ty.kind() == ty::Uint(ty::UintTy::Usize) => {
+            cv.valtree.unwrap_leaf().to_string()
         }
         _ => n.to_string(),
     }
@@ -578,20 +578,19 @@ pub(crate) fn has_doc_flag(tcx: TyCtxt<'_>, did: DefId, flag: Symbol) -> bool {
 }
 
 pub(crate) fn attrs_have_doc_flag<'a>(
-    mut attrs: impl Iterator<Item = &'a ast::Attribute>,
+    mut attrs: impl Iterator<Item = &'a hir::Attribute>,
     flag: Symbol,
 ) -> bool {
-    attrs
-        .any(|attr| attr.meta_item_list().is_some_and(|l| rustc_attr::list_contains_name(&l, flag)))
+    attrs.any(|attr| attr.meta_item_list().is_some_and(|l| ast::attr::list_contains_name(&l, flag)))
 }
 
 /// A link to `doc.rust-lang.org` that includes the channel name. Use this instead of manual links
 /// so that the channel is consistent.
 ///
 /// Set by `bootstrap::Builder::doc_rust_lang_org_channel` in order to keep tests passing on beta/stable.
-pub(crate) const DOC_RUST_LANG_ORG_CHANNEL: &str = env!("DOC_RUST_LANG_ORG_CHANNEL");
-pub(crate) static DOC_CHANNEL: Lazy<&'static str> =
-    Lazy::new(|| DOC_RUST_LANG_ORG_CHANNEL.rsplit('/').find(|c| !c.is_empty()).unwrap());
+pub(crate) const DOC_RUST_LANG_ORG_VERSION: &str = env!("DOC_RUST_LANG_ORG_CHANNEL");
+pub(crate) static RUSTDOC_VERSION: Lazy<&'static str> =
+    Lazy::new(|| DOC_RUST_LANG_ORG_VERSION.rsplit('/').find(|c| !c.is_empty()).unwrap());
 
 /// Render a sequence of macro arms in a format suitable for displaying to the user
 /// as part of an item declaration.

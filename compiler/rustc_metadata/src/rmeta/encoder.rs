@@ -3,12 +3,14 @@ use std::collections::hash_map::Entry;
 use std::fs::File;
 use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
-use rustc_ast::Attribute;
+use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
-use rustc_data_structures::sync::{Lrc, join, par_for_each_in};
+use rustc_data_structures::sync::{join, par_for_each_in};
 use rustc_data_structures::temp_dir::MaybeTempDir;
+use rustc_data_structures::thousands::format_with_underscores;
 use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
@@ -22,14 +24,13 @@ use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::{AssocItemContainer, SymbolName};
-use rustc_middle::util::common::to_readable_str;
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
-use rustc_session::config::{CrateType, OptLevel};
+use rustc_session::config::{CrateType, OptLevel, TargetModifier};
 use rustc_span::hygiene::HygieneEncodeContext;
-use rustc_span::symbol::sym;
 use rustc_span::{
     ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId, SyntaxContext,
+    sym,
 };
 use tracing::{debug, instrument, trace};
 
@@ -52,7 +53,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     // This is used to speed up Span encoding.
     // The `usize` is an index into the `MonotonicVec`
     // that stores the `SourceFile`
-    source_file_cache: (Lrc<SourceFile>, usize),
+    source_file_cache: (Arc<SourceFile>, usize),
     // The indices (into the `SourceMap`'s `MonotonicVec`)
     // of all of the `SourceFiles` that we need to serialize.
     // When we serialize a `Span`, we insert the index of its
@@ -278,7 +279,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
             let source_map = s.tcx.sess.source_map();
             let source_file_index = source_map.lookup_source_file_idx(self.lo);
             s.source_file_cache =
-                (Lrc::clone(&source_map.files()[source_file_index]), source_file_index);
+                (Arc::clone(&source_map.files()[source_file_index]), source_file_index);
         }
         let (ref source_file, source_file_index) = s.source_file_cache;
         debug_assert!(source_file.contains(self.lo));
@@ -692,6 +693,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Encode source_map. This needs to be done last, because encoding `Span`s tells us which
         // `SourceFiles` we actually need to encode.
         let source_map = stat!("source-map", || self.encode_source_map());
+        let target_modifiers = stat!("target-modifiers", || self.encode_target_modifiers());
 
         let root = stat!("final", || {
             let attrs = tcx.hir().krate_attrs();
@@ -710,15 +712,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
                 has_alloc_error_handler: tcx.has_alloc_error_handler(LOCAL_CRATE),
                 has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
-                has_default_lib_allocator: attr::contains_name(attrs, sym::default_lib_allocator),
+                has_default_lib_allocator: ast::attr::contains_name(
+                    attrs,
+                    sym::default_lib_allocator,
+                ),
                 proc_macro_data,
                 debugger_visualizers,
-                compiler_builtins: attr::contains_name(attrs, sym::compiler_builtins),
-                needs_allocator: attr::contains_name(attrs, sym::needs_allocator),
-                needs_panic_runtime: attr::contains_name(attrs, sym::needs_panic_runtime),
-                no_builtins: attr::contains_name(attrs, sym::no_builtins),
-                panic_runtime: attr::contains_name(attrs, sym::panic_runtime),
-                profiler_runtime: attr::contains_name(attrs, sym::profiler_runtime),
+                compiler_builtins: ast::attr::contains_name(attrs, sym::compiler_builtins),
+                needs_allocator: ast::attr::contains_name(attrs, sym::needs_allocator),
+                needs_panic_runtime: ast::attr::contains_name(attrs, sym::needs_panic_runtime),
+                no_builtins: ast::attr::contains_name(attrs, sym::no_builtins),
+                panic_runtime: ast::attr::contains_name(attrs, sym::panic_runtime),
+                profiler_runtime: ast::attr::contains_name(attrs, sym::profiler_runtime),
                 symbol_mangling_version: tcx.sess.opts.get_symbol_mangling_version(),
 
                 crate_deps,
@@ -732,6 +737,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 native_libraries,
                 foreign_modules,
                 source_map,
+                target_modifiers,
                 traits,
                 impls,
                 incoherent_impls,
@@ -779,7 +785,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     "{} {:<23}{:>10} ({:4.1}%)",
                     prefix,
                     label,
-                    to_readable_str(size),
+                    format_with_underscores(size),
                     perc(size)
                 );
             }
@@ -788,7 +794,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 "{} {:<23}{:>10} (of which {:.1}% are zero bytes)",
                 prefix,
                 "Total",
-                to_readable_str(total_bytes),
+                format_with_underscores(total_bytes),
                 perc(zero_bytes)
             );
             eprintln!("{prefix}");
@@ -814,7 +820,7 @@ struct AnalyzeAttrState<'a> {
 /// visibility: this is a piece of data that can be computed once per defid, and not once per
 /// attribute. Some attributes would only be usable downstream if they are public.
 #[inline]
-fn analyze_attr(attr: &Attribute, state: &mut AnalyzeAttrState<'_>) -> bool {
+fn analyze_attr(attr: &impl AttributeExt, state: &mut AnalyzeAttrState<'_>) -> bool {
     let mut should_encode = false;
     if !rustc_feature::encode_cross_crate(attr.name_or_empty()) {
         // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
@@ -1354,7 +1360,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             .hir()
             .attrs(tcx.local_def_id_to_hir_id(def_id))
             .iter()
-            .filter(|attr| analyze_attr(attr, &mut state));
+            .filter(|attr| analyze_attr(*attr, &mut state));
 
         record_array!(self.tables.attributes[def_id.to_def_id()] <- attr_iter);
 
@@ -1551,7 +1557,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::OpaqueTy = def_kind {
                 self.encode_explicit_item_bounds(def_id);
-                self.encode_explicit_item_super_predicates(def_id);
+                self.encode_explicit_item_self_bounds(def_id);
                 record!(self.tables.opaque_ty_origin[def_id] <- self.tcx.opaque_ty_origin(def_id));
                 self.encode_precise_capturing_args(def_id);
                 if tcx.is_conditionally_const(def_id) {
@@ -1664,10 +1670,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         record_defaulted_array!(self.tables.explicit_item_bounds[def_id] <- bounds);
     }
 
-    fn encode_explicit_item_super_predicates(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_explicit_item_super_predicates({:?})", def_id);
-        let bounds = self.tcx.explicit_item_super_predicates(def_id).skip_binder();
-        record_defaulted_array!(self.tables.explicit_item_super_predicates[def_id] <- bounds);
+    fn encode_explicit_item_self_bounds(&mut self, def_id: DefId) {
+        debug!("EncodeContext::encode_explicit_item_self_bounds({:?})", def_id);
+        let bounds = self.tcx.explicit_item_self_bounds(def_id).skip_binder();
+        record_defaulted_array!(self.tables.explicit_item_self_bounds[def_id] <- bounds);
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1682,7 +1688,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             AssocItemContainer::Trait => {
                 if let ty::AssocKind::Type = item.kind {
                     self.encode_explicit_item_bounds(def_id);
-                    self.encode_explicit_item_super_predicates(def_id);
+                    self.encode_explicit_item_self_bounds(def_id);
                     if tcx.is_conditionally_const(def_id) {
                         record_defaulted_array!(self.tables.explicit_implied_const_bounds[def_id]
                             <- self.tcx.explicit_implied_const_bounds(def_id).skip_binder());
@@ -1917,11 +1923,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
                 let attrs = hir.attrs(proc_macro);
-                let macro_kind = if attr::contains_name(attrs, sym::proc_macro) {
+                let macro_kind = if ast::attr::contains_name(attrs, sym::proc_macro) {
                     MacroKind::Bang
-                } else if attr::contains_name(attrs, sym::proc_macro_attribute) {
+                } else if ast::attr::contains_name(attrs, sym::proc_macro_attribute) {
                     MacroKind::Attr
-                } else if let Some(attr) = attr::find_by_name(attrs, sym::proc_macro_derive) {
+                } else if let Some(attr) = ast::attr::find_by_name(attrs, sym::proc_macro_derive) {
                     // This unwrap chain should have been checked by the proc-macro harness.
                     name = attr.meta_item_list().unwrap()[0]
                         .meta_item()
@@ -2004,6 +2010,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // FIXME (#2166): This is not nearly enough to support correct versioning
         // but is enough to get transitive crate dependencies working.
         self.lazy_array(deps.iter().map(|(_, dep)| dep))
+    }
+
+    fn encode_target_modifiers(&mut self) -> LazyArray<TargetModifier> {
+        empty_proc_macro!(self);
+        let tcx = self.tcx;
+        self.lazy_array(tcx.sess.opts.gather_target_modifiers())
     }
 
     fn encode_lib_features(&mut self) -> LazyArray<(Symbol, FeatureStability)> {
@@ -2162,12 +2174,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         empty_proc_macro!(self);
         let formats = self.tcx.dependency_formats(());
         if let Some(arr) = formats.get(&CrateType::Dylib) {
-            return self.lazy_array(arr.iter().map(|slot| match *slot {
-                Linkage::NotLinked | Linkage::IncludedFromDylib => None,
+            return self.lazy_array(arr.iter().skip(1 /* skip LOCAL_CRATE */).map(
+                |slot| match *slot {
+                    Linkage::NotLinked | Linkage::IncludedFromDylib => None,
 
-                Linkage::Dynamic => Some(LinkagePreference::RequireDynamic),
-                Linkage::Static => Some(LinkagePreference::RequireStatic),
-            }));
+                    Linkage::Dynamic => Some(LinkagePreference::RequireDynamic),
+                    Linkage::Static => Some(LinkagePreference::RequireStatic),
+                },
+            ));
         }
         LazyArray::default()
     }
@@ -2186,13 +2200,13 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
         let (encode_const, encode_opt) = should_encode_mir(tcx, reachable_set, def_id);
 
         if encode_const {
-            tcx.ensure_with_value().mir_for_ctfe(def_id);
+            tcx.ensure_done().mir_for_ctfe(def_id);
         }
         if encode_opt {
-            tcx.ensure_with_value().optimized_mir(def_id);
+            tcx.ensure_done().optimized_mir(def_id);
         }
         if encode_opt || encode_const {
-            tcx.ensure_with_value().promoted_mir(def_id);
+            tcx.ensure_done().promoted_mir(def_id);
         }
     })
 }
@@ -2293,7 +2307,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     encoder.emit_raw_bytes(&0u64.to_le_bytes());
 
     let source_map_files = tcx.sess.source_map().files();
-    let source_file_cache = (Lrc::clone(&source_map_files[0]), 0);
+    let source_file_cache = (Arc::clone(&source_map_files[0]), 0);
     let required_source_files = Some(FxIndexSet::default());
     drop(source_map_files);
 

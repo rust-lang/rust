@@ -31,14 +31,11 @@ pub enum StructureNodeKind {
 // * draw breadcrumbs to describe the context around the cursor
 // * draw outline of the file
 //
-// |===
-// | Editor  | Shortcut
+// | Editor  | Shortcut |
+// |---------|----------|
+// | VS Code | <kbd>Ctrl+Shift+O</kbd> |
 //
-// | VS Code | kbd:[Ctrl+Shift+O]
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113020654-b42fc800-917a-11eb-8388-e7dc4d92b02e.gif[]
-
+// ![File Structure](https://user-images.githubusercontent.com/48062697/113020654-b42fc800-917a-11eb-8388-e7dc4d92b02e.gif)
 pub(crate) fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
     let mut res = Vec::new();
     let mut stack = Vec::new();
@@ -257,7 +254,7 @@ mod tests {
 
     use super::*;
 
-    fn check(ra_fixture: &str, expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let file = SourceFile::parse(ra_fixture, span::Edition::CURRENT).ok().unwrap();
         let structure = file_structure(&file);
         expect.assert_debug_eq(&structure)

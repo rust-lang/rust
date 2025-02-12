@@ -6,8 +6,9 @@ LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
    |
 help: use `Fn` to refer to the trait (notice the capitalization difference)
    |
-LL | fn _f<F: Fn(), G>(_: impl fn(), _: &dyn fn())
-   |          ~~
+LL - fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
+LL + fn _f<F: Fn(), G>(_: impl fn(), _: &dyn fn())
+   |
 
 error: expected identifier, found keyword `fn`
   --> $DIR/kw-in-trait-bounds.rs:3:27
@@ -17,8 +18,9 @@ LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
    |
 help: use `Fn` to refer to the trait (notice the capitalization difference)
    |
-LL | fn _f<F: fn(), G>(_: impl Fn(), _: &dyn fn())
-   |                           ~~
+LL - fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
+LL + fn _f<F: fn(), G>(_: impl Fn(), _: &dyn fn())
+   |
 
 error: expected identifier, found keyword `fn`
   --> $DIR/kw-in-trait-bounds.rs:3:41
@@ -28,8 +30,9 @@ LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
    |
 help: use `Fn` to refer to the trait (notice the capitalization difference)
    |
-LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn Fn())
-   |                                         ~~
+LL - fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
+LL + fn _f<F: fn(), G>(_: impl fn(), _: &dyn Fn())
+   |
 
 error: expected identifier, found keyword `fn`
   --> $DIR/kw-in-trait-bounds.rs:11:4
@@ -39,8 +42,9 @@ LL | G: fn(),
    |
 help: use `Fn` to refer to the trait (notice the capitalization difference)
    |
-LL | G: Fn(),
-   |    ~~
+LL - G: fn(),
+LL + G: Fn(),
+   |
 
 error: expected identifier, found keyword `struct`
   --> $DIR/kw-in-trait-bounds.rs:16:10

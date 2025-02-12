@@ -6,8 +6,9 @@ LL |         [_, ...tail] => println!("{tail}"),
    |
 help: use `..=` instead
    |
-LL |         [_, ..=tail] => println!("{tail}"),
-   |             ~~~
+LL -         [_, ...tail] => println!("{tail}"),
+LL +         [_, ..=tail] => println!("{tail}"),
+   |
 
 error[E0425]: cannot find value `rest` in this scope
   --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:3:13
@@ -34,8 +35,9 @@ LL |         [_, ..tail] => println!("{tail}"),
    |
 help: if you meant to collect the rest of the slice in `tail`, use the at operator
    |
-LL |         [_, tail @ ..] => println!("{tail}"),
-   |             ~~~~~~~~~
+LL -         [_, ..tail] => println!("{tail}"),
+LL +         [_, tail @ ..] => println!("{tail}"),
+   |
 
 error[E0425]: cannot find value `tail` in this scope
   --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:11:35
@@ -51,8 +53,9 @@ LL |         [_, ...tail] => println!("{tail}"),
    |
 help: if you meant to collect the rest of the slice in `tail`, use the at operator
    |
-LL |         [_, tail @ ..] => println!("{tail}"),
-   |             ~~~~~~~~~
+LL -         [_, ...tail] => println!("{tail}"),
+LL +         [_, tail @ ..] => println!("{tail}"),
+   |
 
 error[E0425]: cannot find value `tail` in this scope
   --> $DIR/range-pattern-meant-to-be-slice-rest-pattern.rs:17:36

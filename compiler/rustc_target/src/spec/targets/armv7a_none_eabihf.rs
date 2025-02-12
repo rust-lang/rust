@@ -5,11 +5,14 @@
 // changes (list in `armv7a_none_eabi.rs`) to bring it closer to the bare-metal
 // `thumb` & `aarch64` targets.
 
-use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{
+    Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions,
+};
 
 pub(crate) fn target() -> Target {
     let opts = TargetOptions {
         abi: "eabihf".into(),
+        llvm_floatabi: Some(FloatAbi::Hard),
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
         features: "+v7,+vfp3,-d32,+thumb2,-neon,+strict-align".into(),

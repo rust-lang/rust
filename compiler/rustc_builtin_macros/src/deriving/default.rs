@@ -4,8 +4,7 @@ use rustc_ast as ast;
 use rustc_ast::visit::visit_opt;
 use rustc_ast::{EnumDef, VariantData, attr};
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
-use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use smallvec::SmallVec;
 use thin_vec::{ThinVec, thin_vec};
 
@@ -43,7 +42,9 @@ pub(crate) fn expand_deriving_default(
                     StaticStruct(_, fields) => {
                         default_struct_substructure(cx, trait_span, substr, fields)
                     }
-                    StaticEnum(enum_def, _) => default_enum_substructure(cx, trait_span, enum_def),
+                    StaticEnum(enum_def) => {
+                        default_enum_substructure(cx, trait_span, enum_def, item.span())
+                    }
                     _ => cx.dcx().span_bug(trait_span, "method in `derive(Default)`"),
                 }
             })),
@@ -97,39 +98,48 @@ fn default_enum_substructure(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
     enum_def: &EnumDef,
+    item_span: Span,
 ) -> BlockOrExpr {
     let expr = match try {
-        let default_variant = extract_default_variant(cx, enum_def, trait_span)?;
+        let default_variant = extract_default_variant(cx, enum_def, trait_span, item_span)?;
         validate_default_attribute(cx, default_variant)?;
         default_variant
     } {
         Ok(default_variant) => {
             // We now know there is exactly one unit variant with exactly one `#[default]` attribute.
             match &default_variant.data {
-                VariantData::Unit(_) => cx.expr_path(cx.path(default_variant.span, vec![
-                    Ident::new(kw::SelfUpper, default_variant.span),
-                    default_variant.ident,
-                ])),
+                VariantData::Unit(_) => cx.expr_path(cx.path(
+                    default_variant.span,
+                    vec![Ident::new(kw::SelfUpper, default_variant.span), default_variant.ident],
+                )),
                 VariantData::Struct { fields, .. } => {
                     // This only happens if `#![feature(default_field_values)]`. We have validated
                     // all fields have default values in the definition.
                     let default_fields = fields
                         .iter()
                         .map(|field| {
-                            cx.field_imm(field.span, field.ident.unwrap(), match &field.default {
-                                // We use `Default::default()`.
-                                None => default_call(cx, field.span),
-                                // We use the field default const expression.
-                                Some(val) => {
-                                    cx.expr(val.value.span, ast::ExprKind::ConstBlock(val.clone()))
-                                }
-                            })
+                            cx.field_imm(
+                                field.span,
+                                field.ident.unwrap(),
+                                match &field.default {
+                                    // We use `Default::default()`.
+                                    None => default_call(cx, field.span),
+                                    // We use the field default const expression.
+                                    Some(val) => cx.expr(
+                                        val.value.span,
+                                        ast::ExprKind::ConstBlock(val.clone()),
+                                    ),
+                                },
+                            )
                         })
                         .collect();
-                    let path = cx.path(default_variant.span, vec![
-                        Ident::new(kw::SelfUpper, default_variant.span),
-                        default_variant.ident,
-                    ]);
+                    let path = cx.path(
+                        default_variant.span,
+                        vec![
+                            Ident::new(kw::SelfUpper, default_variant.span),
+                            default_variant.ident,
+                        ],
+                    );
                     cx.expr_struct(default_variant.span, path, default_fields)
                 }
                 // Logic error in `extract_default_variant`.
@@ -147,6 +157,7 @@ fn extract_default_variant<'a>(
     cx: &ExtCtxt<'_>,
     enum_def: &'a EnumDef,
     trait_span: Span,
+    item_span: Span,
 ) -> Result<&'a rustc_ast::Variant, ErrorGuaranteed> {
     let default_variants: SmallVec<[_; 1]> = enum_def
         .variants
@@ -164,9 +175,10 @@ fn extract_default_variant<'a>(
                 .filter(|variant| !attr::contains_name(&variant.attrs, sym::non_exhaustive));
 
             let suggs = possible_defaults
-                .map(|v| errors::NoDefaultVariantSugg { span: v.span, ident: v.ident })
+                .map(|v| errors::NoDefaultVariantSugg { span: v.span.shrink_to_lo() })
                 .collect();
-            let guar = cx.dcx().emit_err(errors::NoDefaultVariant { span: trait_span, suggs });
+            let guar =
+                cx.dcx().emit_err(errors::NoDefaultVariant { span: trait_span, item_span, suggs });
 
             return Err(guar);
         }

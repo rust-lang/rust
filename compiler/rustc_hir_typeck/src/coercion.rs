@@ -38,6 +38,7 @@
 use std::ops::Deref;
 
 use rustc_abi::ExternAbi;
+use rustc_attr_parsing::InlineAttr;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
 use rustc_hir as hir;
@@ -49,7 +50,6 @@ use rustc_infer::traits::{
     IfExpressionCause, MatchExpressionArmCause, Obligation, PredicateObligation,
     PredicateObligations,
 };
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::span_bug;
 use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::adjustment::{
@@ -59,8 +59,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::sym;
-use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
@@ -461,9 +460,17 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // to the target type), since that should be the least
         // confusing.
         let Some(InferOk { value: ty, mut obligations }) = found else {
-            let err = first_error.expect("coerce_borrowed_pointer had no error");
-            debug!("coerce_borrowed_pointer: failed with err = {:?}", err);
-            return Err(err);
+            if let Some(first_error) = first_error {
+                debug!("coerce_borrowed_pointer: failed with err = {:?}", first_error);
+                return Err(first_error);
+            } else {
+                // This may happen in the new trait solver since autoderef requires
+                // the pointee to be structurally normalizable, or else it'll just bail.
+                // So when we have a type like `&<not well formed>`, then we get no
+                // autoderef steps (even though there should be at least one). That means
+                // we get no type mismatches, since the loop above just exits early.
+                return Err(TypeError::Mismatch);
+            }
         };
 
         if ty == a && mt_a.mutbl.is_not() && autoderef.step_count() == 1 {
@@ -548,18 +555,24 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // the reborrow in coerce_borrowed_ptr will pick it up.
                 let mutbl = AutoBorrowMutability::new(mutbl_b, AllowTwoPhase::No);
 
-                Some((Adjustment { kind: Adjust::Deref(None), target: ty_a }, Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
-                    target: Ty::new_ref(self.tcx, r_borrow, ty_a, mutbl_b),
-                }))
+                Some((
+                    Adjustment { kind: Adjust::Deref(None), target: ty_a },
+                    Adjustment {
+                        kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
+                        target: Ty::new_ref(self.tcx, r_borrow, ty_a, mutbl_b),
+                    },
+                ))
             }
             (&ty::Ref(_, ty_a, mt_a), &ty::RawPtr(_, mt_b)) => {
                 coerce_mutbls(mt_a, mt_b)?;
 
-                Some((Adjustment { kind: Adjust::Deref(None), target: ty_a }, Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::RawPtr(mt_b)),
-                    target: Ty::new_ptr(self.tcx, ty_a, mt_b),
-                }))
+                Some((
+                    Adjustment { kind: Adjust::Deref(None), target: ty_a },
+                    Adjustment {
+                        kind: Adjust::Borrow(AutoBorrow::RawPtr(mt_b)),
+                        target: Ty::new_ptr(self.tcx, ty_a, mt_b),
+                    },
+                ))
             }
             _ => None,
         };
@@ -581,11 +594,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let mut selcx = traits::SelectionContext::new(self);
 
         // Create an obligation for `Source: CoerceUnsized<Target>`.
-        let cause =
-            ObligationCause::new(self.cause.span, self.body_id, ObligationCauseCode::Coercion {
-                source,
-                target,
-            });
+        let cause = self.cause(self.cause.span, ObligationCauseCode::Coercion { source, target });
 
         // Use a FIFO queue for this custom fulfillment procedure.
         //
@@ -602,7 +611,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         )];
 
         let mut has_unsized_tuple_coercion = false;
-        let mut has_trait_upcasting_coercion = None;
 
         // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
@@ -671,7 +679,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                 // Dyn-compatibility violations or miscellaneous.
                 Err(err) => {
-                    self.err_ctxt().report_selection_error(obligation.clone(), &obligation, &err);
+                    let guar = self.err_ctxt().report_selection_error(
+                        obligation.clone(),
+                        &obligation,
+                        &err,
+                    );
+                    self.fcx.set_tainted_by_errors(guar);
                     // Treat this like an obligation and follow through
                     // with the unsizing - the lack of a coercion should
                     // be silent, as it causes a type mismatch later.
@@ -682,13 +695,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     // these here and emit a feature error if coercion doesn't fail
                     // due to another reason.
                     match impl_source {
-                        traits::ImplSource::Builtin(
-                            BuiltinImplSource::TraitUpcasting { .. },
-                            _,
-                        ) => {
-                            has_trait_upcasting_coercion =
-                                Some((trait_pred.self_ty(), trait_pred.trait_ref.args.type_at(1)));
-                        }
                         traits::ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, _) => {
                             has_unsized_tuple_coercion = true;
                         }
@@ -697,21 +703,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     queue.extend(impl_source.nested_obligations())
                 }
             }
-        }
-
-        if let Some((sub, sup)) = has_trait_upcasting_coercion
-            && !self.tcx().features().trait_upcasting()
-        {
-            // Renders better when we erase regions, since they're not really the point here.
-            let (sub, sup) = self.tcx.erase_regions((sub, sup));
-            let mut err = feature_err(
-                &self.tcx.sess,
-                sym::trait_upcasting,
-                self.cause.span,
-                format!("cannot cast `{sub}` to `{sup}`, trait upcasting coercion is experimental"),
-            );
-            err.note(format!("required when coercing `{source}` into `{target}`"));
-            err.emit();
         }
 
         if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion() {
@@ -738,8 +729,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             return Err(TypeError::Mismatch);
         }
 
-        if let ty::Dynamic(a_data, _, _) = a.kind()
-            && let ty::Dynamic(b_data, _, _) = b.kind()
+        // FIXME(dyn_star): We should probably allow things like casting from
+        // `dyn* Foo + Send` to `dyn* Foo`.
+        if let ty::Dynamic(a_data, _, ty::DynStar) = a.kind()
+            && let ty::Dynamic(b_data, _, ty::DynStar) = b.kind()
             && a_data.principal_def_id() == b_data.principal_def_id()
         {
             return self.unify_and(a, b, |_| vec![]);
@@ -917,19 +910,32 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         match b.kind() {
             ty::FnPtr(_, b_hdr) => {
-                let a_sig = a.fn_sig(self.tcx);
+                let mut a_sig = a.fn_sig(self.tcx);
                 if let ty::FnDef(def_id, _) = *a.kind() {
                     // Intrinsics are not coercible to function pointers
                     if self.tcx.intrinsic(def_id).is_some() {
                         return Err(TypeError::IntrinsicCast);
                     }
 
-                    // Safe `#[target_feature]` functions are not assignable to safe fn pointers (RFC 2396).
+                    let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
+                    if matches!(fn_attrs.inline, InlineAttr::Force { .. }) {
+                        return Err(TypeError::ForceInlineCast);
+                    }
 
                     if b_hdr.safety.is_safe()
-                        && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                        && self.tcx.codegen_fn_attrs(def_id).safe_target_features
                     {
-                        return Err(TypeError::TargetFeatureCast(def_id));
+                        // Allow the coercion if the current function has all the features that would be
+                        // needed to call the coercee safely.
+                        if let Some(safe_sig) = self.tcx.adjust_target_feature_sig(
+                            def_id,
+                            a_sig,
+                            self.fcx.body_id.into(),
+                        ) {
+                            a_sig = safe_sig;
+                        } else {
+                            return Err(TypeError::TargetFeatureCast(def_id));
+                        }
                     }
                 }
 
@@ -1033,10 +1039,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // regionck knows that the region for `a` must be valid here.
         if is_ref {
             self.unify_and(a_unsafe, b, |target| {
-                vec![Adjustment { kind: Adjust::Deref(None), target: mt_a.ty }, Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::RawPtr(mutbl_b)),
-                    target,
-                }]
+                vec![
+                    Adjustment { kind: Adjust::Deref(None), target: mt_a.ty },
+                    Adjustment { kind: Adjust::Borrow(AutoBorrow::RawPtr(mutbl_b)), target },
+                ]
             })
         } else if mt_a.mutbl != mutbl_b {
             self.unify_and(a_unsafe, b, simple(Adjust::Pointer(PointerCoercion::MutToConstPointer)))
@@ -1108,7 +1114,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if self.next_trait_solver()
                     && let ty::Alias(..) = ty.kind()
                 {
-                    ocx.structurally_normalize(&cause, self.param_env, ty)
+                    ocx.structurally_normalize_ty(&cause, self.param_env, ty)
                 } else {
                     Ok(ty)
                 }
@@ -1195,6 +1201,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ok(prev_ty);
         }
 
+        let is_force_inline = |ty: Ty<'tcx>| {
+            if let ty::FnDef(did, _) = ty.kind() {
+                matches!(self.tcx.codegen_fn_attrs(did).inline, InlineAttr::Force { .. })
+            } else {
+                false
+            }
+        };
+        if is_force_inline(prev_ty) || is_force_inline(new_ty) {
+            return Err(TypeError::ForceInlineCast);
+        }
+
         // Special-case that coercion alone cannot handle:
         // Function items or non-capturing closures of differing IDs or GenericArgs.
         let (a_sig, b_sig) = {
@@ -1277,10 +1294,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => span_bug!(new.span, "should not try to coerce a {new_ty} to a fn pointer"),
             };
             for expr in exprs.iter().map(|e| e.as_coercion_site()) {
-                self.apply_adjustments(expr, vec![Adjustment {
-                    kind: prev_adjustment.clone(),
-                    target: fn_ptr,
-                }]);
+                self.apply_adjustments(
+                    expr,
+                    vec![Adjustment { kind: prev_adjustment.clone(), target: fn_ptr }],
+                );
             }
             self.apply_adjustments(new, vec![Adjustment { kind: next_adjustment, target: fn_ptr }]);
             return Ok(fn_ptr);
@@ -1313,43 +1330,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return Ok(target);
                 }
                 Err(e) => first_error = Some(e),
-            }
-        }
-
-        // Then try to coerce the previous expressions to the type of the new one.
-        // This requires ensuring there are no coercions applied to *any* of the
-        // previous expressions, other than noop reborrows (ignoring lifetimes).
-        for expr in exprs {
-            let expr = expr.as_coercion_site();
-            let noop = match self.typeck_results.borrow().expr_adjustments(expr) {
-                &[
-                    Adjustment { kind: Adjust::Deref(_), .. },
-                    Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(mutbl_adj)), .. },
-                ] => {
-                    match *self.node_ty(expr.hir_id).kind() {
-                        ty::Ref(_, _, mt_orig) => {
-                            let mutbl_adj: hir::Mutability = mutbl_adj.into();
-                            // Reborrow that we can safely ignore, because
-                            // the next adjustment can only be a Deref
-                            // which will be merged into it.
-                            mutbl_adj == mt_orig
-                        }
-                        _ => false,
-                    }
-                }
-                &[Adjustment { kind: Adjust::NeverToAny, .. }] | &[] => true,
-                _ => false,
-            };
-
-            if !noop {
-                debug!(
-                    "coercion::try_find_coercion_lub: older expression {:?} had adjustments, requiring LUB",
-                    expr,
-                );
-
-                return Err(self
-                    .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
-                    .unwrap_err());
             }
         }
 
@@ -1849,30 +1829,26 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             fcx.probe(|_| {
                 let ocx = ObligationCtxt::new(fcx);
                 ocx.register_obligations(
-                    fcx.tcx.item_super_predicates(rpit_def_id).iter_identity().filter_map(
-                        |clause| {
-                            let predicate = clause
-                                .kind()
-                                .map_bound(|clause| match clause {
-                                    ty::ClauseKind::Trait(trait_pred) => Some(
-                                        ty::ClauseKind::Trait(trait_pred.with_self_ty(fcx.tcx, ty)),
-                                    ),
-                                    ty::ClauseKind::Projection(proj_pred) => {
-                                        Some(ty::ClauseKind::Projection(
-                                            proj_pred.with_self_ty(fcx.tcx, ty),
-                                        ))
-                                    }
-                                    _ => None,
-                                })
-                                .transpose()?;
-                            Some(Obligation::new(
-                                fcx.tcx,
-                                ObligationCause::dummy(),
-                                fcx.param_env,
-                                predicate,
-                            ))
-                        },
-                    ),
+                    fcx.tcx.item_self_bounds(rpit_def_id).iter_identity().filter_map(|clause| {
+                        let predicate = clause
+                            .kind()
+                            .map_bound(|clause| match clause {
+                                ty::ClauseKind::Trait(trait_pred) => Some(ty::ClauseKind::Trait(
+                                    trait_pred.with_self_ty(fcx.tcx, ty),
+                                )),
+                                ty::ClauseKind::Projection(proj_pred) => Some(
+                                    ty::ClauseKind::Projection(proj_pred.with_self_ty(fcx.tcx, ty)),
+                                ),
+                                _ => None,
+                            })
+                            .transpose()?;
+                        Some(Obligation::new(
+                            fcx.tcx,
+                            ObligationCause::dummy(),
+                            fcx.param_env,
+                            predicate,
+                        ))
+                    }),
                 );
                 ocx.select_where_possible().is_empty()
             })
@@ -1943,7 +1919,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     cond_expr.span.desugaring_kind(),
                     None | Some(DesugaringKind::WhileLoop)
                 )
-                && !in_external_macro(fcx.tcx.sess, cond_expr.span)
+                && !cond_expr.span.in_external_macro(fcx.tcx.sess.source_map())
                 && !matches!(
                     cond_expr.kind,
                     hir::ExprKind::Match(.., hir::MatchSource::TryDesugar(_))

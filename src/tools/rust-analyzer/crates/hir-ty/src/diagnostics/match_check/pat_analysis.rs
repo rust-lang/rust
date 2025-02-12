@@ -314,7 +314,7 @@ impl<'db> MatchCheckCtx<'db> {
     }
 }
 
-impl<'db> PatCx for MatchCheckCtx<'db> {
+impl PatCx for MatchCheckCtx<'_> {
     type Error = ();
     type Ty = Ty;
     type VariantIdx = EnumVariantContiguousIndex;

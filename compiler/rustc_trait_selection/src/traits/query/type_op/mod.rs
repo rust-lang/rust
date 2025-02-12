@@ -92,6 +92,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
     fn perform_locally_with_next_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
         key: ParamEnvAnd<'tcx, Self>,
+        span: Span,
     ) -> Result<Self::QueryResponse, NoSolution>;
 
     fn fully_perform_into(
@@ -152,7 +153,7 @@ where
         if infcx.next_trait_solver() {
             return Ok(scrape_region_constraints(
                 infcx,
-                |ocx| QueryTypeOp::perform_locally_with_next_solver(ocx, self),
+                |ocx| QueryTypeOp::perform_locally_with_next_solver(ocx, self, span),
                 "query type op",
                 span,
             )?
@@ -180,11 +181,8 @@ where
             span,
         )?;
         output.error_info = error_info;
-        if let Some(constraints) = output.constraints {
-            region_constraints
-                .member_constraints
-                .extend(constraints.member_constraints.iter().cloned());
-            region_constraints.outlives.extend(constraints.outlives.iter().cloned());
+        if let Some(QueryRegionConstraints { outlives }) = output.constraints {
+            region_constraints.outlives.extend(outlives.iter().cloned());
         }
         output.constraints = if region_constraints.is_empty() {
             None

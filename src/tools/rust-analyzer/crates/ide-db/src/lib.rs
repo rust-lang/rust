@@ -260,23 +260,23 @@ impl From<hir::MacroKind> for SymbolKind {
     }
 }
 
-impl From<hir::ModuleDefId> for SymbolKind {
-    fn from(it: hir::ModuleDefId) -> Self {
+impl From<hir::ModuleDef> for SymbolKind {
+    fn from(it: hir::ModuleDef) -> Self {
         match it {
-            hir::ModuleDefId::ConstId(..) => SymbolKind::Const,
-            hir::ModuleDefId::EnumVariantId(..) => SymbolKind::Variant,
-            hir::ModuleDefId::FunctionId(..) => SymbolKind::Function,
-            hir::ModuleDefId::MacroId(hir::MacroId::ProcMacroId(..)) => SymbolKind::ProcMacro,
-            hir::ModuleDefId::MacroId(..) => SymbolKind::Macro,
-            hir::ModuleDefId::ModuleId(..) => SymbolKind::Module,
-            hir::ModuleDefId::StaticId(..) => SymbolKind::Static,
-            hir::ModuleDefId::AdtId(hir::AdtId::StructId(..)) => SymbolKind::Struct,
-            hir::ModuleDefId::AdtId(hir::AdtId::EnumId(..)) => SymbolKind::Enum,
-            hir::ModuleDefId::AdtId(hir::AdtId::UnionId(..)) => SymbolKind::Union,
-            hir::ModuleDefId::TraitId(..) => SymbolKind::Trait,
-            hir::ModuleDefId::TraitAliasId(..) => SymbolKind::TraitAlias,
-            hir::ModuleDefId::TypeAliasId(..) => SymbolKind::TypeAlias,
-            hir::ModuleDefId::BuiltinType(..) => SymbolKind::TypeAlias,
+            hir::ModuleDef::Const(..) => SymbolKind::Const,
+            hir::ModuleDef::Variant(..) => SymbolKind::Variant,
+            hir::ModuleDef::Function(..) => SymbolKind::Function,
+            hir::ModuleDef::Macro(mac) if mac.is_proc_macro() => SymbolKind::ProcMacro,
+            hir::ModuleDef::Macro(..) => SymbolKind::Macro,
+            hir::ModuleDef::Module(..) => SymbolKind::Module,
+            hir::ModuleDef::Static(..) => SymbolKind::Static,
+            hir::ModuleDef::Adt(hir::Adt::Struct(..)) => SymbolKind::Struct,
+            hir::ModuleDef::Adt(hir::Adt::Enum(..)) => SymbolKind::Enum,
+            hir::ModuleDef::Adt(hir::Adt::Union(..)) => SymbolKind::Union,
+            hir::ModuleDef::Trait(..) => SymbolKind::Trait,
+            hir::ModuleDef::TraitAlias(..) => SymbolKind::TraitAlias,
+            hir::ModuleDef::TypeAlias(..) => SymbolKind::TypeAlias,
+            hir::ModuleDef::BuiltinType(..) => SymbolKind::TypeAlias,
         }
     }
 }
@@ -320,10 +320,18 @@ impl<'a> Ranker<'a> {
         let same_text = tok.text() == self.text;
         // anything that mapped into a token tree has likely no semantic information
         let no_tt_parent =
-            tok.parent().map_or(false, |it| it.kind() != parser::SyntaxKind::TOKEN_TREE);
+            tok.parent().is_some_and(|it| it.kind() != parser::SyntaxKind::TOKEN_TREE);
         (both_idents as usize)
             | ((exact_same_kind as usize) << 1)
             | ((same_text as usize) << 2)
             | ((no_tt_parent as usize) << 3)
     }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Severity {
+    Error,
+    Warning,
+    WeakWarning,
+    Allow,
 }

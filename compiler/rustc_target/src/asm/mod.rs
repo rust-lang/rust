@@ -1,11 +1,11 @@
 use std::fmt;
 use std::str::FromStr;
 
+use rustc_abi::Size;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Symbol;
 
-use crate::abi::Size;
 use crate::spec::{RelocModel, Target};
 
 pub struct ModifierInfo {
@@ -35,16 +35,16 @@ macro_rules! def_reg_class {
         impl $arch_regclass {
             pub fn name(self) -> rustc_span::Symbol {
                 match self {
-                    $(Self::$class => rustc_span::symbol::sym::$class,)*
+                    $(Self::$class => rustc_span::sym::$class,)*
                 }
             }
 
-            pub fn parse(name: rustc_span::Symbol) -> Result<Self, &'static str> {
+            pub fn parse(name: rustc_span::Symbol) -> Result<Self, &'static [rustc_span::Symbol]> {
                 match name {
                     $(
                         rustc_span::sym::$class => Ok(Self::$class),
                     )*
-                    _ => Err("unknown register class"),
+                    _ => Err(&[$(rustc_span::sym::$class),*]),
                 }
             }
         }
@@ -511,7 +511,7 @@ impl InlineAsmRegClass {
             Self::Msp430(r) => r.name(),
             Self::M68k(r) => r.name(),
             Self::CSKY(r) => r.name(),
-            Self::Err => rustc_span::symbol::sym::reg,
+            Self::Err => rustc_span::sym::reg,
         }
     }
 
@@ -635,7 +635,7 @@ impl InlineAsmRegClass {
         }
     }
 
-    pub fn parse(arch: InlineAsmArch, name: Symbol) -> Result<Self, &'static str> {
+    pub fn parse(arch: InlineAsmArch, name: Symbol) -> Result<Self, &'static [rustc_span::Symbol]> {
         Ok(match arch {
             InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
                 Self::X86(X86InlineAsmRegClass::parse(name)?)
@@ -934,6 +934,7 @@ pub enum InlineAsmClobberAbi {
     LoongArch,
     PowerPC,
     S390x,
+    Bpf,
     Msp430,
 }
 
@@ -1001,6 +1002,10 @@ impl InlineAsmClobberAbi {
             },
             InlineAsmArch::S390x => match name {
                 "C" | "system" => Ok(InlineAsmClobberAbi::S390x),
+                _ => Err(&["C", "system"]),
+            },
+            InlineAsmArch::Bpf => match name {
+                "C" | "system" => Ok(InlineAsmClobberAbi::Bpf),
                 _ => Err(&["C", "system"]),
             },
             InlineAsmArch::Msp430 => match name {
@@ -1276,6 +1281,14 @@ impl InlineAsmClobberAbi {
                     // a0-a1 are reserved, other access registers are volatile
                     a2, a3, a4, a5, a6, a7,
                     a8, a9, a10, a11, a12, a13, a14, a15,
+                }
+            },
+            InlineAsmClobberAbi::Bpf => clobbered_regs! {
+                Bpf BpfInlineAsmReg {
+                    // Refs: Section 1.1 "Registers and calling convention" in BPF ABI Recommended Conventions and Guidelines v1.0
+                    // https://www.kernel.org/doc/html/latest/bpf/standardization/abi.html#registers-and-calling-convention
+
+                    r0, r1, r2, r3, r4, r5,
                 }
             },
             InlineAsmClobberAbi::Msp430 => clobbered_regs! {

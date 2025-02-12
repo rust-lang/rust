@@ -153,8 +153,31 @@ impl LocationState {
     ) -> ContinueTraversal {
         if rel_pos.is_foreign() {
             let happening_now = IdempotentForeignAccess::from_foreign(access_kind);
-            let new_access_noop =
+            let mut new_access_noop =
                 self.idempotent_foreign_access.can_skip_foreign_access(happening_now);
+            if self.permission.is_disabled() {
+                // A foreign access to a `Disabled` tag will have almost no observable effect.
+                // It's a theorem that `Disabled` node have no protected initialized children,
+                // and so this foreign access will never trigger any protector.
+                // (Intuition: You're either protected initialized, and thus can't become Disabled
+                // or you're already Disabled protected, but not initialized, and then can't
+                // become initialized since that requires a child access, which Disabled blocks.)
+                // Further, the children will never be able to read or write again, since they
+                // have a `Disabled` parent. So this only affects diagnostics, such that the
+                // blocking write will still be identified directly, just at a different tag.
+                new_access_noop = true;
+            }
+            if self.permission.is_frozen() && access_kind == AccessKind::Read {
+                // A foreign read to a `Frozen` tag will have almost no observable effect.
+                // It's a theorem that `Frozen` nodes have no active children, so all children
+                // already survive foreign reads. Foreign reads in general have almost no
+                // effect, the only further thing they could do is make protected `Reserved`
+                // nodes become conflicted, i.e. make them reject child writes for the further
+                // duration of their protector. But such a child write is already rejected
+                // because this node is frozen. So this only affects diagnostics, but the
+                // blocking read will still be identified directly, just at a different tag.
+                new_access_noop = true;
+            }
             if new_access_noop {
                 // Abort traversal if the new access is indeed guaranteed
                 // to be noop.
@@ -558,15 +581,18 @@ impl Tree {
             let mut debug_info = NodeDebugInfo::new(root_tag, root_default_perm, span);
             // name the root so that all allocations contain one named pointer
             debug_info.add_name("root of the allocation");
-            nodes.insert(root_idx, Node {
-                tag: root_tag,
-                parent: None,
-                children: SmallVec::default(),
-                default_initial_perm: root_default_perm,
-                // The root may never be skipped, all accesses will be local.
-                default_initial_idempotent_foreign_access: IdempotentForeignAccess::None,
-                debug_info,
-            });
+            nodes.insert(
+                root_idx,
+                Node {
+                    tag: root_tag,
+                    parent: None,
+                    children: SmallVec::default(),
+                    default_initial_perm: root_default_perm,
+                    // The root may never be skipped, all accesses will be local.
+                    default_initial_idempotent_foreign_access: IdempotentForeignAccess::None,
+                    debug_info,
+                },
+            );
             nodes
         };
         let rperms = {
@@ -601,14 +627,17 @@ impl<'tcx> Tree {
         let parent_idx = self.tag_mapping.get(&parent_tag).unwrap();
         let strongest_idempotent = default_initial_perm.strongest_idempotent_foreign_access(prot);
         // Create the node
-        self.nodes.insert(idx, Node {
-            tag: new_tag,
-            parent: Some(parent_idx),
-            children: SmallVec::default(),
-            default_initial_perm,
-            default_initial_idempotent_foreign_access: strongest_idempotent,
-            debug_info: NodeDebugInfo::new(new_tag, default_initial_perm, span),
-        });
+        self.nodes.insert(
+            idx,
+            Node {
+                tag: new_tag,
+                parent: Some(parent_idx),
+                children: SmallVec::default(),
+                default_initial_perm,
+                default_initial_idempotent_foreign_access: strongest_idempotent,
+                debug_info: NodeDebugInfo::new(new_tag, default_initial_perm, span),
+            },
+        );
         // Register new_tag as a child of parent_tag
         self.nodes.get_mut(parent_idx).unwrap().children.push(idx);
         // Initialize perms

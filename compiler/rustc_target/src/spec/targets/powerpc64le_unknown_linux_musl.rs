@@ -13,8 +13,8 @@ pub(crate) fn target() -> Target {
         llvm_target: "powerpc64le-unknown-linux-musl".into(),
         metadata: crate::spec::TargetMetadata {
             description: Some("64-bit PowerPC Linux with musl 1.2.3, Little Endian".into()),
-            tier: Some(3),
-            host_tools: Some(false),
+            tier: Some(2),
+            host_tools: Some(true),
             std: Some(true),
         },
         pointer_width: 64,

@@ -2,8 +2,6 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
-#![feature(do_not_recommend)]
-
 pub trait Expression {
     type SqlType;
 }
@@ -55,7 +53,7 @@ impl<T> Foo for T where T: Expression {}
 
 fn main() {
     SelectInt.check("bar");
-    //~^ ERROR the trait bound `&str: AsExpression<Integer>` is not satisfied
-    //[next]~| the trait bound `&str: AsExpression<<SelectInt as Expression>::SqlType>` is not satisfied
+    //[current]~^ ERROR the trait bound `&str: AsExpression<Integer>` is not satisfied
+    //[next]~^^ the trait bound `&str: AsExpression<<SelectInt as Expression>::SqlType>` is not satisfied
     //[next]~| type mismatch
 }

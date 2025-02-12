@@ -1,6 +1,4 @@
-use std::collections::BTreeSet;
 use std::num::NonZero;
-use std::sync::Mutex;
 use std::time::Duration;
 use std::{cmp, iter};
 
@@ -19,6 +17,7 @@ use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, MaybeResult, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
+use rustc_target::callconv::{Conv, FnAbi};
 
 use crate::*;
 
@@ -39,9 +38,10 @@ fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>)
         item: DefId,
         name: &'a str,
     ) -> impl Iterator<Item = DefId> + 'a {
+        let name = Symbol::intern(name);
         tcx.module_children(item)
             .iter()
-            .filter(move |item| item.ident.name.as_str() == name)
+            .filter(move |item| item.ident.name == name)
             .map(move |item| item.res.def_id())
     }
 
@@ -151,12 +151,14 @@ pub fn iter_exported_symbols<'tcx>(
     let dependency_format = dependency_formats
         .get(&CrateType::Executable)
         .expect("interpreting a non-executable crate");
-    for cnum in dependency_format.iter().enumerate().filter_map(|(num, &linkage)| {
-        // We add 1 to the number because that's what rustc also does everywhere it
-        // calls `CrateNum::new`...
-        #[expect(clippy::arithmetic_side_effects)]
-        (linkage != Linkage::NotLinked).then_some(CrateNum::new(num + 1))
-    }) {
+    for cnum in dependency_format
+        .iter_enumerated()
+        .filter_map(|(num, &linkage)| (linkage != Linkage::NotLinked).then_some(num))
+    {
+        if cnum == LOCAL_CRATE {
+            continue; // Already handled above
+        }
+
         // We can ignore `_export_info` here: we are a Rust crate, and everything is exported
         // from a Rust crate.
         for &(symbol, _export_info) in tcx.exported_symbols(cnum) {
@@ -261,6 +263,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })
     }
 
+    /// Helper function to get a `libc` constant as an `u64`.
+    fn eval_libc_u64(&self, name: &str) -> u64 {
+        // TODO: Cache the result.
+        self.eval_libc(name).to_u64().unwrap_or_else(|_err| {
+            panic!("required libc item has unexpected type (not `u64`): {name}")
+        })
+    }
+
     /// Helper function to get a `windows` constant as a `Scalar`.
     fn eval_windows(&self, module: &str, name: &str) -> Scalar {
         self.eval_context_ref().eval_path_scalar(&["std", "sys", "pal", "windows", module, name])
@@ -308,34 +318,31 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Project to the given *named* field (which must be a struct or union type).
+    fn try_project_field_named<P: Projectable<'tcx, Provenance>>(
+        &self,
+        base: &P,
+        name: &str,
+    ) -> InterpResult<'tcx, Option<P>> {
+        let this = self.eval_context_ref();
+        let adt = base.layout().ty.ty_adt_def().unwrap();
+        for (idx, field) in adt.non_enum_variant().fields.iter().enumerate() {
+            if field.name.as_str() == name {
+                return interp_ok(Some(this.project_field(base, idx)?));
+            }
+        }
+        interp_ok(None)
+    }
+
+    /// Project to the given *named* field (which must be a struct or union type).
     fn project_field_named<P: Projectable<'tcx, Provenance>>(
         &self,
         base: &P,
         name: &str,
     ) -> InterpResult<'tcx, P> {
-        let this = self.eval_context_ref();
-        let adt = base.layout().ty.ty_adt_def().unwrap();
-        for (idx, field) in adt.non_enum_variant().fields.iter().enumerate() {
-            if field.name.as_str() == name {
-                return this.project_field(base, idx);
-            }
-        }
-        bug!("No field named {} in type {}", name, base.layout().ty);
-    }
-
-    /// Search if `base` (which must be a struct or union type) contains the `name` field.
-    fn projectable_has_field<P: Projectable<'tcx, Provenance>>(
-        &self,
-        base: &P,
-        name: &str,
-    ) -> bool {
-        let adt = base.layout().ty.ty_adt_def().unwrap();
-        for field in adt.non_enum_variant().fields.iter() {
-            if field.name.as_str() == name {
-                return true;
-            }
-        }
-        false
+        interp_ok(
+            self.try_project_field_named(base, name)?
+                .unwrap_or_else(|| bug!("no field named {} in type {}", name, base.layout().ty)),
+        )
     }
 
     /// Write an int of the appropriate size to `dest`. The target type may be signed or unsigned,
@@ -414,7 +421,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if this.machine.communicate() {
             // Fill the buffer using the host's rng.
-            getrandom::getrandom(&mut data)
+            getrandom::fill(&mut data)
                 .map_err(|err| err_unsup_format!("host getrandom failed: {}", err))?;
         } else {
             let rng = this.machine.rng.get_mut();
@@ -605,7 +612,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             // `UnsafeCell` action.
                             (self.unsafe_cell_action)(v)
                         }
-                        Variants::Single { .. } => {
+                        Variants::Single { .. } | Variants::Empty => {
                             // Proceed further, try to find where exactly that `UnsafeCell`
                             // is hiding.
                             self.walk_value(v)
@@ -641,11 +648,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match reject_with {
             RejectOpWith::Abort => isolation_abort_error(op_name),
             RejectOpWith::WarningWithoutBacktrace => {
-                // This exists to reduce verbosity; make sure we emit the warning at most once per
-                // operation.
-                static EMITTED_WARNINGS: Mutex<BTreeSet<String>> = Mutex::new(BTreeSet::new());
-
-                let mut emitted_warnings = EMITTED_WARNINGS.lock().unwrap();
+                let mut emitted_warnings = this.machine.reject_in_isolation_warned.borrow_mut();
                 if !emitted_warnings.contains(op_name) {
                     // First time we are seeing this.
                     emitted_warnings.insert(op_name.to_owned());
@@ -653,6 +656,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         .dcx()
                         .warn(format!("{op_name} was made to return an error due to isolation"));
                 }
+
                 interp_ok(())
             }
             RejectOpWith::Warning => {
@@ -672,6 +676,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             target_os,
             "`{name}` is only available on the `{target_os}` target OS",
         )
+    }
+
+    /// Helper function used inside shims of foreign functions to check that the target OS
+    /// is one of `target_oses`. It returns an error containing the `name` of the foreign function
+    /// in a message if this is not the case.
+    fn check_target_os(&self, target_oses: &[&str], name: Symbol) -> InterpResult<'tcx> {
+        let target_os = self.eval_context_ref().tcx.sess.target.os.as_ref();
+        if !target_oses.contains(&target_os) {
+            throw_unsup_format!("`{name}` is not supported on {target_os}");
+        }
+        interp_ok(())
     }
 
     /// Helper function used inside the shims of foreign functions to assert that the target OS
@@ -914,13 +929,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Check that the ABI is what we expect.
-    fn check_abi<'a>(&self, abi: ExternAbi, exp_abi: ExternAbi) -> InterpResult<'a, ()> {
-        if abi != exp_abi {
+    fn check_abi<'a>(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, exp_abi: Conv) -> InterpResult<'a, ()> {
+        if fn_abi.conv != exp_abi {
             throw_ub_format!(
-                "calling a function with ABI {} using caller ABI {}",
-                exp_abi.name(),
-                abi.name()
-            )
+                "calling a function with ABI {:?} using caller ABI {:?}",
+                exp_abi,
+                fn_abi.conv
+            );
         }
         interp_ok(())
     }
@@ -950,8 +965,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn check_abi_and_shim_symbol_clash(
         &mut self,
-        abi: ExternAbi,
-        exp_abi: ExternAbi,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        exp_abi: Conv,
         link_name: Symbol,
     ) -> InterpResult<'tcx, ()> {
         self.check_abi(abi, exp_abi)?;
@@ -975,8 +990,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn check_shim<'a, const N: usize>(
         &mut self,
-        abi: ExternAbi,
-        exp_abi: ExternAbi,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        exp_abi: Conv,
         link_name: Symbol,
         args: &'a [OpTy<'tcx>],
     ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]>
@@ -985,6 +1000,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     {
         self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
         check_arg_count(args)
+    }
+
+    /// Check shim for variadic function.
+    /// Returns a tuple that consisting of an array of fixed args, and a slice of varargs.
+    fn check_shim_variadic<'a, const N: usize>(
+        &mut self,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        exp_abi: Conv,
+        link_name: Symbol,
+        args: &'a [OpTy<'tcx>],
+    ) -> InterpResult<'tcx, (&'a [OpTy<'tcx>; N], &'a [OpTy<'tcx>])>
+    where
+        &'a [OpTy<'tcx>; N]: TryFrom<&'a [OpTy<'tcx>]>,
+    {
+        self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
+        check_vargarg_fixed_arg_count(link_name, abi, args)
     }
 
     /// Mark a machine allocation that was just created as immutable.
@@ -1180,8 +1211,10 @@ where
     throw_ub_format!("incorrect number of arguments: got {}, expected {}", args.len(), N)
 }
 
-/// Check that the number of args is at least the minumim what we expect.
-pub fn check_min_arg_count<'a, 'tcx, const N: usize>(
+/// Check that the number of varargs is at least the minimum what we expect.
+/// Fixed args should not be included.
+/// Use `check_vararg_fixed_arg_count` to extract the varargs slice from full function arguments.
+pub fn check_min_vararg_count<'a, 'tcx, const N: usize>(
     name: &'a str,
     args: &'a [OpTy<'tcx>],
 ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
@@ -1189,7 +1222,35 @@ pub fn check_min_arg_count<'a, 'tcx, const N: usize>(
         return interp_ok(ops);
     }
     throw_ub_format!(
-        "incorrect number of arguments for `{name}`: got {}, expected at least {}",
+        "not enough variadic arguments for `{name}`: got {}, expected at least {}",
+        args.len(),
+        N
+    )
+}
+
+/// Check the number of fixed args of a vararg function.
+/// Returns a tuple that consisting of an array of fixed args, and a slice of varargs.
+fn check_vargarg_fixed_arg_count<'a, 'tcx, const N: usize>(
+    link_name: Symbol,
+    abi: &FnAbi<'tcx, Ty<'tcx>>,
+    args: &'a [OpTy<'tcx>],
+) -> InterpResult<'tcx, (&'a [OpTy<'tcx>; N], &'a [OpTy<'tcx>])> {
+    if !abi.c_variadic {
+        throw_ub_format!("calling a variadic function with a non-variadic caller-side signature");
+    }
+    if abi.fixed_count != u32::try_from(N).unwrap() {
+        throw_ub_format!(
+            "incorrect number of fixed arguments for variadic function `{}`: got {}, expected {N}",
+            link_name.as_str(),
+            abi.fixed_count
+        )
+    }
+    if let Some(args) = args.split_first_chunk() {
+        return interp_ok(args);
+    }
+    throw_ub_format!(
+        "incorrect number of arguments for `{}`: got {}, expected at least {}",
+        link_name.as_str(),
         args.len(),
         N
     )

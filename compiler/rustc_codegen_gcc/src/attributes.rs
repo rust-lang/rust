@@ -2,8 +2,8 @@
 use gccjit::FnAttribute;
 use gccjit::Function;
 #[cfg(feature = "master")]
-use rustc_attr::InlineAttr;
-use rustc_attr::InstructionSetAttr;
+use rustc_attr_parsing::InlineAttr;
+use rustc_attr_parsing::InstructionSetAttr;
 #[cfg(feature = "master")]
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty;
@@ -20,7 +20,7 @@ fn inline_attr<'gcc, 'tcx>(
 ) -> Option<FnAttribute<'gcc>> {
     match inline {
         InlineAttr::Hint => Some(FnAttribute::Inline),
-        InlineAttr::Always => Some(FnAttribute::AlwaysInline),
+        InlineAttr::Always | InlineAttr::Force { .. } => Some(FnAttribute::AlwaysInline),
         InlineAttr::Never => {
             if cx.sess().target.arch != "amdgpu" {
                 Some(FnAttribute::NoInline)

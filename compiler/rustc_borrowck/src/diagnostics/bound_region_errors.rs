@@ -156,24 +156,25 @@ pub(crate) trait TypeOpInfo<'tcx> {
             return;
         };
 
-        let placeholder_region = ty::Region::new_placeholder(tcx, ty::Placeholder {
-            universe: adjusted_universe.into(),
-            bound: placeholder.bound,
-        });
+        let placeholder_region = ty::Region::new_placeholder(
+            tcx,
+            ty::Placeholder { universe: adjusted_universe.into(), bound: placeholder.bound },
+        );
 
-        let error_region =
-            if let RegionElement::PlaceholderRegion(error_placeholder) = error_element {
-                let adjusted_universe =
-                    error_placeholder.universe.as_u32().checked_sub(base_universe.as_u32());
-                adjusted_universe.map(|adjusted| {
-                    ty::Region::new_placeholder(tcx, ty::Placeholder {
-                        universe: adjusted.into(),
-                        bound: error_placeholder.bound,
-                    })
-                })
-            } else {
-                None
-            };
+        let error_region = if let RegionElement::PlaceholderRegion(error_placeholder) =
+            error_element
+        {
+            let adjusted_universe =
+                error_placeholder.universe.as_u32().checked_sub(base_universe.as_u32());
+            adjusted_universe.map(|adjusted| {
+                ty::Region::new_placeholder(
+                    tcx,
+                    ty::Placeholder { universe: adjusted.into(), bound: error_placeholder.bound },
+                )
+            })
+        } else {
+            None
+        };
 
         debug!(?placeholder_region);
 
@@ -310,7 +311,7 @@ impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
         let (infcx, key, _) =
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
         let ocx = ObligationCtxt::new(&infcx);
-        type_op_ascribe_user_type_with_span(&ocx, key, Some(cause.span)).ok()?;
+        type_op_ascribe_user_type_with_span(&ocx, key, cause.span).ok()?;
         let diag = try_extract_error_from_fulfill_cx(
             &ocx,
             mbcx.mir_def_id(),

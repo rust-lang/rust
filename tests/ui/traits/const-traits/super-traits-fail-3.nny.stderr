@@ -88,7 +88,7 @@ help: enable `#![feature(const_trait_impl)]` in your crate and mark `Bar` as `#[
 LL | #[const_trait] trait Bar: ~const Foo {}
    | ++++++++++++++
 
-error[E0015]: cannot call non-const fn `<T as Foo>::a` in constant functions
+error[E0015]: cannot call non-const method `<T as Foo>::a` in constant functions
   --> $DIR/super-traits-fail-3.rs:36:7
    |
 LL |     x.a();

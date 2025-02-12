@@ -5,11 +5,10 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::{is_from_proc_macro, path_to_local};
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Constness, Expr, ExprKind};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::{BinOpKind, Constness, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 
@@ -129,9 +128,7 @@ fn is_not_const(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         | DefKind::Ctor(..)
         | DefKind::AssocConst => false,
 
-        DefKind::Fn
-        | DefKind::AssocFn
-        | DefKind::Closure => tcx.constness(def_id) == Constness::NotConst,
+        DefKind::Fn | DefKind::AssocFn | DefKind::Closure => tcx.constness(def_id) == Constness::NotConst,
     }
 }
 
@@ -144,7 +141,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
             // 16 possible alignments of constants/operands. For now, let's use `partition`.
             && let mut exprs = [lhs_lhs, lhs_rhs, rhs_lhs, rhs_rhs]
             && exprs.iter_mut().partition_in_place(|i| path_to_local(i).is_some()) == 2
-            && !in_external_macro(cx.sess(), expr.span)
+            && !expr.span.in_external_macro(cx.sess().source_map())
             && (
                 is_not_const(cx.tcx, cx.tcx.hir().enclosing_body_owner(expr.hir_id).into())
                     || self.msrv.meets(msrvs::CONST_FLOAT_CLASSIFY)

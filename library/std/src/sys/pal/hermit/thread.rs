@@ -43,7 +43,7 @@ impl Thread {
             }
             Err(io::const_error!(io::ErrorKind::Uncategorized, "Unable to create thread!"))
         } else {
-            Ok(Thread { tid: tid })
+            Ok(Thread { tid })
         };
 
         extern "C" fn thread_start(main: usize) {

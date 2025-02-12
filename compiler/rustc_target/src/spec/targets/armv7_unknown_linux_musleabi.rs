@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions, base};
+use crate::spec::{FloatAbi, Target, TargetOptions, base};
 
 // This target is for musl Linux on ARMv7 without thumb-mode, NEON or
 // hardfloat.
@@ -7,10 +7,7 @@ pub(crate) fn target() -> Target {
     // Most of these settings are copied from the armv7_unknown_linux_gnueabi
     // target.
     Target {
-        // It's important we use "gnueabi" and not "musleabi" here. LLVM uses it
-        // to determine the calling convention and float ABI, and it doesn't
-        // support the "musleabi" value.
-        llvm_target: "armv7-unknown-linux-gnueabi".into(),
+        llvm_target: "armv7-unknown-linux-musleabi".into(),
         metadata: crate::spec::TargetMetadata {
             description: Some("Armv7-A Linux with musl 1.2.3".into()),
             tier: Some(2),
@@ -23,6 +20,7 @@ pub(crate) fn target() -> Target {
 
         options: TargetOptions {
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             features: "+v7,+thumb2,+soft-float,-neon".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}mcount".into(),

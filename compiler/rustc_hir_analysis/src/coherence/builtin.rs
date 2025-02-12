@@ -10,7 +10,6 @@ use rustc_hir as hir;
 use rustc_hir::ItemKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
@@ -49,6 +48,10 @@ pub(super) fn check_trait<'tcx>(
     checker
         .check(lang_items.dispatch_from_dyn_trait(), visit_implementation_of_dispatch_from_dyn)?;
     checker.check(lang_items.pointer_like(), visit_implementation_of_pointer_like)?;
+    checker.check(
+        lang_items.coerce_pointee_validated_trait(),
+        visit_implementation_of_coerce_pointee_validity,
+    )?;
     Ok(())
 }
 
@@ -193,7 +196,7 @@ fn visit_implementation_of_coerce_unsized(checker: &Checker<'_>) -> Result<(), E
     // errors; other parts of the code may demand it for the info of
     // course.
     let span = tcx.def_span(impl_did);
-    tcx.at(span).ensure().coerce_unsized_info(impl_did)
+    tcx.at(span).ensure_ok().coerce_unsized_info(impl_did)
 }
 
 fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
@@ -259,22 +262,40 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
             let coerced_fields = fields
                 .iter()
                 .filter(|field| {
+                    // Ignore PhantomData fields
+                    let unnormalized_ty = tcx.type_of(field.did).instantiate_identity();
+                    if tcx
+                        .try_normalize_erasing_regions(
+                            ty::TypingEnv::non_body_analysis(tcx, def_a.did()),
+                            unnormalized_ty,
+                        )
+                        .unwrap_or(unnormalized_ty)
+                        .is_phantom_data()
+                    {
+                        return false;
+                    }
+
                     let ty_a = field.ty(tcx, args_a);
                     let ty_b = field.ty(tcx, args_b);
 
-                    if let Ok(layout) =
-                        tcx.layout_of(infcx.typing_env(param_env).as_query_input(ty_a))
-                    {
-                        if layout.is_1zst() {
+                    // FIXME: We could do normalization here, but is it really worth it?
+                    if ty_a == ty_b {
+                        // Allow 1-ZSTs that don't mention type params.
+                        //
+                        // Allowing type params here would allow us to possibly transmute
+                        // between ZSTs, which may be used to create library unsoundness.
+                        if let Ok(layout) =
+                            tcx.layout_of(infcx.typing_env(param_env).as_query_input(ty_a))
+                            && layout.is_1zst()
+                            && !ty_a.has_non_region_param()
+                        {
                             // ignore 1-ZST fields
                             return false;
                         }
-                    }
 
-                    if ty_a == ty_b {
                         res = Err(tcx.dcx().emit_err(errors::DispatchFromDynZST {
                             span,
-                            name: field.name,
+                            name: field.ident(tcx),
                             ty: ty_a,
                         }));
 
@@ -316,10 +337,11 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                         tcx,
                         cause.clone(),
                         param_env,
-                        ty::TraitRef::new(tcx, dispatch_from_dyn_trait, [
-                            field.ty(tcx, args_a),
-                            field.ty(tcx, args_b),
-                        ]),
+                        ty::TraitRef::new(
+                            tcx,
+                            dispatch_from_dyn_trait,
+                            [field.ty(tcx, args_a), field.ty(tcx, args_b)],
+                        ),
                     ));
                 }
                 let errors = ocx.select_all_or_error();
@@ -328,8 +350,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                 }
 
                 // Finally, resolve all regions.
-                let outlives_env = OutlivesEnvironment::new(param_env);
-                res = res.and(ocx.resolve_regions_and_report_errors(impl_did, &outlives_env));
+                res = res.and(ocx.resolve_regions_and_report_errors(impl_did, param_env, []));
             }
             res
         }
@@ -388,17 +409,12 @@ pub(crate) fn coerce_unsized_info<'tcx>(
             check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ref(tcx, r_b, ty))
         }
 
-        (&ty::Ref(_, ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b)) => check_mutbl(
-            ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a },
-            ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b },
-            &|ty| Ty::new_imm_ptr(tcx, ty),
-        ),
-
-        (&ty::RawPtr(ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b)) => check_mutbl(
-            ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a },
-            ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b },
-            &|ty| Ty::new_imm_ptr(tcx, ty),
-        ),
+        (&ty::Ref(_, ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b))
+        | (&ty::RawPtr(ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b)) => {
+            let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
+            let mt_b = ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b };
+            check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ptr(tcx, ty))
+        }
 
         (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
             if def_a.is_struct() && def_b.is_struct() =>
@@ -460,8 +476,16 @@ pub(crate) fn coerce_unsized_info<'tcx>(
                 .filter_map(|(i, f)| {
                     let (a, b) = (f.ty(tcx, args_a), f.ty(tcx, args_b));
 
-                    if tcx.type_of(f.did).instantiate_identity().is_phantom_data() {
-                        // Ignore PhantomData fields
+                    // Ignore PhantomData fields
+                    let unnormalized_ty = tcx.type_of(f.did).instantiate_identity();
+                    if tcx
+                        .try_normalize_erasing_regions(
+                            ty::TypingEnv::non_body_analysis(tcx, def_a.did()),
+                            unnormalized_ty,
+                        )
+                        .unwrap_or(unnormalized_ty)
+                        .is_phantom_data()
+                    {
                         return None;
                     }
 
@@ -538,8 +562,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
     }
 
     // Finally, resolve all regions.
-    let outlives_env = OutlivesEnvironment::new(param_env);
-    let _ = ocx.resolve_regions_and_report_errors(impl_did, &outlives_env);
+    let _ = ocx.resolve_regions_and_report_errors(impl_did, param_env, []);
 
     Ok(CoerceUnsizedInfo { custom_kind: kind })
 }
@@ -673,37 +696,6 @@ fn visit_implementation_of_pointer_like(checker: &Checker<'_>) -> Result<(), Err
     let impl_span = tcx.def_span(checker.impl_def_id);
     let self_ty = tcx.impl_trait_ref(checker.impl_def_id).unwrap().instantiate_identity().self_ty();
 
-    // If an ADT is repr(transparent)...
-    if let ty::Adt(def, args) = *self_ty.kind()
-        && def.repr().transparent()
-    {
-        // FIXME(compiler-errors): This should and could be deduplicated into a query.
-        // Find the nontrivial field.
-        let adt_typing_env = ty::TypingEnv::non_body_analysis(tcx, def.did());
-        let nontrivial_field = def.all_fields().find(|field_def| {
-            let field_ty = tcx.type_of(field_def.did).instantiate_identity();
-            !tcx.layout_of(adt_typing_env.as_query_input(field_ty))
-                .is_ok_and(|layout| layout.layout.is_1zst())
-        });
-
-        if let Some(nontrivial_field) = nontrivial_field {
-            // Check that the nontrivial field implements `PointerLike`.
-            let nontrivial_field = nontrivial_field.ty(tcx, args);
-            let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
-            let ocx = ObligationCtxt::new(&infcx);
-            ocx.register_bound(
-                ObligationCause::misc(impl_span, checker.impl_def_id),
-                param_env,
-                nontrivial_field,
-                tcx.lang_items().pointer_like().unwrap(),
-            );
-            // FIXME(dyn-star): We should regionck this implementation.
-            if ocx.select_all_or_error().is_empty() {
-                return Ok(());
-            }
-        }
-    }
-
     let is_permitted_primitive = match *self_ty.kind() {
         ty::Adt(def, _) => def.is_box(),
         ty::Uint(..) | ty::Int(..) | ty::RawPtr(..) | ty::Ref(..) | ty::FnPtr(..) => true,
@@ -717,6 +709,74 @@ fn visit_implementation_of_pointer_like(checker: &Checker<'_>) -> Result<(), Err
         return Ok(());
     }
 
+    let why_disqualified = match *self_ty.kind() {
+        // If an ADT is repr(transparent)
+        ty::Adt(self_ty_def, args) => {
+            if self_ty_def.repr().transparent() {
+                // FIXME(compiler-errors): This should and could be deduplicated into a query.
+                // Find the nontrivial field.
+                let adt_typing_env = ty::TypingEnv::non_body_analysis(tcx, self_ty_def.did());
+                let nontrivial_field = self_ty_def.all_fields().find(|field_def| {
+                    let field_ty = tcx.type_of(field_def.did).instantiate_identity();
+                    !tcx.layout_of(adt_typing_env.as_query_input(field_ty))
+                        .is_ok_and(|layout| layout.layout.is_1zst())
+                });
+
+                if let Some(nontrivial_field) = nontrivial_field {
+                    // Check that the nontrivial field implements `PointerLike`.
+                    let nontrivial_field_ty = nontrivial_field.ty(tcx, args);
+                    let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
+                    let ocx = ObligationCtxt::new(&infcx);
+                    ocx.register_bound(
+                        ObligationCause::misc(impl_span, checker.impl_def_id),
+                        param_env,
+                        nontrivial_field_ty,
+                        tcx.lang_items().pointer_like().unwrap(),
+                    );
+                    // FIXME(dyn-star): We should regionck this implementation.
+                    if ocx.select_all_or_error().is_empty() {
+                        return Ok(());
+                    } else {
+                        format!(
+                            "the field `{field_name}` of {descr} `{self_ty}` \
+                    does not implement `PointerLike`",
+                            field_name = nontrivial_field.name,
+                            descr = self_ty_def.descr()
+                        )
+                    }
+                } else {
+                    format!(
+                        "the {descr} `{self_ty}` is `repr(transparent)`, \
+                but does not have a non-trivial field (it is zero-sized)",
+                        descr = self_ty_def.descr()
+                    )
+                }
+            } else if self_ty_def.is_box() {
+                // If we got here, then the `layout.is_pointer_like()` check failed
+                // and this box is not a thin pointer.
+
+                String::from("boxes of dynamically-sized types are too large to be `PointerLike`")
+            } else {
+                format!(
+                    "the {descr} `{self_ty}` is not `repr(transparent)`",
+                    descr = self_ty_def.descr()
+                )
+            }
+        }
+        ty::Ref(..) => {
+            // If we got here, then the `layout.is_pointer_like()` check failed
+            // and this reference is not a thin pointer.
+            String::from("references to dynamically-sized types are too large to be `PointerLike`")
+        }
+        ty::Dynamic(..) | ty::Foreign(..) => {
+            String::from("types of dynamic or unknown size may not implement `PointerLike`")
+        }
+        _ => {
+            // This is a white lie; it is true everywhere outside the standard library.
+            format!("only user-defined sized types are eligible for `impl PointerLike`")
+        }
+    };
+
     Err(tcx
         .dcx()
         .struct_span_err(
@@ -724,5 +784,35 @@ fn visit_implementation_of_pointer_like(checker: &Checker<'_>) -> Result<(), Err
             "implementation must be applied to type that has the same ABI as a pointer, \
             or is `repr(transparent)` and whose field is `PointerLike`",
         )
+        .with_note(why_disqualified)
         .emit())
+}
+
+fn visit_implementation_of_coerce_pointee_validity(
+    checker: &Checker<'_>,
+) -> Result<(), ErrorGuaranteed> {
+    let tcx = checker.tcx;
+    let self_ty = tcx.impl_trait_ref(checker.impl_def_id).unwrap().instantiate_identity().self_ty();
+    let span = tcx.def_span(checker.impl_def_id);
+    if !tcx.is_builtin_derived(checker.impl_def_id.into()) {
+        return Err(tcx.dcx().emit_err(errors::CoercePointeeNoUserValidityAssertion { span }));
+    }
+    let ty::Adt(def, _args) = self_ty.kind() else {
+        return Err(tcx.dcx().emit_err(errors::CoercePointeeNotConcreteType { span }));
+    };
+    let did = def.did();
+    // Now get a more precise span of the `struct`.
+    let span = tcx.def_span(did);
+    if !def.is_struct() {
+        return Err(tcx
+            .dcx()
+            .emit_err(errors::CoercePointeeNotStruct { span, kind: def.descr().into() }));
+    }
+    if !def.repr().transparent() {
+        return Err(tcx.dcx().emit_err(errors::CoercePointeeNotTransparent { span }));
+    }
+    if def.all_fields().next().is_none() {
+        return Err(tcx.dcx().emit_err(errors::CoercePointeeNoField { span }));
+    }
+    Ok(())
 }

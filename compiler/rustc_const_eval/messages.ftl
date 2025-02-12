@@ -12,8 +12,6 @@ const_eval_already_reported =
 const_eval_assume_false =
     `assume` called with `false`
 
-const_eval_await_non_const =
-    cannot convert `{$ty}` into a future in {const_eval_const_context}s
 const_eval_bounds_check_failed =
     indexing out of bounds: the len is {$len} but the index is {$index}
 const_eval_call_nonzero_intrinsic =
@@ -23,11 +21,6 @@ const_eval_closure_call =
     closures need an RFC before allowed to be called in {const_eval_const_context}s
 const_eval_closure_fndef_not_const =
     function defined here, but it is not `const`
-const_eval_closure_non_const =
-    cannot call non-const closure in {const_eval_const_context}s
-
-const_eval_conditionally_const_call =
-    cannot call conditionally-const {$def_descr} `{$def_path_str}` in {const_eval_const_context}s
 
 const_eval_consider_dereferencing =
     consider dereferencing here
@@ -62,10 +55,6 @@ const_eval_dealloc_incorrect_layout =
 const_eval_dealloc_kind_mismatch =
     deallocating {$alloc}, which is {$alloc_kind} memory, using {$kind} deallocation operation
 
-const_eval_deref_coercion_non_const =
-    cannot perform deref coercion on `{$ty}` in {const_eval_const_context}s
-    .note = attempting to deref into `{$target_ty}`
-    .target_note = deref defined here
 const_eval_deref_function_pointer =
     accessing {$allocation} which contains a function
 const_eval_deref_vtable_pointer =
@@ -109,9 +98,6 @@ const_eval_extern_type_field = `extern type` field does not have a known offset
 
 const_eval_fn_ptr_call =
     function pointers need an RFC before allowed to be called in {const_eval_const_context}s
-const_eval_for_loop_into_iter_non_const =
-    cannot use `for` loop on `{$ty}` in {const_eval_const_context}s
-
 const_eval_frame_note = {$times ->
     [0] {const_eval_frame_note_inner}
     *[other] [... {$times} additional calls {const_eval_frame_note_inner} ...]
@@ -216,9 +202,6 @@ const_eval_long_running =
     .label = the const evaluator is currently interpreting this expression
     .help = the constant being evaluated
 
-const_eval_match_eq_non_const = cannot match on `{$ty}` in {const_eval_const_context}s
-    .note = `{$ty}` cannot be compared in compile-time, and therefore cannot be used in `match`es
-
 const_eval_max_num_nodes_in_const = maximum number of nodes exceeded in constant {$global_const_id}
 
 const_eval_memory_access_test = memory access failed
@@ -249,17 +232,46 @@ const_eval_mutable_ref_escaping =
         If you really want global mutable state, try using an interior mutable `static` or a `static mut`.
 
 const_eval_nested_static_in_thread_local = #[thread_local] does not support implicit nested statics, please create explicit static items and refer to them instead
+
+const_eval_non_const_await =
+    cannot convert `{$ty}` into a future in {const_eval_const_context}s
+
+const_eval_non_const_closure =
+    cannot call {$non_or_conditionally}-const closure in {const_eval_const_context}s
+
+const_eval_non_const_deref_coercion =
+    cannot perform {$non_or_conditionally}-const deref coercion on `{$ty}` in {const_eval_const_context}s
+    .note = attempting to deref into `{$target_ty}`
+    .target_note = deref defined here
+
 const_eval_non_const_fmt_macro_call =
-    cannot call non-const formatting macro in {const_eval_const_context}s
+    cannot call {$non_or_conditionally}-const formatting macro in {const_eval_const_context}s
 
 const_eval_non_const_fn_call =
-    cannot call non-const fn `{$def_path_str}` in {const_eval_const_context}s
+    cannot call {$non_or_conditionally}-const {$def_descr} `{$def_path_str}` in {const_eval_const_context}s
+
+const_eval_non_const_for_loop_into_iter =
+    cannot use `for` loop on `{$ty}` in {const_eval_const_context}s
 
 const_eval_non_const_impl =
     impl defined here, but it is not `const`
 
 const_eval_non_const_intrinsic =
     cannot call non-const intrinsic `{$name}` in {const_eval_const_context}s
+
+const_eval_non_const_match_eq = cannot match on `{$ty}` in {const_eval_const_context}s
+    .note = `{$ty}` cannot be compared in compile-time, and therefore cannot be used in `match`es
+
+const_eval_non_const_operator =
+    cannot call {$non_or_conditionally}-const operator in {const_eval_const_context}s
+
+const_eval_non_const_question_branch =
+    `?` is not allowed on `{$ty}` in {const_eval_const_context}s
+const_eval_non_const_question_from_residual =
+    `?` is not allowed on `{$ty}` in {const_eval_const_context}s
+
+const_eval_non_const_try_block_from_output =
+    `try` block cannot convert `{$ty}` to the result in {const_eval_const_context}s
 
 const_eval_not_enough_caller_args =
     calling a function with fewer arguments than it requires
@@ -268,7 +280,9 @@ const_eval_nullary_intrinsic_fail =
     could not evaluate nullary intrinsic
 
 const_eval_offset_from_different_allocations =
-    `{$name}` called on pointers into different allocations
+    `{$name}` called on two different pointers that are not both derived from the same allocation
+const_eval_offset_from_out_of_bounds =
+    `{$name}` called on two different pointers where the memory range between them is not in-bounds of an allocation
 const_eval_offset_from_overflow =
     `{$name}` called when first pointer is too far ahead of second
 const_eval_offset_from_test =
@@ -281,8 +295,6 @@ const_eval_offset_from_unsigned_overflow =
         *[false] offset
     } than second: {$a_offset} < {$b_offset}
 
-const_eval_operator_non_const =
-    cannot call non-const operator in {const_eval_const_context}s
 const_eval_overflow_arith =
     arithmetic overflow in `{$intrinsic}`
 const_eval_overflow_shift =
@@ -324,11 +336,6 @@ const_eval_ptr_as_bytes_1 =
     this code performed an operation that depends on the underlying bytes representing a pointer
 const_eval_ptr_as_bytes_2 =
     the absolute address of a pointer is not known at compile-time, so such operations are not supported
-
-const_eval_question_branch_non_const =
-    `?` is not allowed on `{$ty}` in {const_eval_const_context}s
-const_eval_question_from_residual_non_const =
-    `?` is not allowed on `{$ty}` in {const_eval_const_context}s
 
 const_eval_range = in the range {$lo}..={$hi}
 const_eval_range_lower = greater or equal to {$lo}
@@ -379,8 +386,6 @@ const_eval_too_generic =
 const_eval_too_many_caller_args =
     calling a function with more arguments than it expected
 
-const_eval_try_block_from_output_non_const =
-    `try` block cannot convert `{$ty}` to the result in {const_eval_const_context}s
 const_eval_unallowed_fn_pointer_call = function pointer calls are not allowed in {const_eval_const_context}s
 
 const_eval_unallowed_heap_allocations =
@@ -400,7 +405,7 @@ const_eval_uninhabited_enum_variant_read =
 const_eval_uninhabited_enum_variant_written =
     writing discriminant of an uninhabited enum variant
 
-const_eval_unmarked_const_fn_exposed = `{$def_path}` cannot be (indirectly) exposed to stable
+const_eval_unmarked_const_item_exposed = `{$def_path}` cannot be (indirectly) exposed to stable
     .help = either mark the callee as `#[rustc_const_stable_indirect]`, or the caller as `#[rustc_const_unstable]`
 const_eval_unmarked_intrinsic_exposed = intrinsic `{$def_path}` cannot be (indirectly) exposed to stable
     .help = mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_intrinsic_const_stable_indirect]` (but this requires team approval)
@@ -411,9 +416,10 @@ const_eval_unreachable_unwind =
 
 const_eval_unsized_local = unsized locals are not supported
 const_eval_unstable_const_fn = `{$def_path}` is not yet stable as a const fn
+const_eval_unstable_const_trait = `{$def_path}` is not yet stable as a const trait
 const_eval_unstable_in_stable_exposed =
     const function that might be (indirectly) exposed to stable cannot use `#[feature({$gate})]`
-    .is_function_call = mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+    .is_function_call = mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
     .unstable_sugg = if the {$is_function_call2 ->
             [true] caller
             *[false] function
@@ -421,7 +427,7 @@ const_eval_unstable_in_stable_exposed =
     .bypass_sugg = otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
 
 const_eval_unstable_intrinsic = `{$name}` is not yet stable as a const intrinsic
-    .help = add `#![feature({$feature})]` to the crate attributes to enable
+const_eval_unstable_intrinsic_suggestion = add `#![feature({$feature})]` to the crate attributes to enable
 
 const_eval_unterminated_c_string =
     reading a null-terminated string starting at {$pointer} with no null found before end of allocation

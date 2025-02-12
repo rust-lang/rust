@@ -48,10 +48,9 @@ macro_rules! vec {
     );
     ($($x:expr),+ $(,)?) => (
         <[_]>::into_vec(
-            // This rustc_box is not required, but it produces a dramatic improvement in compile
-            // time when constructing arrays with many elements.
-            #[rustc_box]
-            $crate::boxed::Box::new([$($x),+])
+            // Using the intrinsic produces a dramatic improvement in stack usage for
+            // unoptimized programs using this code path to construct large Vecs.
+            $crate::boxed::box_new([$($x),+])
         )
     );
 }

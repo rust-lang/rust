@@ -156,14 +156,14 @@ impl Entries {
         Entries { map: HashMap::with_capacity(capacity) }
     }
 
-    fn insert(&mut self, span: Span, str: &str, errors: &mut Errors) -> u32 {
-        if let Some(prev) = self.map.get(str) {
-            errors.error(span, format!("Symbol `{str}` is duplicated"));
+    fn insert(&mut self, span: Span, s: &str, errors: &mut Errors) -> u32 {
+        if let Some(prev) = self.map.get(s) {
+            errors.error(span, format!("Symbol `{s}` is duplicated"));
             errors.error(prev.span_of_name, "location of previous definition".to_string());
             prev.idx
         } else {
             let idx = self.len();
-            self.map.insert(str.to_string(), Preinterned { idx, span_of_name: span });
+            self.map.insert(s.to_string(), Preinterned { idx, span_of_name: span });
             idx
         }
     }
@@ -192,14 +192,14 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     let mut entries = Entries::with_capacity(input.keywords.len() + input.symbols.len() + 10);
     let mut prev_key: Option<(Span, String)> = None;
 
-    let mut check_order = |span: Span, str: &str, errors: &mut Errors| {
+    let mut check_order = |span: Span, s: &str, errors: &mut Errors| {
         if let Some((prev_span, ref prev_str)) = prev_key {
-            if str < prev_str {
-                errors.error(span, format!("Symbol `{str}` must precede `{prev_str}`"));
+            if s < prev_str {
+                errors.error(span, format!("Symbol `{s}` must precede `{prev_str}`"));
                 errors.error(prev_span, format!("location of previous symbol `{prev_str}`"));
             }
         }
-        prev_key = Some((span, str.to_string()));
+        prev_key = Some((span, s.to_string()));
     };
 
     // Generate the listed keywords.

@@ -1,3 +1,8 @@
+//! Command Execution Module
+//!
+//! This module provides a structured way to execute and manage commands efficiently,
+//! ensuring controlled failure handling and output management.
+
 use std::ffi::OsStr;
 use std::fmt::{Debug, Formatter};
 use std::path::Path;
@@ -120,7 +125,7 @@ impl BootstrapCommand {
         Self { failure_behavior: BehaviorOnFailure::DelayFail, ..self }
     }
 
-    #[must_use]
+    #[allow(dead_code)]
     pub fn fail_fast(self) -> Self {
         Self { failure_behavior: BehaviorOnFailure::Exit, ..self }
     }
@@ -275,7 +280,7 @@ impl CommandOutput {
         !self.is_success()
     }
 
-    #[must_use]
+    #[allow(dead_code)]
     pub fn status(&self) -> Option<ExitStatus> {
         match self.status {
             CommandStatus::Finished(status) => Some(status),

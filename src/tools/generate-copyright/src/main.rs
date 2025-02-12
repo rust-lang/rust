@@ -8,7 +8,10 @@ mod cargo_metadata;
 
 /// The entry point to the binary.
 ///
-/// You should probably let `bootstrap` execute this program instead of running it directly.
+/// You should probably let `bootstrap` execute this program instead of running
+/// it directly. It assumes that the current working directory is the root of a
+/// Rust git repository checkout, and constructs a bunch of relative paths based
+/// on that assumption.
 ///
 /// Run `x.py run generate-copyright`
 fn main() -> Result<(), Error> {
@@ -21,12 +24,16 @@ fn main() -> Result<(), Error> {
     let root_path = std::path::absolute(".")?;
 
     // Scan Cargo dependencies
-    let mut collected_cargo_metadata =
-        cargo_metadata::get_metadata_and_notices(&cargo, &out_dir.join("vendor"), &root_path, &[
+    let mut collected_cargo_metadata = cargo_metadata::get_metadata_and_notices(
+        &cargo,
+        &out_dir.join("vendor"),
+        &root_path,
+        &[
             Path::new("./Cargo.toml"),
             Path::new("./src/tools/cargo/Cargo.toml"),
             Path::new("./library/Cargo.toml"),
-        ])?;
+        ],
+    )?;
 
     let library_collected_cargo_metadata = cargo_metadata::get_metadata_and_notices(
         &cargo,

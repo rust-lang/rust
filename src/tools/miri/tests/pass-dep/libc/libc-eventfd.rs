@@ -1,4 +1,4 @@
-//@only-target: linux android
+//@only-target: linux android illumos
 // test_race, test_blocking_read and test_blocking_write depend on a deterministic schedule.
 //@compile-flags: -Zmiri-preemption-rate=0
 
@@ -10,7 +10,10 @@ use std::thread;
 fn main() {
     test_read_write();
     test_race();
+
+    #[cfg(not(target_os = "illumos"))]
     test_syscall();
+
     test_blocking_read();
     test_blocking_write();
     test_two_threads_blocked_on_eventfd();
@@ -115,6 +118,8 @@ fn test_race() {
 }
 
 // This is a test for calling eventfd2 through a syscall.
+// Illumos supports eventfd, but it has no entry to call it through syscall.
+#[cfg(not(target_os = "illumos"))]
 fn test_syscall() {
     let initval = 0 as libc::c_uint;
     let flags = (libc::EFD_CLOEXEC | libc::EFD_NONBLOCK) as libc::c_int;

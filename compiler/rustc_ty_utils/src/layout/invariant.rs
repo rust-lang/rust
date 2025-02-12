@@ -241,63 +241,81 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
 
     check_layout_abi(cx, layout);
 
-    if let Variants::Multiple { variants, tag, tag_encoding, .. } = &layout.variants {
-        if let TagEncoding::Niche { niche_start, untagged_variant, niche_variants } = tag_encoding {
-            let niche_size = tag.size(cx);
-            assert!(*niche_start <= niche_size.unsigned_int_max());
-            for (idx, variant) in variants.iter_enumerated() {
-                // Ensure all inhabited variants are accounted for.
-                if !variant.is_uninhabited() {
-                    assert!(idx == *untagged_variant || niche_variants.contains(&idx));
-                }
+    match &layout.variants {
+        Variants::Empty => {
+            assert!(layout.is_uninhabited());
+        }
+        Variants::Single { index } => {
+            if let Some(variants) = layout.ty.variant_range(tcx) {
+                assert!(variants.contains(index));
+            } else {
+                // Types without variants use `0` as dummy variant index.
+                assert!(index.as_u32() == 0);
             }
         }
-        for variant in variants.iter() {
-            // No nested "multiple".
-            assert_matches!(variant.variants, Variants::Single { .. });
-            // Variants should have the same or a smaller size as the full thing,
-            // and same for alignment.
-            if variant.size > layout.size {
-                bug!(
-                    "Type with size {} bytes has variant with size {} bytes: {layout:#?}",
-                    layout.size.bytes(),
-                    variant.size.bytes(),
-                )
-            }
-            if variant.align.abi > layout.align.abi {
-                bug!(
-                    "Type with alignment {} bytes has variant with alignment {} bytes: {layout:#?}",
-                    layout.align.abi.bytes(),
-                    variant.align.abi.bytes(),
-                )
-            }
-            // Skip empty variants.
-            if variant.size == Size::ZERO || variant.fields.count() == 0 || variant.is_uninhabited()
+        Variants::Multiple { variants, tag, tag_encoding, .. } => {
+            if let TagEncoding::Niche { niche_start, untagged_variant, niche_variants } =
+                tag_encoding
             {
-                // These are never actually accessed anyway, so we can skip the coherence check
-                // for them. They also fail that check, since they have
-                // `Aggregate`/`Uninhabited` ABI even when the main type is
-                // `Scalar`/`ScalarPair`. (Note that sometimes, variants with fields have size
-                // 0, and sometimes, variants without fields have non-0 size.)
-                continue;
-            }
-            // The top-level ABI and the ABI of the variants should be coherent.
-            let scalar_coherent =
-                |s1: Scalar, s2: Scalar| s1.size(cx) == s2.size(cx) && s1.align(cx) == s2.align(cx);
-            let abi_coherent = match (layout.backend_repr, variant.backend_repr) {
-                (BackendRepr::Scalar(s1), BackendRepr::Scalar(s2)) => scalar_coherent(s1, s2),
-                (BackendRepr::ScalarPair(a1, b1), BackendRepr::ScalarPair(a2, b2)) => {
-                    scalar_coherent(a1, a2) && scalar_coherent(b1, b2)
+                let niche_size = tag.size(cx);
+                assert!(*niche_start <= niche_size.unsigned_int_max());
+                for (idx, variant) in variants.iter_enumerated() {
+                    // Ensure all inhabited variants are accounted for.
+                    if !variant.is_uninhabited() {
+                        assert!(idx == *untagged_variant || niche_variants.contains(&idx));
+                    }
                 }
-                (BackendRepr::Uninhabited, _) => true,
-                (BackendRepr::Memory { .. }, _) => true,
-                _ => false,
-            };
-            if !abi_coherent {
-                bug!(
-                    "Variant ABI is incompatible with top-level ABI:\nvariant={:#?}\nTop-level: {layout:#?}",
-                    variant
-                );
+            }
+            for variant in variants.iter() {
+                // No nested "multiple".
+                assert_matches!(variant.variants, Variants::Single { .. });
+                // Variants should have the same or a smaller size as the full thing,
+                // and same for alignment.
+                if variant.size > layout.size {
+                    bug!(
+                        "Type with size {} bytes has variant with size {} bytes: {layout:#?}",
+                        layout.size.bytes(),
+                        variant.size.bytes(),
+                    )
+                }
+                if variant.align.abi > layout.align.abi {
+                    bug!(
+                        "Type with alignment {} bytes has variant with alignment {} bytes: {layout:#?}",
+                        layout.align.abi.bytes(),
+                        variant.align.abi.bytes(),
+                    )
+                }
+                // Skip empty variants.
+                if variant.size == Size::ZERO
+                    || variant.fields.count() == 0
+                    || variant.is_uninhabited()
+                {
+                    // These are never actually accessed anyway, so we can skip the coherence check
+                    // for them. They also fail that check, since they have
+                    // `Aggregate`/`Uninhabited` ABI even when the main type is
+                    // `Scalar`/`ScalarPair`. (Note that sometimes, variants with fields have size
+                    // 0, and sometimes, variants without fields have non-0 size.)
+                    continue;
+                }
+                // The top-level ABI and the ABI of the variants should be coherent.
+                let scalar_coherent = |s1: Scalar, s2: Scalar| {
+                    s1.size(cx) == s2.size(cx) && s1.align(cx) == s2.align(cx)
+                };
+                let abi_coherent = match (layout.backend_repr, variant.backend_repr) {
+                    (BackendRepr::Scalar(s1), BackendRepr::Scalar(s2)) => scalar_coherent(s1, s2),
+                    (BackendRepr::ScalarPair(a1, b1), BackendRepr::ScalarPair(a2, b2)) => {
+                        scalar_coherent(a1, a2) && scalar_coherent(b1, b2)
+                    }
+                    (BackendRepr::Uninhabited, _) => true,
+                    (BackendRepr::Memory { .. }, _) => true,
+                    _ => false,
+                };
+                if !abi_coherent {
+                    bug!(
+                        "Variant ABI is incompatible with top-level ABI:\nvariant={:#?}\nTop-level: {layout:#?}",
+                        variant
+                    );
+                }
             }
         }
     }

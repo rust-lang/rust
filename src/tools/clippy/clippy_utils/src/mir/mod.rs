@@ -1,5 +1,5 @@
 use rustc_hir::{Expr, HirId};
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{
     BasicBlock, Body, InlineAsmOperand, Local, Location, Place, START_BLOCK, StatementKind, TerminatorKind, traversal,
@@ -88,7 +88,7 @@ impl<'tcx> Visitor<'tcx> for V<'_> {
 
 /// Checks if the block is part of a cycle
 pub fn block_in_cycle(body: &Body<'_>, block: BasicBlock) -> bool {
-    let mut seen = BitSet::new_empty(body.basic_blocks.len());
+    let mut seen = DenseBitSet::new_empty(body.basic_blocks.len());
     let mut to_visit = Vec::with_capacity(body.basic_blocks.len() / 2);
 
     seen.insert(block);
@@ -112,10 +112,14 @@ pub fn block_in_cycle(body: &Body<'_>, block: BasicBlock) -> bool {
 
 /// Convenience wrapper around `visit_local_usage`.
 pub fn used_exactly_once(mir: &Body<'_>, local: Local) -> Option<bool> {
-    visit_local_usage(&[local], mir, Location {
-        block: START_BLOCK,
-        statement_index: 0,
-    })
+    visit_local_usage(
+        &[local],
+        mir,
+        Location {
+            block: START_BLOCK,
+            statement_index: 0,
+        },
+    )
     .map(|mut vec| {
         let LocalUsage { local_use_locs, .. } = vec.remove(0);
         let mut locations = local_use_locs

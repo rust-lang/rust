@@ -14,14 +14,15 @@ SOURCE_FILE
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n\n"
-  MACRO_CALL
+  ERROR
     PATH
       PATH_SEGMENT
         NAME_REF
           IDENT "bar"
-    TOKEN_TREE
-      L_PAREN "("
-      R_PAREN ")"
+  ERROR
+    L_PAREN "("
+  ERROR
+    R_PAREN ")"
   WHITESPACE " "
   ERROR
     L_CURLY "{"
@@ -75,6 +76,7 @@ SOURCE_FILE
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"
-error 17: expected BANG
-error 19: expected SEMICOLON
+error 17: expected an item
+error 17: expected an item
+error 18: expected an item
 error 20: expected an item

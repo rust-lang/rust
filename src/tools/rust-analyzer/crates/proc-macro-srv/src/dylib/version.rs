@@ -1,13 +1,8 @@
 //! Reading proc-macro rustc version information from binary data
 
-use std::{
-    fs::File,
-    io::{self, Read},
-};
+use std::io::{self, Read};
 
-use memmap2::Mmap;
-use object::read::{File as BinaryFile, Object, ObjectSection};
-use paths::AbsPath;
+use object::read::{Object, ObjectSection};
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -21,14 +16,14 @@ pub struct RustCInfo {
 }
 
 /// Read rustc dylib information
-pub fn read_dylib_info(dylib_path: &AbsPath) -> io::Result<RustCInfo> {
+pub fn read_dylib_info(obj: &object::File<'_>) -> io::Result<RustCInfo> {
     macro_rules! err {
         ($e:literal) => {
             io::Error::new(io::ErrorKind::InvalidData, $e)
         };
     }
 
-    let ver_str = read_version(dylib_path)?;
+    let ver_str = read_version(obj)?;
     let mut items = ver_str.split_whitespace();
     let tag = items.next().ok_or_else(|| err!("version format error"))?;
     if tag != "rustc" {
@@ -75,10 +70,8 @@ pub fn read_dylib_info(dylib_path: &AbsPath) -> io::Result<RustCInfo> {
 
 /// This is used inside read_version() to locate the ".rustc" section
 /// from a proc macro crate's binary file.
-fn read_section<'a>(dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'a [u8]> {
-    BinaryFile::parse(dylib_binary)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
-        .section_by_name(section_name)
+fn read_section<'a>(obj: &object::File<'a>, section_name: &str) -> io::Result<&'a [u8]> {
+    obj.section_by_name(section_name)
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "section read error"))?
         .data()
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
@@ -106,11 +99,8 @@ fn read_section<'a>(dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'
 ///
 /// Check this issue for more about the bytes layout:
 /// <https://github.com/rust-lang/rust-analyzer/issues/6174>
-pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
-    let dylib_file = File::open(dylib_path)?;
-    let dylib_mmapped = unsafe { Mmap::map(&dylib_file) }?;
-
-    let dot_rustc = read_section(&dylib_mmapped, ".rustc")?;
+pub fn read_version(obj: &object::File<'_>) -> io::Result<String> {
+    let dot_rustc = read_section(obj, ".rustc")?;
 
     // check if magic is valid
     if &dot_rustc[0..4] != b"rust" {
@@ -159,8 +149,12 @@ pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
 
 #[test]
 fn test_version_check() {
-    let path = paths::AbsPathBuf::assert(crate::proc_macro_test_dylib_path());
-    let info = read_dylib_info(&path).unwrap();
+    let info = read_dylib_info(
+        &object::File::parse(&*std::fs::read(crate::proc_macro_test_dylib_path()).unwrap())
+            .unwrap(),
+    )
+    .unwrap();
+
     assert_eq!(
         info.version_string,
         crate::RUSTC_VERSION_STRING,

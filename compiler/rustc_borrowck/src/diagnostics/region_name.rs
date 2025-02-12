@@ -5,14 +5,13 @@ use std::fmt::{self, Display};
 use std::iter;
 
 use rustc_data_structures::fx::IndexEntry;
-use rustc_errors::Diag;
+use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, RegionVid, Ty};
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use tracing::{debug, instrument};
 
@@ -109,7 +108,7 @@ impl RegionName {
         }
     }
 
-    pub(crate) fn highlight_region_name(&self, diag: &mut Diag<'_>) {
+    pub(crate) fn highlight_region_name<G: EmissionGuarantee>(&self, diag: &mut Diag<'_, G>) {
         match &self.source {
             RegionNameSource::NamedLateParamRegion(span)
             | RegionNameSource::NamedEarlyParamRegion(span) => {
@@ -300,17 +299,17 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 Some(RegionName { name: kw::StaticLifetime, source: RegionNameSource::Static })
             }
 
-            ty::ReLateParam(late_param) => match late_param.bound_region {
-                ty::BoundRegionKind::Named(region_def_id, name) => {
+            ty::ReLateParam(late_param) => match late_param.kind {
+                ty::LateParamRegionKind::Named(region_def_id, name) => {
                     // Get the span to point to, even if we don't use the name.
                     let span = tcx.hir().span_if_local(region_def_id).unwrap_or(DUMMY_SP);
                     debug!(
                         "bound region named: {:?}, is_named: {:?}",
                         name,
-                        late_param.bound_region.is_named()
+                        late_param.kind.is_named()
                     );
 
-                    if late_param.bound_region.is_named() {
+                    if late_param.kind.is_named() {
                         // A named region that is actually named.
                         Some(RegionName {
                             name,
@@ -332,7 +331,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     }
                 }
 
-                ty::BoundRegionKind::ClosureEnv => {
+                ty::LateParamRegionKind::ClosureEnv => {
                     let def_ty = self.regioncx.universal_regions().defining_ty;
 
                     let closure_kind = match def_ty {
@@ -369,7 +368,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     })
                 }
 
-                ty::BoundRegionKind::Anon => None,
+                ty::LateParamRegionKind::Anon(_) => None,
             },
 
             ty::ReBound(..)
@@ -433,7 +432,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             // must highlight the variable.
             // NOTE(eddyb) this is handled in/by the sole caller
             // (`give_name_if_anonymous_region_appears_in_arguments`).
-            hir::TyKind::Infer => None,
+            hir::TyKind::Infer(()) => None,
 
             _ => Some(argument_hir_ty),
         }
@@ -459,11 +458,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     ) -> RegionNameHighlight {
         let mut highlight = RegionHighlightMode::default();
         highlight.highlighting_region_vid(self.infcx.tcx, needle_fr, counter);
-        let type_name = self
-            .infcx
-            .err_ctxt()
-            .extract_inference_diagnostics_data(ty.into(), Some(highlight))
-            .name;
+        let type_name =
+            self.infcx.err_ctxt().extract_inference_diagnostics_data(ty.into(), highlight).name;
 
         debug!(
             "highlight_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
@@ -619,7 +615,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 }
 
                 (GenericArgKind::Type(ty), hir::GenericArg::Type(hir_ty)) => {
-                    search_stack.push((ty, hir_ty));
+                    search_stack.push((ty, hir_ty.as_unambig_ty()));
                 }
 
                 (GenericArgKind::Const(_ct), hir::GenericArg::Const(_hir_ct)) => {
@@ -874,7 +870,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let type_name = self
             .infcx
             .err_ctxt()
-            .extract_inference_diagnostics_data(yield_ty.into(), Some(highlight))
+            .extract_inference_diagnostics_data(yield_ty.into(), highlight)
             .name;
 
         let yield_span = match tcx.hir_node(self.mir_hir_id()) {

@@ -20,7 +20,7 @@ use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
 use crate::{
-    abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator,
+    abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator, inline,
     instsimplify, mentioned_items, pass_manager as pm, remove_noop_landing_pads, simplify,
 };
 
@@ -119,6 +119,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
                         &add_call_guards::CriticalCallEdges,
                     ],
                     Some(MirPhase::Runtime(RuntimePhase::Optimized)),
+                    pm::Optimizations::Allowed,
                 );
 
                 return body;
@@ -155,6 +156,8 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             &remove_noop_landing_pads::RemoveNoopLandingPads,
             &simplify::SimplifyCfg::MakeShim,
             &instsimplify::InstSimplify::BeforeInline,
+            // Perform inlining of `#[rustc_force_inline]`-annotated callees.
+            &inline::ForceInline,
             &abort_unwinding_calls::AbortUnwindingCalls,
             &add_call_guards::CriticalCallEdges,
         ],

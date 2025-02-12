@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{get_parent_expr, path_to_local};
-use rustc_hir::{BindingMode, Expr, ExprField, ExprKind, Node, PatKind, Path, QPath, UnOp, StructTailExpr};
+use rustc_hir::{BindingMode, Expr, ExprField, ExprKind, Node, PatKind, Path, QPath, StructTailExpr, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 
@@ -63,7 +63,9 @@ impl LateLintPass<'_> for UnnecessaryStruct {
                 // all fields match, no base given
                 path.span
             },
-            (Some(path), StructTailExpr::Base(base)) if base_is_suitable(cx, expr, base) && path_matches_base(path, base) => {
+            (Some(path), StructTailExpr::Base(base))
+                if base_is_suitable(cx, expr, base) && path_matches_base(path, base) =>
+            {
                 // all fields match, has base: ensure that the path of the base matches
                 base.span
             },

@@ -37,6 +37,7 @@ static HOSTS: &[&str] = &[
     "powerpc-unknown-linux-gnu",
     "powerpc64-unknown-linux-gnu",
     "powerpc64le-unknown-linux-gnu",
+    "powerpc64le-unknown-linux-musl",
     "riscv64gc-unknown-linux-gnu",
     "s390x-unknown-linux-gnu",
     "x86_64-apple-darwin",
@@ -66,6 +67,7 @@ static TARGETS: &[&str] = &[
     "aarch64-unknown-none-softfloat",
     "aarch64-unknown-redox",
     "aarch64-unknown-uefi",
+    "amdgcn-amd-amdhsa",
     "arm64e-apple-darwin",
     "arm64e-apple-ios",
     "arm64e-apple-tvos",
@@ -113,6 +115,7 @@ static TARGETS: &[&str] = &[
     "loongarch64-unknown-none",
     "loongarch64-unknown-none-softfloat",
     "m68k-unknown-linux-gnu",
+    "m68k-unknown-none-elf",
     "csky-unknown-linux-gnuabiv2",
     "csky-unknown-linux-gnuabiv2hf",
     "mips-unknown-linux-gnu",
@@ -127,10 +130,13 @@ static TARGETS: &[&str] = &[
     "mipsisa64r6el-unknown-linux-gnuabi64",
     "mipsel-unknown-linux-gnu",
     "mipsel-unknown-linux-musl",
+    "mips-mti-none-elf",
+    "mipsel-mti-none-elf",
     "nvptx64-nvidia-cuda",
     "powerpc-unknown-linux-gnu",
     "powerpc64-unknown-linux-gnu",
     "powerpc64le-unknown-linux-gnu",
+    "powerpc64le-unknown-linux-musl",
     "riscv32i-unknown-none-elf",
     "riscv32im-risc0-zkvm-elf",
     "riscv32im-unknown-none-elf",
@@ -598,11 +604,14 @@ impl Builder {
             })
             .collect();
 
-        dst.insert(pkg.manifest_component_name(), Package {
-            version: version_info.version.unwrap_or_default(),
-            git_commit_hash: version_info.git_commit,
-            target: targets,
-        });
+        dst.insert(
+            pkg.manifest_component_name(),
+            Package {
+                version: version_info.version.unwrap_or_default(),
+                git_commit_hash: version_info.git_commit,
+                target: targets,
+            },
+        );
     }
 
     fn url(&self, path: &Path) -> String {

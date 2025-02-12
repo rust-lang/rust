@@ -559,6 +559,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Dynamic(..)
+            | ty::UnsafeBinder(_)
             | ty::Param(_)
             | ty::Bound(..)
             | ty::Placeholder(_)
@@ -1976,7 +1977,7 @@ fn resolution_failure(
                         }
 
                         if !path_str.contains("::") {
-                            if disambiguator.map_or(true, |d| d.ns() == MacroNS)
+                            if disambiguator.is_none_or(|d| d.ns() == MacroNS)
                                 && collector
                                     .cx
                                     .tcx
@@ -2167,7 +2168,7 @@ fn disambiguator_error(
     report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, &diag_info, |diag, _sp, _link_range| {
         let msg = format!(
             "see {}/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators",
-            crate::DOC_RUST_LANG_ORG_CHANNEL
+            crate::DOC_RUST_LANG_ORG_VERSION
         );
         diag.note(msg);
     });

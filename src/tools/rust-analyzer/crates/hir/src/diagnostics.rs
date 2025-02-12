@@ -15,12 +15,12 @@ use hir_expand::{name::Name, HirFileId, InFile};
 use hir_ty::{
     db::HirDatabase,
     diagnostics::{BodyValidationDiagnostic, UnsafetyReason},
-    CastError, InferenceDiagnostic, InferenceTyDiagnosticSource, TyLoweringDiagnostic,
-    TyLoweringDiagnosticKind,
+    CastError, InferenceDiagnostic, InferenceTyDiagnosticSource, PathLoweringDiagnostic,
+    TyLoweringDiagnostic, TyLoweringDiagnosticKind,
 };
 use syntax::{
     ast::{self, HasGenericArgs},
-    AstPtr, SyntaxError, SyntaxNodePtr, TextRange,
+    match_ast, AstNode, AstPtr, SyntaxError, SyntaxNodePtr, TextRange,
 };
 use triomphe::Arc;
 
@@ -262,7 +262,7 @@ pub struct UnresolvedAssocItem {
 
 #[derive(Debug)]
 pub struct UnresolvedIdent {
-    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub node: InFile<(AstPtr<Either<ast::Expr, ast::Pat>>, Option<TextRange>)>,
 }
 
 #[derive(Debug)]
@@ -271,11 +271,17 @@ pub struct PrivateField {
     pub field: Field,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnsafeLint {
+    HardError,
+    UnsafeOpInUnsafeFn,
+    DeprecatedSafe2024,
+}
+
 #[derive(Debug)]
 pub struct MissingUnsafe {
     pub node: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
-    /// If true, the diagnostics is an `unsafe_op_in_unsafe_fn` lint instead of a hard error.
-    pub only_lint: bool,
+    pub lint: UnsafeLint,
     pub reason: UnsafetyReason,
 }
 
@@ -411,7 +417,7 @@ impl AnyDiagnostic {
     pub(crate) fn body_validation_diagnostic(
         db: &dyn HirDatabase,
         diagnostic: BodyValidationDiagnostic,
-        source_map: &hir_def::body::BodySourceMap,
+        source_map: &hir_def::expr_store::BodySourceMap,
     ) -> Option<AnyDiagnostic> {
         match diagnostic {
             BodyValidationDiagnostic::RecordMissingFields { record, variant, missed_fields } => {
@@ -547,14 +553,13 @@ impl AnyDiagnostic {
         def: DefWithBodyId,
         d: &InferenceDiagnostic,
         outer_types_source_map: &TypesSourceMap,
-        source_map: &hir_def::body::BodySourceMap,
+        source_map: &hir_def::expr_store::BodySourceMap,
     ) -> Option<AnyDiagnostic> {
         let expr_syntax = |expr| {
-            source_map.expr_syntax(expr).inspect_err(|_| tracing::error!("synthetic syntax")).ok()
+            source_map.expr_syntax(expr).inspect_err(|_| stdx::never!("synthetic syntax")).ok()
         };
-        let pat_syntax = |pat| {
-            source_map.pat_syntax(pat).inspect_err(|_| tracing::error!("synthetic syntax")).ok()
-        };
+        let pat_syntax =
+            |pat| source_map.pat_syntax(pat).inspect_err(|_| stdx::never!("synthetic syntax")).ok();
         let expr_or_pat_syntax = |id| match id {
             ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(|it| it.map(AstPtr::wrap_left)),
             ExprOrPatId::PatId(pat) => pat_syntax(pat),
@@ -626,8 +631,16 @@ impl AnyDiagnostic {
                 UnresolvedAssocItem { expr_or_pat }.into()
             }
             &InferenceDiagnostic::UnresolvedIdent { id } => {
-                let expr_or_pat = expr_or_pat_syntax(id)?;
-                UnresolvedIdent { expr_or_pat }.into()
+                let node = match id {
+                    ExprOrPatId::ExprId(id) => match source_map.expr_syntax(id) {
+                        Ok(syntax) => syntax.map(|it| (it.wrap_left(), None)),
+                        Err(SyntheticSyntax) => source_map
+                            .format_args_implicit_capture(id)?
+                            .map(|(node, range)| (node.wrap_left(), Some(range))),
+                    },
+                    ExprOrPatId::PatId(id) => pat_syntax(id)?.map(|it| (it, None)),
+                };
+                UnresolvedIdent { node }.into()
             }
             &InferenceDiagnostic::BreakOutsideOfLoop { expr, is_break, bad_value_break } => {
                 let expr = expr_syntax(expr)?;
@@ -667,6 +680,39 @@ impl AnyDiagnostic {
                 };
                 Self::ty_diagnostic(diag, source_map, db)?
             }
+            InferenceDiagnostic::PathDiagnostic { node, diag } => {
+                let source = expr_or_pat_syntax(*node)?;
+                let syntax = source.value.to_node(&db.parse_or_expand(source.file_id));
+                let path = match_ast! {
+                    match (syntax.syntax()) {
+                        ast::RecordExpr(it) => it.path()?,
+                        ast::RecordPat(it) => it.path()?,
+                        ast::TupleStructPat(it) => it.path()?,
+                        ast::PathExpr(it) => it.path()?,
+                        ast::PathPat(it) => it.path()?,
+                        _ => return None,
+                    }
+                };
+                Self::path_diagnostic(diag, source.with_value(path))?
+            }
+        })
+    }
+
+    fn path_diagnostic(
+        diag: &PathLoweringDiagnostic,
+        path: InFile<ast::Path>,
+    ) -> Option<AnyDiagnostic> {
+        Some(match diag {
+            &PathLoweringDiagnostic::GenericArgsProhibited { segment, reason } => {
+                let segment = hir_segment_to_ast_segment(&path.value, segment)?;
+                let args = if let Some(generics) = segment.generic_arg_list() {
+                    AstPtr::new(&generics).wrap_left()
+                } else {
+                    AstPtr::new(&segment.parenthesized_arg_list()?).wrap_right()
+                };
+                let args = path.with_value(args);
+                GenericArgsProhibited { args, reason }.into()
+            }
         })
     }
 
@@ -686,17 +732,10 @@ impl AnyDiagnostic {
             Either::Right(source) => source,
         };
         let syntax = || source.value.to_node(&db.parse_or_expand(source.file_id));
-        Some(match diag.kind {
-            TyLoweringDiagnosticKind::GenericArgsProhibited { segment, reason } => {
+        Some(match &diag.kind {
+            TyLoweringDiagnosticKind::PathDiagnostic(diag) => {
                 let ast::Type::PathType(syntax) = syntax() else { return None };
-                let segment = hir_segment_to_ast_segment(&syntax.path()?, segment)?;
-                let args = if let Some(generics) = segment.generic_arg_list() {
-                    AstPtr::new(&generics).wrap_left()
-                } else {
-                    AstPtr::new(&segment.parenthesized_arg_list()?).wrap_right()
-                };
-                let args = source.with_value(args);
-                GenericArgsProhibited { args, reason }.into()
+                Self::path_diagnostic(diag, source.with_value(syntax.path()?))?
             }
         })
     }

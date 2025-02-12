@@ -73,8 +73,6 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
         "example/arbitrary_self_types_pointers_and_wrappers.rs",
         &[],
     ),
-    TestCase::build_lib("build.alloc_system", "example/alloc_system.rs", "lib"),
-    TestCase::build_bin_and_run("aot.alloc_example", "example/alloc_example.rs", &[]),
     TestCase::jit_bin("jit.std_example", "example/std_example.rs", "arg"),
     TestCase::build_bin_and_run("aot.std_example", "example/std_example.rs", &["arg"]),
     TestCase::build_bin_and_run("aot.dst_field_align", "example/dst-field-align.rs", &[]),
@@ -89,7 +87,6 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
         &[],
     ),
     TestCase::build_bin_and_run("aot.float-minmax-pass", "example/float-minmax-pass.rs", &[]),
-    TestCase::build_bin_and_run("aot.mod_bench", "example/mod_bench.rs", &[]),
     TestCase::build_bin_and_run("aot.issue-72793", "example/issue-72793.rs", &[]),
     TestCase::build_bin("aot.issue-59326", "example/issue-59326.rs"),
     TestCase::build_bin_and_run("aot.neon", "example/neon.rs", &[]),
@@ -154,7 +151,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         apply_patches(
             &runner.dirs,
             "coretests",
-            &runner.stdlib_source.join("library/core/tests"),
+            &runner.stdlib_source.join("library/coretests"),
             &LIBCORE_TESTS_SRC.to_path(&runner.dirs),
         );
 
@@ -332,14 +329,6 @@ impl<'a> TestRunner<'a> {
     ) -> Self {
         target_compiler.rustflags.extend(rustflags_from_env("RUSTFLAGS"));
         target_compiler.rustdocflags.extend(rustflags_from_env("RUSTDOCFLAGS"));
-
-        // FIXME fix `#[linkage = "extern_weak"]` without this
-        if target_compiler.triple.contains("darwin") {
-            target_compiler.rustflags.extend([
-                "-Clink-arg=-undefined".to_owned(),
-                "-Clink-arg=dynamic_lookup".to_owned(),
-            ]);
-        }
 
         let jit_supported = use_unstable_features
             && is_native

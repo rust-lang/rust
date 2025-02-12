@@ -129,12 +129,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 return;
             }
 
-            let idx = generic_args[2]
-                .expect_const()
-                .try_to_valtree()
-                .expect("expected monomorphic const in codegen")
-                .0
-                .unwrap_branch();
+            let idx = generic_args[2].expect_const().to_value().valtree.unwrap_branch();
 
             assert_eq!(x.layout(), y.layout());
             let layout = x.layout();
@@ -563,9 +558,12 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     (sym::simd_round, types::F64) => "round",
                     _ => unreachable!("{:?}", intrinsic),
                 };
-                fx.lib_call(name, vec![AbiParam::new(lane_ty)], vec![AbiParam::new(lane_ty)], &[
-                    lane,
-                ])[0]
+                fx.lib_call(
+                    name,
+                    vec![AbiParam::new(lane_ty)],
+                    vec![AbiParam::new(lane_ty)],
+                    &[lane],
+                )[0]
             });
         }
 
@@ -1136,7 +1134,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         _ => {
             fx.tcx.dcx().span_err(span, format!("Unknown SIMD intrinsic {}", intrinsic));
             // Prevent verifier error
-            fx.bcx.ins().trap(TrapCode::user(0 /* unreachable */).unwrap());
+            fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
             return;
         }
     }

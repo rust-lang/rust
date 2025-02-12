@@ -125,7 +125,7 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
                     source_info,
                     kind: StatementKind::Assign(Box::new((
                         dst,
-                        Rvalue::RawPtr(Mutability::Mut, *lhs),
+                        Rvalue::RawPtr(RawPtrKind::Mut, *lhs),
                     ))),
                 };
 
@@ -146,7 +146,7 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
                     source_info,
                     kind: StatementKind::Assign(Box::new((
                         src,
-                        Rvalue::RawPtr(Mutability::Not, *rhs),
+                        Rvalue::RawPtr(RawPtrKind::Const, *rhs),
                     ))),
                 };
 
@@ -200,6 +200,10 @@ impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
             });
         }
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 impl EnumSizeOpt {
@@ -216,7 +220,7 @@ impl EnumSizeOpt {
         };
         let layout = tcx.layout_of(typing_env.as_query_input(ty)).ok()?;
         let variants = match &layout.variants {
-            Variants::Single { .. } => return None,
+            Variants::Single { .. } | Variants::Empty => return None,
             Variants::Multiple { tag_encoding: TagEncoding::Niche { .. }, .. } => return None,
 
             Variants::Multiple { variants, .. } if variants.len() <= 1 => return None,

@@ -5,9 +5,8 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
 use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
-use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::sym;
+use rustc_span::{Span, sym};
 
 use crate::errors;
 
@@ -169,7 +168,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
                 s
             }
         };
-        let ident = self.tcx.item_name(fn_id).to_ident_string();
+        let ident = self.tcx.item_ident(fn_id);
         let ty_params = fn_args.types().map(|ty| format!("{ty}"));
         let const_params = fn_args.consts().map(|c| format!("{c}"));
         let params = ty_params.chain(const_params).join(", ");
@@ -178,7 +177,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         let ret = if fn_sig.output().skip_binder().is_unit() { "" } else { " -> _" };
         let sugg = format!(
             "{} as {}{}fn({}{}){}",
-            if params.is_empty() { ident.clone() } else { format!("{ident}::<{params}>") },
+            if params.is_empty() { ident.to_string() } else { format!("{ident}::<{params}>") },
             unsafety,
             abi,
             vec!["_"; num_args].join(", "),

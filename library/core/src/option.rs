@@ -937,10 +937,16 @@ impl<T> Option<T> {
     /// Returns the contained [`Some`] value, consuming the `self` value.
     ///
     /// Because this function may panic, its use is generally discouraged.
+    /// Panics are meant for unrecoverable errors, and
+    /// [may abort the entire program][panic-abort].
+    ///
     /// Instead, prefer to use pattern matching and handle the [`None`]
     /// case explicitly, or call [`unwrap_or`], [`unwrap_or_else`], or
-    /// [`unwrap_or_default`].
+    /// [`unwrap_or_default`]. In functions returning `Option`, you can use
+    /// [the `?` (try) operator][try-option].
     ///
+    /// [panic-abort]: https://doc.rust-lang.org/book/ch09-01-unrecoverable-errors-with-panic.html
+    /// [try-option]: https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html#where-the--operator-can-be-used
     /// [`unwrap_or`]: Option::unwrap_or
     /// [`unwrap_or_else`]: Option::unwrap_or_else
     /// [`unwrap_or_default`]: Option::unwrap_or_default

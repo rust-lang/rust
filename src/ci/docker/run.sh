@@ -76,8 +76,9 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     # Include cache version. Can be used to manually bust the Docker cache.
     echo "2" >> $hash_key
 
-    echo "Image input"
+    echo "::group::Image checksum input"
     cat $hash_key
+    echo "::endgroup::"
 
     cksum=$(sha512sum $hash_key | \
     awk '{print $1}')
@@ -122,6 +123,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       build_args+=("--build-arg" "SCRIPT_ARG=${DOCKER_SCRIPT}")
     fi
 
+    GHCR_BUILDKIT_IMAGE="ghcr.io/rust-lang/buildkit:buildx-stable-1"
     # On non-CI jobs, we try to download a pre-built image from the rust-lang-ci
     # ghcr.io registry. If it is not possible, we fall back to building the image
     # locally.
@@ -139,7 +141,9 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     elif [[ "$PR_CI_JOB" == "1" ]];
     then
         # Enable a new Docker driver so that --cache-from works with a registry backend
-        docker buildx create --use --driver docker-container
+        # Use a custom image to avoid DockerHub rate limits
+        docker buildx create --use --driver docker-container \
+          --driver-opt image=${GHCR_BUILDKIT_IMAGE}
 
         # Build the image using registry caching backend
         retry docker \
@@ -155,7 +159,9 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
             --password-stdin
 
         # Enable a new Docker driver so that --cache-from/to works with a registry backend
-        docker buildx create --use --driver docker-container
+        # Use a custom image to avoid DockerHub rate limits
+        docker buildx create --use --driver docker-container \
+          --driver-opt image=${GHCR_BUILDKIT_IMAGE}
 
         # Build the image using registry caching backend
         retry docker \

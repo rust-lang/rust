@@ -1,16 +1,13 @@
 use std::str::FromStr;
 use std::{fmt, iter};
 
-pub use rustc_abi::{Reg, RegKind};
-use rustc_macros::HashStable_Generic;
-use rustc_span::Symbol;
-
-use crate::abi::{
-    self, AddressSpace, Align, BackendRepr, HasDataLayout, Pointer, Size, TyAbiInterface,
-    TyAndLayout,
+use rustc_abi::{
+    AddressSpace, Align, BackendRepr, ExternAbi, HasDataLayout, Primitive, Reg, RegKind, Scalar,
+    Size, TyAbiInterface, TyAndLayout,
 };
-use crate::spec::abi::Abi as SpecAbi;
-use crate::spec::{self, HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, WasmCAbi};
+use rustc_macros::HashStable_Generic;
+
+use crate::spec::{HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, WasmCAbi};
 
 mod aarch64;
 mod amdgpu;
@@ -350,7 +347,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     pub fn new(
         cx: &impl HasDataLayout,
         layout: TyAndLayout<'a, Ty>,
-        scalar_attrs: impl Fn(&TyAndLayout<'a, Ty>, abi::Scalar, Size) -> ArgAttributes,
+        scalar_attrs: impl Fn(&TyAndLayout<'a, Ty>, Scalar, Size) -> ArgAttributes,
     ) -> Self {
         let mode = match layout.backend_repr {
             BackendRepr::Uninhabited => PassMode::Ignore,
@@ -465,7 +462,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     pub fn extend_integer_width_to(&mut self, bits: u64) {
         // Only integers have signedness
         if let BackendRepr::Scalar(scalar) = self.layout.backend_repr {
-            if let abi::Int(i, signed) = scalar.primitive() {
+            if let Primitive::Int(i, signed) = scalar.primitive() {
                 if i.size().bits() < bits {
                     if let PassMode::Direct(ref mut attrs) = self.mode {
                         if signed {
@@ -547,6 +544,8 @@ pub enum Conv {
 
     PtxKernel,
 
+    GpuKernel,
+
     X86Fastcall,
     X86Intr,
     X86Stdcall,
@@ -623,40 +622,27 @@ impl<'a, Ty: fmt::Display> fmt::Debug for FnAbi<'a, Ty> {
     }
 }
 
-/// Error produced by attempting to adjust a `FnAbi`, for a "foreign" ABI.
-#[derive(Copy, Clone, Debug, HashStable_Generic)]
-pub enum AdjustForForeignAbiError {
-    /// Target architecture doesn't support "foreign" (i.e. non-Rust) ABIs.
-    Unsupported { arch: Symbol, abi: spec::abi::Abi },
-}
-
 impl<'a, Ty> FnAbi<'a, Ty> {
-    pub fn adjust_for_foreign_abi<C>(
-        &mut self,
-        cx: &C,
-        abi: spec::abi::Abi,
-    ) -> Result<(), AdjustForForeignAbiError>
+    pub fn adjust_for_foreign_abi<C>(&mut self, cx: &C, abi: ExternAbi)
     where
         Ty: TyAbiInterface<'a, C> + Copy,
         C: HasDataLayout + HasTargetSpec + HasWasmCAbiOpt + HasX86AbiOpt,
     {
-        if abi == spec::abi::Abi::X86Interrupt {
+        if abi == ExternAbi::X86Interrupt {
             if let Some(arg) = self.args.first_mut() {
                 arg.pass_by_stack_offset(None);
             }
-            return Ok(());
+            return;
         }
 
         let spec = cx.target_spec();
         match &spec.arch[..] {
             "x86" => {
                 let (flavor, regparm) = match abi {
-                    spec::abi::Abi::Fastcall { .. } | spec::abi::Abi::Vectorcall { .. } => {
+                    ExternAbi::Fastcall { .. } | ExternAbi::Vectorcall { .. } => {
                         (x86::Flavor::FastcallOrVectorcall, None)
                     }
-                    spec::abi::Abi::C { .. }
-                    | spec::abi::Abi::Cdecl { .. }
-                    | spec::abi::Abi::Stdcall { .. } => {
+                    ExternAbi::C { .. } | ExternAbi::Cdecl { .. } | ExternAbi::Stdcall { .. } => {
                         (x86::Flavor::General, cx.x86_abi_opt().regparm)
                     }
                     _ => (x86::Flavor::General, None),
@@ -666,8 +652,10 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 x86::compute_abi_info(cx, self, opts);
             }
             "x86_64" => match abi {
-                spec::abi::Abi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),
-                spec::abi::Abi::Win64 { .. } => x86_win64::compute_abi_info(cx, self),
+                ExternAbi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),
+                ExternAbi::Win64 { .. } | ExternAbi::Vectorcall { .. } => {
+                    x86_win64::compute_abi_info(cx, self)
+                }
                 _ => {
                     if cx.target_spec().is_like_windows {
                         x86_win64::compute_abi_info(cx, self)
@@ -701,7 +689,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),
             "nvptx64" => {
-                if cx.target_spec().adjust_abi(abi, self.c_variadic) == spec::abi::Abi::PtxKernel {
+                if cx.target_spec().adjust_abi(abi, self.c_variadic) == ExternAbi::PtxKernel {
                     nvptx64::compute_ptx_kernel_abi_info(cx, self)
                 } else {
                     nvptx64::compute_abi_info(self)
@@ -719,18 +707,11 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             }
             "wasm64" => wasm::compute_c_abi_info(cx, self),
             "bpf" => bpf::compute_abi_info(self),
-            arch => {
-                return Err(AdjustForForeignAbiError::Unsupported {
-                    arch: Symbol::intern(arch),
-                    abi,
-                });
-            }
+            arch => panic!("no lowering implemented for {arch}"),
         }
-
-        Ok(())
     }
 
-    pub fn adjust_for_rust_abi<C>(&mut self, cx: &C, abi: SpecAbi)
+    pub fn adjust_for_rust_abi<C>(&mut self, cx: &C, abi: ExternAbi)
     where
         Ty: TyAbiInterface<'a, C> + Copy,
         C: HasDataLayout + HasTargetSpec,
@@ -755,7 +736,9 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 continue;
             }
 
-            if arg_idx.is_none() && arg.layout.size > Pointer(AddressSpace::DATA).size(cx) * 2 {
+            if arg_idx.is_none()
+                && arg.layout.size > Primitive::Pointer(AddressSpace::DATA).size(cx) * 2
+            {
                 // Return values larger than 2 registers using a return area
                 // pointer. LLVM and Cranelift disagree about how to return
                 // values that don't fit in the registers designated for return
@@ -821,7 +804,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 // that's how we connect up to LLVM and it's unstable
                 // anyway, we control all calls to it in libstd.
                 BackendRepr::Vector { .. }
-                    if abi != SpecAbi::RustIntrinsic && spec.simd_types_indirect =>
+                    if abi != ExternAbi::RustIntrinsic && spec.simd_types_indirect =>
                 {
                     arg.make_indirect();
                     continue;
@@ -836,7 +819,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             assert!(is_indirect_not_on_stack);
 
             let size = arg.layout.size;
-            if !arg.layout.is_unsized() && size <= Pointer(AddressSpace::DATA).size(cx) {
+            if !arg.layout.is_unsized() && size <= Primitive::Pointer(AddressSpace::DATA).size(cx) {
                 // We want to pass small aggregates as immediates, but using
                 // an LLVM aggregate type for this leads to bad optimizations,
                 // so we pick an appropriately sized integer type instead.
@@ -866,6 +849,7 @@ impl FromStr for Conv {
             "X86VectorCall" => Ok(Conv::X86VectorCall),
             "X86_64SysV" => Ok(Conv::X86_64SysV),
             "X86_64Win64" => Ok(Conv::X86_64Win64),
+            "GpuKernel" => Ok(Conv::GpuKernel),
             "AvrInterrupt" => Ok(Conv::AvrInterrupt),
             "AvrNonBlockingInterrupt" => Ok(Conv::AvrNonBlockingInterrupt),
             "RiscvInterrupt(machine)" => {

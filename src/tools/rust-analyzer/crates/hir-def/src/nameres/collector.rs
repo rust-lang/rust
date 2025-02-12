@@ -28,7 +28,7 @@ use triomphe::Arc;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    item_scope::{ImportId, ImportOrExternCrate, ImportType, PerNsGlobImports},
+    item_scope::{GlobId, ImportId, ImportOrExternCrate, PerNsGlobImports},
     item_tree::{
         self, AttrOwner, FieldsShape, FileItemTreeId, ImportKind, ItemTree, ItemTreeId,
         ItemTreeNode, Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId, UseTreeKind,
@@ -44,7 +44,7 @@ use crate::{
         ResolveMode,
     },
     path::{ImportAlias, ModPath, PathKind},
-    per_ns::PerNs,
+    per_ns::{Item, PerNs},
     tt,
     visibility::{RawVisibility, Visibility},
     AdtId, AstId, AstIdWithPath, ConstLoc, CrateRootModuleId, EnumLoc, EnumVariantLoc,
@@ -74,7 +74,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
 
     let proc_macros = if krate.is_proc_macro {
         db.proc_macros()
-            .for_crate(def_map.krate, db.syntax_context(tree_id.file_id()))
+            .for_crate(def_map.krate, db.syntax_context(tree_id.file_id(), krate.edition))
             .unwrap_or_default()
     } else {
         Default::default()
@@ -208,7 +208,7 @@ struct DefCollector<'a> {
     def_map: DefMap,
     // The dependencies of the current crate, including optional deps like `test`.
     deps: FxHashMap<Name, Dependency>,
-    glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility, UseId)>>,
+    glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility, GlobId)>>,
     unresolved_imports: Vec<ImportDirective>,
     indeterminate_imports: Vec<(ImportDirective, PerNs)>,
     unresolved_macros: Vec<MacroDirective>,
@@ -353,7 +353,7 @@ impl DefCollector<'_> {
         let is_cfg_enabled = item_tree
             .top_level_attrs(self.db, self.def_map.krate)
             .cfg()
-            .map_or(true, |cfg| self.cfg_options.check(&cfg) != Some(false));
+            .is_none_or(|cfg| self.cfg_options.check(&cfg) != Some(false));
         if is_cfg_enabled {
             self.inject_prelude();
 
@@ -523,12 +523,8 @@ impl DefCollector<'_> {
             self.def_map.resolve_path(self.db, DefMap::ROOT, &path, BuiltinShadowMode::Other, None);
 
         match per_ns.types {
-            Some((ModuleDefId::ModuleId(m), _, import)) => {
-                // FIXME: This should specifically look for a glob import somehow and record that here
-                self.def_map.prelude = Some((
-                    m,
-                    import.and_then(ImportOrExternCrate::into_import).map(|it| it.import),
-                ));
+            Some(Item { def: ModuleDefId::ModuleId(m), import, .. }) => {
+                self.def_map.prelude = Some((m, import.and_then(ImportOrExternCrate::use_)));
             }
             types => {
                 tracing::debug!(
@@ -717,8 +713,8 @@ impl DefCollector<'_> {
                 }
             }
             None => {
-                for (name, def) in root_scope.macros() {
-                    self.def_map.macro_use_prelude.insert(name.clone(), (def, extern_crate));
+                for (name, it) in root_scope.macros() {
+                    self.def_map.macro_use_prelude.insert(name.clone(), (it.def, extern_crate));
                 }
             }
         }
@@ -797,7 +793,7 @@ impl DefCollector<'_> {
             return PartialResolvedImport::Unresolved;
         }
 
-        if res.from_differing_crate {
+        if res.prefix_info.differing_crate {
             return PartialResolvedImport::Resolved(
                 def.filter_visibility(|v| matches!(v, Visibility::Public)),
             );
@@ -845,13 +841,14 @@ impl DefCollector<'_> {
                     def.values = None;
                     def.macros = None;
                 }
-                let imp = ImportType::Import(ImportId { import: id, idx: use_tree });
+                let imp = ImportOrExternCrate::Import(ImportId { use_: id, idx: use_tree });
                 tracing::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
 
                 self.update(module_id, &[(name.cloned(), def)], vis, Some(imp));
             }
-            ImportSource { kind: ImportKind::Glob, id, is_prelude, .. } => {
+            ImportSource { kind: ImportKind::Glob, id, is_prelude, use_tree } => {
                 tracing::debug!("glob import: {:?}", import);
+                let glob = GlobId { use_: id, idx: use_tree };
                 match def.take_types() {
                     Some(ModuleDefId::ModuleId(m)) => {
                         if is_prelude {
@@ -875,7 +872,12 @@ impl DefCollector<'_> {
                                 .filter(|(_, res)| !res.is_none())
                                 .collect::<Vec<_>>();
 
-                            self.update(module_id, &items, vis, Some(ImportType::Glob(id)));
+                            self.update(
+                                module_id,
+                                &items,
+                                vis,
+                                Some(ImportOrExternCrate::Glob(glob)),
+                            );
                         } else {
                             // glob import from same crate => we do an initial
                             // import, and then need to propagate any further
@@ -907,11 +909,16 @@ impl DefCollector<'_> {
                                 .filter(|(_, res)| !res.is_none())
                                 .collect::<Vec<_>>();
 
-                            self.update(module_id, &items, vis, Some(ImportType::Glob(id)));
+                            self.update(
+                                module_id,
+                                &items,
+                                vis,
+                                Some(ImportOrExternCrate::Glob(glob)),
+                            );
                             // record the glob import in case we add further items
-                            let glob = self.glob_imports.entry(m.local_id).or_default();
-                            match glob.iter_mut().find(|(mid, _, _)| *mid == module_id) {
-                                None => glob.push((module_id, vis, id)),
+                            let glob_imports = self.glob_imports.entry(m.local_id).or_default();
+                            match glob_imports.iter_mut().find(|(mid, _, _)| *mid == module_id) {
+                                None => glob_imports.push((module_id, vis, glob)),
                                 Some((_, old_vis, _)) => {
                                     if let Some(new_vis) = old_vis.max(vis, &self.def_map) {
                                         *old_vis = new_vis;
@@ -944,7 +951,12 @@ impl DefCollector<'_> {
                             (Some(name), res)
                         })
                         .collect::<Vec<_>>();
-                        self.update(module_id, &resolutions, vis, Some(ImportType::Glob(id)));
+                        self.update(
+                            module_id,
+                            &resolutions,
+                            vis,
+                            Some(ImportOrExternCrate::Glob(glob)),
+                        );
                     }
                     Some(d) => {
                         tracing::debug!("glob import {:?} from non-module/enum {:?}", import, d);
@@ -964,7 +976,7 @@ impl DefCollector<'_> {
         resolutions: &[(Option<Name>, PerNs)],
         // Visibility this import will have
         vis: Visibility,
-        import: Option<ImportType>,
+        import: Option<ImportOrExternCrate>,
     ) {
         self.db.unwind_if_cancelled();
         self.update_recursive(module_id, resolutions, vis, import, 0)
@@ -978,7 +990,7 @@ impl DefCollector<'_> {
         // All resolutions are imported with this visibility; the visibilities in
         // the `PerNs` values are ignored and overwritten
         vis: Visibility,
-        import: Option<ImportType>,
+        import: Option<ImportOrExternCrate>,
         depth: usize,
     ) {
         if GLOB_RECURSION_LIMIT.check(depth).is_err() {
@@ -994,8 +1006,10 @@ impl DefCollector<'_> {
                         self.push_res_and_update_glob_vis(module_id, name, *res, vis, import);
                 }
                 None => {
-                    let tr = match res.take_types() {
-                        Some(ModuleDefId::TraitId(tr)) => tr,
+                    let (tr, import) = match res.take_types_full() {
+                        Some(Item { def: ModuleDefId::TraitId(tr), vis: _, import }) => {
+                            (tr, import)
+                        }
                         Some(other) => {
                             tracing::debug!("non-trait `_` import of {:?}", other);
                             continue;
@@ -1021,7 +1035,11 @@ impl DefCollector<'_> {
 
                     if should_update {
                         changed = true;
-                        self.def_map.modules[module_id].scope.push_unnamed_trait(tr, vis);
+                        self.def_map.modules[module_id].scope.push_unnamed_trait(
+                            tr,
+                            vis,
+                            import.and_then(ImportOrExternCrate::import),
+                        );
                     }
                 }
             }
@@ -1043,13 +1061,13 @@ impl DefCollector<'_> {
             .cloned()
             .collect::<Vec<_>>();
 
-        for (glob_importing_module, glob_import_vis, use_) in glob_imports {
+        for (glob_importing_module, glob_import_vis, glob) in glob_imports {
             let vis = glob_import_vis.min(vis, &self.def_map).unwrap_or(glob_import_vis);
             self.update_recursive(
                 glob_importing_module,
                 resolutions,
                 vis,
-                Some(ImportType::Glob(use_)),
+                Some(ImportOrExternCrate::Glob(glob)),
                 depth + 1,
             );
         }
@@ -1061,7 +1079,7 @@ impl DefCollector<'_> {
         name: &Name,
         mut defs: PerNs,
         vis: Visibility,
-        def_import_type: Option<ImportType>,
+        def_import_type: Option<ImportOrExternCrate>,
     ) -> bool {
         // `extern crate crate_name` things can be re-exported as `pub use crate_name`.
         // But they cannot be re-exported as `pub use self::crate_name`, `pub use crate::crate_name`
@@ -1069,15 +1087,15 @@ impl DefCollector<'_> {
         //
         // This has been historically allowed, but may be not allowed in future
         // https://github.com/rust-lang/rust/issues/127909
-        if let Some((_, v, it)) = defs.types.as_mut() {
+        if let Some(def) = defs.types.as_mut() {
             let is_extern_crate_reimport_without_prefix = || {
-                let Some(ImportOrExternCrate::ExternCrate(_)) = it else {
+                let Some(ImportOrExternCrate::ExternCrate(_)) = def.import else {
                     return false;
                 };
-                let Some(ImportType::Import(id)) = def_import_type else {
+                let Some(ImportOrExternCrate::Import(id)) = def_import_type else {
                     return false;
                 };
-                let use_id = id.import.lookup(self.db).id;
+                let use_id = id.use_.lookup(self.db).id;
                 let item_tree = use_id.item_tree(self.db);
                 let use_kind = item_tree[use_id.value].use_tree.kind();
                 let UseTreeKind::Single { path, .. } = use_kind else {
@@ -1086,32 +1104,32 @@ impl DefCollector<'_> {
                 path.segments().len() < 2
             };
             if is_extern_crate_reimport_without_prefix() {
-                *v = vis;
+                def.vis = vis;
             } else {
-                *v = v.min(vis, &self.def_map).unwrap_or(vis);
+                def.vis = def.vis.min(vis, &self.def_map).unwrap_or(vis);
             }
         }
-        if let Some((_, v, _)) = defs.values.as_mut() {
-            *v = v.min(vis, &self.def_map).unwrap_or(vis);
+        if let Some(def) = defs.values.as_mut() {
+            def.vis = def.vis.min(vis, &self.def_map).unwrap_or(vis);
         }
-        if let Some((_, v, _)) = defs.macros.as_mut() {
-            *v = v.min(vis, &self.def_map).unwrap_or(vis);
+        if let Some(def) = defs.macros.as_mut() {
+            def.vis = def.vis.min(vis, &self.def_map).unwrap_or(vis);
         }
 
         let mut changed = false;
 
-        if let Some(ImportType::Glob(_)) = def_import_type {
+        if let Some(ImportOrExternCrate::Glob(_)) = def_import_type {
             let prev_defs = self.def_map[module_id].scope.get(name);
 
             // Multiple globs may import the same item and they may override visibility from
             // previously resolved globs. Handle overrides here and leave the rest to
             // `ItemScope::push_res_with_import()`.
-            if let Some((def, def_vis, _)) = defs.types {
-                if let Some((prev_def, prev_vis, _)) = prev_defs.types {
-                    if def == prev_def
+            if let Some(def) = defs.types {
+                if let Some(prev_def) = prev_defs.types {
+                    if def.def == prev_def.def
                         && self.from_glob_import.contains_type(module_id, name.clone())
-                        && def_vis != prev_vis
-                        && def_vis.max(prev_vis, &self.def_map) == Some(def_vis)
+                        && def.vis != prev_def.vis
+                        && def.vis.max(prev_def.vis, &self.def_map) == Some(def.vis)
                     {
                         changed = true;
                         // This import is being handled here, don't pass it down to
@@ -1119,41 +1137,41 @@ impl DefCollector<'_> {
                         defs.types = None;
                         self.def_map.modules[module_id]
                             .scope
-                            .update_visibility_types(name, def_vis);
+                            .update_visibility_types(name, def.vis);
                     }
                 }
             }
 
-            if let Some((def, def_vis, _)) = defs.values {
-                if let Some((prev_def, prev_vis, _)) = prev_defs.values {
-                    if def == prev_def
+            if let Some(def) = defs.values {
+                if let Some(prev_def) = prev_defs.values {
+                    if def.def == prev_def.def
                         && self.from_glob_import.contains_value(module_id, name.clone())
-                        && def_vis != prev_vis
-                        && def_vis.max(prev_vis, &self.def_map) == Some(def_vis)
+                        && def.vis != prev_def.vis
+                        && def.vis.max(prev_def.vis, &self.def_map) == Some(def.vis)
                     {
                         changed = true;
                         // See comment above.
                         defs.values = None;
                         self.def_map.modules[module_id]
                             .scope
-                            .update_visibility_values(name, def_vis);
+                            .update_visibility_values(name, def.vis);
                     }
                 }
             }
 
-            if let Some((def, def_vis, _)) = defs.macros {
-                if let Some((prev_def, prev_vis, _)) = prev_defs.macros {
-                    if def == prev_def
+            if let Some(def) = defs.macros {
+                if let Some(prev_def) = prev_defs.macros {
+                    if def.def == prev_def.def
                         && self.from_glob_import.contains_macro(module_id, name.clone())
-                        && def_vis != prev_vis
-                        && def_vis.max(prev_vis, &self.def_map) == Some(def_vis)
+                        && def.vis != prev_def.vis
+                        && def.vis.max(prev_def.vis, &self.def_map) == Some(def.vis)
                     {
                         changed = true;
                         // See comment above.
                         defs.macros = None;
                         self.def_map.modules[module_id]
                             .scope
-                            .update_visibility_macros(name, def_vis);
+                            .update_visibility_macros(name, def.vis);
                     }
                 }
             }
@@ -1316,6 +1334,7 @@ impl DefCollector<'_> {
                     // being cfg'ed out).
                     // Ideally we will just expand them to nothing here. But we are only collecting macro calls,
                     // not expanding them, so we have no way to do that.
+                    // If you add an ignored attribute here, also add it to `Semantics::might_be_inside_macro_call()`.
                     if matches!(
                         def.kind,
                         MacroDefKind::BuiltInAttr(_, expander)
@@ -1451,13 +1470,7 @@ impl DefCollector<'_> {
         depth: usize,
         container: ItemContainerId,
     ) {
-        let recursion_limit = self.def_map.recursion_limit() as usize;
-        let recursion_limit = Limit::new(if cfg!(test) {
-            // Without this, `body::tests::your_stack_belongs_to_me` stack-overflows in debug
-            std::cmp::min(32, recursion_limit)
-        } else {
-            recursion_limit
-        });
+        let recursion_limit = Limit::new(self.def_map.recursion_limit() as usize);
         if recursion_limit.check(depth).is_err() {
             cov_mark::hit!(macro_expansion_overflow);
             tracing::warn!("macro expansion is too deep");
@@ -1732,7 +1745,7 @@ impl ModCollector<'_, '_> {
                                 ),
                             )],
                             vis,
-                            Some(ImportType::ExternCrate(id)),
+                            Some(ImportOrExternCrate::ExternCrate(id)),
                         );
                     } else {
                         if let Some(name) = name {
@@ -2220,8 +2233,8 @@ impl ModCollector<'_, '_> {
 
         let is_export = export_attr.exists();
         let local_inner = if is_export {
-            export_attr.tt_values().flat_map(|it| it.token_trees.iter()).any(|it| match it {
-                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => ident.sym == sym::local_inner_macros,
+            export_attr.tt_values().flat_map(|it| it.iter()).any(|it| match it {
+                tt::TtElement::Leaf(tt::Leaf::Ident(ident)) => ident.sym == sym::local_inner_macros,
                 _ => false,
             })
         } else {
@@ -2240,7 +2253,7 @@ impl ModCollector<'_, '_> {
                 None => {
                     let explicit_name =
                         attrs.by_key(&sym::rustc_builtin_macro).tt_values().next().and_then(|tt| {
-                            match tt.token_trees.first() {
+                            match tt.token_trees().flat_tokens().first() {
                                 Some(tt::TokenTree::Leaf(tt::Leaf::Ident(name))) => Some(name),
                                 _ => None,
                             }
@@ -2310,9 +2323,7 @@ impl ModCollector<'_, '_> {
                     // NOTE: The item *may* have both `#[rustc_builtin_macro]` and `#[proc_macro_derive]`,
                     // in which case rustc ignores the helper attributes from the latter, but it
                     // "doesn't make sense in practice" (see rust-lang/rust#87027).
-                    if let Some((name, helpers)) =
-                        parse_macro_name_and_helper_attrs(&attr.token_trees)
-                    {
+                    if let Some((name, helpers)) = parse_macro_name_and_helper_attrs(attr) {
                         // NOTE: rustc overrides the name if the macro name if it's different from the
                         // macro name, but we assume it isn't as there's no such case yet. FIXME if
                         // the following assertion fails.

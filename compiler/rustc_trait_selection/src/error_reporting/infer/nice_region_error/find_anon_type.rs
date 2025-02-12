@@ -1,8 +1,8 @@
 use core::ops::ControlFlow;
 
-use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::intravisit::{self, Visitor, VisitorExt};
+use rustc_hir::{self as hir, AmbigArg};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars as rbv;
@@ -28,16 +28,15 @@ pub fn find_anon_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     generic_param_scope: LocalDefId,
     region: Region<'tcx>,
-    br: &ty::BoundRegionKind,
 ) -> Option<(&'tcx hir::Ty<'tcx>, &'tcx hir::FnSig<'tcx>)> {
     let anon_reg = tcx.is_suitable_region(generic_param_scope, region)?;
-    let fn_sig = tcx.hir_node_by_def_id(anon_reg.def_id).fn_sig()?;
+    let fn_sig = tcx.hir_node_by_def_id(anon_reg.scope).fn_sig()?;
 
     fn_sig
         .decl
         .inputs
         .iter()
-        .find_map(|arg| find_component_for_bound_region(tcx, arg, br))
+        .find_map(|arg| find_component_for_bound_region(tcx, arg, anon_reg.region_def_id))
         .map(|ty| (ty, fn_sig))
 }
 
@@ -46,10 +45,10 @@ pub fn find_anon_type<'tcx>(
 fn find_component_for_bound_region<'tcx>(
     tcx: TyCtxt<'tcx>,
     arg: &'tcx hir::Ty<'tcx>,
-    br: &ty::BoundRegionKind,
+    region_def_id: DefId,
 ) -> Option<&'tcx hir::Ty<'tcx>> {
-    FindNestedTypeVisitor { tcx, bound_region: *br, current_index: ty::INNERMOST }
-        .visit_ty(arg)
+    FindNestedTypeVisitor { tcx, region_def_id, current_index: ty::INNERMOST }
+        .visit_ty_unambig(arg)
         .break_value()
 }
 
@@ -62,9 +61,8 @@ fn find_component_for_bound_region<'tcx>(
 // specific part of the type in the error message.
 struct FindNestedTypeVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    // The bound_region corresponding to the Refree(freeregion)
-    // associated with the anonymous region we are looking for.
-    bound_region: ty::BoundRegionKind,
+    // The `DefId` of the region we're looking for.
+    region_def_id: DefId,
     current_index: ty::DebruijnIndex,
 }
 
@@ -76,7 +74,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) -> Self::Result {
+    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx, AmbigArg>) -> Self::Result {
         match arg.kind {
             hir::TyKind::BareFn(_) => {
                 self.current_index.shift_in(1);
@@ -96,48 +94,39 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
             hir::TyKind::Ref(lifetime, _) => {
                 // the lifetime of the Ref
                 let hir_id = lifetime.hir_id;
-                match (self.tcx.named_bound_var(hir_id), self.bound_region) {
+                match self.tcx.named_bound_var(hir_id) {
                     // Find the index of the named region that was part of the
                     // error. We will then search the function parameters for a bound
                     // region at the right depth with the same index
-                    (
-                        Some(rbv::ResolvedArg::EarlyBound(id)),
-                        ty::BoundRegionKind::Named(def_id, _),
-                    ) => {
-                        debug!("EarlyBound id={:?} def_id={:?}", id, def_id);
-                        if id.to_def_id() == def_id {
-                            return ControlFlow::Break(arg);
+                    Some(rbv::ResolvedArg::EarlyBound(id)) => {
+                        debug!("EarlyBound id={:?}", id);
+                        if id.to_def_id() == self.region_def_id {
+                            return ControlFlow::Break(arg.as_unambig_ty());
                         }
                     }
 
                     // Find the index of the named region that was part of the
                     // error. We will then search the function parameters for a bound
                     // region at the right depth with the same index
-                    (
-                        Some(rbv::ResolvedArg::LateBound(debruijn_index, _, id)),
-                        ty::BoundRegionKind::Named(def_id, _),
-                    ) => {
+                    Some(rbv::ResolvedArg::LateBound(debruijn_index, _, id)) => {
                         debug!(
                             "FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}",
                             debruijn_index
                         );
-                        debug!("LateBound id={:?} def_id={:?}", id, def_id);
-                        if debruijn_index == self.current_index && id.to_def_id() == def_id {
-                            return ControlFlow::Break(arg);
+                        debug!("LateBound id={:?}", id);
+                        if debruijn_index == self.current_index
+                            && id.to_def_id() == self.region_def_id
+                        {
+                            return ControlFlow::Break(arg.as_unambig_ty());
                         }
                     }
 
-                    (
-                        Some(
-                            rbv::ResolvedArg::StaticLifetime
-                            | rbv::ResolvedArg::Free(_, _)
-                            | rbv::ResolvedArg::EarlyBound(_)
-                            | rbv::ResolvedArg::LateBound(_, _, _)
-                            | rbv::ResolvedArg::Error(_),
-                        )
-                        | None,
-                        _,
-                    ) => {
+                    Some(
+                        rbv::ResolvedArg::StaticLifetime
+                        | rbv::ResolvedArg::Free(_, _)
+                        | rbv::ResolvedArg::Error(_),
+                    )
+                    | None => {
                         debug!("no arg found");
                     }
                 }
@@ -151,14 +140,14 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                 return if intravisit::walk_ty(
                     &mut TyPathVisitor {
                         tcx: self.tcx,
-                        bound_region: self.bound_region,
+                        region_def_id: self.region_def_id,
                         current_index: self.current_index,
                     },
                     arg,
                 )
                 .is_break()
                 {
-                    ControlFlow::Break(arg)
+                    ControlFlow::Break(arg.as_unambig_ty())
                 } else {
                     ControlFlow::Continue(())
                 };
@@ -179,7 +168,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
 // specific part of the type in the error message.
 struct TyPathVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    bound_region: ty::BoundRegionKind,
+    region_def_id: DefId,
     current_index: ty::DebruijnIndex,
 }
 
@@ -192,45 +181,36 @@ impl<'tcx> Visitor<'tcx> for TyPathVisitor<'tcx> {
     }
 
     fn visit_lifetime(&mut self, lifetime: &hir::Lifetime) -> Self::Result {
-        match (self.tcx.named_bound_var(lifetime.hir_id), self.bound_region) {
+        match self.tcx.named_bound_var(lifetime.hir_id) {
             // the lifetime of the TyPath!
-            (Some(rbv::ResolvedArg::EarlyBound(id)), ty::BoundRegionKind::Named(def_id, _)) => {
-                debug!("EarlyBound id={:?} def_id={:?}", id, def_id);
-                if id.to_def_id() == def_id {
+            Some(rbv::ResolvedArg::EarlyBound(id)) => {
+                debug!("EarlyBound id={:?}", id);
+                if id.to_def_id() == self.region_def_id {
                     return ControlFlow::Break(());
                 }
             }
 
-            (
-                Some(rbv::ResolvedArg::LateBound(debruijn_index, _, id)),
-                ty::BoundRegionKind::Named(def_id, _),
-            ) => {
+            Some(rbv::ResolvedArg::LateBound(debruijn_index, _, id)) => {
                 debug!("FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}", debruijn_index,);
                 debug!("id={:?}", id);
-                debug!("def_id={:?}", def_id);
-                if debruijn_index == self.current_index && id.to_def_id() == def_id {
+                if debruijn_index == self.current_index && id.to_def_id() == self.region_def_id {
                     return ControlFlow::Break(());
                 }
             }
 
-            (
-                Some(
-                    rbv::ResolvedArg::StaticLifetime
-                    | rbv::ResolvedArg::EarlyBound(_)
-                    | rbv::ResolvedArg::LateBound(_, _, _)
-                    | rbv::ResolvedArg::Free(_, _)
-                    | rbv::ResolvedArg::Error(_),
-                )
-                | None,
-                _,
-            ) => {
+            Some(
+                rbv::ResolvedArg::StaticLifetime
+                | rbv::ResolvedArg::Free(_, _)
+                | rbv::ResolvedArg::Error(_),
+            )
+            | None => {
                 debug!("no arg found");
             }
         }
         ControlFlow::Continue(())
     }
 
-    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) -> Self::Result {
+    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx, AmbigArg>) -> Self::Result {
         // ignore nested types
         //
         // If you have a type like `Foo<'a, &Ty>` we

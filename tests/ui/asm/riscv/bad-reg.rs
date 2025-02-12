@@ -18,8 +18,7 @@
 // usage in the asm! API (in, out, inout, etc.).
 
 #![crate_type = "lib"]
-#![feature(no_core, rustc_attrs)]
-#![feature(asm_experimental_arch)]
+#![feature(no_core)]
 #![no_core]
 
 extern crate minicore;
@@ -37,8 +36,6 @@ fn f() {
         //~^ ERROR invalid register `fp`: the frame pointer cannot be used as an operand for inline asm
         asm!("", out("sp") _);
         //~^ ERROR invalid register `sp`: the stack pointer cannot be used as an operand for inline asm
-        asm!("", out("gp") _);
-        //~^ ERROR invalid register `gp`: the global pointer cannot be used as an operand for inline asm
         asm!("", out("gp") _);
         //~^ ERROR invalid register `gp`: the global pointer cannot be used as an operand for inline asm
         asm!("", out("tp") _);

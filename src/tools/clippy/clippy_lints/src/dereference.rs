@@ -11,10 +11,10 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{Visitor, walk_ty};
+use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
 use rustc_hir::{
-    self as hir, BindingMode, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, MatchSource, Mutability, Node, Pat,
-    PatKind, Path, QPath, TyKind, UnOp,
+    self as hir, AmbigArg, BindingMode, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, MatchSource, Mutability, Node,
+    Pat, PatKind, Path, QPath, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
@@ -291,10 +291,13 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             && let Some(ty) = use_node.defined_ty(cx)
                             && TyCoercionStability::for_defined_ty(cx, ty, use_node.is_return()).is_deref_stable()
                         {
-                            self.state = Some((State::ExplicitDeref { mutability: None }, StateData {
-                                first_expr: expr,
-                                adjusted_ty,
-                            }));
+                            self.state = Some((
+                                State::ExplicitDeref { mutability: None },
+                                StateData {
+                                    first_expr: expr,
+                                    adjusted_ty,
+                                },
+                            ));
                         }
                     },
                     RefOp::Method { mutbl, is_ufcs }
@@ -331,7 +334,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                     deref_count += 1;
                                 },
                                 None => break None,
-                            };
+                            }
                         };
 
                         let use_node = use_cx.use_node(cx);
@@ -456,10 +459,13 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                             && next_adjust.is_none_or(|a| matches!(a.kind, Adjust::Deref(_) | Adjust::Borrow(_)))
                             && iter.all(|a| matches!(a.kind, Adjust::Deref(_) | Adjust::Borrow(_)))
                         {
-                            self.state = Some((State::Borrow { mutability }, StateData {
-                                first_expr: expr,
-                                adjusted_ty,
-                            }));
+                            self.state = Some((
+                                State::Borrow { mutability },
+                                StateData {
+                                    first_expr: expr,
+                                    adjusted_ty,
+                                },
+                            ));
                         }
                     },
                     _ => {},
@@ -503,10 +509,13 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                 let stability = state.stability;
                 report(cx, expr, State::DerefedBorrow(state), data, typeck);
                 if stability.is_deref_stable() {
-                    self.state = Some((State::Borrow { mutability }, StateData {
-                        first_expr: expr,
-                        adjusted_ty,
-                    }));
+                    self.state = Some((
+                        State::Borrow { mutability },
+                        StateData {
+                            first_expr: expr,
+                            adjusted_ty,
+                        },
+                    ));
                 }
             },
             (Some((State::DerefedBorrow(state), data)), RefOp::Deref) => {
@@ -531,10 +540,13 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                 } else if stability.is_deref_stable()
                     && let Some(parent) = get_parent_expr(cx, expr)
                 {
-                    self.state = Some((State::ExplicitDeref { mutability: None }, StateData {
-                        first_expr: parent,
-                        adjusted_ty,
-                    }));
+                    self.state = Some((
+                        State::ExplicitDeref { mutability: None },
+                        StateData {
+                            first_expr: parent,
+                            adjusted_ty,
+                        },
+                    ));
                 }
             },
 
@@ -796,7 +808,7 @@ impl TyCoercionStability {
                     if let Some(args) = path.args
                         && args.args.iter().any(|arg| match arg {
                             hir::GenericArg::Infer(_) => true,
-                            hir::GenericArg::Type(ty) => ty_contains_infer(ty),
+                            hir::GenericArg::Type(ty) => ty_contains_infer(ty.as_unambig_ty()),
                             _ => false,
                         })
                     {
@@ -815,7 +827,7 @@ impl TyCoercionStability {
                 | TyKind::Path(_) => Self::Deref,
                 TyKind::OpaqueDef(..)
                 | TyKind::TraitAscription(..)
-                | TyKind::Infer
+                | TyKind::Infer(())
                 | TyKind::Typeof(..)
                 | TyKind::TraitObject(..)
                 | TyKind::InferDelegation(..)
@@ -877,7 +889,8 @@ impl TyCoercionStability {
                 | ty::CoroutineClosure(..)
                 | ty::Never
                 | ty::Tuple(_)
-                | ty::Alias(ty::Projection, _) => Self::Deref,
+                | ty::Alias(ty::Projection, _)
+                | ty::UnsafeBinder(_) => Self::Deref,
             };
         }
     }
@@ -888,29 +901,23 @@ impl TyCoercionStability {
 fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
     struct V(bool);
     impl Visitor<'_> for V {
-        fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
-            if self.0
-                || matches!(
-                    ty.kind,
-                    TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(_) | TyKind::Err(_)
-                )
-            {
+        fn visit_infer(&mut self, inf_id: HirId, _inf_span: Span, kind: InferKind<'_>) -> Self::Result {
+            if let InferKind::Ty(_) | InferKind::Ambig(_) = kind {
+                self.0 = true;
+            }
+            self.visit_id(inf_id);
+        }
+
+        fn visit_ty(&mut self, ty: &hir::Ty<'_, AmbigArg>) {
+            if self.0 || matches!(ty.kind, TyKind::OpaqueDef(..) | TyKind::Typeof(_) | TyKind::Err(_)) {
                 self.0 = true;
             } else {
                 walk_ty(self, ty);
             }
         }
-
-        fn visit_generic_arg(&mut self, arg: &hir::GenericArg<'_>) {
-            if self.0 || matches!(arg, hir::GenericArg::Infer(_)) {
-                self.0 = true;
-            } else if let hir::GenericArg::Type(ty) = arg {
-                self.visit_ty(ty);
-            }
-        }
     }
     let mut v = V(false);
-    v.visit_ty(ty);
+    v.visit_ty_unambig(ty);
     v.0
 }
 
@@ -1003,7 +1010,10 @@ fn report<'tcx>(
                     let needs_paren = match cx.tcx.parent_hir_node(data.first_expr.hir_id) {
                         Node::Expr(e) => match e.kind {
                             ExprKind::Call(callee, _) if callee.hir_id != data.first_expr.hir_id => false,
-                            ExprKind::Call(..) => expr.precedence() < ExprPrecedence::Unambiguous || matches!(expr.kind, ExprKind::Field(..)),
+                            ExprKind::Call(..) => {
+                                expr.precedence() < ExprPrecedence::Unambiguous
+                                    || matches!(expr.kind, ExprKind::Field(..))
+                            },
                             _ => expr.precedence() < e.precedence(),
                         },
                         _ => false,
@@ -1016,11 +1026,7 @@ fn report<'tcx>(
                         })
                     );
 
-                    let sugg = if !snip_is_macro
-                        && needs_paren
-                        && !has_enclosing_paren(&snip)
-                        && !is_in_tuple
-                    {
+                    let sugg = if !snip_is_macro && needs_paren && !has_enclosing_paren(&snip) && !is_in_tuple {
                         format!("({snip})")
                     } else {
                         snip.into()
@@ -1130,17 +1136,20 @@ impl<'tcx> Dereferencing<'tcx> {
         if let Some(outer_pat) = self.ref_locals.get_mut(&local) {
             if let Some(pat) = outer_pat {
                 // Check for auto-deref
-                if !matches!(cx.typeck_results().expr_adjustments(e), [
-                    Adjustment {
-                        kind: Adjust::Deref(_),
+                if !matches!(
+                    cx.typeck_results().expr_adjustments(e),
+                    [
+                        Adjustment {
+                            kind: Adjust::Deref(_),
+                            ..
+                        },
+                        Adjustment {
+                            kind: Adjust::Deref(_),
+                            ..
+                        },
                         ..
-                    },
-                    Adjustment {
-                        kind: Adjust::Deref(_),
-                        ..
-                    },
-                    ..
-                ]) {
+                    ]
+                ) {
                     match get_parent_expr(cx, e) {
                         // Field accesses are the same no matter the number of references.
                         Some(Expr {

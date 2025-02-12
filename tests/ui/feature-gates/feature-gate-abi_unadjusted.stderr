@@ -1,4 +1,4 @@
-error[E0658]: unadjusted ABI is an implementation detail and perma-unstable
+error[E0658]: the extern "unadjusted" ABI is an implementation detail and perma-unstable
   --> $DIR/feature-gate-abi_unadjusted.rs:1:8
    |
 LL | extern "unadjusted" fn foo() {

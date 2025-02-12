@@ -1,4 +1,6 @@
-FROM ubuntu:22.04
+# We use the ghcr base image because ghcr doesn't have a rate limit
+# and the mingw-check-tidy job doesn't cache docker images in CI.
+FROM ghcr.io/rust-lang/ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -35,4 +37,4 @@ COPY host-x86_64/mingw-check/validate-error-codes.sh /scripts/
 # NOTE: intentionally uses python2 for x.py so we can test it still works.
 # validate-toolstate only runs in our CI, so it's ok for it to only support python3.
 ENV SCRIPT TIDY_PRINT_DIFF=1 python2.7 ../x.py test \
-           --stage 0 src/tools/tidy tidyselftest --extra-checks=py:lint,cpp:fmt
+           --stage 0 src/tools/tidy tidyselftest --extra-checks=py,cpp

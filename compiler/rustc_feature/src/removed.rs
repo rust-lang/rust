@@ -1,6 +1,6 @@
 //! List of the removed feature gates.
 
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use super::{Feature, to_nonzero};
 
@@ -14,7 +14,7 @@ macro_rules! declare_features {
         $(#[doc = $doc:tt])* (removed, $feature:ident, $ver:expr, $issue:expr, $reason:expr),
     )+) => {
         /// Formerly unstable features that have now been removed.
-        pub const REMOVED_LANG_FEATURES: &[RemovedFeature] = &[
+        pub static REMOVED_LANG_FEATURES: &[RemovedFeature] = &[
             $(RemovedFeature {
                 feature: Feature {
                     name: sym::$feature,
@@ -120,7 +120,7 @@ declare_features! (
     /// Allows defining generators.
     (removed, generators, "1.21.0", Some(43122), Some("renamed to `coroutines`")),
     /// An extension to the `generic_associated_types` feature, allowing incomplete features.
-    (removed, generic_associated_types_extended, "CURRENT_RUSTC_VERSION", Some(95451),
+    (removed, generic_associated_types_extended, "1.85.0", Some(95451),
         Some(
             "feature needs overhaul and reimplementation pending \
             better implied higher-ranked implied bounds support"
@@ -163,7 +163,7 @@ declare_features! (
     /// then removed. But there was no utility storing it separately, so now
     /// it's in this list.
     (removed, no_stack_check, "1.0.0", None, None),
-    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn-compatible (object safe).
+    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn compatible (object safe).
     /// Renamed to `dyn_compatible_for_dispatch`.
     (removed, object_safe_for_dispatch, "1.83.0", Some(43561),
      Some("renamed to `dyn_compatible_for_dispatch`")),
@@ -220,8 +220,9 @@ declare_features! (
     (removed, rustc_diagnostic_macros, "1.38.0", None, None),
     /// Allows identifying crates that contain sanitizer runtimes.
     (removed, sanitizer_runtime, "1.17.0", None, None),
-    (removed, simd, "1.0.0", Some(27731),
-     Some("removed in favor of `#[repr(simd)]`")),
+    (removed, simd, "1.0.0", Some(27731), Some("removed in favor of `#[repr(simd)]`")),
+    /// Allows using `#[start]` on a function indicating that it is the program entrypoint.
+    (removed, start, "1.0.0", Some(29633), Some("not portable enough and never RFC'd")),
     /// Allows `#[link(kind = "static-nobundle", ...)]`.
     (removed, static_nobundle, "1.16.0", Some(37403),
      Some(r#"subsumed by `#[link(kind = "static", modifiers = "-bundle", ...)]`"#)),
