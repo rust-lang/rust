@@ -21,7 +21,6 @@ where
     LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn clone(&self) -> Self {
         *self
     }
@@ -252,7 +251,6 @@ where
 {
     type Output = Self;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitand(self, rhs: Self) -> Self {
         // Safety: `self` is an integer vector
         unsafe { Self(core::intrinsics::simd::simd_and(self.0, rhs.0)) }
@@ -266,7 +264,6 @@ where
 {
     type Output = Self;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitor(self, rhs: Self) -> Self {
         // Safety: `self` is an integer vector
         unsafe { Self(core::intrinsics::simd::simd_or(self.0, rhs.0)) }
@@ -280,7 +277,6 @@ where
 {
     type Output = Self;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitxor(self, rhs: Self) -> Self {
         // Safety: `self` is an integer vector
         unsafe { Self(core::intrinsics::simd::simd_xor(self.0, rhs.0)) }
@@ -294,7 +290,6 @@ where
 {
     type Output = Self;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn not(self) -> Self::Output {
         Self::splat(true) ^ self
     }
