@@ -1712,6 +1712,7 @@ symbols! {
         rust_cold_cc,
         rust_eh_catch_typeinfo,
         rust_eh_personality,
+        rust_future,
         rust_logo,
         rust_out,
         rustc,
