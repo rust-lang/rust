@@ -1,11 +1,14 @@
 // Make sure not to construct predicates with escaping bound vars in `diagnostic_hir_wf_check`.
 // Regression test for <https://github.com/rust-lang/rust/issues/139330>.
 
+#![feature(sized_hierarchy)]
 #![feature(non_lifetime_binders)]
 //~^ WARN the feature `non_lifetime_binders` is incomplete
 
-trait A<T: ?Sized> {}
-impl<T: ?Sized> A<T> for () {}
+use std::marker::PointeeSized;
+
+trait A<T: PointeeSized> {}
+impl<T: PointeeSized> A<T> for () {}
 
 trait B {}
 struct W<T: B>(T);
