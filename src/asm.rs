@@ -36,7 +36,8 @@ use crate::type_of::LayoutGccExt;
 //
 // 3. Clobbers. GCC has a separate list of clobbers, and clobbers don't have indexes.
 //    Contrary, Rust expresses clobbers through "out" operands that aren't tied to
-//    a variable (`_`),  and such "clobbers" do have index.
+//    a variable (`_`),  and such "clobbers" do have index. Input operands cannot also
+//    be clobbered.
 //
 // 4. Furthermore, GCC Extended Asm does not support explicit register constraints
 //    (like `out("eax")`) directly, offering so-called "local register variables"
@@ -161,6 +162,16 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         // Also, we don't emit any asm operands immediately; we save them to
         // the one of the buffers to be emitted later.
 
+        let mut input_registers = vec![];
+
+        for op in rust_operands {
+            if let InlineAsmOperandRef::In { reg, .. } = *op {
+                if let ConstraintOrRegister::Register(reg_name) = reg_to_gcc(reg) {
+                    input_registers.push(reg_name);
+                }
+            }
+        }
+
         // 1. Normal variables (and saving operands to buffers).
         for (rust_idx, op) in rust_operands.iter().enumerate() {
             match *op {
@@ -183,25 +194,39 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             continue;
                         }
                         (Register(reg_name), None) => {
-                            // `clobber_abi` can add lots of clobbers that are not supported by the target,
-                            // such as AVX-512 registers, so we just ignore unsupported registers
-                            let is_target_supported =
-                                reg.reg_class().supported_types(asm_arch, true).iter().any(
-                                    |&(_, feature)| {
-                                        if let Some(feature) = feature {
-                                            self.tcx
-                                                .asm_target_features(instance.def_id())
-                                                .contains(&feature)
-                                        } else {
-                                            true // Register class is unconditionally supported
-                                        }
-                                    },
-                                );
+                            if input_registers.contains(&reg_name) {
+                                // the `clobber_abi` operand is converted into a series of
+                                // `lateout("reg") _` operands. Of course, a user could also
+                                // explicitly define such an output operand.
+                                //
+                                // GCC does not allow input registers to be clobbered, so if this out register
+                                // is also used as an in register, do not add it to the clobbers list.
+                                // it will be treated as a lateout register with `out_place: None`
+                                if !late {
+                                    bug!("input registers can only be used as lateout regisers");
+                                }
+                                ("r", dummy_output_type(self.cx, reg.reg_class()))
+                            } else {
+                                // `clobber_abi` can add lots of clobbers that are not supported by the target,
+                                // such as AVX-512 registers, so we just ignore unsupported registers
+                                let is_target_supported =
+                                    reg.reg_class().supported_types(asm_arch, true).iter().any(
+                                        |&(_, feature)| {
+                                            if let Some(feature) = feature {
+                                                self.tcx
+                                                    .asm_target_features(instance.def_id())
+                                                    .contains(&feature)
+                                            } else {
+                                                true // Register class is unconditionally supported
+                                            }
+                                        },
+                                    );
 
-                            if is_target_supported && !clobbers.contains(&reg_name) {
-                                clobbers.push(reg_name);
+                                if is_target_supported && !clobbers.contains(&reg_name) {
+                                    clobbers.push(reg_name);
+                                }
+                                continue;
                             }
-                            continue;
                         }
                     };
 
@@ -230,13 +255,10 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 }
 
                 InlineAsmOperandRef::InOut { reg, late, in_value, out_place } => {
-                    let constraint =
-                        if let ConstraintOrRegister::Constraint(constraint) = reg_to_gcc(reg) {
-                            constraint
-                        } else {
-                            // left for the next pass
-                            continue;
-                        };
+                    let ConstraintOrRegister::Constraint(constraint) = reg_to_gcc(reg) else {
+                        // left for the next pass
+                        continue;
+                    };
 
                     // Rustc frontend guarantees that input and output types are "compatible",
                     // so we can just use input var's type for the output variable.
