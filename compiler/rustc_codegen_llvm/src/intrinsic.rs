@@ -824,7 +824,7 @@ fn codegen_msvc_try<'ll>(
         if bx.cx.tcx.sess.target.supports_comdat() {
             llvm::SetUniqueComdat(bx.llmod, tydesc);
         }
-        unsafe { llvm::LLVMSetInitializer(tydesc, type_info) };
+        llvm::set_initializer(tydesc, type_info);
 
         // The flag value of 8 indicates that we are catching the exception by
         // reference instead of by value. We can't use catch by value because

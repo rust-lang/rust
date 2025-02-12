@@ -5,7 +5,7 @@
 //@ normalize-stderr: "(error: internal compiler error: [^:]+):\d+:\d+: " -> "$1:LL:CC: "
 //@ rustc-env:RUST_BACKTRACE=0
 
-#![feature(pattern_types, pattern_type_macro)]
+#![feature(pattern_types, pattern_type_macro, generic_const_exprs)]
 #![allow(internal_features)]
 
 type Pat<const START: u32, const END: u32> =

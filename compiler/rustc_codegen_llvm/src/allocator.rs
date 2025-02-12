@@ -81,13 +81,13 @@ pub(crate) unsafe fn codegen(
         llvm::set_visibility(ll_g, llvm::Visibility::from_generic(tcx.sess.default_visibility()));
         let val = tcx.sess.opts.unstable_opts.oom.should_panic();
         let llval = llvm::LLVMConstInt(i8, val as u64, False);
-        llvm::LLVMSetInitializer(ll_g, llval);
+        llvm::set_initializer(ll_g, llval);
 
         let name = NO_ALLOC_SHIM_IS_UNSTABLE;
         let ll_g = llvm::LLVMRustGetOrInsertGlobal(llmod, name.as_c_char_ptr(), name.len(), i8);
         llvm::set_visibility(ll_g, llvm::Visibility::from_generic(tcx.sess.default_visibility()));
         let llval = llvm::LLVMConstInt(i8, 0, False);
-        llvm::LLVMSetInitializer(ll_g, llval);
+        llvm::set_initializer(ll_g, llval);
     }
 
     if tcx.sess.opts.debuginfo != DebugInfo::None {

@@ -6,8 +6,8 @@ LL |         .or_else(|err| {
    |
 help: try giving this closure an explicit return type
    |
-LL |         .or_else(|err| -> Result<Child, F> {
-   |                        +++++++++++++++++++
+LL |         .or_else(|err| -> Result<_, F> {
+   |                        +++++++++++++++
 
 error: aborting due to 1 previous error
 
