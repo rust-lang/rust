@@ -1,7 +1,7 @@
 //@ check-pass
 #![feature(extern_types, sized_hierarchy)]
 
-use std::marker::{MetaSized, PointeeSized};
+use std::marker::PointeeSized;
 
 pub fn hash<T: PointeeSized>(_: *const T) {
     unimplemented!();
