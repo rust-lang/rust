@@ -4,6 +4,7 @@ use clippy_utils::macros::span_is_local;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{HasSession, snippet_with_applicability};
 use clippy_utils::ty::implements_trait;
+use clippy_utils::visitors::is_local_used;
 use clippy_utils::{higher, peel_blocks_with_stmt, span_contains_comment};
 use rustc_ast::ast::LitKind;
 use rustc_ast::{RangeLimits, UnOp};
@@ -43,7 +44,7 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Block(..) = body.kind
         // Check if the body is an assignment to a slice element.
         && let ExprKind::Assign(assignee, assignval, _) = peel_blocks_with_stmt(body).kind
-        && let ExprKind::Index(slice, _, _) = assignee.kind
+        && let ExprKind::Index(slice, idx, _) = assignee.kind
         // Check if `len()` is used for the range end.
         && let ExprKind::MethodCall(path, recv,..) = end.kind
         && path.ident.name == sym::len
@@ -58,6 +59,10 @@ pub(super) fn check<'tcx>(
         // The `fill` method requires that the slice's element type implements the `Clone` trait.
         && let Some(clone_trait) = cx.tcx.lang_items().clone_trait()
         && implements_trait(cx, cx.typeck_results().expr_ty(slice), clone_trait, &[])
+        // https://github.com/rust-lang/rust-clippy/issues/14192
+        && let ExprKind::Path(Resolved(_, idx_path)) = idx.kind
+        && let Res::Local(idx_hir) = idx_path.res
+        && !is_local_used(cx, assignval, idx_hir)
     {
         sugg(cx, body, expr, slice.span, assignval.span);
     }
