@@ -5,7 +5,7 @@ use rustc_abi::{BackendRepr, TagEncoding, VariantIdx, Variants, WrappingRange};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
 use rustc_hir::intravisit::VisitorExt;
-use rustc_hir::{AmbigArg, Expr, ExprKind, HirId, LangItem};
+use rustc_hir::{AmbigArg, Expr, ExprKind, HirId, LangItem, RangeEnd};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
 use rustc_middle::ty::{
@@ -893,12 +893,9 @@ fn ty_is_known_nonnull<'tcx>(
                                         let end =
                                             end.try_to_value()?.try_to_bits(tcx, typing_env)?;
 
-                                        if include_end {
-                                            // This also works for negative numbers, as we just need
-                                            // to ensure we aren't wrapping over zero.
-                                            start > 0 && end >= start
-                                        } else {
-                                            start > 0 && end > start
+                                        match include_end {
+                                            RangeEnd::Included => start > 0 && end >= start,
+                                            RangeEnd::Excluded => start > 0 && end > start,
                                         }
                                     }
                                     _ => false,
