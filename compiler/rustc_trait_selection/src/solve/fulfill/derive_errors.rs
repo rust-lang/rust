@@ -7,7 +7,7 @@ use rustc_infer::traits::{
     PredicateObligation, SelectionError,
 };
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_next_trait_solver::solve::{GenerateProofTree, SolverDelegateEvalExt as _};
 use rustc_type_ir::solve::{Goal, NoSolution};
@@ -139,6 +139,7 @@ pub(super) fn fulfillment_error_for_overflow<'tcx>(
     }
 }
 
+#[instrument(level = "debug", skip(infcx), ret)]
 fn find_best_leaf_obligation<'tcx>(
     infcx: &InferCtxt<'tcx>,
     obligation: &PredicateObligation<'tcx>,
@@ -197,6 +198,9 @@ impl<'tcx> BestObligation<'tcx> {
                 candidates.retain(|candidate| candidate.result().is_ok());
             }
             false => {
+                // We always handle rigid alias candidates separately as we may not add them for
+                // aliases whose trait bound doesn't hold.
+                candidates.retain(|c| !matches!(c.kind(), inspect::ProbeKind::RigidAlias { .. }));
                 // If we have >1 candidate, one may still be due to "boring" reasons, like
                 // an alias-relate that failed to hold when deeply evaluated. We really
                 // don't care about reasons like this.
@@ -211,21 +215,10 @@ impl<'tcx> BestObligation<'tcx> {
                                             | GoalSource::AliasBoundConstCondition
                                             | GoalSource::InstantiateHigherRanked
                                             | GoalSource::AliasWellFormed
-                                    ) && match (self.consider_ambiguities, nested_goal.result()) {
-                                        (true, Ok(Certainty::Maybe(MaybeCause::Ambiguity)))
-                                        | (false, Err(_)) => true,
-                                        _ => false,
-                                    }
+                                    ) && nested_goal.result().is_err()
                                 },
                             )
                         })
-                    });
-                }
-
-                // Prefer a non-rigid candidate if there is one.
-                if candidates.len() > 1 {
-                    candidates.retain(|candidate| {
-                        !matches!(candidate.kind(), inspect::ProbeKind::RigidAlias { .. })
                     });
                 }
             }
@@ -266,6 +259,90 @@ impl<'tcx> BestObligation<'tcx> {
 
         ControlFlow::Break(self.obligation.clone())
     }
+
+    /// If a normalization of an associated item or a trait goal fails without trying any
+    /// candidates it's likely that normalizing its self type failed. We manually detect
+    /// such cases here.
+    fn detect_error_in_self_ty_normalization(
+        &mut self,
+        goal: &inspect::InspectGoal<'_, 'tcx>,
+        self_ty: Ty<'tcx>,
+    ) -> ControlFlow<PredicateObligation<'tcx>> {
+        assert!(!self.consider_ambiguities);
+        let tcx = goal.infcx().tcx;
+        if let ty::Alias(..) = self_ty.kind() {
+            let infer_term = goal.infcx().next_ty_var(self.obligation.cause.span);
+            let pred = ty::PredicateKind::AliasRelate(
+                self_ty.into(),
+                infer_term.into(),
+                ty::AliasRelationDirection::Equate,
+            );
+            let obligation =
+                Obligation::new(tcx, self.obligation.cause.clone(), goal.goal().param_env, pred);
+            self.with_derived_obligation(obligation, |this| {
+                goal.infcx().visit_proof_tree_at_depth(
+                    goal.goal().with(tcx, pred),
+                    goal.depth() + 1,
+                    this,
+                )
+            })
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    /// It is likely that `NormalizesTo` failed without any applicable candidates
+    /// because the alias is not well-formed.
+    ///
+    /// As we only enter `RigidAlias` candidates if the trait bound of the associated type
+    /// holds, we discard these candidates in `non_trivial_candidates` and always manually
+    /// check this here.
+    fn detect_non_well_formed_assoc_item(
+        &mut self,
+        goal: &inspect::InspectGoal<'_, 'tcx>,
+        alias: ty::AliasTerm<'tcx>,
+    ) -> ControlFlow<PredicateObligation<'tcx>> {
+        let tcx = goal.infcx().tcx;
+        let obligation = Obligation::new(
+            tcx,
+            self.obligation.cause.clone(),
+            goal.goal().param_env,
+            alias.trait_ref(tcx),
+        );
+        self.with_derived_obligation(obligation, |this| {
+            goal.infcx().visit_proof_tree_at_depth(
+                goal.goal().with(tcx, alias.trait_ref(tcx)),
+                goal.depth() + 1,
+                this,
+            )
+        })
+    }
+
+    /// If we have no candidates, then it's likely that there is a
+    /// non-well-formed alias in the goal.
+    fn detect_error_from_empty_candidates(
+        &mut self,
+        goal: &inspect::InspectGoal<'_, 'tcx>,
+    ) -> ControlFlow<PredicateObligation<'tcx>> {
+        let tcx = goal.infcx().tcx;
+        let pred_kind = goal.goal().predicate.kind();
+
+        match pred_kind.no_bound_vars() {
+            Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))) => {
+                self.detect_error_in_self_ty_normalization(goal, pred.self_ty())?;
+            }
+            Some(ty::PredicateKind::NormalizesTo(pred))
+                if let ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst =
+                    pred.alias.kind(tcx) =>
+            {
+                self.detect_error_in_self_ty_normalization(goal, pred.alias.self_ty())?;
+                self.detect_non_well_formed_assoc_item(goal, pred.alias)?;
+            }
+            Some(_) | None => {}
+        }
+
+        ControlFlow::Break(self.obligation.clone())
+    }
 }
 
 impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
@@ -277,11 +354,19 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
 
     #[instrument(level = "trace", skip(self, goal), fields(goal = ?goal.goal()))]
     fn visit_goal(&mut self, goal: &inspect::InspectGoal<'_, 'tcx>) -> Self::Result {
-        let candidates = self.non_trivial_candidates(goal);
-        trace!(candidates = ?candidates.iter().map(|c| c.kind()).collect::<Vec<_>>());
+        let tcx = goal.infcx().tcx;
+        // Skip goals that aren't the *reason* for our goal's failure.
+        match (self.consider_ambiguities, goal.result()) {
+            (true, Ok(Certainty::Maybe(MaybeCause::Ambiguity))) | (false, Err(_)) => {}
+            _ => return ControlFlow::Continue(()),
+        }
+        let pred_kind = goal.goal().predicate.kind();
 
-        let [candidate] = candidates.as_slice() else {
-            return ControlFlow::Break(self.obligation.clone());
+        let candidates = self.non_trivial_candidates(goal);
+        let candidate = match candidates.as_slice() {
+            [candidate] => candidate,
+            [] => return self.detect_error_from_empty_candidates(goal),
+            _ => return ControlFlow::Break(self.obligation.clone()),
         };
 
         // Don't walk into impls that have `do_not_recommend`.
@@ -291,13 +376,12 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         } = candidate.kind()
             && goal.infcx().tcx.do_not_recommend_impl(impl_def_id)
         {
+            trace!("#[do_not_recommend] -> exit");
             return ControlFlow::Break(self.obligation.clone());
         }
 
-        let tcx = goal.infcx().tcx;
         // FIXME: Also, what about considering >1 layer up the stack? May be necessary
         // for normalizes-to.
-        let pred_kind = goal.goal().predicate.kind();
         let child_mode = match pred_kind.skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
                 ChildMode::Trait(pred_kind.rebind(pred))
@@ -388,12 +472,6 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                 | (_, GoalSource::AliasWellFormed | GoalSource::AliasBoundConstCondition) => {
                     obligation = make_obligation(self.obligation.cause.clone());
                 }
-            }
-
-            // Skip nested goals that aren't the *reason* for our goal's failure.
-            match (self.consider_ambiguities, nested_goal.result()) {
-                (true, Ok(Certainty::Maybe(MaybeCause::Ambiguity))) | (false, Err(_)) => {}
-                _ => continue,
             }
 
             self.with_derived_obligation(obligation, |this| nested_goal.visit_with(this))?;
