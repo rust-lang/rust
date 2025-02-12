@@ -105,7 +105,6 @@ impl ToJson for crate::callconv::Conv {
             Self::CCmseNonSecureCall => "CCmseNonSecureCall",
             Self::CCmseNonSecureEntry => "CCmseNonSecureEntry",
             Self::Msp430Intr => "Msp430Intr",
-            Self::PtxKernel => "PtxKernel",
             Self::X86Fastcall => "X86Fastcall",
             Self::X86Intr => "X86Intr",
             Self::X86Stdcall => "X86Stdcall",
