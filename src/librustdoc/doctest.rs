@@ -786,6 +786,7 @@ impl IndividualTestOptions {
 /// [`clean`]: crate::clean
 /// [`run_merged_tests`]: crate::doctest::runner::DocTestRunner::run_merged_tests
 /// [`generate_unique_doctest`]: crate::doctest::make::DocTestBuilder::generate_unique_doctest
+#[derive(Debug)]
 pub(crate) struct ScrapedDocTest {
     filename: FileName,
     line: usize,
