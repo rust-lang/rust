@@ -28615,7 +28615,7 @@ pub unsafe fn _mm512_cmp_ps_mask<const IMM8: i32>(a: __m512, b: __m512) -> __mma
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let r = vcmpps(a, b, IMM8, neg_one, _MM_FROUND_CUR_DIRECTION);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -28635,7 +28635,7 @@ pub unsafe fn _mm512_mask_cmp_ps_mask<const IMM8: i32>(
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let r = vcmpps(a, b, IMM8, k1 as i16, _MM_FROUND_CUR_DIRECTION);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -28652,7 +28652,7 @@ pub unsafe fn _mm256_cmp_ps_mask<const IMM8: i32>(a: __m256, b: __m256) -> __mma
     let a = a.as_f32x8();
     let b = b.as_f32x8();
     let r = vcmpps256(a, b, IMM8, neg_one);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -28672,7 +28672,7 @@ pub unsafe fn _mm256_mask_cmp_ps_mask<const IMM8: i32>(
     let a = a.as_f32x8();
     let b = b.as_f32x8();
     let r = vcmpps256(a, b, IMM8, k1 as i8);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -28689,7 +28689,7 @@ pub unsafe fn _mm_cmp_ps_mask<const IMM8: i32>(a: __m128, b: __m128) -> __mmask8
     let a = a.as_f32x4();
     let b = b.as_f32x4();
     let r = vcmpps128(a, b, IMM8, neg_one);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -28709,7 +28709,7 @@ pub unsafe fn _mm_mask_cmp_ps_mask<const IMM8: i32>(
     let a = a.as_f32x4();
     let b = b.as_f32x4();
     let r = vcmpps128(a, b, IMM8, k1 as i8);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.\
@@ -28731,7 +28731,7 @@ pub unsafe fn _mm512_cmp_round_ps_mask<const IMM5: i32, const SAE: i32>(
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let r = vcmpps(a, b, IMM5, neg_one, SAE);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).\
@@ -28753,7 +28753,7 @@ pub unsafe fn _mm512_mask_cmp_round_ps_mask<const IMM5: i32, const SAE: i32>(
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let r = vcmpps(a, b, IMM5, m as i16, SAE);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in a and b to see if neither is NaN, and store the results in mask vector k.
@@ -28946,7 +28946,7 @@ pub unsafe fn _mm512_cmp_pd_mask<const IMM8: i32>(a: __m512d, b: __m512d) -> __m
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let r = vcmppd(a, b, IMM8, neg_one, _MM_FROUND_CUR_DIRECTION);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare packed double-precision (64-bit) floating-point elements in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -28966,7 +28966,7 @@ pub unsafe fn _mm512_mask_cmp_pd_mask<const IMM8: i32>(
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let r = vcmppd(a, b, IMM8, k1 as i8, _MM_FROUND_CUR_DIRECTION);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare packed double-precision (64-bit) floating-point elements in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -28983,7 +28983,7 @@ pub unsafe fn _mm256_cmp_pd_mask<const IMM8: i32>(a: __m256d, b: __m256d) -> __m
     let a = a.as_f64x4();
     let b = b.as_f64x4();
     let r = vcmppd256(a, b, IMM8, neg_one);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare packed double-precision (64-bit) floating-point elements in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -29003,7 +29003,7 @@ pub unsafe fn _mm256_mask_cmp_pd_mask<const IMM8: i32>(
     let a = a.as_f64x4();
     let b = b.as_f64x4();
     let r = vcmppd256(a, b, IMM8, k1 as i8);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare packed double-precision (64-bit) floating-point elements in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.
@@ -29020,7 +29020,7 @@ pub unsafe fn _mm_cmp_pd_mask<const IMM8: i32>(a: __m128d, b: __m128d) -> __mmas
     let a = a.as_f64x2();
     let b = b.as_f64x2();
     let r = vcmppd128(a, b, IMM8, neg_one);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare packed double-precision (64-bit) floating-point elements in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).
@@ -29040,7 +29040,7 @@ pub unsafe fn _mm_mask_cmp_pd_mask<const IMM8: i32>(
     let a = a.as_f64x2();
     let b = b.as_f64x2();
     let r = vcmppd128(a, b, IMM8, k1 as i8);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare packed double-precision (64-bit) floating-point elements in a and b based on the comparison operand specified by imm8, and store the results in mask vector k.\
@@ -29062,7 +29062,7 @@ pub unsafe fn _mm512_cmp_round_pd_mask<const IMM5: i32, const SAE: i32>(
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let r = vcmppd(a, b, IMM5, neg_one, SAE);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare packed double-precision (64-bit) floating-point elements in a and b based on the comparison operand specified by imm8, and store the results in mask vector k using zeromask k1 (elements are zeroed out when the corresponding mask bit is not set).\
@@ -29084,7 +29084,7 @@ pub unsafe fn _mm512_mask_cmp_round_pd_mask<const IMM5: i32, const SAE: i32>(
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let r = vcmppd(a, b, IMM5, k1 as i8, SAE);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare packed double-precision (64-bit) floating-point elements in a and b to see if neither is NaN, and store the results in mask vector k.
@@ -29143,7 +29143,7 @@ pub unsafe fn _mm_cmp_ss_mask<const IMM8: i32>(a: __m128, b: __m128) -> __mmask8
     static_assert_uimm_bits!(IMM8, 5);
     let neg_one = -1;
     let r = vcmpss(a, b, IMM8, neg_one, _MM_FROUND_CUR_DIRECTION);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare the lower single-precision (32-bit) floating-point element in a and b based on the comparison operand specified by imm8, and store the result in mask vector k using zeromask k1 (the element is zeroed out when mask bit 0 is not set).
@@ -29161,7 +29161,7 @@ pub unsafe fn _mm_mask_cmp_ss_mask<const IMM8: i32>(
 ) -> __mmask8 {
     static_assert_uimm_bits!(IMM8, 5);
     let r = vcmpss(a, b, IMM8, k1 as i8, _MM_FROUND_CUR_DIRECTION);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare the lower single-precision (32-bit) floating-point element in a and b based on the comparison operand specified by imm8, and store the result in mask vector k.\
@@ -29181,7 +29181,7 @@ pub unsafe fn _mm_cmp_round_ss_mask<const IMM5: i32, const SAE: i32>(
     static_assert_mantissas_sae!(SAE);
     let neg_one = -1;
     let r = vcmpss(a, b, IMM5, neg_one, SAE);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare the lower single-precision (32-bit) floating-point element in a and b based on the comparison operand specified by imm8, and store the result in mask vector k using zeromask k1 (the element is zeroed out when mask bit 0 is not seti).\
@@ -29201,7 +29201,7 @@ pub unsafe fn _mm_mask_cmp_round_ss_mask<const IMM5: i32, const SAE: i32>(
     static_assert_uimm_bits!(IMM5, 5);
     static_assert_mantissas_sae!(SAE);
     let r = vcmpss(a, b, IMM5, k1 as i8, SAE);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare the lower double-precision (64-bit) floating-point element in a and b based on the comparison operand specified by imm8, and store the result in mask vector k.
@@ -29216,7 +29216,7 @@ pub unsafe fn _mm_cmp_sd_mask<const IMM8: i32>(a: __m128d, b: __m128d) -> __mmas
     static_assert_uimm_bits!(IMM8, 5);
     let neg_one = -1;
     let r = vcmpsd(a, b, IMM8, neg_one, _MM_FROUND_CUR_DIRECTION);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare the lower double-precision (64-bit) floating-point element in a and b based on the comparison operand specified by imm8, and store the result in mask vector k using zeromask k1 (the element is zeroed out when mask bit 0 is not set).
@@ -29234,7 +29234,7 @@ pub unsafe fn _mm_mask_cmp_sd_mask<const IMM8: i32>(
 ) -> __mmask8 {
     static_assert_uimm_bits!(IMM8, 5);
     let r = vcmpsd(a, b, IMM8, k1 as i8, _MM_FROUND_CUR_DIRECTION);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare the lower double-precision (64-bit) floating-point element in a and b based on the comparison operand specified by imm8, and store the result in mask vector k.\
@@ -29254,7 +29254,7 @@ pub unsafe fn _mm_cmp_round_sd_mask<const IMM5: i32, const SAE: i32>(
     static_assert_mantissas_sae!(SAE);
     let neg_one = -1;
     let r = vcmpsd(a, b, IMM5, neg_one, SAE);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare the lower double-precision (64-bit) floating-point element in a and b based on the comparison operand specified by imm8, and store the result in mask vector k using zeromask k1 (the element is zeroed out when mask bit 0 is not set).\
@@ -29274,7 +29274,7 @@ pub unsafe fn _mm_mask_cmp_round_sd_mask<const IMM5: i32, const SAE: i32>(
     static_assert_uimm_bits!(IMM5, 5);
     static_assert_mantissas_sae!(SAE);
     let r = vcmpsd(a, b, IMM5, k1 as i8, SAE);
-    transmute(r)
+    r.cast_unsigned()
 }
 
 /// Compare packed unsigned 32-bit integers in a and b for less-than, and store the results in mask vector k.
