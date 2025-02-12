@@ -292,7 +292,7 @@ fn make_count<'hir>(
                 hir::LangItem::FormatCount,
                 sym::Is,
             ));
-            let value = ctx.arena.alloc_from_iter([ctx.expr_usize(sp, *n)]);
+            let value = ctx.arena.alloc_from_iter([ctx.expr_u16(sp, *n)]);
             ctx.expr_call_mut(sp, count_is, value)
         }
         Some(FormatCount::Argument(arg)) => {
