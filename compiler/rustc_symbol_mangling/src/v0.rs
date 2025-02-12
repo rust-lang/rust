@@ -417,7 +417,10 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                     let consts = [
                         start.unwrap_or(self.tcx.consts.unit),
                         end.unwrap_or(self.tcx.consts.unit),
-                        ty::Const::from_bool(self.tcx, include_end),
+                        ty::Const::from_bool(
+                            self.tcx,
+                            matches!(include_end, rustc_hir::RangeEnd::Included),
+                        ),
                     ];
                     // HACK: Represent as tuple until we have something better.
                     // HACK: constants are used in arrays, even if the types don't match.

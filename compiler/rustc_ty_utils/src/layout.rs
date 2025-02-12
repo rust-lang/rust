@@ -218,8 +218,9 @@ fn layout_of_uncached<'tcx>(
                             let mut end = extract_const_value(cx, ty, end)?
                                 .try_to_bits(tcx, cx.typing_env)
                                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
-                            if !include_end {
-                                end = end.wrapping_sub(1);
+                            match include_end {
+                                rustc_hir::RangeEnd::Included => {}
+                                rustc_hir::RangeEnd::Excluded => end = end.wrapping_sub(1),
                             }
                             scalar.valid_range_mut().end = end;
                         }
