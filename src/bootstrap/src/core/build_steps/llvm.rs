@@ -471,6 +471,10 @@ impl Step for Llvm {
             cfg.define("LLVM_BUILD_32_BITS", "ON");
         }
 
+        if target.starts_with("x86_64") && target.contains("ohos") {
+            cfg.define("LLVM_TOOL_LLVM_RTDYLD_BUILD", "OFF");
+        }
+
         let mut enabled_llvm_projects = Vec::new();
 
         if helpers::forcing_clang_based_tests() {
