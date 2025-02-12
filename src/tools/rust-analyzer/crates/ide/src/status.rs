@@ -68,6 +68,7 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
                 dependencies,
                 origin,
                 is_proc_macro,
+                proc_macro_cwd,
             } = &crate_graph[crate_id];
             format_to!(
                 buf,
@@ -85,6 +86,7 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
             format_to!(buf, "    Env: {:?}\n", env);
             format_to!(buf, "    Origin: {:?}\n", origin);
             format_to!(buf, "    Is a proc macro crate: {}\n", is_proc_macro);
+            format_to!(buf, "    Proc macro cwd: {:?}\n", proc_macro_cwd);
             let deps = dependencies
                 .iter()
                 .map(|dep| format!("{}={}", dep.name, dep.crate_id.into_raw()))

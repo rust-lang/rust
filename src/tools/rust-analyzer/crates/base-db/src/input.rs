@@ -296,6 +296,9 @@ pub struct CrateData {
     pub dependencies: Vec<Dependency>,
     pub origin: CrateOrigin,
     pub is_proc_macro: bool,
+    /// The working directory to run proc-macros in. This is the workspace root of the cargo workspace
+    /// for workspace members, the crate manifest dir otherwise.
+    pub proc_macro_cwd: Option<AbsPathBuf>,
 }
 
 #[derive(Default, Clone, PartialEq, Eq)]
@@ -360,8 +363,9 @@ impl CrateGraph {
         cfg_options: Arc<CfgOptions>,
         potential_cfg_options: Option<Arc<CfgOptions>>,
         mut env: Env,
-        is_proc_macro: bool,
         origin: CrateOrigin,
+        is_proc_macro: bool,
+        proc_macro_cwd: Option<AbsPathBuf>,
     ) -> CrateId {
         env.entries.shrink_to_fit();
         let data = CrateData {
@@ -375,6 +379,7 @@ impl CrateGraph {
             dependencies: Vec::new(),
             origin,
             is_proc_macro,
+            proc_macro_cwd,
         };
         self.arena.alloc(data)
     }
@@ -698,8 +703,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         let crate2 = graph.add_crate_root(
             FileId::from_raw(2u32),
@@ -709,8 +715,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         let crate3 = graph.add_crate_root(
             FileId::from_raw(3u32),
@@ -720,8 +727,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2,))
@@ -745,8 +753,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         let crate2 = graph.add_crate_root(
             FileId::from_raw(2u32),
@@ -756,8 +765,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2,))
@@ -778,8 +788,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         let crate2 = graph.add_crate_root(
             FileId::from_raw(2u32),
@@ -789,8 +800,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         let crate3 = graph.add_crate_root(
             FileId::from_raw(3u32),
@@ -800,8 +812,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2,))
@@ -822,8 +835,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         let crate2 = graph.add_crate_root(
             FileId::from_raw(2u32),
@@ -833,8 +847,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         assert!(graph
             .add_dep(

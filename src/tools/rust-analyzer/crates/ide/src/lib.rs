@@ -252,14 +252,14 @@ impl Analysis {
             Arc::new(cfg_options),
             None,
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         change.change_file(file_id, Some(text));
         let ws_data = crate_graph
             .iter()
             .zip(iter::repeat(Arc::new(CrateWorkspaceData {
-                proc_macro_cwd: None,
                 data_layout: Err("fixture has no layout".into()),
                 toolchain: None,
             })))

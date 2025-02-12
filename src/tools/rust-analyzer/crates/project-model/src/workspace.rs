@@ -958,6 +958,7 @@ fn project_json_to_crate_graph(
                     is_proc_macro,
                     repository,
                     is_workspace_member,
+                    proc_macro_cwd,
                     ..
                 },
                 file_id,
@@ -1005,7 +1006,6 @@ fn project_json_to_crate_graph(
                     Arc::new(cfg_options),
                     None,
                     env,
-                    *is_proc_macro,
                     if let Some(name) = display_name.clone() {
                         CrateOrigin::Local {
                             repo: repository.clone(),
@@ -1014,6 +1014,8 @@ fn project_json_to_crate_graph(
                     } else {
                         CrateOrigin::Local { repo: None, name: None }
                     },
+                    *is_proc_macro,
+                    proc_macro_cwd.clone(),
                 );
                 debug!(
                     ?crate_graph_crate_id,
@@ -1283,11 +1285,12 @@ fn detached_file_to_crate_graph(
         cfg_options.clone(),
         None,
         Env::default(),
-        false,
         CrateOrigin::Local {
             repo: None,
             name: display_name.map(|n| n.canonical_name().to_owned()),
         },
+        false,
+        None,
     );
 
     public_deps.add_to_crate_graph(&mut crate_graph, detached_file_crate);
@@ -1448,8 +1451,13 @@ fn add_target_crate_root(
         Arc::new(cfg_options),
         potential_cfg_options.map(Arc::new),
         env,
-        matches!(kind, TargetKind::Lib { is_proc_macro: true }),
         origin,
+        matches!(kind, TargetKind::Lib { is_proc_macro: true }),
+        Some(if pkg.is_member {
+            cargo.workspace_root().to_path_buf()
+        } else {
+            pkg.manifest.parent().to_path_buf()
+        }),
     );
     if let TargetKind::Lib { is_proc_macro: true } = kind {
         let proc_macro = match build_data {
@@ -1587,8 +1595,9 @@ fn sysroot_to_crate_graph(
                         cfg_options.clone(),
                         None,
                         Env::default(),
-                        false,
                         CrateOrigin::Lang(LangCrateOrigin::from(&*stitched[krate].name)),
+                        false,
+                        None,
                     );
                     Some((krate, crate_id))
                 })

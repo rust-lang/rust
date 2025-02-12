@@ -456,7 +456,6 @@ fn load_crate_graph(
     let ws_data = crate_graph
         .iter()
         .zip(iter::repeat(From::from(CrateWorkspaceData {
-            proc_macro_cwd: None,
             data_layout: target_layout.clone(),
             toolchain: toolchain.clone(),
         })))
