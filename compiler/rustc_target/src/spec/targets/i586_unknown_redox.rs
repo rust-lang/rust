@@ -10,7 +10,7 @@ pub(crate) fn target() -> Target {
     base.stack_probes = StackProbeType::Call;
 
     Target {
-        llvm_target: "i686-unknown-redox".into(),
+        llvm_target: "i586-unknown-redox".into(),
         metadata: crate::spec::TargetMetadata {
             description: None,
             tier: None,
