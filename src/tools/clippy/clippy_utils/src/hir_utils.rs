@@ -26,6 +26,7 @@ type SpanlessEqCallback<'a> = dyn FnMut(&Expr<'_>, &Expr<'_>) -> bool + 'a;
 
 /// Determines how paths are hashed and compared for equality.
 #[derive(Copy, Clone, Debug, Default)]
+#[allow(dead_code)]
 pub enum PathCheck {
     /// Paths must match exactly and are hashed by their exact HIR tree.
     ///
