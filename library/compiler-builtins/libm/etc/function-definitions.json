@@ -130,8 +130,7 @@
     "copysign": {
         "sources": [
             "src/math/copysign.rs",
-            "src/math/generic/copysign.rs",
-            "src/math/support/float_traits.rs"
+            "src/math/generic/copysign.rs"
         ],
         "type": "f64"
     },
@@ -343,22 +342,19 @@
     },
     "fma": {
         "sources": [
-            "src/math/fma.rs",
-            "src/math/generic/fma.rs"
+            "src/math/fma.rs"
         ],
         "type": "f64"
     },
     "fmaf": {
         "sources": [
-            "src/math/fmaf.rs",
-            "src/math/generic/fma.rs"
+            "src/math/fma_wide.rs"
         ],
         "type": "f32"
     },
     "fmaf128": {
         "sources": [
-            "src/math/fmaf128.rs",
-            "src/math/generic/fma.rs"
+            "src/math/fma.rs"
         ],
         "type": "f128"
     },

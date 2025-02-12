@@ -160,8 +160,10 @@ pub trait Float:
     fn abs(self) -> Self;
 
     /// Returns a number composed of the magnitude of self and the sign of sign.
-    #[allow(dead_code)]
     fn copysign(self, other: Self) -> Self;
+
+    /// Fused multiply add, rounding once.
+    fn fma(self, y: Self, z: Self) -> Self;
 
     /// Returns (normalized exponent, normalized significand)
     #[allow(dead_code)]
@@ -184,7 +186,9 @@ macro_rules! float_impl {
         $sity:ident,
         $bits:expr,
         $significand_bits:expr,
-        $from_bits:path
+        $from_bits:path,
+        $fma_fn:ident,
+        $fma_intrinsic:ident
     ) => {
         impl Float for $ty {
             type Int = $ity;
@@ -252,6 +256,16 @@ macro_rules! float_impl {
                     }
                 }
             }
+            fn fma(self, y: Self, z: Self) -> Self {
+                cfg_if! {
+                    // fma is not yet available in `core`
+                    if #[cfg(intrinsics_enabled)] {
+                        unsafe{ core::intrinsics::$fma_intrinsic(self, y, z) }
+                    } else {
+                        super::super::$fma_fn(self, y, z)
+                    }
+                }
+            }
             fn normalize(significand: Self::Int) -> (i32, Self::Int) {
                 let shift = significand.leading_zeros().wrapping_sub(Self::EXP_BITS);
                 (1i32.wrapping_sub(shift as i32), significand << shift as Self::Int)
@@ -261,11 +275,11 @@ macro_rules! float_impl {
 }
 
 #[cfg(f16_enabled)]
-float_impl!(f16, u16, i16, 16, 10, f16::from_bits);
-float_impl!(f32, u32, i32, 32, 23, f32_from_bits);
-float_impl!(f64, u64, i64, 64, 52, f64_from_bits);
+float_impl!(f16, u16, i16, 16, 10, f16::from_bits, fmaf16, fmaf16);
+float_impl!(f32, u32, i32, 32, 23, f32_from_bits, fmaf, fmaf32);
+float_impl!(f64, u64, i64, 64, 52, f64_from_bits, fma, fmaf64);
 #[cfg(f128_enabled)]
-float_impl!(f128, u128, i128, 128, 112, f128::from_bits);
+float_impl!(f128, u128, i128, 128, 112, f128::from_bits, fmaf128, fmaf128);
 
 /* FIXME(msrv): vendor some things that are not const stable at our MSRV */
 

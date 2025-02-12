@@ -164,7 +164,7 @@ mod fdimf;
 mod floor;
 mod floorf;
 mod fma;
-mod fmaf;
+mod fma_wide;
 mod fmin_fmax;
 mod fminimum_fmaximum;
 mod fminimum_fmaximum_num;
@@ -271,7 +271,7 @@ pub use self::fdimf::fdimf;
 pub use self::floor::floor;
 pub use self::floorf::floorf;
 pub use self::fma::fma;
-pub use self::fmaf::fmaf;
+pub use self::fma_wide::fmaf;
 pub use self::fmin_fmax::{fmax, fmaxf, fmin, fminf};
 pub use self::fminimum_fmaximum::{fmaximum, fmaximumf, fminimum, fminimumf};
 pub use self::fminimum_fmaximum_num::{fmaximum_num, fmaximum_numf, fminimum_num, fminimum_numf};
@@ -370,6 +370,9 @@ cfg_if! {
         pub use self::sqrtf16::sqrtf16;
         pub use self::truncf16::truncf16;
         // verify-sorted-end
+
+        #[allow(unused_imports)]
+        pub(crate) use self::fma_wide::fmaf16;
     }
 }
 
@@ -381,7 +384,6 @@ cfg_if! {
         mod fabsf128;
         mod fdimf128;
         mod floorf128;
-        mod fmaf128;
         mod fmodf128;
         mod ldexpf128;
         mod roundf128;
@@ -396,7 +398,7 @@ cfg_if! {
         pub use self::fabsf128::fabsf128;
         pub use self::fdimf128::fdimf128;
         pub use self::floorf128::floorf128;
-        pub use self::fmaf128::fmaf128;
+        pub use self::fma::fmaf128;
         pub use self::fmin_fmax::{fmaxf128, fminf128};
         pub use self::fminimum_fmaximum::{fmaximumf128, fminimumf128};
         pub use self::fminimum_fmaximum_num::{fmaximum_numf128, fminimum_numf128};
