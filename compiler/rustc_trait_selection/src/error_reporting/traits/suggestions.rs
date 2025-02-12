@@ -1417,6 +1417,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
+        let self_ty = self.tcx.short_string(self_ty, err.long_ty_path());
+        let target_ty = self.tcx.short_string(target_ty, err.long_ty_path());
         err.span_suggestion(
             obligation.cause.span.shrink_to_lo(),
             format!(
@@ -1719,13 +1721,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 obligation.param_env, trait_pred.map_bound(|trait_pred| (trait_pred, ty))
             ))
         {
+            let ty = self.tcx.short_string(ty, err.long_ty_path());
+            let pred = self
+                .tcx
+                .short_string(trait_pred.print_modifiers_and_trait_path(), err.long_ty_path());
             err.span_label(
                 expr.span,
-                format!(
-                    "this expression has type `{}`, which implements `{}`",
-                    ty,
-                    trait_pred.print_modifiers_and_trait_path()
-                ),
+                format!("this expression has type `{ty}`, which implements `{pred}`"),
             );
             err.span_suggestion(
                 self.tcx.sess.source_map().end_point(stmt.span),
@@ -3818,15 +3820,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .unwrap_or(Ty::new_misc_error(tcx));
                 let span = inner_expr.span;
                 if Some(span) != err.span.primary_span() {
-                    err.span_label(
-                        span,
-                        if ty.references_error() {
-                            String::new()
-                        } else {
-                            let ty = with_forced_trimmed_paths!(self.ty_to_string(ty));
-                            format!("this tail expression is of type `{ty}`")
-                        },
-                    );
+                    let label = if ty.references_error() {
+                        String::new()
+                    } else {
+                        let ty =
+                            tcx.short_string(self.resolve_vars_if_possible(ty), err.long_ty_path());
+                        format!("this tail expression is of type `{ty}`")
+                    };
+                    err.span_label(span, label);
                     if let ty::PredicateKind::Clause(clause) = failed_pred.kind().skip_binder()
                         && let ty::ClauseKind::Trait(pred) = clause
                         && [
@@ -4227,7 +4228,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if let Some(ty) = typeck_results.expr_ty_opt(expr)
             && print_root_expr
         {
-            let ty = with_forced_trimmed_paths!(self.ty_to_string(ty));
+            let ty = tcx.short_string(self.resolve_vars_if_possible(ty), err.long_ty_path());
             // Point at the root expression
             // vec![1, 2, 3].iter().map(mapper).sum<i32>()
             // ^^^^^^^^^^^^^
@@ -4272,7 +4273,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             {
                 match (entry, prev_entry) {
                     (Some((span, (assoc, ty))), Some((_, (_, prev_ty)))) => {
-                        let ty_str = with_forced_trimmed_paths!(self.ty_to_string(ty));
+                        let ty_str = self.tcx.short_string(ty, err.long_ty_path());
 
                         let assoc = with_forced_trimmed_paths!(self.tcx.def_path_str(assoc));
                         if !self.can_eq(param_env, ty, *prev_ty) {
@@ -4296,7 +4297,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             with_forced_trimmed_paths!(format!(
                                 "`{}` is `{}` here",
                                 self.tcx.def_path_str(assoc),
-                                self.ty_to_string(ty),
+                                self.tcx.short_string(ty, err.long_ty_path()),
                             )),
                         ));
                     }

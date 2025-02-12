@@ -606,13 +606,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let Some(ty) = self.lookup_derefing(expr, oprnd, oprnd_t) {
                         oprnd_t = ty;
                     } else {
+                        let mut path = None;
+                        let ty = self.tcx.short_string(oprnd_t, &mut path);
                         let mut err = type_error_struct!(
                             self.dcx(),
                             expr.span,
                             oprnd_t,
                             E0614,
-                            "type `{oprnd_t}` cannot be dereferenced",
+                            "type `{ty}` cannot be dereferenced",
                         );
+                        *err.long_ty_path() = path;
                         let sp = tcx.sess.source_map().start_point(expr.span).with_parent(None);
                         if let Some(sp) =
                             tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp)
@@ -3286,13 +3289,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let span = field.span;
         debug!("no_such_field_err(span: {:?}, field: {:?}, expr_t: {:?})", span, field, expr_t);
 
+        let mut path = None;
+        let ty = self.tcx.short_string(expr_t, &mut path);
         let mut err = type_error_struct!(
             self.dcx(),
             span,
             expr_t,
             E0609,
-            "no field `{field}` on type `{expr_t}`",
+            "no field `{field}` on type `{ty}`",
         );
+        *err.long_ty_path() = path;
 
         // try to add a suggestion in case the field is a nested field of a field of the Adt
         let mod_id = self.tcx.parent_module(id).to_def_id();

@@ -196,15 +196,18 @@ fn make_invalid_casting_error<'a, 'tcx>(
     cast_ty: Ty<'tcx>,
     fcx: &FnCtxt<'a, 'tcx>,
 ) -> Diag<'a> {
-    type_error_struct!(
+    let mut path = None;
+    let expr = fcx.tcx.short_string(expr_ty, &mut path);
+    let cast = fcx.tcx.short_string(cast_ty, &mut path);
+    let mut err = type_error_struct!(
         fcx.dcx(),
         span,
         expr_ty,
         E0606,
-        "casting `{}` as `{}` is invalid",
-        fcx.ty_to_string(expr_ty),
-        fcx.ty_to_string(cast_ty)
-    )
+        "casting `{expr}` as `{cast}` is invalid",
+    );
+    *err.long_ty_path() = path;
+    err
 }
 
 /// If a cast from `from_ty` to `to_ty` is valid, returns a `Some` containing the kind
@@ -259,6 +262,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn report_cast_error(&self, fcx: &FnCtxt<'a, 'tcx>, e: CastError<'tcx>) {
+        let mut path = None;
         match e {
             CastError::ErrorGuaranteed(_) => {
                 // an error has already been reported
@@ -369,27 +373,26 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 fcx.dcx().emit_err(errors::CannotCastToBool { span: self.span, expr_ty, help });
             }
             CastError::CastToChar => {
+                let expr = fcx.tcx.short_string(self.expr_ty, &mut path);
                 let mut err = type_error_struct!(
                     fcx.dcx(),
                     self.span,
                     self.expr_ty,
                     E0604,
-                    "only `u8` can be cast as `char`, not `{}`",
-                    self.expr_ty
+                    "only `u8` can be cast as `char`, not `{expr}`",
                 );
+                *err.long_ty_path() = path;
                 err.span_label(self.span, "invalid cast");
                 if self.expr_ty.is_numeric() {
                     if self.expr_ty == fcx.tcx.types.u32 {
-                        match fcx.tcx.sess.source_map().span_to_snippet(self.expr.span) {
-                            Ok(snippet) => err.span_suggestion(
-                                self.span,
-                                "try `char::from_u32` instead",
-                                format!("char::from_u32({snippet})"),
-                                Applicability::MachineApplicable,
-                            ),
-
-                            Err(_) => err.span_help(self.span, "try `char::from_u32` instead"),
-                        };
+                        err.multipart_suggestion_verbose(
+                            "try `char::from_u32` instead",
+                            vec![
+                                (self.span.shrink_to_lo(), "char::from_u32(".to_string()),
+                                (self.span.with_lo(self.expr.span.hi()), ")".to_string()),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
                     } else if self.expr_ty == fcx.tcx.types.i8 {
                         err.span_help(self.span, "try casting from `u8` instead");
                     } else {
@@ -399,15 +402,16 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::NonScalar => {
+                let expr = fcx.tcx.short_string(self.expr_ty, &mut path);
+                let cast = fcx.tcx.short_string(self.cast_ty, &mut path);
                 let mut err = type_error_struct!(
                     fcx.dcx(),
                     self.span,
                     self.expr_ty,
                     E0605,
-                    "non-primitive cast: `{}` as `{}`",
-                    self.expr_ty,
-                    fcx.ty_to_string(self.cast_ty)
+                    "non-primitive cast: `{expr}` as `{cast}`",
                 );
+                *err.long_ty_path() = path;
                 let mut sugg = None;
                 let mut sugg_mutref = false;
                 if let ty::Ref(reg, cast_ty, mutbl) = *self.cast_ty.kind() {
@@ -548,21 +552,26 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::SizedUnsizedCast => {
-                fcx.dcx().emit_err(errors::CastThinPointerToWidePointer {
+                let expr_ty = fcx.tcx.short_string(self.expr_ty, &mut path);
+                let cast_ty = fcx.tcx.short_string(self.cast_ty, &mut path);
+                let mut err = fcx.dcx().create_err(errors::CastThinPointerToWidePointer {
                     span: self.span,
-                    expr_ty: self.expr_ty,
-                    cast_ty: fcx.ty_to_string(self.cast_ty),
+                    expr_ty,
+                    cast_ty,
                     teach: fcx.tcx.sess.teach(E0607),
                 });
+                *err.long_ty_path() = path;
+                err.emit();
             }
             CastError::IntToWideCast(known_metadata) => {
                 let expr_if_nightly = fcx.tcx.sess.is_nightly_build().then_some(self.expr_span);
-                let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-                let expr_ty = fcx.ty_to_string(self.expr_ty);
+                let expr_ty = fcx.tcx.short_string(self.expr_ty, &mut path);
+                let cast_ty =
+                    fcx.tcx.short_string(fcx.resolve_vars_if_possible(self.cast_ty), &mut path);
                 let metadata = known_metadata.unwrap_or("type-specific metadata");
                 let known_wide = known_metadata.is_some();
                 let span = self.cast_span;
-                fcx.dcx().emit_err(errors::IntToWide {
+                let mut err = fcx.dcx().create_err(errors::IntToWide {
                     span,
                     metadata,
                     expr_ty,
@@ -570,6 +579,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     expr_if_nightly,
                     known_wide,
                 });
+                *err.long_ty_path() = path;
+                err.emit();
             }
             CastError::UnknownCastPtrKind | CastError::UnknownExprPtrKind => {
                 let unknown_cast_to = match e {
@@ -605,16 +616,18 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             return err;
         }
 
-        let tstr = fcx.ty_to_string(self.cast_ty);
+        let mut path = None;
+        let tstr = fcx.tcx.short_string(self.cast_ty, &mut path);
+        let expr_ty = fcx.tcx.short_string(fcx.resolve_vars_if_possible(self.expr_ty), &mut path);
+
         let mut err = type_error_struct!(
             fcx.dcx(),
             self.span,
             self.expr_ty,
             E0620,
-            "cast to unsized type: `{}` as `{}`",
-            fcx.resolve_vars_if_possible(self.expr_ty),
-            tstr
+            "cast to unsized type: `{expr_ty}` as `{tstr}`",
         );
+        *err.long_ty_path() = path;
         match self.expr_ty.kind() {
             ty::Ref(_, _, mt) => {
                 let mtstr = mt.prefix_str();
@@ -1164,18 +1177,17 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             if let Some((deref_ty, _)) = derefed {
                 // Give a note about what the expr derefs to.
                 if deref_ty != self.expr_ty.peel_refs() {
-                    err.subdiagnostic(errors::DerefImplsIsEmpty {
-                        span: self.expr_span,
-                        deref_ty: fcx.ty_to_string(deref_ty),
-                    });
+                    let deref_ty = fcx.tcx.short_string(deref_ty, err.long_ty_path());
+                    err.subdiagnostic(errors::DerefImplsIsEmpty { span: self.expr_span, deref_ty });
                 }
 
+                let expr_ty = fcx.tcx.short_string(self.expr_ty, err.long_ty_path());
                 // Create a multipart suggestion: add `!` and `.is_empty()` in
                 // place of the cast.
                 err.subdiagnostic(errors::UseIsEmpty {
                     lo: self.expr_span.shrink_to_lo(),
                     hi: self.span.with_lo(self.expr_span.hi()),
-                    expr_ty: fcx.ty_to_string(self.expr_ty),
+                    expr_ty,
                 });
             }
         }

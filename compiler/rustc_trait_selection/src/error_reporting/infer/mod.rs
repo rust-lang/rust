@@ -137,7 +137,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let actual_ty = self.resolve_vars_if_possible(actual_ty);
         debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
 
-        let mut err = mk_diag(self.ty_to_string(actual_ty));
+        let mut path = None;
+        let ty = self.tcx.short_string(actual_ty, &mut path);
+        let mut err = mk_diag(ty);
+        *err.long_ty_path() = path;
 
         // Don't report an error if actual type is `Error`.
         if actual_ty.references_error() {

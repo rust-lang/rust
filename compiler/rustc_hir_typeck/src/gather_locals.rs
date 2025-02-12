@@ -114,7 +114,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
         debug!(
             "local variable {:?} is assigned type {}",
             decl.pat,
-            self.fcx.ty_to_string(*self.fcx.locals.borrow().get(&decl.hir_id).unwrap())
+            *self.fcx.locals.borrow().get(&decl.hir_id).unwrap()
         );
     }
 }
@@ -174,7 +174,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
             debug!(
                 "pattern binding {} is assigned to {} with type {:?}",
                 ident,
-                self.fcx.ty_to_string(*self.fcx.locals.borrow().get(&p.hir_id).unwrap()),
+                *self.fcx.locals.borrow().get(&p.hir_id).unwrap(),
                 var_ty
             );
         }

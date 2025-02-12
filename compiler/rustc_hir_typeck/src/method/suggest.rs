@@ -3246,7 +3246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn ty_to_value_string(&self, ty: Ty<'tcx>) -> String {
         match ty.kind() {
             ty::Adt(def, args) => self.tcx.def_path_str_with_args(def.did(), args),
-            _ => self.ty_to_string(ty),
+            _ => self.resolve_vars_if_possible(ty).to_string(),
         }
     }
 

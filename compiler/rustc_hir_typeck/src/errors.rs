@@ -470,7 +470,7 @@ pub(crate) struct IntToWide<'tcx> {
     pub span: Span,
     pub metadata: &'tcx str,
     pub expr_ty: String,
-    pub cast_ty: Ty<'tcx>,
+    pub cast_ty: String,
     #[label(hir_typeck_int_to_fat_label_nightly)]
     pub expr_if_nightly: Option<Span>,
     pub known_wide: bool,
@@ -822,10 +822,10 @@ pub(crate) struct ReplaceWithName {
 
 #[derive(Diagnostic)]
 #[diag(hir_typeck_cast_thin_pointer_to_wide_pointer, code = E0607)]
-pub(crate) struct CastThinPointerToWidePointer<'tcx> {
+pub(crate) struct CastThinPointerToWidePointer {
     #[primary_span]
     pub span: Span,
-    pub expr_ty: Ty<'tcx>,
+    pub expr_ty: String,
     pub cast_ty: String,
     #[note(hir_typeck_teach_help)]
     pub(crate) teach: bool,

@@ -312,8 +312,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 ..
             } = use_spans
             {
+                let ty = self.infcx.tcx.short_string(deref_target_ty, err.long_ty_path());
                 err.note(format!(
-                    "{} occurs due to deref coercion to `{deref_target_ty}`",
+                    "{} occurs due to deref coercion to `{ty}`",
                     desired_action.as_noun(),
                 ));
 
@@ -1222,13 +1223,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             ),
         };
         let prefix = if !self.implements_clone(ty) {
-            let msg = format!("`{ty}` doesn't implement `Copy` or `Clone`");
+            let t = self.infcx.tcx.short_string(ty, err.long_ty_path());
+            let msg = format!("`{t}` doesn't implement `Copy` or `Clone`");
             if let ty::Adt(def, _) = ty.kind() {
                 err.span_note(self.infcx.tcx.def_span(def.did()), msg);
             } else {
                 err.note(msg);
             }
-            format!("if `{ty}` implemented `Clone`, you could ")
+            format!("if `{t}` implemented `Clone`, you could ")
         } else {
             String::new()
         };
@@ -1270,10 +1272,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let mut span: MultiSpan = ty_span.into();
             span.push_span_label(ty_span, "consider implementing `Clone` for this type");
             span.push_span_label(expr.span, "you could clone this value");
-            err.span_note(
-                span,
-                format!("if `{ty}` implemented `Clone`, you could clone the value"),
-            );
+            let t = self.infcx.tcx.short_string(ty, err.long_ty_path());
+            err.span_note(span, format!("if `{t}` implemented `Clone`, you could clone the value"));
         } else if let ty::Param(param) = ty.kind()
             && let Some(_clone_trait_def) = self.infcx.tcx.lang_items().clone_trait()
             && let generics = self.infcx.tcx.generics_of(self.mir_def_id())
@@ -1302,10 +1302,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 "consider constraining this type parameter with `Clone`",
             );
             span.push_span_label(expr.span, "you could clone this value");
-            err.span_help(
-                span,
-                format!("if `{ty}` implemented `Clone`, you could clone the value"),
-            );
+            let t = self.infcx.tcx.short_string(ty, err.long_ty_path());
+            err.span_help(span, format!("if `{t}` implemented `Clone`, you could clone the value"));
         }
     }
 
@@ -1951,11 +1949,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 && let None =
                     self.infcx.type_implements_trait_shallow(clone, inner, self.infcx.param_env)
             {
+                let rcvr_ty = self.infcx.tcx.short_string(rcvr_ty, err.long_ty_path());
+                let inner_str = self.infcx.tcx.short_string(inner, err.long_ty_path());
                 err.span_label(
                     span,
                     format!(
-                        "this call doesn't do anything, the result is still `{rcvr_ty}` \
-                             because `{inner}` doesn't implement `Clone`",
+                        "this call doesn't do anything, the result is still `{rcvr_ty}` because \
+                         `{inner_str}` doesn't implement `Clone`",
                     ),
                 );
                 types_to_constrain.insert(inner);
@@ -3067,6 +3067,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let borrow_span = borrow_spans.var_or_use();
 
         let mut err = self.cannot_borrow_across_destructor(borrow_span);
+        let dropped_ty = self.infcx.tcx.short_string(dropped_ty, err.long_ty_path());
 
         let what_was_dropped = match self.describe_place(place.as_ref()) {
             Some(name) => format!("`{name}`"),
@@ -3245,6 +3246,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                 && path.ident.name == sym::iter
                                 && let Some(ty) = expr_ty
                             {
+                                let ty = self.infcx.tcx.short_string(ty, err.long_ty_path());
                                 err.span_suggestion_verbose(
                                     path.ident.span,
                                     format!(
@@ -3799,7 +3801,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 Some(self.infcx.tcx.fn_arg_names(method_did)[0]),
             )
         {
-            err.note(format!("borrow occurs due to deref coercion to `{deref_target_ty}`"));
+            let ty = self.infcx.tcx.short_string(deref_target_ty, err.long_ty_path());
+            err.note(format!("borrow occurs due to deref coercion to `{ty}`"));
             if let Some(deref_target_span) = deref_target_span {
                 err.span_note(deref_target_span, "deref defined here");
             }

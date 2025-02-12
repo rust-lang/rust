@@ -1108,16 +1108,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let Some(pointee_ty) = self.shallow_resolve(expected).builtin_deref(true)
             && let ty::Dynamic(..) = pointee_ty.kind()
         {
+            let mut path = None;
             // This is "x = dyn SomeTrait" being reduced from
             // "let &x = &dyn SomeTrait" or "let box x = Box<dyn SomeTrait>", an error.
-            let type_str = self.ty_to_string(expected);
+            let type_str = self.tcx.short_string(expected, &mut path);
             let mut err = struct_span_code_err!(
                 self.dcx(),
                 span,
                 E0033,
-                "type `{}` cannot be dereferenced",
-                type_str
+                "type `{type_str}` cannot be dereferenced",
             );
+            *err.long_ty_path() = path;
             err.span_label(span, format!("type `{type_str}` cannot be dereferenced"));
             if self.tcx.sess.teach(err.code.unwrap()) {
                 err.note(CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ);
@@ -2712,12 +2713,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> ErrorGuaranteed {
         let PatInfo { top_info: ti, current_depth, .. } = pat_info;
 
+        let mut path = None;
+        let found = self.tcx.short_string(expected_ty, &mut path);
+
         let mut err = struct_span_code_err!(
             self.dcx(),
             span,
             E0529,
-            "expected an array or slice, found `{expected_ty}`"
+            "expected an array or slice, found `{found}`"
         );
+        *err.long_ty_path() = path;
         if let ty::Ref(_, ty, _) = expected_ty.kind()
             && let ty::Array(..) | ty::Slice(..) = ty.kind()
         {
@@ -2758,7 +2763,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
         }
-        err.span_label(span, format!("pattern cannot match with input type `{expected_ty}`"));
+        err.span_label(span, format!("pattern cannot match with input type `{found}`"));
         err.emit()
     }
 

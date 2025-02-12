@@ -1555,7 +1555,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         pick_diag_hints: &mut PickDiagHints<'_, 'tcx>,
         pick_constraints: Option<&PickConstraintsForShadowed>,
     ) -> Option<PickResult<'tcx>> {
-        debug!("pick_method(self_ty={})", self.ty_to_string(self_ty));
+        debug!("pick_method(self_ty={})", self_ty);
 
         for (kind, candidates) in
             [("inherent", &self.inherent_candidates), ("extension", &self.extension_candidates)]

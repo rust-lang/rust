@@ -233,19 +233,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .add_to_diag(err);
             }
             infer::ReferenceOutlivesReferent(ty, span) => {
+                let name = self.tcx.short_string(ty, err.long_ty_path());
                 RegionOriginNote::WithName {
                     span,
                     msg: fluent::trait_selection_reference_outlives_referent,
-                    name: &self.ty_to_string(ty),
+                    name: &name,
                     continues: false,
                 }
                 .add_to_diag(err);
             }
             infer::RelateParamBound(span, ty, opt_span) => {
+                let name = self.tcx.short_string(ty, err.long_ty_path());
                 RegionOriginNote::WithName {
                     span,
                     msg: fluent::trait_selection_relate_param_bound,
-                    name: &self.ty_to_string(ty),
+                    name: &name,
                     continues: opt_span.is_some(),
                 }
                 .add_to_diag(err);

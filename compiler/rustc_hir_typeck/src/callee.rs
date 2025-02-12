@@ -675,13 +675,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let callee_ty = self.resolve_vars_if_possible(callee_ty);
+        let mut path = None;
         let mut err = self.dcx().create_err(errors::InvalidCallee {
             span: callee_expr.span,
             ty: match &unit_variant {
                 Some((_, kind, path)) => format!("{kind} `{path}`"),
-                None => format!("`{callee_ty}`"),
+                None => format!("`{}`", self.tcx.short_string(callee_ty, &mut path)),
             },
         });
+        *err.long_ty_path() = path;
         if callee_ty.references_error() {
             err.downgrade_to_delayed_bug();
         }
@@ -764,6 +766,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     DefIdOrName::DefId(def_id) => self.tcx.def_descr(def_id),
                     DefIdOrName::Name(name) => name,
                 };
+                let output_ty = self.tcx.short_string(output_ty, err.long_ty_path());
                 err.span_label(
                     callee_expr.span,
                     format!("this {descr} returns an unsized value `{output_ty}`, so it cannot be called")
@@ -779,7 +782,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if let Some(span) = self.tcx.hir().res_span(def) {
-            let callee_ty = callee_ty.to_string();
+            let callee_ty = self.tcx.short_string(callee_ty, err.long_ty_path());
             let label = match (unit_variant, inner_callee_path) {
                 (Some((_, kind, path)), _) => Some(format!("{kind} `{path}` defined here")),
                 (_, Some(hir::QPath::Resolved(_, path))) => self
