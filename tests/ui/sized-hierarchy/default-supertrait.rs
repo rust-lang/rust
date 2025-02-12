@@ -1,8 +1,6 @@
 //@ check-fail
 #![feature(sized_hierarchy)]
 
-use std::marker::{MetaSized, PointeeSized};
-
 trait Sized_: Sized { }
 
 trait NegSized: ?Sized { }
