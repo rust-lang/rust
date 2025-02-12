@@ -1431,37 +1431,48 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     /// Warns against some misuses of `#[must_use]`
     fn check_must_use(&self, hir_id: HirId, attr: &Attribute, target: Target) {
-        if !matches!(
+        if matches!(
             target,
             Target::Fn
                 | Target::Enum
                 | Target::Struct
                 | Target::Union
-                | Target::Method(_)
+                | Target::Method(MethodKind::Trait { body: false } | MethodKind::Inherent)
                 | Target::ForeignFn
                 // `impl Trait` in return position can trip
                 // `unused_must_use` if `Trait` is marked as
                 // `#[must_use]`
                 | Target::Trait
         ) {
-            let article = match target {
-                Target::ExternCrate
-                | Target::Enum
-                | Target::Impl
-                | Target::Expression
-                | Target::Arm
-                | Target::AssocConst
-                | Target::AssocTy => "an",
-                _ => "a",
-            };
-
-            self.tcx.emit_node_span_lint(
-                UNUSED_ATTRIBUTES,
-                hir_id,
-                attr.span,
-                errors::MustUseNoEffect { article, target },
-            );
+            return;
         }
+
+        // `#[must_use]` can be applied to a trait method definition with a default body
+        if let Target::Method(MethodKind::Trait { body: true }) = target
+            && let parent_def_id = self.tcx.hir().get_parent_item(hir_id).def_id
+            && let containing_item = self.tcx.hir().expect_item(parent_def_id)
+            && let hir::ItemKind::Trait(..) = containing_item.kind
+        {
+            return;
+        }
+
+        let article = match target {
+            Target::ExternCrate
+            | Target::Enum
+            | Target::Impl
+            | Target::Expression
+            | Target::Arm
+            | Target::AssocConst
+            | Target::AssocTy => "an",
+            _ => "a",
+        };
+
+        self.tcx.emit_node_span_lint(
+            UNUSED_ATTRIBUTES,
+            hir_id,
+            attr.span,
+            errors::MustUseNoEffect { article, target },
+        );
     }
 
     /// Checks if `#[must_not_suspend]` is applied to a struct, enum, union, or trait.
