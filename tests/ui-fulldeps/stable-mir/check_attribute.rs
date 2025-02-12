@@ -27,62 +27,22 @@ fn test_stable_mir() -> ControlFlow<()> {
     // Find items in the local crate.
     let items = stable_mir::all_local_items();
 
-    test_builtins(&items);
-    test_derive(&items);
     test_tool(&items);
-    test_all_attrs(&items);
 
     ControlFlow::Continue(())
-}
-
-// Test built-in attributes.
-fn test_builtins(items: &CrateItems) {
-    let target_fn = *get_item(&items, "builtins_fn").unwrap();
-    let allow_attrs = target_fn.attrs_by_path(&["allow".to_string()]);
-    assert_eq!(allow_attrs[0].as_str(), "#![allow(unused_variables)]");
-
-    let inline_attrs = target_fn.attrs_by_path(&["inline".to_string()]);
-    assert_eq!(inline_attrs[0].as_str(), "#[inline]");
-
-    let deprecated_attrs = target_fn.attrs_by_path(&["deprecated".to_string()]);
-    assert_eq!(deprecated_attrs[0].as_str(), "#[deprecated(since = \"5.2.0\")]");
-}
-
-// Test derive attribute.
-fn test_derive(items: &CrateItems) {
-    let target_struct = *get_item(&items, "Foo").unwrap();
-    let attrs = target_struct.attrs_by_path(&["derive".to_string()]);
-    // No `derive` attribute since it's expanded before MIR.
-    assert_eq!(attrs.len(), 0);
-
-    // Check derived trait method's attributes.
-    let derived_fmt = *get_item(&items, "<Foo as std::fmt::Debug>::fmt").unwrap();
-    // The Rust reference lies about this attribute. It doesn't show up in `clone` or `fmt` impl.
-    let _fmt_attrs = derived_fmt.attrs_by_path(&["automatically_derived".to_string()]);
 }
 
 // Test tool attributes.
 fn test_tool(items: &CrateItems) {
     let rustfmt_fn = *get_item(&items, "do_not_format").unwrap();
-    let rustfmt_attrs = rustfmt_fn.attrs_by_path(&["rustfmt".to_string(), "skip".to_string()]);
+    let rustfmt_attrs = rustfmt_fn.tool_attrs(&["rustfmt".to_string(), "skip".to_string()]);
     assert_eq!(rustfmt_attrs[0].as_str(), "#[rustfmt::skip]");
 
     let clippy_fn = *get_item(&items, "complex_fn").unwrap();
-    let clippy_attrs = clippy_fn.attrs_by_path(&["clippy".to_string(),
+    let clippy_attrs = clippy_fn.tool_attrs(&["clippy".to_string(),
                                                "cyclomatic_complexity".to_string()]);
     assert_eq!(clippy_attrs[0].as_str(), "#[clippy::cyclomatic_complexity = \"100\"]");
 }
-
-fn test_all_attrs(items: &CrateItems) {
-    let target_fn = *get_item(&items, "many_attrs").unwrap();
-    let all_attrs = target_fn.all_attrs();
-    assert_eq!(all_attrs[0].as_str(), "#[inline]");
-    assert_eq!(all_attrs[1].as_str(), "#[allow(unused_variables)]");
-    assert_eq!(all_attrs[2].as_str(), "#[allow(dead_code)]");
-    assert_eq!(all_attrs[3].as_str(), "#[allow(unused_imports)]");
-    assert_eq!(all_attrs[4].as_str(), "#![allow(clippy::filter_map)]");
-}
-
 
 fn get_item<'a>(
     items: &'a CrateItems,

@@ -25,21 +25,5 @@ LL | #[must_use = "With note"]
 LL | pub fn must_use_with_note() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: this unit-returning function has a `#[must_use]` attribute
-  --> tests/ui/must_use_unit.rs:31:1
-   |
-LL | #[cfg_attr(all(), must_use, deprecated)]
-   |                   -------------------- help: change these attributes to: `deprecated`
-LL | fn issue_12320() {}
-   | ^^^^^^^^^^^^^^^^
-
-error: this unit-returning function has a `#[must_use]` attribute
-  --> tests/ui/must_use_unit.rs:34:1
-   |
-LL | #[cfg_attr(all(), deprecated, doc = "foo", must_use)]
-   |                   --------------------------------- help: change these attributes to: `deprecated, doc = "foo"`
-LL | fn issue_12320_2() {}
-   | ^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 

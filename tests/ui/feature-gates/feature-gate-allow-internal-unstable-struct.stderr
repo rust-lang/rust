@@ -1,17 +1,17 @@
 error[E0658]: allow_internal_unstable side-steps feature gating and stability checks
-  --> $DIR/feature-gate-allow-internal-unstable-struct.rs:4:1
+  --> $DIR/feature-gate-allow-internal-unstable-struct.rs:6:1
    |
-LL | #[allow_internal_unstable()]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[allow_internal_unstable(something)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(allow_internal_unstable)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: attribute should be applied to a macro
-  --> $DIR/feature-gate-allow-internal-unstable-struct.rs:4:1
+  --> $DIR/feature-gate-allow-internal-unstable-struct.rs:6:1
    |
-LL | #[allow_internal_unstable()]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[allow_internal_unstable(something)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | struct S;
    | --------- not a macro

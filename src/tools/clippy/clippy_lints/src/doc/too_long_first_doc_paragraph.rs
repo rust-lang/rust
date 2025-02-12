@@ -1,5 +1,6 @@
 use rustc_errors::Applicability;
 use rustc_hir::{Attribute, Item, ItemKind};
+use rustc_attr_parsing::AttributeKind;
 use rustc_lint::LateContext;
 
 use clippy_utils::diagnostics::span_lint_and_then;
@@ -43,9 +44,9 @@ pub(super) fn check(
     let mut should_suggest_empty_doc = false;
 
     for attr in attrs {
-        if let Some(doc) = attr.doc_str() {
-            spans.push(attr.span);
-            let doc = doc.as_str();
+        if let Attribute::Parsed(AttributeKind::DocComment {span, comment, ..}) = attr {
+            spans.push(span);
+            let doc = comment.as_str();
             let doc = doc.trim();
             if spans.len() == 1 {
                 // We make this suggestion only if the first doc line ends with a punctuation
@@ -78,7 +79,7 @@ pub(super) fn check(
                 && let new_span = first_span.with_hi(second_span.lo()).with_lo(first_span.hi())
                 && let Some(snippet) = snippet_opt(cx, new_span)
             {
-                let Some(first) = snippet_opt(cx, first_span) else {
+                let Some(first) = snippet_opt(cx, *first_span) else {
                     return;
                 };
                 let Some(comment_form) = first.get(..3) else {

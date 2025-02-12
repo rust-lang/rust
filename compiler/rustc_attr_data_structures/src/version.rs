@@ -1,9 +1,13 @@
 use std::fmt::{self, Display};
 
-use rustc_macros::{Decodable, Encodable, HashStable_Generic, current_rustc_version};
+use rustc_macros::{
+    Decodable, Encodable, HashStable_Generic, PrintAttribute, current_rustc_version,
+};
+
+use crate::PrintAttribute;
 
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(HashStable_Generic)]
+#[derive(HashStable_Generic, PrintAttribute)]
 pub struct RustcVersion {
     pub major: u16,
     pub minor: u16,

@@ -8,6 +8,7 @@ edition = "2021"
 parking_lot = "0.12"
 rustc-rayon-core = { version = "0.5.0" }
 rustc_ast = { path = "../rustc_ast" }
+rustc_attr_data_structures = { path = "../rustc_attr_data_structures" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_feature = { path = "../rustc_feature" }
