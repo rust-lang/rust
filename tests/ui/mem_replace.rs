@@ -131,3 +131,25 @@ fn issue9824() {
     // replace with default
     let _ = std::mem::replace(&mut b.val, String::default());
 }
+
+#[clippy::msrv = "1.31"]
+fn mem_replace_option_with_some() {
+    let mut an_option = Some(0);
+    let replaced = mem::replace(&mut an_option, Some(1));
+    //~^ ERROR: replacing an `Option` with `Some(..)`
+
+    let mut an_option = &mut Some(0);
+    let replaced = mem::replace(an_option, Some(1));
+    //~^ ERROR: replacing an `Option` with `Some(..)`
+
+    let (mut opt1, mut opt2) = (Some(0), Some(0));
+    let b = true;
+    let replaced = mem::replace(if b { &mut opt1 } else { &mut opt2 }, Some(1));
+    //~^ ERROR: replacing an `Option` with `Some(..)`
+}
+
+#[clippy::msrv = "1.30"]
+fn mem_replace_option_with_some_bad_msrv() {
+    let mut an_option = Some(0);
+    let replaced = mem::replace(&mut an_option, Some(1));
+}
