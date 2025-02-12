@@ -2468,11 +2468,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         let start = start.map(|expr| self.lower_const_arg(expr, FeedConstTy::No));
                         let end = end.map(|expr| self.lower_const_arg(expr, FeedConstTy::No));
 
-                        let include_end = match include_end {
-                            hir::RangeEnd::Included => true,
-                            hir::RangeEnd::Excluded => false,
-                        };
-
                         let pat = tcx.mk_pat(ty::PatternKind::Range { start, end, include_end });
                         Ty::new_pat(tcx, ty, pat)
                     }
