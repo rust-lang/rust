@@ -14,7 +14,6 @@ fn main() {
     let _ = Some(1).map(odds_out).flatten();
     //~^ option_filter_map
 
-
     let _ = vec![Some(1)].into_iter().flatten();
     //~^ option_filter_map
 

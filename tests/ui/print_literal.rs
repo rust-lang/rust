@@ -27,7 +27,6 @@ fn main() {
     print!("Hello {}", "world");
     //~^ print_literal
 
-
     println!("Hello {} {}", world, "world");
     //~^ print_literal
 
@@ -36,7 +35,6 @@ fn main() {
 
     println!("{} {:.4}", "a literal", 5);
     //~^ print_literal
-
 
     // positional args don't change the fact
     // that we're using a literal -- this should
@@ -47,14 +45,12 @@ fn main() {
     println!("{1} {0}", "hello", "world");
     //~^ print_literal
 
-
     // named args shouldn't change anything either
     println!("{foo} {bar}", foo = "hello", bar = "world");
     //~^ print_literal
 
     println!("{bar} {foo}", foo = "hello", bar = "world");
     //~^ print_literal
-
 
     // The string literal from `file!()` has a callsite span that isn't marked as coming from an
     // expansion

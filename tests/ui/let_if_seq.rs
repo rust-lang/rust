@@ -77,14 +77,12 @@ fn main() {
     let mut foo = 0;
     //~^ useless_let_if_seq
 
-
     if f() {
         foo = 42;
     }
 
     let mut bar = 0;
     //~^ useless_let_if_seq
-
 
     if f() {
         f();
@@ -126,7 +124,6 @@ fn main() {
     // baz needs to be mut
     let mut baz = 0;
     //~^ useless_let_if_seq
-
 
     if f() {
         baz = 42;

@@ -5,7 +5,6 @@ fn main() {
         m.offset(0);
         //~^ zst_offset
 
-
         m.wrapping_add(0);
         //~^ zst_offset
 
@@ -14,7 +13,6 @@ fn main() {
 
         m.wrapping_sub(0);
         //~^ zst_offset
-
 
         let c = &() as *const ();
         c.offset(0);
@@ -28,7 +26,6 @@ fn main() {
 
         c.wrapping_sub(0);
         //~^ zst_offset
-
 
         let sized = &1 as *const i32;
         sized.offset(0);

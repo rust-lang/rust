@@ -7,5 +7,4 @@ fn main() {
     let msg = &hello[..];
     msg.to_owned();
     //~^ str_to_string
-
 }

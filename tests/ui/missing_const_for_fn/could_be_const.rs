@@ -11,44 +11,44 @@ struct Game {
 impl Game {
     // Could be const
     pub fn new() -> Self {
-    //~^ missing_const_for_fn
+        //~^ missing_const_for_fn
         Self { guess: 42 }
     }
 
     fn const_generic_params<'a, T, const N: usize>(&self, b: &'a [T; N]) -> &'a [T; N] {
-    //~^ missing_const_for_fn
+        //~^ missing_const_for_fn
         b
     }
 }
 
 // Could be const
 fn one() -> i32 {
-//~^ missing_const_for_fn
+    //~^ missing_const_for_fn
     1
 }
 
 // Could also be const
 fn two() -> i32 {
-//~^ missing_const_for_fn
+    //~^ missing_const_for_fn
     let abc = 2;
     abc
 }
 
 // Could be const (since Rust 1.39)
 fn string() -> String {
-//~^ missing_const_for_fn
+    //~^ missing_const_for_fn
     String::new()
 }
 
 // Could be const
 unsafe fn four() -> i32 {
-//~^ missing_const_for_fn
+    //~^ missing_const_for_fn
     4
 }
 
 // Could also be const
 fn generic<T>(t: T) -> T {
-//~^ missing_const_for_fn
+    //~^ missing_const_for_fn
     t
 }
 
@@ -57,7 +57,7 @@ fn sub(x: u32) -> usize {
 }
 
 fn generic_arr<T: Copy>(t: [T; 1]) -> T {
-//~^ missing_const_for_fn
+    //~^ missing_const_for_fn
     t[0]
 }
 
@@ -71,7 +71,7 @@ mod with_drop {
     impl B {
         // This can be const, because `a` is passed by reference
         pub fn b(self, a: &A) -> B {
-        //~^ missing_const_for_fn
+            //~^ missing_const_for_fn
             B
         }
     }
@@ -81,7 +81,7 @@ mod with_drop {
 mod const_fn_stabilized_before_msrv {
     // This could be const because `u8::is_ascii_digit` is a stable const function in 1.47.
     fn const_fn_stabilized_before_msrv(byte: u8) {
-    //~^ missing_const_for_fn
+        //~^ missing_const_for_fn
         byte.is_ascii_digit();
     }
 }
@@ -93,7 +93,7 @@ fn msrv_1_45() -> i32 {
 
 #[clippy::msrv = "1.46"]
 fn msrv_1_46() -> i32 {
-//~^ missing_const_for_fn
+    //~^ missing_const_for_fn
     46
 }
 
@@ -121,12 +121,12 @@ mod msrv {
     impl Foo {
         #[clippy::msrv = "1.58"]
         fn deref_ptr_can_be_const(self) -> usize {
-        //~^ missing_const_for_fn
+            //~^ missing_const_for_fn
             unsafe { *self.0 as usize }
         }
 
         fn deref_copied_val(self) -> usize {
-        //~^ missing_const_for_fn
+            //~^ missing_const_for_fn
             *self.1 as usize
         }
     }
@@ -137,7 +137,7 @@ mod msrv {
 
     #[clippy::msrv = "1.56"]
     fn union_access_can_be_const() {
-    //~^ missing_const_for_fn
+        //~^ missing_const_for_fn
         let bar = Bar { val: 1 };
         let _ = unsafe { bar.val };
     }
@@ -167,13 +167,13 @@ mod issue12677 {
     impl Wrapper {
         #[must_use]
         pub fn new(strings: Vec<String>) -> Self {
-        //~^ missing_const_for_fn
+            //~^ missing_const_for_fn
             Self { strings }
         }
 
         #[must_use]
         pub fn empty() -> Self {
-        //~^ missing_const_for_fn
+            //~^ missing_const_for_fn
             Self { strings: Vec::new() }
         }
     }
@@ -185,7 +185,7 @@ mod issue12677 {
 
     impl Other {
         pub fn new(text: String) -> Self {
-        //~^ missing_const_for_fn
+            //~^ missing_const_for_fn
             let vec = Vec::new();
             Self { text, vec }
         }
@@ -218,6 +218,6 @@ mod extern_fn {
 }
 
 fn mut_add(x: &mut i32) {
-//~^ missing_const_for_fn
+    //~^ missing_const_for_fn
     *x += 1;
 }

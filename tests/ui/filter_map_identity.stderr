@@ -32,40 +32,46 @@ LL |         copy_vec_non_inferred().into_iter().filter_map(|x| return x);
    |                                             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
 error: use of `filter_map` with an identity function
-  --> tests/ui/filter_map_identity.rs:44:36
+  --> tests/ui/filter_map_identity.rs:43:36
    |
 LL |         non_copy_vec().into_iter().filter_map(|x| x);
    |                                    ^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
 error: use of `filter_map` with an identity function
-  --> tests/ui/filter_map_identity.rs:47:36
+  --> tests/ui/filter_map_identity.rs:46:36
    |
 LL |         non_copy_vec().into_iter().filter_map(|x| x);
    |                                    ^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
 error: use of `filter_map` with an identity function
-  --> tests/ui/filter_map_identity.rs:51:36
+  --> tests/ui/filter_map_identity.rs:49:36
    |
 LL |         non_copy_vec().into_iter().filter_map(std::convert::identity);
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
 error: use of `filter_map` with an identity function
-  --> tests/ui/filter_map_identity.rs:54:36
+  --> tests/ui/filter_map_identity.rs:52:36
    |
 LL |         non_copy_vec().into_iter().filter_map(identity);
    |                                    ^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
 error: use of `filter_map` with an identity function
-  --> tests/ui/filter_map_identity.rs:57:36
+  --> tests/ui/filter_map_identity.rs:55:36
    |
 LL |         non_copy_vec().into_iter().filter_map(|x| return x);
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
 error: use of `filter_map` with an identity function
-  --> tests/ui/filter_map_identity.rs:60:36
+  --> tests/ui/filter_map_identity.rs:58:36
    |
 LL |         non_copy_vec().into_iter().filter_map(|x| return x);
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
+
+error: use of `filter_map` with an identity function
+  --> tests/ui/filter_map_identity.rs:61:39
+   |
+LL |         copy_vec::<i32>().into_iter().filter_map(|x: Option<_>| x);
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
 error: use of `filter_map` with an identity function
   --> tests/ui/filter_map_identity.rs:64:39
@@ -76,8 +82,8 @@ LL |         copy_vec::<i32>().into_iter().filter_map(|x: Option<_>| x);
 error: use of `filter_map` with an identity function
   --> tests/ui/filter_map_identity.rs:67:39
    |
-LL |         copy_vec::<i32>().into_iter().filter_map(|x: Option<_>| x);
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
+LL |         copy_vec::<i32>().into_iter().filter_map(|x: Option<_>| return x);
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
 error: use of `filter_map` with an identity function
   --> tests/ui/filter_map_identity.rs:70:39
@@ -86,49 +92,43 @@ LL |         copy_vec::<i32>().into_iter().filter_map(|x: Option<_>| return x);
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
 error: use of `filter_map` with an identity function
-  --> tests/ui/filter_map_identity.rs:73:39
-   |
-LL |         copy_vec::<i32>().into_iter().filter_map(|x: Option<_>| return x);
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
-
-error: use of `filter_map` with an identity function
-  --> tests/ui/filter_map_identity.rs:78:39
+  --> tests/ui/filter_map_identity.rs:74:39
    |
 LL |         copy_vec::<i32>().into_iter().filter_map(|x: Option<i32>| x);
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
 error: use of `filter_map` with an identity function
-  --> tests/ui/filter_map_identity.rs:81:39
+  --> tests/ui/filter_map_identity.rs:77:39
    |
 LL |         copy_vec::<i32>().into_iter().filter_map(|x: Option<i32>| x);
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
 error: use of `filter_map` with an identity function
-  --> tests/ui/filter_map_identity.rs:84:39
+  --> tests/ui/filter_map_identity.rs:80:39
    |
 LL |         copy_vec::<i32>().into_iter().filter_map(|x: Option<i32>| return x);
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
 error: use of `filter_map` with an identity function
-  --> tests/ui/filter_map_identity.rs:87:39
+  --> tests/ui/filter_map_identity.rs:83:39
    |
 LL |         copy_vec::<i32>().into_iter().filter_map(|x: Option<i32>| return x);
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
 error: use of `filter_map` with an identity function
-  --> tests/ui/filter_map_identity.rs:91:43
+  --> tests/ui/filter_map_identity.rs:87:43
    |
 LL |             copy_vec::<i32>().into_iter().filter_map(|x: Option<i32>| -> Option<i32> {{ x }});
    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
 error: use of `filter_map` with an identity function
-  --> tests/ui/filter_map_identity.rs:95:43
+  --> tests/ui/filter_map_identity.rs:91:43
    |
 LL |             copy_vec::<i32>().into_iter().filter_map(|x: Option<i32>| -> Option<i32> {{ return x }});
    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `flatten()`
 
 error: use of `filter_map` with an identity function
-  --> tests/ui/filter_map_identity.rs:101:37
+  --> tests/ui/filter_map_identity.rs:96:37
    |
 LL |         opaque::<i32>().into_iter().filter_map(|x| x);
    |                                     ^^^^^^^^^^^^^^^^^ help: try: `flatten()`

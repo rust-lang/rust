@@ -52,7 +52,7 @@ fn main() {
     V6(Ipv6Addr::LOCALHOST).is_ipv4();
 
     let _ = if V4(Ipv4Addr::LOCALHOST).is_ipv4() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         true
     } else {
         false
@@ -61,10 +61,10 @@ fn main() {
     ipaddr_const();
 
     let _ = if gen_ipaddr().is_ipv4() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         1
     } else if gen_ipaddr().is_ipv6() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         2
     } else {
         3

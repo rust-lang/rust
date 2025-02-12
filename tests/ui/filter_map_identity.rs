@@ -40,13 +40,11 @@ fn main() {
         copy_vec_non_inferred().into_iter().filter_map(|x| return x);
         //~^ filter_map_identity
 
-
         non_copy_vec().into_iter().filter_map(|x| x);
         //~^ filter_map_identity
 
         non_copy_vec().into_iter().filter_map(|x| x);
         //~^ filter_map_identity
-
 
         non_copy_vec().into_iter().filter_map(std::convert::identity);
         //~^ filter_map_identity
@@ -60,7 +58,6 @@ fn main() {
         non_copy_vec().into_iter().filter_map(|x| return x);
         //~^ filter_map_identity
 
-
         copy_vec::<i32>().into_iter().filter_map(|x: Option<_>| x);
         //~^ filter_map_identity
 
@@ -72,7 +69,6 @@ fn main() {
 
         copy_vec::<i32>().into_iter().filter_map(|x: Option<_>| return x);
         //~^ filter_map_identity
-
 
         // we are forced to pass the type in the call.
         copy_vec::<i32>().into_iter().filter_map(|x: Option<i32>| x);
@@ -89,18 +85,16 @@ fn main() {
 
         #[rustfmt::skip]
             copy_vec::<i32>().into_iter().filter_map(|x: Option<i32>| -> Option<i32> {{ x }});
-            //~^ filter_map_identity
+        //~^ filter_map_identity
 
         #[rustfmt::skip]
             copy_vec::<i32>().into_iter().filter_map(|x: Option<i32>| -> Option<i32> {{ return x }});
-            //~^ filter_map_identity
-
+        //~^ filter_map_identity
 
         // note, the compiler requires that we pass the type to `opaque`. This is mostly for reference,
         // it behaves the same as copy_vec.
         opaque::<i32>().into_iter().filter_map(|x| x);
         //~^ filter_map_identity
-
     }
 }
 

@@ -17,7 +17,6 @@ fn main() {
     let _ = cow.to_owned();
     //~^ suspicious_to_owned
 
-
     // we expect no lints for this
     let cow = Cow::Borrowed(moo);
     let _ = cow.into_owned();
@@ -70,8 +69,6 @@ fn main() {
     let _ = String::from(moo).to_owned();
     //~^ implicit_clone
 
-
     let _ = moos_vec.to_owned();
     //~^ implicit_clone
-
 }

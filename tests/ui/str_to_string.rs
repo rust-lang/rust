@@ -7,5 +7,4 @@ fn main() {
     let msg = &hello[..];
     msg.to_string();
     //~^ str_to_string
-
 }

@@ -186,7 +186,6 @@ fn main() {
     let _unused = 1;
     //~^ no_effect_underscore_binding
 
-
     let _penguin = || println!("Some helpful closure");
     //~^ no_effect_underscore_binding
 

@@ -48,10 +48,8 @@ fn main() {
     Struct { field: 0 }.field = 1;
     //~^ temporary_assignment
 
-
     MultiStruct {
-    //~^ temporary_assignment
-
+        //~^ temporary_assignment
         structure: Struct { field: 0 },
     }
     .structure
@@ -61,7 +59,6 @@ fn main() {
 
     (0, 0).0 = 1;
     //~^ temporary_assignment
-
 
     // no error
     s.field = 1;

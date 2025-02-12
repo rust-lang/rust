@@ -12,8 +12,6 @@ fn test() -> i32 {
     let x = 5;
     x
     //~^ let_and_return
-
-
 }
 
 fn test_inner() -> i32 {
@@ -21,7 +19,6 @@ fn test_inner() -> i32 {
         let x = 5;
         x
         //~^ let_and_return
-
     } else {
         0
     }
@@ -85,7 +82,6 @@ fn issue_3792() -> String {
     let line = stdin.lock().lines().next().unwrap().unwrap();
     line
     //~^ let_and_return
-
 }
 
 tuple_encode!(T0, T1, T2, T3, T4, T5, T6, T7);
@@ -181,7 +177,6 @@ mod issue_5729 {
             let clone = Arc::clone(&self.foo);
             clone
             //~^ let_and_return
-
         }
     }
 }
@@ -201,7 +196,6 @@ mod issue_11335 {
 
             result
             //~^ let_and_return
-
         }
     }
 }
@@ -228,21 +222,18 @@ fn issue12801() {
         let s = if true { "a".to_string() } else { "b".to_string() } + "c";
         s
         //~^ let_and_return
-
     }
 
     fn no_par_needed() -> String {
         let s = "c".to_string() + if true { "a" } else { "b" };
         s
         //~^ let_and_return
-
     }
 
     fn conjunctive_blocks() -> String {
         let s = { "a".to_string() } + "b" + { "c" } + "d";
         s
         //~^ let_and_return
-
     }
 
     #[allow(clippy::overly_complex_bool_expr)]
@@ -251,13 +242,11 @@ fn issue12801() {
             let s = if true { 2 } else { 3 } << 4;
             s
             //~^ let_and_return
-
         };
         let _ = || {
             let s = { true } || { false } && { 2 <= 3 };
             s
             //~^ let_and_return
-
         };
     }
 }

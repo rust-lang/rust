@@ -11,8 +11,7 @@ pub struct Foo;
 
 impl Foo {
     pub fn new() -> Foo {
-    //~^ new_without_default
-
+        //~^ new_without_default
 
         Foo
     }
@@ -22,7 +21,7 @@ pub struct Bar;
 
 impl Bar {
     pub fn new() -> Self {
-    //~^ new_without_default
+        //~^ new_without_default
 
         Bar
     }
@@ -88,7 +87,7 @@ pub struct LtKo<'a> {
 
 impl<'c> LtKo<'c> {
     pub fn new() -> LtKo<'c> {
-    //~^ new_without_default
+        //~^ new_without_default
 
         unimplemented!()
     }
@@ -122,7 +121,7 @@ pub struct Const;
 
 impl Const {
     pub const fn new() -> Const {
-    //~^ new_without_default
+        //~^ new_without_default
         Const
     } // While Default is not const, it can still call const functions, so we should lint this
 }
@@ -183,7 +182,7 @@ pub struct NewNotEqualToDerive {
 impl NewNotEqualToDerive {
     // This `new` implementation is not equal to a derived `Default`, so do not suggest deriving.
     pub fn new() -> Self {
-    //~^ new_without_default
+        //~^ new_without_default
 
         NewNotEqualToDerive { foo: 1 }
     }
@@ -193,7 +192,7 @@ impl NewNotEqualToDerive {
 pub struct FooGenerics<T>(std::marker::PhantomData<T>);
 impl<T> FooGenerics<T> {
     pub fn new() -> Self {
-    //~^ new_without_default
+        //~^ new_without_default
 
         Self(Default::default())
     }
@@ -202,7 +201,7 @@ impl<T> FooGenerics<T> {
 pub struct BarGenerics<T>(std::marker::PhantomData<T>);
 impl<T: Copy> BarGenerics<T> {
     pub fn new() -> Self {
-    //~^ new_without_default
+        //~^ new_without_default
 
         Self(Default::default())
     }
@@ -215,7 +214,7 @@ pub mod issue7220 {
 
     impl<T> Foo<T> {
         pub fn new() -> Self {
-        //~^ new_without_default
+            //~^ new_without_default
 
             todo!()
         }
@@ -262,7 +261,7 @@ where
     K: std::hash::Hash + Eq + PartialEq,
 {
     pub fn new() -> Self {
-    //~^ new_without_default
+        //~^ new_without_default
         Self { _kv: None }
     }
 }

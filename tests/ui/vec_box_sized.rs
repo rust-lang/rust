@@ -39,15 +39,15 @@ mod should_trigger {
     //~^ vec_box
 
     fn allocator_global_defined_vec() -> Vec<Box<i32>, std::alloc::Global> {
-    //~^ vec_box
+        //~^ vec_box
         Vec::new()
     }
     fn allocator_global_defined_box() -> Vec<Box<i32, std::alloc::Global>> {
-    //~^ vec_box
+        //~^ vec_box
         Vec::new()
     }
     fn allocator_match() -> Vec<Box<i32, DummyAllocator>, DummyAllocator> {
-    //~^ vec_box
+        //~^ vec_box
         Vec::new_in(DummyAllocator)
     }
 }
@@ -85,7 +85,7 @@ mod inner_mod {
         use super::inner::S;
 
         pub fn f() -> Vec<Box<S>> {
-        //~^ vec_box
+            //~^ vec_box
             vec![]
         }
     }

@@ -50,43 +50,43 @@ LL |     let y = x.map(Clone::clone);
    |             ^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
 
 error: you are explicitly cloning with `.map()`
-  --> tests/ui/map_clone.rs:82:13
+  --> tests/ui/map_clone.rs:81:13
    |
 LL |     let y = x.map(String::clone);
    |             ^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
 
 error: you are explicitly cloning with `.map()`
-  --> tests/ui/map_clone.rs:89:13
+  --> tests/ui/map_clone.rs:86:13
    |
 LL |     let y = x.map(|x| u32::clone(x));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `x.copied()`
 
 error: you are explicitly cloning with `.map()`
-  --> tests/ui/map_clone.rs:93:13
+  --> tests/ui/map_clone.rs:89:13
    |
 LL |     let y = x.map(|x| Clone::clone(x));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `x.copied()`
 
 error: you are explicitly cloning with `.map()`
-  --> tests/ui/map_clone.rs:106:13
+  --> tests/ui/map_clone.rs:100:13
    |
 LL |     let y = x.map(|x| String::clone(x));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
 
 error: you are explicitly cloning with `.map()`
-  --> tests/ui/map_clone.rs:110:13
+  --> tests/ui/map_clone.rs:103:13
    |
 LL |     let y = x.map(|x| Clone::clone(x));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
 
 error: you are explicitly cloning with `.map()`
-  --> tests/ui/map_clone.rs:117:13
+  --> tests/ui/map_clone.rs:108:13
    |
 LL |     let y = x.map(|x| u32::clone(x));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `x.copied()`
 
 error: you are explicitly cloning with `.map()`
-  --> tests/ui/map_clone.rs:121:13
+  --> tests/ui/map_clone.rs:111:13
    |
 LL |     let y = x.map(|x| Clone::clone(x));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `x.copied()`

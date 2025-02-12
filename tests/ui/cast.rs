@@ -25,7 +25,6 @@ fn main() {
     x0 as f32;
     //~^ cast_precision_loss
 
-
     let x1 = 1i64;
     x1 as f32;
     //~^ cast_precision_loss
@@ -52,8 +51,6 @@ fn main() {
     //~^ cast_possible_truncation
     //~| cast_sign_loss
 
-
-
     1f64 as f32;
     //~^ cast_possible_truncation
 
@@ -70,13 +67,10 @@ fn main() {
     //~^ cast_possible_truncation
     //~| cast_sign_loss
 
-
     1f32 as u32 as u16;
     //~^ cast_possible_truncation
     //~| cast_possible_truncation
     //~| cast_sign_loss
-
-
 
     {
         let _x: i8 = 1i32 as _;
@@ -91,13 +85,10 @@ fn main() {
         1f32 as u8;
         //~^ cast_possible_truncation
         //~| cast_sign_loss
-
-
     }
     // Test clippy::cast_possible_wrap
     1u8 as i8;
     //~^ cast_possible_wrap
-
 
     1u16 as i16;
     //~^ cast_possible_wrap
@@ -120,13 +111,10 @@ fn main() {
     //~^ cast_possible_truncation
     //~| cast_possible_wrap
 
-
-
     // wraps on 32 bit ptr size
     1usize as i32;
     //~^ cast_possible_truncation
     //~| cast_possible_wrap
-
 
     // wraps on 64 bit ptr size
     1usize as i64;
@@ -138,7 +126,6 @@ fn main() {
     1u16 as isize;
     //~^ cast_possible_wrap
 
-
     // wraps on 32 bit ptr size
     1u32 as isize;
     //~^ cast_possible_wrap
@@ -147,7 +134,6 @@ fn main() {
     1u64 as isize;
     //~^ cast_possible_truncation
     //~| cast_possible_wrap
-
 
     // Test clippy::cast_sign_loss
     1i32 as u32;
@@ -253,7 +239,6 @@ fn main() {
     (-99999999999i64).min(1) as i8;
     //~^ cast_possible_truncation
 
-
     // Test for various operations that remove enough bits for the result to fit
     (999999u64 & 1) as u8;
     (999999u64 % 15) as u8;
@@ -267,7 +252,6 @@ fn main() {
     // should still be linted
     999999u64.clamp(0, 256) as u8;
     //~^ cast_possible_truncation
-
 
     #[derive(Clone, Copy)]
     enum E1 {
@@ -294,7 +278,6 @@ fn main() {
 
             let _ = Self::B as u8;
             //~^ cast_enum_truncation
-
 
             // Don't lint. `255..=256` fits in i16
             let _ = self as i16;
@@ -468,7 +451,6 @@ fn issue11642() {
     (-2_i32).pow(3) as u32;
     //~^ cast_sign_loss
 
-
     (3_i32 % 2) as u32;
     (3_i32 % -2) as u32;
     (-5_i32 % 2) as u32;
@@ -481,13 +463,11 @@ fn issue11642() {
     (-2_i32 >> 1) as u32;
     //~^ cast_sign_loss
 
-
     let x: i32 = 10;
     (x * x) as u32;
     //~^ cast_sign_loss
     (x * x * x) as u32;
     //~^ cast_sign_loss
-
 
     let y: i16 = -2;
     (y * y * y * y * -2) as u16;
@@ -502,13 +482,11 @@ fn issue11642() {
     //~^ cast_sign_loss
     //~| eq_op
 
-
     (y + y + y + -2) as u16;
     //~^ cast_sign_loss
 
     (y + y + y + 2) as u16;
     //~^ cast_sign_loss
-
 
     let z: i16 = 2;
     (z + -2) as u16;
@@ -547,7 +525,6 @@ fn issue11642() {
 
         (a.abs() * b.pow(2) / c.abs()) as u32
         //~^ cast_sign_loss
-
     }
 }
 
@@ -590,5 +567,4 @@ fn issue12721() {
 
     (255 % 999999u64) as u8;
     //~^ cast_possible_truncation
-
 }

@@ -26,32 +26,32 @@ LL |     let _ = Some(1).map(odds_out).filter(|o| o.is_some()).map(|o| o.unwrap(
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `Some` followed by `unwrap`
-  --> tests/ui/option_filter_map.rs:18:39
+  --> tests/ui/option_filter_map.rs:17:39
    |
 LL |     let _ = vec![Some(1)].into_iter().filter(Option::is_some).map(Option::unwrap);
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `Some` followed by `unwrap`
-  --> tests/ui/option_filter_map.rs:21:39
+  --> tests/ui/option_filter_map.rs:20:39
    |
 LL |     let _ = vec![Some(1)].into_iter().filter(|o| o.is_some()).map(|o| o.unwrap());
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `Some` followed by `unwrap`
-  --> tests/ui/option_filter_map.rs:27:10
+  --> tests/ui/option_filter_map.rs:26:10
    |
 LL |           .filter(Option::is_some)
    |  __________^
-...  |
+LL | |
 LL | |         .map(Option::unwrap);
    | |____________________________^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `Some` followed by `unwrap`
-  --> tests/ui/option_filter_map.rs:34:10
+  --> tests/ui/option_filter_map.rs:32:10
    |
 LL |           .filter(|o| o.is_some())
    |  __________^
-...  |
+LL | |
 LL | |         .map(|o| o.unwrap());
    | |____________________________^ help: consider using `flatten` instead: `flatten()`
 

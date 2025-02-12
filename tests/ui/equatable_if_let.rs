@@ -97,7 +97,7 @@ fn main() {
     //~^ equatable_if_let
 
     if let inline!("abc") = "abc" {
-    //~^ equatable_if_let
+        //~^ equatable_if_let
         println!("OK");
     }
 

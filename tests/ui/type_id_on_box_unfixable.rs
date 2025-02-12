@@ -25,9 +25,7 @@ fn main() {
     let _ = b.type_id();
     //~^ type_id_on_box
 
-
     let b: Box<dyn NormalTrait> = Box::new(1);
     let _ = b.type_id();
     //~^ type_id_on_box
-
 }

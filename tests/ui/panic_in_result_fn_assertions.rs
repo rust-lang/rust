@@ -6,7 +6,6 @@ struct A;
 impl A {
     fn result_with_assert_with_message(x: i32) -> Result<bool, String> // should emit lint
     //~^ panic_in_result_fn
-
     {
         assert!(x == 5, "wrong argument");
         Ok(true)
@@ -14,7 +13,6 @@ impl A {
 
     fn result_with_assert_eq(x: i32) -> Result<bool, String> // should emit lint
     //~^ panic_in_result_fn
-
     {
         assert_eq!(x, 5);
         Ok(true)
@@ -22,7 +20,6 @@ impl A {
 
     fn result_with_assert_ne(x: i32) -> Result<bool, String> // should emit lint
     //~^ panic_in_result_fn
-
     {
         assert_ne!(x, 1);
         Ok(true)

@@ -33,7 +33,6 @@ fn if_same_then_else2() -> Result<&'static str, ()> {
     }
     //~^^^^^^^^^^^^^^^^^^^ if_same_then_else
 
-
     if true {
         if let Some(a) = Some(42) {}
     } else {
@@ -41,14 +40,12 @@ fn if_same_then_else2() -> Result<&'static str, ()> {
     }
     //~^^^^^ if_same_then_else
 
-
     if true {
         if let (1, .., 3) = (1, 2, 3) {}
     } else {
         if let (1, .., 3) = (1, 2, 3) {}
     }
     //~^^^^^ if_same_then_else
-
 
     if true {
         if let (1, .., 3) = (1, 2, 3) {}
@@ -96,14 +93,12 @@ fn if_same_then_else2() -> Result<&'static str, ()> {
     let _ = if true { f32::NAN } else { f32::NAN };
     //~^ if_same_then_else
 
-
     if true {
         Ok("foo")?;
     } else {
         Ok("foo")?;
     }
     //~^^^^^ if_same_then_else
-
 
     if true {
         let foo = "";
@@ -130,7 +125,6 @@ fn if_same_then_else2() -> Result<&'static str, ()> {
         return Ok(&foo[0..]);
     }
     //~^^^^^^^ if_same_then_else
-
 
     // False positive `if_same_then_else`: `let (x, y)` vs. `let (y, x)`; see issue #3559.
     if true {

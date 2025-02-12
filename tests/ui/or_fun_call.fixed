@@ -373,7 +373,6 @@ fn fn_call_in_nested_expr() {
     }
     let opt: Option<i32> = Some(1);
 
-
     let _ = opt.unwrap_or_else(f); // suggest `.unwrap_or_else(f)`
     //~^ or_fun_call
     //
@@ -383,7 +382,7 @@ fn fn_call_in_nested_expr() {
     //
 
     let _ = opt.unwrap_or_else(|| {
-    //~^ or_fun_call
+        //~^ or_fun_call
         let x = f();
         x + 1
     });

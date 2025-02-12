@@ -8,14 +8,13 @@ macro_rules! declare_const {
     ($name:ident: $ty:ty = $e:expr) => {
         const $name: $ty = $e;
         //~^ declare_interior_mutable_const
-
     };
 }
 
 // a constant whose type is a concrete type should be linted at the definition site.
 trait ConcreteTypes {
-const ATOMIC: AtomicUsize;
-//~^ declare_interior_mutable_const
+    const ATOMIC: AtomicUsize;
+    //~^ declare_interior_mutable_const
     const INTEGER: u64;
     const STRING: String;
     declare_const!(ANOTHER_ATOMIC: AtomicUsize = Self::ATOMIC);
@@ -43,8 +42,8 @@ trait GenericTypes<T, U> {
 
 impl<T: ConstDefault> GenericTypes<T, AtomicUsize> for u64 {
     const TO_REMAIN_GENERIC: T = T::DEFAULT;
-const TO_BE_CONCRETE: AtomicUsize = AtomicUsize::new(11);
-//~^ declare_interior_mutable_const
+    const TO_BE_CONCRETE: AtomicUsize = AtomicUsize::new(11);
+    //~^ declare_interior_mutable_const
 }
 
 // a helper type used below
@@ -69,10 +68,10 @@ impl<T: ConstDefault> AssocTypes for Vec<T> {
     type ToBeGenericParam = T;
 
     const TO_BE_FROZEN: Self::ToBeFrozen = 12;
-const TO_BE_UNFROZEN: Self::ToBeUnfrozen = AtomicUsize::new(13);
-//~^ declare_interior_mutable_const
-const WRAPPED_TO_BE_UNFROZEN: Wrapper<Self::ToBeUnfrozen> = Wrapper(AtomicUsize::new(14));
-//~^ declare_interior_mutable_const
+    const TO_BE_UNFROZEN: Self::ToBeUnfrozen = AtomicUsize::new(13);
+    //~^ declare_interior_mutable_const
+    const WRAPPED_TO_BE_UNFROZEN: Wrapper<Self::ToBeUnfrozen> = Wrapper(AtomicUsize::new(14));
+    //~^ declare_interior_mutable_const
     const WRAPPED_TO_BE_GENERIC_PARAM: Wrapper<Self::ToBeGenericParam> = Wrapper(T::DEFAULT);
 }
 
@@ -91,8 +90,8 @@ where
     T: AssocTypesHelper<ToBeBounded = AtomicUsize>,
 {
     const NOT_BOUNDED: T::NotToBeBounded;
-const BOUNDED: T::ToBeBounded;
-//~^ declare_interior_mutable_const
+    const BOUNDED: T::ToBeBounded;
+    //~^ declare_interior_mutable_const
 }
 
 impl<T> AssocTypesFromGenericParam<T> for u64
@@ -120,24 +119,24 @@ impl SelfType for u64 {
 impl SelfType for AtomicUsize {
     // this (interior mutable `Self` const) exists in `parking_lot`.
     // `const_trait_impl` will replace it in the future, hopefully.
-const SELF: Self = AtomicUsize::new(17);
-//~^ declare_interior_mutable_const
-const WRAPPED_SELF: Option<Self> = Some(AtomicUsize::new(21));
-//~^ declare_interior_mutable_const
+    const SELF: Self = AtomicUsize::new(17);
+    //~^ declare_interior_mutable_const
+    const WRAPPED_SELF: Option<Self> = Some(AtomicUsize::new(21));
+    //~^ declare_interior_mutable_const
 }
 
 // Even though a constant contains a generic type, if it also have an interior mutable type,
 // it should be linted at the definition site.
 trait BothOfCellAndGeneric<T> {
-const DIRECT: Cell<T>;
-//~^ declare_interior_mutable_const
-const INDIRECT: Cell<*const T>;
-//~^ declare_interior_mutable_const
+    const DIRECT: Cell<T>;
+    //~^ declare_interior_mutable_const
+    const INDIRECT: Cell<*const T>;
+    //~^ declare_interior_mutable_const
 }
 
 impl<T: ConstDefault> BothOfCellAndGeneric<T> for u64 {
-const DIRECT: Cell<T> = Cell::new(T::DEFAULT);
-//~^ declare_interior_mutable_const
+    const DIRECT: Cell<T> = Cell::new(T::DEFAULT);
+    //~^ declare_interior_mutable_const
     const INDIRECT: Cell<*const T> = Cell::new(std::ptr::null());
 }
 
@@ -149,15 +148,15 @@ impl<T> Local<T>
 where
     T: ConstDefault + AssocTypesHelper<ToBeBounded = AtomicUsize>,
 {
-const ATOMIC: AtomicUsize = AtomicUsize::new(18);
-//~^ declare_interior_mutable_const
+    const ATOMIC: AtomicUsize = AtomicUsize::new(18);
+    //~^ declare_interior_mutable_const
     const COW: Cow<'static, str> = Cow::Borrowed("tuvwxy");
 
     const GENERIC_TYPE: T = T::DEFAULT;
 
     const ASSOC_TYPE: T::NotToBeBounded = T::NOT_TO_BE_BOUNDED;
-const BOUNDED_ASSOC_TYPE: T::ToBeBounded = AtomicUsize::new(19);
-//~^ declare_interior_mutable_const
+    const BOUNDED_ASSOC_TYPE: T::ToBeBounded = AtomicUsize::new(19);
+    //~^ declare_interior_mutable_const
 }
 
 fn main() {}

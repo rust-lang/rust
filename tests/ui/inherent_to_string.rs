@@ -20,7 +20,7 @@ struct J;
 impl A {
     // Should be detected; emit warning
     fn to_string(&self) -> String {
-    //~^ inherent_to_string
+        //~^ inherent_to_string
 
         "A.to_string()".to_string()
     }
@@ -46,7 +46,7 @@ impl B {
 impl C {
     // Should be detected and emit error as C also implements Display
     fn to_string(&self) -> String {
-    //~^ inherent_to_string_shadow_display
+        //~^ inherent_to_string_shadow_display
 
         "C.to_string()".to_string()
     }

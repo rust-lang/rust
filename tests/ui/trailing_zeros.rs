@@ -6,7 +6,6 @@ fn main() {
     let _ = (x & 0b1111 == 0);
     //~^ verbose_bit_mask
 
-
     let _ = x & 0b1_1111 == 0;
     //~^ verbose_bit_mask
 

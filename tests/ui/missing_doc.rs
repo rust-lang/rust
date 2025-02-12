@@ -43,7 +43,7 @@ mod a {
 }
 
 enum Baz {
-//~^ missing_docs_in_private_items
+    //~^ missing_docs_in_private_items
     BazA { a: isize, b: isize },
     //~^ missing_docs_in_private_items
     //~| missing_docs_in_private_items
@@ -94,7 +94,7 @@ pub static BAR3: u32 = 0;
 pub static BAR4: u32 = 0;
 
 mod internal_impl {
-//~^ missing_docs_in_private_items
+    //~^ missing_docs_in_private_items
     /// dox
     pub fn documented() {}
     pub fn undocumented1() {}
@@ -133,7 +133,7 @@ with_span!(span pub const FOO2_PM: u32 = 0;);
 const _: () = ();
 
 fn issue13298() {
-//~^ missing_docs_in_private_items
+    //~^ missing_docs_in_private_items
     // Rustdoc doesn't generate documentation for items within other items like fns or consts
     const MSG: &str = "Hello, world!";
 }

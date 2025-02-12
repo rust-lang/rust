@@ -12,20 +12,16 @@ fn main() {
     println!("{:5}.", format_args!(""));
     //~^ unused_format_specs
 
-
     //prints `abcde`, not `abc`
     println!("{:.3}", format_args!("abcde"));
     //~^ unused_format_specs
 
-
     println!("{:5}.", format_args_from_macro!());
     //~^ unused_format_specs
-
 
     let args = format_args!("");
     println!("{args:5}");
     //~^ unused_format_specs
-
 }
 
 fn should_not_lint() {
@@ -56,15 +52,12 @@ fn should_lint_user() {
     usr_println!(true, "{:.3}", format_args!("abcde"));
     //~^ unused_format_specs
 
-
     usr_println!(true, "{:5}.", format_args_from_macro!());
     //~^ unused_format_specs
-
 
     let args = format_args!("");
     usr_println!(true, "{args:5}");
     //~^ unused_format_specs
-
 }
 
 fn should_not_lint_user() {

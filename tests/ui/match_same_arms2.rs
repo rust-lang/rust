@@ -35,18 +35,17 @@ fn match_same_arms() {
         },
     };
 
-
     let _ = match 42 {
         42 => foo(),
-51 => foo(),
-//~^ match_same_arms
+        51 => foo(),
+        //~^ match_same_arms
         _ => true,
     };
 
     let _ = match Some(42) {
         Some(_) => 24,
-None => 24,
-//~^ match_same_arms
+        None => 24,
+        //~^ match_same_arms
     };
 
     let _ = match Some(42) {
@@ -68,8 +67,8 @@ None => 24,
 
     match (Some(42), Some(42)) {
         (Some(a), None) => bar(a),
-(None, Some(a)) => bar(a),
-//~^ match_same_arms
+        (None, Some(a)) => bar(a),
+        //~^ match_same_arms
         _ => (),
     }
 
@@ -83,14 +82,14 @@ None => 24,
 
     let _ = match (Some(42), Some(42)) {
         (Some(a), None) if a == 42 => a,
-(None, Some(a)) if a == 42 => a,
-//~^ match_same_arms
+        (None, Some(a)) if a == 42 => a,
+        //~^ match_same_arms
         _ => 0,
     };
 
     match (Some(42), Some(42)) {
-(Some(a), ..) => bar(a),
-//~^ match_same_arms
+        (Some(a), ..) => bar(a),
+        //~^ match_same_arms
         (.., Some(a)) => bar(a),
         _ => (),
     }
@@ -124,8 +123,8 @@ None => 24,
     }
 
     match (x, Some(1i32)) {
-(Ok(x), Some(_)) => println!("ok {}", x),
-//~^ match_same_arms
+        (Ok(x), Some(_)) => println!("ok {}", x),
+        //~^ match_same_arms
         (Ok(_), Some(x)) => println!("ok {}", x),
         _ => println!("err"),
     }
@@ -141,8 +140,8 @@ None => 24,
     match x {
         Ok(_tmp) => println!("ok"),
         Ok(3) => println!("ok"),
-Ok(_) => println!("ok"),
-//~^ match_same_arms
+        Ok(_) => println!("ok"),
+        //~^ match_same_arms
         Err(_) => {
             unreachable!();
         },
@@ -177,7 +176,6 @@ Ok(_) => println!("ok"),
             empty!(x);
         },
     }
-
 
     match_expr_like_matches_macro_priority();
 }
@@ -221,8 +219,8 @@ fn main() {
 
     // Suggest moving `Foo::Z(_)` up.
     let _ = match Foo::X(0) {
-Foo::X(0) => 1,
-//~^ match_same_arms
+        Foo::X(0) => 1,
+        //~^ match_same_arms
         Foo::X(_) | Foo::Y(_) => 2,
         Foo::Z(_) => 1,
         _ => 0,
@@ -232,8 +230,8 @@ Foo::X(0) => 1,
     let _ = match Foo::X(0) {
         Foo::X(0) => 1,
         Foo::Y(_) | Foo::Z(0) => 2,
-Foo::Z(_) => 1,
-//~^ match_same_arms
+        Foo::Z(_) => 1,
+        //~^ match_same_arms
         _ => 0,
     };
 
@@ -256,8 +254,8 @@ Foo::Z(_) => 1,
         Some(Bar { x: 0, y: 5, .. }) => 1,
         Some(Bar { y: 10, z: 0, .. }) => 2,
         None => 50,
-Some(Bar { y: 0, x: 5, .. }) => 1,
-//~^ match_same_arms
+        Some(Bar { y: 0, x: 5, .. }) => 1,
+        //~^ match_same_arms
         _ => 200,
     };
 
@@ -290,7 +288,6 @@ mod with_lifetime {
                 MaybeStaticStr::Static(s) => s,
                 MaybeStaticStr::Borrowed(s) => s,
                 //~^ match_same_arms
-
             }
         }
     }

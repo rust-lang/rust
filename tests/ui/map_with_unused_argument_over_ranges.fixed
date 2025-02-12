@@ -35,7 +35,7 @@ fn main() {
     std::iter::repeat_n(3, 10);
     //~^ map_with_unused_argument_over_ranges
     std::iter::repeat_with(|| {
-    //~^ map_with_unused_argument_over_ranges
+        //~^ map_with_unused_argument_over_ranges
         let x = 3;
         x + 2
     }).take(10);

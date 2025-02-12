@@ -17,10 +17,8 @@ fn int_to_char() {
     let _: char = unsafe { core::mem::transmute(0_u32) };
     //~^ transmute_int_to_char
 
-
     let _: char = unsafe { core::mem::transmute(0_i32) };
     //~^ transmute_int_to_char
-
 
     // These shouldn't warn
     const _: char = unsafe { core::mem::transmute(0_u32) };

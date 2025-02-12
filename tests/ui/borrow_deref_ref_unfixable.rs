@@ -8,7 +8,5 @@ mod should_lint {
         let s = &String::new();
         let x: &str = &*s;
         //~^ borrow_deref_ref
-
-
     }
 }

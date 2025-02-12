@@ -254,52 +254,58 @@ LL |         let _: i32 = x + 0;
    |                      ^^^^^ help: consider reducing it to: `*x`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:224:22
+  --> tests/ui/identity_op.rs:223:22
    |
 LL |         let _: i32 = **x + 0;
    |                      ^^^^^^^ help: consider reducing it to: `**x`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:228:22
+  --> tests/ui/identity_op.rs:227:22
    |
 LL |         let _: i32 = *x + 0;
    |                      ^^^^^^ help: consider reducing it to: `**x`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:235:22
+  --> tests/ui/identity_op.rs:233:22
    |
 LL |         let _: i32 = ***x + 0;
    |                      ^^^^^^^^ help: consider reducing it to: `***x`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:238:22
+  --> tests/ui/identity_op.rs:236:22
    |
 LL |         let _: i32 = **x + 0;
    |                      ^^^^^^^ help: consider reducing it to: `***x`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:242:22
+  --> tests/ui/identity_op.rs:240:22
    |
 LL |         let _: i32 = *&x + 0;
    |                      ^^^^^^^ help: consider reducing it to: `*&x`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:245:22
+  --> tests/ui/identity_op.rs:243:22
    |
 LL |         let _: i32 = **&&x + 0;
    |                      ^^^^^^^^^ help: consider reducing it to: `**&&x`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:248:22
+  --> tests/ui/identity_op.rs:246:22
    |
 LL |         let _: i32 = *&*&x + 0;
    |                      ^^^^^^^^^ help: consider reducing it to: `*&*&x`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:251:22
+  --> tests/ui/identity_op.rs:249:22
    |
 LL |         let _: i32 = **&&*&x + 0;
    |                      ^^^^^^^^^^^ help: consider reducing it to: `**&&*&x`
+
+error: this operation has no effect
+  --> tests/ui/identity_op.rs:256:22
+   |
+LL |         let _: i32 = **&&*&x + 0;
+   |                      ^^^^^^^^^^^ help: consider reducing it to: `***&&*&x`
 
 error: this operation has no effect
   --> tests/ui/identity_op.rs:259:22
@@ -308,73 +314,67 @@ LL |         let _: i32 = **&&*&x + 0;
    |                      ^^^^^^^^^^^ help: consider reducing it to: `***&&*&x`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:262:22
-   |
-LL |         let _: i32 = **&&*&x + 0;
-   |                      ^^^^^^^^^^^ help: consider reducing it to: `***&&*&x`
-
-error: this operation has no effect
-  --> tests/ui/identity_op.rs:272:18
+  --> tests/ui/identity_op.rs:268:18
    |
 LL |     let _: u64 = (x + y + 0i32) as u64;
    |                  ^^^^^^^^^^^^^^ help: consider reducing it to: `(x + y)`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:276:25
+  --> tests/ui/identity_op.rs:272:25
    |
 LL |     let _: u64 = 1u64 & (x + y + 0i32) as u64;
    |                         ^^^^^^^^^^^^^^ help: consider reducing it to: `(x + y)`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:280:25
+  --> tests/ui/identity_op.rs:276:25
    |
 LL |     let _: u64 = 1u64 & ((x + y) + 0i32) as u64;
    |                         ^^^^^^^^^^^^^^^^ help: consider reducing it to: `((x + y))`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:284:25
+  --> tests/ui/identity_op.rs:280:25
    |
 LL |     let _: u64 = 5u64 + ((x + y) + 0i32) as u64;
    |                         ^^^^^^^^^^^^^^^^ help: consider reducing it to: `((x + y))`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:289:14
+  --> tests/ui/identity_op.rs:284:14
    |
 LL |     let _ = -(x + y + 0i32);
    |              ^^^^^^^^^^^^^^ help: consider reducing it to: `(x + y)`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:293:14
+  --> tests/ui/identity_op.rs:288:14
    |
 LL |     let _ = -(x / y / 1i32);
    |              ^^^^^^^^^^^^^^ help: consider reducing it to: `(x / y)`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:297:20
+  --> tests/ui/identity_op.rs:292:20
    |
 LL |     let _ = 2i32 * (x + y + 0i32);
    |                    ^^^^^^^^^^^^^^ help: consider reducing it to: `(x + y)`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:302:20
+  --> tests/ui/identity_op.rs:297:20
    |
 LL |     let _ = 2i32 - (x - y - 0i32);
    |                    ^^^^^^^^^^^^^^ help: consider reducing it to: `(x - y)`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:307:17
+  --> tests/ui/identity_op.rs:302:17
    |
 LL |     let _ = 2 + (x + (y * z) + 0);
    |                 ^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(x + (y * z))`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:312:20
+  --> tests/ui/identity_op.rs:307:20
    |
 LL |     let _ = 2i32 + (x * y * 1i32);
    |                    ^^^^^^^^^^^^^^ help: consider reducing it to: `(x * y)`
 
 error: this operation has no effect
-  --> tests/ui/identity_op.rs:318:25
+  --> tests/ui/identity_op.rs:312:25
    |
 LL |     let _: u64 = 1u64 + ((x as i32 + y as i32) as u64 + 0u64);
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `((x as i32 + y as i32) as u64)`

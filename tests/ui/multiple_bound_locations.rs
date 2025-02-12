@@ -2,7 +2,6 @@
 
 fn ty<F: std::fmt::Debug>(a: F)
 //~^ multiple_bound_locations
-
 where
     F: Sized,
 {
@@ -10,7 +9,6 @@ where
 
 fn lifetime<'a, 'b: 'a, 'c>(a: &'b str, b: &'a str, c: &'c str)
 //~^ multiple_bound_locations
-
 where
     'b: 'c,
 {
@@ -18,7 +16,6 @@ where
 
 fn ty_pred<F: Sized>()
 //~^ multiple_bound_locations
-
 where
     for<'a> F: Send + 'a,
 {
@@ -29,7 +26,6 @@ struct B;
 impl B {
     fn ty<F: std::fmt::Debug>(a: F)
     //~^ multiple_bound_locations
-
     where
         F: Sized,
     {
@@ -37,7 +33,6 @@ impl B {
 
     fn lifetime<'a, 'b: 'a, 'c>(a: &'b str, b: &'a str, c: &'c str)
     //~^ multiple_bound_locations
-
     where
         'b: 'c,
     {
@@ -45,7 +40,6 @@ impl B {
 
     fn ty_pred<F: Sized>()
     //~^ multiple_bound_locations
-
     where
         for<'a> F: Send + 'a,
     {

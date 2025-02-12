@@ -8,14 +8,11 @@ fn main() {
     let _ = &arr[3usize..=1usize];
     //~^ reversed_empty_ranges
 
-
     let _ = &arr[SOME_NUM..1];
     //~^ reversed_empty_ranges
 
-
     for _ in ANSWER..ANSWER {}
     //~^ reversed_empty_ranges
-
 
     // Should not be linted, see issue #5689
     let _ = (42 + 10..42 + 10).map(|x| x / 2).find(|&x| x == 21);

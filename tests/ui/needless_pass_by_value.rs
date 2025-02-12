@@ -17,8 +17,7 @@ use std::mem::MaybeUninit;
 // `v` should be warned
 // `w`, `x` and `y` are allowed (moved or mutated)
 fn foo<T: Default>(v: Vec<T>, w: Vec<T>, mut x: Vec<T>, y: Vec<T>) -> Vec<T> {
-//~^ needless_pass_by_value
-
+    //~^ needless_pass_by_value
 
     assert_eq!(v.len(), 42);
 
@@ -34,9 +33,8 @@ fn consume<T>(_: T) {}
 struct Wrapper(String);
 
 fn bar(x: String, y: Wrapper) {
-//~^ needless_pass_by_value
-//~| needless_pass_by_value
-
+    //~^ needless_pass_by_value
+    //~| needless_pass_by_value
 
     assert_eq!(x.len(), 42);
     assert_eq!(y.0.len(), 42);
@@ -44,7 +42,7 @@ fn bar(x: String, y: Wrapper) {
 
 // V implements `Borrow<V>`, but should be warned correctly
 fn test_borrow_trait<T: Borrow<str>, U: AsRef<str>, V>(t: T, u: U, v: V) {
-//~^ needless_pass_by_value
+    //~^ needless_pass_by_value
 
     println!("{}", t.borrow());
     println!("{}", u.as_ref());
@@ -58,7 +56,7 @@ fn test_fn<F: Fn(i32) -> i32>(f: F) {
 
 // x should be warned, but y is ok
 fn test_match(x: Option<Option<String>>, y: Option<Option<String>>) {
-//~^ needless_pass_by_value
+    //~^ needless_pass_by_value
 
     match x {
         Some(Some(_)) => 1, // not moved
@@ -73,9 +71,8 @@ fn test_match(x: Option<Option<String>>, y: Option<Option<String>>) {
 
 // x and y should be warned, but z is ok
 fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
-//~^ needless_pass_by_value
-//~| needless_pass_by_value
-
+    //~^ needless_pass_by_value
+    //~| needless_pass_by_value
 
     let Wrapper(s) = z; // moved
     let Wrapper(ref t) = y; // not moved
@@ -95,15 +92,11 @@ impl Serialize for i32 {}
 fn test_blanket_ref<T: Foo, S: Serialize>(vals: T, serializable: S) {}
 //~^ needless_pass_by_value
 
-
 fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
-//~^ needless_pass_by_value
-//~| needless_pass_by_value
-//~| needless_pass_by_value
-//~| needless_pass_by_value
-
-
-
+    //~^ needless_pass_by_value
+    //~| needless_pass_by_value
+    //~| needless_pass_by_value
+    //~| needless_pass_by_value
 
     s.capacity();
     let _ = t.clone();
@@ -119,10 +112,8 @@ impl<T: Serialize, U> S<T, U> {
         // taking `self` by value is always allowed
         s: String,
         //~^ needless_pass_by_value
-
         t: String,
         //~^ needless_pass_by_value
-
     ) -> usize {
         s.len() + t.capacity()
     }
@@ -134,8 +125,6 @@ impl<T: Serialize, U> S<T, U> {
     fn baz(&self, uu: U, ss: Self) {}
     //~^ needless_pass_by_value
     //~| needless_pass_by_value
-
-
 }
 
 trait FalsePositive {
@@ -158,7 +147,7 @@ fn range<T: ::std::ops::RangeBounds<usize>>(range: T) {
 struct CopyWrapper(u32);
 
 fn bar_copy(x: u32, y: CopyWrapper) {
-//~^ needless_pass_by_value
+    //~^ needless_pass_by_value
 
     assert_eq!(x, 42);
     assert_eq!(y.0, 42);
@@ -166,11 +155,9 @@ fn bar_copy(x: u32, y: CopyWrapper) {
 
 // x and y should be warned, but z is ok
 fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: CopyWrapper) {
-//~^ needless_pass_by_value
-//~| needless_pass_by_value
-//~| needless_pass_by_value
-
-
+    //~^ needless_pass_by_value
+    //~| needless_pass_by_value
+    //~| needless_pass_by_value
 
     let CopyWrapper(s) = z; // moved
     let CopyWrapper(ref t) = y; // not moved
@@ -186,13 +173,11 @@ impl<'b, T> Bar<'b, T> for T {}
 fn some_fun<'b, S: Bar<'b, ()>>(items: S) {}
 //~^ needless_pass_by_value
 
-
 // Also this should not cause an ICE. See #2831
 trait Club<'a, A> {}
 impl<T> Club<'static, T> for T {}
 fn more_fun(items: impl Club<'static, i32>) {}
 //~^ needless_pass_by_value
-
 
 fn is_sync<T>(_: T)
 where

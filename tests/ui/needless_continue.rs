@@ -28,7 +28,7 @@ fn main() {
             let i = 0;
             println!("bar {} ", i);
         } else {
-        //~^ needless_continue
+            //~^ needless_continue
 
             continue;
         }
@@ -45,7 +45,7 @@ fn main() {
         }
 
         if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
-        //~^ needless_continue
+            //~^ needless_continue
 
             continue;
         } else {
@@ -61,7 +61,6 @@ fn simple_loop() {
     loop {
         continue;
         //~^ needless_continue
-
     }
 }
 
@@ -70,7 +69,6 @@ fn simple_loop2() {
         println!("bleh");
         continue;
         //~^ needless_continue
-
     }
 }
 
@@ -98,7 +96,6 @@ fn simple_loop5() {
         println!("bleh");
         { continue }
         //~^ needless_continue
-
     }
 }
 
@@ -149,7 +146,7 @@ mod issue_2329 {
                 if condition() {
                     println!("bar-3");
                 } else {
-                //~^ needless_continue
+                    //~^ needless_continue
 
                     continue 'inner;
                 }
@@ -157,7 +154,7 @@ mod issue_2329 {
 
                 update_condition();
                 if condition() {
-                //~^ needless_continue
+                    //~^ needless_continue
 
                     continue;
                 } else {
@@ -182,7 +179,6 @@ fn issue_13641() {
         'b: loop {
             continue 'b;
             //~^ needless_continue
-
         }
     }
 }
@@ -221,7 +217,7 @@ mod issue_4077 {
         loop {
             if true {
             } else {
-            //~^ needless_continue
+                //~^ needless_continue
                 // redundant `else`
                 continue; // redundant `continue`
             }
@@ -229,7 +225,7 @@ mod issue_4077 {
 
         loop {
             if some_expr() {
-            //~^ needless_continue
+                //~^ needless_continue
                 continue;
             } else {
                 do_something();

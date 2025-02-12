@@ -36,25 +36,25 @@ fn main() {
     }
 
     match Ok::<i32, i32>(42) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Ok(_) => true,
         Err(_) => false,
     };
 
     match Ok::<i32, i32>(42) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Ok(_) => false,
         Err(_) => true,
     };
 
     match Err::<i32, i32>(42) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Ok(_) => false,
         Err(_) => true,
     };
 
     match Err::<i32, i32>(42) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Ok(_) => true,
         Err(_) => false,
     };
@@ -69,10 +69,10 @@ fn main() {
     issue10803();
 
     let _ = if let Ok(_) = gen_res() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         1
     } else if let Err(_) = gen_res() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         2
     } else {
         3
@@ -138,13 +138,13 @@ const fn issue6067() {
     //~^ redundant_pattern_matching
 
     match Ok::<i32, i32>(42) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Ok(_) => true,
         Err(_) => false,
     };
 
     match Err::<i32, i32>(42) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Ok(_) => false,
         Err(_) => true,
     };
@@ -155,25 +155,25 @@ fn issue10726() {
     let x: Result<i32, i32> = Ok(42);
 
     match x {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Ok(_) => true,
         _ => false,
     };
 
     match x {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Ok(_) => false,
         _ => true,
     };
 
     match x {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Err(_) => true,
         _ => false,
     };
 
     match x {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Err(_) => false,
         _ => true,
     };

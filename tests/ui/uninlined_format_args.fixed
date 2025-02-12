@@ -53,7 +53,7 @@ fn tester(fn_arg: i32) {
     println!("val='{local_i32}'"); // tab+space
     //~^ uninlined_format_args
     println!(
-    //~^ uninlined_format_args
+        //~^ uninlined_format_args
         "val='{local_i32}'"
     );
     println!("{local_i32}");
@@ -173,7 +173,7 @@ fn tester(fn_arg: i32) {
     println!("{local_f64:width$.prec$} {local_f64} {width} {prec}");
     //~^ uninlined_format_args
     println!(
-    //~^ uninlined_format_args
+        //~^ uninlined_format_args
         "{local_i32:width$.prec$} {local_i32:prec$.width$} {width:local_i32$.prec$} {width:prec$.local_i32$} {prec:local_i32$.width$} {prec:width$.local_i32$}",
     );
     println!(
@@ -208,7 +208,7 @@ fn tester(fn_arg: i32) {
     println!(no_param_str!(), local_i32);
 
     println!(
-    //~^ uninlined_format_args
+        //~^ uninlined_format_args
         "{val}",
     );
     println!("{val}");

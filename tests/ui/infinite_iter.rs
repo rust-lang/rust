@@ -26,8 +26,7 @@ fn infinite_iters() {
         .min();
     // infinite iter
     (0..8_u32)
-    //~^ infinite_iter
-
+        //~^ infinite_iter
         .rev()
         .cycle()
         .map(|x| x + 1_u32)
@@ -60,8 +59,7 @@ fn potential_infinite_iters() {
 
     // maybe infinite iter
     (1..)
-    //~^ maybe_infinite_iter
-
+        //~^ maybe_infinite_iter
         .scan(0, |state, x| {
             *state += x;
             Some(*state)
@@ -82,7 +80,6 @@ fn potential_infinite_iters() {
     // maybe infinite iter
     (0..).all(|x| x == 24);
     //~^ maybe_infinite_iter
-
 
     // not infinite
     (0..).zip(0..42).take_while(|&(x, _)| x != 42).count();
@@ -109,8 +106,6 @@ mod finite_collect {
         // Infinite iter
         let _: HashSet<i32> = (0..).collect();
         //~^ infinite_iter
-
-
 
         // Some data structures don't collect infinitely, such as `ArrayVec`
         let _: C = (0..).collect();

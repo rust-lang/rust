@@ -17,7 +17,7 @@ LL | struct DiagnosticCtx<'a, 'b>
    = help: use a more informative name
 
 error: single-character lifetime names are likely uninformative
-  --> tests/ui/single_char_lifetime_names.rs:18:6
+  --> tests/ui/single_char_lifetime_names.rs:16:6
    |
 LL | impl<'a, 'b> DiagnosticCtx<'a, 'b> {
    |      ^^
@@ -25,7 +25,7 @@ LL | impl<'a, 'b> DiagnosticCtx<'a, 'b> {
    = help: use a more informative name
 
 error: single-character lifetime names are likely uninformative
-  --> tests/ui/single_char_lifetime_names.rs:18:10
+  --> tests/ui/single_char_lifetime_names.rs:16:10
    |
 LL | impl<'a, 'b> DiagnosticCtx<'a, 'b> {
    |          ^^
@@ -33,7 +33,7 @@ LL | impl<'a, 'b> DiagnosticCtx<'a, 'b> {
    = help: use a more informative name
 
 error: single-character lifetime names are likely uninformative
-  --> tests/ui/single_char_lifetime_names.rs:42:15
+  --> tests/ui/single_char_lifetime_names.rs:39:15
    |
 LL | fn split_once<'a>(base: &'a str, other: &'_ str) -> (&'a str, Option<&'a str>) {
    |               ^^

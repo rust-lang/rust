@@ -5,8 +5,7 @@ fn main() {
     let mut vec = vec![1, 2, 3, 4];
     let mut _index = 0;
     for _v in &vec {
-    //~^ explicit_counter_loop
-
+        //~^ explicit_counter_loop
 
         _index += 1
     }
@@ -14,21 +13,21 @@ fn main() {
     let mut _index = 1;
     _index = 0;
     for _v in &vec {
-    //~^ explicit_counter_loop
+        //~^ explicit_counter_loop
 
         _index += 1
     }
 
     let mut _index = 0;
     for _v in &mut vec {
-    //~^ explicit_counter_loop
+        //~^ explicit_counter_loop
 
         _index += 1;
     }
 
     let mut _index = 0;
     for _v in vec {
-    //~^ explicit_counter_loop
+        //~^ explicit_counter_loop
 
         _index += 1;
     }
@@ -117,7 +116,7 @@ mod issue_1219 {
         let text = "banana";
         let mut count = 0;
         for ch in text.chars() {
-        //~^ explicit_counter_loop
+            //~^ explicit_counter_loop
 
             println!("{}", count);
             count += 1;
@@ -130,7 +129,7 @@ mod issue_1219 {
         let text = "banana";
         let mut count = 0;
         for ch in text.chars() {
-        //~^ explicit_counter_loop
+            //~^ explicit_counter_loop
 
             println!("{}", count);
             count += 1;
@@ -190,7 +189,7 @@ mod issue_1670 {
     pub fn test() {
         let mut count = 0;
         for _i in 3..10 {
-        //~^ explicit_counter_loop
+            //~^ explicit_counter_loop
 
             count += 1;
         }
@@ -232,7 +231,7 @@ mod issue_7920 {
 
         // should suggest `enumerate`
         for _item in slice {
-        //~^ explicit_counter_loop
+            //~^ explicit_counter_loop
 
             if idx_usize == index_usize {
                 break;
@@ -246,8 +245,7 @@ mod issue_7920 {
 
         // should suggest `zip`
         for _item in slice {
-        //~^ explicit_counter_loop
-
+            //~^ explicit_counter_loop
 
             if idx_u32 == index_u32 {
                 break;
@@ -293,7 +291,7 @@ mod issue_13123 {
         let mut vec = vec![1, 2, 3, 4];
         let mut _index = 0;
         'label: for v in vec {
-        //~^ explicit_counter_loop
+            //~^ explicit_counter_loop
             _index += 1;
             if v == 1 {
                 break 'label;

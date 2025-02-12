@@ -15,7 +15,6 @@ fn main() {
         let taken_v = mem::replace(&mut v, mem::uninitialized());
         //~^ mem_replace_with_uninit
 
-
         let new_v = might_panic(taken_v);
         std::mem::forget(mem::replace(&mut v, new_v));
     }

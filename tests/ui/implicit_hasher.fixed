@@ -13,7 +13,7 @@ pub trait Foo<T>: Sized {
 }
 
 impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<i8> for HashMap<K, V, S> {
-//~^ implicit_hasher
+    //~^ implicit_hasher
     fn make() -> (Self, Self) {
         // OK, don't suggest to modify these
         let _: HashMap<i32, i32> = HashMap::new();
@@ -23,13 +23,13 @@ impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<i8> for HashMap
     }
 }
 impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<i8> for (HashMap<K, V, S>,) {
-//~^ implicit_hasher
+    //~^ implicit_hasher
     fn make() -> (Self, Self) {
         ((HashMap::default(),), (HashMap::with_capacity_and_hasher(10, Default::default()),))
     }
 }
 impl<S: ::std::hash::BuildHasher + Default> Foo<i16> for HashMap<String, String, S> {
-//~^ implicit_hasher
+    //~^ implicit_hasher
     fn make() -> (Self, Self) {
         (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default::default()))
     }
@@ -47,13 +47,13 @@ impl<S: BuildHasher + Default> Foo<i64> for HashMap<String, String, S> {
 }
 
 impl<T: Hash + Eq, S: ::std::hash::BuildHasher + Default> Foo<i8> for HashSet<T, S> {
-//~^ implicit_hasher
+    //~^ implicit_hasher
     fn make() -> (Self, Self) {
         (HashSet::default(), HashSet::with_capacity_and_hasher(10, Default::default()))
     }
 }
 impl<S: ::std::hash::BuildHasher + Default> Foo<i16> for HashSet<String, S> {
-//~^ implicit_hasher
+    //~^ implicit_hasher
     fn make() -> (Self, Self) {
         (HashSet::default(), HashSet::with_capacity_and_hasher(10, Default::default()))
     }

@@ -21,8 +21,8 @@ pub mod singleline_inner_doc {
 
 pub mod multiline_outer_doc {
     /**! This module contains useful functions.
-    //~^ suspicious_doc_comments
      */
+    //~^^ suspicious_doc_comments
 
     pub fn bar() {}
 }

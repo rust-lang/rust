@@ -7,7 +7,6 @@ fn main() {
     let _ = 1 == 1;
     //~^ eq_op
 
-
     let _ = "no" == "no";
     //~^ eq_op
 
@@ -24,8 +23,6 @@ fn main() {
     let x = f32::NAN;
     let _ = x != x;
     //~^ eq_op
-
-
 
     // casts, methods, parentheses
     let _ = (1u32 as u64) & (1u32 as u64);
@@ -47,11 +44,8 @@ fn main() {
     //~| eq_op
     //~| eq_op
 
-
-
     let _ = (1 * 2) + (3 * 4) == 1 * 2 + 3 * 4;
     //~^ eq_op
-
 
     // various other things
     let _ = ([1] != [1]);
@@ -70,8 +64,6 @@ fn main() {
     //~^ eq_op
     //~| eq_op
 
-
-
     let _ = 1 - 1;
     //~^ eq_op
 
@@ -81,10 +73,8 @@ fn main() {
     let _ = true && true;
     //~^ eq_op
 
-
     let _ = true || true;
     //~^ eq_op
-
 
     let a: u32 = 0;
     let b: u32 = 0;
@@ -101,7 +91,6 @@ fn main() {
     let _ = a <= b && b >= a;
     //~^ eq_op
 
-
     let mut a = vec![1];
     let _ = a == a;
     //~^ eq_op
@@ -117,7 +106,6 @@ fn main() {
     const C: u32 = A / B; // ok, different named constants
     const D: u32 = A / A;
     //~^ eq_op
-
 }
 
 macro_rules! check_if_named_foo {
@@ -150,7 +138,6 @@ fn check_nested(n1: &Nested, n2: &Nested) -> bool {
     // `n2.inner.0.0` mistyped as `n1.inner.0.0`
     (n1.inner.0).0 == (n1.inner.0).0 && (n1.inner.1).0 == (n2.inner.1).0 && (n1.inner.2).0 == (n2.inner.2).0
     //~^ eq_op
-
 }
 
 #[test]

@@ -14,10 +14,9 @@ fn main() {
     } + x;
     //~^ mixed_read_write_in_expression
 
-
     // Example from iss#277
     x += {
-    //~^ mixed_read_write_in_expression
+        //~^ mixed_read_write_in_expression
 
         x = 20;
         2
@@ -33,7 +32,6 @@ fn main() {
     let foo = Foo {
         a: x,
         //~^ mixed_read_write_in_expression
-
         ..{
             x = 6;
             base
@@ -43,7 +41,7 @@ fn main() {
     let closure = || {
         let mut x = 0;
         x += {
-        //~^ mixed_read_write_in_expression
+            //~^ mixed_read_write_in_expression
 
             x = 20;
             2

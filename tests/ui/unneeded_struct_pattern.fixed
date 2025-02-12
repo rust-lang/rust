@@ -89,24 +89,24 @@ fn main() {
         noop();
     }
     if let Custom::NoBrackets = Custom::Init {
-    //~^ unneeded_struct_pattern
+        //~^ unneeded_struct_pattern
         noop();
     }
     if let Custom::NoBrackets = Custom::Init {
-    //~^ unneeded_struct_pattern
+        //~^ unneeded_struct_pattern
         noop();
     }
     if let Custom::NoBrackets | Custom::NoBracketsNonExhaustive = Custom::Init {
-    //~^ unneeded_struct_pattern
-    //~| unneeded_struct_pattern
+        //~^ unneeded_struct_pattern
+        //~| unneeded_struct_pattern
         noop();
     }
     if let Custom::NoBracketsNonExhaustive = Custom::Init {
-    //~^ unneeded_struct_pattern
+        //~^ unneeded_struct_pattern
         noop();
     }
     if let Custom::NoBracketsNonExhaustive = Custom::Init {
-    //~^ unneeded_struct_pattern
+        //~^ unneeded_struct_pattern
         noop();
     }
 
@@ -123,23 +123,21 @@ fn main() {
     };
 
     let Custom::NoBrackets = Custom::Init else {
-    //~^ unneeded_struct_pattern
+        //~^ unneeded_struct_pattern
         panic!()
     };
     let Custom::NoBracketsNonExhaustive = Custom::Init else {
-    //~^ unneeded_struct_pattern
+        //~^ unneeded_struct_pattern
         panic!()
     };
     let Custom::NoBracketsNonExhaustive = Custom::Init else {
-    //~^ unneeded_struct_pattern
+        //~^ unneeded_struct_pattern
         panic!()
     };
 
     enum Refutable {
         Variant,
     }
-
-
 }
 
 fn external_crate() {

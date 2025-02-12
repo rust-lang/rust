@@ -10,11 +10,9 @@ static THRESHOLD: i32 = 10;
 static REF_THRESHOLD: &Option<&i32> = &Some(&THRESHOLD);
 //~^ ref_option_ref
 
-
 const CONST_THRESHOLD: &i32 = &10;
 const REF_CONST: &Option<&i32> = &Some(CONST_THRESHOLD);
 //~^ ref_option_ref
-
 
 type RefOptRefU32<'a> = &'a Option<&'a u32>;
 //~^ ref_option_ref
@@ -22,13 +20,11 @@ type RefOptRefU32<'a> = &'a Option<&'a u32>;
 type RefOptRef<'a, T> = &'a Option<&'a T>;
 //~^ ref_option_ref
 
-
 fn foo(data: &Option<&u32>) {}
 //~^ ref_option_ref
 
-
 fn bar(data: &u32) -> &Option<&u32> {
-//~^ ref_option_ref
+    //~^ ref_option_ref
 
     &None
 }
@@ -36,18 +32,15 @@ fn bar(data: &u32) -> &Option<&u32> {
 struct StructRef<'a> {
     data: &'a Option<&'a u32>,
     //~^ ref_option_ref
-
 }
 
 struct StructTupleRef<'a>(u32, &'a Option<&'a u32>);
 //~^ ref_option_ref
 
-
 enum EnumRef<'a> {
     Variant1(u32),
     Variant2(&'a Option<&'a u32>),
     //~^ ref_option_ref
-
 }
 
 trait RefOptTrait {
@@ -59,14 +52,12 @@ impl RefOptTrait for u32 {
     type A = &'static Option<&'static Self>;
     //~^ ref_option_ref
 
-
     fn foo(&self, _: Self::A) {}
 }
 
 fn main() {
     let x: &Option<&u32> = &None;
     //~^ ref_option_ref
-
 }
 
 fn issue9682(arg: &Option<&mut String>) {

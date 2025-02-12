@@ -136,7 +136,7 @@ LL |     let Custom::NoBracketsNonExhaustive { .. } = Custom::Init else {
    |                                        ^^^^^^^ help: remove the struct pattern
 
 error: this match could be replaced by its body itself
-  --> tests/ui/unneeded_struct_pattern.rs:159:5
+  --> tests/ui/unneeded_struct_pattern.rs:157:5
    |
 LL | /     match ExhaustiveUnit {
 LL | |
@@ -146,7 +146,7 @@ LL | |     };
    | |_____^ help: consider using the match body instead: `0`
 
 error: this match could be replaced by its body itself
-  --> tests/ui/unneeded_struct_pattern.rs:165:5
+  --> tests/ui/unneeded_struct_pattern.rs:163:5
    |
 LL | /     match ExhaustiveUnit {
 LL | |

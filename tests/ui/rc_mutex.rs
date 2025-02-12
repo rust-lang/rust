@@ -33,7 +33,6 @@ fn test2(foo: Rc<Mutex<MyEnum>>) {}
 fn test3(foo: Rc<Mutex<SubT<usize>>>) {}
 //~^ rc_mutex
 
-
 // All of these test should be allowed because they are part of the
 // public api and `avoid_breaking_exported_api` is `false` by default.
 pub fn pub_test1<T>(foo: Rc<Mutex<T>>) {}

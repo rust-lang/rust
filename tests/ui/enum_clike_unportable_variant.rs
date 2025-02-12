@@ -7,8 +7,6 @@
 enum NonPortable {
     X = 0x1_0000_0000,
     //~^ enum_clike_unportable_variant
-
-
     Y = 0,
     Z = 0x7FFF_FFFF,
     A = 0xFFFF_FFFF,
@@ -17,12 +15,10 @@ enum NonPortable {
 enum NonPortableNoHint {
     X = 0x1_0000_0000,
     //~^ enum_clike_unportable_variant
-
     Y = 0,
     Z = 0x7FFF_FFFF,
     A = 0xFFFF_FFFF,
     //~^ enum_clike_unportable_variant
-
 }
 
 #[repr(isize)]
@@ -31,14 +27,11 @@ enum NonPortableSigned {
     Y = 0x7FFF_FFFF,
     Z = 0xFFFF_FFFF,
     //~^ enum_clike_unportable_variant
-
     A = 0x1_0000_0000,
     //~^ enum_clike_unportable_variant
-
     B = i32::MIN as isize,
     C = (i32::MIN as isize) - 1,
     //~^ enum_clike_unportable_variant
-
 }
 
 enum NonPortableSignedNoHint {
@@ -46,17 +39,14 @@ enum NonPortableSignedNoHint {
     Y = 0x7FFF_FFFF,
     Z = 0xFFFF_FFFF,
     //~^ enum_clike_unportable_variant
-
     A = 0x1_0000_0000,
     //~^ enum_clike_unportable_variant
-
 }
 
 #[repr(usize)]
 enum NonPortable2 {
     X = <usize as Trait>::Number,
     //~^ enum_clike_unportable_variant
-
     Y = 0,
 }
 

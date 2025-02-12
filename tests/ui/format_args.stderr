@@ -10,13 +10,13 @@ LL |     let _ = format!("error: something failed at {}", Location::caller().to_
 error: `to_string` applied to a type that implements `Display` in `write!` args
   --> tests/ui/format_args.rs:82:27
    |
-LL |         Location::caller().to_string()
+LL |         Location::caller().to_string(),
    |                           ^^^^^^^^^^^^ help: remove this
 
 error: `to_string` applied to a type that implements `Display` in `writeln!` args
   --> tests/ui/format_args.rs:88:27
    |
-LL |         Location::caller().to_string()
+LL |         Location::caller().to_string(),
    |                           ^^^^^^^^^^^^ help: remove this
 
 error: `to_string` applied to a type that implements `Display` in `print!` args

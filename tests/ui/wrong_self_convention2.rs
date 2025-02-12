@@ -52,7 +52,7 @@ mod issue7179 {
 
         // lint
         pub fn from_be_self(self) -> Self {
-        //~^ wrong_self_convention
+            //~^ wrong_self_convention
 
             S(i32::from_be(self.0))
         }
@@ -64,7 +64,6 @@ mod issue7179 {
         // lint
         fn from_be_self(self) -> Self;
         //~^ wrong_self_convention
-
     }
 
     trait Foo: Sized {

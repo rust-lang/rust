@@ -15,34 +15,30 @@ impl S {
 
 fn main() {
     if "some string".as_bytes().is_empty() {
-    //~^ needless_as_bytes
+        //~^ needless_as_bytes
 
         println!("len = {}", "some string".as_bytes().len());
         //~^ needless_as_bytes
-
     }
     if "some string".bytes().is_empty() {
-    //~^ needless_as_bytes
+        //~^ needless_as_bytes
 
         println!("len = {}", "some string".bytes().len());
         //~^ needless_as_bytes
-
     }
 
     let s = String::from("yet another string");
     if s.as_bytes().is_empty() {
-    //~^ needless_as_bytes
+        //~^ needless_as_bytes
 
         println!("len = {}", s.as_bytes().len());
         //~^ needless_as_bytes
-
     }
     if s.bytes().is_empty() {
-    //~^ needless_as_bytes
+        //~^ needless_as_bytes
 
         println!("len = {}", s.bytes().len());
         //~^ needless_as_bytes
-
     }
 
     // Do not lint

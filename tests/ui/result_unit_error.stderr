@@ -17,7 +17,7 @@ LL |     fn get_that_error(&self) -> Result<bool, ()>;
    = help: use a custom `Error` type instead
 
 error: this returns a `Result<_, ()>`
-  --> tests/ui/result_unit_error.rs:18:5
+  --> tests/ui/result_unit_error.rs:17:5
    |
 LL |     fn get_this_one_too(&self) -> Result<bool, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL |     fn get_this_one_too(&self) -> Result<bool, ()> {
    = help: use a custom `Error` type instead
 
 error: this returns a `Result<_, ()>`
-  --> tests/ui/result_unit_error.rs:38:5
+  --> tests/ui/result_unit_error.rs:37:5
    |
 LL |     pub fn unit_error(&self) -> Result<usize, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ LL |     pub fn unit_error(&self) -> Result<usize, ()> {
    = help: use a custom `Error` type instead
 
 error: this returns a `Result<_, ()>`
-  --> tests/ui/result_unit_error.rs:49:5
+  --> tests/ui/result_unit_error.rs:48:5
    |
 LL |     pub fn should_lint() -> ResInv<(), usize> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

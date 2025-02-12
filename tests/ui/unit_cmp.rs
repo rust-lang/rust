@@ -15,8 +15,7 @@ fn main() {
 
     // this warns
     if {
-    //~^ unit_cmp
-
+        //~^ unit_cmp
 
         true;
     } == {
@@ -24,7 +23,7 @@ fn main() {
     } {}
 
     if {
-    //~^ unit_cmp
+        //~^ unit_cmp
 
         true;
     } > {
@@ -32,8 +31,7 @@ fn main() {
     } {}
 
     assert_eq!(
-    //~^ unit_cmp
-
+        //~^ unit_cmp
         {
             true;
         },
@@ -42,8 +40,7 @@ fn main() {
         }
     );
     debug_assert_eq!(
-    //~^ unit_cmp
-
+        //~^ unit_cmp
         {
             true;
         },
@@ -53,8 +50,7 @@ fn main() {
     );
 
     assert_ne!(
-    //~^ unit_cmp
-
+        //~^ unit_cmp
         {
             true;
         },
@@ -63,8 +59,7 @@ fn main() {
         }
     );
     debug_assert_ne!(
-    //~^ unit_cmp
-
+        //~^ unit_cmp
         {
             true;
         },

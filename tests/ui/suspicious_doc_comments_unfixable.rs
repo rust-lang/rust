@@ -4,7 +4,6 @@
 ///! a
 //~^ suspicious_doc_comments
 
-
 ///! b
 /// c
 ///! d

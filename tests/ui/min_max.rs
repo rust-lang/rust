@@ -22,7 +22,6 @@ fn main() {
     min(1, max(3, x));
     //~^ min_max
 
-
     min(max(3, x), 1);
     //~^ min_max
 
@@ -32,10 +31,8 @@ fn main() {
     max(3, min(x, 1));
     //~^ min_max
 
-
     my_max(3, my_min(x, 1));
     //~^ min_max
-
 
     min(3, max(1, x)); // ok, could be 1, 2 or 3 depending on x
 
@@ -51,7 +48,6 @@ fn main() {
     max(min(s, "Apple"), "Zoo");
     //~^ min_max
 
-
     max("Apple", min(s, "Zoo")); // ok
 
     let f = 3f32;
@@ -63,7 +59,6 @@ fn main() {
 
     f.max(3f32).min(1f32);
     //~^ min_max
-
 
     x.max(1).min(3); // ok
     x.min(3).max(1); // ok
@@ -79,7 +74,6 @@ fn main() {
 
     s.min("Apple").max("Zoo");
     //~^ min_max
-
 
     s.min("Zoo").max("Apple"); // ok
 

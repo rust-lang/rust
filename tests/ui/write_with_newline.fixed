@@ -12,7 +12,6 @@ fn main() {
     writeln!(v, "Hello");
     //~^ write_with_newline
 
-
     writeln!(v, "Hello {}", "world");
     //~^ write_with_newline
 
@@ -24,7 +23,6 @@ fn main() {
 
     writeln!(v);
     //~^ write_with_newline
-
 
     // These should be fine
     write!(v, "");
@@ -57,13 +55,11 @@ fn main() {
 
     // Literal newlines should also fail
     writeln!(
-    //~^ write_with_newline
-
+        //~^ write_with_newline
         v
     );
     writeln!(
-    //~^ write_with_newline
-
+        //~^ write_with_newline
         v
     );
 

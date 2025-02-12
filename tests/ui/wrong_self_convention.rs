@@ -16,7 +16,6 @@ impl Foo {
     fn from_i32(self) {}
     //~^ wrong_self_convention
 
-
     pub fn as_i64(self) {}
     pub fn into_i64(self) {}
     pub fn is_i64(self) {}
@@ -54,7 +53,6 @@ impl Bar {
     fn from_i32(self) {}
     //~^ wrong_self_convention
 
-
     pub fn as_i64(self) {}
     //~^ wrong_self_convention
 
@@ -69,7 +67,6 @@ impl Bar {
 
     pub fn from_i64(self) {}
     //~^ wrong_self_convention
-
 
     // test for false positives
     fn as_(self) {}
@@ -216,7 +213,7 @@ mod issue6727 {
         }
         // trigger lint
         fn to_u64_v2(&self) -> u64 {
-        //~^ wrong_self_convention
+            //~^ wrong_self_convention
 
             1
         }
@@ -227,7 +224,7 @@ mod issue6727 {
     impl FooNoCopy {
         // trigger lint
         fn to_u64(self) -> u64 {
-        //~^ wrong_self_convention
+            //~^ wrong_self_convention
 
             2
         }

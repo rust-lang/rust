@@ -2,7 +2,8 @@ error: this could be rewritten as `let...else`
   --> tests/ui/manual_let_else_match.rs:36:5
    |
 LL | /     let v = match g() {
-...  |
+LL | |
+LL | |         Some(v_some) => v_some,
 LL | |         None => return,
 LL | |     };
    | |______^ help: consider writing: `let Some(v) = g() else { return };`
@@ -11,10 +12,9 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::manual_let_else)]`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:44:5
+  --> tests/ui/manual_let_else_match.rs:42:5
    |
 LL | /     let v = match g() {
-LL | |
 LL | |
 LL | |         Some(v_some) => v_some,
 LL | |         _ => return,
@@ -22,10 +22,9 @@ LL | |     };
    | |______^ help: consider writing: `let Some(v) = g() else { return };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:53:9
+  --> tests/ui/manual_let_else_match.rs:50:9
    |
 LL | /         let v = match h() {
-LL | |
 LL | |
 LL | |             (Some(v), None) | (None, Some(v)) => v,
 LL | |             (Some(_), Some(_)) | (None, None) => continue,
@@ -33,10 +32,9 @@ LL | |         };
    | |__________^ help: consider writing: `let ((Some(v), None) | (None, Some(v))) = h() else { continue };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:60:9
+  --> tests/ui/manual_let_else_match.rs:56:9
    |
 LL | /         let v = match build_enum() {
-LL | |
 LL | |
 LL | |             Variant::Bar(v) | Variant::Baz(v) => v,
 LL | |             _ => continue,
@@ -44,10 +42,9 @@ LL | |         };
    | |__________^ help: consider writing: `let (Variant::Bar(v) | Variant::Baz(v)) = build_enum() else { continue };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:70:5
+  --> tests/ui/manual_let_else_match.rs:65:5
    |
 LL | /     let v = match f() {
-LL | |
 LL | |
 LL | |         Ok(v) => v,
 LL | |         Err(_) => return,
@@ -55,10 +52,9 @@ LL | |     };
    | |______^ help: consider writing: `let Ok(v) = f() else { return };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:78:5
+  --> tests/ui/manual_let_else_match.rs:72:5
    |
 LL | /     let v = match f().map_err(|_| ()) {
-LL | |
 LL | |
 LL | |         Ok(v) => v,
 LL | |         Err(()) => return,
@@ -66,10 +62,9 @@ LL | |     };
    | |______^ help: consider writing: `let Ok(v) = f().map_err(|_| ()) else { return };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:87:5
+  --> tests/ui/manual_let_else_match.rs:80:5
    |
 LL | /     let _value = match f {
-LL | |
 LL | |
 LL | |         Variant::Bar(v) | Variant::Baz(v) => v,
 LL | |         _ => return,
@@ -77,10 +72,9 @@ LL | |     };
    | |______^ help: consider writing: `let (Variant::Bar(_value) | Variant::Baz(_value)) = f else { return };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:94:5
+  --> tests/ui/manual_let_else_match.rs:86:5
    |
 LL | /     let _value = match Some(build_enum()) {
-LL | |
 LL | |
 LL | |         Some(Variant::Bar(v) | Variant::Baz(v)) => v,
 LL | |         _ => return,
@@ -88,10 +82,9 @@ LL | |     };
    | |______^ help: consider writing: `let Some(Variant::Bar(_value) | Variant::Baz(_value)) = Some(build_enum()) else { return };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:102:5
+  --> tests/ui/manual_let_else_match.rs:93:5
    |
 LL | /     let data = match data.as_slice() {
-LL | |
 LL | |
 LL | |         [data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ .., 0] => data,
 LL | |         _ => return,
@@ -99,10 +92,9 @@ LL | |     };
    | |______^ help: consider writing: `let ([data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ .., 0]) = data.as_slice() else { return };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else_match.rs:184:5
+  --> tests/ui/manual_let_else_match.rs:174:5
    |
 LL | /     let msg = match Some("hi") {
-LL | |
 LL | |
 LL | |         Some(m) => m,
 LL | |         _ => unreachable!("can't happen"),

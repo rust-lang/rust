@@ -102,11 +102,11 @@ fn main() {
     [42; 55][get_usize()];
     //~^ unnecessary_operation
     {
-    //~^ unnecessary_operation
+        //~^ unnecessary_operation
         get_number()
     };
     FooString {
-    //~^ unnecessary_operation
+        //~^ unnecessary_operation
         s: String::from("blah"),
     };
 
@@ -148,5 +148,4 @@ const _: () = {
 const fn foo() {
     [42, 55][get_usize()];
     //~^ unnecessary_operation
-
 }

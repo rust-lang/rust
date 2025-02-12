@@ -7,7 +7,6 @@ fn main() {
     v.clear();
     //~^ vec_resize_to_zero
 
-
     // not applicable
     v.resize(2, 5);
 

@@ -12,7 +12,7 @@ fn main() {
     let _: Option<u8> = Some(3).map(|x| x);
     //~^ map_identity
     let _: Result<i8, f32> = Ok(-3).map(|x| {
-    //~^ map_identity
+        //~^ map_identity
         return x;
     });
     // should not lint
@@ -36,7 +36,7 @@ fn issue7189() {
     let _ = x.clone().map(|(x, y)| (x, y));
     //~^ map_identity
     let _ = x.clone().map(|(x, y)| {
-    //~^ map_identity
+        //~^ map_identity
         return (x, y);
     });
     let _ = x.clone().map(|(x, y)| return (x, y));

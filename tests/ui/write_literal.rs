@@ -31,7 +31,6 @@ fn main() {
     write!(v, "Hello {}", "world");
     //~^ write_literal
 
-
     writeln!(v, "Hello {} {}", world, "world");
     //~^ write_literal
 
@@ -40,7 +39,6 @@ fn main() {
 
     writeln!(v, "{} {:.4}", "a literal", 5);
     //~^ write_literal
-
 
     // positional args don't change the fact
     // that we're using a literal -- this should
@@ -51,14 +49,12 @@ fn main() {
     writeln!(v, "{1} {0}", "hello", "world");
     //~^ write_literal
 
-
     // named args shouldn't change anything either
     writeln!(v, "{foo} {bar}", foo = "hello", bar = "world");
     //~^ write_literal
 
     writeln!(v, "{bar} {foo}", foo = "hello", bar = "world");
     //~^ write_literal
-
 
     // #10128
     writeln!(v, "{0} {1} {2}", "hello", 2, "world");
@@ -72,7 +68,6 @@ fn main() {
 
     writeln!(v, "{0} {1} {2}, {3} {4}", "hello", 2, 3, "world", 4);
     //~^ write_literal
-
 }
 
 fn issue_13959() {

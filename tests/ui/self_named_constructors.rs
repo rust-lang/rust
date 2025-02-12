@@ -5,8 +5,7 @@ struct ShouldNotSpawn;
 
 impl ShouldSpawn {
     pub fn should_spawn() -> ShouldSpawn {
-    //~^ self_named_constructors
-
+        //~^ self_named_constructors
 
         ShouldSpawn
     }

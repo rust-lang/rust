@@ -6,7 +6,6 @@ fn main() {
     let _ = x.trailing_zeros() >= 4;
     //~^ verbose_bit_mask
 
-
     let _ = x.trailing_zeros() >= 5;
     //~^ verbose_bit_mask
 

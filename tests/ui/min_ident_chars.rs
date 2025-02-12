@@ -7,7 +7,7 @@ extern crate proc_macros;
 use proc_macros::{external, with_span};
 
 struct A {
-//~^ min_ident_chars
+    //~^ min_ident_chars
     a: u32,
     //~^ min_ident_chars
     i: u32,
@@ -21,7 +21,7 @@ struct B(u32);
 //~^ min_ident_chars
 
 struct O {
-//~^ min_ident_chars
+    //~^ min_ident_chars
     o: u32,
     //~^ min_ident_chars
 }
@@ -29,7 +29,7 @@ struct O {
 struct i;
 
 enum C {
-//~^ min_ident_chars
+    //~^ min_ident_chars
     D,
     //~^ min_ident_chars
     E,
@@ -116,8 +116,8 @@ fn main() {
 fn b() {}
 //~^ min_ident_chars
 fn wrong_pythagoras(a: f32, b: f32) -> f32 {
-//~^ min_ident_chars
-//~| min_ident_chars
+    //~^ min_ident_chars
+    //~| min_ident_chars
     a * a + a * b
 }
 

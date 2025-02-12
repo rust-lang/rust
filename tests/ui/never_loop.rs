@@ -10,8 +10,7 @@
 fn test1() {
     let mut x = 0;
     loop {
-    //~^ never_loop
-
+        //~^ never_loop
 
         // clippy::never_loop
         x += 1;
@@ -35,7 +34,7 @@ fn test2() {
 fn test3() {
     let mut x = 0;
     loop {
-    //~^ never_loop
+        //~^ never_loop
 
         // never loops
         x += 1;
@@ -57,11 +56,11 @@ fn test4() {
 fn test5() {
     let i = 0;
     loop {
-    //~^ never_loop
+        //~^ never_loop
 
         // never loops
         while i == 0 {
-        //~^ never_loop
+            //~^ never_loop
 
             // never loops
             break;
@@ -75,7 +74,7 @@ fn test6() {
     'outer: loop {
         x += 1;
         loop {
-        //~^ never_loop
+            //~^ never_loop
 
             // never loops
             if x == 5 {
@@ -113,7 +112,7 @@ fn test8() {
 fn test9() {
     let x = Some(1);
     while let Some(y) = x {
-    //~^ never_loop
+        //~^ never_loop
 
         // never loops
         return;
@@ -122,7 +121,7 @@ fn test9() {
 
 fn test10() {
     for x in 0..10 {
-    //~^ never_loop
+        //~^ never_loop
 
         // never loops
         match x {
@@ -172,7 +171,7 @@ pub fn test13() {
 pub fn test14() {
     let mut a = true;
     'outer: while a {
-    //~^ never_loop
+        //~^ never_loop
 
         // never loops
         while a {
@@ -189,7 +188,7 @@ pub fn test14() {
 pub fn test15() {
     'label: loop {
         while false {
-        //~^ never_loop
+            //~^ never_loop
 
             break 'label;
         }
@@ -242,7 +241,7 @@ pub fn test18() {
     };
     // never loops
     let _ = loop {
-    //~^ never_loop
+        //~^ never_loop
 
         let Some(x) = x else {
             return;
@@ -265,14 +264,12 @@ pub fn test19() {
 
 pub fn test20() {
     'a: loop {
-    //~^ never_loop
+        //~^ never_loop
 
         'b: {
             break 'b 'c: {
                 break 'a;
                 //~^ diverging_sub_expression
-
-
             };
         }
     }
@@ -304,7 +301,7 @@ pub fn test23() {
     for _ in 0..10 {
         'block: {
             for _ in 0..20 {
-            //~^ never_loop
+                //~^ never_loop
 
                 break 'block;
             }
@@ -389,7 +386,7 @@ pub fn test31(b: bool) {
     'a: loop {
         'b: {
             'c: loop {
-            //~^ never_loop
+                //~^ never_loop
 
                 if b { break 'c } else { break 'b }
             }
@@ -401,12 +398,12 @@ pub fn test31(b: bool) {
 
 pub fn test32() {
     loop {
-    //~^ never_loop
+        //~^ never_loop
 
         panic!("oh no");
     }
     loop {
-    //~^ never_loop
+        //~^ never_loop
 
         unimplemented!("not yet");
     }

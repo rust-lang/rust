@@ -19,32 +19,32 @@ fn starts_with() {
 fn chars_cmp_with_unwrap() {
     let s = String::from("foo");
     if s.chars().next().unwrap() == 'f' {
-    //~^ chars_next_cmp
+        //~^ chars_next_cmp
         // s.starts_with('f')
         // Nothing here
     }
     if s.chars().next_back().unwrap() == 'o' {
-    //~^ chars_last_cmp
+        //~^ chars_last_cmp
         // s.ends_with('o')
         // Nothing here
     }
     if s.chars().last().unwrap() == 'o' {
-    //~^ chars_last_cmp
+        //~^ chars_last_cmp
         // s.ends_with('o')
         // Nothing here
     }
     if s.chars().next().unwrap() != 'f' {
-    //~^ chars_next_cmp
+        //~^ chars_next_cmp
         // !s.starts_with('f')
         // Nothing here
     }
     if s.chars().next_back().unwrap() != 'o' {
-    //~^ chars_last_cmp
+        //~^ chars_last_cmp
         // !s.ends_with('o')
         // Nothing here
     }
     if s.chars().last().unwrap() != '\n' {
-    //~^ chars_last_cmp
+        //~^ chars_last_cmp
         // !s.ends_with('o')
         // Nothing here
     }

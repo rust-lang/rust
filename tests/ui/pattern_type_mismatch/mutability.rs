@@ -8,7 +8,6 @@ fn should_lint() {
     match value {
         Some(_) => (),
         //~^ pattern_type_mismatch
-
         _ => (),
     }
 
@@ -16,7 +15,6 @@ fn should_lint() {
     match value {
         Some(_) => (),
         //~^ pattern_type_mismatch
-
         _ => (),
     }
 }

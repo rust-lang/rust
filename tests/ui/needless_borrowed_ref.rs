@@ -69,7 +69,7 @@ fn should_lint(
     //~^ needless_borrowed_reference
 
     if let &Struct {
-    //~^ needless_borrowed_reference
+        //~^ needless_borrowed_reference
         ref a,
         b: ref b,
         c: ref renamed,

@@ -80,7 +80,7 @@ fn main() {
     //~^^^ match_single_binding
 
     match Custom::Init {
-    //~^ match_single_binding
+        //~^ match_single_binding
         _ => 0,
     };
 
@@ -94,24 +94,24 @@ fn main() {
         noop();
     }
     if let Custom::NoBrackets {} = Custom::Init {
-    //~^ unneeded_struct_pattern
+        //~^ unneeded_struct_pattern
         noop();
     }
     if let Custom::NoBrackets { .. } = Custom::Init {
-    //~^ unneeded_struct_pattern
+        //~^ unneeded_struct_pattern
         noop();
     }
     if let Custom::NoBrackets {} | Custom::NoBracketsNonExhaustive {} = Custom::Init {
-    //~^ unneeded_struct_pattern
-    //~| unneeded_struct_pattern
+        //~^ unneeded_struct_pattern
+        //~| unneeded_struct_pattern
         noop();
     }
     if let Custom::NoBracketsNonExhaustive {} = Custom::Init {
-    //~^ unneeded_struct_pattern
+        //~^ unneeded_struct_pattern
         noop();
     }
     if let Custom::NoBracketsNonExhaustive { .. } = Custom::Init {
-    //~^ unneeded_struct_pattern
+        //~^ unneeded_struct_pattern
         noop();
     }
 
@@ -128,23 +128,21 @@ fn main() {
     };
 
     let Custom::NoBrackets { .. } = Custom::Init else {
-    //~^ unneeded_struct_pattern
+        //~^ unneeded_struct_pattern
         panic!()
     };
     let Custom::NoBracketsNonExhaustive {} = Custom::Init else {
-    //~^ unneeded_struct_pattern
+        //~^ unneeded_struct_pattern
         panic!()
     };
     let Custom::NoBracketsNonExhaustive { .. } = Custom::Init else {
-    //~^ unneeded_struct_pattern
+        //~^ unneeded_struct_pattern
         panic!()
     };
 
     enum Refutable {
         Variant,
     }
-
-
 }
 
 fn external_crate() {
@@ -157,13 +155,13 @@ fn external_crate() {
     };
 
     match ExhaustiveUnit {
-    //~^ match_single_binding
+        //~^ match_single_binding
         // Exhaustive variant
         _ => 0,
     };
 
     match ExhaustiveUnit {
-    //~^ match_single_binding
+        //~^ match_single_binding
         // Exhaustive variant
         _ => 0,
     };

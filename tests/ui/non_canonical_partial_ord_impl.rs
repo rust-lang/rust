@@ -14,7 +14,7 @@ impl Ord for A {
 }
 
 impl PartialOrd for A {
-//~^ non_canonical_partial_ord_impl
+    //~^ non_canonical_partial_ord_impl
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         todo!();
     }
@@ -49,7 +49,7 @@ impl Ord for C {
 }
 
 impl PartialOrd for C {
-//~^ non_canonical_partial_ord_impl
+    //~^ non_canonical_partial_ord_impl
     fn partial_cmp(&self, _: &Self) -> Option<Ordering> {
         todo!();
     }

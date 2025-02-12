@@ -29,28 +29,24 @@ fn sum_with_assert_lt(v: &[u8]) -> u8 {
     assert!(v.len() > 4);
     v[0] + v[1] + v[2] + v[3] + v[4]
     //~^ missing_asserts_for_indexing
-
 }
 
 fn sum_with_assert_le(v: &[u8]) -> u8 {
     assert!(v.len() > 4);
     v[0] + v[1] + v[2] + v[3] + v[4]
     //~^ missing_asserts_for_indexing
-
 }
 
 fn sum_with_incorrect_assert_len(v: &[u8]) -> u8 {
     assert!(v.len() > 4);
     v[0] + v[1] + v[2] + v[3] + v[4]
     //~^ missing_asserts_for_indexing
-
 }
 
 fn sum_with_incorrect_assert_len2(v: &[u8]) -> u8 {
     assert!(v.len() > 4);
     v[0] + v[1] + v[2] + v[3] + v[4]
     //~^ missing_asserts_for_indexing
-
 }
 
 // ok, don't lint for single array access
@@ -103,7 +99,6 @@ fn index_different_slices_wrong_len(v1: &[u8], v2: &[u8]) {
 
     let _ = v2[5] + v2[15];
     //~^ missing_asserts_for_indexing
-
 }
 fn index_different_slices_one_wrong_len(v1: &[u8], v2: &[u8]) {
     assert!(v1.len() > 12);

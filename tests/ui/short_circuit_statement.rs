@@ -17,7 +17,6 @@ fn main() {
     (f() || g()) || (H * 2);
     //~^ short_circuit_statement
 
-
     macro_rules! mac {
         ($f:ident or $g:ident) => {
             $f() || $g()
@@ -35,7 +34,6 @@ fn main() {
 
     mac!() || mac!();
     //~^ short_circuit_statement
-
 
     // Do not lint if the expression comes from a macro
     mac!();

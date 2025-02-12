@@ -59,7 +59,7 @@ LL |         asm!("", options(nostack, att_syntax));
    = help: use Intel x86 assembly syntax
 
 error: AT&T x86 assembly syntax used
-  --> tests/ui/asm_syntax_x86.rs:48:5
+  --> tests/ui/asm_syntax_x86.rs:47:5
    |
 LL |     global_asm!("", options(att_syntax));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

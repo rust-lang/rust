@@ -17,7 +17,6 @@ fn tuple_types() {
     if let TupleStruct(Some(_)) = *ref_value {}
     //~^ pattern_type_mismatch
 
-
     // ok
     let &TupleStruct(_) = ref_value;
     let TupleStruct(_) = *ref_value;
@@ -45,7 +44,6 @@ fn tuple_enum_variants() {
     if let TupleEnum::Empty = ref_value {}
     //~^ pattern_type_mismatch
 
-
     // ok
     if let &TupleEnum::Var(_) = ref_value {}
     if let TupleEnum::Var(_) = *ref_value {}
@@ -67,7 +65,6 @@ fn plain_tuples() {
 
     if let (_a, Some(_)) = *ref_value {}
     //~^ pattern_type_mismatch
-
 
     // ok
     let &(_a, _b) = ref_value;

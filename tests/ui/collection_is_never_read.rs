@@ -21,7 +21,6 @@ fn write_without_read() {
     let mut x = HashMap::new();
     //~^ collection_is_never_read
 
-
     x.insert(1, 2);
 }
 

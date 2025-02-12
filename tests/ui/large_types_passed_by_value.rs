@@ -62,12 +62,12 @@ fn foo_always(x: LargeAndCopy) {
 }
 #[inline(never)]
 fn foo_never(x: LargeAndCopy) {
-//~^ large_types_passed_by_value
+    //~^ large_types_passed_by_value
     todo!();
 }
 #[inline]
 fn foo(x: LargeAndCopy) {
-//~^ large_types_passed_by_value
+    //~^ large_types_passed_by_value
     todo!();
 }
 

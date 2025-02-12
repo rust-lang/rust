@@ -10,7 +10,6 @@ fn main() {
     writeln!(v, "{}", "{hello}");
     //~^ write_literal
 
-
     writeln!(v, r"{}", r"{hello}");
     //~^ write_literal
 
@@ -32,14 +31,15 @@ fn main() {
         "hello \
         //~^ write_literal
         world!",
-
     );
     writeln!(
         v,
         "some {}\
         {} \\ {}",
-        "1", "2", "3",
-        //~^ write_literal
+        "1",
+        "2",
+        "3",
+        //~^^^ write_literal
     );
     writeln!(v, "{}", "\\");
     //~^ write_literal

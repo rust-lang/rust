@@ -12,7 +12,6 @@ fn main() {
     if let Some(s) = Some(test_string.split('|').map(|s| s.trim())) {
         let _: Vec<&str> = s.skip(1).next().unwrap().split(' ').collect();
         //~^ iter_skip_next
-
     };
     fn check<T>(s: T)
     where
@@ -20,6 +19,5 @@ fn main() {
     {
         let _: Vec<&str> = s.skip(1).next().unwrap().split(' ').collect();
         //~^ iter_skip_next
-
     }
 }

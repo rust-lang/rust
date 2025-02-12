@@ -15,9 +15,9 @@ help: try
    |
 LL ~         let n = opt?;
 LL +
-LL +             let mut ret = n + 1;
-LL +             ret += n;
-LL +             if n > 1 { Some(ret) } else { None }
+LL +         let mut ret = n + 1;
+LL +         ret += n;
+LL +         if n > 1 { Some(ret) } else { None }
    |
 
 error: use the question mark operator instead of an `and_then` call

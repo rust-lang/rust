@@ -11,13 +11,13 @@ LL | #[deny(clippy::naive_bytecount)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you appear to be counting bytes the naive way
-  --> tests/ui/bytecount.rs:15:13
+  --> tests/ui/bytecount.rs:14:13
    |
 LL |     let _ = (&x[..]).iter().filter(|&a| *a == 0).count();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using the bytecount crate: `bytecount::count((&x[..]), 0)`
 
 error: you appear to be counting bytes the naive way
-  --> tests/ui/bytecount.rs:34:13
+  --> tests/ui/bytecount.rs:32:13
    |
 LL |     let _ = x.iter().filter(|a| b + 1 == **a).count();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using the bytecount crate: `bytecount::count(x, b + 1)`

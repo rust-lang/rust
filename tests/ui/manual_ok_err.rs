@@ -6,35 +6,31 @@ fn funcall() -> Result<u32, &'static str> {
 
 fn main() {
     let _ = match funcall() {
-    //~^ manual_ok_err
-
+        //~^ manual_ok_err
         Ok(v) => Some(v),
         Err(_) => None,
     };
 
     let _ = match funcall() {
-    //~^ manual_ok_err
-
+        //~^ manual_ok_err
         Ok(v) => Some(v),
         _v => None,
     };
 
     let _ = match funcall() {
-    //~^ manual_ok_err
-
+        //~^ manual_ok_err
         Err(v) => Some(v),
         Ok(_) => None,
     };
 
     let _ = match funcall() {
-    //~^ manual_ok_err
-
+        //~^ manual_ok_err
         Err(v) => Some(v),
         _v => None,
     };
 
     let _ = if let Ok(v) = funcall() {
-    //~^ manual_ok_err
+        //~^ manual_ok_err
 
         Some(v)
     } else {
@@ -42,7 +38,7 @@ fn main() {
     };
 
     let _ = if let Err(v) = funcall() {
-    //~^ manual_ok_err
+        //~^ manual_ok_err
 
         Some(v)
     } else {
@@ -51,8 +47,7 @@ fn main() {
 
     #[allow(clippy::redundant_pattern)]
     let _ = match funcall() {
-    //~^ manual_ok_err
-
+        //~^ manual_ok_err
         Ok(v) => Some(v),
         _v @ _ => None,
     };
@@ -69,8 +64,7 @@ fn main() {
 
     // Suggestion should be properly parenthesized
     let _ = match -S {
-    //~^ manual_ok_err
-
+        //~^ manual_ok_err
         Ok(v) => Some(v),
         _ => None,
     };

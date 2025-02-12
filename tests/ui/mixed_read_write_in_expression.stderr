@@ -13,37 +13,37 @@ LL |         x = 1;
    = help: to override `-D warnings` add `#[allow(clippy::mixed_read_write_in_expression)]`
 
 error: unsequenced read of `x`
-  --> tests/ui/mixed_read_write_in_expression.rs:19:5
+  --> tests/ui/mixed_read_write_in_expression.rs:18:5
    |
 LL |     x += {
    |     ^
    |
 note: whether read occurs before this write depends on evaluation order
-  --> tests/ui/mixed_read_write_in_expression.rs:22:9
+  --> tests/ui/mixed_read_write_in_expression.rs:21:9
    |
 LL |         x = 20;
    |         ^^^^^^
 
 error: unsequenced read of `x`
-  --> tests/ui/mixed_read_write_in_expression.rs:34:12
+  --> tests/ui/mixed_read_write_in_expression.rs:33:12
    |
 LL |         a: x,
    |            ^
    |
 note: whether read occurs before this write depends on evaluation order
-  --> tests/ui/mixed_read_write_in_expression.rs:38:13
+  --> tests/ui/mixed_read_write_in_expression.rs:36:13
    |
 LL |             x = 6;
    |             ^^^^^
 
 error: unsequenced read of `x`
-  --> tests/ui/mixed_read_write_in_expression.rs:45:9
+  --> tests/ui/mixed_read_write_in_expression.rs:43:9
    |
 LL |         x += {
    |         ^
    |
 note: whether read occurs before this write depends on evaluation order
-  --> tests/ui/mixed_read_write_in_expression.rs:48:13
+  --> tests/ui/mixed_read_write_in_expression.rs:46:13
    |
 LL |             x = 20;
    |             ^^^^^^

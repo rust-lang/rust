@@ -12,37 +12,37 @@ fn main() {
     // Should lint
     // precedence
     if a {
-    //~^ bool_to_int_with_if
+        //~^ bool_to_int_with_if
         1
     } else {
         0
     };
     if a {
-    //~^ bool_to_int_with_if
+        //~^ bool_to_int_with_if
         0
     } else {
         1
     };
     if !a {
-    //~^ bool_to_int_with_if
+        //~^ bool_to_int_with_if
         1
     } else {
         0
     };
     if a || b {
-    //~^ bool_to_int_with_if
+        //~^ bool_to_int_with_if
         1
     } else {
         0
     };
     if cond(a, b) {
-    //~^ bool_to_int_with_if
+        //~^ bool_to_int_with_if
         1
     } else {
         0
     };
     if x + y < 4 {
-    //~^ bool_to_int_with_if
+        //~^ bool_to_int_with_if
         1
     } else {
         0
@@ -52,7 +52,7 @@ fn main() {
     if a {
         123
     } else if b {
-    //~^ bool_to_int_with_if
+        //~^ bool_to_int_with_if
         1
     } else {
         0
@@ -62,7 +62,7 @@ fn main() {
     if a {
         123
     } else if b {
-    //~^ bool_to_int_with_if
+        //~^ bool_to_int_with_if
         0
     } else {
         1

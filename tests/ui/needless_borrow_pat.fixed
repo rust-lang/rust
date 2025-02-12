@@ -58,8 +58,6 @@ fn main() {
     let _: &String = match Some(&x) {
         Some(x) => x,
         //~^ needless_borrow
-
-
         None => return,
     };
 
@@ -67,14 +65,13 @@ fn main() {
     let _: &String = match Some(&x) {
         Some(x) => x,
         //~^ needless_borrow
-
         None => return,
     };
 
     // Err, reference to a &String
     let _: &String = match Some(&x) {
         Some(x) => {
-        //~^ needless_borrow
+            //~^ needless_borrow
 
             f1(x);
             f1(x);
@@ -87,13 +84,12 @@ fn main() {
     match Some(&x) {
         Some(x) => m1!(x),
         //~^ needless_borrow
-
         None => return,
     };
 
     // Err, reference to a &String
     let _ = |&x: &&String| {
-    //~^ needless_borrow
+        //~^ needless_borrow
 
         let _: &String = x;
     };
@@ -113,7 +109,6 @@ fn main() {
     let _: u32 = match Some(&x) {
         Some(x) => x.0,
         //~^ needless_borrow
-
         None => return,
     };
 
@@ -125,7 +120,6 @@ fn main() {
     let _: &u32 = match E::A(&0) {
         E::A(x) | E::B(x) => x,
         //~^ needless_borrow
-
     };
 
     // Err, reference to &String.
@@ -142,7 +136,7 @@ fn main() {
 
 // Err, reference to a &String
 fn f2<'a>(&x: &&'a String) -> &'a String {
-//~^ needless_borrow
+    //~^ needless_borrow
 
     let _: &String = x;
     x
@@ -151,7 +145,7 @@ fn f2<'a>(&x: &&'a String) -> &'a String {
 trait T1 {
     // Err, reference to a &String
     fn f(&x: &&String) {
-    //~^ needless_borrow
+        //~^ needless_borrow
 
         let _: &String = x;
     }
@@ -161,7 +155,7 @@ struct S;
 impl T1 for S {
     // Err, reference to a &String
     fn f(&x: &&String) {
-    //~^ needless_borrow
+        //~^ needless_borrow
 
         let _: &String = x;
     }

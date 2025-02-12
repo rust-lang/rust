@@ -21,7 +21,6 @@ fn main() {
     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0])) };
     //~^ size_of_in_element_count
 
-
     unsafe { x.as_ptr().copy_to(y.as_mut_ptr(), size_of::<u16>()) };
     //~^ size_of_in_element_count
 
@@ -34,17 +33,14 @@ fn main() {
     unsafe { y.as_mut_ptr().copy_from_nonoverlapping(x.as_ptr(), size_of::<u16>()) };
     //~^ size_of_in_element_count
 
-
     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of::<u16>()) };
     //~^ size_of_in_element_count
 
     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0])) };
     //~^ size_of_in_element_count
 
-
     unsafe { swap_nonoverlapping(y.as_mut_ptr(), x.as_mut_ptr(), size_of::<u16>() * SIZE) };
     //~^ size_of_in_element_count
-
 
     slice_from_raw_parts_mut(y.as_mut_ptr(), size_of::<u16>() * SIZE);
     //~^ size_of_in_element_count
@@ -52,13 +48,11 @@ fn main() {
     slice_from_raw_parts(y.as_ptr(), size_of::<u16>() * SIZE);
     //~^ size_of_in_element_count
 
-
     unsafe { from_raw_parts_mut(y.as_mut_ptr(), size_of::<u16>() * SIZE) };
     //~^ size_of_in_element_count
 
     unsafe { from_raw_parts(y.as_ptr(), size_of::<u16>() * SIZE) };
     //~^ size_of_in_element_count
-
 
     unsafe { y.as_mut_ptr().sub(size_of::<u16>()) };
     //~^ size_of_in_element_count
@@ -77,5 +71,4 @@ fn main() {
 
     y.as_mut_ptr().wrapping_offset(size_of::<u16>() as isize);
     //~^ size_of_in_element_count
-
 }

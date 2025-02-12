@@ -7,13 +7,12 @@ fn main() {
     let x = 0;
     let p: *const usize = &x;
     if p.is_null() {
-    //~^ cmp_null
-
+        //~^ cmp_null
 
         println!("This is surprising!");
     }
     if p.is_null() {
-    //~^ cmp_null
+        //~^ cmp_null
 
         println!("This is surprising!");
     }
@@ -21,17 +20,16 @@ fn main() {
     let mut y = 0;
     let mut m: *mut usize = &mut y;
     if m.is_null() {
-    //~^ cmp_null
+        //~^ cmp_null
 
         println!("This is surprising, too!");
     }
     if m.is_null() {
-    //~^ cmp_null
+        //~^ cmp_null
 
         println!("This is surprising, too!");
     }
 
     let _ = (x as *const ()).is_null();
     //~^ cmp_null
-
 }

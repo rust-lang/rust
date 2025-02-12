@@ -25,7 +25,7 @@ impl<const N: usize> Default for ArrayDefault<N> {
 }
 
 fn many_small_arrays() {
-//~^ large_stack_frames
+    //~^ large_stack_frames
 
     let x = [0u8; 500_000];
     let x2 = [0u8; 500_000];
@@ -36,13 +36,13 @@ fn many_small_arrays() {
 }
 
 fn large_return_value() -> ArrayDefault<1_000_000> {
-//~^ large_stack_frames
+    //~^ large_stack_frames
 
     Default::default()
 }
 
 fn large_fn_arg(x: ArrayDefault<1_000_000>) {
-//~^ large_stack_frames
+    //~^ large_stack_frames
 
     black_box(&x);
 }

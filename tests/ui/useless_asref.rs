@@ -157,7 +157,6 @@ fn foo() {
 
     let z = x.as_ref().map(|z| String::clone(z));
     //~^ useless_asref
-
 }
 
 mod issue12135 {
@@ -189,12 +188,10 @@ mod issue12135 {
         x.field.as_ref().map(|v| Clone::clone(v));
         //~^ useless_asref
 
-
         // https://github.com/rust-lang/rust-clippy/pull/12136#discussion_r1451565223
         #[allow(clippy::clone_on_copy)]
         Some(1).as_ref().map(|&x| x.clone());
         //~^ useless_asref
-
 
         x.field.as_ref().map(|v| v.method().clone())
     }

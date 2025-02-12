@@ -6,10 +6,7 @@ fn main() {
         let _: *const usize = std::mem::transmute(6.0f64);
         //~^ wrong_transmute
 
-
-
         let _: *mut usize = std::mem::transmute(6.0f64);
         //~^ wrong_transmute
-
     }
 }

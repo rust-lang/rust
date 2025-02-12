@@ -7,7 +7,6 @@ fn main() {
     &"Ölkanne"[1..];
     //~^ string_slice
 
-
     let m = "Mötörhead";
     &m[2..5];
     //~^ string_slice
@@ -19,5 +18,4 @@ fn main() {
     let a = Cow::Borrowed("foo");
     &a[0..3];
     //~^ string_slice
-
 }

@@ -5,23 +5,20 @@ fn match_bool() {
     let test: bool = true;
 
     match test {
-    //~^ match_bool
-
+        //~^ match_bool
         true => 0,
         false => 42,
     };
 
     let option = 1;
     match option == 1 {
-    //~^ match_bool
-
+        //~^ match_bool
         true => 1,
         false => 0,
     };
 
     match test {
-    //~^ match_bool
-
+        //~^ match_bool
         true => (),
         false => {
             println!("Noooo!");
@@ -29,8 +26,7 @@ fn match_bool() {
     };
 
     match test {
-    //~^ match_bool
-
+        //~^ match_bool
         false => {
             println!("Noooo!");
         },
@@ -38,8 +34,7 @@ fn match_bool() {
     };
 
     match test && test {
-    //~^ match_bool
-
+        //~^ match_bool
         false => {
             println!("Noooo!");
         },
@@ -47,8 +42,7 @@ fn match_bool() {
     };
 
     match test {
-    //~^ match_bool
-
+        //~^ match_bool
         false => {
             println!("Noooo!");
         },
@@ -73,43 +67,37 @@ fn match_bool() {
     };
 
     let _ = match test {
-    //~^ match_bool
-
+        //~^ match_bool
         true if option == 5 => 10,
         _ => 1,
     };
 
     let _ = match test {
-    //~^ match_bool
-
+        //~^ match_bool
         false if option == 5 => 10,
         _ => 1,
     };
 
     match test {
-    //~^ match_bool
-
+        //~^ match_bool
         true if option == 5 => println!("Hello"),
         _ => (),
     };
 
     match test {
-    //~^ match_bool
-
+        //~^ match_bool
         true if option == 5 => (),
         _ => println!("Hello"),
     };
 
     match test {
-    //~^ match_bool
-
+        //~^ match_bool
         false if option == 5 => println!("Hello"),
         _ => (),
     };
 
     match test {
-    //~^ match_bool
-
+        //~^ match_bool
         false if option == 5 => (),
         _ => println!("Hello"),
     };
@@ -117,8 +105,7 @@ fn match_bool() {
 
 fn issue14099() {
     match true {
-    //~^ match_bool
-
+        //~^ match_bool
         true => 'a: {
             break 'a;
         },

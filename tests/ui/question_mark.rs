@@ -5,7 +5,7 @@
 
 fn some_func(a: Option<u32>) -> Option<u32> {
     if a.is_none() {
-    //~^ question_mark
+        //~^ question_mark
         return None;
     }
 
@@ -86,7 +86,7 @@ pub struct MoveStruct {
 impl MoveStruct {
     pub fn ref_func(&self) -> Option<Vec<u32>> {
         if self.opt.is_none() {
-        //~^ question_mark
+            //~^ question_mark
             return None;
         }
 
@@ -95,7 +95,7 @@ impl MoveStruct {
 
     pub fn mov_func_reuse(self) -> Option<Vec<u32>> {
         if self.opt.is_none() {
-        //~^ question_mark
+            //~^ question_mark
             return None;
         }
 
@@ -104,7 +104,7 @@ impl MoveStruct {
 
     pub fn mov_func_no_use(self) -> Option<Vec<u32>> {
         if self.opt.is_none() {
-        //~^ question_mark
+            //~^ question_mark
             return None;
         }
         Some(Vec::new())
@@ -112,7 +112,7 @@ impl MoveStruct {
 
     pub fn if_let_ref_func(self) -> Option<Vec<u32>> {
         let v: &Vec<_> = if let Some(ref v) = self.opt {
-        //~^ question_mark
+            //~^ question_mark
             v
         } else {
             return None;
@@ -123,7 +123,7 @@ impl MoveStruct {
 
     pub fn if_let_mov_func(self) -> Option<Vec<u32>> {
         let v = if let Some(v) = self.opt {
-        //~^ question_mark
+            //~^ question_mark
             v
         } else {
             return None;
@@ -145,12 +145,12 @@ fn func() -> Option<i32> {
     }
 
     if f().is_none() {
-    //~^ question_mark
+        //~^ question_mark
         return None;
     }
 
     let _val = match f() {
-    //~^ question_mark
+        //~^ question_mark
         Some(val) => val,
         None => return None,
     };
@@ -161,13 +161,13 @@ fn func() -> Option<i32> {
     };
 
     match f() {
-    //~^ question_mark
+        //~^ question_mark
         Some(val) => val,
         None => return None,
     };
 
     match opt_none!() {
-    //~^ question_mark
+        //~^ question_mark
         Some(x) => x,
         None => return None,
     };
@@ -197,18 +197,18 @@ fn result_func(x: Result<i32, i32>) -> Result<i32, i32> {
     //~^ question_mark
 
     if x.is_err() {
-    //~^ question_mark
+        //~^ question_mark
         return x;
     }
 
     let _val = match func_returning_result() {
-    //~^ question_mark
+        //~^ question_mark
         Ok(val) => val,
         Err(err) => return Err(err),
     };
 
     match func_returning_result() {
-    //~^ question_mark
+        //~^ question_mark
         Ok(val) => val,
         Err(err) => return Err(err),
     };
@@ -300,7 +300,7 @@ fn do_something() {}
 
 fn err_immediate_return() -> Result<i32, i32> {
     if let Err(err) = func_returning_result() {
-    //~^ question_mark
+        //~^ question_mark
         return Err(err);
     }
     Ok(1)
@@ -308,7 +308,7 @@ fn err_immediate_return() -> Result<i32, i32> {
 
 fn err_immediate_return_and_do_something() -> Result<i32, i32> {
     if let Err(err) = func_returning_result() {
-    //~^ question_mark
+        //~^ question_mark
         return Err(err);
     }
     do_something();
@@ -386,7 +386,7 @@ fn issue6828_nested_body() -> Option<u32> {
     try {
         fn f2(a: Option<i32>) -> Option<i32> {
             if a.is_none() {
-            //~^ question_mark
+                //~^ question_mark
                 return None;
                 // do lint here, the outer `try` is not relevant here
                 // https://github.com/rust-lang/rust-clippy/pull/11001#issuecomment-1610636867

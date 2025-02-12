@@ -19,7 +19,7 @@ fn main() {
     //~^ redundant_pattern_matching
 
     if let Ready(_) = Ready(42) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         foo();
     } else {
         bar();
@@ -47,19 +47,19 @@ fn main() {
     if Ready(42).is_ready() {}
 
     match Ready(42) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Ready(_) => true,
         Pending => false,
     };
 
     match Pending::<()> {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Ready(_) => false,
         Pending => true,
     };
 
     let _ = match Pending::<()> {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Ready(_) => false,
         Pending => true,
     };
@@ -71,10 +71,10 @@ fn main() {
     poll_const();
 
     let _ = if let Ready(_) = gen_poll() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         1
     } else if let Pending = gen_poll() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         2
     } else {
         3
@@ -103,13 +103,13 @@ const fn poll_const() {
     //~^ redundant_pattern_matching
 
     match Ready(42) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Ready(_) => true,
         Pending => false,
     };
 
     match Pending::<()> {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Ready(_) => false,
         Pending => true,
     };

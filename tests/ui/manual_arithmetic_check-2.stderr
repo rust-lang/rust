@@ -24,49 +24,49 @@ LL |     let result = if b < a { b - a } else { 0 };
    |                             ^^^^^
 
 error: inverted arithmetic check before subtraction
-  --> tests/ui/manual_arithmetic_check-2.rs:16:23
+  --> tests/ui/manual_arithmetic_check-2.rs:15:23
    |
 LL |     let result = if a > b { 0 } else { a - b };
    |                       ^                ----- help: try replacing it with: `b - a`
    |
 note: this subtraction underflows when `a < b`
-  --> tests/ui/manual_arithmetic_check-2.rs:16:40
+  --> tests/ui/manual_arithmetic_check-2.rs:15:40
    |
 LL |     let result = if a > b { 0 } else { a - b };
    |                                        ^^^^^
 
 error: inverted arithmetic check before subtraction
-  --> tests/ui/manual_arithmetic_check-2.rs:19:23
+  --> tests/ui/manual_arithmetic_check-2.rs:18:23
    |
 LL |     let result = if a >= b { 0 } else { a - b };
    |                       ^^                ----- help: try replacing it with: `b - a`
    |
 note: this subtraction underflows when `a < b`
-  --> tests/ui/manual_arithmetic_check-2.rs:19:41
+  --> tests/ui/manual_arithmetic_check-2.rs:18:41
    |
 LL |     let result = if a >= b { 0 } else { a - b };
    |                                         ^^^^^
 
 error: inverted arithmetic check before subtraction
-  --> tests/ui/manual_arithmetic_check-2.rs:22:23
+  --> tests/ui/manual_arithmetic_check-2.rs:21:23
    |
 LL |     let result = if b < a { 0 } else { a - b };
    |                       ^                ----- help: try replacing it with: `b - a`
    |
 note: this subtraction underflows when `a < b`
-  --> tests/ui/manual_arithmetic_check-2.rs:22:40
+  --> tests/ui/manual_arithmetic_check-2.rs:21:40
    |
 LL |     let result = if b < a { 0 } else { a - b };
    |                                        ^^^^^
 
 error: inverted arithmetic check before subtraction
-  --> tests/ui/manual_arithmetic_check-2.rs:25:23
+  --> tests/ui/manual_arithmetic_check-2.rs:24:23
    |
 LL |     let result = if b <= a { 0 } else { a - b };
    |                       ^^                ----- help: try replacing it with: `b - a`
    |
 note: this subtraction underflows when `a < b`
-  --> tests/ui/manual_arithmetic_check-2.rs:25:41
+  --> tests/ui/manual_arithmetic_check-2.rs:24:41
    |
 LL |     let result = if b <= a { 0 } else { a - b };
    |                                         ^^^^^

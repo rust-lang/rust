@@ -5,8 +5,7 @@
 struct Countdown(u8);
 
 impl Iterator for Countdown {
-//~^ copy_iterator
-
+    //~^ copy_iterator
 
     type Item = u8;
 

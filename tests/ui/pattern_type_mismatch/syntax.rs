@@ -10,7 +10,6 @@ fn syntax_match() {
     match ref_value {
         Some(_) => (),
         //~^ pattern_type_mismatch
-
         None => (),
     }
 
@@ -32,7 +31,6 @@ fn syntax_if_let() {
     if let Some(_) = ref_value {}
     //~^ pattern_type_mismatch
 
-
     // ok
     if let &Some(_) = ref_value {}
     if let Some(_) = *ref_value {}
@@ -43,7 +41,7 @@ fn syntax_while_let() {
 
     // not ok
     while let Some(_) = ref_value {
-    //~^ pattern_type_mismatch
+        //~^ pattern_type_mismatch
 
         break;
     }
@@ -65,7 +63,6 @@ fn syntax_for() {
     for (_a, _b) in slice.iter() {}
     //~^ pattern_type_mismatch
 
-
     // ok
     for &(_a, _b) in slice.iter() {}
 }
@@ -77,7 +74,6 @@ fn syntax_let() {
     let (_n, _m) = ref_value;
     //~^ pattern_type_mismatch
 
-
     // ok
     let &(_n, _m) = ref_value;
     let (_n, _m) = *ref_value;
@@ -87,7 +83,6 @@ fn syntax_fn() {
     // not ok
     fn foo((_a, _b): &(i32, i32)) {}
     //~^ pattern_type_mismatch
-
 
     // ok
     fn foo_ok_1(&(_a, _b): &(i32, i32)) {}
@@ -103,7 +98,6 @@ fn syntax_closure() {
     // not ok
     foo(|(_a, _b)| ());
     //~^ pattern_type_mismatch
-
 
     // ok
     foo(|&(_a, _b)| ());
@@ -121,7 +115,6 @@ fn macro_with_expression() {
     matching_macro!(match value {
         Some(_) => (),
         //~^ pattern_type_mismatch
-
         _ => (),
     });
 

@@ -13,8 +13,6 @@ impl Add for Foo {
     fn add(self, other: Self) -> Self {
         Foo(self.0 - other.0)
         //~^ suspicious_arithmetic_impl
-
-
     }
 }
 
@@ -22,8 +20,6 @@ impl AddAssign for Foo {
     fn add_assign(&mut self, other: Foo) {
         *self = *self - other;
         //~^ suspicious_op_assign_impl
-
-
     }
 }
 
@@ -38,7 +34,6 @@ impl MulAssign for Foo {
     fn mul_assign(&mut self, other: Foo) {
         self.0 /= other.0;
         //~^ suspicious_op_assign_impl
-
     }
 }
 
@@ -78,7 +73,6 @@ impl Rem for Foo {
     fn rem(self, other: Self) -> Self {
         Foo(self.0 / other.0)
         //~^ suspicious_arithmetic_impl
-
     }
 }
 
@@ -88,7 +82,6 @@ impl BitAnd for Foo {
     fn bitand(self, other: Self) -> Self {
         Foo(self.0 | other.0)
         //~^ suspicious_arithmetic_impl
-
     }
 }
 
@@ -98,7 +91,6 @@ impl BitOr for Foo {
     fn bitor(self, other: Self) -> Self {
         Foo(self.0 ^ other.0)
         //~^ suspicious_arithmetic_impl
-
     }
 }
 
@@ -108,7 +100,6 @@ impl BitXor for Foo {
     fn bitxor(self, other: Self) -> Self {
         Foo(self.0 & other.0)
         //~^ suspicious_arithmetic_impl
-
     }
 }
 
@@ -118,7 +109,6 @@ impl Shl for Foo {
     fn shl(self, other: Self) -> Self {
         Foo(self.0 >> other.0)
         //~^ suspicious_arithmetic_impl
-
     }
 }
 
@@ -128,7 +118,6 @@ impl Shr for Foo {
     fn shr(self, other: Self) -> Self {
         Foo(self.0 << other.0)
         //~^ suspicious_arithmetic_impl
-
     }
 }
 

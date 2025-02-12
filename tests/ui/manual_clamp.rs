@@ -142,8 +142,7 @@ fn const_main() {
     let input = 0;
     // Min and max are const, so this should trigger the lint.
     let x0 = if CONST_MAX < input {
-    //~^ manual_clamp
-
+        //~^ manual_clamp
 
         CONST_MAX
     } else if CONST_MIN > input {
@@ -153,8 +152,7 @@ fn const_main() {
     };
 
     let x1 = if input > CONST_MAX {
-    //~^ manual_clamp
-
+        //~^ manual_clamp
 
         CONST_MAX
     } else if input < CONST_MIN {
@@ -164,8 +162,7 @@ fn const_main() {
     };
 
     let x2 = if input < CONST_MIN {
-    //~^ manual_clamp
-
+        //~^ manual_clamp
 
         CONST_MIN
     } else if input > CONST_MAX {
@@ -175,8 +172,7 @@ fn const_main() {
     };
 
     let x3 = if CONST_MIN > input {
-    //~^ manual_clamp
-
+        //~^ manual_clamp
 
         CONST_MIN
     } else if CONST_MAX < input {
@@ -188,35 +184,25 @@ fn const_main() {
     let x4 = input.max(CONST_MIN).min(CONST_MAX);
     //~^ manual_clamp
 
-
-
     let x5 = input.min(CONST_MAX).max(CONST_MIN);
     //~^ manual_clamp
 
-
-
     let x6 = match input {
-    //~^ manual_clamp
-
-
+        //~^ manual_clamp
         x if x > CONST_MAX => CONST_MAX,
         x if x < CONST_MIN => CONST_MIN,
         x => x,
     };
 
     let x7 = match input {
-    //~^ manual_clamp
-
-
+        //~^ manual_clamp
         x if x < CONST_MIN => CONST_MIN,
         x if x > CONST_MAX => CONST_MAX,
         x => x,
     };
 
     let x8 = match input {
-    //~^ manual_clamp
-
-
+        //~^ manual_clamp
         x if CONST_MAX < x => CONST_MAX,
         x if CONST_MIN > x => CONST_MIN,
         x => x,
@@ -224,8 +210,7 @@ fn const_main() {
 
     let mut x9 = input;
     if x9 < CONST_MIN {
-    //~^ manual_clamp
-
+        //~^ manual_clamp
 
         x9 = CONST_MIN;
     }
@@ -234,9 +219,7 @@ fn const_main() {
     }
 
     let x10 = match input {
-    //~^ manual_clamp
-
-
+        //~^ manual_clamp
         x if CONST_MIN > x => CONST_MIN,
         x if CONST_MAX < x => CONST_MAX,
         x => x,
@@ -245,8 +228,7 @@ fn const_main() {
     let mut x11 = input;
     let _ = 1;
     if x11 > CONST_MAX {
-    //~^ manual_clamp
-
+        //~^ manual_clamp
 
         x11 = CONST_MAX;
     }
@@ -256,8 +238,7 @@ fn const_main() {
 
     let mut x12 = input;
     if CONST_MIN > x12 {
-    //~^ manual_clamp
-
+        //~^ manual_clamp
 
         x12 = CONST_MIN;
     }
@@ -267,8 +248,7 @@ fn const_main() {
 
     let mut x13 = input;
     if CONST_MAX < x13 {
-    //~^ manual_clamp
-
+        //~^ manual_clamp
 
         x13 = CONST_MAX;
     }
@@ -277,8 +257,7 @@ fn const_main() {
     }
 
     let x14 = if input > CONST_MAX {
-    //~^ manual_clamp
-
+        //~^ manual_clamp
 
         CONST_MAX
     } else if input < CONST_MIN {
@@ -289,8 +268,7 @@ fn const_main() {
     {
         let input = 0.0f64;
         let x15 = if input > CONST_F64_MAX {
-        //~^ manual_clamp
-
+            //~^ manual_clamp
 
             CONST_F64_MAX
         } else if input < CONST_F64_MIN {
@@ -305,73 +283,55 @@ fn const_main() {
         let x16 = cmp_max(cmp_min(input, CONST_MAX), CONST_MIN);
         //~^ manual_clamp
 
-
         let x17 = cmp_min(cmp_max(input, CONST_MIN), CONST_MAX);
         //~^ manual_clamp
-
 
         let x18 = cmp_max(CONST_MIN, cmp_min(input, CONST_MAX));
         //~^ manual_clamp
 
-
         let x19 = cmp_min(CONST_MAX, cmp_max(input, CONST_MIN));
         //~^ manual_clamp
-
 
         let x20 = cmp_max(cmp_min(CONST_MAX, input), CONST_MIN);
         //~^ manual_clamp
 
-
         let x21 = cmp_min(cmp_max(CONST_MIN, input), CONST_MAX);
         //~^ manual_clamp
-
 
         let x22 = cmp_max(CONST_MIN, cmp_min(CONST_MAX, input));
         //~^ manual_clamp
 
-
         let x23 = cmp_min(CONST_MAX, cmp_max(CONST_MIN, input));
         //~^ manual_clamp
-
 
         let input: f64 = cmp_min_max(1) as f64;
         let x24 = f64::max(f64::min(input, CONST_F64_MAX), CONST_F64_MIN);
         //~^ manual_clamp
 
-
         let x25 = f64::min(f64::max(input, CONST_F64_MIN), CONST_F64_MAX);
         //~^ manual_clamp
-
 
         let x26 = f64::max(CONST_F64_MIN, f64::min(input, CONST_F64_MAX));
         //~^ manual_clamp
 
-
         let x27 = f64::min(CONST_F64_MAX, f64::max(input, CONST_F64_MIN));
         //~^ manual_clamp
-
 
         let x28 = f64::max(f64::min(CONST_F64_MAX, input), CONST_F64_MIN);
         //~^ manual_clamp
 
-
         let x29 = f64::min(f64::max(CONST_F64_MIN, input), CONST_F64_MAX);
         //~^ manual_clamp
-
 
         let x30 = f64::max(CONST_F64_MIN, f64::min(CONST_F64_MAX, input));
         //~^ manual_clamp
 
-
         let x31 = f64::min(CONST_F64_MAX, f64::max(CONST_F64_MIN, input));
         //~^ manual_clamp
-
-
     }
     let mut x32 = input;
     if x32 < CONST_MIN {
-    //~^ manual_clamp
-
+        //~^ manual_clamp
 
         x32 = CONST_MIN;
     } else if x32 > CONST_MAX {
@@ -401,8 +361,7 @@ fn const_main() {
     // It's important this be the last set of statements
     let mut x35 = input;
     if CONST_MAX < x35 {
-    //~^ manual_clamp
-
+        //~^ manual_clamp
 
         x35 = CONST_MAX;
     }
@@ -564,8 +523,7 @@ fn msrv_1_49() {
 fn msrv_1_50() {
     let input = 0;
     let _ = if input > CONST_MAX {
-    //~^ manual_clamp
-
+        //~^ manual_clamp
 
         CONST_MAX
     } else if input < CONST_MIN {

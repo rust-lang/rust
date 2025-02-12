@@ -19,7 +19,6 @@ fn main() {
     let _: NonZero<u8> = unsafe { NonZero::new_unchecked(int_u8) };
     //~^ transmute_int_to_non_zero
 
-
     let _: NonZero<u16> = unsafe { NonZero::new_unchecked(int_u16) };
     //~^ transmute_int_to_non_zero
 
@@ -31,7 +30,6 @@ fn main() {
 
     let _: NonZero<u128> = unsafe { NonZero::new_unchecked(int_u128) };
     //~^ transmute_int_to_non_zero
-
 
     let _: NonZero<i8> = unsafe { NonZero::new_unchecked(int_i8) };
     //~^ transmute_int_to_non_zero
@@ -47,7 +45,6 @@ fn main() {
 
     let _: NonZero<i128> = unsafe { NonZero::new_unchecked(int_i128) };
     //~^ transmute_int_to_non_zero
-
 
     let _: NonZero<u8> = unsafe { NonZero::new_unchecked(int_u8) };
     let _: NonZero<u16> = unsafe { NonZero::new_unchecked(int_u16) };

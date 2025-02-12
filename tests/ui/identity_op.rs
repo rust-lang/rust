@@ -217,7 +217,6 @@ fn issue_12050() {
 
         let _: i32 = x + 0;
         //~^ identity_op
-
     }
     {
         let x = &&0i32;
@@ -227,7 +226,6 @@ fn issue_12050() {
         let x = &&0i32;
         let _: i32 = *x + 0;
         //~^ identity_op
-
     }
     {
         // this is just silly
@@ -250,7 +248,6 @@ fn issue_12050() {
 
         let _: i32 = **&&*&x + 0;
         //~^ identity_op
-
     }
     {
         // this is getting ridiculous, but we should still see the same
@@ -261,7 +258,6 @@ fn issue_12050() {
 
         let _: i32 = **&&*&x + 0;
         //~^ identity_op
-
     }
 }
 
@@ -283,7 +279,6 @@ fn issue_13470() {
     // Should maintain parenthesis even if the surrounding expr has the same precedence
     let _: u64 = 5u64 + ((x + y) + 0i32) as u64;
     //~^ identity_op
-
 
     // If we don't maintain the parens here, the behavior changes
     let _ = -(x + y + 0i32);
@@ -312,10 +307,8 @@ fn issue_13470() {
     let _ = 2i32 + (x * y * 1i32);
     //~^ identity_op
 
-
     let x = 1i16;
     let y = 1i16;
     let _: u64 = 1u64 + ((x as i32 + y as i32) as u64 + 0u64);
     //~^ identity_op
-
 }

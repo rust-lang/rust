@@ -12,14 +12,12 @@ fn main() {
         .into_iter()
         .filter(Result::is_ok)
         //~^ result_filter_map
-
         .map(Result::unwrap);
 
     let _ = vec![Ok(1) as Result<i32, ()>]
         .into_iter()
         .filter(|o| o.is_ok())
         //~^ result_filter_map
-
         .map(|o| o.unwrap());
 
     let _ = vec![1]
@@ -27,13 +25,11 @@ fn main() {
         .map(odds_out)
         .filter(Result::is_ok)
         //~^ result_filter_map
-
         .map(Result::unwrap);
     let _ = vec![1]
         .into_iter()
         .map(odds_out)
         .filter(|o| o.is_ok())
         //~^ result_filter_map
-
         .map(|o| o.unwrap());
 }

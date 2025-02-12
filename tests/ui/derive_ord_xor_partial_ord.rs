@@ -45,7 +45,7 @@ impl PartialOrd<DeriveOrdWithExplicitTypeVariable> for DeriveOrdWithExplicitType
 struct DerivePartialOrd;
 
 impl std::cmp::Ord for DerivePartialOrd {
-//~^ derive_ord_xor_partial_ord
+    //~^ derive_ord_xor_partial_ord
 
     fn cmp(&self, other: &Self) -> Ordering {
         Ordering::Less
@@ -67,7 +67,7 @@ mod use_ord {
     struct DerivePartialOrdInUseOrd;
 
     impl Ord for DerivePartialOrdInUseOrd {
-    //~^ derive_ord_xor_partial_ord
+        //~^ derive_ord_xor_partial_ord
 
         fn cmp(&self, other: &Self) -> Ordering {
             Ordering::Less

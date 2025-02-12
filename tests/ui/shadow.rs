@@ -49,7 +49,7 @@ fn shadow_reuse() -> Option<()> {
     //~^ shadow_reuse
     let y = 1;
     let y = match y {
-    //~^ shadow_reuse
+        //~^ shadow_reuse
         1 => 2,
         _ => 3,
     };
@@ -77,7 +77,7 @@ fn syntax() {
     match Some(1) {
         Some(1) => {},
         Some(x) => {
-        //~^ shadow_unrelated
+            //~^ shadow_unrelated
             let x = 1;
             //~^ shadow_unrelated
         },
@@ -88,7 +88,7 @@ fn syntax() {
     while let Some(x) = Some(1) {}
     //~^ shadow_unrelated
     let _ = |[x]: [u32; 1]| {
-    //~^ shadow_unrelated
+        //~^ shadow_unrelated
         let x = 1;
         //~^ shadow_unrelated
     };

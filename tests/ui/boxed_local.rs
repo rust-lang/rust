@@ -38,8 +38,7 @@ fn warn_call() {
 }
 
 fn warn_arg(x: Box<A>) {
-//~^ boxed_local
-
+    //~^ boxed_local
 
     x.foo();
 }
@@ -124,7 +123,6 @@ pub struct PeekableSeekable<I: Foo> {
 pub fn new(_needs_name: Box<PeekableSeekable<&()>>) -> () {}
 //~^ boxed_local
 
-
 /// Regression for #916, #1123
 ///
 /// This shouldn't warn for `boxed_local`as the implementation of a trait
@@ -189,7 +187,7 @@ mod issue4804 {
 
         // warn on `x: Box<u32>`
         fn default_impl_x(self: Box<Self>, x: Box<u32>) -> u32 {
-        //~^ boxed_local
+            //~^ boxed_local
 
             4
         }
@@ -199,7 +197,6 @@ mod issue4804 {
         // warn on `x: Box<u32>`
         fn foo(x: Box<u32>) {}
         //~^ boxed_local
-
     }
 }
 

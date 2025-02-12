@@ -28,7 +28,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     u32::from_str_radix("30", 10)?;
     //~^ from_str_radix_10
 
-
     i64::from_str_radix("24", 10)?;
     //~^ from_str_radix_10
 
@@ -44,16 +43,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     i128::from_str_radix(Test + Test, 10)?;
     //~^ from_str_radix_10
 
-
     let string = "300";
     i32::from_str_radix(string, 10)?;
     //~^ from_str_radix_10
 
-
     let stringier = "400".to_string();
     i32::from_str_radix(&stringier, 10)?;
     //~^ from_str_radix_10
-
 
     // none of these should trigger the lint
     u16::from_str_radix("20", 3)?;

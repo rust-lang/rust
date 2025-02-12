@@ -269,37 +269,37 @@ LL |     let _: Result<(), std::io::Error> = test_issue_3913().map_err(From::fro
    |                                                          ^^^^^^^^^^^^^^^^^^^^ help: consider removing
 
 error: useless conversion to the same type: `()`
-  --> tests/ui/useless_conversion.rs:346:31
+  --> tests/ui/useless_conversion.rs:345:31
    |
 LL |     let _: ControlFlow<()> = c.map_break(Into::into);
    |                               ^^^^^^^^^^^^^^^^^^^^^^ help: consider removing
 
 error: useless conversion to the same type: `()`
-  --> tests/ui/useless_conversion.rs:350:31
+  --> tests/ui/useless_conversion.rs:349:31
    |
 LL |     let _: ControlFlow<()> = c.map_continue(Into::into);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing
 
 error: useless conversion to the same type: `u32`
-  --> tests/ui/useless_conversion.rs:365:41
+  --> tests/ui/useless_conversion.rs:363:41
    |
 LL |     let _: Vec<u32> = [1u32].into_iter().map(Into::into).collect();
    |                                         ^^^^^^^^^^^^^^^^ help: consider removing
 
 error: useless conversion to the same type: `T`
-  --> tests/ui/useless_conversion.rs:377:18
+  --> tests/ui/useless_conversion.rs:374:18
    |
 LL |     x.into_iter().map(Into::into).collect()
    |                  ^^^^^^^^^^^^^^^^ help: consider removing
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:394:29
+  --> tests/ui/useless_conversion.rs:390:29
    |
 LL |             takes_into_iter(self.my_field.into_iter());
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:383:32
+  --> tests/ui/useless_conversion.rs:379:32
    |
 LL |     fn takes_into_iter(_: impl IntoIterator<Item = String>) {}
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -310,13 +310,13 @@ LL +             takes_into_iter(&self.my_field);
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:403:29
+  --> tests/ui/useless_conversion.rs:398:29
    |
 LL |             takes_into_iter(self.my_field.into_iter());
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:383:32
+  --> tests/ui/useless_conversion.rs:379:32
    |
 LL |     fn takes_into_iter(_: impl IntoIterator<Item = String>) {}
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -327,13 +327,13 @@ LL +             takes_into_iter(&mut self.my_field);
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:413:29
+  --> tests/ui/useless_conversion.rs:407:29
    |
 LL |             takes_into_iter(self.my_field.into_iter());
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:383:32
+  --> tests/ui/useless_conversion.rs:379:32
    |
 LL |     fn takes_into_iter(_: impl IntoIterator<Item = String>) {}
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -344,13 +344,13 @@ LL +             takes_into_iter(*self.my_field);
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:423:29
+  --> tests/ui/useless_conversion.rs:416:29
    |
 LL |             takes_into_iter(self.my_field.into_iter());
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:383:32
+  --> tests/ui/useless_conversion.rs:379:32
    |
 LL |     fn takes_into_iter(_: impl IntoIterator<Item = String>) {}
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -361,13 +361,13 @@ LL +             takes_into_iter(&*self.my_field);
    |
 
 error: explicit call to `.into_iter()` in function argument accepting `IntoIterator`
-  --> tests/ui/useless_conversion.rs:433:29
+  --> tests/ui/useless_conversion.rs:425:29
    |
 LL |             takes_into_iter(self.my_field.into_iter());
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`
-  --> tests/ui/useless_conversion.rs:383:32
+  --> tests/ui/useless_conversion.rs:379:32
    |
 LL |     fn takes_into_iter(_: impl IntoIterator<Item = String>) {}
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^

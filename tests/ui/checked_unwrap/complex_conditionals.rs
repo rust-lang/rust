@@ -24,7 +24,6 @@ fn test_complex_conditions() {
         // unnecessary
         y.unwrap_err();
         //~^ unnecessary_unwrap
-
     } else {
         // not statically determinable whether any of the following will always succeed or always fail:
         x.unwrap();
@@ -53,7 +52,6 @@ fn test_complex_conditions() {
         // unnecessary
         y.unwrap_err();
         //~^ unnecessary_unwrap
-
     }
     let z: Result<(), ()> = Ok(());
     if x.is_ok() && !(y.is_ok() || z.is_err()) {
@@ -80,7 +78,6 @@ fn test_complex_conditions() {
         // will panic
         z.unwrap_err();
         //~^ panicking_unwrap
-
     }
     if x.is_ok() || !(y.is_ok() && z.is_err()) {
         // not statically determinable whether any of the following will always succeed or always fail:
@@ -111,7 +108,6 @@ fn test_complex_conditions() {
         // unnecessary
         z.unwrap_err();
         //~^ unnecessary_unwrap
-
     }
 }
 

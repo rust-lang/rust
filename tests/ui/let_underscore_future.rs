@@ -17,10 +17,8 @@ fn main() {
     let _ = custom();
     //~^ let_underscore_future
 
-
     let mut future = some_async_fn();
     do_something_to_future(&mut future);
     let _ = future;
     //~^ let_underscore_future
-
 }

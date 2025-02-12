@@ -22,7 +22,7 @@ LL |     asm!("asdf {p}", p = in(reg) p, options(nomem, nostack, preserves_flags
    = note: if this is intentional and no pointers are read or written to, consider allowing the lint
 
 error: passing pointers to nomem asm block
-  --> tests/ui/pointers_in_nomem_asm_block.rs:33:22
+  --> tests/ui/pointers_in_nomem_asm_block.rs:32:22
    |
 LL |     asm!("call {p}", p = in(reg) p, options(nomem));
    |                      ^^^^^^^^^^^^^

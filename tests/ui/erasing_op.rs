@@ -35,7 +35,6 @@ fn test(x: u8) {
     x * 0;
     //~^ erasing_op
 
-
     0 & x;
     //~^ erasing_op
 
@@ -48,7 +47,6 @@ fn test(x: u8) {
 
     Vec1 { x: 5 } * 0;
     //~^ erasing_op
-
 }
 
 fn main() {

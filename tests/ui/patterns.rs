@@ -28,7 +28,7 @@ fn main() {
     // required "ref" left out in suggestion: #5271
     match mutv {
         ref mut x @ _ => {
-        //~^ redundant_pattern
+            //~^ redundant_pattern
             x.push(4);
             println!("vec: {:?}", x);
         },

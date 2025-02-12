@@ -13,7 +13,7 @@ fn f(x: u8, y: u8, z: u8) {
     }
 
     if x > y {
-    //~^ comparison_chain
+        //~^ comparison_chain
 
         a()
     } else if x < y {
@@ -28,7 +28,7 @@ fn f(x: u8, y: u8, z: u8) {
     }
 
     if x > y {
-    //~^ comparison_chain
+        //~^ comparison_chain
 
         a()
     } else if x < y {
@@ -38,7 +38,7 @@ fn f(x: u8, y: u8, z: u8) {
     }
 
     if x > y {
-    //~^ comparison_chain
+        //~^ comparison_chain
 
         a()
     } else if y > x {
@@ -48,7 +48,7 @@ fn f(x: u8, y: u8, z: u8) {
     }
 
     if x > 1 {
-    //~^ comparison_chain
+        //~^ comparison_chain
 
         a()
     } else if x < 1 {
@@ -124,7 +124,7 @@ fn g(x: f64, y: f64, z: f64) {
 
 fn h<T: Ord>(x: T, y: T, z: T) {
     if x > y {
-    //~^ comparison_chain
+        //~^ comparison_chain
 
         a()
     } else if x < y {
@@ -132,7 +132,7 @@ fn h<T: Ord>(x: T, y: T, z: T) {
     }
 
     if x > y {
-    //~^ comparison_chain
+        //~^ comparison_chain
 
         a()
     } else if x < y {
@@ -142,7 +142,7 @@ fn h<T: Ord>(x: T, y: T, z: T) {
     }
 
     if x > y {
-    //~^ comparison_chain
+        //~^ comparison_chain
 
         a()
     } else if y > x {
@@ -249,7 +249,7 @@ const fn sign_i8(n: i8) -> Sign {
 fn needs_parens() -> &'static str {
     let (x, y) = (1, 2);
     if x + 1 > y * 2 {
-    //~^ comparison_chain
+        //~^ comparison_chain
 
         "aa"
     } else if x + 1 < y * 2 {

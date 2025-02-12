@@ -12,14 +12,12 @@ fn just_under_msrv() {
 fn meets_msrv() {
     let log2_10 = 3.321928094887362;
     //~^ approx_constant
-
 }
 
 #[clippy::msrv = "1.44.0"]
 fn just_above_msrv() {
     let log2_10 = 3.321928094887362;
     //~^ approx_constant
-
 }
 
 #[clippy::msrv = "1.42"]
@@ -31,7 +29,6 @@ fn no_patch_under() {
 fn no_patch_meets() {
     let log2_10 = 3.321928094887362;
     //~^ approx_constant
-
 }
 
 fn inner_attr_under() {
@@ -43,7 +40,6 @@ fn inner_attr_meets() {
     #![clippy::msrv = "1.43"]
     let log2_10 = 3.321928094887362;
     //~^ approx_constant
-
 }
 
 // https://github.com/rust-lang/rust-clippy/issues/6920
@@ -56,7 +52,6 @@ fn scoping() {
     let log2_10 = 3.321928094887362;
     //~^ approx_constant
 
-
     mod a {
         #![clippy::msrv = "1.42.0"]
 
@@ -64,7 +59,6 @@ fn scoping() {
             #![clippy::msrv = "1.43.0"]
             let log2_10 = 3.321928094887362;
             //~^ approx_constant
-
         }
 
         fn should_not_warn() {

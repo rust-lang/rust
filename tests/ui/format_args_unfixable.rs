@@ -48,15 +48,13 @@ fn main() {
     //~^ format_in_format_args
 
     let _ = write!(
-    //~^ format_in_format_args
-
+        //~^ format_in_format_args
         stdout(),
         "error: {}",
         format!("something failed at {}", Location::caller())
     );
     let _ = writeln!(
-    //~^ format_in_format_args
-
+        //~^ format_in_format_args
         stdout(),
         "error: {}",
         format!("something failed at {}", Location::caller())
@@ -84,7 +82,6 @@ fn main() {
 
     panic!("error: {}", format!("something failed at {}", Location::caller()));
     //~^ format_in_format_args
-
 
     // negative tests
     println!("error: {}", format_args!("something failed at {}", Location::caller()));
@@ -171,5 +168,4 @@ fn user_format() {
 
     usr_println!(true, "error: {}", format!("boom at {} {0}", Location::caller()));
     //~^ format_in_format_args
-
 }

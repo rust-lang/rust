@@ -24,7 +24,7 @@ LL ~     };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> tests/ui/rc_clone_in_vec_init/arc.rs:20:21
+  --> tests/ui/rc_clone_in_vec_init/arc.rs:18:21
    |
 LL |             let v = vec![Arc::new("x".to_string()); 2];
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ LL ~             };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> tests/ui/rc_clone_in_vec_init/arc.rs:29:13
+  --> tests/ui/rc_clone_in_vec_init/arc.rs:25:13
    |
 LL |       let v = vec![
    |  _____________^
@@ -74,7 +74,7 @@ LL ~     };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> tests/ui/rc_clone_in_vec_init/arc.rs:41:14
+  --> tests/ui/rc_clone_in_vec_init/arc.rs:37:14
    |
 LL |       let v1 = vec![
    |  ______________^

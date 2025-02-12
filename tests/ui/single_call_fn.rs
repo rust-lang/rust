@@ -34,7 +34,7 @@ fn g() {
 }
 
 fn c() {
-//~^ single_call_fn
+    //~^ single_call_fn
     println!("really");
     println!("long");
     println!("function...");

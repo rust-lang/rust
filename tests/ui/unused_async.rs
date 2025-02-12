@@ -10,7 +10,7 @@ mod issue10800 {
     use std::future::ready;
 
     async fn async_block_await() {
-    //~^ unused_async
+        //~^ unused_async
 
         async {
             ready(()).await;
@@ -46,7 +46,6 @@ mod issue9695 {
     async fn f3() {}
     //~^ unused_async
 
-
     fn needs_async_fn<F: Future<Output = ()>>(_: fn() -> F) {}
 
     fn test() {
@@ -74,7 +73,7 @@ mod issue13466 {
 }
 
 async fn foo() -> i32 {
-//~^ unused_async
+    //~^ unused_async
 
     4
 }
@@ -87,7 +86,7 @@ struct S;
 
 impl S {
     async fn unused(&self) -> i32 {
-    //~^ unused_async
+        //~^ unused_async
 
         1
     }

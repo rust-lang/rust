@@ -12,7 +12,7 @@ enum FakeCallType2 {
 }
 
 enum Foo {
-//~^ enum_variant_names
+    //~^ enum_variant_names
     cFoo,
     //~^ enum_variant_names
     cBar,
@@ -25,7 +25,7 @@ enum Fooo {
 }
 
 enum Food {
-//~^ enum_variant_names
+    //~^ enum_variant_names
     FoodGood,
     //~^ enum_variant_names
     FoodMiddle,
@@ -39,8 +39,7 @@ enum Stuff {
 }
 
 enum BadCallType {
-//~^ enum_variant_names
-
+    //~^ enum_variant_names
     CallTypeCall,
     CallTypeCreate,
     CallTypeDestroy,
@@ -53,7 +52,7 @@ enum TwoCallType {
 }
 
 enum Consts {
-//~^ enum_variant_names
+    //~^ enum_variant_names
     ConstantInt,
     ConstantCake,
     ConstantLie,
@@ -66,7 +65,7 @@ enum Two {
 }
 
 enum Something {
-//~^ enum_variant_names
+    //~^ enum_variant_names
     CCall,
     CCreate,
     CCryogenize,
@@ -89,7 +88,7 @@ enum Sealll {
 }
 
 enum Seallll {
-//~^ enum_variant_names
+    //~^ enum_variant_names
     WithOutCake,
     WithOutTea,
     WithOut,
@@ -145,14 +144,14 @@ pub enum NetworkLayer {
 
 // should lint suggesting `IData`, not only `Data` (see #4639)
 enum IDataRequest {
-//~^ enum_variant_names
+    //~^ enum_variant_names
     PutIData(String),
     GetIData(String),
     DeleteUnpubIData(String),
 }
 
 enum HIDataRequest {
-//~^ enum_variant_names
+    //~^ enum_variant_names
     PutHIData(String),
     GetHIData(String),
     DeleteUnpubHIData(String),
@@ -173,7 +172,7 @@ enum Phase {
 
 mod issue9018 {
     enum DoLint {
-    //~^ enum_variant_names
+        //~^ enum_variant_names
         _TypeCreate,
         _TypeRead,
         _TypeUpdate,
@@ -181,7 +180,7 @@ mod issue9018 {
     }
 
     enum DoLintToo {
-    //~^ enum_variant_names
+        //~^ enum_variant_names
         _CreateType,
         _UpdateType,
         _DeleteType,

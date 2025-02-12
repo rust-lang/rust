@@ -43,7 +43,7 @@ fn foo() -> Option<()> {
     // Do fire manual_let_else in this instance: question mark cannot be used here due to the return
     // body.
     let v = if let Some(v_some) = g() {
-    //~^ manual_let_else
+        //~^ manual_let_else
         v_some
     } else {
         return Some(());
@@ -55,7 +55,7 @@ fn foo() -> Option<()> {
     #[allow(clippy::question_mark)]
     {
         let v = match g() {
-        //~^ manual_let_else
+            //~^ manual_let_else
             Some(v_some) => v_some,
             _ => return None,
         };

@@ -20,7 +20,7 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::while_let_loop)]`
 
 error: empty `loop {}` wastes CPU cycles
-  --> tests/ui/crashes/ice-360.rs:15:9
+  --> tests/ui/crashes/ice-360.rs:13:9
    |
 LL |         loop {}
    |         ^^^^^^^

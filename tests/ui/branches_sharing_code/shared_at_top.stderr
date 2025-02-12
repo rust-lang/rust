@@ -18,7 +18,7 @@ LL +     if true {
    |
 
 error: all if blocks contain the same code at the start
-  --> tests/ui/branches_sharing_code/shared_at_top.rs:22:5
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:21:5
    |
 LL | /     if x == 0 {
 LL | |
@@ -37,7 +37,7 @@ LL +     if x == 0 {
    |
 
 error: all if blocks contain the same code at the start
-  --> tests/ui/branches_sharing_code/shared_at_top.rs:45:5
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:43:5
    |
 LL | /     let _ = if x == 7 {
 ...  |
@@ -51,7 +51,7 @@ LL +     let _ = if x == 7 {
    |
 
 error: all if blocks contain the same code at the start
-  --> tests/ui/branches_sharing_code/shared_at_top.rs:65:5
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:63:5
    |
 LL | /     if x == 10 {
 LL | |
@@ -68,7 +68,7 @@ LL +     if x == 10 {
    |
 
 error: all if blocks contain the same code at the start
-  --> tests/ui/branches_sharing_code/shared_at_top.rs:81:5
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:79:5
    |
 LL | /     if x == 11 {
 LL | |
@@ -86,7 +86,7 @@ LL +     if x == 11 {
    |
 
 error: all if blocks contain the same code at the start
-  --> tests/ui/branches_sharing_code/shared_at_top.rs:99:5
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:97:5
    |
 LL | /     if x == 2020 {
 LL | |
@@ -103,7 +103,7 @@ LL +     if x == 2020 {
    |
 
 error: this `if` has identical blocks
-  --> tests/ui/branches_sharing_code/shared_at_top.rs:109:18
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:107:18
    |
 LL |       if x == 2019 {
    |  __________________^
@@ -112,7 +112,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> tests/ui/branches_sharing_code/shared_at_top.rs:111:12
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:109:12
    |
 LL |       } else {
    |  ____________^

@@ -149,19 +149,19 @@ LL |     let _unused = 1;
    = help: to override `-D warnings` add `#[allow(clippy::no_effect_underscore_binding)]`
 
 error: binding to `_` prefixed variable with no side-effect
-  --> tests/ui/no_effect.rs:190:9
+  --> tests/ui/no_effect.rs:189:9
    |
 LL |     let _penguin = || println!("Some helpful closure");
    |         ^^^^^^^^
 
 error: binding to `_` prefixed variable with no side-effect
-  --> tests/ui/no_effect.rs:193:9
+  --> tests/ui/no_effect.rs:192:9
    |
 LL |     let _duck = Struct { field: 0 };
    |         ^^^^^
 
 error: binding to `_` prefixed variable with no side-effect
-  --> tests/ui/no_effect.rs:196:9
+  --> tests/ui/no_effect.rs:195:9
    |
 LL |     let _cat = [2, 4, 6, 8][2];
    |         ^^^^

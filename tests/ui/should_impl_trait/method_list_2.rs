@@ -24,91 +24,91 @@ impl T {
     // *****************************************
 
     pub fn eq(&self, other: &Self) -> bool {
-    //~^ should_implement_trait
+        //~^ should_implement_trait
 
         unimplemented!()
     }
 
     pub fn from_iter<T>(iter: T) -> Self {
-    //~^ should_implement_trait
+        //~^ should_implement_trait
 
         unimplemented!()
     }
 
     pub fn from_str(s: &str) -> Result<Self, Self> {
-    //~^ should_implement_trait
+        //~^ should_implement_trait
 
         unimplemented!()
     }
 
     pub fn hash(&self, state: &mut T) {
-    //~^ should_implement_trait
+        //~^ should_implement_trait
 
         unimplemented!()
     }
 
     pub fn index(&self, index: usize) -> &Self {
-    //~^ should_implement_trait
+        //~^ should_implement_trait
 
         unimplemented!()
     }
 
     pub fn index_mut(&mut self, index: usize) -> &mut Self {
-    //~^ should_implement_trait
+        //~^ should_implement_trait
 
         unimplemented!()
     }
 
     pub fn into_iter(self) -> Self {
-    //~^ should_implement_trait
+        //~^ should_implement_trait
 
         unimplemented!()
     }
 
     pub fn mul(self, rhs: Self) -> Self {
-    //~^ should_implement_trait
+        //~^ should_implement_trait
 
         unimplemented!()
     }
 
     pub fn neg(self) -> Self {
-    //~^ should_implement_trait
+        //~^ should_implement_trait
 
         unimplemented!()
     }
 
     pub fn next(&mut self) -> Option<Self> {
-    //~^ should_implement_trait
+        //~^ should_implement_trait
 
         unimplemented!()
     }
 
     pub fn not(self) -> Self {
-    //~^ should_implement_trait
+        //~^ should_implement_trait
 
         unimplemented!()
     }
 
     pub fn rem(self, rhs: Self) -> Self {
-    //~^ should_implement_trait
+        //~^ should_implement_trait
 
         unimplemented!()
     }
 
     pub fn shl(self, rhs: Self) -> Self {
-    //~^ should_implement_trait
+        //~^ should_implement_trait
 
         unimplemented!()
     }
 
     pub fn shr(self, rhs: Self) -> Self {
-    //~^ should_implement_trait
+        //~^ should_implement_trait
 
         unimplemented!()
     }
 
     pub fn sub(self, rhs: Self) -> Self {
-    //~^ should_implement_trait
+        //~^ should_implement_trait
 
         unimplemented!()
     }

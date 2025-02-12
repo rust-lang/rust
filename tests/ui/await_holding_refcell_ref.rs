@@ -36,7 +36,6 @@ async fn also_bad(x: &RefCell<u32>) -> u32 {
     let b = x.borrow_mut();
     //~^ await_holding_refcell_ref
 
-
     let second = baz().await;
 
     let third = baz().await;
@@ -49,7 +48,6 @@ async fn less_bad(x: &RefCell<u32>) -> u32 {
 
     let b = x.borrow_mut();
     //~^ await_holding_refcell_ref
-
 
     let second = baz().await;
 

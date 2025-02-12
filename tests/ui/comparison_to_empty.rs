@@ -25,7 +25,7 @@ fn main() {
     if let [] = &*s
     //~^ comparison_to_empty
         && s == []
-        //~^ comparison_to_empty
+    //~^ comparison_to_empty
     {}
 
     // Allow comparisons to non-empty

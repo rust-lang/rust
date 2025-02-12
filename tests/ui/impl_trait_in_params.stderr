@@ -23,26 +23,26 @@ LL | pub fn c<C: Trait, { /* Generic name */ }: Trait>(_: C, _: impl Trait) {}
    |                  +++++++++++++++++++++++++++++++
 
 error: `impl Trait` used as a function parameter
-  --> tests/ui/impl_trait_in_params.rs:38:13
+  --> tests/ui/impl_trait_in_params.rs:37:17
    |
-LL | pub fn h(_: impl Trait) {}
-   |             ^^^^^^^^^^
+LL |     pub fn h(_: impl Trait) {}
+   |                 ^^^^^^^^^^
    |
 help: add a type parameter
    |
-LL | pub fn h<{ /* Generic name */ }: Trait>(_: impl Trait) {}
-   |         +++++++++++++++++++++++++++++++
+LL |     pub fn h<{ /* Generic name */ }: Trait>(_: impl Trait) {}
+   |             +++++++++++++++++++++++++++++++
 
 error: `impl Trait` used as a function parameter
-  --> tests/ui/impl_trait_in_params.rs:42:41
+  --> tests/ui/impl_trait_in_params.rs:41:45
    |
-LL | pub fn k<K: AnotherTrait<u32>>(_: K, _: impl AnotherTrait<u32>) {}
-   |                                         ^^^^^^^^^^^^^^^^^^^^^^
+LL |     pub fn k<K: AnotherTrait<u32>>(_: K, _: impl AnotherTrait<u32>) {}
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^
    |
 help: add a type parameter
    |
-LL | pub fn k<K: AnotherTrait<u32>, { /* Generic name */ }: AnotherTrait<u32>>(_: K, _: impl AnotherTrait<u32>) {}
-   |                              +++++++++++++++++++++++++++++++++++++++++++
+LL |     pub fn k<K: AnotherTrait<u32>, { /* Generic name */ }: AnotherTrait<u32>>(_: K, _: impl AnotherTrait<u32>) {}
+   |                                  +++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to 4 previous errors
 

@@ -8,13 +8,13 @@ LL |     let x: u64 = u64::from(NonZeroU32::new(5).unwrap().get());
    = help: to override `-D warnings` add `#[allow(clippy::non_zero_suggestions)]`
 
 error: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
-  --> tests/ui/non_zero_suggestions_unfixable.rs:11:13
+  --> tests/ui/non_zero_suggestions_unfixable.rs:10:13
    |
 LL |     let y = u64::from(n.get());
    |             ^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU64::from(n)`
 
 error: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
-  --> tests/ui/non_zero_suggestions_unfixable.rs:21:5
+  --> tests/ui/non_zero_suggestions_unfixable.rs:20:5
    |
 LL |     u64::from(y.get())
    |     ^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU64::from(y)`

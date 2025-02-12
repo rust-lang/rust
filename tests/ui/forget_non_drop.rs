@@ -13,7 +13,6 @@ fn main() {
     forget(Foo);
     //~^ forget_non_drop
 
-
     struct Bar;
     impl Drop for Bar {
         fn drop(&mut self) {}

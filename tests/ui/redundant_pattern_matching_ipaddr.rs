@@ -44,31 +44,31 @@ fn main() {
     }
 
     match V4(Ipv4Addr::LOCALHOST) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         V4(_) => true,
         V6(_) => false,
     };
 
     match V4(Ipv4Addr::LOCALHOST) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         V4(_) => false,
         V6(_) => true,
     };
 
     match V6(Ipv6Addr::LOCALHOST) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         V4(_) => false,
         V6(_) => true,
     };
 
     match V6(Ipv6Addr::LOCALHOST) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         V4(_) => true,
         V6(_) => false,
     };
 
     let _ = if let V4(_) = V4(Ipv4Addr::LOCALHOST) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         true
     } else {
         false
@@ -77,10 +77,10 @@ fn main() {
     ipaddr_const();
 
     let _ = if let V4(_) = gen_ipaddr() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         1
     } else if let V6(_) = gen_ipaddr() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         2
     } else {
         3
@@ -105,13 +105,13 @@ const fn ipaddr_const() {
     //~^ redundant_pattern_matching
 
     match V4(Ipv4Addr::LOCALHOST) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         V4(_) => true,
         V6(_) => false,
     };
 
     match V6(Ipv6Addr::LOCALHOST) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         V4(_) => false,
         V6(_) => true,
     };

@@ -7,7 +7,7 @@ fn main() {
 
 #[clippy::cognitive_complexity = "0"]
 fn kaboom() {
-//~^ cognitive_complexity
+    //~^ cognitive_complexity
 
     if 42 == 43 {
         panic!();

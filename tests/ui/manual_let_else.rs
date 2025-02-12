@@ -29,9 +29,8 @@ fn fire() {
     let v = if let Some(v_some) = g() { v_some } else { return };
     //~^ manual_let_else
 
-
     let v = if let Some(v_some) = g() {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         v_some
     } else {
@@ -39,7 +38,7 @@ fn fire() {
     };
 
     let v = if let Some(v) = g() {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         // Blocks around the identity should have no impact
         { { v } }
@@ -56,17 +55,15 @@ fn fire() {
 
         let v = if let Some(v_some) = g() { v_some } else { break };
         //~^ manual_let_else
-
     }
 
     // panic also diverges
     let v = if let Some(v_some) = g() { v_some } else { panic!() };
     //~^ manual_let_else
 
-
     // abort also diverges
     let v = if let Some(v_some) = g() {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         v_some
     } else {
@@ -75,7 +72,7 @@ fn fire() {
 
     // If whose two branches diverge also diverges
     let v = if let Some(v_some) = g() {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         v_some
     } else {
@@ -84,7 +81,7 @@ fn fire() {
 
     // Diverging after an if still makes the block diverge:
     let v = if let Some(v_some) = g() {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         v_some
     } else {
@@ -94,7 +91,7 @@ fn fire() {
 
     // The final expression will need to be turned into a statement.
     let v = if let Some(v_some) = g() {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         v_some
     } else {
@@ -104,7 +101,7 @@ fn fire() {
 
     // Even if the result is buried multiple expressions deep.
     let v = if let Some(v_some) = g() {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         v_some
     } else {
@@ -121,7 +118,7 @@ fn fire() {
 
     // Or if a break gives the value.
     let v = if let Some(v_some) = g() {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         v_some
     } else {
@@ -133,7 +130,7 @@ fn fire() {
 
     // Even if the break is in a weird position.
     let v = if let Some(v_some) = g() {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         v_some
     } else {
@@ -150,7 +147,7 @@ fn fire() {
 
     // A match diverges if all branches diverge:
     let v = if let Some(v_some) = g() {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         v_some
     } else {
@@ -162,7 +159,7 @@ fn fire() {
 
     // An if's expression can cause divergence:
     let v = if let Some(v_some) = g() {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         v_some
     } else {
@@ -171,7 +168,7 @@ fn fire() {
 
     // An expression of a match can cause divergence:
     let v = if let Some(v_some) = g() {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         v_some
     } else {
@@ -182,7 +179,7 @@ fn fire() {
 
     // Top level else if
     let v = if let Some(v_some) = g() {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         v_some
     } else if true {
@@ -193,7 +190,7 @@ fn fire() {
 
     // All match arms diverge
     let v = if let Some(v_some) = g() {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         v_some
     } else {
@@ -212,7 +209,7 @@ fn fire() {
 
     // Tuples supported for the declared variables
     let (v, w) = if let Some(v_some) = g().map(|v| (v, 42)) {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         v_some
     } else {
@@ -221,7 +218,7 @@ fn fire() {
 
     // Tuples supported with multiple bindings
     let (w, S { v }) = if let (Some(v_some), w_some) = (g().map(|_| S { v: 0 }), 0) {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         (w_some, v_some)
     } else {
@@ -244,16 +241,14 @@ fn fire() {
     let v = if let Variant::A(a, 0) = e() { a } else { return };
     //~^ manual_let_else
 
-
     // `mut v` is inserted into the pattern
     let mut v = if let Variant::B(b) = e() { b } else { return };
     //~^ manual_let_else
 
-
     // Nesting works
     let nested = Ok(Some(e()));
     let v = if let Ok(Some(Variant::B(b))) | Err(Some(Variant::A(b, _))) = nested {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         b
     } else {
@@ -263,15 +258,13 @@ fn fire() {
     let v = if let Variant::A(.., a) = e() { a } else { return };
     //~^ manual_let_else
 
-
     // () is preserved: a bit of an edge case but make sure it stays around
     let w = if let (Some(v), ()) = (g(), ()) { v } else { return };
     //~^ manual_let_else
 
-
     // Tuple structs work
     let w = if let Some(S { v: x }) = Some(S { v: 0 }) {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         x
     } else {
@@ -280,7 +273,7 @@ fn fire() {
 
     // Field init shorthand is suggested
     let v = if let Some(S { v: x }) = Some(S { v: 0 }) {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         x
     } else {
@@ -289,7 +282,7 @@ fn fire() {
 
     // Multi-field structs also work
     let (x, S { v }, w) = if let Some(U { v, w, x }) = None::<U<S<()>>> {
-    //~^ manual_let_else
+        //~^ manual_let_else
 
         (x, v, w)
     } else {
@@ -407,8 +400,7 @@ fn not_fire() {
 
     let ff = Some(1);
     let _ = match ff {
-    //~^ manual_let_else
-
+        //~^ manual_let_else
         Some(value) => value,
         _ => macro_call!(),
     };

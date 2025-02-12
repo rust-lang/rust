@@ -9,24 +9,19 @@ fn check(x: Option<u32>) {
     _ = x.as_slice();
     //~^ manual_option_as_slice
 
+    _ = x.as_slice();
+    //~^ manual_option_as_slice
 
     _ = x.as_slice();
     //~^ manual_option_as_slice
 
-
     _ = x.as_slice();
     //~^ manual_option_as_slice
-
-
-    _ = x.as_slice();
-    //~^ manual_option_as_slice
-
 
     {
         use std::slice::from_ref;
         _ = x.as_slice();
         //~^ manual_option_as_slice
-
     }
 
     // possible false positives

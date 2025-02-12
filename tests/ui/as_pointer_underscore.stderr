@@ -8,7 +8,7 @@ LL |     &s as *const _ as usize
    = help: to override `-D warnings` add `#[allow(clippy::as_pointer_underscore)]`
 
 error: using inferred pointer cast
-  --> tests/ui/as_pointer_underscore.rs:14:10
+  --> tests/ui/as_pointer_underscore.rs:13:10
    |
 LL |     s as *mut _ as usize
    |          ^^^^^^ help: use explicit type: `*mut S`

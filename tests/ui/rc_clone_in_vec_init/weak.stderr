@@ -24,7 +24,7 @@ LL ~     };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> tests/ui/rc_clone_in_vec_init/weak.rs:14:14
+  --> tests/ui/rc_clone_in_vec_init/weak.rs:13:14
    |
 LL |     let v2 = vec![UnSyncWeak::<u32>::new(); 2];
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ LL ~     };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> tests/ui/rc_clone_in_vec_init/weak.rs:19:13
+  --> tests/ui/rc_clone_in_vec_init/weak.rs:16:13
    |
 LL |     let v = vec![Rc::downgrade(&Rc::new("x".to_string())); 2];
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -70,7 +70,7 @@ LL ~     };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> tests/ui/rc_clone_in_vec_init/weak.rs:23:13
+  --> tests/ui/rc_clone_in_vec_init/weak.rs:19:13
    |
 LL |     let v = vec![Arc::downgrade(&Arc::new("x".to_string())); 2];
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -93,7 +93,7 @@ LL ~     };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> tests/ui/rc_clone_in_vec_init/weak.rs:34:21
+  --> tests/ui/rc_clone_in_vec_init/weak.rs:28:21
    |
 LL |             let v = vec![Arc::downgrade(&Arc::new("x".to_string())); 2];
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -116,7 +116,7 @@ LL ~             };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> tests/ui/rc_clone_in_vec_init/weak.rs:38:22
+  --> tests/ui/rc_clone_in_vec_init/weak.rs:31:22
    |
 LL |             let v2 = vec![Rc::downgrade(&Rc::new("x".to_string())); 2];
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -139,7 +139,7 @@ LL ~             };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> tests/ui/rc_clone_in_vec_init/weak.rs:47:13
+  --> tests/ui/rc_clone_in_vec_init/weak.rs:38:13
    |
 LL |       let v = vec![
    |  _____________^
@@ -166,7 +166,7 @@ LL ~     };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> tests/ui/rc_clone_in_vec_init/weak.rs:59:14
+  --> tests/ui/rc_clone_in_vec_init/weak.rs:50:14
    |
 LL |       let v1 = vec![
    |  ______________^

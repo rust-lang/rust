@@ -24,7 +24,7 @@ fn main() {
     format!("{{}} abc {{}}");
     //~^ useless_format
     format!(
-    //~^ useless_format
+        //~^ useless_format
         r##"foo {{}}
 " bar"##
     );

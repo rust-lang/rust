@@ -5,11 +5,8 @@
 use std::cell::UnsafeCell as TotallySafeCell;
 //~^ unsafe_removed_from_name
 
-
-
 use std::cell::UnsafeCell as TotallySafeCellAgain;
 //~^ unsafe_removed_from_name
-
 
 // Shouldn't error
 use std::cell::RefCell as ProbablyNotUnsafe;
@@ -30,13 +27,10 @@ mod mod_with_some_unsafe_things {
 use mod_with_some_unsafe_things::Unsafe as LieAboutModSafety;
 //~^ unsafe_removed_from_name
 
-
 // merged imports
 use mod_with_some_unsafe_things::{Unsafe as A, Unsafe as B};
 //~^ unsafe_removed_from_name
 //~| unsafe_removed_from_name
-
-
 
 // Shouldn't error
 use mod_with_some_unsafe_things::Safe as IPromiseItsSafeThisTime;

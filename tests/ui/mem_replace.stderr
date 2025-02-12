@@ -161,7 +161,7 @@ LL |     let _ = std::mem::replace(&mut b.val, String::default());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut b.val)`
 
 error: replacing an `Option` with `Some(..)`
-  --> tests/ui/mem_replace.rs:138:20
+  --> tests/ui/mem_replace.rs:164:20
    |
 LL |     let replaced = mem::replace(&mut an_option, Some(1));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::replace()` instead: `an_option.replace(1)`
@@ -170,13 +170,13 @@ LL |     let replaced = mem::replace(&mut an_option, Some(1));
    = help: to override `-D warnings` add `#[allow(clippy::mem_replace_option_with_some)]`
 
 error: replacing an `Option` with `Some(..)`
-  --> tests/ui/mem_replace.rs:142:20
+  --> tests/ui/mem_replace.rs:168:20
    |
 LL |     let replaced = mem::replace(an_option, Some(1));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::replace()` instead: `an_option.replace(1)`
 
 error: replacing an `Option` with `Some(..)`
-  --> tests/ui/mem_replace.rs:147:20
+  --> tests/ui/mem_replace.rs:173:20
    |
 LL |     let replaced = mem::replace(if b { &mut opt1 } else { &mut opt2 }, Some(1));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::replace()` instead: `(if b { &mut opt1 } else { &mut opt2 }).replace(1)`

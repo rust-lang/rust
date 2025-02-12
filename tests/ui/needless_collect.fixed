@@ -9,7 +9,7 @@ fn main() {
     let len = sample.iter().count();
     //~^ needless_collect
     if sample.iter().next().is_none() {
-    //~^ needless_collect
+        //~^ needless_collect
         // Empty
     }
     sample.iter().cloned().any(|x| x == 1);

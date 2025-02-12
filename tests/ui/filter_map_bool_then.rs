@@ -23,17 +23,17 @@ fn main() {
     v.clone()
         .into_iter()
         .filter_map(|i| -> Option<_> { (i % 2 == 0).then(|| i + 1) });
-        //~^ filter_map_bool_then
+    //~^ filter_map_bool_then
     v.clone()
         .into_iter()
         .filter(|&i| i != 1000)
         .filter_map(|i| (i % 2 == 0).then(|| i + 1));
-        //~^ filter_map_bool_then
+    //~^ filter_map_bool_then
     v.iter()
         .copied()
         .filter(|&i| i != 1000)
         .filter_map(|i| (i.clone() % 2 == 0).then(|| i + 1));
-        //~^ filter_map_bool_then
+    //~^ filter_map_bool_then
     // Despite this is non-copy, `is_copy` still returns true (at least now) because it's `&NonCopy`,
     // and any `&` is `Copy`. So since we can dereference it in `filter` (since it's then `&&NonCopy`),
     // we can lint this and still get the same input type.

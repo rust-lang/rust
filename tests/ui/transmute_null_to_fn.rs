@@ -10,7 +10,6 @@ fn one_liners() {
 
         let _: fn() = std::mem::transmute(std::ptr::null::<()>());
         //~^ transmute_null_to_fn
-
     }
 }
 
@@ -38,7 +37,6 @@ fn issue_11485() {
 
         let _: fn() = std::mem::transmute(ZPTR as *const u8);
         //~^ transmute_null_to_fn
-
     }
 }
 

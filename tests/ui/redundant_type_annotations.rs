@@ -81,13 +81,11 @@ impl Pie {
         let v: u32 = self.return_an_int();
         //~^ redundant_type_annotations
 
-
         let v: &u32 = self.return_a_ref();
         //~^ redundant_type_annotations
 
         let v: &Slice = self.return_a_ref_to_struct();
         //~^ redundant_type_annotations
-
     }
 }
 
@@ -162,38 +160,29 @@ fn test_functions() {
     let _return: String = return_a_string();
     //~^ redundant_type_annotations
 
-
     let _return: Pie = return_a_struct();
     //~^ redundant_type_annotations
-
 
     let _return: Pizza = return_an_enum();
     //~^ redundant_type_annotations
 
-
     let _return: u32 = return_an_int();
     //~^ redundant_type_annotations
-
 
     let _return: String = String::new();
     //~^ redundant_type_annotations
 
-
     let new_pie: Pie = Pie::new();
     //~^ redundant_type_annotations
-
 
     let _return: u32 = new_pie.return_an_int();
     //~^ redundant_type_annotations
 
-
     let _return: u32 = Pie::associated_return_an_int();
     //~^ redundant_type_annotations
 
-
     let _return: String = Pie::associated_return_a_string();
     //~^ redundant_type_annotations
-
 }
 
 fn test_simple_types() {
@@ -202,22 +191,17 @@ fn test_simple_types() {
     let _var: u32 = u32::MAX;
     //~^ redundant_type_annotations
 
-
     let _var: u32 = 5_u32;
     //~^ redundant_type_annotations
-
 
     let _var: &str = "test";
     //~^ redundant_type_annotations
 
-
     let _var: &[u8; 4] = b"test";
     //~^ redundant_type_annotations
 
-
     let _var: bool = false;
     //~^ redundant_type_annotations
-
 }
 
 fn issue12212() {

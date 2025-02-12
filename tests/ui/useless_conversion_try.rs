@@ -11,7 +11,6 @@ fn test_generic<T: Copy>(val: T) -> T {
 
     val.try_into().unwrap()
     //~^ useless_conversion
-
 }
 
 fn test_generic2<T: Copy + Into<i32> + Into<U>, U: From<T>>(val: T) {
@@ -52,8 +51,7 @@ fn main() {
     //~^ useless_conversion
 
     let _: String = match String::from("_").try_into() {
-    //~^ useless_conversion
-
+        //~^ useless_conversion
         Ok(a) => a,
         Err(_) => String::new(),
     };

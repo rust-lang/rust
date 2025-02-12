@@ -57,7 +57,7 @@ fn unnecessary_fold_over_multiple_lines() {
         .map(|x| x + 1)
         .filter(|x| x % 2 == 0)
         .fold(false, |acc, x| acc || x > 2);
-        //~^ unnecessary_fold
+    //~^ unnecessary_fold
 }
 
 fn issue10000() {

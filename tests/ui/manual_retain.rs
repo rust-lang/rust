@@ -69,7 +69,7 @@ fn btree_map_retain() {
     btree_map = btree_map.into_iter().filter(|(_, v)| v % 2 == 0).collect();
     //~^ manual_retain
     btree_map = btree_map
-    //~^ manual_retain
+        //~^ manual_retain
         .into_iter()
         .filter(|(k, v)| (k % 2 == 0) && (v % 2 == 0))
         .collect();
@@ -141,7 +141,7 @@ fn hash_map_retain() {
     hash_map = hash_map.into_iter().filter(|(_, v)| v % 2 == 0).collect();
     //~^ manual_retain
     hash_map = hash_map
-    //~^ manual_retain
+        //~^ manual_retain
         .into_iter()
         .filter(|(k, v)| (k % 2 == 0) && (v % 2 == 0))
         .collect();

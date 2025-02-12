@@ -4,39 +4,35 @@
 fn main() {
     let x: Option<Vec<String>> = None;
     match x {
-    //~^ manual_unwrap_or_default
-
+        //~^ manual_unwrap_or_default
         Some(v) => v,
         None => Vec::default(),
     };
 
     let x: Option<Vec<String>> = None;
     match x {
-    //~^ manual_unwrap_or_default
-
+        //~^ manual_unwrap_or_default
         Some(v) => v,
         _ => Vec::default(),
     };
 
     let x: Option<String> = None;
     match x {
-    //~^ manual_unwrap_or_default
-
+        //~^ manual_unwrap_or_default
         Some(v) => v,
         None => String::new(),
     };
 
     let x: Option<Vec<String>> = None;
     match x {
-    //~^ manual_unwrap_or_default
-
+        //~^ manual_unwrap_or_default
         None => Vec::default(),
         Some(v) => v,
     };
 
     let x: Option<Vec<String>> = None;
     if let Some(v) = x {
-    //~^ manual_unwrap_or_default
+        //~^ manual_unwrap_or_default
 
         v
     } else {
@@ -55,15 +51,14 @@ fn main() {
 
     let x: Result<String, i64> = Ok(String::new());
     match x {
-    //~^ manual_unwrap_or_default
-
+        //~^ manual_unwrap_or_default
         Ok(v) => v,
         Err(_) => String::new(),
     };
 
     let x: Result<String, i64> = Ok(String::new());
     if let Ok(v) = x {
-    //~^ manual_unwrap_or_default
+        //~^ manual_unwrap_or_default
 
         v
     } else {
@@ -76,7 +71,7 @@ unsafe fn no_deref_ptr(a: Option<i32>, b: *const Option<i32>) -> i32 {
     match a {
         // `*b` being correct depends on `a == Some(_)`
         Some(_) => match *b {
-        //~^ manual_unwrap_or_default
+            //~^ manual_unwrap_or_default
             Some(v) => v,
             _ => 0,
         },

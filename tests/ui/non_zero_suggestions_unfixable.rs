@@ -6,7 +6,6 @@ fn main() {
     let x: u64 = u64::from(NonZeroU32::new(5).unwrap().get());
     //~^ non_zero_suggestions
 
-
     let n = NonZeroU32::new(20).unwrap();
     let y = u64::from(n.get());
     //~^ non_zero_suggestions
@@ -20,7 +19,6 @@ fn main() {
 fn return_non_zero(x: u64, y: NonZeroU32) -> u64 {
     u64::from(y.get())
     //~^ non_zero_suggestions
-
 }
 
 fn some_fn_that_only_takes_u64(_: u64) {}

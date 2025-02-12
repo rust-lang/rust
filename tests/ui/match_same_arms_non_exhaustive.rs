@@ -43,7 +43,6 @@ pub fn g(x: Ordering) {
         Ordering::Acquire => println!("acquire"),
         Ordering::AcqRel | Ordering::SeqCst => repeat(),
         //~^ match_same_arms
-
         _ => repeat(),
     }
 }
@@ -58,7 +57,6 @@ mod g {
             Ordering::Acquire => println!("acquire"),
             Ordering::AcqRel | Ordering::SeqCst => repeat(),
             //~^ match_same_arms
-
             _ => repeat(),
         }
     }

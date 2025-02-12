@@ -34,7 +34,6 @@ fn main() {
         //~^ redundant_field_names
         age: age,
         //~^ redundant_field_names
-
         name,          //should be ok
         buzz: fizz,    //should be ok
         foo: foo::BAR, //should be ok

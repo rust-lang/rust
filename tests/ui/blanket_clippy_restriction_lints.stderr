@@ -14,7 +14,7 @@ LL | #![warn(clippy::restriction)]
    = help: enable the restriction lints you need individually
 
 error: `clippy::restriction` is not meant to be enabled as a group
-  --> tests/ui/blanket_clippy_restriction_lints.rs:10:9
+  --> tests/ui/blanket_clippy_restriction_lints.rs:9:9
    |
 LL | #![deny(clippy::restriction)]
    |         ^^^^^^^^^^^^^^^^^^^
@@ -22,7 +22,7 @@ LL | #![deny(clippy::restriction)]
    = help: enable the restriction lints you need individually
 
 error: `clippy::restriction` is not meant to be enabled as a group
-  --> tests/ui/blanket_clippy_restriction_lints.rs:13:11
+  --> tests/ui/blanket_clippy_restriction_lints.rs:11:11
    |
 LL | #![forbid(clippy::restriction)]
    |           ^^^^^^^^^^^^^^^^^^^

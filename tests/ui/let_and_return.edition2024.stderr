@@ -15,7 +15,7 @@ LL ~     5
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:22:9
+  --> tests/ui/let_and_return.rs:20:9
    |
 LL |         let x = 5;
    |         ---------- unnecessary `let` binding
@@ -29,7 +29,7 @@ LL ~         5
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:86:5
+  --> tests/ui/let_and_return.rs:83:5
    |
 LL |     let line = stdin.lock().lines().next().unwrap().unwrap();
    |     --------------------------------------------------------- unnecessary `let` binding
@@ -43,7 +43,7 @@ LL ~     stdin.lock().lines().next().unwrap().unwrap()
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:110:9
+  --> tests/ui/let_and_return.rs:106:9
    |
 LL |         let ret = value.borrow().baz();
    |         ------------------------------- unnecessary `let` binding
@@ -57,7 +57,7 @@ LL ~         value.borrow().baz()
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:121:9
+  --> tests/ui/let_and_return.rs:117:9
    |
 LL |         let ret = f(|| value.borrow().baz())();
    |         --------------------------------------- unnecessary `let` binding
@@ -71,7 +71,7 @@ LL ~         f(|| value.borrow().baz())()
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:153:13
+  --> tests/ui/let_and_return.rs:149:13
    |
 LL |             let value = some_foo(&x).value();
    |             --------------------------------- unnecessary `let` binding
@@ -85,7 +85,7 @@ LL ~             some_foo(&x).value()
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:160:13
+  --> tests/ui/let_and_return.rs:156:13
    |
 LL |             let value = Foo::new(&x).value();
    |             --------------------------------- unnecessary `let` binding
@@ -99,7 +99,7 @@ LL ~             Foo::new(&x).value()
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:182:13
+  --> tests/ui/let_and_return.rs:178:13
    |
 LL |             let clone = Arc::clone(&self.foo);
    |             ---------------------------------- unnecessary `let` binding
@@ -113,7 +113,7 @@ LL ~             (Arc::clone(&self.foo)) as _
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:202:13
+  --> tests/ui/let_and_return.rs:197:13
    |
 LL | /             let result = match self {
 LL | |                 E::A(x) => x,
@@ -135,7 +135,7 @@ LL +             }) as _
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:229:9
+  --> tests/ui/let_and_return.rs:223:9
    |
 LL |         let s = if true { "a".to_string() } else { "b".to_string() } + "c";
    |         ------------------------------------------------------------------- unnecessary `let` binding
@@ -149,7 +149,7 @@ LL ~         (if true { "a".to_string() } else { "b".to_string() } + "c")
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:236:9
+  --> tests/ui/let_and_return.rs:229:9
    |
 LL |         let s = "c".to_string() + if true { "a" } else { "b" };
    |         ------------------------------------------------------- unnecessary `let` binding
@@ -163,7 +163,7 @@ LL ~         "c".to_string() + if true { "a" } else { "b" }
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:243:9
+  --> tests/ui/let_and_return.rs:235:9
    |
 LL |         let s = { "a".to_string() } + "b" + { "c" } + "d";
    |         -------------------------------------------------- unnecessary `let` binding
@@ -177,7 +177,7 @@ LL ~         ({ "a".to_string() } + "b" + { "c" } + "d")
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:252:13
+  --> tests/ui/let_and_return.rs:243:13
    |
 LL |             let s = if true { 2 } else { 3 } << 4;
    |             -------------------------------------- unnecessary `let` binding
@@ -191,7 +191,7 @@ LL ~             (if true { 2 } else { 3 } << 4)
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:258:13
+  --> tests/ui/let_and_return.rs:248:13
    |
 LL |             let s = { true } || { false } && { 2 <= 3 };
    |             -------------------------------------------- unnecessary `let` binding
@@ -205,7 +205,7 @@ LL ~             ({ true } || { false } && { 2 <= 3 })
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:271:5
+  --> tests/ui/let_and_return.rs:260:5
    |
 LL | /     let r = match &*v.borrow() {
 LL | |         Some(v) => Ok(Ok(v[0])),

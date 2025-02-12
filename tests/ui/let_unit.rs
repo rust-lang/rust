@@ -58,7 +58,7 @@ fn multiline_sugg() {
     let v: Vec<u8> = vec![2];
 
     let _ = v
-    //~^ let_unit_value
+        //~^ let_unit_value
         .into_iter()
         .map(|i| i * 2)
         .filter(|i| i % 2 == 0)
@@ -108,7 +108,7 @@ fn _returns_generic() {
     let x: () = if true { f() } else { f2(0) };
 
     let x = match Some(0) {
-    //~^ let_unit_value
+        //~^ let_unit_value
         None => f2(1),
         Some(0) => f(),
         Some(1) => f2(3),

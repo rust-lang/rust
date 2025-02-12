@@ -3,7 +3,7 @@
 fn main() {
     fn test_opt_block(opt: Option<i32>) -> Option<i32> {
         opt.and_then(|n| {
-        //~^ return_and_then
+            //~^ return_and_then
             let mut ret = n + 1;
             ret += n;
             if n > 1 { Some(ret) } else { None }
@@ -39,7 +39,7 @@ fn main() {
     fn test_tmp_only() -> Option<i32> {
         // unused temporary: vec![1, 2, 4]
         Some(match (vec![1, 2, 3], vec![1, 2, 4]) {
-        //~^ return_and_then
+            //~^ return_and_then
             (a, _) if a.len() > 1 => a,
             (_, b) => b,
         })

@@ -10,20 +10,14 @@ fn should_warn_simple_case() {
     let v = vec![SyncWeak::<u32>::new(); 2];
     //~^ rc_clone_in_vec_init
 
-
     let v2 = vec![UnSyncWeak::<u32>::new(); 2];
     //~^ rc_clone_in_vec_init
-
-
 
     let v = vec![Rc::downgrade(&Rc::new("x".to_string())); 2];
     //~^ rc_clone_in_vec_init
 
-
     let v = vec![Arc::downgrade(&Arc::new("x".to_string())); 2];
     //~^ rc_clone_in_vec_init
-
-
 }
 
 fn should_warn_simple_case_with_big_indentation() {
@@ -34,11 +28,8 @@ fn should_warn_simple_case_with_big_indentation() {
             let v = vec![Arc::downgrade(&Arc::new("x".to_string())); 2];
             //~^ rc_clone_in_vec_init
 
-
             let v2 = vec![Rc::downgrade(&Rc::new("x".to_string())); 2];
             //~^ rc_clone_in_vec_init
-
-
         }
     }
 }

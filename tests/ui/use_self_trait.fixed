@@ -17,20 +17,20 @@ struct Bad;
 
 impl SelfTrait for Bad {
     fn refs(p1: &Self) -> &Self {
-    //~^ use_self
-    //~| use_self
+        //~^ use_self
+        //~| use_self
         p1
     }
 
     fn ref_refs<'a>(p1: &'a &'a Self) -> &'a &'a Self {
-    //~^ use_self
-    //~| use_self
+        //~^ use_self
+        //~| use_self
         p1
     }
 
     fn mut_refs(p1: &mut Self) -> &mut Self {
-    //~^ use_self
-    //~| use_self
+        //~^ use_self
+        //~| use_self
         p1
     }
 
@@ -39,8 +39,8 @@ impl SelfTrait for Bad {
     //~| use_self
 
     fn vals(_: Self) -> Self {
-    //~^ use_self
-    //~| use_self
+        //~^ use_self
+        //~| use_self
         Self
         //~^ use_self
     }
@@ -51,8 +51,8 @@ impl Mul for Bad {
     //~^ use_self
 
     fn mul(self, rhs: Self) -> Self {
-    //~^ use_self
-    //~| use_self
+        //~^ use_self
+        //~| use_self
         rhs
     }
 }

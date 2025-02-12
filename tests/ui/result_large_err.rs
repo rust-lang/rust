@@ -8,7 +8,7 @@ pub fn small_err() -> Result<(), u128> {
 }
 
 pub fn large_err() -> Result<(), [u8; 512]> {
-//~^ result_large_err
+    //~^ result_large_err
 
     Ok(())
 }
@@ -21,21 +21,21 @@ pub struct FullyDefinedLargeError {
 
 impl FullyDefinedLargeError {
     pub fn ret() -> Result<(), Self> {
-    //~^ result_large_err
+        //~^ result_large_err
 
         Ok(())
     }
 }
 
 pub fn struct_error() -> Result<(), FullyDefinedLargeError> {
-//~^ result_large_err
+    //~^ result_large_err
 
     Ok(())
 }
 
 type Fdlr<T> = std::result::Result<T, FullyDefinedLargeError>;
 pub fn large_err_via_type_alias<T>(x: T) -> Fdlr<T> {
-//~^ result_large_err
+    //~^ result_large_err
 
     Ok(x)
 }
@@ -45,7 +45,7 @@ pub fn param_small_error<R>() -> Result<(), (R, u128)> {
 }
 
 pub fn param_large_error<R>() -> Result<(), (u128, R, FullyDefinedLargeError)> {
-//~^ result_large_err
+    //~^ result_large_err
 
     Ok(())
 }
@@ -58,7 +58,7 @@ pub enum LargeErrorVariants<T> {
 
 impl LargeErrorVariants<()> {
     pub fn large_enum_error() -> Result<(), Self> {
-    //~^ result_large_err
+        //~^ result_large_err
 
         Ok(())
     }
@@ -72,7 +72,7 @@ enum MultipleLargeVariants {
 
 impl MultipleLargeVariants {
     fn large_enum_error() -> Result<(), Self> {
-    //~^ result_large_err
+        //~^ result_large_err
 
         Ok(())
     }
@@ -80,7 +80,7 @@ impl MultipleLargeVariants {
 
 trait TraitForcesLargeError {
     fn large_error() -> Result<(), [u8; 512]> {
-    //~^ result_large_err
+        //~^ result_large_err
 
         Ok(())
     }
@@ -101,7 +101,7 @@ pub union FullyDefinedUnionError {
 }
 
 pub fn large_union_err() -> Result<(), FullyDefinedUnionError> {
-//~^ result_large_err
+    //~^ result_large_err
 
     Ok(())
 }
@@ -112,7 +112,7 @@ pub union UnionError<T: Copy> {
 }
 
 pub fn param_large_union<T: Copy>() -> Result<(), UnionError<T>> {
-//~^ result_large_err
+    //~^ result_large_err
 
     Ok(())
 }
@@ -123,13 +123,13 @@ pub struct ArrayError<T, U> {
 }
 
 pub fn array_error_subst<U>() -> Result<(), ArrayError<i32, U>> {
-//~^ result_large_err
+    //~^ result_large_err
 
     Ok(())
 }
 
 pub fn array_error<T, U>() -> Result<(), ArrayError<(i32, T), U>> {
-//~^ result_large_err
+    //~^ result_large_err
 
     Ok(())
 }

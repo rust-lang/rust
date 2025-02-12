@@ -5,32 +5,26 @@ const CONST_OK: Option<HashMap<String, usize>> = None;
 const CONST_NOT_OK: Option<HashMap<String, ()>> = None;
 //~^ zero_sized_map_values
 
-
 static STATIC_OK: Option<HashMap<String, usize>> = None;
 static STATIC_NOT_OK: Option<HashMap<String, ()>> = None;
 //~^ zero_sized_map_values
-
 
 type OkMap = HashMap<String, usize>;
 type NotOkMap = HashMap<String, ()>;
 //~^ zero_sized_map_values
 
-
 enum TestEnum {
     Ok(HashMap<String, usize>),
     NotOk(HashMap<String, ()>),
     //~^ zero_sized_map_values
-
 }
 
 struct Test {
     ok: HashMap<String, usize>,
     not_ok: HashMap<String, ()>,
     //~^ zero_sized_map_values
-
     also_not_ok: Vec<HashMap<usize, ()>>,
     //~^ zero_sized_map_values
-
 }
 
 trait TestTrait {
@@ -40,7 +34,6 @@ trait TestTrait {
 
     fn weird_map(&self, map: HashMap<usize, ()>);
     //~^ zero_sized_map_values
-
 }
 
 impl Test {
@@ -49,7 +42,7 @@ impl Test {
     }
 
     fn not_ok(&self) -> HashMap<String, ()> {
-    //~^ zero_sized_map_values
+        //~^ zero_sized_map_values
 
         todo!()
     }
@@ -68,9 +61,8 @@ impl TestTrait for Test {
 }
 
 fn test(map: HashMap<String, ()>, key: &str) -> HashMap<String, ()> {
-//~^ zero_sized_map_values
-//~| zero_sized_map_values
-
+    //~^ zero_sized_map_values
+    //~| zero_sized_map_values
 
     todo!();
 }
@@ -84,10 +76,8 @@ fn main() {
     //~^ zero_sized_map_values
     //~| zero_sized_map_values
 
-
     let _: HashMap<String, usize> = HashMap::new();
 
     let _: HashMap<_, _> = std::iter::empty::<(String, ())>().collect();
     //~^ zero_sized_map_values
-
 }

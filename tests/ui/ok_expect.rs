@@ -35,5 +35,4 @@ fn main() {
     let res6: Result<u32, &str> = Ok(0);
     res6.ok().expect("meh");
     //~^ ok_expect
-
 }

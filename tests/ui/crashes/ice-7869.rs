@@ -1,6 +1,5 @@
 enum Tila {
-//~^ enum_variant_names
-
+    //~^ enum_variant_names
     TyöAlkoi,
     TyöKeskeytyi,
     TyöValmis,

@@ -12,7 +12,6 @@ fn main() {
     let _ = opt.map_or_else(|_| { None }, Some);
     //~^ result_map_or_into_option
 
-
     let rewrap = |s: u32| -> Option<u32> { Some(s) };
 
     // A non-Some `f` arg should not emit the lint

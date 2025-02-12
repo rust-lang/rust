@@ -21,47 +21,40 @@ fn main() {
         #[rustfmt::skip]
         let _ = vec![Some(1), None, Some(3)].into_iter().flatten();
         //~^ iter_filter_is_some
-
     }
 
     {
         let _ = vec![Some(1), None, Some(3)]
             .into_iter()
             .flatten();
-            //~^ iter_filter_is_some
-
+        //~^ iter_filter_is_some
 
         let _ = vec![Some(1), None, Some(3)]
             .into_iter()
             .flatten();
-            //~^ iter_filter_is_some
+        //~^ iter_filter_is_some
 
         #[rustfmt::skip]
         let _ = vec![Some(1), None, Some(3)].into_iter().flatten();
         //~^ iter_filter_is_some
-
     }
 
     {
         let _ = vec![Some(1), None, Some(3)].into_iter().flatten();
         //~^ iter_filter_is_some
 
-
         #[rustfmt::skip]
         let _ = vec![Some(1), None, Some(3)].into_iter().flatten();
         //~^ iter_filter_is_some
-
     }
 
     {
         let _ = vec![Some(1), None, Some(3)].into_iter().flatten();
         //~^ iter_filter_is_some
 
-
         #[rustfmt::skip]
         let _ = vec![Some(1), None, Some(3)].into_iter().flatten();
         //~^ iter_filter_is_some
-
     }
 }
 

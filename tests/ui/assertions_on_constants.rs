@@ -19,16 +19,13 @@ fn main() {
     assert!(false, "false message");
     //~^ assertions_on_constants
 
-
     let msg = "panic message";
     assert!(false, "{}", msg.to_uppercase());
     //~^ assertions_on_constants
 
-
     const B: bool = true;
     assert!(B);
     //~^ assertions_on_constants
-
 
     const C: bool = false;
     assert!(C);
@@ -36,7 +33,6 @@ fn main() {
 
     assert!(C, "C message");
     //~^ assertions_on_constants
-
 
     debug_assert!(true);
     //~^ assertions_on_constants
@@ -58,10 +54,8 @@ fn main() {
     const _: () = assert!(true);
     //~^ assertions_on_constants
 
-
     assert!(8 == (7 + 1));
     //~^ assertions_on_constants
-
 
     // Don't lint if the value is dependent on a defined constant:
     const N: usize = 1024;

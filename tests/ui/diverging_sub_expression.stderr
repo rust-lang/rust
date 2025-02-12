@@ -8,31 +8,31 @@ LL |     b || diverge();
    = help: to override `-D warnings` add `#[allow(clippy::diverging_sub_expression)]`
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:24:10
+  --> tests/ui/diverging_sub_expression.rs:23:10
    |
 LL |     b || A.foo();
    |          ^^^^^^^
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:36:26
+  --> tests/ui/diverging_sub_expression.rs:34:26
    |
 LL |             6 => true || return,
    |                          ^^^^^^
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:39:26
+  --> tests/ui/diverging_sub_expression.rs:37:26
    |
 LL |             7 => true || continue,
    |                          ^^^^^^^^
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:44:26
+  --> tests/ui/diverging_sub_expression.rs:42:26
    |
 LL |             3 => true || diverge(),
    |                          ^^^^^^^^^
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:49:30
+  --> tests/ui/diverging_sub_expression.rs:47:30
    |
 LL |                 _ => true || panic!("boo"),
    |                              ^^^^^^^^^^^^^
@@ -40,31 +40,31 @@ LL |                 _ => true || panic!("boo"),
    = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:54:29
+  --> tests/ui/diverging_sub_expression.rs:52:29
    |
 LL |             15 => true || { return; },
    |                             ^^^^^^
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:57:30
+  --> tests/ui/diverging_sub_expression.rs:55:30
    |
 LL |             16 => false || { return; },
    |                              ^^^^^^
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:61:29
+  --> tests/ui/diverging_sub_expression.rs:59:29
    |
 LL |             17 => true || { return },
    |                             ^^^^^^
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:64:30
+  --> tests/ui/diverging_sub_expression.rs:62:30
    |
 LL |             18 => false || { return },
    |                              ^^^^^^
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:75:26
+  --> tests/ui/diverging_sub_expression.rs:73:26
    |
 LL |             _ => true || break,
    |                          ^^^^^

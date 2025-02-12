@@ -23,7 +23,7 @@ fn main() {
     let _ = (1..3).find(|x| [1, 2, 3].contains(x) || *x == 0).is_none();
     //~^ search_is_some
     let _ = (1..3)
-    //~^ search_is_some
+        //~^ search_is_some
         .find(|x| [1, 2, 3].contains(x) || *x == 0 || [4, 5, 6].contains(x) || *x == -1)
         .is_none();
 
@@ -108,7 +108,7 @@ mod issue7392 {
 
         let vfoo = vec![(42, Foo { foo: 1, bar: 2 })];
         let _ = vfoo
-        //~^ search_is_some
+            //~^ search_is_some
             .iter()
             .find(|(i, v)| *i == 42 && v.foo == 1 && v.bar == 2)
             .is_none();
@@ -179,7 +179,7 @@ mod issue7392 {
             },
         }];
         let _ = vfoo
-        //~^ search_is_some
+            //~^ search_is_some
             .iter()
             .find(|v| v.inner_double.bar[0][0] == 2 && v.inner.bar[0] == 2)
             .is_none();

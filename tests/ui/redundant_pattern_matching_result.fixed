@@ -53,10 +53,10 @@ fn main() {
     issue10803();
 
     let _ = if gen_res().is_ok() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         1
     } else if gen_res().is_err() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         2
     } else {
         3

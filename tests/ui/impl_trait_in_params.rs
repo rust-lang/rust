@@ -12,7 +12,6 @@ pub fn a(_: impl Trait) {}
 pub fn c<C: Trait>(_: C, _: impl Trait) {}
 //~^ impl_trait_in_params
 
-
 // Shouldn't warn
 
 pub fn b<B: Trait>(_: B) {}
@@ -35,12 +34,12 @@ trait Private {
 
 struct S;
 impl S {
-pub fn h(_: impl Trait) {}
-//~^ impl_trait_in_params
+    pub fn h(_: impl Trait) {}
+    //~^ impl_trait_in_params
     fn i(_: impl Trait) {}
     pub fn j<J: Trait>(_: J) {}
-pub fn k<K: AnotherTrait<u32>>(_: K, _: impl AnotherTrait<u32>) {}
-//~^ impl_trait_in_params
+    pub fn k<K: AnotherTrait<u32>>(_: K, _: impl AnotherTrait<u32>) {}
+    //~^ impl_trait_in_params
 }
 
 // Trying with traits

@@ -5,28 +5,27 @@
 use std::io;
 
 pub fn pub_fn_missing_errors_header() -> Result<(), ()> {
-//~^ missing_errors_doc
-
+    //~^ missing_errors_doc
 
     unimplemented!();
 }
 
 pub async fn async_pub_fn_missing_errors_header() -> Result<(), ()> {
-//~^ missing_errors_doc
+    //~^ missing_errors_doc
 
     unimplemented!();
 }
 
 /// This is not sufficiently documented.
 pub fn pub_fn_returning_io_result() -> io::Result<()> {
-//~^ missing_errors_doc
+    //~^ missing_errors_doc
 
     unimplemented!();
 }
 
 /// This is not sufficiently documented.
 pub async fn async_pub_fn_returning_io_result() -> io::Result<()> {
-//~^ missing_errors_doc
+    //~^ missing_errors_doc
 
     unimplemented!();
 }
@@ -58,14 +57,14 @@ pub struct Struct1;
 impl Struct1 {
     /// This is not sufficiently documented.
     pub fn pub_method_missing_errors_header() -> Result<(), ()> {
-    //~^ missing_errors_doc
+        //~^ missing_errors_doc
 
         unimplemented!();
     }
 
     /// This is not sufficiently documented.
     pub async fn async_pub_method_missing_errors_header() -> Result<(), ()> {
-    //~^ missing_errors_doc
+        //~^ missing_errors_doc
 
         unimplemented!();
     }
@@ -118,7 +117,6 @@ pub trait Trait1 {
     /// This is not sufficiently documented.
     fn trait_method_missing_errors_header() -> Result<(), ()>;
     //~^ missing_errors_doc
-
 
     /// # Errors
     /// A description of the errors goes here.

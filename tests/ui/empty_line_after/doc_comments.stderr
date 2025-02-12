@@ -1,5 +1,5 @@
 error: empty line after doc comment
-  --> tests/ui/empty_line_after/doc_comments.rs:6:1
+  --> tests/ui/empty_line_after/doc_comments.rs:5:1
    |
 LL | / /// for the crate
 LL | |
@@ -19,7 +19,7 @@ LL ~ // /// for the crate
    |
 
 error: empty line after doc comment
-  --> tests/ui/empty_line_after/doc_comments.rs:15:5
+  --> tests/ui/empty_line_after/doc_comments.rs:14:5
    |
 LL | /     /// for the module
 LL | |
@@ -37,7 +37,7 @@ LL ~     // /// for the module
    |
 
 error: empty line after doc comment
-  --> tests/ui/empty_line_after/doc_comments.rs:29:5
+  --> tests/ui/empty_line_after/doc_comments.rs:27:5
    |
 LL | /     /// # Indented
 LL | |
@@ -54,7 +54,7 @@ LL |     // /// # Indented
    |     ++
 
 error: empty line after doc comment
-  --> tests/ui/empty_line_after/doc_comments.rs:37:1
+  --> tests/ui/empty_line_after/doc_comments.rs:34:1
    |
 LL | / /// This should produce a warning
 LL | |
@@ -70,7 +70,7 @@ LL | // /// This should produce a warning
    | ++
 
 error: empty lines after doc comment
-  --> tests/ui/empty_line_after/doc_comments.rs:48:1
+  --> tests/ui/empty_line_after/doc_comments.rs:44:1
    |
 LL | / /// This doc comment should produce a warning
 LL | |
@@ -93,7 +93,7 @@ LL ~ /* This is also a doc comment and is part of the warning
    |
 
 error: empty line after doc comment
-  --> tests/ui/empty_line_after/doc_comments.rs:61:5
+  --> tests/ui/empty_line_after/doc_comments.rs:57:5
    |
 LL | /     /// docs for `old_code`
 ...  |
@@ -109,7 +109,7 @@ LL |     // /// docs for `old_code`
    |     ++
 
 error: empty lines after doc comment
-  --> tests/ui/empty_line_after/doc_comments.rs:69:5
+  --> tests/ui/empty_line_after/doc_comments.rs:64:5
    |
 LL | /     /// for OldA
 ...  |
@@ -132,31 +132,31 @@ LL ~     // /// for OldB
    |
 
 error: empty line after doc comment
-  --> tests/ui/empty_line_after/doc_comments.rs:85:5
+  --> tests/ui/empty_line_after/doc_comments.rs:80:5
    |
 LL | /     /**
-LL | |
 LL | |      * Meant to be inner doc comment
 LL | |      */
+LL | |
 LL | |
    | |_^
 LL |       fn first_in_module() {}
    |       -------------------- the comment documents this function
    |
    = help: if the empty line is unintentional remove it
-help: if the comment should document the parent module use an inner doc comment
+help: if the doc comment should not document `first_in_module` comment it out
    |
-LL |     /*!
-   |       ~
+LL -     /**
+LL +     /*
+   |
 
 error: empty line after doc comment
-  --> tests/ui/empty_line_after/doc_comments.rs:93:5
+  --> tests/ui/empty_line_after/doc_comments.rs:87:5
    |
 LL | /     /**
-LL | |
 LL | |      * Docs for `old_code`
 LL | |      */
-LL | |     /* fn old_code() {} */
+...  |
 LL | |
    | |_^
 ...
@@ -171,7 +171,7 @@ LL +     /*
    |
 
 error: empty line after doc comment
-  --> tests/ui/empty_line_after/doc_comments.rs:105:5
+  --> tests/ui/empty_line_after/doc_comments.rs:98:5
    |
 LL | /     /// Docs for `old_code2`
 LL | |

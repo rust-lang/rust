@@ -14,12 +14,10 @@ const CELL: Cell<usize> = Cell::new(6);
 const ATOMIC_TUPLE: ([AtomicUsize; 1], Vec<AtomicUsize>, u8) = ([ATOMIC], Vec::new(), 7);
 //~^ declare_interior_mutable_const
 
-
 macro_rules! declare_const {
     ($name:ident: $ty:ty = $e:expr) => {
         const $name: $ty = $e;
         //~^ declare_interior_mutable_const
-
     };
 }
 declare_const!(_ONCE: Once = Once::new());

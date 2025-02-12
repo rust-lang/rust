@@ -13,12 +13,10 @@ fn main() {
     let _ = x.and_then(|o| (o < 32).then_some(o));
     //~^ if_then_some_else_none
 
-
     // Should issue an error. Unary expression `!x` should be parenthesized.
     let x = true;
     let _ = (!x).then_some(0);
     //~^ if_then_some_else_none
-
 
     // Should not issue an error since the `else` block has a statement besides `None`.
     let _ = if foo() {

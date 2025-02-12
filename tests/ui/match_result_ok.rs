@@ -49,7 +49,7 @@ impl Wat {
 fn base_1(x: i32) {
     let mut wat = Wat { counter: x };
     while let Some(a) = wat.next().ok() {
-    //~^ match_result_ok
+        //~^ match_result_ok
         println!("{}", a);
     }
 }

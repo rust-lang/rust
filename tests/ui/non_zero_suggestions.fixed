@@ -9,10 +9,8 @@ fn main() {
     let r1 = x / NonZeroU64::from(y);
     //~^ non_zero_suggestions
 
-
     let r2 = x % NonZeroU64::from(y);
     //~^ non_zero_suggestions
-
 
     // U16 -> U32
     let a: u32 = 50;
@@ -20,10 +18,8 @@ fn main() {
     let r3 = a / NonZeroU32::from(b);
     //~^ non_zero_suggestions
 
-
     let x = NonZeroU64::from(NonZeroU32::new(5).unwrap());
     //~^ non_zero_suggestions
-
 
     /// Negative test cases (lint should not trigger)
     // Left hand side expressions should not be triggered
@@ -55,7 +51,6 @@ fn main() {
 fn divide_numbers(x: u64, y: NonZeroU32) -> u64 {
     x / NonZeroU64::from(y)
     //~^ non_zero_suggestions
-
 }
 
 struct Calculator {
@@ -66,6 +61,5 @@ impl Calculator {
     fn divide(&self, divisor: NonZeroU32) -> u64 {
         self.value / NonZeroU64::from(divisor)
         //~^ non_zero_suggestions
-
     }
 }

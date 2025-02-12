@@ -31,7 +31,7 @@ fn only_static_on_input(_x: &u8, _y: &u8, _z: &'static u8) {}
 fn mut_and_static_input(_x: &mut u8, _y: &'static str) {}
 
 fn in_and_out(x: &u8, _y: u8) -> &u8 {
-//~^ needless_lifetimes
+    //~^ needless_lifetimes
     x
 }
 
@@ -44,7 +44,7 @@ fn multiple_in_and_out_1<'a>(x: &'a u8, _y: &'a u8) -> &'a u8 {
 //   fn multiple_in_and_out_2a<'a>(x: &'a u8, _y: &u8) -> &'a u8
 //                                                ^^^
 fn multiple_in_and_out_2a<'a>(x: &'a u8, _y: &u8) -> &'a u8 {
-//~^ needless_lifetimes
+    //~^ needless_lifetimes
     x
 }
 
@@ -52,7 +52,7 @@ fn multiple_in_and_out_2a<'a>(x: &'a u8, _y: &u8) -> &'a u8 {
 //   fn multiple_in_and_out_2b<'b>(_x: &u8, y: &'b u8) -> &'b u8
 //                                     ^^^
 fn multiple_in_and_out_2b<'b>(_x: &u8, y: &'b u8) -> &'b u8 {
-//~^ needless_lifetimes
+    //~^ needless_lifetimes
     y
 }
 
@@ -70,7 +70,7 @@ fn in_static_and_out<'a>(x: &'a u8, _y: &'static u8) -> &'a u8 {
 //   fn deep_reference_1a<'a>(x: &'a u8, _y: &u8) -> Result<&'a u8, ()>
 //                                           ^^^
 fn deep_reference_1a<'a>(x: &'a u8, _y: &u8) -> Result<&'a u8, ()> {
-//~^ needless_lifetimes
+    //~^ needless_lifetimes
     Ok(x)
 }
 
@@ -78,7 +78,7 @@ fn deep_reference_1a<'a>(x: &'a u8, _y: &u8) -> Result<&'a u8, ()> {
 //   fn deep_reference_1b<'b>(_x: &u8, y: &'b u8) -> Result<&'b u8, ()>
 //                                ^^^
 fn deep_reference_1b<'b>(_x: &u8, y: &'b u8) -> Result<&'b u8, ()> {
-//~^ needless_lifetimes
+    //~^ needless_lifetimes
     Ok(y)
 }
 
@@ -88,7 +88,7 @@ fn deep_reference_2<'a>(x: Result<&'a u8, &'a u8>) -> &'a u8 {
 }
 
 fn deep_reference_3(x: &u8, _y: u8) -> Result<&u8, ()> {
-//~^ needless_lifetimes
+    //~^ needless_lifetimes
     Ok(x)
 }
 
@@ -163,7 +163,7 @@ struct X {
 
 impl X {
     fn self_and_out(&self) -> &u8 {
-    //~^ needless_lifetimes
+        //~^ needless_lifetimes
         &self.x
     }
 
@@ -171,7 +171,7 @@ impl X {
     //   fn self_and_in_out_1<'s>(&'s self, _x: &u8) -> &'s u8
     //                                          ^^^
     fn self_and_in_out_1<'s>(&'s self, _x: &u8) -> &'s u8 {
-    //~^ needless_lifetimes
+        //~^ needless_lifetimes
         &self.x
     }
 
@@ -179,7 +179,7 @@ impl X {
     //   fn self_and_in_out_2<'t>(&self, x: &'t u8) -> &'t u8
     //                            ^^^^^
     fn self_and_in_out_2<'t>(&self, x: &'t u8) -> &'t u8 {
-    //~^ needless_lifetimes
+        //~^ needless_lifetimes
         x
     }
 
@@ -204,7 +204,7 @@ fn already_elided<'a>(_: &u8, _: &'a u8) -> &'a u8 {
 }
 
 fn struct_with_lt(_foo: Foo<'_>) -> &str {
-//~^ needless_lifetimes
+    //~^ needless_lifetimes
     unimplemented!()
 }
 
@@ -223,7 +223,7 @@ fn struct_with_lt3<'a>(_foo: &Foo<'a>) -> &'a str {
 //   fn struct_with_lt4a<'a>(_foo: &'a Foo<'_>) -> &'a str
 //                                         ^^
 fn struct_with_lt4a<'a>(_foo: &'a Foo<'_>) -> &'a str {
-//~^ needless_lifetimes
+    //~^ needless_lifetimes
     unimplemented!()
 }
 
@@ -232,7 +232,7 @@ fn struct_with_lt4a<'a>(_foo: &'a Foo<'_>) -> &'a str {
 //   fn struct_with_lt4b<'b>(_foo: &Foo<'b>) -> &'b str
 //                                 ^^^^
 fn struct_with_lt4b<'b>(_foo: &Foo<'b>) -> &'b str {
-//~^ needless_lifetimes
+    //~^ needless_lifetimes
     unimplemented!()
 }
 
@@ -248,14 +248,14 @@ fn trait_obj_elided<'a>(_arg: &'a dyn WithLifetime) -> &'a str {
 // Should warn because there is no lifetime on `Drop`, so this would be
 // unambiguous if we elided the lifetime.
 fn trait_obj_elided2(_arg: &dyn Drop) -> &str {
-//~^ needless_lifetimes
+    //~^ needless_lifetimes
     unimplemented!()
 }
 
 type FooAlias<'a> = Foo<'a>;
 
 fn alias_with_lt(_foo: FooAlias<'_>) -> &str {
-//~^ needless_lifetimes
+    //~^ needless_lifetimes
     unimplemented!()
 }
 
@@ -274,7 +274,7 @@ fn alias_with_lt3<'a>(_foo: &FooAlias<'a>) -> &'a str {
 //   fn alias_with_lt4a<'a>(_foo: &'a FooAlias<'_>) -> &'a str
 //                                             ^^
 fn alias_with_lt4a<'a>(_foo: &'a FooAlias<'_>) -> &'a str {
-//~^ needless_lifetimes
+    //~^ needless_lifetimes
     unimplemented!()
 }
 
@@ -283,12 +283,12 @@ fn alias_with_lt4a<'a>(_foo: &'a FooAlias<'_>) -> &'a str {
 //   fn alias_with_lt4b<'b>(_foo: &FooAlias<'b>) -> &'b str
 //                                ^^^^^^^^^
 fn alias_with_lt4b<'b>(_foo: &FooAlias<'b>) -> &'b str {
-//~^ needless_lifetimes
+    //~^ needless_lifetimes
     unimplemented!()
 }
 
 fn named_input_elided_output(_arg: &str) -> &str {
-//~^ needless_lifetimes
+    //~^ needless_lifetimes
     unimplemented!()
 }
 
@@ -297,7 +297,7 @@ fn elided_input_named_output<'a>(_arg: &str) -> &'a str {
 }
 
 fn trait_bound_ok<T: WithLifetime<'static>>(_: &u8, _: T) {
-//~^ needless_lifetimes
+    //~^ needless_lifetimes
     unimplemented!()
 }
 fn trait_bound<'a, T: WithLifetime<'a>>(_: &'a u8, _: T) {
@@ -334,7 +334,7 @@ struct Cow<'a> {
     x: &'a str,
 }
 fn out_return_type_lts(e: &str) -> Cow<'_> {
-//~^ needless_lifetimes
+    //~^ needless_lifetimes
     unimplemented!()
 }
 
@@ -362,7 +362,7 @@ mod issue2944 {
     //~^ needless_lifetimes
     impl Bar {
         fn baz(&self) -> impl Foo + '_ {
-        //~^ needless_lifetimes
+            //~^ needless_lifetimes
             Baz { bar: self }
         }
     }
@@ -395,7 +395,7 @@ mod nested_elision_sites {
         f(i)
     }
     fn impl_trait_elidable_nested_anonymous_lifetimes(i: &i32, f: impl Fn(&i32) -> &i32) -> &i32 {
-    //~^ needless_lifetimes
+        //~^ needless_lifetimes
         f(i)
     }
 
@@ -405,7 +405,7 @@ mod nested_elision_sites {
     }
     // lint
     fn generics_elidable<T: Fn(&i32) -> &i32>(i: &i32, f: T) -> &i32 {
-    //~^ needless_lifetimes
+        //~^ needless_lifetimes
         f(i)
     }
 
@@ -434,7 +434,7 @@ mod nested_elision_sites {
     }
     // lint
     fn pointer_fn_elidable(i: &i32, f: fn(&i32) -> &i32) -> &i32 {
-    //~^ needless_lifetimes
+        //~^ needless_lifetimes
         f(i)
     }
 
@@ -448,11 +448,11 @@ mod nested_elision_sites {
 
     // lint
     fn nested_fn_pointer_3(_: &i32) -> fn(fn(&i32) -> &i32) -> i32 {
-    //~^ needless_lifetimes
+        //~^ needless_lifetimes
         |f| 42
     }
     fn nested_fn_pointer_4(_: &i32) -> impl Fn(fn(&i32)) {
-    //~^ needless_lifetimes
+        //~^ needless_lifetimes
         |f| ()
     }
 }
@@ -475,21 +475,21 @@ mod issue7296 {
     struct Foo;
     impl Foo {
         fn implicit(&self) -> &() {
-        //~^ needless_lifetimes
+            //~^ needless_lifetimes
             &()
         }
         fn implicit_mut(&mut self) -> &() {
-        //~^ needless_lifetimes
+            //~^ needless_lifetimes
             &()
         }
         #[clippy::msrv = "1.81"]
         fn explicit(self: &Arc<Self>) -> &() {
-        //~^ needless_lifetimes
+            //~^ needless_lifetimes
             &()
         }
         #[clippy::msrv = "1.81"]
         fn explicit_mut(self: &mut Rc<Self>) -> &() {
-        //~^ needless_lifetimes
+            //~^ needless_lifetimes
             &()
         }
         #[clippy::msrv = "1.80"]
@@ -502,7 +502,7 @@ mod issue7296 {
         }
 
         fn lifetime_elsewhere(self: Box<Self>, here: &()) -> &() {
-        //~^ needless_lifetimes
+            //~^ needless_lifetimes
             &()
         }
     }
@@ -511,7 +511,7 @@ mod issue7296 {
         fn implicit(&self) -> &();
         //~^ needless_lifetimes
         fn implicit_provided(&self) -> &() {
-        //~^ needless_lifetimes
+            //~^ needless_lifetimes
             &()
         }
 
@@ -520,7 +520,7 @@ mod issue7296 {
         //~^ needless_lifetimes
         #[clippy::msrv = "1.81"]
         fn explicit_provided(self: &Arc<Self>) -> &() {
-        //~^ needless_lifetimes
+            //~^ needless_lifetimes
             &()
         }
         #[clippy::msrv = "1.80"]
@@ -533,7 +533,7 @@ mod issue7296 {
         fn lifetime_elsewhere(self: Box<Self>, here: &()) -> &();
         //~^ needless_lifetimes
         fn lifetime_elsewhere_provided(self: Box<Self>, here: &()) -> &() {
-        //~^ needless_lifetimes
+            //~^ needless_lifetimes
             &()
         }
     }
@@ -554,13 +554,13 @@ mod pr_9743_output_lifetime_checks {
 
     // lint: only one input
     fn one_input(x: &u8) -> &u8 {
-    //~^ needless_lifetimes
+        //~^ needless_lifetimes
         unimplemented!()
     }
 
     // lint: multiple inputs, output would not be elided
     fn multiple_inputs_output_not_elided<'b>(x: &u8, y: &'b u8, z: &'b u8) -> &'b u8 {
-    //~^ needless_lifetimes
+        //~^ needless_lifetimes
         unimplemented!()
     }
 
@@ -673,7 +673,7 @@ mod issue13923 {
     }
 
     impl<'t> ContentString<'t> {
-    //~^ needless_lifetimes
+        //~^ needless_lifetimes
         // `'py` can be elided because of `&self`
         fn map_content2(&self, f: impl FnOnce(&'t str) -> &'t str) -> Content<'t, '_> {
             match self {
@@ -684,7 +684,7 @@ mod issue13923 {
     }
 
     impl<'t> ContentString<'t> {
-    //~^ needless_lifetimes
+        //~^ needless_lifetimes
         // `'py` can be elided because of `&'_ self`
         fn map_content3(&'_ self, f: impl FnOnce(&'t str) -> &'t str) -> Content<'t, '_> {
             match self {
@@ -705,7 +705,7 @@ mod issue13923 {
     }
 
     impl<'t> ContentString<'t> {
-    //~^ needless_lifetimes
+        //~^ needless_lifetimes
         // `'py` can be elided because of `&Self`
         fn map_content5(
             self: std::pin::Pin<&Self>,

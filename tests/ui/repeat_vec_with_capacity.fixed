@@ -5,14 +5,12 @@ fn main() {
     {
         (0..123).map(|_| Vec::<()>::with_capacity(42)).collect::<Vec<_>>();
         //~^ repeat_vec_with_capacity
-
     }
 
     {
         let n = 123;
         (0..n).map(|_| Vec::<()>::with_capacity(42)).collect::<Vec<_>>();
         //~^ repeat_vec_with_capacity
-
     }
 
     {
@@ -28,7 +26,6 @@ fn main() {
     {
         std::iter::repeat_with(|| Vec::<()>::with_capacity(42));
         //~^ repeat_vec_with_capacity
-
     }
 
     {

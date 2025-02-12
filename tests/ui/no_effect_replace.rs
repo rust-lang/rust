@@ -4,13 +4,11 @@ fn main() {
     let _ = "12345".replace('1', "1");
     //~^ no_effect_replace
 
-
     let _ = "12345".replace("12", "12");
     //~^ no_effect_replace
 
     let _ = String::new().replace("12", "12");
     //~^ no_effect_replace
-
 
     let _ = "12345".replacen('1', "1", 1);
     //~^ no_effect_replace
@@ -20,7 +18,6 @@ fn main() {
 
     let _ = String::new().replacen("12", "12", 1);
     //~^ no_effect_replace
-
 
     let _ = "12345".replace("12", "22");
     let _ = "12345".replacen("12", "22", 1);

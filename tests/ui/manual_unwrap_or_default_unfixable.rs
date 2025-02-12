@@ -3,7 +3,7 @@ fn issue_12670() {
     // no auto: type not found
     #[allow(clippy::match_result_ok)]
     let _ = if let Some(x) = "1".parse().ok() {
-    //~^ manual_unwrap_or_default
+        //~^ manual_unwrap_or_default
         x
     } else {
         i32::default()

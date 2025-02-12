@@ -27,11 +27,11 @@ fn main() {
     //~^ redundant_pattern_matching
     if let (true, true) = (k > 1, k > 2) {}
     while let true = k > 1 {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         k += 1;
     }
     while let true = condition!() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         k += 1;
     }
 

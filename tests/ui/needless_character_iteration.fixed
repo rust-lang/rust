@@ -27,7 +27,6 @@ fn main() {
     !"foo".is_ascii();
     //~^ needless_character_iteration
 
-
     let s = String::new();
     s.is_ascii();
     //~^ needless_character_iteration
@@ -35,13 +34,11 @@ fn main() {
     !"foo".to_string().is_ascii();
     //~^ needless_character_iteration
 
-
     "foo".is_ascii();
     !"foo".is_ascii();
 
     S::default().field().is_ascii();
     //~^ needless_character_iteration
-
 
     // Should not lint!
     "foo".chars().all(|c| {

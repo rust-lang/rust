@@ -7,7 +7,6 @@ fn main() {
     &x[..=4];
     //~^ out_of_bounds_indexing
 
-
     &x[1..5];
     //~^ out_of_bounds_indexing
 
@@ -22,7 +21,6 @@ fn main() {
 
     &x[0..=4];
     //~^ out_of_bounds_indexing
-
 
     &x[4..]; // Ok, should not produce stderr.
     &x[..4]; // Ok, should not produce stderr.

@@ -32,13 +32,13 @@ LL |     (f() || g()) || (H * 2);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `if !(f() || g()) { H * 2; }`
 
 error: boolean short circuit operator in statement may be clearer using an explicit test
-  --> tests/ui/short_circuit_statement.rs:33:5
+  --> tests/ui/short_circuit_statement.rs:32:5
    |
 LL |     mac!() && mac!();
    |     ^^^^^^^^^^^^^^^^^ help: replace it with: `if mac!() { mac!(); }`
 
 error: boolean short circuit operator in statement may be clearer using an explicit test
-  --> tests/ui/short_circuit_statement.rs:36:5
+  --> tests/ui/short_circuit_statement.rs:35:5
    |
 LL |     mac!() || mac!();
    |     ^^^^^^^^^^^^^^^^^ help: replace it with: `if !mac!() { mac!(); }`

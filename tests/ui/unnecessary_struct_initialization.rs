@@ -60,7 +60,7 @@ fn main() {
 
     // Should lint: the result of an expression is mutable
     let h = &mut S {
-    //~^ unnecessary_struct_initialization
+        //~^ unnecessary_struct_initialization
         ..*Box::new(S { f: String::from("foo") })
     };
 
@@ -80,7 +80,7 @@ fn main() {
 
     // Should lint: the result of an expression is mutable and temporary
     let p = &mut T {
-    //~^ unnecessary_struct_initialization
+        //~^ unnecessary_struct_initialization
         ..*Box::new(T { f: 5 })
     };
 

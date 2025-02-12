@@ -20,7 +20,7 @@ LL | fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
    = help: consider removing this trait bound
 
 error: this trait bound is already specified in trait declaration
-  --> tests/ui/trait_duplication_in_bounds_unfixable.rs:40:15
+  --> tests/ui/trait_duplication_in_bounds_unfixable.rs:38:15
    |
 LL |         Self: Default;
    |               ^^^^^^^
@@ -28,7 +28,7 @@ LL |         Self: Default;
    = help: consider removing this trait bound
 
 error: this trait bound is already specified in trait declaration
-  --> tests/ui/trait_duplication_in_bounds_unfixable.rs:56:15
+  --> tests/ui/trait_duplication_in_bounds_unfixable.rs:53:15
    |
 LL |         Self: Default + Clone;
    |               ^^^^^^^
@@ -36,7 +36,7 @@ LL |         Self: Default + Clone;
    = help: consider removing this trait bound
 
 error: this trait bound is already specified in trait declaration
-  --> tests/ui/trait_duplication_in_bounds_unfixable.rs:64:15
+  --> tests/ui/trait_duplication_in_bounds_unfixable.rs:60:15
    |
 LL |         Self: Default + Clone;
    |               ^^^^^^^
@@ -44,7 +44,7 @@ LL |         Self: Default + Clone;
    = help: consider removing this trait bound
 
 error: this trait bound is already specified in trait declaration
-  --> tests/ui/trait_duplication_in_bounds_unfixable.rs:64:25
+  --> tests/ui/trait_duplication_in_bounds_unfixable.rs:60:25
    |
 LL |         Self: Default + Clone;
    |                         ^^^^^
@@ -52,7 +52,7 @@ LL |         Self: Default + Clone;
    = help: consider removing this trait bound
 
 error: this trait bound is already specified in trait declaration
-  --> tests/ui/trait_duplication_in_bounds_unfixable.rs:71:15
+  --> tests/ui/trait_duplication_in_bounds_unfixable.rs:66:15
    |
 LL |         Self: Default;
    |               ^^^^^^^
@@ -60,7 +60,7 @@ LL |         Self: Default;
    = help: consider removing this trait bound
 
 error: this trait bound is already specified in trait declaration
-  --> tests/ui/trait_duplication_in_bounds_unfixable.rs:108:15
+  --> tests/ui/trait_duplication_in_bounds_unfixable.rs:103:15
    |
 LL |         Self: Iterator<Item = Foo>,
    |               ^^^^^^^^^^^^^^^^^^^^

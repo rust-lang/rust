@@ -105,7 +105,7 @@ mod issue7392 {
 
         let vfoo = vec![(42, Foo { foo: 1, bar: 2 })];
         let _ = !vfoo
-        //~^ search_is_some
+            //~^ search_is_some
             .iter().any(|(i, v)| *i == 42 && v.foo == 1 && v.bar == 2);
     }
 
@@ -174,7 +174,7 @@ mod issue7392 {
             },
         }];
         let _ = !vfoo
-        //~^ search_is_some
+            //~^ search_is_some
             .iter().any(|v| v.inner_double.bar[0][0] == 2 && v.inner.bar[0] == 2);
     }
 

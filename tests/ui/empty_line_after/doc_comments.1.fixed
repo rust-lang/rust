@@ -1,6 +1,5 @@
 #![warn(clippy::empty_line_after_outer_attr, clippy::empty_line_after_doc_comments)]
 
-
 /// Meant to be an
 /// inner doc comment
 /// for the crate
@@ -23,13 +22,11 @@ mod some_mod {
         fn some_noop() {}
     }
 
-
     /// # Indented
     //~^ empty_line_after_doc_comments
     /// Blank line
     fn indented() {}
 }
-
 
 /// This should produce a warning
 //~^ empty_line_after_doc_comments
@@ -39,7 +36,6 @@ fn with_doc_and_newline() {}
 #[crate_type = "lib"]
 /// some comment
 fn with_no_newline_and_comment() {}
-
 
 /// This doc comment should produce a warning
 //~^ empty_line_after_doc_comments
@@ -57,7 +53,6 @@ mod misattributed {
     // fn old_code() {}
     fn new_code() {}
 
-
     /// Docs
     /// for OldA
     //~^ empty_line_after_doc_comments
@@ -74,22 +69,20 @@ mod misattributed {
 mod block_comments {
 
     /**
-    //~^ empty_line_after_doc_comments
      * Meant to be inner doc comment
      */
+    //~^^^ empty_line_after_doc_comments
     fn first_in_module() {}
 
-
     /**
-    //~^ empty_line_after_doc_comments
      * Docs for `old_code`
      */
+    //~^^^ empty_line_after_doc_comments
     /* fn old_code() {} */
     /**
      * Docs for `new_code`
      */
     fn new_code() {}
-
 
     /// Docs for `old_code2`
     //~^ empty_line_after_doc_comments

@@ -15,7 +15,7 @@ fn main() {
 
     // This should lint
     let _ = TupleStruct {
-    //~^ init_numbered_fields
+        //~^ init_numbered_fields
         0: 1u32,
         1: 42,
         2: 23u8,
@@ -23,7 +23,7 @@ fn main() {
 
     // This should also lint and order the fields correctly
     let _ = TupleStruct {
-    //~^ init_numbered_fields
+        //~^ init_numbered_fields
         0: 1u32,
         2: 2u8,
         1: 3u32,

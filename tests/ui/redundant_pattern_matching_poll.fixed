@@ -19,7 +19,7 @@ fn main() {
     //~^ redundant_pattern_matching
 
     if Ready(42).is_ready() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         foo();
     } else {
         bar();
@@ -59,10 +59,10 @@ fn main() {
     poll_const();
 
     let _ = if gen_poll().is_ready() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         1
     } else if gen_poll().is_pending() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         2
     } else {
         3

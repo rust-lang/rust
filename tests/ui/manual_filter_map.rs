@@ -171,7 +171,7 @@ fn issue8010() {
     let iter = [Enum::A(123), Enum::B].into_iter();
 
     let _x = iter.clone().filter(|x| matches!(x, Enum::A(_))).map(|x| match x {
-    //~^ manual_filter_map
+        //~^ manual_filter_map
         Enum::A(s) => s,
         _ => unreachable!(),
     });

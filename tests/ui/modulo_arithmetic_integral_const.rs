@@ -11,72 +11,53 @@ fn main() {
     -1 % 2;
     //~^ modulo_arithmetic
 
-
     1 % -2;
     //~^ modulo_arithmetic
-
 
     (1 - 2) % (1 + 2);
     //~^ modulo_arithmetic
 
-
     (1 + 2) % (1 - 2);
     //~^ modulo_arithmetic
-
 
     35 * (7 - 4 * 2) % (-500 * -600);
     //~^ modulo_arithmetic
 
-
-
     -1i8 % 2i8;
     //~^ modulo_arithmetic
-
 
     1i8 % -2i8;
     //~^ modulo_arithmetic
 
-
     -1i16 % 2i16;
     //~^ modulo_arithmetic
-
 
     1i16 % -2i16;
     //~^ modulo_arithmetic
 
-
     -1i32 % 2i32;
     //~^ modulo_arithmetic
-
 
     1i32 % -2i32;
     //~^ modulo_arithmetic
 
-
     -1i64 % 2i64;
     //~^ modulo_arithmetic
-
 
     1i64 % -2i64;
     //~^ modulo_arithmetic
 
-
     -1i128 % 2i128;
     //~^ modulo_arithmetic
-
 
     1i128 % -2i128;
     //~^ modulo_arithmetic
 
-
     -1isize % 2isize;
     //~^ modulo_arithmetic
 
-
     1isize % -2isize;
     //~^ modulo_arithmetic
-
-
 
     // No lint when both sides are const and of the same sign
     1 % 2;

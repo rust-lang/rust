@@ -38,7 +38,7 @@ fn main() {
     //~^ redundant_pattern_matching
 
     if Some(42).is_some() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         foo();
     } else {
         bar();
@@ -55,7 +55,7 @@ fn main() {
 
     let mut v = vec![1, 2, 3];
     while v.pop().is_some() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         foo();
     }
 
@@ -78,10 +78,10 @@ fn main() {
     issue10803();
 
     let _ = if gen_opt().is_some() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         1
     } else if gen_opt().is_none() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         2
     } else {
         3

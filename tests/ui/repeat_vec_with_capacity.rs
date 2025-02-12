@@ -5,14 +5,12 @@ fn main() {
     {
         vec![Vec::<()>::with_capacity(42); 123];
         //~^ repeat_vec_with_capacity
-
     }
 
     {
         let n = 123;
         vec![Vec::<()>::with_capacity(42); n];
         //~^ repeat_vec_with_capacity
-
     }
 
     {
@@ -28,7 +26,6 @@ fn main() {
     {
         std::iter::repeat(Vec::<()>::with_capacity(42));
         //~^ repeat_vec_with_capacity
-
     }
 
     {

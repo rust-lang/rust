@@ -17,10 +17,8 @@ fn main() {
     OpenOptions::new().read(true).truncate(true).open("foo.txt");
     //~^ nonsensical_open_options
 
-
     OpenOptions::new().append(true).truncate(true).open("foo.txt");
     //~^ nonsensical_open_options
-
 
     OpenOptions::new().read(true).read(false).open("foo.txt");
     //~^ nonsensical_open_options
@@ -30,7 +28,6 @@ fn main() {
         .truncate(true) // Ensure we don't trigger suspicious open options by having create without truncate
         .create(false)
         //~^ nonsensical_open_options
-
         .open("foo.txt");
     OpenOptions::new().write(true).write(false).open("foo.txt");
     //~^ nonsensical_open_options
@@ -41,10 +38,8 @@ fn main() {
     OpenOptions::new().truncate(true).truncate(false).open("foo.txt");
     //~^ nonsensical_open_options
 
-
     std::fs::File::options().read(true).read(false).open("foo.txt");
     //~^ nonsensical_open_options
-
 
     let mut options = std::fs::OpenOptions::new();
     options.read(true);

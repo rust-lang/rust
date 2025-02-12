@@ -21,12 +21,12 @@ mod use_self {
 
     impl Foo {
         fn new() -> Foo {
-        //~^ use_self
+            //~^ use_self
             Foo {}
             //~^ use_self
         }
         fn test() -> Foo {
-        //~^ use_self
+            //~^ use_self
             Foo::new()
             //~^ use_self
         }
@@ -34,7 +34,7 @@ mod use_self {
 
     impl Default for Foo {
         fn default() -> Foo {
-        //~^ use_self
+            //~^ use_self
             Foo::new()
             //~^ use_self
         }
@@ -78,7 +78,7 @@ mod lifetimes {
         }
 
         fn clone(&self) -> Foo<'a> {
-        //~^ use_self
+            //~^ use_self
             Foo { foo_str: self.foo_str }
         }
 
@@ -112,8 +112,8 @@ mod existential {
 
     impl Foo {
         fn bad(foos: &[Foo]) -> impl Iterator<Item = &Foo> {
-        //~^ use_self
-        //~| use_self
+            //~^ use_self
+            //~| use_self
             foos.iter()
         }
 
@@ -165,7 +165,7 @@ mod nesting {
 
             impl Bar {
                 fn bar() -> Bar {
-                //~^ use_self
+                    //~^ use_self
                     Bar { foo: Foo {} }
                     //~^ use_self
                 }
@@ -179,7 +179,7 @@ mod nesting {
 
         // Should lint here
         fn baz() -> Foo {
-        //~^ use_self
+            //~^ use_self
             Foo {}
             //~^ use_self
         }
@@ -286,7 +286,7 @@ mod paths_created_by_lowering {
         const B: usize = 1;
 
         async fn g() -> S {
-        //~^ use_self
+            //~^ use_self
             S {}
             //~^ use_self
         }
@@ -318,7 +318,7 @@ mod generics {
     impl<T> Foo<T> {
         // `Self` is applicable here
         fn foo(value: T) -> Foo<T> {
-        //~^ use_self
+            //~^ use_self
             Foo::<T> { value }
             //~^ use_self
         }
@@ -578,7 +578,7 @@ mod use_self_in_pat {
                 None => unimplemented!(),
             }
             if let Foo::Bar = self {
-            //~^ use_self
+                //~^ use_self
                 unimplemented!()
             }
         }

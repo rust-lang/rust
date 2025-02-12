@@ -10,11 +10,9 @@ fn main() {
     let _ = x.iter().filter(|&&a| a == 0).count();
     //~^ naive_bytecount
 
-
     // naive byte count
     let _ = (&x[..]).iter().filter(|&a| *a == 0).count();
     //~^ naive_bytecount
-
 
     // not an equality count, OK.
     let _ = x.iter().filter(|a| **a > 0).count();
@@ -33,7 +31,6 @@ fn main() {
     // naive byte count
     let _ = x.iter().filter(|a| b + 1 == **a).count();
     //~^ naive_bytecount
-
 
     let y = vec![0_u16; 3];
 

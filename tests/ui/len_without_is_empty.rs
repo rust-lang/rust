@@ -5,8 +5,7 @@ pub struct PubOne;
 
 impl PubOne {
     pub fn len(&self) -> isize {
-    //~^ len_without_is_empty
-
+        //~^ len_without_is_empty
 
         1
     }
@@ -56,7 +55,7 @@ impl PubAllowedStruct {
 }
 
 pub trait PubTraitsToo {
-//~^ len_without_is_empty
+    //~^ len_without_is_empty
 
     fn len(&self) -> isize;
 }
@@ -71,7 +70,7 @@ pub struct HasIsEmpty;
 
 impl HasIsEmpty {
     pub fn len(&self) -> isize {
-    //~^ len_without_is_empty
+        //~^ len_without_is_empty
 
         1
     }
@@ -85,7 +84,7 @@ pub struct HasWrongIsEmpty;
 
 impl HasWrongIsEmpty {
     pub fn len(&self) -> isize {
-    //~^ len_without_is_empty
+        //~^ len_without_is_empty
 
         1
     }
@@ -99,7 +98,7 @@ pub struct MismatchedSelf;
 
 impl MismatchedSelf {
     pub fn len(self) -> isize {
-    //~^ len_without_is_empty
+        //~^ len_without_is_empty
 
         1
     }
@@ -180,7 +179,7 @@ pub trait InheritingEmpty: Empty {
 pub trait Foo: Sized {}
 
 pub trait DependsOnFoo: Foo {
-//~^ len_without_is_empty
+    //~^ len_without_is_empty
 
     fn len(&mut self) -> usize;
 }
@@ -227,7 +226,7 @@ impl OptionalLen2 {
 pub struct OptionalLen3;
 impl OptionalLen3 {
     pub fn len(&self) -> usize {
-    //~^ len_without_is_empty
+        //~^ len_without_is_empty
 
         0
     }
@@ -241,9 +240,8 @@ impl OptionalLen3 {
 pub struct ResultLen;
 impl ResultLen {
     pub fn len(&self) -> Result<usize, ()> {
-    //~^ len_without_is_empty
-    //~| result_unit_err
-
+        //~^ len_without_is_empty
+        //~| result_unit_err
 
         Ok(0)
     }
@@ -257,13 +255,13 @@ impl ResultLen {
 pub struct ResultLen2;
 impl ResultLen2 {
     pub fn len(&self) -> Result<usize, ()> {
-    //~^ result_unit_err
+        //~^ result_unit_err
 
         Ok(0)
     }
 
     pub fn is_empty(&self) -> Result<bool, ()> {
-    //~^ result_unit_err
+        //~^ result_unit_err
 
         Ok(true)
     }
@@ -272,7 +270,7 @@ impl ResultLen2 {
 pub struct ResultLen3;
 impl ResultLen3 {
     pub fn len(&self) -> Result<usize, ()> {
-    //~^ result_unit_err
+        //~^ result_unit_err
 
         Ok(0)
     }
@@ -315,7 +313,7 @@ impl AsyncLenWithoutIsEmpty {
     }
 
     pub async fn len(&self) -> usize {
-    //~^ len_without_is_empty
+        //~^ len_without_is_empty
 
         usize::from(!self.async_task().await)
     }
@@ -329,7 +327,7 @@ impl AsyncOptionLenWithoutIsEmpty {
     }
 
     pub async fn len(&self) -> Option<usize> {
-    //~^ len_without_is_empty
+        //~^ len_without_is_empty
 
         None
     }
@@ -352,7 +350,7 @@ impl AsyncResultLenWithoutIsEmpty {
     }
 
     pub async fn len(&self) -> Result<usize, ()> {
-    //~^ len_without_is_empty
+        //~^ len_without_is_empty
 
         Err(())
     }
@@ -469,7 +467,7 @@ pub struct Aliased2;
 pub type Alias2 = Aliased2;
 impl Alias2 {
     pub fn len(&self) -> usize {
-    //~^ len_without_is_empty
+        //~^ len_without_is_empty
 
         todo!()
     }

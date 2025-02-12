@@ -557,34 +557,34 @@ LL |         IntoFuture::into_future(foo([].to_vec(), &0));
    |                                     ^^^^^^^^^^^ help: use: `[]`
 
 error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:642:10
+  --> tests/ui/unnecessary_to_owned.rs:642:18
    |
-LL | s.remove(&a.to_vec());
-   |          ^^^^^^^^^^^ help: replace it with: `a`
+LL |         s.remove(&a.to_vec());
+   |                  ^^^^^^^^^^^ help: replace it with: `a`
 
 error: unnecessary use of `to_owned`
-  --> tests/ui/unnecessary_to_owned.rs:647:10
+  --> tests/ui/unnecessary_to_owned.rs:647:14
    |
-LL | s.remove(&"b".to_owned());
-   |          ^^^^^^^^^^^^^^^ help: replace it with: `"b"`
+LL |     s.remove(&"b".to_owned());
+   |              ^^^^^^^^^^^^^^^ help: replace it with: `"b"`
 
 error: unnecessary use of `to_string`
-  --> tests/ui/unnecessary_to_owned.rs:649:10
+  --> tests/ui/unnecessary_to_owned.rs:649:14
    |
-LL | s.remove(&"b".to_string());
-   |          ^^^^^^^^^^^^^^^^ help: replace it with: `"b"`
+LL |     s.remove(&"b".to_string());
+   |              ^^^^^^^^^^^^^^^^ help: replace it with: `"b"`
 
 error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:655:10
+  --> tests/ui/unnecessary_to_owned.rs:655:14
    |
-LL | s.remove(&["b"].to_vec());
-   |          ^^^^^^^^^^^^^^^ help: replace it with: `["b"].as_slice()`
+LL |     s.remove(&["b"].to_vec());
+   |              ^^^^^^^^^^^^^^^ help: replace it with: `["b"].as_slice()`
 
 error: unnecessary use of `to_vec`
-  --> tests/ui/unnecessary_to_owned.rs:657:10
+  --> tests/ui/unnecessary_to_owned.rs:657:14
    |
-LL | s.remove(&(&["b"]).to_vec());
-   |          ^^^^^^^^^^^^^^^^^^ help: replace it with: `(&["b"]).as_slice()`
+LL |     s.remove(&(&["b"]).to_vec());
+   |              ^^^^^^^^^^^^^^^^^^ help: replace it with: `(&["b"]).as_slice()`
 
 error: aborting due to 88 previous errors
 

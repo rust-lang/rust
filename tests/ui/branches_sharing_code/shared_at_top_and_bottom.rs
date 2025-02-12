@@ -15,7 +15,7 @@ fn overlapping_eq_regions() {
 
     // Overlap with separator
     if x == 7 {
-    //~^ branches_sharing_code
+        //~^ branches_sharing_code
 
         let t = 7;
         let _overlap_start = t * 2;
@@ -33,7 +33,7 @@ fn overlapping_eq_regions() {
 
     // Overlap with separator
     if x == 99 {
-    //~^ branches_sharing_code
+        //~^ branches_sharing_code
 
         let r = 7;
         let _overlap_start = r;
@@ -64,7 +64,7 @@ fn complexer_example() {
     let x = 8;
     let y = 9;
     if (x > 7 && y < 13) || (x + y) % 2 == 1 {
-    //~^ branches_sharing_code
+        //~^ branches_sharing_code
 
         let a = 0xcafe;
         let b = 0xffff00ff;
@@ -99,7 +99,7 @@ fn added_note_for_expression_use() -> u32 {
     let x = 9;
 
     let _ = if x == 7 {
-    //~^ branches_sharing_code
+        //~^ branches_sharing_code
 
         let _ = 19;
 
@@ -113,7 +113,7 @@ fn added_note_for_expression_use() -> u32 {
     };
 
     if x == 9 {
-    //~^ branches_sharing_code
+        //~^ branches_sharing_code
 
         let _ = 17;
 

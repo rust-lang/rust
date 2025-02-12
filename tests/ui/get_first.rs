@@ -51,5 +51,4 @@ fn main() {
     let non_primitives = [vec![1, 2], vec![3, 4]];
     let _ = non_primitives.get(0);
     //~^ get_first
-
 }

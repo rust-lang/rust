@@ -4,12 +4,12 @@ fn main() {
     let a = Foo;
 
     if a != "bar" {
-    //~^ cmp_owned
+        //~^ cmp_owned
         println!("foo");
     }
 
     if a != "bar" {
-    //~^ cmp_owned
+        //~^ cmp_owned
         println!("foo");
     }
 }

@@ -32,19 +32,19 @@ LL |     x as f32 == ONE;
    |     ^^^^^^^^^^^^^^^ help: consider comparing them within some margin of error: `(x as f32 - ONE).abs() < error_margin`
 
 error: strict comparison of `f32` or `f64` constant
-  --> tests/ui/float_cmp_const.rs:33:5
+  --> tests/ui/float_cmp_const.rs:32:5
    |
 LL |     v == ONE;
    |     ^^^^^^^^ help: consider comparing them within some margin of error: `(v - ONE).abs() < error_margin`
 
 error: strict comparison of `f32` or `f64` constant
-  --> tests/ui/float_cmp_const.rs:36:5
+  --> tests/ui/float_cmp_const.rs:35:5
    |
 LL |     v != ONE;
    |     ^^^^^^^^ help: consider comparing them within some margin of error: `(v - ONE).abs() > error_margin`
 
 error: strict comparison of `f32` or `f64` constant arrays
-  --> tests/ui/float_cmp_const.rs:70:5
+  --> tests/ui/float_cmp_const.rs:68:5
    |
 LL |     NON_ZERO_ARRAY == NON_ZERO_ARRAY2;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

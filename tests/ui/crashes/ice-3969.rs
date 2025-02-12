@@ -23,7 +23,7 @@ where
 fn unsized_local()
 where
     for<'a> Dst<dyn A + 'a>: Sized,
-//~^ ERROR: trait bound
+    //~^ ERROR: trait bound
 {
     let x: Dst<dyn A> = *(Box::new(Dst { x: 1 }) as Box<Dst<dyn A>>);
 }
@@ -31,7 +31,7 @@ where
 fn return_str() -> str
 where
     str: Sized,
-//~^ ERROR: trait bound
+    //~^ ERROR: trait bound
 {
     *"Sized".to_string().into_boxed_str()
 }
@@ -39,7 +39,7 @@ where
 fn use_op(s: String) -> String
 where
     String: ::std::ops::Neg<Output = String>,
-//~^ ERROR: trait bound
+    //~^ ERROR: trait bound
 {
     -s
 }
@@ -47,7 +47,7 @@ where
 fn use_for()
 where
     i32: Iterator,
-//~^ ERROR: trait bound
+    //~^ ERROR: trait bound
 {
     for _ in 2i32 {}
 }

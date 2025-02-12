@@ -34,11 +34,9 @@ fn main() {
         let _: Ty2C<u32, i32> = transmute(value::<Ty2<u32, i32>>());
         //~^ transmute_undefined_repr
 
-
         // Lint, Ty2 is unordered
         let _: Ty2<u32, i32> = transmute(value::<Ty2C<u32, i32>>());
         //~^ transmute_undefined_repr
-
 
         // Ok, Ty2 types are the same
         let _: Ty2<u32, i32> = transmute(value::<Ty<Ty2<u32, i32>>>());
@@ -49,12 +47,9 @@ fn main() {
         let _: Ty2<u32, f32> = transmute(value::<Ty<Ty2<u32, i32>>>());
         //~^ transmute_undefined_repr
 
-
         // Lint, different Ty2 instances
         let _: Ty<Ty2<u32, i32>> = transmute(value::<Ty2<u32, f32>>());
         //~^ transmute_undefined_repr
-
-
 
         let _: Ty<&()> = transmute(value::<&()>());
         let _: &() = transmute(value::<Ty<&()>>());
@@ -63,12 +58,9 @@ fn main() {
         let _: &Ty2<u32, f32> = transmute(value::<Ty<&Ty2<u32, i32>>>());
         //~^ transmute_undefined_repr
 
-
         // Lint, different Ty2 instances
         let _: Ty<&Ty2<u32, i32>> = transmute(value::<&Ty2<u32, f32>>());
         //~^ transmute_undefined_repr
-
-
 
         // Ok, pointer to usize conversion
         let _: Ty<usize> = transmute(value::<&Ty2<u32, i32>>());
@@ -99,12 +91,9 @@ fn main() {
         let _: &'static mut Ty2<u32, f32> = transmute(value::<Box<Ty2<u32, u32>>>());
         //~^ transmute_undefined_repr
 
-
         // Lint, different Ty2 instances
         let _: Box<Ty2<u32, u32>> = transmute(value::<&'static mut Ty2<u32, f32>>());
         //~^ transmute_undefined_repr
-
-
 
         // Ok, type erasure
         let _: *const () = transmute(value::<Ty<&Ty2<u32, f32>>>());
@@ -202,12 +191,9 @@ fn main() {
         let _: *const Ty2<u32, u32> = transmute(value::<*const Ty2C<u32, Ty2<u32, u32>>>());
         //~^ transmute_undefined_repr
 
-
         // Err
         let _: *const Ty2C<u32, Ty2<u32, u32>> = transmute(value::<*const Ty2<u32, u32>>());
         //~^ transmute_undefined_repr
-
-
 
         // Ok
         let _: NonNull<u8> = transmute(value::<NonNull<(String, String)>>());
@@ -255,12 +241,9 @@ fn _with_generics<T: 'static, U: 'static>() {
         let _: Vec<Ty2<T, u32>> = transmute(value::<Vec<Ty2<U, i32>>>());
         //~^ transmute_undefined_repr
 
-
         // Err
         let _: Vec<Ty2<U, i32>> = transmute(value::<Vec<Ty2<T, u32>>>());
         //~^ transmute_undefined_repr
-
-
 
         // Ok
         let _: *const u32 = transmute(value::<Box<T>>());

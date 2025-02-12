@@ -10,10 +10,8 @@ fn one_liners() {
         let _: &u64 = std::mem::transmute(0 as *const u64);
         //~^ transmuting_null
 
-
         let _: &u64 = std::mem::transmute(std::ptr::null::<u64>());
         //~^ transmuting_null
-
     }
 }
 

@@ -5,86 +5,86 @@
 fn main() {
     let x = true;
     if x == true {
-    //~^ bool_comparison
+        //~^ bool_comparison
         "yes"
     } else {
         "no"
     };
     if x == false {
-    //~^ bool_comparison
+        //~^ bool_comparison
         "yes"
     } else {
         "no"
     };
     if true == x {
-    //~^ bool_comparison
+        //~^ bool_comparison
         "yes"
     } else {
         "no"
     };
     if false == x {
-    //~^ bool_comparison
+        //~^ bool_comparison
         "yes"
     } else {
         "no"
     };
     if x != true {
-    //~^ bool_comparison
+        //~^ bool_comparison
         "yes"
     } else {
         "no"
     };
     if x != false {
-    //~^ bool_comparison
+        //~^ bool_comparison
         "yes"
     } else {
         "no"
     };
     if true != x {
-    //~^ bool_comparison
+        //~^ bool_comparison
         "yes"
     } else {
         "no"
     };
     if false != x {
-    //~^ bool_comparison
+        //~^ bool_comparison
         "yes"
     } else {
         "no"
     };
     if x < true {
-    //~^ bool_comparison
+        //~^ bool_comparison
         "yes"
     } else {
         "no"
     };
     if false < x {
-    //~^ bool_comparison
+        //~^ bool_comparison
         "yes"
     } else {
         "no"
     };
     if x > false {
-    //~^ bool_comparison
+        //~^ bool_comparison
         "yes"
     } else {
         "no"
     };
     if true > x {
-    //~^ bool_comparison
+        //~^ bool_comparison
         "yes"
     } else {
         "no"
     };
     let y = true;
     if x < y {
-    //~^ bool_comparison
+        //~^ bool_comparison
         "yes"
     } else {
         "no"
     };
     if x > y {
-    //~^ bool_comparison
+        //~^ bool_comparison
         "yes"
     } else {
         "no"

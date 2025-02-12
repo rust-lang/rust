@@ -9,8 +9,6 @@ fn main() {
     &x[num..10];
     //~^ out_of_bounds_indexing
 
-
     &x[10..num];
     //~^ out_of_bounds_indexing
-
 }

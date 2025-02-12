@@ -8,7 +8,6 @@ fn main() {
     a += a + 1;
     //~^ misrefactored_assign_op
 
-
     a += 1 + a;
     //~^ misrefactored_assign_op
 
@@ -71,8 +70,6 @@ fn cow_add_assign() {
     // this can be linted
     buf = buf + cows.clone();
     //~^ assign_op_pattern
-
-
 
     // this should not as cow<str> Add is not commutative
     buf = cows + buf;

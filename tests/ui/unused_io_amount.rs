@@ -66,7 +66,7 @@ fn combine_or(file: &str) -> Result<(), Error> {
     let mut reader = std::fs::File::open(file).unwrap();
     let mut result = [0u8; 0];
     reader
-    //~^ unused_io_amount
+        //~^ unused_io_amount
         .read(&mut result)
         .or(Err(Error::Kind))
         .or(Err(Error::Kind))
@@ -146,14 +146,14 @@ async fn undetected_bad_async_write<W: AsyncWrite + Unpin>(w: &mut W) {
 
 fn match_okay_underscore<T: io::Read + io::Write>(s: &mut T) {
     match s.write(b"test") {
-    //~^ unused_io_amount
+        //~^ unused_io_amount
         Ok(_) => todo!(),
         Err(_) => todo!(),
     };
 
     let mut buf = [0u8; 4];
     match s.read(&mut buf) {
-    //~^ unused_io_amount
+        //~^ unused_io_amount
         Ok(_) => todo!(),
         Err(_) => todo!(),
     }
@@ -161,7 +161,7 @@ fn match_okay_underscore<T: io::Read + io::Write>(s: &mut T) {
 
 fn match_okay_underscore_read_expr<T: io::Read + io::Write>(s: &mut T) {
     match s.read(&mut [0u8; 4]) {
-    //~^ unused_io_amount
+        //~^ unused_io_amount
         Ok(_) => todo!(),
         Err(_) => todo!(),
     }
@@ -169,7 +169,7 @@ fn match_okay_underscore_read_expr<T: io::Read + io::Write>(s: &mut T) {
 
 fn match_okay_underscore_write_expr<T: io::Read + io::Write>(s: &mut T) {
     match s.write(b"test") {
-    //~^ unused_io_amount
+        //~^ unused_io_amount
         Ok(_) => todo!(),
         Err(_) => todo!(),
     }
@@ -181,21 +181,21 @@ fn returned_value_should_not_lint<T: io::Read + io::Write>(s: &mut T) -> Result<
 
 fn if_okay_underscore_read_expr<T: io::Read + io::Write>(s: &mut T) {
     if let Ok(_) = s.read(&mut [0u8; 4]) {
-    //~^ unused_io_amount
+        //~^ unused_io_amount
         todo!()
     }
 }
 
 fn if_okay_underscore_write_expr<T: io::Read + io::Write>(s: &mut T) {
     if let Ok(_) = s.write(b"test") {
-    //~^ unused_io_amount
+        //~^ unused_io_amount
         todo!()
     }
 }
 
 fn if_okay_dots_write_expr<T: io::Read + io::Write>(s: &mut T) {
     if let Ok(..) = s.write(b"test") {
-    //~^ unused_io_amount
+        //~^ unused_io_amount
         todo!()
     }
 }

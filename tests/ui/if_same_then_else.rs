@@ -39,7 +39,6 @@ fn if_same_then_else() {
     }
     //~^^^^^^^^^^^^^^^^^ if_same_then_else
 
-
     if true {
         Foo { bar: 42 };
     } else {
@@ -68,10 +67,8 @@ fn if_same_then_else() {
     let _ = if true { 0.0 } else { 0.0 };
     //~^ if_same_then_else
 
-
     let _ = if true { -0.0 } else { -0.0 };
     //~^ if_same_then_else
-
 
     let _ = if true { 0.0 } else { -0.0 };
 
@@ -84,7 +81,6 @@ fn if_same_then_else() {
 
     let _ = if true { 42 } else { 42 };
     //~^ if_same_then_else
-
 
     if true {
         let bar = if true { 42 } else { 43 };
@@ -102,7 +98,6 @@ fn if_same_then_else() {
         bar + 1;
     }
     //~^^^^^^^^^^^^^^^ if_same_then_else
-
 
     if true {
         let _ = match 42 {

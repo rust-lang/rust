@@ -296,7 +296,7 @@ fn require_as_ref_slice_str<T, U: AsRef<[T]>, V: AsRef<str>>(_: U, _: V) {}
 // https://github.com/breard-r/acmed/blob/1f0dcc32aadbc5e52de6d23b9703554c0f925113/acmed/src/storage.rs#L262
 fn check_files(file_types: &[FileType]) -> bool {
     for t in file_types {
-    //~^ unnecessary_to_owned
+        //~^ unnecessary_to_owned
         let path = match get_file_path(t) {
             Ok(p) => p,
             Err(_) => {
@@ -639,23 +639,23 @@ fn borrow_checks() {
 
     fn inner(a: &[&str]) {
         let mut s = HashSet::from([vec!["a"]]);
-s.remove(a);
-//~^ unnecessary_to_owned
+        s.remove(a);
+        //~^ unnecessary_to_owned
     }
 
     let mut s = HashSet::from(["a".to_string()]);
-s.remove("b");
-//~^ unnecessary_to_owned
-s.remove("b");
-//~^ unnecessary_to_owned
+    s.remove("b");
+    //~^ unnecessary_to_owned
+    s.remove("b");
+    //~^ unnecessary_to_owned
     // Should not warn.
     s.remove("b");
 
     let mut s = HashSet::from([vec!["a"]]);
-s.remove(["b"].as_slice());
-//~^ unnecessary_to_owned
-s.remove((&["b"]).as_slice());
-//~^ unnecessary_to_owned
+    s.remove(["b"].as_slice());
+    //~^ unnecessary_to_owned
+    s.remove((&["b"]).as_slice());
+    //~^ unnecessary_to_owned
 
     // Should not warn.
     s.remove(&["b"].to_vec().clone());

@@ -4,7 +4,6 @@
 fn sum(v: &[u8]) -> u8 {
     v[0] + v[1] + v[2] + v[3] + v[4]
     //~^ missing_asserts_for_indexing
-
 }
 
 fn subslice(v: &[u8]) {
@@ -45,7 +44,6 @@ struct Foo<'a> {
 fn index_struct_field(f: &Foo<'_>) {
     let _ = f.v[0] + f.v[1];
     //~^ missing_asserts_for_indexing
-
 }
 
 fn index_struct_different_fields(f: &Foo<'_>) {
@@ -60,7 +58,6 @@ fn shadowing() {
     let x: &[i32] = &[1];
     let _ = x[0] + x[1];
     //~^ missing_asserts_for_indexing
-
 }
 
 pub fn issue11856(values: &[i32]) -> usize {

@@ -22,7 +22,6 @@ fn main() {
     let _ = string.as_ptr() as *mut u8;
     //~^ as_ptr_cast_mut
 
-
     let _: *mut i8 = string.as_ptr() as *mut _;
     //~^ as_ptr_cast_mut
 

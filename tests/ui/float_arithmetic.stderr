@@ -80,25 +80,25 @@ LL |     &3.5_f32 + &1.3_f32;
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:66:5
+  --> tests/ui/float_arithmetic.rs:65:5
    |
 LL |     a + f
    |     ^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:72:5
+  --> tests/ui/float_arithmetic.rs:70:5
    |
 LL |     f1 + f2
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:78:5
+  --> tests/ui/float_arithmetic.rs:75:5
    |
 LL |     f1 + f2
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
-  --> tests/ui/float_arithmetic.rs:84:5
+  --> tests/ui/float_arithmetic.rs:80:5
    |
 LL |     (&f1 + &f2)
    |     ^^^^^^^^^^^

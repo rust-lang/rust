@@ -19,10 +19,8 @@ fn main() {
     (&1u8 as *const u8) as *const u16;
     //~^ cast_ptr_alignment
 
-
     (&mut 1u8 as *mut u8) as *mut u16;
     //~^ cast_ptr_alignment
-
 
     // cast to more-strictly-aligned type, but with the `pointer::cast` function.
     (&1u8 as *const u8).cast::<u16>();
@@ -30,7 +28,6 @@ fn main() {
 
     (&mut 1u8 as *mut u8).cast::<u16>();
     //~^ cast_ptr_alignment
-
 
     /* These should be ok */
 

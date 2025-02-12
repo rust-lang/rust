@@ -7,7 +7,6 @@ fn main() {
 
     string.push_str(&format!("{:?}", 5678));
     //~^ format_push_string
-
 }
 
 mod issue9493 {
@@ -15,7 +14,7 @@ mod issue9493 {
         let mut hex = String::with_capacity(vector.len() * 2);
         for byte in vector {
             hex += &(if upper {
-            //~^ format_push_string
+                //~^ format_push_string
 
                 format!("{byte:02X}")
             } else {
@@ -29,7 +28,7 @@ mod issue9493 {
         let mut s = String::new();
         // if let
         s += &(if let Some(_a) = Some(1234) {
-        //~^ format_push_string
+            //~^ format_push_string
 
             format!("{}", 1234)
         } else {
@@ -37,8 +36,7 @@ mod issue9493 {
         });
         // match
         s += &(match Some(1234) {
-        //~^ format_push_string
-
+            //~^ format_push_string
             Some(_) => format!("{}", 1234),
             None => format!("{}", 1234),
         });

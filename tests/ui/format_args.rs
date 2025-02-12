@@ -79,13 +79,13 @@ fn main() {
     let _ = write!(
         stdout(),
         "error: something failed at {}",
-        Location::caller().to_string()
+        Location::caller().to_string(),
         //~^ to_string_in_format_args
     );
     let _ = writeln!(
         stdout(),
         "error: something failed at {}",
-        Location::caller().to_string()
+        Location::caller().to_string(),
         //~^ to_string_in_format_args
     );
     print!("error: something failed at {}", Location::caller().to_string());

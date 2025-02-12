@@ -8,92 +8,67 @@ fn main() {
     a % b;
     //~^ modulo_arithmetic
 
-
     b % a;
     //~^ modulo_arithmetic
 
-
     b %= a;
     //~^ modulo_arithmetic
-
-
 
     let a_i8: i8 = 1;
     let mut b_i8: i8 = 2;
     a_i8 % b_i8;
     //~^ modulo_arithmetic
 
-
     b_i8 %= a_i8;
     //~^ modulo_arithmetic
-
-
 
     let a_i16: i16 = 1;
     let mut b_i16: i16 = 2;
     a_i16 % b_i16;
     //~^ modulo_arithmetic
 
-
     b_i16 %= a_i16;
     //~^ modulo_arithmetic
-
-
 
     let a_i32: i32 = 1;
     let mut b_i32: i32 = 2;
     a_i32 % b_i32;
     //~^ modulo_arithmetic
 
-
     b_i32 %= a_i32;
     //~^ modulo_arithmetic
-
-
 
     let a_i64: i64 = 1;
     let mut b_i64: i64 = 2;
     a_i64 % b_i64;
     //~^ modulo_arithmetic
 
-
     b_i64 %= a_i64;
     //~^ modulo_arithmetic
-
-
 
     let a_i128: i128 = 1;
     let mut b_i128: i128 = 2;
     a_i128 % b_i128;
     //~^ modulo_arithmetic
 
-
     b_i128 %= a_i128;
     //~^ modulo_arithmetic
-
-
 
     let a_isize: isize = 1;
     let mut b_isize: isize = 2;
     a_isize % b_isize;
     //~^ modulo_arithmetic
 
-
     b_isize %= a_isize;
     //~^ modulo_arithmetic
-
-
 
     let a = 1;
     let mut b = 2;
     a % b;
     //~^ modulo_arithmetic
 
-
     b %= a;
     //~^ modulo_arithmetic
-
-
 
     // No lint on unsigned integral value
     let a_u8: u8 = 17;

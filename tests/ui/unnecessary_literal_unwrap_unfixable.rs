@@ -9,7 +9,6 @@ fn unwrap_option_some() {
 
     let _val2 = val.expect("this never happens");
     //~^ unnecessary_literal_unwrap
-
 }
 
 fn unwrap_option_some_context() {
@@ -19,14 +18,12 @@ fn unwrap_option_some_context() {
     let _val = Some::<usize>([1, 2, 3].iter().sum()).expect("this never happens");
     //~^ unnecessary_literal_unwrap
 
-
     let val = Some::<usize>([1, 2, 3].iter().sum());
     let _val2 = val.unwrap();
     //~^ unnecessary_literal_unwrap
 
     let _val2 = val.expect("this never happens");
     //~^ unnecessary_literal_unwrap
-
 }
 
 fn unwrap_option_none() {
@@ -42,7 +39,6 @@ fn unwrap_option_none() {
 
     None::<()>.unwrap_or_default();
     //~^ unnecessary_literal_unwrap
-
 }
 
 fn unwrap_result_ok() {
@@ -58,7 +54,6 @@ fn unwrap_result_ok() {
 
     let _val2 = val.expect_err("this always happens");
     //~^ unnecessary_literal_unwrap
-
 }
 
 fn unwrap_result_ok_context() {
@@ -74,7 +69,6 @@ fn unwrap_result_ok_context() {
     let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).expect_err("this always happens");
     //~^ unnecessary_literal_unwrap
 
-
     let val = Ok::<usize, ()>([1, 2, 3].iter().sum());
     let _val2 = val.unwrap();
     //~^ unnecessary_literal_unwrap
@@ -87,7 +81,6 @@ fn unwrap_result_ok_context() {
 
     let _val2 = val.expect_err("this always happens");
     //~^ unnecessary_literal_unwrap
-
 }
 
 fn unwrap_result_err() {
@@ -103,7 +96,6 @@ fn unwrap_result_err() {
 
     let _val2 = val.expect("this always happens");
     //~^ unnecessary_literal_unwrap
-
 }
 
 fn unwrap_result_err_context() {
@@ -119,7 +111,6 @@ fn unwrap_result_err_context() {
     let _val = Err::<(), usize>([1, 2, 3].iter().sum()).expect("this always happens");
     //~^ unnecessary_literal_unwrap
 
-
     let val = Err::<(), usize>([1, 2, 3].iter().sum());
     let _val2 = val.unwrap_err();
     //~^ unnecessary_literal_unwrap
@@ -132,7 +123,6 @@ fn unwrap_result_err_context() {
 
     let _val2 = val.expect("this always happens");
     //~^ unnecessary_literal_unwrap
-
 }
 
 fn unwrap_methods_option() {
@@ -145,7 +135,6 @@ fn unwrap_methods_option() {
 
     let _val2 = val.unwrap_or_else(|| 2);
     //~^ unnecessary_literal_unwrap
-
 }
 
 fn unwrap_methods_option_context() {
@@ -158,7 +147,6 @@ fn unwrap_methods_option_context() {
     let _val = Some::<usize>([1, 2, 3].iter().sum()).unwrap_or_else(|| 2);
     //~^ unnecessary_literal_unwrap
 
-
     let val = Some::<usize>([1, 2, 3].iter().sum());
     let _val2 = val.unwrap_or(2);
     //~^ unnecessary_literal_unwrap
@@ -168,7 +156,6 @@ fn unwrap_methods_option_context() {
 
     let _val2 = val.unwrap_or_else(|| 2);
     //~^ unnecessary_literal_unwrap
-
 }
 
 fn unwrap_methods_result() {
@@ -181,7 +168,6 @@ fn unwrap_methods_result() {
 
     let _val2 = val.unwrap_or_else(|_| 2);
     //~^ unnecessary_literal_unwrap
-
 }
 
 fn unwrap_methods_result_context() {
@@ -194,7 +180,6 @@ fn unwrap_methods_result_context() {
     let _val = Ok::<usize, ()>([1, 2, 3].iter().sum()).unwrap_or_else(|_| 2);
     //~^ unnecessary_literal_unwrap
 
-
     let val = Ok::<usize, ()>([1, 2, 3].iter().sum());
     let _val2 = val.unwrap_or(2);
     //~^ unnecessary_literal_unwrap
@@ -204,7 +189,6 @@ fn unwrap_methods_result_context() {
 
     let _val2 = val.unwrap_or_else(|_| 2);
     //~^ unnecessary_literal_unwrap
-
 }
 
 fn main() {

@@ -10,13 +10,10 @@ fn main() {
     let b = **&&a;
     //~^ deref_addrof
 
-
-
     {
         let mut x = 10;
         let y = *&mut x;
         //~^ deref_addrof
-
     }
 
     {
@@ -25,6 +22,5 @@ fn main() {
         let mut x = 10;
         let y = **&mut &mut x;
         //~^ deref_addrof
-
     }
 }

@@ -3,10 +3,8 @@ fn main() {}
 fn no_panic<T>(slice: &[T]) {
     let mut iter = slice.iter();
     loop {
-    //~^ never_loop
-    //~| while_let_loop
-
-
+        //~^ never_loop
+        //~| while_let_loop
 
         let _ = match iter.next() {
             Some(ele) => ele,
@@ -14,6 +12,5 @@ fn no_panic<T>(slice: &[T]) {
         };
         loop {}
         //~^ empty_loop
-
     }
 }

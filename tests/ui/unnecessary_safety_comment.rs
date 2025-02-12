@@ -21,7 +21,6 @@ mod unsafe_items_invalid_comment {
     // SAFETY:
     mod module {}
     //~^ unnecessary_safety_comment
-
 }
 
 mod unnecessary_from_macro {
@@ -53,16 +52,13 @@ fn unnecessary_on_stmt_and_expr() -> u32 {
     let num = 42;
     //~^ unnecessary_safety_comment
 
-
     // SAFETY: unnecessary
     if num > 24 {}
     //~^ unnecessary_safety_comment
 
-
     // SAFETY: unnecessary
     24
     //~^ unnecessary_safety_comment
-
 }
 
 mod issue_10084 {

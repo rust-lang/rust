@@ -29,13 +29,11 @@ fn main() {
     };
     //~^ unnecessary_semicolon
 
-
     a.match {
         3 => println!("three"),
         _ => println!("not three"),
     };
     //~^ unnecessary_semicolon
-
 }
 
 // This is a problem in edition 2021 and below

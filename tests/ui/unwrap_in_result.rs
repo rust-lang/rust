@@ -20,7 +20,7 @@ impl A {
 
     // should be detected
     fn bad_divisible_by_3(i_str: String) -> Result<bool, String> {
-    //~^ unwrap_in_result
+        //~^ unwrap_in_result
 
         // checks whether a string represents a number divisible by 3
         let i = i_str.parse::<i32>().unwrap();
@@ -32,7 +32,7 @@ impl A {
     }
 
     fn example_option_expect(i_str: String) -> Option<bool> {
-    //~^ unwrap_in_result
+        //~^ unwrap_in_result
 
         let i = i_str.parse::<i32>().expect("not a number");
         if i % 3 == 0 {
@@ -42,7 +42,7 @@ impl A {
     }
 
     fn in_closure(a: Option<bool>) -> Option<bool> {
-    //~^ unwrap_in_result
+        //~^ unwrap_in_result
         let c = || a.unwrap();
         Some(c())
     }

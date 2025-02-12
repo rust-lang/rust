@@ -13,7 +13,7 @@ extern crate proc_macros;
 use proc_macros::{external, inline_macros};
 
 fn fun(x: &mut &mut u32) -> bool {
-//~^ mut_mut
+    //~^ mut_mut
     **x > 0
 }
 

@@ -7,8 +7,6 @@ fn mut_range_bound_upper() {
     for i in 0..m {
         m = 5;
         //~^ mut_range_bound
-
-
     }
 }
 
@@ -17,8 +15,6 @@ fn mut_range_bound_lower() {
     for i in m..10 {
         m *= 2;
         //~^ mut_range_bound
-
-
     }
 }
 
@@ -29,11 +25,8 @@ fn mut_range_bound_both() {
         m = 5;
         //~^ mut_range_bound
 
-
         n = 7;
         //~^ mut_range_bound
-
-
     }
 }
 
@@ -49,7 +42,6 @@ fn mut_borrow_range_bound() {
     for i in 0..m {
         let n = &mut m;
         //~^ mut_range_bound
-
 
         *n += 1;
     }
@@ -86,7 +78,6 @@ fn mut_range_bound_no_immediate_break() {
         m = 2;
         //~^ mut_range_bound
 
-
         if m == 4 {
             break;
         }
@@ -98,7 +89,6 @@ fn mut_range_bound_no_immediate_break() {
             // FIXME: warning because it is not immediately followed by break
             n = 1;
             //~^ mut_range_bound
-
 
             let _ = 2;
             break;

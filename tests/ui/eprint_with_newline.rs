@@ -5,7 +5,6 @@ fn main() {
     eprint!("Hello\n");
     //~^ print_with_newline
 
-
     eprint!("Hello {}\n", "world");
     //~^ print_with_newline
 
@@ -17,7 +16,6 @@ fn main() {
 
     eprint!("\n");
     //~^ print_with_newline
-
 
     // these are all fine
     eprint!("");
@@ -50,14 +48,12 @@ fn main() {
 
     // Literal newlines should also fail
     eprint!(
-    //~^ print_with_newline
-
+        //~^ print_with_newline
         "
 "
     );
     eprint!(
-    //~^ print_with_newline
-
+        //~^ print_with_newline
         r"
 "
     );

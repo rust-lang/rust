@@ -17,7 +17,6 @@ fn main() {
     match f {
         Foo { a: _, b: 0, .. } => {},
         //~^ unneeded_field_pattern
-
         Foo { a: _, b: _, c: _ } => {},
         //~^ unneeded_field_pattern
     }

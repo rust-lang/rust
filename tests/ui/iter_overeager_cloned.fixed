@@ -28,7 +28,7 @@ fn main() {
     //~^ iter_overeager_cloned
 
     let _ = [Some(Some("str".to_string())), Some(Some("str".to_string()))]
-    //~^ iter_overeager_cloned
+        //~^ iter_overeager_cloned
         .iter()
         .flatten().cloned();
 

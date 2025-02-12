@@ -21,7 +21,6 @@ fn test_macro() {
 fn test1(foo: Box<Vec<bool>>) {}
 //~^ box_collection
 
-
 fn test2(foo: Box<dyn Fn(Vec<u32>)>) {
     // pass if #31 is fixed
     foo(vec![1, 2, 3])
@@ -30,34 +29,26 @@ fn test2(foo: Box<dyn Fn(Vec<u32>)>) {
 fn test3(foo: Box<String>) {}
 //~^ box_collection
 
-
 fn test4(foo: Box<HashMap<String, String>>) {}
 //~^ box_collection
-
 
 fn test5(foo: Box<HashSet<i64>>) {}
 //~^ box_collection
 
-
 fn test6(foo: Box<VecDeque<i32>>) {}
 //~^ box_collection
-
 
 fn test7(foo: Box<LinkedList<i16>>) {}
 //~^ box_collection
 
-
 fn test8(foo: Box<BTreeMap<i8, String>>) {}
 //~^ box_collection
-
 
 fn test9(foo: Box<BTreeSet<u64>>) {}
 //~^ box_collection
 
-
 fn test10(foo: Box<BinaryHeap<u32>>) {}
 //~^ box_collection
-
 
 fn test_local_not_linted() {
     let _: Box<Vec<bool>>;

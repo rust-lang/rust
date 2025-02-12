@@ -12,8 +12,6 @@
 fn test(foo: ()) {}
 //~^ disallowed_names
 
-
-
 fn main() {
     let foo = 42;
     //~^ disallowed_names
@@ -38,22 +36,18 @@ fn main() {
         //~^ disallowed_names
         //~| disallowed_names
         //~| disallowed_names
-
-
-
         _ => (),
     }
 }
 
 fn issue_1647(mut foo: u8) {
-//~^ disallowed_names
+    //~^ disallowed_names
 
     let mut baz = 0;
     //~^ disallowed_names
 
     if let Some(mut quux) = Some(42) {}
     //~^ disallowed_names
-
 }
 
 fn issue_1647_ref() {
@@ -62,7 +56,6 @@ fn issue_1647_ref() {
 
     if let Some(ref quux) = Some(42) {}
     //~^ disallowed_names
-
 }
 
 fn issue_1647_ref_mut() {
@@ -71,7 +64,6 @@ fn issue_1647_ref_mut() {
 
     if let Some(ref mut quux) = Some(42) {}
     //~^ disallowed_names
-
 }
 
 #[cfg(test)]

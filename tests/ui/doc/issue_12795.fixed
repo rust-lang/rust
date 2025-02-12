@@ -6,8 +6,4 @@
 //~| doc_markdown
 //~| doc_markdown
 
-
-
-
-
 pub fn main() {}

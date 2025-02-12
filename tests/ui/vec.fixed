@@ -136,7 +136,7 @@ fn issue11075() {
     }
     #[allow(clippy::never_loop)]
     for _string in [repro!(true), repro!(null)] {
-    //~^ useless_vec
+        //~^ useless_vec
         unimplemented!();
     }
 
@@ -175,12 +175,12 @@ fn issue11075() {
 #[clippy::msrv = "1.53"]
 fn above() {
     for a in [1, 2, 3] {
-    //~^ useless_vec
+        //~^ useless_vec
         let _: usize = a;
     }
 
     for a in [String::new(), String::new()] {
-    //~^ useless_vec
+        //~^ useless_vec
         let _: String = a;
     }
 }
@@ -212,8 +212,8 @@ fn issue11861() {
 
     // Do not lint the next line
     this_macro_needs_vec!(vec![1]);
-this_macro_doesnt_need_vec!([1]);
-//~^ useless_vec
+    this_macro_doesnt_need_vec!([1]);
+    //~^ useless_vec
 
     macro_rules! m {
         ($x:expr) => {

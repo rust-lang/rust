@@ -11,8 +11,7 @@ fn ok() {
 fn last() {
     foo();
     fn foo() {
-    //~^ items_after_statements
-
+        //~^ items_after_statements
 
         println!("foo");
     }
@@ -21,7 +20,7 @@ fn last() {
 fn main() {
     foo();
     fn foo() {
-    //~^ items_after_statements
+        //~^ items_after_statements
 
         println!("foo");
     }
@@ -36,7 +35,7 @@ fn mac() {
         () => {{
             a = 6;
             fn say_something() {
-            //~^ items_after_statements
+                //~^ items_after_statements
                 println!("something");
             }
         }};

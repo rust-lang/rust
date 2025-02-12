@@ -9,5 +9,4 @@ pub fn main(argc: isize, argv: *const *const u8) -> isize {
     // This should trigger the lint
     loop {}
     //~^ empty_loop
-
 }

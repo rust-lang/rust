@@ -19,7 +19,6 @@ mod should_lint {
         impl S {
             fn foo() {}
             //~^ same_name_method
-
         }
 
         impl T1 for S {
@@ -35,7 +34,6 @@ mod should_lint {
         impl S {
             fn clone() {}
             //~^ same_name_method
-
         }
     }
 
@@ -47,7 +45,6 @@ mod should_lint {
         impl<U> S<U> {
             fn foo() {}
             //~^ same_name_method
-
         }
 
         impl<U: Copy> T1 for S<U> {
@@ -63,7 +60,6 @@ mod should_lint {
         impl S {
             fn foo() {}
             //~^ same_name_method
-
         }
 
         impl T1 for S {}
@@ -78,8 +74,6 @@ mod should_lint {
             fn foo() {}
             //~^ same_name_method
             //~| same_name_method
-
-
         }
 
         impl T1 for S {}

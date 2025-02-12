@@ -23,7 +23,6 @@ fn clone_on_ref_ptr() {
     rc.clone();
     //~^ clone_on_ref_ptr
 
-
     Rc::clone(&rc);
 
     arc.clone();
@@ -44,18 +43,14 @@ fn clone_on_ref_ptr() {
     let x = Arc::new(SomeImpl);
     let _: Arc<dyn SomeTrait> = x.clone();
     //~^ clone_on_ref_ptr
-
 }
 
 fn clone_on_copy_generic<T: Copy>(t: T) {
     t.clone();
     //~^ clone_on_copy
 
-
-
     Some(t).clone();
     //~^ clone_on_copy
-
 }
 
 mod many_derefs {
@@ -112,6 +107,5 @@ mod issue2076 {
         let rc = Rc::new(42);
         Some(try_opt!(Some(rc)).clone())
         //~^ clone_on_ref_ptr
-
     }
 }

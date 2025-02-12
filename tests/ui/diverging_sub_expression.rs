@@ -20,10 +20,8 @@ fn main() {
     b || diverge();
     //~^ diverging_sub_expression
 
-
     b || A.foo();
     //~^ diverging_sub_expression
-
 }
 
 #[allow(dead_code, unused_variables)]

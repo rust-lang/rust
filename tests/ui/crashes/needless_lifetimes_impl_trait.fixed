@@ -14,7 +14,7 @@ impl Foo for Baz<'_> {}
 
 impl Bar {
     fn baz(&self) -> impl Foo + '_ {
-    //~^ needless_lifetimes
+        //~^ needless_lifetimes
 
         Baz { bar: self }
     }

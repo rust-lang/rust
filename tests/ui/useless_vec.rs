@@ -6,8 +6,7 @@
 fn foo() {
     // There should be no suggestion in this case.
     let _some_variable = vec![
-    //~^ useless_vec
-
+        //~^ useless_vec
         1, 2, // i'm here to stay
         3, 4, // but this one going away ;-;
     ]; // that is life anyways

@@ -4,7 +4,6 @@ error: useless use of `vec!`
 LL |       let _some_variable = vec![
    |  __________________________^
 LL | |
-LL | |
 LL | |         1, 2, // i'm here to stay
 LL | |         3, 4, // but this one going away ;-;
 LL | |     ]; // that is life anyways

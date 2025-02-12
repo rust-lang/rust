@@ -11,7 +11,6 @@ const C: LinkedList<i32> = LinkedList::new();
 static S: LinkedList<i32> = LinkedList::new();
 //~^ linkedlist
 
-
 trait Foo {
     type Baz = LinkedList<u8>;
     //~^ linkedlist
@@ -21,7 +20,6 @@ trait Foo {
 
     const BAR: Option<LinkedList<u8>>;
     //~^ linkedlist
-
 }
 
 // Ok, we don’t want to warn for implementations; see issue #605.
@@ -33,13 +31,11 @@ impl Foo for LinkedList<u8> {
 pub struct Bar {
     priv_linked_list_field: LinkedList<u8>,
     //~^ linkedlist
-
     pub pub_linked_list_field: LinkedList<u8>,
 }
 impl Bar {
     fn foo(_: LinkedList<u8>) {}
     //~^ linkedlist
-
 }
 
 // All of these test should be trigger the lint because they are not
@@ -48,7 +44,7 @@ fn test(my_favorite_linked_list: LinkedList<u8>) {}
 //~^ linkedlist
 
 fn test_ret() -> Option<LinkedList<u8>> {
-//~^ linkedlist
+    //~^ linkedlist
 
     None
 }

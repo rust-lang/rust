@@ -142,5 +142,4 @@ const _: () = {
 const fn foo() {
     assert!([42, 55].len() > get_usize());
     //~^ unnecessary_operation
-
 }

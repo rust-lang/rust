@@ -16,7 +16,7 @@ help: remove the `else` block and move the contents out
 LL ~         }
 LL +
 LL + 
-LL +             println!("yet don't pull down your hedge.");
+LL +         println!("yet don't pull down your hedge.");
    |
 
 error: redundant else block
@@ -35,7 +35,7 @@ help: remove the `else` block and move the contents out
 LL ~         }
 LL +
 LL + 
-LL +             println!("shall rise up with fleas.");
+LL +         println!("shall rise up with fleas.");
    |
 
 error: redundant else block
@@ -54,7 +54,7 @@ help: remove the `else` block and move the contents out
 LL ~         }
 LL +
 LL + 
-LL +             println!("You may delay, but time will not.");
+LL +         println!("You may delay, but time will not.");
    |
 
 error: redundant else block
@@ -73,7 +73,7 @@ help: remove the `else` block and move the contents out
 LL ~     }
 LL +
 LL + 
-LL +         println!("A fat kitchen makes a lean will.");
+LL +     println!("A fat kitchen makes a lean will.");
    |
 
 error: redundant else block
@@ -92,7 +92,7 @@ help: remove the `else` block and move the contents out
 LL ~         }
 LL +
 LL + 
-LL +             1
+LL +         1
    |
 
 error: redundant else block
@@ -111,7 +111,7 @@ help: remove the `else` block and move the contents out
 LL ~         }
 LL +
 LL + 
-LL +             2
+LL +         2
    |
 
 error: redundant else block
@@ -130,7 +130,7 @@ help: remove the `else` block and move the contents out
 LL ~         }
 LL +
 LL + 
-LL +             1
+LL +         1
    |
 
 error: aborting due to 7 previous errors

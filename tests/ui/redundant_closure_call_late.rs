@@ -16,8 +16,6 @@ fn main() {
     i = redun_closure();
     //~^ redundant_closure_call
 
-
-
     // shadowed closures are supported, lint here
     let shadowed_closure = || 1;
     i = shadowed_closure();
@@ -26,7 +24,6 @@ fn main() {
     let shadowed_closure = || 2;
     i = shadowed_closure();
     //~^ redundant_closure_call
-
 
     // don't lint here
     let shadowed_closure = || 2;

@@ -9,7 +9,7 @@ fn main() {
     let len = sample.iter().collect::<Vec<_>>().len();
     //~^ needless_collect
     if sample.iter().collect::<Vec<_>>().is_empty() {
-    //~^ needless_collect
+        //~^ needless_collect
         // Empty
     }
     sample.iter().cloned().collect::<Vec<_>>().contains(&1);

@@ -84,16 +84,16 @@ mod issue6437 {
     pub struct Scalar;
 
     impl<'a> std::ops::AddAssign<&Scalar> for &mut Scalar {
-    //~^ extra_unused_lifetimes
+        //~^ extra_unused_lifetimes
         fn add_assign(&mut self, _rhs: &Scalar) {
             unimplemented!();
         }
     }
 
     impl<'b> Scalar {
-    //~^ extra_unused_lifetimes
-        pub fn something<'c>() -> Self {
         //~^ extra_unused_lifetimes
+        pub fn something<'c>() -> Self {
+            //~^ extra_unused_lifetimes
             Self
         }
     }
@@ -123,7 +123,7 @@ mod second_case {
     // Should lint. The response to the above comment incorrectly called this a false positive. The
     // lifetime `'a` can be removed, as demonstrated below.
     impl<'a, T: Source + ?Sized + 'a> Source for Box<T> {
-    //~^ extra_unused_lifetimes
+        //~^ extra_unused_lifetimes
         fn hey() {}
     }
 

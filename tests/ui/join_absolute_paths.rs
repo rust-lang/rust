@@ -10,21 +10,17 @@ fn main() {
     path.join("/sh");
     //~^ join_absolute_paths
 
-
     let path = Path::new("C:\\Users");
     path.join("\\user");
     //~^ join_absolute_paths
-
 
     let path = PathBuf::from("/bin");
     path.join("/sh");
     //~^ join_absolute_paths
 
-
     let path = PathBuf::from("/bin");
     path.join(r#"/sh"#);
     //~^ join_absolute_paths
-
 
     let path: &[&str] = &["/bin"];
     path.join("/sh");

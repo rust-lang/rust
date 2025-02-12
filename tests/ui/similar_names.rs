@@ -47,12 +47,10 @@ fn main() {
     let bluby: i32;
     //~^ similar_names
 
-
     let cake: i32;
     let cakes: i32;
     let coke: i32;
     //~^ similar_names
-
 
     match 5 {
         cheese @ 1 => {},
@@ -73,12 +71,10 @@ fn main() {
     let xyzeabc: i32;
     //~^ similar_names
 
-
     let parser: i32;
     let parsed: i32;
     let parsee: i32;
     //~^ similar_names
-
 
     let setter: i32;
     let getter: i32;
@@ -101,7 +97,6 @@ fn foo() {
         apple: spring,
         bpple: sprang,
         //~^ similar_names
-
     } = unimplemented!();
 }
 

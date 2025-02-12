@@ -20,8 +20,7 @@ struct Foo {
 }
 
 struct BadFoo {
-//~^ struct_excessive_bools
-
+    //~^ struct_excessive_bools
     a: bool,
     b: bool,
     c: bool,
@@ -38,8 +37,7 @@ struct Bar {
 
 fn main() {
     struct FooFoo {
-    //~^ struct_excessive_bools
-
+        //~^ struct_excessive_bools
         a: bool,
         b: bool,
         c: bool,

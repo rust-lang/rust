@@ -8,7 +8,7 @@ pub enum ValType {
 
 impl ValType {
     pub fn bad(self: Self) {
-    //~^ needless_arbitrary_self_type
+        //~^ needless_arbitrary_self_type
         unimplemented!();
     }
 
@@ -17,7 +17,7 @@ impl ValType {
     }
 
     pub fn mut_bad(mut self: Self) {
-    //~^ needless_arbitrary_self_type
+        //~^ needless_arbitrary_self_type
         unimplemented!();
     }
 
@@ -26,7 +26,7 @@ impl ValType {
     }
 
     pub fn ref_bad(self: &Self) {
-    //~^ needless_arbitrary_self_type
+        //~^ needless_arbitrary_self_type
         unimplemented!();
     }
 
@@ -35,7 +35,7 @@ impl ValType {
     }
 
     pub fn ref_bad_with_lifetime<'a>(self: &'a Self) {
-    //~^ needless_arbitrary_self_type
+        //~^ needless_arbitrary_self_type
         unimplemented!();
     }
 
@@ -44,7 +44,7 @@ impl ValType {
     }
 
     pub fn mut_ref_bad(self: &mut Self) {
-    //~^ needless_arbitrary_self_type
+        //~^ needless_arbitrary_self_type
         unimplemented!();
     }
 
@@ -53,7 +53,7 @@ impl ValType {
     }
 
     pub fn mut_ref_bad_with_lifetime<'a>(self: &'a mut Self) {
-    //~^ needless_arbitrary_self_type
+        //~^ needless_arbitrary_self_type
         unimplemented!();
     }
 

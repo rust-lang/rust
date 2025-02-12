@@ -30,12 +30,12 @@ mod unused_self {
         //~^ unused_self
 
         fn unused_with_other_used_args(&self, x: u8, y: u8) -> u8 {
-        //~^ unused_self
+            //~^ unused_self
 
             x + y
         }
         fn unused_self_class_method(&self) {
-        //~^ unused_self
+            //~^ unused_self
 
             Self::static_method();
         }

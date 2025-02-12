@@ -4,7 +4,7 @@
 fn main() {
     // Should issue an error.
     let _ = if foo() {
-    //~^ if_then_some_else_none
+        //~^ if_then_some_else_none
 
         println!("true!");
         Some("foo")
@@ -14,7 +14,7 @@ fn main() {
 
     // Should issue an error when macros are used.
     let _ = if matches!(true, true) {
-    //~^ if_then_some_else_none
+        //~^ if_then_some_else_none
 
         println!("true!");
         Some(matches!(true, false))
@@ -27,12 +27,10 @@ fn main() {
     let _ = x.and_then(|o| if o < 32 { Some(o) } else { None });
     //~^ if_then_some_else_none
 
-
     // Should issue an error. Unary expression `!x` should be parenthesized.
     let x = true;
     let _ = if !x { Some(0) } else { None };
     //~^ if_then_some_else_none
-
 
     // Should not issue an error since the `else` block has a statement besides `None`.
     let _ = if foo() {
@@ -88,7 +86,7 @@ fn _msrv_1_49() {
 #[clippy::msrv = "1.50"]
 fn _msrv_1_50() {
     let _ = if foo() {
-    //~^ if_then_some_else_none
+        //~^ if_then_some_else_none
 
         println!("true!");
         Some(150)

@@ -26,11 +26,9 @@ unsafe fn nomem_good(p: &i32) {
 unsafe fn nomem_bad2(p: &mut i32) {
     asm!("asdf {p}", p = in(reg) p, options(nomem, nostack, preserves_flags));
     //~^ pointers_in_nomem_asm_block
-
 }
 
 unsafe fn nomem_fn(p: extern "C" fn()) {
     asm!("call {p}", p = in(reg) p, options(nomem));
     //~^ pointers_in_nomem_asm_block
-
 }

@@ -22,7 +22,7 @@ fn main() {
         //~^ redundant_pattern_matching
     }
     if let Ok(_) = Ok::<_, std::sync::MutexGuard<()>>(()) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
     } else {
     }
     if let Ok(_) = Ok::<_, std::sync::MutexGuard<()>>(()) {}
@@ -46,7 +46,7 @@ fn main() {
         //~^ redundant_pattern_matching
     }
     if let None = None::<std::sync::MutexGuard<()>> {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
     } else {
     }
 
@@ -69,7 +69,7 @@ fn main() {
         //~^ redundant_pattern_matching
     }
     if let Pending = Pending::<std::sync::MutexGuard<()>> {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
     } else {
     }
 

@@ -7,13 +7,10 @@ fn main() {
     y.to_owned() == *x;
     //~^ cmp_owned
 
-
-
     let x = &&Baz;
     let y = &Baz;
     y.to_owned() == **x;
     //~^ cmp_owned
-
 
     let x = 0u32;
     let y = U32Wrapper(x);
@@ -26,7 +23,6 @@ impl PartialEq for Foo {
     fn eq(&self, other: &Self) -> bool {
         self.to_owned() == *other
         //~^ cmp_owned
-
     }
 }
 

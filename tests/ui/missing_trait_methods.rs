@@ -22,9 +22,8 @@ struct Partial;
 impl A for Partial {}
 //~^ missing_trait_methods
 
-
 impl B for Partial {
-//~^ missing_trait_methods
+    //~^ missing_trait_methods
 
     fn required() {}
 

@@ -13,7 +13,6 @@ fn main() {
     let ok4 = 0xab_cd_i32;
     //~^ separated_literal_suffix
 
-
     let ok5 = 0xAB_CD_u32;
     //~^ separated_literal_suffix
 
@@ -23,24 +22,17 @@ fn main() {
     let fail1 = 0xabCD;
     //~^ mixed_case_hex_literals
 
-
     let fail2 = 0xabCD_u32;
     //~^ separated_literal_suffix
     //~| mixed_case_hex_literals
-
 
     let fail2 = 0xabCD_isize;
     //~^ separated_literal_suffix
     //~| mixed_case_hex_literals
 
-
     let fail_multi_zero = 000_123usize;
     //~^ unseparated_literal_suffix
     //~| zero_prefixed_literal
-
-
-
-
 
     let ok9 = 0;
     let ok10 = 0_i64;
@@ -48,7 +40,6 @@ fn main() {
 
     let fail8 = 0123;
     //~^ zero_prefixed_literal
-
 
     let ok11 = 0o123;
     let ok12 = 0b10_1010;
@@ -65,17 +56,14 @@ fn main() {
     let fail19 = 12_3456_21;
     //~^ inconsistent_digit_grouping
 
-
     let fail22 = 3__4___23;
     //~^ inconsistent_digit_grouping
 
     let fail23 = 3__16___23;
     //~^ inconsistent_digit_grouping
 
-
     let fail24 = 0xAB_ABC_AB;
     //~^ unusual_byte_groupings
-
 
     let fail25 = 0b01_100_101;
     let ok26 = 0x6_A0_BF;
@@ -92,5 +80,4 @@ fn issue9651() {
 
     let _ = 089;
     //~^ zero_prefixed_literal
-
 }

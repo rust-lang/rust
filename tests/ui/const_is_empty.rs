@@ -3,23 +3,19 @@
 
 fn test_literal() {
     if "".is_empty() {
-    //~^ const_is_empty
-
+        //~^ const_is_empty
     }
     if "foobar".is_empty() {
-    //~^ const_is_empty
-
+        //~^ const_is_empty
     }
 }
 
 fn test_byte_literal() {
     if b"".is_empty() {
-    //~^ const_is_empty
-
+        //~^ const_is_empty
     }
     if b"foobar".is_empty() {
-    //~^ const_is_empty
-
+        //~^ const_is_empty
     }
 }
 
@@ -36,12 +32,10 @@ fn test_propagated() {
     let empty2 = empty;
     let non_empty2 = non_empty;
     if empty2.is_empty() {
-    //~^ const_is_empty
-
+        //~^ const_is_empty
     }
     if non_empty2.is_empty() {
-    //~^ const_is_empty
-
+        //~^ const_is_empty
     }
 }
 
@@ -106,7 +100,6 @@ fn test_from_const() {
 
     let _ = NON_EMPTY_SLICE_REPEAT.is_empty();
     //~^ const_is_empty
-
 }
 
 fn main() {
@@ -123,7 +116,6 @@ fn main() {
 
     let _ = b"".is_empty();
     //~^ const_is_empty
-
 }
 
 fn str_from_arg(var: &str) {
@@ -178,7 +170,6 @@ fn not_cfg_conditioned() {
     #[cfg(not(target_os = "inexistent"))]
     let _ = val.is_empty();
     //~^ const_is_empty
-
 }
 
 const fn const_rand() -> &'static str {

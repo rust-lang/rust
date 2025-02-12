@@ -8,7 +8,7 @@ LL |     let v = if let Some(v_some) = g() { v_some } else { return };
    = help: to override `-D warnings` add `#[allow(clippy::manual_let_else)]`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:33:5
+  --> tests/ui/manual_let_else.rs:32:5
    |
 LL | /     let v = if let Some(v_some) = g() {
 LL | |
@@ -27,7 +27,7 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:41:5
+  --> tests/ui/manual_let_else.rs:40:5
    |
 LL | /     let v = if let Some(v) = g() {
 ...  |
@@ -45,25 +45,25 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:54:9
+  --> tests/ui/manual_let_else.rs:53:9
    |
 LL |         let v = if let Some(v_some) = g() { v_some } else { continue };
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some(v) = g() else { continue };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:57:9
+  --> tests/ui/manual_let_else.rs:56:9
    |
 LL |         let v = if let Some(v_some) = g() { v_some } else { break };
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some(v) = g() else { break };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:63:5
+  --> tests/ui/manual_let_else.rs:61:5
    |
 LL |     let v = if let Some(v_some) = g() { v_some } else { panic!() };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some(v) = g() else { panic!() };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:68:5
+  --> tests/ui/manual_let_else.rs:65:5
    |
 LL | /     let v = if let Some(v_some) = g() {
 LL | |
@@ -82,7 +82,7 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:77:5
+  --> tests/ui/manual_let_else.rs:74:5
    |
 LL | /     let v = if let Some(v_some) = g() {
 LL | |
@@ -101,7 +101,7 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:86:5
+  --> tests/ui/manual_let_else.rs:83:5
    |
 LL | /     let v = if let Some(v_some) = g() {
 LL | |
@@ -121,7 +121,7 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:96:5
+  --> tests/ui/manual_let_else.rs:93:5
    |
 LL | /     let v = if let Some(v_some) = g() {
 LL | |
@@ -141,7 +141,7 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:106:5
+  --> tests/ui/manual_let_else.rs:103:5
    |
 LL | /     let v = if let Some(v_some) = g() {
 LL | |
@@ -167,7 +167,7 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:123:5
+  --> tests/ui/manual_let_else.rs:120:5
    |
 LL | /     let v = if let Some(v_some) = g() {
 LL | |
@@ -188,7 +188,7 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:135:5
+  --> tests/ui/manual_let_else.rs:132:5
    |
 LL | /     let v = if let Some(v_some) = g() {
 LL | |
@@ -214,7 +214,7 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:152:5
+  --> tests/ui/manual_let_else.rs:149:5
    |
 LL | /     let v = if let Some(v_some) = g() {
 LL | |
@@ -236,7 +236,7 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:164:5
+  --> tests/ui/manual_let_else.rs:161:5
    |
 LL | /     let v = if let Some(v_some) = g() {
 LL | |
@@ -255,7 +255,7 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:173:5
+  --> tests/ui/manual_let_else.rs:170:5
    |
 LL | /     let v = if let Some(v_some) = g() {
 LL | |
@@ -276,7 +276,7 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:184:5
+  --> tests/ui/manual_let_else.rs:181:5
    |
 LL | /     let v = if let Some(v_some) = g() {
 LL | |
@@ -297,7 +297,7 @@ LL +     } };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:195:5
+  --> tests/ui/manual_let_else.rs:192:5
    |
 LL | /     let v = if let Some(v_some) = g() {
 LL | |
@@ -325,7 +325,7 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:214:5
+  --> tests/ui/manual_let_else.rs:211:5
    |
 LL | /     let (v, w) = if let Some(v_some) = g().map(|v| (v, 42)) {
 LL | |
@@ -344,7 +344,7 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:223:5
+  --> tests/ui/manual_let_else.rs:220:5
    |
 LL | /     let (w, S { v }) = if let (Some(v_some), w_some) = (g().map(|_| S { v: 0 }), 0) {
 LL | |
@@ -363,7 +363,7 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:234:13
+  --> tests/ui/manual_let_else.rs:231:13
    |
 LL |             let $n = if let Some(v) = $e { v } else { return };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some($n) = g() else { return };`
@@ -374,19 +374,19 @@ LL |     create_binding_if_some!(w, g());
    = note: this error originates in the macro `create_binding_if_some` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:244:5
+  --> tests/ui/manual_let_else.rs:241:5
    |
 LL |     let v = if let Variant::A(a, 0) = e() { a } else { return };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Variant::A(v, 0) = e() else { return };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:249:5
+  --> tests/ui/manual_let_else.rs:245:5
    |
 LL |     let mut v = if let Variant::B(b) = e() { b } else { return };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Variant::B(mut v) = e() else { return };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:255:5
+  --> tests/ui/manual_let_else.rs:250:5
    |
 LL | /     let v = if let Ok(Some(Variant::B(b))) | Err(Some(Variant::A(b, _))) = nested {
 LL | |
@@ -405,19 +405,19 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:263:5
+  --> tests/ui/manual_let_else.rs:258:5
    |
 LL |     let v = if let Variant::A(.., a) = e() { a } else { return };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Variant::A(.., v) = e() else { return };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:268:5
+  --> tests/ui/manual_let_else.rs:262:5
    |
 LL |     let w = if let (Some(v), ()) = (g(), ()) { v } else { return };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let (Some(w), ()) = (g(), ()) else { return };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:273:5
+  --> tests/ui/manual_let_else.rs:266:5
    |
 LL | /     let w = if let Some(S { v: x }) = Some(S { v: 0 }) {
 LL | |
@@ -436,7 +436,7 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:282:5
+  --> tests/ui/manual_let_else.rs:275:5
    |
 LL | /     let v = if let Some(S { v: x }) = Some(S { v: 0 }) {
 LL | |
@@ -455,7 +455,7 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:291:5
+  --> tests/ui/manual_let_else.rs:284:5
    |
 LL | /     let (x, S { v }, w) = if let Some(U { v, w, x }) = None::<U<S<()>>> {
 LL | |
@@ -474,10 +474,9 @@ LL +     };
    |
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:409:5
+  --> tests/ui/manual_let_else.rs:402:5
    |
 LL | /     let _ = match ff {
-LL | |
 LL | |
 LL | |         Some(value) => value,
 LL | |         _ => macro_call!(),
@@ -485,7 +484,7 @@ LL | |     };
    | |______^ help: consider writing: `let Some(_) = ff else { macro_call!() };`
 
 error: this could be rewritten as `let...else`
-  --> tests/ui/manual_let_else.rs:487:9
+  --> tests/ui/manual_let_else.rs:479:9
    |
 LL |         let v = if let Some(v_some) = g() { v_some } else { return };
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some(v) = g() else { return };`

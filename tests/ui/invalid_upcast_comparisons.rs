@@ -21,7 +21,6 @@ fn main() {
     (u8 as u32) > 300;
     //~^ invalid_upcast_comparisons
 
-
     (u8 as i32) > 300;
     //~^ invalid_upcast_comparisons
 
@@ -68,7 +67,6 @@ fn main() {
     300 != (u8 as i32);
     //~^ invalid_upcast_comparisons
 
-
     // always false, since u8 -> i32 doesn't wrap
     (u8 as i32) < 0;
     //~^ invalid_upcast_comparisons
@@ -83,7 +81,6 @@ fn main() {
     -5 == (u8 as i32);
     //~^ invalid_upcast_comparisons
 
-
     // always false, since no u8 can be 1337
     1337 == (u8 as i32);
     //~^ invalid_upcast_comparisons
@@ -97,7 +94,6 @@ fn main() {
 
     1337 != (u8 as u32);
     //~^ invalid_upcast_comparisons
-
 
     // Those are Ok:
     (u8 as u32) > 20;
@@ -134,7 +130,6 @@ fn main() {
     -5 > (u32 as i32);
     -5 >= (u8 as i32);
     //~^ invalid_upcast_comparisons
-
 
     -5 == (u32 as i32);
 }

@@ -5,5 +5,4 @@
 enum Empty {}
 //~^ empty_enum
 
-
 fn main() {}

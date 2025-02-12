@@ -8,7 +8,6 @@ fn main() {
     Mutex::new(true);
     //~^ mutex_atomic
 
-
     Mutex::new(5usize);
     //~^ mutex_atomic
 
@@ -24,7 +23,6 @@ fn main() {
 
     Mutex::new(0u32);
     //~^ mutex_integer
-
 
     Mutex::new(0i32);
     //~^ mutex_integer
@@ -42,7 +40,6 @@ fn main() {
     const X: i64 = 0;
     Mutex::new(X);
     //~^ mutex_integer
-
 
     // there are no 128 atomics, so these two should not lint
     {

@@ -4,8 +4,6 @@ fn not_main() {
     if true {
         std::process::exit(4);
         //~^ exit
-
-
     }
 }
 

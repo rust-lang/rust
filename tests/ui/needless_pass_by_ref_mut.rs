@@ -9,7 +9,7 @@
 use std::ptr::NonNull;
 
 fn foo(s: &mut Vec<u32>, b: &u32, x: &mut u32) {
-//~^ needless_pass_by_ref_mut
+    //~^ needless_pass_by_ref_mut
 
     *x += *b + s.len() as u32;
 }
@@ -35,7 +35,7 @@ fn foo5(s: &mut Vec<u32>) {
 }
 
 fn foo6(s: &mut Vec<u32>) {
-//~^ needless_pass_by_ref_mut
+    //~^ needless_pass_by_ref_mut
 
     non_mut_ref(s);
 }
@@ -48,9 +48,8 @@ impl Bar {
     fn bar(&mut self) {}
     //~^ needless_pass_by_ref_mut
 
-
     fn mushroom(&self, vec: &mut Vec<i32>) -> usize {
-    //~^ needless_pass_by_ref_mut
+        //~^ needless_pass_by_ref_mut
 
         vec.len()
     }
@@ -128,43 +127,43 @@ async fn f7(x: &mut i32, y: i32, z: &mut i32, a: i32) {
 }
 
 async fn a1(x: &mut i32) {
-//~^ needless_pass_by_ref_mut
+    //~^ needless_pass_by_ref_mut
 
     println!("{:?}", x);
 }
 async fn a2(x: &mut i32, y: String) {
-//~^ needless_pass_by_ref_mut
+    //~^ needless_pass_by_ref_mut
 
     println!("{:?}", x);
 }
 async fn a3(x: &mut i32, y: String, z: String) {
-//~^ needless_pass_by_ref_mut
+    //~^ needless_pass_by_ref_mut
 
     println!("{:?}", x);
 }
 async fn a4(x: &mut i32, y: i32) {
-//~^ needless_pass_by_ref_mut
+    //~^ needless_pass_by_ref_mut
 
     println!("{:?}", x);
 }
 async fn a5(x: i32, y: &mut i32) {
-//~^ needless_pass_by_ref_mut
+    //~^ needless_pass_by_ref_mut
 
     println!("{:?}", x);
 }
 async fn a6(x: i32, y: &mut i32) {
-//~^ needless_pass_by_ref_mut
+    //~^ needless_pass_by_ref_mut
 
     println!("{:?}", x);
 }
 async fn a7(x: i32, y: i32, z: &mut i32) {
-//~^ needless_pass_by_ref_mut
+    //~^ needless_pass_by_ref_mut
 
     println!("{:?}", z);
 }
 async fn a8(x: i32, a: &mut i32, y: i32, z: &mut i32) {
-//~^ needless_pass_by_ref_mut
-//~| needless_pass_by_ref_mut
+    //~^ needless_pass_by_ref_mut
+    //~| needless_pass_by_ref_mut
 
     println!("{:?}", z);
 }
@@ -201,14 +200,10 @@ fn lint_attr(s: &mut u32) {}
 fn cfg_warn(s: &mut u32) {}
 //~^ needless_pass_by_ref_mut
 
-
-
 #[cfg(not(feature = "a"))]
 mod foo {
     fn cfg_warn(s: &mut u32) {}
     //~^ needless_pass_by_ref_mut
-
-
 }
 
 // Should not warn.
@@ -221,7 +216,7 @@ async fn inner_async(x: &mut i32, y: &mut u32) {
 }
 
 async fn inner_async2(x: &mut i32, y: &mut u32) {
-//~^ needless_pass_by_ref_mut
+    //~^ needless_pass_by_ref_mut
 
     async {
         *x += 1;
@@ -230,7 +225,7 @@ async fn inner_async2(x: &mut i32, y: &mut u32) {
 }
 
 async fn inner_async3(x: &mut i32, y: &mut u32) {
-//~^ needless_pass_by_ref_mut
+    //~^ needless_pass_by_ref_mut
 
     async {
         *y += 1;
@@ -250,7 +245,7 @@ async fn async_vec2(b: &mut Vec<bool>) {
 fn non_mut(n: &str) {}
 //Should warn
 async fn call_in_closure1(n: &mut str) {
-//~^ needless_pass_by_ref_mut
+    //~^ needless_pass_by_ref_mut
     (|| non_mut(n))()
 }
 fn str_mut(str: &mut String) -> bool {
@@ -270,7 +265,7 @@ async fn closure(n: &mut usize) -> impl '_ + FnMut() {
 
 // Should warn.
 fn closure2(n: &mut usize) -> impl '_ + FnMut() -> usize {
-//~^ needless_pass_by_ref_mut
+    //~^ needless_pass_by_ref_mut
 
     || *n + 1
 }
@@ -282,7 +277,7 @@ async fn closure3(n: &mut usize) {
 
 // Should warn.
 async fn closure4(n: &mut usize) {
-//~^ needless_pass_by_ref_mut
+    //~^ needless_pass_by_ref_mut
 
     (|| {
         let _x = *n + 1;
@@ -340,9 +335,8 @@ impl MutSelf {
     //~^ needless_pass_by_ref_mut
 
     async fn foo(&mut self, u: &mut i32, v: &mut u32) {
-    //~^ needless_pass_by_ref_mut
-    //~| needless_pass_by_ref_mut
-
+        //~^ needless_pass_by_ref_mut
+        //~| needless_pass_by_ref_mut
 
         async {
             *u += 1;
@@ -350,7 +344,7 @@ impl MutSelf {
         .await;
     }
     async fn foo2(&mut self, u: &mut i32, v: &mut u32) {
-    //~^ needless_pass_by_ref_mut
+        //~^ needless_pass_by_ref_mut
 
         async {
             self.a += 1;

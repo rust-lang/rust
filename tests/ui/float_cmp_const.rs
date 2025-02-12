@@ -28,14 +28,12 @@ fn main() {
     x as f32 == ONE;
     //~^ float_cmp_const
 
-
     let v = 0.9;
     v == ONE;
     //~^ float_cmp_const
 
     v != ONE;
     //~^ float_cmp_const
-
 
     // no errors, lower than or greater than comparisons
     v < ONE;
@@ -69,5 +67,4 @@ fn main() {
     // has errors
     NON_ZERO_ARRAY == NON_ZERO_ARRAY2;
     //~^ float_cmp_const
-
 }

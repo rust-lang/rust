@@ -42,7 +42,6 @@ pub fn g(x: Ordering) {
         Ordering::Release => println!("release"),
         Ordering::Acquire => println!("acquire"),
         //~^ match_same_arms
-
         _ => repeat(),
     }
 }
@@ -56,7 +55,6 @@ mod g {
             Ordering::Release => println!("release"),
             Ordering::Acquire => println!("acquire"),
             //~^ match_same_arms
-
             _ => repeat(),
         }
     }

@@ -2,6 +2,9 @@ error: this loop could be written as a `while let` loop
   --> tests/ui/while_let_loop.rs:6:5
    |
 LL | /     loop {
+LL | |
+LL | |
+LL | |         if let Some(_x) = y {
 ...  |
 LL | |     }
    | |_____^ help: try: `while let Some(_x) = y { .. }`
@@ -10,7 +13,7 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::while_let_loop)]`
 
 error: this loop could be written as a `while let` loop
-  --> tests/ui/while_let_loop.rs:26:5
+  --> tests/ui/while_let_loop.rs:25:5
    |
 LL | /     loop {
 LL | |
@@ -22,7 +25,7 @@ LL | |     }
    | |_____^ help: try: `while let Some(_x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
-  --> tests/ui/while_let_loop.rs:35:5
+  --> tests/ui/while_let_loop.rs:34:5
    |
 LL | /     loop {
 LL | |
@@ -34,7 +37,7 @@ LL | |     }
    | |_____^ help: try: `while let Some(x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
-  --> tests/ui/while_let_loop.rs:46:5
+  --> tests/ui/while_let_loop.rs:45:5
    |
 LL | /     loop {
 LL | |
@@ -45,7 +48,7 @@ LL | |     }
    | |_____^ help: try: `while let Some(x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
-  --> tests/ui/while_let_loop.rs:78:5
+  --> tests/ui/while_let_loop.rs:77:5
    |
 LL | /     loop {
 LL | |

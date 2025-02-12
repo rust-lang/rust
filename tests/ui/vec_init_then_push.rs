@@ -5,7 +5,6 @@ fn main() {
     let mut def_err: Vec<u32> = Default::default();
     //~^ vec_init_then_push
 
-
     def_err.push(0);
 
     let mut new_err = Vec::<u32>::new();

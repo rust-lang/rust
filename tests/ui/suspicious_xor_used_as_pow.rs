@@ -20,7 +20,6 @@ fn main() {
     let _ = 2 ^ 5;
     //~^ suspicious_xor_used_as_pow
 
-
     let _ = 2i32 ^ 9i32;
     //~^ suspicious_xor_used_as_pow
 

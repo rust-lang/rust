@@ -18,7 +18,7 @@ mod issue10041 {
 
     impl Bomb2 {
         pub fn new() -> X {
-	//~^ ERROR: overflow evaluating the requirement
+            //~^ ERROR: overflow evaluating the requirement
             0i32
         }
     }

@@ -6,7 +6,7 @@ fn main() {
             dbg!("matched a");
         },
         "bar" | _ => {
-        //~^ wildcard_in_or_patterns
+            //~^ wildcard_in_or_patterns
 
             dbg!("matched (bar or) wild");
         },
@@ -16,7 +16,7 @@ fn main() {
             dbg!("matched a");
         },
         "bar" | "bar2" | _ => {
-        //~^ wildcard_in_or_patterns
+            //~^ wildcard_in_or_patterns
 
             dbg!("matched (bar or bar2 or) wild");
         },
@@ -26,7 +26,7 @@ fn main() {
             dbg!("matched a");
         },
         _ | "bar" | _ => {
-        //~^ wildcard_in_or_patterns
+            //~^ wildcard_in_or_patterns
 
             dbg!("matched (bar or) wild");
         },
@@ -36,7 +36,7 @@ fn main() {
             dbg!("matched a");
         },
         _ | "bar" => {
-        //~^ wildcard_in_or_patterns
+            //~^ wildcard_in_or_patterns
 
             dbg!("matched (bar or) wild");
         },
@@ -71,7 +71,7 @@ fn main() {
             dbg!("Change the color");
         },
         ExhaustiveEnum::Quit | _ => {
-        //~^ wildcard_in_or_patterns
+            //~^ wildcard_in_or_patterns
             dbg!("Quit or other");
         },
     };
@@ -107,7 +107,7 @@ fn main() {
             dbg!("On the y axis at {y}");
         },
         ExhaustiveStruct { x: 1, y: 1 } | _ => {
-        //~^ wildcard_in_or_patterns
+            //~^ wildcard_in_or_patterns
             dbg!("On neither axis: ({x}, {y})");
         },
     }

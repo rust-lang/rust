@@ -10,7 +10,7 @@ fn get_enumerate() -> Enumerate<std::vec::IntoIter<i32>> {
 fn main() {
     let v = [1, 2, 3];
     for (_, x) in v.iter().enumerate() {
-    //~^ unused_enumerate_index
+        //~^ unused_enumerate_index
         println!("{x}");
     }
 
@@ -58,7 +58,7 @@ fn main() {
 
     let dummy = Dummy3(vec![1, 2, 3].into_iter());
     for (_, x) in dummy.enumerate() {
-    //~^ unused_enumerate_index
+        //~^ unused_enumerate_index
         println!("{x}");
     }
 

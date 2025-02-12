@@ -71,7 +71,7 @@ LL |         continue;
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> tests/ui/needless_continue.rs:71:9
+  --> tests/ui/needless_continue.rs:70:9
    |
 LL |         continue;
    |         ^^^^^^^^
@@ -79,7 +79,7 @@ LL |         continue;
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> tests/ui/needless_continue.rs:80:9
+  --> tests/ui/needless_continue.rs:78:9
    |
 LL |         continue
    |         ^^^^^^^^
@@ -87,7 +87,7 @@ LL |         continue
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> tests/ui/needless_continue.rs:90:9
+  --> tests/ui/needless_continue.rs:88:9
    |
 LL |         continue
    |         ^^^^^^^^
@@ -95,7 +95,7 @@ LL |         continue
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> tests/ui/needless_continue.rs:99:11
+  --> tests/ui/needless_continue.rs:97:11
    |
 LL |         { continue }
    |           ^^^^^^^^
@@ -103,7 +103,7 @@ LL |         { continue }
    = help: consider dropping the `continue` expression
 
 error: this `else` block is redundant
-  --> tests/ui/needless_continue.rs:151:24
+  --> tests/ui/needless_continue.rs:148:24
    |
 LL |                   } else {
    |  ________________________^
@@ -130,7 +130,7 @@ LL | |                 }
                            }
 
 error: there is no need for an explicit `else` block for this `if` expression
-  --> tests/ui/needless_continue.rs:159:17
+  --> tests/ui/needless_continue.rs:156:17
    |
 LL | /                 if condition() {
 LL | |
@@ -152,10 +152,18 @@ LL | |                 }
                            }
 
 error: this `continue` expression is redundant
-  --> tests/ui/needless_continue.rs:183:13
+  --> tests/ui/needless_continue.rs:180:13
    |
 LL |             continue 'b;
    |             ^^^^^^^^^^^
+   |
+   = help: consider dropping the `continue` expression
+
+error: this `continue` expression is redundant
+  --> tests/ui/needless_continue.rs:196:21
+   |
+LL |                     continue 'inner;
+   |                     ^^^^^^^^^^^^^^^
    |
    = help: consider dropping the `continue` expression
 
@@ -168,15 +176,7 @@ LL |                     continue 'inner;
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> tests/ui/needless_continue.rs:204:21
-   |
-LL |                     continue 'inner;
-   |                     ^^^^^^^^^^^^^^^
-   |
-   = help: consider dropping the `continue` expression
-
-error: this `continue` expression is redundant
-  --> tests/ui/needless_continue.rs:215:21
+  --> tests/ui/needless_continue.rs:211:21
    |
 LL |                     continue;
    |                     ^^^^^^^^
@@ -184,7 +184,7 @@ LL |                     continue;
    = help: consider dropping the `continue` expression
 
 error: this `else` block is redundant
-  --> tests/ui/needless_continue.rs:223:20
+  --> tests/ui/needless_continue.rs:219:20
    |
 LL |               } else {
    |  ____________________^
@@ -201,7 +201,7 @@ LL | |             }
                        }
 
 error: there is no need for an explicit `else` block for this `if` expression
-  --> tests/ui/needless_continue.rs:231:13
+  --> tests/ui/needless_continue.rs:227:13
    |
 LL | /             if some_expr() {
 LL | |

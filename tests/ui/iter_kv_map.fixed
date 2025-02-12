@@ -52,7 +52,7 @@ fn main() {
 
     // Preserve the mut in the fix.
     let _ = map
-    //~^ iter_kv_map
+        //~^ iter_kv_map
         .clone().into_values().map(|mut val| {
             val += 2;
             val
@@ -106,7 +106,7 @@ fn main() {
 
     // Preserve the mut in the fix.
     let _ = map
-    //~^ iter_kv_map
+        //~^ iter_kv_map
         .clone().into_values().map(|mut val| {
             val += 2;
             val
@@ -138,7 +138,6 @@ fn msrv_1_53() {
 
     let _ = map.values().map(|v| v + 2).collect::<Vec<_>>();
     //~^ iter_kv_map
-
 }
 
 #[clippy::msrv = "1.54"]
@@ -152,13 +151,11 @@ fn msrv_1_54() {
     let _ = map.clone().into_keys().map(|key| key + 2).collect::<Vec<_>>();
     //~^ iter_kv_map
 
-
     let _ = map.clone().into_values().collect::<Vec<_>>();
     //~^ iter_kv_map
 
     let _ = map.clone().into_values().map(|val| val + 2).collect::<Vec<_>>();
     //~^ iter_kv_map
-
 
     let _ = map.keys().collect::<Vec<_>>();
     //~^ iter_kv_map
@@ -168,5 +165,4 @@ fn msrv_1_54() {
 
     let _ = map.values().map(|v| v + 2).collect::<Vec<_>>();
     //~^ iter_kv_map
-
 }

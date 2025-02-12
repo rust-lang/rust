@@ -38,7 +38,7 @@ fn main() {
     //~^ redundant_pattern_matching
 
     if let Some(_) = Some(42) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         foo();
     } else {
         bar();
@@ -55,7 +55,7 @@ fn main() {
 
     let mut v = vec![1, 2, 3];
     while let Some(_) = v.pop() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         foo();
     }
 
@@ -64,19 +64,19 @@ fn main() {
     if Some(42).is_some() {}
 
     match Some(42) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Some(_) => true,
         None => false,
     };
 
     match None::<()> {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Some(_) => false,
         None => true,
     };
 
     let _ = match None::<()> {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Some(_) => false,
         None => true,
     };
@@ -90,10 +90,10 @@ fn main() {
     issue10803();
 
     let _ = if let Some(_) = gen_opt() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         1
     } else if let None = gen_opt() {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         2
     } else {
         3
@@ -128,13 +128,13 @@ const fn issue6067() {
     //~^ redundant_pattern_matching
 
     match Some(42) {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Some(_) => true,
         None => false,
     };
 
     match None::<()> {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Some(_) => false,
         None => true,
     };
@@ -152,25 +152,25 @@ fn issue10726() {
     let x = Some(42);
 
     match x {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Some(_) => true,
         _ => false,
     };
 
     match x {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         None => true,
         _ => false,
     };
 
     match x {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         Some(_) => false,
         _ => true,
     };
 
     match x {
-    //~^ redundant_pattern_matching
+        //~^ redundant_pattern_matching
         None => false,
         _ => true,
     };

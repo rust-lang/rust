@@ -7,11 +7,11 @@ fn main() {}
 
 fn variants(a: &str, b: &str) {
     if a.to_ascii_lowercase() == b.to_ascii_lowercase() {
-    //~^ manual_ignore_case_cmp
+        //~^ manual_ignore_case_cmp
         return;
     }
     if a.to_ascii_uppercase() == b.to_ascii_uppercase() {
-    //~^ manual_ignore_case_cmp
+        //~^ manual_ignore_case_cmp
         return;
     }
     let r = a.to_ascii_lowercase() == b.to_ascii_lowercase();
@@ -22,11 +22,11 @@ fn variants(a: &str, b: &str) {
     //~^ manual_ignore_case_cmp
     // !=
     if a.to_ascii_lowercase() != b.to_ascii_lowercase() {
-    //~^ manual_ignore_case_cmp
+        //~^ manual_ignore_case_cmp
         return;
     }
     if a.to_ascii_uppercase() != b.to_ascii_uppercase() {
-    //~^ manual_ignore_case_cmp
+        //~^ manual_ignore_case_cmp
         return;
     }
     let r = a.to_ascii_lowercase() != b.to_ascii_lowercase();

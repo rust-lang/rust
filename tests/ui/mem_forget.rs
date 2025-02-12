@@ -14,25 +14,17 @@ fn main() {
     memstuff::forget(six);
     //~^ mem_forget
 
-
-
     let seven: Rc<i32> = Rc::new(7);
     std::mem::forget(seven);
     //~^ mem_forget
-
-
 
     let eight: Vec<i32> = vec![8];
     forgetSomething(eight);
     //~^ mem_forget
 
-
-
     let string = String::new();
     std::mem::forget(string);
     //~^ mem_forget
-
-
 
     std::mem::forget(7);
 }

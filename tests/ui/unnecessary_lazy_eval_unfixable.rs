@@ -13,7 +13,6 @@ fn main() {
     let _ = Ok(1).unwrap_or_else(|()| 2);
     //~^ unnecessary_lazy_evaluations
 
-
     mod e {
         pub struct E;
     }
@@ -22,7 +21,6 @@ fn main() {
 
     let _ = Ok(1).unwrap_or_else(|SomeStruct { .. }| 2);
     //~^ unnecessary_lazy_evaluations
-
 
     // Fix #6343
     let arr = [(Some(1),)];

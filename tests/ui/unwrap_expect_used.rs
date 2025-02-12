@@ -30,7 +30,6 @@ fn main() {
     Some(3).expect("Hello world!");
     //~^ expect_used
 
-
     // Don't trigger on unwrap_err on an option
     Some(3).unwrap_err();
     Some(3).expect_err("Hello none!");

@@ -35,7 +35,7 @@ LL |     v[0] + v[1] + v[2] + v[3] + v[4]
    = help: to override `-D warnings` add `#[allow(clippy::missing_asserts_for_indexing)]`
 
 error: indexing into a slice multiple times without an `assert`
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:11:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:10:13
    |
 LL |       let _ = v[0];
    |  _____________^
@@ -45,19 +45,19 @@ LL | |     let _ = v[1..4];
    |
    = help: consider asserting the length before indexing: `assert!(v.len() > 3);`
 note: slice indexed here
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:11:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:10:13
    |
 LL |     let _ = v[0];
    |             ^^^^
 note: slice indexed here
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:14:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:13:13
    |
 LL |     let _ = v[1..4];
    |             ^^^^^^^
    = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times without an `assert`
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:18:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:17:13
    |
 LL |       let a = v[0];
    |  _____________^
@@ -69,112 +69,112 @@ LL | |     let c = v[2];
    |
    = help: consider asserting the length before indexing: `assert!(v.len() > 2);`
 note: slice indexed here
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:18:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:17:13
    |
 LL |     let a = v[0];
    |             ^^^^
 note: slice indexed here
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:21:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:20:13
    |
 LL |     let b = v[1];
    |             ^^^^
 note: slice indexed here
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:22:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:21:13
    |
 LL |     let c = v[2];
    |             ^^^^
    = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times without an `assert`
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:27:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:26:13
    |
 LL |     let _ = v1[0] + v1[12];
    |             ^^^^^^^^^^^^^^
    |
    = help: consider asserting the length before indexing: `assert!(v1.len() > 12);`
 note: slice indexed here
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:27:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:26:13
    |
 LL |     let _ = v1[0] + v1[12];
    |             ^^^^^
 note: slice indexed here
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:27:21
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:26:21
    |
 LL |     let _ = v1[0] + v1[12];
    |                     ^^^^^^
    = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times without an `assert`
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:29:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:28:13
    |
 LL |     let _ = v2[5] + v2[15];
    |             ^^^^^^^^^^^^^^
    |
    = help: consider asserting the length before indexing: `assert!(v2.len() > 15);`
 note: slice indexed here
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:29:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:28:13
    |
 LL |     let _ = v2[5] + v2[15];
    |             ^^^^^
 note: slice indexed here
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:29:21
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:28:21
    |
 LL |     let _ = v2[5] + v2[15];
    |                     ^^^^^^
    = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times without an `assert`
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:36:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:35:13
    |
 LL |     let _ = v2[5] + v2[15];
    |             ^^^^^^^^^^^^^^
    |
    = help: consider asserting the length before indexing: `assert!(v2.len() > 15);`
 note: slice indexed here
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:36:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:35:13
    |
 LL |     let _ = v2[5] + v2[15];
    |             ^^^^^
 note: slice indexed here
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:36:21
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:35:21
    |
 LL |     let _ = v2[5] + v2[15];
    |                     ^^^^^^
    = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times without an `assert`
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:46:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:45:13
    |
 LL |     let _ = f.v[0] + f.v[1];
    |             ^^^^^^^^^^^^^^^
    |
    = help: consider asserting the length before indexing: `assert!(f.v.len() > 1);`
 note: slice indexed here
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:46:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:45:13
    |
 LL |     let _ = f.v[0] + f.v[1];
    |             ^^^^^^
 note: slice indexed here
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:46:22
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:45:22
    |
 LL |     let _ = f.v[0] + f.v[1];
    |                      ^^^^^^
    = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times without an `assert`
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:61:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:59:13
    |
 LL |     let _ = x[0] + x[1];
    |             ^^^^^^^^^^^
    |
    = help: consider asserting the length before indexing: `assert!(x.len() > 1);`
 note: slice indexed here
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:61:13
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:59:13
    |
 LL |     let _ = x[0] + x[1];
    |             ^^^^
 note: slice indexed here
-  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:61:20
+  --> tests/ui/missing_asserts_for_indexing_unfixable.rs:59:20
    |
 LL |     let _ = x[0] + x[1];
    |                    ^^^^

@@ -341,7 +341,6 @@ fn direct_application() {
     let _: Result<(), std::io::Error> = test_issue_3913().map_err(From::from);
     //~^ useless_conversion
 
-
     let c: ControlFlow<()> = ControlFlow::Continue(());
     let _: ControlFlow<()> = c.map_break(Into::into);
     //~^ useless_conversion
@@ -349,7 +348,6 @@ fn direct_application() {
     let c: ControlFlow<()> = ControlFlow::Continue(());
     let _: ControlFlow<()> = c.map_continue(Into::into);
     //~^ useless_conversion
-
 
     struct Absorb;
     impl From<()> for Absorb {
@@ -365,7 +363,6 @@ fn direct_application() {
     let _: Vec<u32> = [1u32].into_iter().map(Into::into).collect();
     //~^ useless_conversion
 
-
     // No lint for those
     let _: Result<Absorb, std::io::Error> = test_issue_3913().map(Into::into);
     let _: Result<(), Absorb> = test_issue_3913().map_err(Into::into);
@@ -376,7 +373,6 @@ fn direct_application() {
 fn gen_identity<T>(x: [T; 3]) -> Vec<T> {
     x.into_iter().map(Into::into).collect()
     //~^ useless_conversion
-
 }
 
 mod issue11819 {
@@ -393,7 +389,6 @@ mod issue11819 {
         {
             takes_into_iter(self.my_field.into_iter());
             //~^ useless_conversion
-
         }
 
         pub fn with_ref_mut<'a>(&'a mut self)
@@ -402,7 +397,6 @@ mod issue11819 {
         {
             takes_into_iter(self.my_field.into_iter());
             //~^ useless_conversion
-
         }
 
         pub fn with_deref<Y>(&mut self)
@@ -412,7 +406,6 @@ mod issue11819 {
         {
             takes_into_iter(self.my_field.into_iter());
             //~^ useless_conversion
-
         }
 
         pub fn with_reborrow<'a, Y: 'a>(&'a mut self)
@@ -422,7 +415,6 @@ mod issue11819 {
         {
             takes_into_iter(self.my_field.into_iter());
             //~^ useless_conversion
-
         }
 
         pub fn with_reborrow_mut<'a, Y: 'a>(&'a mut self)
@@ -432,7 +424,6 @@ mod issue11819 {
         {
             takes_into_iter(self.my_field.into_iter());
             //~^ useless_conversion
-
         }
     }
 }

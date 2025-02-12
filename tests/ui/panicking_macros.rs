@@ -22,7 +22,6 @@ fn panic() {
     panic!();
     //~^ panic
 
-
     panic!("message");
     //~^ panic
 
@@ -36,7 +35,6 @@ fn todo() {
     let a = 2;
     todo!();
     //~^ todo
-
 
     todo!("message");
     //~^ todo
@@ -52,7 +50,6 @@ fn unimplemented() {
     unimplemented!();
     //~^ unimplemented
 
-
     unimplemented!("message");
     //~^ unimplemented
 
@@ -66,7 +63,6 @@ fn unreachable() {
     let a = 2;
     unreachable!();
     //~^ unreachable
-
 
     unreachable!("message");
     //~^ unreachable
@@ -90,7 +86,6 @@ fn core_versions() {
 
     unreachable!();
     //~^ unreachable
-
 }
 
 fn assert() {

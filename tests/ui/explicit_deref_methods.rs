@@ -67,7 +67,7 @@ fn main() {
 
     #[allow(clippy::match_single_binding)]
     match a.deref() {
-    //~^ explicit_deref_methods
+        //~^ explicit_deref_methods
         _ => (),
     }
 

@@ -14,5 +14,4 @@ fn main() {
     // Same for japanese.
     let カウンタ = 10;
     //~^ disallowed_script_idents
-
 }

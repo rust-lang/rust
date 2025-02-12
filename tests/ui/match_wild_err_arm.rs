@@ -22,8 +22,6 @@ fn match_wild_err_arm() {
         Ok(_) => println!("ok"),
         Err(_) => panic!("err"),
         //~^ match_wild_err_arm
-
-
     }
 
     match x {
@@ -31,16 +29,13 @@ fn match_wild_err_arm() {
         Ok(_) => println!("ok"),
         Err(_) => panic!(),
         //~^ match_wild_err_arm
-
-
     }
 
     match x {
         Ok(3) => println!("ok"),
         Ok(_) => println!("ok"),
         Err(_) => {
-        //~^ match_wild_err_arm
-
+            //~^ match_wild_err_arm
 
             panic!();
         },
@@ -51,8 +46,6 @@ fn match_wild_err_arm() {
         Ok(_) => println!("ok"),
         Err(_e) => panic!(),
         //~^ match_wild_err_arm
-
-
     }
 
     // Allowed when used in `panic!`.

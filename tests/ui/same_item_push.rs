@@ -22,7 +22,6 @@ fn main() {
     for _ in 5..=20 {
         vec.push(item);
         //~^ same_item_push
-
     }
 
     let mut vec: Vec<u8> = Vec::new();
@@ -30,21 +29,18 @@ fn main() {
         let item = 2;
         vec.push(item);
         //~^ same_item_push
-
     }
 
     let mut vec: Vec<u8> = Vec::new();
     for _ in 0..15 {
         vec.push(13);
         //~^ same_item_push
-
     }
 
     let mut vec = Vec::new();
     for _ in 0..20 {
         vec.push(VALUE);
         //~^ same_item_push
-
     }
 
     let mut vec = Vec::new();
@@ -52,7 +48,6 @@ fn main() {
     for _ in 0..20 {
         vec.push(item);
         //~^ same_item_push
-
     }
 
     #[clippy::msrv = "1.81"]
@@ -62,7 +57,6 @@ fn main() {
         for _ in 0..20 {
             vec.push(item);
             //~^ same_item_push
-
         }
     }
 

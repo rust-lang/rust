@@ -8,8 +8,6 @@ fn main() {}
 fn should_warn_simple_case() {
     let v = vec![Arc::new("x".to_string()); 2];
     //~^ rc_clone_in_vec_init
-
-
 }
 
 fn should_warn_simple_case_with_big_indentation() {
@@ -19,8 +17,6 @@ fn should_warn_simple_case_with_big_indentation() {
         if true {
             let v = vec![Arc::new("x".to_string()); 2];
             //~^ rc_clone_in_vec_init
-
-
         }
     }
 }

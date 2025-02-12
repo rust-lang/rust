@@ -5,7 +5,6 @@ fn unwrap_option() {
     let opt = Some(0);
     let _ = opt.unwrap();
     //~^ unwrap_used
-
 }
 
 fn unwrap_result() {
@@ -15,7 +14,6 @@ fn unwrap_result() {
 
     let _ = res.unwrap_err();
     //~^ unwrap_used
-
 }
 
 fn main() {

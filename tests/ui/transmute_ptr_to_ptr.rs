@@ -59,7 +59,6 @@ fn transmute_ptr_to_ptr() {
 
         let _: *mut u32 = transmute(ptr);
         //~^ transmute_ptr_to_ptr
-
     }
 
     // transmute internal lifetimes, should not lint
@@ -72,7 +71,6 @@ fn transmute_ptr_to_ptr() {
 fn lifetime_to_static(v: *mut &()) -> *const &'static () {
     unsafe { transmute(v) }
     //~^ transmute_ptr_to_ptr
-
 }
 
 // dereferencing raw pointers in const contexts, should not lint as it's unstable (issue 5959)

@@ -7,9 +7,6 @@ fn bla() {
     //~| many_single_char_names
     //~| many_single_char_names
 
-
-
-
     let (b, c, d): (i32, i64, i16);
     {
         {
@@ -37,11 +34,9 @@ fn bla() {
 fn bindings(a: i32, b: i32, c: i32, d: i32, e: i32, f: i32, g: i32, h: i32) {}
 //~^ many_single_char_names
 
-
 fn bindings2() {
     let (a, b, c, d, e, f, g, h): (bool, bool, bool, bool, bool, bool, bool, bool) = unimplemented!();
     //~^ many_single_char_names
-
 }
 
 fn shadowing() {

@@ -35,7 +35,7 @@ fn main() {
     (0..10).map(|_| 3);
     //~^ map_with_unused_argument_over_ranges
     (0..10).map(|_| {
-    //~^ map_with_unused_argument_over_ranges
+        //~^ map_with_unused_argument_over_ranges
         let x = 3;
         x + 2
     });

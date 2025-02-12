@@ -5,7 +5,7 @@ struct Foo;
 
 impl Foo {
     fn this_wont_hurt_a_bit(&self) -> &mut Foo {
-    //~^ mut_from_ref
+        //~^ mut_from_ref
 
         unsafe { unimplemented!() }
     }
@@ -14,7 +14,6 @@ impl Foo {
 trait Ouch {
     fn ouch(x: &Foo) -> &mut Foo;
     //~^ mut_from_ref
-
 }
 
 impl Ouch for Foo {
@@ -24,19 +23,19 @@ impl Ouch for Foo {
 }
 
 fn fail(x: &u32) -> &mut u16 {
-//~^ mut_from_ref
+    //~^ mut_from_ref
 
     unsafe { unimplemented!() }
 }
 
 fn fail_lifetime<'a>(x: &'a u32, y: &mut u32) -> &'a mut u32 {
-//~^ mut_from_ref
+    //~^ mut_from_ref
 
     unsafe { unimplemented!() }
 }
 
 fn fail_double<'a, 'b>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
-//~^ mut_from_ref
+    //~^ mut_from_ref
 
     unsafe { unimplemented!() }
 }
@@ -52,7 +51,7 @@ fn also_works<'a>(x: &'a u32, y: &'a mut u32) -> &'a mut u32 {
 }
 
 unsafe fn also_broken(x: &u32) -> &mut u32 {
-//~^ mut_from_ref
+    //~^ mut_from_ref
 
     unimplemented!()
 }

@@ -13,18 +13,15 @@ fn invalid() {
     let peekable = std::iter::empty::<u32>().peekable();
     //~^ unused_peekable
 
-
     // Only lint `new_local`
     let old_local = std::iter::empty::<u32>().peekable();
     let new_local = old_local;
     //~^ unused_peekable
 
-
     // Behind mut ref
     let mut by_mut_ref_test = std::iter::empty::<u32>().peekable();
     let by_mut_ref = &mut by_mut_ref_test;
     //~^ unused_peekable
-
 
     // Explicitly returns `Peekable`
     fn returns_peekable() -> Peekable<Empty<u32>> {
@@ -33,7 +30,6 @@ fn invalid() {
 
     let peekable_from_fn = returns_peekable();
     //~^ unused_peekable
-
 
     // Using a method not exclusive to `Peekable`
     let mut peekable_using_iterator_method = std::iter::empty::<u32>().peekable();
@@ -52,7 +48,6 @@ fn invalid() {
     let mut by_ref_test = std::iter::empty::<u32>().peekable();
     let _by_ref = by_ref_test.by_ref();
     //~^ unused_peekable
-
 
     let mut peekable_in_for_loop = std::iter::empty::<u32>().peekable();
     //~^ unused_peekable

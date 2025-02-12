@@ -10,37 +10,36 @@ struct A {
 
 impl A {
     fn a(&self) -> &u8 {
-    //~^ misnamed_getters
-
+        //~^ misnamed_getters
 
         &self.b
     }
     fn a_mut(&mut self) -> &mut u8 {
-    //~^ misnamed_getters
+        //~^ misnamed_getters
 
         &mut self.b
     }
 
     fn b(self) -> u8 {
-    //~^ misnamed_getters
+        //~^ misnamed_getters
 
         self.a
     }
 
     fn b_mut(&mut self) -> &mut u8 {
-    //~^ misnamed_getters
+        //~^ misnamed_getters
 
         &mut self.a
     }
 
     fn c(&self) -> &u8 {
-    //~^ misnamed_getters
+        //~^ misnamed_getters
 
         &self.b
     }
 
     fn c_mut(&mut self) -> &mut u8 {
-    //~^ misnamed_getters
+        //~^ misnamed_getters
 
         &mut self.a
     }
@@ -53,24 +52,24 @@ union B {
 
 impl B {
     unsafe fn a(&self) -> &u8 {
-    //~^ misnamed_getters
+        //~^ misnamed_getters
 
         &self.b
     }
     unsafe fn a_mut(&mut self) -> &mut u8 {
-    //~^ misnamed_getters
+        //~^ misnamed_getters
 
         &mut self.b
     }
 
     unsafe fn b(self) -> u8 {
-    //~^ misnamed_getters
+        //~^ misnamed_getters
 
         self.a
     }
 
     unsafe fn b_mut(&mut self) -> &mut u8 {
-    //~^ misnamed_getters
+        //~^ misnamed_getters
 
         &mut self.a
     }
@@ -84,24 +83,24 @@ impl B {
     }
 
     unsafe fn a_unchecked(&self) -> &u8 {
-    //~^ misnamed_getters
+        //~^ misnamed_getters
 
         &self.b
     }
     unsafe fn a_unchecked_mut(&mut self) -> &mut u8 {
-    //~^ misnamed_getters
+        //~^ misnamed_getters
 
         &mut self.b
     }
 
     unsafe fn b_unchecked(self) -> u8 {
-    //~^ misnamed_getters
+        //~^ misnamed_getters
 
         self.a
     }
 
     unsafe fn b_unchecked_mut(&mut self) -> &mut u8 {
-    //~^ misnamed_getters
+        //~^ misnamed_getters
 
         &mut self.a
     }
@@ -135,23 +134,23 @@ impl core::ops::DerefMut for D {
 
 impl D {
     fn a(&self) -> &u8 {
-    //~^ misnamed_getters
+        //~^ misnamed_getters
 
         &self.b
     }
     fn a_mut(&mut self) -> &mut u8 {
-    //~^ misnamed_getters
+        //~^ misnamed_getters
 
         &mut self.b
     }
 
     fn d(&self) -> &u8 {
-    //~^ misnamed_getters
+        //~^ misnamed_getters
 
         &self.b
     }
     fn d_mut(&mut self) -> &mut u8 {
-    //~^ misnamed_getters
+        //~^ misnamed_getters
 
         &mut self.b
     }

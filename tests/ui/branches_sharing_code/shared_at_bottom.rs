@@ -35,7 +35,6 @@ fn simple_examples() {
         let result = false;
         //~^ branches_sharing_code
 
-
         println!("Block end!");
         result
     };
@@ -55,7 +54,6 @@ fn simple_examples() {
         println!("This is also eq with the else block");
         println!("Same end of block");
         //~^ branches_sharing_code
-
     }
 
     // Use of outer scope value
@@ -73,8 +71,7 @@ fn simple_examples() {
         println!("I'm a local because I use the value `z`: `{}`", z);
 
         println!(
-        //~^ branches_sharing_code
-
+            //~^ branches_sharing_code
             "I'm moveable because I know: `outer_scope_value`: '{}'",
             outer_scope_value
         );
@@ -88,7 +85,6 @@ fn simple_examples() {
         } else {
             println!("Hello World");
             //~^ branches_sharing_code
-
         }
     }
 }
@@ -188,8 +184,6 @@ fn added_note_for_expression_use() -> u32 {
         let _ = 6;
         x << 2
         //~^ branches_sharing_code
-
-
     };
 
     if x == 9 {
@@ -198,8 +192,6 @@ fn added_note_for_expression_use() -> u32 {
         let _ = 17;
         x * 4
         //~^ branches_sharing_code
-
-
     }
 }
 

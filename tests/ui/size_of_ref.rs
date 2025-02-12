@@ -15,7 +15,6 @@ fn main() {
 
     size_of_val(&y);
     //~^ size_of_ref
-
 }
 
 struct S {
@@ -28,6 +27,5 @@ impl S {
     pub fn size(&self) -> usize {
         std::mem::size_of_val(&self) + (std::mem::size_of::<u8>() * self.data.capacity())
         //~^ size_of_ref
-
     }
 }

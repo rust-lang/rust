@@ -16,7 +16,6 @@ fn main() {
         let writer = lock.write().unwrap();
         //~^ readonly_write_lock
 
-
         dbg!(&writer);
     }
 

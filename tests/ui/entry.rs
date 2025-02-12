@@ -22,13 +22,13 @@ fn foo() {}
 fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, m2: &mut HashMap<K, V>, k: K, k2: K, v: V, v2: V) {
     // or_insert(v)
     if !m.contains_key(&k) {
-    //~^ map_entry
+        //~^ map_entry
         m.insert(k, v);
     }
 
     // semicolon on insert, use or_insert_with(..)
     if !m.contains_key(&k) {
-    //~^ map_entry
+        //~^ map_entry
         if true {
             m.insert(k, v);
         } else {
@@ -38,7 +38,7 @@ fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, m2: &mut HashMa
 
     // semicolon on if, use or_insert_with(..)
     if !m.contains_key(&k) {
-    //~^ map_entry
+        //~^ map_entry
         if true {
             m.insert(k, v)
         } else {
@@ -48,7 +48,7 @@ fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, m2: &mut HashMa
 
     // early return, use if let
     if !m.contains_key(&k) {
-    //~^ map_entry
+        //~^ map_entry
         if true {
             m.insert(k, v);
         } else {
@@ -59,14 +59,14 @@ fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, m2: &mut HashMa
 
     // use or_insert_with(..)
     if !m.contains_key(&k) {
-    //~^ map_entry
+        //~^ map_entry
         foo();
         m.insert(k, v);
     }
 
     // semicolon on insert and match, use or_insert_with(..)
     if !m.contains_key(&k) {
-    //~^ map_entry
+        //~^ map_entry
         match 0 {
             1 if true => {
                 m.insert(k, v);
@@ -79,7 +79,7 @@ fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, m2: &mut HashMa
 
     // one branch doesn't insert, use if let
     if !m.contains_key(&k) {
-    //~^ map_entry
+        //~^ map_entry
         match 0 {
             0 => foo(),
             _ => {
@@ -90,7 +90,7 @@ fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, m2: &mut HashMa
 
     // use or_insert_with
     if !m.contains_key(&k) {
-    //~^ map_entry
+        //~^ map_entry
         foo();
         match 0 {
             0 if false => {
@@ -125,7 +125,7 @@ fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, m2: &mut HashMa
 
     // macro_expansion test, use or_insert(..)
     if !m.contains_key(&m!(k)) {
-    //~^ map_entry
+        //~^ map_entry
         m.insert(m!(k), m!(v));
     }
 
@@ -158,7 +158,7 @@ fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, m2: &mut HashMa
 
     // or_insert_with. Partial move of a local declared in the closure is ok.
     if !m.contains_key(&k) {
-    //~^ map_entry
+        //~^ map_entry
         let x = (String::new(), String::new());
         let _ = x.0;
         m.insert(k, v);
@@ -192,7 +192,7 @@ pub fn issue_11935() {
 
 fn issue12489(map: &mut HashMap<u64, u64>) -> Option<()> {
     if !map.contains_key(&1) {
-    //~^ map_entry
+        //~^ map_entry
         let Some(1) = Some(2) else {
             return None;
         };

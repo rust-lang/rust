@@ -16,18 +16,18 @@ fn unit(_i: isize) {}
 fn main() {
     let mut structs = vec![Struct { field: 2 }, Struct { field: 1 }];
     structs.sort_by_key(|s| {
-    //~^ unit_return_expecting_ord
+        //~^ unit_return_expecting_ord
 
         double(s.field);
     });
     structs.sort_by_key(|s| double(s.field));
     structs.is_sorted_by_key(|s| {
-    //~^ unit_return_expecting_ord
+        //~^ unit_return_expecting_ord
 
         double(s.field);
     });
     structs.is_sorted_by_key(|s| {
-    //~^ unit_return_expecting_ord
+        //~^ unit_return_expecting_ord
 
         if s.field > 0 {
             ()
@@ -40,5 +40,4 @@ fn main() {
     });
     structs.sort_by_key(|s| unit(s.field));
     //~^ unit_return_expecting_ord
-
 }

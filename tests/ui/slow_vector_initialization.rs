@@ -14,7 +14,6 @@ fn extend_vector() {
     let mut vec1 = Vec::with_capacity(len);
     //~^ slow_vector_initialization
 
-
     vec1.extend(repeat(0).take(len));
 
     // Extend with len expression

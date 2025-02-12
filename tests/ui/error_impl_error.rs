@@ -7,7 +7,6 @@ pub mod a {
     pub struct Error;
     //~^ error_impl_error
 
-
     impl std::fmt::Display for Error {
         fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             todo!()
@@ -22,7 +21,6 @@ mod b {
     pub(super) enum Error {}
     //~^ error_impl_error
 
-
     impl std::fmt::Display for Error {
         fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             todo!()
@@ -34,8 +32,7 @@ mod b {
 
 pub mod c {
     pub union Error {
-    //~^ error_impl_error
-
+        //~^ error_impl_error
         a: u32,
         b: u32,
     }
@@ -58,7 +55,6 @@ pub mod c {
 pub mod d {
     pub type Error = std::fmt::Error;
     //~^ error_impl_error
-
 }
 
 mod e {

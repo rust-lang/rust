@@ -67,7 +67,6 @@ fn no_suggestion_if_comments_present() {
         // a lovely comment explaining the code in very detail
         .map(|x| x.iter())
         //~^ map_flatten
-
         // the answer to life, the universe and everything could be here
         .flatten();
 }

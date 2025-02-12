@@ -50,7 +50,6 @@ fn main() {
         // unnecessary
         x.expect("an error message");
         //~^ unnecessary_unwrap
-
     } else {
         // will panic
         x.unwrap();
@@ -59,18 +58,15 @@ fn main() {
         // will panic
         x.expect("an error message");
         //~^ panicking_unwrap
-
     }
     if x.is_none() {
         // will panic
         x.unwrap();
         //~^ panicking_unwrap
-
     } else {
         // unnecessary
         x.unwrap();
         //~^ unnecessary_unwrap
-
     }
     m!(x);
     // ok
@@ -92,7 +88,6 @@ fn main() {
         // will panic
         x.unwrap_err();
         //~^ panicking_unwrap
-
     } else {
         // will panic
         x.unwrap();
@@ -105,7 +100,6 @@ fn main() {
         // unnecessary
         x.unwrap_err();
         //~^ unnecessary_unwrap
-
     }
     if x.is_err() {
         // will panic
@@ -115,7 +109,6 @@ fn main() {
         // unnecessary
         x.unwrap_err();
         //~^ unnecessary_unwrap
-
     } else {
         // unnecessary
         x.unwrap();
@@ -124,7 +117,6 @@ fn main() {
         // will panic
         x.unwrap_err();
         //~^ panicking_unwrap
-
     }
     if x.is_ok() {
         x = Err(());
@@ -150,11 +142,9 @@ fn issue11371() {
     if option.is_some() {
         option.as_ref().unwrap();
         //~^ unnecessary_unwrap
-
     } else {
         option.as_ref().unwrap();
         //~^ panicking_unwrap
-
     }
 
     let result = Ok::<(), ()>(());
@@ -162,33 +152,27 @@ fn issue11371() {
     if result.is_ok() {
         result.as_ref().unwrap();
         //~^ unnecessary_unwrap
-
     } else {
         result.as_ref().unwrap();
         //~^ panicking_unwrap
-
     }
 
     let mut option = Some(());
     if option.is_some() {
         option.as_mut().unwrap();
         //~^ unnecessary_unwrap
-
     } else {
         option.as_mut().unwrap();
         //~^ panicking_unwrap
-
     }
 
     let mut result = Ok::<(), ()>(());
     if result.is_ok() {
         result.as_mut().unwrap();
         //~^ unnecessary_unwrap
-
     } else {
         result.as_mut().unwrap();
         //~^ panicking_unwrap
-
     }
 
     // This should not lint. Statics are, at the time of writing, not linted on anyway,
@@ -197,7 +181,7 @@ fn issue11371() {
     static mut X: Option<i32> = Some(123);
     unsafe {
         if X.is_some() {
-	//~^ ERROR: creating a shared reference
+            //~^ ERROR: creating a shared reference
             X = None;
             X.unwrap();
         }

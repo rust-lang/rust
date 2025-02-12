@@ -74,7 +74,6 @@ fn main() {
     let _ = l(0_u32);
     //~^ let_underscore_must_use
 
-
     let s = S {};
 
     let _ = s.f();
@@ -91,28 +90,22 @@ fn main() {
     let _ = S::p();
     //~^ let_underscore_must_use
 
-
     let _ = S::a();
     //~^ let_underscore_must_use
 
-
     let _ = if true { Ok(()) } else { Err(()) };
     //~^ let_underscore_must_use
-
 
     let a = Result::<(), ()>::Ok(());
 
     let _ = a.is_ok();
     //~^ let_underscore_must_use
 
-
     let _ = a.map(|_| ());
     //~^ let_underscore_must_use
 
-
     let _ = a;
     //~^ let_underscore_must_use
-
 
     #[allow(clippy::let_underscore_must_use)]
     let _ = a;

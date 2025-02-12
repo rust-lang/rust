@@ -20,19 +20,19 @@ LL |     twice(x) != twice(ONE as f64);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider comparing them within some margin of error: `(twice(x) - twice(ONE as f64)).abs() > error_margin`
 
 error: strict comparison of `f32` or `f64`
-  --> tests/ui/float_cmp.rs:106:5
+  --> tests/ui/float_cmp.rs:105:5
    |
 LL |     NON_ZERO_ARRAY[i] == NON_ZERO_ARRAY[j];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider comparing them within some margin of error: `(NON_ZERO_ARRAY[i] - NON_ZERO_ARRAY[j]).abs() < error_margin`
 
 error: strict comparison of `f32` or `f64` arrays
-  --> tests/ui/float_cmp.rs:113:5
+  --> tests/ui/float_cmp.rs:111:5
    |
 LL |     a1 == a2;
    |     ^^^^^^^^
 
 error: strict comparison of `f32` or `f64`
-  --> tests/ui/float_cmp.rs:116:5
+  --> tests/ui/float_cmp.rs:114:5
    |
 LL |     a1[0] == a2[0];
    |     ^^^^^^^^^^^^^^ help: consider comparing them within some margin of error: `(a1[0] - a2[0]).abs() < error_margin`

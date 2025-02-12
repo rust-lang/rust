@@ -3,14 +3,13 @@
 
 fn check(x: Option<u32>) {
     _ = match x.as_ref() {
-    //~^ manual_option_as_slice
-
+        //~^ manual_option_as_slice
         Some(f) => std::slice::from_ref(f),
         None => &[],
     };
 
     _ = if let Some(f) = x.as_ref() {
-    //~^ manual_option_as_slice
+        //~^ manual_option_as_slice
 
         std::slice::from_ref(f)
     } else {
@@ -20,24 +19,19 @@ fn check(x: Option<u32>) {
     _ = x.as_ref().map_or(&[][..], std::slice::from_ref);
     //~^ manual_option_as_slice
 
-
     _ = x.as_ref().map_or_else(Default::default, std::slice::from_ref);
     //~^ manual_option_as_slice
-
 
     _ = x.as_ref().map(std::slice::from_ref).unwrap_or_default();
     //~^ manual_option_as_slice
 
-
     _ = x.as_ref().map_or_else(|| &[42][..0], std::slice::from_ref);
     //~^ manual_option_as_slice
-
 
     {
         use std::slice::from_ref;
         _ = x.as_ref().map_or_else(<&[_]>::default, from_ref);
         //~^ manual_option_as_slice
-
     }
 
     // possible false positives

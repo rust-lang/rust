@@ -13,7 +13,6 @@ pub fn positives(mut a: usize, b: &mut u32, mut s: S) {
     a = a;
     //~^ self_assignment
 
-
     *b = *b;
     //~^ self_assignment
 
@@ -38,14 +37,12 @@ pub fn positives(mut a: usize, b: &mut u32, mut s: S) {
     s.b[a + 10] = s.b[10 + a];
     //~^ self_assignment
 
-
     let mut t = (0, 1);
     t.1 = t.1;
     //~^ self_assignment
 
     t.0 = (t.0);
     //~^ self_assignment
-
 }
 
 pub fn negatives_not_equal(mut a: usize, b: &mut usize, mut s: S) {

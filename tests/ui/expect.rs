@@ -5,7 +5,6 @@ fn expect_option() {
     let opt = Some(0);
     let _ = opt.expect("");
     //~^ expect_used
-
 }
 
 fn expect_result() {
@@ -15,7 +14,6 @@ fn expect_result() {
 
     let _ = res.expect_err("");
     //~^ expect_used
-
 }
 
 fn main() {

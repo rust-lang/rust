@@ -11,7 +11,6 @@ fn test(path: &Path) {
     path.extension().is_some_and(|ext| ext == "md");
     //~^ path_ends_with_ext
 
-
     // some "extensions" are allowed by default
     path.ends_with(".git");
 
@@ -32,7 +31,6 @@ fn test(path: &Path) {
 fn under_msv(path: &Path) -> bool {
     path.extension().map_or(false, |ext| ext == "md")
     //~^ path_ends_with_ext
-
 }
 
 fn main() {}

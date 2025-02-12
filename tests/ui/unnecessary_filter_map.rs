@@ -5,9 +5,8 @@ fn main() {
     let _ = (0..4).filter_map(|x| if x > 1 { Some(x) } else { None });
     //~^ unnecessary_filter_map
 
-
     let _ = (0..4).filter_map(|x| {
-    //~^ unnecessary_filter_map
+        //~^ unnecessary_filter_map
 
         if x > 1 {
             return Some(x);
@@ -15,15 +14,13 @@ fn main() {
         None
     });
     let _ = (0..4).filter_map(|x| match x {
-    //~^ unnecessary_filter_map
-
+        //~^ unnecessary_filter_map
         0 | 1 => None,
         _ => Some(x),
     });
 
     let _ = (0..4).filter_map(|x| Some(x + 1));
     //~^ unnecessary_filter_map
-
 
     let _ = (0..4).filter_map(i32::checked_abs);
 

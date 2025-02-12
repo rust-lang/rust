@@ -86,7 +86,7 @@ impl Deref for DerefToString {
 fn main() {
     let x = [1, 2];
     if x.is_empty() {
-    //~^ len_zero
+        //~^ len_zero
         println!("This should not happen!");
     }
 
@@ -134,23 +134,23 @@ fn main() {
 
     let has_is_empty = HasIsEmpty;
     if has_is_empty.is_empty() {
-    //~^ len_zero
+        //~^ len_zero
         println!("Or this!");
     }
     if !has_is_empty.is_empty() {
-    //~^ len_zero
+        //~^ len_zero
         println!("Or this!");
     }
     if !has_is_empty.is_empty() {
-    //~^ len_zero
+        //~^ len_zero
         println!("Or this!");
     }
     if has_is_empty.is_empty() {
-    //~^ len_zero
+        //~^ len_zero
         println!("Or this!");
     }
     if !has_is_empty.is_empty() {
-    //~^ len_zero
+        //~^ len_zero
         println!("Or this!");
     }
     if has_is_empty.len() > 1 {
@@ -162,23 +162,23 @@ fn main() {
         println!("This can happen.");
     }
     if has_is_empty.is_empty() {
-    //~^ len_zero
+        //~^ len_zero
         println!("Or this!");
     }
     if !has_is_empty.is_empty() {
-    //~^ len_zero
+        //~^ len_zero
         println!("Or this!");
     }
     if !has_is_empty.is_empty() {
-    //~^ len_zero
+        //~^ len_zero
         println!("Or this!");
     }
     if !has_is_empty.is_empty() {
-    //~^ len_zero
+        //~^ len_zero
         println!("Or this!");
     }
     if has_is_empty.is_empty() {
-    //~^ len_zero
+        //~^ len_zero
         println!("Or this!");
     }
     if 1 < has_is_empty.len() {
@@ -193,7 +193,7 @@ fn main() {
 
     let with_is_empty: &dyn WithIsEmpty = &Wither;
     if with_is_empty.is_empty() {
-    //~^ len_zero
+        //~^ len_zero
         println!("Or this!");
     }
     assert!(!with_is_empty.is_empty());

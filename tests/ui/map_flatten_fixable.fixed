@@ -42,7 +42,7 @@ fn issue8734() {
     let _ = [0u8, 1, 2, 3]
         .into_iter()
         .flat_map(|n| match n {
-        //~^ map_flatten
+            //~^ map_flatten
             1 => [n
                 .saturating_add(1)
                 .saturating_add(1)

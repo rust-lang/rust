@@ -17,7 +17,6 @@ fn main() {
     let _ = !true;
     //~^ nonminimal_bool
 
-
     let _ = !false;
     //~^ nonminimal_bool
 
@@ -38,7 +37,6 @@ fn main() {
 
     let _ = !a && !(b && c);
     //~^ nonminimal_bool
-
 }
 
 fn equality_stuff() {
@@ -60,7 +58,6 @@ fn equality_stuff() {
 
     let _ = a != b && !(a != b && c == d);
     //~^ nonminimal_bool
-
 }
 
 fn issue3847(a: u32, b: u32) -> bool {
@@ -91,7 +88,7 @@ fn check_expect() {
 
 fn issue9428() {
     if matches!(true, true) && true {
-    //~^ nonminimal_bool
+        //~^ nonminimal_bool
 
         println!("foo");
     }
@@ -171,35 +168,35 @@ fn issue11932() {
 
 fn issue_5794() {
     let a = 0;
-if !(12 == a) {}
-//~^ nonminimal_bool
-if !(a == 12) {}
-//~^ nonminimal_bool
-if !(12 != a) {}
-//~^ nonminimal_bool
-if !(a != 12) {}
-//~^ nonminimal_bool
+    if !(12 == a) {}
+    //~^ nonminimal_bool
+    if !(a == 12) {}
+    //~^ nonminimal_bool
+    if !(12 != a) {}
+    //~^ nonminimal_bool
+    if !(a != 12) {}
+    //~^ nonminimal_bool
 
     let b = true;
     let c = false;
-if !b == true {}
-//~^ nonminimal_bool
-//~| bool_comparison
-//~| bool_comparison
-if !b != true {}
-//~^ nonminimal_bool
-//~| bool_comparison
-if true == !b {}
-//~^ nonminimal_bool
-//~| bool_comparison
-//~| bool_comparison
-if true != !b {}
-//~^ nonminimal_bool
-//~| bool_comparison
-if !b == !c {}
-//~^ nonminimal_bool
-if !b != !c {}
-//~^ nonminimal_bool
+    if !b == true {}
+    //~^ nonminimal_bool
+    //~| bool_comparison
+    //~| bool_comparison
+    if !b != true {}
+    //~^ nonminimal_bool
+    //~| bool_comparison
+    if true == !b {}
+    //~^ nonminimal_bool
+    //~| bool_comparison
+    //~| bool_comparison
+    if true != !b {}
+    //~^ nonminimal_bool
+    //~| bool_comparison
+    if !b == !c {}
+    //~^ nonminimal_bool
+    if !b != !c {}
+    //~^ nonminimal_bool
 }
 
 fn issue_12371(x: usize) -> bool {
@@ -215,7 +212,7 @@ fn many_ops(a: bool, b: bool, c: bool, d: bool, e: bool, f: bool) -> bool {
 
 fn issue14184(a: f32, b: bool) {
     if !(a < 2.0 && !b) {
-    //~^ nonminimal_bool
+        //~^ nonminimal_bool
         println!("Hi");
     }
 }

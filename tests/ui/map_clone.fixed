@@ -78,22 +78,16 @@ fn main() {
     let y = x.cloned();
     //~^ map_clone
 
-
     let y = x.cloned();
     //~^ map_clone
-
-
 
     let x: Option<u32> = Some(0);
     let x = x.as_ref(); // We do this to prevent triggering the `useless_asref` lint.
     let y = x.copied();
     //~^ map_clone
 
-
     let y = x.copied();
     //~^ map_clone
-
-
 
     // Should not suggest `copied` or `cloned` here since `T` is not a reference.
     let x: Option<u32> = Some(0);
@@ -106,22 +100,16 @@ fn main() {
     let y = x.cloned();
     //~^ map_clone
 
-
     let y = x.cloned();
     //~^ map_clone
-
-
 
     let x: Result<u32, ()> = Ok(0);
     let x = x.as_ref(); // We do this to prevent triggering the `useless_asref` lint.
     let y = x.copied();
     //~^ map_clone
 
-
     let y = x.copied();
     //~^ map_clone
-
-
 
     // Should not suggest `copied` or `cloned` here since `T` is not a reference.
     let x: Result<u32, ()> = Ok(0);

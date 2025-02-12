@@ -18,12 +18,12 @@ impl Bar {
         Self
     }
     pub fn foo(&self) -> Self {
-    //~^ return_self_not_must_use
+        //~^ return_self_not_must_use
 
         Self
     }
     pub fn bar(self) -> Self {
-    //~^ return_self_not_must_use
+        //~^ return_self_not_must_use
 
         self
     }

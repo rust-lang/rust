@@ -16,7 +16,7 @@ mod m1 {
     }
 
     pub(crate) mod m1_2 {
-    //~^ redundant_pub_crate
+        //~^ redundant_pub_crate
         //:^ private due to m1
         fn f() {}
         pub(crate) fn g() {} // private due to m1_2 and m1
@@ -46,7 +46,7 @@ pub(crate) mod m2 {
     }
 
     pub(crate) mod m2_2 {
-    //~^ redundant_pub_crate
+        //~^ redundant_pub_crate
         //:^ already crate visible due to m2
         fn f() {}
         pub(crate) fn g() {} // already crate visible due to m2_2 and m2
@@ -103,7 +103,7 @@ mod m4 {
     }
 
     pub(crate) mod m4_2 {
-    //~^ redundant_pub_crate
+        //~^ redundant_pub_crate
         //:^ private: not re-exported by `pub use m4::*`
         fn f() {}
         pub(crate) fn g() {} // private due to m4_2

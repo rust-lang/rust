@@ -3,21 +3,21 @@
 
 #[must_use]
 pub fn must_use_result() -> Result<(), ()> {
-//~^ double_must_use
+    //~^ double_must_use
 
     unimplemented!();
 }
 
 #[must_use]
 pub fn must_use_tuple() -> (Result<(), ()>, u8) {
-//~^ double_must_use
+    //~^ double_must_use
 
     unimplemented!();
 }
 
 #[must_use]
 pub fn must_use_array() -> [Result<(), ()>; 1] {
-//~^ double_must_use
+    //~^ double_must_use
 
     unimplemented!();
 }
@@ -35,7 +35,7 @@ async fn async_must_use() -> usize {
 
 #[must_use]
 async fn async_must_use_result() -> Result<(), ()> {
-//~^ double_must_use
+    //~^ double_must_use
 
     Ok(())
 }

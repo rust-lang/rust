@@ -8,7 +8,6 @@ pub mod foo {
     pub fn foo_bar() {}
     //~^ module_name_repetitions
 
-
     pub fn bar_foo() {}
     //~^ module_name_repetitions
 
@@ -20,7 +19,6 @@ pub mod foo {
 
     pub struct Foo7Bar;
     //~^ module_name_repetitions
-
 
     // Should not warn
     pub struct Foobar;
@@ -34,7 +32,6 @@ pub mod foo {
     // ... but should still warn when the item is reexported to create a *public* path with repetition.
     pub use error::FooError;
     //~^ module_name_repetitions
-
 
     // FIXME: This should also warn because it creates the public path `foo::FooIter`.
     mod iter {

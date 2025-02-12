@@ -4,5 +4,4 @@ fn main() {
     println!("Hello, World!");
     main();
     //~^ main_recursion
-
 }

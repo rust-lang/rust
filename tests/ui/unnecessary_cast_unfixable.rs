@@ -3,8 +3,6 @@
 fn main() {
     let _ = std::ptr::null() as *const u8;
     //~^ unnecessary_cast
-
-
 }
 
 mod issue11113 {
@@ -21,7 +19,6 @@ mod issue11113 {
         unsafe fn query(&self) {
             ((*(*(self.object as *mut *mut _) as *mut Vtbl)).query)()
             //~^ unnecessary_cast
-
         }
     }
 }

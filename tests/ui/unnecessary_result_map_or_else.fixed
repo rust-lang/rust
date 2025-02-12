@@ -3,19 +3,19 @@
 
 fn main() {
     let x: Result<(), ()> = Ok(());
-x.unwrap_or_else(|err| err);
-//~^ unnecessary_result_map_or_else
+    x.unwrap_or_else(|err| err);
+    //~^ unnecessary_result_map_or_else
 
     // Type ascribtion.
     let x: Result<(), ()> = Ok(());
-x.unwrap_or_else(|err: ()| err);
-//~^ unnecessary_result_map_or_else
+    x.unwrap_or_else(|err: ()| err);
+    //~^ unnecessary_result_map_or_else
 
     // Auto-deref.
     let y = String::new();
     let x: Result<&String, &String> = Ok(&y);
-let y: &str = x.unwrap_or_else(|err| err);
-//~^ unnecessary_result_map_or_else
+    let y: &str = x.unwrap_or_else(|err| err);
+    //~^ unnecessary_result_map_or_else
 
     // Temporary variable.
     let x: Result<(), ()> = Ok(());

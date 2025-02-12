@@ -37,39 +37,33 @@ fn ifs_same_cond_fn() {
 
     if function() {
     } else if function() {
-    //~^ same_functions_in_if_condition
-
+        //~^ same_functions_in_if_condition
     }
 
     if fn_arg(a) {
     } else if fn_arg(a) {
-    //~^ same_functions_in_if_condition
-
+        //~^ same_functions_in_if_condition
     }
 
     if obj.method() {
     } else if obj.method() {
-    //~^ same_functions_in_if_condition
-
+        //~^ same_functions_in_if_condition
     }
 
     if obj.method_arg(a) {
     } else if obj.method_arg(a) {
-    //~^ same_functions_in_if_condition
-
+        //~^ same_functions_in_if_condition
     }
 
     let mut v = vec![1];
     if v.pop().is_none() {
     } else if v.pop().is_none() {
-    //~^ same_functions_in_if_condition
-
+        //~^ same_functions_in_if_condition
     }
 
     if v.len() == 42 {
     } else if v.len() == 42 {
-    //~^ same_functions_in_if_condition
-
+        //~^ same_functions_in_if_condition
     }
 
     if v.len() == 1 {

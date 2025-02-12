@@ -32,7 +32,7 @@ fn array() {
     // Don't trigger when the empty collection iter is relied upon for its concrete type
     // But do trigger if it is just an iterator, despite being an argument to a method
     for i in smth.as_ref().map_or([].iter(), |s| s.iter()).chain([].iter()) {
-    //~^ iter_on_empty_collections
+        //~^ iter_on_empty_collections
         println!("{i}");
     }
 

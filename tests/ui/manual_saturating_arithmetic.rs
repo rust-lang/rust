@@ -10,7 +10,7 @@ fn main() {
     let _ = 1u8.checked_add(1).unwrap_or(255);
     //~^ manual_saturating_arithmetic
     let _ = 1u128
-    //~^ manual_saturating_arithmetic
+        //~^ manual_saturating_arithmetic
         .checked_add(1)
         .unwrap_or(340_282_366_920_938_463_463_374_607_431_768_211_455);
     let _ = 1u32.checked_add(1).unwrap_or(1234); // ok
@@ -34,7 +34,7 @@ fn main() {
     let _ = 1i8.checked_add(1).unwrap_or(127);
     //~^ manual_saturating_arithmetic
     let _ = 1i128
-    //~^ manual_saturating_arithmetic
+        //~^ manual_saturating_arithmetic
         .checked_add(1)
         .unwrap_or(170_141_183_460_469_231_731_687_303_715_884_105_727);
     let _ = 1i32.checked_add(-1).unwrap_or(i32::min_value());
@@ -44,7 +44,7 @@ fn main() {
     let _ = 1i8.checked_add(-1).unwrap_or(-128);
     //~^ manual_saturating_arithmetic
     let _ = 1i128
-    //~^ manual_saturating_arithmetic
+        //~^ manual_saturating_arithmetic
         .checked_add(-1)
         .unwrap_or(-170_141_183_460_469_231_731_687_303_715_884_105_728);
     let _ = 1i32.checked_add(1).unwrap_or(1234); // ok
@@ -58,7 +58,7 @@ fn main() {
     let _ = 1i8.checked_sub(1).unwrap_or(-128);
     //~^ manual_saturating_arithmetic
     let _ = 1i128
-    //~^ manual_saturating_arithmetic
+        //~^ manual_saturating_arithmetic
         .checked_sub(1)
         .unwrap_or(-170_141_183_460_469_231_731_687_303_715_884_105_728);
     let _ = 1i32.checked_sub(-1).unwrap_or(i32::max_value());
@@ -68,7 +68,7 @@ fn main() {
     let _ = 1i8.checked_sub(-1).unwrap_or(127);
     //~^ manual_saturating_arithmetic
     let _ = 1i128
-    //~^ manual_saturating_arithmetic
+        //~^ manual_saturating_arithmetic
         .checked_sub(-1)
         .unwrap_or(170_141_183_460_469_231_731_687_303_715_884_105_727);
     let _ = 1i32.checked_sub(1).unwrap_or(1234); // ok

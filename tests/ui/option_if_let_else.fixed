@@ -28,19 +28,19 @@ fn unop_bad(string: &Option<&str>, mut num: Option<i32>) {
     let _ = num.as_ref().map_or(&0, |s| s);
     //~^ option_if_let_else
     let _ = num.as_mut().map_or(&0, |s| {
-    //~^ option_if_let_else
+        //~^ option_if_let_else
         *s += 1;
         s
     });
     let _ = num.as_ref().map_or(&0, |s| s);
     //~^ option_if_let_else
     let _ = num.map_or(0, |mut s| {
-    //~^ option_if_let_else
+        //~^ option_if_let_else
         s += 1;
         s
     });
     let _ = num.as_mut().map_or(&0, |s| {
-    //~^ option_if_let_else
+        //~^ option_if_let_else
         *s += 1;
         s
     });
@@ -48,7 +48,7 @@ fn unop_bad(string: &Option<&str>, mut num: Option<i32>) {
 
 fn longer_body(arg: Option<u32>) -> u32 {
     arg.map_or(13, |x| {
-    //~^ option_if_let_else
+        //~^ option_if_let_else
         let y = x * x;
         y * y
     })
@@ -105,7 +105,7 @@ fn test_result_impure_else(variable: Result<u32, &str>) -> bool {
         println!("Err");
         false
     }, |binding| {
-    //~^ option_if_let_else
+        //~^ option_if_let_else
         println!("Ok {binding}");
         true
     })
@@ -167,7 +167,7 @@ fn main() {
     let s = String::new();
     // Lint, `Some` branch consumes `s`, but else branch doesn't use `s`.
     let _ = Some(0).map_or(1, |x| {
-    //~^ option_if_let_else
+        //~^ option_if_let_else
         let s = s;
         s.len() + x
     });

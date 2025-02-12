@@ -12,7 +12,6 @@ fn main() {
     let result = if b < a { b - a } else { 0 };
     //~^ inverted_saturating_sub
 
-
     let result = if a > b { 0 } else { a - b };
     //~^ inverted_saturating_sub
 
@@ -24,7 +23,6 @@ fn main() {
 
     let result = if b <= a { 0 } else { a - b };
     //~^ inverted_saturating_sub
-
 
     let af = 12f32;
     let bf = 13f32;

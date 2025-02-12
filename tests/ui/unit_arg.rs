@@ -61,30 +61,30 @@ impl Tr for B {
 
 fn bad() {
     foo({
-    //~^ unit_arg
+        //~^ unit_arg
         1;
     });
     foo(foo(1));
     //~^ unit_arg
     foo({
-    //~^ unit_arg
+        //~^ unit_arg
         foo(1);
         foo(2);
     });
     let b = Bar;
     b.bar({
-    //~^ unit_arg
+        //~^ unit_arg
         1;
     });
     taking_multiple_units(foo(0), foo(1));
     //~^ unit_arg
     taking_multiple_units(foo(0), {
-    //~^ unit_arg
+        //~^ unit_arg
         foo(1);
         foo(2);
     });
     taking_multiple_units(
-    //~^ unit_arg
+        //~^ unit_arg
         {
             foo(0);
             foo(1);

@@ -64,7 +64,7 @@ fn main() {
     //~^ partialeq_to_none
 
     let _ = {
-    //~^ partialeq_to_none
+        //~^ partialeq_to_none
         /*
           This comment runs long
         */

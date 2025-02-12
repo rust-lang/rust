@@ -36,7 +36,6 @@ fn main() {
     if s.starts_with(prefix) {
         str::to_string(&s[prefix.len()..]);
         //~^ manual_strip
-
     }
 
     // Constant prefix
@@ -53,7 +52,6 @@ fn main() {
     if TARGET.starts_with(prefix) {
         str::to_string(&TARGET[prefix.len()..]);
         //~^ manual_strip
-
     }
 
     // String target - not mutated.
@@ -61,7 +59,6 @@ fn main() {
     if s1.starts_with("ab") {
         s1[2..].to_uppercase();
         //~^ manual_strip
-
     }
 
     // String target - mutated. (Don't lint.)
@@ -93,6 +90,5 @@ fn msrv_1_45() {
     if s.starts_with('a') {
         s[1..].to_string();
         //~^ manual_strip
-
     }
 }

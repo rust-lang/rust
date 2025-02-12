@@ -55,7 +55,6 @@ error: all variants have the same prefix: `CallType`
    |
 LL | / enum BadCallType {
 LL | |
-LL | |
 LL | |     CallTypeCall,
 LL | |     CallTypeCreate,
 LL | |     CallTypeDestroy,
@@ -65,7 +64,7 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `Constant`
-  --> tests/ui/enum_variants.rs:55:1
+  --> tests/ui/enum_variants.rs:54:1
    |
 LL | / enum Consts {
 LL | |
@@ -78,7 +77,7 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `C`
-  --> tests/ui/enum_variants.rs:68:1
+  --> tests/ui/enum_variants.rs:67:1
    |
 LL | / enum Something {
 LL | |
@@ -91,7 +90,7 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `WithOut`
-  --> tests/ui/enum_variants.rs:91:1
+  --> tests/ui/enum_variants.rs:90:1
    |
 LL | / enum Seallll {
 LL | |
@@ -104,7 +103,7 @@ LL | | }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same postfix: `IData`
-  --> tests/ui/enum_variants.rs:147:1
+  --> tests/ui/enum_variants.rs:146:1
    |
 LL | / enum IDataRequest {
 LL | |
@@ -117,7 +116,7 @@ LL | | }
    = help: remove the postfixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same postfix: `HIData`
-  --> tests/ui/enum_variants.rs:154:1
+  --> tests/ui/enum_variants.rs:153:1
    |
 LL | / enum HIDataRequest {
 LL | |
@@ -130,7 +129,7 @@ LL | | }
    = help: remove the postfixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same prefix: `_Type`
-  --> tests/ui/enum_variants.rs:175:5
+  --> tests/ui/enum_variants.rs:174:5
    |
 LL | /     enum DoLint {
 LL | |
@@ -144,7 +143,7 @@ LL | |     }
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: all variants have the same postfix: `Type`
-  --> tests/ui/enum_variants.rs:183:5
+  --> tests/ui/enum_variants.rs:182:5
    |
 LL | /     enum DoLintToo {
 LL | |
@@ -157,13 +156,13 @@ LL | |     }
    = help: remove the postfixes and use full paths to the variants instead of glob imports
 
 error: variant name starts with the enum's name
-  --> tests/ui/enum_variants.rs:212:9
+  --> tests/ui/enum_variants.rs:211:9
    |
 LL |         DataDependent,
    |         ^^^^^^^^^^^^^
 
 error: variant name starts with the enum's name
-  --> tests/ui/enum_variants.rs:217:9
+  --> tests/ui/enum_variants.rs:216:9
    |
 LL |         DatasDependent,
    |         ^^^^^^^^^^^^^^

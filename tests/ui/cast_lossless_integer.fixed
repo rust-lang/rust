@@ -29,7 +29,6 @@ fn main() {
     i128::from(0u8);
     //~^ cast_lossless
 
-
     u32::from(0u16);
     //~^ cast_lossless
 
@@ -48,7 +47,6 @@ fn main() {
     i128::from(0u16);
     //~^ cast_lossless
 
-
     u64::from(0u32);
     //~^ cast_lossless
 
@@ -61,13 +59,11 @@ fn main() {
     i128::from(0u32);
     //~^ cast_lossless
 
-
     u128::from(0u64);
     //~^ cast_lossless
 
     i128::from(0u64);
     //~^ cast_lossless
-
 
     i16::from(0i8);
     //~^ cast_lossless
@@ -81,7 +77,6 @@ fn main() {
     i128::from(0i8);
     //~^ cast_lossless
 
-
     i32::from(0i16);
     //~^ cast_lossless
 
@@ -91,26 +86,21 @@ fn main() {
     i128::from(0i16);
     //~^ cast_lossless
 
-
     i64::from(0i32);
     //~^ cast_lossless
 
     i128::from(0i32);
     //~^ cast_lossless
 
-
     i128::from(0i64);
     //~^ cast_lossless
-
 
     // Test with an expression wrapped in parens
     let _ = u16::from(1u8 + 1u8);
     //~^ cast_lossless
 
-
     let _ = I64Alias::from(1i8);
     //~^ cast_lossless
-
 
     let _: u16 = 0u8.into();
     //~^ cast_lossless
@@ -123,7 +113,6 @@ fn main() {
 
     let _: u32 = (1i8 as u16).into();
     //~^ cast_lossless
-
 }
 
 // The lint would suggest using `f64::from(input)` here but the `XX::from` function is not const,
@@ -162,7 +151,6 @@ fn issue11458() {
 
     let _ = i32::from(sign_cast!(x, u8, i8) + 1);
     //~^ cast_lossless
-
 }
 
 fn issue12695() {
@@ -170,7 +158,6 @@ fn issue12695() {
         () => {
             u32::from(1u8)
             //~^ cast_lossless
-
         };
     }
 

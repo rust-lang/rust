@@ -6,17 +6,17 @@ fn main() {
     let z = 11_u32;
 
     // Lint
-let _ = (x + (y - 1)) / y;
-//~^ manual_div_ceil
-let _ = ((y - 1) + x) / y;
-//~^ manual_div_ceil
-let _ = (x + y - 1) / y;
-//~^ manual_div_ceil
+    let _ = (x + (y - 1)) / y;
+    //~^ manual_div_ceil
+    let _ = ((y - 1) + x) / y;
+    //~^ manual_div_ceil
+    let _ = (x + y - 1) / y;
+    //~^ manual_div_ceil
 
-let _ = (7_u32 + (4 - 1)) / 4;
-//~^ manual_div_ceil
-let _ = (7_i32 as u32 + (4 - 1)) / 4;
-//~^ manual_div_ceil
+    let _ = (7_u32 + (4 - 1)) / 4;
+    //~^ manual_div_ceil
+    let _ = (7_i32 as u32 + (4 - 1)) / 4;
+    //~^ manual_div_ceil
 
     // No lint
     let _ = (x + (y - 2)) / y;

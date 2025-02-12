@@ -10,39 +10,28 @@ fn main() {
     let _ = "a,b".splitn(0, ',');
     //~^ suspicious_splitn
 
-
     let _ = "a,b".rsplitn(0, ',');
     //~^ suspicious_splitn
-
 
     let _ = "a,b".splitn(1, ',');
     //~^ suspicious_splitn
 
-
     let _ = [0, 1, 2].splitn(0, |&x| x == 1);
     //~^ suspicious_splitn
-
 
     let _ = [0, 1, 2].splitn_mut(0, |&x| x == 1);
     //~^ suspicious_splitn
 
-
     let _ = [0, 1, 2].splitn(1, |&x| x == 1);
     //~^ suspicious_splitn
 
-
     let _ = [0, 1, 2].rsplitn_mut(1, |&x| x == 1);
     //~^ suspicious_splitn
-
-
 
     const X: usize = 0;
     let _ = "a,b".splitn(X + 1, ',');
     //~^ suspicious_splitn
 
-
     let _ = "a,b".splitn(X, ',');
     //~^ suspicious_splitn
-
-
 }

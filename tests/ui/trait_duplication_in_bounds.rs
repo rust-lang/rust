@@ -5,7 +5,7 @@
 use std::any::Any;
 
 fn bad_foo<T: Clone + Clone + Clone + Copy, U: Clone + Copy>(arg0: T, argo1: U) {
-//~^ trait_duplication_in_bounds
+    //~^ trait_duplication_in_bounds
     unimplemented!();
 }
 
@@ -41,7 +41,7 @@ trait GoodSelfWhereClause {
 }
 
 trait BadSelfTraitBound: Clone + Clone + Clone {
-//~^ trait_duplication_in_bounds
+    //~^ trait_duplication_in_bounds
     fn f();
 }
 
@@ -49,7 +49,7 @@ trait BadSelfWhereClause {
     fn f()
     where
         Self: Clone + Clone + Clone;
-        //~^ trait_duplication_in_bounds
+    //~^ trait_duplication_in_bounds
 }
 
 trait GoodTraitBound<T: Clone + Copy, U: Clone + Copy> {
@@ -64,7 +64,7 @@ trait GoodWhereClause<T, U> {
 }
 
 trait BadTraitBound<T: Clone + Clone + Clone + Copy, U: Clone + Copy> {
-//~^ trait_duplication_in_bounds
+    //~^ trait_duplication_in_bounds
     fn f();
 }
 
@@ -106,7 +106,7 @@ fn good_generic<T: GenericTrait<u64> + GenericTrait<u32>>(arg0: T) {
 }
 
 fn bad_generic<T: GenericTrait<u64> + GenericTrait<u32> + GenericTrait<u64>>(arg0: T) {
-//~^ trait_duplication_in_bounds
+    //~^ trait_duplication_in_bounds
     unimplemented!();
 }
 
@@ -115,7 +115,7 @@ mod foo {
 }
 
 fn qualified_path<T: std::clone::Clone + Clone + foo::Clone>(arg0: T) {
-//~^ trait_duplication_in_bounds
+    //~^ trait_duplication_in_bounds
     unimplemented!();
 }
 
@@ -124,7 +124,7 @@ fn good_trait_object(arg0: &(dyn Any + Send)) {
 }
 
 fn bad_trait_object(arg0: &(dyn Any + Send + Send)) {
-//~^ trait_duplication_in_bounds
+    //~^ trait_duplication_in_bounds
     unimplemented!();
 }
 
@@ -174,14 +174,12 @@ const fn const_trait_bounds_good<T: ConstTrait + ~const ConstTrait>() {}
 const fn const_trait_bounds_bad<T: ~const ConstTrait + ~const ConstTrait>() {}
 //~^ trait_duplication_in_bounds
 
-
 fn projections<T, U, V>()
 where
     U: ToOwned,
     V: ToOwned,
     T: IntoIterator<Item = U::Owned> + IntoIterator<Item = U::Owned>,
     //~^ trait_duplication_in_bounds
-
     V: IntoIterator<Item = U::Owned> + IntoIterator<Item = V::Owned>,
 {
 }
@@ -204,6 +202,5 @@ fn assoc_const_args<T>()
 where
     T: AssocConstTrait<ASSOC = 0> + AssocConstTrait<ASSOC = 0>,
     //~^ trait_duplication_in_bounds
-
 {
 }

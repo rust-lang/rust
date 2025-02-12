@@ -51,23 +51,23 @@ struct Struct<T: Sized>(T);
 //~^ needless_maybe_sized
 
 impl<T: Sized> Struct<T> {
-//~^ needless_maybe_sized
+    //~^ needless_maybe_sized
     fn method<U: Sized>(&self) {}
     //~^ needless_maybe_sized
 }
 
 enum Enum<T: Sized + 'static> {
-//~^ needless_maybe_sized
+    //~^ needless_maybe_sized
     Variant(&'static T),
 }
 
 union Union<'a, T: Sized> {
-//~^ needless_maybe_sized
+    //~^ needless_maybe_sized
     a: &'a T,
 }
 
 trait Trait<T: Sized> {
-//~^ needless_maybe_sized
+    //~^ needless_maybe_sized
     fn trait_method<U: Sized>() {}
     //~^ needless_maybe_sized
 

@@ -34,13 +34,13 @@ LL |     let _ = x.and_then(|o| if o < 32 { Some(o) } else { None });
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(o < 32).then_some(o)`
 
 error: this could be simplified with `bool::then_some`
-  --> tests/ui/if_then_some_else_none.rs:33:13
+  --> tests/ui/if_then_some_else_none.rs:32:13
    |
 LL |     let _ = if !x { Some(0) } else { None };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(!x).then_some(0)`
 
 error: this could be simplified with `bool::then`
-  --> tests/ui/if_then_some_else_none.rs:90:13
+  --> tests/ui/if_then_some_else_none.rs:88:13
    |
 LL |       let _ = if foo() {
    |  _____________^
@@ -53,7 +53,7 @@ LL | |     };
    | |_____^ help: try: `foo().then(||  { println!("true!"); 150 })`
 
 error: this could be simplified with `bool::then`
-  --> tests/ui/if_then_some_else_none.rs:140:5
+  --> tests/ui/if_then_some_else_none.rs:138:5
    |
 LL |     if s == "1" { Some(true) } else { None }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(s == "1").then(|| true)`

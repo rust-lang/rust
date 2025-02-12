@@ -9,8 +9,7 @@ fn main() {
     let ns = vec![2, 3, 5, 7];
 
     for i in 3..10 {
-    //~^ needless_range_loop
-
+        //~^ needless_range_loop
 
         println!("{}", ns[i]);
     }
@@ -33,7 +32,7 @@ fn main() {
 
     let mut ms = vec![1, 2, 3, 4, 5, 6];
     for i in 0..ms.len() {
-    //~^ needless_range_loop
+        //~^ needless_range_loop
 
         ms[i] *= 2;
     }
@@ -41,7 +40,7 @@ fn main() {
 
     let mut ms = vec![1, 2, 3, 4, 5, 6];
     for i in 0..ms.len() {
-    //~^ needless_range_loop
+        //~^ needless_range_loop
 
         let x = &mut ms[i];
         *x *= 2;
@@ -67,7 +66,7 @@ fn main() {
     let mut vec = vec![0; 9];
 
     for i in x..x + 4 {
-    //~^ needless_range_loop
+        //~^ needless_range_loop
 
         vec[i] += 1;
     }
@@ -76,7 +75,7 @@ fn main() {
     let mut vec = vec![0; 10];
 
     for i in x..=x + 4 {
-    //~^ needless_range_loop
+        //~^ needless_range_loop
 
         vec[i] += 1;
     }
@@ -84,19 +83,19 @@ fn main() {
     let arr = [1, 2, 3];
 
     for i in 0..3 {
-    //~^ needless_range_loop
+        //~^ needless_range_loop
 
         println!("{}", arr[i]);
     }
 
     for i in 0..2 {
-    //~^ needless_range_loop
+        //~^ needless_range_loop
 
         println!("{}", arr[i]);
     }
 
     for i in 1..3 {
-    //~^ needless_range_loop
+        //~^ needless_range_loop
 
         println!("{}", arr[i]);
     }

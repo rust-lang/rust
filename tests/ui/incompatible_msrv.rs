@@ -16,12 +16,10 @@ fn foo() {
     if let Entry::Vacant(v) = map.entry("poneyland") {
         v.into_key();
         //~^ incompatible_msrv
-
     }
     // Should warn for `sleep` but not for `Duration` (which was added in `1.3.0`).
     sleep(Duration::new(1, 0));
     //~^ incompatible_msrv
-
 }
 
 #[test]

@@ -4,11 +4,9 @@ fn main() {
     a = b = c;
     //~^ multi_assignments
 
-
     a = b = c = d;
     //~^ multi_assignments
     //~| multi_assignments
-
 
     a = b = { c };
     //~^ multi_assignments
@@ -18,5 +16,4 @@ fn main() {
 
     a = (b = c);
     //~^ multi_assignments
-
 }

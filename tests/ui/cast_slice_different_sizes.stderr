@@ -7,25 +7,25 @@ LL |     let b = a as *const [u8];
    = note: `#[deny(clippy::cast_slice_different_sizes)]` on by default
 
 error: casting between raw pointers to `[u8]` (element size 1) and `[u32]` (element size 4) does not adjust the count
-  --> tests/ui/cast_slice_different_sizes.rs:14:13
+  --> tests/ui/cast_slice_different_sizes.rs:13:13
    |
 LL |     let c = b as *const [u32];
    |             ^^^^^^^^^^^^^^^^^ help: replace with `ptr::slice_from_raw_parts`: `core::ptr::slice_from_raw_parts(b as *const u32, ..)`
 
 error: casting between raw pointers to `[i32]` (element size 4) and `[u8]` (element size 1) does not adjust the count
-  --> tests/ui/cast_slice_different_sizes.rs:19:16
+  --> tests/ui/cast_slice_different_sizes.rs:17:16
    |
 LL |     let loss = r_x as *const [i32] as *const [u8];
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with `ptr::slice_from_raw_parts`: `core::ptr::slice_from_raw_parts(r_x as *const [i32] as *const u8, ..)`
 
 error: casting between raw pointers to `[i32]` (element size 4) and `[u8]` (element size 1) does not adjust the count
-  --> tests/ui/cast_slice_different_sizes.rs:28:24
+  --> tests/ui/cast_slice_different_sizes.rs:25:24
    |
 LL |     let loss_block_1 = { r_x as *const [i32] } as *const [u8];
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with `ptr::slice_from_raw_parts`: `core::ptr::slice_from_raw_parts({ r_x as *const [i32] } as *const u8, ..)`
 
 error: casting between raw pointers to `[i32]` (element size 4) and `[u8]` (element size 1) does not adjust the count
-  --> tests/ui/cast_slice_different_sizes.rs:31:24
+  --> tests/ui/cast_slice_different_sizes.rs:28:24
    |
 LL |       let loss_block_2 = {
    |  ________________________^
@@ -47,13 +47,13 @@ LL ~     } as *const u8, ..);
    |
 
 error: casting between raw pointers to `[i32]` (element size 4) and `[u8]` (element size 1) does not adjust the count
-  --> tests/ui/cast_slice_different_sizes.rs:50:27
+  --> tests/ui/cast_slice_different_sizes.rs:47:27
    |
 LL |     let long_chain_loss = r_x as *const [i32] as *const [u32] as *const [u16] as *const [i8] as *const [u8];
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with `ptr::slice_from_raw_parts`: `core::ptr::slice_from_raw_parts(r_x as *const [i32] as *const u8, ..)`
 
 error: casting between raw pointers to `[u16]` (element size 2) and `[u8]` (element size 1) does not adjust the count
-  --> tests/ui/cast_slice_different_sizes.rs:67:36
+  --> tests/ui/cast_slice_different_sizes.rs:64:36
    |
 LL |   fn bar(x: *mut [u16]) -> *mut [u8] {
    |  ____________________________________^
@@ -64,7 +64,7 @@ LL | | }
    | |_^ help: replace with `ptr::slice_from_raw_parts_mut`: `core::ptr::slice_from_raw_parts_mut(x as *mut u8, ..)`
 
 error: casting between raw pointers to `[u16]` (element size 2) and `[u8]` (element size 1) does not adjust the count
-  --> tests/ui/cast_slice_different_sizes.rs:73:36
+  --> tests/ui/cast_slice_different_sizes.rs:70:36
    |
 LL |   fn uwu(x: *mut [u16]) -> *mut [u8] {
    |  ____________________________________^
@@ -75,7 +75,7 @@ LL | | }
    | |_^ help: replace with `ptr::slice_from_raw_parts_mut`: `core::ptr::slice_from_raw_parts_mut(x as *mut u8, ..)`
 
 error: casting between raw pointers to `[u16]` (element size 2) and `[u8]` (element size 1) does not adjust the count
-  --> tests/ui/cast_slice_different_sizes.rs:79:37
+  --> tests/ui/cast_slice_different_sizes.rs:76:37
    |
 LL |   fn bar2(x: *mut [u16]) -> *mut [u8] {
    |  _____________________________________^
@@ -86,7 +86,7 @@ LL | | }
    | |_^ help: replace with `ptr::slice_from_raw_parts_mut`: `core::ptr::slice_from_raw_parts_mut(x as *mut u8, ..)`
 
 error: casting between raw pointers to `[u16]` (element size 2) and `[u8]` (element size 1) does not adjust the count
-  --> tests/ui/cast_slice_different_sizes.rs:86:39
+  --> tests/ui/cast_slice_different_sizes.rs:83:39
    |
 LL |   fn bar3(x: *mut [u16]) -> *const [u8] {
    |  _______________________________________^
@@ -97,7 +97,7 @@ LL | | }
    | |_^ help: replace with `ptr::slice_from_raw_parts`: `core::ptr::slice_from_raw_parts(x as *const u8, ..)`
 
 error: casting between raw pointers to `[u16]` (element size 2) and `[u8]` (element size 1) does not adjust the count
-  --> tests/ui/cast_slice_different_sizes.rs:93:39
+  --> tests/ui/cast_slice_different_sizes.rs:90:39
    |
 LL |   fn bar4(x: *const [u16]) -> *mut [u8] {
    |  _______________________________________^
@@ -108,7 +108,7 @@ LL | | }
    | |_^ help: replace with `ptr::slice_from_raw_parts_mut`: `core::ptr::slice_from_raw_parts_mut(x as *mut u8, ..)`
 
 error: casting between raw pointers to `[u16]` (element size 2) and `[u8]` (element size 1) does not adjust the count
-  --> tests/ui/cast_slice_different_sizes.rs:100:39
+  --> tests/ui/cast_slice_different_sizes.rs:97:39
    |
 LL |   fn blocks(x: *mut [u16]) -> *mut [u8] {
    |  _______________________________________^
@@ -119,19 +119,19 @@ LL | | }
    | |_^ help: replace with `ptr::slice_from_raw_parts_mut`: `core::ptr::slice_from_raw_parts_mut(({ x }) as *mut u8, ..)`
 
 error: casting between raw pointers to `[u16]` (element size 2) and `[u8]` (element size 1) does not adjust the count
-  --> tests/ui/cast_slice_different_sizes.rs:106:44
+  --> tests/ui/cast_slice_different_sizes.rs:103:44
    |
 LL |   fn more_blocks(x: *mut [u16]) -> *mut [u8] {
    |  ____________________________________________^
 LL | |
 LL | |
 LL | |     { ({ x }) as _ }
-...  |
+LL | |
 LL | | }
    | |_^ help: replace with `ptr::slice_from_raw_parts_mut`: `core::ptr::slice_from_raw_parts_mut(({ x }) as *mut u8, ..)`
 
 error: casting between raw pointers to `[u16]` (element size 2) and `[u8]` (element size 1) does not adjust the count
-  --> tests/ui/cast_slice_different_sizes.rs:109:5
+  --> tests/ui/cast_slice_different_sizes.rs:106:5
    |
 LL |     { ({ x }) as _ }
    |     ^^^^^^^^^^^^^^^^ help: replace with `ptr::slice_from_raw_parts_mut`: `core::ptr::slice_from_raw_parts_mut(({ x }) as *mut u8, ..)`

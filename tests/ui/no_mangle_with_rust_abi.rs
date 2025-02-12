@@ -24,7 +24,7 @@ unsafe fn rust_abi_fn_four(arg_one: u32, arg_two: usize) {}
 
 #[unsafe(no_mangle)]
 fn rust_abi_multiline_function_really_long_name_to_overflow_args_to_multiple_lines(
-//~^ no_mangle_with_rust_abi
+    //~^ no_mangle_with_rust_abi
     arg_one: u32,
     arg_two: usize,
 ) -> u32 {

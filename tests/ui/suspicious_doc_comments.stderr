@@ -26,14 +26,12 @@ error: this is an outer doc comment and does not apply to the parent module or c
   --> tests/ui/suspicious_doc_comments.rs:23:5
    |
 LL | /     /**! This module contains useful functions.
-LL | |
 LL | |      */
    | |_______^
    |
 help: use an inner doc comment to document the parent module or crate
    |
 LL ~     /*! This module contains useful functions.
-LL +
 LL +      */
    |
 

@@ -9,7 +9,6 @@ pub mod outer {
     // should be linted
     pub use inner::Test;
     //~^ pub_use
-
 }
 
 // should not be linted

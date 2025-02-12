@@ -7,7 +7,6 @@ fn use_in_pattern() {
         None => {},
         Some(ref opt) => {},
         //~^ ref_patterns
-
     }
 }
 
@@ -15,11 +14,9 @@ fn use_in_binding() {
     let x = 5;
     let ref y = x;
     //~^ ref_patterns
-
 }
 
 fn use_in_parameter(ref x: i32) {}
 //~^ ref_patterns
-
 
 fn main() {}

@@ -84,7 +84,6 @@ fn main() {
     twice(x) != twice(ONE as f64);
     //~^ float_cmp
 
-
     x < 0.0; // no errors, lower or greater comparisons need no fuzzyness
     x > 0.0;
     x <= 0.0;
@@ -106,7 +105,6 @@ fn main() {
     NON_ZERO_ARRAY[i] == NON_ZERO_ARRAY[j];
     //~^ float_cmp
 
-
     let a1: [f32; 1] = [0.0];
     let a2: [f32; 1] = [1.1];
 
@@ -115,7 +113,6 @@ fn main() {
 
     a1[0] == a2[0];
     //~^ float_cmp
-
 
     // no errors - comparing signums is ok
     let x32 = 3.21f32;

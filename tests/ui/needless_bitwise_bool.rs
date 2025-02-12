@@ -21,7 +21,7 @@ fn main() {
         println!("true")
     }
     if y & !x {
-    //~^ needless_bitwise_bool
+        //~^ needless_bitwise_bool
         println!("true")
     }
 

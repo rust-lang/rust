@@ -20,7 +20,6 @@ fn foo() {}
 pub fn pub_foo() {}
 //~^ missing_inline_in_public_items
 
-
 #[inline]
 pub fn pub_foo_inline() {} // ok
 #[inline(always)]
@@ -64,7 +63,6 @@ impl PubBar for PubFoo {
     // missing #[inline]
     fn PubBar_c() {}
     //~^ missing_inline_in_public_items
-
 }
 
 // do not need inline because Foo is not exported
@@ -77,7 +75,6 @@ impl PubFoo {
     // missing #[inline]
     pub fn PubFooImpl() {}
     //~^ missing_inline_in_public_items
-
 }
 
 // do not lint this since users cannot control the external code

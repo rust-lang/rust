@@ -30,17 +30,14 @@ fn main() {
     takes_an_immutable_reference(&mut 42);
     //~^ unnecessary_mut_passed
 
-
     let as_ptr: fn(&i32) = takes_an_immutable_reference;
     as_ptr(&mut 42);
     //~^ unnecessary_mut_passed
-
 
     // Methods
     let my_struct = MyStruct;
     my_struct.takes_an_immutable_reference(&mut 42);
     //~^ unnecessary_mut_passed
-
 
     // No error
 

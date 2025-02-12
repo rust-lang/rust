@@ -29,10 +29,8 @@ impl Hash for Key {
 }
 
 fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> HashSet<Key> {
-//~^ mutable_key_type
-//~| mutable_key_type
-
-
+    //~^ mutable_key_type
+    //~| mutable_key_type
 
     let _other: HashMap<Key, bool> = HashMap::new();
     //~^ mutable_key_type
@@ -65,7 +63,6 @@ fn tuples<U>(_m: &mut HashMap<((), U), ()>) {}
 
 fn tuples_bad<U>(_m: &mut HashMap<(Key, U), bool>) {}
 //~^ mutable_key_type
-
 
 fn main() {
     let _ = should_not_take_this_arg(&mut HashMap::new(), 1);
@@ -111,7 +108,6 @@ fn main() {
 
     let _map = HashMap::<Arc<Cell<usize>>, usize>::new();
     //~^ mutable_key_type
-
 
     // Not interior mutability
     let _map = HashMap::<&mut usize, usize>::new();

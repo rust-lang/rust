@@ -8,43 +8,43 @@ LL |     OpenOptions::new().read(true).truncate(true).open("foo.txt");
    = help: to override `-D warnings` add `#[allow(clippy::nonsensical_open_options)]`
 
 error: file opened with `append` and `truncate`
-  --> tests/ui/open_options.rs:21:5
+  --> tests/ui/open_options.rs:20:5
    |
 LL |     OpenOptions::new().append(true).truncate(true).open("foo.txt");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the method `read` is called more than once
-  --> tests/ui/open_options.rs:25:35
+  --> tests/ui/open_options.rs:23:35
    |
 LL |     OpenOptions::new().read(true).read(false).open("foo.txt");
    |                                   ^^^^^^^^^^^
 
 error: the method `create` is called more than once
-  --> tests/ui/open_options.rs:31:10
+  --> tests/ui/open_options.rs:29:10
    |
 LL |         .create(false)
    |          ^^^^^^^^^^^^^
 
 error: the method `write` is called more than once
-  --> tests/ui/open_options.rs:35:36
+  --> tests/ui/open_options.rs:32:36
    |
 LL |     OpenOptions::new().write(true).write(false).open("foo.txt");
    |                                    ^^^^^^^^^^^^
 
 error: the method `append` is called more than once
-  --> tests/ui/open_options.rs:38:37
+  --> tests/ui/open_options.rs:35:37
    |
 LL |     OpenOptions::new().append(true).append(false).open("foo.txt");
    |                                     ^^^^^^^^^^^^^
 
 error: the method `truncate` is called more than once
-  --> tests/ui/open_options.rs:41:39
+  --> tests/ui/open_options.rs:38:39
    |
 LL |     OpenOptions::new().truncate(true).truncate(false).open("foo.txt");
    |                                       ^^^^^^^^^^^^^^^
 
 error: the method `read` is called more than once
-  --> tests/ui/open_options.rs:45:41
+  --> tests/ui/open_options.rs:41:41
    |
 LL |     std::fs::File::options().read(true).read(false).open("foo.txt");
    |                                         ^^^^^^^^^^^

@@ -3,25 +3,24 @@
 
 fn main() {
     let x: Result<(), ()> = Ok(());
-x.map_or_else(|err| err, |n| n);
-//~^ unnecessary_result_map_or_else
+    x.map_or_else(|err| err, |n| n);
+    //~^ unnecessary_result_map_or_else
 
     // Type ascribtion.
     let x: Result<(), ()> = Ok(());
-x.map_or_else(|err: ()| err, |n: ()| n);
-//~^ unnecessary_result_map_or_else
+    x.map_or_else(|err: ()| err, |n: ()| n);
+    //~^ unnecessary_result_map_or_else
 
     // Auto-deref.
     let y = String::new();
     let x: Result<&String, &String> = Ok(&y);
-let y: &str = x.map_or_else(|err| err, |n| n);
-//~^ unnecessary_result_map_or_else
+    let y: &str = x.map_or_else(|err| err, |n| n);
+    //~^ unnecessary_result_map_or_else
 
     // Temporary variable.
     let x: Result<(), ()> = Ok(());
     x.map_or_else(
-    //~^ unnecessary_result_map_or_else
-
+        //~^ unnecessary_result_map_or_else
         |err| err,
         |n| {
             let tmp = n;

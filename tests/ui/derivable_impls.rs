@@ -18,7 +18,7 @@ struct FooDefault<'a> {
 }
 
 impl std::default::Default for FooDefault<'_> {
-//~^ derivable_impls
+    //~^ derivable_impls
     fn default() -> Self {
         Self {
             a: false,
@@ -40,7 +40,7 @@ impl std::default::Default for FooDefault<'_> {
 struct TupleDefault(bool, i32, u64);
 
 impl std::default::Default for TupleDefault {
-//~^ derivable_impls
+    //~^ derivable_impls
     fn default() -> Self {
         Self(false, 0, 0u64)
     }
@@ -93,7 +93,7 @@ impl Default for FooNDVec {
 struct StrDefault<'a>(&'a str);
 
 impl Default for StrDefault<'_> {
-//~^ derivable_impls
+    //~^ derivable_impls
     fn default() -> Self {
         Self("")
     }
@@ -120,7 +120,7 @@ mac!(0);
 
 struct Y(u32);
 impl Default for Y {
-//~^ derivable_impls
+    //~^ derivable_impls
     fn default() -> Self {
         Self(mac!())
     }
@@ -160,7 +160,7 @@ struct WithoutSelfCurly {
 }
 
 impl Default for WithoutSelfCurly {
-//~^ derivable_impls
+    //~^ derivable_impls
     fn default() -> Self {
         WithoutSelfCurly { a: false }
     }
@@ -169,7 +169,7 @@ impl Default for WithoutSelfCurly {
 struct WithoutSelfParan(bool);
 
 impl Default for WithoutSelfParan {
-//~^ derivable_impls
+    //~^ derivable_impls
     fn default() -> Self {
         WithoutSelfParan(false)
     }
@@ -192,7 +192,7 @@ pub struct DirectDefaultDefaultCall {
 }
 
 impl Default for DirectDefaultDefaultCall {
-//~^ derivable_impls
+    //~^ derivable_impls
     fn default() -> Self {
         // When calling `Default::default()` in all fields, we know it is the same as deriving.
         Self { v: Default::default() }
@@ -204,7 +204,7 @@ pub struct EquivalentToDefaultDefaultCallVec {
 }
 
 impl Default for EquivalentToDefaultDefaultCallVec {
-//~^ derivable_impls
+    //~^ derivable_impls
     fn default() -> Self {
         // The body of `<Vec as Default>::default()` is `Vec::new()`, so they are equivalent.
         Self { v: Vec::new() }
@@ -232,7 +232,7 @@ pub struct EquivalentToDefaultDefaultCallLocal {
 }
 
 impl Default for EquivalentToDefaultDefaultCallLocal {
-//~^ derivable_impls
+    //~^ derivable_impls
     fn default() -> Self {
         // The body of `<S as Default>::default()` is `S::new()`, so they are equivalent.
         Self { v: S::new() }
@@ -272,7 +272,7 @@ pub struct RepeatDefault1 {
 }
 
 impl Default for RepeatDefault1 {
-//~^ derivable_impls
+    //~^ derivable_impls
     fn default() -> Self {
         RepeatDefault1 { a: [0; 32] }
     }
@@ -307,7 +307,7 @@ pub enum SimpleEnum {
 }
 
 impl Default for SimpleEnum {
-//~^ derivable_impls
+    //~^ derivable_impls
     fn default() -> Self {
         SimpleEnum::Bar
     }

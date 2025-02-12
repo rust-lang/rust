@@ -53,7 +53,7 @@ fn tester(fn_arg: i32) {
     println!("val='{	 }'", local_i32); // tab+space
     //~^ uninlined_format_args
     println!(
-    //~^ uninlined_format_args
+        //~^ uninlined_format_args
         "val='{
     }'",
         local_i32
@@ -175,7 +175,7 @@ fn tester(fn_arg: i32) {
     println!("{:1$.2$} {0} {1} {2}", local_f64, width, prec);
     //~^ uninlined_format_args
     println!(
-    //~^ uninlined_format_args
+        //~^ uninlined_format_args
         "{0:1$.2$} {0:2$.1$} {1:0$.2$} {1:2$.0$} {2:0$.1$} {2:1$.0$}",
         local_i32, width, prec,
     );
@@ -211,7 +211,7 @@ fn tester(fn_arg: i32) {
     println!(no_param_str!(), local_i32);
 
     println!(
-    //~^ uninlined_format_args
+        //~^ uninlined_format_args
         "{}",
         // comment with a comma , in it
         val,

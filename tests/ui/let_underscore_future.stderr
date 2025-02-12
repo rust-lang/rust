@@ -17,7 +17,7 @@ LL |     let _ = custom();
    = help: consider awaiting the future or dropping explicitly with `std::mem::drop`
 
 error: non-binding `let` on a future
-  --> tests/ui/let_underscore_future.rs:23:5
+  --> tests/ui/let_underscore_future.rs:22:5
    |
 LL |     let _ = future;
    |     ^^^^^^^^^^^^^^^

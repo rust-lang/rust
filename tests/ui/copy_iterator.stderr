@@ -2,6 +2,9 @@ error: you are implementing `Iterator` on a `Copy` type
   --> tests/ui/copy_iterator.rs:7:1
    |
 LL | / impl Iterator for Countdown {
+LL | |
+LL | |
+LL | |     type Item = u8;
 ...  |
 LL | | }
    | |_^

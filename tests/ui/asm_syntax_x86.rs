@@ -40,14 +40,12 @@ mod warn_att {
 
         asm!("", options(nostack, att_syntax));
         //~^ inline_asm_x86_att_syntax
-
     }
 
     global_asm!("");
     global_asm!("", options());
     global_asm!("", options(att_syntax));
     //~^ inline_asm_x86_att_syntax
-
 }
 
 fn main() {

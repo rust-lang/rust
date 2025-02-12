@@ -58,30 +58,25 @@ pub fn float_arith_ref() {
 
     &3.5_f32 + &1.3_f32;
     //~^ float_arithmetic
-
 }
 
 pub fn float_foo(f: &f32) -> f32 {
     let a = 5.1;
     a + f
     //~^ float_arithmetic
-
 }
 
 pub fn float_bar(f1: &f32, f2: &f32) -> f32 {
     f1 + f2
     //~^ float_arithmetic
-
 }
 
 pub fn float_baz(f1: f32, f2: &f32) -> f32 {
     f1 + f2
     //~^ float_arithmetic
-
 }
 
 pub fn float_qux(f1: f32, f2: f32) -> f32 {
     (&f1 + &f2)
     //~^ float_arithmetic
-
 }

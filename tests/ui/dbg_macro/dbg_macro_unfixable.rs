@@ -14,5 +14,4 @@ fn main() {
     dbg!(1, 2, dbg!(3, 4));
     //~^ dbg_macro
     //~| dbg_macro
-
 }

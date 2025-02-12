@@ -25,49 +25,49 @@ LL |     fn ouch(x: &Foo) -> &mut Foo;
    |                ^^^^
 
 error: mutable borrow from immutable input(s)
-  --> tests/ui/mut_from_ref.rs:26:21
+  --> tests/ui/mut_from_ref.rs:25:21
    |
 LL | fn fail(x: &u32) -> &mut u16 {
    |                     ^^^^^^^^
    |
 note: immutable borrow here
-  --> tests/ui/mut_from_ref.rs:26:12
+  --> tests/ui/mut_from_ref.rs:25:12
    |
 LL | fn fail(x: &u32) -> &mut u16 {
    |            ^^^^
 
 error: mutable borrow from immutable input(s)
-  --> tests/ui/mut_from_ref.rs:32:50
+  --> tests/ui/mut_from_ref.rs:31:50
    |
 LL | fn fail_lifetime<'a>(x: &'a u32, y: &mut u32) -> &'a mut u32 {
    |                                                  ^^^^^^^^^^^
    |
 note: immutable borrow here
-  --> tests/ui/mut_from_ref.rs:32:25
+  --> tests/ui/mut_from_ref.rs:31:25
    |
 LL | fn fail_lifetime<'a>(x: &'a u32, y: &mut u32) -> &'a mut u32 {
    |                         ^^^^^^^
 
 error: mutable borrow from immutable input(s)
-  --> tests/ui/mut_from_ref.rs:38:67
+  --> tests/ui/mut_from_ref.rs:37:67
    |
 LL | fn fail_double<'a, 'b>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
    |                                                                   ^^^^^^^^^^^
    |
 note: immutable borrow here
-  --> tests/ui/mut_from_ref.rs:38:27
+  --> tests/ui/mut_from_ref.rs:37:27
    |
 LL | fn fail_double<'a, 'b>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
    |                           ^^^^^^^     ^^^^^^^
 
 error: mutable borrow from immutable input(s)
-  --> tests/ui/mut_from_ref.rs:54:35
+  --> tests/ui/mut_from_ref.rs:53:35
    |
 LL | unsafe fn also_broken(x: &u32) -> &mut u32 {
    |                                   ^^^^^^^^
    |
 note: immutable borrow here
-  --> tests/ui/mut_from_ref.rs:54:26
+  --> tests/ui/mut_from_ref.rs:53:26
    |
 LL | unsafe fn also_broken(x: &u32) -> &mut u32 {
    |                          ^^^^

@@ -101,7 +101,7 @@ struct BadNew;
 
 impl BadNew {
     fn new() -> i32 {
-    //~^ new_ret_no_self
+        //~^ new_ret_no_self
         0
     }
 }

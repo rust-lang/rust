@@ -7,7 +7,7 @@ struct Struct<'a> {
 impl Struct<'_> {
     // Should warn
     fn returns_lit(&self) -> &str {
-    //~^ unnecessary_literal_bound
+        //~^ unnecessary_literal_bound
         "Hello"
     }
 
@@ -28,7 +28,7 @@ impl Struct<'_> {
 
     // Should warn
     fn contionally_returns_literals_explicit(&self, cond: bool) -> &str {
-    //~^ unnecessary_literal_bound
+        //~^ unnecessary_literal_bound
         if cond {
             return "Literal";
         }
@@ -53,7 +53,7 @@ trait ReturnsStr {
 impl ReturnsStr for u8 {
     // Should warn, even though not useful without trait refinement
     fn trait_method(&self) -> &str {
-    //~^ unnecessary_literal_bound
+        //~^ unnecessary_literal_bound
         "Literal"
     }
 }

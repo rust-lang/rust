@@ -221,7 +221,7 @@ fn clone_then_move_cloned() {
     let x = Alpha;
     // ok, data is moved while the clone is in use.
     foo(&x.clone(), move || {
-    //~^ redundant_clone
+        //~^ redundant_clone
         let _ = x;
     });
 

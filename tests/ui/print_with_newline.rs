@@ -7,7 +7,6 @@ fn main() {
     print!("Hello\n");
     //~^ print_with_newline
 
-
     print!("Hello {}\n", "world");
     //~^ print_with_newline
 
@@ -19,7 +18,6 @@ fn main() {
 
     print!("\n");
     //~^ print_with_newline
-
 
     // these are all fine
     print!("");
@@ -52,14 +50,12 @@ fn main() {
 
     // Literal newlines should also fail
     print!(
-    //~^ print_with_newline
-
+        //~^ print_with_newline
         "
 "
     );
     print!(
-    //~^ print_with_newline
-
+        //~^ print_with_newline
         r"
 "
     );

@@ -28,6 +28,5 @@ fn main() {
         let bytes = &[1u8, 2u8, 3u8, 4u8] as &[u8];
         let alt_slice: &[u32] = unsafe { core::mem::transmute(bytes) };
         //~^ transmute_ptr_to_ptr
-
     }
 }

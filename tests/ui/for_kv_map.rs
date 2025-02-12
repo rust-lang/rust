@@ -7,15 +7,14 @@ use std::rc::Rc;
 fn main() {
     let m: HashMap<u64, u64> = HashMap::new();
     for (_, v) in &m {
-    //~^ for_kv_map
-
+        //~^ for_kv_map
 
         let _v = v;
     }
 
     let m: Rc<HashMap<u64, u64>> = Rc::new(HashMap::new());
     for (_, v) in &*m {
-    //~^ for_kv_map
+        //~^ for_kv_map
 
         let _v = v;
         // Here the `*` is not actually necessary, but the test tests that we don't
@@ -25,14 +24,14 @@ fn main() {
 
     let mut m: HashMap<u64, u64> = HashMap::new();
     for (_, v) in &mut m {
-    //~^ for_kv_map
+        //~^ for_kv_map
 
         let _v = v;
     }
 
     let m: &mut HashMap<u64, u64> = &mut HashMap::new();
     for (_, v) in &mut *m {
-    //~^ for_kv_map
+        //~^ for_kv_map
 
         let _v = v;
     }
@@ -40,7 +39,7 @@ fn main() {
     let m: HashMap<u64, u64> = HashMap::new();
     let rm = &m;
     for (k, _value) in rm {
-    //~^ for_kv_map
+        //~^ for_kv_map
 
         let _k = k;
     }
@@ -48,7 +47,7 @@ fn main() {
     let m: HashMap<u64, u64> = HashMap::new();
     let rm = &m;
     'label: for (k, _value) in rm {
-    //~^ for_kv_map
+        //~^ for_kv_map
 
         let _k = k;
         if *k == 0u64 {

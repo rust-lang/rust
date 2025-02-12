@@ -19,8 +19,6 @@ fn main() {
     S { a: 1, b: 1, ..base };
     //~^ needless_update
 
-
-
     let base = T { x: 0, y: 0 };
     T { ..base }; // no error
     T { x: 1, ..base }; // no error

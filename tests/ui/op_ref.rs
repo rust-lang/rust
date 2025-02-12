@@ -11,8 +11,6 @@ fn main() {
     let foo = &5 - &6;
     //~^ op_ref
 
-
-
     let bar = String::new();
     let bar = "foo" == &bar;
 
@@ -58,7 +56,6 @@ fn main() {
     let y = Y(2);
     let z = x & &y;
     //~^ op_ref
-
 }
 
 #[derive(Clone, Copy)]

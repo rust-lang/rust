@@ -4,8 +4,6 @@
 use regex;
 //~^ single_component_path_imports
 
-
-
 use serde as edres;
 
 pub use serde;
@@ -18,7 +16,6 @@ mod root_nested_use_mod {
     use {regex, serde};
     //~^ single_component_path_imports
     //~| single_component_path_imports
-
 
     #[allow(dead_code)]
     fn root_nested_use_mod() {}

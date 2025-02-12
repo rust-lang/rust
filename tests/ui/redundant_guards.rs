@@ -52,7 +52,7 @@ fn main() {
         Some(x) if matches!(x, Some(1) if true) => ..,
         //~^ redundant_guards
         Some(x) if matches!(x, Some(1)) => {
-        //~^ redundant_guards
+            //~^ redundant_guards
             println!("a");
             ..
         },

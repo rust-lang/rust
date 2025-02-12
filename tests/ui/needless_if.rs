@@ -34,7 +34,7 @@ fn main() {
     } else {
     }
     if {
-    //~^ needless_if
+        //~^ needless_if
         return;
     } {}
     // Do not lint if `else if` is present
@@ -51,7 +51,7 @@ fn main() {
     {}
     // Can lint nested `if let`s
     if {
-    //~^ needless_if
+        //~^ needless_if
         if let true = true
             && true
         {

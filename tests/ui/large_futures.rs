@@ -9,12 +9,9 @@ async fn wait() {
     let f = async {
         big_fut([0u8; 1024 * 16]).await;
         //~^ large_futures
-
-
     };
     f.await
     //~^ large_futures
-
 }
 async fn calls_fut(fut: impl std::future::Future<Output = ()>) {
     loop {
@@ -26,7 +23,6 @@ async fn calls_fut(fut: impl std::future::Future<Output = ()>) {
         } else {
             wait().await;
             //~^ large_futures
-
         }
     }
 }
@@ -38,7 +34,6 @@ pub async fn test() {
 
     calls_fut(fut).await;
     //~^ large_futures
-
 }
 
 pub fn foo() -> impl std::future::Future<Output = ()> {
@@ -51,7 +46,7 @@ pub fn foo() -> impl std::future::Future<Output = ()> {
 
 pub async fn lines() {
     async {
-    //~^ large_futures
+        //~^ large_futures
 
         let x = [0i32; 1024 * 16];
         async {}.await;
@@ -64,7 +59,7 @@ pub async fn macro_expn() {
     macro_rules! macro_ {
         () => {
             async {
-            //~^ large_futures
+                //~^ large_futures
                 let x = [0i32; 1024 * 16];
                 async {}.await;
                 println!("macro: {:?}", x);

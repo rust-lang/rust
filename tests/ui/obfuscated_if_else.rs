@@ -8,14 +8,12 @@ fn main() {
     true.then(|| "a").unwrap_or("b");
     //~^ obfuscated_if_else
 
-
     let a = 1;
     (a == 1).then_some("a").unwrap_or("b");
     //~^ obfuscated_if_else
 
     (a == 1).then(|| "a").unwrap_or("b");
     //~^ obfuscated_if_else
-
 
     let partial = (a == 1).then_some("a");
     partial.unwrap_or("b"); // not lint
@@ -26,7 +24,6 @@ fn main() {
 
     true.then_some(()).unwrap_or(a += 2);
     //~^ obfuscated_if_else
-
 }
 
 fn issue11141() {
@@ -34,31 +31,25 @@ fn issue11141() {
     let _ = true.then_some(40).unwrap_or(17) | 2;
     //~^ obfuscated_if_else
 
-
     // Parentheses are required only for the leftmost expression
     let _ = true.then_some(30).unwrap_or(17) | true.then_some(2).unwrap_or(3) | true.then_some(10).unwrap_or(1);
     //~^ obfuscated_if_else
     //~| obfuscated_if_else
     //~| obfuscated_if_else
 
-
     // Parentheses are not required around the right side of a binary expression
     let _ = 2 | true.then_some(40).unwrap_or(17);
     //~^ obfuscated_if_else
-
 
     // Parentheses are not required for a cast
     let _ = true.then_some(42).unwrap_or(17) as u8;
     //~^ obfuscated_if_else
 
-
     // Parentheses are not required for a deref
     let _ = *true.then_some(&42).unwrap_or(&17);
     //~^ obfuscated_if_else
 
-
     // Parentheses are not required for a deref followed by a cast
     let _ = *true.then_some(&42).unwrap_or(&17) as u8;
     //~^ obfuscated_if_else
-
 }

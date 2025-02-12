@@ -19,7 +19,6 @@ fn main() {
     permissions.set_readonly(false);
     //~^ permissions_set_readonly_false
 
-
     // no lint
     permissions.set_readonly(true);
 

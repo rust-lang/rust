@@ -9,7 +9,6 @@ fn main() {
         //~^ missing_const_for_thread_local
     }
 
-
     // don't lint
     thread_local! {
         static BUF_2: RefCell<String> = const { RefCell::new(String::new()) };
@@ -20,7 +19,6 @@ fn main() {
         //~^ missing_const_for_thread_local
     }
 
-
     // lint and suggest const for all non const items
     thread_local! {
         static BUF_3_CAN_BE_MADE_CONST: RefCell<String> = const { RefCell::new(String::new()) };
@@ -29,8 +27,6 @@ fn main() {
         static BUF_4_CAN_BE_MADE_CONST: RefCell<String> = const { RefCell::new(String::new()) };
         //~^ missing_const_for_thread_local
     }
-
-
 
     thread_local! {
         static PEEL_ME: i32 = const { 1 };

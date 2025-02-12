@@ -71,13 +71,13 @@ LL | pub async fn public_future2(rc: Rc<[u8]>) {}
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Send`
 
 error: future cannot be sent between threads safely
-  --> tests/ui/future_not_send.rs:43:5
+  --> tests/ui/future_not_send.rs:42:5
    |
 LL |     async fn private_future(&self) -> usize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `private_future` is not `Send`
    |
 note: future is not `Send` as this value is used across an await
-  --> tests/ui/future_not_send.rs:46:24
+  --> tests/ui/future_not_send.rs:45:24
    |
 LL |     async fn private_future(&self) -> usize {
    |                             ----- has type `&Dummy` which is not `Send`
@@ -87,30 +87,29 @@ LL |         async { true }.await;
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Sync`
 
 error: future cannot be sent between threads safely
-  --> tests/ui/future_not_send.rs:50:5
+  --> tests/ui/future_not_send.rs:49:5
    |
 LL |     pub async fn public_future(&self) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `public_future` is not `Send`
    |
 note: captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
-  --> tests/ui/future_not_send.rs:50:32
+  --> tests/ui/future_not_send.rs:49:32
    |
 LL |     pub async fn public_future(&self) {
    |                                ^^^^^ has type `&Dummy` which is not `Send`, because `Dummy` is not `Sync`
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Sync`
 
 error: future cannot be sent between threads safely
-  --> tests/ui/future_not_send.rs:62:1
+  --> tests/ui/future_not_send.rs:61:1
    |
 LL | / async fn generic_future<T>(t: T) -> T
-LL | |
 LL | |
 LL | | where
 LL | |     T: Send,
    | |____________^ future returned by `generic_future` is not `Send`
    |
 note: future is not `Send` as this value is used across an await
-  --> tests/ui/future_not_send.rs:69:20
+  --> tests/ui/future_not_send.rs:67:20
    |
 LL |     let rt = &t;
    |         -- has type `&T` which is not `Send`
@@ -119,13 +118,13 @@ LL |     async { true }.await;
    = note: `T` doesn't implement `std::marker::Sync`
 
 error: future cannot be sent between threads safely
-  --> tests/ui/future_not_send.rs:85:1
+  --> tests/ui/future_not_send.rs:83:1
    |
 LL | async fn generic_future_always_unsend<T>(_: Rc<T>) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `generic_future_always_unsend` is not `Send`
    |
 note: future is not `Send` as this value is used across an await
-  --> tests/ui/future_not_send.rs:88:20
+  --> tests/ui/future_not_send.rs:86:20
    |
 LL | async fn generic_future_always_unsend<T>(_: Rc<T>) {
    |                                          - has type `std::rc::Rc<T>` which is not `Send`

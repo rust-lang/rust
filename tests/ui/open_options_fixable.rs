@@ -4,5 +4,4 @@ use std::fs::OpenOptions;
 fn main() {
     OpenOptions::new().create(true).open("foo.txt");
     //~^ suspicious_open_options
-
 }

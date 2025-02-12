@@ -21,7 +21,6 @@ fn alternatives() {
     if let Value::B | Value::A(Some(_)) = *ref_value {}
     //~^ pattern_type_mismatch
 
-
     // ok
     if let &Value::B | &Value::A(_) = ref_value {}
     if let Value::B | Value::A(_) = *ref_value {}

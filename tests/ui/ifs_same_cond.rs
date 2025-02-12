@@ -12,21 +12,18 @@ fn ifs_same_cond() {
 
     if b {
     } else if b {
-    //~^ ifs_same_cond
-
+        //~^ ifs_same_cond
     }
 
     if a == 1 {
     } else if a == 1 {
-    //~^ ifs_same_cond
-
+        //~^ ifs_same_cond
     }
 
     if 2 * a == 1 {
     } else if 2 * a == 2 {
     } else if 2 * a == 1 {
-    //~^ ifs_same_cond
-
+        //~^ ifs_same_cond
     } else if a == 1 {
     }
 
@@ -59,7 +56,7 @@ fn issue10272() {
     let a = String::from("ha");
     if a.contains("ah") {
     } else if a.contains("ah") {
-    //~^ ifs_same_cond
+        //~^ ifs_same_cond
 
         // Trigger this lint
     } else if a.contains("ha") {

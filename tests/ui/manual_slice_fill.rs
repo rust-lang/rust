@@ -23,25 +23,25 @@ fn should_lint() {
     let mut some_slice = [1, 2, 3, 4, 5];
 
     for i in 0..some_slice.len() {
-    //~^ manual_slice_fill
+        //~^ manual_slice_fill
         some_slice[i] = 0;
     }
 
     let x = 5;
     for i in 0..some_slice.len() {
-    //~^ manual_slice_fill
+        //~^ manual_slice_fill
         some_slice[i] = x;
     }
 
     for i in &mut some_slice {
-    //~^ manual_slice_fill
+        //~^ manual_slice_fill
         *i = 0;
     }
 
     // This should trigger `manual_slice_fill`, but the applicability is `MaybeIncorrect` since comments
     // within the loop might be purely informational.
     for i in 0..some_slice.len() {
-    //~^ manual_slice_fill
+        //~^ manual_slice_fill
         some_slice[i] = 0;
         // foo
     }

@@ -26,19 +26,19 @@ LL |     "foo".chars().any(|c| !char::is_ascii(&c));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `!"foo".is_ascii()`
 
 error: checking if a string is ascii using iterators
-  --> tests/ui/needless_character_iteration.rs:32:5
+  --> tests/ui/needless_character_iteration.rs:31:5
    |
 LL |     s.chars().all(|c| c.is_ascii());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `s.is_ascii()`
 
 error: checking if a string is ascii using iterators
-  --> tests/ui/needless_character_iteration.rs:35:5
+  --> tests/ui/needless_character_iteration.rs:34:5
    |
 LL |     "foo".to_string().chars().any(|c| !c.is_ascii());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `!"foo".to_string().is_ascii()`
 
 error: checking if a string is ascii using iterators
-  --> tests/ui/needless_character_iteration.rs:39:5
+  --> tests/ui/needless_character_iteration.rs:37:5
    |
 LL | /     "foo".chars().all(|c| {
 LL | |
@@ -49,7 +49,7 @@ LL | |     });
    | |______^ help: try: `"foo".is_ascii()`
 
 error: checking if a string is ascii using iterators
-  --> tests/ui/needless_character_iteration.rs:45:5
+  --> tests/ui/needless_character_iteration.rs:43:5
    |
 LL | /     "foo".chars().any(|c| {
 LL | |
@@ -60,7 +60,7 @@ LL | |     });
    | |______^ help: try: `!"foo".is_ascii()`
 
 error: checking if a string is ascii using iterators
-  --> tests/ui/needless_character_iteration.rs:52:5
+  --> tests/ui/needless_character_iteration.rs:50:5
    |
 LL |     S::default().field().chars().all(|x| x.is_ascii());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `S::default().field().is_ascii()`

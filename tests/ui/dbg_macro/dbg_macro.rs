@@ -4,21 +4,18 @@
 fn foo(n: u32) -> u32 {
     if let Some(n) = dbg!(n.checked_sub(4)) { n } else { n }
     //~^ dbg_macro
-
 }
 fn bar(_: ()) {}
 
 fn factorial(n: u32) -> u32 {
     if dbg!(n <= 1) {
-    //~^ dbg_macro
+        //~^ dbg_macro
 
         dbg!(1)
         //~^ dbg_macro
-
     } else {
         dbg!(n * factorial(n - 1))
         //~^ dbg_macro
-
     }
 }
 
@@ -31,7 +28,6 @@ fn main() {
 
     dbg!(1, 2, 3, 4, 5);
     //~^ dbg_macro
-
 }
 
 fn issue9914() {
@@ -49,7 +45,6 @@ fn issue9914() {
         () => {
             dbg!();
             //~^ dbg_macro
-
         };
     }
 
@@ -91,7 +86,6 @@ mod issue7274 {
     define_thing!(MyThing, {
         dbg!(2);
         //~^ dbg_macro
-
     });
 }
 
@@ -99,14 +93,12 @@ mod issue7274 {
 pub fn issue8481() {
     dbg!(1);
     //~^ dbg_macro
-
 }
 
 #[cfg(test)]
 fn foo2() {
     dbg!(1);
     //~^ dbg_macro
-
 }
 
 #[cfg(test)]
@@ -114,7 +106,6 @@ mod mod1 {
     fn func() {
         dbg!(1);
         //~^ dbg_macro
-
     }
 }
 
@@ -125,6 +116,5 @@ mod issue12131 {
 
         print!("{}", dbg!(s));
         //~^ dbg_macro
-
     }
 }

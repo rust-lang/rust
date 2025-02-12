@@ -18,8 +18,6 @@ fn main() {
     match my_enum {
         Foo::Empty => 0_u8.hash(&mut state),
         //~^ unit_hash
-
-
         Foo::WithValue(x) => x.hash(&mut state),
     }
 
@@ -27,11 +25,7 @@ fn main() {
     0_u8.hash(&mut state);
     //~^ unit_hash
 
-
-
     #[allow(clippy::unit_arg)]
     0_u8.hash(&mut state);
     //~^ unit_hash
-
-
 }

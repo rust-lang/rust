@@ -20,7 +20,7 @@ pub fn main() {
 
 fn hard_example() {
     Some("42").and_then(|s| {
-    //~^ bind_instead_of_map
+        //~^ bind_instead_of_map
         if {
             if s == "43" {
                 return Some(43);

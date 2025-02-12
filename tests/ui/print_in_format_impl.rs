@@ -20,7 +20,6 @@ impl Debug for Foo {
         print!("{}", 1);
         //~^ print_in_format_impl
 
-
         println!("{}", 2);
         //~^ print_in_format_impl
 

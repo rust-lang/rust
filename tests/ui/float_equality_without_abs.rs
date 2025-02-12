@@ -6,8 +6,6 @@
 pub fn is_roughly_equal(a: f32, b: f32) -> bool {
     (a - b) < f32::EPSILON
     //~^ float_equality_without_abs
-
-
 }
 
 pub fn main() {
@@ -31,7 +29,6 @@ pub fn main() {
     let _ = 1.0 - 2.0 < f32::EPSILON;
     //~^ float_equality_without_abs
 
-
     let _ = f32::EPSILON > (a - b);
     //~^ float_equality_without_abs
 
@@ -46,7 +43,6 @@ pub fn main() {
 
     let _ = f32::EPSILON > 1.0 - 2.0;
     //~^ float_equality_without_abs
-
 
     // those are correct
     let _ = (a - b).abs() < f32::EPSILON;

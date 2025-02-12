@@ -5,7 +5,6 @@
 #[inline(always)]
 //~^ inline_always
 
-
 fn test_attr_lint() {
     assert!(true)
 }
@@ -27,7 +26,6 @@ fn empty_and_false_positive_stmt() {
 
 #[deprecated(since = "forever")]
 //~^ deprecated_semver
-
 
 pub const SOME_CONST: u8 = 42;
 

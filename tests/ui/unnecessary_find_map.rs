@@ -5,9 +5,8 @@ fn main() {
     let _ = (0..4).find_map(|x| if x > 1 { Some(x) } else { None });
     //~^ unnecessary_find_map
 
-
     let _ = (0..4).find_map(|x| {
-    //~^ unnecessary_find_map
+        //~^ unnecessary_find_map
 
         if x > 1 {
             return Some(x);
@@ -15,15 +14,13 @@ fn main() {
         None
     });
     let _ = (0..4).find_map(|x| match x {
-    //~^ unnecessary_find_map
-
+        //~^ unnecessary_find_map
         0 | 1 => None,
         _ => Some(x),
     });
 
     let _ = (0..4).find_map(|x| Some(x + 1));
     //~^ unnecessary_find_map
-
 
     let _ = (0..4).find_map(i32::checked_abs);
 }

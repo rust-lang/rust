@@ -49,7 +49,7 @@ fn main() {
     if bla1() {
         println!("if");
     } else if bla2() {
-    //~^ else_if_without_else
+        //~^ else_if_without_else
 
         println!("else if");
     }
@@ -59,7 +59,7 @@ fn main() {
     } else if bla2() {
         println!("else if 1");
     } else if bla3() {
-    //~^ else_if_without_else
+        //~^ else_if_without_else
 
         println!("else if 2");
     }
@@ -87,7 +87,7 @@ fn main() {
     } else if bla4() {
         println!("else if 3");
     } else if bla5() {
-    //~^ else_if_without_else
+        //~^ else_if_without_else
 
         println!("else if 4");
     }
@@ -118,7 +118,7 @@ fn main() {
         } else if bla4() {
             println!("else if 3");
         } else if bla5() {
-        //~^ else_if_without_else
+            //~^ else_if_without_else
 
             println!("else if 4");
         }

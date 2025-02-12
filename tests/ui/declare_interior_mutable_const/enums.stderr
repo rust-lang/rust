@@ -21,7 +21,6 @@ error: a `const` item should not be interior mutable
    |
 LL | / const NESTED_UNFROZEN_VARIANT: NestedOutermost = NestedOutermost {
 LL | |
-LL | |
 LL | |     outer: NestedOuter::NestedInner(NestedInner {
 LL | |         inner: NestedInnermost::Unfrozen(AtomicUsize::new(2)),
 LL | |     }),
@@ -31,60 +30,60 @@ LL | | };
    = help: consider making this a static item
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/enums.rs:63:1
+  --> tests/ui/declare_interior_mutable_const/enums.rs:62:5
    |
-LL | const TO_BE_UNFROZEN_VARIANT: OptionalCell;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const TO_BE_UNFROZEN_VARIANT: OptionalCell;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/enums.rs:65:1
+  --> tests/ui/declare_interior_mutable_const/enums.rs:64:5
    |
-LL | const TO_BE_FROZEN_VARIANT: OptionalCell;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const TO_BE_FROZEN_VARIANT: OptionalCell;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/enums.rs:69:1
+  --> tests/ui/declare_interior_mutable_const/enums.rs:68:5
    |
-LL | const DEFAULTED_ON_UNFROZEN_VARIANT: OptionalCell = OptionalCell::Unfrozen(Cell::new(false));
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const DEFAULTED_ON_UNFROZEN_VARIANT: OptionalCell = OptionalCell::Unfrozen(Cell::new(false));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/enums.rs:96:1
+  --> tests/ui/declare_interior_mutable_const/enums.rs:95:5
    |
-LL | const TO_BE_UNFROZEN_VARIANT: Option<Self::ToBeUnfrozen> = Some(Self::ToBeUnfrozen::new(4));
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const TO_BE_UNFROZEN_VARIANT: Option<Self::ToBeUnfrozen> = Some(Self::ToBeUnfrozen::new(4));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/enums.rs:109:1
+  --> tests/ui/declare_interior_mutable_const/enums.rs:108:5
    |
-LL | const UNFROZEN_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Unfrozen(Cell::new(std::ptr::null()));
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const UNFROZEN_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Unfrozen(Cell::new(std::ptr::null()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/enums.rs:113:1
+  --> tests/ui/declare_interior_mutable_const/enums.rs:112:5
    |
-LL | const GENERIC_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Generic(std::ptr::null());
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const GENERIC_VARIANT: BothOfCellAndGeneric<T> = BothOfCellAndGeneric::Generic(std::ptr::null());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/enums.rs:120:1
+  --> tests/ui/declare_interior_mutable_const/enums.rs:119:5
    |
-LL | const NO_ENUM: Cell<*const T> = Cell::new(std::ptr::null());
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const NO_ENUM: Cell<*const T> = Cell::new(std::ptr::null());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/enums.rs:128:1
+  --> tests/ui/declare_interior_mutable_const/enums.rs:127:5
    |
-LL | / const UNFROZEN_VARIANT: BothOfCellAndGeneric<Self::AssocType> =
+LL | /     const UNFROZEN_VARIANT: BothOfCellAndGeneric<Self::AssocType> =
 LL | |
 LL | |         BothOfCellAndGeneric::Unfrozen(Cell::new(std::ptr::null()));
    | |____________________________________________________________________^
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/enums.rs:131:1
+  --> tests/ui/declare_interior_mutable_const/enums.rs:130:5
    |
-LL | const GENERIC_VARIANT: BothOfCellAndGeneric<Self::AssocType> = BothOfCellAndGeneric::Generic(std::ptr::null());
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     const GENERIC_VARIANT: BothOfCellAndGeneric<Self::AssocType> = BothOfCellAndGeneric::Generic(std::ptr::null());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 12 previous errors
 

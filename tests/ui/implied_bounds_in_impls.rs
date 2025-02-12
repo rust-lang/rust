@@ -11,7 +11,7 @@ fn normal_deref<T>(x: T) -> impl Deref<Target = T> {
 
 // Deref implied by DerefMut
 fn deref_derefmut<T>(x: T) -> impl Deref<Target = T> + DerefMut<Target = T> {
-//~^ implied_bounds_in_impls
+    //~^ implied_bounds_in_impls
     Box::new(x)
 }
 
@@ -63,14 +63,14 @@ struct SomeStruct;
 impl SomeStruct {
     // Check that it works in inherent impl blocks.
     fn f() -> impl Deref + DerefMut<Target = u8> {
-    //~^ implied_bounds_in_impls
+        //~^ implied_bounds_in_impls
         Box::new(123)
     }
 }
 impl SomeTrait for SomeStruct {
     // Check that it works in trait impls.
     fn f() -> impl Deref + DerefMut<Target = u8> {
-    //~^ implied_bounds_in_impls
+        //~^ implied_bounds_in_impls
         Box::new(42)
     }
 }
@@ -98,13 +98,13 @@ mod issue11422 {
 mod issue11435 {
     // Associated type needs to be included on DoubleEndedIterator in the suggestion
     fn my_iter() -> impl Iterator<Item = u32> + DoubleEndedIterator {
-    //~^ implied_bounds_in_impls
+        //~^ implied_bounds_in_impls
         0..5
     }
 
     // Removing the `Clone` bound should include the `+` behind it in its remove suggestion
     fn f() -> impl Copy + Clone {
-    //~^ implied_bounds_in_impls
+        //~^ implied_bounds_in_impls
         1
     }
 

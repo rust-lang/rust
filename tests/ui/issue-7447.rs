@@ -26,8 +26,6 @@ fn main() {
     byte_view(panic!());
     //~^ diverging_sub_expression
 
-
     group_entries(panic!());
     //~^ diverging_sub_expression
-
 }

@@ -6,8 +6,7 @@ fn main() {
     let v: Vec<i32> = Vec::new();
     // This is unfixable because the closure includes `return`.
     v.iter().for_each(|v| {
-    //~^ needless_for_each
-
+        //~^ needless_for_each
 
         if *v == 10 {
             return;

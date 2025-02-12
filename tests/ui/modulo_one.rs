@@ -9,7 +9,6 @@ fn main() {
     10 % 1;
     //~^ modulo_one
 
-
     10 % -1;
     //~^ modulo_one
 

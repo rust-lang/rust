@@ -8,31 +8,31 @@ LL |     a = b = c;
    = help: to override `-D warnings` add `#[allow(clippy::multi_assignments)]`
 
 error: assignments don't nest intuitively
-  --> tests/ui/multi_assignments.rs:8:5
+  --> tests/ui/multi_assignments.rs:7:5
    |
 LL |     a = b = c = d;
    |     ^^^^^^^^^^^^^
 
 error: assignments don't nest intuitively
-  --> tests/ui/multi_assignments.rs:8:9
+  --> tests/ui/multi_assignments.rs:7:9
    |
 LL |     a = b = c = d;
    |         ^^^^^^^^^
 
 error: assignments don't nest intuitively
-  --> tests/ui/multi_assignments.rs:13:5
+  --> tests/ui/multi_assignments.rs:11:5
    |
 LL |     a = b = { c };
    |     ^^^^^^^^^^^^^
 
 error: assignments don't nest intuitively
-  --> tests/ui/multi_assignments.rs:16:5
+  --> tests/ui/multi_assignments.rs:14:5
    |
 LL |     a = { b = c };
    |     ^^^^^^^^^^^^^
 
 error: assignments don't nest intuitively
-  --> tests/ui/multi_assignments.rs:19:5
+  --> tests/ui/multi_assignments.rs:17:5
    |
 LL |     a = (b = c);
    |     ^^^^^^^^^^^

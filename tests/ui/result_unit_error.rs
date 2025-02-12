@@ -1,7 +1,7 @@
 #![warn(clippy::result_unit_err)]
 
 pub fn returns_unit_error() -> Result<u32, ()> {
-//~^ result_unit_err
+    //~^ result_unit_err
 
     Err(())
 }
@@ -14,9 +14,8 @@ pub trait HasUnitError {
     fn get_that_error(&self) -> Result<bool, ()>;
     //~^ result_unit_err
 
-
     fn get_this_one_too(&self) -> Result<bool, ()> {
-    //~^ result_unit_err
+        //~^ result_unit_err
 
         Err(())
     }
@@ -36,7 +35,7 @@ pub struct UnitErrorHolder;
 
 impl UnitErrorHolder {
     pub fn unit_error(&self) -> Result<usize, ()> {
-    //~^ result_unit_err
+        //~^ result_unit_err
 
         Ok(0)
     }
@@ -47,7 +46,7 @@ pub mod issue_6546 {
     type ResInv<A, B> = Result<B, A>;
 
     pub fn should_lint() -> ResInv<(), usize> {
-    //~^ result_unit_err
+        //~^ result_unit_err
 
         Ok(0)
     }

@@ -31,7 +31,6 @@ fn main() {
     let _ = any_box.type_id();
     //~^ type_id_on_box
 
-
     // Don't lint. We explicitly say "do this instead" if this is intentional
     let _ = TypeId::of::<Box<dyn Any>>();
     let _ = (*any_box).type_id();
@@ -41,7 +40,6 @@ fn main() {
     let _ = any_box.type_id();
     //~^ type_id_on_box
 
-
     let b = existential();
     let _ = b.type_id(); // Don't
 
@@ -49,11 +47,9 @@ fn main() {
     let _ = b.type_id();
     //~^ type_id_on_box
 
-
     let b: SomeBox = Box::new(0usize);
     let _ = b.type_id();
     //~^ type_id_on_box
-
 
     let b = BadBox(Box::new(0usize));
     let _ = b.type_id(); // Don't lint. This is a call to `<BadBox as Any>::type_id`. Not `std::boxed::Box`!

@@ -30,7 +30,7 @@ mod basic_expr {
         //~| default_numeric_fallback
         //~| default_numeric_fallback
         let x = match 1. {
-        //~^ default_numeric_fallback
+            //~^ default_numeric_fallback
             _ => 1.,
             //~^ default_numeric_fallback
         };
