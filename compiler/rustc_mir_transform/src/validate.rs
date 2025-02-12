@@ -373,9 +373,12 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     );
                 }
             }
-            TerminatorKind::Drop { target, unwind, .. } => {
+            TerminatorKind::Drop { target, unwind, drop, .. } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
                 self.check_unwind_edge(location, *unwind);
+                if let Some(drop) = drop {
+                    self.check_edge(location, *drop, EdgeKind::Normal);
+                }
             }
             TerminatorKind::Call { func, args, .. }
             | TerminatorKind::TailCall { func, args, .. } => {
