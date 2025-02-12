@@ -178,9 +178,9 @@ jobs:
           set +e
           # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.
           src/ci/scripts/run-build-from-ci.sh 2>&1
+          STATUS=$?
           set -e
 
-          STATUS=$?
           if [[ STATUS != 0 ]]; then
             echo "https://rustc-dev-guide.rust-lang.org/tests/fuchsia.html"
           fi
