@@ -6268,6 +6268,7 @@ Released 2018-09-13
 [`accept-comment-above-statement`]: https://doc.rust-lang.org/clippy/lint_configuration.html#accept-comment-above-statement
 [`allow-comparison-to-zero`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-comparison-to-zero
 [`allow-dbg-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-dbg-in-tests
+[`allow-expect-in-consts`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-expect-in-consts
 [`allow-expect-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-expect-in-tests
 [`allow-indexing-slicing-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-indexing-slicing-in-tests
 [`allow-mixed-uninlined-format-args`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-mixed-uninlined-format-args
@@ -6276,6 +6277,7 @@ Released 2018-09-13
 [`allow-print-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-print-in-tests
 [`allow-private-module-inception`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-private-module-inception
 [`allow-renamed-params-for`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-renamed-params-for
+[`allow-unwrap-in-consts`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-unwrap-in-consts
 [`allow-unwrap-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-unwrap-in-tests
 [`allow-useless-vec-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-useless-vec-in-tests
 [`allowed-dotfiles`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allowed-dotfiles

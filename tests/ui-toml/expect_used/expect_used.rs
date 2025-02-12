@@ -1,4 +1,5 @@
 //@compile-flags: --test
+//@no-rustfix
 #![warn(clippy::expect_used)]
 #![allow(clippy::unnecessary_literal_unwrap)]
 
@@ -15,6 +16,14 @@ fn expect_result() {
 fn main() {
     expect_option();
     expect_result();
+
+    const SOME: Option<i32> = Some(3);
+    const UNWRAPPED: i32 = SOME.expect("Not three?");
+    //~^ ERROR: used `expect()` on an `Option` value
+    const {
+        SOME.expect("Still not three?");
+        //~^ ERROR: used `expect()` on an `Option` value
+    }
 }
 
 #[test]

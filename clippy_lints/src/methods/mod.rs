@@ -4406,11 +4406,14 @@ declare_clippy_lint! {
     "using `Option::and_then` or `Result::and_then` to chain a computation that returns an `Option` or a `Result`"
 }
 
+#[expect(clippy::struct_excessive_bools)]
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
     allow_expect_in_tests: bool,
     allow_unwrap_in_tests: bool,
+    allow_expect_in_consts: bool,
+    allow_unwrap_in_consts: bool,
     allowed_dotfiles: FxHashSet<&'static str>,
     format_args: FormatArgsStorage,
 }
@@ -4425,6 +4428,8 @@ impl Methods {
             msrv: conf.msrv.clone(),
             allow_expect_in_tests: conf.allow_expect_in_tests,
             allow_unwrap_in_tests: conf.allow_unwrap_in_tests,
+            allow_expect_in_consts: conf.allow_expect_in_consts,
+            allow_unwrap_in_consts: conf.allow_unwrap_in_consts,
             allowed_dotfiles,
             format_args,
         }
@@ -4918,6 +4923,7 @@ impl Methods {
                             expr,
                             recv,
                             false,
+                            self.allow_expect_in_consts,
                             self.allow_expect_in_tests,
                             unwrap_expect_used::Variant::Expect,
                         ),
@@ -4931,6 +4937,7 @@ impl Methods {
                         expr,
                         recv,
                         true,
+                        self.allow_expect_in_consts,
                         self.allow_expect_in_tests,
                         unwrap_expect_used::Variant::Expect,
                     );
@@ -5304,6 +5311,7 @@ impl Methods {
                         expr,
                         recv,
                         false,
+                        self.allow_unwrap_in_consts,
                         self.allow_unwrap_in_tests,
                         unwrap_expect_used::Variant::Unwrap,
                     );
@@ -5315,6 +5323,7 @@ impl Methods {
                         expr,
                         recv,
                         true,
+                        self.allow_unwrap_in_consts,
                         self.allow_unwrap_in_tests,
                         unwrap_expect_used::Variant::Unwrap,
                     );
