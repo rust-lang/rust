@@ -1,0 +1,76 @@
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/constness.rs:32:34
+   |
+LL |     let _ = const { size_of_val(&v) };
+   |                                  ^ non-constant value
+   |
+help: consider using `const` instead of `let`
+   |
+LL -     let v = NotConstSized;
+LL +     const v: /* Type */ = NotConstSized;
+   |
+
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/constness.rs:37:33
+   |
+LL |     let _ = const { size_of_val(v) };
+   |                                 ^ non-constant value
+   |
+help: consider using `const` instead of `let`
+   |
+LL -     let v = NotConstSized;
+LL +     const v: /* Type */ = NotConstSized;
+   |
+
+error[E0277]: the trait bound `NotConstSized: const Sized` is not satisfied
+  --> $DIR/constness.rs:22:31
+   |
+LL |     let _ = const { size_of::<NotConstSized>() };
+   |                               ^^^^^^^^^^^^^
+   |
+note: required by a bound in `size_of`
+  --> $DIR/constness.rs:18:21
+   |
+LL | const fn size_of<T: ~const Sized>() { unimplemented!() }
+   |                     ^^^^^^^^^^^^ required by this bound in `size_of`
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/constness.rs:26:31
+   |
+LL |     let _ = const { size_of::<NotConstMetaSized>() };
+   |                               ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `NotConstMetaSized`, the trait `Sized` is not implemented for `[u8]`
+note: required because it appears within the type `NotConstMetaSized`
+  --> $DIR/constness.rs:12:8
+   |
+LL | struct NotConstMetaSized([u8]);
+   |        ^^^^^^^^^^^^^^^^^
+note: required by a bound in `size_of`
+  --> $DIR/constness.rs:18:21
+   |
+LL | const fn size_of<T: ~const Sized>() { unimplemented!() }
+   |                     ^^^^^^^^^^^^ required by this bound in `size_of`
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/constness.rs:28:23
+   |
+LL |     let _ = size_of::<NotConstMetaSized>();
+   |                       ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `NotConstMetaSized`, the trait `Sized` is not implemented for `[u8]`
+note: required because it appears within the type `NotConstMetaSized`
+  --> $DIR/constness.rs:12:8
+   |
+LL | struct NotConstMetaSized([u8]);
+   |        ^^^^^^^^^^^^^^^^^
+note: required by a bound in `size_of`
+  --> $DIR/constness.rs:18:21
+   |
+LL | const fn size_of<T: ~const Sized>() { unimplemented!() }
+   |                     ^^^^^^^^^^^^ required by this bound in `size_of`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0435.
+For more information about an error, try `rustc --explain E0277`.

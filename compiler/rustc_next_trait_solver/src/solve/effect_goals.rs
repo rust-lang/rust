@@ -215,11 +215,29 @@ where
     }
 
     fn consider_builtin_sizedness_candidates(
-        _ecx: &mut EvalCtxt<'_, D>,
-        _goal: Goal<I, Self>,
-        _sizedness: SizedTraitKind,
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        sizedness: SizedTraitKind,
     ) -> Result<Candidate<I>, NoSolution> {
-        unreachable!("Sized/MetaSized/PointeeSized is never const")
+        let cx = ecx.cx();
+
+        let self_ty = goal.predicate.self_ty();
+        let const_conditions =
+            structural_traits::const_conditions_for_sizedness(cx, self_ty, sizedness)?;
+
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Trivial).enter(|ecx| {
+            ecx.add_goals(
+                GoalSource::AliasBoundConstCondition,
+                const_conditions.into_iter().map(|trait_ref| {
+                    goal.with(
+                        cx,
+                        ty::Binder::dummy(trait_ref)
+                            .to_host_effect_clause(cx, goal.predicate.constness),
+                    )
+                }),
+            );
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
     }
 
     fn consider_builtin_copy_clone_candidate(

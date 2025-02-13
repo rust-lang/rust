@@ -5,9 +5,9 @@ use rustc_infer::traits::{
 };
 use rustc_middle::span_bug;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, TypingMode};
+use rustc_middle::ty::{self, TypeVisitableExt, TypingMode};
 use rustc_type_ir::elaborate::elaborate;
-use rustc_type_ir::solve::NoSolution;
+use rustc_type_ir::solve::{NoSolution, SizedTraitKind};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::SelectionContext;
@@ -238,7 +238,45 @@ fn evaluate_host_effect_from_builtin_impls<'tcx>(
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
     match selcx.tcx().as_lang_item(obligation.predicate.def_id()) {
         Some(LangItem::Destruct) => evaluate_host_effect_for_destruct_goal(selcx, obligation),
+        Some(LangItem::Sized) => {
+            evaluate_host_effect_for_sizedness_goal(selcx, obligation, SizedTraitKind::Sized)
+        }
+        Some(LangItem::MetaSized) => {
+            evaluate_host_effect_for_sizedness_goal(selcx, obligation, SizedTraitKind::MetaSized)
+        }
+        Some(LangItem::PointeeSized) => {
+            evaluate_host_effect_for_sizedness_goal(selcx, obligation, SizedTraitKind::PointeeSized)
+        }
         _ => Err(EvaluationFailure::NoSolution),
+    }
+}
+
+// NOTE: Keep this in sync with `const_conditions_for_sizedness` in the new solver.
+fn evaluate_host_effect_for_sizedness_goal<'tcx>(
+    selcx: &mut SelectionContext<'_, 'tcx>,
+    obligation: &HostEffectObligation<'tcx>,
+    sizedness: SizedTraitKind,
+) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
+    let tcx = selcx.tcx();
+    let self_ty = obligation.predicate.self_ty();
+
+    if self_ty.has_non_const_sizedness() {
+        return Err(EvaluationFailure::NoSolution);
+    }
+
+    match sizedness {
+        SizedTraitKind::Sized => {
+            let meta_sized_def_id = tcx.require_lang_item(LangItem::MetaSized, None);
+            let meta_sized_trait_ref = ty::TraitRef::new(tcx, meta_sized_def_id, [self_ty]);
+            let meta_sized_obligation = obligation.with(
+                tcx,
+                ty::Binder::dummy(meta_sized_trait_ref)
+                    .to_host_effect_clause(tcx, obligation.predicate.constness),
+            );
+            Ok(thin_vec![meta_sized_obligation])
+        }
+        SizedTraitKind::MetaSized => Ok(thin_vec![]),
+        SizedTraitKind::PointeeSized => unreachable!("`PointeeSized` is not const"),
     }
 }
 
