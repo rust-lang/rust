@@ -1982,7 +1982,8 @@ impl HumanEmitter {
         {
             debug!(?complete, ?parts, ?highlights);
 
-            let has_deletion = parts.iter().any(|p| p.is_deletion(sm) || p.is_replacement(sm));
+            let has_deletion =
+                parts.iter().any(|p| p.is_deletion(sm) || p.is_destructive_replacement(sm));
             let is_multiline = complete.lines().count() > 1;
 
             if i == 0 {

@@ -14,9 +14,8 @@ LL | pub struct XEmpty2;
    |
 help: use struct literal syntax instead
    |
-LL -     let e1 = Empty1;
-LL +     let e1 = Empty1 {};
-   |
+LL |     let e1 = Empty1 {};
+   |              ~~~~~~~~~
 help: a unit struct with a similar name exists
    |
 LL -     let e1 = Empty1;
@@ -38,9 +37,8 @@ LL | pub struct XEmpty2;
    |
 help: use struct literal syntax instead
    |
-LL -     let xe1 = XEmpty1;
-LL +     let xe1 = XEmpty1 {};
-   |
+LL |     let xe1 = XEmpty1 {};
+   |               ~~~~~~~~~~
 help: a unit struct with a similar name exists
    |
 LL -     let xe1 = XEmpty1;
