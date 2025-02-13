@@ -220,7 +220,7 @@ fn run_internal_tests(cx: &TestContext) {
     if !RUN_INTERNAL_TESTS {
         return;
     }
-    let mut config = cx.base_config("ui-internal", true);
+    let mut config = cx.base_config("ui-internal", false);
     config.bless_command = Some("cargo uitest --features internal -- -- --bless".into());
 
     ui_test::run_tests_generic(
