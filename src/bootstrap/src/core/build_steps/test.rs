@@ -1969,13 +1969,12 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             if !builder.config.dry_run() && suite.ends_with("fulldeps") {
                 let llvm_libdir =
                     command(&llvm_config).arg("--libdir").run_capture_stdout(builder).stdout();
-                let mut rustflags = env::var("RUSTFLAGS").unwrap_or_default();
-                if target.is_msvc() {
-                    rustflags.push_str(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
+                let link_llvm = if target.is_msvc() {
+                    format!("-Clink-arg=-LIBPATH:{llvm_libdir}")
                 } else {
-                    rustflags.push_str(&format!("-Clink-arg=-L{llvm_libdir}"));
-                }
-                cmd.env("RUSTFLAGS", rustflags);
+                    format!("-Clink-arg=-L{llvm_libdir}")
+                };
+                cmd.arg("--host-rustcflags").arg(link_llvm);
             }
 
             if !builder.config.dry_run() && matches!(mode, "run-make" | "coverage-run") {
