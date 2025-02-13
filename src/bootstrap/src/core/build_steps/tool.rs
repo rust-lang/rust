@@ -169,6 +169,10 @@ pub fn prepare_tool_cargo(
     // useful.
     // This is only performed for non-incremental builds, as ccache cannot deal with these.
     if let Some(ref ccache) = builder.config.ccache {
+        eprintln!(
+            "TOOL SCCACHE CONFIGURED at {}, mode: {:?}, incremental: {}",
+            ccache, mode, builder.config.incremental
+        );
         if matches!(mode, Mode::ToolBootstrap) && !builder.config.incremental {
             cargo.env("RUSTC_WRAPPER", ccache);
         }
