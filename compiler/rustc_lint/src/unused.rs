@@ -914,12 +914,8 @@ trait UnusedDelimLint {
                     Closure(ref closure)
                         if matches!(closure.fn_decl.output, FnRetTy::Default(_))
                             // skip `#[core::contracts::requires(...)]` and `#[core::contracts::ensures(...)]` which generate closure
-                            && !cx
-                                .sess()
-                                .source_map()
-                                .span_to_snippet(closure.fn_decl_span)
-                                .unwrap_or_default()
-                                .contains("core::contracts") =>
+                            // with span that is same as the closure body span
+                            && e.span != closure.body.span =>
                     {
                         (&[closure.body.clone()][..], UnusedDelimsCtx::ClosureBody)
                     }
