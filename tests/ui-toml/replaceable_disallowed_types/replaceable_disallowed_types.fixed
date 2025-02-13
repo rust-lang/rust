@@ -13,4 +13,5 @@ mod wrapper {
 
 fn main() {
     let _ = wrapper::String::from("x");
+    //~^ disallowed_types
 }

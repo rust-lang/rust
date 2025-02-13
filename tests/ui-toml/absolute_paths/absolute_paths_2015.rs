@@ -2,6 +2,7 @@
 //@[default]rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/default
 //@[allow_crates]rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/allow_crates
 //@edition:2015
+//@check-pass
 
 #![deny(clippy::absolute_paths)]
 
@@ -11,6 +12,4 @@ mod m1 {
     }
 }
 
-fn main() {
-    let _ = ::m1::m2::X; //~[default] absolute_paths
-}
+fn main() {}

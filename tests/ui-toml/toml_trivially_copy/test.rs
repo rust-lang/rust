@@ -13,6 +13,8 @@ struct Bar(u32);
 fn good(a: &mut u32, b: u32, c: &Bar, d: &u32) {}
 
 fn bad(x: &u16, y: &Foo) {}
+//~^ trivially_copy_pass_by_ref
+//~| trivially_copy_pass_by_ref
 
 fn main() {
     let (mut a, b, c, d, x, y) = (0, 0, Bar(0), 0, 0, Foo(0));

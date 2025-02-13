@@ -5,6 +5,7 @@ fn main() {
     let foo = "bar";
     // `ducks` was unrightfully disallowed
     let ducks = ["quack", "quack"];
+    //~^ disallowed_names
     // `fox` is okay
     let fox = ["what", "does", "the", "fox", "say", "?"];
 }

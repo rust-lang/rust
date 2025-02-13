@@ -2,6 +2,7 @@ error: more than 0 bools in a struct
   --> tests/ui-toml/struct_excessive_bools/test.rs:3:1
    |
 LL | / struct S {
+LL | |
 LL | |     a: bool,
 LL | | }
    | |_^

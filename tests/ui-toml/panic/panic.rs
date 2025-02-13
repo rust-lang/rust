@@ -10,11 +10,13 @@ fn main() {
     match a {
         Enam::A => {},
         _ => panic!(""),
+        //~^ panic
     }
 }
 
 fn issue_13292() {
     panic_any("should lint")
+    //~^ panic
 }
 
 #[test]

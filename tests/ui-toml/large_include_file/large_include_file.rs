@@ -2,7 +2,7 @@
 #![allow(clippy::literal_string_with_formatting_args)]
 
 // Good
-const GOOD_INCLUDE_BYTES: &[u8; 68] = include_bytes!("../../ui/author.rs");
+const GOOD_INCLUDE_BYTES: &[u8; 84] = include_bytes!("../../ui/author.rs");
 const GOOD_INCLUDE_STR: &str = include_str!("../../ui/author.rs");
 
 #[allow(clippy::large_include_file)]

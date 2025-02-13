@@ -7,6 +7,7 @@ fn allowed_name() {}
 fn default_name() {}
 
 /// `TestItemThingyOfCoolness` might sound cool but is not on the list and should be linted.
+//~^ doc_markdown
 fn unknown_name() {}
 
 fn main() {}

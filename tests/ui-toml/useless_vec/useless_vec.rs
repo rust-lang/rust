@@ -6,6 +6,7 @@ fn foo(_: &[u32]) {}
 
 fn main() {
     foo(&vec![1_u32]);
+    //~^ useless_vec
 }
 
 #[test]
