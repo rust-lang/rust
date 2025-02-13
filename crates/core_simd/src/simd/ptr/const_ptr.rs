@@ -1,5 +1,5 @@
 use super::sealed::Sealed;
-use crate::simd::{cmp::SimdPartialEq, num::SimdUint, LaneCount, Mask, Simd, SupportedLaneCount};
+use crate::simd::{LaneCount, Mask, Simd, SupportedLaneCount, cmp::SimdPartialEq, num::SimdUint};
 
 /// Operations on SIMD vectors of constant pointers.
 pub trait SimdConstPtr: Copy + Sealed {

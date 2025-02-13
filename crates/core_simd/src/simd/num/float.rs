@@ -1,7 +1,7 @@
 use super::sealed::Sealed;
 use crate::simd::{
-    cmp::{SimdPartialEq, SimdPartialOrd},
     LaneCount, Mask, Simd, SimdCast, SimdElement, SupportedLaneCount,
+    cmp::{SimdPartialEq, SimdPartialOrd},
 };
 
 /// Operations on SIMD vectors of floats.
