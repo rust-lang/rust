@@ -1,6 +1,7 @@
 //! Operations related to UTF-8 validation.
 
 use super::Utf8Error;
+use super::error::Utf8ErrorLen;
 use crate::intrinsics::const_eval_select;
 
 /// Returns the initial codepoint accumulator for the first byte.
@@ -210,25 +211,26 @@ const fn is_utf8_first_byte(byte: u8) -> bool {
 /// The caller must ensure `bytes[..i]` is a valid UTF-8 prefix and `st` is the DFA state after
 /// executing on `bytes[..i]`.
 #[inline]
-const unsafe fn resolve_error_location(st: u32, bytes: &[u8], i: usize) -> (usize, u8) {
+const unsafe fn resolve_error_location(st: u32, bytes: &[u8], i: usize) -> Utf8Error {
     // There are two cases:
     // 1. [valid UTF-8..] | *here
     //    The previous state must be ACCEPT for the case 1, and `valid_up_to = i`.
     // 2. [valid UTF-8..] | valid first byte, [valid continuation byte...], *here
     //    `valid_up_to` is at the latest non-continuation byte, which must exist and
     //    be in range `(i-3)..i`.
-    if st & STATE_MASK == ST_ACCEPT {
-        (i, 1)
+    let (valid_up_to, error_len) = if st & STATE_MASK == ST_ACCEPT {
+        (i, Utf8ErrorLen::One)
     // SAFETY: UTF-8 first byte must exist if we are in an intermediate state.
     // We use pointer here because `get_unchecked` is not const fn.
     } else if is_utf8_first_byte(unsafe { bytes.as_ptr().add(i - 1).read() }) {
-        (i - 1, 1)
+        (i - 1, Utf8ErrorLen::One)
     // SAFETY: Same as above.
     } else if is_utf8_first_byte(unsafe { bytes.as_ptr().add(i - 2).read() }) {
-        (i - 2, 2)
+        (i - 2, Utf8ErrorLen::Two)
     } else {
-        (i - 3, 3)
-    }
+        (i - 3, Utf8ErrorLen::Three)
+    };
+    Utf8Error { valid_up_to, error_len }
 }
 
 // The simpler but slower algorithm to run DFA with error handling.
@@ -245,8 +247,7 @@ const unsafe fn run_with_error_handling(
         let new_st = next_state(*st, bytes[i]);
         if new_st & STATE_MASK == ST_ERROR {
             // SAFETY: Guaranteed by the caller.
-            let (valid_up_to, error_len) = unsafe { resolve_error_location(*st, bytes, i) };
-            return Err(Utf8Error { valid_up_to, error_len: Some(error_len) });
+            return Err(unsafe { resolve_error_location(*st, bytes, i) });
         }
         *st = new_st;
         i += 1;
@@ -256,7 +257,7 @@ const unsafe fn run_with_error_handling(
 
 /// Walks through `v` checking that it's a valid UTF-8 sequence,
 /// returning `Ok(())` in that case, or, if it is invalid, `Err(err)`.
-#[inline(always)]
+#[inline]
 #[rustc_allow_const_fn_unstable(const_eval_select)] // fallback impl has same behavior
 pub(super) const fn run_utf8_validation(bytes: &[u8]) -> Result<(), Utf8Error> {
     const_eval_select((bytes,), run_utf8_validation_const, run_utf8_validation_rt)
@@ -273,8 +274,9 @@ const fn run_utf8_validation_const(bytes: &[u8]) -> Result<(), Utf8Error> {
                 Ok(())
             } else {
                 // SAFETY: `st` is the last state after execution without encountering any error.
-                let (valid_up_to, _) = unsafe { resolve_error_location(st, bytes, bytes.len()) };
-                Err(Utf8Error { valid_up_to, error_len: None })
+                let mut err = unsafe { resolve_error_location(st, bytes, bytes.len()) };
+                err.error_len = Utf8ErrorLen::Eof;
+                Err(err)
             }
         }
     }
@@ -333,8 +335,9 @@ fn run_utf8_validation_rt(bytes: &[u8]) -> Result<(), Utf8Error> {
 
     if st & STATE_MASK != ST_ACCEPT {
         // SAFETY: Same as above.
-        let (valid_up_to, _) = unsafe { resolve_error_location(st, bytes, bytes.len()) };
-        return Err(Utf8Error { valid_up_to, error_len: None });
+        let mut err = unsafe { resolve_error_location(st, bytes, bytes.len()) };
+        err.error_len = Utf8ErrorLen::Eof;
+        return Err(err);
     }
 
     Ok(())

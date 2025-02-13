@@ -1,4 +1,5 @@
 use super::from_utf8_unchecked;
+use super::validations::run_utf8_validation;
 use crate::fmt;
 use crate::fmt::{Formatter, Write};
 use crate::iter::FusedIterator;
@@ -196,8 +197,10 @@ impl<'a> Iterator for Utf8Chunks<'a> {
             return None;
         }
 
-        match super::from_utf8(self.source) {
-            Ok(valid) => {
+        match run_utf8_validation(self.source) {
+            Ok(()) => {
+                // SAFETY: The whole `source` is valid in UTF-8.
+                let valid = unsafe { from_utf8_unchecked(&self.source) };
                 // Truncate the slice, no need to touch the pointer.
                 self.source = &self.source[..0];
                 Some(Utf8Chunk { valid, invalid: &[] })
