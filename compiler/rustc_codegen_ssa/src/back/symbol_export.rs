@@ -27,7 +27,7 @@ fn crate_export_threshold(crate_type: CrateType) -> SymbolExportLevel {
         CrateType::Executable | CrateType::Staticlib | CrateType::ProcMacro | CrateType::Cdylib => {
             SymbolExportLevel::C
         }
-        CrateType::Rlib | CrateType::Dylib => SymbolExportLevel::Rust,
+        CrateType::Rlib | CrateType::Dylib | CrateType::Sdylib => SymbolExportLevel::Rust,
     }
 }
 

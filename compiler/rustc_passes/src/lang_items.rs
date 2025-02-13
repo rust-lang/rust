@@ -268,7 +268,9 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
 impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
     fn visit_item(&mut self, i: &'ast ast::Item) {
         let target = match &i.kind {
-            ast::ItemKind::ExternCrate(_) => Target::ExternCrate,
+            ast::ItemKind::ExternCrate(..) | ast::ItemKind::ExternDynCrate(..) => {
+                Target::ExternCrate
+            }
             ast::ItemKind::Use(_) => Target::Use,
             ast::ItemKind::Static(_) => Target::Static,
             ast::ItemKind::Const(_) => Target::Const,

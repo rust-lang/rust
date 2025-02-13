@@ -30,6 +30,7 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_feature::Features;
 use rustc_parse::validate_attr;
 use rustc_session::Session;
+use rustc_session::config::SymbolManglingVersion;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, MISSING_UNSAFE_ON_EXTERN,
     PATTERNS_IN_FNS_WITHOUT_BODY,
@@ -81,6 +82,8 @@ struct AstValidator<'a> {
 
     /// Used to ban explicit safety on foreign items when the extern block is not marked as unsafe.
     extern_mod_safety: Option<Safety>,
+
+    is_interface: bool,
 
     lint_buffer: &'a mut LintBuffer,
 }
@@ -922,7 +925,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                 let is_intrinsic =
                     item.attrs.iter().any(|a| a.name_or_empty() == sym::rustc_intrinsic);
-                if body.is_none() && !is_intrinsic {
+                if body.is_none() && !is_intrinsic && !self.is_interface {
                     self.dcx().emit_err(errors::FnWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),
@@ -1108,6 +1111,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         span: where_clauses.after.span,
                         help: self.sess.is_nightly_build(),
                     });
+                }
+            }
+            ItemKind::ExternDynCrate(_) => {
+                if self.sess.opts.get_symbol_mangling_version() != SymbolManglingVersion::V0 {
+                    self.dcx()
+                        .emit_err(errors::WrongManglingSchemeForExternDyn { span: item.span });
                 }
             }
             _ => {}
@@ -1419,7 +1428,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     });
                 }
                 AssocItemKind::Fn(box Fn { body, .. }) => {
-                    if body.is_none() {
+                    if body.is_none() && !self.is_interface {
                         self.dcx().emit_err(errors::AssocFnWithoutBody {
                             span: item.span,
                             replace_span: self.ending_semi_or_hi(item.span),
@@ -1669,6 +1678,7 @@ pub fn check_crate(
     sess: &Session,
     features: &Features,
     krate: &Crate,
+    is_interface: bool,
     lints: &mut LintBuffer,
 ) -> bool {
     let mut validator = AstValidator {
@@ -1680,6 +1690,7 @@ pub fn check_crate(
         outer_impl_trait: None,
         disallow_tilde_const: Some(TildeConstReason::Item),
         extern_mod_safety: None,
+        is_interface,
         lint_buffer: lints,
     };
     visit::walk_crate(&mut validator, krate);

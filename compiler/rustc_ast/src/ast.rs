@@ -3213,6 +3213,7 @@ impl Item {
     pub fn opt_generics(&self) -> Option<&Generics> {
         match &self.kind {
             ItemKind::ExternCrate(_)
+            | ItemKind::ExternDynCrate(_)
             | ItemKind::Use(_)
             | ItemKind::Mod(_, _)
             | ItemKind::ForeignMod(_)
@@ -3428,6 +3429,10 @@ pub enum ItemKind {
     ///
     /// E.g., `extern crate foo` or `extern crate foo_bar as foo`.
     ExternCrate(Option<Symbol>),
+    /// An extern crate with a stable interface.
+    ///
+    /// E.g., `extern dyn crate foo` or `extern dyn crate foo_bar as foo`.
+    ExternDynCrate(Option<Symbol>),
     /// A use declaration item (`use`).
     ///
     /// E.g., `use foo;`, `use foo::bar;` or `use foo::bar as FooBar;`.
@@ -3509,13 +3514,19 @@ impl ItemKind {
             Use(..) | Static(..) | Const(..) | Fn(..) | Mod(..) | GlobalAsm(..) | TyAlias(..)
             | Struct(..) | Union(..) | Trait(..) | TraitAlias(..) | MacroDef(..)
             | Delegation(..) | DelegationMac(..) => "a",
-            ExternCrate(..) | ForeignMod(..) | MacCall(..) | Enum(..) | Impl { .. } => "an",
+            ExternCrate(..)
+            | ExternDynCrate(..)
+            | ForeignMod(..)
+            | MacCall(..)
+            | Enum(..)
+            | Impl { .. } => "an",
         }
     }
 
     pub fn descr(&self) -> &'static str {
         match self {
             ItemKind::ExternCrate(..) => "extern crate",
+            ItemKind::ExternDynCrate(..) => "extern dyn crate",
             ItemKind::Use(..) => "`use` import",
             ItemKind::Static(..) => "static item",
             ItemKind::Const(..) => "constant item",

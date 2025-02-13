@@ -4010,6 +4010,7 @@ dependencies = [
  "rustc_fs_util",
  "rustc_hir",
  "rustc_hir_analysis",
+ "rustc_hir_pretty",
  "rustc_hir_typeck",
  "rustc_incremental",
  "rustc_lint",

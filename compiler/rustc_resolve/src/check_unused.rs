@@ -219,7 +219,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
             // because this means that they were generated in some fashion by the
             // compiler and we don't need to consider them.
             ast::ItemKind::Use(..) if item.span.is_dummy() => return,
-            ast::ItemKind::ExternCrate(orig_name) => {
+            ast::ItemKind::ExternCrate(orig_name) | ast::ItemKind::ExternDynCrate(orig_name) => {
                 self.extern_crate_items.push(ExternCrateToLint {
                     id: item.id,
                     span: item.span,

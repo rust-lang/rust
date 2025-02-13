@@ -336,7 +336,7 @@ fn parse_source(
                     }
                 }
             }
-            ast::ItemKind::ExternCrate(original) => {
+            ast::ItemKind::ExternCrate(original) | ast::ItemKind::ExternDynCrate(original) => {
                 if !info.found_extern_crate
                     && let Some(crate_name) = crate_name
                 {

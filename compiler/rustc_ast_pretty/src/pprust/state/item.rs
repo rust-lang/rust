@@ -3,7 +3,7 @@ use itertools::{Itertools, Position};
 use rustc_ast as ast;
 use rustc_ast::ModKind;
 use rustc_ast::ptr::P;
-use rustc_span::Ident;
+use rustc_span::{Ident, Symbol};
 
 use crate::pp::Breaks::Inconsistent;
 use crate::pprust::state::fixup::FixupContext;
@@ -148,6 +148,26 @@ impl<'a> State<'a> {
         self.end(); // end outer head-block
     }
 
+    fn print_extern_crate(
+        &mut self,
+        vis: &ast::Visibility,
+        head: &str,
+        ident: Ident,
+        orig_name: Option<Symbol>,
+    ) {
+        self.head(visibility_qualified(vis, head));
+        if let Some(orig_name) = orig_name {
+            self.print_name(orig_name);
+            self.space();
+            self.word("as");
+            self.space();
+        }
+        self.print_ident(ident);
+        self.word(";");
+        self.end(); // end inner head-block
+        self.end(); // end outer head-block
+    }
+
     /// Pretty-prints an item.
     pub(crate) fn print_item(&mut self, item: &ast::Item) {
         self.hardbreak_if_not_bol();
@@ -156,17 +176,10 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::Item(item));
         match &item.kind {
             ast::ItemKind::ExternCrate(orig_name) => {
-                self.head(visibility_qualified(&item.vis, "extern crate"));
-                if let &Some(orig_name) = orig_name {
-                    self.print_name(orig_name);
-                    self.space();
-                    self.word("as");
-                    self.space();
-                }
-                self.print_ident(item.ident);
-                self.word(";");
-                self.end(); // end inner head-block
-                self.end(); // end outer head-block
+                self.print_extern_crate(&item.vis, "extern crate", item.ident, *orig_name);
+            }
+            ast::ItemKind::ExternDynCrate(orig_name) => {
+                self.print_extern_crate(&item.vis, "extern dyn crate", item.ident, *orig_name);
             }
             ast::ItemKind::Use(tree) => {
                 self.print_visibility(&item.vis);

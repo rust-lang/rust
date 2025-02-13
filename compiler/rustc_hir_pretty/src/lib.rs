@@ -16,6 +16,7 @@ use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::state::MacHeader;
 use rustc_ast_pretty::pprust::{Comments, PrintState};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{
     BindingMode, ByRef, ConstArgKind, GenericArg, GenericBound, GenericParam, GenericParamKind,
     HirId, LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term, TyPatKind,
@@ -50,7 +51,9 @@ pub enum Nested {
 
 pub trait PpAnn {
     fn nested(&self, _state: &mut State<'_>, _nested: Nested) {}
-    fn pre(&self, _state: &mut State<'_>, _node: AnnNode<'_>) {}
+    fn pre(&self, _state: &mut State<'_>, _node: AnnNode<'_>) -> bool {
+        true
+    }
     fn post(&self, _state: &mut State<'_>, _node: AnnNode<'_>) {}
 }
 
@@ -67,16 +70,41 @@ impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
     }
 }
 
+pub struct InterfaceCtxt<'a> {
+    visibilities: &'a dyn Fn(LocalDefId) -> String,
+}
+
+impl<'a> InterfaceCtxt<'a> {
+    fn visibility(&self, def_id: LocalDefId) -> String {
+        (self.visibilities)(def_id)
+    }
+}
+
 pub struct State<'a> {
     pub s: pp::Printer,
     comments: Option<Comments<'a>>,
     attrs: &'a dyn Fn(HirId) -> &'a [hir::Attribute],
     ann: &'a (dyn PpAnn + 'a),
+    interface_ctxt: Option<InterfaceCtxt<'a>>,
 }
 
 impl<'a> State<'a> {
     fn attrs(&self, id: HirId) -> &'a [hir::Attribute] {
         (self.attrs)(id)
+    }
+
+    fn print_visibility_for_interface(&mut self, def_id: LocalDefId) {
+        if let Some(interface_ctxt) = &self.interface_ctxt {
+            let vis = interface_ctxt.visibility(def_id);
+            self.word_nbsp(vis);
+        }
+    }
+
+    fn visibility_qualified(&self, def_id: LocalDefId, s: &str) -> String {
+        match &self.interface_ctxt {
+            Some(interface_ctxt) => format!("{} {}", &interface_ctxt.visibility(def_id), s),
+            None => format!("{}", s),
+        }
     }
 
     fn print_inner_attributes(&mut self, attrs: &[hir::Attribute]) -> bool {
@@ -286,6 +314,7 @@ pub fn print_crate<'a>(
         comments: Some(Comments::new(sm, filename, input)),
         attrs,
         ann,
+        interface_ctxt: None,
     };
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
@@ -296,11 +325,34 @@ pub fn print_crate<'a>(
     s.s.eof()
 }
 
+pub fn print_crate_as_interface<'a>(
+    krate: &hir::Mod<'_>,
+    attrs: &'a dyn Fn(HirId) -> &'a [hir::Attribute],
+    visibilities: &'a dyn Fn(LocalDefId) -> String,
+    // FIXME: `InterfaceAnn` should always be here, but it's not possible due to
+    // circular dependencies.
+    ann: &'a dyn PpAnn,
+) -> String {
+    let interface_ctxt = InterfaceCtxt { visibilities };
+
+    let mut s = State {
+        s: pp::Printer::new(),
+        comments: None,
+        attrs,
+        ann,
+        interface_ctxt: Some(interface_ctxt),
+    };
+
+    s.print_mod(krate, (*attrs)(hir::CRATE_HIR_ID));
+    s.s.eof()
+}
+
 fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
 where
     F: FnOnce(&mut State<'_>),
 {
-    let mut printer = State { s: pp::Printer::new(), comments: None, attrs: &|_| &[], ann };
+    let mut printer =
+        State { s: pp::Printer::new(), comments: None, attrs: &|_| &[], ann, interface_ctxt: None };
     f(&mut printer);
     printer.s.eof()
 }
@@ -491,6 +543,7 @@ impl<'a> State<'a> {
             hir::ForeignItemKind::Fn(sig, arg_names, generics) => {
                 self.head("");
                 self.print_fn(
+                    None,
                     sig.decl,
                     sig.header,
                     Some(item.ident.name),
@@ -587,11 +640,13 @@ impl<'a> State<'a> {
     }
 
     fn print_item(&mut self, item: &hir::Item<'_>) {
+        if !self.ann.pre(self, AnnNode::Item(item)) {
+            return;
+        }
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
         let attrs = self.attrs(item.hir_id());
         self.print_outer_attributes(attrs);
-        self.ann.pre(self, AnnNode::Item(item));
         match item.kind {
             hir::ItemKind::ExternCrate(orig_name) => {
                 self.head("extern crate");
@@ -659,6 +714,7 @@ impl<'a> State<'a> {
             hir::ItemKind::Fn { sig, generics, body, .. } => {
                 self.head("");
                 self.print_fn(
+                    Some(item.owner_id.def_id),
                     sig.decl,
                     sig.header,
                     Some(item.ident.name),
@@ -666,16 +722,21 @@ impl<'a> State<'a> {
                     &[],
                     Some(body),
                 );
-                self.word(" ");
                 self.end(); // need to close a box
                 self.end(); // need to close a box
+                if self.interface_ctxt.is_some() {
+                    self.word(";");
+                    return;
+                }
+                self.nbsp();
                 self.ann.nested(self, Nested::Body(body));
             }
             hir::ItemKind::Macro(macro_def, _) => {
                 self.print_mac_def(macro_def, &item.ident, item.span, |_| {});
             }
             hir::ItemKind::Mod(_mod) => {
-                self.head("mod");
+                let head = self.visibility_qualified(item.owner_id.def_id, "mod");
+                self.head(head);
                 self.print_ident(item.ident);
                 self.nbsp();
                 self.bopen();
@@ -704,15 +765,37 @@ impl<'a> State<'a> {
                 });
             }
             hir::ItemKind::Enum(ref enum_definition, params) => {
-                self.print_enum_def(enum_definition, params, item.ident.name, item.span);
+                self.print_enum_def(
+                    item.owner_id.def_id,
+                    enum_definition,
+                    params,
+                    item.ident.name,
+                    item.span,
+                );
             }
             hir::ItemKind::Struct(ref struct_def, generics) => {
-                self.head("struct");
-                self.print_struct(struct_def, generics, item.ident.name, item.span, true);
+                let head = self.visibility_qualified(item.owner_id.def_id, "struct");
+                self.head(head);
+                self.print_struct(
+                    Some(item.owner_id.def_id),
+                    struct_def,
+                    generics,
+                    item.ident.name,
+                    item.span,
+                    true,
+                );
             }
             hir::ItemKind::Union(ref struct_def, generics) => {
-                self.head("union");
-                self.print_struct(struct_def, generics, item.ident.name, item.span, true);
+                let head = self.visibility_qualified(item.owner_id.def_id, "union");
+                self.head(head);
+                self.print_struct(
+                    Some(item.owner_id.def_id),
+                    struct_def,
+                    generics,
+                    item.ident.name,
+                    item.span,
+                    true,
+                );
             }
             hir::ItemKind::Impl(&hir::Impl {
                 constness,
@@ -762,6 +845,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::Trait(is_auto, safety, generics, bounds, trait_items) => {
                 self.head("");
+                self.print_visibility_for_interface(item.owner_id.def_id);
                 self.print_is_auto(is_auto);
                 self.print_safety(safety);
                 self.word_nbsp("trait");
@@ -828,12 +912,14 @@ impl<'a> State<'a> {
 
     fn print_enum_def(
         &mut self,
+        def_id: LocalDefId,
         enum_definition: &hir::EnumDef<'_>,
         generics: &hir::Generics<'_>,
         name: Symbol,
         span: rustc_span::Span,
     ) {
-        self.head("enum");
+        let head = self.visibility_qualified(def_id, "enum");
+        self.head(head);
         self.print_name(name);
         self.print_generic_params(generics.params);
         self.print_where_clause(generics);
@@ -865,6 +951,7 @@ impl<'a> State<'a> {
 
     fn print_struct(
         &mut self,
+        def_id: Option<LocalDefId>,
         struct_def: &hir::VariantData<'_>,
         generics: &hir::Generics<'_>,
         name: Symbol,
@@ -880,6 +967,9 @@ impl<'a> State<'a> {
                     self.commasep(Inconsistent, struct_def.fields(), |s, field| {
                         s.maybe_print_comment(field.span.lo());
                         s.print_outer_attributes(s.attrs(field.hir_id));
+                        if let Some(def_id) = def_id {
+                            s.print_visibility_for_interface(def_id);
+                        }
                         s.print_type(field.ty);
                     });
                     self.pclose();
@@ -893,12 +983,17 @@ impl<'a> State<'a> {
             }
             hir::VariantData::Struct { .. } => {
                 self.print_where_clause(generics);
-                self.print_variant_struct(span, struct_def.fields())
+                self.print_variant_struct(def_id, span, struct_def.fields())
             }
         }
     }
 
-    fn print_variant_struct(&mut self, span: rustc_span::Span, fields: &[hir::FieldDef<'_>]) {
+    fn print_variant_struct(
+        &mut self,
+        def_id: Option<LocalDefId>,
+        span: rustc_span::Span,
+        fields: &[hir::FieldDef<'_>],
+    ) {
         self.nbsp();
         self.bopen();
         self.hardbreak_if_not_bol();
@@ -907,6 +1002,9 @@ impl<'a> State<'a> {
             self.hardbreak_if_not_bol();
             self.maybe_print_comment(field.span.lo());
             self.print_outer_attributes(self.attrs(field.hir_id));
+            if let Some(def_id) = def_id {
+                self.print_visibility_for_interface(def_id);
+            }
             self.print_ident(field.ident);
             self.word_nbsp(":");
             self.print_type(field.ty);
@@ -919,7 +1017,7 @@ impl<'a> State<'a> {
     pub fn print_variant(&mut self, v: &hir::Variant<'_>) {
         self.head("");
         let generics = hir::Generics::empty();
-        self.print_struct(&v.data, generics, v.ident.name, v.span, false);
+        self.print_struct(None, &v.data, generics, v.ident.name, v.span, false);
         if let Some(ref d) = v.disr_expr {
             self.space();
             self.word_space("=");
@@ -929,17 +1027,20 @@ impl<'a> State<'a> {
 
     fn print_method_sig(
         &mut self,
+        def_id: Option<LocalDefId>,
         ident: Ident,
         m: &hir::FnSig<'_>,
         generics: &hir::Generics<'_>,
         arg_names: &[Ident],
         body_id: Option<hir::BodyId>,
     ) {
-        self.print_fn(m.decl, m.header, Some(ident.name), generics, arg_names, body_id);
+        self.print_fn(def_id, m.decl, m.header, Some(ident.name), generics, arg_names, body_id);
     }
 
     fn print_trait_item(&mut self, ti: &hir::TraitItem<'_>) {
-        self.ann.pre(self, AnnNode::SubItem(ti.hir_id()));
+        if !self.ann.pre(self, AnnNode::SubItem(ti.hir_id())) {
+            return;
+        }
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ti.span.lo());
         self.print_outer_attributes(self.attrs(ti.hir_id()));
@@ -948,15 +1049,19 @@ impl<'a> State<'a> {
                 self.print_associated_const(ti.ident, ti.generics, ty, default);
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(arg_names)) => {
-                self.print_method_sig(ti.ident, sig, ti.generics, arg_names, None);
+                self.print_method_sig(None, ti.ident, sig, ti.generics, arg_names, None);
                 self.word(";");
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 self.head("");
-                self.print_method_sig(ti.ident, sig, ti.generics, &[], Some(body));
+                self.print_method_sig(None, ti.ident, sig, ti.generics, &[], Some(body));
+                self.end(); // need to close a box
+                self.end(); // need to close a box
+                if self.interface_ctxt.is_some() {
+                    self.word(";");
+                    return;
+                }
                 self.nbsp();
-                self.end(); // need to close a box
-                self.end(); // need to close a box
                 self.ann.nested(self, Nested::Body(body));
             }
             hir::TraitItemKind::Type(bounds, default) => {
@@ -967,7 +1072,9 @@ impl<'a> State<'a> {
     }
 
     fn print_impl_item(&mut self, ii: &hir::ImplItem<'_>) {
-        self.ann.pre(self, AnnNode::SubItem(ii.hir_id()));
+        if !self.ann.pre(self, AnnNode::SubItem(ii.hir_id())) {
+            return;
+        }
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ii.span.lo());
         self.print_outer_attributes(self.attrs(ii.hir_id()));
@@ -978,10 +1085,21 @@ impl<'a> State<'a> {
             }
             hir::ImplItemKind::Fn(ref sig, body) => {
                 self.head("");
-                self.print_method_sig(ii.ident, sig, ii.generics, &[], Some(body));
+                self.print_method_sig(
+                    Some(ii.owner_id.def_id),
+                    ii.ident,
+                    sig,
+                    ii.generics,
+                    &[],
+                    Some(body),
+                );
+                self.end(); // need to close a box
+                self.end(); // need to close a box
+                if self.interface_ctxt.is_some() {
+                    self.word(";");
+                    return;
+                }
                 self.nbsp();
-                self.end(); // need to close a box
-                self.end(); // need to close a box
                 self.ann.nested(self, Nested::Body(body));
             }
             hir::ImplItemKind::Type(ty) => {
@@ -2132,6 +2250,7 @@ impl<'a> State<'a> {
 
     fn print_fn(
         &mut self,
+        def_id: Option<LocalDefId>,
         decl: &hir::FnDecl<'_>,
         header: hir::FnHeader,
         name: Option<Symbol>,
@@ -2139,6 +2258,10 @@ impl<'a> State<'a> {
         arg_names: &[Ident],
         body_id: Option<hir::BodyId>,
     ) {
+        if let Some(def_id) = def_id {
+            self.print_visibility_for_interface(def_id);
+        }
+
         self.print_fn_header_info(header);
 
         if let Some(name) = name {
@@ -2447,6 +2570,7 @@ impl<'a> State<'a> {
         self.print_formal_generic_params(generic_params);
         let generics = hir::Generics::empty();
         self.print_fn(
+            None,
             decl,
             hir::FnHeader {
                 safety: safety.into(),

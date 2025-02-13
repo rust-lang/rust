@@ -1053,6 +1053,7 @@ pub struct Resolver<'ra, 'tcx> {
 
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
+    extern_dyn_crates: FxHashSet<CrateNum>,
     module_children: LocalDefIdMap<Vec<ModChild>>,
     trait_map: NodeMap<Vec<TraitCandidate>>,
 
@@ -1456,6 +1457,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             lifetimes_res_map: Default::default(),
             extra_lifetime_params_map: Default::default(),
             extern_crate_map: Default::default(),
+            extern_dyn_crates: Default::default(),
             module_children: Default::default(),
             trait_map: NodeMap::default(),
             underscore_disambiguator: 0,
@@ -1618,6 +1620,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let expn_that_defined = self.expn_that_defined;
         let extern_crate_map = self.extern_crate_map;
+        let extern_dyn_crates = self.extern_dyn_crates;
         let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
         let glob_map = self.glob_map;
         let main_def = self.main_def;
@@ -1640,6 +1643,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             visibilities_for_hashing: self.visibilities_for_hashing,
             effective_visibilities,
             extern_crate_map,
+            extern_dyn_crates,
             module_children: self.module_children,
             glob_map,
             maybe_unused_trait_imports,

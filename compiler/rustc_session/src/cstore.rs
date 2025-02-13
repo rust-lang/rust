@@ -27,6 +27,14 @@ pub struct CrateSource {
     pub dylib: Option<(PathBuf, PathKind)>,
     pub rlib: Option<(PathBuf, PathKind)>,
     pub rmeta: Option<(PathBuf, PathKind)>,
+    pub sdylib: Option<SdylibSource>,
+}
+
+#[derive(PartialEq, Clone, Debug, HashStable_Generic, Encodable, Decodable)]
+pub struct SdylibSource {
+    pub interface: PathBuf,
+    pub dylib: PathBuf,
+    pub kind: PathKind,
 }
 
 impl CrateSource {
@@ -47,6 +55,9 @@ pub enum CrateDepKind {
     /// A dependency that is required by an rlib version of this crate.
     /// Ordinary `extern crate`s result in `Explicit` dependencies.
     Explicit,
+    /// A dependency that has a stable interface across compiler versions.
+    ///  `extern dyn crate`s result in `Stable` dependencies.
+    Stable,
 }
 
 impl CrateDepKind {
@@ -54,7 +65,7 @@ impl CrateDepKind {
     pub fn macros_only(self) -> bool {
         match self {
             CrateDepKind::MacrosOnly => true,
-            CrateDepKind::Implicit | CrateDepKind::Explicit => false,
+            CrateDepKind::Implicit | CrateDepKind::Explicit | CrateDepKind::Stable => false,
         }
     }
 }

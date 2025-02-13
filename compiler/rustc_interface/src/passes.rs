@@ -141,7 +141,7 @@ fn configure_and_expand(
         )
     });
 
-    util::check_attr_crate_type(sess, pre_configured_attrs, resolver.lint_buffer());
+    util::check_attr_crate_type(sess, pre_configured_attrs, resolver.lint_buffer(), features);
 
     // Expand all macros
     krate = sess.time("macro_expand_crate", || {
@@ -229,6 +229,7 @@ fn configure_and_expand(
             sess,
             features,
             &krate,
+            tcx.is_interface_build(),
             resolver.lint_buffer(),
         )
     });
@@ -844,6 +845,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 CStore::from_tcx(tcx).report_unused_deps(tcx);
             },
             {
+                tcx.ensure_ok().exportable_items(LOCAL_CRATE);
+                tcx.ensure_ok().stable_order_of_exportable_impls(LOCAL_CRATE);
                 tcx.hir().par_for_each_module(|module| {
                     tcx.ensure_ok().check_mod_loops(module);
                     tcx.ensure_ok().check_mod_attrs(module);
