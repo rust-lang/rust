@@ -1,5 +1,8 @@
 //! Collection types.
 
+// Note: This module is also included in the alloctests crate using #[path] to
+// run the tests. See the comment there for an explanation why this is the case.
+
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[cfg(not(no_global_oom_handling))]
