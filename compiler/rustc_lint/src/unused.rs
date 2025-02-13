@@ -913,8 +913,8 @@ trait UnusedDelimLint {
                     MethodCall(ref call) => (&call.args[..], UnusedDelimsCtx::MethodArg),
                     Closure(ref closure)
                         if matches!(closure.fn_decl.output, FnRetTy::Default(_))
-                            // skip `#[core::contracts::requires(...)]` and `#[core::contracts::ensures(...)]` which generate closure
-                            // with span that is same as the closure body span
+                            // skip `#[core::contracts::requires(...)]` and `#[core::contracts::ensures(...)]`
+                            // which generate closure expr with span that is same as the inner closure body span
                             && e.span != closure.body.span =>
                     {
                         (&[closure.body.clone()][..], UnusedDelimsCtx::ClosureBody)
