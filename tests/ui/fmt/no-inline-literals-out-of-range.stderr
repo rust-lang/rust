@@ -8,12 +8,14 @@ LL |     format_args!("{}", 0x8f_i8); // issue #115423
    = note: `#[deny(overflowing_literals)]` on by default
 help: consider using the type `u8` instead
    |
-LL |     format_args!("{}", 0x8f_u8); // issue #115423
-   |                        ~~~~~~~
+LL -     format_args!("{}", 0x8f_i8); // issue #115423
+LL +     format_args!("{}", 0x8f_u8); // issue #115423
+   |
 help: to use as a negative number (decimal `-113`), consider using the type `u8` for the literal and cast it to `i8`
    |
-LL |     format_args!("{}", 0x8f_u8 as i8); // issue #115423
-   |                        ~~~~~~~~~~~~~
+LL -     format_args!("{}", 0x8f_i8); // issue #115423
+LL +     format_args!("{}", 0x8f_u8 as i8); // issue #115423
+   |
 
 error: literal out of range for `u8`
   --> $DIR/no-inline-literals-out-of-range.rs:6:24
@@ -49,8 +51,9 @@ LL |     format_args!("{}", 0xffff_ffff); // treat unsuffixed literals as i32
    = help: consider using the type `u32` instead
 help: to use as a negative number (decimal `-1`), consider using the type `u32` for the literal and cast it to `i32`
    |
-LL |     format_args!("{}", 0xffff_ffffu32 as i32); // treat unsuffixed literals as i32
-   |                        ~~~~~~~~~~~~~~~~~~~~~
+LL -     format_args!("{}", 0xffff_ffff); // treat unsuffixed literals as i32
+LL +     format_args!("{}", 0xffff_ffffu32 as i32); // treat unsuffixed literals as i32
+   |
 
 error: aborting due to 5 previous errors
 

@@ -12,15 +12,15 @@ runners:
 
   # Large runner used mainly for its bigger disk capacity
   - &job-linux-4c-largedisk
-    os: ubuntu-22.04-4core-16gb
+    os: ubuntu-24.04-4core-16gb
     <<: *base-job
 
   - &job-linux-8c
-    os: ubuntu-22.04-8core-32gb
+    os: ubuntu-24.04-8core-32gb
     <<: *base-job
 
   - &job-linux-16c
-    os: ubuntu-22.04-16core-64gb
+    os: ubuntu-24.04-16core-64gb
     <<: *base-job
 
   - &job-macos-xl
@@ -460,26 +460,26 @@ auto:
 
   - name: x86_64-msvc-1
     env:
-      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
       SCRIPT: make ci-msvc-py
     <<: *job-windows-25
 
   - name: x86_64-msvc-2
     env:
-      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
       SCRIPT: make ci-msvc-ps1
     <<: *job-windows-25
 
   # i686-msvc is split into two jobs to run tests in parallel.
   - name: i686-msvc-1
     env:
-      RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+      RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc  --enable-sanitizers
       SCRIPT: make ci-msvc-py
     <<: *job-windows
 
   - name: i686-msvc-2
     env:
-      RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+      RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --enable-sanitizers
       SCRIPT: make ci-msvc-ps1
     <<: *job-windows
 

@@ -11,8 +11,9 @@ LL | fn foo(x: &(dyn Display + Send)) {}
    |    ^^^ ------------------------
 help: provide the argument
    |
-LL |     foo(/* &dyn std::fmt::Display + Send */);
-   |        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     foo();
+LL +     foo(/* &dyn std::fmt::Display + Send */);
+   |
 
 error: aborting due to 1 previous error
 

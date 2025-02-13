@@ -271,6 +271,7 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("aarch64", "fp16") => Some(LLVMFeature::new("fullfp16")),
         // Filter out features that are not supported by the current LLVM version
         ("aarch64", "fpmr") if get_version().0 != 18 => None,
+        ("arm", "fp16") => Some(LLVMFeature::new("fullfp16")),
         // In LLVM 18, `unaligned-scalar-mem` was merged with `unaligned-vector-mem` into a single
         // feature called `fast-unaligned-access`. In LLVM 19, it was split back out.
         ("riscv32" | "riscv64", "unaligned-scalar-mem") if get_version().0 == 18 => {
@@ -303,7 +304,7 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
 /// Must express features in the way Rust understands them.
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled outside codegen.
-pub fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
+pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
     let mut features: FxHashSet<Symbol> = Default::default();
 
     // Add base features for the target.

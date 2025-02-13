@@ -1070,7 +1070,7 @@ pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
 #[rustc_diagnostic_item = "ptr_swap_nonoverlapping"]
 pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     ub_checks::assert_unsafe_precondition!(
-        check_language_ub,
+        check_library_ub,
         "ptr::swap_nonoverlapping requires that both pointer arguments are aligned and non-null \
         and the specified memory ranges do not overlap",
         (

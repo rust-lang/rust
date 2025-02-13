@@ -12,12 +12,14 @@ LL |     let _: T::Type;
    |
 help: use fully-qualified syntax to disambiguate
    |
-LL |     let _: <T as A>::Type;
-   |            ~~~~~~~~~~
+LL -     let _: T::Type;
+LL +     let _: <T as A>::Type;
+   |
 help: use fully-qualified syntax to disambiguate
    |
-LL |     let _: <T as B>::Type;
-   |            ~~~~~~~~~~
+LL -     let _: T::Type;
+LL +     let _: <T as B>::Type;
+   |
 
 error[E0034]: multiple applicable items in scope
   --> $DIR/disambiguate-multiple-trait-2.rs:16:7
@@ -37,12 +39,14 @@ LL |     fn foo(&self);
    |     ^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
-LL |     A::foo(&t);
-   |     ~~~~~~~~~~
+LL -     t.foo();
+LL +     A::foo(&t);
+   |
 help: disambiguate the method for candidate #2
    |
-LL |     B::foo(&t);
-   |     ~~~~~~~~~~
+LL -     t.foo();
+LL +     B::foo(&t);
+   |
 
 error[E0034]: multiple applicable items in scope
   --> $DIR/disambiguate-multiple-trait-2.rs:20:16
@@ -62,10 +66,12 @@ LL |     const CONST: usize;
    |     ^^^^^^^^^^^^^^^^^^
 help: use fully-qualified syntax to disambiguate
    |
-LL |     let _ = <T as A>::CONST;
-   |             ~~~~~~~~~~
-LL |     let _ = <T as B>::CONST;
-   |             ~~~~~~~~~~
+LL -     let _ = T::CONST;
+LL +     let _ = <T as A>::CONST;
+   |
+LL -     let _ = T::CONST;
+LL +     let _ = <T as B>::CONST;
+   |
 
 error[E0223]: ambiguous associated type
   --> $DIR/disambiguate-multiple-trait-2.rs:52:12
@@ -75,10 +81,12 @@ LL |     let _: S::Type;
    |
 help: use fully-qualified syntax
    |
-LL |     let _: <S as A>::Type;
-   |            ~~~~~~~~~~~~~~
-LL |     let _: <S as B>::Type;
-   |            ~~~~~~~~~~~~~~
+LL -     let _: S::Type;
+LL +     let _: <S as A>::Type;
+   |
+LL -     let _: S::Type;
+LL +     let _: <S as B>::Type;
+   |
 
 error[E0034]: multiple applicable items in scope
   --> $DIR/disambiguate-multiple-trait-2.rs:46:8
@@ -98,10 +106,12 @@ LL |     fn foo(&self) {}
    |     ^^^^^^^^^^^^^
 help: use fully-qualified syntax to disambiguate
    |
-LL |     A::foo(&s);
-   |     ~~~
-LL |     B::foo(&s);
-   |     ~~~
+LL -     S::foo(&s);
+LL +     A::foo(&s);
+   |
+LL -     S::foo(&s);
+LL +     B::foo(&s);
+   |
 
 error[E0034]: multiple applicable items in scope
   --> $DIR/disambiguate-multiple-trait-2.rs:49:16
@@ -121,10 +131,12 @@ LL |     const CONST: usize = 1;
    |     ^^^^^^^^^^^^^^^^^^
 help: use fully-qualified syntax to disambiguate
    |
-LL |     let _ = <S as A>::CONST;
-   |             ~~~~~~~~~~
-LL |     let _ = <S as B>::CONST;
-   |             ~~~~~~~~~~
+LL -     let _ = S::CONST;
+LL +     let _ = <S as A>::CONST;
+   |
+LL -     let _ = S::CONST;
+LL +     let _ = <S as B>::CONST;
+   |
 
 error: aborting due to 6 previous errors
 

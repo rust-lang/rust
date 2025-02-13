@@ -138,10 +138,8 @@ function highlightSrcLines() {
     if (x) {
         x.scrollIntoView();
     }
-    onEachLazy(document.getElementsByClassName("src-line-numbers"), e => {
-        onEachLazy(e.getElementsByTagName("a"), i_e => {
-            removeClass(i_e, "line-highlighted");
-        });
+    onEachLazy(document.querySelectorAll("a[data-nosnippet]"), e => {
+        removeClass(e, "line-highlighted");
     });
     for (let i = from; i <= to; ++i) {
         elem = document.getElementById(i);
@@ -200,7 +198,7 @@ const handleSrcHighlight = (function() {
 
 window.addEventListener("hashchange", highlightSrcLines);
 
-onEachLazy(document.getElementsByClassName("src-line-numbers"), el => {
+onEachLazy(document.querySelectorAll("a[data-nosnippet]"), el => {
     el.addEventListener("click", handleSrcHighlight);
 });
 

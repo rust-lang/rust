@@ -11,8 +11,9 @@ LL |     let _hair_space_around = ' x​';
    |                               ^^
 help: consider removing the non-printing characters
    |
-LL |     let _hair_space_around = 'x​';
-   |                               ~
+LL -     let _hair_space_around = ' x​';
+LL +     let _hair_space_around = 'x​';
+   |
 
 error: aborting due to 1 previous error
 

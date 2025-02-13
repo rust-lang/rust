@@ -9,8 +9,9 @@ LL |     let ptr = unsafe { &mut BB };
    = note: `#[warn(static_mut_refs)]` on by default
 help: use `&raw mut` instead to create a raw pointer
    |
-LL |     let ptr = unsafe { &raw mut BB };
-   |                        ~~~~~~~~
+LL -     let ptr = unsafe { &mut BB };
+LL +     let ptr = unsafe { &raw mut BB };
+   |
 
 warning: 1 warning emitted
 

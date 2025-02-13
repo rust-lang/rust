@@ -195,8 +195,9 @@ LL |     [t, t];
    |      - you could clone this value
 help: consider further restricting type parameter `T` with trait `Copy`
    |
-LL |     T:, T: Copy
-   |       ~~~~~~~~~
+LL -     T:,
+LL +     T:, T: Copy
+   |
 
 error: aborting due to 11 previous errors
 

@@ -6,8 +6,9 @@ LL | const BAD_NESTING4: pattern_type!(u8 is 'a'..='a') = todo!();
    |
 help: if you meant to write a byte literal, prefix with `b`
    |
-LL | const BAD_NESTING4: pattern_type!(u8 is b'a'..='a') = todo!();
-   |                                         ~~~~
+LL - const BAD_NESTING4: pattern_type!(u8 is 'a'..='a') = todo!();
+LL + const BAD_NESTING4: pattern_type!(u8 is b'a'..='a') = todo!();
+   |
 
 error[E0308]: mismatched types
   --> $DIR/pattern_type_mismatch.rs:8:47
@@ -17,8 +18,9 @@ LL | const BAD_NESTING4: pattern_type!(u8 is 'a'..='a') = todo!();
    |
 help: if you meant to write a byte literal, prefix with `b`
    |
-LL | const BAD_NESTING4: pattern_type!(u8 is 'a'..=b'a') = todo!();
-   |                                               ~~~~
+LL - const BAD_NESTING4: pattern_type!(u8 is 'a'..='a') = todo!();
+LL + const BAD_NESTING4: pattern_type!(u8 is 'a'..=b'a') = todo!();
+   |
 
 error[E0308]: mismatched types
   --> $DIR/pattern_type_mismatch.rs:12:43

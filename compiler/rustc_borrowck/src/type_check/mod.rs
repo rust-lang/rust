@@ -1116,7 +1116,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     ConstraintCategory::Boring,
                 );
 
-                let sig = self.normalize(unnormalized_sig, term_location);
+                let sig = self.deeply_normalize(unnormalized_sig, term_location);
                 // HACK(#114936): `WF(sig)` does not imply `WF(normalized(sig))`
                 // with built-in `Fn` implementations, since the impl may not be
                 // well-formed itself.

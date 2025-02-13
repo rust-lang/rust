@@ -22,8 +22,9 @@ LL | pub fn empty_derive(_: TokenStream) -> TokenStream {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ you could import this directly
 help: import `Empty` directly
    |
-LL | use test_macros::Empty;
-   |     ~~~~~~~~~~~~~~~~~~
+LL - use m::Empty;
+LL + use test_macros::Empty;
+   |
 
 error: aborting due to 2 previous errors
 

@@ -15,16 +15,19 @@ LL |         Foo::Bar { a, aa: 1, c } => (),
    |
 help: include the missing field in the pattern
    |
-LL |         Foo::Bar { a, aa: 1, c, b } => (),
-   |                               ~~~~~
+LL -         Foo::Bar { a, aa: 1, c } => (),
+LL +         Foo::Bar { a, aa: 1, c, b } => (),
+   |
 help: if you don't care about this missing field, you can explicitly ignore it
    |
-LL |         Foo::Bar { a, aa: 1, c, b: _ } => (),
-   |                               ~~~~~~~~
+LL -         Foo::Bar { a, aa: 1, c } => (),
+LL +         Foo::Bar { a, aa: 1, c, b: _ } => (),
+   |
 help: or always ignore missing fields here
    |
-LL |         Foo::Bar { a, aa: 1, c, .. } => (),
-   |                               ~~~~~~
+LL -         Foo::Bar { a, aa: 1, c } => (),
+LL +         Foo::Bar { a, aa: 1, c, .. } => (),
+   |
 
 error[E0026]: variant `Foo::Baz` does not have a field named `bb`
   --> $DIR/suggest-replacing-field-when-specifying-same-type.rs:13:20
@@ -43,16 +46,19 @@ LL |         Foo::Baz { bb: 1.0 } => (),
    |
 help: include the missing field in the pattern
    |
-LL |         Foo::Baz { bb: 1.0, a } => (),
-   |                           ~~~~~
+LL -         Foo::Baz { bb: 1.0 } => (),
+LL +         Foo::Baz { bb: 1.0, a } => (),
+   |
 help: if you don't care about this missing field, you can explicitly ignore it
    |
-LL |         Foo::Baz { bb: 1.0, a: _ } => (),
-   |                           ~~~~~~~~
+LL -         Foo::Baz { bb: 1.0 } => (),
+LL +         Foo::Baz { bb: 1.0, a: _ } => (),
+   |
 help: or always ignore missing fields here
    |
-LL |         Foo::Baz { bb: 1.0, .. } => (),
-   |                           ~~~~~~
+LL -         Foo::Baz { bb: 1.0 } => (),
+LL +         Foo::Baz { bb: 1.0, .. } => (),
+   |
 
 error[E0026]: variant `Foo::Bar` does not have a field named `aa`
   --> $DIR/suggest-replacing-field-when-specifying-same-type.rs:20:23
@@ -68,16 +74,19 @@ LL |         Foo::Bar { a, aa: "", c } => (),
    |
 help: include the missing field in the pattern
    |
-LL |         Foo::Bar { a, aa: "", c, b } => (),
-   |                                ~~~~~
+LL -         Foo::Bar { a, aa: "", c } => (),
+LL +         Foo::Bar { a, aa: "", c, b } => (),
+   |
 help: if you don't care about this missing field, you can explicitly ignore it
    |
-LL |         Foo::Bar { a, aa: "", c, b: _ } => (),
-   |                                ~~~~~~~~
+LL -         Foo::Bar { a, aa: "", c } => (),
+LL +         Foo::Bar { a, aa: "", c, b: _ } => (),
+   |
 help: or always ignore missing fields here
    |
-LL |         Foo::Bar { a, aa: "", c, .. } => (),
-   |                                ~~~~~~
+LL -         Foo::Bar { a, aa: "", c } => (),
+LL +         Foo::Bar { a, aa: "", c, .. } => (),
+   |
 
 error[E0026]: variant `Foo::Baz` does not have a field named `bb`
   --> $DIR/suggest-replacing-field-when-specifying-same-type.rs:23:20
@@ -93,16 +102,19 @@ LL |         Foo::Baz { bb: "" } => (),
    |
 help: include the missing field in the pattern
    |
-LL |         Foo::Baz { bb: "", a } => (),
-   |                          ~~~~~
+LL -         Foo::Baz { bb: "" } => (),
+LL +         Foo::Baz { bb: "", a } => (),
+   |
 help: if you don't care about this missing field, you can explicitly ignore it
    |
-LL |         Foo::Baz { bb: "", a: _ } => (),
-   |                          ~~~~~~~~
+LL -         Foo::Baz { bb: "" } => (),
+LL +         Foo::Baz { bb: "", a: _ } => (),
+   |
 help: or always ignore missing fields here
    |
-LL |         Foo::Baz { bb: "", .. } => (),
-   |                          ~~~~~~
+LL -         Foo::Baz { bb: "" } => (),
+LL +         Foo::Baz { bb: "", .. } => (),
+   |
 
 error: aborting due to 8 previous errors
 

@@ -379,16 +379,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         })
     }
 
-    /// Create an `ExprKind::Ret` that is preceded by a call to check contract ensures clause.
+    /// Create an `ExprKind::Ret` that is optionally wrapped by a call to check
+    /// a contract ensures clause, if it exists.
     fn checked_return(&mut self, opt_expr: Option<&'hir hir::Expr<'hir>>) -> hir::ExprKind<'hir> {
-        let checked_ret = if let Some(Some((span, fresh_ident))) =
-            self.contract.as_ref().map(|c| c.ensures.as_ref().map(|e| (e.expr.span, e.fresh_ident)))
-        {
-            let expr = opt_expr.unwrap_or_else(|| self.expr_unit(span));
-            Some(self.inject_ensures_check(expr, span, fresh_ident.0, fresh_ident.2))
-        } else {
-            opt_expr
-        };
+        let checked_ret =
+            if let Some((check_span, check_ident, check_hir_id)) = self.contract_ensures {
+                let expr = opt_expr.unwrap_or_else(|| self.expr_unit(check_span));
+                Some(self.inject_ensures_check(expr, check_span, check_ident, check_hir_id))
+            } else {
+                opt_expr
+            };
         hir::ExprKind::Ret(checked_ret)
     }
 
@@ -1090,7 +1090,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             } else {
                 None
             };
-            let body_id = this.lower_fn_body(decl, |this| {
+            // FIXME(contracts): Support contracts on closures?
+            let body_id = this.lower_fn_body(decl, None, |this| {
                 this.coroutine_kind = coroutine_kind;
                 let e = this.lower_expr_mut(body);
                 coroutine_kind = this.coroutine_kind;

@@ -13,8 +13,6 @@ use std::marker::DiscriminantKind;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::mir::mono::MonoItem;
-use rustc_middle::ty::TyCtxt;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
@@ -23,9 +21,10 @@ pub use rustc_type_ir::{TyDecoder, TyEncoder};
 use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use crate::mir::interpret::{AllocId, ConstAllocation, CtfeProvenance};
+use crate::mir::mono::MonoItem;
 use crate::mir::{self};
 use crate::traits;
-use crate::ty::{self, AdtDef, GenericArgsRef, Ty};
+use crate::ty::{self, AdtDef, GenericArgsRef, Ty, TyCtxt};
 
 /// The shorthand encoding uses an enum's variant index `usize`
 /// and is offset by this value so it never matches a real variant.

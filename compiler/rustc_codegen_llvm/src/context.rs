@@ -616,12 +616,10 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     pub(crate) fn create_used_variable_impl(&self, name: &'static CStr, values: &[&'ll Value]) {
         let array = self.const_array(self.type_ptr(), values);
 
-        unsafe {
-            let g = llvm::LLVMAddGlobal(self.llmod, self.val_ty(array), name.as_ptr());
-            llvm::LLVMSetInitializer(g, array);
-            llvm::set_linkage(g, llvm::Linkage::AppendingLinkage);
-            llvm::set_section(g, c"llvm.metadata");
-        }
+        let g = llvm::add_global(self.llmod, self.val_ty(array), name);
+        llvm::set_initializer(g, array);
+        llvm::set_linkage(g, llvm::Linkage::AppendingLinkage);
+        llvm::set_section(g, c"llvm.metadata");
     }
 }
 impl<'ll> SimpleCx<'ll> {

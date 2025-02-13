@@ -190,7 +190,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PointerFinder<'a, 'tcx> {
         let pointer_ty = self.local_decls[place.local].ty;
 
         // We only want to check places based on raw pointers
-        if !pointer_ty.is_unsafe_ptr() {
+        if !pointer_ty.is_raw_ptr() {
             trace!("Indirect, but not based on an raw ptr, not checking {:?}", place);
             return;
         }

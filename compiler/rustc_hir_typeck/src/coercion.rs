@@ -219,7 +219,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // or pin-ergonomics.
         match *b.kind() {
             ty::RawPtr(_, b_mutbl) => {
-                return self.coerce_unsafe_ptr(a, b, b_mutbl);
+                return self.coerce_raw_ptr(a, b, b_mutbl);
             }
             ty::Ref(r_b, _, mutbl_b) => {
                 return self.coerce_borrowed_pointer(a, b, r_b, mutbl_b);
@@ -1017,13 +1017,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
     }
 
-    fn coerce_unsafe_ptr(
+    fn coerce_raw_ptr(
         &self,
         a: Ty<'tcx>,
         b: Ty<'tcx>,
         mutbl_b: hir::Mutability,
     ) -> CoerceResult<'tcx> {
-        debug!("coerce_unsafe_ptr(a={:?}, b={:?})", a, b);
+        debug!("coerce_raw_ptr(a={:?}, b={:?})", a, b);
 
         let (is_ref, mt_a) = match *a.kind() {
             ty::Ref(_, ty, mutbl) => (true, ty::TypeAndMut { ty, mutbl }),
@@ -1033,21 +1033,21 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         coerce_mutbls(mt_a.mutbl, mutbl_b)?;
 
         // Check that the types which they point at are compatible.
-        let a_unsafe = Ty::new_ptr(self.tcx, mt_a.ty, mutbl_b);
-        // Although references and unsafe ptrs have the same
+        let a_raw = Ty::new_ptr(self.tcx, mt_a.ty, mutbl_b);
+        // Although references and raw ptrs have the same
         // representation, we still register an Adjust::DerefRef so that
         // regionck knows that the region for `a` must be valid here.
         if is_ref {
-            self.unify_and(a_unsafe, b, |target| {
+            self.unify_and(a_raw, b, |target| {
                 vec![
                     Adjustment { kind: Adjust::Deref(None), target: mt_a.ty },
                     Adjustment { kind: Adjust::Borrow(AutoBorrow::RawPtr(mutbl_b)), target },
                 ]
             })
         } else if mt_a.mutbl != mutbl_b {
-            self.unify_and(a_unsafe, b, simple(Adjust::Pointer(PointerCoercion::MutToConstPointer)))
+            self.unify_and(a_raw, b, simple(Adjust::Pointer(PointerCoercion::MutToConstPointer)))
         } else {
-            self.unify_and(a_unsafe, b, identity)
+            self.unify_and(a_raw, b, identity)
         }
     }
 }

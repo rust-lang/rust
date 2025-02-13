@@ -9,8 +9,9 @@ LL |          let f: F = async { 1 };
    |
 help: a trait with a similar name exists
    |
-LL |          let f: Fn = async { 1 };
-   |                 ~~
+LL -          let f: F = async { 1 };
+LL +          let f: Fn = async { 1 };
+   |
 help: you might be missing a type parameter
    |
 LL | fn f<T, F>(
@@ -28,8 +29,9 @@ LL | ) -> impl Iterator<Item = dyn SubAssign> {
    |                           +++
 help: you might have meant to write a bound here
    |
-LL | ) -> impl Iterator<Item: SubAssign> {
-   |                        ~
+LL - ) -> impl Iterator<Item = SubAssign> {
+LL + ) -> impl Iterator<Item: SubAssign> {
+   |
 
 error[E0782]: expected a type, found a trait
   --> $DIR/expected-type-of-closure-body-to-be-a-closure-or-coroutine-ice-113776.rs:16:27
@@ -44,8 +46,9 @@ LL | ) -> impl Iterator<Item = dyn SubAssign> {
    |                           +++
 help: you might have meant to write a bound here
    |
-LL | ) -> impl Iterator<Item: SubAssign> {
-   |                        ~
+LL - ) -> impl Iterator<Item = SubAssign> {
+LL + ) -> impl Iterator<Item: SubAssign> {
+   |
 
 error[E0277]: `()` is not an iterator
   --> $DIR/expected-type-of-closure-body-to-be-a-closure-or-coroutine-ice-113776.rs:16:6

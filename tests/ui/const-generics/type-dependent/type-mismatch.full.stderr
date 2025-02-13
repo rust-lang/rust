@@ -6,8 +6,9 @@ LL |     assert_eq!(R.method::<1u16>(), 1);
    |
 help: change the type of the numeric literal from `u16` to `u8`
    |
-LL |     assert_eq!(R.method::<1u8>(), 1);
-   |                            ~~
+LL -     assert_eq!(R.method::<1u16>(), 1);
+LL +     assert_eq!(R.method::<1u8>(), 1);
+   |
 
 error: aborting due to 1 previous error
 

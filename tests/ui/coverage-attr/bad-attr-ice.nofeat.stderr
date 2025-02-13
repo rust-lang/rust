@@ -6,9 +6,11 @@ LL | #[coverage]
    |
 help: the following are the possible correct uses
    |
-LL | #[coverage(off)]
+LL - #[coverage]
+LL + #[coverage(off)]
    |
-LL | #[coverage(on)]
+LL - #[coverage]
+LL + #[coverage(on)]
    |
 
 error[E0658]: the `#[coverage]` attribute is an experimental feature

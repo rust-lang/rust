@@ -8,7 +8,7 @@ define-function: (
     block {
         call-function: ("switch-theme", {"theme": |theme|})
         assert-css: (
-            "body.src .example-wrap pre.rust a",
+            "body.src .example-wrap pre.rust a:not([data-nosnippet])",
             {"background-color": |background_color|},
             ALL,
         )

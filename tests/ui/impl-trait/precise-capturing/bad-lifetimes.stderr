@@ -7,8 +7,9 @@ LL | fn no_elided_lt() -> impl Sized + use<'_> {}
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
 help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
    |
-LL | fn no_elided_lt() -> impl Sized + use<'static> {}
-   |                                       ~~~~~~~
+LL - fn no_elided_lt() -> impl Sized + use<'_> {}
+LL + fn no_elided_lt() -> impl Sized + use<'static> {}
+   |
 
 error[E0261]: use of undeclared lifetime name `'missing`
   --> $DIR/bad-lifetimes.rs:8:37

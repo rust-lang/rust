@@ -7,8 +7,9 @@ LL |     0u16.foo(b);
    = note: cannot satisfy `<u8 as Element<_>>::Array == [u8; 3]`
 help: try using a fully qualified path to specify the expected types
    |
-LL |     <u16 as Foo<I>>::foo(0u16, b);
-   |     +++++++++++++++++++++    ~
+LL -     0u16.foo(b);
+LL +     <u16 as Foo<I>>::foo(0u16, b);
+   |
 
 error[E0283]: type annotations needed
   --> $DIR/issue-69683.rs:30:10
@@ -34,8 +35,9 @@ LL |     fn foo(self, x: <u8 as Element<I>>::Array);
    |        --- required by a bound in this associated function
 help: try using a fully qualified path to specify the expected types
    |
-LL |     <u16 as Foo<I>>::foo(0u16, b);
-   |     +++++++++++++++++++++    ~
+LL -     0u16.foo(b);
+LL +     <u16 as Foo<I>>::foo(0u16, b);
+   |
 
 error: aborting due to 2 previous errors
 

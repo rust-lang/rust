@@ -576,7 +576,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         // and recommending Copy might be a bad idea.
         for field in def.all_fields() {
             let did = field.did;
-            if cx.tcx.type_of(did).instantiate_identity().is_unsafe_ptr() {
+            if cx.tcx.type_of(did).instantiate_identity().is_raw_ptr() {
                 return;
             }
         }

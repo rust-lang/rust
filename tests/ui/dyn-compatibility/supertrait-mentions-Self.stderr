@@ -34,8 +34,9 @@ LL | trait Baz : Bar<Self> {
    |       this trait is not dyn compatible...
 help: consider using an opaque type instead
    |
-LL | fn make_baz<T:Baz>(t: &T) -> &impl Baz {
-   |                               ~~~~
+LL - fn make_baz<T:Baz>(t: &T) -> &dyn Baz {
+LL + fn make_baz<T:Baz>(t: &T) -> &impl Baz {
+   |
 
 error: aborting due to 2 previous errors
 

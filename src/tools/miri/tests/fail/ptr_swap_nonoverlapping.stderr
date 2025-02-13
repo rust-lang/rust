@@ -1,0 +1,31 @@
+
+thread 'main' panicked at RUSTLIB/core/src/panicking.rs:LL:CC:
+unsafe precondition(s) violated: ptr::swap_nonoverlapping requires that both pointer arguments are aligned and non-null and the specified memory ranges do not overlap
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
+thread caused non-unwinding panic. aborting.
+error: abnormal termination: the program aborted execution
+  --> RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
+   |
+LL |     ABORT();
+   | ^ the program aborted execution
+   |
+   = note: BACKTRACE:
+   = note: inside `std::sys::pal::PLATFORM::abort_internal` at RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
+   = note: inside `std::panicking::rust_panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::begin_panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
+   = note: inside `std::panicking::begin_panic_handler` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `core::panicking::panic_nounwind` at RUSTLIB/core/src/panicking.rs:LL:CC
+   = note: inside `std::ptr::swap_nonoverlapping::precondition_check` at RUSTLIB/core/src/ub_checks.rs:LL:CC
+   = note: inside `std::ptr::swap_nonoverlapping::<usize>` at RUSTLIB/core/src/ub_checks.rs:LL:CC
+note: inside `main`
+  --> tests/fail/ptr_swap_nonoverlapping.rs:LL:CC
+   |
+LL |         std::ptr::swap_nonoverlapping(ptr, ptr, 1);
+   | ^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

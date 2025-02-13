@@ -1,5 +1,5 @@
 error[E0597]: `s` does not live long enough
-  --> $DIR/check-normalized-sig-for-wf.rs:7:7
+  --> $DIR/check-normalized-sig-for-wf.rs:11:7
    |
 LL |     s: String,
    |     - binding `s` declared here
@@ -14,7 +14,7 @@ LL | }
    | - `s` dropped here while still borrowed
 
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/check-normalized-sig-for-wf.rs:15:5
+  --> $DIR/check-normalized-sig-for-wf.rs:19:5
    |
 LL | fn extend<T>(input: &T) -> &'static T {
    |              -----  - let's call the lifetime of this reference `'1`
@@ -28,7 +28,7 @@ LL |     n(input).0
    |     argument requires that `'1` must outlive `'static`
 
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/check-normalized-sig-for-wf.rs:23:5
+  --> $DIR/check-normalized-sig-for-wf.rs:27:5
    |
 LL | fn extend_mut<'a, T>(input: &'a mut T) -> &'static mut T {
    |               --     ----- `input` is a reference that is only valid in the function body

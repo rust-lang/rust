@@ -11,8 +11,9 @@ LL |         fn eq(&self, _other: &(Foo, i32)) -> bool {
               found signature `fn(&a::Bar, &(a::Foo, _)) -> _`
 help: change the parameter type to match the trait
    |
-LL |         fn eq(&self, _other: &(a::Bar, i32)) -> bool {
-   |                              ~~~~~~~~~~~~~~
+LL -         fn eq(&self, _other: &(Foo, i32)) -> bool {
+LL +         fn eq(&self, _other: &(a::Bar, i32)) -> bool {
+   |
 
 error: item does not constrain `a::Foo::{opaque#0}`, but has it in its signature
   --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:9:12
@@ -45,8 +46,9 @@ LL |         fn eq(&self, _other: &(Bar, i32)) -> bool {
    |            ^^
 help: change the parameter type to match the trait
    |
-LL |         fn eq(&self, _other: &(b::Foo, i32)) -> bool {
-   |                              ~~~~~~~~~~~~~~
+LL -         fn eq(&self, _other: &(Bar, i32)) -> bool {
+LL +         fn eq(&self, _other: &(b::Foo, i32)) -> bool {
+   |
 
 error: unconstrained opaque type
   --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:18:16

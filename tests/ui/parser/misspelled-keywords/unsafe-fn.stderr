@@ -6,8 +6,9 @@ LL | unsafee fn code() {}
    |
 help: there is a keyword `unsafe` with a similar name
    |
-LL | unsafe fn code() {}
-   | ~~~~~~
+LL - unsafee fn code() {}
+LL + unsafe fn code() {}
+   |
 
 error: aborting due to 1 previous error
 

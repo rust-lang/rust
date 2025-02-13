@@ -489,7 +489,7 @@ impl TyKind {
     /// Returns the type and mutability of `*ty` for builtin types.
     ///
     /// The parameter `explicit` indicates if this is an *explicit* dereference.
-    /// Some types -- notably unsafe ptrs -- can only be dereferenced explicitly.
+    /// Some types -- notably raw ptrs -- can only be dereferenced explicitly.
     pub fn builtin_deref(&self, explicit: bool) -> Option<TypeAndMut> {
         match self.rigid()? {
             RigidTy::Adt(def, args) if def.is_box() => {

@@ -108,8 +108,9 @@ LL |         let PAT = v1;
    = note: the matched value is of type `u32`
 help: introduce a variable instead
    |
-LL |         let PAT_var = v1;
-   |             ~~~~~~~
+LL -         let PAT = v1;
+LL +         let PAT_var = v1;
+   |
 
 error: aborting due to 7 previous errors
 

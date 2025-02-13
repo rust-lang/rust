@@ -1,4 +1,4 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@ revisions: host x86-64-v3
 
 // This particular CPU regressed in #131563

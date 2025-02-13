@@ -1,6 +1,6 @@
 // Verify that move before the call of the function with noalias, nocapture, readonly.
 // #107436
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 
 #![crate_type = "lib"]
 

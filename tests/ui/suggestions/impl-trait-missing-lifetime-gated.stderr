@@ -11,8 +11,9 @@ LL |     fn g(mut x: impl Iterator<Item = &()>) -> Option<&'static ()> { x.next(
    |                                                       +++++++
 help: consider introducing a named lifetime parameter
    |
-LL |     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'a ()> { x.next() }
-   |         ++++                             ~~~                ~~~
+LL -     fn g(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
+LL +     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'a ()> { x.next() }
+   |
 help: alternatively, you might want to return an owned value
    |
 LL -     fn g(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
@@ -32,8 +33,9 @@ LL |     async fn i(mut x: impl Iterator<Item = &()>) -> Option<&'static ()> { x
    |                                                             +++++++
 help: consider introducing a named lifetime parameter
    |
-LL |     async fn i<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'a ()> { x.next() }
-   |               ++++                             ~~~                ~~~
+LL -     async fn i(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
+LL +     async fn i<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'a ()> { x.next() }
+   |
 help: alternatively, you might want to return an owned value
    |
 LL -     async fn i(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
@@ -49,12 +51,14 @@ LL |     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() 
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
 help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
    |
-LL |     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'static ()> { x.next() }
-   |                                                          ~~~~~~~
+LL -     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
+LL +     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'static ()> { x.next() }
+   |
 help: consider introducing a named lifetime parameter
    |
-LL |     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'a ()> { x.next() }
-   |         ++++                             ~~~                ~~~
+LL -     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
+LL +     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'a ()> { x.next() }
+   |
 help: alternatively, you might want to return an owned value
    |
 LL -     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
@@ -70,12 +74,14 @@ LL |     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.n
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
 help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
    |
-LL |     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'static ()> { x.next() }
-   |                                                                ~~~~~~~
+LL -     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
+LL +     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'static ()> { x.next() }
+   |
 help: consider introducing a named lifetime parameter
    |
-LL |     async fn i<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'a ()> { x.next() }
-   |               ++++                             ~~~                ~~~
+LL -     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
+LL +     async fn i<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'a ()> { x.next() }
+   |
 help: alternatively, you might want to return an owned value
    |
 LL -     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
@@ -95,8 +101,9 @@ LL |     fn g(mut x: impl Foo) -> Option<&'static ()> { x.next() }
    |                                      +++++++
 help: consider introducing a named lifetime parameter
    |
-LL |     fn g<'a>(mut x: impl Foo) -> Option<&'a ()> { x.next() }
-   |         ++++                            ~~~
+LL -     fn g(mut x: impl Foo) -> Option<&()> { x.next() }
+LL +     fn g<'a>(mut x: impl Foo) -> Option<&'a ()> { x.next() }
+   |
 help: alternatively, you might want to return an owned value
    |
 LL -     fn g(mut x: impl Foo) -> Option<&()> { x.next() }
@@ -116,8 +123,9 @@ LL |     fn g(mut x: impl Foo<()>) -> Option<&'static ()> { x.next() }
    |                                          +++++++
 help: consider introducing a named lifetime parameter
    |
-LL |     fn g<'a>(mut x: impl Foo<()>) -> Option<&'a ()> { x.next() }
-   |         ++++                                ~~~
+LL -     fn g(mut x: impl Foo<()>) -> Option<&()> { x.next() }
+LL +     fn g<'a>(mut x: impl Foo<()>) -> Option<&'a ()> { x.next() }
+   |
 help: alternatively, you might want to return an owned value
    |
 LL -     fn g(mut x: impl Foo<()>) -> Option<&()> { x.next() }
@@ -176,8 +184,9 @@ LL |     fn f(_: impl Iterator<Item = &'_ ()>) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
-LL |     fn f<'a>(_: impl Iterator<Item = &'a ()>) {}
-   |         ++++                          ~~
+LL -     fn f(_: impl Iterator<Item = &'_ ()>) {}
+LL +     fn f<'a>(_: impl Iterator<Item = &'a ()>) {}
+   |
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:28:39
@@ -189,8 +198,9 @@ LL |     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() 
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
-LL |     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'_ ()> { x.next() }
-   |         ++++                              ~~
+LL -     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
+LL +     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'_ ()> { x.next() }
+   |
 
 error: lifetime may not live long enough
   --> $DIR/impl-trait-missing-lifetime-gated.rs:38:73

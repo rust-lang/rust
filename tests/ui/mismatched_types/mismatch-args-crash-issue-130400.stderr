@@ -11,8 +11,9 @@ LL |     fn foo(&mut self) -> _ {
    |        ^^^ ---------
 help: provide the argument
    |
-LL |         Self::foo(/* value */)
-   |                  ~~~~~~~~~~~~~
+LL -         Self::foo()
+LL +         Self::foo(/* value */)
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/mismatch-args-crash-issue-130400.rs:2:26

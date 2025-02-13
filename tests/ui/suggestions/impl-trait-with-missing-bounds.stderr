@@ -14,8 +14,9 @@ LL | fn qux(_: impl std::fmt::Debug) {}
    |                ^^^^^^^^^^^^^^^ required by this bound in `qux`
 help: introduce a type parameter with a trait bound instead of using `impl Trait`
    |
-LL | fn foo<I: Iterator>(constraints: I) where <I as Iterator>::Item: Debug {
-   |       +++++++++++++              ~  ++++++++++++++++++++++++++++++++++
+LL - fn foo(constraints: impl  Iterator) {
+LL + fn foo<I: Iterator>(constraints: I) where <I as Iterator>::Item: Debug {
+   |
 
 error[E0277]: `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
   --> $DIR/impl-trait-with-missing-bounds.rs:14:13
@@ -33,8 +34,9 @@ LL | fn qux(_: impl std::fmt::Debug) {}
    |                ^^^^^^^^^^^^^^^ required by this bound in `qux`
 help: introduce a type parameter with a trait bound instead of using `impl Trait`
    |
-LL | fn bar<T, I: Iterator>(t: T, constraints: I) where T: std::fmt::Debug, <I as Iterator>::Item: Debug {
-   |         +++++++++++++                     ~                          ++++++++++++++++++++++++++++++
+LL - fn bar<T>(t: T, constraints: impl Iterator) where T: std::fmt::Debug {
+LL + fn bar<T, I: Iterator>(t: T, constraints: I) where T: std::fmt::Debug, <I as Iterator>::Item: Debug {
+   |
 
 error[E0277]: `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
   --> $DIR/impl-trait-with-missing-bounds.rs:22:13
@@ -52,8 +54,9 @@ LL | fn qux(_: impl std::fmt::Debug) {}
    |                ^^^^^^^^^^^^^^^ required by this bound in `qux`
 help: introduce a type parameter with a trait bound instead of using `impl Trait`
    |
-LL | fn baz<I: Iterator>(t: impl std::fmt::Debug, constraints: I) where <I as Iterator>::Item: Debug {
-   |       +++++++++++++                                       ~  ++++++++++++++++++++++++++++++++++
+LL - fn baz(t: impl std::fmt::Debug, constraints: impl Iterator) {
+LL + fn baz<I: Iterator>(t: impl std::fmt::Debug, constraints: I) where <I as Iterator>::Item: Debug {
+   |
 
 error[E0277]: `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
   --> $DIR/impl-trait-with-missing-bounds.rs:30:13
@@ -71,8 +74,9 @@ LL | fn qux(_: impl std::fmt::Debug) {}
    |                ^^^^^^^^^^^^^^^ required by this bound in `qux`
 help: introduce a type parameter with a trait bound instead of using `impl Trait`
    |
-LL | fn bat<I, T: std::fmt::Debug, U: Iterator>(t: T, constraints: U, _: I) where <U as Iterator>::Item: Debug {
-   |                             +++++++++++++                     ~        ++++++++++++++++++++++++++++++++++
+LL - fn bat<I, T: std::fmt::Debug>(t: T, constraints: impl Iterator, _: I) {
+LL + fn bat<I, T: std::fmt::Debug, U: Iterator>(t: T, constraints: U, _: I) where <U as Iterator>::Item: Debug {
+   |
 
 error[E0277]: `<impl Iterator + std::fmt::Debug as Iterator>::Item` doesn't implement `Debug`
   --> $DIR/impl-trait-with-missing-bounds.rs:37:13
@@ -90,8 +94,9 @@ LL | fn qux(_: impl std::fmt::Debug) {}
    |                ^^^^^^^^^^^^^^^ required by this bound in `qux`
 help: introduce a type parameter with a trait bound instead of using `impl Trait`
    |
-LL | fn bak<I: Iterator + std::fmt::Debug>(constraints: I) where <I as Iterator>::Item: Debug {
-   |       +++++++++++++++++++++++++++++++              ~  ++++++++++++++++++++++++++++++++++
+LL - fn bak(constraints: impl  Iterator + std::fmt::Debug) {
+LL + fn bak<I: Iterator + std::fmt::Debug>(constraints: I) where <I as Iterator>::Item: Debug {
+   |
 
 error[E0277]: `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
   --> $DIR/impl-trait-with-missing-bounds.rs:45:13
@@ -109,8 +114,9 @@ LL | fn qux(_: impl std::fmt::Debug) {}
    |                ^^^^^^^^^^^^^^^ required by this bound in `qux`
 help: introduce a type parameter with a trait bound instead of using `impl Trait`
    |
-LL | fn baw<I: Iterator>(constraints: I) where <I as Iterator>::Item: Debug {
-   |       ~~~~~~~~~~~~~              ~  ++++++++++++++++++++++++++++++++++
+LL - fn baw<>(constraints: impl Iterator) {
+LL + fn baw<I: Iterator>(constraints: I) where <I as Iterator>::Item: Debug {
+   |
 
 error: aborting due to 6 previous errors
 

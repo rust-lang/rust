@@ -1,4 +1,4 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@ ignore-std-debug-assertions
 #![crate_type = "lib"]
 

@@ -642,7 +642,7 @@ unsafe impl Send for ModuleBuffer {}
 unsafe impl Sync for ModuleBuffer {}
 
 impl ModuleBuffer {
-    pub fn new(m: &llvm::Module) -> ModuleBuffer {
+    pub(crate) fn new(m: &llvm::Module) -> ModuleBuffer {
         ModuleBuffer(unsafe { llvm::LLVMRustModuleBufferCreate(m) })
     }
 }
@@ -684,7 +684,7 @@ unsafe impl Send for ThinBuffer {}
 unsafe impl Sync for ThinBuffer {}
 
 impl ThinBuffer {
-    pub fn new(m: &llvm::Module, is_thin: bool, emit_summary: bool) -> ThinBuffer {
+    pub(crate) fn new(m: &llvm::Module, is_thin: bool, emit_summary: bool) -> ThinBuffer {
         unsafe {
             let buffer = llvm::LLVMRustThinLTOBufferCreate(m, is_thin, emit_summary);
             ThinBuffer(buffer)

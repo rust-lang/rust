@@ -27,8 +27,9 @@ LL |     let [&mut mut x] = &[&mut 0];
    = note: cannot match inherited `&` with `&mut` pattern
 help: replace this `&mut` pattern with `&`
    |
-LL |     let [&mut x] = &[&mut 0];
-   |          ~
+LL -     let [&mut mut x] = &[&mut 0];
+LL +     let [&mut x] = &[&mut 0];
+   |
 
 error: aborting due to 3 previous errors
 
