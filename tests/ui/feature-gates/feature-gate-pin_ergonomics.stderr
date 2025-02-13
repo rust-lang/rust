@@ -94,11 +94,6 @@ LL |     let pin const y = Foo;
 LL |     x = Foo; // FIXME: this should be an error
 LL |     y = Foo;
    |     ^^^^^^^ cannot assign twice to immutable variable
-   |
-help: consider making this binding mutable
-   |
-LL |     let mut pin const y = Foo;
-   |         +++
 
 error: aborting due to 8 previous errors
 
