@@ -2,15 +2,48 @@
 
 set -e
 
+change_ownership_if_needed() {
+    local path=$1
+    local owner="user:user"
+    local current_owner=$(stat -f "%Su:%Sg" "$path" 2>/dev/null)
+    local test_file="$path/.write_test"
+
+    # Test if filesystem is writable by attempting to touch a temporary file
+    if touch "$test_file" 2>/dev/null; then
+        rm "$test_file"
+        if [ "$current_owner" != "$owner" ]; then
+            chown -R $owner "$path"
+        fi
+    else
+        echo "$path is read-only, skipping ownership change"
+    fi
+}
+
+echo "Running inside src/ci/run.sh script"
+
 if [ -n "$CI_JOB_NAME" ]; then
   echo "[CI_JOB_NAME=$CI_JOB_NAME]"
 fi
 
+echo "whoami: $(whoami). id: $(id -u) Home: $HOME"
+echo "--- current directory ---"
+pwd
+ls -l
+echo "-------------------------"
+echo "NO_CHANGE_USER=$NO_CHANGE_USER. LOCAL_USER_ID=$LOCAL_USER_ID"
 if [ "$NO_CHANGE_USER" = "" ]; then
+  echo "can change user"
   if [ "$LOCAL_USER_ID" != "" ]; then
+    echo "Starting with UID: $LOCAL_USER_ID"
     id -u user &>/dev/null || useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
     export HOME=/home/user
     unset LOCAL_USER_ID
+
+    # Give ownership of necessary directories to the user
+    change_ownership_if_needed .
+    mkdir -p /cargo
+    change_ownership_if_needed /cargo
+    change_ownership_if_needed /checkout
 
     # Ensure that runners are able to execute git commands in the worktree,
     # overriding the typical git protections. In our docker container we're running
@@ -21,6 +54,7 @@ if [ "$NO_CHANGE_USER" = "" ]; then
     # For NO_CHANGE_USER done in the small number of Dockerfiles affected.
     echo -e '[safe]\n\tdirectory = *' > /home/user/.gitconfig
 
+    echo "Switching to user"
     exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
   fi
 fi

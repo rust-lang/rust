@@ -17,7 +17,9 @@ echo "::add-matcher::src/ci/github-actions/problem_matchers.json"
 # the environment
 rustup self uninstall -y || true
 if [ -z "${IMAGE+x}" ]; then
+    echo "Running ci/run.sh"
     src/ci/run.sh
 else
+    echo "Running docker/run.sh with image ${IMAGE}"
     src/ci/docker/run.sh "${IMAGE}"
 fi

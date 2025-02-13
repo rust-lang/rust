@@ -39,6 +39,7 @@ root_dir="`dirname $src_dir`"
 source "$ci_dir/shared.sh"
 
 if isCI; then
+    echo "CI detected"
     objdir=$root_dir/obj
 else
     objdir=$root_dir/obj/$image
@@ -53,6 +54,7 @@ fi
 CACHE_DOMAIN="${CACHE_DOMAIN:-ci-caches.rust-lang.org}"
 
 if [ -f "$docker_dir/$image/Dockerfile" ]; then
+    echo "Dockerfile found for $image"
     hash_key=/tmp/.docker-hash-key.txt
     rm -f "${hash_key}"
     echo $image >> $hash_key
@@ -153,6 +155,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
           --output=type=docker
     # On auto/try builds, we can also write to the cache.
     else
+        echo "Logging into the Docker registry"
         # Log into the Docker registry, so that we can read/write cache and the final image
         echo ${DOCKER_TOKEN} | docker login ${REGISTRY} \
             --username ${REGISTRY_USERNAME} \
@@ -163,6 +166,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
         docker buildx create --use --driver docker-container \
           --driver-opt image=${GHCR_BUILDKIT_IMAGE}
 
+        echo "Building Docker image with cache"
         # Build the image using registry caching backend
         retry docker \
           buildx \
@@ -171,11 +175,13 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
           --cache-to type=registry,ref=${CACHE_IMAGE_TAG},compression=zstd \
           --output=type=docker
 
+        echo "Docker image built"
         # Print images for debugging purposes
         docker images
 
         # Tag the built image and push it to the registry
         docker tag rust-ci "${IMAGE_TAG}"
+        echo "Pushing Docker image to the registry"
         docker push "${IMAGE_TAG}"
 
         # Record the container registry tag/url for reuse, e.g. by rustup.rs builds
@@ -227,6 +233,7 @@ else
     exit 1
 fi
 
+echo "Creating directories"
 mkdir -p $HOME/.cargo
 mkdir -p $objdir/tmp
 mkdir -p $objdir/cores
@@ -282,7 +289,8 @@ args="$args --privileged"
 # `LOCAL_USER_ID` (recognized in `src/ci/run.sh`) to ensure that files are all
 # read/written as the same user as the bare-metal user.
 if [ -f /.dockerenv ]; then
-  docker create -v /checkout --name checkout alpine:3.4 /bin/true
+  echo "Dockerenv detected. We are in docker-in-docker scenario."
+  docker create -v /checkout --name checkout ghcr.io/marcoieni/alpine:3.4 /bin/true
   docker cp . checkout:/checkout
   args="$args --volumes-from checkout"
 else
@@ -290,16 +298,23 @@ else
   args="$args --volume $objdir:/checkout/obj"
   args="$args --volume $HOME/.cargo:/cargo"
   args="$args --volume /tmp/toolstate:/tmp/toolstate"
+fi
 
-  id=$(id -u)
-  if [[ "$id" != 0 && "$(docker version)" =~ Podman ]]; then
-    # Rootless podman creates a separate user namespace, where an inner
-    # LOCAL_USER_ID will map to a different subuid range on the host.
-    # The "keep-id" mode maps the current UID directly into the container.
-    args="$args --env NO_CHANGE_USER=1 --userns=keep-id"
-  else
-    args="$args --env LOCAL_USER_ID=$id"
-  fi
+id=$(id -u)
+if [[ "$id" != 0 && "$(docker version)" =~ Podman ]]; then
+  # Rootless podman creates a separate user namespace, where an inner
+  # LOCAL_USER_ID will map to a different subuid range on the host.
+  # The "keep-id" mode maps the current UID directly into the container.
+  echo "Running in rootless podman"
+  args="$args --env NO_CHANGE_USER=1 --userns=keep-id"
+elif [[ "$id" != 0 ]]; then
+  echo "Running in docker as non-root"
+  args="$args --env LOCAL_USER_ID=$id"
+else
+  echo "Running in docker as root. Using id 1001."
+  # If we're running as root, we don't want to run the container as root,
+  # so we set id `1001` instead of `0`.
+  args="$args --env LOCAL_USER_ID=1001"
 fi
 
 if [ "$dev" = "1" ]
