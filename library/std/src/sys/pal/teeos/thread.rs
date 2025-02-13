@@ -56,7 +56,7 @@ impl Thread {
             }
         };
 
-        let ret = libc::pthread_create(&mut native, &attr, thread_start, p as *mut _);
+        let ret = unsafe { libc::pthread_create(&mut native, &attr, thread_start, p as *mut _) };
         // Note: if the thread creation fails and this assert fails, then p will
         // be leaked. However, an alternative design could cause double-free
         // which is clearly worse.
