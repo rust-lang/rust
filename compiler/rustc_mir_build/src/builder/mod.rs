@@ -967,7 +967,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 } => {
                     self.local_decls[local].mutability = mutability;
                     self.local_decls[local].source_info.scope = self.source_scope;
-                    **self.local_decls[local].local_info.as_mut().assert_crate_local() =
+                    **self.local_decls[local].local_info.as_mut().unwrap_crate_local() =
                         if let Some(kind) = param.self_kind {
                             LocalInfo::User(BindingForm::ImplicitSelf(kind))
                         } else {
@@ -1032,7 +1032,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let parent_id = self.source_scopes[original_source_scope]
             .local_data
             .as_ref()
-            .assert_crate_local()
+            .unwrap_crate_local()
             .lint_root;
         self.maybe_new_source_scope(pattern_span, arg_hir_id, parent_id);
     }

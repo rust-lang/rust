@@ -945,7 +945,7 @@ fn compute_layout<'tcx>(
         let decl = &body.local_decls[local];
         debug!(?decl);
 
-        // Do not `assert_crate_local` here, as post-borrowck cleanup may have already cleared
+        // Do not `unwrap_crate_local` here, as post-borrowck cleanup may have already cleared
         // the information. This is alright, since `ignore_for_traits` is only relevant when
         // this code runs on pre-cleanup MIR, and `ignore_for_traits = false` is the safer
         // default.

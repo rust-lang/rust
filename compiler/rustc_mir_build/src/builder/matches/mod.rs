@@ -722,7 +722,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     if let LocalInfo::User(BindingForm::Var(VarBindingForm {
                         opt_match_place: Some((ref mut match_place, _)),
                         ..
-                    })) = **self.local_decls[local].local_info.as_mut().assert_crate_local()
+                    })) = **self.local_decls[local].local_info.as_mut().unwrap_crate_local()
                     {
                         *match_place = Some(place);
                     } else {
