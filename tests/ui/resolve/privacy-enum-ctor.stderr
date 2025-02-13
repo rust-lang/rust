@@ -125,7 +125,7 @@ LL | |     }
 help: you might have meant to use the following enum variant
    |
 LL |     let _: E = E::Unit;
-   |                ~~~~~~~
+   |                 ++++++
 help: alternatively, the following enum variant is available
    |
 LL -     let _: E = E;

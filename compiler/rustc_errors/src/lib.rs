@@ -246,6 +246,24 @@ impl SubstitutionPart {
         sm.span_to_snippet(self.span)
             .map_or(!self.span.is_empty(), |snippet| !snippet.trim().is_empty())
     }
+
+    /// Try to turn a replacement into an addition when the span that is being
+    /// overwritten matches either the prefix or suffix of the replacement.
+    fn trim_trivial_replacements(&mut self, sm: &SourceMap) {
+        if self.snippet.is_empty() {
+            return;
+        }
+        let Ok(snippet) = sm.span_to_snippet(self.span) else {
+            return;
+        };
+        if self.snippet.starts_with(&snippet) {
+            self.span = self.span.shrink_to_hi();
+            self.snippet = self.snippet[snippet.len()..].to_string();
+        } else if self.snippet.ends_with(&snippet) {
+            self.span = self.span.shrink_to_lo();
+            self.snippet = self.snippet[..self.snippet.len() - snippet.len()].to_string();
+        }
+    }
 }
 
 impl CodeSuggestion {

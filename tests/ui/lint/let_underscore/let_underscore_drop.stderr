@@ -12,7 +12,7 @@ LL | #![warn(let_underscore_drop)]
 help: consider binding to an unused variable to avoid immediately dropping the value
    |
 LL |     let _unused = NontrivialDrop;
-   |         ~~~~~~~
+   |          ++++++
 help: consider immediately dropping the value
    |
 LL -     let _ = NontrivialDrop;

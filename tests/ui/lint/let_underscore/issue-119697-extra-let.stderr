@@ -29,7 +29,7 @@ LL |     let _ = field;
 help: consider binding to an unused variable to avoid immediately dropping the value
    |
 LL |     let _unused = field;
-   |         ~~~~~~~
+   |          ++++++
 help: consider immediately dropping the value
    |
 LL -     let _ = field;

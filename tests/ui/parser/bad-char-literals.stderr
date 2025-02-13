@@ -7,7 +7,7 @@ LL |     ''';
 help: escape the character
    |
 LL |     '\'';
-   |      ~~
+   |      +
 
 error: character constant must be escaped: `\n`
   --> $DIR/bad-char-literals.rs:10:6

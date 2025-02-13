@@ -12,7 +12,7 @@ LL |         Foo::Bar => {}
 help: use the tuple variant pattern syntax instead
    |
 LL |         Foo::Bar(_) => {}
-   |         ~~~~~~~~~~~
+   |                 +++
 help: a unit variant with a similar name exists
    |
 LL -         Foo::Bar => {}

@@ -12,7 +12,7 @@ LL |         Some(_) => {}
 help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match *x {
-   |           ~~
+   |           +
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:9:9
@@ -28,7 +28,7 @@ LL |         None => {}
 help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match *x {
-   |           ~~
+   |           +
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:16:9
@@ -78,7 +78,7 @@ LL |         Some(_) => {}
 help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match *y {
-   |           ~~
+   |           +
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:28:9
@@ -94,7 +94,7 @@ LL |         None => {}
 help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match *y {
-   |           ~~
+   |           +
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:36:9
@@ -144,7 +144,7 @@ LL |         Some(_) => {}
 help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match &**z_const {
-   |           ~~~~~~~~~~
+   |           +++
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:48:9
@@ -160,7 +160,7 @@ LL |         None => {}
 help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match &**z_const {
-   |           ~~~~~~~~~~
+   |           +++
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:57:9
@@ -176,7 +176,7 @@ LL |         Some(_) => {}
 help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match &**z_mut {
-   |           ~~~~~~~~
+   |           +++
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:59:9
@@ -192,7 +192,7 @@ LL |         None => {}
 help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match &**z_mut {
-   |           ~~~~~~~~
+   |           +++
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:68:9
@@ -208,7 +208,7 @@ LL |         Some(_) => {}
 help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match &**y_mut {
-   |           ~~~~~~~~
+   |           +++
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:70:9
@@ -224,7 +224,7 @@ LL |         None => {}
 help: consider dereferencing to access the inner value using the Deref trait
    |
 LL |     match &**y_mut {
-   |           ~~~~~~~~
+   |           +++
 
 error[E0308]: mismatched types
   --> $DIR/suggest-deref-in-match-issue-132784.rs:79:9
