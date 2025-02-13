@@ -58,7 +58,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         variadic: bool,
     ) -> Function<'gcc> {
         self.linkage.set(FunctionType::Extern);
-        declare_raw_fn(self, name, () /*llvm::CCallConv*/, return_type, params, variadic)
+        declare_raw_fn(self, name, None, return_type, params, variadic)
     }
 
     pub fn declare_global(
@@ -92,7 +92,8 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         &self,
         name: &str,
         _fn_type: Type<'gcc>,
-        callconv: (), /*llvm::CCallConv*/
+        #[cfg(feature = "master")] callconv: Option<FnAttribute<'gcc>>,
+        #[cfg(not(feature = "master"))] callconv: Option<()>,
     ) -> RValue<'gcc> {
         // TODO(antoyo): use the fn_type parameter.
         let const_string = self.context.new_type::<u8>().make_pointer().make_pointer();
@@ -123,14 +124,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             #[cfg(feature = "master")]
             fn_attributes,
         } = fn_abi.gcc_type(self);
-        let func = declare_raw_fn(
-            self,
-            name,
-            (), /*fn_abi.llvm_cconv()*/
-            return_type,
-            &arguments_type,
-            is_c_variadic,
-        );
+        #[cfg(feature = "master")]
+        let conv = fn_abi.gcc_cconv(self);
+        #[cfg(not(feature = "master"))]
+        let conv = None;
+        let func = declare_raw_fn(self, name, conv, return_type, &arguments_type, is_c_variadic);
         self.on_stack_function_params.borrow_mut().insert(func, on_stack_param_indices);
         #[cfg(feature = "master")]
         for fn_attr in fn_attributes {
@@ -162,7 +160,8 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 fn declare_raw_fn<'gcc>(
     cx: &CodegenCx<'gcc, '_>,
     name: &str,
-    _callconv: (), /*llvm::CallConv*/
+    #[cfg(feature = "master")] callconv: Option<FnAttribute<'gcc>>,
+    #[cfg(not(feature = "master"))] _callconv: Option<()>,
     return_type: Type<'gcc>,
     param_types: &[Type<'gcc>],
     variadic: bool,
@@ -192,6 +191,10 @@ fn declare_raw_fn<'gcc>(
         let name = &mangle_name(name);
         let func =
             cx.context.new_function(None, cx.linkage.get(), return_type, &params, name, variadic);
+        #[cfg(feature = "master")]
+        if let Some(attribute) = callconv {
+            func.add_attribute(attribute);
+        }
         cx.functions.borrow_mut().insert(name.to_string(), func);
 
         #[cfg(feature = "master")]

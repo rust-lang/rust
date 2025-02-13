@@ -23,6 +23,8 @@ use rustc_target::spec::{
     HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, Target, TlsModel, WasmCAbi, X86Abi,
 };
 
+#[cfg(feature = "master")]
+use crate::abi::conv_to_fn_attribute;
 use crate::callee::get_fn;
 use crate::common::SignType;
 
@@ -509,7 +511,11 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
         let entry_name = self.sess().target.entry_name.as_ref();
         if !self.functions.borrow().contains_key(entry_name) {
-            Some(self.declare_entry_fn(entry_name, fn_type, ()))
+            #[cfg(feature = "master")]
+            let conv = conv_to_fn_attribute(self.sess().target.entry_abi, &self.sess().target.arch);
+            #[cfg(not(feature = "master"))]
+            let conv = None;
+            Some(self.declare_entry_fn(entry_name, fn_type, conv))
         } else {
             // If the symbol already exists, it is an error: for example, the user wrote
             // #[no_mangle] extern "C" fn main(..) {..}
