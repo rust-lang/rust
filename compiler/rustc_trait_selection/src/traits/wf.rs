@@ -881,7 +881,10 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                         ty.map_bound(|ty| {
                             ty::TraitRef::new(
                                 self.tcx(),
-                                self.tcx().require_lang_item(LangItem::Copy, Some(self.span)),
+                                self.tcx().require_lang_item(
+                                    LangItem::BikeshedGuaranteedNoDrop,
+                                    Some(self.span),
+                                ),
                                 [ty],
                             )
                         }),

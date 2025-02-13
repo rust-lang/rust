@@ -168,6 +168,8 @@ pub enum SelectionCandidate<'tcx> {
     BuiltinObjectCandidate,
 
     BuiltinUnsizeCandidate,
+
+    BikeshedGuaranteedNoDropCandidate,
 }
 
 /// The result of trait evaluation. The order is important

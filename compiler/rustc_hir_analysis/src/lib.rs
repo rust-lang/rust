@@ -122,28 +122,42 @@ fn require_c_abi_if_c_variadic(
     const UNSTABLE_EXPLAIN: &str =
         "using calling conventions other than `C` or `cdecl` for varargs functions is unstable";
 
+    // ABIs which can stably use varargs
     if !decl.c_variadic || matches!(abi, ExternAbi::C { .. } | ExternAbi::Cdecl { .. }) {
         return;
     }
 
+    // ABIs with feature-gated stability
     let extended_abi_support = tcx.features().extended_varargs_abi_support();
-    let conventions = match (extended_abi_support, abi.supports_varargs()) {
-        // User enabled additional ABI support for varargs and function ABI matches those ones.
-        (true, true) => return,
+    let extern_system_varargs = tcx.features().extern_system_varargs();
 
-        // Using this ABI would be ok, if the feature for additional ABI support was enabled.
-        // Return CONVENTIONS_STABLE, because we want the other error to look the same.
-        (false, true) => {
-            feature_err(&tcx.sess, sym::extended_varargs_abi_support, span, UNSTABLE_EXPLAIN)
-                .emit();
-            CONVENTIONS_STABLE
-        }
-
-        (false, false) => CONVENTIONS_STABLE,
-        (true, false) => CONVENTIONS_UNSTABLE,
+    // If the feature gate has been enabled, we can stop here
+    if extern_system_varargs && let ExternAbi::System { .. } = abi {
+        return;
+    };
+    if extended_abi_support && abi.supports_varargs() {
+        return;
     };
 
-    tcx.dcx().emit_err(errors::VariadicFunctionCompatibleConvention { span, conventions });
+    // Looks like we need to pick an error to emit.
+    // Is there any feature which we could have enabled to make this work?
+    match abi {
+        ExternAbi::System { .. } => {
+            feature_err(&tcx.sess, sym::extern_system_varargs, span, UNSTABLE_EXPLAIN)
+        }
+        abi if abi.supports_varargs() => {
+            feature_err(&tcx.sess, sym::extended_varargs_abi_support, span, UNSTABLE_EXPLAIN)
+        }
+        _ => tcx.dcx().create_err(errors::VariadicFunctionCompatibleConvention {
+            span,
+            conventions: if tcx.sess.opts.unstable_features.is_nightly_build() {
+                CONVENTIONS_UNSTABLE
+            } else {
+                CONVENTIONS_STABLE
+            },
+        }),
+    }
+    .emit();
 }
 
 pub fn provide(providers: &mut Providers) {

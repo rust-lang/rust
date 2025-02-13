@@ -453,6 +453,23 @@ impl Copy for ! {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Copy for &T {}
 
+/// Marker trait for the types that are allowed in union fields, unsafe fields,
+/// and unsafe binder types.
+///
+/// Implemented for:
+/// * `&T`, `&mut T` for all `T`,
+/// * `ManuallyDrop<T>` for all `T`,
+/// * tuples and arrays whose elements implement `BikeshedGuaranteedNoDrop`,
+/// * or otherwise, all types that are `Copy`.
+///
+/// Notably, this doesn't include all trivially-destructible types for semver
+/// reasons.
+///
+/// Bikeshed name for now.
+#[unstable(feature = "bikeshed_guaranteed_no_drop", issue = "none")]
+#[cfg_attr(not(bootstrap), lang = "bikeshed_guaranteed_no_drop")]
+pub trait BikeshedGuaranteedNoDrop {}
+
 /// Types for which it is safe to share references between threads.
 ///
 /// This trait is automatically implemented when the compiler determines
