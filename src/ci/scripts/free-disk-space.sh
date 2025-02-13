@@ -69,31 +69,72 @@ printDF() {
     printSeparationLine "="
 }
 
-removeDir() {
-    dir=${1}
-
-    local before
-    if [ ! -d "$dir" ]; then
-        echo "::warning::Directory $dir does not exist, skipping."
-    else
-        before=$(getAvailableSpace)
-        sudo rm -rf "$dir"
-        printSavedSpace "$before" "Removed $dir"
-    fi
-}
-
-removeUnusedDirectories() {
-    local dirs_to_remove=(
+removeUnusedFilesAndDirs() {
+    local to_remove=(
+        "/etc/mysql"
+        "/usr/local/aws-sam-cli"
+        "/usr/local/doc/cmake"
+        "/usr/local/julia"*
         "/usr/local/lib/android"
-        "/usr/share/dotnet"
+        "/usr/local/share/chromedriver-"*
+        "/usr/local/share/chromium"
+        "/usr/local/share/cmake-"*
+        "/usr/local/share/edge_driver"
+        "/usr/local/share/gecko_driver"
+        "/usr/local/share/icons"
+        "/usr/local/share/vim"
+        "/usr/local/share/emacs"
+        "/usr/local/share/powershell"
+        "/usr/local/share/vcpkg"
+        "/usr/share/apache-maven-"*
+        "/usr/share/gradle-"*
+        "/usr/share/java"
+        "/usr/share/kotlinc"
+        "/usr/share/miniconda"
+        "/usr/share/php"
+        "/usr/share/ri"
+        "/usr/share/swift"
+
+        # binaries
+        "/usr/local/bin/azcopy"
+        "/usr/local/bin/bicep"
+        "/usr/local/bin/ccmake"
+        "/usr/local/bin/cmake-"*
+        "/usr/local/bin/cmake"
+        "/usr/local/bin/cpack"
+        "/usr/local/bin/ctest"
+        "/usr/local/bin/helm"
+        "/usr/local/bin/kind"
+        "/usr/local/bin/kustomize"
+        "/usr/local/bin/minikube"
+        "/usr/local/bin/packer"
+        "/usr/local/bin/phpunit"
+        "/usr/local/bin/pulumi-"*
+        "/usr/local/bin/pulumi"
+        "/usr/local/bin/stack"
 
         # Haskell runtime
         "/usr/local/.ghcup"
+
+        # Azure
+        "/opt/az"
+        "/usr/share/az_"*
+
+        # Environment variable set by GitHub Actions
+        "$AGENT_TOOLSDIRECTORY"
     )
 
-    for dir in "${dirs_to_remove[@]}"; do
-        removeDir "$dir"
+    for element in "${to_remove[@]}"; do
+        if [ ! -e "$element" ]; then
+            # The file or directory doesn't exist.
+            # Maybe it was removed in a newer version of the runner or it's not present in a
+            # specific architecture (e.g. ARM).
+            echo "::warning::Directory or file $element does not exist, skipping."
+        fi
     done
+
+    # Remove all files and directories at once to save time.
+    sudo rm -rf "${to_remove[@]}"
 }
 
 execAndMeasureSpaceChange() {
@@ -141,7 +182,9 @@ cleanPackages() {
     sudo apt-get clean || echo "::warning::The command [sudo apt-get clean] failed failed"
 }
 
-# Remove Docker images
+# Remove Docker images.
+# Ubuntu 22 runners have docker images already installed.
+# They aren't present in ubuntu 24 runners.
 cleanDocker() {
     echo "=> Removing the following docker images:"
     sudo docker image ls
@@ -166,8 +209,7 @@ echo ""
 execAndMeasureSpaceChange cleanPackages "Unused packages"
 execAndMeasureSpaceChange cleanDocker "Docker images"
 execAndMeasureSpaceChange cleanSwap "Swap storage"
-
-removeUnusedDirectories
+execAndMeasureSpaceChange removeUnusedFilesAndDirs "Unused files and directories"
 
 # Output saved space statistic
 echo ""
