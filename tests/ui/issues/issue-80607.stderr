@@ -9,8 +9,9 @@ LL |     Enum::V1 { x }
    |
 help: `Enum::V1` is a tuple variant, use the appropriate syntax
    |
-LL |     Enum::V1(/* i32 */)
-   |             ~~~~~~~~~~~
+LL -     Enum::V1 { x }
+LL +     Enum::V1(/* i32 */)
+   |
 
 error: aborting due to 1 previous error
 

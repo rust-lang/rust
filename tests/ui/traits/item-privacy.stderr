@@ -11,8 +11,9 @@ LL |     S.a();
    = help: trait `method::A` which provides `a` is implemented but not reachable
 help: there is a method `b` with a similar name
    |
-LL |     S.b();
-   |       ~
+LL -     S.a();
+LL +     S.b();
+   |
 
 error[E0599]: no method named `b` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:68:7
@@ -33,8 +34,9 @@ LL + use method::B;
    |
 help: there is a method `c` with a similar name
    |
-LL |     S.c();
-   |       ~
+LL -     S.b();
+LL +     S.c();
+   |
 
 error[E0624]: method `a` is private
   --> $DIR/item-privacy.rs:72:7
@@ -104,8 +106,9 @@ LL |     S::A;
    = help: trait `assoc_const::A` which provides `A` is implemented but not reachable
 help: there is an associated constant `B` with a similar name
    |
-LL |     S::B;
-   |        ~
+LL -     S::A;
+LL +     S::B;
+   |
 
 error[E0599]: no associated item named `B` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:98:8
@@ -169,8 +172,9 @@ LL |     let _: S::A;
    |
 help: if there were a trait named `Example` with associated type `A` implemented for `S`, you could use the fully-qualified path
    |
-LL |     let _: <S as Example>::A;
-   |            ~~~~~~~~~~~~~~~~~
+LL -     let _: S::A;
+LL +     let _: <S as Example>::A;
+   |
 
 error[E0223]: ambiguous associated type
   --> $DIR/item-privacy.rs:116:12

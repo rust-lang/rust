@@ -23,8 +23,9 @@ LL | enum␀em␀˂˂
    = note: character appears once more
 help: Unicode character '˂' (Modifier Letter Left Arrowhead) looks like '<' (Less-Than Sign), but it is not
    |
-LL | enum␀em␀<<
-   |         ~~
+LL - enum␀em␀˂˂
+LL + enum␀em␀<<
+   |
 
 error: unknown start of token: \u{2c2}
   --> $DIR/issue-68730.rs:5:10
@@ -34,8 +35,9 @@ LL | enum␀em␀˂˂
    |
 help: Unicode character '˂' (Modifier Letter Left Arrowhead) looks like '<' (Less-Than Sign), but it is not
    |
-LL | enum␀em␀˂<
-   |          ~
+LL - enum␀em␀˂˂
+LL + enum␀em␀˂<
+   |
 
 error: expected one of `#`, `>`, `const`, identifier, or lifetime, found `<`
   --> $DIR/issue-68730.rs:5:10

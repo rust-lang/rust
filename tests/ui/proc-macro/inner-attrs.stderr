@@ -26,7 +26,7 @@ warning: extern declarations without an explicit ABI are deprecated
   --> $DIR/inner-attrs.rs:82:1
    |
 LL | extern {
-   | ^^^^^^ help: explicitly specify the C ABI: `extern "C"`
+   | ^^^^^^ help: explicitly specify the "C" ABI: `extern "C"`
    |
    = note: `#[warn(missing_abi)]` on by default
 

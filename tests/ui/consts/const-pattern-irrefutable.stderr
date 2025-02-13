@@ -12,8 +12,9 @@ LL |     let a = 4;
    = note: the matched value is of type `u8`
 help: introduce a variable instead
    |
-LL |     let a_var = 4;
-   |         ~~~~~
+LL -     let a = 4;
+LL +     let a_var = 4;
+   |
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/const-pattern-irrefutable.rs:28:9
@@ -29,8 +30,9 @@ LL |     let c = 4;
    = note: the matched value is of type `u8`
 help: introduce a variable instead
    |
-LL |     let b_var = 4;
-   |         ~~~~~
+LL -     let c = 4;
+LL +     let b_var = 4;
+   |
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/const-pattern-irrefutable.rs:32:9
@@ -46,8 +48,9 @@ LL |     let d = (4, 4);
    = note: the matched value is of type `(u8, u8)`
 help: introduce a variable instead
    |
-LL |     let d_var = (4, 4);
-   |         ~~~~~
+LL -     let d = (4, 4);
+LL +     let d_var = (4, 4);
+   |
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/const-pattern-irrefutable.rs:36:9
@@ -68,8 +71,9 @@ LL | struct S {
    = note: the matched value is of type `S`
 help: introduce a variable instead
    |
-LL |     let e_var = S {
-   |         ~~~~~
+LL -     let e = S {
+LL +     let e_var = S {
+   |
 
 error: aborting due to 4 previous errors
 

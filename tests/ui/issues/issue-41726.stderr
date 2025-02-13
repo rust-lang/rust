@@ -7,8 +7,9 @@ LL |         things[src.as_str()].sort();
    = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<String, Vec<String>>`
 help: to modify a `HashMap<String, Vec<String>>` use `.get_mut()`
    |
-LL |         if let Some(val) = things.get_mut(src.as_str()) { val.sort(); };
-   |         ++++++++++++++++++       ~~~~~~~~~            ~~~~~~~       +++
+LL -         things[src.as_str()].sort();
+LL +         if let Some(val) = things.get_mut(src.as_str()) { val.sort(); };
+   |
 
 error: aborting due to 1 previous error
 

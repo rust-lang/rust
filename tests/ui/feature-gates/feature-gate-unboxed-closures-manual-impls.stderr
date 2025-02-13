@@ -1,4 +1,4 @@
-error[E0658]: rust-call ABI is subject to change
+error[E0658]: the extern "rust-call" ABI is experimental and subject to change
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:13:12
    |
 LL |     extern "rust-call" fn call(self, args: ()) -> () {}
@@ -8,7 +8,7 @@ LL |     extern "rust-call" fn call(self, args: ()) -> () {}
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: rust-call ABI is subject to change
+error[E0658]: the extern "rust-call" ABI is experimental and subject to change
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:22:12
    |
 LL |     extern "rust-call" fn call_once(self, args: ()) -> () {}
@@ -18,7 +18,7 @@ LL |     extern "rust-call" fn call_once(self, args: ()) -> () {}
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: rust-call ABI is subject to change
+error[E0658]: the extern "rust-call" ABI is experimental and subject to change
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:30:12
    |
 LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
@@ -28,7 +28,7 @@ LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: rust-call ABI is subject to change
+error[E0658]: the extern "rust-call" ABI is experimental and subject to change
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:39:12
    |
 LL |     extern "rust-call" fn call_once(&self, args: ()) -> () {}
@@ -95,8 +95,9 @@ LL |     extern "rust-call" fn call(self, args: ()) -> () {}
               found signature `extern "rust-call" fn(Foo, ()) -> ()`
 help: change the self-receiver type to match the trait
    |
-LL |     extern "rust-call" fn call(&self, args: ()) -> () {}
-   |                                ~~~~~
+LL -     extern "rust-call" fn call(self, args: ()) -> () {}
+LL +     extern "rust-call" fn call(&self, args: ()) -> () {}
+   |
 
 error[E0183]: manual implementations of `FnOnce` are experimental
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:18:6
@@ -165,8 +166,9 @@ LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
               found signature `extern "rust-call" fn(&Bar, ()) -> ()`
 help: change the self-receiver type to match the trait
    |
-LL |     extern "rust-call" fn call_mut(&mut self, args: ()) -> () {}
-   |                                    ~~~~~~~~~
+LL -     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
+LL +     extern "rust-call" fn call_mut(&mut self, args: ()) -> () {}
+   |
 
 error[E0046]: not all trait items implemented, missing: `Output`
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:35:1

@@ -145,6 +145,7 @@ static ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("dotprod", Unstable(sym::arm_target_feature), &["neon"]),
     ("dsp", Unstable(sym::arm_target_feature), &[]),
     ("fp-armv8", Unstable(sym::arm_target_feature), &["vfp4"]),
+    ("fp16", Unstable(sym::arm_target_feature), &["neon"]),
     ("fpregs", Unstable(sym::arm_target_feature), &[]),
     ("i8mm", Unstable(sym::arm_target_feature), &["neon"]),
     ("mclass", Unstable(sym::arm_target_feature), &[]),

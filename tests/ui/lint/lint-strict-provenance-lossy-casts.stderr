@@ -12,8 +12,9 @@ LL | #![deny(lossy_provenance_casts)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
 help: use `.addr()` to obtain the address of a pointer
    |
-LL |     let addr: usize = (&x as *const u8).addr();
-   |                       +               ~~~~~~~~
+LL -     let addr: usize = &x as *const u8 as usize;
+LL +     let addr: usize = (&x as *const u8).addr();
+   |
 
 error: under strict provenance it is considered bad style to cast pointer `*const u8` to integer `u32`
   --> $DIR/lint-strict-provenance-lossy-casts.rs:9:22
@@ -24,8 +25,9 @@ LL |     let addr_32bit = &x as *const u8 as u32;
    = help: if you can't comply with strict provenance and need to expose the pointer provenance you can use `.expose_provenance()` instead
 help: use `.addr()` to obtain the address of a pointer
    |
-LL |     let addr_32bit = (&x as *const u8).addr() as u32;
-   |                      +               ~~~~~~~~~~~~~~~
+LL -     let addr_32bit = &x as *const u8 as u32;
+LL +     let addr_32bit = (&x as *const u8).addr() as u32;
+   |
 
 error: under strict provenance it is considered bad style to cast pointer `*const u8` to integer `usize`
   --> $DIR/lint-strict-provenance-lossy-casts.rs:14:20

@@ -231,8 +231,9 @@ LL |     if let ...3 = 0 {}
    |
 help: use `..=` instead
    |
-LL |     if let ..=3 = 0 {}
-   |            ~~~
+LL -     if let ...3 = 0 {}
+LL +     if let ..=3 = 0 {}
+   |
 
 error: range-to patterns with `...` are not allowed
   --> $DIR/recover-range-pats.rs:121:12
@@ -242,8 +243,9 @@ LL |     if let ...Y = 0 {}
    |
 help: use `..=` instead
    |
-LL |     if let ..=Y = 0 {}
-   |            ~~~
+LL -     if let ...Y = 0 {}
+LL +     if let ..=Y = 0 {}
+   |
 
 error: range-to patterns with `...` are not allowed
   --> $DIR/recover-range-pats.rs:123:12
@@ -253,8 +255,9 @@ LL |     if let ...true = 0 {}
    |
 help: use `..=` instead
    |
-LL |     if let ..=true = 0 {}
-   |            ~~~
+LL -     if let ...true = 0 {}
+LL +     if let ..=true = 0 {}
+   |
 
 error: float literals must have an integer part
   --> $DIR/recover-range-pats.rs:126:15
@@ -275,8 +278,9 @@ LL |     if let ....3 = 0 {}
    |
 help: use `..=` instead
    |
-LL |     if let ..=.3 = 0 {}
-   |            ~~~
+LL -     if let ....3 = 0 {}
+LL +     if let ..=.3 = 0 {}
+   |
 
 error: range-to patterns with `...` are not allowed
   --> $DIR/recover-range-pats.rs:152:17
@@ -290,8 +294,9 @@ LL |     mac!(0);
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use `..=` instead
    |
-LL |             let ..=$e;
-   |                 ~~~
+LL -             let ...$e;
+LL +             let ..=$e;
+   |
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:159:19

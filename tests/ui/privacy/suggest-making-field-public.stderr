@@ -14,8 +14,9 @@ LL |     pub struct A(pub(self)String);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider making the field publicly accessible
    |
-LL |     pub struct A(pub String);
-   |                  ~~~
+LL -     pub struct A(pub(self)String);
+LL +     pub struct A(pub String);
+   |
 
 error[E0423]: cannot initialize a tuple struct which contains private fields
   --> $DIR/suggest-making-field-public.rs:9:9
@@ -30,8 +31,9 @@ LL |     pub struct A(pub(self)String);
    |                  ^^^^^^^^^^^^^^^ private field
 help: consider making the field publicly accessible
    |
-LL |     pub struct A(pub String);
-   |                  ~~~
+LL -     pub struct A(pub(self)String);
+LL +     pub struct A(pub String);
+   |
 
 error: aborting due to 2 previous errors
 

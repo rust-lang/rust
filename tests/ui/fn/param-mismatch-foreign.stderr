@@ -11,8 +11,9 @@ LL |     fn foo(x: i32, y: u32, z: i32);
    |        ^^^         -
 help: provide the argument
    |
-LL |     foo(1i32, /* u32 */, 2i32);
-   |        ~~~~~~~~~~~~~~~~~~~~~~~
+LL -     foo(1i32, 2i32);
+LL +     foo(1i32, /* u32 */, 2i32);
+   |
 
 error: aborting due to 1 previous error
 

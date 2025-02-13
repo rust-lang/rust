@@ -39,8 +39,9 @@ LL | fn bar(_x: (dyn Foo + Send)) {
    = help: unsized fn params are gated as an unstable feature
 help: you can use `impl Trait` as the argument type
    |
-LL | fn bar(_x: (impl Foo + Send)) {
-   |             ~~~~
+LL - fn bar(_x: (dyn Foo + Send)) {
+LL + fn bar(_x: (impl Foo + Send)) {
+   |
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn bar(_x: (&(dyn Foo + Send))) {

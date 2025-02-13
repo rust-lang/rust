@@ -179,10 +179,10 @@ impl PassByRefOrValue {
                         && let hir::TyKind::Ref(_, MutTy { ty: decl_ty, .. }) = input.kind
                     {
                         if let Some(typeck) = cx.maybe_typeck_results() {
-                            // Don't lint if an unsafe pointer is created.
-                            // TODO: Limit the check only to unsafe pointers to the argument (or part of the argument)
+                            // Don't lint if a raw pointer is created.
+                            // TODO: Limit the check only to raw pointers to the argument (or part of the argument)
                             //       which escape the current function.
-                            if typeck.node_types().items().any(|(_, &ty)| ty.is_unsafe_ptr())
+                            if typeck.node_types().items().any(|(_, &ty)| ty.is_raw_ptr())
                                 || typeck
                                     .adjustments()
                                     .items()

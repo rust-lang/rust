@@ -367,7 +367,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bx.sess().dcx().emit_fatal(errors::AtomicCompareExchange);
                         };
                         let ty = fn_args.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
+                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr() {
                             let weak = instruction == "cxchgweak";
                             let dst = args[0].immediate();
                             let cmp = args[1].immediate();
@@ -395,7 +395,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                     "load" => {
                         let ty = fn_args.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
+                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr() {
                             let layout = bx.layout_of(ty);
                             let size = layout.size;
                             let source = args[0].immediate();
@@ -413,7 +413,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                     "store" => {
                         let ty = fn_args.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
+                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr() {
                             let size = bx.layout_of(ty).size;
                             let val = args[1].immediate();
                             let ptr = args[0].immediate();
@@ -458,7 +458,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         };
 
                         let ty = fn_args.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
+                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr() {
                             let ptr = args[0].immediate();
                             let val = args[1].immediate();
                             bx.atomic_rmw(atom_op, ptr, val, parse_ordering(bx, ordering))

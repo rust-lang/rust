@@ -101,7 +101,6 @@ it's easy to pick up work without a large time commitment:
 - [Rustdoc Askama Migration](https://github.com/rust-lang/rust/issues/108868)
 - [Diagnostic Translation](https://github.com/rust-lang/rust/issues/100717)
 - [Move UI tests to subdirectories](https://github.com/rust-lang/rust/issues/73494)
-- [Port run-make tests from Make to Rust](https://github.com/rust-lang/rust/issues/121876)
 
 If you find more recurring work, please feel free to add it here!
 

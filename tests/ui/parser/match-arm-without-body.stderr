@@ -18,7 +18,8 @@ LL |         (Some(_),)
    |         +        +
 help: ...or a vertical bar to match on multiple alternatives
    |
-LL |         Some(_) |
+LL -         Some(_),
+LL +         Some(_) |
    |
 
 error: unexpected `,` in pattern

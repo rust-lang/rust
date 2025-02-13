@@ -72,18 +72,28 @@ hir_analysis_cmse_entry_generic =
     functions with the `"C-cmse-nonsecure-entry"` ABI cannot contain generics in their type
 
 hir_analysis_cmse_inputs_stack_spill =
-    arguments for `"{$abi_name}"` function too large to pass via registers
+    arguments for `{$abi}` function too large to pass via registers
     .label = {$plural ->
         [false] this argument doesn't
         *[true] these arguments don't
     } fit in the available registers
-    .note = functions with the `"{$abi_name}"` ABI must pass all their arguments via the 4 32-bit available argument registers
+    .note = functions with the `{$abi}` ABI must pass all their arguments via the 4 32-bit available argument registers
 
 hir_analysis_cmse_output_stack_spill =
-    return value of `"{$abi_name}"` function too large to pass via registers
+    return value of `{$abi}` function too large to pass via registers
     .label = this type doesn't fit in the available registers
-    .note1 = functions with the `"{$abi_name}"` ABI must pass their result via the available return registers
+    .note1 = functions with the `{$abi}` ABI must pass their result via the available return registers
     .note2 = the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
+
+hir_analysis_coerce_pointee_no_field = `CoercePointee` can only be derived on `struct`s with at least one field
+
+hir_analysis_coerce_pointee_no_user_validity_assertion = asserting applicability of `derive(CoercePointee)` on a target data is forbidden
+
+hir_analysis_coerce_pointee_not_concrete_ty = `derive(CoercePointee)` is only applicable to `struct`
+
+hir_analysis_coerce_pointee_not_struct = `derive(CoercePointee)` is only applicable to `struct`, instead of `{$kind}`
+
+hir_analysis_coerce_pointee_not_transparent = `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout
 
 hir_analysis_coerce_unsized_may = the trait `{$trait_name}` may only be implemented for a coercion between structures
 
@@ -592,7 +602,7 @@ hir_analysis_value_of_associated_struct_already_specified =
     .label = re-bound here
     .previous_bound_label = `{$item_name}` bound here first
 
-hir_analysis_variadic_function_compatible_convention = C-variadic function must have a compatible calling convention, like `C`, `cdecl`, `system`, `aapcs`, `win64`, `sysv64` or `efiapi`
+hir_analysis_variadic_function_compatible_convention = C-variadic function must have a compatible calling convention, like {$conventions}
     .label = C-variadic function must have a compatible calling convention
 
 hir_analysis_variances_of = {$variances}

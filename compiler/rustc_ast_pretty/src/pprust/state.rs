@@ -1148,6 +1148,28 @@ impl<'a> State<'a> {
         }
     }
 
+    pub fn print_ty_pat(&mut self, pat: &ast::TyPat) {
+        match &pat.kind {
+            rustc_ast::TyPatKind::Range(start, end, include_end) => {
+                if let Some(start) = start {
+                    self.print_expr_anon_const(start, &[]);
+                }
+                self.word("..");
+                if let Some(end) = end {
+                    if let RangeEnd::Included(_) = include_end.node {
+                        self.word("=");
+                    }
+                    self.print_expr_anon_const(end, &[]);
+                }
+            }
+            rustc_ast::TyPatKind::Err(_) => {
+                self.popen();
+                self.word("/*ERROR*/");
+                self.pclose();
+            }
+        }
+    }
+
     pub fn print_type(&mut self, ty: &ast::Ty) {
         self.maybe_print_comment(ty.span.lo());
         self.ibox(0);
@@ -1252,7 +1274,7 @@ impl<'a> State<'a> {
             ast::TyKind::Pat(ty, pat) => {
                 self.print_type(ty);
                 self.word(" is ");
-                self.print_pat(pat);
+                self.print_ty_pat(pat);
             }
         }
         self.end();

@@ -7,8 +7,9 @@ LL | fn frob() -> impl Fn<P, Output = T> + '_ {}
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
 help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
    |
-LL | fn frob() -> impl Fn<P, Output = T> + 'static {}
-   |                                       ~~~~~~~
+LL - fn frob() -> impl Fn<P, Output = T> + '_ {}
+LL + fn frob() -> impl Fn<P, Output = T> + 'static {}
+   |
 
 error[E0412]: cannot find type `P` in this scope
   --> $DIR/opaque-used-in-extraneous-argument.rs:5:22

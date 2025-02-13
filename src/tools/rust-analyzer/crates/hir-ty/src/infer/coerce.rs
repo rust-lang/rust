@@ -373,7 +373,7 @@ impl InferenceTable<'_> {
         // Check that the types which they point at are compatible.
         let from_raw = TyKind::Raw(to_mt, from_inner.clone()).intern(Interner);
 
-        // Although references and unsafe ptrs have the same
+        // Although references and raw ptrs have the same
         // representation, we still register an Adjust::DerefRef so that
         // regionck knows that the region for `a` must be valid here.
         if is_ref {

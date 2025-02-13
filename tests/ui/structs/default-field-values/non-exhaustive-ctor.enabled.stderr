@@ -6,8 +6,9 @@ LL |     let _ = S { };
    |
 help: all remaining fields have default values, you can use those values with `..`
    |
-LL |     let _ = S { .. };
-   |               ~~~~~~
+LL -     let _ = S { };
+LL +     let _ = S { .. };
+   |
 
 error[E0063]: missing fields `field1` and `field2` in initializer of `S`
   --> $DIR/non-exhaustive-ctor.rs:26:13

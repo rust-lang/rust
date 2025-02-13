@@ -6,8 +6,9 @@ LL |     println!("Hello, {}!", crate::bar::do_the_thing);
    |
 help: a similar path exists
    |
-LL |     println!("Hello, {}!", crate::foo::bar::do_the_thing);
-   |                                   ~~~~~~~~
+LL -     println!("Hello, {}!", crate::bar::do_the_thing);
+LL +     println!("Hello, {}!", crate::foo::bar::do_the_thing);
+   |
 help: consider importing this module
    |
 LL + use foo::bar;

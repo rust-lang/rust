@@ -11,8 +11,9 @@ LL | pub fn g(a1: (), a2: bool, a3: bool, a4: bool, a5: bool, a6: ()) -> () {}
    |        ^         --------  --------  --------  --------
 help: provide the arguments
    |
-LL |     g((), /* bool */, /* bool */, /* bool */, /* bool */, ());
-   |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     g((), ());
+LL +     g((), /* bool */, /* bool */, /* bool */, /* bool */, ());
+   |
 
 error: aborting due to 1 previous error
 

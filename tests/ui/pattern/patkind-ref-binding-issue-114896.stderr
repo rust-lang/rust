@@ -6,8 +6,9 @@ LL |         b.make_ascii_uppercase();
    |
 help: consider changing this to be mutable
    |
-LL |         let &(mut b) = a;
-   |             ~~~~~  +
+LL -         let &b = a;
+LL +         let &(mut b) = a;
+   |
 
 error: aborting due to 1 previous error
 

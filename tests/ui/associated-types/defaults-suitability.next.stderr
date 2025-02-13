@@ -134,8 +134,9 @@ LL |     type Baz = T;
    |          --- required by a bound in this associated type
 help: consider further restricting type parameter `T` with trait `Clone`
    |
-LL |     Self::Baz: Clone, T: std::clone::Clone
-   |                     ~~~~~~~~~~~~~~~~~~~~~~
+LL -     Self::Baz: Clone,
+LL +     Self::Baz: Clone, T: std::clone::Clone
+   |
 
 error: aborting due to 8 previous errors
 

@@ -690,7 +690,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         } else {
             match self.try_coercion_cast(fcx) {
                 Ok(()) => {
-                    if self.expr_ty.is_unsafe_ptr() && self.cast_ty.is_unsafe_ptr() {
+                    if self.expr_ty.is_raw_ptr() && self.cast_ty.is_raw_ptr() {
                         // When casting a raw pointer to another raw pointer, we cannot convert the cast into
                         // a coercion because the pointee types might only differ in regions, which HIR typeck
                         // cannot distinguish. This would cause us to erroneously discard a cast which will

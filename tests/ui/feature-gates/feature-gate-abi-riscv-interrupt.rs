@@ -9,25 +9,25 @@ trait Sized {}
 // feature gate is not used.
 
 extern "riscv-interrupt-m" fn f() {}
-//~^ ERROR riscv-interrupt ABIs are experimental
+//~^ ERROR "riscv-interrupt-m" ABI is experimental
 extern "riscv-interrupt-s" fn f_s() {}
-//~^ ERROR riscv-interrupt ABIs are experimental
+//~^ ERROR "riscv-interrupt-s" ABI is experimental
 
 trait T {
     extern "riscv-interrupt-m" fn m();
-    //~^ ERROR riscv-interrupt ABIs are experimental
+    //~^ ERROR "riscv-interrupt-m" ABI is experimental
 }
 
 struct S;
 impl T for S {
     extern "riscv-interrupt-m" fn m() {}
-    //~^ ERROR riscv-interrupt ABIs are experimental
+    //~^ ERROR "riscv-interrupt-m" ABI is experimental
 }
 
 impl S {
     extern "riscv-interrupt-m" fn im() {}
-    //~^ ERROR riscv-interrupt ABIs are experimental
+    //~^ ERROR "riscv-interrupt-m" ABI is experimental
 }
 
 type TA = extern "riscv-interrupt-m" fn();
-//~^ ERROR riscv-interrupt ABIs are experimental
+//~^ ERROR "riscv-interrupt-m" ABI is experimental

@@ -160,8 +160,7 @@ pub(super) fn decorate_lint(
             .decorate_lint(diag);
         }
         BuiltinLintDiag::MissingAbi(label_span, default_abi) => {
-            lints::MissingAbi { span: label_span, default_abi: default_abi.name() }
-                .decorate_lint(diag);
+            lints::MissingAbi { span: label_span, default_abi }.decorate_lint(diag);
         }
         BuiltinLintDiag::LegacyDeriveHelpers(label_span) => {
             lints::LegacyDeriveHelpers { span: label_span }.decorate_lint(diag);

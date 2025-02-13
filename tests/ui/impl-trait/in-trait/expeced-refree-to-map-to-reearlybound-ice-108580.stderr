@@ -12,8 +12,9 @@ LL |     fn bar(&self) -> impl Iterator + '_ {
    = note: `#[warn(refining_impl_trait_internal)]` on by default
 help: replace the return type so that it matches the trait
    |
-LL |     fn bar(&self) -> impl Iterator<Item = impl Sized> + '_ {
-   |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     fn bar(&self) -> impl Iterator + '_ {
+LL +     fn bar(&self) -> impl Iterator<Item = impl Sized> + '_ {
+   |
 
 warning: 1 warning emitted
 

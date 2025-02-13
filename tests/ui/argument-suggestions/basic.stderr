@@ -42,8 +42,9 @@ LL | fn missing(_i: u32) {}
    |    ^^^^^^^ -------
 help: provide the argument
    |
-LL |     missing(/* u32 */);
-   |            ~~~~~~~~~~~
+LL -     missing();
+LL +     missing(/* u32 */);
+   |
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/basic.rs:23:5
@@ -60,8 +61,9 @@ LL | fn swapped(_i: u32, _s: &str) {}
    |    ^^^^^^^
 help: swap these arguments
    |
-LL |     swapped(1, "");
-   |            ~~~~~~~
+LL -     swapped("", 1);
+LL +     swapped(1, "");
+   |
 
 error[E0308]: arguments to this function are incorrect
   --> $DIR/basic.rs:24:5
@@ -79,8 +81,9 @@ LL | fn permuted(_x: X, _y: Y, _z: Z) {}
    |    ^^^^^^^^
 help: reorder these arguments
    |
-LL |     permuted(X {}, Y {}, Z {});
-   |             ~~~~~~~~~~~~~~~~~~
+LL -     permuted(Y {}, Z {}, X {});
+LL +     permuted(X {}, Y {}, Z {});
+   |
 
 error[E0057]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/basic.rs:27:5
@@ -95,8 +98,9 @@ LL |     let closure = |x| x;
    |                   ^^^
 help: provide the argument
    |
-LL |     closure(/* x */);
-   |            ~~~~~~~~~
+LL -     closure();
+LL +     closure(/* x */);
+   |
 
 error: aborting due to 6 previous errors
 

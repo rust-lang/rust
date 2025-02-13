@@ -6,8 +6,9 @@ LL |     fn bar(s: _) {}
    |
 help: use type parameters instead
    |
-LL |     fn bar<T>(s: T) {}
-   |           +++    ~
+LL -     fn bar(s: _) {}
+LL +     fn bar<T>(s: T) {}
+   |
 
 error[E0050]: method `bar` has 1 parameter but the declaration in trait `Foo::bar` has 0
   --> $DIR/bad-infer-in-trait-impl.rs:6:15

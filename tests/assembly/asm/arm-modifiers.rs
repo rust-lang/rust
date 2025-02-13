@@ -1,6 +1,6 @@
 //@ add-core-stubs
 //@ assembly-output: emit-asm
-//@ compile-flags: -O -C panic=abort
+//@ compile-flags: -Copt-level=3 -C panic=abort
 //@ compile-flags: --target armv7-unknown-linux-gnueabihf
 //@ compile-flags: -C target-feature=+neon
 //@ compile-flags: -Zmerge-functions=disabled
@@ -21,7 +21,7 @@ impl Copy for f32x4 {}
 
 macro_rules! check {
     ($func:ident $modifier:literal $reg:ident $ty:ident $mov:literal) => {
-        // -O and extern "C" guarantee that the selected register is always r0/s0/d0/q0
+        // -Copt-level=3 and extern "C" guarantee that the selected register is always r0/s0/d0/q0
         #[no_mangle]
         pub unsafe extern "C" fn $func() -> $ty {
             let y;

@@ -6,8 +6,9 @@ LL |     a: foo:A,
    |
 help: write a path separator here
    |
-LL |     a: foo::A,
-   |           ~~
+LL -     a: foo:A,
+LL +     a: foo::A,
+   |
 
 error: expected `,`, or `}`, found `:`
   --> $DIR/struct-field-type-including-single-colon.rs:9:11
@@ -25,8 +26,9 @@ LL |     b: foo::bar:B,
    |
 help: write a path separator here
    |
-LL |     b: foo::bar::B,
-   |                ~~
+LL -     b: foo::bar:B,
+LL +     b: foo::bar::B,
+   |
 
 error: expected `,`, or `}`, found `:`
   --> $DIR/struct-field-type-including-single-colon.rs:15:16

@@ -43,8 +43,9 @@ LL |         fn method() -> () {}
    |            ^^^^^^
 help: change the output type to match the trait
    |
-LL |         fn method() -> <() as compare_method::Trait>::Ty {}
-   |                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -         fn method() -> () {}
+LL +         fn method() -> <() as compare_method::Trait>::Ty {}
+   |
 
 error: unconstrained opaque type
   --> $DIR/in-assoc-type-unconstrained.rs:20:19

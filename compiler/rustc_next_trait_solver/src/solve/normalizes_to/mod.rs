@@ -942,6 +942,13 @@ where
     ) -> Result<Candidate<I>, NoSolution> {
         panic!("`TransmuteFrom` does not have an associated type: {:?}", goal)
     }
+
+    fn consider_builtin_bikeshed_guaranteed_no_drop_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        unreachable!("`BikeshedGuaranteedNoDrop` does not have an associated type: {:?}", goal)
+    }
 }
 
 impl<D, I> EvalCtxt<'_, D>

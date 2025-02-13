@@ -179,6 +179,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_ty(&mut self, t: &'ast Ty) -> Self::Result {
         walk_ty(self, t)
     }
+    fn visit_ty_pat(&mut self, t: &'ast TyPat) -> Self::Result {
+        walk_ty_pat(self, t)
+    }
     fn visit_generic_param(&mut self, param: &'ast GenericParam) -> Self::Result {
         walk_generic_param(self, param)
     }
@@ -534,7 +537,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
         }
         TyKind::Pat(ty, pat) => {
             try_visit!(visitor.visit_ty(ty));
-            try_visit!(visitor.visit_pat(pat));
+            try_visit!(visitor.visit_ty_pat(pat));
         }
         TyKind::Array(ty, length) => {
             try_visit!(visitor.visit_ty(ty));
@@ -551,6 +554,18 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
         TyKind::Err(_guar) => {}
         TyKind::MacCall(mac) => try_visit!(visitor.visit_mac_call(mac)),
         TyKind::Never | TyKind::CVarArgs => {}
+    }
+    V::Result::output()
+}
+
+pub fn walk_ty_pat<'a, V: Visitor<'a>>(visitor: &mut V, tp: &'a TyPat) -> V::Result {
+    let TyPat { id: _, kind, span: _, tokens: _ } = tp;
+    match kind {
+        TyPatKind::Range(start, end, _include_end) => {
+            visit_opt!(visitor, visit_anon_const, start);
+            visit_opt!(visitor, visit_anon_const, end);
+        }
+        TyPatKind::Err(_) => {}
     }
     V::Result::output()
 }

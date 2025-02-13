@@ -1397,8 +1397,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             // or `*mut [i32]` <=> `*const [u64]`), including the common special
             // case of `*const T` <=> `*mut T`.
             if let Transmute = kind
-                && from.is_unsafe_ptr()
-                && to.is_unsafe_ptr()
+                && from.is_raw_ptr()
+                && to.is_raw_ptr()
                 && self.pointers_have_same_metadata(from, to)
             {
                 kind = PtrToPtr;

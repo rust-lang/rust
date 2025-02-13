@@ -6,8 +6,9 @@ LL | fn foo() => impl Fn() => bool {
    |
 help: use `->` instead
    |
-LL | fn foo() -> impl Fn() => bool {
-   |          ~~
+LL - fn foo() => impl Fn() => bool {
+LL + fn foo() -> impl Fn() => bool {
+   |
 
 error: expected one of `+`, `->`, `::`, `where`, or `{`, found `=>`
   --> $DIR/fn-recover-return-sign2.rs:4:23

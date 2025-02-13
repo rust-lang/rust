@@ -1,4 +1,4 @@
-error[E0658]: rust-call ABI is subject to change
+error[E0658]: the extern "rust-call" ABI is experimental and subject to change
   --> $DIR/feature-gate-unboxed-closures.rs:10:12
    |
 LL |     extern "rust-call" fn call_once(self, (a, b): (u32, u32)) -> u32 {

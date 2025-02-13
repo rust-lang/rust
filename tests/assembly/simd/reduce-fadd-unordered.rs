@@ -1,6 +1,7 @@
 //@ revisions: x86_64 aarch64
 //@ assembly-output: emit-asm
-//@ compile-flags: --crate-type=lib -O
+//@ compile-flags: --crate-type=lib -Copt-level=3
+
 //@[aarch64] only-aarch64
 //@[x86_64] only-x86_64
 //@[x86_64] compile-flags: -Ctarget-feature=+sse3

@@ -8,12 +8,14 @@ LL |     Box::new(B(&*v)) as Box<dyn X>
    |
 help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
    |
-LL | fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'a> {
-   |                                                            ~~
+LL - fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'static> {
+LL + fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'a> {
+   |
 help: alternatively, add an explicit `'static` bound to this reference
    |
-LL | fn g<'a, T: 'static>(v: Box<(dyn A<T> + 'static)>) -> Box<dyn X + 'static> {
-   |                         ~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'static> {
+LL + fn g<'a, T: 'static>(v: Box<(dyn A<T> + 'static)>) -> Box<dyn X + 'static> {
+   |
 
 error[E0515]: cannot return value referencing local data `*v`
   --> $DIR/regions-close-object-into-object-2.rs:9:5

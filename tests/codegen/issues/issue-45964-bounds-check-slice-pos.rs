@@ -1,7 +1,7 @@
 // This test case checks that slice::{r}position functions do not
 // prevent optimizing away bounds checks
 
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 
 #![crate_type = "rlib"]
 

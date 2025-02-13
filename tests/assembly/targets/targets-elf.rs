@@ -228,6 +228,9 @@
 //@ revisions: i586_unknown_netbsd
 //@ [i586_unknown_netbsd] compile-flags: --target i586-unknown-netbsd
 //@ [i586_unknown_netbsd] needs-llvm-components: x86
+//@ revisions: i586_unknown_redox
+//@ [i586_unknown_redox] compile-flags: --target i586-unknown-redox
+//@ [i586_unknown_redox] needs-llvm-components: x86
 //@ revisions: i686_linux_android
 //@ [i686_linux_android] compile-flags: --target i686-linux-android
 //@ [i686_linux_android] needs-llvm-components: x86
@@ -252,9 +255,6 @@
 //@ revisions: i686_unknown_openbsd
 //@ [i686_unknown_openbsd] compile-flags: --target i686-unknown-openbsd
 //@ [i686_unknown_openbsd] needs-llvm-components: x86
-//@ revisions: i686_unknown_redox
-//@ [i686_unknown_redox] compile-flags: --target i686-unknown-redox
-//@ [i686_unknown_redox] needs-llvm-components: x86
 //@ revisions: i686_wrs_vxworks
 //@ [i686_wrs_vxworks] compile-flags: --target i686-wrs-vxworks
 //@ [i686_wrs_vxworks] needs-llvm-components: x86

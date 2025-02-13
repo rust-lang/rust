@@ -135,24 +135,24 @@ and follow the same instructions as above.
 ### Emacs
 
 Emacs provides support for rust-analyzer with project-local configuration
-through [Eglot](https://www.gnu.org/software/emacs/manual/html_node/eglot/).  
+through [Eglot](https://www.gnu.org/software/emacs/manual/html_node/eglot/).
 Steps for setting up Eglot with rust-analyzer can be [found
-here](https://rust-analyzer.github.io/manual.html#eglot).  
+here](https://rust-analyzer.github.io/manual.html#eglot).
 Having set up Emacs & Eglot for Rust development in general, you can run
 `./x setup editor` and select `emacs`, which will prompt you to create
 `.dir-locals.el` with the recommended configuration for Eglot.
-The recommended settings live at [`src/etc/rust_analyzer_eglot.el`].  
+The recommended settings live at [`src/etc/rust_analyzer_eglot.el`].
 For more information on project-specific Eglot configuration, consult [the
 manual](https://www.gnu.org/software/emacs/manual/html_node/eglot/Project_002dspecific-configuration.html).
 
 ### Helix
 
-Helix comes with built-in LSP and rust-analyzer support.  
+Helix comes with built-in LSP and rust-analyzer support.
 It can be configured through `languages.toml`, as described
-[here](https://docs.helix-editor.com/languages.html).  
+[here](https://docs.helix-editor.com/languages.html).
 You can run `./x setup editor` and select `helix`, which will prompt you to
 create `languages.toml` with the recommended configuration for Helix. The
-recommended settings live at [`src/etc/rust_analyzer_helix.toml`].  
+recommended settings live at [`src/etc/rust_analyzer_helix.toml`].
 
 ## Check, check, and check again
 
@@ -181,7 +181,7 @@ example, running `tidy` and `linkchecker` is useful when editing Markdown files,
 whereas UI tests are much less likely to be helpful. While `x suggest` is a
 useful tool, it does not guarantee perfect coverage (just as PR CI isn't a
 substitute for bors). See the [dedicated chapter](../tests/suggest-tests.md) for
-more information and contribution instructions. 
+more information and contribution instructions.
 
 Please note that `x suggest` is in a beta state currently and the tests that it
 will suggest are limited.
@@ -332,28 +332,21 @@ git worktree add -b my-feature ../rust2 master
 You can then use that rust2 folder as a separate workspace for modifying and
 building `rustc`!
 
-## Using nix-shell
+## Working with nix
 
-If you're using nix, you can use the following nix-shell to work on Rust:
+Several nix configurations are defined in `src/tools/nix-dev-shell`.
 
-```nix
-{ pkgs ? import <nixpkgs> {} }:
-pkgs.mkShell {
-  name = "rustc";
-  nativeBuildInputs = with pkgs; [
-    binutils cmake ninja pkg-config python3 git curl cacert patchelf nix
-  ];
-  buildInputs = with pkgs; [
-    openssl glibc.out glibc.static
-  ];
-  # Avoid creating text files for ICEs.
-  RUSTC_ICE = "0";
-  # Provide `libstdc++.so.6` for the self-contained lld.
-  LD_LIBRARY_PATH = "${with pkgs; lib.makeLibraryPath [
-    stdenv.cc.cc.lib
-  ]}";
-}
+If you're using direnv, you can create a symbol link to `src/tools/nix-dev-shell/envrc-flake` or `src/tools/nix-dev-shell/envrc-shell`
+
+```bash
+ln -s ./src/tools/nix-dev-shell/envrc-flake ./.envrc # Use flake
 ```
+or
+```bash
+ln -s ./src/tools/nix-dev-shell/envrc-shell ./.envrc # Use nix-shell
+```
+
+### Note
 
 Note that when using nix on a not-NixOS distribution, it may be necessary to set
 **`patch-binaries-for-nix = true` in `config.toml`**. Bootstrap tries to detect

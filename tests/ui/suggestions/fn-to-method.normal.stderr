@@ -6,8 +6,9 @@ LL |     let x = cmp(&1, &2);
    |
 help: use the `.` operator to call the method `Ord::cmp` on `&{integer}`
    |
-LL |     let x = (&1).cmp(&2);
-   |             ~  ~~~~~~~~~
+LL -     let x = cmp(&1, &2);
+LL +     let x = (&1).cmp(&2);
+   |
 
 error[E0425]: cannot find function `len` in this scope
   --> $DIR/fn-to-method.rs:16:13

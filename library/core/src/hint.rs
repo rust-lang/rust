@@ -646,7 +646,7 @@ pub const fn must_use<T>(value: T) -> T {
 /// ```
 ///
 ///
-#[unstable(feature = "likely_unlikely", issue = "26179")]
+#[unstable(feature = "likely_unlikely", issue = "136873")]
 #[inline(always)]
 pub const fn likely(b: bool) -> bool {
     crate::intrinsics::likely(b)
@@ -696,7 +696,7 @@ pub const fn likely(b: bool) -> bool {
 ///     }
 /// }
 /// ```
-#[unstable(feature = "likely_unlikely", issue = "26179")]
+#[unstable(feature = "likely_unlikely", issue = "136873")]
 #[inline(always)]
 pub const fn unlikely(b: bool) -> bool {
     crate::intrinsics::unlikely(b)
@@ -729,7 +729,7 @@ pub const fn unlikely(b: bool) -> bool {
 ///     }
 /// }
 /// ```
-#[unstable(feature = "cold_path", issue = "26179")]
+#[unstable(feature = "cold_path", issue = "136873")]
 #[inline(always)]
 pub const fn cold_path() {
     crate::intrinsics::cold_path()

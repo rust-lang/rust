@@ -17,8 +17,6 @@ pub(crate) fn validate_cmse_abi<'tcx>(
     abi: ExternAbi,
     fn_sig: ty::PolyFnSig<'tcx>,
 ) {
-    let abi_name = abi.name();
-
     match abi {
         ExternAbi::CCmseNonSecureCall => {
             let hir_node = tcx.hir_node(hir_id);
@@ -56,7 +54,7 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                         .to(bare_fn_ty.decl.inputs[index].span)
                         .to(bare_fn_ty.decl.inputs.last().unwrap().span);
                     let plural = bare_fn_ty.param_names.len() - index != 1;
-                    dcx.emit_err(errors::CmseInputsStackSpill { span, plural, abi_name });
+                    dcx.emit_err(errors::CmseInputsStackSpill { span, plural, abi });
                 }
                 Err(layout_err) => {
                     if should_emit_generic_error(abi, layout_err) {
@@ -69,7 +67,7 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                 Ok(true) => {}
                 Ok(false) => {
                     let span = bare_fn_ty.decl.output.span();
-                    dcx.emit_err(errors::CmseOutputStackSpill { span, abi_name });
+                    dcx.emit_err(errors::CmseOutputStackSpill { span, abi });
                 }
                 Err(layout_err) => {
                     if should_emit_generic_error(abi, layout_err) {
@@ -92,7 +90,7 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                     //                                      ^^^^^^
                     let span = decl.inputs[index].span.to(decl.inputs.last().unwrap().span);
                     let plural = decl.inputs.len() - index != 1;
-                    dcx.emit_err(errors::CmseInputsStackSpill { span, plural, abi_name });
+                    dcx.emit_err(errors::CmseInputsStackSpill { span, plural, abi });
                 }
                 Err(layout_err) => {
                     if should_emit_generic_error(abi, layout_err) {
@@ -105,7 +103,7 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                 Ok(true) => {}
                 Ok(false) => {
                     let span = decl.output.span();
-                    dcx.emit_err(errors::CmseOutputStackSpill { span, abi_name });
+                    dcx.emit_err(errors::CmseOutputStackSpill { span, abi });
                 }
                 Err(layout_err) => {
                     if should_emit_generic_error(abi, layout_err) {

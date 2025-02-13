@@ -16,8 +16,9 @@ LL | impl MyStruct<'_> {
    | ----------------- `Self` is on type `MyStruct` in this `impl`
 help: the `Self` type doesn't accept type parameters, use the concrete type's name `MyStruct` instead if you want to specify its type parameters
    |
-LL |     pub fn f(field: &[u32]) -> MyStruct<u32> {
-   |                                ~~~~~~~~
+LL -     pub fn f(field: &[u32]) -> Self<u32> {
+LL +     pub fn f(field: &[u32]) -> MyStruct<u32> {
+   |
 
 error: lifetime may not live long enough
   --> $DIR/unmatched-arg-and-hir-arg-issue-126385.rs:10:9

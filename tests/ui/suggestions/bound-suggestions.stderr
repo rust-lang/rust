@@ -43,8 +43,9 @@ LL |     println!("{:?} {:?}", x, y);
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting type parameter `Y` with trait `Debug`
    |
-LL | fn test_no_bounds_where<X, Y>(x: X, y: Y) where X: std::fmt::Debug, Y: std::fmt::Debug {
-   |                                                                   ~~~~~~~~~~~~~~~~~~~~
+LL - fn test_no_bounds_where<X, Y>(x: X, y: Y) where X: std::fmt::Debug, {
+LL + fn test_no_bounds_where<X, Y>(x: X, y: Y) where X: std::fmt::Debug, Y: std::fmt::Debug {
+   |
 
 error[E0277]: `X` doesn't implement `Debug`
   --> $DIR/bound-suggestions.rs:33:22

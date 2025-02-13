@@ -6,8 +6,9 @@ LL |     let muta a = 10;
    |
 help: there is a keyword `mut` with a similar name
    |
-LL |     let mut a = 10;
-   |         ~~~
+LL -     let muta a = 10;
+LL +     let mut a = 10;
+   |
 
 error: aborting due to 1 previous error
 
