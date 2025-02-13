@@ -1,0 +1,62 @@
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetimes-in-type-paths.rs:44:24
+   |
+LL | static USE_VIA_STATIC: ContainsLifetime = ContainsLifetime(&42);
+   |                        ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+note: the lint level is defined here
+  --> $DIR/elided-lifetimes-in-type-paths.rs:1:9
+   |
+LL | #![deny(elided_lifetimes_in_paths)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: indicate the anonymous lifetime
+   |
+LL | static USE_VIA_STATIC: ContainsLifetime<'_> = ContainsLifetime(&42);
+   |                                        ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetimes-in-type-paths.rs:48:25
+   |
+LL |     use_via_turbofish::<ContainsLifetime>();
+   |                         ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |     use_via_turbofish::<ContainsLifetime<'_>>();
+   |                                         ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetimes-in-type-paths.rs:51:27
+   |
+LL |     let _use_via_binding: ContainsLifetime;
+   |                           ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |     let _use_via_binding: ContainsLifetime<'_>;
+   |                                           ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetimes-in-type-paths.rs:54:6
+   |
+LL |     <ContainsLifetime as UseViaTrait>::use_it();
+   |      ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |     <ContainsLifetime<'_> as UseViaTrait>::use_it();
+   |                      ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetimes-in-type-paths.rs:57:6
+   |
+LL |     <ContainsLifetime>::use_it();
+   |      ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |     <ContainsLifetime<'_>>::use_it();
+   |                      ++++
+
+error: aborting due to 5 previous errors
+
