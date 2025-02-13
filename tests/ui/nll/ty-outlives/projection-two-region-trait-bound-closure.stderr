@@ -23,16 +23,20 @@ LL | |     T: Anything<'b, 'c>,
    |
    = note: defining type: no_relationships_late::<'?1, '?2, T>
 
-error[E0309]: the associated type `<T as Anything<'?5, '?6>>::AssocType` may not live long enough
+error[E0309]: the associated type `<T as Anything<'b/#0, 'c/#1>>::AssocType` may not live long enough
   --> $DIR/projection-two-region-trait-bound-closure.rs:38:39
    |
 LL | fn no_relationships_late<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
-   |                          -- the associated type `<T as Anything<'?5, '?6>>::AssocType` must be valid for the lifetime `'a` as defined here...
+   |                          -- the associated type `<T as Anything<'b/#0, 'c/#1>>::AssocType` must be valid for the lifetime `'a` as defined here...
 ...
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^^^^^^^^^^ ...so that the type `<T as Anything<'?5, '?6>>::AssocType` will meet its required lifetime bounds
+   |                                       ^^^^^^^^^^^^^^^^ ...so that the type `<T as Anything<'b/#0, 'c/#1>>::AssocType` will meet its required lifetime bounds
    |
-   = help: consider adding an explicit lifetime bound `<T as Anything<'?5, '?6>>::AssocType: 'a`...
+help: consider adding an explicit lifetime bound
+   |
+LL -     T: Anything<'b, 'c>,
+LL +     T: Anything<'b, 'c>, <T as Anything<'b/#0, 'c/#1>>::AssocType: 'a
+   |
 
 note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:48:29
@@ -59,16 +63,20 @@ LL | |     'a: 'a,
    |
    = note: defining type: no_relationships_early::<'?1, '?2, '?3, T>
 
-error[E0309]: the associated type `<T as Anything<'?6, '?7>>::AssocType` may not live long enough
+error[E0309]: the associated type `<T as Anything<'b/#1, 'c/#2>>::AssocType` may not live long enough
   --> $DIR/projection-two-region-trait-bound-closure.rs:48:39
    |
 LL | fn no_relationships_early<'a, 'b, 'c, T>(cell: Cell<&'a ()>, t: T)
-   |                           -- the associated type `<T as Anything<'?6, '?7>>::AssocType` must be valid for the lifetime `'a` as defined here...
+   |                           -- the associated type `<T as Anything<'b/#1, 'c/#2>>::AssocType` must be valid for the lifetime `'a` as defined here...
 ...
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^^^^^^^^^^ ...so that the type `<T as Anything<'?6, '?7>>::AssocType` will meet its required lifetime bounds
+   |                                       ^^^^^^^^^^^^^^^^ ...so that the type `<T as Anything<'b/#1, 'c/#2>>::AssocType` will meet its required lifetime bounds
    |
-   = help: consider adding an explicit lifetime bound `<T as Anything<'?6, '?7>>::AssocType: 'a`...
+help: consider adding an explicit lifetime bound
+   |
+LL -     'a: 'a,
+LL +     'a: 'a, <T as Anything<'b/#1, 'c/#2>>::AssocType: 'a
+   |
 
 note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:61:29
