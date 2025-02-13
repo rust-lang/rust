@@ -74,9 +74,14 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.umin.v4i32"] fn vmnlf(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
     #[link_name = "llvm.umin.v2i64"] fn vmnlg(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> vector_unsigned_long_long;
 
-    #[link_name = "llvm.s390.vfisb"] fn vfisb(a: vector_float, b: i32, c: i32) -> vector_float;
-    #[link_name = "llvm.s390.vfidb"] fn vfidb(a: vector_double, b: i32, c: i32) -> vector_double;
+    #[link_name = "llvm.nearbyint.v4f32"] fn nearbyint_v4f32(a: vector_float) -> vector_float;
+    #[link_name = "llvm.nearbyint.v2f64"] fn nearbyint_v2f64(a: vector_double) -> vector_double;
 
+    #[link_name = "llvm.rint.v4f32"] fn rint_v4f32(a: vector_float) -> vector_float;
+    #[link_name = "llvm.rint.v2f64"] fn rint_v2f64(a: vector_double) -> vector_double;
+
+    #[link_name = "llvm.roundeven.v4f32"] fn roundeven_v4f32(a: vector_float) -> vector_float;
+    #[link_name = "llvm.roundeven.v2f64"] fn roundeven_v2f64(a: vector_double) -> vector_double;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -636,70 +641,67 @@ mod sealed {
 
     impl_vec_trait! { [VectorOrc vec_orc]+ 2c (orc) }
 
+    // FIXME(vector-enhancements-1) add instr tests for f32
+    test_impl! { vec_roundc_f32 (a: vector_float) -> vector_float [nearbyint_v4f32, _] }
+    test_impl! { vec_roundc_f64 (a: vector_double) -> vector_double [nearbyint_v2f64, vfidb] }
+
+    // FIXME(llvm) roundeven does not yet lower to vfidb (but should in the future)
+    test_impl! { vec_round_f32 (a: vector_float) -> vector_float [roundeven_v4f32, _] }
+    test_impl! { vec_round_f64 (a: vector_double) -> vector_double [roundeven_v2f64, _] }
+
+    test_impl! { vec_rint_f32 (a: vector_float) -> vector_float [rint_v4f32, _] }
+    test_impl! { vec_rint_f64 (a: vector_double) -> vector_double [rint_v2f64, vfidb] }
+
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
-    pub trait VectorRound: Sized {
-        unsafe fn vec_round_impl<const N: i32, const MODE: i32>(self) -> Self;
-
-        #[inline]
-        #[target_feature(enable = "vector")]
-        unsafe fn vec_roundc(self) -> Self {
-            self.vec_round_impl::<4, 0>()
-        }
-
-        #[inline]
-        #[target_feature(enable = "vector")]
-        unsafe fn vec_round(self) -> Self {
-            // NOTE: simd_round resoles ties by rounding away from zero,
-            // while the vec_round function rounds towards zero
-            self.vec_round_impl::<4, 4>()
-        }
-
-        // NOTE: vec_roundz (vec_round_impl::<4, 5>) is the same as vec_trunc
-        #[inline]
-        #[target_feature(enable = "vector")]
-        unsafe fn vec_trunc(self) -> Self {
-            simd_trunc(self)
-        }
-
-        // NOTE: vec_roundp (vec_round_impl::<4, 6>) is the same as vec_ceil
-        #[inline]
-        #[target_feature(enable = "vector")]
-        unsafe fn vec_ceil(self) -> Self {
-            simd_ceil(self)
-        }
-
-        // NOTE: vec_roundm (vec_round_impl::<4, 7>) is the same as vec_floor
-        #[inline]
-        #[target_feature(enable = "vector")]
-        unsafe fn vec_floor(self) -> Self {
-            simd_floor(self)
-        }
-
-        #[inline]
-        #[target_feature(enable = "vector")]
-        unsafe fn vec_rint(self) -> Self {
-            self.vec_round_impl::<0, 0>()
-        }
-    }
-
-    // FIXME(vector-enhancements-1) apply the right target feature to all methods
-    #[unstable(feature = "stdarch_s390x", issue = "135681")]
-    impl VectorRound for vector_float {
-        #[inline]
-        #[target_feature(enable = "vector")]
-        unsafe fn vec_round_impl<const N: i32, const MODE: i32>(self) -> Self {
-            vfisb(self, N, MODE)
-        }
+    pub trait VectorRoundc {
+        unsafe fn vec_roundc(self) -> Self;
     }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
-    impl VectorRound for vector_double {
-        #[inline]
-        #[target_feature(enable = "vector")]
-        unsafe fn vec_round_impl<const N: i32, const MODE: i32>(self) -> Self {
-            vfidb(self, N, MODE)
-        }
+    pub trait VectorRound {
+        unsafe fn vec_round(self) -> Self;
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorRint {
+        unsafe fn vec_rint(self) -> Self;
+    }
+
+    impl_vec_trait! { [VectorRoundc vec_roundc] vec_roundc_f32 (vector_float) }
+    impl_vec_trait! { [VectorRoundc vec_roundc] vec_roundc_f64 (vector_double) }
+
+    impl_vec_trait! { [VectorRound vec_round] vec_round_f32 (vector_float) }
+    impl_vec_trait! { [VectorRound vec_round] vec_round_f64 (vector_double) }
+
+    impl_vec_trait! { [VectorRint vec_rint] vec_rint_f32 (vector_float) }
+    impl_vec_trait! { [VectorRint vec_rint] vec_rint_f64 (vector_double) }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorTrunc {
+        // same as vec_roundz
+        unsafe fn vec_trunc(self) -> Self;
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorCeil {
+        // same as vec_roundp
+        unsafe fn vec_ceil(self) -> Self;
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorFloor {
+        // same as vec_roundm
+        unsafe fn vec_floor(self) -> Self;
+    }
+
+    impl_vec_trait! { [VectorTrunc vec_trunc] simd_trunc (vector_float) }
+    impl_vec_trait! { [VectorTrunc vec_trunc] simd_trunc (vector_double) }
+
+    impl_vec_trait! { [VectorCeil vec_ceil] simd_ceil (vector_float) }
+    impl_vec_trait! { [VectorCeil vec_ceil] simd_ceil (vector_double) }
+
+    impl_vec_trait! { [VectorFloor vec_floor] simd_floor (vector_float) }
+    impl_vec_trait! { [VectorFloor vec_floor] simd_floor (vector_double) }
 }
 
 /// Vector element-wise addition.
@@ -920,7 +922,7 @@ where
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_floor<T>(a: T) -> T
 where
-    T: sealed::VectorRound,
+    T: sealed::VectorFloor,
 {
     a.vec_floor()
 }
@@ -931,7 +933,7 @@ where
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_ceil<T>(a: T) -> T
 where
-    T: sealed::VectorRound,
+    T: sealed::VectorCeil,
 {
     a.vec_ceil()
 }
@@ -943,12 +945,13 @@ where
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_trunc<T>(a: T) -> T
 where
-    T: sealed::VectorRound,
+    T: sealed::VectorTrunc,
 {
     a.vec_trunc()
 }
 
-/// Vector round, resolves ties by rounding towards zero.
+/// Returns a vector containing the rounded values to the nearest representable floating-point integer,
+/// using IEEE round-to-nearest rounding, of the corresponding elements of the given vector
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -966,7 +969,7 @@ where
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_roundc<T>(a: T) -> T
 where
-    T: sealed::VectorRound,
+    T: sealed::VectorRoundc,
 {
     a.vec_roundc()
 }
@@ -978,7 +981,7 @@ where
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_roundm<T>(a: T) -> T
 where
-    T: sealed::VectorRound,
+    T: sealed::VectorFloor,
 {
     // the IBM docs note
     //
@@ -995,7 +998,7 @@ where
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_roundp<T>(a: T) -> T
 where
-    T: sealed::VectorRound,
+    T: sealed::VectorCeil,
 {
     // the IBM docs note
     //
@@ -1012,7 +1015,7 @@ where
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_roundz<T>(a: T) -> T
 where
-    T: sealed::VectorRound,
+    T: sealed::VectorTrunc,
 {
     // the IBM docs note
     //
@@ -1028,7 +1031,7 @@ where
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_rint<T>(a: T) -> T
 where
-    T: sealed::VectorRound,
+    T: sealed::VectorRint,
 {
     a.vec_rint()
 }
@@ -1304,11 +1307,16 @@ mod tests {
         [1.0, 1.0]
     }
 
-    // FIXME(vector-enhancements-1)
-    //    test_vec_1! { test_vec_round_f32, vec_round, f32x4,
-    //        [],
-    //        []
-    //    }
+    test_vec_1! { test_vec_round_f32, vec_round, f32x4,
+        [0.1, 0.5, 0.6, 0.9],
+        [0.0, 0.0, 1.0, 1.0]
+    }
+
+    test_vec_1! { test_vec_round_f32_even_odd, vec_round, f32x4,
+        [0.5, 1.5, 2.5, 3.5],
+        [0.0, 2.0, 2.0, 4.0]
+    }
+
     test_vec_1! { test_vec_round_f64_1, vec_round, f64x2,
         [0.1, 0.5],
         [0.0, 0.0]
@@ -1318,11 +1326,16 @@ mod tests {
         [1.0, 1.0]
     }
 
-    // FIXME(vector-enhancements-1)
-    //    test_vec_1! { test_vec_roundc_f32, vec_roundc, f32x4,
-    //        [],
-    //        []
-    //    }
+    test_vec_1! { test_vec_roundc_f32, vec_roundc, f32x4,
+        [0.1, 0.5, 0.6, 0.9],
+        [0.0, 0.0, 1.0, 1.0]
+    }
+
+    test_vec_1! { test_vec_roundc_f32_even_odd, vec_roundc, f32x4,
+        [0.5, 1.5, 2.5, 3.5],
+        [0.0, 2.0, 2.0, 4.0]
+    }
+
     test_vec_1! { test_vec_roundc_f64_1, vec_roundc, f64x2,
         [0.1, 0.5],
         [0.0, 0.0]
@@ -1332,11 +1345,16 @@ mod tests {
         [1.0, 1.0]
     }
 
-    // FIXME(vector-enhancements-1)
-    //    test_vec_1! { test_vec_rint_f32, vec_rint, f32x4,
-    //        [],
-    //        []
-    //    }
+    test_vec_1! { test_vec_rint_f32, vec_rint, f32x4,
+        [0.1, 0.5, 0.6, 0.9],
+        [0.0, 0.0, 1.0, 1.0]
+    }
+
+    test_vec_1! { test_vec_rint_f32_even_odd, vec_rint, f32x4,
+        [0.5, 1.5, 2.5, 3.5],
+        [0.0, 2.0, 2.0, 4.0]
+    }
+
     test_vec_1! { test_vec_rint_f64_1, vec_rint, f64x2,
         [0.1, 0.5],
         [0.0, 0.0]
