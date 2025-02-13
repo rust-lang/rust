@@ -253,7 +253,12 @@ unsafe impl<T> sealed_trait::VaArgSafe for *mut T {}
 unsafe impl<T> sealed_trait::VaArgSafe for *const T {}
 
 impl<'f> VaListImpl<'f> {
-    /// Advance to the next arg.
+    /// Loads an argument of type `T` from the `va_list` and advance to the next arg.
+    ///
+    /// # Safety
+    ///
+    /// - Arg must be within the length of arg list when calling this method.
+    /// - The memory pointed to by the `va_list` must contain arguments of the correct types and sizes.
     #[inline]
     pub unsafe fn arg<T: sealed_trait::VaArgSafe>(&mut self) -> T {
         // SAFETY: the caller must uphold the safety contract for `va_arg`.
