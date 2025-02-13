@@ -404,7 +404,6 @@
 #![feature(custom_test_frameworks)]
 #![feature(edition_panic)]
 #![feature(format_args_nl)]
-#![feature(get_many_mut)]
 #![feature(log_syntax)]
 #![feature(test)]
 #![feature(trace_macros)]
