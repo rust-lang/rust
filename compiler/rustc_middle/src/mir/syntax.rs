@@ -1015,22 +1015,30 @@ impl TerminatorKind<'_> {
 
 #[derive(Debug, Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
 pub struct SwitchTargets {
-    /// Possible values. The locations to branch to in each case
-    /// are found in the corresponding indices from the `targets` vector.
+    /// Possible values. For each value, the location to branch to is found in
+    /// the corresponding element in the `targets` vector.
     pub(super) values: SmallVec<[Pu128; 1]>,
 
-    /// Possible branch sites. The last element of this vector is used
-    /// for the otherwise branch, so targets.len() == values.len() + 1
-    /// should hold.
+    /// Possible branch targets. The last element of this vector is used for
+    /// the "otherwise" branch, so `targets.len() == values.len() + 1` always
+    /// holds.
     //
-    // This invariant is quite non-obvious and also could be improved.
-    // One way to make this invariant is to have something like this instead:
+    // Note: This invariant is non-obvious and easy to violate. This would be a
+    // more rigorous representation:
     //
-    // branches: Vec<(ConstInt, BasicBlock)>,
-    // otherwise: Option<BasicBlock> // exhaustive if None
+    //   normal: SmallVec<[(Pu128, BasicBlock); 1]>,
+    //   otherwise: BasicBlock,
     //
-    // However we’ve decided to keep this as-is until we figure a case
-    // where some other approach seems to be strictly better than other.
+    // But it's important to have the targets in a sliceable type, because
+    // target slices show up elsewhere. E.g. `TerminatorKind::InlineAsm` has a
+    // boxed slice, and `TerminatorKind::FalseEdge` has a single target that
+    // can be converted to a slice with `slice::from_ref`.
+    //
+    // Why does this matter? In functions like `TerminatorKind::successors` we
+    // return `impl Iterator` and a non-slice-of-targets representation here
+    // causes problems because multiple different concrete iterator types would
+    // be involved and we would need a boxed trait object, which requires an
+    // allocation, which is expensive if done frequently.
     pub(super) targets: SmallVec<[BasicBlock; 2]>,
 }
 
