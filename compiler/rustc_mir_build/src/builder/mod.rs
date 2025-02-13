@@ -112,16 +112,7 @@ enum BlockFrame {
     /// Evaluation is currently within the tail expression of a block.
     ///
     /// Example: `{ STMT_1; STMT_2; EXPR }`
-    TailExpr {
-        /// If true, then the surrounding context of the block ignores
-        /// the result of evaluating the block's tail expression.
-        ///
-        /// Example: `let _ = { STMT_1; EXPR };`
-        tail_result_is_ignored: bool,
-
-        /// `Span` of the tail expression.
-        span: Span,
-    },
+    TailExpr { info: BlockTailInfo },
 
     /// Generic mark meaning that the block occurred as a subexpression
     /// where the result might be used.
@@ -277,9 +268,7 @@ impl BlockContext {
             match bf {
                 BlockFrame::SubExpr => continue,
                 BlockFrame::Statement { .. } => break,
-                &BlockFrame::TailExpr { tail_result_is_ignored, span } => {
-                    return Some(BlockTailInfo { tail_result_is_ignored, span });
-                }
+                &BlockFrame::TailExpr { info } => return Some(info),
             }
         }
 
@@ -302,9 +291,9 @@ impl BlockContext {
 
             // otherwise: use accumulated is_ignored state.
             Some(
-                BlockFrame::TailExpr { tail_result_is_ignored: ignored, .. }
-                | BlockFrame::Statement { ignores_expr_result: ignored },
-            ) => *ignored,
+                BlockFrame::TailExpr { info: BlockTailInfo { tail_result_is_ignored: ign, .. } }
+                | BlockFrame::Statement { ignores_expr_result: ign },
+            ) => *ign,
         }
     }
 }
