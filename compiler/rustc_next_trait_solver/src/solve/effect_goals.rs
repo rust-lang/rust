@@ -374,6 +374,13 @@ where
         unreachable!("TransmuteFrom is not const")
     }
 
+    fn consider_builtin_bikeshed_guaranteed_no_drop_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        unreachable!("BikeshedGuaranteedNoDrop is not const");
+    }
+
     fn consider_structural_builtin_unsize_candidates(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,

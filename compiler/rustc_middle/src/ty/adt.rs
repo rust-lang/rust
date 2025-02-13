@@ -217,6 +217,10 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
         self.is_phantom_data()
     }
 
+    fn is_manually_drop(self) -> bool {
+        self.is_manually_drop()
+    }
+
     fn all_field_tys(
         self,
         tcx: TyCtxt<'tcx>,
