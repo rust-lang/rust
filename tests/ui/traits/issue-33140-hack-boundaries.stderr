@@ -1,3 +1,11 @@
+error[E0119]: conflicting implementations of trait `Trait0` for type `(dyn Send + 'static)`
+  --> $DIR/issue-33140-hack-boundaries.rs:9:1
+   |
+LL | impl Trait0 for dyn Send {}
+   | ------------------------ first implementation here
+LL | impl Trait0 for dyn Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + 'static)`
+
 error[E0119]: conflicting implementations of trait `Trait1` for type `(dyn Send + 'static)`
   --> $DIR/issue-33140-hack-boundaries.rs:18:1
    |
@@ -62,19 +70,7 @@ LL | impl Trait5 for dyn Send {}
 LL | impl Trait5 for dyn Send where u32: Copy {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + 'static)`
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0119, E0751.
 For more information about an error, try `rustc --explain E0119`.
-Future incompatibility report: Future breakage diagnostic:
-warning: conflicting implementations of trait `Trait0` for type `(dyn Send + 'static)`: (E0119)
-  --> $DIR/issue-33140-hack-boundaries.rs:10:1
-   |
-LL | impl Trait0 for dyn Send {}
-   | ------------------------ first implementation here
-LL | impl Trait0 for dyn Send {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + 'static)`
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
-

@@ -985,12 +985,6 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query self_ty_of_trait_impl_enabling_order_dep_trait_object_hack(
-        key: DefId
-    ) -> Option<ty::EarlyBinder<'tcx, ty::Ty<'tcx>>> {
-        desc { |tcx| "computing self type wrt issue #33140 `{}`", tcx.def_path_str(key) }
-    }
-
     /// Maps a `DefId` of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
