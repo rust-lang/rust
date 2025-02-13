@@ -179,8 +179,8 @@ impl<'tcx> NonCopyConst<'tcx> {
     }
 
     fn is_value_unfrozen_raw_inner(cx: &LateContext<'tcx>, val: ty::ValTree<'tcx>, ty: Ty<'tcx>) -> bool {
-        // No branch that we check (yet) should continue if val isn't a ValTree::Branch
-        let ty::ValTree::Branch(val) = val else { return false };
+        // No branch that we check (yet) should continue if val isn't a branch
+        let Some(val) = val.try_to_branch() else { return false };
         match *ty.kind() {
             // the fact that we have to dig into every structs to search enums
             // leads us to the point checking `UnsafeCell` directly is the only option.
@@ -192,9 +192,10 @@ impl<'tcx> NonCopyConst<'tcx> {
                 .iter()
                 .any(|field| Self::is_value_unfrozen_raw_inner(cx, *field, ty)),
             ty::Adt(def, args) if def.is_enum() => {
-                let Some((&ty::ValTree::Leaf(variant_index), fields)) = val.split_first() else {
+                let Some((&variant_valtree, fields)) = val.split_first() else {
                     return false;
                 };
+                let variant_index = variant_valtree.unwrap_leaf();
                 let variant_index = VariantIdx::from_u32(variant_index.to_u32());
                 fields
                     .iter()
