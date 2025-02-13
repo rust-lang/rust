@@ -183,7 +183,7 @@ jobs:
         run: src/ci/scripts/dump-environment.sh
 
       # Pre-build citool before the following step uninstalls rustup
-      # Build is into the build directory, to avoid modifying sources
+      # Build it into the build directory, to avoid modifying sources
       - name: build citool
         run: |
           cd src/ci/citool
@@ -238,13 +238,9 @@ jobs:
       - name: upload job metrics to DataDog
         if: needs.calculate_matrix.outputs.run_type != 'pr'
         env:
-          DATADOG_SITE: datadoghq.com
           DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
           DD_GITHUB_JOB_NAME: ${{ matrix.full_name }}
-        run: |
-          cd src/ci
-          npm ci
-          python3 scripts/upload-build-metrics.py ../../build/cpu-usage.csv
+        run: ./build/citool/debug/citool upload-build-metrics build/cpu-usage.csv
 
   # This job isused to tell bors the final status of the build, as there is no practical way to detect
   # when a workflow is successful listening to webhooks only in our current bors implementation (homu).
