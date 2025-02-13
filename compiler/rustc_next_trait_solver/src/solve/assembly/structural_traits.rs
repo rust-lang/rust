@@ -870,6 +870,11 @@ where
             continue;
         }
 
+        // Skip RPITITs, since the AFIDT feature means that they are always implied.
+        if cx.is_impl_trait_in_trait(associated_type_def_id) {
+            continue;
+        }
+
         requirements
             .extend(cx.item_bounds(associated_type_def_id).iter_instantiated(cx, trait_ref.args));
     }
