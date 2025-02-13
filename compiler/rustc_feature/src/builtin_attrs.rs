@@ -1040,6 +1040,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_force_inline, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing, EncodeCrossCrate::Yes,
         "#[rustc_force_inline] forces a free function to be inlined"
     ),
+    rustc_attr!(
+        rustc_non_const_sized, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
+        "#[rustc_non_const_sized] forces a type to not implement `const {Meta,Pointee,}Sized` for testing"
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:
