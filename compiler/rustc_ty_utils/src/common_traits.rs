@@ -18,8 +18,11 @@ fn is_freeze_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::PseudoCanonicalInput<'tcx, 
     is_item_raw(tcx, query, LangItem::Freeze)
 }
 
-fn is_unpin_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
-    is_item_raw(tcx, query, LangItem::Unpin)
+fn is_unsafe_unpin_raw<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    query: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
+) -> bool {
+    is_item_raw(tcx, query, LangItem::UnsafeUnpin)
 }
 
 fn is_item_raw<'tcx>(
@@ -33,5 +36,6 @@ fn is_item_raw<'tcx>(
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { is_copy_raw, is_sized_raw, is_freeze_raw, is_unpin_raw, ..*providers };
+    *providers =
+        Providers { is_copy_raw, is_sized_raw, is_freeze_raw, is_unsafe_unpin_raw, ..*providers };
 }

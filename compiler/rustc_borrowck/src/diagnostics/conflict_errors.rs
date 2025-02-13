@@ -3407,7 +3407,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     Some(3)
                 } else if string.starts_with("static") {
                     // `static` is 6 chars long
-                    // This is used for `!Unpin` coroutines
+                    // This is used for immovable (self-referential) coroutines
                     Some(6)
                 } else {
                     None

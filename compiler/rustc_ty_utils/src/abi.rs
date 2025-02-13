@@ -379,7 +379,7 @@ fn adjust_for_rust_scalar<'tcx>(
             Some(kind)
         } else if let Some(pointee) = drop_target_pointee {
             // The argument to `drop_in_place` is semantically equivalent to a mutable reference.
-            Some(PointerKind::MutableRef { unpin: pointee.is_unpin(tcx, cx.typing_env) })
+            Some(PointerKind::MutableRef { unpin: pointee.is_unsafe_unpin(tcx, cx.typing_env) })
         } else {
             None
         };
@@ -387,11 +387,13 @@ fn adjust_for_rust_scalar<'tcx>(
             attrs.pointee_align = Some(pointee.align);
 
             // `Box` are not necessarily dereferenceable for the entire duration of the function as
-            // they can be deallocated at any time. Same for non-frozen shared references (see
-            // <https://github.com/rust-lang/rust/pull/98017>), and for mutable references to
-            // potentially self-referential types (see
-            // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>). If LLVM had a way
-            // to say "dereferenceable on entry" we could use it here.
+            // they can be deallocated at any time. Same for `!Freeze` shared references
+            // (see <https://github.com/rust-lang/rust/pull/98017>), and for mutable
+            // references to `!UnsafeUnpin` (ie. potentially self-referential types)
+            // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>
+            //  and <https://rust-lang.github.io/rfcs/3467-unsafe-pinned.html>).
+            //
+            // If LLVM had a way to say "dereferenceable on entry" we could use it here.
             attrs.pointee_size = match kind {
                 PointerKind::Box { .. }
                 | PointerKind::SharedRef { frozen: false }

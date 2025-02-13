@@ -717,6 +717,7 @@ bidirectional_lang_item_map! {
     TransmuteTrait,
     Tuple,
     Unpin,
+    UnsafeUnpin,
     Unsize,
 // tidy-alphabetical-end
 }

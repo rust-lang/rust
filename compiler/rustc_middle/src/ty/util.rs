@@ -1193,7 +1193,7 @@ impl<'tcx> Ty<'tcx> {
 
     /// Fast path helper for testing if a type is `Freeze`.
     ///
-    /// Returning true means the type is known to be `Freeze`. Returning
+    /// Returning `true` means the type is known to be `Freeze`. Returning
     /// `false` means nothing -- could be `Freeze`, might not be.
     pub fn is_trivially_freeze(self) -> bool {
         match self.kind() {
@@ -1227,16 +1227,18 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Checks whether values of this type `T` implement the `Unpin` trait.
-    pub fn is_unpin(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
-        self.is_trivially_unpin() || tcx.is_unpin_raw(typing_env.as_query_input(self))
+    /// Checks whether values of this type `T` implement the `UnsafeUnpin` trait.
+    ///
+    /// For more information, see [RFC 3467](https://rust-lang.github.io/rfcs/3467-unsafe-pinned.html).
+    pub fn is_unsafe_unpin(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
+        self.is_trivially_unsafe_unpin() || tcx.is_unsafe_unpin_raw(typing_env.as_query_input(self))
     }
 
-    /// Fast path helper for testing if a type is `Unpin`.
+    /// Fast path helper for testing if a type is `UnsafeUnpin`.
     ///
-    /// Returning true means the type is known to be `Unpin`. Returning
-    /// `false` means nothing -- could be `Unpin`, might not be.
-    fn is_trivially_unpin(self) -> bool {
+    /// Returning `true` means the type is known to be `UnsafeUnpin`. Returning
+    /// `false` means nothing -- could be `UnsafeUnpin`, might not be.
+    fn is_trivially_unsafe_unpin(self) -> bool {
         match self.kind() {
             ty::Int(_)
             | ty::Uint(_)
@@ -1250,8 +1252,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::FnDef(..)
             | ty::Error(_)
             | ty::FnPtr(..) => true,
-            ty::Tuple(fields) => fields.iter().all(Self::is_trivially_unpin),
-            ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => ty.is_trivially_unpin(),
+            ty::Tuple(fields) => fields.iter().all(Self::is_trivially_unsafe_unpin),
+            ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => ty.is_trivially_unsafe_unpin(),
             ty::Adt(..)
             | ty::Bound(..)
             | ty::Closure(..)

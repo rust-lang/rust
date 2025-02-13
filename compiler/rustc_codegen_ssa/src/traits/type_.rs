@@ -85,6 +85,10 @@ pub trait DerivedTypeCodegenMethods<'tcx>:
         ty.is_freeze(self.tcx(), self.typing_env())
     }
 
+    fn type_is_unsafe_unpin(&self, ty: Ty<'tcx>) -> bool {
+        ty.is_unsafe_unpin(self.tcx(), self.typing_env())
+    }
+
     fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
         if ty.is_sized(self.tcx(), self.typing_env()) {
             return false;

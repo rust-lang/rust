@@ -128,6 +128,7 @@ pub fn mutable_borrow_ret() -> &'static mut i32 {
 // This one is *not* `noalias` because it might be self-referential.
 // It is also not `dereferenceable` due to
 // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>.
+// FIXME(unsafe_pinned)
 pub fn mutable_notunpin_borrow(_: &mut NotUnpin) {}
 
 // CHECK: @notunpin_borrow(ptr noalias noundef readonly align 4 dereferenceable(4) %_1)

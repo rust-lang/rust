@@ -727,16 +727,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     candidates.ambiguous = true;
                 }
                 ty::Coroutine(coroutine_def_id, _)
-                    if self.tcx().is_lang_item(def_id, LangItem::Unpin) =>
+                    if self.tcx().is_lang_item(def_id, LangItem::Unpin)
+                        || self.tcx().is_lang_item(def_id, LangItem::UnsafeUnpin) =>
                 {
                     match self.tcx().coroutine_movability(coroutine_def_id) {
                         hir::Movability::Static => {
-                            // Immovable coroutines are never `Unpin`, so
-                            // suppress the normal auto-impl candidate for it.
+                            // Immovable coroutines are never `[Unsafe]Unpin`,
+                            // so suppress the normal auto-impl candidate for it.
                         }
                         hir::Movability::Movable => {
-                            // Movable coroutines are always `Unpin`, so add an
-                            // unconditional builtin candidate.
+                            // Movable coroutines are always `[Unsafe]Unpin`,
+                            // so add an unconditional builtin candidate.
                             candidates.vec.push(BuiltinCandidate { has_nested: false });
                         }
                     }

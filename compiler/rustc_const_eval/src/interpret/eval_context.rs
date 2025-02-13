@@ -251,6 +251,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         ty.is_freeze(*self.tcx, self.typing_env)
     }
 
+    #[inline]
+    pub fn type_is_unsafe_unpin(&self, ty: Ty<'tcx>) -> bool {
+        ty.is_unsafe_unpin(*self.tcx, self.typing_env)
+    }
+
     pub fn load_mir(
         &self,
         instance: ty::InstanceKind<'tcx>,

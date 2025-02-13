@@ -1828,7 +1828,8 @@ where
 pub enum PointerKind {
     /// Shared reference. `frozen` indicates the absence of any `UnsafeCell`.
     SharedRef { frozen: bool },
-    /// Mutable reference. `unpin` indicates the absence of any pinned data.
+    /// Mutable reference. `unpin` indicates the absence of any pinned
+    /// data (`UnsafePinned` or `PhantomPinned`).
     MutableRef { unpin: bool },
     /// Box. `unpin` indicates the absence of any pinned data. `global` indicates whether this box
     /// uses the global allocator or a custom one.

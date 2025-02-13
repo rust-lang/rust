@@ -134,7 +134,7 @@ impl<'tcx> NewPermission {
         cx: &crate::MiriInterpCx<'tcx>,
     ) -> Option<Self> {
         let ty_is_freeze = pointee.is_freeze(*cx.tcx, cx.typing_env());
-        let ty_is_unpin = pointee.is_unpin(*cx.tcx, cx.typing_env());
+        let ty_is_unsafe_unpin = pointee.is_unsafe_unpin(*cx.tcx, cx.typing_env());
         let is_protected = kind == RetagKind::FnEntry;
         // As demonstrated by `tests/fail/tree_borrows/reservedim_spurious_write.rs`,
         // interior mutability and protectors interact poorly.
@@ -142,11 +142,12 @@ impl<'tcx> NewPermission {
         // in the case of a protected reference: protected references are always considered
         // "freeze" in their reservation phase.
         let initial_state = match mutability {
-            Mutability::Mut if ty_is_unpin => Permission::new_reserved(ty_is_freeze, is_protected),
+            Mutability::Mut if ty_is_unsafe_unpin =>
+                Permission::new_reserved(ty_is_freeze, is_protected),
             Mutability::Not if ty_is_freeze => Permission::new_frozen(),
             // Raw pointers never enter this function so they are not handled.
             // However raw pointers are not the only pointers that take the parent
-            // tag, this also happens for `!Unpin` `&mut`s and interior mutable
+            // tag, this also happens for `!UnsafeUnpin` `&mut`s and `!Freeze`
             // `&`s, which are excluded above.
             _ => return None,
         };
@@ -165,8 +166,8 @@ impl<'tcx> NewPermission {
         zero_size: bool,
     ) -> Option<Self> {
         let pointee = ty.builtin_deref(true).unwrap();
-        pointee.is_unpin(*cx.tcx, cx.typing_env()).then_some(()).map(|()| {
-            // Regular `Unpin` box, give it `noalias` but only a weak protector
+        pointee.is_unsafe_unpin(*cx.tcx, cx.typing_env()).then_some(()).map(|()| {
+            // Regular `UnsafeUnpin` box, give it `noalias` but only a weak protector
             // because it is valid to deallocate it within the function.
             let ty_is_freeze = ty.is_freeze(*cx.tcx, cx.typing_env());
             let protected = kind == RetagKind::FnEntry;

@@ -1060,11 +1060,15 @@ where
 
             ty::Infer(_) | ty::Bound(_, _) => panic!("unexpected type `{self_ty:?}`"),
 
-            // Coroutines have one special built-in candidate, `Unpin`, which
-            // takes precedence over the structural auto trait candidate being
-            // assembled.
+            // Coroutines have two special built-in candidates, `UnsafeUnpin`
+            // and `Unpin`, which take precedence over the structural auto trait
+            // candidate being assembled.
             ty::Coroutine(def_id, _)
-                if self.cx().is_lang_item(goal.predicate.def_id(), TraitSolverLangItem::Unpin) =>
+                if self.cx().is_lang_item(goal.predicate.def_id(), TraitSolverLangItem::Unpin)
+                    || self.cx().is_lang_item(
+                        goal.predicate.def_id(),
+                        TraitSolverLangItem::UnsafeUnpin,
+                    ) =>
             {
                 match self.cx().coroutine_movability(def_id) {
                     Movability::Static => Some(Err(NoSolution)),

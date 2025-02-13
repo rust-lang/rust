@@ -70,7 +70,7 @@ impl NewPermission {
                         access: None,
                         protector: None,
                     }
-                } else if pointee.is_unpin(*cx.tcx, cx.typing_env()) {
+                } else if pointee.is_unsafe_unpin(*cx.tcx, cx.typing_env()) {
                     // A regular full mutable reference. On `FnEntry` this is `noalias` and `dereferenceable`.
                     NewPermission::Uniform {
                         perm: Permission::Unique,
@@ -78,7 +78,7 @@ impl NewPermission {
                         protector,
                     }
                 } else {
-                    // `!Unpin` dereferences do not get `noalias` nor `dereferenceable`.
+                    // `!UnsafeUnpin` dereferences do not get `noalias` nor `dereferenceable`.
                     NewPermission::Uniform {
                         perm: Permission::SharedReadWrite,
                         access: None,
@@ -128,7 +128,7 @@ impl NewPermission {
     fn from_box_ty<'tcx>(ty: Ty<'tcx>, kind: RetagKind, cx: &crate::MiriInterpCx<'tcx>) -> Self {
         // `ty` is not the `Box` but the field of the Box with this pointer (due to allocator handling).
         let pointee = ty.builtin_deref(true).unwrap();
-        if pointee.is_unpin(*cx.tcx, cx.typing_env()) {
+        if pointee.is_unsafe_unpin(*cx.tcx, cx.typing_env()) {
             // A regular box. On `FnEntry` this is `noalias`, but not `dereferenceable` (hence only
             // a weak protector).
             NewPermission::Uniform {
@@ -137,7 +137,7 @@ impl NewPermission {
                 protector: (kind == RetagKind::FnEntry).then_some(ProtectorKind::WeakProtector),
             }
         } else {
-            // `!Unpin` boxes do not get `noalias` nor `dereferenceable`.
+            // `!UnsafeUnpin` boxes do not get `noalias` nor `dereferenceable`.
             NewPermission::Uniform {
                 perm: Permission::SharedReadWrite,
                 access: None,

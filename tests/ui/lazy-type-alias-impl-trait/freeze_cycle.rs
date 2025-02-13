@@ -1,12 +1,12 @@
 //@ check-pass
 
-#![feature(coroutine_trait, negative_impls)]
+#![feature(coroutine_trait)]
 
+use std::future::Future;
 use std::ops::{Coroutine, CoroutineState};
-use std::task::{Poll, Context};
-use std::future::{Future};
-use std::ptr::NonNull;
 use std::pin::Pin;
+use std::ptr::NonNull;
+use std::task::{Context, Poll};
 
 fn main() {}
 
@@ -22,10 +22,6 @@ where
     T: Coroutine<ResumeTy, Yield = ()>,
 {
     struct GenFuture<T: Coroutine<ResumeTy, Yield = ()>>(T);
-
-    // We rely on the fact that async/await futures are immovable in order to create
-    // self-referential borrows in the underlying coroutine.
-    impl<T: Coroutine<ResumeTy, Yield = ()>> !Unpin for GenFuture<T> {}
 
     impl<T: Coroutine<ResumeTy, Yield = ()>> Future for GenFuture<T> {
         type Output = T::Return;

@@ -28,7 +28,7 @@ fn main() {
     array_casts();
     mut_below_shr();
     wide_raw_ptr_in_tuple();
-    not_unpin_not_protected();
+    not_unsafe_unpin_not_protected();
     write_does_not_invalidate_all_aliases();
 }
 
@@ -311,10 +311,9 @@ fn wide_raw_ptr_in_tuple() {
     r.type_id();
 }
 
-fn not_unpin_not_protected() {
-    // `&mut !Unpin`, at least for now, does not get `noalias` nor `dereferenceable`, so we also
-    // don't add protectors. (We could, but until we have a better idea for where we want to go with
-    // the self-referential-coroutine situation, it does not seem worth the potential trouble.)
+fn not_unsafe_unpin_not_protected() {
+    // `&mut !UnsafeUnpin`, does not get `noalias` nor `dereferenceable`, so we
+    // also don't add protectors.
     use std::marker::PhantomPinned;
 
     pub struct NotUnpin(#[allow(dead_code)] i32, PhantomPinned);
