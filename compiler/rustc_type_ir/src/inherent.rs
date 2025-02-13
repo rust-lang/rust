@@ -540,6 +540,8 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
 
     fn is_phantom_data(self) -> bool;
 
+    fn is_manually_drop(self) -> bool;
+
     // FIXME: perhaps use `all_fields` and expose `FieldDef`.
     fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl IntoIterator<Item = I::Ty>>;
 
