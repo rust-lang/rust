@@ -408,7 +408,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
                 align_shift: 4,
             });
             let base_ptr = self.bcx.ins().stack_addr(self.pointer_type, stack_slot, 0);
-            let misalign_offset = self.bcx.ins().urem_imm(base_ptr, i64::from(align));
+            let misalign_offset = self.bcx.ins().band_imm(base_ptr, i64::from(align - 1));
             let realign_offset = self.bcx.ins().irsub_imm(misalign_offset, i64::from(align));
             Pointer::new(self.bcx.ins().iadd(base_ptr, realign_offset))
         }
