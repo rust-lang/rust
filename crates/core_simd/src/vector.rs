@@ -1,8 +1,8 @@
 use crate::simd::{
+    LaneCount, Mask, MaskElement, SupportedLaneCount, Swizzle,
     cmp::SimdPartialOrd,
     num::SimdUint,
     ptr::{SimdConstPtr, SimdMutPtr},
-    LaneCount, Mask, MaskElement, SupportedLaneCount, Swizzle,
 };
 
 /// A SIMD vector with the shape of `[T; N]` but the operations of `T`.
