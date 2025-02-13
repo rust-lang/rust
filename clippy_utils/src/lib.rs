@@ -107,7 +107,7 @@ use rustc_hir::{
     self as hir, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, ConstContext,
     Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind,
     ImplItemRef, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat,
-    PatExpr, PatExprKind, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind,
+    PatExpr, PatExprKind, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitFn, TraitItem, TraitItemKind,
     TraitItemRef, TraitRef, TyKind, UnOp, def,
 };
 use rustc_lexer::{TokenKind, tokenize};
@@ -1504,6 +1504,10 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
         })
         | Node::ImplItem(&ImplItem {
             kind: ImplItemKind::Fn(_, eid),
+            ..
+        })
+        | Node::TraitItem(&TraitItem {
+            kind: TraitItemKind::Fn(_, TraitFn::Provided(eid)),
             ..
         }) => match cx.tcx.hir().body(eid).value.kind {
             ExprKind::Block(block, _) => Some(block),
