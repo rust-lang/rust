@@ -1,3 +1,7 @@
+mod cpu_usage;
+mod datadog;
+mod utils;
+
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -5,6 +9,10 @@ use std::process::Command;
 use anyhow::Context;
 use clap::Parser;
 use serde_yaml::Value;
+
+use crate::cpu_usage::load_cpu_usage;
+use crate::datadog::upload_datadog_metric;
+use crate::utils::load_env_var;
 
 const CI_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
 const DOCKER_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../docker");
@@ -71,7 +79,7 @@ impl JobDatabase {
 }
 
 fn load_job_db(path: &Path) -> anyhow::Result<JobDatabase> {
-    let db = read_to_string(path)?;
+    let db = utils::read_to_string(path)?;
     let mut db: Value = serde_yaml::from_str(&db)?;
 
     // We need to expand merge keys (<<), because serde_yaml can't deal with them
@@ -142,10 +150,6 @@ impl GitHubContext {
             vec![]
         }
     }
-}
-
-fn load_env_var(name: &str) -> anyhow::Result<String> {
-    std::env::var(name).with_context(|| format!("Cannot find variable {name}"))
 }
 
 fn load_github_ctx() -> anyhow::Result<GitHubContext> {
@@ -326,6 +330,18 @@ fn run_workflow_locally(db: JobDatabase, job_type: JobType, name: String) -> any
     if !result.success() { Err(anyhow::anyhow!("Job failed")) } else { Ok(()) }
 }
 
+fn upload_ci_metrics(cpu_usage_csv: &Path) -> anyhow::Result<()> {
+    let usage = load_cpu_usage(cpu_usage_csv).context("Cannot load CPU usage from input CSV")?;
+    eprintln!("CPU usage\n{usage:?}");
+
+    let avg = if !usage.is_empty() { usage.iter().sum::<f64>() / usage.len() as f64 } else { 0.0 };
+    eprintln!("CPU usage average: {avg}");
+
+    upload_datadog_metric("avg-cpu-usage", avg).context("Cannot upload Datadog metric")?;
+
+    Ok(())
+}
+
 #[derive(clap::Parser)]
 enum Args {
     /// Calculate a list of jobs that should be executed on CI.
@@ -342,6 +358,11 @@ enum Args {
         /// Type of the job that should be executed.
         #[clap(long = "type", default_value = "auto")]
         job_type: JobType,
+    },
+    /// Upload CI metrics to Datadog.
+    UploadBuildMetrics {
+        /// Path to a CSV containing the CI job CPU usage.
+        cpu_usage_csv: PathBuf,
     },
 }
 
@@ -363,21 +384,19 @@ fn main() -> anyhow::Result<()> {
             let jobs_path = jobs_file.as_deref().unwrap_or(default_jobs_file);
             let gh_ctx = load_github_ctx()
                 .context("Cannot load environment variables from GitHub Actions")?;
-            let channel = read_to_string(Path::new(CI_DIRECTORY).join("channel"))
+            let channel = utils::read_to_string(Path::new(CI_DIRECTORY).join("channel"))
                 .context("Cannot read channel file")?;
 
             calculate_job_matrix(load_db(jobs_path)?, gh_ctx, &channel)
                 .context("Failed to calculate job matrix")?;
         }
         Args::RunJobLocally { job_type, name } => {
-            run_workflow_locally(load_db(default_jobs_file)?, job_type, name)?
+            run_workflow_locally(load_db(default_jobs_file)?, job_type, name)?;
+        }
+        Args::UploadBuildMetrics { cpu_usage_csv } => {
+            upload_ci_metrics(&cpu_usage_csv)?;
         }
     }
 
     Ok(())
-}
-
-fn read_to_string<P: AsRef<Path>>(path: P) -> anyhow::Result<String> {
-    let error = format!("Cannot read file {:?}", path.as_ref());
-    std::fs::read_to_string(path).context(error)
 }
