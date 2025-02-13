@@ -38,7 +38,9 @@ use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::bug;
-use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges, traversal};
+use rustc_middle::mir::{
+    self, BasicBlock, CallReturnPlaces, Location, SwitchTargetValue, TerminatorEdges, traversal,
+};
 use rustc_middle::ty::TyCtxt;
 use tracing::error;
 
@@ -431,7 +433,7 @@ impl EffectIndex {
 }
 
 pub struct SwitchIntTarget {
-    pub value: Option<u128>,
+    pub value: SwitchTargetValue,
     pub target: BasicBlock,
 }
 

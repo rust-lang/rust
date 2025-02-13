@@ -27,7 +27,15 @@ type Predecessors = IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>>;
 /// `BasicBlocks::switch_sources`, which is only called by backwards analyses
 /// that do `SwitchInt` handling, and we don't have any of those, not even in
 /// tests. See #95120 and #94576.
-type SwitchSources = FxHashMap<(BasicBlock, BasicBlock), SmallVec<[Option<u128>; 1]>>;
+type SwitchSources = FxHashMap<(BasicBlock, BasicBlock), SmallVec<[SwitchTargetValue; 1]>>;
+
+#[derive(Debug, Clone, Copy)]
+pub enum SwitchTargetValue {
+    // A normal switch value.
+    Normal(u128),
+    // The final "otherwise" fallback value.
+    Otherwise,
+}
 
 #[derive(Clone, Default, Debug)]
 struct Cache {
@@ -89,9 +97,15 @@ impl<'tcx> BasicBlocks<'tcx> {
                 }) = &data.terminator
                 {
                     for (value, target) in targets.iter() {
-                        switch_sources.entry((target, bb)).or_default().push(Some(value));
+                        switch_sources
+                            .entry((target, bb))
+                            .or_default()
+                            .push(SwitchTargetValue::Normal(value));
                     }
-                    switch_sources.entry((targets.otherwise(), bb)).or_default().push(None);
+                    switch_sources
+                        .entry((targets.otherwise(), bb))
+                        .or_default()
+                        .push(SwitchTargetValue::Otherwise);
                 }
             }
             switch_sources

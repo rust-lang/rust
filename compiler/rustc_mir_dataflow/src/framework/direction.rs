@@ -1,6 +1,8 @@
 use std::ops::RangeInclusive;
 
-use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges};
+use rustc_middle::mir::{
+    self, BasicBlock, CallReturnPlaces, Location, SwitchTargetValue, TerminatorEdges,
+};
 
 use super::visitor::ResultsVisitor;
 use super::{Analysis, Effect, EffectIndex, Results, SwitchIntTarget};
@@ -290,7 +292,8 @@ impl Direction for Forward {
                     let mut tmp = analysis.bottom_value(body);
                     for (value, target) in targets.iter() {
                         tmp.clone_from(exit_state);
-                        let si_target = SwitchIntTarget { value: Some(value), target };
+                        let si_target =
+                            SwitchIntTarget { value: SwitchTargetValue::Normal(value), target };
                         analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, si_target);
                         propagate(target, &tmp);
                     }
@@ -302,7 +305,7 @@ impl Direction for Forward {
                     analysis.apply_switch_int_edge_effect(
                         &mut data,
                         exit_state,
-                        SwitchIntTarget { value: None, target: otherwise },
+                        SwitchIntTarget { value: SwitchTargetValue::Otherwise, target: otherwise },
                     );
                     propagate(otherwise, exit_state);
                 } else {
