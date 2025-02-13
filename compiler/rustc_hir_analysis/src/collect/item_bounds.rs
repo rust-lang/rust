@@ -30,53 +30,55 @@ fn associated_type_bounds<'tcx>(
     span: Span,
     filter: PredicateFilter,
 ) -> &'tcx [(ty::Clause<'tcx>, Span)] {
-    let item_ty = Ty::new_projection_from_args(
-        tcx,
-        assoc_item_def_id.to_def_id(),
-        GenericArgs::identity_for_item(tcx, assoc_item_def_id),
-    );
+    ty::print::with_reduced_queries!({
+        let item_ty = Ty::new_projection_from_args(
+            tcx,
+            assoc_item_def_id.to_def_id(),
+            GenericArgs::identity_for_item(tcx, assoc_item_def_id),
+        );
 
-    let icx = ItemCtxt::new(tcx, assoc_item_def_id);
-    let mut bounds = Bounds::default();
-    icx.lowerer().lower_bounds(item_ty, hir_bounds, &mut bounds, ty::List::empty(), filter);
-    // Associated types are implicitly sized unless a `?Sized` bound is found
-    match filter {
-        PredicateFilter::All
-        | PredicateFilter::SelfOnly
-        | PredicateFilter::SelfTraitThatDefines(_)
-        | PredicateFilter::SelfAndAssociatedTypeBounds => {
-            icx.lowerer().add_sized_bound(&mut bounds, item_ty, hir_bounds, None, span);
+        let icx = ItemCtxt::new(tcx, assoc_item_def_id);
+        let mut bounds = Bounds::default();
+        icx.lowerer().lower_bounds(item_ty, hir_bounds, &mut bounds, ty::List::empty(), filter);
+        // Associated types are implicitly sized unless a `?Sized` bound is found
+        match filter {
+            PredicateFilter::All
+            | PredicateFilter::SelfOnly
+            | PredicateFilter::SelfTraitThatDefines(_)
+            | PredicateFilter::SelfAndAssociatedTypeBounds => {
+                icx.lowerer().add_sized_bound(&mut bounds, item_ty, hir_bounds, None, span);
+            }
+            // `ConstIfConst` is only interested in `~const` bounds.
+            PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => {}
         }
-        // `ConstIfConst` is only interested in `~const` bounds.
-        PredicateFilter::ConstIfConst | PredicateFilter::SelfConstIfConst => {}
-    }
 
-    let trait_def_id = tcx.local_parent(assoc_item_def_id);
-    let trait_predicates = tcx.trait_explicit_predicates_and_bounds(trait_def_id);
+        let trait_def_id = tcx.local_parent(assoc_item_def_id);
+        let trait_predicates = tcx.trait_explicit_predicates_and_bounds(trait_def_id);
 
-    let item_trait_ref = ty::TraitRef::identity(tcx, tcx.parent(assoc_item_def_id.to_def_id()));
-    let bounds_from_parent =
-        trait_predicates.predicates.iter().copied().filter_map(|(clause, span)| {
-            remap_gat_vars_and_recurse_into_nested_projections(
-                tcx,
-                filter,
-                item_trait_ref,
-                assoc_item_def_id,
-                span,
-                clause,
-            )
-        });
+        let item_trait_ref = ty::TraitRef::identity(tcx, tcx.parent(assoc_item_def_id.to_def_id()));
+        let bounds_from_parent =
+            trait_predicates.predicates.iter().copied().filter_map(|(clause, span)| {
+                remap_gat_vars_and_recurse_into_nested_projections(
+                    tcx,
+                    filter,
+                    item_trait_ref,
+                    assoc_item_def_id,
+                    span,
+                    clause,
+                )
+            });
 
-    let all_bounds = tcx.arena.alloc_from_iter(bounds.clauses().chain(bounds_from_parent));
-    debug!(
-        "associated_type_bounds({}) = {:?}",
-        tcx.def_path_str(assoc_item_def_id.to_def_id()),
+        let all_bounds = tcx.arena.alloc_from_iter(bounds.clauses().chain(bounds_from_parent));
+        debug!(
+            "associated_type_bounds({}) = {:?}",
+            tcx.def_path_str(assoc_item_def_id.to_def_id()),
+            all_bounds
+        );
+
+        assert_only_contains_predicates_from(filter, all_bounds, item_ty);
+
         all_bounds
-    );
-
-    assert_only_contains_predicates_from(filter, all_bounds, item_ty);
-
-    all_bounds
+    })
 }
 
 /// The code below is quite involved, so let me explain.
