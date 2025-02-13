@@ -151,6 +151,8 @@ unsafe impl<T: Sync + ?Sized + PointeeSized> Send for &T {}
 #[rustc_deny_explicit_impl]
 #[rustc_do_not_implement_via_object]
 #[rustc_coinductive]
+#[cfg_attr(not(bootstrap), const_trait)]
+#[cfg_attr(not(bootstrap), rustc_const_unstable(feature = "sized_hierarchy", issue = "none"))]
 pub trait Sized: MetaSized {
     // Empty.
 }
@@ -167,6 +169,8 @@ pub trait Sized: MetaSized {
 #[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
 #[rustc_do_not_implement_via_object]
 #[rustc_coinductive]
+#[cfg_attr(not(bootstrap), const_trait)]
+#[cfg_attr(not(bootstrap), rustc_const_unstable(feature = "sized_hierarchy", issue = "none"))]
 pub trait MetaSized: PointeeSized {
     // Empty
 }

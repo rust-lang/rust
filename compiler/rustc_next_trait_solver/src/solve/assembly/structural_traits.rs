@@ -8,7 +8,7 @@ use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{
     self as ty, Interner, Movability, Mutability, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    Upcast as _, elaborate,
+    TypeVisitableExt as _, Upcast as _, elaborate,
 };
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
@@ -185,6 +185,37 @@ where
                 Ok(ty::Binder::dummy(vec![]))
             }
         }
+    }
+}
+
+/// Returns the trait refs which need to hold for `self_ty`, with a given `sizedness` trait, to be
+/// `const` - can return `Err(NoSolution)` if the given `self_ty` cannot be const.
+///
+/// This only checks the conditions for constness, not the conditions for the given `sizedness`
+/// trait to be implemented (see the trait goal for that), as these are orthogonal. This means that
+/// the effect predicate can succeed while the trait predicate can fail - this is unintuitive but
+/// allows this function to be much simpler.
+// NOTE: Keep this in sync with `evaluate_host_effect_for_sizedness_goal` in the old solver.
+#[instrument(level = "trace", skip(cx), ret)]
+pub(in crate::solve) fn const_conditions_for_sizedness<I: Interner>(
+    cx: I,
+    self_ty: I::Ty,
+    sizedness: SizedTraitKind,
+) -> Result<Vec<ty::TraitRef<I>>, NoSolution> {
+    // The specific degree of sizedness is orthogonal to whether a type implements any given
+    // sizedness trait const-ly or not.
+    if self_ty.has_non_const_sizedness() {
+        return Err(NoSolution);
+    }
+
+    match sizedness {
+        SizedTraitKind::Sized => {
+            let meta_sized_def_id = cx.require_lang_item(TraitSolverLangItem::MetaSized);
+            let meta_sized_trait_ref = ty::TraitRef::new(cx, meta_sized_def_id, [self_ty]);
+            Ok(vec![meta_sized_trait_ref])
+        }
+        SizedTraitKind::MetaSized => Ok(vec![]),
+        SizedTraitKind::PointeeSized => unreachable!("`PointeeSized` is not const"),
     }
 }
 

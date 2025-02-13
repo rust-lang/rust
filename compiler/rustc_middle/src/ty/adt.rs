@@ -53,6 +53,13 @@ bitflags::bitflags! {
         const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 8;
         /// Indicates whether the type is `UnsafeCell`.
         const IS_UNSAFE_CELL              = 1 << 9;
+        /// Indicates whether the type is annotated with `#[rustc_non_const_sized]`.
+        ///
+        /// Necessary to know when to add a type flag since `TyCtxt` isn't available and the
+        /// presence of the attribute cannot be checked.
+        /// FIXME(sized-hierarchy): Consider removing this when scalable vectors are implemented
+        /// and `def.repr.scalable` can be checked.
+        const HAS_NON_CONST_SIZEDNESS      = 1 << 10;
     }
 }
 rustc_data_structures::external_bitflags_debug! { AdtFlags }
@@ -281,6 +288,10 @@ impl AdtDefData {
             flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
         }
 
+        if tcx.has_attr(did, sym::rustc_non_const_sized) {
+            flags = flags | AdtFlags::HAS_NON_CONST_SIZEDNESS;
+        }
+
         flags |= match kind {
             AdtKind::Enum => AdtFlags::IS_ENUM,
             AdtKind::Union => AdtFlags::IS_UNION,
@@ -345,6 +356,12 @@ impl<'tcx> AdtDef<'tcx> {
     #[inline]
     pub fn variant_list_has_applicable_non_exhaustive(self) -> bool {
         self.is_variant_list_non_exhaustive() && !self.did().is_local()
+    }
+
+    /// Returns `true` if this type only has non-const implementations of sizedness traits.
+    #[inline]
+    pub fn has_non_const_sizedness(self) -> bool {
+        self.flags().contains(AdtFlags::HAS_NON_CONST_SIZEDNESS)
     }
 
     /// Returns the kind of the ADT.

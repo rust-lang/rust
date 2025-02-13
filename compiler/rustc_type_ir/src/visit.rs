@@ -342,6 +342,11 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
         self.has_type_flags(TypeFlags::HAS_BOUND_VARS)
     }
 
+    /// Returns `true` if this type only has non-const implementations of sizedness traits.
+    fn has_non_const_sizedness(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_NON_CONST_SIZEDNESS)
+    }
+
     /// Indicates whether this value still has parameters/placeholders/inference variables
     /// which could be replaced later, in a way that would change the results of `impl`
     /// specialization.
