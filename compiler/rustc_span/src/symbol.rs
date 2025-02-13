@@ -250,6 +250,7 @@ symbols! {
         Into,
         IntoFuture,
         IntoIterator,
+        IoBufRead,
         IoLines,
         IoRead,
         IoSeek,
