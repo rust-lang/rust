@@ -67,6 +67,9 @@ extern crate test;
 mod testing;
 use realalloc::*;
 
+// We are directly including collections and raw_vec here as both use non-public
+// methods and fields in tests and as such need to have the types to test in the
+// same crate as the tests themself.
 #[path = "../alloc/src/collections/mod.rs"]
 mod collections;
 
