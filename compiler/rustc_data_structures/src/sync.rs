@@ -18,13 +18,7 @@
 //!
 //! | Type                    | Serial version      | Parallel version                |
 //! | ----------------------- | ------------------- | ------------------------------- |
-//! |` Weak<T>`               | `rc::Weak<T>`       | `sync::Weak<T>`                 |
 //! | `LRef<'a, T>` [^2]      | `&'a mut T`         | `&'a T`                         |
-//! |                         |                     |                                 |
-//! | `AtomicBool`            | `Cell<bool>`        | `atomic::AtomicBool`            |
-//! | `AtomicU32`             | `Cell<u32>`         | `atomic::AtomicU32`             |
-//! | `AtomicU64`             | `Cell<u64>`         | `atomic::AtomicU64`             |
-//! | `AtomicUsize`           | `Cell<usize>`       | `atomic::AtomicUsize`           |
 //! |                         |                     |                                 |
 //! | `Lock<T>`               | `RefCell<T>`        | `RefCell<T>` or                 |
 //! |                         |                     | `parking_lot::Mutex<T>`         |
@@ -103,18 +97,15 @@ mod mode {
 
 // FIXME(parallel_compiler): Get rid of these aliases across the compiler.
 
-pub use std::marker::{Send, Sync};
+pub use std::sync::OnceLock;
 // Use portable AtomicU64 for targets without native 64-bit atomics
 #[cfg(target_has_atomic = "64")]
 pub use std::sync::atomic::AtomicU64;
-pub use std::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize};
-pub use std::sync::{OnceLock, Weak};
 
 pub use mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
 pub use parking_lot::{
-    MappedMutexGuard as MappedLockGuard, MappedRwLockReadGuard as MappedReadGuard,
-    MappedRwLockWriteGuard as MappedWriteGuard, RwLockReadGuard as ReadGuard,
-    RwLockWriteGuard as WriteGuard,
+    MappedRwLockReadGuard as MappedReadGuard, MappedRwLockWriteGuard as MappedWriteGuard,
+    RwLockReadGuard as ReadGuard, RwLockWriteGuard as WriteGuard,
 };
 #[cfg(not(target_has_atomic = "64"))]
 pub use portable_atomic::AtomicU64;
@@ -204,12 +195,6 @@ impl<T> RwLock<T> {
     }
 
     #[inline(always)]
-    #[track_caller]
-    pub fn with_read_lock<F: FnOnce(&T) -> R, R>(&self, f: F) -> R {
-        f(&*self.read())
-    }
-
-    #[inline(always)]
     pub fn try_write(&self) -> Result<WriteGuard<'_, T>, ()> {
         self.0.try_write().ok_or(())
     }
@@ -225,12 +210,6 @@ impl<T> RwLock<T> {
 
     #[inline(always)]
     #[track_caller]
-    pub fn with_write_lock<F: FnOnce(&mut T) -> R, R>(&self, f: F) -> R {
-        f(&mut *self.write())
-    }
-
-    #[inline(always)]
-    #[track_caller]
     pub fn borrow(&self) -> ReadGuard<'_, T> {
         self.read()
     }
@@ -239,21 +218,5 @@ impl<T> RwLock<T> {
     #[track_caller]
     pub fn borrow_mut(&self) -> WriteGuard<'_, T> {
         self.write()
-    }
-
-    #[inline(always)]
-    pub fn leak(&self) -> &T {
-        let guard = self.read();
-        let ret = unsafe { &*(&raw const *guard) };
-        std::mem::forget(guard);
-        ret
-    }
-}
-
-// FIXME: Probably a bad idea
-impl<T: Clone> Clone for RwLock<T> {
-    #[inline]
-    fn clone(&self) -> Self {
-        RwLock::new(self.borrow().clone())
     }
 }
