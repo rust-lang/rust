@@ -962,6 +962,7 @@ define_config! {
         tests: Option<bool> = "tests",
         enzyme: Option<bool> = "enzyme",
         plugins: Option<bool> = "plugins",
+        // FIXME: Remove this field at Q2 2025, it has been replaced by build.ccache
         ccache: Option<StringOrBool> = "ccache",
         static_libstdcpp: Option<bool> = "static-libstdcpp",
         libzstd: Option<bool> = "libzstd",
@@ -2031,6 +2032,10 @@ impl Config {
                 download_ci_llvm,
                 build_config,
             } = llvm;
+            if llvm_ccache.is_some() {
+                eprintln!("Warning: llvm.ccache is deprecated. Use build.ccache instead.");
+            }
+
             ccache = ccache.or(llvm_ccache);
             set(&mut config.ninja_in_file, ninja);
             llvm_tests = tests;
