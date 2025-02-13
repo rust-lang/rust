@@ -4,7 +4,7 @@
 
 #![feature(avx512_target_feature)]
 #![feature(portable_simd)]
-#![feature(target_feature_11, simd_ffi)]
+#![feature(simd_ffi)]
 #![allow(improper_ctypes_definitions)]
 
 use std::arch::x86_64::*;
