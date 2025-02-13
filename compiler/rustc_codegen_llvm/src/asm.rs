@@ -286,7 +286,9 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 InlineAsmArch::M68k => {
                     constraints.push("~{ccr}".to_string());
                 }
-                InlineAsmArch::CSKY => {}
+                InlineAsmArch::CSKY => {
+                    constraints.push("~{psr}".to_string());
+                }
             }
         }
         if !options.contains(InlineAsmOptions::NOMEM) {
