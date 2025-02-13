@@ -5,6 +5,7 @@ extern crate core;
 extern crate malicious_macro;
 
 use std::marker::CoercePointee;
+use std::rc::Rc;
 
 #[derive(CoercePointee)]
 //~^ ERROR: `CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`
@@ -13,17 +14,17 @@ enum NotStruct<'a, T: ?Sized> {
 }
 
 #[derive(CoercePointee)]
-//~^ ERROR: `CoercePointee` can only be derived on `struct`s with at least one field
 #[repr(transparent)]
 struct NoField<'a, #[pointee] T: ?Sized> {}
-//~^ ERROR: lifetime parameter `'a` is never used
+//~^ ERROR: `CoercePointee` can only be derived on `struct`s with at least one field with a `pointee` type [E0802]
+//~| ERROR: lifetime parameter `'a` is never used
 //~| ERROR: type parameter `T` is never used
 
 #[derive(CoercePointee)]
-//~^ ERROR: `CoercePointee` can only be derived on `struct`s with at least one field
 #[repr(transparent)]
 struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
-//~^ ERROR: lifetime parameter `'a` is never used
+//~^ ERROR: `CoercePointee` can only be derived on `struct`s with at least one field with a `pointee` type [E0802]
+//~| ERROR: lifetime parameter `'a` is never used
 //~| ERROR: type parameter `T` is never used
 
 #[derive(CoercePointee)]
@@ -52,7 +53,7 @@ struct NotTransparent<'a, #[pointee] T: ?Sized> {
 #[derive(CoercePointee)]
 #[repr(transparent)]
 struct NoMaybeSized<'a, #[pointee] T> {
-    //~^ ERROR: `derive(CoercePointee)` requires `T` to be marked `?Sized`
+    //~^ ERROR: `derive(CoercePointee)` requires the `#[pointee]` to be `?Sized`
     ptr: &'a T,
 }
 
@@ -140,6 +141,22 @@ struct GlobalCoreSized<'a, #[pointee] T: ?::core::marker::Sized> {
 struct TryToWipeRepr<'a, #[pointee] T: ?Sized> {
     //~^ ERROR: `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout [E0802]
     ptr: &'a T,
+}
+
+#[derive(CoercePointee, CoercePointee)]
+//~^ ERROR: `derive(CoercePointee)` is derived multiple times [E0802]
+//~| ERROR: `derive(CoercePointee)` is derived multiple times [E0802]
+#[repr(transparent)]
+struct DuplicateDerive<'a, #[pointee] T: ?Sized> {
+    ptr: &'a T,
+}
+
+#[repr(transparent)]
+#[derive(CoercePointee)]
+//~^ ERROR: the trait bound `Box<T>: Unsize<Box<T {coerced}>>` is not satisfied [E0277]
+//~| ERROR: the trait bound `Box<T>: Unsize<Box<T {coerced}>>` is not satisfied [E0277]
+struct RcWithId<T: ?Sized> {
+    inner: Rc<(i32, Box<T>)>,
 }
 
 fn main() {}

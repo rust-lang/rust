@@ -1318,5 +1318,8 @@ pub macro CoercePointee($item:item) {
 #[unstable(feature = "coerce_pointee_validated", issue = "none")]
 #[doc(hidden)]
 pub trait CoercePointeeValidated {
-    /* compiler built-in */
+    /// `Pointee` serves as an assertion that the `#[pointee]` type
+    /// is indeed allowed to be unsized.
+    #[lang = "coerce_pointee_validated_pointee"]
+    type Pointee: ?Sized;
 }

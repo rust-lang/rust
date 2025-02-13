@@ -95,10 +95,6 @@ builtin_macros_cfg_accessible_literal_path = `cfg_accessible` path cannot be a l
 builtin_macros_cfg_accessible_multiple_paths = multiple `cfg_accessible` paths are specified
 builtin_macros_cfg_accessible_unspecified_path = `cfg_accessible` path is not specified
 
-builtin_macros_coerce_pointee_requires_maybe_sized = `derive(CoercePointee)` requires `{$name}` to be marked `?Sized`
-
-builtin_macros_coerce_pointee_requires_one_field = `CoercePointee` can only be derived on `struct`s with at least one field
-
 builtin_macros_coerce_pointee_requires_one_generic = `CoercePointee` can only be derived on `struct`s that are generic over at least one type
 
 builtin_macros_coerce_pointee_requires_one_pointee = exactly one generic type parameter must be marked as `#[pointee]` to derive `CoercePointee` traits

@@ -19,13 +19,25 @@ impl<T> ExpectedFound<T> {
 
 // Data structures used in type unification
 #[derive_where(Clone, Copy, PartialEq, Eq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic)]
+#[derive(TypeFoldable_Generic, TypeVisitable_Generic)]
 #[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub enum TypeError<I: Interner> {
     Mismatch,
-    PolarityMismatch(#[type_visitable(ignore)] ExpectedFound<ty::PredicatePolarity>),
-    SafetyMismatch(#[type_visitable(ignore)] ExpectedFound<I::Safety>),
-    AbiMismatch(#[type_visitable(ignore)] ExpectedFound<I::Abi>),
+    PolarityMismatch(
+        #[type_visitable(ignore)]
+        #[type_foldable(identity)]
+        ExpectedFound<ty::PredicatePolarity>,
+    ),
+    SafetyMismatch(
+        #[type_visitable(ignore)]
+        #[type_foldable(identity)]
+        ExpectedFound<I::Safety>,
+    ),
+    AbiMismatch(
+        #[type_visitable(ignore)]
+        #[type_foldable(identity)]
+        ExpectedFound<I::Abi>,
+    ),
     Mutability,
     ArgumentMutability(usize),
     TupleSize(ExpectedFound<usize>),

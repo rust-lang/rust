@@ -121,6 +121,9 @@ trait_selection_closure_kind_mismatch = expected a closure that implements the `
 
 trait_selection_closure_kind_requirement = the requirement to implement `{$trait_prefix}{$expected}` derives from here
 
+trait_selection_coerce_pointee_overlapping = the implementation of the unstable trait `{$trait_name}` conflicts with derivations from `derive(CoercePointee)`
+    .label = the conflicting implementation is here
+
 trait_selection_compare_impl_item_obligation = ...so that the definition in impl matches the definition from the trait
 trait_selection_consider_specifying_length = consider specifying the actual array length
 trait_selection_data_flows = ...but data{$label_var1_exists ->

@@ -1625,6 +1625,16 @@ pub enum TypeErrorAdditionalDiags {
 }
 
 #[derive(Diagnostic)]
+#[diag(trait_selection_coerce_pointee_overlapping)]
+pub(crate) struct CoercePointeeOverlapping {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub conflicting: Span,
+    pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
 pub enum ObligationCauseFailureCode {
     #[diag(trait_selection_oc_method_compat, code = E0308)]
     MethodCompat {

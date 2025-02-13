@@ -4,7 +4,7 @@ use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::visit::BoundKind;
 use rustc_ast::{
     self as ast, GenericArg, GenericBound, GenericParamKind, Generics, ItemKind, MetaItem,
-    TraitBoundModifiers, VariantData, WherePredicate,
+    TraitBoundModifiers, TyAlias, WherePredicate,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::E0802;
@@ -30,16 +30,8 @@ pub(crate) fn expand_deriving_coerce_pointee(
     item.visit_with(&mut DetectNonGenericPointeeAttr { cx });
 
     let (name_ident, generics) = if let Annotatable::Item(aitem) = item
-        && let ItemKind::Struct(struct_data, g) = &aitem.kind
+        && let ItemKind::Struct(_struct_data, g) = &aitem.kind
     {
-        if !matches!(
-            struct_data,
-            VariantData::Struct { fields, recovered: _ } | VariantData::Tuple(fields, _)
-                if !fields.is_empty())
-        {
-            cx.dcx().emit_err(RequireOneField { span });
-            return;
-        }
         (aitem.ident, g)
     } else {
         cx.dcx().emit_err(RequireTransparent { span });
@@ -92,6 +84,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
             }
         }
     };
+    let pointee_ty_ident = generics.params[pointee_param_idx].ident;
 
     // Create the type of `self`.
     let path = cx.path_all(span, false, vec![name_ident], self_params.clone());
@@ -100,11 +93,26 @@ pub(crate) fn expand_deriving_coerce_pointee(
     // Declare helper function that adds implementation blocks.
     // FIXME(dingxiangfei2009): Investigate the set of attributes on target struct to be propagated to impls
     let attrs = thin_vec![cx.attr_word(sym::automatically_derived, span),];
-    // # Validity assertion which will be checked later in `rustc_hir_analysis::coherence::builtins`.
+    // # Validity assertion
+    // This will be checked later in `rustc_hir_analysis::coherence::builtins`.
     {
         let trait_path =
             cx.path_all(span, true, path!(span, core::marker::CoercePointeeValidated), vec![]);
         let trait_ref = cx.trait_ref(trait_path);
+        let pointee_assoc_item = cx.assoc_item(
+            span,
+            Ident::new(sym::Pointee, span),
+            thin_vec![],
+            ast::AssocItemKind::Type(Box::new(TyAlias {
+                defaultness: ast::Defaultness::Final,
+                generics: ast::Generics::default(),
+                where_clauses: ast::TyAliasWhereClauses::default(),
+                bounds: vec![],
+                ty: Some(
+                    cx.ty(span, ast::TyKind::Path(None, cx.path_ident(span, pointee_ty_ident))),
+                ),
+            })),
+        );
         push(Annotatable::Item(
             cx.item(
                 span,
@@ -141,7 +149,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
                     },
                     of_trait: Some(trait_ref),
                     self_ty: self_type.clone(),
-                    items: ThinVec::new(),
+                    items: thin_vec![pointee_assoc_item],
                 })),
             ),
         ));
@@ -180,7 +188,6 @@ pub(crate) fn expand_deriving_coerce_pointee(
     //
     // Find the `#[pointee]` parameter and add an `Unsize<__S>` bound to it.
     let mut impl_generics = generics.clone();
-    let pointee_ty_ident = generics.params[pointee_param_idx].ident;
     let mut self_bounds;
     {
         let pointee = &mut impl_generics.params[pointee_param_idx];
@@ -191,10 +198,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
                 pointee_ty_ident.name,
             )
         {
-            cx.dcx().emit_err(RequiresMaybeSized {
-                span: pointee_ty_ident.span,
-                name: pointee_ty_ident,
-            });
+            cx.dcx().span_delayed_bug(pointee_ty_ident.span, "?Sized should be checked");
             return;
         }
         let arg = GenericArg::Type(s_ty.clone());
@@ -473,13 +477,6 @@ struct RequireTransparent {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_coerce_pointee_requires_one_field, code = E0802)]
-struct RequireOneField {
-    #[primary_span]
-    span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(builtin_macros_coerce_pointee_requires_one_generic, code = E0802)]
 struct RequireOneGeneric {
     #[primary_span]
@@ -500,12 +497,4 @@ struct TooManyPointees {
     one: Span,
     #[label]
     another: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(builtin_macros_coerce_pointee_requires_maybe_sized, code = E0802)]
-struct RequiresMaybeSized {
-    #[primary_span]
-    span: Span,
-    name: Ident,
 }
