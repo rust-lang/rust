@@ -691,6 +691,13 @@ pub(crate) struct RustcForceInline {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_rustc_non_const_sized)]
+pub(crate) struct RustcNonConstSized {
+    #[primary_span]
+    pub attr_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_rustc_force_inline_coro)]
 pub(crate) struct RustcForceInlineCoro {
     #[primary_span]

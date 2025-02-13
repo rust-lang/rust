@@ -1830,6 +1830,7 @@ symbols! {
         rustc_never_returns_null_ptr,
         rustc_never_type_options,
         rustc_no_mir_inline,
+        rustc_non_const_sized,
         rustc_nonnull_optimization_guaranteed,
         rustc_nounwind,
         rustc_object_lifetime_default,
