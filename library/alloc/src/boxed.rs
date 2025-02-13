@@ -24,7 +24,7 @@
 //! Creating a recursive data structure:
 //!
 //! ```
-//! ##[allow(dead_code)]
+//! # #[allow(dead_code)]
 //! #[derive(Debug)]
 //! enum List<T> {
 //!     Cons(T, Box<List<T>>),
