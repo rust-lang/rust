@@ -1840,18 +1840,20 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             }
         }
 
+        // FIXME(136096): on macOS, we get linker warnings about duplicate `-lm` flags.
+        // NOTE: `stage > 1` here because `test --stage 1 ui-fulldeps` is a hack that compiles
+        // with stage 0, but links the tests against stage 1.
+        // cfg(bootstrap) - remove only the `stage > 1` check, leave everything else.
+        if suite == "ui-fulldeps" && compiler.stage > 1 && target.ends_with("darwin") {
+            flags.push("-Alinker_messages".into());
+        }
+
         let mut hostflags = flags.clone();
         hostflags.push(format!("-Lnative={}", builder.test_helpers_out(compiler.host).display()));
         hostflags.extend(linker_flags(builder, compiler.host, LldThreads::No));
 
         let mut targetflags = flags;
         targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
-
-        // FIXME: on macOS, we get linker warnings about duplicate `-lm` flags. We should investigate why this happens.
-        if suite == "ui-fulldeps" && target.ends_with("darwin") {
-            hostflags.push("-Alinker_messages".into());
-            targetflags.push("-Alinker_messages".into());
-        }
 
         for flag in hostflags {
             cmd.arg("--host-rustcflags").arg(flag);
