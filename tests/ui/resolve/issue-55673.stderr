@@ -19,7 +19,7 @@ LL |     T::Baa: std::fmt::Debug,
 help: consider further restricting type parameter `T` with trait `Foo`
    |
 LL |     T::Baa: std::fmt::Debug, T: Foo
-   |                            ~~~~~~~~
+   |                              ++++++
 help: ...and changing the associated type name
    |
 LL -     T::Baa: std::fmt::Debug,

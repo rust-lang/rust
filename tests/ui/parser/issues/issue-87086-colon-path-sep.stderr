@@ -9,7 +9,7 @@ LL |         Foo:Bar => {}
 help: maybe write a path separator here
    |
 LL |         Foo::Bar => {}
-   |            ~~
+   |             +
 
 error: expected one of `!`, `(`, `...`, `..=`, `..`, `::`, `{`, or `|`, found `:`
   --> $DIR/issue-87086-colon-path-sep.rs:23:17
@@ -22,7 +22,7 @@ LL |         qux::Foo:Bar => {}
 help: maybe write a path separator here
    |
 LL |         qux::Foo::Bar => {}
-   |                 ~~
+   |                  +
 
 error: expected one of `@` or `|`, found `:`
   --> $DIR/issue-87086-colon-path-sep.rs:29:12
@@ -35,7 +35,7 @@ LL |         qux:Foo::Baz => {}
 help: maybe write a path separator here
    |
 LL |         qux::Foo::Baz => {}
-   |            ~~
+   |             +
 
 error: expected one of `@` or `|`, found `:`
   --> $DIR/issue-87086-colon-path-sep.rs:35:12
@@ -61,7 +61,7 @@ LL |     if let Foo:Bar = f() {
 help: maybe write a path separator here
    |
 LL |     if let Foo::Bar = f() {
-   |               ~~
+   |                +
 
 error: expected one of `@` or `|`, found `:`
   --> $DIR/issue-87086-colon-path-sep.rs:49:16
@@ -100,7 +100,7 @@ LL |         Foo:Bar::Baz => {}
 help: maybe write a path separator here
    |
 LL |         Foo::Bar::Baz => {}
-   |            ~~
+   |             +
 
 error: expected one of `@` or `|`, found `:`
   --> $DIR/issue-87086-colon-path-sep.rs:75:12
@@ -113,7 +113,7 @@ LL |         Foo:Bar => {}
 help: maybe write a path separator here
    |
 LL |         Foo::Bar => {}
-   |            ~~
+   |             +
 
 warning: irrefutable `if let` pattern
   --> $DIR/issue-87086-colon-path-sep.rs:40:8

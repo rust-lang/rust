@@ -135,7 +135,7 @@ LL |     type Baz = T;
 help: consider further restricting type parameter `T` with trait `Clone`
    |
 LL |     Self::Baz: Clone, T: std::clone::Clone
-   |                     ~~~~~~~~~~~~~~~~~~~~~~
+   |                       ++++++++++++++++++++
 
 error: aborting due to 8 previous errors
 

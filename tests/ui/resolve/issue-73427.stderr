@@ -21,7 +21,7 @@ LL -     A.foo();
 LL +     (A::Tuple()).foo();
    |
 LL |     A::Unit.foo();
-   |     ~~~~~~~
+   |      ++++++
 help: alternatively, the following enum variant is available
    |
 LL -     A.foo();
@@ -61,7 +61,7 @@ LL | | }
 help: you might have meant to use the following enum variant
    |
 LL |     C::Unit.foo();
-   |     ~~~~~~~
+   |      ++++++
 help: alternatively, the following enum variant is available
    |
 LL -     C.foo();
@@ -85,7 +85,7 @@ LL | | }
 help: you might have meant to use the following enum variant
    |
 LL |     D::Unit.foo();
-   |     ~~~~~~~
+   |      ++++++
 help: alternatively, the following enum variant is available
    |
 LL -     D.foo();
@@ -142,9 +142,9 @@ LL | | }
 help: try to match against one of the enum's variants
    |
 LL |     if let A::Tuple(3) = x { }
-   |            ~~~~~~~~
+   |             +++++++
 LL |     if let A::TupleWithFields(3) = x { }
-   |            ~~~~~~~~~~~~~~~~~~
+   |             +++++++++++++++++
 
 error[E0423]: expected function, tuple struct or tuple variant, found enum `A`
   --> $DIR/issue-73427.rs:46:13
@@ -167,9 +167,9 @@ LL | | }
 help: try to construct one of the enum's variants
    |
 LL |     let x = A::Tuple(3);
-   |             ~~~~~~~~
+   |              +++++++
 LL |     let x = A::TupleWithFields(3);
-   |             ~~~~~~~~~~~~~~~~~~
+   |              +++++++++++++++++
 
 error: aborting due to 7 previous errors
 

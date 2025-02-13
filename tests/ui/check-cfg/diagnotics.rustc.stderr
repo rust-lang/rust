@@ -20,7 +20,7 @@ LL | #[cfg(featur = "foo")]
 help: there is a config with a similar name and value
    |
 LL | #[cfg(feature = "foo")]
-   |       ~~~~~~~
+   |             +
 
 warning: unexpected `cfg` condition name: `featur`
   --> $DIR/diagnotics.rs:17:7
