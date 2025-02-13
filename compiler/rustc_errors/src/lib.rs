@@ -236,9 +236,10 @@ impl SubstitutionPart {
     /// it with "abx" is, since the "c" character is lost.
     pub fn is_destructive_replacement(&self, sm: &SourceMap) -> bool {
         self.is_replacement(sm)
-            && !sm
-                .span_to_snippet(self.span)
-                .is_ok_and(|snippet| self.snippet.trim_start().starts_with(snippet.trim_start()))
+            && !sm.span_to_snippet(self.span).is_ok_and(|snippet| {
+                self.snippet.trim_start().starts_with(snippet.trim_start())
+                    || self.snippet.trim_end().ends_with(snippet.trim_end())
+            })
     }
 
     fn replaces_meaningful_content(&self, sm: &SourceMap) -> bool {

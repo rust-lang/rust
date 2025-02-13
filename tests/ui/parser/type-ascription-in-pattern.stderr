@@ -8,9 +8,8 @@ LL |         x: i32 => x,
    |
 help: maybe write a path separator here
    |
-LL -         x: i32 => x,
-LL +         x::i32 => x,
-   |
+LL |         x::i32 => x,
+   |          ~~
 
 error: expected one of `...`, `..=`, `..`, or `|`, found `:`
   --> $DIR/type-ascription-in-pattern.rs:12:11
@@ -38,9 +37,8 @@ LL |         x: i32 => (),
    |
 help: maybe write a path separator here
    |
-LL -         x: i32 => (),
-LL +         x::i32 => (),
-   |
+LL |         x::i32 => (),
+   |          ~~
 
 error[E0308]: mismatched types
   --> $DIR/type-ascription-in-pattern.rs:3:19

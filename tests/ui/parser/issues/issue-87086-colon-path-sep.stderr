@@ -47,9 +47,8 @@ LL |         qux: Foo::Baz if true => {}
    |
 help: maybe write a path separator here
    |
-LL -         qux: Foo::Baz if true => {}
-LL +         qux::Foo::Baz if true => {}
-   |
+LL |         qux::Foo::Baz if true => {}
+   |            ~~
 
 error: expected one of `@` or `|`, found `:`
   --> $DIR/issue-87086-colon-path-sep.rs:40:15
@@ -74,9 +73,8 @@ LL |         ref qux: Foo::Baz => {}
    |
 help: maybe write a path separator here
    |
-LL -         ref qux: Foo::Baz => {}
-LL +         ref qux::Foo::Baz => {}
-   |
+LL |         ref qux::Foo::Baz => {}
+   |                ~~
 
 error: expected one of `@` or `|`, found `:`
   --> $DIR/issue-87086-colon-path-sep.rs:58:16
@@ -88,9 +86,8 @@ LL |         mut qux: Foo::Baz => {}
    |
 help: maybe write a path separator here
    |
-LL -         mut qux: Foo::Baz => {}
-LL +         mut qux::Foo::Baz => {}
-   |
+LL |         mut qux::Foo::Baz => {}
+   |                ~~
 
 error: expected one of `@` or `|`, found `:`
   --> $DIR/issue-87086-colon-path-sep.rs:69:12
