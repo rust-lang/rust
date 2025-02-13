@@ -382,7 +382,7 @@ unsafe extern "C" {
     #[link_name = "llvm.ppc.altivec.vrlw"]
     fn vrlw(a: vector_signed_int, c: vector_unsigned_int) -> vector_signed_int;
 
-    #[link_name = "llvm.ppc.altivec.vrfin"]
+    #[link_name = "llvm.nearbyint.v4f32"]
     fn vrfin(a: vector_float) -> vector_float;
 }
 
