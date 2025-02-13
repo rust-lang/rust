@@ -17,3 +17,8 @@ insta = "1"
 # If this is omitted, cargo will look for a workspace elsewhere.
 # We want to avoid this, since citool is independent of the other crates.
 [workspace]
+
+# Make compilation as fast as possible on CI
+[profile.dev]
+debug = 0
+incremental = false
