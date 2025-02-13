@@ -1,4 +1,3 @@
-#![feature(no_sanitize)]
 #![feature(stmt_expr_attributes)]
 #![deny(unused_attributes)]
 #![allow(dead_code)]

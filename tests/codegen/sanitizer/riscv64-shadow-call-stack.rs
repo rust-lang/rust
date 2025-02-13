@@ -1,4 +1,4 @@
-//@ compile-flags: --target riscv64imac-unknown-none-elf -Zsanitizer=shadow-call-stack
+//@ compile-flags: --target riscv64imac-unknown-none-elf -Zunstable-options -Csanitize=shadow-call-stack
 //@ needs-llvm-components: riscv
 
 #![allow(internal_features)]

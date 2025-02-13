@@ -19,7 +19,8 @@
 //@ only-linux
 //
 //@ revisions:ASAN ASAN-FAT-LTO
-//@                compile-flags: -Zsanitizer=address -Ctarget-feature=-crt-static
+//@                compile-flags: -Zunstable-options -Csanitize=address
+//@                compile-flags: -Ctarget-feature=-crt-static
 //@[ASAN]          compile-flags:
 //@[ASAN-FAT-LTO]  compile-flags: -Cprefer-dynamic=false -Clto=fat
 

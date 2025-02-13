@@ -15,7 +15,6 @@ pub(crate) use rustc_middle::ty::layout::{WIDE_PTR_ADDR, WIDE_PTR_EXTRA};
 use rustc_middle::{bug, ty};
 use rustc_session::config;
 pub(crate) use rustc_target::callconv::*;
-use rustc_target::spec::SanitizerSet;
 use smallvec::SmallVec;
 
 use crate::attributes::llfn_attrs_from_instance;
@@ -84,7 +83,7 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
                 attrs.push(llattr.create_attr(cx.llcx));
             }
         }
-    } else if cx.tcx.sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::MEMORY) {
+    } else if cx.tcx.sess.is_sanitizer_memory_enabled() {
         // If we're not optimising, *but* memory sanitizer is on, emit noundef, since it affects
         // memory sanitizer's behavior.
 

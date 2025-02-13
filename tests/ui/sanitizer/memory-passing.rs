@@ -3,8 +3,10 @@
 //
 //@ revisions: unoptimized optimized
 //
-//@ [optimized]compile-flags: -Z sanitizer=memory -Zsanitizer-memory-track-origins -O
-//@ [unoptimized]compile-flags: -Z sanitizer=memory -Zsanitizer-memory-track-origins
+//@ [optimized]compile-flags: -Zunstable-options -Csanitize=memory
+//@ [optimized]compile-flags: -Zsanitizer-memory-track-origins -O
+//@ [unoptimized]compile-flags: -Zunstable-options -Csanitize=memory
+//@ [unoptimized]compile-flags: -Zsanitizer-memory-track-origins
 //
 //@ run-pass
 //

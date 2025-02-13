@@ -2,7 +2,7 @@
 // for paths.
 //
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clto -Cno-prepopulate-passes -Copt-level=0 -Zsanitizer=cfi -Ctarget-feature=-crt-static
+//@ compile-flags: -Clto -Cno-prepopulate-passes -Copt-level=0 -Zunstable-options -Csanitize=cfi -Ctarget-feature=-crt-static
 
 #![crate_type = "lib"]
 #![feature(type_alias_impl_trait)]
