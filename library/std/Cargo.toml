@@ -61,8 +61,8 @@ object = { version = "0.36.0", default-features = false, optional = true, featur
 path = "../windows_targets"
 
 [dev-dependencies]
-rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
-rand_xorshift = "0.3.0"
+rand = { version = "0.9.0", default-features = false, features = ["alloc"] }
+rand_xorshift = "0.4.0"
 
 [target.'cfg(any(all(target_family = "wasm", target_os = "unknown"), target_os = "xous", all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
 dlmalloc = { version = "0.2.4", features = ['rustc-dep-of-std'] }

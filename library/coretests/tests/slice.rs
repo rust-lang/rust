@@ -5,6 +5,8 @@ use core::num::NonZero;
 use core::ops::{Range, RangeInclusive};
 use core::slice;
 
+use rand::seq::IndexedRandom;
+
 #[test]
 fn test_position() {
     let b = [1, 2, 3, 5, 5];
@@ -1291,7 +1293,7 @@ fn test_iter_ref_consistency() {
     fn test<T: Copy + Debug + PartialEq>(x: T) {
         let v: &[T] = &[x, x, x];
         let v_ptrs: [*const T; 3] = match v {
-            [ref v1, ref v2, ref v3] => [v1 as *const _, v2 as *const _, v3 as *const _],
+            [v1, v2, v3] => [v1 as *const _, v2 as *const _, v3 as *const _],
             _ => unreachable!(),
         };
         let len = v.len();
@@ -1346,7 +1348,7 @@ fn test_iter_ref_consistency() {
     fn test_mut<T: Copy + Debug + PartialEq>(x: T) {
         let v: &mut [T] = &mut [x, x, x];
         let v_ptrs: [*mut T; 3] = match v {
-            [ref v1, ref v2, ref v3] => {
+            &mut [ref v1, ref v2, ref v3] => {
                 [v1 as *const _ as *mut _, v2 as *const _ as *mut _, v3 as *const _ as *mut _]
             }
             _ => unreachable!(),
@@ -1808,7 +1810,6 @@ fn select_nth_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
 
     use rand::Rng;
-    use rand::seq::SliceRandom;
 
     let mut rng = crate::test_rng();
 
@@ -1818,7 +1819,7 @@ fn select_nth_unstable() {
         for &modulus in &[5, 10, 1000] {
             for _ in 0..10 {
                 for i in 0..len {
-                    orig[i] = rng.gen::<i32>() % modulus;
+                    orig[i] = rng.random::<i32>() % modulus;
                 }
 
                 let v_sorted = {

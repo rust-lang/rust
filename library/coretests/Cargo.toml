@@ -23,5 +23,5 @@ path = "benches/lib.rs"
 test = true
 
 [dev-dependencies]
-rand = { version = "0.8.5", default-features = false }
-rand_xorshift = { version = "0.3.0", default-features = false }
+rand = { version = "0.9.0", default-features = false }
+rand_xorshift = { version = "0.4.0", default-features = false }

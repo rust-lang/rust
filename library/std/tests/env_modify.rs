@@ -4,7 +4,7 @@
 use std::env::*;
 use std::ffi::{OsStr, OsString};
 
-use rand::distributions::{Alphanumeric, DistString};
+use rand::distr::{Alphanumeric, SampleString};
 
 mod common;
 use std::thread;
