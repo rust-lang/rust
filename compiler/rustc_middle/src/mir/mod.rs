@@ -30,7 +30,6 @@ use rustc_span::{DUMMY_SP, Span, Symbol};
 use tracing::{debug, trace};
 
 pub use self::query::*;
-use self::visit::TyContext;
 use crate::mir::interpret::{AllocRange, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
@@ -537,17 +536,6 @@ impl<'tcx> Body<'tcx> {
         } else {
             assert_eq!(idx, stmts.len());
             &block.terminator().source_info
-        }
-    }
-
-    pub fn span_for_ty_context(&self, ty_context: TyContext) -> Span {
-        match ty_context {
-            TyContext::UserTy(span) => span,
-            TyContext::ReturnTy(source_info)
-            | TyContext::LocalDecl { source_info, .. }
-            | TyContext::YieldTy(source_info)
-            | TyContext::ResumeTy(source_info) => source_info.span,
-            TyContext::Location(loc) => self.source_info(loc).span,
         }
     }
 
