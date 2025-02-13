@@ -7,6 +7,7 @@ use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::solve::Sizedness;
+use rustc_type_ir::visit::TypeVisitableExt;
 use rustc_type_ir::{self as ty, Interner, Movability, Mutability, Upcast as _, elaborate};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
@@ -213,6 +214,35 @@ where
                 Ok(ty::Binder::dummy(vec![]))
             }
         }
+    }
+}
+
+/// Returns the trait refs which need to hold for `self_ty`, with a given `sizedness` trait, to be
+/// `const` - can return `Err(NoSolution)` if the given `self_ty` cannot be const.
+///
+/// This only checks the conditions for constness, not the conditions for the given `sizedness`
+/// trait to be implemented (see the trait goal for that), as these are orthogonal. This means that
+/// the effect predicate can succeed while the trait predicate can fail - this is unintuitive but
+/// allows this function to be much simpler.
+// NOTE: Keep this in sync with `evaluate_host_effect_for_sizedness_goal` in the old solver.
+#[instrument(level = "trace", skip(cx), ret)]
+pub(in crate::solve) fn const_conditions_for_sizedness<I: Interner>(
+    cx: I,
+    self_ty: I::Ty,
+    sizedness: Sizedness,
+) -> Result<Vec<ty::TraitRef<I>>, NoSolution> {
+    // The specific degree of sizedness is orthogonal to whether a type implements any given
+    // sizedness trait const-ly or not.
+
+    if !self_ty.has_non_const_sizedness() && matches!(sizedness, Sizedness::Sized) {
+        let metasized_def_id = cx.require_lang_item(TraitSolverLangItem::MetaSized);
+        let metasized_trait_ref = ty::TraitRef::new(cx, metasized_def_id, [self_ty]);
+        Ok(vec![metasized_trait_ref])
+    } else if !self_ty.has_non_const_sizedness() {
+        // `MetaSized` has no conditionally const supertrait
+        Ok(vec![])
+    } else {
+        Err(NoSolution)
     }
 }
 
