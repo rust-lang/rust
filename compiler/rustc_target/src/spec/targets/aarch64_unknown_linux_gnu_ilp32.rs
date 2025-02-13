@@ -1,9 +1,9 @@
-use crate::spec::{StackProbeType, Target, TargetOptions, base};
+use crate::spec::{StackProbeType, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "aarch64-unknown-linux-gnu_ilp32".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("ARM64 Linux (ILP32 ABI)".into()),
             tier: Some(3),
             host_tools: Some(true),

@@ -1,9 +1,11 @@
-use crate::spec::{Cc, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions, cvs};
+use crate::spec::{
+    Cc, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions, cvs,
+};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "msp430-none-elf".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("16-bit MSP430 microcontrollers".into()),
             tier: Some(3),
             host_tools: Some(false),

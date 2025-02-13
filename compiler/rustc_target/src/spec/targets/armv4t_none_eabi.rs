@@ -10,13 +10,14 @@
 //! `-Clink-arg=-Tmy_script.ld` to override that with a correct linker script.
 
 use crate::spec::{
-    Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions, cvs,
+    Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
+    TargetOptions, cvs,
 };
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv4t-none-eabi".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Bare Armv4T".into()),
             tier: Some(3),
             host_tools: Some(false),

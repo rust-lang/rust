@@ -1,11 +1,11 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Target, base};
+use crate::spec::{Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "bpfel".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("BPF (little endian)".into()),
             tier: Some(3),
             host_tools: Some(false),

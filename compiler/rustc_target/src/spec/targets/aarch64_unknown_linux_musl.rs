@@ -1,4 +1,4 @@
-use crate::spec::{SanitizerSet, StackProbeType, Target, TargetOptions, base};
+use crate::spec::{SanitizerSet, StackProbeType, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "aarch64-unknown-linux-musl".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("ARM64 Linux with musl 1.2.3".into()),
             tier: Some(2),
             host_tools: Some(true),
