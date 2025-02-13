@@ -158,32 +158,32 @@ unsafe extern "C" {
     #[link_name = "llvm.ppc.altivec.vmulosh"]
     fn vmulosh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_int;
 
-    #[link_name = "llvm.ppc.altivec.vmaxsb"]
+    #[link_name = "llvm.smax.v16i8"]
     fn vmaxsb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
-    #[link_name = "llvm.ppc.altivec.vmaxsh"]
+    #[link_name = "llvm.smax.v8i16"]
     fn vmaxsh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short;
-    #[link_name = "llvm.ppc.altivec.vmaxsw"]
+    #[link_name = "llvm.smax.v4i32"]
     fn vmaxsw(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
 
-    #[link_name = "llvm.ppc.altivec.vmaxub"]
+    #[link_name = "llvm.umax.v16i8"]
     fn vmaxub(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
-    #[link_name = "llvm.ppc.altivec.vmaxuh"]
+    #[link_name = "llvm.umax.v8i16"]
     fn vmaxuh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
-    #[link_name = "llvm.ppc.altivec.vmaxuw"]
+    #[link_name = "llvm.umax.v4i32"]
     fn vmaxuw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
 
-    #[link_name = "llvm.ppc.altivec.vminsb"]
+    #[link_name = "llvm.smin.v16i8"]
     fn vminsb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
-    #[link_name = "llvm.ppc.altivec.vminsh"]
+    #[link_name = "llvm.smin.v8i16"]
     fn vminsh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short;
-    #[link_name = "llvm.ppc.altivec.vminsw"]
+    #[link_name = "llvm.smin.v4i32"]
     fn vminsw(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
 
-    #[link_name = "llvm.ppc.altivec.vminub"]
+    #[link_name = "llvm.umin.v16i8"]
     fn vminub(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
-    #[link_name = "llvm.ppc.altivec.vminuh"]
+    #[link_name = "llvm.umin.v8i16"]
     fn vminuh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
-    #[link_name = "llvm.ppc.altivec.vminuw"]
+    #[link_name = "llvm.umin.v4i32"]
     fn vminuw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
 
     #[link_name = "llvm.ppc.altivec.vsubsbs"]
