@@ -515,6 +515,7 @@ symbols! {
         bang,
         begin_panic,
         bench,
+        bikeshed_guaranteed_no_drop,
         bin,
         binaryheap_iter,
         bind_by_move_pattern_guards,
