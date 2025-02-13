@@ -227,6 +227,16 @@ exclude_labels = [
     "T-*",
 ]
 
+trigger_labels = [
+    "A-rustdoc-json",
+    "A-rustdoc-type-layout",
+    "A-rustdoc-scrape-examples",
+    "A-link-to-definition",
+    "A-cross-crate-reexports",
+    "A-intra-doc-links",
+    "A-doc-alias",
+]
+
 [autolabel."A-rustdoc-json"]
 trigger_files = [
     "src/librustdoc/json/",
@@ -243,6 +253,33 @@ trigger_files = [
     "compiler/rustc_attr_parsing",
     "compiler/rustc_attr_data_structures",
     "compiler/rustc_attr_validation",
+]
+
+[autolabel."T-rustdoc-frontend"]
+trigger_labels = [
+    "A-rustdoc-search",
+    "A-rustdoc-ui",
+    "A-rustdoc-js",
+]
+
+trigger_files = [
+    "src/librustdoc/html/",
+    "tests/rustdoc/",
+    "tests/rustdoc-gui/",
+    "tests/rustdoc-js/",
+    "tests/rustdoc-js-std/",
+    # note: tests/rustdoc-ui tests the CLI, not the web frontend
+]
+
+[autolabel."A-rustdoc-search"]
+trigger_files = [
+    "src/librustdoc/html/static/js/search.js",
+    "tests/rustdoc-js",
+    "tests/rustdoc-js-std",
+]
+
+trigger_labels = [
+    "A-type-based-search",
 ]
 
 [autolabel."T-compiler"]
