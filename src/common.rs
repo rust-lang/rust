@@ -382,6 +382,11 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     }
 
     pub(crate) fn create_stack_slot(&mut self, size: u32, align: u32) -> Pointer {
+        assert!(
+            size % align == 0,
+            "size must be a multiple of alignment (size={size}, align={align})"
+        );
+
         let abi_align = if self.tcx.sess.target.arch == "s390x" { 8 } else { 16 };
         if align <= abi_align {
             let stack_slot = self.bcx.create_sized_stack_slot(StackSlotData {
