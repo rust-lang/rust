@@ -47,21 +47,8 @@ fn escape_body_text_with_wbr_makes_sense() {
     use itertools::Itertools as _;
 
     use super::EscapeBodyTextWithWbr as E;
-    const C: [u8; 3] = [b'a', b'A', b'_'];
-    for chars in [
-        C.into_iter(),
-        C.into_iter(),
-        C.into_iter(),
-        C.into_iter(),
-        C.into_iter(),
-        C.into_iter(),
-        C.into_iter(),
-        C.into_iter(),
-    ]
-    .into_iter()
-    .multi_cartesian_product()
-    {
-        let s = String::from_utf8(chars).unwrap();
+    for chars in iter::repeat("aA_").take(8).map(str::chars).multi_cartesian_product() {
+        let s = chars.into_iter().collect::<String>();
         assert_eq!(s.len(), 8);
         let esc = E(&s).to_string();
         assert!(!esc.contains("<wbr><wbr>"));
