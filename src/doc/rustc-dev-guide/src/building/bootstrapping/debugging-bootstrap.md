@@ -121,6 +121,14 @@ For `#[instrument]`, it's recommended to:
 - Explicitly pick an instrumentation name via `name = ".."` to distinguish between e.g. `run` of different steps.
 - Take care to not cause diverging behavior via tracing, e.g. building extra things only when tracing infra is enabled.
 
+### Profiling bootstrap
+
+You can use the `COMMAND` tracing target to trace execution of most commands spawned by bootstrap. If you also use the `BOOTSTRAP_PROFILE=1` environment variable, bootstrap will generate a Chrome JSON trace file, which can be visualized in Chrome's `chrome://tracing` page or on https://ui.perfetto.dev.
+
+```bash
+$ BOOTSTRAP_TRACING=COMMAND=trace BOOTSTRAP_PROFILE=1 ./x build library
+```
+
 ### rust-analyzer integration?
 
 Unfortunately, because bootstrap is a `rust-analyzer.linkedProjects`, you can't ask r-a to check/build bootstrap itself with `tracing` feature enabled to get relevant completions, due to lack of support as described in <https://github.com/rust-lang/rust-analyzer/issues/8521>.
