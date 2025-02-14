@@ -222,7 +222,7 @@ pub trait Analysis<'tcx> {
         &mut self,
         _data: &mut Self::SwitchIntData,
         _state: &mut Self::Domain,
-        _edge: SwitchIntTarget,
+        _value: SwitchTargetValue,
     ) {
         unreachable!();
     }
@@ -430,11 +430,6 @@ impl EffectIndex {
             .then_with(|| self.effect.cmp(&other.effect));
         ord == Ordering::Less
     }
-}
-
-pub struct SwitchIntTarget {
-    pub value: SwitchTargetValue,
-    pub target: BasicBlock,
 }
 
 #[cfg(test)]

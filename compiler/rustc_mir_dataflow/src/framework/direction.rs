@@ -5,7 +5,7 @@ use rustc_middle::mir::{
 };
 
 use super::visitor::ResultsVisitor;
-use super::{Analysis, Effect, EffectIndex, Results, SwitchIntTarget};
+use super::{Analysis, Effect, EffectIndex, Results};
 
 pub trait Direction {
     const IS_FORWARD: bool;
@@ -117,8 +117,7 @@ impl Direction for Backward {
                         let mut tmp = analysis.bottom_value(body);
                         for &value in &body.basic_blocks.switch_sources()[&(block, pred)] {
                             tmp.clone_from(exit_state);
-                            let si_target = SwitchIntTarget { value, target: block };
-                            analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, si_target);
+                            analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, value);
                             propagate(pred, &tmp);
                         }
                     } else {
@@ -292,9 +291,8 @@ impl Direction for Forward {
                     let mut tmp = analysis.bottom_value(body);
                     for (value, target) in targets.iter() {
                         tmp.clone_from(exit_state);
-                        let si_target =
-                            SwitchIntTarget { value: SwitchTargetValue::Normal(value), target };
-                        analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, si_target);
+                        let value = SwitchTargetValue::Normal(value);
+                        analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, value);
                         propagate(target, &tmp);
                     }
 
@@ -305,7 +303,7 @@ impl Direction for Forward {
                     analysis.apply_switch_int_edge_effect(
                         &mut data,
                         exit_state,
-                        SwitchIntTarget { value: SwitchTargetValue::Otherwise, target: otherwise },
+                        SwitchTargetValue::Otherwise,
                     );
                     propagate(otherwise, exit_state);
                 } else {
