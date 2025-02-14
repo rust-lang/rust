@@ -1,10 +1,11 @@
 -----
-//~^ ERROR expected item, found `-`
 
 ---
 ---
 
 -----
+
+//@ check-pass
 
 #![feature(frontmatter)]
 

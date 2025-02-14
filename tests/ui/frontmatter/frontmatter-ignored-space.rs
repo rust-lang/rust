@@ -1,10 +1,10 @@
 
 
 ---  
-//~^ ERROR expected item, found `-`
 
 ---  
 
+//@ check-pass
 #![feature(frontmatter)]
 // ignore-tidy-end-whitespace
 // ignore-tidy-leading-newlines

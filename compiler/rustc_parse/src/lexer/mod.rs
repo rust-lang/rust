@@ -55,6 +55,12 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
         start_pos = start_pos + BytePos::from_usize(shebang_len);
     }
 
+    // Skip frontmatter, if present.
+    if let Some(frontmatter_len) = rustc_lexer::strip_frontmatter(src) {
+        src = &src[frontmatter_len..];
+        start_pos = start_pos + BytePos::from_usize(frontmatter_len);
+    }
+
     let cursor = Cursor::new(src);
     let mut lexer = Lexer {
         psess,
