@@ -162,13 +162,13 @@ macro_rules! iterator {
                 // SAFETY: Type invariants.
                 unsafe {
                     if T::IS_ZST {
-                        let byte_end = end_or_len as *const u8;
-                        if byte_end == null() {
+                        let len = end_or_len.addr();
+                        if len == 0 {
                             return None;
                         }
-                        self.end_or_len = byte_end.wrapping_sub(1) as _;
+                        self.end_or_len = without_provenance_mut(len.unchecked_sub(1));
                     } else {
-                        if ptr == crate::intrinsics::transmute::<*const T, NonNull<T>>(end_or_len) {
+                        if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
                             return None;
                         }
                         self.ptr = ptr.add(1);
