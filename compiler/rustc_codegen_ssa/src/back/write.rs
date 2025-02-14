@@ -2151,11 +2151,9 @@ pub(crate) fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
 ) {
     let filename = pre_lto_bitcode_filename(&module.name);
     let bc_path = in_incr_comp_dir_sess(tcx.sess, &filename);
-    let file = fs::File::open(&bc_path)
-        .unwrap_or_else(|e| panic!("failed to open bitcode file `{}`: {}", bc_path.display(), e));
 
     let mmap = unsafe {
-        Mmap::map(file).unwrap_or_else(|e| {
+        Mmap::map(&bc_path).unwrap_or_else(|e| {
             panic!("failed to mmap bitcode file `{}`: {}", bc_path.display(), e)
         })
     };
