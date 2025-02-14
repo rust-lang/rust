@@ -1,6 +1,6 @@
 //@ revisions: old next
 //@[next] compile-flags: -Znext-solver
-//@[old] check-pass
+//@ check-pass
 
 // cc #119820
 
@@ -15,5 +15,4 @@ fn impls_trait<T: for<'a> Trait<&'a str, U>, U>() {}
 
 fn main() {
     impls_trait::<(), _>();
-    //[next]~^ ERROR type annotations needed
 }
