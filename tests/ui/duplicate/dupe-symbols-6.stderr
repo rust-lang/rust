@@ -1,8 +1,4 @@
-error: symbol `fail` is already defined
-  --> $DIR/dupe-symbols-6.rs:10:1
-   |
-LL | static HELLO_TWICE: u16 = 0;
-   | ^^^^^^^^^^^^^^^^^^^^^^^
+error: output file $TEST_BUILD_DIR/libdupe_symbols_6.rmeta is not writeable -- check its permissions
 
 error: aborting due to 1 previous error
 

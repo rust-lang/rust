@@ -939,7 +939,7 @@ fn get_metadata_section<'p>(
 
 fn get_rmeta_metadata_section<'a, 'p>(filename: &'p Path) -> Result<OwnedSlice, MetadataError<'a>> {
     // mmap the file, because only a small fraction of it is read.
-    let mmap = unsafe { Mmap::map(filename) };
+    let mmap = Mmap::map(filename);
     let mmap = mmap.map_err(|_| {
         MetadataError::LoadFailure(format!(
             "failed to mmap rmeta metadata: '{}'",

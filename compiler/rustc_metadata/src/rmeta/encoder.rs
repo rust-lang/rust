@@ -2283,7 +2283,7 @@ impl EncodedMetadata {
         if std::fs::metadata(&path)?.len() == 0 {
             return Ok(Self { full_metadata: None, stub_metadata: None, _temp_dir: None });
         }
-        let full_mmap = unsafe { Some(Mmap::map(path)?) };
+        let full_mmap = Some(Mmap::map(path)?);
 
         let stub =
             if let Some(stub_path) = stub_path { Some(std::fs::read(stub_path)?) } else { None };
