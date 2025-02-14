@@ -9,6 +9,7 @@ use crate::Mode;
 use crate::core::build_steps::dist::distdir;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::{self, SourceType, Tool};
+use crate::core::build_steps::vendor::default_paths_to_vendor;
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::get_completion;
@@ -212,7 +213,21 @@ impl Step for GenerateCopyright {
         let dest = builder.out.join("COPYRIGHT.html");
         let dest_libstd = builder.out.join("COPYRIGHT-library.html");
 
+        let paths_to_vendor = default_paths_to_vendor(builder);
+        for (_, submodules) in &paths_to_vendor {
+            for submodule in submodules {
+                builder.build.require_submodule(submodule, None);
+            }
+        }
+        let cargo_manifests = paths_to_vendor
+            .into_iter()
+            .map(|(path, _submodules)| path.to_str().unwrap().to_string())
+            .inspect(|path| assert!(!path.contains(','), "{path} contains a comma in its name"))
+            .collect::<Vec<_>>()
+            .join(",");
+
         let mut cmd = builder.tool_cmd(Tool::GenerateCopyright);
+        cmd.env("CARGO_MANIFESTS", &cargo_manifests);
         cmd.env("LICENSE_METADATA", &license_metadata);
         cmd.env("DEST", &dest);
         cmd.env("DEST_LIBSTD", &dest_libstd);

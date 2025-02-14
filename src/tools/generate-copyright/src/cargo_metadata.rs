@@ -54,7 +54,7 @@ pub fn get_metadata_and_notices(
     cargo: &Path,
     vendor_path: &Path,
     root_path: &Path,
-    manifest_paths: &[&Path],
+    manifest_paths: &[PathBuf],
 ) -> Result<BTreeMap<Package, PackageMetadata>, Error> {
     let mut output = get_metadata(cargo, root_path, manifest_paths)?;
 
@@ -77,7 +77,7 @@ pub fn get_metadata_and_notices(
 pub fn get_metadata(
     cargo: &Path,
     root_path: &Path,
-    manifest_paths: &[&Path],
+    manifest_paths: &[PathBuf],
 ) -> Result<BTreeMap<Package, PackageMetadata>, Error> {
     let mut output = BTreeMap::new();
     // Look at the metadata for each manifest
@@ -114,7 +114,7 @@ pub fn get_metadata(
 }
 
 /// Run cargo-vendor, fetching into the given dir
-fn run_cargo_vendor(cargo: &Path, dest: &Path, manifest_paths: &[&Path]) -> Result<(), Error> {
+fn run_cargo_vendor(cargo: &Path, dest: &Path, manifest_paths: &[PathBuf]) -> Result<(), Error> {
     let mut vendor_command = std::process::Command::new(cargo);
     vendor_command.env("RUSTC_BOOTSTRAP", "1");
     vendor_command.arg("vendor");
