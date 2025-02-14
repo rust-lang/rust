@@ -785,6 +785,70 @@ fn link_natively(
         should_archive.then(|| tmpdir.join(out_filename.file_name().unwrap()).with_extension("so"));
     let temp_filename = archive_member.as_deref().unwrap_or(out_filename);
 
+    // Gather library search paths (-L)
+    let mut library_search_dirs = vec![];
+    walk_native_lib_search_dirs(sess, self_contained_components, None, |dir, is_framework| {
+        if !is_framework {
+            library_search_dirs.push(dir.to_path_buf());
+        }
+        ControlFlow::<()>::Continue(())
+    });
+
+    // Find candidate objects to link
+    let mut obj_candidates = vec![];
+
+    // Rust objects
+    for module in &codegen_results.modules {
+        if let Some(ref path) = module.object {
+            obj_candidates.push(path.clone());
+        }
+    }
+
+    // eprintln!("Library dirs: {:?}", library_search_dirs);
+    // Native libraries
+    for native_lib in codegen_results.crate_info.native_libraries.values().flatten() {
+        // eprintln!("native lib {}", native_lib.name);
+        if let Some(ref path) = native_lib.filename {
+            // eprintln!("  located at {path:?}");
+            obj_candidates.push(PathBuf::from(path.to_string()));
+        } else {
+            // Try to find the library
+            let name = native_lib.name.to_string();
+            let candidates = &[format!("lib{name}.a"), format!("lib{name}.so")];
+            for candidate in candidates {
+                // eprintln!("Finding candidate {candidate}");
+                for lib_dir in &library_search_dirs {
+                    let candidate_path = lib_dir.join(candidate);
+                    if candidate_path.is_file() {
+                        eprintln!("Found native library at {candidate_path:?}");
+                        obj_candidates.push(candidate_path);
+                    }
+                }
+            }
+        }
+    }
+
+    use object::read::Object;
+
+    // Scan native libraries, sources of .ctors/.dtors
+    let mut problematic_objects = vec![];
+    let sections = &[".ctors", ".dtors"];
+    for path in obj_candidates {
+        match std::process::Command::new("readelf").arg("-S").arg(&path).output() {
+            Ok(output) => {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                for section in sections {
+                    if stdout.lines().any(|line| line.contains(section)) {
+                        problematic_objects.push((path.clone(), section.to_string()));
+                    }
+                }
+            }
+            Err(error) => {
+                eprintln!("Cannot run readelf -S: {error:?}")
+            }
+        }
+    }
+
     let mut cmd = linker_with_args(
         &linker_path,
         flavor,
@@ -988,6 +1052,22 @@ fn link_natively(
         fn is_illegal_instruction(_status: &ExitStatus) -> bool {
             false
         }
+    }
+
+    // Scan the built artifact, lld might keep .ctors/.dtors in it
+    if let Ok(data) = std::fs::read(&temp_filename) {
+        if let Ok(file) = object::read::File::parse(data.as_slice()) {
+            for section_name in sections {
+                if let Some(_section) = file.section_by_name(section_name) {
+                    problematic_objects
+                        .push((temp_filename.to_path_buf(), section_name.to_string()));
+                }
+            }
+        }
+    }
+    if !problematic_objects.is_empty() {
+        eprintln!("PROBLEMATIC OBJECtS\n{problematic_objects:?}");
+        panic!("{problematic_objects:?}");
     }
 
     match prog {
