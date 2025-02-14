@@ -421,6 +421,37 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unchecked_umul(x, y) => LLVMBuildNUWMul,
     }
 
+    fn unchecked_suadd(&mut self, a: &'ll Value, b: &'ll Value) -> &'ll Value {
+        unsafe {
+            let add = llvm::LLVMBuildAdd(self.llbuilder, a, b, UNNAMED);
+            if llvm::LLVMIsAInstruction(add).is_some() {
+                llvm::LLVMSetNUW(add, True);
+                llvm::LLVMSetNSW(add, True);
+            }
+            add
+        }
+    }
+    fn unchecked_susub(&mut self, a: &'ll Value, b: &'ll Value) -> &'ll Value {
+        unsafe {
+            let sub = llvm::LLVMBuildSub(self.llbuilder, a, b, UNNAMED);
+            if llvm::LLVMIsAInstruction(sub).is_some() {
+                llvm::LLVMSetNUW(sub, True);
+                llvm::LLVMSetNSW(sub, True);
+            }
+            sub
+        }
+    }
+    fn unchecked_sumul(&mut self, a: &'ll Value, b: &'ll Value) -> &'ll Value {
+        unsafe {
+            let mul = llvm::LLVMBuildMul(self.llbuilder, a, b, UNNAMED);
+            if llvm::LLVMIsAInstruction(mul).is_some() {
+                llvm::LLVMSetNUW(mul, True);
+                llvm::LLVMSetNSW(mul, True);
+            }
+            mul
+        }
+    }
+
     fn or_disjoint(&mut self, a: &'ll Value, b: &'ll Value) -> &'ll Value {
         unsafe {
             let or = llvm::LLVMBuildOr(self.llbuilder, a, b, UNNAMED);

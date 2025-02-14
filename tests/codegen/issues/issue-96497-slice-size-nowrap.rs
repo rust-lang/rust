@@ -11,7 +11,7 @@
 pub fn simple_size_of_nowrap(x: &[u32]) -> usize {
     // Make sure the shift used to compute the size has a nowrap flag.
 
-    // CHECK: [[A:%.*]] = shl nsw {{.*}}, 2
+    // CHECK: [[A:%.*]] = shl nuw nsw {{.*}}, 2
     // CHECK-NEXT: ret {{.*}} [[A]]
     core::mem::size_of_val(x)
 }
@@ -25,4 +25,14 @@ pub fn drop_write(mut x: Box<[u32]>) {
 
     // CHECK-NOT: store i32 42
     x[1] = 42;
+}
+
+// CHECK-LABEL: @slice_size_plus_2
+#[no_mangle]
+pub fn slice_size_plus_2(x: &[u16]) -> usize {
+    // Before #136575 this didn't get the `nuw` in the add.
+
+    // CHECK: [[BYTES:%.+]] = shl nuw nsw {{i16|i32|i64}} %x.1, 1
+    // CHECK: = add nuw {{i16|i32|i64}} [[BYTES]], 2
+    core::mem::size_of_val(x) + 2
 }
