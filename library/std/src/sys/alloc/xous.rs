@@ -4,7 +4,7 @@
 use crate::alloc::{GlobalAlloc, Layout, System};
 
 #[cfg(not(test))]
-#[export_name = "_ZN16__rust_internals3std3sys4xous5alloc8DLMALLOCE"]
+#[unsafe(export_name = "_ZN16__rust_internals3std3sys4xous5alloc8DLMALLOCE")]
 static mut DLMALLOC: dlmalloc::Dlmalloc = dlmalloc::Dlmalloc::new();
 
 #[cfg(test)]

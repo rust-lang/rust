@@ -345,7 +345,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// use std::mem::MaybeUninit;
     ///
-    /// extern "C" {
+    /// unsafe extern "C" {
     ///     fn read_into_buffer(ptr: *mut u8, max_len: usize) -> usize;
     /// }
     ///

@@ -94,7 +94,7 @@ fn binary_search_l3_worst_case(b: &mut Bencher) {
 struct Rgb(#[allow(dead_code)] u8, #[allow(dead_code)] u8, #[allow(dead_code)] u8);
 
 impl Rgb {
-    fn gen(i: usize) -> Self {
+    fn new(i: usize) -> Self {
         Rgb(i as u8, (i as u8).wrapping_add(7), (i as u8).wrapping_add(42))
     }
 }
@@ -115,7 +115,7 @@ macro_rules! rotate {
 }
 
 rotate!(rotate_u8, 32, |i| i as u8);
-rotate!(rotate_rgb, 32, Rgb::gen);
+rotate!(rotate_rgb, 32, Rgb::new);
 rotate!(rotate_usize, 32, |i| i);
 rotate!(rotate_16_usize_4, 16, |i| [i; 4]);
 rotate!(rotate_16_usize_5, 16, |i| [i; 5]);
@@ -142,8 +142,8 @@ macro_rules! swap_with_slice {
 
 swap_with_slice!(swap_with_slice_u8_30, 30, |i| i as u8);
 swap_with_slice!(swap_with_slice_u8_3000, 3000, |i| i as u8);
-swap_with_slice!(swap_with_slice_rgb_30, 30, Rgb::gen);
-swap_with_slice!(swap_with_slice_rgb_3000, 3000, Rgb::gen);
+swap_with_slice!(swap_with_slice_rgb_30, 30, Rgb::new);
+swap_with_slice!(swap_with_slice_rgb_3000, 3000, Rgb::new);
 swap_with_slice!(swap_with_slice_usize_30, 30, |i| i);
 swap_with_slice!(swap_with_slice_usize_3000, 3000, |i| i);
 swap_with_slice!(swap_with_slice_4x_usize_30, 30, |i| [i; 4]);
