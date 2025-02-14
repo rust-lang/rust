@@ -65,5 +65,18 @@ LL ~     let (mut subindex, _) = (index.by_ref().take(3), 42);
 LL ~     let _ = subindex.next_back();
    |
 
-error: aborting due to 7 previous errors
+error: called `Iterator::last` on a `DoubleEndedIterator`; this will needlessly iterate the entire iterator
+  --> tests/ui/double_ended_iterator_last.rs:89:36
+   |
+LL |     println!("Last element is {}", v.last().unwrap().0);
+   |                                    ^^^^^^^^
+   |
+   = note: this change will alter drop order which may be undesirable
+help: try
+   |
+LL ~     let mut v = v.into_iter();
+LL ~     println!("Last element is {}", v.next_back().unwrap().0);
+   |
+
+error: aborting due to 8 previous errors
 
