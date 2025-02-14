@@ -11,9 +11,8 @@ LL | #![deny(unused_variables)]
    |         ^^^^^^^^^^^^^^^^
 help: if this is intentional, prefix it with an underscore
    |
-LL -         E::A(x) | E::B(x) => {}
-LL +         E::A(_x) | E::B(_x) => {}
-   |
+LL |         E::A(_x) | E::B(_x) => {}
+   |              +          +
 
 error: unused variable: `x`
   --> $DIR/issue-56685.rs:25:14
@@ -23,9 +22,8 @@ LL |         F::A(x, y) | F::B(x, y) => { y },
    |
 help: if this is intentional, prefix it with an underscore
    |
-LL -         F::A(x, y) | F::B(x, y) => { y },
-LL +         F::A(_x, y) | F::B(_x, y) => { y },
-   |
+LL |         F::A(_x, y) | F::B(_x, y) => { y },
+   |              +             +
 
 error: unused variable: `a`
   --> $DIR/issue-56685.rs:27:14
@@ -47,9 +45,8 @@ LL |     let _ = if let F::A(x, y) | F::B(x, y) = F::A(1, 2) {
    |
 help: if this is intentional, prefix it with an underscore
    |
-LL -     let _ = if let F::A(x, y) | F::B(x, y) = F::A(1, 2) {
-LL +     let _ = if let F::A(_x, y) | F::B(_x, y) = F::A(1, 2) {
-   |
+LL |     let _ = if let F::A(_x, y) | F::B(_x, y) = F::A(1, 2) {
+   |                         +             +
 
 error: unused variable: `x`
   --> $DIR/issue-56685.rs:39:20
@@ -59,9 +56,8 @@ LL |     while let F::A(x, y) | F::B(x, y) = F::A(1, 2) {
    |
 help: if this is intentional, prefix it with an underscore
    |
-LL -     while let F::A(x, y) | F::B(x, y) = F::A(1, 2) {
-LL +     while let F::A(_x, y) | F::B(_x, y) = F::A(1, 2) {
-   |
+LL |     while let F::A(_x, y) | F::B(_x, y) = F::A(1, 2) {
+   |                    +             +
 
 error: aborting due to 6 previous errors
 

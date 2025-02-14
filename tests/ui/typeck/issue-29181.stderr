@@ -12,9 +12,8 @@ LL |     let _ = |x: f64| x * 2.0.exp();
    |
 help: you must specify a concrete type for this numeric value, like `f32`
    |
-LL -     let _ = |x: f64| x * 2.0.exp();
-LL +     let _ = |x: f64| x * 2.0_f32.exp();
-   |
+LL |     let _ = |x: f64| x * 2.0_f32.exp();
+   |                             ++++
 
 error: aborting due to 2 previous errors
 

@@ -63,9 +63,8 @@ LL |     self , ... ,   self ,   self , ... ) where F : FnOnce ( & 'a & 'b usize
    |
 help: a trait with a similar name exists
    |
-LL -     self , ... ,   self ,   self , ... ) where F : FnOnce ( & 'a & 'b usize ) {
-LL +     self , ... ,   self ,   self , ... ) where Fn : FnOnce ( & 'a & 'b usize ) {
-   |
+LL |     self , ... ,   self ,   self , ... ) where Fn : FnOnce ( & 'a & 'b usize ) {
+   |                                                 +
 help: you might be missing a type parameter
    |
 LL | fn ordering4 < 'a , 'b, F     > ( a :            ,   self , self ,   self ,

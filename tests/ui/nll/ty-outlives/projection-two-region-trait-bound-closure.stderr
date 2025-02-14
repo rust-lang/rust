@@ -34,9 +34,8 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |
 help: consider adding an explicit lifetime bound
    |
-LL -     T: Anything<'b, 'c>,
-LL +     T: Anything<'b, 'c>, <T as Anything<'b/#0, 'c/#1>>::AssocType: 'a
-   |
+LL |     T: Anything<'b, 'c>, <T as Anything<'b/#0, 'c/#1>>::AssocType: 'a
+   |                          ++++++++++++++++++++++++++++++++++++++++++++
 
 note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:48:29
@@ -74,9 +73,8 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |
 help: consider adding an explicit lifetime bound
    |
-LL -     'a: 'a,
-LL +     'a: 'a, <T as Anything<'b/#1, 'c/#2>>::AssocType: 'a
-   |
+LL |     'a: 'a, <T as Anything<'b/#1, 'c/#2>>::AssocType: 'a
+   |             ++++++++++++++++++++++++++++++++++++++++++++
 
 note: external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:61:29

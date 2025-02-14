@@ -66,9 +66,8 @@ LL |         Self::BAR;
    |         ++++++
 help: a constant with a similar name exists
    |
-LL -         BAR;
-LL +         BARR;
-   |
+LL |         BARR;
+   |            +
 
 error[E0412]: cannot find type `Baz` in this scope
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:37:18

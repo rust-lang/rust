@@ -14,9 +14,8 @@ LL |     [(); N + 1]:,
    |          ^^^^^ required by this bound in `bar`
 help: try adding a `where` bound
    |
-LL -     [(); both(N + 1, M + 1)]:,
-LL +     [(); both(N + 1, M + 1)]:, [(); N + 1]:
-   |
+LL |     [(); both(N + 1, M + 1)]:, [(); N + 1]:
+   |                                ++++++++++++
 
 error: aborting due to 1 previous error
 

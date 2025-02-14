@@ -10,9 +10,8 @@ LL |         T::A(a) | T::B(a) => a,
                 found enum `T`
 help: consider dereferencing the boxed value
    |
-LL -     let y = match x {
-LL +     let y = match *x {
-   |
+LL |     let y = match *x {
+   |                   +
 
 error[E0308]: mismatched types
   --> $DIR/issue-57741.rs:20:19
@@ -26,9 +25,8 @@ LL |         T::A(a) | T::B(a) => a,
                 found enum `T`
 help: consider dereferencing the boxed value
    |
-LL -     let y = match x {
-LL +     let y = match *x {
-   |
+LL |     let y = match *x {
+   |                   +
 
 error[E0308]: mismatched types
   --> $DIR/issue-57741.rs:27:9
@@ -42,9 +40,8 @@ LL |         S::A { a } | S::B { b: a } => a,
                 found enum `S`
 help: consider dereferencing the boxed value
    |
-LL -     let y = match x {
-LL +     let y = match *x {
-   |
+LL |     let y = match *x {
+   |                   +
 
 error[E0308]: mismatched types
   --> $DIR/issue-57741.rs:27:22
@@ -58,9 +55,8 @@ LL |         S::A { a } | S::B { b: a } => a,
                 found enum `S`
 help: consider dereferencing the boxed value
    |
-LL -     let y = match x {
-LL +     let y = match *x {
-   |
+LL |     let y = match *x {
+   |                   +
 
 error: aborting due to 4 previous errors
 
