@@ -1,6 +1,7 @@
 --- cargo
-//~^ ERROR expected item, found `-`
 ---
+
+//@ check-pass
 
 #![feature(frontmatter)]
 

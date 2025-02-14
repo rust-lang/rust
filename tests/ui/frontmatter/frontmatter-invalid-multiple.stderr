@@ -1,7 +1,7 @@
 error: expected item, found `-`
-  --> $DIR/frontmatter-invalid-multiple.rs:1:1
+  --> $DIR/frontmatter-invalid-multiple.rs:4:1
    |
-LL | ---cargo
+LL | ---buck
    | ^ expected item
    |
    = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
