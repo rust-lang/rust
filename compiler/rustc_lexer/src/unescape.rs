@@ -356,8 +356,10 @@ where
         let start = src.len() - chars.as_str().len() - c.len_utf8();
         let res = match c {
             '\\' => {
-                match chars.clone().next() {
+                let mut chars_clone = chars.clone();
+                match chars_clone.next() {
                     Some('\n') => {
+                        chars = chars_clone;
                         // Rust language specification requires us to skip whitespaces
                         // if unescaped '\' character is followed by '\n'.
                         // For details see [Rust language reference]
@@ -379,30 +381,42 @@ where
     }
 }
 
+/// Skip ASCII whitespace, except for the formfeed character
+/// (see [this issue](https://github.com/rust-lang/rust/issues/136600)).
+/// Warns on unescaped newline and following non-ASCII whitespace.
 fn skip_ascii_whitespace<F>(chars: &mut Chars<'_>, start: usize, callback: &mut F)
 where
     F: FnMut(Range<usize>, EscapeError),
 {
-    let tail = chars.as_str();
-    let first_non_space = tail
-        .bytes()
-        .position(|b| b != b' ' && b != b'\t' && b != b'\n' && b != b'\r')
-        .unwrap_or(tail.len());
-    if tail[1..first_non_space].contains('\n') {
-        // The +1 accounts for the escaping slash.
-        let end = start + first_non_space + 1;
-        callback(start..end, EscapeError::MultipleSkippedLinesWarning);
-    }
-    let tail = &tail[first_non_space..];
-    if let Some(c) = tail.chars().next() {
-        if c.is_whitespace() {
-            // For error reporting, we would like the span to contain the character that was not
-            // skipped. The +1 is necessary to account for the leading \ that started the escape.
-            let end = start + first_non_space + c.len_utf8() + 1;
-            callback(start..end, EscapeError::UnskippedWhitespaceWarning);
+    let mut spaces = 0;
+    let mut contains_nl = false;
+
+    for byte in chars.as_str().bytes() {
+        match byte {
+            b' ' | b'\t' | b'\r' => {
+                spaces += 1;
+            }
+            b'\n' => {
+                spaces += 1;
+                contains_nl = true;
+            }
+            _ => break,
         }
     }
-    *chars = tail.chars();
+    *chars = chars.as_str()[spaces..].chars();
+
+    // the escaping slash and newline characters add 2 bytes
+    let end = start + 2 + spaces;
+
+    if contains_nl {
+        callback(start..end, EscapeError::MultipleSkippedLinesWarning);
+    }
+    if let Some(c) = chars.clone().next() {
+        if c.is_whitespace() {
+            // for error reporting, include the character that was not skipped in the span
+            callback(start..end + c.len_utf8(), EscapeError::UnskippedWhitespaceWarning);
+        }
+    }
 }
 
 /// Takes a contents of a string literal (without quotes) and produces a
