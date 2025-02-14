@@ -154,8 +154,8 @@ impl Command {
         if let Some(e) = &env {
             for (k, (_, v)) in e {
                 match v {
-                    Some(v) => crate::env::set_var(k, v),
-                    None => crate::env::remove_var(k),
+                    Some(v) => unsafe { crate::env::set_var(k, v) },
+                    None => unsafe { crate::env::remove_var(k) },
                 }
             }
         }
@@ -166,8 +166,8 @@ impl Command {
         if let Some(e) = env {
             for (k, (v, _)) in e {
                 match v {
-                    Some(v) => crate::env::set_var(k, v),
-                    None => crate::env::remove_var(k),
+                    Some(v) => unsafe { crate::env::set_var(k, v) },
+                    None => unsafe { crate::env::remove_var(k) },
                 }
             }
         }

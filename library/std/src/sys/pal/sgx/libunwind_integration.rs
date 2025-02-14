@@ -15,7 +15,7 @@ const _: () = unsafe {
 
 const EINVAL: i32 = 22;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut RwLock) -> i32 {
     if p.is_null() {
         return EINVAL;
@@ -27,7 +27,7 @@ pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut RwLock) -> i32 {
     return 0;
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn __rust_rwlock_wrlock(p: *mut RwLock) -> i32 {
     if p.is_null() {
         return EINVAL;
@@ -36,7 +36,7 @@ pub unsafe extern "C" fn __rust_rwlock_wrlock(p: *mut RwLock) -> i32 {
     return 0;
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn __rust_rwlock_unlock(p: *mut RwLock) -> i32 {
     if p.is_null() {
         return EINVAL;

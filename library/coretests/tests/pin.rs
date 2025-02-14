@@ -28,7 +28,9 @@ fn pin_const() {
     const fn pin_mut_const() {
         let _ = Pin::new(&mut 2).into_ref();
         let _ = Pin::new(&mut 2).get_mut();
-        let _ = unsafe { Pin::new(&mut 2).get_unchecked_mut() };
+        unsafe {
+            let _ = Pin::new(&mut 2).get_unchecked_mut();
+        }
     }
 
     pin_mut_const();

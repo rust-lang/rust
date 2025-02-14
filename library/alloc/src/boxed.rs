@@ -24,7 +24,7 @@
 //! Creating a recursive data structure:
 //!
 //! ```
-//! ##[allow(dead_code)]
+//! # #[allow(dead_code)]
 //! #[derive(Debug)]
 //! enum List<T> {
 //!     Cons(T, Box<List<T>>),
@@ -97,12 +97,12 @@
 //! #[repr(C)]
 //! pub struct Foo;
 //!
-//! #[no_mangle]
+//! #[unsafe(no_mangle)]
 //! pub extern "C" fn foo_new() -> Box<Foo> {
 //!     Box::new(Foo)
 //! }
 //!
-//! #[no_mangle]
+//! #[unsafe(no_mangle)]
 //! pub extern "C" fn foo_delete(_: Option<Box<Foo>>) {}
 //! ```
 //!

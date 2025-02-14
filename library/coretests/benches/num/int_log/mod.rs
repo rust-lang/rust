@@ -21,7 +21,7 @@ macro_rules! int_log10_bench {
             /* Exponentially distributed random numbers from the whole range of the type.  */
             let numbers: Vec<$t> = (0..256)
                 .map(|_| {
-                    let x = rng.gen::<$t>() >> rng.gen_range(0..<$t>::BITS);
+                    let x = rng.random::<$t>() >> rng.random_range(0..<$t>::BITS);
                     if x != 0 { x } else { 1 }
                 })
                 .collect();
@@ -38,7 +38,7 @@ macro_rules! int_log10_bench {
             /* Exponentially distributed random numbers from the range 0..256.  */
             let numbers: Vec<$t> = (0..256)
                 .map(|_| {
-                    let x = (rng.gen::<u8>() >> rng.gen_range(0..u8::BITS)) as $t;
+                    let x = (rng.random::<u8>() >> rng.random_range(0..u8::BITS)) as $t;
                     if x != 0 { x } else { 1 }
                 })
                 .collect();
@@ -65,7 +65,7 @@ macro_rules! int_log_bench {
             /* Exponentially distributed random numbers from the whole range of the type.  */
             let numbers: Vec<$t> = (0..256)
                 .map(|_| {
-                    let x = rng.gen::<$t>() >> rng.gen_range(0..<$t>::BITS);
+                    let x = rng.random::<$t>() >> rng.random_range(0..<$t>::BITS);
                     if x >= 2 { x } else { 2 }
                 })
                 .collect();
@@ -84,7 +84,7 @@ macro_rules! int_log_bench {
             /* Exponentially distributed random numbers from the range 0..256.  */
             let numbers: Vec<$t> = (0..256)
                 .map(|_| {
-                    let x = (rng.gen::<u8>() >> rng.gen_range(0..u8::BITS)) as $t;
+                    let x = (rng.random::<u8>() >> rng.random_range(0..u8::BITS)) as $t;
                     if x >= 2 { x } else { 2 }
                 })
                 .collect();
