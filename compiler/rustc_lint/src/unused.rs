@@ -1,5 +1,4 @@
 use std::iter;
-use std::ops::ControlFlow;
 
 use rustc_ast as ast;
 use rustc_ast::util::{classify, parser};
@@ -781,29 +780,6 @@ trait UnusedDelimLint {
         right_pos: Option<BytePos>,
         is_kw: bool,
     ) {
-        // If `value` has `ExprKind::Err`, unused delim lint can be broken.
-        // For example, the following code caused ICE.
-        // This is because the `ExprKind::Call` in `value` has `ExprKind::Err` as its argument
-        // and this leads to wrong spans. #104897
-        //
-        // ```
-        // fn f(){(print!(á
-        // ```
-        use rustc_ast::visit::{Visitor, walk_expr};
-        struct ErrExprVisitor;
-        impl<'ast> Visitor<'ast> for ErrExprVisitor {
-            type Result = ControlFlow<()>;
-            fn visit_expr(&mut self, expr: &'ast ast::Expr) -> ControlFlow<()> {
-                if let ExprKind::Err(_) = expr.kind {
-                    ControlFlow::Break(())
-                } else {
-                    walk_expr(self, expr)
-                }
-            }
-        }
-        if ErrExprVisitor.visit_expr(value).is_break() {
-            return;
-        }
         let spans = match value.kind {
             ast::ExprKind::Block(ref block, None) if let [stmt] = block.stmts.as_slice() => stmt
                 .span
