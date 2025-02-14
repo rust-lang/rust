@@ -1093,6 +1093,10 @@ pub fn rustc_cargo(
     // We want to link against registerEnzyme and in the future we want to use additional
     // functionality from Enzyme core. For that we need to link against Enzyme.
     if builder.config.llvm_enzyme {
+        let arch = builder.build.build;
+        let enzyme_dir = builder.build.out.join(arch).join("enzyme").join("lib");
+        cargo.rustflag("-L").rustflag(enzyme_dir.to_str().expect("Invalid path"));
+
         let llvm_config = builder.llvm_config(builder.config.build).unwrap();
         let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
         cargo.rustflag("-l").rustflag(&format!("Enzyme-{llvm_version_major}"));
