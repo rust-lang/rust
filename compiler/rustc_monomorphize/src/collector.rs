@@ -1509,6 +1509,13 @@ impl<'v> RootCollector<'_, 'v> {
                         }
                         _ => unreachable!(),
                     };
+                    let Ok(instance) = self.tcx.try_normalize_erasing_regions(
+                        ty::TypingEnv::fully_monomorphized(),
+                        instance,
+                    ) else {
+                        // Don't ICE on an impossible-to-normalize closure.
+                        return;
+                    };
                     let mono_item = create_fn_mono_item(self.tcx, instance, DUMMY_SP);
                     if mono_item.node.is_instantiable(self.tcx) {
                         self.output.push(mono_item);
