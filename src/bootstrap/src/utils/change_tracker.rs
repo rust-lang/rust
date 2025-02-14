@@ -345,4 +345,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Rustdoc now respects the value of rust.lto.",
     },
+    ChangeInfo {
+        change_id: 136941,
+        severity: ChangeSeverity::Info,
+        summary: "The llvm.ccache option has moved to build.ccache. llvm.ccache is now deprecated.",
+    },
 ];

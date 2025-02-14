@@ -405,6 +405,6 @@ where
                 goal.with(ecx.cx(), goal.predicate.trait_ref);
             ecx.compute_trait_goal(trait_goal)
         })?;
-        self.merge_candidates(proven_via, candidates)
+        self.merge_candidates(proven_via, candidates, |_ecx| Err(NoSolution))
     }
 }
