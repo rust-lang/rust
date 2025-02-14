@@ -1633,14 +1633,14 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// Basic usage:
         ///
         /// ```
-        /// #![feature(integer_sign_cast)]
         /// # use std::num::NonZero;
         ///
         #[doc = concat!("let n = NonZero::<", stringify!($Int), ">::MAX;")]
         ///
         #[doc = concat!("assert_eq!(n.cast_signed(), NonZero::new(-1", stringify!($Sint), ").unwrap());")]
         /// ```
-        #[unstable(feature = "integer_sign_cast", issue = "125882")]
+        #[stable(feature = "integer_sign_cast", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "integer_sign_cast", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -2072,14 +2072,14 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// Basic usage:
         ///
         /// ```
-        /// #![feature(integer_sign_cast)]
         /// # use std::num::NonZero;
         ///
         #[doc = concat!("let n = NonZero::new(-1", stringify!($Int), ").unwrap();")]
         ///
         #[doc = concat!("assert_eq!(n.cast_unsigned(), NonZero::<", stringify!($Uint), ">::MAX);")]
         /// ```
-        #[unstable(feature = "integer_sign_cast", issue = "125882")]
+        #[stable(feature = "integer_sign_cast", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "integer_sign_cast", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
