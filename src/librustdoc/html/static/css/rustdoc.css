@@ -956,13 +956,54 @@ rustdoc-topbar {
 .example-wrap.digits-8 { --example-wrap-digits-count: 8ch; }
 .example-wrap.digits-9 { --example-wrap-digits-count: 9ch; }
 
-.example-wrap [data-nosnippet] {
+.example-wrap .expansion {
+	position: relative;
+	display: inline;
+}
+.example-wrap .expansion > input {
+	display: none;
+}
+.example-wrap .expansion > label {
+	position: absolute;
+	left: -20px;
+	top: 0;
+	border: 1px solid var(--border-color);
+	border-radius: 4px;
+	cursor: pointer;
+	color: var(--main-color);
+	padding: 0 2px;
+	line-height: 20px;
+	-moz-user-select: none;
+	-webkit-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+
+}
+.example-wrap .expansion .expanded {
+	display: none;
+	color: var(--main-color);
+}
+.example-wrap .expansion > input:checked ~ .expanded,
+.example-wrap .expansion > input:checked ~ * .expanded {
+	display: inherit;
+}
+.example-wrap .expansion > input:checked ~ .original,
+.example-wrap .expansion > input:checked ~ * .original {
+	display: none;
+}
+
+.src .example-wrap [data-nosnippet] {
 	width: calc(var(--example-wrap-digits-count) + var(--line-number-padding) * 2);
 }
-.example-wrap pre > code {
+.src .example-wrap pre > code {
 	padding-left: calc(
 		var(--example-wrap-digits-count) + var(--line-number-padding) * 2
 		+ var(--line-number-right-margin));
+}
+.src .example-wrap .expansion [data-nosnippet] {
+	left: calc((
+		var(--example-wrap-digits-count) + var(--line-number-padding) * 2
+		+ var(--line-number-right-margin)) * -1);
 }
 
 .example-wrap [data-nosnippet] {
@@ -978,22 +1019,20 @@ rustdoc-topbar {
 	position: absolute;
 	left: 0;
 }
-.example-wrap .line-highlighted[data-nosnippet] {
-	background-color: var(--src-line-number-highlighted-background-color);
-}
 .example-wrap pre > code {
 	position: relative;
-	display: block;
-}
-:root.word-wrap-source-code .example-wrap pre > code {
 	word-break: break-all;
+	display: block;
 	white-space: pre-wrap;
 }
-:root.word-wrap-source-code .example-wrap pre > code * {
+.example-wrap pre > code * {
 	word-break: break-all;
 }
 .example-wrap [data-nosnippet]:target {
 	border-right: none;
+}
+.example-wrap .line-highlighted[data-nosnippet] {
+	background-color: var(--src-line-number-highlighted-background-color);
 }
 .example-wrap.hide-lines [data-nosnippet] {
 	display: none;

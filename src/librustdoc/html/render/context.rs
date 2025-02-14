@@ -12,7 +12,7 @@ use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
-use rustc_span::{FileName, Symbol, sym};
+use rustc_span::{BytePos, FileName, Symbol, sym};
 use tracing::info;
 
 use super::print_item::{full_path, print_item, print_item_path};
@@ -29,6 +29,7 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::markdown::{self, ErrorCodes, IdMap, plain_text_summary};
+use crate::html::render::ExpandedCode;
 use crate::html::render::write_shared::write_shared;
 use crate::html::url_parts_builder::UrlPartsBuilder;
 use crate::html::{layout, sources, static_files};
@@ -139,6 +140,7 @@ pub(crate) struct SharedContext<'tcx> {
     /// Correspondence map used to link types used in the source code pages to allow to click on
     /// links to jump to the type's definition.
     pub(crate) span_correspondence_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
+    pub(crate) expanded_codes: FxHashMap<BytePos, Vec<ExpandedCode>>,
     /// The [`Cache`] used during rendering.
     pub(crate) cache: Cache,
     pub(crate) call_locations: AllCallLocations,
@@ -548,7 +550,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             }
         }
 
-        let (local_sources, matches) = collect_spans_and_sources(
+        let (local_sources, matches, expanded_codes) = collect_spans_and_sources(
             tcx,
             &krate,
             &src_root,
@@ -579,6 +581,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             cache,
             call_locations,
             should_merge: options.should_merge,
+            expanded_codes,
         };
 
         let dst = output;
