@@ -276,6 +276,58 @@ pub fn strip_shebang(input: &str) -> Option<usize> {
     None
 }
 
+/// Frontmatter is a special attribute type reserved for use by external tools
+///
+/// This must be called after [`strip_shebang`]
+pub fn strip_frontmatter(input: &str) -> Option<usize> {
+    // Whitespace may precede a frontmatter but must end with a newline
+    let rest = input.trim_start_matches(is_whitespace);
+    if rest.len() != input.len() {
+        let trimmed_len = input.len() - rest.len();
+        let last_trimmed_index = trimmed_len - 1;
+        if input.as_bytes()[last_trimmed_index] != b'\n' {
+            // either not a frontmatter or invalid opening
+            return None;
+        }
+    }
+
+    // Opens with a line that starts with 3 or more `-` followed by an optional identifier
+    const FENCE_CHAR: char = '-';
+    let fence_length =
+        rest.char_indices().find_map(|(i, c)| (c != FENCE_CHAR).then_some(i)).unwrap_or(rest.len());
+    if fence_length < 3 {
+        // either not a frontmatter or invalid frontmatter opening
+        return None;
+    }
+    let (fence_pattern, rest) = rest.split_at(fence_length);
+    let Some(info_end_index) = rest.find('\n') else {
+        // frontmatter close is required
+        return None;
+    };
+    let (info, rest) = rest.split_at(info_end_index);
+    let info = info.trim_matches(is_whitespace);
+    if !info.is_empty() && !is_ident(info) {
+        // optional infostring is not an identifier
+        return None;
+    }
+
+    // Ends with a line that starts with a matching number of `-` only followed by whitespace
+    let nl_fence_pattern = format!("\n{fence_pattern}");
+    let Some(frontmatter_nl) = rest.find(&nl_fence_pattern) else {
+        // frontmatter close is required
+        return None;
+    };
+    let rest = &rest[frontmatter_nl + nl_fence_pattern.len()..];
+
+    let (after_closing_fence, rest) = rest.split_once("\n").unwrap_or((rest, ""));
+    let after_closing_fence = after_closing_fence.trim_matches(is_whitespace);
+    if !after_closing_fence.is_empty() {
+        // extra characters beyond the original fence pattern, even if they are extra `-`
+        return None;
+    }
+    Some(input.len() - rest.len())
+}
+
 /// Validates a raw string literal. Used for getting more information about a
 /// problem with a `RawStr`/`RawByteStr` with a `None` field.
 #[inline]
