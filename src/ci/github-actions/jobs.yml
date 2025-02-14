@@ -168,10 +168,10 @@ auto:
     <<: *job-linux-4c
 
   - name: dist-loongarch64-linux
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-4c
 
   - name: dist-loongarch64-musl
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-4c
 
   - name: dist-ohos
     <<: *job-linux-4c
