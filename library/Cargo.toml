@@ -4,6 +4,7 @@ members = [
   "std",
   "sysroot",
   "coretests",
+  "alloctests",
 ]
 
 exclude = [

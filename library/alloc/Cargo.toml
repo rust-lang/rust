@@ -8,31 +8,13 @@ autotests = false
 autobenches = false
 edition = "2021"
 
+[lib]
+test = false
+bench = false
+
 [dependencies]
 core = { path = "../core" }
 compiler_builtins = { version = "=0.1.146", features = ['rustc-dep-of-std'] }
-
-[dev-dependencies]
-rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
-rand_xorshift = "0.3.0"
-
-[[test]]
-name = "alloctests"
-path = "tests/lib.rs"
-
-[[test]]
-name = "vec_deque_alloc_error"
-path = "tests/vec_deque_alloc_error.rs"
-
-[[bench]]
-name = "allocbenches"
-path = "benches/lib.rs"
-test = true
-
-[[bench]]
-name = "vec_deque_append_bench"
-path = "benches/vec_deque_append.rs"
-harness = false
 
 [features]
 compiler-builtins-mem = ['compiler_builtins/mem']

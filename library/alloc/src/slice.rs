@@ -8,9 +8,6 @@
 //! A few functions are provided to create a slice from a value reference
 //! or from a raw pointer.
 #![stable(feature = "rust1", since = "1.0.0")]
-// Many of the usings in this module are only used in the test configuration.
-// It's cleaner to just turn off the unused_imports warning than to fix them.
-#![cfg_attr(test, allow(unused_imports, dead_code))]
 
 use core::borrow::{Borrow, BorrowMut};
 #[cfg(not(no_global_oom_handling))]
@@ -63,16 +60,6 @@ pub use core::slice::{range, try_range};
 ////////////////////////////////////////////////////////////////////////////////
 // Basic slice extension methods
 ////////////////////////////////////////////////////////////////////////////////
-
-// HACK(japaric) needed for the implementation of `vec!` macro during testing
-// N.B., see the `hack` module in this file for more details.
-#[cfg(test)]
-pub use hack::into_vec;
-// HACK(japaric) needed for the implementation of `Vec::clone` during testing
-// N.B., see the `hack` module in this file for more details.
-#[cfg(test)]
-pub use hack::to_vec;
-
 use crate::alloc::Allocator;
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::Global;
@@ -81,98 +68,6 @@ use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::vec::Vec;
 
-// HACK(japaric): With cfg(test) `impl [T]` is not available, these three
-// functions are actually methods that are in `impl [T]` but not in
-// `core::slice::SliceExt` - we need to supply these functions for the
-// `test_permutations` test
-#[allow(unreachable_pub)] // cfg(test) pub above
-pub(crate) mod hack {
-    use core::alloc::Allocator;
-
-    use crate::boxed::Box;
-    use crate::vec::Vec;
-
-    // We shouldn't add inline attribute to this since this is used in
-    // `vec!` macro mostly and causes perf regression. See #71204 for
-    // discussion and perf results.
-    #[allow(missing_docs)]
-    pub fn into_vec<T, A: Allocator>(b: Box<[T], A>) -> Vec<T, A> {
-        unsafe {
-            let len = b.len();
-            let (b, alloc) = Box::into_raw_with_allocator(b);
-            Vec::from_raw_parts_in(b as *mut T, len, len, alloc)
-        }
-    }
-
-    #[cfg(not(no_global_oom_handling))]
-    #[allow(missing_docs)]
-    #[inline]
-    pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
-        T::to_vec(s, alloc)
-    }
-
-    #[cfg(not(no_global_oom_handling))]
-    pub trait ConvertVec {
-        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
-        where
-            Self: Sized;
-    }
-
-    #[cfg(not(no_global_oom_handling))]
-    impl<T: Clone> ConvertVec for T {
-        #[inline]
-        default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
-            struct DropGuard<'a, T, A: Allocator> {
-                vec: &'a mut Vec<T, A>,
-                num_init: usize,
-            }
-            impl<'a, T, A: Allocator> Drop for DropGuard<'a, T, A> {
-                #[inline]
-                fn drop(&mut self) {
-                    // SAFETY:
-                    // items were marked initialized in the loop below
-                    unsafe {
-                        self.vec.set_len(self.num_init);
-                    }
-                }
-            }
-            let mut vec = Vec::with_capacity_in(s.len(), alloc);
-            let mut guard = DropGuard { vec: &mut vec, num_init: 0 };
-            let slots = guard.vec.spare_capacity_mut();
-            // .take(slots.len()) is necessary for LLVM to remove bounds checks
-            // and has better codegen than zip.
-            for (i, b) in s.iter().enumerate().take(slots.len()) {
-                guard.num_init = i;
-                slots[i].write(b.clone());
-            }
-            core::mem::forget(guard);
-            // SAFETY:
-            // the vec was allocated and initialized above to at least this length.
-            unsafe {
-                vec.set_len(s.len());
-            }
-            vec
-        }
-    }
-
-    #[cfg(not(no_global_oom_handling))]
-    impl<T: Copy> ConvertVec for T {
-        #[inline]
-        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
-            let mut v = Vec::with_capacity_in(s.len(), alloc);
-            // SAFETY:
-            // allocated above with the capacity of `s`, and initialize to `s.len()` in
-            // ptr::copy_to_non_overlapping below.
-            unsafe {
-                s.as_ptr().copy_to_nonoverlapping(v.as_mut_ptr(), s.len());
-                v.set_len(s.len());
-            }
-            v
-        }
-    }
-}
-
-#[cfg(not(test))]
 impl<T> [T] {
     /// Sorts the slice, preserving initial order of equal elements.
     ///
@@ -501,8 +396,64 @@ impl<T> [T] {
     where
         T: Clone,
     {
-        // N.B., see the `hack` module in this file for more details.
-        hack::to_vec(self, alloc)
+        return T::to_vec(self, alloc);
+
+        trait ConvertVec {
+            fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
+            where
+                Self: Sized;
+        }
+
+        impl<T: Clone> ConvertVec for T {
+            #[inline]
+            default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
+                struct DropGuard<'a, T, A: Allocator> {
+                    vec: &'a mut Vec<T, A>,
+                    num_init: usize,
+                }
+                impl<'a, T, A: Allocator> Drop for DropGuard<'a, T, A> {
+                    #[inline]
+                    fn drop(&mut self) {
+                        // SAFETY:
+                        // items were marked initialized in the loop below
+                        unsafe {
+                            self.vec.set_len(self.num_init);
+                        }
+                    }
+                }
+                let mut vec = Vec::with_capacity_in(s.len(), alloc);
+                let mut guard = DropGuard { vec: &mut vec, num_init: 0 };
+                let slots = guard.vec.spare_capacity_mut();
+                // .take(slots.len()) is necessary for LLVM to remove bounds checks
+                // and has better codegen than zip.
+                for (i, b) in s.iter().enumerate().take(slots.len()) {
+                    guard.num_init = i;
+                    slots[i].write(b.clone());
+                }
+                core::mem::forget(guard);
+                // SAFETY:
+                // the vec was allocated and initialized above to at least this length.
+                unsafe {
+                    vec.set_len(s.len());
+                }
+                vec
+            }
+        }
+
+        impl<T: Copy> ConvertVec for T {
+            #[inline]
+            fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
+                let mut v = Vec::with_capacity_in(s.len(), alloc);
+                // SAFETY:
+                // allocated above with the capacity of `s`, and initialize to `s.len()` in
+                // ptr::copy_to_non_overlapping below.
+                unsafe {
+                    s.as_ptr().copy_to_nonoverlapping(v.as_mut_ptr(), s.len());
+                    v.set_len(s.len());
+                }
+                v
+            }
+        }
     }
 
     /// Converts `self` into a vector without clones or allocation.
@@ -522,10 +473,13 @@ impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "slice_into_vec")]
+    #[rustc_diagnostic_item = "slice_into_vec"]
     pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
-        // N.B., see the `hack` module in this file for more details.
-        hack::into_vec(self)
+        unsafe {
+            let len = self.len();
+            let (b, alloc) = Box::into_raw_with_allocator(self);
+            Vec::from_raw_parts_in(b as *mut T, len, len, alloc)
+        }
     }
 
     /// Creates a vector by copying a slice `n` times.
@@ -666,7 +620,6 @@ impl<T> [T] {
     }
 }
 
-#[cfg(not(test))]
 impl [u8] {
     /// Returns a vector containing a copy of this slice where each byte
     /// is mapped to its ASCII upper case equivalent.
@@ -883,14 +836,9 @@ impl<T: Copy, A: Allocator> SpecCloneIntoVec<T, A> for [T] {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> ToOwned for [T] {
     type Owned = Vec<T>;
-    #[cfg(not(test))]
+
     fn to_owned(&self) -> Vec<T> {
         self.to_vec()
-    }
-
-    #[cfg(test)]
-    fn to_owned(&self) -> Vec<T> {
-        hack::to_vec(self, Global)
     }
 
     fn clone_into(&self, target: &mut Vec<T>) {

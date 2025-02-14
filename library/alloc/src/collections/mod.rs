@@ -1,5 +1,8 @@
 //! Collection types.
 
+// Note: This module is also included in the alloctests crate using #[path] to
+// run the tests. See the comment there for an explanation why this is the case.
+
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[cfg(not(no_global_oom_handling))]
@@ -24,41 +27,54 @@ pub mod btree_map {
 pub mod btree_set {
     //! An ordered set based on a B-Tree.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(not(test))]
     pub use super::btree::set::*;
 }
 
+#[cfg(not(test))]
 use core::fmt::Display;
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
+#[cfg(not(test))]
 pub use binary_heap::BinaryHeap;
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
+#[cfg(not(test))]
 pub use btree_map::BTreeMap;
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
+#[cfg(not(test))]
 pub use btree_set::BTreeSet;
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
+#[cfg(not(test))]
 pub use linked_list::LinkedList;
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
+#[cfg(not(test))]
 pub use vec_deque::VecDeque;
 
+#[cfg(not(test))]
 use crate::alloc::{Layout, LayoutError};
 
 /// The error type for `try_reserve` methods.
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "try_reserve", since = "1.57.0")]
+#[cfg(not(test))]
 pub struct TryReserveError {
     kind: TryReserveErrorKind,
 }
 
+#[cfg(test)]
+pub use realalloc::collections::TryReserveError;
+
+#[cfg(not(test))]
 impl TryReserveError {
     /// Details about the allocation that caused the error
     #[inline]
@@ -80,6 +96,7 @@ impl TryReserveError {
     reason = "Uncertain how much info should be exposed",
     issue = "48043"
 )]
+#[cfg(not(test))]
 pub enum TryReserveErrorKind {
     /// Error due to the computed capacity exceeding the collection's maximum
     /// (usually `isize::MAX` bytes).
@@ -103,11 +120,15 @@ pub enum TryReserveErrorKind {
     },
 }
 
+#[cfg(test)]
+pub use realalloc::collections::TryReserveErrorKind;
+
 #[unstable(
     feature = "try_reserve_kind",
     reason = "Uncertain how much info should be exposed",
     issue = "48043"
 )]
+#[cfg(not(test))]
 impl From<TryReserveErrorKind> for TryReserveError {
     #[inline]
     fn from(kind: TryReserveErrorKind) -> Self {
@@ -116,6 +137,7 @@ impl From<TryReserveErrorKind> for TryReserveError {
 }
 
 #[unstable(feature = "try_reserve_kind", reason = "new API", issue = "48043")]
+#[cfg(not(test))]
 impl From<LayoutError> for TryReserveErrorKind {
     /// Always evaluates to [`TryReserveErrorKind::CapacityOverflow`].
     #[inline]
@@ -125,6 +147,7 @@ impl From<LayoutError> for TryReserveErrorKind {
 }
 
 #[stable(feature = "try_reserve", since = "1.57.0")]
+#[cfg(not(test))]
 impl Display for TryReserveError {
     fn fmt(
         &self,
@@ -152,4 +175,5 @@ trait SpecExtend<I: IntoIterator> {
 }
 
 #[stable(feature = "try_reserve", since = "1.57.0")]
+#[cfg(not(test))]
 impl core::error::Error for TryReserveError {}

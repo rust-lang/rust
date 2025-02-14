@@ -1,4 +1,8 @@
 #![unstable(feature = "raw_vec_internals", reason = "unstable const warnings", issue = "none")]
+#![cfg_attr(test, allow(dead_code))]
+
+// Note: This module is also included in the alloctests crate using #[path] to
+// run the tests. See the comment there for an explanation why this is the case.
 
 use core::marker::PhantomData;
 use core::mem::{ManuallyDrop, MaybeUninit, SizedTypeProperties};

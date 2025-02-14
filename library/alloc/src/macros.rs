@@ -34,7 +34,7 @@
 /// be mindful of side effects.
 ///
 /// [`Vec`]: crate::vec::Vec
-#[cfg(all(not(no_global_oom_handling), not(test)))]
+#[cfg(not(no_global_oom_handling))]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "vec_macro"]
@@ -53,25 +53,6 @@ macro_rules! vec {
             $crate::boxed::box_new([$($x),+])
         )
     );
-}
-
-// HACK(japaric): with cfg(test) the inherent `[T]::into_vec` method, which is
-// required for this macro definition, is not available. Instead use the
-// `slice::into_vec`  function which is only available with cfg(test)
-// NB see the slice::hack module in slice.rs for more information
-#[cfg(all(not(no_global_oom_handling), test))]
-#[allow(unused_macro_rules)]
-macro_rules! vec {
-    () => (
-        $crate::vec::Vec::new()
-    );
-    ($elem:expr; $n:expr) => (
-        $crate::vec::from_elem($elem, $n)
-    );
-    ($($x:expr),*) => (
-        $crate::slice::into_vec($crate::boxed::Box::new([$($x),*]))
-    );
-    ($($x:expr,)*) => (vec![$($x),*])
 }
 
 /// Creates a `String` using interpolation of runtime expressions.
@@ -120,7 +101,7 @@ macro_rules! vec {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(hint_must_use, liballoc_internals)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "format_macro")]
+#[rustc_diagnostic_item = "format_macro"]
 macro_rules! format {
     ($($arg:tt)*) => {
         $crate::__export::must_use({
