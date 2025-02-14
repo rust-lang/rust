@@ -1,7 +1,8 @@
 ---
-//~^ ERROR expected item, found `-`
 [dependencies]
 ---
+
+//@ check-pass
 
 #![feature(frontmatter)]
 
