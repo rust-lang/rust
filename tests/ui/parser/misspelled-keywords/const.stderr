@@ -6,9 +6,8 @@ LL | cons A: u8 = 10;
    |
 help: there is a keyword `const` with a similar name
    |
-LL - cons A: u8 = 10;
-LL + const A: u8 = 10;
-   |
+LL | const A: u8 = 10;
+   |     +
 
 error: aborting due to 1 previous error
 

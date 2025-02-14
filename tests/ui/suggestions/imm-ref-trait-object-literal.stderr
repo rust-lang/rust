@@ -14,9 +14,8 @@ LL | fn foo<X: Trait>(_: X) {}
    |           ^^^^^ required by this bound in `foo`
 help: consider changing this borrow's mutability
    |
-LL -   foo(&s);
-LL +   foo(&mut s);
-   |
+LL |   foo(&mut s);
+   |        +++
 
 error[E0277]: the trait bound `S: Trait` is not satisfied
   --> $DIR/imm-ref-trait-object-literal.rs:13:7

@@ -8,9 +8,8 @@ LL |         self.layers.iter().fold(0, |result, mut layer| result + layer.proce
    |
 help: you may want to use `iter_mut` here
    |
-LL -         self.layers.iter().fold(0, |result, mut layer| result + layer.process())
-LL +         self.layers.iter_mut().fold(0, |result, mut layer| result + layer.process())
-   |
+LL |         self.layers.iter_mut().fold(0, |result, mut layer| result + layer.process())
+   |                         ++++
 
 error: aborting due to 1 previous error
 

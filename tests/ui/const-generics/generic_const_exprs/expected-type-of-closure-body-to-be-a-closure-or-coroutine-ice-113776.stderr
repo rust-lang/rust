@@ -9,9 +9,8 @@ LL |          let f: F = async { 1 };
    |
 help: a trait with a similar name exists
    |
-LL -          let f: F = async { 1 };
-LL +          let f: Fn = async { 1 };
-   |
+LL |          let f: Fn = async { 1 };
+   |                  +
 help: you might be missing a type parameter
    |
 LL | fn f<T, F>(
