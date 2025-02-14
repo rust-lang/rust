@@ -130,13 +130,13 @@ types! {
     /// use std::arch::x86_64::*;
     ///
     /// # fn main() {
-    /// # #[target_feature(enable = "sse")]
+    /// # #[target_feature(enable = "sse2")]
     /// # unsafe fn foo() { unsafe {
     /// let two_zeros = _mm_setzero_pd();
     /// let two_ones = _mm_set1_pd(1.0);
     /// let two_floats = _mm_set_pd(1.0, 2.0);
     /// # }}
-    /// # if is_x86_feature_detected!("sse") { unsafe { foo() } }
+    /// # if is_x86_feature_detected!("sse2") { unsafe { foo() } }
     /// # }
     /// ```
     pub struct __m128d(2 x f64);
