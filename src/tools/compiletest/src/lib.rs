@@ -166,11 +166,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optflag("", "profiler-runtime", "is the profiler runtime enabled for this target")
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
-        .optflag(
-            "",
-            "git-hash",
-            "run tests which rely on commit version being compiled into the binaries",
-        )
         .optopt("", "edition", "default Rust edition", "EDITION")
         .reqopt("", "git-repository", "name of the git repository", "ORG/REPO")
         .reqopt("", "nightly-branch", "name of the git branch for nightly", "BRANCH")
@@ -381,7 +376,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         has_html_tidy,
         has_enzyme,
         channel: matches.opt_str("channel").unwrap(),
-        git_hash: matches.opt_present("git-hash"),
         edition: matches.opt_str("edition"),
 
         cc: matches.opt_str("cc").unwrap(),

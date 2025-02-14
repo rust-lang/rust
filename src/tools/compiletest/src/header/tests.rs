@@ -75,7 +75,6 @@ struct ConfigBuilder {
     stage: Option<u32>,
     stage_id: Option<String>,
     llvm_version: Option<String>,
-    git_hash: bool,
     system_llvm: bool,
     profiler_runtime: bool,
     rustc_debug_assertions: bool,
@@ -115,11 +114,6 @@ impl ConfigBuilder {
 
     fn llvm_version(&mut self, s: &str) -> &mut Self {
         self.llvm_version = Some(s.to_owned());
-        self
-    }
-
-    fn git_hash(&mut self, b: bool) -> &mut Self {
-        self.git_hash = b;
         self
     }
 
@@ -184,9 +178,6 @@ impl ConfigBuilder {
             args.push(llvm_version.clone());
         }
 
-        if self.git_hash {
-            args.push("--git-hash".to_owned());
-        }
         if self.system_llvm {
             args.push("--system-llvm".to_owned());
         }
@@ -425,15 +416,6 @@ fn debugger() {
 
     config.debugger = Some(Debugger::Lldb);
     assert!(check_ignore(&config, "//@ ignore-lldb"));
-}
-
-#[test]
-fn git_hash() {
-    let config: Config = cfg().git_hash(false).build();
-    assert!(check_ignore(&config, "//@ needs-git-hash"));
-
-    let config: Config = cfg().git_hash(true).build();
-    assert!(!check_ignore(&config, "//@ needs-git-hash"));
 }
 
 #[test]

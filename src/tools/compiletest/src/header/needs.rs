@@ -130,11 +130,6 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored when dlltool for the current architecture is not present",
         },
         Need {
-            name: "needs-git-hash",
-            condition: config.git_hash,
-            ignore_reason: "ignored when git hashes have been omitted for building",
-        },
-        Need {
             name: "needs-dynamic-linking",
             condition: config.target_cfg().dynamic_linking,
             ignore_reason: "ignored on targets without dynamic linking",
