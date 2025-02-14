@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::env;
 
 use crate::spec::{
-    Cc, DebuginfoKind, FloatAbi, FramePointer, LinkerFlavor, Lld, SplitDebuginfo, StackProbeType,
-    StaticCow, TargetOptions, cvs,
+    Cc, DebuginfoKind, FloatAbi, FramePointer, LinkerFlavor, Lld, RustcAbi, SplitDebuginfo,
+    StackProbeType, StaticCow, TargetOptions, cvs,
 };
 
 #[cfg(test)]
@@ -103,7 +103,7 @@ pub(crate) fn base(
     arch: Arch,
     abi: TargetAbi,
 ) -> (TargetOptions, StaticCow<str>, StaticCow<str>) {
-    let opts = TargetOptions {
+    let mut opts = TargetOptions {
         abi: abi.target_abi().into(),
         llvm_floatabi: Some(FloatAbi::Hard),
         os: os.into(),
@@ -154,6 +154,10 @@ pub(crate) fn base(
 
         ..Default::default()
     };
+    if matches!(arch, Arch::I386 | Arch::I686) {
+        // All Apple x86-32 targets have SSE2.
+        opts.rustc_abi = Some(RustcAbi::X86Sse2);
+    }
     (opts, unversioned_llvm_target(os, arch, abi), arch.target_arch())
 }
 
