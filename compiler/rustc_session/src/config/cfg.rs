@@ -151,7 +151,13 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
 
 /// Generate the default configs for a given session
 pub(crate) fn default_configuration(sess: &Session) -> Cfg {
+    // As of 2025-02-14 a default `x86_64-unknown-linux-gnu` has ~20 cfgs.
+    //
+    // So let's round that up to 32 to avoid allocating unnecessarely and to
+    // give a bit a wigle room for the various options and cfgs that might
+    // affect the list of cfgs.
     let mut ret = Cfg::default();
+    ret.reserve(32);
 
     macro_rules! ins_none {
         ($key:expr) => {
@@ -310,6 +316,11 @@ impl CheckCfg {
             return;
         }
 
+        // As of 2025-02-14 there are 30 well known cfg, so pre-allocate
+        // at least that much.
+        self.well_known_names.reserve(30);
+        self.expecteds.reserve(30);
+
         // for `#[cfg(foo)]` (ie. cfg value is none)
         let no_values = || {
             let mut values = FxHashSet::default();
@@ -400,18 +411,27 @@ impl CheckCfg {
                 &sym::target_vendor,
             ];
 
+            // As of 2025-02-14 the maximum number of values is 41 in `target_os`
+            // so allocate at least that much.
+            // FIXME: Be more granular as not all `taregt_*` cfg have that much values.
+            let target_values = || {
+                let mut values = FxHashSet::default();
+                values.reserve(41);
+                ExpectedValues::Some(values)
+            };
+
             // Initialize (if not already initialized)
             for &e in VALUES {
                 if !self.exhaustive_values {
                     ins!(e, || ExpectedValues::Any);
                 } else {
-                    ins!(e, empty_values);
+                    ins!(e, target_values);
                 }
             }
 
             if self.exhaustive_values {
-                // Get all values map at once otherwise it would be costly.
-                // (8 values * 220 targets ~= 1760 times, at the time of writing this comment).
+                // Get all values map at once otherwise it would be _very_ costly.
+                // (8 values * 287 targets ~= 2300 times, at the time of writing this comment).
                 let [
                     Some(values_target_abi),
                     Some(values_target_arch),
