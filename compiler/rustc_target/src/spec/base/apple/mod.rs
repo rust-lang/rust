@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::env;
 
 use crate::spec::{
-    Cc, DebuginfoKind, FloatAbi, FramePointer, LinkerFlavor, Lld, RustcAbi, SplitDebuginfo,
-    StackProbeType, StaticCow, TargetOptions, cvs,
+    BinaryFormat, Cc, DebuginfoKind, FloatAbi, FramePointer, LinkerFlavor, Lld, RustcAbi,
+    SplitDebuginfo, StackProbeType, StaticCow, TargetOptions, cvs,
 };
 
 #[cfg(test)]
@@ -116,6 +116,7 @@ pub(crate) fn base(
         dynamic_linking: true,
         families: cvs!["unix"],
         is_like_osx: true,
+        binary_format: BinaryFormat::MachO,
         // LLVM notes that macOS 10.11+ and iOS 9+ default
         // to v4, so we do the same.
         // https://github.com/llvm/llvm-project/blob/378778a0d10c2f8d5df8ceff81f95b6002984a4b/clang/lib/Driver/ToolChains/Darwin.cpp#L1203

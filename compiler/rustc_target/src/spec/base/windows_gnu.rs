@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use crate::spec::{
-    Cc, DebuginfoKind, LinkSelfContainedDefault, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions,
-    add_link_args, crt_objects, cvs,
+    BinaryFormat, Cc, DebuginfoKind, LinkSelfContainedDefault, LinkerFlavor, Lld, SplitDebuginfo,
+    TargetOptions, add_link_args, crt_objects, cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
@@ -90,6 +90,7 @@ pub(crate) fn opts() -> TargetOptions {
         exe_suffix: ".exe".into(),
         families: cvs!["windows"],
         is_like_windows: true,
+        binary_format: BinaryFormat::Coff,
         allows_weak_linkage: false,
         pre_link_args,
         pre_link_objects: crt_objects::pre_mingw(),
