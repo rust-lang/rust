@@ -234,25 +234,27 @@ const unsafe fn resolve_error_location(st: u32, bytes: &[u8], i: usize) -> Utf8E
 }
 
 // The simpler but slower algorithm to run DFA with error handling.
+// Returns the final state after execution on the whole slice.
 //
 // # Safety
 // The caller must ensure `bytes[..i]` is a valid UTF-8 prefix and `st` is the DFA state after
 // executing on `bytes[..i]`.
+#[inline]
 const unsafe fn run_with_error_handling(
-    st: &mut u32,
+    mut st: u32,
     bytes: &[u8],
     mut i: usize,
-) -> Result<(), Utf8Error> {
+) -> Result<u32, Utf8Error> {
     while i < bytes.len() {
-        let new_st = next_state(*st, bytes[i]);
+        let new_st = next_state(st, bytes[i]);
         if new_st & STATE_MASK == ST_ERROR {
             // SAFETY: Guaranteed by the caller.
-            return Err(unsafe { resolve_error_location(*st, bytes, i) });
+            return Err(unsafe { resolve_error_location(st, bytes, i) });
         }
-        *st = new_st;
+        st = new_st;
         i += 1;
     }
-    Ok(())
+    Ok(st)
 }
 
 /// Walks through `v` checking that it's a valid UTF-8 sequence,
@@ -265,19 +267,15 @@ pub(super) const fn run_utf8_validation(bytes: &[u8]) -> Result<(), Utf8Error> {
 
 #[inline]
 const fn run_utf8_validation_const(bytes: &[u8]) -> Result<(), Utf8Error> {
-    let mut st = ST_ACCEPT;
     // SAFETY: Start at empty string with valid state ACCEPT.
-    match unsafe { run_with_error_handling(&mut st, bytes, 0) } {
+    match unsafe { run_with_error_handling(ST_ACCEPT, bytes, 0) } {
         Err(err) => Err(err),
-        Ok(()) => {
-            if st & STATE_MASK == ST_ACCEPT {
-                Ok(())
-            } else {
-                // SAFETY: `st` is the last state after execution without encountering any error.
-                let mut err = unsafe { resolve_error_location(st, bytes, bytes.len()) };
-                err.error_len = Utf8ErrorLen::Eof;
-                Err(err)
-            }
+        Ok(st) if st & STATE_MASK == ST_ACCEPT => Ok(()),
+        Ok(st) => {
+            // SAFETY: `st` is the last state after execution without encountering any error.
+            let mut err = unsafe { resolve_error_location(st, bytes, bytes.len()) };
+            err.error_len = Utf8ErrorLen::Eof;
+            Err(err)
         }
     }
 }
@@ -288,10 +286,9 @@ fn run_utf8_validation_rt(bytes: &[u8]) -> Result<(), Utf8Error> {
     const ASCII_CHUNK_SIZE: usize = 16;
     const { assert!(ASCII_CHUNK_SIZE % MAIN_CHUNK_SIZE == 0) };
 
-    let mut st = ST_ACCEPT;
     let mut i = bytes.len() % MAIN_CHUNK_SIZE;
     // SAFETY: Start at initial state ACCEPT.
-    unsafe { run_with_error_handling(&mut st, &bytes[..i], 0)? };
+    let mut st = unsafe { run_with_error_handling(ST_ACCEPT, &bytes[..i], 0)? };
 
     while i + MAIN_CHUNK_SIZE <= bytes.len() {
         // Fast path: if the current state is ACCEPT, we can skip to the next non-ASCII chunk.
@@ -326,7 +323,8 @@ fn run_utf8_validation_rt(bytes: &[u8]) -> Result<(), Utf8Error> {
         }
         if new_st & STATE_MASK == ST_ERROR {
             // SAFETY: `st` is the last state after executing `bytes[..i]` without encountering any error.
-            return unsafe { run_with_error_handling(&mut st, bytes, i) };
+            // And we know the next chunk must fail the validation.
+            return Err(unsafe { run_with_error_handling(st, bytes, i).unwrap_err_unchecked() });
         }
 
         st = new_st;
