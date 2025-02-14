@@ -18,6 +18,7 @@ fn main() -> Result<(), Error> {
     let dest_file = env_path("DEST")?;
     let libstd_dest_file = env_path("DEST_LIBSTD")?;
     let out_dir = env_path("OUT_DIR")?;
+    let src_dir = env_path("SRC_DIR")?;
     let cargo = env_path("CARGO")?;
     let license_metadata = env_path("LICENSE_METADATA")?;
 
@@ -27,7 +28,7 @@ fn main() -> Result<(), Error> {
     let mut collected_cargo_metadata = cargo_metadata::get_metadata_and_notices(
         &cargo,
         &out_dir.join("vendor"),
-        &root_path,
+        &src_dir,
         &[
             Path::new("./Cargo.toml"),
             Path::new("./src/tools/cargo/Cargo.toml"),
@@ -38,7 +39,7 @@ fn main() -> Result<(), Error> {
     let library_collected_cargo_metadata = cargo_metadata::get_metadata_and_notices(
         &cargo,
         &out_dir.join("library-vendor"),
-        &root_path,
+        &src_dir,
         &[Path::new("./library/Cargo.toml")],
     )?;
 
@@ -54,7 +55,7 @@ fn main() -> Result<(), Error> {
     let library_collected_tree_metadata = Metadata {
         files: collected_tree_metadata
             .files
-            .trim_clone(&Path::new("./library"), &Path::new("."))
+            .trim_clone(&src_dir.join("library"), &src_dir)
             .unwrap(),
     };
 
