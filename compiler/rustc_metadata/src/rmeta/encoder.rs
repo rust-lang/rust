@@ -2280,12 +2280,10 @@ impl EncodedMetadata {
         stub_path: Option<PathBuf>,
         temp_dir: Option<MaybeTempDir>,
     ) -> std::io::Result<Self> {
-        let file = std::fs::File::open(&path)?;
-        let file_metadata = file.metadata()?;
-        if file_metadata.len() == 0 {
+        if std::fs::metadata(&path)?.len() == 0 {
             return Ok(Self { full_metadata: None, stub_metadata: None, _temp_dir: None });
         }
-        let full_mmap = unsafe { Some(Mmap::map(file)?) };
+        let full_mmap = unsafe { Some(Mmap::map(path)?) };
 
         let stub =
             if let Some(stub_path) = stub_path { Some(std::fs::read(stub_path)?) } else { None };
