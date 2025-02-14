@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MDBOOK_VERSION: 0.4.21
-      MDBOOK_LINKCHECK2_VERSION: 0.8.1
+      MDBOOK_LINKCHECK2_VERSION: 0.9.0
       MDBOOK_MERMAID_VERSION: 0.12.6
       MDBOOK_TOC_VERSION: 0.11.2
       DEPLOY_DIR: book/html
