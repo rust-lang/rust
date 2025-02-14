@@ -8,13 +8,41 @@ use std::fmt;
 use pulldown_cmark_escape::FmtWriter;
 use unicode_segmentation::UnicodeSegmentation;
 
+#[inline(always)]
+fn escape(s: &str, mut w: impl fmt::Write, escape_quotes: bool) -> fmt::Result {
+    // Because the internet is always right, turns out there's not that many
+    // characters to escape: http://stackoverflow.com/questions/7381974
+    let pile_o_bits = s;
+    let mut last = 0;
+    for (i, ch) in s.char_indices() {
+        let s = match ch {
+            '>' => "&gt;",
+            '<' => "&lt;",
+            '&' => "&amp;",
+            '\'' if escape_quotes => "&#39;",
+            '"' if escape_quotes => "&quot;",
+            _ => continue,
+        };
+        w.write_str(&pile_o_bits[last..i])?;
+        w.write_str(s)?;
+        // NOTE: we only expect single byte characters here - which is fine as long as we
+        // only match single byte characters
+        last = i + 1;
+    }
+
+    if last < s.len() {
+        w.write_str(&pile_o_bits[last..])?;
+    }
+    Ok(())
+}
+
 /// Wrapper struct which will emit the HTML-escaped version of the contained
 /// string when passed to a format string.
 pub(crate) struct Escape<'a>(pub &'a str);
 
 impl fmt::Display for Escape<'_> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        pulldown_cmark_escape::escape_html(FmtWriter(fmt), self.0)
+        escape(self.0, fmt, true)
     }
 }
 
@@ -28,7 +56,7 @@ pub(crate) struct EscapeBodyText<'a>(pub &'a str);
 
 impl fmt::Display for EscapeBodyText<'_> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        pulldown_cmark_escape::escape_html_body_text(FmtWriter(fmt), self.0)
+        escape(self.0, fmt, false)
     }
 }
 
