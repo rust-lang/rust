@@ -1061,9 +1061,8 @@ fn insert_switch<'tcx>(
 }
 
 fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    use rustc_middle::mir::patch::MirPatch;
-    use rustc_mir_dataflow::elaborate_drops::{Unwind, elaborate_drop};
-
+    use crate::elaborate_drop::{Unwind, elaborate_drop};
+    use crate::patch::MirPatch;
     use crate::shim::DropShimElaborator;
 
     // Note that `elaborate_drops` only drops the upvars of a coroutine, and
