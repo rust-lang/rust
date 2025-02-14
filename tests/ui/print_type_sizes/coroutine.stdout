@@ -1,10 +1,15 @@
 print-type-size type: `{coroutine@$DIR/coroutine.rs:11:5: 11:14}`: 8193 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 8192 bytes
-print-type-size         upvar `.array`: 8192 bytes
+print-type-size         upvar `.array`: 1 bytes, offset: 0 bytes, alignment: 1 bytes
+print-type-size         local `.array`: 8192 bytes
 print-type-size     variant `Suspend0`: 8192 bytes
-print-type-size         upvar `.array`: 8192 bytes
-print-type-size     variant `Returned`: 8192 bytes
-print-type-size         upvar `.array`: 8192 bytes
-print-type-size     variant `Panicked`: 8192 bytes
-print-type-size         upvar `.array`: 8192 bytes
+print-type-size         local `.array`: 8192 bytes
+print-type-size     variant `Returned`: 0 bytes
+print-type-size     variant `Panicked`: 0 bytes
+print-type-size type: `std::mem::ManuallyDrop<[u8; 8192]>`: 8192 bytes, alignment: 1 bytes
+print-type-size     field `.value`: 8192 bytes
+print-type-size type: `std::mem::MaybeUninit<[u8; 8192]>`: 8192 bytes, alignment: 1 bytes
+print-type-size     variant `MaybeUninit`: 8192 bytes
+print-type-size         field `.uninit`: 0 bytes
+print-type-size         field `.value`: 8192 bytes

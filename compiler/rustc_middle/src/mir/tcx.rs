@@ -73,7 +73,7 @@ impl<'tcx> PlaceTy<'tcx> {
                 // accessible without a variant index.
                 ty::Coroutine(_, args) => args
                     .as_coroutine()
-                    .prefix_tys()
+                    .upvar_tys()
                     .get(f.index())
                     .copied()
                     .unwrap_or_else(|| bug!("field {f:?} out of range: {self:?}")),

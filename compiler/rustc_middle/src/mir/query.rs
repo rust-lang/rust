@@ -10,6 +10,7 @@ use rustc_index::bit_set::BitMatrix;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::{Span, Symbol};
+use rustc_type_ir::data_structures::IndexMap;
 use smallvec::SmallVec;
 
 use super::{ConstValue, SourceInfo};
@@ -19,7 +20,7 @@ use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty, TyCtxt};
 rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[encodable]
-    #[debug_format = "_{}"]
+    #[debug_format = "corsl_{}"]
     pub struct CoroutineSavedLocal {}
 }
 
@@ -57,6 +58,10 @@ pub struct CoroutineLayout<'tcx> {
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
     pub storage_conflicts: BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal>,
+
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    pub relocated_upvars: IndexMap<CoroutineSavedLocal, CoroutineSavedLocal>,
 }
 
 impl Debug for CoroutineLayout<'_> {
