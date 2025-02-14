@@ -22,25 +22,35 @@ fn main() -> Result<(), Error> {
     let cargo = env_path("CARGO")?;
     let license_metadata = env_path("LICENSE_METADATA")?;
 
-    let root_path = std::path::absolute(".")?;
+    let cargo_manifests = env_string("CARGO_MANIFESTS")?
+        .split(",")
+        .map(|manifest| manifest.into())
+        .collect::<Vec<PathBuf>>();
+    let library_manifests = cargo_manifests
+        .iter()
+        .filter(|path| {
+            if let Ok(stripped) = path.strip_prefix(&src_dir) {
+                stripped.starts_with("library")
+            } else {
+                panic!("manifest {path:?} not relative to source dir {src_dir:?}");
+            }
+        })
+        .cloned()
+        .collect::<Vec<_>>();
 
     // Scan Cargo dependencies
     let mut collected_cargo_metadata = cargo_metadata::get_metadata_and_notices(
         &cargo,
         &out_dir.join("vendor"),
         &src_dir,
-        &[
-            Path::new("./Cargo.toml"),
-            Path::new("./src/tools/cargo/Cargo.toml"),
-            Path::new("./library/Cargo.toml"),
-        ],
+        &cargo_manifests,
     )?;
 
     let library_collected_cargo_metadata = cargo_metadata::get_metadata_and_notices(
         &cargo,
         &out_dir.join("library-vendor"),
         &src_dir,
-        &[Path::new("./library/Cargo.toml")],
+        &library_manifests,
     )?;
 
     for (key, value) in collected_cargo_metadata.iter_mut() {
@@ -192,6 +202,17 @@ impl Node {
 struct License {
     spdx: String,
     copyright: Vec<String>,
+}
+
+/// Grab an environment variable as string, or fail nicely.
+fn env_string(var: &str) -> Result<String, Error> {
+    match std::env::var(var) {
+        Ok(var) => Ok(var),
+        Err(std::env::VarError::NotUnicode(_)) => {
+            anyhow::bail!("environment variable {var} is not utf-8")
+        }
+        Err(std::env::VarError::NotPresent) => anyhow::bail!("missing environment variable {var}"),
+    }
 }
 
 /// Grab an environment variable as a PathBuf, or fail nicely.
