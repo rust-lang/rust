@@ -375,9 +375,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 // is actually present in the current crate. We can find out via the
                 // is_codegened_item query.
                 if !self.tcx.is_codegened_item(def_id) {
-                    unsafe {
-                        llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
-                    }
+                    llvm::set_dllimport_storage_class(g);
                 }
             }
         }
@@ -387,9 +385,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             && library.kind.is_dllimport()
         {
             // For foreign (native) libs we know the exact storage type to use.
-            unsafe {
-                llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
-            }
+            llvm::set_dllimport_storage_class(g);
         }
 
         self.instances.borrow_mut().insert(instance, g);

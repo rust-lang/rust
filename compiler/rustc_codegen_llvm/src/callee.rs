@@ -66,9 +66,7 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
             // LLVM will prefix the name with `__imp_`. Ideally, we'd like the
             // existing logic below to set the Storage Class, but it has an
             // exemption for MinGW for backwards compatibility.
-            unsafe {
-                llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);
-            }
+            llvm::set_dllimport_storage_class(llfn);
             llfn
         } else {
             cx.declare_fn(sym, fn_abi, Some(instance))
@@ -150,7 +148,7 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
                 && library.kind.is_dllimport()
                 && !matches!(tcx.sess.target.env.as_ref(), "gnu" | "uclibc")
             {
-                llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);
+                llvm::set_dllimport_storage_class(llfn);
             }
 
             if cx.should_assume_dso_local(llfn, true) {
