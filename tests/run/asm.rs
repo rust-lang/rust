@@ -205,6 +205,28 @@ fn asm() {
         }
         assert_eq!((x, y), (16, 16));
     }
+
+    // the `b` suffix for registers in the `reg_byte` register class is not supported in GCC
+    // and needs to be stripped in order to use these registers.
+    unsafe {
+        core::arch::asm!(
+            "",
+            out("al") _,
+            out("bl") _,
+            out("cl") _,
+            out("dl") _,
+            out("sil") _,
+            out("dil") _,
+            out("r8b") _,
+            out("r9b") _,
+            out("r10b") _,
+            out("r11b") _,
+            out("r12b") _,
+            out("r13b") _,
+            out("r14b") _,
+            out("r15b") _,
+        );
+    }
 }
 
 #[cfg(not(target_arch = "x86_64"))]
