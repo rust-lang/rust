@@ -302,6 +302,7 @@
 #![feature(link_cfg)]
 #![feature(linkage)]
 #![feature(macro_metavar_expr_concat)]
+#![feature(maybe_uninit_fill)]
 #![feature(min_specialization)]
 #![feature(must_not_suspend)]
 #![feature(needs_panic_runtime)]
