@@ -1,7 +1,8 @@
-use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+
+use crate::patch::MirPatch;
 
 pub(super) struct Subtyper;
 

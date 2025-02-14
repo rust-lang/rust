@@ -1,11 +1,13 @@
+use rustc_index::{Idx, IndexVec};
+use rustc_middle::mir::*;
+use rustc_middle::ty::Ty;
+use rustc_span::Span;
 use tracing::debug;
-
-use crate::mir::*;
 
 /// This struct represents a patch to MIR, which can add
 /// new statements and basic blocks and patch over block
 /// terminators.
-pub struct MirPatch<'tcx> {
+pub(crate) struct MirPatch<'tcx> {
     patch_map: IndexVec<BasicBlock, Option<TerminatorKind<'tcx>>>,
     new_blocks: Vec<BasicBlockData<'tcx>>,
     new_statements: Vec<(Location, StatementKind<'tcx>)>,
@@ -22,7 +24,7 @@ pub struct MirPatch<'tcx> {
 }
 
 impl<'tcx> MirPatch<'tcx> {
-    pub fn new(body: &Body<'tcx>) -> Self {
+    pub(crate) fn new(body: &Body<'tcx>) -> Self {
         let mut result = MirPatch {
             patch_map: IndexVec::from_elem(None, &body.basic_blocks),
             new_blocks: vec![],
@@ -69,7 +71,7 @@ impl<'tcx> MirPatch<'tcx> {
         result
     }
 
-    pub fn resume_block(&mut self) -> BasicBlock {
+    pub(crate) fn resume_block(&mut self) -> BasicBlock {
         if let Some(bb) = self.resume_block {
             return bb;
         }
@@ -86,7 +88,7 @@ impl<'tcx> MirPatch<'tcx> {
         bb
     }
 
-    pub fn unreachable_cleanup_block(&mut self) -> BasicBlock {
+    pub(crate) fn unreachable_cleanup_block(&mut self) -> BasicBlock {
         if let Some(bb) = self.unreachable_cleanup_block {
             return bb;
         }
@@ -103,7 +105,7 @@ impl<'tcx> MirPatch<'tcx> {
         bb
     }
 
-    pub fn unreachable_no_cleanup_block(&mut self) -> BasicBlock {
+    pub(crate) fn unreachable_no_cleanup_block(&mut self) -> BasicBlock {
         if let Some(bb) = self.unreachable_no_cleanup_block {
             return bb;
         }
@@ -120,7 +122,7 @@ impl<'tcx> MirPatch<'tcx> {
         bb
     }
 
-    pub fn terminate_block(&mut self, reason: UnwindTerminateReason) -> BasicBlock {
+    pub(crate) fn terminate_block(&mut self, reason: UnwindTerminateReason) -> BasicBlock {
         if let Some((cached_bb, cached_reason)) = self.terminate_block
             && reason == cached_reason
         {
@@ -139,19 +141,11 @@ impl<'tcx> MirPatch<'tcx> {
         bb
     }
 
-    pub fn is_patched(&self, bb: BasicBlock) -> bool {
+    pub(crate) fn is_patched(&self, bb: BasicBlock) -> bool {
         self.patch_map[bb].is_some()
     }
 
-    pub fn terminator_loc(&self, body: &Body<'tcx>, bb: BasicBlock) -> Location {
-        let offset = match bb.index().checked_sub(body.basic_blocks.len()) {
-            Some(index) => self.new_blocks[index].statements.len(),
-            None => body[bb].statements.len(),
-        };
-        Location { block: bb, statement_index: offset }
-    }
-
-    pub fn new_local_with_info(
+    pub(crate) fn new_local_with_info(
         &mut self,
         ty: Ty<'tcx>,
         span: Span,
@@ -165,14 +159,14 @@ impl<'tcx> MirPatch<'tcx> {
         Local::new(index)
     }
 
-    pub fn new_temp(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
+    pub(crate) fn new_temp(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
         let index = self.next_local;
         self.next_local += 1;
         self.new_locals.push(LocalDecl::new(ty, span));
         Local::new(index)
     }
 
-    pub fn new_block(&mut self, data: BasicBlockData<'tcx>) -> BasicBlock {
+    pub(crate) fn new_block(&mut self, data: BasicBlockData<'tcx>) -> BasicBlock {
         let block = BasicBlock::new(self.patch_map.len());
         debug!("MirPatch: new_block: {:?}: {:?}", block, data);
         self.new_blocks.push(data);
@@ -180,22 +174,22 @@ impl<'tcx> MirPatch<'tcx> {
         block
     }
 
-    pub fn patch_terminator(&mut self, block: BasicBlock, new: TerminatorKind<'tcx>) {
+    pub(crate) fn patch_terminator(&mut self, block: BasicBlock, new: TerminatorKind<'tcx>) {
         assert!(self.patch_map[block].is_none());
         debug!("MirPatch: patch_terminator({:?}, {:?})", block, new);
         self.patch_map[block] = Some(new);
     }
 
-    pub fn add_statement(&mut self, loc: Location, stmt: StatementKind<'tcx>) {
+    pub(crate) fn add_statement(&mut self, loc: Location, stmt: StatementKind<'tcx>) {
         debug!("MirPatch: add_statement({:?}, {:?})", loc, stmt);
         self.new_statements.push((loc, stmt));
     }
 
-    pub fn add_assign(&mut self, loc: Location, place: Place<'tcx>, rv: Rvalue<'tcx>) {
+    pub(crate) fn add_assign(&mut self, loc: Location, place: Place<'tcx>, rv: Rvalue<'tcx>) {
         self.add_statement(loc, StatementKind::Assign(Box::new((place, rv))));
     }
 
-    pub fn apply(self, body: &mut Body<'tcx>) {
+    pub(crate) fn apply(self, body: &mut Body<'tcx>) {
         debug!(
             "MirPatch: {:?} new temps, starting from index {}: {:?}",
             self.new_locals.len(),
@@ -241,14 +235,14 @@ impl<'tcx> MirPatch<'tcx> {
         }
     }
 
-    pub fn source_info_for_index(data: &BasicBlockData<'_>, loc: Location) -> SourceInfo {
+    fn source_info_for_index(data: &BasicBlockData<'_>, loc: Location) -> SourceInfo {
         match data.statements.get(loc.statement_index) {
             Some(stmt) => stmt.source_info,
             None => data.terminator().source_info,
         }
     }
 
-    pub fn source_info_for_location(&self, body: &Body<'tcx>, loc: Location) -> SourceInfo {
+    pub(crate) fn source_info_for_location(&self, body: &Body<'tcx>, loc: Location) -> SourceInfo {
         let data = match loc.block.index().checked_sub(body.basic_blocks.len()) {
             Some(new) => &self.new_blocks[new],
             None => &body[loc.block],

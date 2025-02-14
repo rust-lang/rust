@@ -3,7 +3,6 @@ use std::{fmt, iter, mem};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::Idx;
-use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::PointerCoercion;
@@ -12,6 +11,8 @@ use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 use rustc_span::source_map::Spanned;
 use tracing::{debug, instrument};
+
+use crate::patch::MirPatch;
 
 /// Describes how/if a value should be dropped.
 #[derive(Debug)]

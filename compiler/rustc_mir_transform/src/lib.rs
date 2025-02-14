@@ -54,6 +54,7 @@ mod errors;
 mod ffi_unwind_calls;
 mod lint;
 mod lint_tail_expr_drop_order;
+mod patch;
 mod shim;
 mod ssa;
 
