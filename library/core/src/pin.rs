@@ -931,6 +931,11 @@ use crate::{
 };
 use crate::{cmp, fmt};
 
+mod unsafe_pinned;
+
+#[unstable(feature = "unsafe_pinned", issue = "125735")]
+pub use self::unsafe_pinned::UnsafePinned;
+
 /// A pointer which pins its pointee in place.
 ///
 /// [`Pin`] is a wrapper around some kind of pointer `Ptr` which makes that pointer "pin" its
