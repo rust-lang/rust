@@ -209,7 +209,6 @@ impl<'tcx> BestObligation<'tcx> {
                                         nested_goal.source(),
                                         GoalSource::ImplWhereBound
                                             | GoalSource::AliasBoundConstCondition
-                                            | GoalSource::InstantiateHigherRanked
                                             | GoalSource::AliasWellFormed
                                     ) && match (self.consider_ambiguities, nested_goal.result()) {
                                         (true, Ok(Certainty::Maybe(MaybeCause::Ambiguity)))
@@ -379,10 +378,6 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                         parent_host_pred,
                     ));
                     impl_where_bound_count += 1;
-                }
-                // Skip over a higher-ranked predicate.
-                (_, GoalSource::InstantiateHigherRanked) => {
-                    obligation = self.obligation.clone();
                 }
                 (ChildMode::PassThrough, _)
                 | (_, GoalSource::AliasWellFormed | GoalSource::AliasBoundConstCondition) => {

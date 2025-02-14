@@ -72,8 +72,6 @@ pub enum GoalSource {
     ///
     /// FIXME(-Znext-solver=coinductive): Are these even coinductive?
     AliasBoundConstCondition,
-    /// Instantiating a higher-ranked goal and re-proving it.
-    InstantiateHigherRanked,
     /// Predicate required for an alias projection to be well-formed.
     /// This is used in two places: projecting to an opaque whose hidden type
     /// is already registered in the opaque type storage, and for rigid projections.
