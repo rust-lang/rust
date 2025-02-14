@@ -2272,10 +2272,7 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
         let len = d.read_usize();
         let mmap = if len > 0 {
             let mut mmap = MmapMut::map_anon(len).unwrap();
-            for _ in 0..len {
-                (&mut mmap[..]).write_all(&[d.read_u8()]).unwrap();
-            }
-            mmap.flush().unwrap();
+            mmap.copy_from_slice(d.read_raw_bytes(len));
             Some(mmap.make_read_only().unwrap())
         } else {
             None
