@@ -243,6 +243,19 @@ pub trait BuilderMethods<'a, 'tcx>:
         self.assume(cmp);
     }
 
+    /// Emits an `assume` that the `val` of pointer type is non-null.
+    ///
+    /// You may want to check the optimization level before bothering calling this.
+    fn assume_nonnull(&mut self, val: Self::Value) {
+        // Arguably in LLVM it'd be better to emit an assume operand bundle instead
+        // <https://llvm.org/docs/LangRef.html#assume-operand-bundles>
+        // but this works fine for all backends.
+
+        let null = self.const_null(self.type_ptr());
+        let is_null = self.icmp(IntPredicate::IntNE, val, null);
+        self.assume(is_null);
+    }
+
     fn range_metadata(&mut self, load: Self::Value, range: WrappingRange);
     fn nonnull_metadata(&mut self, load: Self::Value);
 
